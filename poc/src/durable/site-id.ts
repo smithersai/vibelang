@@ -3,7 +3,7 @@ import { basename, isAbsolute, normalize, relative, resolve, sep } from "node:pa
 import { digest } from "./value.ts"
 
 /** The name a model with no caller-supplied one is analyzed under. */
-export const MEMORY_SOURCE_NAME = "__smithers_memory__.sm"
+export const MEMORY_SOURCE_NAME = "__vibelang_memory__.vibe"
 
 /**
  * THE portable spelling of a source file's name, and the only string anything
@@ -11,13 +11,12 @@ export const MEMORY_SOURCE_NAME = "__smithers_memory__.sm"
  * key, a nominal row or Error brand, a `debug.callSite`.
  *
  * It lives beside {@link EffectSiteIdentity} because it produces that
- * interface's `file` component, and because BOTH compilers need it: the
- * language frontend (`../language/semantic.ts` re-exports it, which is where
- * most callers still name it) and the durable contract compiler
- * (`./schema.ts`). It was previously spelled twice — the second copy,
+ * interface's `file` component. Native compiler hosts and the durable contract
+ * host (`./schema.ts`) use it when staging portable identities for Go. It was
+ * previously spelled twice — the second copy,
  * `logicalFileName` in `schema.ts`, only stripped path segments, so an absolute
  * `fileName` handed to `compileActionContract` minted a nominal failure
- * identity like `smithers:Users/someone/checkout/orders.sm#Failed@1` that
+ * identity like `vibelang:Users/someone/checkout/orders.vibe#Failed@1` that
  * differed between two machines. One home, one rule, and nothing left to reach
  * for.
  *
@@ -26,7 +25,7 @@ export const MEMORY_SOURCE_NAME = "__smithers_memory__.sm"
  * purpose, so a caller can look a file back up by the name it supplied; those
  * are not identities and do not come from here.
  *
- * Root-relative, POSIX-separated, `.sm` extension intact. That is byte-for-byte
+ * Root-relative, POSIX-separated, `.vibe` extension intact. That is byte-for-byte
  * the spelling the Go fork already uses: `durableLogicalFile`
  * (`compiler/forkbridge/durable.go.txt`) trims a FIXED `/src/` virtual root off
  * the authored name, `virtualFileName` (`.../main.go.txt`) refuses an absolute
@@ -49,7 +48,7 @@ export const MEMORY_SOURCE_NAME = "__smithers_memory__.sm"
 export function identityFileName(fileName: string, rootDir?: string): string {
   const portable = !isAbsolute(fileName)
     // An authored relative name is already portable; only normalize it, so
-    // `./a.sm` and `a.sm` cannot mint two identities for one file.
+    // `./a.vibe` and `a.vibe` cannot mint two identities for one file.
     ? normalize(fileName)
     : rootDir === undefined
     // A single-file analysis has no project to be relative to, and exactly one
@@ -103,8 +102,8 @@ function isIdentityPathUnit(unit: number): boolean {
  * Both steps were many-to-one, and both were measured minting one identity for
  * two distinct files with no diagnostic:
  *
- *     a b.sm        and  a_b.sm        -> smithers:a_b.sm:Boom
- *     .a.sm         and  source_.a.sm  -> smithers:source_.a.sm:Boom
+ *     a b.vibe        and  a_b.vibe        -> vibelang:a_b.vibe:Boom
+ *     .a.vibe         and  source_.a.vibe  -> vibelang:source_.a.vibe:Boom
  *
  * `+XXXX` (four upper-case hex units, always four, never two) fixes both. It is
  * a bijection onto its image, so distinct file names cannot converge:
@@ -143,14 +142,14 @@ function escapeIdentityPath(logicalFile: string): string {
  *
  *  - **blind truncation.** The identity was `.slice(0, 256)`-ed AFTER the class
  *    name was appended, so in a file whose name is long enough the discriminator
- *    is what gets cut. `"a".repeat(250) + ".sm"` declaring `Left` and `Right`
+ *    is what gets cut. `"a".repeat(250) + ".vibe"` declaring `Left` and `Right`
  *    minted one 256-unit identity for both, with zero diagnostics.
  *  - **lossy normalization.** See {@link escapeIdentityPath}.
  *
  * Both are fixed here by never destroying information: the path is escaped
  * reversibly, and the bound is honoured by hashing the exact spelling rather
- * than by cutting it. `smithers.digest:` cannot be confused with the ordinary
- * `smithers:` spelling — the ninth unit is `.` in one and `:` in the other —
+ * than by cutting it. `vibelang.digest:` cannot be confused with the ordinary
+ * `vibelang:` spelling — the ninth unit is `.` in one and `:` in the other —
  * and the ordinary spelling is itself injective over the pair, because a class
  * name is a TypeScript identifier and so contains no `:`, which makes the last
  * `:` an unambiguous separator.
@@ -162,13 +161,13 @@ function escapeIdentityPath(logicalFile: string): string {
  * {@link identityFileName} — never an absolute path.
  */
 export function nominalErrorIdentity(logicalFile: string, className: string): string {
-  const spelled = `smithers:${escapeIdentityPath(logicalFile)}:${className}`
+  const spelled = `vibelang:${escapeIdentityPath(logicalFile)}:${className}`
   if (spelled.length <= NOMINAL_ERROR_IDENTITY_UNITS) return spelled
   // Digesting the SPELLING rather than the pair is what makes the fallback
   // injective for free: the spelling is already injective over (file, name), so
   // the digest inherits that up to SHA-256 collision resistance. `update(…,
   // "utf8")` is the same byte sequence Go's `[]byte(string)` produces.
-  return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}`
+  return `vibelang.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}`
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +200,7 @@ const DURABLE_FAILURE_IDENTITY_UNITS = 256
  *    enough on its own, and withholding `@` from both components makes the
  *    count exactly two and the parse unambiguous.
  *
- * `moduleRowQualifier` (`../language/semantic.ts`) withholds its own separator
+ * Native `moduleRowQualifier` (`compiler/forkbridge/lowering.go.txt`) withholds its own separator
  * from its own alphabet for exactly this reason. Each identity in this compiler
  * owns the alphabet its separator forces; they are deliberately not one shared
  * set.
@@ -225,7 +224,7 @@ function isDurableIdentityUnit(unit: number): boolean {
  * There is no index-0 special case. {@link escapeIdentityPath} escapes a
  * non-alphanumeric first unit to displace a `source_` prefix its predecessor
  * minted; this site never had that prefix, the composed identity always begins
- * with the literal `smithers:` so the validator's leading-character rule is
+ * with the literal `vibelang:` so the validator's leading-character rule is
  * already satisfied, and the encoding is injective with or without it.
  */
 function escapeDurableIdentityComponent(component: string): string {
@@ -243,9 +242,9 @@ function escapeDurableIdentityComponent(component: string): string {
  * THE durable failure identity of one nominal Error class, and the only
  * algorithm either backend may mint one with.
  *
- * This is the CONTRACT spelling, `smithers:<file>@<Class>@1`. It is deliberately
- * NOT {@link nominalErrorIdentity}, the RUNTIME spelling `smithers:<file>:<Class>`
- * that `__smithersRegisterError` carries: the two coexist on purpose, they are
+ * This is the CONTRACT spelling, `vibelang:<file>@<Class>@1`. It is deliberately
+ * NOT {@link nominalErrorIdentity}, the RUNTIME spelling `vibelang:<file>:<Class>`
+ * that `__vibelangRegisterError` carries: the two coexist on purpose, they are
  * validated by two different rules, and unifying them would silently retag every
  * persisted failure envelope with a string the envelope validator never accepted.
  *
@@ -258,26 +257,26 @@ function escapeDurableIdentityComponent(component: string): string {
  * classes arriving under one identity is a forgeable key.
  *
  * THE INJECTIVITY RULE. Until 2026-08-28 this was `stableIdentity`
- * (`./schema.ts`): it spelled `smithers:<file>#<Class>@1` and then rewrote every
+ * (`./schema.ts`): it spelled `vibelang:<file>#<Class>@1` and then rewrote every
  * unit outside `[A-Za-z0-9._/@:+-]` to `_`. `#` is not in that class, so the
  * SEPARATOR was the first thing destroyed, and the fold was many-to-one on both
  * components at once. Three mechanisms were measured on both backends, with zero
  * diagnostics and a runtime `already registered` throw at the end of each:
  *
- *     a b.sm / Boom, a_b.sm / Boom, a#b.sm / Boom, a%b.sm / Boom, a!b.sm / Boom
- *       -> smithers:a_b.sm_Boom@1          (charset collapse, a 5-member family)
- *     a.sm_B / C  and  a.sm#B / C  and  a.sm / B_C
- *       -> smithers:a.sm_B_C@1        (separator destruction; the first and the
+ *     a b.vibe / Boom, a_b.vibe / Boom, a#b.vibe / Boom, a%b.vibe / Boom, a!b.vibe / Boom
+ *       -> vibelang:a_b.vibe_Boom@1          (charset collapse, a 5-member family)
+ *     a.vibe_B / C  and  a.vibe#B / C  and  a.vibe / B_C
+ *       -> vibelang:a.vibe_B_C@1        (separator destruction; the first and the
  *                                      third need NO character outside the
  *                                      alphabet, so escaping alone is not a fix)
  *     $Failed  and  _Failed  in one file
- *       -> smithers:<file>__Failed@1              (class-name collapse)
+ *       -> vibelang:<file>__Failed@1              (class-name collapse)
  *
  * Every step here is therefore information-preserving: both components are
  * escaped reversibly, the separator is withheld from the alphabet so it cannot
  * be spelled by either component, and the length bound is honoured by DIGESTING
- * the exact spelling rather than by cutting it. `smithers.digest:` cannot be
- * confused with the ordinary `smithers:` spelling — the ninth unit is `.` in one
+ * the exact spelling rather than by cutting it. `vibelang.digest:` cannot be
+ * confused with the ordinary `vibelang:` spelling — the ninth unit is `.` in one
  * and `:` in the other.
  *
  * The result is the byte-identical answer the Go fork's `durableFailureIdentity`
@@ -334,7 +333,7 @@ function escapeDurableIdentityComponent(component: string): string {
  * ---------------------------------------------------------------------------
  */
 export function durableFailureIdentity(logicalFile: string, className: string): string {
-  const spelled = `smithers:${escapeDurableIdentityComponent(logicalFile)}@${
+  const spelled = `vibelang:${escapeDurableIdentityComponent(logicalFile)}@${
     escapeDurableIdentityComponent(className)
   }@1`
   if (spelled.length <= DURABLE_FAILURE_IDENTITY_UNITS) return spelled
@@ -344,7 +343,7 @@ export function durableFailureIdentity(logicalFile: string, className: string): 
   // kept so that every durable failure identity, spelled or digested, carries
   // the same version marker. `update(…, "utf8")` is the same byte sequence Go's
   // `[]byte(string)` produces.
-  return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}@1`
+  return `vibelang.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}@1`
 }
 
 // ---------------------------------------------------------------------------
@@ -404,8 +403,8 @@ function escapeAdoptionSourceComponent(component: string): string {
  *
  * Escaping alone would not have fixed that — neither input contains anything
  * exotic — which is why the separator is withheld from the component alphabet
- * rather than merely escaped in it. That is the same lesson `a.sm_B`/`C` versus
- * `a.sm`/`B_C` taught {@link durableFailureIdentity}.
+ * rather than merely escaped in it. That is the same lesson `a.vibe_B`/`C` versus
+ * `a.vibe`/`B_C` taught {@link durableFailureIdentity}.
  *
  * `memoKey` is a 64-hex `digest`, so escaping it is a no-op today. It is escaped
  * anyway: the injectivity argument then rests on nothing outside this function,
@@ -693,7 +692,7 @@ export interface EffectSiteIdClaim {
  * only where the shipped answer was a duplicate.
  *
  * The refusal is the second half, and it is the half the Plan lowerer has and
- * the Manifest did not: `SMITHERS4199`, "stable durable node id collision",
+ * the Manifest did not: `VIBE4199`, "stable durable node id collision",
  * raised off a set of already-assigned ids. A site id is 24 hex digits — 96
  * bits of a SHA-256 — so even with an injective tuple the truncation is a
  * (astronomically unlikely) source of duplicates, and a duplicated journal key
@@ -733,7 +732,7 @@ export class EffectManifestSiteIds {
 
 /**
  * Assigns site ids within one compilation unit, refusing a collision rather
- * than papering over it — the Plan lowerer raises `SMITHERS4199` on the same
+ * than papering over it — the Plan lowerer raises `VIBE4199` on the same
  * condition, and a silently reused journal key is worse than a hard stop.
  */
 export class EffectSiteIds {

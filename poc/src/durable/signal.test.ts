@@ -24,7 +24,7 @@ import {
 } from "./index.ts"
 
 const source = `
-import { durable, waitSignal as receive } from "smithers:flows"
+import { durable, waitSignal as receive } from "vibelang:flows"
 
 throw new Error("durable signal lowering must not evaluate author code")
 
@@ -35,7 +35,7 @@ export const Approval = durable(function Approval(input: { requestId: string }) 
 `
 
 const compileSignal = (text = source) => compileDurableSource(text, {
-  fileName: "flows/approval.sm.ts",
+  fileName: "flows/approval.vibe.ts",
   flowId: "test/source/Approval",
   flowVersion: 1,
   actions: []
@@ -110,11 +110,11 @@ test("compiler-owned signal lowering derives a stable exact payload contract wit
   expect(repeatedNode?.signalContractDigest).toBe(node.signalContractDigest)
 
   const namespace = compileDurableSource(`
-    import * as Flows from "smithers:flows"
+    import * as Flows from "vibelang:flows"
     export const F = Flows.durable(function F(input: {}) {
       return Flows.waitSignal<string>("namespace.signal")
     })
-  `, { fileName: "flows/namespace-signal.sm.ts", flowId: "test/namespace-signal", actions: [] })
+  `, { fileName: "flows/namespace-signal.vibe.ts", flowId: "test/namespace-signal", actions: [] })
   if (!namespace.ok) throw new Error(JSON.stringify(namespace.diagnostics))
   expect(namespace.plan.nodes).toHaveLength(1)
   expect(namespace.plan.nodes[0]).toMatchObject({ kind: "signal", signalId: "namespace.signal" })
@@ -122,28 +122,28 @@ test("compiler-owned signal lowering derives a stable exact payload contract wit
 
 test("signal source and artifact contracts fail closed for dynamic, higher-order, duplicate, and forged uses", () => {
   const invalidSources = [
-    `import { durable, waitSignal } from "smithers:flows"
+    `import { durable, waitSignal } from "vibelang:flows"
      export const F = durable(function F(input: { name: string }) {
        return waitSignal<{ value: string }>(input.name)
      })`,
-    `import { durable, waitSignal } from "smithers:flows"
+    `import { durable, waitSignal } from "vibelang:flows"
      export const F = durable(function F(input: {}) { return waitSignal("name") })`,
-    `import { durable, waitSignal } from "smithers:flows"
+    `import { durable, waitSignal } from "vibelang:flows"
      export const F = durable(function F(input: {}) {
        const indirect = waitSignal
        return indirect<{ value: string }>("name")
      })`,
-    `import { durable, waitSignal } from "smithers:flows"
+    `import { durable, waitSignal } from "vibelang:flows"
      export const F = durable(function F(input: { choose: boolean }) {
        return input.choose
          ? waitSignal<{ value: string }>("same")
          : waitSignal<{ value: string }>("same")
      })`,
-    `import { durable, waitSignal } from "smithers:flows"
+    `import { durable, waitSignal } from "vibelang:flows"
      export const F = durable(function F(input: {}) {
        return waitSignal<() => void>("callback")
      })`,
-    `import { durable } from "smithers:flows"
+    `import { durable } from "vibelang:flows"
      function waitSignal<T>(name: string): T { throw new Error(name) }
      export const F = durable(function F(input: {}) {
        return waitSignal<string>("spoof")
@@ -154,16 +154,21 @@ test("signal source and artifact contracts fail closed for dynamic, higher-order
     // `MIGRATION-PLAN.md` step 11 withdrew the Plan lowerer's walls, the Plan
     // compiler SIGNALS a body it has no shape for instead of refusing it, and
     // the entry point whose answer is a verdict is this one. Every spelling
-    // here is still refused, and `SMITHERS4199` — the Effect Manifest refusing
-    // to state a call it cannot account for — is inside the `SMITHERS41`
+    // here is still refused, and `VIBE4199` — the Effect Manifest refusing
+    // to state a call it cannot account for — is inside the `VIBE41`
     // family the assertion below names.
     const result = compileDurableFlow(invalid, {
-      fileName: `flows/invalid-signal-${index}.sm.ts`,
+      fileName: `flows/invalid-signal-${index}.vibe.ts`,
       flowId: `test/invalid-signal-${index}`,
       actions: []
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.diagnostics[0].code).toMatch(/^SMITHERS41/)
+    if (!result.ok) {
+      // The unrelated local helper has an invalid fallible return annotation;
+      // it does not acquire signal authority from its spelling.
+      if (index === 5) expect(result.diagnostics[0].code).toBe("VIBE1101")
+      else expect(result.diagnostics[0].code).toMatch(/^VIBE41/)
+    }
   }
 
   const { compiled, node } = fixture()
@@ -226,7 +231,7 @@ test("delivery before the first wait is persisted, schema checked, and consumed 
 })
 
 test("wait state survives restart and exact delivery identity, schema, and idempotence are enforced", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-signal-restart-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-signal-restart-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, node } = fixture()
   try {
@@ -275,7 +280,7 @@ test("wait state survives restart and exact delivery identity, schema, and idemp
 })
 
 test("delivery and consume commits each survive coordinator death before exposure", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-signal-commit-crash-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-signal-commit-crash-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, node } = fixture()
   try {
@@ -361,7 +366,7 @@ test("cancellation and persisted deadlines terminate suspended signals without l
 
 test("a signal in an unselected branch is skipped and can never be delivered afterward", async () => {
   const branchSource = `
-import { durable, waitSignal } from "smithers:flows"
+import { durable, waitSignal } from "vibelang:flows"
 export const Maybe = durable(function Maybe(input: { wait: boolean }) {
   return input.wait
     ? waitSignal<{ approved: boolean; ticket: string }>("branch.approval")
@@ -369,7 +374,7 @@ export const Maybe = durable(function Maybe(input: { wait: boolean }) {
 })
 `
   const compiled = compileDurableSource(branchSource, {
-    fileName: "flows/branch-signal.sm.ts",
+    fileName: "flows/branch-signal.vibe.ts",
     flowId: "test/source/BranchSignal",
     actions: []
   })
@@ -408,7 +413,7 @@ export const Maybe = durable(function Maybe(input: { wait: boolean }) {
 })
 
 test("two coordinators and duplicate external deliveries converge on one atomic inbox value", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-signal-race-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-signal-race-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, node } = fixture()
   const firstStore = new DurableStore(filename)

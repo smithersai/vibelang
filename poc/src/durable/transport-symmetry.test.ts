@@ -48,7 +48,7 @@ import { runBundleInvocation, type LoadedBundleModule } from "./worker-host.ts"
  */
 
 const ACTION_ID = "test/transport-symmetry/Work"
-const SOURCE_FILE = "transport-symmetry.sm"
+const SOURCE_FILE = "transport-symmetry.vibe"
 
 const sandbox = (): DenoSubprocessSandbox => new DenoSubprocessSandbox({
   timeoutMs: 20_000,
@@ -60,7 +60,7 @@ const sandbox = (): DenoSubprocessSandbox => new DenoSubprocessSandbox({
 
 const compileAction = (): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -114,13 +114,13 @@ const outOfContractProvider = () => Provider.provideChecked(WorkAction, hostImpl
 
 const flowPlan = () => {
   const compiled = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Work } from "test:transport-symmetry-actions"
 export const SymmetryFlow = durable(function SymmetryFlow(input: { value: number }) {
   return Work.run({ value: input.value })
 })
 `, {
-    fileName: "flows/transport-symmetry.sm",
+    fileName: "flows/transport-symmetry.vibe",
     flowId: "test/transport-symmetry/Flow",
     flowVersion: 1,
     actions: [Object.freeze({

@@ -24,7 +24,7 @@ import {
 } from "./index.ts"
 
 const source = `
-import { durable, dequeue } from "smithers:flows"
+import { durable, dequeue } from "vibelang:flows"
 
 throw new Error("durable queue lowering must not evaluate author code")
 
@@ -35,7 +35,7 @@ export const Consume = durable(function Consume(input: { worker: string }) {
 `
 
 const compileQueue = (text = source, id = "Consume") => compileDurableSource(text, {
-  fileName: `flows/${id.toLowerCase()}.sm.ts`,
+  fileName: `flows/${id.toLowerCase()}.vibe.ts`,
   flowId: `test/source/${id}`,
   flowVersion: 1,
   actions: []
@@ -58,7 +58,7 @@ const tamper = (token: string): string =>
   `${token.slice(0, -1)}${token.endsWith("0") ? "1" : "0"}`
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-queue-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-queue-"))
   const filename = join(directory, "state.sqlite")
   try {
     await body(filename)
@@ -100,15 +100,15 @@ test("compiler-owned queue lowering derives a stable item contract without evalu
 
 test("queue source and artifact contracts fail closed for dynamic, spoofed, and forged uses", () => {
   const invalid = [
-    `import { durable, dequeue } from "smithers:flows"
+    `import { durable, dequeue } from "vibelang:flows"
      export const F = durable(function F(input: { name: string }) { return dequeue<{ a: string }>(input.name) })`,
-    `import { durable, dequeue } from "smithers:flows"
+    `import { durable, dequeue } from "vibelang:flows"
      export const F = durable(function F(input: {}) { return dequeue("jobs") })`,
-    `import { durable, dequeue } from "smithers:flows"
+    `import { durable, dequeue } from "vibelang:flows"
      export const F = durable(function F(input: {}) { const indirect = dequeue; return indirect<{ a: string }>("jobs") })`,
-    `import { durable, dequeue } from "smithers:flows"
+    `import { durable, dequeue } from "vibelang:flows"
      export const F = durable(function F(input: {}) { return dequeue<() => void>("jobs") })`,
-    `import { durable } from "smithers:flows"
+    `import { durable } from "vibelang:flows"
      function dequeue<T>(q: string): T { throw new Error(q) }
      export const F = durable(function F(input: {}) { return dequeue<string>("spoof") })`
   ]
@@ -117,29 +117,34 @@ test("queue source and artifact contracts fail closed for dynamic, spoofed, and 
     // `MIGRATION-PLAN.md` step 11 withdrew the Plan lowerer's walls, the Plan
     // compiler SIGNALS a body it has no shape for instead of refusing it, and
     // the entry point whose answer is a verdict is this one. Every spelling
-    // here is still refused, and `SMITHERS4199` — the Effect Manifest refusing
-    // to state a call it cannot account for — is inside the `SMITHERS41`
+    // here is still refused, and `VIBE4199` — the Effect Manifest refusing
+    // to state a call it cannot account for — is inside the `VIBE41`
     // family the assertion below names.
     const result = compileDurableFlow(text, {
-      fileName: `flows/invalid-queue-${index}.sm.ts`,
+      fileName: `flows/invalid-queue-${index}.vibe.ts`,
       flowId: `test/invalid-queue-${index}`,
       actions: []
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.diagnostics[0]!.code).toMatch(/^SMITHERS41/)
+    if (!result.ok) {
+      // The ordinary helper is checked as ordinary source, not as a forged
+      // queue. Its plain T return annotation cannot carry an Error throw.
+      if (index === 4) expect(result.diagnostics[0]!.code).toBe("VIBE1101")
+      else expect(result.diagnostics[0]!.code).toMatch(/^VIBE41/)
+    }
   }
 
   // Two different item types for one queue identity are ambiguous.
   const conflicting = compileDurableSource(`
-    import { durable, dequeue } from "smithers:flows"
+    import { durable, dequeue } from "vibelang:flows"
     export const F = durable(function F(input: {}) {
       const a = dequeue<{ id: string }>("jobs")
       const b = dequeue<{ id: number }>("jobs")
       return { a: a, b: b }
     })
-  `, { fileName: "flows/conflicting-queue.sm.ts", flowId: "test/conflicting-queue", actions: [] })
+  `, { fileName: "flows/conflicting-queue.vibe.ts", flowId: "test/conflicting-queue", actions: [] })
   expect(conflicting.ok).toBe(false)
-  if (!conflicting.ok) expect(conflicting.diagnostics[0]!.code).toBe("SMITHERS4123")
+  if (!conflicting.ok) expect(conflicting.diagnostics[0]!.code).toBe("VIBE4123")
 
   const { compiled, node } = fixture()
   // A queue node smuggled into a version-2 artifact is rejected on version.
@@ -429,11 +434,11 @@ test("corrupt persisted queue state fails closed instead of replaying", () => {
 test("two Flows disagreeing about one queue's item contract fail closed at initialization", () => {
   const first = fixture("queue-agree-a")
   const second = compileDurableSource(`
-    import { durable, dequeue } from "smithers:flows"
+    import { durable, dequeue } from "vibelang:flows"
     export const Other = durable(function Other(input: { worker: string }) {
       return dequeue<{ jobId: number }>("jobs.pending")
     })
-  `, { fileName: "flows/other.sm.ts", flowId: "test/source/Other", actions: [] })
+  `, { fileName: "flows/other.vibe.ts", flowId: "test/source/Other", actions: [] })
   if (!second.ok) throw new Error(JSON.stringify(second.diagnostics))
   const store = new DurableStore()
   new DurableExecutor(first.deployment, store)

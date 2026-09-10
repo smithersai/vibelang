@@ -50,31 +50,24 @@
  *   for that to be *invisible*, and exposes `dispatchedLive`. {@link ReplayAudit}
  *   carries the same counter for the same reason.
  *
- * One difference is real and is stated rather than papered over. The occurrence
- * index here is **per site**, matching `JournalRow.occurrence` ("which occurrence
- * of `site` this is") and `site-id.ts`'s "dispatch occurrence index". The
- * counter in `runtime/effect.ts` is per *execution* — `Execution.occurrence`, a
- * single monotonic ordinal — which is closer to the scheduler's `Ticket.index`
- * than to its `occurrence`. Both produce a unique key when paired with a site,
- * so neither is unsound, but they are not the same quantity and a request that
- * arrives already carrying one is refused (see {@link ReplayDriver.run}) rather
- * than silently re-keyed under the other.
+ * The runtime and this driver share the same per-site submission convention.
+ * A request forwarded through an inner delimiter retains its occurrence; the
+ * driver validates it against the attempt's per-site cursor instead of minting
+ * a second identity. Every replay starts a fresh execution scope.
  */
 
-import { DurableExecutionCancelled } from "./errors.ts"
-import type { JsonValue } from "./ir.ts"
+import { CoordinatorUnavailable, DurableActionDefect, DurableExecutionCancelled, DurableRequestMismatch } from "./errors.ts"
+import type { JsonValue, WorkerExit } from "./ir.ts"
 import type { PinnedDeployment } from "./migration.ts"
-import type { AnyRequest, RequestKey, RequestKind, Resumable } from "../runtime/effect.ts"
-import type { DurableStore, JournalEvent, StoredNodeExit } from "./store.ts"
+import { __vsExecutionScope, __vsIsDispatchedRequest, type AnyRequest, type DispatchedRequest, type RequestKey, type RequestKind, type Resumable, type StepGuard } from "../runtime/effect.ts"
+import type { ClaimResult, DurableStore, JournalEvent, StoredNodeExit } from "./store.ts"
 
 /**
  * Whether the replay driver may run at all.
  *
- * Additive and reversible, exactly as `CompileOptions.effectLowering` was: the
- * default is the shipped path and the new path is unreachable until a caller
- * names it. Nothing in the Plan pipeline reads this — the gate is on
- * constructing a driver, so an executor built without it cannot reach a single
- * line of this file.
+ * Direct driver clients must opt in. The signed executable BodyExecutor always
+ * selects this driver; the compatibility Plan executor does not. This is not
+ * an authored language flag or a compiler-lowering option.
  */
 export type ReplayDriverMode = "off" | "on"
 
@@ -152,7 +145,19 @@ export interface ReplayAudit {
 export type { RequestKey }
 
 /** How a `perform` request is carried out when it is not already committed. */
-export type PerformEffect = (request: DispatchedEffectRequest) => PromiseLike<JsonValue> | JsonValue
+export type PerformEffect = (request: DispatchedEffectRequest, attempt: ReplayAttempt) => PromiseLike<JsonValue> | JsonValue
+
+export interface ReplayAttempt extends Omit<Extract<ClaimResult, { kind: "claimed" }>, "kind"> {
+  readonly owner: string
+  readonly signal: AbortSignal
+  /** Schedule a fenced retry, then relinquish this attempt without resuming the body. */
+  retry(exit: WorkerExit, retryAt: number): never
+  /** Commit a non-recoverable worker defect under this attempt's fence. */
+  fail(defect: Extract<WorkerExit, { kind: "defect" }>["defect"]): never
+}
+
+class RetryAttempt {}
+class LostAttempt {}
 
 /** A request the driver has assigned an occurrence index and a journal key. */
 export interface DispatchedEffectRequest {
@@ -188,6 +193,21 @@ export interface ReplayDriverOptions {
    */
   readonly capabilities?: ReadonlyMap<RequestKey, unknown>
   readonly perform: PerformEffect
+  /** Compiler-owned attempt dispatcher, shared with its inner lexical handlers. */
+  readonly dispatchRequest?: (request: AnyRequest) => DispatchedRequest
+  readonly validateRequest?: (request: DispatchedEffectRequest) => void
+  readonly decodeAnswer?: (request: DispatchedEffectRequest, answer: JsonValue) => unknown
+  readonly afterCommit?: (request: DispatchedEffectRequest) => void | Promise<void>
+  readonly signal?: AbortSignal
+  readonly requestDigest?: (request: DispatchedEffectRequest) => string
+  /** Coordinator-owned nodes suspend without a worker lease; omitted means Action. */
+  readonly journalNode?: (request: DispatchedEffectRequest) =>
+    { readonly kind: "action" } | { readonly kind: "timer"; readonly durationMs: number }
+  readonly afterTimerScheduled?: (request: DispatchedEffectRequest, wakeAt: number) => void | Promise<void>
+  readonly wakeupSweepMs?: number
+  /** Optional atomic cache/node commit; it must return the actual committed answer. */
+  readonly commitAnswer?: (request: DispatchedEffectRequest, claim: Extract<ClaimResult, { kind: "claimed" }>, answer: JsonValue) =>
+    { readonly kind: "committed"; readonly value: JsonValue } | { readonly kind: "lost" }
 }
 
 const DEFAULT_LEASE_MS = 30_000
@@ -209,7 +229,10 @@ const recordedKeys = (journal: readonly JournalEvent[]): readonly string[] => {
   const seen = new Set<string>()
   const ordered: string[] = []
   for (const event of journal) {
-    if (event.type !== "attempt_started") continue
+    // A timer commits submission before waiting, not when it later becomes
+    // eligible for a lease. Counting only attempts would lose a scheduled but
+    // not-yet-due request from divergence checks after a process restart.
+    if (event.type !== "attempt_started" && event.type !== "timer_scheduled") continue
     const nodeId = event.nodeId
     // Plan node ids and journal keys share one table for the duration of the
     // migration, so a Plan-driven node in the same execution is not this
@@ -231,6 +254,16 @@ const recordedKeys = (journal: readonly JournalEvent[]): readonly string[] => {
  * instead of assuming its own attempt won.
  */
 export class ReplayDriver {
+  readonly #dispatchRequest: ReplayDriverOptions["dispatchRequest"]
+  readonly #validateRequest: ReplayDriverOptions["validateRequest"]
+  readonly #decodeAnswer: ReplayDriverOptions["decodeAnswer"]
+  readonly #afterCommit: ReplayDriverOptions["afterCommit"]
+  readonly #signal: ReplayDriverOptions["signal"]
+  readonly #requestDigest: ReplayDriverOptions["requestDigest"]
+  readonly #commitAnswer: ReplayDriverOptions["commitAnswer"]
+  readonly #journalNode: ReplayDriverOptions["journalNode"]
+  readonly #afterTimerScheduled: ReplayDriverOptions["afterTimerScheduled"]
+  readonly #wakeupSweepMs: number
   readonly #store: DurableStore
   readonly #executionId: string
   readonly #owner: string
@@ -245,10 +278,24 @@ export class ReplayDriver {
   #requests = 0
   #replayed = 0
   #dispatchedLive = 0
+  #running = false
 
   constructor(options: ReplayDriverOptions) {
     if (typeof options !== "object" || options === null) {
       throw new TypeError("ReplayDriver options must be a record")
+    }
+    this.#dispatchRequest = options.dispatchRequest
+    this.#validateRequest = options.validateRequest
+    this.#decodeAnswer = options.decodeAnswer
+    this.#afterCommit = options.afterCommit
+    this.#signal = options.signal
+    this.#requestDigest = options.requestDigest
+    this.#commitAnswer = options.commitAnswer
+    this.#journalNode = options.journalNode
+    this.#afterTimerScheduled = options.afterTimerScheduled
+    this.#wakeupSweepMs = options.wakeupSweepMs ?? 250
+    if (!Number.isSafeInteger(this.#wakeupSweepMs) || this.#wakeupSweepMs <= 0) {
+      throw new TypeError("ReplayDriver wakeup sweep must be a positive safe integer")
     }
     if (options.mode !== "on") {
       // The gate. `REPLAY_DRIVER_DEFAULT` is `"off"`, and an executor that never
@@ -297,8 +344,10 @@ export class ReplayDriver {
    * model, and it is why the answer to an already-committed request must come
    * from the store rather than from re-invoking the effect.
    */
-  async run<A>(body: () => Resumable<A>): Promise<A> {
+  async run<A>(body: () => Resumable<A> | import("../runtime/effect.ts").AsyncResumable<A>): Promise<A> {
     if (typeof body !== "function") throw new TypeError("ReplayDriver.run requires a body function")
+    if (this.#running) throw new Error("A replay driver cannot run overlapping attempts")
+    this.#running = true
     // One `run` is one ATTEMPT. Occurrence indices, visited positions, and the
     // audit are all per-attempt: a body that re-runs from the top must re-mint
     // the same keys, which it cannot do from a counter the previous attempt
@@ -308,72 +357,99 @@ export class ReplayDriver {
     this.#requests = 0
     this.#replayed = 0
     this.#dispatchedLive = 0
-    this.#recorded = recordedKeys(this.#store.journal(this.#executionId))
-    const generator = body()
-    let mode: "next" | "throw" = "next"
-    let carried: unknown
-    let step = generator.next()
-    while (!step.done) {
-      const request = this.#dispatch(step.value)
-      try {
-        carried = await this.#answer(request)
-        mode = "next"
-      } catch (raised) {
-        if (!isResumableFailure(raised)) {
-          // A divergence, a defect, or a coordinator-level refusal. It unwinds
-          // past the body: §Divergence requires the attempt to fail without a
-          // terminal outcome, and a defect is not the body's to catch.
-          //
-          // §Abandonment: an abandoned computation MUST NOT be left holding a
-          // resource. `return()` runs the body's `finally` blocks, but a `yield`
-          // inside one leaves the generator suspended instead of completing, so
-          // the unwind is checked rather than assumed — the same refusal
-          // `runtime/effect.ts` makes, and it fails closed with the original
-          // cause attached rather than replacing it.
-          const unwound = generator.return(undefined as never)
-          if (!unwound.done) {
-            throw new Error(
-              `Durable execution ${this.#executionId} issued an effect request at ${request.site} while its ` +
-              `body was being abandoned`,
-              { cause: raised }
-            )
-          }
-          throw raised
+    const around = __vsExecutionScope()
+    let generator: Resumable<A> | import("../runtime/effect.ts").AsyncResumable<A> | undefined
+    let failed = false
+    try {
+      this.#recorded = recordedKeys(this.#store.journal(this.#executionId))
+      this.#signal?.throwIfAborted()
+      generator = around(body)
+      let mode: "next" | "throw" = "next"
+      let carried: unknown
+      let step = await around(() => generator!.next())
+      while (!step.done) {
+        this.#signal?.throwIfAborted()
+        // Dispatch itself may detect divergence. It belongs inside the same
+        // abandonment boundary as a failed answer, not outside the try block.
+        const request = this.#dispatch(step.value)
+        try {
+          if (request.kind === "perform") this.#validateRequest?.(request)
+          const answer = await this.#answer(request)
+          carried = request.kind === "perform" && this.#decodeAnswer
+            ? this.#decodeAnswer(request, answer as JsonValue) : answer
+          mode = "next"
+        } catch (raised) {
+          if (!isResumableFailure(raised)) throw raised
+          carried = raised.failure
+          mode = "throw"
         }
-        carried = raised.failure
-        mode = "throw"
+        step = await around(() => mode === "next" ? generator!.next(carried) : generator!.throw(carried))
       }
-      step = mode === "next" ? generator.next(carried) : generator.throw(carried)
+      this.#assertJournalConsumed()
+      return step.value
+    } catch (error) {
+      failed = true
+      throw error
+    } finally {
+      try {
+        if (generator) await this.#unwind(generator, around)
+      } catch (error) {
+        // Preserve the coordinator's original divergence/defect identity. The
+        // finalizer still drains every outer scope before this point.
+        if (!failed) throw error
+      } finally {
+        this.#running = false
+      }
     }
-    this.#assertJournalConsumed()
-    return step.value
+  }
+
+  async #unwind<A>(generator: Resumable<A> | import("../runtime/effect.ts").AsyncResumable<A>, around: StepGuard): Promise<void> {
+    let step = await around(() => generator.return(undefined as never))
+    let refused: string | undefined
+    while (!step.done) {
+      const request = step.value
+      if (request.kind === "get" && this.#capabilities.has(request.key)) {
+        step = await around(() => generator.next(this.#capabilities.get(request.key)))
+      } else {
+        refused ??= request.site
+        // A divergence must not dispatch or commit new effects during cleanup.
+        // Keep returning until the outer finally/using scopes are closed.
+        step = await around(() => generator.return(undefined as never))
+      }
+    }
+    if (refused !== undefined) throw new Error(
+      `Durable execution ${this.#executionId} issued an unanswered cleanup request at ${refused}`
+    )
   }
 
   /**
-   * §Effect Requests: the occurrence index is "assigned at dispatch". This is
-   * that assignment, and it is the only one — a request that arrives already
-   * carrying an index was dispatched by `runtime/effect.ts`'s per-execution
-   * counter, which is a different quantity from the per-site index a journal
-   * key is built from (see this module's header). Honouring it silently would
-   * key the same site under two schemes across two runs and make the journal
-   * unreproducible, so it is refused.
+   * Assign at submission, or validate an assignment preserved by an inner
+   * frame. Forwarding must never renumber a request.
    */
   #dispatch(request: AnyRequest): DispatchedEffectRequest {
+    if (this.#dispatchRequest) request = this.#dispatchRequest(request)
     if (typeof request !== "object" || request === null) {
       throw new TypeError(`ReplayDriver received ${String(request)} where an effect request was expected`)
     }
-    if (request.occurrence !== undefined) {
-      throw new Error(
-        `Effect request at ${request.site} arrived already dispatched at occurrence ` +
-        `${request.occurrence}; the replay driver assigns the per-site occurrence index a journal key is ` +
-        `built from and cannot re-key one assigned under another scheme`
-      )
+    if (request.kind !== "get" && request.kind !== "perform" && request.kind !== "abort") {
+      throw new TypeError("ReplayDriver received an unknown effect request kind")
     }
     const site = request.site
     if (typeof site !== "string" || site.length === 0) {
       throw new TypeError("An effect request reached the replay driver without a site identity")
     }
-    const occurrence = this.#occurrences.get(site) ?? 0
+    const minimum = this.#occurrences.get(site) ?? 0
+    if (request.occurrence !== undefined && !__vsIsDispatchedRequest(request)) {
+      throw new Error(`Effect request at ${site} arrived already dispatched at occurrence ${request.occurrence} without runtime dispatch identity`)
+    }
+    const occurrence = request.occurrence ?? minimum
+    // The inner dispatcher owns identity. A lexical Layer can answer earlier
+    // occurrences without forwarding them here, so arrival counts are not
+    // dispatch counts. Preserve gaps, but never accept duplicates/backtracking
+    // or malformed indices. Raw legacy bodies still get dense local indices.
+    if (!Number.isSafeInteger(occurrence) || occurrence < minimum) {
+      throw new Error(`Effect request at ${site} has invalid or repeated occurrence ${occurrence}; expected at least ${minimum}`)
+    }
     this.#occurrences.set(site, occurrence + 1)
     const key = journalKey(site, occurrence)
     this.#requests += 1
@@ -447,8 +523,31 @@ export class ReplayDriver {
   }
 
   async #performJournaled(request: DispatchedEffectRequest): Promise<JsonValue> {
+    const requestDigest = this.#requestDigest?.(request)
+    const node = this.#journalNode?.(request) ?? { kind: "action" }
+    if (node.kind !== "timer" && node.kind !== "action") throw new TypeError("Unknown durable journal node kind")
+    if (node.kind === "timer") {
+      this.#signal?.throwIfAborted()
+      let scheduled: ReturnType<DurableStore["scheduleTimer"]>
+      try {
+        // A timer's duration must be pinned even for direct driver clients.
+        if (requestDigest === undefined) throw new TypeError("Durable timer requests require a pinned request digest")
+        scheduled = this.#store.scheduleTimer(this.#executionId, request.journalKey, node.durationMs,
+          Date.now(), this.#pinned, { requestDigest })
+      } catch (error) {
+        if (error instanceof DurableRequestMismatch) throw new ReplayDivergenceError(this.#executionId, request.site, error.message)
+        throw error
+      }
+      if (scheduled.kind === "terminal") {
+        this.#replayed += 1
+        return answerFromExit(request, scheduled.exit)
+      }
+      if (scheduled.newlyScheduled) await this.#afterTimerScheduled?.(request, scheduled.wakeAt)
+    }
     for (;;) {
-      const claim = this.#store.claimNode(
+      this.#signal?.throwIfAborted()
+      let claim: ClaimResult
+      try { claim = this.#store.claimNode(
         this.#executionId,
         request.journalKey,
         this.#owner,
@@ -457,8 +556,11 @@ export class ReplayDriver {
         this.#pinned,
         // The lazy row. A journal key is minted when the body reaches the site,
         // so no eager insert could have created it.
-        { nodeKind: "action" }
-      )
+        node.kind === "timer" ? undefined : { nodeKind: "action", ...(requestDigest === undefined ? {} : { requestDigest }) }
+      ) } catch (error) {
+        if (error instanceof DurableRequestMismatch) throw new ReplayDivergenceError(this.#executionId, request.site, error.message)
+        throw error
+      }
       if (claim.kind === "terminal") {
         this.#replayed += 1
         return answerFromExit(request, claim.exit)
@@ -470,19 +572,37 @@ export class ReplayDriver {
             `Durable execution ${this.#executionId} exceeded its deadline waiting for ${request.journalKey}`
           )
         }
-        await delay(Math.min(25, Math.max(1, claim.leaseExpiresAt - now), Math.max(1, this.#deadline - now)))
+        if (node.kind === "timer") {
+          await this.#store.wakeups.wait(this.#executionId,
+            Math.min(claim.leaseExpiresAt, this.#deadline, now + this.#wakeupSweepMs))
+        } else {
+          await delay(Math.min(25, Math.max(1, claim.leaseExpiresAt - now), Math.max(1, this.#deadline - now)))
+        }
         continue
       }
       this.#dispatchedLive += 1
-      const value = await this.#perform(request)
-      const committed = this.#store.commitSuccess(
+      let value: JsonValue
+      try {
+        value = await this.#invoke(request, claim)
+      } catch (error) {
+        if (error instanceof RetryAttempt || error instanceof LostAttempt) continue
+        throw error
+      }
+      this.#signal?.throwIfAborted()
+      // A malformed live exit must never become committed replay evidence.
+      // The same pure codec is applied again when the answer enters the body.
+      this.#decodeAnswer?.(request, value)
+      const outcome = this.#commitAnswer ? this.#commitAnswer(request, claim, value) : this.#store.commitSuccess(
         this.#executionId,
         request.journalKey,
         this.#owner,
         claim.fencingToken,
         value
-      )
-      if (committed) return value
+      ) ? { kind: "committed" as const, value } : { kind: "lost" as const }
+      if (outcome.kind === "committed") {
+        await this.#afterCommit?.(request)
+        return outcome.value
+      }
       // The fence moved under this attempt, so it wrote nothing. Adopt whatever
       // the winner committed rather than assume this attempt's value — the same
       // rule `engine.ts` applies at every lost commit.
@@ -490,6 +610,62 @@ export class ReplayDriver {
       if (winner === undefined) continue
       this.#replayed += 1
       return answerFromExit(request, winner)
+    }
+  }
+
+  async #invoke(request: DispatchedEffectRequest, claim: Extract<ClaimResult, { kind: "claimed" }>): Promise<JsonValue> {
+    this.#signal?.throwIfAborted()
+    if (Date.now() >= this.#deadline) throw new Error("Durable execution deadline exceeded before dispatch")
+    const controller = new AbortController()
+    const cancelled = (): void => controller.abort(this.#signal?.reason)
+    if (this.#signal?.aborted) cancelled()
+    else this.#signal?.addEventListener("abort", cancelled, { once: true })
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined
+    const heartbeat = setInterval(() => {
+      try {
+        if (!this.#store.heartbeat(this.#executionId, request.journalKey, this.#owner, claim.fencingToken,
+          Date.now() + this.#leaseMs)) controller.abort(new LostAttempt())
+      } catch (error) { controller.abort(new CoordinatorUnavailable("lease renewal", error)) }
+    }, Math.max(1, Math.floor(this.#leaseMs / 3)))
+    heartbeat.unref?.()
+    const deadline = (): void => {
+      const remaining = this.#deadline - Date.now()
+      if (remaining <= 0) controller.abort(new Error("Durable execution deadline exceeded during dispatch"))
+      else deadlineTimer = setTimeout(deadline, Math.min(2_147_483_647, remaining))
+    }
+    deadline()
+    let onAbort: () => void = () => {}
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(controller.signal.reason)
+      if (controller.signal.aborted) onAbort()
+      else controller.signal.addEventListener("abort", onAbort, { once: true })
+    })
+    try {
+      const attempt: ReplayAttempt = Object.freeze({ ...claim, owner: this.#owner, signal: controller.signal,
+        fail: (defect: Extract<WorkerExit, { kind: "defect" }>["defect"]): never => {
+          controller.signal.throwIfAborted()
+          if (this.#store.commitFailure(this.#executionId, request.journalKey, this.#owner, claim.fencingToken,
+            { kind: "defect", defect })) throw new DurableActionDefect(request.journalKey, defect)
+          throw new LostAttempt()
+        },
+        retry: (exit: WorkerExit, retryAt: number): never => {
+          controller.signal.throwIfAborted()
+          if (!Number.isSafeInteger(retryAt) || retryAt < 0) throw new TypeError("invalid durable retry timestamp")
+          this.#store.scheduleRetry(this.#executionId, request.journalKey, this.#owner, claim.fencingToken, exit, retryAt)
+          throw new RetryAttempt()
+        },
+      })
+      return await Promise.race([Promise.resolve().then(() => {
+        // Cancellation can arrive between the synchronous claim and this
+        // microtask. Racing the Promise alone still starts the abandoned work.
+        controller.signal.throwIfAborted()
+        return this.#perform(request, attempt)
+      }), aborted])
+    } finally {
+      clearInterval(heartbeat)
+      if (deadlineTimer !== undefined) clearTimeout(deadlineTimer)
+      controller.signal.removeEventListener("abort", onAbort)
+      this.#signal?.removeEventListener("abort", cancelled)
     }
   }
 }
@@ -517,9 +693,7 @@ const answerFromExit = (request: DispatchedEffectRequest, exit: StoredNodeExit):
     case "failure":
       throw new ResumableFailure(exit.error)
     case "defect":
-      throw new Error(
-        `Durable effect at ${request.site} terminated with a defect: ${JSON.stringify(exit.defect)}`
-      )
+      throw new DurableActionDefect(request.journalKey, exit.defect)
     case "skipped":
       throw new Error(`Durable effect at ${request.site} was skipped and has no answer`)
     case "cancelled":

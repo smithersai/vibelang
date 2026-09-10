@@ -113,7 +113,7 @@ test("timer artifacts are exact and unsupported durable coordination fails close
 
 test("compiler-owned sleep lowers statically with stable identity and executes without author-module evaluation", async () => {
   const source = `
-import { durable as compileFlow, sleep as nap } from "smithers:flows"
+import { durable as compileFlow, sleep as nap } from "vibelang:flows"
 
 throw new Error("the authored module must never execute during lowering")
 
@@ -124,7 +124,7 @@ export const Pause = compileFlow(function Pause(input: { first: number; second: 
 })
 `
   const compile = (text: string) => compileDurableSource(text, {
-    fileName: "flows/pause.sm.ts",
+    fileName: "flows/pause.vibe.ts",
     flowId: "test/source/Pause",
     flowVersion: 1,
     actions: []
@@ -156,13 +156,13 @@ export const Pause = compileFlow(function Pause(input: { first: number; second: 
 
 test("sleep recognition follows compiler symbol identity and unsupported suspension forms fail closed", () => {
   const compile = (source: string) => compileDurableSource(source, {
-    fileName: "flows/suspension.sm.ts",
+    fileName: "flows/suspension.vibe.ts",
     flowId: "test/source/Suspension",
     flowVersion: 1,
     actions: []
   })
   const namespace = compile(`
-import * as Flows from "smithers:flows"
+import * as Flows from "vibelang:flows"
 export const Pause = Flows.durable(function Pause(input: { delay: number }) {
   Flows.sleep(input.delay)
   return null
@@ -172,7 +172,7 @@ export const Pause = Flows.durable(function Pause(input: { delay: number }) {
   expect(namespace.plan.nodes[0].kind).toBe("timer")
 
   const localSpoof = compile(`
-import { durable, sleep as compilerSleep } from "smithers:flows"
+import { durable, sleep as compilerSleep } from "vibelang:flows"
 function sleep(_duration: number) { return null }
 export const Pause = durable(function Pause(input: { delay: number }) {
   sleep(input.delay)
@@ -182,10 +182,10 @@ void compilerSleep
 `)
   expect(localSpoof.ok).toBe(false)
   if (localSpoof.ok) throw new Error("expected local sleep spoof to fail")
-  expect(localSpoof.diagnostics[0].code).toBe("SMITHERS4108")
+  expect(localSpoof.diagnostics[0].code).toBe("VIBE4108")
 
   const optional = compile(`
-import { durable, sleep } from "smithers:flows"
+import { durable, sleep } from "vibelang:flows"
 export const Pause = durable(function Pause(_input: {}) {
   sleep?.(1)
   return null
@@ -193,10 +193,10 @@ export const Pause = durable(function Pause(_input: {}) {
 `)
   expect(optional.ok).toBe(false)
   if (optional.ok) throw new Error("expected optional sleep to fail")
-  expect(optional.diagnostics[0].code).toBe("SMITHERS4116")
+  expect(optional.diagnostics[0].code).toBe("VIBE4116")
 
   const invalidLiteral = compile(`
-import { durable, sleep } from "smithers:flows"
+import { durable, sleep } from "vibelang:flows"
 export const Pause = durable(function Pause(_input: {}) {
   sleep(-1)
   return null
@@ -204,11 +204,11 @@ export const Pause = durable(function Pause(_input: {}) {
 `)
   expect(invalidLiteral.ok).toBe(false)
   if (invalidLiteral.ok) throw new Error("expected invalid sleep duration to fail")
-  expect(invalidLiteral.diagnostics[0].code).toBe("SMITHERS4116")
+  expect(invalidLiteral.diagnostics[0].code).toBe("VIBE4116")
 
   for (const call of ["waitForSignal(\"ready\")", "spawnChild(\"flow\")"] as const) {
     const unsupported = compile(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 declare function waitForSignal(name: string): void
 declare function spawnChild(name: string): void
 export const Pause = durable(function Pause(_input: {}) {
@@ -218,17 +218,17 @@ export const Pause = durable(function Pause(_input: {}) {
 `)
     expect(unsupported.ok).toBe(false)
     if (unsupported.ok) throw new Error(`expected ${call} to fail`)
-    expect(unsupported.diagnostics[0].code).toBe("SMITHERS4108")
+    expect(unsupported.diagnostics[0].code).toBe("VIBE4108")
   }
 
-  // A raw `for` around `sleep(1)` used to be `SMITHERS4107`. `MIGRATION-PLAN.md`
+  // A raw `for` around `sleep(1)` used to be `VIBE4107`. `MIGRATION-PLAN.md`
   // step 11 withdrew that wall: a runtime loop is ordinary control flow inside a
   // Flow body, so the Plan lowerer DECLINES this program rather than refusing
   // it, and the Flow publishes an Effect Manifest carrying the one `sleep` site
   // the source writes — one site, not one per round, because a site is a
   // position and the Manifest carries no counts.
   const loopSource = `
-import { durable, sleep } from "smithers:flows"
+import { durable, sleep } from "vibelang:flows"
 export const Pause = durable(function Pause(input: { count: number }) {
   for (let index = 0; index < input.count; index += 1) sleep(1)
   return null
@@ -242,7 +242,7 @@ export const Pause = durable(function Pause(input: { count: number }) {
   }
   expect(raised).toBeInstanceOf(PlanUnrepresentable)
 
-  const loop = compileDurableFlow(loopSource, { fileName: "flows/pause.sm.ts", flowId: "test/timer/Pause" })
+  const loop = compileDurableFlow(loopSource, { fileName: "flows/pause.vibe.ts", flowId: "test/timer/Pause" })
   expect(loop.ok).toBe(true)
   if (!loop.ok) return
   expect(loop.plan).toBeUndefined()
@@ -320,7 +320,7 @@ test("a timer never completes before its persisted wake time and completed repla
 })
 
 test("restart after scheduling reuses the exact persisted deadline", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-timer-restart-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-timer-restart-"))
   const filename = join(directory, "state.sqlite")
   const { deployment, nodeId } = timerFixture({ kind: "literal", value: 140 }, "restart")
   let wakeAt = 0

@@ -32,7 +32,7 @@ interface CompiledImplementation {
 
 const compileWorkAction = (id: string, fileName: string): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -86,13 +86,13 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
 
 const singleActionPlan = (action: ActionDescriptor, flowId: string): PlanTemplate => {
   const compiled = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Work } from "test:pool-bundle-actions"
 export const Program = durable(function Program(input: { value: number }) {
   return Work.run({ value: input.value })
 })
 `, {
-    fileName: "flows/pool-bundle.sm",
+    fileName: "flows/pool-bundle.vibe",
     flowId,
     flowVersion: 1,
     actions: [Object.freeze({
@@ -106,8 +106,8 @@ export const Program = durable(function Program(input: { value: number }) {
 }
 
 test("identical inputs produce byte-identical bundles with matching digests", () => {
-  const first = compileImplementation("test/bundle/Det", "det-action.sm", "det-impl", "abc")
-  const second = compileImplementation("test/bundle/Det", "det-action.sm", "det-impl", "abc")
+  const first = compileImplementation("test/bundle/Det", "det-action.vibe", "det-impl", "abc")
+  const second = compileImplementation("test/bundle/Det", "det-action.vibe", "det-impl", "abc")
   expect(second.contract.digest).toBe(first.contract.digest)
   const buildFrom = (implementation: CompiledImplementation) => buildWorkerPoolBundle({
     poolId: "det-pool",
@@ -125,8 +125,8 @@ test("identical inputs produce byte-identical bundles with matching digests", ()
 })
 
 test("deployment bundles are tree-shaken to exactly the selected Actions", () => {
-  const used = compileImplementation("test/bundle/Used", "used-action.sm", "used-impl", "usedmarker")
-  const unused = compileImplementation("test/bundle/Unused", "unused-action.sm", "unused-impl", "unusedmarker")
+  const used = compileImplementation("test/bundle/Used", "used-action.vibe", "used-impl", "usedmarker")
+  const unused = compileImplementation("test/bundle/Unused", "unused-action.vibe", "unused-impl", "unusedmarker")
   const plan = singleActionPlan(used.action.descriptor, "test/bundle/UsedFlow")
   const deployment = Deployment.build({
     id: "bundle-tree-shake",
@@ -150,7 +150,7 @@ test("deployment bundles are tree-shaken to exactly the selected Actions", () =>
 })
 
 test("the pool artifact digest changes when only the bundle digest changes", () => {
-  const first = compileImplementation("test/bundle/Art", "art-action.sm", "art-impl", "one")
+  const first = compileImplementation("test/bundle/Art", "art-action.vibe", "art-impl", "one")
   const plan = singleActionPlan(first.action.descriptor, "test/bundle/ArtFlow")
   const flow = PlanArtifact.load(PlanArtifact.encode(plan))
   const withBundle = Deployment.build({
@@ -181,7 +181,7 @@ test("the pool artifact digest changes when only the bundle digest changes", () 
 })
 
 test("bundle emission fails closed on legacy, unauthenticated, and capability-requiring providers", () => {
-  const checked = compileImplementation("test/bundle/Closed", "closed-action.sm", "closed-impl", "closed")
+  const checked = compileImplementation("test/bundle/Closed", "closed-action.vibe", "closed-impl", "closed")
   const plan = singleActionPlan(checked.action.descriptor, "test/bundle/ClosedFlow")
 
   // A legacy provider (no checked contract) cannot join a bundle pool.
@@ -212,19 +212,19 @@ test("bundle emission fails closed on legacy, unauthenticated, and capability-re
   })).toThrow("exact frozen contract")
 
   // A capability-requiring implementation cannot execute inside a bundle.
-  const capabilityDescriptor = compileWorkAction("test/bundle/Cap", "cap-action.sm")
+  const capabilityDescriptor = compileWorkAction("test/bundle/Cap", "cap-action.vibe")
   const capabilityCallback = (input: { value: number }) => ({ value: input.value })
   const capabilityContract = compileActionImplementationContract({
     action: capabilityDescriptor,
     implementationId: "cap-impl",
     implementationVersion: "1",
-    entryFile: "cap-action.sm",
+    entryFile: "cap-action.vibe",
     exportName: "work",
     implementation: capabilityCallback,
     sources: [{
-      fileName: "cap-action.sm",
+      fileName: "cap-action.vibe",
       source: `
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -248,7 +248,7 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
 })
 
 test("tampered bundle bytes and forged manifests fail closed", () => {
-  const checked = compileImplementation("test/bundle/Tamper", "tamper-action.sm", "tamper-impl", "tamper")
+  const checked = compileImplementation("test/bundle/Tamper", "tamper-action.vibe", "tamper-impl", "tamper")
   const plan = singleActionPlan(checked.action.descriptor, "test/bundle/TamperFlow")
   const deployment = Deployment.build({
     id: "bundle-tamper",
@@ -311,7 +311,7 @@ test("tampered bundle bytes and forged manifests fail closed", () => {
 })
 
 test("worker bundle self-containment covers re-export edges, not only imports", () => {
-  const descriptor = compileWorkAction("test/bundle/ReExport", "reexport-action.sm")
+  const descriptor = compileWorkAction("test/bundle/ReExport", "reexport-action.vibe")
   const action = Action.fromDescriptor<{ value: number }, { value: number }, { code: string }>(descriptor)
   const hostCallback = (): never => {
     throw new Error("host implementation must not run on the bundle path")
@@ -332,7 +332,7 @@ test("worker bundle self-containment covers re-export edges, not only imports", 
           action: descriptor,
           implementationId,
           implementationVersion: "1",
-          entryFile: "reexport-action.sm",
+          entryFile: "reexport-action.vibe",
           exportName: "work",
           implementation: hostCallback,
           sources: [...sources]
@@ -345,21 +345,21 @@ test("worker bundle self-containment covers re-export edges, not only imports", 
   // this rule, `assertBundleImports` only inspected import declarations and a
   // re-export rode into a bundle this function certifies as self-contained.
   expect(() => bundleFrom("reexport-runtime", [{
-    fileName: "reexport-action.sm",
-    source: `export { Context } from "smthrs/context"\n${failedClass}${workBody}`
+    fileName: "reexport-action.vibe",
+    source: `export { Context } from "vibelang/context"\n${failedClass}${workBody}`
   }])).toThrow("re-exports the compiler-owned worker bundle runtime")
 
   // Both directions: ordinary self-contained bundles are unaffected.
   const single = bundleFrom("reexport-single", [{
-    fileName: "reexport-action.sm",
+    fileName: "reexport-action.vibe",
     source: `${failedClass}${workBody}`
   }])
-  expect(single.javascript).not.toContain("smthrs/context")
+  expect(single.javascript).not.toContain("vibelang/context")
   const multi = bundleFrom("reexport-multi", [
-    { fileName: "helper.sm", source: "export function bump(value: number): number { return value + 1 }\n" },
+    { fileName: "helper.vibe", source: "export function bump(value: number): number { return value + 1 }\n" },
     {
-      fileName: "reexport-action.sm",
-      source: 'import { bump } from "./helper.sm"\n' + failedClass +
+      fileName: "reexport-action.vibe",
+      source: 'import { bump } from "./helper.vibe"\n' + failedClass +
         "export function work(input: { value: number }): Result<{ value: number }, Failed> {\n" +
         '  if (input.value < 0) throw new Failed("neg")\n' +
         "  return { value: bump(input.value) }\n" +
@@ -386,12 +386,12 @@ test("worker bundle self-containment covers re-export edges, not only imports", 
  * against the runtime it patches.
  */
 const BUNDLE_EXPORT_TAIL =
-  "\nexport { __smithersInvokeAction };\nexport const __smithersPoolBundle = __smithersBundleMeta;\n"
+  "\nexport { __vibelangInvokeAction };\nexport const __vibelangPoolBundle = __vibelangBundleMeta;\n"
 
 const invokeBundleDirectly = (javascript: string) => {
   expect(javascript.endsWith(BUNDLE_EXPORT_TAIL)).toBe(true)
   return new Function(
-    `${javascript.slice(0, -BUNDLE_EXPORT_TAIL.length)}\nreturn __smithersInvokeAction;\n`
+    `${javascript.slice(0, -BUNDLE_EXPORT_TAIL.length)}\nreturn __vibelangInvokeAction;\n`
   )() as (invocation: unknown) => Promise<unknown>
 }
 
@@ -405,10 +405,10 @@ class Failed extends Error { constructor(readonly code: string) { super(code) } 
 class Denied extends Error { constructor(readonly code: string) { super(code) } }
 `
 
-const runTwoFailureBundle = (poolId: string, body: string) => {
-  const fileName = `${poolId}.sm`
+const runTwoFailureBundle = (poolId: string, body: string, asynchronous = false) => {
+  const fileName = `${poolId}.vibe`
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 ${TWO_FAILURE_CLASSES}
 export abstract class Work extends Action<
   (input: { value: number }) => Result<{ value: number }, Failed | Denied>
@@ -427,7 +427,7 @@ export abstract class Work extends Action<
     sources: [{
       fileName,
       source: `${TWO_FAILURE_CLASSES}
-export function work(input: { value: number }): Result<{ value: number }, Failed | Denied> {
+export ${asynchronous ? "async " : ""}function work(input: { value: number }): ${asynchronous ? "Promise<Result<{ value: number }, Failed | Denied>>" : "Result<{ value: number }, Failed | Denied>"} {
 ${body}
 }
 `
@@ -451,18 +451,41 @@ ${body}
   }
 }
 
+for (const asynchronous of [false, true]) test(`${asynchronous ? "async" : "sync"} non-suspending Result completion is available in the embedded worker runtime`, async () => {
+  const poolId = `completion-${asynchronous ? "async" : "sync"}`
+  const { bundle, invoke } = runTwoFailureBundle(poolId, `
+  ${asynchronous ? "await Promise.resolve();" : ""}
+  try {
+    if (input.value < 0) throw new Failed("negative")
+    return { value: input.value }
+  } finally {
+    // This replaces an ordinary return, not an active propagation request.
+    if (input.value === 7) return { value: 8 }
+  }
+`, asynchronous)
+  expect(bundle.javascript).toContain("__vsCompleteResult")
+  expect(await invoke(2)).toEqual({ kind: "success", value: { value: 2 } })
+  expect(await invoke(7)).toEqual({ kind: "success", value: { value: 8 } })
+  expect(await invoke(-1)).toEqual({
+    kind: "failure", error: {
+      version: 1, identity: `vibelang:${poolId}.vibe@Failed@1`,
+      payload: { code: "negative", message: "negative", name: "Error" }
+    }
+  })
+})
+
 /**
  * THE regression this bundle's failure mapping exists to prevent.
  *
- * `__smithersTypedFailure` used to select the declared variant by
+ * `__vibelangTypedFailure` used to select the declared variant by
  * `error.constructor.name`. `constructor` is an ordinary property lookup, so an
  * own field shadows the prototype's, and `name` is a string — between them the
  * PAYLOAD names its own failure identity. Every implementation body below is
  * accepted by `compileActionImplementationContract` unchanged; none of them
  * needs `any`, a subclass, or a same-named declaration, so none of the three
  * fences round 9 recorded (bundles carry same-file Actions; a same-name union
- * collides and is refused as `SMITHERS4124`/`SMITHERS4203`; a subclass throw is
- * refused as `SMITHERS1104`) stands between an author and this.
+ * collides and is refused as `VIBE4124`/`VIBE4203`; a subclass throw is
+ * refused as `VIBE1104`) stands between an author and this.
  *
  * Measured against the previous line, on this exact bundle:
  *
@@ -476,7 +499,7 @@ ${body}
  *
  * `runtime.errorIdentity` is the fix: the transport registry keyed by PROTOTYPE
  * identity in a WeakMap, populated by the compiler's own
- * `__vsRegisterError(Class, "smithers:<file>:<Class>")` emissions. Nothing
+ * `__vsRegisterError(Class, "vibelang:<file>:<Class>")` emissions. Nothing
  * readable from the value reaches it.
  */
 test("a bundled failure is selected by compiler-issued Error identity, not by a shadowable constructor name", async () => {
@@ -502,24 +525,24 @@ test("a bundled failure is selected by compiler-issued Error identity, not by a 
   if (input.value < 0) throw new Denied("honest")
   return { value: input.value }
 `)
-  const deniedIdentity = "smithers:identity-select.sm@Denied@1"
+  const deniedIdentity = "vibelang:identity-select.vibe@Denied@1"
 
   // Control: an unshadowed failure maps to its own identity.
   expect(await invoke(-1)).toEqual({
-    kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code: "honest" } }
+    kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code: "honest", message: "honest", name: "Error" } }
   })
 
   // A shadowed `constructor` cannot move a failure onto its sibling's identity.
   for (const [value, code] of [[1, "forged"], [3, "assigned"]] as const) {
     expect(await invoke(value)).toEqual({
-      kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code } }
+      kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code, message: code, name: "Error" } }
     })
   }
 
   // Nor can erasing `constructor` demote a typed business failure to a
   // defect, which is the retryable half of the same fail-open.
   expect(await invoke(2)).toEqual({
-    kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code: "erased" } }
+    kind: "failure", error: { version: 1, identity: deniedIdentity, payload: { code: "erased", message: "erased", name: "Error" } }
   })
 })
 
@@ -528,7 +551,7 @@ test("a bundled failure is selected by compiler-issued Error identity, not by a 
  *
  * Round 9 rested "unreachable by construction" on three fences and this session
  * moved all three: durable failure identities became injective and respelled
- * (`smithers:<file>@<Class>@1`), the must-consume discharge rule changed, and
+ * (`vibelang:<file>@<Class>@1`), the must-consume discharge rule changed, and
  * nominal Error identities gained a compile-wide collision refusal. Only ONE of
  * the three ever bore on the bundle's failure mapping, and it is this: two Error
  * classes cannot reach one Action's declared failure row under one class name,
@@ -541,12 +564,12 @@ test("a bundled failure is selected by compiler-issued Error identity, not by a 
  */
 test("two Error classes cannot share one declared failure name in an Action's failure row", () => {
   const attempt = (source: string) => compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 ${source}
 export abstract class Work extends Action<
   (input: { value: number }) => Result<{ value: number }, Failed | Other>
 > {}
-`, { fileName: "fence.sm", exportName: "Work", id: "test/bundle/Fence", version: 1 })
+`, { fileName: "fence.vibe", exportName: "Work", id: "test/bundle/Fence", version: 1 })
 
   // A block-scoped and a namespace-scoped second `Failed` are the two ways a
   // single file can declare the name twice without a duplicate identifier.
@@ -561,8 +584,8 @@ type Other = Inner.Failed`
     const compiled = attempt(source)
     expect(compiled.ok).toBe(false)
     if (compiled.ok) throw new Error("unreachable")
-    expect(compiled.diagnostics[0]!.code).toBe("SMITHERS4203")
-    expect(compiled.diagnostics[0]!.message).toContain("shares durable failure identity smithers:fence.sm@Failed@1")
+    expect(compiled.diagnostics[0]!.code).toBe("VIBE4203")
+    expect(compiled.diagnostics[0]!.message).toContain("shares durable failure identity vibelang:fence.vibe@Failed@1")
   }
 
   // The control the fence must not refuse: two DIFFERENTLY named classes are
@@ -578,7 +601,7 @@ class Other extends Error { constructor(readonly why: string) { super(why) } }`
   expect(schema.shape === "structural" && schema.descriptor.kind === "union"
     ? schema.descriptor.variants.map((variant) => variant.kind === "error" ? variant.identity : variant.kind)
     : [])
-    .toEqual(["smithers:fence.sm@Failed@1", "smithers:fence.sm@Other@1"])
+    .toEqual(["vibelang:fence.vibe@Failed@1", "vibelang:fence.vibe@Other@1"])
 
   // The other fence round 9 recorded, pinned for the same reason. A subclass of
   // a declared failure is the one shape that reaches dispatch carrying a
@@ -591,11 +614,11 @@ class Other extends Error { constructor(readonly why: string) { super(why) } }`
     action: accepted.descriptor,
     implementationId: "fence-subclass",
     implementationVersion: "1",
-    entryFile: "fence.sm",
+    entryFile: "fence.vibe",
     exportName: "work",
     implementation: hostCallback,
     sources: [{
-      fileName: "fence.sm",
+      fileName: "fence.vibe",
       source: `class Failed extends Error { constructor(readonly code: string) { super(code) } }
 class Other extends Error { constructor(readonly why: string) { super(why) } }
 class Sub extends Failed {}
@@ -615,9 +638,9 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
  * `emitsNoRuntimeBinding` declarations are the shape that reaches this.
  */
 test("a declared failure with no compiler-issued nominal identity refuses to bundle", () => {
-  const fileName = "no-identity.sm"
+  const fileName = "no-identity.vibe"
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 declare class Failed extends Error { readonly code: string }
 export abstract class Work extends Action<
   (input: { value: number }) => Result<{ value: number }, Failed>
@@ -628,7 +651,7 @@ export abstract class Work extends Action<
   // bundle builder must refuse. Both are fail-closed; neither is a bundle that
   // maps failures by name.
   if (!compiled.ok) {
-    expect(compiled.diagnostics.map((diagnostic) => diagnostic.code).join(",")).toMatch(/SMITHERS42/)
+    expect(compiled.diagnostics.map((diagnostic) => diagnostic.code).join(",")).toMatch(/VIBE42/)
     return
   }
   const hostCallback = (): never => { throw new Error("host implementation must not run on the bundle path") }

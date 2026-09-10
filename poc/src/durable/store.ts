@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite"
 import { Buffer } from "node:buffer"
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import { MAX_CHILD_FLOW_DEPTH, validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
-import { DurableExecutionCancelled } from "./errors.ts"
+import { DurableExecutionCancelled, DurableRequestMismatch } from "./errors.ts"
 import {
   assertNodeMigrationCompatible,
   assertPinnedDeploymentShape,
@@ -32,7 +32,8 @@ import {
   type StructuralDurableSchema,
   type WorkerExit
 } from "./ir.ts"
-import { validateDurableSchema, validateDurableValue } from "./schema.ts"
+import { validateDurableSchema, validateDurableValue } from "./schema-runtime.ts"
+import { validateDurableBodyArtifact, type DurableBodyArtifact } from "./body-artifact.ts"
 
 /**
  * Bound on how many suspended executions one post-COMMIT wakeup fan-out
@@ -75,6 +76,7 @@ interface NodeRow {
   readonly execution_id: string
   readonly node_id: string
   readonly node_kind: string | null
+  readonly request_digest: string | null
   readonly status: NodeStatus
   readonly attempt: number
   readonly fence: number
@@ -144,6 +146,18 @@ export type CachedSuccessCommit =
   | { readonly kind: "committed"; readonly value: JsonValue }
   | { readonly kind: "lost" }
 
+/** Executable bodies journal Result answers while shared caches contain payloads. */
+export interface CachedAnswerEncoding {
+  readonly encoding: "worker-exit"
+  readonly schema: DurableSchema
+}
+
+const cachedAnswer = (value: JsonValue, encoding: CachedAnswerEncoding | undefined): JsonValue => {
+  if (encoding === undefined) return value
+  if (encoding.encoding !== "worker-exit") throw new TypeError("Invalid cached answer encoding")
+  return { kind: "success", value: validateDurableValue(encoding.schema, value, "cached Action success") }
+}
+
 export type StoredNodeExit =
   | { readonly kind: "success"; readonly value: JsonValue; readonly adoptedFrom: string | null }
   | { readonly kind: "failure"; readonly error: JsonValue }
@@ -167,11 +181,9 @@ export type ClaimResult =
  *
  * Derived from `claimNode`'s own refusals rather than chosen: that method
  * refuses a lease to `signal` and `queue` outright and to a `timer` that has no
- * committed wake deadline, and the only entry points those three kinds have
- * (`pollSignal`, `pollQueue`, `scheduleTimer`) each require a row that already
- * exists. A row created here in one of those kinds could therefore never be
- * leased by the transaction that created it, and would be a durable trap rather
- * than a node. The refusal names the reason at creation instead.
+ * committed wake deadline. Signal/queue rows are created before their polling
+ * entry points; executable timer rows are created atomically with their wake
+ * deadline by `scheduleTimer`. None can be created by an ordinary worker claim.
  */
 const UNLEASABLE_NODE_KINDS: readonly string[] = ["signal", "queue", "timer"]
 
@@ -197,6 +209,7 @@ export interface LazyNodeCreation {
    * kinds would be unreachable forever.
    */
   readonly nodeKind: string
+  readonly requestDigest?: string
 }
 
 export type TimerScheduleResult =
@@ -751,6 +764,7 @@ export class DurableStore {
     this.ensureColumn("durable_nodes", "result_digest", "TEXT")
     this.ensureColumn("durable_nodes", "error_digest", "TEXT")
     this.ensureColumn("durable_nodes", "node_kind", "TEXT")
+    this.ensureColumn("durable_nodes", "request_digest", "TEXT")
     this.ensureColumn("durable_nodes", "wake_at", "INTEGER")
     this.ensureColumn("durable_nodes", "signal_waiting_at", "INTEGER")
     this.ensureColumn("durable_nodes", "fanout_digest", "TEXT")
@@ -963,12 +977,20 @@ export class DurableStore {
       readonly plan_generation: number
     } | null
     if (row === null) throw new Error(`Unknown durable execution ${executionId}`)
+    this.checkExecutionPin(executionId, row, expected)
+  }
+
+  private checkExecutionPin(executionId: string,
+    row: Pick<ExecutionRow, "plan_digest" | "manifest_digest" | "plan_generation">,
+    expected: PinnedDeployment | undefined): void {
+    if (expected === undefined) return
+    assertPinnedDeploymentShape(expected, "pinned deployment expectation")
     if (row.plan_digest !== expected.planDigest || row.manifest_digest !== expected.manifestDigest) {
       throw new ExecutionMigratedError(
         executionId,
         expected,
         { planDigest: row.plan_digest, manifestDigest: row.manifest_digest },
-        row.plan_generation
+        row.plan_generation ?? 0
       )
     }
   }
@@ -1356,14 +1378,49 @@ export class DurableStore {
     input: JsonValue,
     deadline = Date.now() + 60_000
   ): StoredExecution {
+    const validatedPlan = validatePlanTemplate(plan)
+    const validatedManifest = validateDeploymentManifest(manifest, validatedPlan)
+    return this.initializePinnedExecution(executionId, validatedPlan, validatedManifest.digest,
+      allPlanNodes(validatedPlan), input, deadline)
+  }
+
+  /**
+   * Pin an executable Flow without constructing a Plan or eager node rows.
+   * The historical plan_digest column holds the complete body artifact digest;
+   * every existing deployment/fencing transaction therefore also fences source,
+   * bytecode, boundary codecs, and the Effect Manifest.
+   * Deployment authentication belongs to the coordinator, as on the Plan path.
+   */
+  initializeBodyExecution(
+    executionId: string,
+    value: DurableBodyArtifact,
+    deploymentDigest: string,
+    input: JsonValue,
+    deadline = Date.now() + 60_000,
+  ): StoredExecution {
+    const body = validateDurableBodyArtifact(value)
+    assertPinnedDeploymentShape({ planDigest: body.digest, manifestDigest: deploymentDigest }, "executable Flow")
+    const checkedInput = validateDurableValue(body.inputSchema, input, "Flow input")
+    return this.initializePinnedExecution(executionId, {
+      flowId: body.manifest.flowId, flowVersion: body.manifest.flowVersion, digest: body.digest,
+    }, deploymentDigest, [], checkedInput, deadline)
+  }
+
+  private initializePinnedExecution(
+    executionId: string,
+    validatedPlan: Pick<PlanTemplate, "flowId" | "flowVersion" | "digest">,
+    manifestDigest: string,
+    nodes: readonly PlanTemplate["nodes"][number][],
+    input: JsonValue,
+    deadline: number,
+  ): StoredExecution {
     if (typeof executionId !== "string" || executionId.trim() === "") {
       throw new TypeError("Durable execution id must be non-empty")
     }
     if (!Number.isSafeInteger(deadline) || deadline < 0) {
       throw new TypeError("Durable execution deadline must be a non-negative safe integer")
     }
-    const validatedPlan = validatePlanTemplate(plan)
-    const validatedManifest = validateDeploymentManifest(manifest, validatedPlan)
+    const validatedManifest = { digest: manifestDigest }
     const normalizedInput = assertJson(input, "Flow input")
     const inputJson = canonicalJson(normalizedInput)
     const inputDigest = digest(normalizedInput)
@@ -1468,7 +1525,7 @@ export class DurableStore {
           id,flow_id,plan_digest,manifest_digest,input_json,input_digest,deadline,status,created_at,updated_at
         ) VALUES(?,?,?,?,?,?,?,'running',?,?)`
       ).run(executionId, validatedPlan.flowId, validatedPlan.digest, validatedManifest.digest, inputJson, inputDigest, deadline, now, now)
-      for (const node of allPlanNodes(validatedPlan)) {
+      for (const node of nodes) {
         this.database.query(
           `INSERT INTO durable_nodes(execution_id,node_id,node_kind,status,attempt,fence,updated_at)
            VALUES(?,?,?,'pending',0,0,?)`
@@ -1573,9 +1630,10 @@ export class DurableStore {
     return storedExecution(row)
   }
 
-  getExecution(executionId: string): StoredExecution {
+  getExecution(executionId: string, pinned?: PinnedDeployment): StoredExecution {
     const row = this.database.query("SELECT * FROM durable_executions WHERE id=?").get(executionId) as ExecutionRow | null
     if (row === null) throw new Error(`Unknown durable execution ${executionId}`)
+    this.checkExecutionPin(executionId, row, pinned)
     // Validate pinned input bytes even though callers do not otherwise consume them.
     parseJson(row.input_json, row.input_digest, `execution ${executionId} input`)
     return storedExecution(row)
@@ -3328,17 +3386,20 @@ export class DurableStore {
    * is the timer's durable suspension point: every coordinator sees the same
    * timestamp after a crash or concurrent resume.
    *
-   * The deadline is durable state derived from the caller's Plan, so this
-   * carries the same pinned-Plan expectation as every other mutating entry
-   * point: a coordinator whose deployment was superseded cannot install a wake
+   * The deadline is durable state derived from the caller's Plan or executable
+   * request, so this carries the same deployment expectation as other mutating entry
+   * points: a coordinator whose deployment was superseded cannot install a wake
    * time computed from a `durationMs` the execution is no longer pinned to.
+   * The optional creation contract is for executable request sites: their lazy
+   * row and schedule are one commit, and reattachment checks the request digest.
    */
   scheduleTimer(
     executionId: string,
     nodeId: string,
     durationMs: number,
     now = Date.now(),
-    pinned?: PinnedDeployment
+    pinned?: PinnedDeployment,
+    create?: { readonly requestDigest: string }
   ): TimerScheduleResult {
     if (
       !Number.isSafeInteger(durationMs) || durationMs < 0 ||
@@ -3347,12 +3408,35 @@ export class DurableStore {
     ) {
       throw new TypeError("Durable timer duration and wake timestamp must be non-negative safe integers")
     }
+    if (create !== undefined && (typeof create !== "object" || create === null ||
+      typeof create.requestDigest !== "string" || !/^[0-9a-f]{64}$/.test(create.requestDigest))) {
+      throw new TypeError("Durable timer creation requires a SHA-256 request digest")
+    }
     const transaction = this.database.transaction((): TimerScheduleResult => {
       this.assertPinnedDeployment(executionId, pinned)
+      if (create !== undefined) {
+        // Executable bodies discover a timer at submission, without an eager
+        // Plan node. Creation and its absolute schedule commit together, under
+        // the execution pin, and never acquire a lease during suspension.
+        const execution = this.database.query("SELECT status FROM durable_executions WHERE id=?")
+          .get(executionId) as { readonly status: ExecutionStatus } | null
+        if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
+        if (execution.status !== "running") throw new DurableExecutionCancelled({
+          name: "ExecutionTerminated", message: `Durable execution ${executionId} is ${execution.status} and cannot schedule ${nodeId}`,
+          executionStatus: execution.status,
+        })
+        this.database.query(
+          `INSERT INTO durable_nodes(execution_id,node_id,node_kind,request_digest,status,attempt,fence,updated_at)
+           VALUES(?,?,'timer',?,'pending',0,0,?) ON CONFLICT(execution_id,node_id) DO NOTHING`
+        ).run(executionId, nodeId, create.requestDigest, now)
+      }
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
       if (row === null) throw new Error(`Unknown durable node ${executionId}/${nodeId}`)
+      if (create !== undefined && (row.node_kind !== "timer" || row.request_digest !== create.requestDigest)) {
+        throw new DurableRequestMismatch(executionId, nodeId)
+      }
       if (row.node_kind !== "timer") {
         throw new TypeError(`Durable node ${executionId}/${nodeId} is not a timer`)
       }
@@ -3445,6 +3529,9 @@ export class DurableStore {
       if (typeof create.nodeKind !== "string" || create.nodeKind.trim() === "") {
         throw new TypeError("Durable lazy node creation requires a non-empty node kind")
       }
+      if (create.requestDigest !== undefined && !/^[0-9a-f]{64}$/.test(create.requestDigest)) {
+        throw new TypeError("Durable request digest must be SHA-256")
+      }
       if (UNLEASABLE_NODE_KINDS.includes(create.nodeKind)) {
         throw new TypeError(
           `Durable node kind ${create.nodeKind} cannot be created by a claim: claimNode refuses it a lease`
@@ -3467,15 +3554,19 @@ export class DurableStore {
           })
         }
         this.database.query(
-          `INSERT INTO durable_nodes(execution_id,node_id,node_kind,status,attempt,fence,updated_at)
-           VALUES(?,?,?,'pending',0,0,?)
+          `INSERT INTO durable_nodes(execution_id,node_id,node_kind,request_digest,status,attempt,fence,updated_at)
+           VALUES(?,?,?,?,'pending',0,0,?)
            ON CONFLICT(execution_id,node_id) DO NOTHING`
-        ).run(executionId, nodeId, create.nodeKind, now)
+        ).run(executionId, nodeId, create.nodeKind, create.requestDigest ?? null, now)
       }
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
       if (row === null) throw new Error(`Unknown durable node ${executionId}/${nodeId}`)
+      if (create !== undefined && (row.node_kind !== create.nodeKind ||
+        (create.requestDigest !== undefined && row.request_digest !== create.requestDigest))) {
+        throw new DurableRequestMismatch(executionId, nodeId)
+      }
       const terminal = nodeExit(row)
       if (terminal !== undefined) return { kind: "terminal", exit: terminal }
       if (row.node_kind === "signal") {
@@ -3512,7 +3603,8 @@ export class DurableStore {
         attempt,
         fencingToken: fence,
         owner,
-        leaseExpiresAt
+        leaseExpiresAt,
+        ...(row.request_digest === null ? {} : { requestDigest: row.request_digest })
       }, now)
       return { kind: "claimed", attempt, fencingToken: fence, leaseExpiresAt, stolen }
     })
@@ -3601,7 +3693,8 @@ export class DurableStore {
     scope: string,
     generation: string,
     memoKey: string,
-    candidate: JsonValue
+    candidate: JsonValue,
+    encoding?: CachedAnswerEncoding
   ): CachedSuccessCommit {
     const normalizedCandidate = assertJson(candidate, "durable memo success")
     const candidateJson = canonicalJson(normalizedCandidate)
@@ -3624,16 +3717,19 @@ export class DurableStore {
       if (digest(value) !== winner.result_digest) {
         throw new ContentIntegrityError(`Memo key ${memoKey} contains corrupt output bytes`)
       }
+      const answer = cachedAnswer(value, encoding)
+      const answerJson = canonicalJson(answer)
+      const answerDigest = digest(answer)
       const update = this.database.query(
         `UPDATE durable_nodes SET
           status='succeeded',result_json=?,result_digest=?,error_json=NULL,error_digest=NULL,
           adopted_from=?,owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,updated_at=?
          WHERE execution_id=? AND node_id=? AND status='running' AND owner=? AND fence=?`
-      ).run(winner.result_json, winner.result_digest, adoptedFrom, Date.now(), executionId, nodeId, owner, fencingToken)
+      ).run(answerJson, answerDigest, adoptedFrom, Date.now(), executionId, nodeId, owner, fencingToken)
       if (update.changes !== 1) throw new Error("Fenced memo/node transaction lost ownership after validation")
       this.emit(executionId, nodeId, "node_succeeded", {
         fencingToken,
-        resultDigest: winner.result_digest,
+        resultDigest: answerDigest,
         adoptedFrom
       })
       return { kind: "committed", value }
@@ -3649,7 +3745,8 @@ export class DurableStore {
     fencingToken: number,
     contentKey: string,
     inputDigest: string,
-    candidate: JsonValue
+    candidate: JsonValue,
+    encoding?: CachedAnswerEncoding
   ): CachedSuccessCommit {
     const normalizedCandidate = assertJson(candidate, "durable content success")
     const candidateJson = canonicalJson(normalizedCandidate)
@@ -3678,16 +3775,19 @@ export class DurableStore {
       if (digest(value) !== winner.result_digest) {
         throw new ContentIntegrityError(`Content key ${contentKey} contains corrupt output bytes`)
       }
+      const answer = cachedAnswer(value, encoding)
+      const answerJson = canonicalJson(answer)
+      const answerDigest = digest(answer)
       const update = this.database.query(
         `UPDATE durable_nodes SET
           status='succeeded',result_json=?,result_digest=?,error_json=NULL,error_digest=NULL,
           adopted_from=?,owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,updated_at=?
          WHERE execution_id=? AND node_id=? AND status='running' AND owner=? AND fence=?`
-      ).run(winner.result_json, winner.result_digest, adoptedFrom, Date.now(), executionId, nodeId, owner, fencingToken)
+      ).run(answerJson, answerDigest, adoptedFrom, Date.now(), executionId, nodeId, owner, fencingToken)
       if (update.changes !== 1) throw new Error("Fenced content/node transaction lost ownership after validation")
       this.emit(executionId, nodeId, "node_succeeded", {
         fencingToken,
-        resultDigest: winner.result_digest,
+        resultDigest: answerDigest,
         adoptedFrom
       })
       return { kind: "committed", value }

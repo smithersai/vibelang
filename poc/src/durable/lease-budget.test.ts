@@ -62,14 +62,14 @@ const sandbox = (): DenoSubprocessSandbox => new DenoSubprocessSandbox({
 
 const compileAction = (): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
 export abstract class Work extends Action<
   (input: { value: number, rounds: number }) => Result<{ value: number }, Failed>
 > {}
-`, { fileName: "lease-budget.sm", exportName: "Work", id: ACTION_ID, version: 1 })
+`, { fileName: "lease-budget.vibe", exportName: "Work", id: ACTION_ID, version: 1 })
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   return compiled.descriptor
 }
@@ -91,11 +91,11 @@ const implementationContract = compileActionImplementationContract({
   action: descriptor,
   implementationId: "lease-budget-implementation",
   implementationVersion: "1",
-  entryFile: "lease-budget.sm",
+  entryFile: "lease-budget.vibe",
   exportName: "work",
   implementation: hostImplementation,
   sources: [{
-    fileName: "lease-budget.sm",
+    fileName: "lease-budget.vibe",
     source: `
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
@@ -121,13 +121,13 @@ const checkedProvider = () => Provider.provideChecked(WorkAction, hostImplementa
 
 const flowPlan = () => {
   const compiled = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Work } from "test:lease-budget-actions"
 export const LeaseFlow = durable(function LeaseFlow(input: { value: number, rounds: number }) {
   return Work.run({ value: input.value, rounds: input.rounds })
 })
 `, {
-    fileName: "flows/lease-budget.sm",
+    fileName: "flows/lease-budget.vibe",
     flowId: "test/lease-budget/Flow",
     flowVersion: 1,
     actions: [Object.freeze({
@@ -289,7 +289,7 @@ const runRemote = (): Promise<TransportOutcome> => settle("remote", async () => 
     { allowUnverifiedPlanProvenance: true }
   )
   const authentication = authenticateDeployment(deployment, artifactBytes, [verificationKey])
-  const directory = mkdtempSync(join(tmpdir(), "smithers-lease-budget-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-lease-budget-"))
   const bundlePath = join(directory, "pool-bundle.mjs")
   const artifactPath = join(directory, "deployment.json")
   const keysPath = join(directory, "trusted-keys.json")
@@ -308,7 +308,7 @@ const runRemote = (): Promise<TransportOutcome> => settle("remote", async () => 
       "--port", "0"
     ],
     cwd: process.cwd(),
-    env: { ...process.env, SMITHERS_WORKER_HOST_SECRET: secret },
+    env: { ...process.env, VIBELANG_WORKER_HOST_SECRET: secret },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"

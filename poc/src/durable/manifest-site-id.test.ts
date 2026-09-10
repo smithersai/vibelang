@@ -54,7 +54,7 @@ const SHIPPED_BUCKET = (identity: EffectSiteIdentity, requestKind: string): stri
   digest({ ...identity, requestKind })
 
 const siteAt = (anchor: string, key: string): EffectSiteIdentity => ({
-  file: "flows/orders.sm",
+  file: "flows/orders.vibe",
   functionName: "Place",
   kind: "perform",
   anchor,
@@ -134,14 +134,14 @@ test("a mint that hands out one id twice is refused, not appended", () => {
 
 const boundAction = (): DurableSourceActionBinding => {
   const contract = compileActionContract(
-    `import { Action } from "smithers:flows"
+    `import { Action } from "vibelang:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
 export abstract class Transform extends Action<
   (input: { id: string; value: number }) => Result<{ id: string; doubled: number }, Failed>
 > {}`,
-    { fileName: "contracts/transform.sm", exportName: "Transform", id: "test/site/Transform", version: 1 }
+    { fileName: "contracts/transform.vibe", exportName: "Transform", id: "test/site/Transform", version: 1 }
   )
   if (!contract.ok) throw new Error(JSON.stringify(contract.diagnostics))
   return { moduleSpecifier: "test:site-actions", exportName: "Transform", descriptor: contract.descriptor }
@@ -149,7 +149,7 @@ export abstract class Transform extends Action<
 
 const manifestOf = (source: string) =>
   compileEffectManifest(source, {
-    fileName: "flows/site.sm",
+    fileName: "flows/site.vibe",
     flowId: "test/site/F",
     flowVersion: 1,
     actions: [boundAction()],
@@ -163,14 +163,14 @@ test("no two request sites in one Flow share an anchor, so no two share an id", 
   //
   // Until `MIGRATION-PLAN.md` step 11 the outer call classified to nothing, and
   // that silence was this test's stated invariant. It is now a REFUSAL, and the
-  // invariant is stronger for it: the Plan lowerer's `SMITHERS4112` wall used to
+  // invariant is stronger for it: the Plan lowerer's `VIBE4112` wall used to
   // refuse a dynamic call before the Manifest was consulted, so with the wall
   // withdrawn a Manifest that stayed silent here would be claiming a Flow
   // reaches no effect while it calls a value it cannot name. Two sites can still
   // never share an anchor, and now they cannot share one for a second reason:
   // the outer call does not reach the site table at all.
   const outerIsACallOfACall = manifestOf(
-    `import { durable, dequeue } from "smithers:flows"
+    `import { durable, dequeue } from "vibelang:flows"
 export const F = durable(function F(input: { id: string }) {
   const j = dequeue<{ a: string }>("q")("q")
   return { id: input.id, j: j }
@@ -184,7 +184,7 @@ export const F = durable(function F(input: { id: string }) {
   // Every kind the derivation can record, in one Flow, with one key string
   // shared between the signal and the queue so only the anchor separates them.
   const everyKind = manifestOf(
-    `import { durable, dequeue, sleep, waitBroadcast, waitSignal } from "smithers:flows"
+    `import { durable, dequeue, sleep, waitBroadcast, waitSignal } from "vibelang:flows"
 import { Transform } from "test:site-actions"
 export const F = durable(function F(input: { id: string; value: number }) {
   sleep(25)

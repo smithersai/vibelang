@@ -52,7 +52,7 @@ import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./i
  *    rejected them. After it, 13 of those 19 are `"plan-declined"` — the walls
  *    fell, so the Plan lowerer does not refuse them, it has no shape for them —
  *    3 are still `"plan-refused"` under the durable BOUNDARY rule
- *    `SMITHERS4110`, which the pivot does not touch, and 3 are still
+ *    `VIBE4110`, which the pivot does not touch, and 3 are still
  *    `"both-refused"`. Only 8 produce a Plan, and only one of those has more
  *    than one Action. The corpus alone is a much weaker validation of PR-1 than
  *    the migration plan's "assert … across all 22 cases" implies, which is why
@@ -61,7 +61,7 @@ import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./i
  *    none of.
  * 2. **A real fail-open in the first Manifest.** On the case then called
  *    `two-error-classes-whose-durable-identities-collide-are-rejected` the Plan
- *    refused with `SMITHERS4124` and the Manifest answered `actions: []` about
+ *    refused with `VIBE4124` and the Manifest answered `actions: []` about
  *    a Flow that performs `Pick` — the silent narrowing PR-1 forbids in as many
  *    words. `effect-manifest.ts` now fails closed there. That case stopped being
  *    a refusal on 2026-08-28, when the durable failure identity became injective
@@ -235,8 +235,8 @@ const manifestActionNames = (manifest: EffectManifest): readonly string[] =>
  * `"plan-refused"` — the Plan refuses with the pinned code and no comparison is
  *   possible; the Manifest still derives, and its reachability is checked
  *   against the textual oracle. Until 2026-09-01 every surviving row here was a
- *   durable BOUNDARY rule (`SMITHERS4110`), which the pivot does not touch; two
- *   durable-VALUE rules joined them when `SMITHERS4111` and `SMITHERS4112` were
+ *   durable BOUNDARY rule (`VIBE4110`), which the pivot does not touch; two
+ *   durable-VALUE rules joined them when `VIBE4111` and `VIBE4112` were
  *   given corpus cases again. Those two are the same shape for this
  *   cross-check's purposes -- the Plan refuses and the Manifest, which is a set
  *   of Actions rather than an evaluation, still derives -- and they are the
@@ -245,24 +245,37 @@ const manifestActionNames = (manifest: EffectManifest): readonly string[] =>
  *   evidence that the Manifest refuses for a reason, not by accident.
  */
 const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
-  "plan" | "plan-declined" | "plan-refused" | "both-refused",
+  "plan" | "plan-declined" | "plan-refused" | "both-refused" | "manifest-refused",
   string | undefined,
   string | undefined
 ]>> = {
-  "a-conditional-expression-on-a-non-boolean-durable-input-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
-  "a-do-while-loop-in-durable-source-is-rejected": ["plan-declined", "SMITHERS4107", undefined],
-  "a-logical-or-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
+  "a-call-to-a-project-function-in-a-flow-body-is-rejected": ["plan-declined", "VIBE4112", undefined],
+  // Go checks the boundary before Plan representability, so a body outside
+  // the Plan subset cannot mask an invalid input/Action contract.
+  "a-capability-at-the-durable-boundary-is-rejected": ["both-refused", "VIBE4110", "VIBE4199"],
+  "a-let-binding-in-a-flow-body-is-rejected": ["plan-refused", "VIBE4105", undefined],
+  "a-result-return-annotation-on-a-flow-is-rejected": ["plan-refused", "VIBE4100", undefined],
+  "action-run-takes-no-schema-argument": ["plan-refused", "VIBE4113", undefined],
+  "an-any-typed-action-input-needs-an-explicit-codec": ["both-refused", "VIBE4113", "VIBE4199"],
+  "an-ephemeral-value-at-the-durable-boundary-is-rejected": ["both-refused", "VIBE4113", "VIBE4199"],
+  "an-unannotated-action-signature-has-no-failure-channel": ["both-refused", "VIBE4100", "VIBE4100"],
+  "closure-capture-of-a-module-value-in-a-flow-body-is-rejected": ["plan-refused", "VIBE4110", undefined],
+  "durable-given-two-arguments-is-rejected": ["both-refused", "VIBE4103", "VIBE4103"],
+  "recursion-in-a-flow-body-is-rejected": ["plan-declined", "VIBE4112", undefined],
+  "a-conditional-expression-on-a-non-boolean-durable-input-is-rejected": ["plan-declined", "VIBE4106", undefined],
+  "a-do-while-loop-in-durable-source-is-rejected": ["plan-declined", "VIBE4107", undefined],
+  "a-logical-or-fallback-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
   // A durable-VALUE rule, not a wall: `1e999` is finite in the grammar and
   // Infinity at run time, and Infinity has no JSON encoding. The Plan refuses
   // it; the Manifest is a set of Actions and does not evaluate the literal, so
   // it still derives. Declared by
   // `17-durable/a-non-finite-numeric-literal-in-a-durable-value-is-rejected`.
-  "a-non-finite-numeric-literal-in-a-durable-value-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
-  "a-nullish-coalescing-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
+  "a-non-finite-numeric-literal-in-a-durable-value-is-rejected": ["plan-refused", "VIBE4111", undefined],
+  "a-nullish-coalescing-fallback-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
   "a-plain-projection-reaches-the-plan-as-an-input-expression": ["plan", undefined, undefined],
   "a-single-action-flow-lowers-to-a-static-plan": ["plan", undefined, undefined],
-  "a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
-  "a-statement-branch-holding-an-action-in-each-arm-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
+  "a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "VIBE4110", undefined],
+  "a-statement-branch-holding-an-action-in-each-arm-is-rejected": ["plan-declined", "VIBE4106", undefined],
   // Boundary-straddling Action success field names. Nothing about the Manifest
   // depends on descriptor field ORDER — it carries contract digests, and the
   // digest is what the order feeds — so this row is deliberately an ordinary
@@ -271,27 +284,27 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   // pin a Manifest-specific behaviour.
   "action-success-field-order-is-utf16-not-utf8": ["plan", undefined, undefined],
   "an-action-input-projection-the-descriptor-can-answer-is-accepted": ["plan", undefined, undefined],
-  "an-action-input-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
-  "an-action-input-projection-through-a-durable-string-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
+  "an-action-input-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "VIBE4110", undefined],
+  "an-action-input-projection-through-a-durable-string-is-rejected": ["plan-refused", "VIBE4110", undefined],
   "an-actions-failure-channel-mints-one-identity-per-error-class": ["plan", undefined, undefined],
-  "an-in-test-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
-  "an-opaque-durable-argument-is-rejected": ["both-refused", "SMITHERS4103", "SMITHERS4103"],
-  "an-optional-projection-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
-  "array-isarray-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
-  "logical-negation-of-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
-  "object-is-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
+  "an-in-test-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
+  "an-opaque-durable-argument-is-rejected": ["both-refused", "VIBE4103", "VIBE4103"],
+  "an-optional-projection-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4106", undefined],
+  "array-isarray-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4112", undefined],
+  "logical-negation-of-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
+  "object-is-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4112", undefined],
   // Postfix `!` on an operand that is not a compiler-bound Action.run(...).
-  // One of the two SMITHERS4112 rules that SURVIVED step 11 (the withdrawn one
+  // One of the two VIBE4112 rules that SURVIVED step 11 (the withdrawn one
   // was WALL 6, the generic call fallthrough). Same shape as the row above:
   // the Plan refuses, the Manifest still names the Action the body performs.
-  "postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected": ["plan-refused", "SMITHERS4112", undefined],
-  "statement-branch-fails-closed": ["plan-declined", "SMITHERS4106", undefined],
+  "postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected": ["plan-refused", "VIBE4112", undefined],
+  "statement-branch-fails-closed": ["plan-declined", "VIBE4106", undefined],
   "static-plan-shape-is-digest-pinned": ["plan", undefined, undefined],
-  "strict-equality-against-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
-  "the-retired-vibelang-flows-specifier-is-not-compiler-owned": ["both-refused", "SMITHERS4102", "SMITHERS4102"],
-  // This row used to read `["both-refused", "SMITHERS4124", "SMITHERS4199"]`,
+  "strict-equality-against-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
+  "the-retired-vibelang-flows-specifier-is-not-compiler-owned": ["both-refused", "VIBE4102", "VIBE4102"],
+  // This row used to read `["both-refused", "VIBE4124", "VIBE4199"]`,
   // and before `effect-manifest.ts` failed closed on an Action with no derivable
-  // contract it read `["plan-refused", "SMITHERS4124", undefined]` with
+  // contract it read `["plan-refused", "VIBE4124", undefined]` with
   // `actions: []` — the fail-open this cross-check found. Since 2026-08-28 the
   // durable failure identity is injective, so the `$Failed`/`_Failed` pair the
   // case holds is no longer a collision and the program compiles. The case was
@@ -300,40 +313,51 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   // The collision that is still constructible now that the identity is
   // injective: two classes with a genuinely identical name, which `namespace`
   // is the smallest legal spelling of. Neither artifact exists -- the Plan
-  // names the colliding classes (SMITHERS4124) and the Manifest fails closed on
-  // an Action whose contract it cannot derive (SMITHERS4199), which is the pair
+  // names the colliding classes (VIBE4124) and the Manifest fails closed on
+  // an Action whose contract it cannot derive (VIBE4199), which is the pair
   // this outcome exists to pin: the Manifest refuses for a REASON, not by
   // accident. Declared by
   // `17-durable/two-error-classes-under-one-durable-identity-are-rejected`.
-  "two-error-classes-under-one-durable-identity-are-rejected": ["both-refused", "SMITHERS4124", "SMITHERS4199"],
+  "two-error-classes-under-one-durable-identity-are-rejected": ["both-refused", "VIBE4124", "VIBE4199"],
   "two-error-classes-whose-durable-identities-used-to-collide-now-compile": ["plan", undefined, undefined],
   "two-error-classes-with-distinct-durable-identities-compile": ["plan", undefined, undefined],
-  "typeof-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
-  "unrelated-local-durable-stays-ordinary": ["both-refused", "SMITHERS4102", "SMITHERS4102"]
+  "typeof-on-a-durable-input-is-rejected": ["plan-declined", "VIBE4111", undefined],
+  "unrelated-local-durable-stays-ordinary": ["both-refused", "VIBE4102", "VIBE4102"]
 }
 
-// `*.mod.sm` is a sibling module a case stages, never a case: `loadCorpus`
+// `*.mod.vibe` is a sibling module a case stages, never a case: `loadCorpus`
 // applies the same rule (`conformance/runner/corpus.mjs`, `walk`). Since step
 // 11 the thirteen flipped cases each stage one as their observation entry, and
 // including them here would ask this cross-check to compile a module that has
 // no `durable(...)` call in it at all.
 const corpusCases = readdirSync(CORPUS)
-  .filter((name) => name.endsWith(".sm") && !name.endsWith(".mod.sm"))
+  .filter((name) => name.endsWith(".vibe") && !name.endsWith(".mod.vibe"))
   .sort()
 
 test("the 17-durable corpus is exactly the set of cases this cross-check pins", () => {
   // A new corpus case must land in the table above with a deliberate verdict,
   // rather than being skipped into a silent pass.
-  expect(corpusCases.map((name) => name.replace(/\.sm$/, ""))).toEqual(Object.keys(CORPUS_EXPECTATIONS).sort())
+  expect(corpusCases.map((name) => name.replace(/\.vibe$/, ""))).toEqual(Object.keys(CORPUS_EXPECTATIONS).sort())
 })
 
 for (const file of corpusCases) {
-  const name = file.replace(/\.sm$/, "")
+  const name = file.replace(/\.vibe$/, "")
   test(`Manifest and Plan agree on 17-durable/${name}`, () => {
     const source = readFileSync(join(CORPUS, file), "utf8")
     const expectation = CORPUS_EXPECTATIONS[name]
     expect(expectation).toBeDefined()
     const [outcome, planCode, manifestCode] = expectation
+
+    if (outcome === "manifest-refused") {
+      expect(() => compileDurableSource(source, { fileName: file })).toThrow(PlanUnrepresentable)
+      const derived = compileEffectManifest(source, { fileName: file })
+      const flow = compileDurableFlow(source, { fileName: file })
+      expect(derived.ok).toBe(false)
+      expect(flow.ok).toBe(false)
+      if (!derived.ok) expect(derived.diagnostics[0]?.code).toBe(manifestCode!)
+      if (!flow.ok) expect(flow.diagnostics[0]?.code).toBe(manifestCode!)
+      return
+    }
 
     // The body is outside the Plan's static subset. The Plan compiler signals
     // that rather than reporting it, and the Flow compiler publishes the
@@ -347,9 +371,9 @@ for (const file of corpusCases) {
         raised = error
       }
       expect(raised).toBeInstanceOf(PlanUnrepresentable)
-      // No diagnostic anywhere on this path. A `SMITHERS41xx` reappearing here
+      // No diagnostic anywhere on this path. A `VIBE41xx` reappearing here
       // under any spelling is a wall being rebuilt.
-      expect(String((raised as Error).message)).not.toContain("SMITHERS")
+      expect(String((raised as Error).message)).not.toContain("VIBE")
 
       const flow = compileDurableFlow(source, { fileName: file })
       expect(flow.ok).toBe(true)
@@ -427,7 +451,7 @@ const boundAction = (
   id: string
 ): DurableSourceActionBinding => {
   const contract = compileActionContract(declaration, {
-    fileName: `contracts/${exportName.toLowerCase()}.sm`,
+    fileName: `contracts/${exportName.toLowerCase()}.vibe`,
     exportName,
     id,
     version: 1
@@ -439,7 +463,7 @@ const boundAction = (
 const TRANSFORM = boundAction(
   "test:manifest-actions",
   "Transform",
-  `import { Action } from "smithers:flows"
+  `import { Action } from "vibelang:flows"
 class TransformFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -452,7 +476,7 @@ export abstract class Transform extends Action<
 const PUBLISH = boundAction(
   "test:manifest-actions",
   "Publish",
-  `import { Action } from "smithers:flows"
+  `import { Action } from "vibelang:flows"
 class PublishFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -465,7 +489,7 @@ export abstract class Publish extends Action<
 const STEP = boundAction(
   "test:manifest-actions",
   "Step",
-  `import { Action } from "smithers:flows"
+  `import { Action } from "vibelang:flows"
 class StepFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -478,13 +502,13 @@ export abstract class Step extends Action<
 const FEATURE_ACTIONS: readonly DurableSourceActionBinding[] = [TRANSFORM, PUBLISH, STEP]
 
 const childCompiled = compileDurableSource(
-  `import { durable } from "smithers:flows"
+  `import { durable } from "vibelang:flows"
 import { Transform } from "test:manifest-actions"
 export const ChildFlow = durable(function ChildFlow(input: { id: string; value: number }) {
   return Transform.run({ id: input.id, value: input.value })
 })`,
   {
-    fileName: "flows/manifest-child.sm",
+    fileName: "flows/manifest-child.vibe",
     flowId: "test/manifest/ChildFlow",
     flowVersion: 1,
     actions: [TRANSFORM]
@@ -512,9 +536,9 @@ interface FeatureCase {
 const FEATURE_CASES: readonly FeatureCase[] = [
   {
     name: "a single-Action fan-out over a runtime-sized collection",
-    fileName: "flows/manifest-fanout.sm",
+    fileName: "flows/manifest-fanout.vibe",
     flowId: "test/manifest/Batch",
-    source: `import { durable, fanOut } from "smithers:flows"
+    source: `import { durable, fanOut } from "vibelang:flows"
 import { Transform } from "test:manifest-actions"
 export const Batch = durable(function Batch(input: { items: readonly { id: string; value: number }[] }) {
   return fanOut(
@@ -526,9 +550,9 @@ export const Batch = durable(function Batch(input: { items: readonly { id: strin
   },
   {
     name: "a multi-step fan-out whose second Action reads the first step",
-    fileName: "flows/manifest-fanout-steps.sm",
+    fileName: "flows/manifest-fanout-steps.vibe",
     flowId: "test/manifest/Pipeline",
-    source: `import { durable, fanOut } from "smithers:flows"
+    source: `import { durable, fanOut } from "vibelang:flows"
 import { Transform, Publish } from "test:manifest-actions"
 export const Pipeline = durable(function Pipeline(input: { items: readonly { id: string; value: number }[] }) {
   return fanOut(
@@ -543,9 +567,9 @@ export const Pipeline = durable(function Pipeline(input: { items: readonly { id:
   },
   {
     name: "a round-budgeted durable loop",
-    fileName: "flows/manifest-loop.sm",
+    fileName: "flows/manifest-loop.vibe",
     flowId: "test/manifest/Countdown",
-    source: `import { durable, loopWhile } from "smithers:flows"
+    source: `import { durable, loopWhile } from "vibelang:flows"
 import { Step } from "test:manifest-actions"
 export const Countdown = durable(function Countdown(input: { count: number }) {
   return loopWhile(
@@ -558,9 +582,9 @@ export const Countdown = durable(function Countdown(input: { count: number }) {
   },
   {
     name: "a durable queue consumer",
-    fileName: "flows/manifest-queue.sm",
+    fileName: "flows/manifest-queue.vibe",
     flowId: "test/manifest/Consume",
-    source: `import { durable, dequeue } from "smithers:flows"
+    source: `import { durable, dequeue } from "vibelang:flows"
 export const Consume = durable(function Consume(input: { worker: string }) {
   const job = dequeue<{ jobId: string; amount: number }>("jobs.pending")
   return { worker: input.worker, job: job }
@@ -568,9 +592,9 @@ export const Consume = durable(function Consume(input: { worker: string }) {
   },
   {
     name: "a broadcast wait, whose contract identity differs from a unicast one",
-    fileName: "flows/manifest-broadcast.sm",
+    fileName: "flows/manifest-broadcast.vibe",
     flowId: "test/manifest/Rollout",
-    source: `import { durable, waitBroadcast } from "smithers:flows"
+    source: `import { durable, waitBroadcast } from "vibelang:flows"
 export const Rollout = durable(function Rollout(input: { service: string }) {
   const notice = waitBroadcast<{ version: string }>("deploy.rolled")
   return { service: input.service, notice: notice }
@@ -578,9 +602,9 @@ export const Rollout = durable(function Rollout(input: { service: string }) {
   },
   {
     name: "a unicast signal beside a timer and a sequential pair",
-    fileName: "flows/manifest-signal.sm",
+    fileName: "flows/manifest-signal.vibe",
     flowId: "test/manifest/Approve",
-    source: `import { durable, sequential, sleep, waitSignal } from "smithers:flows"
+    source: `import { durable, sequential, sleep, waitSignal } from "vibelang:flows"
 import { Transform, Publish } from "test:manifest-actions"
 export const Approve = durable(function Approve(input: { id: string; value: number }) {
   sleep(25)
@@ -594,9 +618,9 @@ export const Approve = durable(function Approve(input: { id: string; value: numb
   },
   {
     name: "a conditional expression with a DIFFERENT Action in each arm",
-    fileName: "flows/manifest-branch.sm",
+    fileName: "flows/manifest-branch.vibe",
     flowId: "test/manifest/Choose",
-    source: `import { durable } from "smithers:flows"
+    source: `import { durable } from "vibelang:flows"
 import { Transform, Publish } from "test:manifest-actions"
 export const Choose = durable(function Choose(input: { id: string; value: number; live: boolean }) {
   const chosen = input.live
@@ -607,10 +631,10 @@ export const Choose = durable(function Choose(input: { id: string; value: number
   },
   {
     name: "a child-Flow boundary beside an Action",
-    fileName: "flows/manifest-parent.sm",
+    fileName: "flows/manifest-parent.vibe",
     flowId: "test/manifest/Parent",
     flows: CHILD_FLOWS,
-    source: `import { durable } from "smithers:flows"
+    source: `import { durable } from "vibelang:flows"
 import { ChildFlow } from "test:manifest-flows"
 import { Publish } from "test:manifest-actions"
 export const Parent = durable(function Parent(input: { id: string; value: number }) {
@@ -655,7 +679,7 @@ test("the Manifest is sets and tables only, with no control flow in it", () => {
   // branch structure, no execution counts. The moment it acquires an edge, a
   // branch, or a count, it has started growing back into a plan."
   const options = {
-    fileName: "flows/manifest-branch.sm",
+    fileName: "flows/manifest-branch.vibe",
     flowId: "test/manifest/Choose",
     flowVersion: 1,
     actions: FEATURE_ACTIONS
@@ -684,7 +708,7 @@ test("the Manifest is sets and tables only, with no control flow in it", () => {
     .toEqual(["test/manifest/Publish", "test/manifest/Transform"])
 })
 
-const FAILURE_CASE = "an-actions-failure-channel-mints-one-identity-per-error-class.sm"
+const FAILURE_CASE = "an-actions-failure-channel-mints-one-identity-per-error-class.vibe"
 
 test("the Manifest carries a failure row and a site table", () => {
   const source = readFileSync(join(CORPUS, FAILURE_CASE), "utf8")
@@ -701,7 +725,7 @@ test("the Manifest carries a failure row and a site table", () => {
   const compiled = compileDurableSource(source, { fileName: FAILURE_CASE })
   expect(compiled.ok).toBe(true)
   if (!compiled.ok) return
-  expect([...standalone.manifest.failures].sort()).toEqual(planFailures(compiled.plan, []))
+  expect([...standalone.manifest.failures].sort()).toEqual([...planFailures(compiled.plan, [])])
 })
 
 /**
@@ -709,7 +733,7 @@ test("the Manifest carries a failure row and a site table", () => {
  * most exposed to a non-portable logical name — and until 2026-08-28 the
  * durable compilers reached it through helpers that only stripped path
  * traversal. An absolute `fileName` therefore produced
- * `smithers:Users/someone/checkout/orders.sm#Failed@1`: a different identity,
+ * `vibelang:Users/someone/checkout/orders.vibe#Failed@1`: a different identity,
  * a different `contractDigest`, a different `plan.digest` and a different
  * Manifest digest on every machine, for byte-identical source.
  *
@@ -718,10 +742,10 @@ test("the Manifest carries a failure row and a site table", () => {
 test("failure identities and both digests do not depend on how the file was addressed", () => {
   const source = readFileSync(join(CORPUS, FAILURE_CASE), "utf8")
   const spellings = [
-    "orders.sm",
-    "./orders.sm",
-    "/private/tmp/checkout-a/orders.sm",
-    "/Users/someone/a-completely-different-checkout/orders.sm"
+    "orders.vibe",
+    "./orders.vibe",
+    "/private/tmp/checkout-a/orders.vibe",
+    "/Users/someone/a-completely-different-checkout/orders.vibe"
   ]
   const observed = spellings.map((fileName) => {
     const standalone = compileEffectManifest(source, { fileName, flowId: "test/Portable", flowVersion: 1 })
@@ -740,7 +764,7 @@ test("failure identities and both digests do not depend on how the file was addr
   // escape alphabet so neither component can spell it. Until 2026-08-28 the
   // separator was `#`, which was outside the accepted character set and was
   // folded to `_` — destroying the separator on every input, not just this one.
-  expect(observed[0].failures).toEqual(["smithers:orders.sm@Denied@1", "smithers:orders.sm@Failed@1"])
+  expect(observed[0].failures).toEqual(["vibelang:orders.vibe@Denied@1", "vibelang:orders.vibe@Failed@1"])
   for (const answer of observed.slice(1)) expect(answer).toEqual(observed[0])
 })
 
@@ -766,13 +790,13 @@ test("failure identities and both digests do not depend on how the file was addr
  */
 test("the Manifest Action row carries the descriptor's own contract, and the contract digest re-derives from it", () => {
   const compiled = compileEffectManifest(
-    `import { durable } from "smithers:flows"
+    `import { durable } from "vibelang:flows"
 import { Transform, Publish } from "test:manifest-actions"
 export const Flow = durable((input: { id: string; value: number }) => {
   const doubled = Transform.run({ id: input.id, value: input.value })!
   return Publish.run({ id: doubled.id, amount: doubled.doubled })
 })`,
-    { fileName: "orders.sm", flowId: "test/Widened", flowVersion: 1, actions: FEATURE_ACTIONS }
+    { fileName: "orders.vibe", flowId: "test/Widened", flowVersion: 1, actions: FEATURE_ACTIONS }
   )
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const rows = new Map(compiled.manifest.actions.map((action) => [action.id, action]))

@@ -7,8 +7,11 @@ import {
   verify,
   type KeyObject
 } from "node:crypto"
+import { types as nativeTypes } from "node:util"
+import { snapshotKeyedJSON } from "./keyed-value.ts"
 import {
   validateDeploymentManifest,
+  validateDeploymentManifestForContract,
   validatePlanTemplate
 } from "./artifact.ts"
 import {
@@ -20,20 +23,27 @@ import {
   encodeCanonicalJson,
   PLAN_PROVENANCE_PROXY_RECORDED,
   type DeploymentManifest,
+  type JsonValue,
   type PlanTemplate
 } from "./ir.ts"
 import {
   requireLocallyBuiltDeployment,
   type BuiltDeployment
 } from "./provider.ts"
+import { validateDurableBodyArtifact, type DurableBodyArtifact } from "./body-artifact.ts"
+import { isLocallyBuiltBodyDeployment, requireLocallyBuiltBodyDeployment, validateBodyDeploymentManifest, type BuiltBodyDeployment } from "./body-deployment.ts"
+import { validateEffectManifest } from "./manifest-artifact.ts"
+import type { EffectManifest } from "./effect-manifest.ts"
 
 const MAX_SIGNED_DEPLOYMENT_BYTES = 4 * 1024 * 1024
 const MAX_ENCODED_KEY_BYTES = 512
 const MAX_TRUSTED_DEPLOYMENT_KEYS = 256
 const HEX_DIGEST = /^[0-9a-f]{64}$/
 const BASE64URL = /^[A-Za-z0-9_-]+$/
-const KEY_ID_DOMAIN = Buffer.from("smithers.ed25519.public-key.v1\0", "utf8")
-const SIGNATURE_DOMAIN = Buffer.from("smithers.deployment-manifest.v1\0", "utf8")
+const KEY_ID_DOMAIN = Buffer.from("vibelang.ed25519.public-key.v1\0", "utf8")
+const SIGNATURE_DOMAIN = Buffer.from("vibelang.deployment-manifest.v1\0", "utf8")
+const BODY_SIGNATURE_DOMAIN = Buffer.from("vibelang.executable-deployment.v1\0", "utf8")
+const KEYED_SOURCE_SIGNATURE_DOMAIN = Buffer.from("vibelang.keyed-source-deployment.v1\0", "utf8")
 
 export class DeploymentSignatureError extends Error {
   constructor(message: string) {
@@ -60,7 +70,7 @@ export interface TrustedDeploymentKey {
 
 export interface SignedDeploymentArtifact {
   readonly artifactVersion: 1
-  readonly kind: "smithers.deployment"
+  readonly kind: "vibelang.deployment"
   readonly plan: PlanTemplate
   readonly manifest: DeploymentManifest
   readonly signer: {
@@ -73,12 +83,24 @@ export interface SignedDeploymentArtifact {
   readonly digest: string
 }
 
+export interface SignedBodyDeploymentArtifact {
+  readonly artifactVersion: 1
+  readonly kind: "vibelang.executable-deployment"
+  readonly flowSourceDigest: string
+  readonly effectManifest: EffectManifest
+  readonly journalSchemaVersion: 1
+  readonly routingManifest: DeploymentManifest
+  readonly signer: SignedDeploymentArtifact["signer"]
+  readonly signature: string
+  readonly digest: string
+}
+
 /**
  * A compile-time nominal marker. The WeakMap below remains the runtime
  * authority boundary; this symbol also prevents an ordinary object literal
  * from accidentally satisfying AuthenticatedDeployment in TypeScript.
  */
-const authenticatedDeploymentBrand: unique symbol = Symbol("smithers.authenticated-deployment.v1")
+const authenticatedDeploymentBrand: unique symbol = Symbol("vibelang.authenticated-deployment.v1")
 
 /**
  * Opaque process-local proof that one concrete BuiltDeployment matched a
@@ -172,14 +194,14 @@ const unsignedEnvelope = (
   signer: SignedDeploymentArtifact["signer"]
 ) => ({
   artifactVersion: 1 as const,
-  kind: "smithers.deployment" as const,
+  kind: "vibelang.deployment" as const,
   plan,
   manifest,
   signer
 })
 
-const signingBytes = (unsigned: ReturnType<typeof unsignedEnvelope>): Buffer =>
-  Buffer.concat([SIGNATURE_DOMAIN, Buffer.from(canonicalJson(unsigned), "utf8")])
+const signingBytes = (unsigned: unknown, domain = SIGNATURE_DOMAIN): Buffer =>
+  Buffer.concat([domain, Buffer.from(canonicalJson(unsigned), "utf8")])
 
 export const generateDeploymentSigningKeyPair = (): DeploymentSigningKeyPair => {
   const generated = generateKeyPairSync("ed25519")
@@ -243,12 +265,22 @@ export interface SignDeploymentOptions {
  * An honest refusal is worth more than a signature over a Plan that may have
  * silently lost a branch; see `SignDeploymentOptions` for the explicit opt-in.
  */
-export const encodeSignedDeploymentArtifact = (
-  planValue: PlanTemplate,
+export function encodeSignedDeploymentArtifact(
+  bodyValue: DurableBodyArtifact, manifestValue: DeploymentManifest, keyPair: DeploymentSigningKeyPair
+): Uint8Array
+export function encodeSignedDeploymentArtifact(
+  planValue: PlanTemplate, manifestValue: DeploymentManifest, keyPair: DeploymentSigningKeyPair, options?: SignDeploymentOptions
+): Uint8Array
+export function encodeSignedDeploymentArtifact(
+  planValue: PlanTemplate | DurableBodyArtifact,
   manifestValue: DeploymentManifest,
   keyPair: DeploymentSigningKeyPair,
   options: SignDeploymentOptions = {}
-): Uint8Array => {
+): Uint8Array {
+  if (planValue && "bodyVersion" in planValue) {
+    if (Reflect.ownKeys(options).length) return fail("Plan provenance options cannot be applied to an executable body")
+    return encodeSignedBodyDeploymentArtifact(planValue, manifestValue, keyPair)
+  }
   const plan = validatePlanTemplate(planValue)
   if (plan.provenance === PLAN_PROVENANCE_PROXY_RECORDED && options.allowUnverifiedPlanProvenance !== true) {
     return fail(
@@ -306,15 +338,12 @@ const trustStore = (rawKeys: readonly TrustedDeploymentKey[]): ReadonlyMap<strin
  * ordinary semantic digest detects corruption; only this signature establishes
  * that the artifact came from an out-of-band trusted build key.
  */
-export const decodeSignedDeploymentArtifact = (
-  bytes: Uint8Array | string,
-  trustedKeys: readonly TrustedDeploymentKey[]
-): SignedDeploymentArtifact => {
+const snapshotSignedBytes = (bytes: Uint8Array | string): Uint8Array | string => {
   let snapshot: Uint8Array | string
   if (typeof bytes === "string") {
     snapshot = bytes
   } else {
-    if (!(bytes instanceof Uint8Array)) return fail("signed deployment artifact must be UTF-8 bytes or text")
+    if (nativeTypes.isProxy(bytes) || !(bytes instanceof Uint8Array)) return fail("signed deployment artifact must be UTF-8 bytes or text")
     let sourceByteLength: number
     try {
       const byteLengthGetter = Object.getOwnPropertyDescriptor(
@@ -345,6 +374,15 @@ export const decodeSignedDeploymentArtifact = (
   if (byteLength > MAX_SIGNED_DEPLOYMENT_BYTES) {
     return fail(`signed deployment artifact exceeds ${MAX_SIGNED_DEPLOYMENT_BYTES} bytes`)
   }
+  return snapshot
+}
+
+const decodeSignedArtifact = (
+  bytes: Uint8Array | string,
+  trustedKeys: readonly TrustedDeploymentKey[],
+  expectedKind?: SignedDeploymentArtifact["kind"] | SignedBodyDeploymentArtifact["kind"]
+): SignedDeploymentArtifact | SignedBodyDeploymentArtifact => {
+  const snapshot = snapshotSignedBytes(bytes)
   const trusted = trustStore(trustedKeys)
   let decoded: unknown
   try {
@@ -352,10 +390,16 @@ export const decodeSignedDeploymentArtifact = (
   } catch (error) {
     return fail(error instanceof Error ? error.message : "signed deployment artifact is invalid")
   }
+  const kind = expectedKind ?? (decoded && typeof decoded === "object" && "kind" in decoded ? decoded.kind : undefined)
+  if (kind !== "vibelang.deployment" && kind !== "vibelang.executable-deployment") {
+    return fail("signed deployment artifact has an unsupported kind or version")
+  }
   const record = exactObject(decoded, "signed deployment artifact", [
-    "artifactVersion", "digest", "kind", "manifest", "plan", "signature", "signer"
+    "artifactVersion", "digest", "kind", "signature", "signer",
+    ...(kind === "vibelang.deployment" ? ["manifest", "plan"] :
+      ["flowSourceDigest", "effectManifest", "journalSchemaVersion", "routingManifest"])
   ])
-  if (record.artifactVersion !== 1 || record.kind !== "smithers.deployment") {
+  if (record.artifactVersion !== 1 || record.kind !== kind) {
     return fail("signed deployment artifact has an unsupported kind or version")
   }
   const signerRecord = exactObject(record.signer, "signed deployment signer", ["algorithm", "keyId"])
@@ -369,11 +413,23 @@ export const decodeSignedDeploymentArtifact = (
   const signatureBytes = encodedBytes(record.signature, "signed deployment signature", 64)
   if (signatureBytes.byteLength !== 64) return fail("signed deployment signature must contain 64 bytes")
 
-  let plan: PlanTemplate
-  let manifest: DeploymentManifest
+  let payload: { readonly plan: PlanTemplate; readonly manifest: DeploymentManifest } |
+    Pick<SignedBodyDeploymentArtifact, "flowSourceDigest" | "effectManifest" | "journalSchemaVersion" | "routingManifest">
   try {
-    plan = validatePlanTemplate(record.plan)
-    manifest = validateDeploymentManifest(record.manifest, plan)
+    if (kind === "vibelang.deployment") {
+      const plan = validatePlanTemplate(record.plan)
+      payload = { plan, manifest: validateDeploymentManifest(record.manifest, plan) }
+    } else {
+      if (typeof record.flowSourceDigest !== "string" || !HEX_DIGEST.test(record.flowSourceDigest) || record.journalSchemaVersion !== 1) {
+        return fail("invalid executable source identity or journal schema version")
+      }
+      const effectManifest = validateEffectManifest(record.effectManifest)
+      payload = { flowSourceDigest: record.flowSourceDigest, effectManifest, journalSchemaVersion: 1,
+        routingManifest: validateDeploymentManifestForContract(record.routingManifest, {
+          digest: record.flowSourceDigest, actions: effectManifest.actions,
+          requirements: effectManifest.actions.map(action => action.id).sort(),
+        }) }
+    }
   } catch (error) {
     return fail(error instanceof Error ? error.message : "signed deployment payload is invalid")
   }
@@ -381,26 +437,139 @@ export const decodeSignedDeploymentArtifact = (
     algorithm: "Ed25519" as const,
     keyId: signerRecord.keyId
   })
-  const unsigned = unsignedEnvelope(plan, manifest, signer)
+  const unsigned = { artifactVersion: 1 as const, kind, ...payload, signer }
   const signed = { ...unsigned, signature: record.signature as string }
   if (digest(signed) !== record.digest) return fail("signed deployment artifact digest mismatch")
   const trustedKey = trusted.get(signer.keyId)
   if (trustedKey === undefined) return fail(`deployment signer ${signer.keyId} is not trusted`)
-  if (!verify(null, signingBytes(unsigned), trustedKey, signatureBytes)) {
+  if (!verify(null, signingBytes(unsigned, kind === "vibelang.deployment" ? SIGNATURE_DOMAIN : BODY_SIGNATURE_DOMAIN), trustedKey, signatureBytes)) {
     return fail("signed deployment signature verification failed")
   }
-  return deepFreeze({ ...signed, digest: record.digest })
+  return deepFreeze({ ...signed, digest: record.digest }) as SignedDeploymentArtifact | SignedBodyDeploymentArtifact
 }
 
-export const authenticateDeployment = <Input, Success>(
-  deploymentValue: BuiltDeployment<Input, Success>,
+export const decodeSignedDeploymentArtifact = (
+  bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]
+): SignedDeploymentArtifact => decodeSignedArtifact(bytes, trustedKeys, "vibelang.deployment") as SignedDeploymentArtifact
+
+export const decodeSignedBodyDeploymentArtifact = (
+  bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]
+): SignedBodyDeploymentArtifact => decodeSignedArtifact(bytes, trustedKeys, "vibelang.executable-deployment") as SignedBodyDeploymentArtifact
+
+export function encodeSignedBodyDeploymentArtifact(
+  bodyValue: DurableBodyArtifact, manifestValue: DeploymentManifest, keyPair: DeploymentSigningKeyPair
+): Uint8Array {
+  const body = validateDurableBodyArtifact(bodyValue)
+  const manifest = validateBodyDeploymentManifest(manifestValue, body)
+  const key = signingKey(keyPair)
+  const unsigned = { artifactVersion: 1 as const, kind: "vibelang.executable-deployment" as const,
+    flowSourceDigest: body.digest, effectManifest: body.manifest, journalSchemaVersion: 1 as const,
+    routingManifest: manifest, signer: key.signer }
+  const signature = sign(null, signingBytes(unsigned, BODY_SIGNATURE_DOMAIN), key.privateKey).toString("base64url")
+  const signed = { ...unsigned, signature }
+  const bytes = encodeCanonicalJson({ ...signed, digest: digest(signed) })
+  if (bytes.byteLength > MAX_SIGNED_DEPLOYMENT_BYTES) return fail("signed executable deployment exceeds its size limit")
+  return bytes
+}
+
+const bodyAuthenticationBrand: unique symbol = Symbol("vibelang.authenticated-executable-deployment.v1")
+export interface AuthenticatedBodyDeployment<Input = unknown, Success = unknown> {
+  readonly [bodyAuthenticationBrand]: true
+  readonly deployment: BuiltBodyDeployment<Input, Success>
+  readonly artifactDigest: string
+  readonly signerKeyId: string
+}
+const bodyAuthentications = new WeakMap<object, BuiltBodyDeployment<any, any>>()
+
+/** @internal Dispatch by verifier issuance, never by fields on an untrusted proof. */
+export function isAuthenticatedBodyDeployment<Input, Success>(
+  value: AuthenticatedBodyDeployment<Input, Success> | AuthenticatedDeployment<Input, Success>
+): value is AuthenticatedBodyDeployment<Input, Success>
+export function isAuthenticatedBodyDeployment(value: unknown): value is AuthenticatedBodyDeployment<any, any>
+export function isAuthenticatedBodyDeployment(value: unknown): value is AuthenticatedBodyDeployment<any, any> {
+  return value !== null && typeof value === "object" && bodyAuthentications.has(value)
+}
+
+export function authenticateBodyDeployment<Input, Success>(
+  value: BuiltBodyDeployment<Input, Success>, bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]
+): AuthenticatedBodyDeployment<Input, Success> {
+  const deployment = requireLocallyBuiltBodyDeployment(value)
+  const artifact = decodeSignedBodyDeploymentArtifact(bytes, trustedKeys)
+  if (artifact.flowSourceDigest !== deployment.flow.body.digest ||
+    canonicalJson(artifact.effectManifest) !== canonicalJson(deployment.flow.body.manifest) ||
+    canonicalJson(artifact.routingManifest) !== canonicalJson(deployment.manifest)) {
+    return fail("runtime executable deployment does not match the signed artifact")
+  }
+  const authentication = Object.freeze({ [bodyAuthenticationBrand]: true as const, deployment,
+    artifactDigest: artifact.digest, signerKeyId: artifact.signer.keyId })
+  bodyAuthentications.set(authentication, deployment)
+  return authentication
+}
+
+export function requireAuthenticatedBodyDeployment<Input, Success>(
+  value: AuthenticatedBodyDeployment<Input, Success>
+): BuiltBodyDeployment<Input, Success> {
+  if (!value || typeof value !== "object") return fail("executable deployment authentication was not issued by the signature verifier")
+  const deployment = bodyAuthentications.get(value)
+  if (!deployment) return fail("executable deployment authentication was not issued by the signature verifier")
+  return deployment
+}
+
+export const SignedBodyDeployment = Object.freeze({ encode: encodeSignedBodyDeploymentArtifact,
+  decode: decodeSignedBodyDeploymentArtifact, authenticate: authenticateBodyDeployment,
+  requireAuthenticated: requireAuthenticatedBodyDeployment })
+
+/** @internal Domain-separated data envelope. Only keyed-deployment.ts may
+ * turn its authenticated payload into a source or invocation authority. */
+export const encodeSignedKeyedSourceEnvelope = (value: unknown, keyPair: DeploymentSigningKeyPair): Uint8Array => {
+  const payload = snapshotKeyedJSON(value), key = signingKey(keyPair)
+  const unsigned = {artifactVersion: 1, kind: "vibelang.keyed-source-deployment", payload, signer: key.signer}
+  const signature = sign(null, signingBytes(unsigned, KEYED_SOURCE_SIGNATURE_DOMAIN), key.privateKey).toString("base64url")
+  const signed = {...unsigned, signature}
+  const bytes = encodeCanonicalJson({...signed, digest: digest(signed)})
+  snapshotSignedBytes(bytes)
+  return bytes
+}
+
+/** @internal Authentication precedes compiler queries or returning source bytes. */
+export const decodeSignedKeyedSourceEnvelope = (
+  bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[],
+): {readonly payload: JsonValue; readonly artifactDigest: string; readonly signerKeyId: string} => {
+  const snapshot = snapshotSignedBytes(bytes), trusted = trustStore(trustedKeys)
+  let decoded: JsonValue
+  try { decoded = decodeCanonicalJson(snapshot, "signed keyed source deployment") }
+  catch { return fail("signed keyed source deployment is not canonical JSON") }
+  const record = exactObject(decoded, "signed keyed source deployment", ["artifactVersion", "kind", "payload", "signer", "signature", "digest"])
+  if (record.artifactVersion !== 1 || record.kind !== "vibelang.keyed-source-deployment") return fail("unsupported keyed source deployment envelope")
+  const signer = exactObject(record.signer, "keyed source deployment signer", ["algorithm", "keyId"])
+  if (signer.algorithm !== "Ed25519" || typeof signer.keyId !== "string" || !HEX_DIGEST.test(signer.keyId) ||
+    typeof record.digest !== "string" || !HEX_DIGEST.test(record.digest)) return fail("invalid keyed source deployment identity")
+  const signature = encodedBytes(record.signature, "keyed source deployment signature", 64)
+  if (signature.byteLength !== 64) return fail("keyed source deployment signature must contain 64 bytes")
+  const unsigned = {artifactVersion: 1, kind: record.kind, payload: record.payload, signer}
+  if (digest({...unsigned, signature: record.signature}) !== record.digest) return fail("keyed source deployment envelope digest mismatch")
+  const key = trusted.get(signer.keyId)
+  if (key === undefined) return fail("keyed source deployment signer is not trusted")
+  if (!verify(null, signingBytes(unsigned, KEYED_SOURCE_SIGNATURE_DOMAIN), key, signature)) return fail("keyed source deployment signature verification failed")
+  return deepFreeze({payload: record.payload as JsonValue, artifactDigest: record.digest, signerKeyId: signer.keyId})
+}
+
+export function authenticateDeployment<Input, Success>(
+  deployment: BuiltBodyDeployment<Input, Success>, bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]
+): AuthenticatedBodyDeployment<Input, Success>
+export function authenticateDeployment<Input, Success>(
+  deployment: BuiltDeployment<Input, Success>, bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]
+): AuthenticatedDeployment<Input, Success>
+export function authenticateDeployment<Input, Success>(
+  deploymentValue: BuiltDeployment<Input, Success> | BuiltBodyDeployment<Input, Success>,
   bytes: Uint8Array | string,
   trustedKeys: readonly TrustedDeploymentKey[]
-): AuthenticatedDeployment<Input, Success> => {
+): AuthenticatedDeployment<Input, Success> | AuthenticatedBodyDeployment<Input, Success> {
+  if (isLocallyBuiltBodyDeployment(deploymentValue)) return authenticateBodyDeployment(deploymentValue, bytes, trustedKeys)
   // The signed artifact authenticates serializable evidence; the runtime side
   // must independently be a deployment assembled through the checked builder.
   // This prevents a lookalike with extra pools from reaching workerFactory.
-  const deployment = requireLocallyBuiltDeployment(deploymentValue)
+  const deployment = requireLocallyBuiltDeployment(deploymentValue as BuiltDeployment<Input, Success>)
   const artifact = decodeSignedDeploymentArtifact(bytes, trustedKeys)
   if (canonicalJson(artifact.plan) !== canonicalJson(deployment.flow.plan)) {
     return fail("runtime deployment Plan does not match the signed artifact")
@@ -418,9 +587,12 @@ export const authenticateDeployment = <Input, Success>(
   return authentication
 }
 
-export const requireAuthenticatedDeployment = <Input, Success>(
-  authentication: AuthenticatedDeployment<Input, Success>
-): BuiltDeployment<Input, Success> => {
+export function requireAuthenticatedDeployment<Input, Success>(authentication: AuthenticatedBodyDeployment<Input, Success>): BuiltBodyDeployment<Input, Success>
+export function requireAuthenticatedDeployment<Input, Success>(authentication: AuthenticatedDeployment<Input, Success>): BuiltDeployment<Input, Success>
+export function requireAuthenticatedDeployment<Input, Success>(
+  authentication: AuthenticatedDeployment<Input, Success> | AuthenticatedBodyDeployment<Input, Success>
+): BuiltDeployment<Input, Success> | BuiltBodyDeployment<Input, Success> {
+  if (isAuthenticatedBodyDeployment(authentication)) return requireAuthenticatedBodyDeployment(authentication)
   if (authentication === null || typeof authentication !== "object") {
     return fail("deployment authentication proof was not issued by the signature verifier")
   }
@@ -447,7 +619,9 @@ export const deploymentVerificationKey = (
 
 export const SignedDeployment = Object.freeze({
   authenticate: authenticateDeployment,
-  decode: decodeSignedDeploymentArtifact,
+  // Both envelopes remain domain-separated and fully verified. The dedicated
+  // Plan/body decoders retain their exact-kind contracts for compatibility.
+  decode: (bytes: Uint8Array | string, trustedKeys: readonly TrustedDeploymentKey[]) => decodeSignedArtifact(bytes, trustedKeys),
   encode: encodeSignedDeploymentArtifact,
   generateKeyPair: generateDeploymentSigningKeyPair,
   requireAuthenticated: requireAuthenticatedDeployment,

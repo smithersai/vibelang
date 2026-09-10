@@ -53,7 +53,7 @@ const STORE_COMMIT_POINTS = [
   "deliverSignal",
   "enqueue",
   "failExecution",
-  "initializeExecution",
+  "initializePinnedExecution",
   "materializeFanOut",
   "materializeFanOutStep",
   "materializeLoopRound",
@@ -113,7 +113,11 @@ const crashAfterCommit = (
       if (typeof value !== "function") return value;
       return (...args: unknown[]) => {
         const result = Reflect.apply(value, target, args);
-        if (armed && property === point && committed(result)) {
+        // Both public initializers return directly from the same atomic
+        // initializer. Observe that commit at their public return boundary.
+        const observed = property === point || (point === "initializePinnedExecution" &&
+          (property === "initializeExecution" || property === "initializeBodyExecution"));
+        if (armed && observed && committed(result)) {
           armed = false;
           throw new CoordinatorCrash(point);
         }
@@ -149,7 +153,7 @@ const storeTransactionSites = (): readonly string[] => {
 };
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-crash-"));
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-crash-"));
   const filename = join(directory, "state.sqlite");
   try {
     await body(filename);
@@ -196,7 +200,7 @@ const successFixture = (suffix: string, calls: { value: number }, reuse: Paramet
   };
 };
 
-for (const point of ["initializeExecution", "claimNode", "commitSuccess", "completeExecution"] as const) {
+for (const point of ["initializePinnedExecution", "claimNode", "commitSuccess", "completeExecution"] as const) {
   test(`restart converges after a crash following ${point}`, async () => {
     await temporaryDatabase(async (filename) => {
       const calls = { value: 0 };
@@ -457,11 +461,11 @@ test("branch skip, deadline fencing, cancellation, and execution failure commits
 test("durable queue and broadcast commits are restart-visible exactly once", async () => {
   await temporaryDatabase(async (filename) => {
     const queueFlow = compileDurableSource(`
-      import { durable, dequeue } from "smithers:flows"
+      import { durable, dequeue } from "vibelang:flows"
       export const Q = durable(function Q(input: { worker: string }) {
         return dequeue<{ jobId: string }>("crash.jobs")
       })
-    `, { fileName: "flows/crash-queue.sm.ts", flowId: "test/crash/Queue", actions: [] });
+    `, { fileName: "flows/crash-queue.vibe.ts", flowId: "test/crash/Queue", actions: [] });
     if (!queueFlow.ok) throw new Error(JSON.stringify(queueFlow.diagnostics));
     const queueDeployment = Deployment.build({ id: "crash-queue", flow: queueFlow.flow, pools: [] });
     const queueNode = queueFlow.plan.nodes[0] as QueueNode;
@@ -515,11 +519,11 @@ test("durable queue and broadcast commits are restart-visible exactly once", asy
     afterConsume.close();
 
     const broadcastFlow = compileDurableSource(`
-      import { durable, waitBroadcast } from "smithers:flows"
+      import { durable, waitBroadcast } from "vibelang:flows"
       export const B = durable(function B(input: { id: string }) {
         return waitBroadcast<{ version: string }>("crash.rolled")
       })
-    `, { fileName: "flows/crash-broadcast.sm.ts", flowId: "test/crash/Broadcast", actions: [] });
+    `, { fileName: "flows/crash-broadcast.vibe.ts", flowId: "test/crash/Broadcast", actions: [] });
     if (!broadcastFlow.ok) throw new Error(JSON.stringify(broadcastFlow.diagnostics));
     const broadcastDeployment = Deployment.build({
       id: "crash-broadcast",

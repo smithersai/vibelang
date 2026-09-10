@@ -39,7 +39,7 @@ The demo and focused tests prove:
   input/success contract and records the weaker json-value error schema rather
   than losing the whole declaration;
 - `compileActionImplementationContract` derives an ordinary provider
-  function's transitive failure/requirement rows from a closed checked Smithers
+  function's transitive failure/requirement rows from a closed checked VibeLang
   source project. Its recoverable failure row must exactly match the Action's
   compiler-derived nominal Error schema; `Panic` is recorded separately as a
   defect channel and can never impersonate a persisted typed failure.
@@ -459,7 +459,7 @@ Plan expression/projections, and unions the structural Error descriptors of
 reachable Actions. These schemas are part of the Plan digest. The coordinator
 checks Flow input before creating an execution, success before terminal commit
 and again on replay, and typed failures before recording the execution failure.
-Unsupported Flow boundary types fail as `SMITHERS4110`. Legacy `Flow.define`
+Unsupported Flow boundary types fail as `VIBE4110`. Legacy `Flow.define`
 artifacts remain readable without falsely claiming this compiler-derived proof.
 
 The bounded descriptor supports canonical JSON scalars and literals, arrays,
@@ -495,7 +495,7 @@ record projections and reject coercion, enumeration, and calls, but JavaScript
 offers no trap for truthiness, strict equality, or its operators. Consequently
 ordinary `if (symbolic)` cannot implement the language contract. `Expr.*` and
 `Flow.branch` in this spike are explicit versions of the expression/branch IR
-that the real Smithers compiler must lower ordinary source syntax into.
+that the real VibeLang compiler must lower ordinary source syntax into.
 
 That finding used to end there, and the untrappable forms therefore *folded
 silently*: `if (compiled.ok) { … } return Rollback.run(…)` recorded a Plan with
@@ -520,14 +520,14 @@ observe ToBoolean or a nullish test. A Plan recorded this way therefore carries
 `SignedDeployment.encode` refuses to sign it unless the caller passes
 `{ allowUnverifiedPlanProvenance: true }`. A verifier reads the marker instead of
 inferring "recorded by proxy" from the absence of `flowSchemas`. The compiled
-`.sm` path needs none of this: it refuses the same programs statically with
-`SMITHERS4106`/`SMITHERS4107`/`SMITHERS4111` and its Plans carry no marker.
+`.vibe` path needs none of this: it refuses the same programs statically with
+`VIBE4106`/`VIBE4107`/`VIBE4111` and its Plans carry no marker.
 
-The accepted source API imports `durable` from `smithers:flows` and passes it an
+The accepted source API imports `durable` from `vibelang:flows` and passes it an
 inline or otherwise statically resolvable function. Template
 compilation lowers that function's checked syntax and control flow without
 invoking it. Plan/preview then reads the emitted IR without the source function
-or Action implementations present. The root `smithers plan` command invokes this
+or Action implementations present. The root `vibe plan` command invokes this
 compiler over a real project without evaluating authored modules. The
 deliberately bounded compiler lowers block-bodied `const` bindings, JSON-shaped
 values, input projections, conditional expressions, imported

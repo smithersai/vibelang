@@ -4,7 +4,7 @@
  * These classes carry no behaviour beyond their identity: a caller `instanceof`
  * checks them to decide whether an execution is still resumable. That decision
  * is needed in places that must never open a database — the agent sandbox on
- * `smthrs/agent` is one — so the identities live in a leaf module with no
+ * `vibelang/agent` is one — so the identities live in a leaf module with no
  * dependency on the executor, the store, or any runtime-specific specifier.
  *
  * The rule this module exists to keep: importing an error must not pull in a
@@ -69,5 +69,25 @@ export class CoordinatorCrash extends Error {
   constructor(readonly nodeId: string) {
     super(`Simulated coordinator crash after adopting ${nodeId}`)
     this.name = "CoordinatorCrash"
+  }
+}
+
+/**
+ * The coordinator cannot safely maintain its lease. This is not a Flow or
+ * worker outcome: leave the execution resumable and let another attempt claim
+ * it after the outstanding lease expires.
+ */
+export class CoordinatorUnavailable extends Error {
+  constructor(readonly operation: string, cause: unknown) {
+    super(`Durable coordinator unavailable during ${operation}`, { cause })
+    this.name = "CoordinatorUnavailable"
+  }
+}
+
+/** A journal key cannot be reused for a different submitted operation. */
+export class DurableRequestMismatch extends Error {
+  constructor(readonly executionId: string, readonly nodeId: string) {
+    super(`Durable request ${executionId}/${nodeId} does not match its pinned submission`)
+    this.name = "DurableRequestMismatch"
   }
 }

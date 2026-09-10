@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import * as ts from "typescript-js"
+import { getNativeCompiler } from "../compiler/native.ts"
 import { compileProject } from "../language/project-compile.ts"
+import { snapshotKeyedJSON } from "./keyed-value.ts"
+import { validateActionContractDescriptor } from "./schema-runtime.ts"
 import {
-  retainedCheckedImplementationProject
+  retainedCheckedImplementationProject, requireCompilerCheckedValueBoundary
 } from "./implementation-contract.ts"
 import {
   assertJson,
@@ -21,11 +22,11 @@ import {
  *
  * One worker pool compiles to ONE deterministic JavaScript module containing
  * exactly the pool's selected Action implementations: each implementation's
- * complete checked `.sm` source closure (the same sources its
+ * complete checked `.vibe` source closure (the same sources its
  * `compileActionImplementationContract` projectDigest pins) is lowered by the
  * ordinary project compiler, transpiled module-by-module to a CommonJS-shaped
  * factory, and concatenated with an embedded copy of the capability-free
- * Smithers runtime subset. The SHA-256 of the exact emitted JavaScript bytes is
+ * VibeLang runtime subset. The SHA-256 of the exact emitted JavaScript bytes is
  * the pool's `bundleDigest` inside the deployment manifest, so the Ed25519
  * deployment signature transitively covers the worker bundle bytes.
  *
@@ -46,7 +47,7 @@ export const MAX_POOL_BUNDLE_BYTES = 4 * 1024 * 1024
 const HEX_DIGEST = /^[0-9a-f]{64}$/
 
 /** Marker specifier the lowered modules import compiler helpers from. */
-const RUNTIME_IMPORT_SPECIFIER = "smithers-worker-bundle-runtime"
+const RUNTIME_IMPORT_SPECIFIER = "vibelang-worker-bundle-runtime"
 const RUNTIME_NAMESPACE = "runtime"
 const RUNTIME_INDEX_PATH = "index.ts"
 
@@ -81,6 +82,24 @@ export interface BuildWorkerPoolBundleOptions {
   readonly target: string
   readonly sandbox: string
   readonly selections: readonly WorkerPoolBundleSelection[]
+  /** Encode/decode durable values before JSON transport, not after it. Requires
+   * source-only checked value boundaries and the runner's native inspector. */
+  readonly valueCodec?: "vibelang/keyed-source/v2"
+}
+
+/** @internal Build provenance, distinct from a serialized bundle's digest. */
+interface CheckedKeyedBundle {
+  readonly bundle: WorkerPoolBundle
+  readonly target: string
+  readonly sandbox: string
+  readonly selections: readonly WorkerPoolBundleSelection[]
+}
+const checkedKeyedBundles = new WeakMap<object, CheckedKeyedBundle>()
+
+/** @internal A self-consistent serialized bundle is not compiler issuance. */
+export const requireCheckedKeyedWorkerPoolBundle = (value: unknown): CheckedKeyedBundle => {
+  if (value === null || typeof value !== "object") return fail("keyed bundle was not issued by the checked source builder")
+  return checkedKeyedBundles.get(value) ?? fail("keyed bundle was not issued by the checked source builder")
 }
 
 export const sha256Utf8 = (text: string): string =>
@@ -98,6 +117,8 @@ export const sha256Utf8 = (text: string): string =>
 const RUNTIME_SUBSET_FILES = [
   "errors.ts",
   "failure.ts",
+  "effect.ts",
+  "lexical.ts",
   "panic.ts",
   "result.ts",
   "values.ts",
@@ -107,8 +128,8 @@ const RUNTIME_SUBSET_FILES = [
 /** Value exports the embedded runtime index provides to lowered modules. */
 const RUNTIME_VALUE_EXPORTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   "failure.ts": [
-    "SMITHERS_FAILURE", "SmithersFailure", "__VSError", "__vsCatch", "catchFailure",
-    "isSmithersFailure", "throwExpression", "__vsThrow"
+    "VIBELANG_FAILURE", "VibeLangFailure", "__VSError", "__vsCatch", "catchFailure",
+    "isVibeLangFailure", "throwExpression", "__vsThrow"
   ],
   "panic.ts": [
     "Panic", "__vsPanic", "__vsPanicValue", "catchPanic", "catchPanicPromise",
@@ -121,10 +142,15 @@ const RUNTIME_VALUE_EXPORTS: Readonly<Record<string, readonly string[]>> = Objec
     "matchErrorPartial", "registerErrorCodec", "registerErrorType", "rootCause"
   ],
   "result.ts": [
-    "Result", "ResultValue", "__vsInspectResult", "__vsResultFailure",
+    "Result", "ResultValue", "__vsCompleteResult", "__vsInspectResult", "__vsResultFailure",
     "__vsResultSuccess", "foreignBoundary", "foreignBoundaryPromise", "isResult",
-    "rethrowPanics"
+    "rethrowPanics", "__vsUnwrapKnownSuccess"
   ],
+  "effect.ts": [
+    "__vsExpect", "__vsGet", "__vsProvide", "__vsProvideRoot", "__vsPropagate",
+    "__vsResultScope", "__vsResultScopeAsync", "__vsRunResult", "__vsRunResultAsync", "__vsPerform", "__vsProvideAsync", "__vsProvideRootAsync"
+  ],
+  "lexical.ts": ["__vsBindSuper", "__vsSuperReference"],
   "wire.ts": [
     "ValueCodecError", "decodeResult", "encodeResult"
   ],
@@ -138,7 +164,8 @@ const RUNTIME_STUB_EXPORTS = ["Context", "Layer", "__vsUse", "isLayer", "useCapa
 const RUNTIME_TYPE_ONLY_EXPORTS = [
   "CapabilityKey", "CapabilityService", "ErrorCase", "ErrorConstructor",
   "ErrorInstance", "ErrorPayloadCodec", "InspectedResult",
-  "JsonValue", "LayerType", "NominalError", "ResultType", "ValueCodec"
+  "JsonValue", "LayerType", "NominalError", "ResultType", "ValueCodec",
+  "AnyRequest", "AsyncResumable", "Resumable"
 ] as const
 
 const RUNTIME_IMPORTABLE_NAMES: ReadonlySet<string> = new Set([
@@ -147,29 +174,37 @@ const RUNTIME_IMPORTABLE_NAMES: ReadonlySet<string> = new Set([
   ...RUNTIME_TYPE_ONLY_EXPORTS
 ])
 
+const RUNTIME_LAYER_CJS = [
+  // Capability machinery is deliberately absent from worker bundles. These
+  // stubs keep class declarations loadable while any actual use fails closed.
+  `const __vibelangNoCapability = (entry) => {`,
+  `  throw new TypeError("vibelang worker bundle: " + entry + " requires capability authority, ` +
+    `which bundle-executed implementations cannot receive in this POC");`,
+  `};`,
+  `class Context { constructor() { __vibelangNoCapability("Context"); } ` +
+    `static context() { __vibelangNoCapability("Context.context()"); } }`,
+  `class Layer { constructor() { __vibelangNoCapability("Layer"); } ` +
+    `static of() { __vibelangNoCapability("Layer.of()"); } }`,
+  `exports.Context = Context;`,
+  `exports.Layer = Layer;`,
+  `exports.__vsUse = () => __vibelangNoCapability("__vsUse()");`,
+  `exports.isLayer = () => false;`,
+  `exports.useCapability = () => __vibelangNoCapability("useCapability()");`,
+  ...["__vsLayerEntries", "__vsOpenScope", "__vsInScope", "__vsCloseScope"].map(name =>
+    `exports.${name} = () => __vibelangNoCapability(${JSON.stringify(name + "()")});`),
+  ``
+].join("\n")
+
 const RUNTIME_INDEX_CJS = [
   `"use strict";`,
   `Object.defineProperty(exports, "__esModule", { value: true });`,
   ...RUNTIME_SUBSET_FILES.map((file, index) =>
-    `const __smithersRuntime${index} = require("./${file}");`),
+    `const __vibelangRuntime${index} = require("./${file}");`),
   ...RUNTIME_SUBSET_FILES.flatMap((file, index) =>
     [...RUNTIME_VALUE_EXPORTS[file]!].sort().map((name) =>
-      `exports.${name} = __smithersRuntime${index}.${name};`)),
-  // Capability machinery is deliberately absent from worker bundles. These
-  // stubs keep class declarations loadable while any actual use fails closed.
-  `const __smithersNoCapability = (entry) => {`,
-  `  throw new TypeError("smithers worker bundle: " + entry + " requires capability authority, ` +
-    `which bundle-executed implementations cannot receive in this POC");`,
-  `};`,
-  `class Context { constructor() { __smithersNoCapability("Context"); } ` +
-    `static context() { __smithersNoCapability("Context.context()"); } }`,
-  `class Layer { constructor() { __smithersNoCapability("Layer"); } ` +
-    `static of() { __smithersNoCapability("Layer.of()"); } }`,
-  `exports.Context = Context;`,
-  `exports.Layer = Layer;`,
-  `exports.__vsUse = () => __smithersNoCapability("__vsUse()");`,
-  `exports.isLayer = () => false;`,
-  `exports.useCapability = () => __smithersNoCapability("useCapability()");`,
+      `exports.${name} = __vibelangRuntime${index}.${name};`)),
+  `const __vibelangLayer = require("./layer.ts");`,
+  ...RUNTIME_STUB_EXPORTS.map(name => `exports.${name} = __vibelangLayer.${name};`),
   ``
 ].join("\n")
 
@@ -180,19 +215,19 @@ interface BundleModule {
 }
 
 const transpileToCommonJs = (code: string, label: string): string => {
-  const transpiled = ts.transpileModule(code, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.CommonJS,
-      removeComments: true
-    },
-    fileName: `${label}.ts`,
-    reportDiagnostics: true
-  })
-  if (transpiled.diagnostics?.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)) {
+  // The project compiler has already checked/lowered implementation modules;
+  // embedded runtime files are trusted ordinary TypeScript. This operation is
+  // erasure/module conversion only, never a fallback for a rejected program.
+  // Labels include Action identities, not filesystem paths. Keep them out of
+  // native virtual filenames (and retain them only in the host diagnostic).
+  const transpiled = getNativeCompiler().transpile({
+    files: [{ path: "module.ts", text: code }],
+    options: { target: "es2022", module: "commonjs", removeComments: true },
+  }).files[0]!
+  if (transpiled.emitSkipped) {
     return fail(`bundle module ${label} failed deterministic transpilation`)
   }
-  return transpiled.outputText
+  return transpiled.javascript
 }
 
 /**
@@ -207,7 +242,7 @@ const PANIC_REFLECT_PATTERN =
   `const reflectPanic = Object.getOwnPropertyDescriptor(Reflect, "panic");`
 const PANIC_REFLECT_REPLACEMENT =
   `const reflectPanic = { value: panic }; ` +
-  `// smithers bundle patch: self-contained workers never mutate ambient Reflect`
+  `// vibelang bundle patch: self-contained workers never mutate ambient Reflect`
 
 const patchRuntimeSource = (file: string, source: string): string => {
   if (file !== "panic.ts") return source
@@ -222,16 +257,31 @@ const patchRuntimeSource = (file: string, source: string): string => {
 
 let cachedRuntimeModules: readonly BundleModule[] | undefined
 
+const workerSourceAsset = (directory: "runtime" | "durable", file: string): string => {
+  // Installed source assets must not sit beside .d.ts/.js files: TypeScript
+  // resolution would select the source instead of its declaration. They are
+  // inert .txt build inputs in an explicit asset directory, never a fallback
+  // into a checkout or an unpinned dependency.
+  const sourceMode = fileURLToPath(import.meta.url).endsWith(".ts")
+  const relative = sourceMode ? `../${directory}/${file}` : `./bundle-assets/${directory}/${file}.txt`
+  return readFileSync(new URL(relative, import.meta.url), "utf8")
+}
+
 const runtimeModules = (): readonly BundleModule[] => {
   if (cachedRuntimeModules !== undefined) return cachedRuntimeModules
-  const runtimeDir = resolve(dirname(fileURLToPath(import.meta.url)), "../runtime")
   const modules: BundleModule[] = [{
     namespace: RUNTIME_NAMESPACE,
     path: RUNTIME_INDEX_PATH,
     commonJs: RUNTIME_INDEX_CJS
+  }, {
+    // Delimiters share the real implementation; only the authority seam is
+    // replaced. No duplicate Result runtime and no host async-hooks imports.
+    namespace: RUNTIME_NAMESPACE,
+    path: "layer.ts",
+    commonJs: RUNTIME_LAYER_CJS
   }]
   for (const file of RUNTIME_SUBSET_FILES) {
-    const source = patchRuntimeSource(file, readFileSync(resolve(runtimeDir, file), "utf8"))
+    const source = patchRuntimeSource(file, workerSourceAsset("runtime", file))
     modules.push({
       namespace: RUNTIME_NAMESPACE,
       path: file,
@@ -251,152 +301,11 @@ const loweredModulePath = (fileName: string): string => {
     .filter((part) => part !== "" && part !== "." && part !== "..")
     .join("/")
   if (normalized === "") return fail(`bundle source has an empty logical file name: ${fileName}`)
-  return normalized.replace(/\.sm$/, ".ts")
-}
-
-const resolveRelativePath = (fromPath: string, specifier: string): string => {
-  const parts = fromPath.split("/")
-  parts.pop()
-  for (const segment of specifier.split("/")) {
-    if (segment === "" || segment === ".") continue
-    if (segment === "..") {
-      if (parts.length === 0) return fail(`bundle import '${specifier}' escapes the checked source closure`)
-      parts.pop()
-      continue
-    }
-    parts.push(segment)
-  }
-  return parts.join("/")
-}
-
-const assertBundleImports = (
-  emittedCode: string,
-  modulePath: string,
-  modulePaths: ReadonlySet<string>,
-  label: string
-): void => {
-  const sourceFile = ts.createSourceFile(`${label}.ts`, emittedCode, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
-  // Every emitted form that names another module, not only `import ... from`.
-  // A re-export (`export { x } from`, `export * from`, `export * as ns from`)
-  // is an identical runtime module edge and used to leave this check entirely,
-  // so an external package could ride into a bundle this function certifies as
-  // self-contained.
-  const checkSpecifier = (specifier: string): void => {
-    if (specifier.startsWith(".")) {
-      const resolved = resolveRelativePath(modulePath, specifier)
-      if (!modulePaths.has(resolved)) {
-        return fail(`${label} imports '${specifier}' which is outside the checked source closure`)
-      }
-      return
-    }
-    return fail(`${label} imports external module '${specifier}'; worker bundles must be self-contained`)
-  }
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node)) {
-      if (!ts.isStringLiteral(node.moduleSpecifier)) {
-        return fail(`${label} has a non-literal import specifier`)
-      }
-      const specifier = node.moduleSpecifier.text
-      if (specifier === RUNTIME_IMPORT_SPECIFIER) {
-        const bindings = node.importClause?.namedBindings
-        if (node.importClause?.name !== undefined || bindings === undefined || !ts.isNamedImports(bindings)) {
-          return fail(`${label} must import compiler helpers as named bindings`)
-        }
-        for (const element of bindings.elements) {
-          const imported = (element.propertyName ?? element.name).text
-          if (!RUNTIME_IMPORTABLE_NAMES.has(imported)) {
-            return fail(
-              `${label} imports runtime helper '${imported}' which the embedded worker bundle runtime does not provide`
-            )
-          }
-        }
-      } else checkSpecifier(specifier)
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
-      if (!ts.isStringLiteral(node.moduleSpecifier)) {
-        return fail(`${label} has a non-literal import specifier`)
-      }
-      // The embedded runtime is a compiler-owned helper module, never a public
-      // surface a bundled implementation may re-export.
-      if (node.moduleSpecifier.text === RUNTIME_IMPORT_SPECIFIER) {
-        return fail(`${label} re-exports the compiler-owned worker bundle runtime`)
-      }
-      checkSpecifier(node.moduleSpecifier.text)
-    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-      if (!ts.isStringLiteral(node.moduleReference.expression)) {
-        return fail(`${label} has a non-literal import specifier`)
-      }
-      checkSpecifier(node.moduleReference.expression.text)
-    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      const argument = node.arguments[0]
-      if (argument === undefined || !ts.isStringLiteral(argument)) {
-        return fail(`${label} has a non-literal import specifier`)
-      }
-      checkSpecifier(argument.text)
-    }
-    ts.forEachChild(node, visit)
-  }
-  ts.forEachChild(sourceFile, visit)
-}
-
-/**
- * The compiler-issued nominal Error identities the lowered modules register,
- * read back out of the emitted registration calls themselves.
- *
- * This is deliberately NOT a re-derivation. `nominalErrorIdentity(sourceName,
- * className)` (`../language/compile.ts`) is minted during lowering against a
- * project-wide {@link NominalErrorIdentities} assigner whose `sourceName` is a
- * rootDir-relative spelling this module does not compute; re-minting it here
- * would be a second, independently-drifting derivation of a key whose whole
- * value is that exactly one thing mints it. Reading the emitted
- * `__vsRegisterError(Class, "smithers:<file>:<Class>")` instead takes the key
- * from the only place it is issued, and drift becomes a build failure below
- * rather than a bundle that silently maps nothing.
- *
- * `__vsRegisterError` is matched by the LOCAL binding the emitted module imports
- * from {@link RUNTIME_IMPORT_SPECIFIER}, so a same-named local function in the
- * lowered source cannot contribute a registration.
- */
-const collectNominalErrorIdentities = (
-  emittedCode: string,
-  label: string,
-  into: Map<string, string>
-): void => {
-  const sourceFile = ts.createSourceFile(`${label}.ts`, emittedCode, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
-  const registerLocals = new Set<string>()
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
-    if (statement.moduleSpecifier.text !== RUNTIME_IMPORT_SPECIFIER) continue
-    const bindings = statement.importClause?.namedBindings
-    if (bindings === undefined || !ts.isNamedImports(bindings)) continue
-    for (const element of bindings.elements) {
-      if ((element.propertyName ?? element.name).text === "__vsRegisterError") registerLocals.add(element.name.text)
-    }
-  }
-  if (registerLocals.size === 0) return
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isCallExpression(node) && ts.isIdentifier(node.expression) &&
-      registerLocals.has(node.expression.text) && node.arguments.length === 2
-    ) {
-      const [type, identity] = node.arguments
-      if (!ts.isIdentifier(type) || !ts.isStringLiteral(identity)) {
-        return fail(`${label} emits an Error registration this bundle cannot read a compiler-issued identity from`)
-      }
-      const prior = into.get(type.text)
-      if (prior !== undefined && prior !== identity.text) {
-        return fail(
-          `${label} registers Error class ${type.text} under two nominal identities ` +
-          `(${prior}, ${identity.text}); a bundled failure identity must be unambiguous`
-        )
-      }
-      into.set(type.text, identity.text)
-    }
-    ts.forEachChild(node, visit)
-  }
-  ts.forEachChild(sourceFile, visit)
+  return normalized.replace(/\.vibe$/, ".ts")
 }
 
 interface BundledAction {
+  readonly completion?: "value" | "promise"
   readonly actionId: string
   readonly actionVersion: number
   readonly actionContractDigest: string
@@ -431,6 +340,7 @@ const errorVariantsFor = (
     fields: { name: string; optional: boolean }[]
   }[] = []
   const visit = (descriptor: DurableTypeDescriptor): void => {
+    if (descriptor.kind === "never") return
     if (descriptor.kind === "union") {
       for (const variant of descriptor.variants) visit(variant)
       return
@@ -474,7 +384,7 @@ const errorVariantsFor = (
   return variants.sort((left, right) => left.identity < right.identity ? -1 : left.identity > right.identity ? 1 : 0)
 }
 
-const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): BundledAction => {
+const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string, keyed: boolean): BundledAction => {
   const action = selection.action
   const contract = selection.contract
   if (contract.actionId !== action.id || contract.actionContractDigest !== action.contractDigest) {
@@ -494,11 +404,12 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
       `pool ${poolId} cannot bundle ${action.id}: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+  if (keyed && retained.completion !== "value" && retained.completion !== "promise") return fail("keyed provider has no native completion convention")
   const namespace = `action:${contract.digest}`
   const compiled = compileProject(
     retained.sources.map((source) => ({ fileName: source.fileName, source: source.source })),
     {
-      outDir: "/smithers-pool-bundle-emit",
+      outDir: "/vibelang-pool-bundle-emit",
       runtimeImport: RUNTIME_IMPORT_SPECIFIER,
       sourceMap: false,
       ...(retained.rootDir === undefined ? {} : { rootDir: retained.rootDir })
@@ -522,11 +433,20 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
     emitted.push({ path, code: file.code })
   }
   const modules: BundleModule[] = []
-  const nominalIdentityByClass = new Map<string, string>()
-  for (const file of [...emitted].sort((left, right) => left.path < right.path ? -1 : 1)) {
-    const label = `${action.id}:${file.path}`
-    assertBundleImports(file.code, file.path, modulePaths, label)
-    collectNominalErrorIdentities(file.code, label, nominalIdentityByClass)
+  const sorted = [...emitted].sort((left, right) => left.path < right.path ? -1 : 1)
+  const analyzed = getNativeCompiler().bundleModules({
+    files: sorted.map(file => ({ path: file.path, text: file.code })),
+    runtimeSpecifier: RUNTIME_IMPORT_SPECIFIER,
+    runtimeHelpers: [...RUNTIME_IMPORTABLE_NAMES],
+    registrationExport: "__vsRegisterError",
+  })
+  const refusal = analyzed.diagnostics[0]
+  if (refusal !== undefined) return fail(`${action.id}:${refusal.path} ${refusal.message}`)
+  // Read the exact keys issued by lowering, never re-mint them from filenames.
+  // Go resolves the imported registration binding, so a shadowed local cannot
+  // forge a fact. Ambiguity across the whole closure fails before any assembly.
+  const nominalIdentityByClass = new Map(analyzed.registrations.map(item => [item.className, item.identity]))
+  for (const file of sorted) {
     modules.push({
       namespace,
       path: file.path,
@@ -538,6 +458,7 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
     return fail(`pool ${poolId} bundle for ${action.id} is missing its entry module ${entryModule}`)
   }
   return {
+    ...(keyed ? { completion: retained.completion } : {}),
     actionId: action.id,
     actionVersion: action.version,
     actionContractDigest: action.contractDigest,
@@ -556,7 +477,7 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
 // ---------------------------------------------------------------------------
 
 const moduleDefinition = (module: BundleModule): string => [
-  `__smithersDefine(${JSON.stringify(module.namespace)}, ${JSON.stringify(module.path)}, ` +
+  `__vibelangDefine(${JSON.stringify(module.namespace)}, ${JSON.stringify(module.path)}, ` +
     `function (exports, require, module, Error, EvalError, RangeError, ReferenceError, ` +
     `SyntaxError, TypeError, URIError) {`,
   module.commonJs,
@@ -564,11 +485,42 @@ const moduleDefinition = (module: BundleModule): string => [
 ].join("\n")
 
 const DISPATCH_SOURCE = `
-function __smithersDefect(name, message) {
+function __vibelangCheckPrototypeChain(value, isProxy) {
+  if (!isProxy || value === null || (typeof value !== "object" && typeof value !== "function")) return;
+  let current = value;
+  for (let depth = 0; current !== null; depth++) {
+    if (depth > 128 || isProxy(current)) throw new TypeError("keyed provider value has a proxy or excessive prototype chain");
+    current = Object.getPrototypeOf(current);
+  }
+}
+function __vibelangDataProperty(value, key, isProxy) {
+  __vibelangCheckPrototypeChain(value, isProxy);
+  for (let current = value; current !== null; current = Object.getPrototypeOf(current)) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, key);
+    if (descriptor) {
+      if (!("value" in descriptor)) throw new TypeError("typed failure payload is not inert data");
+      return descriptor.value;
+    }
+  }
+  return undefined;
+}
+function __vibelangDefect(name, message) {
   return { kind: "defect", defect: { name: name, message: String(message) } };
 }
-function __smithersThrownDefect(thrown) {
+function __vibelangThrownDefect(thrown, isProxy) {
   try {
+    if (isProxy) {
+      if (thrown !== null && (typeof thrown === "object" || typeof thrown === "function")) {
+        if (isProxy(thrown)) return __vibelangDefect("ThrownDefect", "provider threw a proxy value");
+        const name = Object.getOwnPropertyDescriptor(thrown, "name");
+        const message = Object.getOwnPropertyDescriptor(thrown, "message");
+        return __vibelangDefect(
+          name && "value" in name && typeof name.value === "string" ? name.value : "ThrownDefect",
+          message && "value" in message && typeof message.value === "string" ? message.value : "provider threw a non-data defect"
+        );
+      }
+      return __vibelangDefect("ThrownDefect", thrown);
+    }
     if (thrown !== null && typeof thrown === "object") {
       const name = typeof thrown.name === "string" ? thrown.name : "ThrownDefect";
       const message = typeof thrown.message === "string" ? thrown.message : String(thrown);
@@ -580,9 +532,9 @@ function __smithersThrownDefect(thrown) {
           : { name: name, message: message, stack: stack }
       };
     }
-    return __smithersDefect("ThrownDefect", thrown);
+    return __vibelangDefect("ThrownDefect", thrown);
   } catch (hostile) {
-    return __smithersDefect("DefectCodecDefect", "thrown value could not be encoded");
+    return __vibelangDefect("DefectCodecDefect", "thrown value could not be encoded");
   }
 }
 // Which declared failure a raised Error IS, selected by the compiler-issued
@@ -600,7 +552,7 @@ function __smithersThrownDefect(thrown) {
 //
 // \`runtime.errorIdentity\` is the compiler-issued key instead: the transport
 // registry in \`runtime/errors.ts\`, keyed by PROTOTYPE identity in a WeakMap,
-// populated by the \`__vsRegisterError(Class, "smithers:<file>:<Class>")\` calls
+// populated by the \`__vsRegisterError(Class, "vibelang:<file>:<Class>")\` calls
 // the lowered modules emit and this bundle's \`errorVariants\` were built from.
 // Nothing readable from the value reaches it: it is \`Object.getPrototypeOf\` and
 // a WeakMap lookup, behind a native \`instanceof\`. An Error with no registration
@@ -609,7 +561,8 @@ function __smithersThrownDefect(thrown) {
 // specification/failures.mdx §Error Prototype: "Handler selection MUST use
 // compiler-stable nominal identity, not a forgeable user \`_tag\` or
 // minifier-sensitive constructor name in compiled artifacts."
-function __smithersTypedFailure(runtime, action, error) {
+function __vibelangTypedFailure(runtime, action, error, isProxy) {
+  __vibelangCheckPrototypeChain(error, isProxy);
   let identity;
   try {
     identity = runtime.errorIdentity(error);
@@ -620,7 +573,7 @@ function __smithersTypedFailure(runtime, action, error) {
     ? []
     : action.errorVariants.filter(function (variant) { return variant.nominalIdentity === identity; });
   if (matches.length !== 1) {
-    return __smithersDefect(
+    return __vibelangDefect(
       "BundleFailureMappingDefect",
       "bundle could not map failure " +
         (typeof identity === "string" ? identity : "with no compiler-issued Error identity") +
@@ -633,10 +586,12 @@ function __smithersTypedFailure(runtime, action, error) {
   // that name and the field would leave the wire silently.
   const payload = Object.create(null);
   for (const field of variant.fields) {
-    const value = error[field.name];
+    let value;
+    try { value = isProxy ? __vibelangDataProperty(error, field.name, isProxy) : error[field.name]; }
+    catch { return __vibelangDefect("BundleFailureMappingDefect", "typed failure payload is not inert data"); }
     if (value === undefined) {
       if (!field.optional) {
-        return __smithersDefect(
+        return __vibelangDefect(
           "BundleFailureMappingDefect",
           "failure " + variant.name + " is missing payload field " + field.name
         );
@@ -651,97 +606,105 @@ function __smithersTypedFailure(runtime, action, error) {
 // a synchronous body, but it CAN refuse to start abandoned work and refuse to
 // hand back a result the caller has already stopped waiting for, which is what
 // keeps a timed-out dispatch from committing a second exit for the same attempt.
-async function __smithersInvokeAction(invocation, signal) {
+async function __vibelangInvokeAction(invocation, signal, isProxy) {
   try {
     if (signal && signal.aborted) {
-      return __smithersDefect("InvocationCancelled", "bundle invocation was cancelled before dispatch");
+      return __vibelangDefect("InvocationCancelled", "bundle invocation was cancelled before dispatch");
     }
     if (invocation === null || typeof invocation !== "object" || typeof invocation.actionId !== "string") {
-      return __smithersDefect("BundleInvocationDefect", "bundle invocation must name an actionId");
+      return __vibelangDefect("BundleInvocationDefect", "bundle invocation must name an actionId");
     }
-    const action = __smithersActionTable.get(invocation.actionId);
+    const action = __vibelangActionTable.get(invocation.actionId);
     if (action === undefined) {
-      return __smithersDefect("RoutingDefect", "bundle has no Action " + invocation.actionId);
+      return __vibelangDefect("RoutingDefect", "bundle has no Action " + invocation.actionId);
     }
     if (
       invocation.actionVersion !== action.actionVersion ||
       invocation.actionContractDigest !== action.actionContractDigest
     ) {
-      return __smithersDefect(
+      return __vibelangDefect(
         "ManifestVerificationDefect",
         "bundle rejected " + invocation.actionId + " contract identity"
       );
     }
-    const runtime = __smithersLoad("runtime", "index.ts");
+    const runtime = __vibelangLoad("runtime", "index.ts");
     let entry;
     try {
-      const moduleExports = __smithersLoad(action.namespace, action.entryModule);
+      const moduleExports = __vibelangLoad(action.namespace, action.entryModule);
       entry = moduleExports[action.exportName];
     } catch (loadError) {
-      return __smithersThrownDefect(loadError);
+      return __vibelangThrownDefect(loadError, isProxy);
     }
     if (typeof entry !== "function") {
-      return __smithersDefect(
+      return __vibelangDefect(
         "BundleEntryDefect",
         "bundle module " + action.entryModule + " does not export function " + action.exportName
       );
     }
     let output;
     try {
-      output = await entry(invocation.input);
+      const completion = entry(invocation.input);
+      __vibelangCheckPrototypeChain(completion, isProxy);
+      output = isProxy && action.completion === "value" ? completion : await completion;
     } catch (thrown) {
-      return __smithersThrownDefect(thrown);
+      return __vibelangThrownDefect(thrown, isProxy);
     }
     if (signal && signal.aborted) {
-      return __smithersDefect("InvocationCancelled", "bundle invocation was cancelled before it produced a result");
+      return __vibelangDefect("InvocationCancelled", "bundle invocation was cancelled before it produced a result");
     }
+    __vibelangCheckPrototypeChain(output, isProxy);
     if (runtime.isResult(output)) {
       const inspected = runtime.__vsInspectResult(output);
       if (inspected.ok) return { kind: "success", value: inspected.value };
       const error = inspected.error;
+      __vibelangCheckPrototypeChain(error, isProxy);
       if (runtime.isPanic(error)) {
-        return __smithersDefect("Panic", error && error.message ? error.message : "Smithers panic");
+        if (isProxy) {
+          const defect = __vibelangThrownDefect(error, isProxy);
+          return __vibelangDefect("Panic", defect.defect.message);
+        }
+        return __vibelangDefect("Panic", error && error.message ? error.message : "VibeLang panic");
       }
-      return __smithersTypedFailure(runtime, action, error);
+      return __vibelangTypedFailure(runtime, action, error, isProxy);
     }
     return { kind: "success", value: output };
   } catch (unexpected) {
-    return __smithersThrownDefect(unexpected);
+    return __vibelangThrownDefect(unexpected, isProxy);
   }
 }
 `
 
 const LOADER_SOURCE = `
 // Every module resolves the identifier Error to this bundle-local subclass.
-// The Smithers runtime may therefore install its Error convenience methods without
+// The VibeLang runtime may therefore install its Error convenience methods without
 // mutating host Error.prototype or colliding with another pool bundle.
-const __smithersHostError = globalThis.Error;
-class __smithersBundleError extends __smithersHostError {}
-function __smithersBuiltinError(name) {
-  return class extends __smithersBundleError {
+const __vibelangHostError = globalThis.Error;
+class __vibelangBundleError extends __vibelangHostError {}
+function __vibelangBuiltinError(name) {
+  return class extends __vibelangBundleError {
     constructor(...args) {
       super(...args);
       this.name = name;
     }
   };
 }
-const __smithersBundleEvalError = __smithersBuiltinError("EvalError");
-const __smithersBundleRangeError = __smithersBuiltinError("RangeError");
-const __smithersBundleReferenceError = __smithersBuiltinError("ReferenceError");
-const __smithersBundleSyntaxError = __smithersBuiltinError("SyntaxError");
-const __smithersBundleTypeError = __smithersBuiltinError("TypeError");
-const __smithersBundleURIError = __smithersBuiltinError("URIError");
-const __smithersModules = new Map();
-function __smithersDefine(namespace, path, factory) {
-  __smithersModules.set(namespace + "\\u0001" + path, { factory: factory, exports: null, state: "defined" });
+const __vibelangBundleEvalError = __vibelangBuiltinError("EvalError");
+const __vibelangBundleRangeError = __vibelangBuiltinError("RangeError");
+const __vibelangBundleReferenceError = __vibelangBuiltinError("ReferenceError");
+const __vibelangBundleSyntaxError = __vibelangBuiltinError("SyntaxError");
+const __vibelangBundleTypeError = __vibelangBuiltinError("TypeError");
+const __vibelangBundleURIError = __vibelangBuiltinError("URIError");
+const __vibelangModules = new Map();
+function __vibelangDefine(namespace, path, factory) {
+  __vibelangModules.set(namespace + "\\u0001" + path, { factory: factory, exports: null, state: "defined" });
 }
-function __smithersResolveRelative(fromPath, specifier) {
+function __vibelangResolveRelative(fromPath, specifier) {
   const parts = fromPath.split("/");
   parts.pop();
   for (const segment of specifier.split("/")) {
     if (segment === "" || segment === ".") continue;
     if (segment === "..") {
-      if (parts.length === 0) throw new Error("smithers bundle: import escapes the bundle: " + specifier);
+      if (parts.length === 0) throw new Error("vibelang bundle: import escapes the bundle: " + specifier);
       parts.pop();
       continue;
     }
@@ -749,35 +712,35 @@ function __smithersResolveRelative(fromPath, specifier) {
   }
   return parts.join("/");
 }
-function __smithersLoad(namespace, path) {
+function __vibelangLoad(namespace, path) {
   const key = namespace + "\\u0001" + path;
-  const entry = __smithersModules.get(key);
-  if (entry === undefined) throw new Error("smithers bundle: unknown module " + namespace + ":" + path);
+  const entry = __vibelangModules.get(key);
+  if (entry === undefined) throw new Error("vibelang bundle: unknown module " + namespace + ":" + path);
   if (entry.state === "loaded" || entry.state === "loading") return entry.exports;
   entry.state = "loading";
   const moduleObject = { exports: {} };
   entry.exports = moduleObject.exports;
   const localRequire = function (specifier) {
     if (specifier === ${JSON.stringify(RUNTIME_IMPORT_SPECIFIER)}) {
-      return __smithersLoad(${JSON.stringify(RUNTIME_NAMESPACE)}, ${JSON.stringify(RUNTIME_INDEX_PATH)});
+      return __vibelangLoad(${JSON.stringify(RUNTIME_NAMESPACE)}, ${JSON.stringify(RUNTIME_INDEX_PATH)});
     }
     if (specifier.startsWith(".")) {
-      return __smithersLoad(namespace, __smithersResolveRelative(path, specifier));
+      return __vibelangLoad(namespace, __vibelangResolveRelative(path, specifier));
     }
-    throw new Error("smithers bundle: unsupported import " + specifier);
+    throw new Error("vibelang bundle: unsupported import " + specifier);
   };
   entry.factory.call(
     undefined,
     moduleObject.exports,
     localRequire,
     moduleObject,
-    __smithersBundleError,
-    __smithersBundleEvalError,
-    __smithersBundleRangeError,
-    __smithersBundleReferenceError,
-    __smithersBundleSyntaxError,
-    __smithersBundleTypeError,
-    __smithersBundleURIError
+    __vibelangBundleError,
+    __vibelangBundleEvalError,
+    __vibelangBundleRangeError,
+    __vibelangBundleReferenceError,
+    __vibelangBundleSyntaxError,
+    __vibelangBundleTypeError,
+    __vibelangBundleURIError
   );
   entry.exports = moduleObject.exports;
   entry.state = "loaded";
@@ -791,31 +754,42 @@ function __smithersLoad(namespace, path) {
  */
 export const buildWorkerPoolBundle = (options: BuildWorkerPoolBundleOptions): WorkerPoolBundle => {
   const poolId = options.poolId
+  const target = options.target, sandbox = options.sandbox, requestedSelections = options.selections
   if (typeof poolId !== "string" || poolId.trim() === "") return fail("bundle pool id must be non-empty")
-  if (typeof options.target !== "string" || options.target.trim() === "") {
+  if (typeof target !== "string" || target.trim() === "") {
     return fail(`bundle pool ${poolId} target must be non-empty`)
   }
-  if (typeof options.sandbox !== "string" || options.sandbox.trim() === "") {
+  if (typeof sandbox !== "string" || sandbox.trim() === "") {
     return fail(`bundle pool ${poolId} sandbox must be non-empty`)
   }
-  if (!Array.isArray(options.selections)) return fail(`bundle pool ${poolId} selections must be an array`)
+  if (!Array.isArray(requestedSelections)) return fail(`bundle pool ${poolId} selections must be an array`)
+  const valueCodec = options.valueCodec
+  if (valueCodec !== undefined && valueCodec !== "vibelang/keyed-source/v2") return fail("unknown worker value codec")
+  const selections = valueCodec === undefined ? requestedSelections : requestedSelections.map(selection => ({
+    // Inspect the compiler proof before reading any caller-owned contract fields.
+    contract: requireCompilerCheckedValueBoundary(selection.contract),
+    action: validateActionContractDescriptor(snapshotKeyedJSON(selection.action)),
+  }))
   const seen = new Set<string>()
-  for (const selection of options.selections) {
+  for (const selection of selections) {
+    if (valueCodec !== undefined) requireCompilerCheckedValueBoundary(selection.contract)
     if (seen.has(selection.action.id)) return fail(`bundle pool ${poolId} selects ${selection.action.id} twice`)
     seen.add(selection.action.id)
   }
-  const actions = [...options.selections]
+  const actions = [...selections]
     .sort((left, right) => left.action.id < right.action.id ? -1 : left.action.id > right.action.id ? 1 : 0)
-    .map((selection) => bundleActionFor(selection, poolId))
+    .map((selection) => bundleActionFor(selection, poolId, valueCodec !== undefined))
   const actionIds = actions.map((action) => action.actionId)
 
   const meta = assertJson({
     formatVersion: BUNDLE_FORMAT_VERSION,
     poolId,
-    target: options.target,
-    sandbox: options.sandbox,
+    target,
+    sandbox,
     actionIds,
+    ...(valueCodec === undefined ? {} : { valueCodec }),
     actions: actions.map((action) => ({
+      ...(action.completion === undefined ? {} : { completion: action.completion }),
       actionId: action.actionId,
       actionVersion: action.actionVersion,
       actionContractDigest: action.actionContractDigest,
@@ -830,35 +804,44 @@ export const buildWorkerPoolBundle = (options: BuildWorkerPoolBundleOptions): Wo
 
   const lines: string[] = [
     `"use strict";`,
-    `// Smithers tree-shaken worker pool bundle. Format version ${BUNDLE_FORMAT_VERSION}.`,
+    `// VibeLang tree-shaken worker pool bundle. Format version ${BUNDLE_FORMAT_VERSION}.`,
     `// This file is content-addressed: its SHA-256 is the pool bundleDigest`,
     `// inside the signed deployment manifest. Do not edit.`,
-    `const __smithersBundleMeta = ${canonicalJson(meta)};`,
+    `const __vibelangBundleMeta = ${canonicalJson(meta)};`,
     LOADER_SOURCE.trim()
   ]
   for (const module of runtimeModules()) lines.push(moduleDefinition(module))
+  if (valueCodec !== undefined) {
+    const path = "keyed-value-core.ts"
+    const core = workerSourceAsset("durable", path)
+    lines.push(moduleDefinition({ namespace: "value-codec", path, commonJs: transpileToCommonJs(core, path) }))
+  }
   for (const action of actions) {
     for (const module of action.modules) lines.push(moduleDefinition(module))
   }
   lines.push(
-    `const __smithersActionTable = new Map(__smithersBundleMeta.actions.map(function (action) { ` +
+    `const __vibelangActionTable = new Map(__vibelangBundleMeta.actions.map(function (action) { ` +
       `return [action.actionId, action]; }));`,
     DISPATCH_SOURCE.trim(),
-    `export { __smithersInvokeAction };`,
-    `export const __smithersPoolBundle = __smithersBundleMeta;`,
+    ...(valueCodec === undefined ? [] : [KEYED_DISPATCH_SOURCE.trim(), `export { __vibelangInvokeKeyedAction };`]),
+    `export { __vibelangInvokeAction };`,
+    `export const __vibelangPoolBundle = __vibelangBundleMeta;`,
     ``
   )
   const javascript = lines.join("\n")
   if (Buffer.byteLength(javascript, "utf8") > MAX_POOL_BUNDLE_BYTES) {
     return fail(`bundle pool ${poolId} exceeds ${MAX_POOL_BUNDLE_BYTES} bytes`)
   }
-  return deepFreeze({
+  const bundle = deepFreeze({
     formatVersion: BUNDLE_FORMAT_VERSION,
     poolId,
     actionIds: actionIds as readonly string[],
     javascript,
     digest: sha256Utf8(javascript)
   })
+  if (valueCodec !== undefined) checkedKeyedBundles.set(bundle, deepFreeze({bundle,
+    target, sandbox, selections: [...selections]}))
+  return bundle
 }
 
 /**
@@ -906,9 +889,36 @@ export const WorkerPoolBundles = Object.freeze({
 export const bundleInvocationDriver = (invocationJson: string): string => [
   ``,
   `// --- bundle-executing worker driver (appended after digest verification) ---`,
-  `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationJson)});`,
-  `export default async function __smithersWorkerMain() {`,
-  `  return await __smithersInvokeAction(__smithersInvocation);`,
+  `const __vibelangInvocation = JSON.parse(${JSON.stringify(invocationJson)});`,
+  `export default async function __vibelangWorkerMain() {`,
+  `  return await __vibelangInvokeAction(__vibelangInvocation);`,
+  `}`,
+  ``
+].join("\n")
+
+/** @internal Compiler-owned adapter. The exact codec bytes are in the bundle
+ * digest; the native inspection hook belongs to the separately pinned runner. */
+const KEYED_DISPATCH_SOURCE = `
+async function __vibelangInvokeKeyedAction(invocation, inspection) {
+  if (!inspection || typeof inspection.isProxy !== "function") {
+    throw new TypeError("keyed worker requires the pinned runner's native value inspector");
+  }
+  const codec = __vibelangLoad("value-codec", "keyed-value-core.ts").createKeyedValueCodec(inspection.isProxy);
+  const input = codec.decodeKeyedValue(invocation.input);
+  const exit = await __vibelangInvokeAction({ ...invocation, input }, undefined, inspection.isProxy);
+  if (exit.kind === "success") return { kind: "success", value: codec.encodeKeyedValue(exit.value) };
+  if (exit.kind === "failure") return { kind: "failure", error: codec.encodeKeyedValue(exit.error) };
+  return codec.snapshotKeyedJSON(exit);
+}
+`
+
+/** @internal Input is already encoded keyed data. Never pass canonicalized
+ * ordinary author data here: that would erase order before decoding. */
+export const keyedBundleInvocationDriver = (invocationJson: string): string => [
+  ``,
+  `const __vibelangKeyedInvocation = JSON.parse(${JSON.stringify(invocationJson)});`,
+  `export default async function __vibelangKeyedWorkerMain(_functions, inspection) {`,
+  `  return await __vibelangInvokeKeyedAction(__vibelangKeyedInvocation, inspection);`,
   `}`,
   ``
 ].join("\n")

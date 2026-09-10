@@ -26,8 +26,8 @@ import {
 import {
   assertActionImplementationContractMatchesAction,
   validateActionImplementationContract
-} from "./implementation-contract.ts"
-import { DurableCodecError, validateDurableTypeDescriptor } from "./schema.ts"
+} from "./implementation-validation.ts"
+import { DurableCodecError, validateDurableTypeDescriptor } from "./schema-runtime.ts"
 
 const MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
 const MAX_PLAN_NODES = 100_000
@@ -675,11 +675,19 @@ const reusePolicy = (value: unknown, path: string): void => {
 
 export const validateDeploymentManifest = (value: unknown, plan: PlanTemplate): DeploymentManifest => {
   const validatedPlan = validatePlanTemplate(plan)
+  return validateDeploymentManifestForContract(value, validatedPlan)
+}
+
+/** @internal Both executable bodies and legacy Plans supply a validated contract. */
+export const validateDeploymentManifestForContract = (
+  value: unknown,
+  validatedPlan: Pick<PlanTemplate, "digest" | "actions" | "requirements">
+): DeploymentManifest => {
   const record = object(assertJson(value, "deployment manifest"), "manifest")
   exactKeys(record, "manifest", ["formatVersion", "deploymentId", "planDigest", "coordinatorDigest", "pools", "routes", "digest"])
   if (record.formatVersion !== 1) fail("manifest.formatVersion", "unsupported manifest format")
   nonEmpty(record.deploymentId, "manifest.deploymentId")
-  if (digestString(record.planDigest, "manifest.planDigest") !== validatedPlan.digest) fail("manifest.planDigest", "does not pin the supplied Plan")
+  if (digestString(record.planDigest, "manifest.planDigest") !== validatedPlan.digest) fail("manifest.planDigest", "does not pin the supplied executable contract")
   const poolRecords = array(record.pools, "manifest.pools").map((item, index) => {
     const pool = object(item, `manifest.pools[${index}]`)
     exactKeys(pool, `manifest.pools[${index}]`, ["id", "target", "sandbox", "placement", "artifactDigest", "actionIds"], ["bundleDigest"])
@@ -791,14 +799,14 @@ export const validateDeploymentManifest = (value: unknown, plan: PlanTemplate): 
 
 export interface StaticPlanArtifact {
   readonly artifactVersion: 1
-  readonly kind: "smithers.plan"
+  readonly kind: "vibelang.plan"
   readonly plan: PlanTemplate
   readonly digest: string
 }
 
 export const encodePlanArtifact = (planValue: PlanTemplate): Uint8Array => {
   const plan = validatePlanTemplate(planValue)
-  const identity = { artifactVersion: 1 as const, kind: "smithers.plan" as const, plan }
+  const identity = { artifactVersion: 1 as const, kind: "vibelang.plan" as const, plan }
   const bytes = encodeCanonicalJson({ ...identity, digest: digest(identity) })
   if (bytes.byteLength > MAX_ARTIFACT_BYTES) fail("artifact", "size limit exceeded")
   return bytes
@@ -809,9 +817,9 @@ export const decodePlanArtifact = (bytes: Uint8Array | string): PlanTemplate => 
   if (typeof bytes === "string" && new TextEncoder().encode(bytes).byteLength > MAX_ARTIFACT_BYTES) fail("artifact", "size limit exceeded")
   const record = object(decodeCanonicalJson(bytes, "Plan artifact"), "artifact")
   exactKeys(record, "artifact", ["artifactVersion", "kind", "plan", "digest"])
-  if (record.artifactVersion !== 1 || record.kind !== "smithers.plan") fail("artifact", "unsupported artifact kind/version")
+  if (record.artifactVersion !== 1 || record.kind !== "vibelang.plan") fail("artifact", "unsupported artifact kind/version")
   const claimed = digestString(record.digest, "artifact.digest")
-  const identity = { artifactVersion: 1, kind: "smithers.plan", plan: record.plan }
+  const identity = { artifactVersion: 1, kind: "vibelang.plan", plan: record.plan }
   if (digest(identity) !== claimed) fail("artifact.digest", "artifact digest mismatch")
   return validatePlanTemplate(record.plan)
 }

@@ -30,13 +30,13 @@ const computeContract = (action: ActionDescriptor, implementationId: string, imp
   action,
   implementationId,
   implementationVersion: "1",
-  entryFile: "implementation.sm",
+  entryFile: "implementation.vibe",
   exportName: implementation.name,
   implementation,
   sources: [{
-    fileName: "implementation.sm",
+    fileName: "implementation.vibe",
     source: `
-      import { Context } from "smthrs/context"
+      import { Context } from "vibelang/context"
       abstract class Compute extends Context { abstract run(): void }
       export ${Function.prototype.toString.call(implementation)}
     `,
@@ -80,7 +80,7 @@ test("a canonical static Plan artifact loads and executes without an author call
       } },
       dependencies: [],
       controlDependencies: [],
-      debug: { label: "compiler-emitted-static-call", callSite: "fixture.sm:4:10" },
+      debug: { label: "compiler-emitted-static-call", callSite: "fixture.vibe:4:10" },
     }],
     output: { kind: "node" as const, nodeId, path: [] },
     requirements: [Work.descriptor.id],
@@ -226,7 +226,7 @@ test("persisted cancellation fences work, aborts the worker, and wins terminal r
 });
 
 test("two coordinators sharing SQLite expose one committed winner", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-two-coordinator-"));
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-two-coordinator-"));
   try {
     const Work = Action.define<{ value: number }, { value: number }>({ id: "test/TwoCoordinator", version: 1 });
     const Program = Flow.define<{ value: number }, { value: number }>(
@@ -365,7 +365,7 @@ test("an execution failure fences unrelated active nodes before they can publish
 });
 
 test("expired attempts respect manual recovery and persisted budgets", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-policy-"));
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-policy-"));
   try {
     const Work = Action.define<{ value: number }, { value: number }>({ id: "test/Manual", version: 1 });
     const Program = Flow.define<{ value: number }, { value: number }>(

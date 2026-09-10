@@ -2,15 +2,18 @@ import {
   DurableExecutor,
   type DurableExecutorOptions
 } from "./engine.ts"
-import { LocalWorker } from "./provider.ts"
+import { LocalWorker, type DeploymentAssets } from "./provider.ts"
 import {
+  isAuthenticatedBodyDeployment,
   requireAuthenticatedDeployment,
-  type AuthenticatedDeployment
+  type AuthenticatedDeployment,
+  type AuthenticatedBodyDeployment
 } from "./signed-deployment.ts"
 import type { DurableStore } from "./store.ts"
+import { BodyExecutor } from "./body-executor.ts"
 
 const LOCAL_SANDBOX = "in-process-poc"
-const trustedWorkerTransportBrand: unique symbol = Symbol("smithers.trusted-worker-transport.v1")
+const trustedWorkerTransportBrand: unique symbol = Symbol("vibelang.trusted-worker-transport.v1")
 
 export class AuthenticatedCoordinatorTransportError extends Error {
   constructor(message: string) {
@@ -112,12 +115,27 @@ const configuredTransports = (
  * deployment. The legacy constructor remains available for POC tests and local
  * development.
  */
-export const createAuthenticatedDurableExecutor = <Input, Success>(
-  authentication: AuthenticatedDeployment<Input, Success>,
+export function createAuthenticatedDurableExecutor<Input, Success>(
+  authentication: AuthenticatedBodyDeployment<Input, Success>, store: DurableStore, options?: AuthenticatedCoordinatorOptions
+): BodyExecutor<Input, Success>
+export function createAuthenticatedDurableExecutor<Input, Success>(
+  authentication: AuthenticatedDeployment<Input, Success>, store: DurableStore, options?: AuthenticatedCoordinatorOptions
+): DurableExecutor<Input, Success>
+export function createAuthenticatedDurableExecutor<Input, Success>(
+  authentication: AuthenticatedDeployment<Input, Success> | AuthenticatedBodyDeployment<Input, Success>,
   store: DurableStore,
   options: AuthenticatedCoordinatorOptions = {}
-): DurableExecutor<Input, Success> => {
+): DurableExecutor<Input, Success> | BodyExecutor<Input, Success> {
+  if (isAuthenticatedBodyDeployment(authentication)) return new BodyExecutor(authentication, store, options)
   const deployment = requireAuthenticatedDeployment(authentication)
+  return new DurableExecutor(deployment, store, { workerFactory: authenticatedWorkerFactoryFor(deployment, options) })
+}
+
+/** @internal Authentication must precede this shared, exact-sandbox routing gate. */
+export const authenticatedWorkerFactoryFor = (
+  deployment: DeploymentAssets,
+  options: AuthenticatedCoordinatorOptions
+): AuthenticatedWorkerFactory => {
   const transports = configuredTransports(options)
   const requiredSandboxes = new Set<string>()
   for (const pool of deployment.pools.values()) {
@@ -140,8 +158,7 @@ export const createAuthenticatedDurableExecutor = <Input, Success>(
 
   // The complete routing table is checked before DurableExecutor can iterate
   // pools and invoke even the first factory.
-  return new DurableExecutor(deployment, store, {
-    workerFactory: (pool, manifest, providers) => {
+  return (pool, manifest, providers) => {
       if (pool.sandbox === LOCAL_SANDBOX) return new LocalWorker(pool, manifest, providers)
       const transport = transports.get(pool.sandbox)
       if (transport === undefined) {
@@ -150,8 +167,7 @@ export const createAuthenticatedDurableExecutor = <Input, Success>(
         )
       }
       return transport.factory(pool, manifest, providers)
-    }
-  })
+  }
 }
 
 export const AuthenticatedCoordinator = Object.freeze({

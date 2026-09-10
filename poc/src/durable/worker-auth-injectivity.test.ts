@@ -31,7 +31,7 @@ test("a signature does not carry across the method/path boundary", () => {
   // timestamp 1700000000000, these two split points both signed
   // "v1.1700000000000.84d371650430f09f3ba1053be7d5542383e6d43f8201d636bfdc053b75844bc0"
   // — byte for byte the same header for two different requests, because both
-  // join to "…\\nGET\\n/SMITHERS/WORKER/V1/INVOKE\\n\\n<body>".
+  // join to "…\\nGET\\n/VIBE/WORKER/V1/INVOKE\\n\\n<body>".
   //
   // The pair has to be uppercase, and that is worth writing down rather than
   // leaving as a puzzle for the next reader: `method.toUpperCase()` is applied
@@ -42,9 +42,9 @@ test("a signature does not carry across the method/path boundary", () => {
   const sign = (method: string, path: string) => () =>
     signWorkerHttpMessage(SECRET, { role: "request", method, path, bodyBytes: BODY, timestampMs: NOW })
 
-  expect(sign("GET\n/SMITHERS/WORKER/V1/INVOKE", ""))
+  expect(sign("GET\n/VIBE/WORKER/V1/INVOKE", ""))
     .toThrow("worker auth method and path cannot contain the field separator")
-  expect(sign("GET", "/SMITHERS/WORKER/V1/INVOKE\n"))
+  expect(sign("GET", "/VIBE/WORKER/V1/INVOKE\n"))
     .toThrow("worker auth method and path cannot contain the field separator")
 
   // Both spellings of the ambiguity are gone, so no header exists that names

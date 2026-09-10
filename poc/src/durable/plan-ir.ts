@@ -305,9 +305,9 @@ export interface FlowSchemas {
  * carrying this marker still has an *unverified construction* and must not be
  * mistaken for one the source compiler checked.
  *
- * Absence means the Plan came from a path without that limitation — the `.sm`
+ * Absence means the Plan came from a path without that limitation — the `.vibe`
  * source compiler, which fails closed on the same programs with
- * SMITHERS4106/4107/4111 — or from an artifact predating this marker. Absence
+ * VIBE4106/4107/4111 — or from an artifact predating this marker. Absence
  * is therefore not a positive claim of verification, only the lack of a
  * negative one; see `signed-deployment.ts` for the trust decision.
  */

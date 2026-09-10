@@ -21,6 +21,7 @@ import {
   withInvocationBudget,
   type ManifestWorkerGate
 } from "./provider.ts"
+import { materializeDurableValue } from "./schema-runtime.ts"
 import {
   decodeSignedDeploymentArtifact,
   type TrustedDeploymentKey
@@ -164,18 +165,18 @@ const loadBundleModule = async (
   // decoding. Invalid UTF-8 fails before the module loader sees the file.
   new TextDecoder("utf-8", { fatal: true }).decode(bundleBytes)
   const loaded = await import(pathToFileURL(absolute).href) as {
-    __smithersInvokeAction?: unknown
-    __smithersPoolBundle?: unknown
+    __vibelangInvokeAction?: unknown
+    __vibelangPoolBundle?: unknown
   }
-  const meta = loaded.__smithersPoolBundle as LoadedBundleModule["meta"] | undefined
-  if (typeof loaded.__smithersInvokeAction !== "function" || meta === null || typeof meta !== "object" ||
+  const meta = loaded.__vibelangPoolBundle as LoadedBundleModule["meta"] | undefined
+  if (typeof loaded.__vibelangInvokeAction !== "function" || meta === null || typeof meta !== "object" ||
     meta.formatVersion !== 1 || meta.poolId !== pool.id ||
     canonicalJson(meta.actionIds) !== canonicalJson(pool.actionIds)) {
     throw new Error(`bundle ${absolute} does not carry the expected pool ${pool.id} module interface`)
   }
   return {
     module: {
-      invoke: loaded.__smithersInvokeAction as LoadedBundleModule["invoke"],
+      invoke: loaded.__vibelangInvokeAction as LoadedBundleModule["invoke"],
       meta
     },
     bundleDigest
@@ -241,7 +242,7 @@ export const runBundleInvocation = (
     try {
       // The exit this returns is decoded by the budget seam, exactly as every
       // other transport's is.
-      return await module.invoke({ ...invocation, input }, budgetSignal)
+      return await module.invoke({ ...invocation, input: materializeDurableValue(route.schemas.input, input, "Action input") }, budgetSignal)
     } catch (error) {
       return defect(
         "BundleDispatchDefect",
@@ -508,9 +509,9 @@ const parseCliArguments = (argv: readonly string[]): CliArguments => {
 }
 
 if (import.meta.main) {
-  const secret = process.env["SMITHERS_WORKER_HOST_SECRET"]
+  const secret = process.env["VIBELANG_WORKER_HOST_SECRET"]
   if (secret === undefined) {
-    console.error("worker host requires the SMITHERS_WORKER_HOST_SECRET environment variable")
+    console.error("worker host requires the VIBELANG_WORKER_HOST_SECRET environment variable")
     process.exit(2)
   }
   const cli = parseCliArguments(process.argv.slice(2))

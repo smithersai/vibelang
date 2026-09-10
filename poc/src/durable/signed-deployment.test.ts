@@ -265,6 +265,10 @@ test("trust roots, signing key pairs, signatures, and canonical envelopes fail c
     [verificationKey]
   )).toThrow("not in the canonical durable encoding")
 
+  for (const value of ["\ufeff" + text(encoded), Buffer.from("\ufeff" + text(encoded), "utf8")]) {
+    expect(() => decodeSignedDeploymentArtifact(value, [verificationKey])).toThrow("not valid JSON")
+  }
+
   const extraField = JSON.parse(text(encoded)) as Record<string, any>
   extraField.untrusted = true
   expect(() => decodeSignedDeploymentArtifact(

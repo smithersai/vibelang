@@ -1,3 +1,21 @@
+export { KeyedSourceInterpreter, KeyedSourceInterpreterError, KeyedSourceEvaluationError,
+  type KeyedSourceEvidence, type KeyedSourceNodeInspection, type KeyedResolvedInput, type PreparedKeyedNode } from "./keyed-interpreter.ts"
+export {KeyedControlError,type KeyedControl,type KeyedControlTicket,type KeyedControlInspection,type KeyedControlStatus} from "./keyed-control.ts"
+export { encodeKeyedValue, decodeKeyedValue, keyedValuePath, KeyedValueError, KEYED_VALUE_LIMITS, type KeyedValue } from "./keyed-value.ts"
+export { createAuthenticatedKeyedNodeWorker, KeyedNodeExecutionError,
+  type AuthenticatedKeyedNodeWorker, type KeyedNodeWork, type KeyedNodeExit } from "./keyed-executor.ts"
+export { createKeyedWorkerRuntime, buildKeyedSourceDeployment, encodeSignedKeyedSourceDeployment,
+  authenticateKeyedSourceDeployment, compileAuthenticatedKeyedInvocation, restoreAuthenticatedKeyedInvocation, SignedKeyedSourceDeployment, KeyedDeploymentError,
+  keyedInvocationApprovalTarget, type KeyedApprovalEnvelope, type KeyedApprovalTarget,
+  type KeyedSourceDeclaration, type KeyedProviderPolicy, type KeyedDeployedProvider, type KeyedSourceDeployment,
+  type KeyedWorkerRuntime, type BuildKeyedSourceDeploymentOptions, type AuthenticatedKeyedSourceDeployment,
+  type AuthenticatedKeyedInvocation } from "./keyed-deployment.ts"
+export { BodyExecutor, type DurableBodyExecutionHandle, type DurableBodyInspection } from "./body-executor.ts"
+export { BodyDeployment, buildBodyDeployment, validateBodyDeploymentManifest,
+  type BuiltBodyDeployment, type ExecutableFlow } from "./body-deployment.ts"
+export { compileDurableBody, type DurableBodyArtifact, type DurableBodyCompileResult } from "./body-compiler.ts"
+export { validateDurableBodyArtifact } from "./body-artifact.ts"
+export { SignedBodyDeployment, type SignedBodyDeploymentArtifact, type AuthenticatedBodyDeployment } from "./signed-deployment.ts"
 export {
   Action,
   ActionFailure,
@@ -39,6 +57,7 @@ export {
 } from "./migration.ts"
 export {
   CoordinatorCrash,
+  CoordinatorUnavailable,
   DurableActionDefect,
   DurableActionFailure,
   DurableExecutionAlreadyFailed,
@@ -97,8 +116,10 @@ export {
 export {
   ActionImplementationContractError,
   compileActionImplementationContract,
+  compileActionImplementationSourceContract,
   validateActionImplementationContract,
-  type CompileActionImplementationOptions
+  type CompileActionImplementationOptions,
+  type CompileActionImplementationSourceOptions
 } from "./implementation-contract.ts"
 export {
   createDenoIsolatedWorkerArtifact,

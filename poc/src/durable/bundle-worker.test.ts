@@ -28,7 +28,7 @@ const sandbox = (timeoutMs = 8_000): DenoSubprocessSandbox => new DenoSubprocess
 
 const compileAction = (id: string, fileName: string): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -80,21 +80,21 @@ ${body}
   })
 }
 
-const FIRST_FILE = "bundle-first.sm"
-const SECOND_FILE = "bundle-second.sm"
+const FIRST_FILE = "bundle-first.vibe"
+const SECOND_FILE = "bundle-second.vibe"
 const First = compileAction("test/bundle-worker/First", FIRST_FILE)
 const Second = compileAction("test/bundle-worker/Second", SECOND_FILE)
 
 const pipelinePlan = () => {
   const compiled = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { First, Second } from "test:bundle-worker-actions"
 export const Pipeline = durable(function Pipeline(input: { value: number }) {
   const first = First.run({ value: input.value })!
   return Second.run({ value: first.value })
 })
 `, {
-    fileName: "flows/bundle-worker.sm",
+    fileName: "flows/bundle-worker.vibe",
     flowId: "test/bundle-worker/Pipeline",
     flowVersion: 1,
     actions: [
@@ -124,7 +124,9 @@ const buildDeployment = (
     providers: [
       checkedProvider(First, FIRST_FILE, "bundle-first", `
   if (input.value < -1000) throw new Failed("too-low")
-  return { value: input.value + 1 }
+  // The isolated transport must materialize an ordinary authored input too.
+  input.value++
+  return { value: input.value }
 `),
       checkedProvider(Second, SECOND_FILE, "bundle-second", `
   let total = 0
@@ -174,8 +176,8 @@ test("a bundle-executed typed failure round-trips as the exact durable wire enve
     expect(error).toBeInstanceOf(DurableActionFailure)
     expect((error as DurableActionFailure).failure).toEqual({
       version: 1,
-      identity: "smithers:bundle-first.sm@Failed@1",
-      payload: { code: "too-low" }
+      identity: "vibelang:bundle-first.vibe@Failed@1",
+      payload: { code: "too-low", message: "too-low", name: "Error" }
     })
   }
   expect(hostCalls).toBe(0)
@@ -193,14 +195,14 @@ test("a bundle-executed typed failure round-trips as the exact durable wire enve
  * name-keyed selection reads it as the sibling `Failed`. Both classes declare
  * `code`, so the forged envelope is WELL-FORMED: measured before the key rule
  * changed, this arrived at the host as
- * `{ identity: "smithers:shadow-action.sm@Failed@1", payload: { code: "forged" } }`
+ * `{ identity: "vibelang:shadow-action.vibe@Failed@1", payload: { code: "forged" } }`
  * and was persisted and hash-chained under that identity.
  *
  * `pool-bundle.test.ts` pins the same rule against the bundle bytes directly;
  * this one pins it end to end, through the real digest-verified zero-permission
  * Deno sandbox and back out as a `DurableActionFailure`.
  */
-const SHADOW_FILE = "shadow-action.sm"
+const SHADOW_FILE = "shadow-action.vibe"
 const SHADOW_CLASSES = `
 class Failed extends Error { constructor(readonly code: string) { super(code) } }
 class Denied extends Error { constructor(readonly code: string) { super(code) } }
@@ -210,7 +212,7 @@ test("a two-variant bundle failure is selected by identity, not by a shadowable 
   hostCalls = 0
   const isolated = sandbox()
   const contract = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 ${SHADOW_CLASSES}
 export abstract class Work extends Action<
   (input: { value: number }) => Result<{ value: number }, Failed | Denied>
@@ -242,13 +244,13 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
   })
 
   const compiledPlan = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Work } from "test:bundle-worker-shadow"
 export const Shadow = durable(function Shadow(input: { value: number }) {
   return Work.run({ value: input.value })
 })
 `, {
-    fileName: "flows/bundle-worker-shadow.sm",
+    fileName: "flows/bundle-worker-shadow.vibe",
     flowId: "test/bundle-worker/Shadow",
     flowVersion: 1,
     actions: [Object.freeze({ moduleSpecifier: "test:bundle-worker-shadow", exportName: "Work", descriptor })]
@@ -288,8 +290,8 @@ export const Shadow = durable(function Shadow(input: { value: number }) {
     expect(error).toBeInstanceOf(DurableActionFailure)
     expect((error as DurableActionFailure).failure).toEqual({
       version: 1,
-      identity: "smithers:shadow-action.sm@Denied@1",
-      payload: { code: "forged" }
+      identity: "vibelang:shadow-action.vibe@Denied@1",
+      payload: { code: "forged", message: "forged", name: "Error" }
     })
   }
   expect(hostCalls).toBe(0)

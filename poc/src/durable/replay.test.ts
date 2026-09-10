@@ -15,6 +15,10 @@ import {
   type DispatchedEffectRequest,
 } from "./index.ts";
 import type { AnyRequest, EffectRequest, Resumable } from "../runtime/effect.ts";
+import { __vsDispatchRequest, __vsExecutionScope, __vsGet, __vsPerform, __vsProvide, __vsResultScope } from "../runtime/effect.ts";
+import { __vsResultSuccess } from "../runtime/result.ts";
+import { Context, Layer } from "../runtime/layer.ts";
+import { assertJson } from "./value.ts";
 
 /**
  * A deployment with an EMPTY Plan.
@@ -241,6 +245,156 @@ function* twoActions(log: string[]): Resumable<string> {
   return charge.reference;
 }
 
+test("compiler-owned nested Result frames share the replay driver's per-site dispatch scheme", async () => {
+  const { store, deployment } = started("driver-compiled-frames");
+  const submitted: string[] = [];
+  const driver = driverFor(store, deployment, "driver-compiled-frames", request => {
+    submitted.push(request.journalKey);
+    return request.input;
+  });
+  const body = function* () {
+    return yield* __vsResultScope(function* () {
+      const first = yield* __vsPerform<number>("action", 2, "src-repeated");
+      const second = yield* __vsPerform<number>("action", 3, "src-repeated");
+      return __vsResultSuccess(first + second);
+    });
+  };
+  try {
+    expect((await driver.run(body)).unwrapOr(-1)).toBe(5);
+    expect(submitted).toEqual(["src-repeated#0", "src-repeated#1"]);
+    expect((await driver.run(body)).unwrapOr(-1)).toBe(5);
+    expect(driver.audit).toMatchObject({ replayed: 2, dispatchedLive: 0 });
+    expect(submitted).toHaveLength(2);
+  } finally { store.close(); }
+});
+
+for (const fallible of [false, true]) test(`inner capability answers do not renumber forwarded ${fallible ? "Result" : "plain"} requests`, async () => {
+  class Value extends Context { declare readonly n: number }
+  const { store, pinned } = started(`inner-answers-${fallible}`);
+  let calls = 0;
+  try {
+    for (let run = 0; run < 2; run++) {
+      const around = __vsExecutionScope();
+      const reads: number[] = [];
+      const driver = new ReplayDriver({ mode: "on", store, executionId: `inner-answers-${fallible}`, owner: "test", pinned,
+        capabilities: new Map([[Value, { n: 20 }]]),
+        dispatchRequest: request => {
+          const dispatched = around(() => __vsDispatchRequest(request));
+          if (dispatched.kind === "get") reads.push(dispatched.occurrence);
+          return dispatched;
+        },
+        perform: request => { calls++; return assertJson(request.input); },
+      });
+      function* read(): Resumable<number> {
+        if (fallible) return (yield* __vsResultScope(function* () {
+          return __vsResultSuccess((yield* __vsGet(Value, "shared-get")).n);
+        }, around)).unwrapOr(-1);
+        return (yield* __vsGet(Value, "shared-get")).n;
+      }
+      expect(await driver.run(function* () {
+        const first = yield* __vsProvide(Layer.succeed(Value, { n: 10 }), read, around);
+        const second = yield* read();
+        const third = yield* __vsProvide(Layer.succeed(Value, { n: 30 }), read, around);
+        const fourth = yield* read();
+        return yield* __vsPerform("sum", first + second + third + fourth, "sum");
+      })).toBe(80);
+      expect(reads).toEqual([1, 3]);
+      expect(driver.audit).toMatchObject({ requests: 3, replayed: run, dispatchedLive: 1 - run });
+    }
+    expect(calls).toBe(1);
+  } finally { store.close(); }
+});
+
+test("raw requests cannot forge preserved dispatch indices", async () => {
+  for (const indices of [[2, 5], [2, 2], [2, 1], [-1], [1.5], [Number.MAX_SAFE_INTEGER + 1]]) {
+    const { store, deployment } = started("dispatch-indices");
+    try {
+      const driver = driverFor(store, deployment, "dispatch-indices", () => 1);
+      const run = driver.run(function* () {
+        for (const occurrence of indices) yield { ...request("source", null), occurrence };
+        return indices.length;
+      });
+      await expect(run).rejects.toThrow("without runtime dispatch identity");
+      expect(store.journal("dispatch-indices").filter(event => event.type === "node_succeeded")).toEqual([]);
+    } finally { store.close(); }
+  }
+});
+
+test("a genuine request still cannot reuse an observed dispatch occurrence", async () => {
+  const { store, deployment } = started("repeated-dispatch");
+  const around = __vsExecutionScope();
+  const source = __vsPerform("work", null, "source");
+  try {
+    const step = source.next();
+    if (step.done) throw new Error("expected a suspended request");
+    const issued = around(() => __vsDispatchRequest(step.value));
+    const driver = driverFor(store, deployment, "repeated-dispatch", () => 1);
+    await expect(driver.run(function* () { yield issued; yield issued; return 2; }))
+      .rejects.toThrow("invalid or repeated occurrence");
+    expect(store.journal("repeated-dispatch").filter(event => event.type === "node_succeeded")).toHaveLength(1);
+  } finally { source.return(undefined); store.close(); }
+});
+
+test("dispatch divergence abandons every live scope without running catches or committing cleanup", async () => {
+  const { store, deployment } = started("driver-dispatch-cleanup");
+  const driver = driverFor(store, deployment, "driver-dispatch-cleanup", () => 1);
+  await driver.run(function* () { return yield request("src-original", null); });
+  const events = store.journal("driver-dispatch-cleanup");
+  const log: string[] = [];
+  const resource = (name: string) => ({ [Symbol.dispose]() { log.push(`dispose:${name}`); } });
+  try {
+    await expect(driver.run(function* () {
+      using outer = resource("outer");
+      try {
+        using inner = resource("inner");
+        try { yield request("src-edited", null); }
+        catch { log.push("caught"); }
+        finally { log.push("inner:finally"); yield request("src-cleanup", null); }
+      } finally { log.push("outer:finally"); }
+    })).rejects.toBeInstanceOf(ReplayDivergenceError);
+    expect(log).toEqual(["inner:finally", "dispose:inner", "outer:finally", "dispose:outer"]);
+    expect(store.journal("driver-dispatch-cleanup")).toEqual(events);
+    expect(store.getExecution("driver-dispatch-cleanup").status).toBe("running");
+  } finally { store.close(); }
+});
+
+test("a journal key pins the submitted Action and input before dispatch, including on replay", async () => {
+  const { store, pinned } = started("driver-request-identity");
+  let calls = 0;
+  const driver = new ReplayDriver({ mode: "on", store, executionId: "driver-request-identity", owner: "owner", pinned,
+    requestDigest: request => digest({ kind: request.kind, key: request.key, input: request.input }),
+    perform: request => { calls++; return assertJson(request.input); },
+  });
+  const body = (key: string, input: number) => function* () { return yield* __vsPerform(key, input, "src-pinned"); };
+  try {
+    expect(await driver.run(body("Action", 4))).toBe(4);
+    const before = store.journal("driver-request-identity");
+    await expect(driver.run(body("Action", 5))).rejects.toBeInstanceOf(ReplayDivergenceError);
+    await expect(driver.run(body("OtherAction", 4))).rejects.toBeInstanceOf(ReplayDivergenceError);
+    expect(store.journal("driver-request-identity")).toEqual(before);
+    expect(store.getExecution("driver-request-identity").status).toBe("running");
+    expect(await driver.run(body("Action", 4))).toBe(4);
+    expect(calls).toBe(1);
+  } finally { store.close(); }
+});
+
+test("a replay driver rejects overlapping attempts before mutating the active audit", async () => {
+  const { store, deployment } = started("driver-overlap");
+  let finish!: (value: number) => void;
+  const pending = new Promise<number>(resolve => { finish = resolve; });
+  const driver = driverFor(store, deployment, "driver-overlap", () => pending);
+  const body = function* (): Resumable<unknown> { return yield request("src-one", null); };
+  const running = driver.run(body);
+  try {
+    await expect(driver.run(body)).rejects.toThrow("overlapping attempts");
+    finish(7);
+    expect(await running).toBe(7);
+    expect(driver.audit).toMatchObject({ requests: 1, dispatchedLive: 1 });
+    expect(await driver.run(body)).toBe(7);
+    expect(driver.audit).toMatchObject({ requests: 1, replayed: 1, dispatchedLive: 0 });
+  } finally { finish(7); await running; store.close(); }
+});
+
 const driverFor = (
   store: DurableStore,
   deployment: ReturnType<typeof emptyDeployment>,
@@ -253,6 +407,76 @@ const driverFor = (
     leaseMs,
     perform: perform as never,
   });
+
+for (const phase of ["claim", "dispatch", "busy"] as const) test(`cancellation at ${phase} does not dispatch or commit a worker`, async () => {
+  const id = `cancel-at-${phase}`;
+  const { store } = started(id);
+  const controller = new AbortController();
+  const cancelled = new DurableExecutionCancelled("test cancellation");
+  const claim = store.claimNode.bind(store);
+  let invoked = 0;
+  let claimed = 0;
+  store.claimNode = (...args) => {
+    claimed++;
+    if (phase === "busy") {
+      controller.abort(cancelled);
+      return { kind: "busy", leaseExpiresAt: Date.now() + 1 };
+    }
+    const result = claim(...args);
+    if (phase === "claim") controller.abort(cancelled);
+    else queueMicrotask(() => controller.abort(cancelled));
+    return result;
+  };
+  const driver = new ReplayDriver({ mode: "on", store, executionId: id, owner: "cancel-test",
+    signal: controller.signal, deadline: Date.now() + 100, perform: () => { invoked++; return 1; } });
+  try {
+    await expect(driver.run(function* (): Resumable<unknown> { return yield request("src-one", null); })).rejects.toBe(cancelled);
+    expect(invoked).toBe(0);
+    expect(claimed).toBe(1);
+    expect(store.journal(id).some(event => event.type === "node_succeeded")).toBe(false);
+  } finally { store.close(); }
+});
+
+test("a worker that cancels its attempt cannot commit its returned answer", async () => {
+  const id = "cancel-at-answer";
+  const { store } = started(id);
+  const controller = new AbortController();
+  const cancelled = new DurableExecutionCancelled("cancel before commit");
+  const driver = new ReplayDriver({ mode: "on", store, executionId: id, owner: "cancel-test", signal: controller.signal,
+    perform: () => { controller.abort(cancelled); return 1; } });
+  try {
+    await expect(driver.run(function* (): Resumable<unknown> { return yield request("src-one", null); })).rejects.toBe(cancelled);
+    expect(store.journal(id).some(event => event.type === "node_succeeded")).toBe(false);
+  } finally { store.close(); }
+});
+
+for (const completion of ["fail", "retry"] as const) test(`an abandoned worker cannot ${completion} under its old fence`, async () => {
+  const id = `late-${completion}`;
+  const { store } = started(id);
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  let finished!: () => void;
+  const settled = new Promise<void>(resolve => { finished = resolve; });
+  const unavailable = new Error("lease store unavailable");
+  store.heartbeat = () => { throw unavailable; };
+  const driver = new ReplayDriver({ mode: "on", store, executionId: id, owner: "late-worker", leaseMs: 15,
+    perform: async (_request, attempt) => {
+      try {
+        await pending;
+        const defect = { name: "LateWorker", message: "already abandoned" };
+        return completion === "fail" ? attempt.fail(defect) : attempt.retry({ kind: "defect", defect }, Date.now());
+      } finally { finished(); }
+    } });
+  try {
+    await expect(driver.run(function* (): Resumable<unknown> { return yield request("src-one", null); })).rejects
+      .toMatchObject({ name: "CoordinatorUnavailable", cause: unavailable });
+    release();
+    await settled;
+    expect(store.getNode(id, "src-one#0").status).toBe("running");
+    expect(store.getNode(id, "src-one#0").exit).toBeUndefined();
+    expect(store.journal(id).some(event => event.type === "attempt_retry_scheduled")).toBe(false);
+  } finally { release(); store.close(); }
+});
 
 test("a driven body journals one entry per request, keyed by site id and occurrence", async () => {
   const { store, deployment } = started("driver-run");
@@ -482,9 +706,8 @@ test("a request that was already dispatched elsewhere is refused, never re-keyed
   const { store, deployment } = started("driver-predispatched");
   const driver = driverFor(store, deployment, "driver-predispatched", () => null);
   await expect(driver.run(function* (): Resumable<unknown> {
-    // `runtime/effect.ts` assigns a per-EXECUTION dispatch ordinal; a journal
-    // key is built from a per-SITE occurrence index. Honouring a foreign index
-    // would key one site under two schemes across two runs.
+    // Inner runtime handlers preserve authentic per-site indices. An arbitrary
+    // object must not claim that identity just by supplying a number field.
     return yield { kind: "perform", key: "K", input: null, site: "src-x", occurrence: 7 } as AnyRequest;
   })).rejects.toThrow("arrived already dispatched at occurrence 7");
   store.close();

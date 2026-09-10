@@ -1,27 +1,29 @@
 import { dirname, normalize, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
-import * as ts from "typescript-js"
+import { getNativeCompiler } from "../compiler/native.ts"
 import type { ProjectDiagnostic, ProjectSource } from "../language/model.ts"
-import { buildSemanticProjectModels, COMPILER_INTRINSIC_SPECIFIERS } from "../language/semantic.ts"
-import { compileAndCheckProject } from "../language/validate.ts"
+import { COMPILER_INTRINSIC_SPECIFIERS } from "../language/compiler-modules.ts"
 import {
-  assertJson,
   canonicalJson,
   deepFreeze,
   digest,
   type ActionDescriptor,
-  type ActionImplementationContract,
-  type DurableTypeDescriptor
+  type ActionImplementationContract
 } from "./ir.ts"
-import {
-  deriveDurableErrorSchema,
-  validateActionContractDescriptor
-} from "./schema.ts"
+import { validateActionContractDescriptor, validateDurableSchema } from "./schema-runtime.ts"
 import { identityFileName } from "./site-id.ts"
+import {
+  COMPILER_IDENTITY, nonEmpty, ActionImplementationContractError,
+  assertActionImplementationContractMatchesAction, validateActionImplementationContract
+} from "./implementation-validation.ts"
 
-const COMPILER_IDENTITY = "smithers-action-implementation-v2" as const
+export {
+  ActionImplementationContractError,
+  assertActionImplementationContractMatchesAction, validateActionImplementationContract
+} from "./implementation-validation.ts"
+
 const authenticated = new WeakSet<object>()
 const authenticatedBindings = new WeakMap<Function, Set<string>>()
+const checkedValueBoundaries = new WeakSet<object>()
 
 /**
  * The exact checked source project pinned by one compiler-issued contract.
@@ -34,6 +36,7 @@ export interface RetainedCheckedImplementationProject {
   readonly sources: readonly { readonly fileName: string; readonly source: string }[]
   readonly projectDigest: string
   readonly rootDir: string | undefined
+  readonly completion?: "value" | "promise"
 }
 
 const retainedProjects = new WeakMap<object, RetainedCheckedImplementationProject>()
@@ -51,137 +54,63 @@ export interface CompileActionImplementationOptions {
    * or lexical-closure attestation.
    */
   readonly implementation: Function
-  /** Complete checked `.sm` source closure for the implementation. */
+  /** Complete checked `.vibe` source closure for the implementation. */
   readonly sources: readonly ProjectSource[]
   readonly rootDir?: string
 }
 
-export class ActionImplementationContractError extends Error {
-  constructor(
-    message: string,
-    readonly diagnostics: readonly ProjectDiagnostic[] = []
-  ) {
-    super(message)
-    this.name = "ActionImplementationContractError"
-  }
-}
-
-const nonEmpty = (value: unknown, path: string): string => {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new ActionImplementationContractError(`${path} must be a non-empty string`)
-  }
-  return value
-}
-
-const digestValue = (value: unknown, path: string): string => {
-  const candidate = nonEmpty(value, path)
-  if (!/^[0-9a-f]{64}$/.test(candidate)) {
-    throw new ActionImplementationContractError(`${path} must be a lowercase SHA-256 digest`)
-  }
-  return candidate
-}
-
-const sortedUniqueStrings = (value: unknown, path: string): readonly string[] => {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim() === "")) {
-    throw new ActionImplementationContractError(`${path} must be an array of non-empty strings`)
-  }
-  const expected = [...new Set(value)].sort()
-  if (canonicalJson(value) !== canonicalJson(expected)) {
-    throw new ActionImplementationContractError(`${path} must be sorted and unique`)
-  }
-  return value as readonly string[]
-}
+/** Source-only compilation for provider bundle emission; no host callback. */
+export type CompileActionImplementationSourceOptions = Omit<CompileActionImplementationOptions, "implementation">
 
 /**
  * The portable spelling of one project source's name.
  *
- * This is a fallback only. The value it is normally handed is already
- * {@link SemanticModel.identityName}, which came from {@link identityFileName}
- * with the project root; the guard exists because the map being iterated is
- * keyed by the caller's own spelling, which `semantic.ts` documents as an
- * addressing key and NOT an identity. Removing path traversal — what this did
- * before — never made an absolute name portable; it only made it look relative.
+ * Host addressing keys remain separate from the logical identities sent to
+ * the native checker. The project root is applied once by identityFileName;
+ * merely removing path traversal never made an absolute name portable.
  */
-const logicalSourceName = (fileName: string): string => {
-  const named = fileName.trim() === "" ? "" : identityFileName(fileName)
-  return named === "" || named === "." || named === ".." ? "implementation.sm" : named
+const logicalSourceName = (fileName: string, rootDir?: string): string => {
+  const named = fileName.trim() === "" ? "" : identityFileName(fileName, rootDir)
+  return named === "" || named === "." || named === ".." ? "implementation.vibe" : named
 }
 
 const canonicalCheckedExportDigest = (source: string, path: string): string => {
-  const withoutExport = source.replace(/^\s*export\s+(?:default\s+)?/, "")
-  const transpiled = ts.transpileModule(`const __smithersImplementation = (${withoutExport})`, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      removeComments: true
-    },
-    fileName: `${path}.ts`,
-    reportDiagnostics: true
-  })
-  if (transpiled.diagnostics?.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)) {
+  // Native parsing/factory/erasure/printing, never callback introspection or
+  // execution. The source project and nominal failure proof remain separate
+  // authenticated contract inputs; this fingerprint does not attest captures.
+  const canonical = getNativeCompiler().canonicalFunction(source)
+  if (!canonical.ok) {
     throw new ActionImplementationContractError(`${path} is not a standalone function expression`)
   }
-  const emitted = ts.createSourceFile(`${path}.js`, transpiled.outputText, ts.ScriptTarget.ES2022, true)
-  const statement = emitted.statements[0]
-  const declaration = statement && ts.isVariableStatement(statement)
-    ? statement.declarationList.declarations[0]
-    : undefined
-  if (declaration?.initializer === undefined) {
-    throw new ActionImplementationContractError(`${path} is not a standalone function expression`)
-  }
-  const printed = ts.createPrinter({ removeComments: true }).printNode(
-    ts.EmitHint.Expression,
-    declaration.initializer,
-    emitted
-  )
-  return digest({ emittedFunction: printed })
-}
-
-/**
- * Every syntactic form that names another module. `import ... from` was once
- * the only form checked, so `export { x } from "pkg"`, `export * from "pkg"`,
- * `export * as ns from "pkg"`, and `import x = require("pkg")` all reached an
- * external, unpinned package without ever meeting the closure refusal below —
- * the same fail-open as the prefix bug, through a different spelling.
- */
-const moduleSpecifierSites = (file: ts.SourceFile): readonly { readonly specifier: string; readonly node: ts.Node }[] => {
-  const sites: { specifier: string; node: ts.Node }[] = []
-  const visit = (node: ts.Node): void => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)
-    ) {
-      sites.push({ specifier: node.moduleSpecifier.text, node })
-    } else if (
-      ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) &&
-      ts.isStringLiteral(node.moduleReference.expression)
-    ) {
-      sites.push({ specifier: node.moduleReference.expression.text, node })
-    } else if (
-      ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments[0] !== undefined && ts.isStringLiteral(node.arguments[0])
-    ) {
-      sites.push({ specifier: (node.arguments[0] as ts.StringLiteral).text, node })
-    }
-    ts.forEachChild(node, visit)
-  }
-  ts.forEachChild(file, visit)
-  return sites
+  return digest({ emittedFunction: canonical.code })
 }
 
 const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string): void => {
   const root = resolve(rootDir)
   const names = new Set(sources.map((source) => resolve(root, source.fileName)))
-  for (const source of sources) {
-    const file = ts.createSourceFile(source.fileName, source.source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    for (const { specifier } of moduleSpecifierSites(file)) {
+  const inspected = getNativeCompiler().inspect(sources.map((source, index) => ({
+    // These are inputs to the VibeLang project checker, not foreign runtime
+    // modules. Preserve its parser dialect while isolating host path spelling.
+    path: `source-${index}.vibe`, text: source.source, scriptKind: "typescript" as const,
+  })))
+  for (const [index, source] of sources.entries()) {
+    const file = inspected.files[index]!
+    if (file.diagnostics.some(diagnostic => diagnostic.category === "error")) {
+      throw new ActionImplementationContractError(`implementation source ${source.fileName} did not pass native syntax checking`)
+    }
+    for (const edge of file.moduleSyntax) {
+      if (!["import-declaration", "module-re-export", "import-equals", "dynamic-import"].includes(edge.kind)) continue
+      const specifier = edge.specifier
+      if (specifier === undefined) {
+        throw new ActionImplementationContractError(`implementation contract cannot authenticate a non-literal module specifier in ${source.fileName}`)
+      }
       // EXACT membership in the frontend's registry, never a prefix test. This
-      // runs immediately before `buildSemanticProjectModels`, so the two must
-      // agree on what is compiler-owned: anything the frontend will treat as
-      // foreign is an external import this contract cannot authenticate.
+      // runs before native whole-project checking. Anything outside this set
+      // remains an external import this contract cannot authenticate; the Go
+      // checker must independently resolve every admitted binding as well.
       //
-      // The prefix form this replaced let `smthrs/anything` and
-      // `smithers:anything` skip BOTH refusals below. A specifier resolving to
+      // The prefix form this replaced let `vibelang/anything` and
+      // `vibelang:anything` skip BOTH refusals below. A specifier resolving to
       // a real installed package under one of those prefixes then produced a
       // `compiler-derived` contract whose projectDigest never covered that
       // import edge — the same fail-open the withdrawn portability analyzer
@@ -195,8 +124,8 @@ const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string)
         )
       }
       const exact = normalize(resolve(dirname(resolve(root, source.fileName)), specifier))
-      const candidates = [exact, `${exact}.sm`, resolve(exact, "index.sm")]
-      if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`)
+      const candidates = [exact, `${exact}.vibe`, resolve(exact, "index.vibe")]
+      if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`)
       if (!candidates.some((candidate) => names.has(candidate))) {
         throw new ActionImplementationContractError(
           `implementation contract source closure is missing relative import '${specifier}' from ${source.fileName}`
@@ -206,130 +135,8 @@ const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string)
   }
 }
 
-/** Validate serialized compiler evidence without granting it in-process trust. */
-export const validateActionImplementationContract = (value: unknown): ActionImplementationContract => {
-  let snapshot: ReturnType<typeof assertJson>
-  try {
-    snapshot = assertJson(value, "Action implementation contract")
-  } catch (error) {
-    throw new ActionImplementationContractError(error instanceof Error ? error.message : String(error))
-  }
-  if (snapshot === null || Array.isArray(snapshot) || typeof snapshot !== "object") {
-    throw new ActionImplementationContractError("Action implementation contract must be an object")
-  }
-  const record = snapshot as Record<string, unknown>
-  const expectedKeys = [
-    "actionContractDigest", "actionErrorSchemaDigest", "actionId", "actionVersion", "checkedExportDigest",
-    "compilerIdentity", "digest", "entryFile", "exportName", "failureSchemaDigest", "formatVersion",
-    "implementationId", "implementationVersion", "panic", "projectDigest", "requirements", "source",
-    "typedFailures"
-  ]
-  if (canonicalJson(Object.keys(record).sort()) !== canonicalJson(expectedKeys)) {
-    throw new ActionImplementationContractError("Action implementation contract has unknown or missing fields")
-  }
-  if (record.formatVersion !== 2 || record.source !== "compiler-derived" || record.compilerIdentity !== COMPILER_IDENTITY) {
-    throw new ActionImplementationContractError("Action implementation contract has an unsupported compiler format")
-  }
-  nonEmpty(record.implementationId, "implementationId")
-  nonEmpty(record.implementationVersion, "implementationVersion")
-  nonEmpty(record.actionId, "actionId")
-  if (!Number.isSafeInteger(record.actionVersion) || (record.actionVersion as number) < 1) {
-    throw new ActionImplementationContractError("actionVersion must be a positive safe integer")
-  }
-  digestValue(record.actionContractDigest, "actionContractDigest")
-  digestValue(record.actionErrorSchemaDigest, "actionErrorSchemaDigest")
-  nonEmpty(record.entryFile, "entryFile")
-  nonEmpty(record.exportName, "exportName")
-  digestValue(record.projectDigest, "projectDigest")
-  digestValue(record.checkedExportDigest, "checkedExportDigest")
-  sortedUniqueStrings(record.requirements, "requirements")
-  sortedUniqueStrings(record.typedFailures, "typedFailures")
-  if (typeof record.panic !== "boolean") throw new ActionImplementationContractError("panic must be boolean")
-  if (record.failureSchemaDigest !== null) digestValue(record.failureSchemaDigest, "failureSchemaDigest")
-  const claimed = digestValue(record.digest, "digest")
-  const { digest: _claimed, ...semantic } = record
-  if (digest(semantic) !== claimed) {
-    throw new ActionImplementationContractError("Action implementation contract digest mismatch")
-  }
-  return deepFreeze(record as unknown as ActionImplementationContract)
-}
-
-const actionTypedFailureNames = (descriptor: ActionDescriptor): readonly string[] => {
-  if (descriptor.errorSchema.shape !== "structural") return []
-  const names: string[] = []
-  const visit = (value: DurableTypeDescriptor): void => {
-    if (value.kind === "error") {
-      names.push(value.name)
-      return
-    }
-    if (value.kind === "union") {
-      for (const variant of value.variants) visit(variant)
-      return
-    }
-    throw new ActionImplementationContractError(
-      `Action ${descriptor.id} error schema is not a nominal Error or Error union`
-    )
-  }
-  visit(descriptor.errorSchema.descriptor)
-  const sorted = [...new Set(names)].sort()
-  if (sorted.includes("Panic")) {
-    throw new ActionImplementationContractError(
-      `Action ${descriptor.id} uses reserved defect name Panic as a typed Error`
-    )
-  }
-  return sorted
-}
-
 /**
- * Recheck serializable implementation evidence against the exact Action at
- * every provider/deployment boundary. This compares compiler-derived nominal
- * schema identity, not erased TypeScript names or runtime callback text.
- */
-export const assertActionImplementationContractMatchesAction = (
-  rawContract: ActionImplementationContract,
-  rawAction: ActionDescriptor
-): void => {
-  const contract = validateActionImplementationContract(rawContract)
-  let action: ActionDescriptor
-  try {
-    action = validateActionContractDescriptor(rawAction)
-  } catch (error) {
-    throw new ActionImplementationContractError(
-      error instanceof Error ? error.message : "Action descriptor is invalid"
-    )
-  }
-  if (
-    contract.actionId !== action.id ||
-    contract.actionVersion !== action.version ||
-    contract.actionContractDigest !== action.contractDigest ||
-    contract.actionErrorSchemaDigest !== action.errorSchema.digest
-  ) {
-    throw new ActionImplementationContractError(
-      `implementation contract does not target exact Action ${action.id}@${action.version}`
-    )
-  }
-  const declared = actionTypedFailureNames(action)
-  if (action.errorSchema.shape === "structural") {
-    if (canonicalJson(contract.typedFailures) !== canonicalJson(declared)) {
-      throw new ActionImplementationContractError(
-        `implementation typed failures ${contract.typedFailures.join(" | ") || "never"} do not exactly match ` +
-        `Action ${action.id} failures ${declared.join(" | ") || "never"}`
-      )
-    }
-    if (contract.failureSchemaDigest !== action.errorSchema.digest) {
-      throw new ActionImplementationContractError(
-        `implementation nominal failure schema does not exactly match Action ${action.id} error schema`
-      )
-    }
-  } else if (contract.typedFailures.length > 0 || contract.failureSchemaDigest !== null) {
-    throw new ActionImplementationContractError(
-      `legacy Action ${action.id} cannot authenticate a nonempty typed failure row; use a structural compiler contract`
-    )
-  }
-}
-
-/**
- * Compile the transitive `E`/`R` rows of an exported ordinary Smithers function.
+ * Compile the transitive `E`/`R` rows of an exported ordinary VibeLang function.
  * The returned object is frozen, content-addressed, and accepted by
  * `provideChecked` only in the compiler process that issued it. This local
  * callback pairing prevents accidental substitution after issuance, but is
@@ -337,6 +144,34 @@ export const assertActionImplementationContractMatchesAction = (
  */
 export const compileActionImplementationContract = (
   options: CompileActionImplementationOptions
+): ActionImplementationContract => {
+  const implementation = options.implementation
+  if (typeof implementation !== "function") {
+    throw new ActionImplementationContractError("implementation must be the emitted runtime function")
+  }
+  const contract = compileImplementation(options, false)
+  const bindings = authenticatedBindings.get(implementation) ?? new Set<string>()
+  bindings.add(contract.digest)
+  authenticatedBindings.set(implementation, bindings)
+  return contract
+}
+
+/**
+ * Check a complete source closure for bundling, without pairing or inspecting a
+ * host callback. Native Go derives the implementation's input/success codecs as
+ * well as its E/R rows. This first source-only profile requires exact structural
+ * codecs, not unproved assignability or a legacy JSON-value contract.
+ *
+ * The result can feed buildWorkerPoolBundle; it does not authorize execution,
+ * attest an unrelated callback, or authenticate any emitted bytes by itself.
+ */
+export const compileActionImplementationSourceContract = (
+  options: CompileActionImplementationSourceOptions
+): ActionImplementationContract => compileImplementation(options, true)
+
+const compileImplementation = (
+  options: CompileActionImplementationSourceOptions,
+  durableBoundary: boolean
 ): ActionImplementationContract => {
   const implementationId = nonEmpty(options.implementationId, "implementationId")
   const implementationVersion = nonEmpty(options.implementationVersion, "implementationVersion")
@@ -350,135 +185,100 @@ export const compileActionImplementationContract = (
       error instanceof Error ? error.message : "action must be a valid compiler-derived descriptor"
     )
   }
-  if (typeof options.implementation !== "function") {
-    throw new ActionImplementationContractError("implementation must be the emitted runtime function")
+  if (durableBoundary && [action.inputSchema, action.successSchema, action.errorSchema].some(schema => schema.shape !== "structural")) {
+    throw new ActionImplementationContractError("source-only durable implementations require exact structural Action codecs")
   }
-  if (!Array.isArray(options.sources) || options.sources.length === 0) {
+  const suppliedSources = options.sources
+  if (!Array.isArray(suppliedSources) || suppliedSources.length === 0) {
     throw new ActionImplementationContractError("sources must contain the complete implementation project")
   }
-  const names = options.sources.map((source) => nonEmpty(source.fileName, "sources[].fileName"))
+  // Read host-owned getters only once. Checking, fingerprinting and retaining
+  // different reads could otherwise certify source text the checker never saw.
+  const sources = suppliedSources.map((source): ProjectSource => {
+    if (source === null || typeof source !== "object") {
+      throw new ActionImplementationContractError("sources must contain source records")
+    }
+    const fileName = nonEmpty(source.fileName, "sources[].fileName")
+    const text = source.source
+    if (typeof text !== "string") {
+      throw new ActionImplementationContractError(`source ${fileName} must contain text`)
+    }
+    return { fileName, source: text }
+  })
+  const names = sources.map((source) => source.fileName)
   if (new Set(names).size !== names.length) {
     throw new ActionImplementationContractError("sources must have unique file names")
   }
-  for (const source of options.sources) {
-    if (typeof source.source !== "string") {
-      throw new ActionImplementationContractError(`source ${source.fileName} must contain text`)
-    }
-  }
-  const entrySource = options.sources.find((source) => source.fileName === entryFile)
+  const entrySource = sources.find((source) => source.fileName === entryFile)
   if (entrySource === undefined) {
     throw new ActionImplementationContractError(`entry file ${entryFile} is absent from the source closure`)
   }
 
-  const rootDir = options.rootDir ?? process.cwd()
-  assertClosedImports(options.sources, rootDir)
-  const project = buildSemanticProjectModels(
-    options.sources,
-    options.rootDir === undefined ? {} : { rootDir: options.rootDir }
-  )
-  const analysis = project.analysis
-  if (analysis.diagnostics.length > 0) {
-    throw new ActionImplementationContractError(
-      `implementation project did not pass the Smithers row checker (${analysis.diagnostics.length} diagnostic(s))`,
-      analysis.diagnostics
-    )
+  const authoredRoot = options.rootDir
+  const rootDir = authoredRoot ?? process.cwd()
+  assertClosedImports(sources, rootDir)
+  const files = sources.map(source => ({
+    path: logicalSourceName(source.fileName, authoredRoot),
+    kind: "vibelang" as const,
+    text: source.source
+  }))
+  if (new Set(files.map(file => file.path)).size !== files.length) {
+    throw new ActionImplementationContractError("implementation sources must have unique logical file identities")
   }
-  const entry = analysis.files[entryFile]
-  const declaration = entry?.functions.find((candidate) => candidate.name === exportName && candidate.exported)
-  const row = entry?.rows[exportName]
-  if (entry === undefined || declaration === undefined || row === undefined) {
-    throw new ActionImplementationContractError(
-      `${entryFile} must export an ordinary checked function named ${exportName}`
-    )
-  }
-  const model = project.models.get(entryFile)!
-  const emitted = compileAndCheckProject(options.sources, {
-    ...(options.rootDir === undefined ? {} : { rootDir: options.rootDir }),
-    outDir: resolve(rootDir, ".smithers-action-implementation-check"),
-    runtimeImport: resolve(dirname(fileURLToPath(import.meta.url)), "../runtime/index.ts"),
-    sourceMap: false
+  const sourceByLogical = new Map(files.map((file, index) => [file.path, sources[index]!]))
+  const checked = getNativeCompiler().checkedFunction({
+    files,
+    entryFile: logicalSourceName(entryFile, authoredRoot),
+    exportName,
+    ...(durableBoundary ? { durableBoundary: true } : {})
   })
-  if (!emitted.ok) {
-    const first = emitted.emitDiagnostics[0]
-    throw new ActionImplementationContractError(
-      first === undefined
-        ? "implementation project did not pass checked lowering"
-        : `lowered implementation project failed TypeScript checking: ${ts.flattenDiagnosticMessageText(first.messageText, "\n")}`
-    )
-  }
-  const checkedFunctionSource = entrySource.source.slice(declaration.start, declaration.end)
-  const checkedExportDigest = canonicalCheckedExportDigest(checkedFunctionSource, `${entryFile}:${exportName}`)
-
-  const rowFailures = [...row.failures].sort()
-  const panic = rowFailures.includes("Panic")
-  const typedFailures = rowFailures.filter((failure) => failure !== "Panic")
-  const classDeclarations = new Map<string, ts.ClassDeclaration[]>()
-  const logicalBySource = new Map<ts.SourceFile, string>()
-  for (const [, sourceModel] of project.models) {
-    // `project.models` is keyed by the caller's own spelling — an ADDRESSING
-    // key, which `semantic.ts` says in as many words is not an identity. The
-    // identity is on the model being iterated, one property away.
-    logicalBySource.set(sourceModel.sourceFile, logicalSourceName(sourceModel.identityName))
-    const visit = (node: ts.Node): void => {
-      if (ts.isClassDeclaration(node) && node.name) {
-        const declarations = classDeclarations.get(node.name.text) ?? []
-        declarations.push(node)
-        classDeclarations.set(node.name.text, declarations)
+  if (!checked.ok || checked.function === null) {
+    const diagnostics: ProjectDiagnostic[] = checked.diagnostics.map(issue => {
+      const original = sourceByLogical.get(issue.file ?? "")
+      const start = issue.span?.start ?? 0
+      const prefix = (original?.source ?? "").slice(0, start).split(/\r\n|[\n\r\u2028\u2029]/)
+      return {
+        fileName: original?.fileName ?? issue.file ?? entryFile,
+        severity: issue.category === "warning" ? "warning" : "error",
+        code: issue.code,
+        message: issue.message,
+        start, line: prefix.length, column: prefix.at(-1)!.length + 1
       }
-      ts.forEachChild(node, visit)
-    }
-    visit(sourceModel.sourceFile)
-  }
-  if (panic && (classDeclarations.get("Panic")?.length ?? 0) > 0) {
-    throw new ActionImplementationContractError(
-      "Panic is a reserved defect row and cannot also name a recoverable implementation Error"
-    )
-  }
-
-  let failureSchemaDigest: string | null = null
-  if (typedFailures.length > 0) {
-    if (action.errorSchema.shape !== "structural") {
-      throw new ActionImplementationContractError(
-        `legacy Action ${action.id} cannot authenticate typed implementation failures; use compileActionContract`
-      )
-    }
-    const failureTypes = typedFailures.map((failure) => {
-      const declarations = classDeclarations.get(failure) ?? []
-      if (declarations.length !== 1 || declarations[0]!.name === undefined) {
-        throw new ActionImplementationContractError(
-          `typed failure ${failure} must resolve to exactly one Error class in the checked source closure`
-        )
-      }
-      return model.checker.getTypeAtLocation(declarations[0]!.name!)
     })
-    let derived
-    try {
-      derived = deriveDurableErrorSchema(
-        model.checker,
-        model.sourceFile,
-        model.functions.find((candidate) => candidate.publicName === exportName && candidate.exported)?.node ?? model.sourceFile,
-        failureTypes,
-        (sourceFile) => {
-          const logicalName = logicalBySource.get(sourceFile)
-          if (logicalName === undefined) {
-            throw new ActionImplementationContractError(
-              `typed failure declaration ${sourceFile.fileName} is outside the checked source closure`
-            )
-          }
-          return logicalName
-        }
-      )
-    } catch (error) {
-      throw error instanceof ActionImplementationContractError
-        ? error
-        : new ActionImplementationContractError(
-            `implementation typed failure schema is not durable: ${error instanceof Error ? error.message : String(error)}`
-          )
-    }
-    failureSchemaDigest = derived.digest
+    throw new ActionImplementationContractError(
+      checked.message + (diagnostics[0] === undefined ? "" : ": " + diagnostics[0].message),
+      diagnostics
+    )
   }
+  const facts = checked.function
+  let completion: "value" | "promise" | undefined
+  if (durableBoundary) {
+    const schemas = JSON.parse(facts.valueSchemasJson)
+    completion = schemas.completion
+    const inputSchema = validateDurableSchema(schemas.inputSchema, "input", "implementation input schema")
+    const successSchema = validateDurableSchema(schemas.successSchema, "success", "implementation success schema")
+    if (inputSchema.digest !== action.inputSchema.digest) {
+      throw new ActionImplementationContractError(`implementation input schema does not exactly match Action ${action.id}`)
+    }
+    if (successSchema.digest !== action.successSchema.digest) {
+      throw new ActionImplementationContractError(`implementation success schema does not exactly match Action ${action.id}`)
+    }
+  }
+  const checkedFunctionSource = entrySource.source.slice(facts.span.start, facts.span.start + facts.span.length)
+  const checkedExportDigest = canonicalCheckedExportDigest(checkedFunctionSource, `${entryFile}:${exportName}`)
+  const typedFailures = [...facts.typedFailures]
+  const panic = facts.panic
+  // A structural empty failure channel has a real never codec. A null digest
+  // belongs only to the legacy JSON-only descriptor, not to an infallible Action.
+  const failureSchema = validateDurableSchema(JSON.parse(facts.failureSchemaJson), "error", "implementation failure schema")
+  if (action.errorSchema.shape !== "structural" && typedFailures.length > 0) {
+    throw new ActionImplementationContractError(
+      `legacy Action ${action.id} cannot authenticate typed implementation failures; use compileActionContract`
+    )
+  }
+  const failureSchemaDigest = action.errorSchema.shape === "structural" ? failureSchema.digest : null
 
-  const projectSources = options.sources
+  const projectSources = sources
     .map((source) => ({ fileName: source.fileName, source: source.source }))
     .sort((left, right) => left.fileName < right.fileName ? -1 : left.fileName > right.fileName ? 1 : 0)
   const semantic = {
@@ -495,7 +295,7 @@ export const compileActionImplementationContract = (
     exportName,
     projectDigest: digest({ sources: projectSources }),
     checkedExportDigest,
-    requirements: Object.freeze([...row.requirements].sort()),
+    requirements: Object.freeze([...facts.requirements]),
     typedFailures: Object.freeze(typedFailures),
     panic,
     failureSchemaDigest
@@ -503,22 +303,21 @@ export const compileActionImplementationContract = (
   const contract = deepFreeze({ ...semantic, digest: digest(semantic) })
   assertActionImplementationContractMatchesAction(contract, action)
   authenticated.add(contract)
-  const bindings = authenticatedBindings.get(options.implementation) ?? new Set<string>()
-  bindings.add(contract.digest)
-  authenticatedBindings.set(options.implementation, bindings)
+  if (durableBoundary) checkedValueBoundaries.add(contract)
   retainedProjects.set(contract, deepFreeze({
     entryFile,
     exportName,
     sources: projectSources,
     projectDigest: semantic.projectDigest,
-    rootDir: options.rootDir
+    rootDir: authoredRoot,
+    ...(completion === undefined ? {} : { completion })
   }))
   return contract
 }
 
 /**
  * @internal Bundle-emission seam. Only the exact frozen contract object issued
- * by `compileActionImplementationContract` in this process can recover its
+ * by either implementation compiler in this process can recover its
  * pinned checked source project; serialized or forged contracts cannot.
  */
 export const retainedCheckedImplementationProject = (
@@ -534,11 +333,20 @@ export const retainedCheckedImplementationProject = (
   return retained
 }
 
+/** @internal Source-only bundle gate; serialized row contracts are not proofs. */
+export const requireCompilerCheckedValueBoundary = (value: unknown): ActionImplementationContract => {
+  const contract = requireCompilerAuthenticatedContract(value)
+  if (!checkedValueBoundaries.has(contract)) {
+    throw new ActionImplementationContractError("provider bundle requires the source-only compiler's exact checked value-boundary contract")
+  }
+  return contract
+}
+
 /** Internal authority gate: hashes alone provide integrity, not compiler provenance. */
 export const requireCompilerAuthenticatedContract = (value: unknown): ActionImplementationContract => {
   if (value === null || (typeof value !== "object" && typeof value !== "function") || !authenticated.has(value)) {
     throw new ActionImplementationContractError(
-      "provideChecked requires the exact frozen contract object issued by compileActionImplementationContract"
+      "requires the exact frozen contract object issued by compileActionImplementationContract or compileActionImplementationSourceContract"
     )
   }
   validateActionImplementationContract(value)

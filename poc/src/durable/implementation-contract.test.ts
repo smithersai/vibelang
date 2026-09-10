@@ -19,11 +19,11 @@ import {
   type ActionProvider
 } from "./index.ts"
 
-const TYPED_ACTION_FILE = "typed-action.sm"
-const TYPED_FAILURE_IDENTITY = "smithers:typed-action.sm@Missing@1"
+const TYPED_ACTION_FILE = "typed-action.vibe"
+const TYPED_FAILURE_IDENTITY = "vibelang:typed-action.vibe@Missing@1"
 
 const typedActionSource = (payloadType = "string") => `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class Missing extends Error {
   constructor(readonly code: ${payloadType}) { super(String(code)) }
 }
@@ -33,7 +33,7 @@ export abstract class Work extends Action<
 `
 
 const exactTypedImplementationSource = `
-import { Panic, panic } from "smithers:exceptions"
+import { Panic, panic } from "vibelang:exceptions"
 class Missing extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -89,7 +89,7 @@ function substitutedImplementation(input: { value: number }) {
 }
 
 const implementationSource = `
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 export abstract class Database extends Context {
   abstract read(value: number): number
@@ -114,10 +114,10 @@ const compileContract = (
     action,
     implementationId,
     implementationVersion,
-    entryFile: "implementation.sm",
+    entryFile: "implementation.vibe",
     exportName: "checkedImplementation",
     implementation: checkedImplementation,
-    sources: [{ fileName: "implementation.sm", source }]
+    sources: [{ fileName: "implementation.vibe", source }]
   })
 
 const defineProgram = (suffix: string) => {
@@ -213,7 +213,7 @@ test("checked providers bind the exact Action error schema while keeping Panic o
 test("implementation compilation rejects omitted, introduced, and forged typed failures", () => {
   const Work = compileTypedAction("test/typed-provider-mismatch")
   const omitted = `
-    import { Panic, panic } from "smithers:exceptions"
+    import { Panic, panic } from "vibelang:exceptions"
     export function typedFailureImplementation(input: { mode: string }): Result<{ value: number }, Panic> {
       if (input.mode === "panic") panic("unexpected")
       return { value: 1 }
@@ -223,7 +223,7 @@ test("implementation compilation rejects omitted, introduced, and forged typed f
     .toThrow("typed failures never do not exactly match")
 
   const introduced = `
-    import { Panic } from "smithers:exceptions"
+    import { Panic } from "vibelang:exceptions"
     class Missing extends Error { constructor(readonly code: string) { super(code) } }
     class Extra extends Error { constructor(readonly detail: string) { super(detail) } }
     export function typedFailureImplementation(
@@ -247,13 +247,13 @@ test("implementation compilation rejects omitted, introduced, and forged typed f
     Work.descriptor,
     "typed-forged-identity",
     exactTypedImplementationSource,
-    "other-action.sm"
+    "other-action.vibe"
   )).toThrow("nominal failure schema does not exactly match")
 })
 
 test("Panic is a defect channel and cannot be forged as a recoverable Action error", () => {
   const compiled = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     class Panic extends Error {
       constructor(readonly reason: string) { super(reason) }
     }
@@ -422,19 +422,30 @@ test("implementation identity and source drift change every pinned deployment id
   expect(changedVersion.digest).not.toBe(first.digest)
 })
 
+test("native closure inspection preserves VibeLang conditional declarations in a checked helper", () => {
+  const { Work } = defineProgram("native-conditional-helper")
+  const reference = compileContract(Work.descriptor, "native-conditional-helper")
+  const source = implementationSource.replace("return Database.context().read(value)",
+    "if (const supplied = Database.context().read(value); supplied > 0) { return supplied; } return 0;")
+  const conditional = compileContract(Work.descriptor, "native-conditional-helper", "1", source)
+  expect(conditional.requirements).toEqual(["Database"])
+  expect(conditional.checkedExportDigest).toBe(reference.checkedExportDigest)
+  expect(conditional.projectDigest).not.toBe(reference.projectDigest)
+})
+
 test("the compiler rejects incomplete source closures and never treats callback text as source evidence", () => {
   const { Work } = defineProgram("invalid-source")
   expect(() => compileActionImplementationContract({
     action: Work.descriptor,
     implementationId: "missing-closure",
     implementationVersion: "1",
-    entryFile: "implementation.sm",
+    entryFile: "implementation.vibe",
     exportName: "checkedImplementation",
     implementation: checkedImplementation,
     sources: [{
-      fileName: "implementation.sm",
+      fileName: "implementation.vibe",
       source: `
-        import { hidden } from "./not-supplied.sm"
+        import { hidden } from "./not-supplied.vibe"
         export function checkedImplementation(input: { value: number }) {
           return { value: hidden(input.value) }
         }
@@ -446,10 +457,10 @@ test("the compiler rejects incomplete source closures and never treats callback 
     action: Work.descriptor,
     implementationId: "source-substitution",
     implementationVersion: "1",
-    entryFile: "implementation.sm",
+    entryFile: "implementation.vibe",
     exportName: "checkedImplementation",
     implementation: substitutedImplementation,
-    sources: [{ fileName: "implementation.sm", source: implementationSource }]
+    sources: [{ fileName: "implementation.vibe", source: implementationSource }]
   })
   expect(opaquePair.checkedExportDigest)
     .toBe(compileContract(Work.descriptor, "source-reference").checkedExportDigest)
@@ -468,11 +479,11 @@ test("only exactly-named compiler-owned specifiers escape the implementation clo
       action: Work.descriptor,
       implementationId,
       implementationVersion: "1",
-      entryFile: "implementation.sm",
+      entryFile: "implementation.vibe",
       exportName: "checkedImplementation",
       implementation: checkedImplementation,
       sources: [{
-        fileName: "implementation.sm",
+        fileName: "implementation.vibe",
         source: `
           import { exfiltrate } from "${specifier}"
           export function checkedImplementation(input: { value: number }) {
@@ -485,13 +496,13 @@ test("only exactly-named compiler-owned specifiers escape the implementation clo
   // A near miss on either compiler-owned prefix is an ordinary external import
   // and must be refused: nothing pins it, and projectDigest never covered it.
   for (const specifier of [
-    "smthrs/not-a-real-module",
-    "smthrs/context-evil",
-    "smthrs/",
-    "smithers:not-a-real-module",
-    "smithers:exceptions-evil",
-    "smithers:",
-    "smithers:flowsX"
+    "vibelang/not-a-real-module",
+    "vibelang/context-evil",
+    "vibelang/",
+    "vibelang:not-a-real-module",
+    "vibelang:exceptions-evil",
+    "vibelang:",
+    "vibelang:flowsX"
   ]) {
     expect(() => compileWithImport(specifier, `prefix-${specifier}`))
       .toThrow("cannot authenticate external import")
@@ -501,19 +512,19 @@ test("only exactly-named compiler-owned specifiers escape the implementation clo
   // past assertClosedImports and fail later (or not at all) for reasons that
   // are never the closure refusal.
   for (const specifier of [
-    "smthrs/context",
-    "smthrs/provider",
-    "smthrs/schema-runtime",
-    "smithers:exceptions",
-    "smithers:comptime",
-    "smithers:flows"
+    "vibelang/context",
+    "vibelang/provider",
+    "vibelang/schema-runtime",
+    "vibelang:exceptions",
+    "vibelang:comptime",
+    "vibelang:flows"
   ]) {
     expect(() => compileWithImport(specifier, `owned-${specifier}`))
       .not.toThrow("cannot authenticate external import")
   }
 
   // And the closure check still runs on everything else it always ran on.
-  expect(() => compileWithImport("./not-supplied.sm", "relative-missing"))
+  expect(() => compileWithImport("./not-supplied.vibe", "relative-missing"))
     .toThrow("source closure is missing")
   expect(() => compileWithImport("node:fs", "bare-node"))
     .toThrow("cannot authenticate external import")
@@ -523,24 +534,24 @@ test("only exactly-named compiler-owned specifiers escape the implementation clo
     action: Work.descriptor,
     implementationId: "owned-context",
     implementationVersion: "1",
-    entryFile: "implementation.sm",
+    entryFile: "implementation.vibe",
     exportName: "checkedImplementation",
     implementation: checkedImplementation,
-    sources: [{ fileName: "implementation.sm", source: implementationSource }]
+    sources: [{ fileName: "implementation.vibe", source: implementationSource }]
   })
   expect(owned.source).toBe("compiler-derived")
 })
 
 test("a resolvable near-miss specifier cannot certify a closure that never covered it", async () => {
-  // The reachable fail-open, end to end: `smthrs/context-evil` is an ordinary
+  // The reachable fail-open, end to end: `vibelang/context-evil` is an ordinary
   // installed package. Under the old prefix test it skipped the closure check,
   // type-checked, and produced a `compiler-derived` contract whose projectDigest
-  // covered only `implementation.sm`.
-  const directory = await mkdtemp(join(tmpdir(), "smithers-near-miss-"))
+  // covered only `implementation.vibe`.
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-near-miss-"))
   try {
-    const packageDirectory = join(directory, "node_modules", "smthrs")
+    const packageDirectory = join(directory, "node_modules", "vibelang")
     await mkdir(packageDirectory, { recursive: true })
-    await writeFile(join(packageDirectory, "package.json"), JSON.stringify({ name: "smthrs", version: "1.0.0" }))
+    await writeFile(join(packageDirectory, "package.json"), JSON.stringify({ name: "vibelang", version: "1.0.0" }))
     await writeFile(join(packageDirectory, "context-evil.d.ts"), [
       "/** @module @throws {never} */",
       "",
@@ -554,20 +565,20 @@ test("a resolvable near-miss specifier cannot certify a closure that never cover
       action: Work.descriptor,
       implementationId: "resolvable-near-miss",
       implementationVersion: "1",
-      entryFile: "implementation.sm",
+      entryFile: "implementation.vibe",
       rootDir: directory,
       exportName: "checkedImplementation",
       implementation: checkedImplementation,
       sources: [{
-        fileName: "implementation.sm",
+        fileName: "implementation.vibe",
         source: `
-          import { exfiltrate } from "smthrs/context-evil"
+          import { exfiltrate } from "vibelang/context-evil"
           export function checkedImplementation(input: { value: number }) {
             return { value: exfiltrate(input.value) }
           }
         `
       }]
-    })).toThrow("cannot authenticate external import 'smthrs/context-evil'")
+    })).toThrow("cannot authenticate external import 'vibelang/context-evil'")
   } finally {
     await rm(directory, { recursive: true })
   }
@@ -578,7 +589,7 @@ test("every module-referencing form meets the implementation closure check", asy
   // re-export or an import assignment reached an external, unpinned package and
   // still produced a `compiler-derived` contract whose projectDigest never
   // covered that edge — the prefix fail-open again, through another spelling.
-  const directory = await mkdtemp(join(tmpdir(), "smithers-closure-forms-"))
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-closure-forms-"))
   try {
     const packageDirectory = join(directory, "node_modules", "evil-pkg")
     await mkdir(packageDirectory, { recursive: true })
@@ -604,11 +615,11 @@ test("every module-referencing form meets the implementation closure check", asy
       action: Work.descriptor,
       implementationId: `closure-form-${label}`,
       implementationVersion: "1",
-      entryFile: "implementation.sm",
+      entryFile: "implementation.vibe",
       rootDir: directory,
       exportName: "checkedImplementation",
       implementation: checkedImplementation,
-      sources: [{ fileName: "implementation.sm", source: `${prelude}\n${body}` }]
+      sources: [{ fileName: "implementation.vibe", source: `${prelude}\n${body}` }]
     })
 
     for (const [label, prelude] of [
@@ -626,13 +637,13 @@ test("every module-referencing form meets the implementation closure check", asy
     // A relative specifier that is absent from the closure is refused through
     // exactly the same forms.
     for (const [label, prelude] of [
-      ["missing-import", 'import { helper } from "./absent.sm"'],
-      ["missing-re-export", 'export { helper } from "./absent.sm"'],
-      ["missing-star-re-export", 'export * from "./absent.sm"'],
-      ["missing-import-equals", 'import absent = require("./absent.sm")']
+      ["missing-import", 'import { helper } from "./absent.vibe"'],
+      ["missing-re-export", 'export { helper } from "./absent.vibe"'],
+      ["missing-star-re-export", 'export * from "./absent.vibe"'],
+      ["missing-import-equals", 'import absent = require("./absent.vibe")']
     ] as const) {
       expect(() => compileWith(label, prelude), label)
-        .toThrow("source closure is missing relative import './absent.sm'")
+        .toThrow("source closure is missing relative import './absent.vibe'")
     }
   } finally {
     await rm(directory, { recursive: true })
@@ -647,20 +658,20 @@ test("every module-referencing form meets the implementation closure check", asy
     }
   `
   for (const [label, prelude, extra] of [
-    ["named", 'export { LIMIT } from "./constants.sm"', "export const LIMIT = 3\n"],
-    ["star", 'export * from "./constants.sm"', "export const LIMIT = 3\n"],
-    ["type-only", 'export type { Value } from "./constants.sm"', "export type Value = { value: number }\n"]
+    ["named", 'export { LIMIT } from "./constants.vibe"', "export const LIMIT = 3\n"],
+    ["star", 'export * from "./constants.vibe"', "export const LIMIT = 3\n"],
+    ["type-only", 'export type { Value } from "./constants.vibe"', "export type Value = { value: number }\n"]
   ] as const) {
     const contract = compileActionImplementationContract({
       action: Local.descriptor,
       implementationId: `closure-form-local-${label}`,
       implementationVersion: "1",
-      entryFile: "implementation.sm",
+      entryFile: "implementation.vibe",
       exportName: "checkedImplementation",
       implementation: checkedImplementation,
       sources: [
-        { fileName: "constants.sm", source: extra },
-        { fileName: "implementation.sm", source: `${prelude}\n${implementationBody}` }
+        { fileName: "constants.vibe", source: extra },
+        { fileName: "implementation.vibe", source: `${prelude}\n${implementationBody}` }
       ]
     })
     expect(contract.source, label).toBe("compiler-derived")

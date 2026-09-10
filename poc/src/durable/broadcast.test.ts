@@ -22,7 +22,7 @@ import {
 } from "./index.ts"
 
 const source = `
-import { durable, waitBroadcast } from "smithers:flows"
+import { durable, waitBroadcast } from "vibelang:flows"
 
 throw new Error("durable broadcast lowering must not evaluate author code")
 
@@ -33,7 +33,7 @@ export const Rollout = durable(function Rollout(input: { service: string }) {
 `
 
 const unicastSource = `
-import { durable, waitSignal } from "smithers:flows"
+import { durable, waitSignal } from "vibelang:flows"
 export const Single = durable(function Single(input: { service: string }) {
   return waitSignal<{ version: string }>("deploy.rolled")
 })
@@ -41,7 +41,7 @@ export const Single = durable(function Single(input: { service: string }) {
 
 const compile = (text: string, id: string, flowId = `test/source/${id}`) => {
   const result = compileDurableSource(text, {
-    fileName: `flows/${id.toLowerCase()}.sm.ts`,
+    fileName: `flows/${id.toLowerCase()}.vibe.ts`,
     flowId,
     flowVersion: 1,
     actions: []
@@ -60,7 +60,7 @@ const fixture = (id = "broadcast-deployment") => {
 }
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-broadcast-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-broadcast-"))
   const filename = join(directory, "state.sqlite")
   try {
     await body(filename)
@@ -304,7 +304,7 @@ test("single-delivery and broadcast identities can never be confused", () => {
 
   // Two Flows disagreeing about one broadcast payload contract also fail closed.
   const retyped = compile(`
-    import { durable, waitBroadcast } from "smithers:flows"
+    import { durable, waitBroadcast } from "vibelang:flows"
     export const Other = durable(function Other(input: { service: string }) {
       return waitBroadcast<{ version: number }>("deploy.rolled")
     })
@@ -407,13 +407,13 @@ test("the attached-child single-delivery chain refuses a broadcast child node to
   // like the direct chain.
   const child = compile(source, "Rollout", "test/source/ChildRollout")
   const parent = compileDurableSource(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Rollout } from "test:flows"
 export const Top = durable(function Top(input: { service: string }) {
   return Rollout.run({ service: input.service })
 })
 `, {
-    fileName: "flows/top.sm.ts",
+    fileName: "flows/top.vibe.ts",
     flowId: "test/source/Top",
     flowVersion: 1,
     actions: [],

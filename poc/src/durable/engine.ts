@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto"
+import { providerReuseIdentity, type ProviderReuseIdentity } from "./reuse.ts"
 import {
   assertJson,
   canonicalJson,
   deepFreeze,
+  derivedSchema,
   digest,
   fanOutSteps,
   type ActionNode,
@@ -56,9 +58,10 @@ import {
   type RequestKey
 } from "./replay.ts"
 import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
-import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
+import { decodeWorkerExit, materializeDurableValue, validateDurableValue, type WorkerExitSurface } from "./schema-runtime.ts"
 import {
   CoordinatorCrash,
+  CoordinatorUnavailable,
   DurableActionDefect,
   DurableActionFailure,
   DurableExecutionAlreadyFailed,
@@ -75,6 +78,7 @@ import {
  */
 export {
   CoordinatorCrash,
+  CoordinatorUnavailable,
   DurableActionDefect,
   DurableActionFailure,
   DurableExecutionAlreadyFailed,
@@ -202,11 +206,12 @@ const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.min(MAX_TIMER_DELAY_MS, Math.max(0, milliseconds))))
 
 /**
- * The two ways a coordinator loses the right to speak for an execution WITHOUT
- * the execution being at fault: its process is gone (`CoordinatorCrash`) and
- * its deployment is gone (`ExecutionMigratedError`). Neither is an outcome, and
+ * A coordinator can lose the right to speak for an execution WITHOUT the
+ * execution being at fault: its process is gone (`CoordinatorCrash`), its
+ * lease cannot be maintained (`CoordinatorUnavailable`), or its deployment is
+ * gone (`ExecutionMigratedError`). None is an outcome, and
  * every catch that would otherwise turn a thrown value into durable state has
- * to let both through untouched — a coordinator that abandons leaves the work
+ * to let them through untouched — a coordinator that abandons leaves the work
  * exactly as resumable as it found it.
  *
  * Treating a migration as an outcome is worse than merely wrong. An attached
@@ -220,7 +225,7 @@ const delay = (milliseconds: number): Promise<void> =>
  * asks it, rather than each site re-deciding and one of them forgetting.
  */
 const isCoordinatorAbandonment = (error: unknown): boolean =>
-  error instanceof CoordinatorCrash || error instanceof ExecutionMigratedError
+  error instanceof CoordinatorCrash || error instanceof CoordinatorUnavailable || error instanceof ExecutionMigratedError
 
 const cancellationReason = (storedError: JsonValue): JsonValue => {
   if (
@@ -495,9 +500,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       label: string,
       defectName: "FlowSuccessCodecDefect" | "PersistedFlowCodecDefect"
     ): JsonValue => {
-      if (flowSchemas === undefined) return value as JsonValue
       try {
-        return validateDurableValue(flowSchemas.success, value, label)
+        // The store's evidence is immutable; the public typed result is an
+        // independent ordinary value, including for the legacy JSON schema.
+        return materializeDurableValue(flowSchemas?.success ?? derivedSchema("success"), value, label)
       } catch (error) {
         throw new DurableActionDefect("$execution", {
           name: defectName,
@@ -1805,43 +1811,22 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     }
     const inputDigest = digest(input)
     const reuse = provider.reuse
-    let reuseIdentity: { readonly kind: "memo" | "content"; readonly key: string; readonly inputDigest: string } | undefined
+    let reuseIdentity: ProviderReuseIdentity | undefined
+    try { reuseIdentity = providerReuseIdentity(provider, route, input) }
+    catch (error) {
+      throw new DurableActionDefect(node.id, { name: "MemoKeyDefect",
+        message: error instanceof Error ? error.message : "memo key could not be computed" })
+    }
 
     if (reuse.kind === "memo") {
-      const explicitKey = reuse.key(input)
-      if (typeof explicitKey !== "string") {
-        throw new DurableActionDefect(node.id, {
-          name: "MemoKeyDefect",
-          message: `${node.actionId} memo key must return a string`
-        })
-      }
-      const memoKey = digest({
-        actionId: node.actionId,
-        actionVersion: node.actionVersion,
-        actionContractDigest: node.actionContractDigest,
-        implementationDigest: provider.implementationDigest,
-        policyDigest: provider.policyDigest,
-        target: route.policy.target,
-        explicitKey
-      })
+      const memoKey = reuseIdentity!.key
       const hit = this.store.memoGet(reuse.scope, reuse.generation, memoKey)
       if (hit !== undefined) {
         const checked = this.validateActionSuccess(node, hit)
         return this.adoptCacheHit(node, checked, memoAdoptionSource(reuse.scope, reuse.generation, memoKey), context)
       }
-      reuseIdentity = { kind: "memo", key: memoKey, inputDigest }
     } else if (reuse.kind === "content") {
-      const contentKey = digest({
-        actionId: node.actionId,
-        actionVersion: node.actionVersion,
-        actionContractDigest: node.actionContractDigest,
-        input,
-        implementationDigest: provider.implementationDigest,
-        policyDigest: provider.policyDigest,
-        dependencyDigests: provider.dependencyDigests,
-        target: route.policy.target,
-        invalidationSalt: reuse.invalidationSalt ?? ""
-      })
+      const contentKey = reuseIdentity!.key
       let hit: JsonValue | undefined
       try {
         hit = this.store.contentGet(contentKey, inputDigest)
@@ -1855,7 +1840,6 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         const checked = this.validateActionSuccess(node, hit)
         return this.adoptCacheHit(node, checked, contentAdoptionSource(contentKey), context)
       }
-      reuseIdentity = { kind: "content", key: contentKey, inputDigest }
     }
 
     while (true) {

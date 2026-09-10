@@ -1,5 +1,5 @@
 import type { CompiledFlow, DurableAction } from "./authoring.ts"
-import { validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
+import { validateDeploymentManifestForContract, validatePlanTemplate } from "./artifact.ts"
 import {
   allPlanNodes,
   assertJson,
@@ -7,6 +7,7 @@ import {
   decodeCanonicalJson,
   fanOutSteps,
   type ActionRouteManifest,
+  type ActionDescriptor,
   type ActionImplementationContract,
   type DeploymentManifest,
   deepFreeze,
@@ -21,7 +22,8 @@ import {
   type WorkerPoolManifest
 } from "./ir.ts"
 import { ActionFailure } from "./authoring.ts"
-import { decodeWorkerExit, validateDurableValue } from "./schema.ts"
+import { buildBodyDeployment, type BuiltBodyDeployment, type ExecutableFlow } from "./body-deployment.ts"
+import { decodeWorkerExit, materializeDurableValue, validateDurableValue } from "./schema-runtime.ts"
 import { childDeploymentId } from "./site-id.ts"
 import {
   assertActionImplementationContractMatchesAction,
@@ -360,6 +362,9 @@ export interface BuiltDeployment<Input = unknown, Success = unknown> {
   readonly childDeployments: ReadonlyMap<string, BuiltDeployment<unknown, unknown>>
 }
 
+/** Runtime routing is independent of the coordinator's executable representation. */
+export type DeploymentAssets = Pick<BuiltDeployment, "manifest" | "providers" | "pools" | "bundles">
+
 const issuedDeployments = new WeakSet<object>()
 
 /** @internal Signature authentication must not bless structural lookalikes. */
@@ -397,7 +402,7 @@ const policyFor = (provider: ActionProvider<any, any, any>, pool: WorkerPool): S
 
 const compareCanonicalStrings = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
-const buildDeployment = <Input, Success>(options: {
+const buildPlanDeployment = <Input, Success>(options: {
   readonly id: string
   readonly flow: CompiledFlow<Input, Success>
   readonly pools: readonly WorkerPool[]
@@ -440,6 +445,30 @@ const buildDeployment = <Input, Success>(options: {
       }
     }
   }
+  const assets = buildDeploymentAssets(deploymentId, plan, workerPools, nominalDescriptors)
+  // Legacy child artifacts keep their own deployment pins and route selection.
+  const childDeployments = new Map<string, BuiltDeployment<unknown, unknown>>()
+  for (const childPlan of plan.childFlows ?? []) {
+    childDeployments.set(childPlan.digest, buildPlanDeployment({
+      id: childDeploymentId(deploymentId, childPlan.digest),
+      flow: Object.freeze({ id: childPlan.flowId, version: childPlan.flowVersion,
+        plan: childPlan, artifactSource: "static-plan-artifact" as const }),
+      pools: workerPools
+    }))
+  }
+  const deployment = Object.freeze({ flow, ...assets, childDeployments: new ImmutableMap(childDeployments) })
+  issuedDeployments.add(deployment)
+  return deployment
+}
+
+/** @internal Callers must validate the executable before selecting its routes. */
+export const buildDeploymentAssets = (
+  deploymentId: string,
+  plan: { readonly digest: string; readonly actions: readonly ActionDescriptor[]; readonly requirements: readonly string[] },
+  workerPools: readonly WorkerPool[],
+  nominalDescriptors?: ReadonlyMap<string, ActionDescriptor>
+): DeploymentAssets => {
+  if (typeof deploymentId !== "string" || !deploymentId.trim()) throw new TypeError("Deployment id must be non-empty")
   const poolsById = new Map<string, WorkerPool>()
   const candidates = new Map<string, { provider: ActionProvider<any, any, any>; pool: WorkerPool }>()
   for (const workerPool of workerPools) {
@@ -608,38 +637,16 @@ const buildDeployment = <Input, Success>(options: {
     pools: poolManifests,
     routes
   }
-  const manifest: DeploymentManifest = validateDeploymentManifest(
+  const manifest: DeploymentManifest = validateDeploymentManifestForContract(
     deepFreeze({ ...unsigned, digest: digest(unsigned) }),
     plan
   )
-  // Every embedded child Plan becomes its own complete pinned deployment: own
-  // manifest, own coordinator digest, per-child tree-shaken provider table.
-  // Recursion covers grandchildren because a child Plan embeds its own
-  // children; plan validation already bounds the embedding depth.
-  const childDeployments = new Map<string, BuiltDeployment<unknown, unknown>>()
-  for (const childPlan of plan.childFlows ?? []) {
-    const childFlow: CompiledFlow<unknown, unknown> = Object.freeze({
-      id: childPlan.flowId,
-      version: childPlan.flowVersion,
-      plan: childPlan,
-      artifactSource: "static-plan-artifact" as const
-    })
-    childDeployments.set(childPlan.digest, buildDeployment({
-      id: childDeploymentId(deploymentId, childPlan.digest),
-      flow: childFlow,
-      pools: workerPools
-    }))
-  }
-  const deployment = Object.freeze({
-    flow,
+  return Object.freeze({
     manifest,
     providers: new ImmutableMap([...candidates].map(([actionId, candidate]) => [actionId, candidate.provider] as const)),
     pools: new ImmutableMap(poolsById),
-    bundles: new ImmutableMap(bundleByPool),
-    childDeployments: new ImmutableMap(childDeployments)
+    bundles: new ImmutableMap(bundleByPool)
   })
-  issuedDeployments.add(deployment)
-  return deployment
 }
 
 /**
@@ -662,6 +669,26 @@ export const collectPoolBundles = (
 
 export const Provider = { provide, provideChecked } as const
 export const Worker = { pool } as const
+
+type BuildDeploymentOptions<Flow> = {
+  readonly id: string
+  readonly flow: Flow
+  readonly pools: readonly WorkerPool[]
+}
+
+function buildDeployment<Input, Success>(options: BuildDeploymentOptions<ExecutableFlow<Input, Success>>): BuiltBodyDeployment<Input, Success>
+function buildDeployment<Input, Success>(options: BuildDeploymentOptions<CompiledFlow<Input, Success>>): BuiltDeployment<Input, Success>
+function buildDeployment<Input, Success>(
+  options: BuildDeploymentOptions<ExecutableFlow<Input, Success> | CompiledFlow<Input, Success>>
+): BuiltBodyDeployment<Input, Success> | BuiltDeployment<Input, Success> {
+  // An emitted body takes precedence over its optional compatibility Plan.
+  // Never silently downgrade a malformed executable artifact to that Plan.
+  if (options.flow && "body" in options.flow) {
+    return buildBodyDeployment({ ...options, flow: options.flow })
+  }
+  return buildPlanDeployment({ ...options, flow: options.flow })
+}
+
 export const Deployment = { build: buildDeployment } as const
 
 const hasExactKeys = (value: unknown, expected: readonly string[]): value is Readonly<Record<string, unknown>> =>
@@ -1065,7 +1092,7 @@ export class LocalWorker implements DurableWorker {
       { label: "in-process", route, signal, graceMs: WORKER_BUDGET_GRACE_MS },
       async (budgetSignal) => {
       try {
-        const output = await provider.implementation(input as any, {
+        const output = await provider.implementation(materializeDurableValue(route.schemas.input, input, "Action input") as any, {
           invocation,
           signal: budgetSignal
         })

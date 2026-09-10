@@ -8,20 +8,20 @@
  * and the untaken Action disappears from the Plan, from its requirements, and
  * from any signature over them.
  *
- * **The `.sm` half of this sentence expired on 2026-08-31.** It used to read
- * "the compiled `.sm` path refuses the same programs with
- * SMITHERS4106/4107/4111", and that is no longer true of any of those three
+ * **The `.vibe` half of this sentence expired on 2026-08-31.** It used to read
+ * "the compiled `.vibe` path refuses the same programs with
+ * VIBE4106/4107/4111", and that is no longer true of any of those three
  * codes: `MIGRATION-PLAN.md` step 11 withdrew the six walls, so a branch, a
  * loop, `!`, `||`, `??`, `===`, `typeof`, `Array.isArray` and `Object.is` over
- * a Flow input all COMPILE on the `.sm` path, on both backends, and thirteen
+ * a Flow input all COMPILE on the `.vibe` path, on both backends, and thirteen
  * `17-durable` cases moved with them.
  *
  * That inverts the relationship rather than dissolving it, and the inversion is
  * the argument for deleting this whole file rather than a reason to keep it:
- * these forms are legal Smithers, the authoring Proxy cannot express them, and
+ * these forms are legal VibeLang, the authoring Proxy cannot express them, and
  * a recording Proxy that constant-folds a legal program is exactly why
  * `defineFlow` stamps `provenance: "proxy-recorded"` and the signer refuses it.
- * What is NOT inverted, and what still has no `.sm` equivalent, is the handful
+ * What is NOT inverted, and what still has no `.vibe` equivalent, is the handful
  * of rows below that are about the Proxy's own accounting — the digest, the
  * root handles, the leaked state, the known-unclosed `||`/`??` boundary — and
  * the `signed-deployment.ts` refusal one row is the repository's only test of.

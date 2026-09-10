@@ -27,6 +27,7 @@ export interface DurableObjectField {
  * order so the descriptor itself is suitable for contract identity.
  */
 export type DurableTypeDescriptor =
+  | { readonly kind: "never" }
   | { readonly kind: "null" | "boolean" | "number" | "string" }
   | { readonly kind: "literal"; readonly value: DurableScalar }
   | { readonly kind: "array"; readonly element: DurableTypeDescriptor }
@@ -102,7 +103,7 @@ export interface SerializableProviderPolicy {
 }
 
 /**
- * Serializable evidence emitted by the Smithers whole-project row pass for one
+ * Serializable evidence emitted by the VibeLang whole-project row pass for one
  * concrete Action implementation. The in-memory compiler also authenticates
  * the object before `Provider.provideChecked` accepts it; this shape is the
  * frozen evidence retained in deployment artifacts.
@@ -110,7 +111,7 @@ export interface SerializableProviderPolicy {
 export interface ActionImplementationContract {
   readonly formatVersion: 2
   readonly source: "compiler-derived"
-  readonly compilerIdentity: "smithers-action-implementation-v2"
+  readonly compilerIdentity: "vibelang-action-implementation-v2"
   readonly implementationId: string
   readonly implementationVersion: string
   readonly actionId: string
@@ -396,7 +397,10 @@ export const decodeCanonicalJson = (bytes: Uint8Array | string, label = "canonic
   if (byteLength > 8 * 1024 * 1024) throw new TypeError(`${label} exceeds the canonical message size limit`)
   const text = typeof bytes === "string"
     ? bytes
-    : new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    // Preserve a leading BOM so JSON/canonical validation can refuse it. The
+    // default decoder silently removes it, admitting two byte encodings for
+    // one supposedly canonical (and potentially signed) artifact.
+    : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes)
   let parsed: unknown
   try {
     parsed = JSON.parse(text)

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { validateDurableValue } from "./schema.ts"
 import {
   Action,
   buildWorkerPoolBundle,
@@ -31,7 +32,7 @@ import {
 import { derivedSchema } from "./ir.ts"
 
 const representativeContract = `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 
 interface WorkInput {
   readonly value: number
@@ -58,7 +59,7 @@ export abstract class Work extends Action<
 
 const compileWork = (source = representativeContract): ActionDescriptor => {
   const result = compileActionContract(source, {
-    fileName: "contracts/work.sm",
+    fileName: "contracts/work.vibe",
     exportName: "Work",
     id: "test/schema/Work",
     version: 3
@@ -71,6 +72,18 @@ const descriptorOf = (schema: ActionDescriptor["inputSchema"]): DurableTypeDescr
   if (schema.shape !== "structural") throw new Error("expected structural schema")
   return schema.descriptor
 }
+
+test("an empty failure channel has an uninhabited durable codec", () => {
+  const compiled = compileActionContract(`import { Action } from "vibelang:flows"
+export class Total extends Action<(n: number) => Result<number, never>> {}`, {
+    fileName: "total.vibe", exportName: "Total", id: "total", version: 1,
+  })
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  expect(compiled.descriptor.errorSchema).toMatchObject({ shape: "structural", descriptor: { kind: "never" } })
+  for (const value of [null, false, 0, "", [], {}, { version: 1, identity: "forged", payload: {} }]) {
+    expect(() => validateDurableValue(compiled.descriptor.errorSchema, value)).toThrow("never")
+  }
+})
 
 test("checker-derived Action contracts are deterministic and type-sensitive", () => {
   const first = compileWork()
@@ -111,36 +124,36 @@ test("checker-derived Action contracts are deterministic and type-sensitive", ()
 
 test("Action recognition follows the compiler-owned import rather than spelling", () => {
   const aliased = compileActionContract(`
-    import { Action as DurableAction } from "smithers:flows"
+    import { Action as DurableAction } from "vibelang:flows"
     interface Input { value: boolean | null }
     interface Output { value: string }
     class Failure extends Error { declare readonly code: "failed" }
     export abstract class Renamed extends DurableAction<(input: Input) => Result<Output, Failure>> {}
-  `, { fileName: "alias.sm", exportName: "Renamed", id: "test/Renamed", version: 1 })
+  `, { fileName: "alias.vibe", exportName: "Renamed", id: "test/Renamed", version: 1 })
   expect(aliased.ok).toBe(true)
 
   const namespaced = compileActionContract(`
-    import * as Flows from "smithers:flows"
+    import * as Flows from "vibelang:flows"
     class Failure extends Error {}
     export abstract class Namespaced extends Flows.Action<(input: string) => Result<number, Failure>> {}
-  `, { fileName: "namespace.sm", exportName: "Namespaced", id: "test/Namespaced", version: 1 })
+  `, { fileName: "namespace.vibe", exportName: "Namespaced", id: "test/Namespaced", version: 1 })
   expect(namespaced.ok).toBe(true)
 
   const impostor = compileActionContract(`
     class Action<Signature> {}
     class Failure extends Error {}
     export abstract class Renamed extends Action<(input: string) => Result<string, Failure>> {}
-  `, { fileName: "impostor.sm", exportName: "Renamed", id: "test/Renamed", version: 1 })
+  `, { fileName: "impostor.vibe", exportName: "Renamed", id: "test/Renamed", version: 1 })
   expect(impostor.ok).toBe(false)
   if (impostor.ok) throw new Error("expected compiler identity failure")
-  expect(impostor.diagnostics[0].code).toBe("SMITHERS4202")
+  expect(impostor.diagnostics[0].code).toBe("VIBE4202")
 
   const resultImpostor = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     type Result<A, E> = { success: A; failure: E }
     class Failure extends Error {}
     export abstract class Renamed extends Action<(input: string) => Result<number, Failure>> {}
-  `, { fileName: "result-impostor.sm", exportName: "Renamed", id: "test/Renamed", version: 1 })
+  `, { fileName: "result-impostor.vibe", exportName: "Renamed", id: "test/Renamed", version: 1 })
   expect(resultImpostor.ok).toBe(false)
   if (resultImpostor.ok) throw new Error("expected Result identity failure")
   expect(resultImpostor.diagnostics[0].message).toContain("must return Result")
@@ -162,55 +175,55 @@ test("non-durable boundary types fail closed with bounded source diagnostics", (
   ]
   for (const [input, expected] of cases) {
     const result = compileActionContract(`
-      import { Action } from "smithers:flows"
+      import { Action } from "vibelang:flows"
       interface Box<T> { readonly value: T }
       interface Recursive { readonly next?: Recursive }
       class Context {}
       class Clock extends Context { now(): number { return 0 } }
       class Failure extends Error {}
       export abstract class Unsafe extends Action<(input: ${input}) => Result<string, Failure>> {}
-    `, { fileName: `unsafe-${expected}.sm`, exportName: "Unsafe", id: "test/Unsafe", version: 1 })
+    `, { fileName: `unsafe-${expected}.vibe`, exportName: "Unsafe", id: "test/Unsafe", version: 1 })
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error(`expected ${input} to fail`)
-    expect(result.diagnostics[0].code).toBe("SMITHERS4203")
+    expect(result.diagnostics[0].code).toBe("VIBE4203")
     expect(result.diagnostics[0].message).toContain(expected)
     expect(result.diagnostics[0].line).toBeGreaterThan(0)
     expect(result.diagnostics[0].column).toBeGreaterThan(0)
   }
 
   const nestedReturn = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     class Failure extends Error {}
     export abstract class Unsafe extends Action<
       (input: string) => Promise<Promise<Result<string, Failure>>>
     > {}
-  `, { fileName: "nested-return.sm", exportName: "Unsafe", id: "test/Unsafe", version: 1 })
+  `, { fileName: "nested-return.vibe", exportName: "Unsafe", id: "test/Unsafe", version: 1 })
   expect(nestedReturn.ok).toBe(false)
   if (nestedReturn.ok) throw new Error("expected nested return Promise to fail")
   expect(nestedReturn.diagnostics[0].message).toContain("nested Promise")
 
   const infallible = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     export abstract class Plain extends Action<(input: string) => string> {}
-  `, { fileName: "plain.sm", exportName: "Plain", id: "test/Plain", version: 1 })
+  `, { fileName: "plain.vibe", exportName: "Plain", id: "test/Plain", version: 1 })
   expect(infallible.ok).toBe(false)
   if (infallible.ok) throw new Error("expected bounded infallible Action form to fail")
   expect(infallible.diagnostics[0].message).toContain("must return Result")
 
   const generic = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     class Failure extends Error {}
     export abstract class Generic<T> extends Action<(input: T) => Result<string, Failure>> {}
-  `, { fileName: "generic.sm", exportName: "Generic", id: "test/Generic", version: 1 })
+  `, { fileName: "generic.vibe", exportName: "Generic", id: "test/Generic", version: 1 })
   expect(generic.ok).toBe(false)
   if (generic.ok) throw new Error("expected generic Action form to fail")
   expect(generic.diagnostics[0].message).toContain("generic")
 
   const structuralErrorImpostor = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     class LooksLikeError { name = "LooksLikeError"; message = "not nominal" }
     export abstract class Unsafe extends Action<(input: string) => Result<string, LooksLikeError>> {}
-  `, { fileName: "error-impostor.sm", exportName: "Unsafe", id: "test/Unsafe", version: 1 })
+  `, { fileName: "error-impostor.vibe", exportName: "Unsafe", id: "test/Unsafe", version: 1 })
   expect(structuralErrorImpostor.ok).toBe(false)
   if (structuralErrorImpostor.ok) throw new Error("expected structural Error impostor to fail")
   expect(structuralErrorImpostor.diagnostics[0].message).toContain("does not extend Error")
@@ -220,32 +233,32 @@ test("descriptor depth, node, field, and union budgets fail deterministically", 
   const nested = ["interface Depth0 { readonly value: string }"]
   for (let index = 1; index < 70; index++) nested.push(`interface Depth${index} { readonly next: Depth${index - 1} }`)
   const deep = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     ${nested.join("\n")}
     class Failure extends Error {}
     export abstract class Deep extends Action<(input: Depth69) => Result<string, Failure>> {}
-  `, { fileName: "deep.sm", exportName: "Deep", id: "test/Deep", version: 1 })
+  `, { fileName: "deep.vibe", exportName: "Deep", id: "test/Deep", version: 1 })
   expect(deep.ok).toBe(false)
   if (deep.ok) throw new Error("expected deep descriptor to fail")
   expect(deep.diagnostics[0].message).toContain("depth limit")
 
   const fields = Array.from({ length: 1_025 }, (_, index) => `readonly field${index}: string`).join(";")
   const wide = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     interface Wide { ${fields} }
     class Failure extends Error {}
     export abstract class WideAction extends Action<(input: Wide) => Result<string, Failure>> {}
-  `, { fileName: "wide.sm", exportName: "WideAction", id: "test/Wide", version: 1 })
+  `, { fileName: "wide.vibe", exportName: "WideAction", id: "test/Wide", version: 1 })
   expect(wide.ok).toBe(false)
   if (wide.ok) throw new Error("expected wide descriptor to fail")
   expect(wide.diagnostics[0].message).toContain("field limit")
 
   const variants = Array.from({ length: 129 }, (_, index) => JSON.stringify(`variant-${index}`)).join(" | ")
   const union = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     class Failure extends Error {}
     export abstract class UnionAction extends Action<(input: ${variants}) => Result<string, Failure>> {}
-  `, { fileName: "union.sm", exportName: "UnionAction", id: "test/Union", version: 1 })
+  `, { fileName: "union.vibe", exportName: "UnionAction", id: "test/Union", version: 1 })
   expect(union.ok).toBe(false)
   if (union.ok) throw new Error("expected wide union to fail")
   expect(union.diagnostics[0].message).toContain("variant limit")
@@ -255,28 +268,28 @@ test("typed synthetic Action declarations reject wrong inputs and projections", 
   const descriptor = compileWork()
   const binding = [{ moduleSpecifier: "test:typed-actions", exportName: "Work", descriptor }]
   const wrongInput = compileDurableSource(`
-    import { durable } from "smithers:flows"
+    import { durable } from "vibelang:flows"
     import { Work } from "test:typed-actions"
     export const Bad = durable(function Bad(input: { value: number }) {
       return Work.run({ value: "wrong", pair: ["x", true], modes: ["safe"] })
     })
-  `, { fileName: "wrong-input.sm", flowId: "test/WrongInput", flowVersion: 1, actions: binding })
+  `, { fileName: "wrong-input.vibe", flowId: "test/WrongInput", flowVersion: 1, actions: binding })
   expect(wrongInput.ok).toBe(false)
   if (wrongInput.ok) throw new Error("expected wrong Action input to fail")
-  expect(wrongInput.diagnostics[0].code).toBe("SMITHERS4100")
+  expect(wrongInput.diagnostics[0].code).toBe("VIBE4100")
   expect(wrongInput.diagnostics[0].message).toMatch(/string.*number|number.*string/)
 
   const wrongProjection = compileDurableSource(`
-    import { durable } from "smithers:flows"
+    import { durable } from "vibelang:flows"
     import { Work } from "test:typed-actions"
     export const Bad = durable(function Bad(input: { value: number }) {
       const output = Work.run({ value: input.value, pair: ["x", true], modes: ["fast"] })!
       return output.missing
     })
-  `, { fileName: "wrong-projection.sm", flowId: "test/WrongProjection", flowVersion: 1, actions: binding })
+  `, { fileName: "wrong-projection.vibe", flowId: "test/WrongProjection", flowVersion: 1, actions: binding })
   expect(wrongProjection.ok).toBe(false)
   if (wrongProjection.ok) throw new Error("expected wrong projection to fail")
-  expect(wrongProjection.diagnostics[0].code).toBe("SMITHERS4100")
+  expect(wrongProjection.diagnostics[0].code).toBe("VIBE4100")
   expect(wrongProjection.diagnostics[0].message).toContain("missing")
 })
 
@@ -478,27 +491,27 @@ test("structural contracts survive artifact validation, restart, and content reu
 
 test("static Flow input, success, and failure schemas are derived into Plan IR and enforced", async () => {
   const compiledAction = compileActionContract(`
-    import { Action } from "smithers:flows"
+    import { Action } from "vibelang:flows"
     interface Input { readonly value: number }
     interface Output { readonly value: number; readonly evidence: string }
     class Rejected extends Error { constructor(readonly code: string) { super(code) } }
     export abstract class Work extends Action<(input: Input) => Result<Output, Rejected>> {}
   `, {
-    fileName: "contracts/flow-work.sm",
+    fileName: "contracts/flow-work.vibe",
     exportName: "Work",
     id: "test/schema/FlowWork",
     version: 1
   })
   if (!compiledAction.ok) throw new Error(JSON.stringify(compiledAction.diagnostics))
   const compiledFlow = compileDurableSource(`
-    import { durable } from "smithers:flows"
+    import { durable } from "vibelang:flows"
     import { Work } from "test:flow-actions"
     interface Input { readonly value: number }
     export const Checked = durable(function Checked(input: Input) {
       return Work.run(input)!.value
     })
   `, {
-    fileName: "flows/checked.sm",
+    fileName: "flows/checked.vibe",
     flowId: "test/schema/CheckedFlow",
     flowVersion: 1,
     actions: [{
@@ -639,13 +652,13 @@ test("static Flow input, success, and failure schemas are derived into Plan IR a
   }
 
   const unsupported = compileDurableSource(`
-    import { durable } from "smithers:flows"
+    import { durable } from "vibelang:flows"
     import { Work } from "test:flow-actions"
     export const Unsafe = durable(function Unsafe(input: { callback: () => string }) {
       return Work.run({ value: 1 })!.value
     })
   `, {
-    fileName: "flows/unsafe.sm",
+    fileName: "flows/unsafe.vibe",
     actions: [{
       moduleSpecifier: "test:flow-actions",
       exportName: "Work",
@@ -654,23 +667,18 @@ test("static Flow input, success, and failure schemas are derived into Plan IR a
   })
   expect(unsupported.ok).toBe(false)
   if (unsupported.ok) throw new Error("expected non-durable Flow input to fail")
-  expect(unsupported.diagnostics[0]).toMatchObject({ code: "SMITHERS4110" })
+  expect(unsupported.diagnostics[0]).toMatchObject({ code: "VIBE4110" })
   expect(unsupported.diagnostics[0].message).toContain("executable")
 })
 
-test("the underivable-failure refusal is reachable and is what the standalone contract compiler does", () => {
-  // This guard is NOT dead code. `deriveActionContract` has two callers:
-  // `compileActionContract` here, which never sets `weakenUnderivableErrors`
-  // and therefore refuses every underivable failure channel, and the durable
-  // source compiler, which sets it and reaches the weakening only for a channel
-  // that is wholly the built-in `Error`.
+test("both contract entry points derive native Error codecs and refuse underivable channels", () => {
   const refusalFor = (errorType: string) => {
     const compiled = compileActionContract(`
-      import { Action } from "smithers:flows"
+      import { Action } from "vibelang:flows"
       class Failure extends Error {}
       class LooksLikeError { name = "LooksLikeError"; message = "not nominal" }
       export abstract class Work extends Action<(input: string) => Result<string, ${errorType}>> {}
-    `, { fileName: "underivable.sm", exportName: "Work", id: "test/Work", version: 1 })
+    `, { fileName: "underivable.vibe", exportName: "Work", id: "test/Work", version: 1 })
     return compiled.ok ? { ok: true as const, shape: compiled.descriptor.errorSchema.shape } : {
       ok: false as const,
       code: compiled.diagnostics[0].code,
@@ -678,14 +686,7 @@ test("the underivable-failure refusal is reachable and is what the standalone co
     }
   }
 
-  // The built-in `Error` is refused HERE even though the durable source
-  // compiler weakens it. The two entry points differ on exactly one channel,
-  // deliberately, and on nothing else.
-  const builtIn = refusalFor("Error")
-  expect(builtIn.ok).toBe(false)
-  if (builtIn.ok) throw new Error("expected the built-in Error channel to fail closed here")
-  expect(builtIn.code).toBe("SMITHERS4203")
-  expect(builtIn.message).toContain("must be an ordinary named class extending Error")
+  expect(refusalFor("Error")).toEqual({ ok: true, shape: "structural" })
 
   // `any` and a structural impostor are refused on BOTH entry points.
   const anyChannel = refusalFor("any")
@@ -702,11 +703,11 @@ test("the underivable-failure refusal is reachable and is what the standalone co
   expect(refusalFor("Failure")).toEqual({ ok: true, shape: "structural" })
 })
 
-const COLLIDE_FILE = "contracts/collide.sm"
+const COLLIDE_FILE = "contracts/collide.vibe"
 
 const compileCollisionContract = (body: string, id: string, fileName = COLLIDE_FILE) =>
   compileActionContract(
-    `import { Action } from "smithers:flows"\n${body}`,
+    `import { Action } from "vibelang:flows"\n${body}`,
     { fileName, exportName: "Work", id, version: 1 }
   )
 
@@ -739,14 +740,14 @@ const runDeclaredFailures = async (
     sandbox: "remote-http-poc",
     selections: [{ action: descriptor, contract }]
   })
-  const directory = mkdtempSync(join(tmpdir(), "smithers-schema-collision-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-schema-collision-"))
   try {
     const modulePath = join(directory, `${digest({ javascript: bundle.javascript }).slice(0, 16)}.mjs`)
     writeFileSync(modulePath, bundle.javascript, "utf8")
     const loaded = await import(modulePath)
     const outcomes: unknown[] = []
     for (const mode of modes) {
-      outcomes.push(await loaded.__smithersInvokeAction({
+      outcomes.push(await loaded.__vibelangInvokeAction({
         schemaVersion: 1,
         executionId: "schema-collision",
         nodeId: "n1",
@@ -812,12 +813,12 @@ export abstract class Work extends Action<(input: { mode: string }) => Result<{ 
     expect(compiled.ok, label).toBe(false)
     if (compiled.ok) throw new Error(`expected ${label} to fail closed`)
     expect(compiled.diagnostics.length, label).toBe(1)
-    expect(compiled.diagnostics[0].code, label).toBe("SMITHERS4203")
+    expect(compiled.diagnostics[0].code, label).toBe("VIBE4203")
     expect(compiled.diagnostics[0].message, label).toContain("shares durable failure identity")
     expect(compiled.diagnostics[0].file, label).toBe(COLLIDE_FILE)
     // Located, not file-scoped: the diagnostic lands on the Action signature
     // that declares the colliding failure channel, not on the whole file.
-    const lines = `import { Action } from "smithers:flows"\n${body}`.split("\n")
+    const lines = `import { Action } from "vibelang:flows"\n${body}`.split("\n")
     expect(lines[compiled.diagnostics[0].line - 1], label).toContain("extends Action")
   }
 
@@ -871,8 +872,8 @@ export function work(input: { mode: string }): Result<{ value: number }, NotFoun
   if (input.mode === "denied") throw new Denied("root")
   return { value: 1 }
 }`, ["missing", "denied", "ok"])).toEqual([
-    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}@NotFound@1`, payload: { path: "/tmp/x" } } },
-    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}@Denied@1`, payload: { who: "root" } } },
+    { kind: "failure", error: { version: 1, identity: `vibelang:${COLLIDE_FILE}@NotFound@1`, payload: { message: "/tmp/x", name: "Error", path: "/tmp/x" } } },
+    { kind: "failure", error: { version: 1, identity: `vibelang:${COLLIDE_FILE}@Denied@1`, payload: { message: "root", name: "Error", who: "root" } } },
     { kind: "success", value: { value: 1 } }
   ])
 })
@@ -924,15 +925,15 @@ export abstract class Work extends Action<(input: { mode: string }) => Result<{ 
   const first = compileCollisionContract(`
 class Failed extends Error { constructor(readonly code: string) { super(code) } }
 export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed>> {}`,
-    "test/schema/file-a/Work", "contracts/a.sm")
+    "test/schema/file-a/Work", "contracts/a.vibe")
   const second = compileCollisionContract(`
 class Failed extends Error { constructor(readonly code: string) { super(code) } }
 export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed>> {}`,
-    "test/schema/file-b/Work", "contracts/b.sm")
+    "test/schema/file-b/Work", "contracts/b.vibe")
   expect(first.ok && second.ok).toBe(true)
   if (!first.ok || !second.ok) throw new Error("expected both single-file contracts to compile")
-  expect(JSON.stringify(first.descriptor.errorSchema)).toContain("smithers:contracts/a.sm@Failed@1")
-  expect(JSON.stringify(second.descriptor.errorSchema)).toContain("smithers:contracts/b.sm@Failed@1")
+  expect(JSON.stringify(first.descriptor.errorSchema)).toContain("vibelang:contracts/a.vibe@Failed@1")
+  expect(JSON.stringify(second.descriptor.errorSchema)).toContain("vibelang:contracts/b.vibe@Failed@1")
   expect(first.descriptor.errorSchema.digest).not.toBe(second.descriptor.errorSchema.digest)
 })
 

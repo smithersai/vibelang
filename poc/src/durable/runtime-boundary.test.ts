@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path"
 /**
  * The runtime boundary of the published package, checked statically.
  *
- * `smthrs` ships two kinds of subpath. Most are runtime-neutral: a consumer
+ * `vibelang` ships two kinds of subpath. Most are runtime-neutral: a consumer
  * must be able to `import` them under Node. Three are declared Bun-only —
  * `./agent/bun`, `./durable/bun`, `./concurrency/bun` — and exist precisely so
  * that the Bun-only surface (SQLite persistence, the Bun worker host) stays
@@ -16,7 +16,7 @@ import { dirname, join, resolve } from "node:path"
  * Bun, where `bun:sqlite` loads; only `npm run verify:pack` builds a tarball and
  * imports every subpath under a real Node, and that gate costs minutes. A single
  * value import — `import { CoordinatorCrash } from "../durable/engine.ts"` from
- * `agent/sandbox.ts` — was enough to drag `bun:sqlite` onto `smthrs/agent` and
+ * `agent/sandbox.ts` — was enough to drag `bun:sqlite` onto `vibelang/agent` and
  * break it with `ERR_UNSUPPORTED_ESM_URL_SCHEME` under Node.
  *
  * So this walks the same graph from source, in milliseconds, and fails the same
@@ -133,8 +133,8 @@ const entries = Object.entries(packageJson.exports).flatMap(([name, value]) => {
   const target = typeof value === "string" ? value : value.default
   if (target === undefined) return []
   const source = sourceOfBuildOutput(target)
-  // `./compat/*.cjs` are hand-written shims over `typescript-js` with no module
-  // under `src/`; they name no relative edge and no runtime-specific specifier.
+  // Only source-backed entry points participate in this source graph walk.
+  // The native package root resolves to src/compiler.ts just like its subpath.
   if (source === undefined) return []
   return [{ name, source }]
 })
@@ -157,7 +157,7 @@ describe("published runtime boundary", () => {
         .map((violation) => `${violation.reason} ${violation.specifier} via ${violation.chain.join(" -> ")}`)
         .join("\n")
       expect(
-        violations.length === 0 ? "" : `smthrs${String(name).slice(1)} is runtime-neutral but reaches:\n${detail}`
+        violations.length === 0 ? "" : `vibelang${String(name).slice(1)} is runtime-neutral but reaches:\n${detail}`
       ).toBe("")
     }
   )
@@ -193,12 +193,14 @@ describe("coordinator failure identity survives the split", () => {
     expect(engine.CoordinatorCrash).toBe(leaf.CoordinatorCrash)
     expect(entry.CoordinatorCrash).toBe(leaf.CoordinatorCrash)
     for (const name of [
+      "CoordinatorUnavailable",
       "DurableActionDefect",
       "DurableActionFailure",
       "DurableExecutionAlreadyFailed",
       "DurableExecutionCancelled"
     ] as const) {
       expect(engine[name]).toBe(leaf[name])
+      expect(entry[name]).toBe(leaf[name])
     }
   })
 

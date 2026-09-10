@@ -35,7 +35,7 @@ const compile = (
 
 /** Leaf child Flow: the only place the signal contract exists. */
 const leaf = compile(`
-import { durable, waitSignal } from "smithers:flows"
+import { durable, waitSignal } from "vibelang:flows"
 
 throw new Error("the authored leaf Flow module must never execute")
 
@@ -43,43 +43,43 @@ export const Leaf = durable(function Leaf(input: { ticket: string }) {
   const decision = waitSignal<{ approved: boolean }>("leaf.approval")
   return { ticket: input.ticket, approved: decision.approved }
 })
-`, "flows/child-signal-leaf.sm", "test/childsignal/Leaf")
+`, "flows/child-signal-leaf.vibe", "test/childsignal/Leaf")
 
 const middle = compile(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Leaf } from "test:leaf-flow"
 
 export const Middle = durable(function Middle(input: { ticket: string }) {
   const leafResult = Leaf.run({ ticket: input.ticket })
   return { relayed: leafResult.approved }
 })
-`, "flows/child-signal-middle.sm", "test/childsignal/Middle", [
+`, "flows/child-signal-middle.vibe", "test/childsignal/Middle", [
   { moduleSpecifier: "test:leaf-flow", exportName: "Leaf", plan: leaf.plan }
 ])
 
 /** Depth 1: parent -> leaf. */
 const shallow = compile(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Leaf } from "test:leaf-flow"
 
 export const Shallow = durable(function Shallow(input: { ticket: string }) {
   const leafResult = Leaf.run({ ticket: input.ticket })
   return { approved: leafResult.approved }
 })
-`, "flows/child-signal-shallow.sm", "test/childsignal/Shallow", [
+`, "flows/child-signal-shallow.vibe", "test/childsignal/Shallow", [
   { moduleSpecifier: "test:leaf-flow", exportName: "Leaf", plan: leaf.plan }
 ])
 
 /** Depth 2: parent -> middle -> leaf. */
 const deep = compile(`
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Middle } from "test:middle-flow"
 
 export const Deep = durable(function Deep(input: { ticket: string }) {
   const middleResult = Middle.run({ ticket: input.ticket })
   return { relayed: middleResult.relayed }
 })
-`, "flows/child-signal-deep.sm", "test/childsignal/Deep", [
+`, "flows/child-signal-deep.vibe", "test/childsignal/Deep", [
   { moduleSpecifier: "test:middle-flow", exportName: "Middle", plan: middle.plan }
 ])
 
@@ -229,7 +229,7 @@ test("child signal addressing fails closed when the child is not attached to tha
 })
 
 test("two connections racing one child delivery converge on a single committed value", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-child-signal-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-child-signal-"))
   const filename = join(directory, "state.sqlite")
   try {
     const left = new DurableStore(filename)

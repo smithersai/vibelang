@@ -17,9 +17,9 @@ import {
   uniqueSorted,
   type ValueExpr
 } from "./ir.ts"
-import { validateActionContractDescriptor } from "./schema.ts"
+import { validateActionContractDescriptor } from "./schema-runtime.ts"
 
-export const DurableExpression: unique symbol = Symbol.for("smithers.poc.durable-expression") as never
+export const DurableExpression: unique symbol = Symbol.for("vibelang.poc.durable-expression") as never
 
 const plannedExpressions = new WeakMap<object, ValueExpr>()
 
@@ -168,8 +168,8 @@ const unsupportedComputation = (expression: ValueExpr, operation: string): never
  * on objects is reference identity, `typeof` reads only [[Call]], and
  * `Array.isArray`/`Object.is` read internal slots. `if (handle.ok)` therefore
  * takes the true arm, `handle && x` folds to `x`, and the untaken Action is
- * dropped from the Plan with no diagnostic. The compiled `.sm` path refuses the
- * same programs with SMITHERS4106/4107/4111; this is the authoring path's
+ * dropped from the Plan with no diagnostic. The compiled `.vibe` path refuses the
+ * same programs with VIBE4106/4107/4111; this is the authoring path's
  * equivalent refusal.
  *
  * It is not a trap — it is an accounting rule. Every *derived* symbolic value

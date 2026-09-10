@@ -59,7 +59,7 @@ const ENVELOPE_IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,255}$/;
 function compiledIdentity(fileName: string, className: string): string {
   const compiled = compileActionContract(
     `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class ${className} extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -70,7 +70,9 @@ export abstract class Work extends Action<
     { fileName, exportName: "Work", id: "test/Work", version: 1 },
   );
   if (!compiled.ok) throw new Error(compiled.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
-  return (compiled.descriptor.errorSchema.descriptor as { identity: string }).identity;
+  const schema = compiled.descriptor.errorSchema;
+  if (schema.shape !== "structural" || schema.descriptor.kind !== "error") throw new Error("expected an Error descriptor");
+  return schema.descriptor.identity;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,16 +117,16 @@ test("a spelled identity holds exactly two at-signs, which is what makes the par
   // third and the spelling would stop being injective; this is the cheapest
   // assertion that notices. The digest fallback has no separator to protect --
   // it holds only the trailing version marker -- so the two forms are counted
-  // apart rather than lumped together, and the `smithers.digest:` prefix is what
+  // apart rather than lumped together, and the `vibelang.digest:` prefix is what
   // tells them apart (the ninth unit is `.` in one and `:` in the other).
   for (const vector of VECTORS) {
-    const digested = vector.identity.startsWith("smithers.digest:");
+    const digested = vector.identity.startsWith("vibelang.digest:");
     expect([vector.file, [...vector.identity].filter((unit) => unit === "@").length])
       .toEqual([vector.file, digested ? 1 : 2]);
   }
   // Both forms are present, or this test is only measuring one of them.
-  expect(VECTORS.some((vector) => vector.identity.startsWith("smithers.digest:"))).toBe(true);
-  expect(VECTORS.some((vector) => vector.identity.startsWith("smithers:"))).toBe(true);
+  expect(VECTORS.some((vector) => vector.identity.startsWith("vibelang.digest:"))).toBe(true);
+  expect(VECTORS.some((vector) => vector.identity.startsWith("vibelang:"))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -133,20 +135,20 @@ test("a spelled identity holds exactly two at-signs, which is what makes the par
 
 test("two module names that used to normalize together receive distinct durable identities", () => {
   // RED BEFORE THE FIX. Every unit outside `[A-Za-z0-9._/@:+-]` was rewritten to
-  // `_`, so `a b.sm` and `a_b.sm` each declaring `Boom` both minted
-  // `smithers:a_b.sm_Boom@1` with zero diagnostics -- measured on both backends,
+  // `_`, so `a b.vibe` and `a_b.vibe` each declaring `Boom` both minted
+  // `vibelang:a_b.vibe_Boom@1` with zero diagnostics -- measured on both backends,
   // and reproduced independently here by compiling two contracts and reading the
   // error schema back out.
-  expect(compiledIdentity("a b.sm", "Boom")).toBe("smithers:a+0020b.sm@Boom@1");
-  expect(compiledIdentity("a_b.sm", "Boom")).toBe("smithers:a_b.sm@Boom@1");
-  expect(compiledIdentity("a b.sm", "Boom")).not.toBe(compiledIdentity("a_b.sm", "Boom"));
+  expect(compiledIdentity("a b.vibe", "Boom")).toBe("vibelang:a+0020b.vibe@Boom@1");
+  expect(compiledIdentity("a_b.vibe", "Boom")).toBe("vibelang:a_b.vibe@Boom@1");
+  expect(compiledIdentity("a b.vibe", "Boom")).not.toBe(compiledIdentity("a_b.vibe", "Boom"));
 });
 
 test("the whole family that folded onto one identity now mints one each", () => {
   // The collapse was not a two-name accident: EVERY unit outside the alphabet
   // mapped to the same `_`, so an entire family converged on
-  // `smithers:a_b.sm_Boom@1`. Five spellings, five identities.
-  const names = ["a b.sm", "a_b.sm", "a#b.sm", "a%b.sm", "a!b.sm"];
+  // `vibelang:a_b.vibe_Boom@1`. Five spellings, five identities.
+  const names = ["a b.vibe", "a_b.vibe", "a#b.vibe", "a%b.vibe", "a!b.vibe"];
   const identities = names.map((name) => compiledIdentity(name, "Boom"));
   expect(new Set(identities).size).toBe(names.length);
 });
@@ -160,15 +162,15 @@ test("a file name may not reach across the file/class separator", () => {
   // it. `#` -- the file/class separator the raw spelling used -- was itself
   // outside the accepted character set, so the normalizer destroyed the
   // SEPARATOR before it destroyed anything else. All three of these minted
-  // `smithers:a.sm_B_C@1`, and TWO of them contain no character outside the old
+  // `vibelang:a.vibe_B_C@1`, and TWO of them contain no character outside the old
   // alphabet at all, which is why a reversible escape alone would not have been
   // a fix: the separator also had to become one neither component can spell.
-  const pairs = [["a.sm", "B_C"], ["a.sm_B", "C"], ["a.sm#B", "C"]] as const;
+  const pairs = [["a.vibe", "B_C"], ["a.vibe_B", "C"], ["a.vibe#B", "C"]] as const;
   const identities = pairs.map(([file, className]) => compiledIdentity(file, className));
   expect(identities).toEqual([
-    "smithers:a.sm@B_C@1",
-    "smithers:a.sm_B@C@1",
-    "smithers:a.sm+0023B@C@1",
+    "vibelang:a.vibe@B_C@1",
+    "vibelang:a.vibe_B@C@1",
+    "vibelang:a.vibe+0023B@C@1",
   ]);
   expect(new Set(identities).size).toBe(pairs.length);
 });
@@ -179,38 +181,42 @@ test("a file name may not reach across the file/class separator", () => {
 
 test("two class names that used to normalize together receive distinct durable identities", () => {
   // RED BEFORE THE FIX. `$` is outside the accepted set, so `$Failed` and
-  // `_Failed` in one module both minted `smithers:<file>__Failed@1`. This is the
-  // pair the SMITHERS4203/SMITHERS4124 refusal was built around; with the
+  // `_Failed` in one module both minted `vibelang:<file>__Failed@1`. This is the
+  // pair the VIBE4203/VIBE4124 refusal was built around; with the
   // algorithm injective it is an ordinary, legal program, and the refusal
   // survives as a defensive invariant rather than as a filter.
-  expect(compiledIdentity("main.sm", "$Failed")).toBe("smithers:main.sm@+0024Failed@1");
-  expect(compiledIdentity("main.sm", "_Failed")).toBe("smithers:main.sm@_Failed@1");
+  expect(compiledIdentity("main.vibe", "$Failed")).toBe("vibelang:main.vibe@+0024Failed@1");
+  expect(compiledIdentity("main.vibe", "_Failed")).toBe("vibelang:main.vibe@_Failed@1");
 });
 
 test("two Error classes that used to collide now compile into one channel with two variants", () => {
   // The end the defect was supposed to reach: a channel naming BOTH of them.
-  // Before the fix this was refused as SMITHERS4203 -- correctly, given the
+  // Before the fix this was refused as VIBE4203 -- correctly, given the
   // algorithm -- and the refusal is what the corpus case
   // `17-durable/two-error-classes-whose-durable-identities-collide-are-rejected`
   // pinned. There is nothing wrong with the program; there was something wrong
   // with the identity.
   const compiled = compileActionContract(
     `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class $Failed extends Error { constructor(readonly code: string) { super(code) } }
 class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
 export abstract class Work extends Action<
   (input: { message: string }) => Result<{ done: string }, $Failed | _Failed>
 > {}
 `,
-    { fileName: "main.sm", exportName: "Work", id: "test/Work", version: 1 },
+    { fileName: "main.vibe", exportName: "Work", id: "test/Work", version: 1 },
   );
   expect(compiled.ok).toBe(true);
   if (!compiled.ok) return;
-  const variants = (compiled.descriptor.errorSchema.descriptor as { variants: { identity: string }[] }).variants;
-  expect(variants.map((variant) => variant.identity)).toEqual([
-    "smithers:main.sm@+0024Failed@1",
-    "smithers:main.sm@_Failed@1",
+  const schema = compiled.descriptor.errorSchema;
+  if (schema.shape !== "structural" || schema.descriptor.kind !== "union") throw new Error("expected an Error union");
+  expect(schema.descriptor.variants.map((variant) => {
+    if (variant.kind !== "error") throw new Error("expected an Error variant");
+    return variant.identity;
+  })).toEqual([
+    "vibelang:main.vibe@+0024Failed@1",
+    "vibelang:main.vibe@_Failed@1",
   ]);
 });
 
@@ -223,10 +229,10 @@ test("the class name survives the length bound instead of being cut off by it", 
   // is never the part that is dropped, and the fallback carries the full 256-bit
   // digest rather than the 48-hex-digit (192-bit) prefix of a digest of the pair
   // that the predecessor kept.
-  const fileName = `${"z".repeat(260)}.sm`;
+  const fileName = `${"z".repeat(260)}.vibe`;
   const left = compiledIdentity(fileName, "Left");
   const right = compiledIdentity(fileName, "Right");
-  expect(left.startsWith("smithers.digest:")).toBe(true);
+  expect(left.startsWith("vibelang.digest:")).toBe(true);
   expect(left.endsWith("@1")).toBe(true);
   expect(left).not.toBe(right);
   expect(ENVELOPE_IDENTITY.test(left)).toBe(true);
@@ -241,16 +247,16 @@ test("the class name survives the length bound instead of being cut off by it", 
  * the exact code that produced the defect rather than against a caricature of it.
  */
 function shippedAlgorithm(fileName: string, name: string): string {
-  return `smithers:${fileName}#${name}@1`.replace(/[^A-Za-z0-9._/@:+-]/g, "_");
+  return `vibelang:${fileName}#${name}@1`.replace(/[^A-Za-z0-9._/@:+-]/g, "_");
 }
 
 test("the compile-wide assigner passes every declaration under today's algorithm", () => {
   const identities = new DurableFailureIdentities();
-  expect(identities.claim("a.sm", "Boom")).toEqual({ identity: "smithers:a.sm@Boom@1" });
+  expect(identities.claim("a.vibe", "Boom")).toEqual({ identity: "vibelang:a.vibe@Boom@1" });
   // One declaration reaching the assigner twice is idempotent, not a collision.
-  expect(identities.claim("a.sm", "Boom")).toEqual({ identity: "smithers:a.sm@Boom@1" });
-  expect(identities.claim("b.sm", "Boom")).toEqual({ identity: "smithers:b.sm@Boom@1" });
-  expect(identities.claim("a.sm", "Bang")).toEqual({ identity: "smithers:a.sm@Bang@1" });
+  expect(identities.claim("a.vibe", "Boom")).toEqual({ identity: "vibelang:a.vibe@Boom@1" });
+  expect(identities.claim("b.vibe", "Boom")).toEqual({ identity: "vibelang:b.vibe@Boom@1" });
+  expect(identities.claim("a.vibe", "Bang")).toEqual({ identity: "vibelang:a.vibe@Bang@1" });
 });
 
 test("the compile-wide assigner would have refused every collision the shipped algorithm minted", () => {
@@ -265,17 +271,17 @@ test("the compile-wide assigner would have refused every collision the shipped a
   // is two calls, and therefore invisible to it.
   for (
     const [why, left, right] of [
-      ["charset collapse", ["a b.sm", "Boom"], ["a_b.sm", "Boom"]],
-      ["separator destruction", ["a.sm_B", "C"], ["a.sm", "B_C"]],
-      ["class-name collapse", ["main.sm", "$Failed"], ["main.sm", "_Failed"]],
+      ["charset collapse", ["a b.vibe", "Boom"], ["a_b.vibe", "Boom"]],
+      ["separator destruction", ["a.vibe_B", "C"], ["a.vibe", "B_C"]],
+      ["class-name collapse", ["main.vibe", "$Failed"], ["main.vibe", "_Failed"]],
     ] as const
   ) {
     // The shipped algorithm really did fold these two onto one string.
-    expect([why, shippedAlgorithm(...left)]).toEqual([why, shippedAlgorithm(...right)]);
+    expect([why, shippedAlgorithm(left[0], left[1])]).toEqual([why, shippedAlgorithm(right[0], right[1])]);
 
     const identities = new DurableFailureIdentities(shippedAlgorithm);
-    expect([why, identities.claim(...left).collidesWith]).toEqual([why, undefined]);
-    expect([why, identities.claim(...right).collidesWith]).toEqual([why, `${left[0]}:${left[1]}`]);
+    expect([why, identities.claim(left[0], left[1]).collidesWith]).toEqual([why, undefined]);
+    expect([why, identities.claim(right[0], right[1]).collidesWith]).toEqual([why, `${left[0]}:${left[1]}`]);
   }
 });
 
@@ -285,12 +291,12 @@ test("the compile-wide assigner accepts the same pairs under today's algorithm",
   const identities = new DurableFailureIdentities();
   for (
     const [file, className] of [
-      ["a b.sm", "Boom"],
-      ["a_b.sm", "Boom"],
-      ["a.sm_B", "C"],
-      ["a.sm", "B_C"],
-      ["main.sm", "$Failed"],
-      ["main.sm", "_Failed"],
+      ["a b.vibe", "Boom"],
+      ["a_b.vibe", "Boom"],
+      ["a.vibe_B", "C"],
+      ["a.vibe", "B_C"],
+      ["main.vibe", "$Failed"],
+      ["main.vibe", "_Failed"],
     ] as const
   ) {
     expect([file, className, identities.claim(file, className).collidesWith]).toEqual([file, className, undefined]);
@@ -303,11 +309,11 @@ test("the assigner still refuses the collision no escaping can remove", () => {
   // top-level one of the same name -- collide under any injective encoding
   // whatsoever. That family is why the refusal is not dead code: it is the
   // residual the algorithm cannot fix, and `schema.test.ts` exercises it through
-  // real namespaced sources at SMITHERS4203.
+  // real namespaced sources at VIBE4203.
   const identities = new DurableFailureIdentities();
-  expect(identities.claim("collide.sm", "Failed").collidesWith).toBeUndefined();
+  expect(identities.claim("collide.vibe", "Failed").collidesWith).toBeUndefined();
   // A second declaration of the same name in the same file reaches the assigner
   // as a distinct owner only when the caller says so; `claim` is keyed on the
   // pair, which is exactly why `schema.ts` keys its own map on the DECLARATION.
-  expect(durableFailureIdentity("collide.sm", "Failed")).toBe(durableFailureIdentity("collide.sm", "Failed"));
+  expect(durableFailureIdentity("collide.vibe", "Failed")).toBe(durableFailureIdentity("collide.vibe", "Failed"));
 });

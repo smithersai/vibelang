@@ -25,7 +25,7 @@ import {
 } from "./index.ts"
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
-  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-migration-"))
+  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-migration-"))
   const filename = join(directory, "state.sqlite")
   try {
     await body(filename)
@@ -438,23 +438,23 @@ test("migration is refused with the exact reason for every incompatible change",
 
 test("the Flow input contract and pinned suspension contracts are frozen across a migration", () => {
   const compile = (text: string, id: string) => {
-    const result = compileDurableSource(text, { fileName: `flows/${id}.sm.ts`, flowId: `test/${id}`, actions: [] })
+    const result = compileDurableSource(text, { fileName: `flows/${id}.vibe.ts`, flowId: `test/${id}`, actions: [] })
     if (!result.ok) throw new Error(JSON.stringify(result.diagnostics))
     return result
   }
   const narrow = compile(`
-    import { durable, waitSignal } from "smithers:flows"
+    import { durable, waitSignal } from "vibelang:flows"
     export const F = durable(function F(input: { requestId: string }) {
       return { requestId: input.requestId, decision: waitSignal<{ approved: boolean }>("approval.decided") }
     })
   `, "Contract")
   // Same Flow id, widened input contract.
   const widened = compileDurableSource(`
-    import { durable, waitSignal } from "smithers:flows"
+    import { durable, waitSignal } from "vibelang:flows"
     export const F = durable(function F(input: { requestId: string; note: string }) {
       return { requestId: input.requestId, decision: waitSignal<{ approved: boolean }>("approval.decided") }
     })
-  `, { fileName: "flows/Contract.sm.ts", flowId: "test/Contract", actions: [] })
+  `, { fileName: "flows/Contract.vibe.ts", flowId: "test/Contract", actions: [] })
   if (!widened.ok) throw new Error(JSON.stringify(widened.diagnostics))
   const narrowDeployment = Deployment.build({ id: "contract-a", flow: narrow.flow, pools: [] })
   const widenedDeployment = Deployment.build({ id: "contract-b", flow: widened.flow, pools: [] })
@@ -466,11 +466,11 @@ test("the Flow input contract and pinned suspension contracts are frozen across 
   // Re-typing a pinned signal payload is deliberately out of scope: the store
   // pins that contract once at initialization and migration never re-pins it.
   const retyped = compileDurableSource(`
-    import { durable, waitSignal } from "smithers:flows"
+    import { durable, waitSignal } from "vibelang:flows"
     export const F = durable(function F(input: { requestId: string }) {
       return { requestId: input.requestId, decision: waitSignal<{ approved: boolean; note: string }>("approval.decided") }
     })
-  `, { fileName: "flows/Contract.sm.ts", flowId: "test/Contract", actions: [] })
+  `, { fileName: "flows/Contract.vibe.ts", flowId: "test/Contract", actions: [] })
   if (!retyped.ok) throw new Error(JSON.stringify(retyped.diagnostics))
   const retypedDeployment = Deployment.build({ id: "contract-c", flow: retyped.flow, pools: [] })
   const reason = rejectionReason(() => {
@@ -1107,12 +1107,12 @@ test("a timer's committed wake deadline is durable evidence; an unscheduled time
  */
 const childContract = (exportName: string, id: string, version: number, body: string) => {
   const compiled = compileActionContract(`
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 class ${exportName}Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
 export abstract class ${exportName} extends Action<${body}> {}
-`, { fileName: `contracts/migration-${id}.sm`, exportName, id, version })
+`, { fileName: `contracts/migration-${id}.vibe`, exportName, id, version })
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   return compiled.descriptor
 }
@@ -1135,7 +1135,7 @@ const ChildSecond = Action.fromDescriptor<{ doubled: number }, { label: string }
 )
 
 const childFlowSource = `
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { First, Second } from "test:migration-actions"
 
 throw new Error("the authored child Flow module must never execute")
@@ -1147,7 +1147,7 @@ export const ChildPipeline = durable(function ChildPipeline(input: { value: numb
 `
 
 const parentFlowSource = `
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { ChildPipeline } from "test:migration-flows"
 
 throw new Error("the authored parent Flow module must never execute")
@@ -1159,7 +1159,7 @@ export const MigrationParent = durable(function MigrationParent(input: { value: 
 
 const compiledChildPlan = (() => {
   const compiled = compileDurableSource(childFlowSource, {
-    fileName: "flows/migration-child.sm",
+    fileName: "flows/migration-child.vibe",
     flowId: "test/migration/ChildPipeline",
     flowVersion: 1,
     actions: [
@@ -1173,7 +1173,7 @@ const compiledChildPlan = (() => {
 
 const compiledParentPlan = (() => {
   const compiled = compileDurableSource(parentFlowSource, {
-    fileName: "flows/migration-parent.sm",
+    fileName: "flows/migration-parent.vibe",
     flowId: "test/migration/Parent",
     flowVersion: 1,
     actions: [],

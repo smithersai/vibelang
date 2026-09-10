@@ -229,11 +229,11 @@ export class DenoIsolatedWorker implements DurableWorker {
     }
     const invocationBytes = canonicalJson(invocation)
     const javascript = [
-      `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,
-      `const __smithersHandler = (${verified.functionExpression});`,
-      "export default async function __smithersWorkerMain() {",
-      "  if (typeof __smithersHandler !== 'function') throw new TypeError('Worker artifact must evaluate to a function');",
-      "  return await Reflect.apply(__smithersHandler, undefined, [__smithersInvocation]);",
+      `const __vibelangInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,
+      `const __vibelangHandler = (${verified.functionExpression});`,
+      "export default async function __vibelangWorkerMain() {",
+      "  if (typeof __vibelangHandler !== 'function') throw new TypeError('Worker artifact must evaluate to a function');",
+      "  return await Reflect.apply(__vibelangHandler, undefined, [__vibelangInvocation]);",
       "}"
     ].join("\n")
     // DELIBERATE SECOND BOUND, not a stale copy of the budget: the sandbox
