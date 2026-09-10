@@ -12,7 +12,7 @@ import { compileActionContract } from "../../src/durable/schema.ts"
 import type { ActionDescriptor } from "../../src/durable/ir.ts"
 
 const actionSource = `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 
 type Request =
   | { readonly kind: "read"; readonly path: string }
@@ -40,7 +40,7 @@ function contract(
   source = actionSource,
 ): ActionDescriptor {
   const compiled = compileActionContract(source, {
-    fileName: "agent/host-operation.sm",
+    fileName: "agent/host-operation.vibe",
     exportName: "HostOperation",
     id,
     version: 1,
@@ -135,7 +135,7 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
     })).toThrow("signature does not exactly match")
 
     const legacy = defineFunction("(input: null) => Promise<null>", async () => null, undefined, DECLARED)
-    expect(declareCallableSurface({ legacy })).toContain("@smithersAgentContract legacy-json-only")
+    expect(declareCallableSurface({ legacy })).toContain("@vibelangAgentContract legacy-json-only")
   })
 
   test("invalid structural input is journaled as a call failure and never invokes the host", async () => {

@@ -1,6 +1,6 @@
-import { Context } from "smthrs/context"
-import { Panic, panic } from "smithers:exceptions"
-import { Layer } from "smthrs/provider"
+import { Context } from "vibelang/context"
+import { Panic, panic } from "vibelang:exceptions"
+import { Layer } from "vibelang/provider"
 import { trustedLog } from "./foreign.ts"
 
 class NotFound extends Error {

@@ -21,7 +21,7 @@ import {
   createProject,
 } from "./durable-demo.ts"
 
-const durableRoot = mkdtempSync(join(tmpdir(), "smithers-agent-e2e-"))
+const durableRoot = mkdtempSync(join(tmpdir(), "vibelang-agent-e2e-"))
 let databaseCount = 0
 
 function databasePath(name: string): string {
@@ -396,7 +396,7 @@ describe("Deno sandbox RPC lifecycle", () => {
   })
 
   test("detects an in-place runner rewrite even when size and mtime are restored", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-pin-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-pin-"))
     try {
       const runner = join(root, "deno-runner.js")
       await copyFile(join(import.meta.dir, "../../src/agent/deno-runner.js"), runner)
@@ -493,7 +493,7 @@ describe("Deno sandbox raw stdout accounting", () => {
   // SIGKILLed almost immediately (durationMs well under the timeout) and only a
   // few hundred KiB is ever buffered.
   test("kills a newline-free stdout flood at the byte layer, not at the timeout", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-raw-stdout-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-raw-stdout-"))
     try {
       const runner = join(root, "flood-runner.js")
       await writeFile(
@@ -589,7 +589,7 @@ describe("Deno sandbox runner path canonicalization", () => {
   ].join("\n")
 
   test("runs the pinned runner after the symlink it was named through is repointed", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-symlink-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-symlink-"))
     try {
       await writeFile(join(root, "honest.js"), runnerSource("HONEST"))
       await writeFile(join(root, "evil.js"), runnerSource("EVIL"))
@@ -615,7 +615,7 @@ describe("Deno sandbox runner path canonicalization", () => {
   })
 
   test("runs the pinned runner after a symlinked parent directory is repointed", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-dirlink-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-dirlink-"))
     try {
       await mkdir(join(root, "good"))
       await mkdir(join(root, "bad"))
@@ -644,7 +644,7 @@ describe("Deno sandbox runner path canonicalization", () => {
   // canonical path that names a different file than the caller's path opens is
   // refused rather than digested and executed.
   test("refuses a path whose canonical form is a different file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-dotdot-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-dotdot-"))
     try {
       await mkdir(join(root, "real"))
       await mkdir(join(root, "real", "sub"))
@@ -663,7 +663,7 @@ describe("Deno sandbox runner path canonicalization", () => {
   })
 
   test("rejects a runner path that names a directory", async () => {
-    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-slash-"))
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-slash-"))
     try {
       await writeFile(join(root, "runner.js"), runnerSource("HONEST"))
       expect(() => new DenoSubprocessSandbox({ runnerPath: `${join(root, "runner.js")}/` })).toThrow()

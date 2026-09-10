@@ -21,7 +21,7 @@ import {
 import type { HostCallIdentity, ModelCallIdentity } from "../../src/agent/bun.ts"
 import { FIRST_TURN_SOURCE, createDurableAgent, createProject } from "./durable-demo.ts"
 
-const root = mkdtempSync(join(tmpdir(), "smithers-agent-journal-"))
+const root = mkdtempSync(join(tmpdir(), "vibelang-agent-journal-"))
 let databaseCount = 0
 
 function databasePath(name: string): string {
@@ -190,7 +190,7 @@ describe("SQLite turn journal", () => {
 
 describe("tool to Action adapter", () => {
   const source = `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 
 type Request = { readonly text: string }
 type Reply = { readonly text: string }
@@ -210,7 +210,7 @@ export abstract class Echo extends Action<
       {
         source,
         exportName: "Echo",
-        id: "smthrs/agent-demo/Echo",
+        id: "vibelang/agent-demo/Echo",
         version: 3,
         description: "echo text",
         implementationId: "test/agent/echo-text",
@@ -222,8 +222,8 @@ export abstract class Echo extends Action<
       },
     )
 
-    expect(echo.identity.name).toBe("action/smthrs/agent-demo/Echo@3")
-    expect(echo.actionContract?.id).toBe("smthrs/agent-demo/Echo")
+    expect(echo.identity.name).toBe("action/vibelang/agent-demo/Echo@3")
+    expect(echo.actionContract?.id).toBe("vibelang/agent-demo/Echo")
     expect(echo.actionContract?.version).toBe(3)
     expect(echo.signature).toBe('(input: { readonly "text": string }) => Promise<{ readonly "text": string }>')
 
@@ -238,7 +238,7 @@ export abstract class Echo extends Action<
       {
         exposedAs: "echo",
         kind: "action",
-        actionId: "smthrs/agent-demo/Echo",
+        actionId: "vibelang/agent-demo/Echo",
         actionVersion: 3,
         flowId: null,
         flowVersion: null,
@@ -269,7 +269,7 @@ export abstract class Echo extends Action<
         {
           source,
           exportName: "Echo",
-          id: "smthrs/agent-demo/Echo",
+          id: "vibelang/agent-demo/Echo",
           version: 3,
           implementationId: "test/agent/echo",
           implementationVersion: "1",
@@ -532,7 +532,7 @@ export default async function turn(functions: Functions) {
  */
 describe("replayable host-call outcomes", () => {
   const source = `
-import { Action } from "smithers:flows"
+import { Action } from "vibelang:flows"
 
 type Request = { readonly path: string }
 type Reply = { readonly path: string; readonly contents: string }
@@ -553,7 +553,7 @@ export abstract class ReadFile extends Action<
       {
         source,
         exportName: "ReadFile",
-        id: "smthrs/agent-replay/ReadFile",
+        id: "vibelang/agent-replay/ReadFile",
         version: 1,
         implementationId: "test/agent/replay-read-file",
         implementationVersion: "1",
@@ -567,7 +567,7 @@ export abstract class ReadFile extends Action<
     "catch (e) { return { ok: false, name: e.name } } }"
 
   test("a protocol-violation teardown is not committed, and the restart re-invokes the host", async () => {
-    const runnerRoot = await mkdtemp(join(tmpdir(), "smithers-agent-teardown-"))
+    const runnerRoot = await mkdtemp(join(tmpdir(), "vibelang-agent-teardown-"))
     try {
       // A runner that answers the init handshake, issues one host call, and
       // then violates the protocol while that call is still in flight.

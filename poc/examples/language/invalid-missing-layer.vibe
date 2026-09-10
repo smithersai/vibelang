@@ -1,5 +1,5 @@
-import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context { abstract read(): string }
 abstract class Logger extends Context { abstract info(message: string): void }
