@@ -1,6 +1,17 @@
+# Third-party notices
+
+<!-- brand-gate: allow-start -->
+## Smithers Plan protocol
+
+The native keyed Plan implementation in `compiler/forkbridge/keyed_plan*.go.txt`
+adapts the algorithms in `plan/src/Plan.ts`, `StepKey.ts`, `KeyMaterial.ts` and
+`FileSet.ts` from [Smithers](https://github.com/smithersai/smithers/tree/6bcbaa2d03a10afe8fe59934dabe262f55f012e7)
+(revision `6bcbaa2d03a10afe8fe59934dabe262f55f012e7`). The accompanying interoperability
+fixtures record that revision's behavior. Its license follows.
+
 MIT License
 
-Copyright (c) 2026 VibeLang contributors
+Copyright (c) 2026 William Cory and the Smithers Flows contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,4 +30,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
+<!-- brand-gate: allow-end -->
