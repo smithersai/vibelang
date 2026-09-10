@@ -18,5 +18,5 @@
     "{\"n\":1}",
     "5"
   ],
-  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals.' docs/DECISIONS.md (Locked) restates it. 20-host-globals/universal-globals-stay-available covers four names; this covers the breadth an allowlist has to carry, because the failure mode of inverting a denylist is an allowlist that is too narrow, and a narrow one takes the whole `.sm` standard library (poc/src/data/**, poc/src/platform/**, poc/src/result/result.sm) with it. Every constructor, function property, and other property of ECMA-262 clause 19 that an author actually writes is exercised here."
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals.' docs/DECISIONS.md (Locked) restates it. 20-host-globals/universal-globals-stay-available covers four names; this covers the breadth an allowlist has to carry, because the failure mode of inverting a denylist is an allowlist that is too narrow, and a narrow one takes the whole `.vibe` standard library (poc/src/data/**, poc/src/platform/**, poc/src/result/result.vibe) with it. Every constructor, function property, and other property of ECMA-262 clause 19 that an author actually writes is exercised here."
 }

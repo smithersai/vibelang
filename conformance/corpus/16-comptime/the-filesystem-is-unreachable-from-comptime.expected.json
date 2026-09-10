@@ -1,0 +1,19 @@
+{
+  "title": "comptime evaluation cannot reach the filesystem through an imported host module binding",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 4,
+      "column": 30
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Determinism': comptime 'MUST NOT observe ambient ... filesystem state', and 'Comptime I/O': compiler-known imports and embedding are the sanctioned path; 'Arbitrary unavailable runtime I/O MUST NOT be performed merely because a call occurs beneath comptime.' The filesystem has no ambient global in any supported host, so the only spelling that could reach it from a comptime argument is a host-module import — which the evaluator must refuse to evaluate rather than execute.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports VIBE1510@1:30 (module-initialization trust on the node:fs import) BESIDE the comptime refusal VCT1004@4:30. The reference's staged acceptance reports the comptime refusal alone, because comptime lowering runs before VibeLang lowering and a comptime refusal short-circuits; the fork does not short-circuit its VibeLang stage on a comptime refusal, so the import-edge cascade leaks through.",
+    "doc": "conformance/README.md 'Acceptance is the frontend's own acceptance, in ordered stages': a comptime refusal is reported directly at its authored position; specification/comptime.mdx 'Determinism' is the rule under test."
+  }
+}

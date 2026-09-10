@@ -1,0 +1,6 @@
+{
+  "title": "Result.codec preserves values and compiler-derived nominal Error identities",
+  "expect": "output",
+  "stdout": ["42", "key"],
+  "notes": "DECISIONS.md Typed failures requires Result codecs; the adapter shares the canonical wire implementation and validates the declared nominal failure row."
+}

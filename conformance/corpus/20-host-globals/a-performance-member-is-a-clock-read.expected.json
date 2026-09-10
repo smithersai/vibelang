@@ -1,0 +1,6 @@
+{
+  "title": "a performance member is a monotonic clock read and needs a Clock capability",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "VIBE1602", "line": 2, "column": 16 }],
+  "notes": "specification/durable-execution.mdx, 'Flow Determinism': a body 'MUST NOT observe wall clock, monotonic clock ... except through a request its handler answers', and specification/compatibility.mdx, 'Host Globals': host-sensitive clock access must use capabilities, uniformly across all .vibe code. `performance.now()` is the monotonic spelling of the same hazard `Date.now()` carries, and the two must answer with the same code — a rule that charged only `Date` would leave the monotonic clock as effectful code that looks pure."
+}

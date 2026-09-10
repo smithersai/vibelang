@@ -1,0 +1,8 @@
+{
+  "title": "Action.run accepts its declared input and no separate schema argument",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "VIBE4113", "line": 8, "column": 17, "messageContains": "exactly one input argument" }
+  ],
+  "notes": "specification/durable-execution.mdx, 'Action': 'Source authors MUST NOT repeat Action types as separate schema arguments' — schemas are compiler-derived from the one typed signature. The obligation is discharged by the durable frontend's own arity rule: Action.run has no schema parameter, and a second argument is refused as VIBE4113 at the call rather than silently ignored. Silently ignoring it is the fail-open this case exists for — an author who believes the schema argument did something ships a program whose real schema is the derived one. A policy-bag second argument is also the most likely accidental spelling for an author arriving from other durable frameworks."
+}

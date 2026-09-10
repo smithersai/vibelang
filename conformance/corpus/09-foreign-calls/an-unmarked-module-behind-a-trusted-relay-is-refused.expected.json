@@ -3,7 +3,7 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1510",
+      "code": "VIBE1510",
       "line": 1,
       "column": 24,
       "messageContains": "@module and @throws {never}"

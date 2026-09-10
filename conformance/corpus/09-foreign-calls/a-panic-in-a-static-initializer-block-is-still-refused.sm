@@ -1,9 +1,0 @@
-import { panic } from "smithers:exceptions"
-
-export class Box {
-  static {
-    panic("no")
-  }
-}
-
-export function main(): string[] { return ["done"] }

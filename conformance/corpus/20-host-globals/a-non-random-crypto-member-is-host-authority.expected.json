@@ -1,0 +1,6 @@
+{
+  "title": "a crypto member that is not a randomness producer is host authority, not a random read",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "VIBE1601", "line": 2, "column": 18 }],
+  "notes": "specification/compatibility.mdx, 'Host Globals': platform-specific functionality must be represented by typed capabilities. `crypto.subtle` is a host cryptography engine, not a source of randomness, so it answers with the general host-authority code that `process` and `document` answer with (VIBE1601) rather than the Random code its siblings answer with (crypto-random-members-need-a-random-capability). The code split within one namespace is the observable half of the per-operation classification; the position is load-bearing because the general code is shared with every other host global."
+}

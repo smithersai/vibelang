@@ -1,0 +1,15 @@
+import { comptime } from "vibelang:comptime"
+import { Schema } from "vibelang:schema"
+
+type Signup = { email: string; age: number; verified: boolean }
+
+export const SignupSchema = comptime(Schema.derive<Signup>())
+
+export function main(): string[] {
+  const good = SignupSchema.parse({ email: "ada@example.com", age: 36, verified: true })
+  const bad = SignupSchema.parse({ email: "ada@example.com", age: "36", verified: true })
+  return [
+    good.match({ ok: (value) => `ok ${value.email} ${value.age}`, error: (error) => `bad ${error.pointer}` }),
+    bad.match({ ok: (value) => `ok ${value.email}`, error: (error) => `bad ${error.pointer} ${error.reason}` }),
+  ]
+}

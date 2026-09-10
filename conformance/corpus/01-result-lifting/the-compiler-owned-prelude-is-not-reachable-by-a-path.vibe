@@ -1,0 +1,5 @@
+import { Panic } from "./__vibelang_prelude.ts"
+
+export function main(): string[] {
+  return [typeof Panic]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "comptime evaluation cannot observe environment variables: the ambient process binding is unreachable",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 3,
+      "column": 29
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Determinism': comptime 'MUST NOT observe ambient ... environment variables'. Sibling of the-wall-clock-is-unreachable-from-comptime and randomness-is-unreachable-from-inside-a-comptime-loop, which pin two of the seven named ambient sources; this pins the environment-variable source through its only ambient spelling, `process.env`. Fail-open direction: an environment read that slips through makes a 'hermetic' compile-time value host-dependent, and every cache identity that includes it becomes wrong rather than stale."
+}

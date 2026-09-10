@@ -1,0 +1,25 @@
+{
+  "title": "an any-typed value at the durable boundary requires an explicit codec",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VIBE4199",
+      "line": 5,
+      "column": 29,
+      "messageContains": "no derivable durable contract"
+    },
+    {
+      "code": "VIBE1302",
+      "line": 6,
+      "column": 9
+    }
+  ],
+  "notes": "specification/durable-execution.mdx, 'Durable Boundary': 'any and unknown MUST require an explicit codec at the boundary.' An any-typed input defeats codec derivation — the compiler cannot describe what it will be asked to persist — so the Action has no derivable durable contract and the Manifest fails closed rather than minting a codec that accepts anything. Same observable as an-ephemeral-value-at-the-durable-boundary-is-rejected and deliberately so: the two programs differ only in WHY derivation fails (a function value there, an any type here), pinning that the boundary contract is checked for both of the sentence's halves rather than special-casing one. The messageContains carries the boundary rule apart from the call-graph rule for the reason recorded in that case's notes.\n\n2026-09-07 native body integration: the independent Manifest refuses the Flow at its root before executable extraction. The source checker also reports the unconsumed saved Result. Both diagnostics are now required; no ownership error is suppressed to reproduce the retired JavaScript compiler's single-diagnostic convention. The boundary-specific message remains mandatory. Standalone Plan emission still refuses earlier while deriving its structural input/Action contract, so its existing comparison marker remains.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "The SDK body's native Manifest reports VIBE4199@5:29 naming the underivable durable contract and VIBE1302@6:9 for the unconsumed Result. The standalone Plan profile reports VIBE4113@6:17 while deriving its structural contract and the same VIBE1302@6:9. Both refuse; the difference is the contract-validation stage, not permission to persist an ephemeral/any value. Measured 2026-09-07 after the compiler-library retirement.",
+    "doc": "specification/durable-execution.mdx 'Durable Boundary': 'any and unknown MUST require an explicit codec at the boundary' — both backends refuse; the declared code and position are the reference's."
+  }
+}

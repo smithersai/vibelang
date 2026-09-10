@@ -1,0 +1,12 @@
+{
+  "title": "comptime evaluation cannot observe mutable host state: the globalThis binding is unreachable",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 3,
+      "column": 29
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Determinism': comptime 'MUST NOT observe ambient ... mutable host state'. `globalThis` is the whole mutable host namespace in one binding — every property on it can be written by any code in the process — so a comptime read of it is a read of mutable host state whatever member it goes on to select."
+}

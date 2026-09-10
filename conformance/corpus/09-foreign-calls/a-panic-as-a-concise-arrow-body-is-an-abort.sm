@@ -1,9 +1,0 @@
-import { panic } from "smithers:exceptions"
-
-const fail = (message: string): never => panic(message)
-
-export function main(): string[] {
-  const values = ["ada"]
-  if (values.length === 0) fail("empty")
-  return values
-}

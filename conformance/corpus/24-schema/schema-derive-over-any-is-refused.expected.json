@@ -1,0 +1,17 @@
+{
+  "title": "deriving a schema over any or unknown is refused rather than silently widened",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1204",
+      "line": 4,
+      "column": 42
+    },
+    {
+      "code": "VCT1204",
+      "line": 5,
+      "column": 46
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Types as Values' read with specification/durable-execution.mdx, 'Durable Boundary': 'any and unknown MUST require an explicit codec at the boundary.' COVERAGE.md 22.2 names this the fail-open direction that matters: a silently widened any produces a validator that accepts anything, which is worse than no validator. Both spellings are declared because they are refused for different type flags (TypeFlags.Any and TypeFlags.Unknown) and a rule that caught only one would leave the other open. The declared columns are the type arguments themselves, which is where the refusal names what it cannot reify.\n\nGO MARKER RETIRED 2026-09-06 after measured XPASS: the native compiler now owns the schema module, derives bounded descriptors from checked Go types, and emits the shared validator with native branded Results. The existing stdout and exact VCT1204 type-argument positions pass unchanged. Both compiler checking and runtime execution remain required."
+}

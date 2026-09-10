@@ -1,0 +1,9 @@
+import { durable } from "vibelang:flows"
+
+export const Flow = durable((input: { key: string }) => {
+  return { value: input.key }
+}, { retries: 2 })
+
+export function main(): string[] {
+  return [typeof Flow]
+}

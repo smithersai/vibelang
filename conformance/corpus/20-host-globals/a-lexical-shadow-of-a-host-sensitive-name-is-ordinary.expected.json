@@ -1,0 +1,6 @@
+{
+  "title": "a lexical shadow of a host-sensitive name is an ordinary value: the rules key on the ambient binding, not the spelling",
+  "expect": "output",
+  "stdout": ["4", "7", "9", "fixed", "local"],
+  "notes": "specification/compatibility.mdx, 'Host Globals' and 'Determinism-Sensitive Members' name ambient host bindings; a local binding that happens to reuse the name is not one of them. Five shadows in one program cover every charged root the classification table and the determinism table reach: Math.random (Random), Date.now (Clock), performance.now (Clock), crypto.randomUUID (Random), and Promise.race (the Scheduler charge). A classifier keyed on spelling turns any of these into a false refusal or a false charge; the guard is exactly parallel to 19/retired-operator-words-as-members-stay-ordinary, which COVERAGE.md calls load-bearing at 1.7. This is the false-positive direction the refusal cases beside it cannot observe."
+}

@@ -1,0 +1,19 @@
+{
+  "title": "comptime evaluation cannot observe the network: the ambient fetch binding is unreachable",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 3,
+      "column": 29
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Determinism': comptime 'MUST NOT observe ambient ... network state', and 'Comptime I/O': 'Arbitrary unavailable runtime I/O MUST NOT be performed merely because a call occurs beneath comptime.' `fetch` is the one network entry point present in every supported host, so it is the ambient spelling this case pins.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports VIBE1403@3:7 (a started-Promise consumption charge against the binding that holds the comptime call) beside the comptime refusal VCT1004@3:29 — the same missing stage short-circuit as the-filesystem-is-unreachable-from-comptime's marker: the reference reports the comptime refusal alone.",
+    "doc": "conformance/README.md 'Acceptance is the frontend's own acceptance, in ordered stages'; specification/comptime.mdx 'Determinism' and 'Comptime I/O' are the rules under test."
+  }
+}

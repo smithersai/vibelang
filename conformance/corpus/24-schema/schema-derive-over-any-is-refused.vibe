@@ -1,0 +1,9 @@
+import { comptime } from "vibelang:comptime"
+import { Schema } from "vibelang:schema"
+
+const AnySchema = comptime(Schema.derive<any>())
+const UnknownSchema = comptime(Schema.derive<unknown>())
+
+export function main(): string[] {
+  return [typeof AnySchema, typeof UnknownSchema]
+}

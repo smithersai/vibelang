@@ -1,0 +1,17 @@
+import { Context } from "vibelang/context"
+import { durable, Action } from "vibelang:flows"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+class Save extends Action<(input: { clock: Clock }) => Result<{ ok: boolean }, Error>> {}
+
+export const Flow = durable((input: { clock: Clock }) => {
+  const saved = Save.run({ clock: input.clock })
+  return { ok: saved === undefined }
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

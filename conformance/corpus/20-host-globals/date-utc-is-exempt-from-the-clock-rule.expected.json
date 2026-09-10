@@ -1,0 +1,6 @@
+{
+  "title": "Date.UTC computes from its arguments alone, so it is exempt from the clock rule",
+  "expect": "output",
+  "stdout": ["1577836800000"],
+  "notes": "specification/compatibility.mdx, 'Host Globals': host-sensitive operations such as clock access must use capabilities, and the classification is per-OPERATION. `Date.UTC` is a pure function of its arguments — it reads neither the current time nor the host zone (its result is defined in UTC) — so it stays available exactly as `Date.parse` does. This is the second half of the exemption an-aliased-pure-member-key-needs-no-capability pins for `Date.parse`; the printed value is a fixed instant, so the case runs identically on every host. The refusal directions beside it are clock-access-needs-a-capability (`Date.now`) and a-date-instances-host-zone-members-are-refused."
+}

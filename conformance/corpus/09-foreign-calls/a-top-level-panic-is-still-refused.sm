@@ -1,5 +1,0 @@
-import { panic } from "smithers:exceptions"
-
-panic("no")
-
-export function main(): string[] { return ["done"] }

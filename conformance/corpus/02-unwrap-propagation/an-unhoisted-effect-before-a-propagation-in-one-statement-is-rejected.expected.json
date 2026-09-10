@@ -1,0 +1,8 @@
+{
+  "title": "a propagation preceded by another effect in the same statement preserves the authored effect order",
+  "expect": "output",
+  "stdout": [
+    "3"
+  ],
+  "notes": "Authored 2026-09-05 as the third (SA-1) residue's refusal certification — the only one of the three with no case — and flipped to output the same day when the reference's delimiter lowering retired all three at once. The printed 3 is bump() + scoreOf(\"a\")! = 1 + 2 evaluated left to right; the case's siblings are postfix-bang-as-a-nullish-right-operand-is-rejected and unwrap-in-a-loop-header-is-rejected, and the three flipped together, exactly as the previous expectations' own retirement sentences said they must."
+}

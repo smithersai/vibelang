@@ -3,12 +3,12 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1802",
+      "code": "VIBE1802",
       "line": 3,
       "column": 23
     }
   ],
   "modules": [
-    "higher-order-escape-is-rejected.mod.sm"
+    "higher-order-escape-is-rejected.mod.vibe"
   ]
 }

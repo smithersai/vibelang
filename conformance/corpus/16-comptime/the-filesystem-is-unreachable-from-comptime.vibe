@@ -1,0 +1,8 @@
+import { readFileSync } from "node:fs"
+import { comptime } from "vibelang:comptime"
+
+const hosts = comptime(() => readFileSync("/etc/hosts", "utf8"))()
+
+export function main(): string[] {
+  return [typeof hosts]
+}

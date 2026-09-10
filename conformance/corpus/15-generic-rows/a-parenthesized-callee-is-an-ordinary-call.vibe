@@ -1,0 +1,5 @@
+import { count } from "./a-parenthesized-callee-is-an-ordinary-call.mod.vibe"
+
+export function main(): string[] {
+  return [`${(count)()}`]
+}

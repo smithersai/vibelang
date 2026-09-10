@@ -1,0 +1,9 @@
+{
+  "title": "the crypto members that produce randomness need a Random capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "VIBE1603", "line": 2, "column": 14 },
+    { "code": "VIBE1603", "line": 3, "column": 17 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Host-sensitive operations such as clock and random access MUST still use capabilities', and specification/requirements.mdx, 'Platform Requirements': randomness routed through capabilities is the precondition that makes replay correct. `crypto.randomUUID` and `crypto.getRandomValues` are the two randomness producers on the one crypto namespace, and both must answer with the Random code `Math.random` answers with (random-access-needs-a-capability) — the classification is per-operation, not per-root, which is why this case and a-non-random-crypto-member-is-host-authority split one namespace across two codes."
+}

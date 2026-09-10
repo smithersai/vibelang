@@ -1,0 +1,6 @@
+export function main(): string[] {
+  const roll = Math["random" as string]()
+  const mark = performance["now" as string]()
+  const id = crypto["randomUUID" as string]()
+  return [`${roll}`, `${mark}`, `${id}`]
+}

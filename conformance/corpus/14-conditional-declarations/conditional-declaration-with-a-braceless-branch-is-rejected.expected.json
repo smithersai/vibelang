@@ -1,5 +1,5 @@
 {
   "title": "a braceless branch anywhere in the chain makes the binding scope textually unprovable and is refused",
   "expect": "diagnostics",
-  "diagnostics": [{ "code": "SMITHERS1717", "line": 8, "column": 3 }]
+  "diagnostics": [{ "code": "VIBE1717", "line": 8, "column": 3 }]
 }

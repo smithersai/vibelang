@@ -1,0 +1,16 @@
+class Missing extends Error {}
+
+function readValue(key: string): Result<number, Missing> {
+  if (key === "ok") {
+    return 1
+  }
+  throw new Missing()
+}
+
+function* stream(): Generator<number, void, undefined> {
+  yield readValue("ok")!
+}
+
+export function main(): string[] {
+  return ["unreachable"]
+}

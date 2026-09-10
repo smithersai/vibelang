@@ -1,0 +1,9 @@
+{
+  "title": "comptime(fn) returns a compile-time function and does not invoke it merely because it was passed",
+  "expect": "output",
+  "stdout": [
+    "cheap 5",
+    "spin was not invoked"
+  ],
+  "notes": "specification/comptime.mdx, 'Compiler-Recognized API': 'When the argument is a function, comptime(functionValue) MUST return a compile-time function; it MUST NOT invoke the function merely because it was passed to comptime.' This is the MUST NOT half that comptime-function-is-interpreted-during-compilation cannot pin: that case calls its compile-time function, so it never observes non-invocation. The observable here is the step budget an-unbounded-comptime-loop-exhausts-its-step-budget pins from the other side — `spin`'s body is exactly the loop that case refuses with VCT1012 when invoked, so a pass that invoked a merely-passed function fails this case with a diagnostic instead of output. The second, called compile-time function is the control showing evaluation itself still works in the same program."
+}

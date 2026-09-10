@@ -3,10 +3,10 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1001",
+      "code": "VIBE1001",
       "line": 7,
       "column": 25
     }
   ],
-  "notes": "specification/type-system.mdx, 'Absence': the earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the language; T | undefined with ordinary narrowing and optional chaining is the replacement model. This call form previously exposed a source-map backtracking crash, so both backends must still report SMITHERS1001 at the operator while leaving the nullable return type ordinary."
+  "notes": "specification/type-system.mdx, 'Absence': the earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the language; T | undefined with ordinary narrowing and optional chaining is the replacement model. This call form previously exposed a source-map backtracking crash, so both backends must still report VIBE1001 at the operator while leaving the nullable return type ordinary."
 }

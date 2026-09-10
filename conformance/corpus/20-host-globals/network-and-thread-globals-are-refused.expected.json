@@ -3,22 +3,22 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1601",
+      "code": "VIBE1601",
       "line": 2,
       "column": 19
     },
     {
-      "code": "SMITHERS1601",
+      "code": "VIBE1601",
       "line": 3,
       "column": 18
     },
     {
-      "code": "SMITHERS1601",
+      "code": "VIBE1601",
       "line": 4,
       "column": 18
     },
     {
-      "code": "SMITHERS1601",
+      "code": "VIBE1601",
       "line": 5,
       "column": 18
     }

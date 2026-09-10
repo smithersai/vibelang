@@ -1,0 +1,10 @@
+import { durable } from "vibelang:flows"
+
+export const Flow = durable(function again(input: { n: number }): { n: number } {
+  const next = again({ n: input.n })
+  return next
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

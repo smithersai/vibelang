@@ -1,0 +1,13 @@
+import { durable, Action } from "vibelang:flows"
+
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  let key = input.key
+  const found = Step.run({ key: key })!
+  return { value: found.value }
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

@@ -1,0 +1,12 @@
+import { durable, Action } from "vibelang:flows"
+
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable(function Build(input: { key: string }): Result<{ value: string }, Error> {
+  const found = Step.run({ key: input.key })!
+  return { value: found.value }
+})
+
+export function main(): string[] {
+  return [Flow.manifest.flowId]
+}

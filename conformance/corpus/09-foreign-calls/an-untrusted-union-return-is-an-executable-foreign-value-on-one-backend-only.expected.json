@@ -3,12 +3,12 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1301",
+      "code": "VIBE1301",
       "line": 5,
       "column": 23
     },
     {
-      "code": "SMITHERS1508",
+      "code": "VIBE1508",
       "line": 6,
       "column": 10
     }
@@ -16,12 +16,5 @@
   "typescript": [
     "throws-claims.ts"
   ],
-  "notes": "poc/src/language/README.md, `SMITHERS1508`: 'executable foreign provenance escapes through an unsupported higher-order/return/store boundary.' This case carries NO `@throws` marker anywhere, which is its whole job: it is the control for a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel, and it localizes that case's extra SMITHERS1508 to the pre-existing union handling in `containsForeignExecutableValue` rather than to the trust rule. Two cases that diverge for one shared reason are worth more than one case that diverges for a reason nobody isolated.",
-  "xfail": {
-    "backends": [
-      "go"
-    ],
-    "reason": "RE-MEASURED 2026-08-28, AFTER the foreign-lift must-consume seam landed, and the previous sentence no longer describes this program. It said the fork reports a single stock `TS2322@6:3` and NO Smithers diagnostic at all, because its checker refused the lowered return before either Smithers rule ran. THAT ORDERING DEFECT IS FIXED and the fix was not a new rule: routing the foreign lift through the must-consume ownership walk (`boundProducedKind` now reads the foreign table, so the lift is charged by checkBound/checkUnboundMustConsume instead of by a bare `else` in the row-collection pass) makes the fork reach its own rules on this program. It now reports `[SMITHERS1301@5:23]`, the first of the two declared diagnostics, at the declared position, and the TS2322 is gone. WHAT REMAINS is the SMITHERS1508@6:10 alone, and it is NOT an ordering question. Isolated with three probes that vary one thing at a time: the fork DOES report SMITHERS1508 for a bound-and-returned union (`const value = giveUnionPromise(); return value` — both backends agree, 6:10), so its union arm works. It fails only once an `await` is in the way, because `containsForeignExecutableValue` asks `GetTypeAtLocation` while the reference asks `semanticExpressionShape(...).successType ?? getTypeAtLocation(...)`; awaiting `string | Promise<string>` collapses the checker type to `string`, a primitive, and `foreignTypeCanExecute` is false for a primitive by design. THE MISMATCH RUNS BOTH WAYS, which is why it needs a case rather than an edit: measured on the same probes, a bound-and-returned `Promise<string>` from a `@throws {never}` binding makes the FORK report a SMITHERS1508@6:10 the reference does not. No corpus case pins that direction today. Closing this needs the fork to grow the lifted-success-type notion its analysis has no port of, and `foreignTypeCanExecute` is shared with `checkImplicitForeignInvocation` (SMITHERS1506), so the change moves two rules at once. BOTH BACKENDS STILL REFUSE THE PROGRAM, so this stays fail-closed. This case still does not retire with 09-foreign-calls/a-foreign-index-signature-read-…; it now shares its entire remaining cause with a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel, whose observation moved in the same edit and for the same reason.",
-    "doc": "specification/compatibility.mdx, \"Foreign Boundary\": the panic case is a property of calling an unannotated foreign runtime value, and a foreign `Promise` that leaves the function un-awaited carries that call out with it."
-  }
+  "notes": "poc/src/language/README.md, `VIBE1508`: 'executable foreign provenance escapes through an unsupported higher-order/return/store boundary.' This case carries NO `@throws` marker anywhere, which is its whole job: it is the control for a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel, and it localizes that case's extra VIBE1508 to the pre-existing union handling in `containsForeignExecutableValue` rather than to the trust rule. Two cases that diverge for one shared reason are worth more than one case that diverges for a reason nobody isolated.\n\n2026-09-07 repair: native analysis now follows the lifted foreign success shape through await and aliases. Await on Result<string | Promise<string>, Panic> cannot consume its nested Promise, so both profiles retain VIBE1508 alongside VIBE1301. Native unit tests also execute the valid propagate-then-await form and refuse implicit coercion of the unconsumed payload. The original diagnostic list is unchanged; the historical file identity is retained."
 }

@@ -3,7 +3,7 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1104",
+      "code": "VIBE1104",
       "line": 9,
       "column": 1
     }

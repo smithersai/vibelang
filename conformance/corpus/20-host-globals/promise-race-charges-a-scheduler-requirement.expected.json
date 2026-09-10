@@ -1,0 +1,8 @@
+{
+  "title": "Promise.race charges a Scheduler requirement, observed where the unsatisfied row reaches a top-level call",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "VIBE2102", "line": 5, "column": 14, "messageContains": "Scheduler" }
+  ],
+  "notes": "specification/compatibility.mdx, 'Determinism-Sensitive Members' row three: 'Promise.race, Promise.any MUST charge a Scheduler requirement, because their value IS arrival order', and the paragraph under the table: a charge publishes the capability into the enclosing row, which a caller discharges by providing a layer — no refusal, because specification/durable-execution.mdx 'Deterministic Scheduling' says the scheduler has no source-language surface. A charge is observable exactly as any unsatisfied requirement is: VIBE2102 at the top-level call, naming the capability. The messageContains carries the promise for the same reason it does on 05/an-unsatisfied-top-level-requirement-names-exactly-the-capability: code and position alone are satisfied by a refusal naming any capability, and a backend that charged Clock here would be a different rule passing this expectation. The site charges on a READ of the member (typeof), not only on a call, because the row is published by the site that reaches the member. Shared vector: compiler/ambient-charge-vectors.json promise-race-charges-scheduler, from which this program is taken byte-for-byte so the corpus and the vector file cannot drift apart silently."
+}

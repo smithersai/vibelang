@@ -1,9 +1,0 @@
-import { panic } from "smithers:exceptions"
-
-export class Missing extends Error {}
-
-export function main(): string[] {
-  if (false) throw new Missing()
-  const value = false ? "a" : panic("unreachable")
-  return [value]
-}

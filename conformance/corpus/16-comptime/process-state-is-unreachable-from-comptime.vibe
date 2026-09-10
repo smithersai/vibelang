@@ -1,0 +1,7 @@
+import { comptime } from "vibelang:comptime"
+
+const pid = comptime(() => process.pid)()
+
+export function main(): string[] {
+  return [String(pid)]
+}

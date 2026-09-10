@@ -1,0 +1,8 @@
+{
+  "title": "the specification's own Flow sample — a Result return annotation on the flow function — compiles and lowers",
+  "expect": "output",
+  "stdout": [
+    "a-result-return-annotation-on-a-flow-is-rejected.vibe#Flow"
+  ],
+  "notes": "The declared stdout is the same descriptor marker a-single-action-flow-lowers-to-a-static-plan prints, because the program is that case's minimal flow with the specification's return annotation added and nothing else — the pair isolates the annotation exactly. The case retires its js marker when Action.run is typed Result and the (SA-2) row closes; an XPASS here is that retirement announcing itself.\n\nIMPLEMENTED 2026-09-05: the checked Action.run type and executable Result-body lifting now accept this exact source on the reference too. main observes the stable Flow identity instead of requiring an optional legacy Plan. The executable-body regression suite runs this corpus source live and on replay and checks the annotated result. No Plan representation is a prerequisite for §Flow."
+}

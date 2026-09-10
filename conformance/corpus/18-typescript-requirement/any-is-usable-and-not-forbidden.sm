@@ -1,9 +1,0 @@
-// `any` is an escape hatch, and it is deliberately NOT forbidden in authored
-// .sm. It contributes no requirement: Smithers has no `TypeScript` requirement.
-function widen(value: any): string {
-  return `${value}`
-}
-
-export function main(): string[] {
-  return [widen(41), widen("Ada")]
-}

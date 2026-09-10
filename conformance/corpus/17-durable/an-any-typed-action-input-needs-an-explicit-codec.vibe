@@ -1,0 +1,12 @@
+import { durable, Action } from "vibelang:flows"
+
+class Save extends Action<(input: { data: any }) => Result<{ ok: boolean }, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  const saved = Save.run({ data: input.key })
+  return { ok: saved === undefined }
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

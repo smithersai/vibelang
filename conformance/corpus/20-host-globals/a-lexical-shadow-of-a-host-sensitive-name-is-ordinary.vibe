@@ -1,0 +1,8 @@
+export function main(): string[] {
+  const Math = { random: () => 4 }
+  const Date = { now: () => 7 }
+  const performance = { now: () => 9 }
+  const crypto = { randomUUID: () => "fixed" }
+  const Promise = { race: () => "local" }
+  return [`${Math.random()}`, `${Date.now()}`, `${performance.now()}`, crypto.randomUUID(), Promise.race()]
+}

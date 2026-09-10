@@ -3,12 +3,12 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1101",
+      "code": "VIBE1101",
       "line": 3,
       "column": 1
     },
     {
-      "code": "SMITHERS1504",
+      "code": "VIBE1504",
       "line": 4,
       "column": 10
     }
@@ -16,5 +16,5 @@
   "typescript": [
     "implicit-invocation-host.ts"
   ],
-  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" A tagged template is a *call*, not a coercion, so it lands on `SMITHERS1504` — poc/src/language/README.md: 'a call-like foreign form whose Result lowering is deferred is not accepted unless its resolved signature declares `@throws {never}`', and it names the tagged template as one of the three spellings that reach it beside `new Foreign(...)`. The tag never appears in call position, which is why it escaped a rule keyed on call expressions."
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" A tagged template is a *call*, not a coercion, so it lands on `VIBE1504` — poc/src/language/README.md: 'a call-like foreign form whose Result lowering is deferred is not accepted unless its resolved signature declares `@throws {never}`', and it names the tagged template as one of the three spellings that reach it beside `new Foreign(...)`. The tag never appears in call position, which is why it escaped a rule keyed on call expressions."
 }

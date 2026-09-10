@@ -3,7 +3,7 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS2102",
+      "code": "VIBE2102",
       "line": 11,
       "column": 28,
       "messageContains": "Clock"

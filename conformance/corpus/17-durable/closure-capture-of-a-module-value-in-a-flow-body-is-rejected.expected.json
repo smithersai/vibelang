@@ -1,0 +1,15 @@
+{
+  "title": "a Flow closure captures checked module values in its pinned executable body",
+  "expect": "output",
+  "notes": "specification/durable-execution.mdx, 'Flow' (SA-2): closure capture is in the set that 'MUST execute unchanged inside a Flow', and 'Flow Determinism' explicitly lifts the capture restriction: 'Capture of ordinary runtime values, including mutable local state and closed-over bindings, is unrestricted.' The shipped lowering still refuses it — 'unsupported runtime capture; only input and prior const bindings are available' (VIBE4110) — and this case certifies that refusal per the (SA-2) marker, to be retired when capture compiles. The captured value is passed directly as an Action input so the refusal is isolated to the capture: an operator over it would hit the durable expression walls first and pin a different rule.\n\nRETIRED 2026-09-05 by the implementation lane: §Flow (SA-2) requires ordinary locals, closures, calls, recursion and computed values, not Plan projections. The executable body compiler now uses checked transitive reachability and computes values before codec validation. The reference compiles and prints the declared descriptor marker. poc/src/durable/body-compiler.test.ts additionally executes the actual non-recursive corpus sources through live and replayed requests, checking their exact inputs and outputs with one worker call. The recursive fixture itself is intentionally not invoked; the same unit suite executes terminating recursion. The previous diagnostic is retained above as history, not a language restriction.",
+  "stdout": [
+    "effect-manifest"
+  ],
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "The Go backend still refuses this ordinary Flow program through its legacy Plan/capture or transitive-Manifest limitation. The reference executable-body path now implements it. This marker records a missing implementation, not permission to weaken the Flow contract.",
+    "doc": "specification/durable-execution.mdx §Flow (SA-2): ordinary locals, closures, recursion and checked calls MUST execute unchanged inside a Flow; the body is a program, not a static Plan."
+  }
+}

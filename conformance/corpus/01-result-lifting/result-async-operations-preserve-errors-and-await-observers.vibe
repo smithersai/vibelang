@@ -1,0 +1,55 @@
+export class Missing extends Error {}
+export class Unavailable extends Error {}
+
+function read(value: number): Result<number, Missing> {
+  if (value < 0) throw new Missing("missing")
+  return value
+}
+
+async function readAsync(value: number): Promise<Result<number, Missing>> {
+  return read(value)
+}
+
+function unavailable(): Result<number, Unavailable> {
+  throw new Unavailable("unavailable")
+}
+
+export async function main(): Promise<string[]> {
+  const seen: string[] = []
+  const chained = await read(2).andThenAsync(async (value): Promise<Result<number, Missing>> => {
+    return readAsync(value + 1)
+  })
+  // Observe each Result before a subsequent await can abandon this scope.
+  chained.isError()
+  const recovered = await read(-1).tryRecoverAsync(async (): Promise<Result<number, Missing>> => {
+    return readAsync(7)
+  })
+  recovered.isError()
+  const changed = read(-1).tryRecover(() => unavailable())
+  changed.isError()
+  const forwarded = read(-1).recover(() => unavailable())
+  forwarded.isError()
+  const observed = await read(4).tapAsync(async value => { seen.push(`ok:${value}`) })
+  observed.isError()
+  const observedError = await read(-1).tapErrorAsync(async error => { seen.push(error.message) })
+  observedError.isError()
+  const observedBoth = await read(5).tapBothAsync({
+    ok: async value => { seen.push(`both:${value}`) },
+    error: async error => { seen.push(`wrong:${error.message}`) },
+  })
+  observedBoth.isError()
+  const collected = await Result.allAsync([readAsync(6), read(8)])
+  collected.isError()
+  const partitioned = Result.partition([read(1), read(-1), read(2)])
+  const partitionedAsync = await Result.partitionAsync([readAsync(3), readAsync(-1), read(4)])
+  return [
+    String(chained.unwrapOr(0)), String(recovered.unwrapOr(0)),
+    changed.match({ ok: () => "wrong", error: error => error.message }),
+    forwarded.match({ ok: () => "nested", error: error => error.message }),
+    String(observed.unwrapOr(0)), String(observedError.unwrapOr(0)), String(observedBoth.unwrapOr(0)),
+    collected.unwrapOr([]).join(","),
+    partitioned[0].join(","), String(partitioned[1].length),
+    partitionedAsync[0].join(","), String(partitionedAsync[1].length),
+    ...seen,
+  ]
+}

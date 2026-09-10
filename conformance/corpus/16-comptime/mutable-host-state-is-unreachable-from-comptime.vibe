@@ -1,0 +1,7 @@
+import { comptime } from "vibelang:comptime"
+
+const host = comptime(() => globalThis)()
+
+export function main(): string[] {
+  return [typeof host]
+}

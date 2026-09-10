@@ -1,0 +1,8 @@
+{
+  "title": "an ICU-backed operation charges a Locale requirement, observed where the unsatisfied row reaches a top-level call",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "VIBE2102", "line": 5, "column": 15, "messageContains": "Locale" }
+  ],
+  "notes": "specification/compatibility.mdx, 'Determinism-Sensitive Members' row five: every ICU-backed operation 'MUST charge a Locale requirement' — a charge, not a refusal, because Locale has no source-language surface the author could be pointed at. String.prototype.localeCompare is the prototype half of the row: the receiver is a string literal, so there is no root identifier for a name-keyed walk to see, which is exactly the asymmetry that left row five unenforced while Date.now was refused. The messageContains names the capability because code and position alone are satisfied by a refusal naming the wrong one. intl-locale-formatting-is-not-a-clock-read remains the acceptance evidence that these members are refused nowhere: its charged functions are reached only through the exported main, so no unsatisfied row meets a top-level call there and it still compiles and runs. Shared vector: compiler/ambient-charge-vectors.json locale-compare-charges-locale, taken byte-for-byte."
+}

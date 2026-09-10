@@ -3,17 +3,17 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1301",
+      "code": "VIBE1301",
       "line": 5,
       "column": 23
     },
     {
-      "code": "SMITHERS1502",
+      "code": "VIBE1502",
       "line": 5,
       "column": 23
     },
     {
-      "code": "SMITHERS1508",
+      "code": "VIBE1508",
       "line": 6,
       "column": 10
     }
@@ -21,12 +21,5 @@
   "typescript": [
     "throws-claims.ts"
   ],
-  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" `string | Promise<string>` is a shape the narrow lowering predicate answers 'no' for and that can still reject, so the trust question is asked through a deliberately wider predicate than the one that drives lowering. The control that localizes the extra `SMITHERS1508` is 09-foreign-calls/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only: it carries no marker at all and produces the same divergence, so the divergence belongs to the pre-existing union handling and not to the trust rule.",
-  "xfail": {
-    "backends": [
-      "go"
-    ],
-    "reason": "RE-MEASURED 2026-08-28, AFTER the foreign-lift must-consume seam landed. The previous sentence said the fork reports `[SMITHERS1502@5:23]` AND NOTHING ELSE, omitting TWO of the reference's three diagnostics. ONE OF THE TWO IS NOW REPORTED: the missing `SMITHERS1301@5:23` came back on its own when the foreign lift was routed through the must-consume ownership walk (`boundProducedKind` now reads the foreign table), which was made for an unrelated case and closed this row as a side effect — the honest sign that the two were one cause. The fork now reports `[SMITHERS1502@5:23, SMITHERS1301@5:23]`. WHAT REMAINS is the SMITHERS1508@6:10 alone, and it is the same residual as an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only, which is now the ONLY thing the two share. Isolated with probes: the fork's union arm is not broken — `const value = giveUnionPromise(); return value` WITHOUT an await reports SMITHERS1508@6:10 on both backends. It fails only across an `await`, because `containsForeignExecutableValue` asks `GetTypeAtLocation` where the reference asks `semanticExpressionShape(...).successType ?? getTypeAtLocation(...)`, and awaiting `string | Promise<string>` collapses the checker type to the primitive `string`. The mismatch runs both ways — a bound-and-returned `Promise<string>` from a `@throws {never}` binding makes the FORK report a SMITHERS1508 the reference does not, a direction no corpus case pins — so closing it needs the fork to grow a lifted-success-type notion, not an edit. `foreignTypeCanExecute` is shared with `checkImplicitForeignInvocation` (SMITHERS1506), so that change would move two rules at once. BOTH BACKENDS STILL REFUSE THE PROGRAM.",
-    "doc": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\""
-  }
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" `string | Promise<string>` is a shape the narrow lowering predicate answers 'no' for and that can still reject, so the trust question is asked through a deliberately wider predicate than the one that drives lowering. The control that localizes the extra `VIBE1508` is 09-foreign-calls/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only: it carries no marker at all and produces the same divergence, so the divergence belongs to the pre-existing union handling and not to the trust rule.\n\n2026-09-07 repair: native foreignValueType derives the success shape from the actual foreign-lowering policy and follows its Promise/Result channels through await, propagation and aliases. Awaiting the synchronous lifted Result does not await a Promise in its union payload, so VIBE1508 is now retained on both profiles. Primitive awaited foreign Results remain usable; object payloads and implicit coercion of the unconsumed union remain refused. The diagnostic contract is unchanged."
 }

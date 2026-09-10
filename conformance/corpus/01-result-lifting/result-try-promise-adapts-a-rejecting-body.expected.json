@@ -3,5 +3,5 @@
   "expect": "output",
   "stdout": ["4", "panic"],
   "typescript": ["foreign.ts"],
-  "notes": "specification/failures.mdx, 'Promise Semantics': 'Promise rejection at an unannotated Smithers foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.' `fetchLength` carries no @throws claim and rejects on \"boom\". poc/src/language/README.md documents Result.tryPromise as the public adapter with the Panic-retaining type."
+  "notes": "specification/failures.mdx, 'Promise Semantics': 'Promise rejection at an unannotated VibeLang foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.' `fetchLength` carries no @throws claim and rejects on \"boom\". poc/src/language/README.md documents Result.tryPromise as the public adapter with the Panic-retaining type."
 }

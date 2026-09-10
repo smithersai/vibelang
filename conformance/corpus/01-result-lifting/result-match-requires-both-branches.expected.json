@@ -5,8 +5,9 @@
     {
       "code": "TS2345",
       "line": 11,
-      "column": 31
+      "column": 31,
+      "messageContains": "Property 'error' is missing"
     }
   ],
-  "notes": "specification/failures.mdx, 'Matching and Transformation': 'match MUST require both success and error branches.' EVIDENCE for the stock TypeScript code: the runtime's Result.match signature takes `{ readonly ok: (value: A) => Ok; readonly error: (error: E) => Failure }` (poc/src/runtime/result.ts), so an object literal carrying only `ok` is not assignable and the emitted TypeScript is rejected by the stock checker with TS2345 at the argument. specification/compatibility.mdx \u00a73 makes that the right mechanism: the requirement is expressed in ordinary TypeScript types, so ordinary TypeScript checking enforces it. The diagnostic is reached through the emit-check stage, which is why this case also exercises the second half of the frontend's two-stage acceptance."
+  "notes": "specification/failures.mdx, 'Matching and Transformation': 'match MUST require both success and error branches.' An object literal carrying only ok must be refused by ordinary TypeScript checking (specification/compatibility.mdx). 2026-09-07 native-only migration: the SDK now checks authored source with the same Go Result signatures as standalone emission. Both report TS2345 at 11:31, with the complete diagnostic chain naming the missing error branch. The removed frontend's generated-SDK TS2741 convention is not a language rule. This negative case requires an actual native source-check observation; accepted output cases still require emitted-code checking. No TS diagnostic aliases were introduced."
 }

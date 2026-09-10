@@ -1,0 +1,7 @@
+import { comptime } from "vibelang:comptime"
+
+const page = comptime(() => fetch("https://example.com"))()
+
+export function main(): string[] {
+  return [typeof page]
+}

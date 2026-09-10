@@ -1,0 +1,20 @@
+{
+  "title": "an abstract Action signature that does not spell Result has no failure channel, so propagating from its run leaves nothing to use",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VIBE4100",
+      "line": 7,
+      "column": 25,
+      "messageContains": "'never'"
+    }
+  ],
+  "notes": "specification/durable-execution.mdx, 'Action': 'An abstract Action signature has no implementation body from which to infer failures, so a fallible signature MUST state an explicit Result<A, E> or Promise<Result<A, E>> return type.' This is where the obligation has teeth: the author omits Result and then treats the Action as fallible with postfix !, and the compiler must not invent a failure channel for a signature that never declared one — the propagation over a channel-less run yields never, and the member read off it is refused. The messageContains distinguishes this refusal from the VIBE4100 that a-result-return-annotation-on-a-flow-is-rejected declares for a different sentence at a nearby position. The positive direction — an Action that does spell Result and propagates — runs in every positive case in this area.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork refuses at VIBE4113@6:17 (its own rule at the run call) where the reference lets the propagation produce never and refuses the member read as VIBE4100@7:25. Both refuse to invent a failure channel for a signature that never declared one; they disagree about where the refusal lands.",
+    "doc": "specification/durable-execution.mdx 'Action': 'a fallible signature MUST state an explicit Result<A, E> or Promise<Result<A, E>> return type' — both backends hold the line; the declared code and position are the reference's."
+  }
+}

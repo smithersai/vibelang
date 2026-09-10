@@ -1,0 +1,9 @@
+function raceKind(): string {
+  return typeof Promise.race
+}
+
+const kind = raceKind()
+
+export function main(): string[] {
+  return [kind]
+}

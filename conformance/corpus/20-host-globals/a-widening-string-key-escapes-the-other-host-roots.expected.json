@@ -1,0 +1,10 @@
+{
+  "title": "a key whose type widens to string escapes Math, performance, and crypto too, each charged for its own whole root",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "VIBE1603", "line": 2, "column": 16 },
+    { "code": "VIBE1602", "line": 3, "column": 16 },
+    { "code": "VIBE1601", "line": 4, "column": 14 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': the classification is per-operation, and a dynamically selected member names no operation, so the requirement is charged for the whole host object rather than escaping it. a-widening-string-key-escapes-the-whole-object pins the Date branch of this escape; these are the other three roots the same rule protects, and each must answer with its own root's code — Math with Random, performance with Clock, crypto with the general host-authority code — or the escape hatch is open on exactly the roots nobody probed. The declared columns are the root identifiers, which is the observable difference between charging the root and charging nothing."
+}

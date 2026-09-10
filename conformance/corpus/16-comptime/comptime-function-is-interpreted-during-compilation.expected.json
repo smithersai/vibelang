@@ -2,7 +2,8 @@
   "title": "a compile-time function is interpreted, not invoked at runtime: locals, assignment, for-of, while, break, continue, and container mutation all run during compilation",
   "expect": "output",
   "stdout": [
-    "{\"steps\":[3,2,1],\"total\":14,\"widths\":{\"alpha\":5,\"beta\":4,\"delta\":5}}",
+    "{\"widths\":{\"alpha\":5,\"beta\":4,\"delta\":5},\"total\":14,\"steps\":[3,2,1]}",
     "10"
-  ]
+  ],
+  "notes": "specification/comptime.mdx: comptime preserves runtime-observable own-key order. The authored return creates widths, total, then steps; canonical digest ordering must not reorder the emitted object. Corrected 2026-09-05 after review finding 6; no expected-failure exemption."
 }

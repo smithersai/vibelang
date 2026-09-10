@@ -1,0 +1,5 @@
+export function main(): string[] {
+  const id = crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(4))
+  return [id, `${bytes.length}`]
+}

@@ -1,0 +1,6 @@
+{
+  "title": "a durable(...) call given a second argument is rejected at the call",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "VIBE4103", "line": 3, "column": 21 }],
+  "notes": "specification/durable-execution.mdx, 'Compiler-Recognized API': the argument MUST be an inline function or a statically resolvable function — one argument, one Flow. COVERAGE.md 20.5 records this sibling branch of VIBE4103 — wrong argument count, reported at the CALL rather than at the argument — as the unwritten half of an-opaque-durable-argument-is-rejected, which pins the other branch. A policy-bag second argument is also the most likely accidental spelling for an author arriving from other durable frameworks, so the refusal must not silently ignore the extra argument."
+}

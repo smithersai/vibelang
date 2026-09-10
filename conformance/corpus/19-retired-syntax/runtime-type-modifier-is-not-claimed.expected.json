@@ -1,0 +1,6 @@
+{
+  "title": "a runtime type declaration modifier is not part of the grammar",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "VIBE1000", "line": 1, "column": 1 }],
+  "notes": "specification/comptime.mdx, 'Types as Values': 'The language MUST NOT require a separate runtime type declaration modifier', and specification/type-system.mdx, 'Reification': 'There MUST NOT be a separate runtime type declaration modifier.' COVERAGE.md 19.14 records this as the eleventh retired-syntax-shaped absence, the only one of the set with no case. The positive half — an ordinary type participates in comptime reification with no modifier — is 16/comptime-binding-used-in-type-position and 24-schema; this half pins that the modifier spelling is refused by the grammar gate (VIBE1000) rather than parsed as a modifier or silently read as an expression statement followed by an ordinary type alias, either of which would let the form creep in as accepted syntax."
+}

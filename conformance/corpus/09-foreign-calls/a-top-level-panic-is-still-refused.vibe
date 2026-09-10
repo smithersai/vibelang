@@ -1,0 +1,5 @@
+import { panic } from "vibelang:exceptions"
+
+panic("no")
+
+export function main(): string[] { return ["done"] }

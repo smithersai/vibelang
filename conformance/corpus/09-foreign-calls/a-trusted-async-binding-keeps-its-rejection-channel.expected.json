@@ -3,12 +3,12 @@
   "expect": "diagnostics",
   "diagnostics": [
     {
-      "code": "SMITHERS1101",
+      "code": "VIBE1101",
       "line": 3,
       "column": 1
     },
     {
-      "code": "SMITHERS1502",
+      "code": "VIBE1502",
       "line": 4,
       "column": 16
     }
@@ -16,5 +16,5 @@
   "typescript": [
     "throws-claims.ts"
   ],
-  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" The word that decides this case is REJECT. The marker is an opt-out for the CALL, and an `async` function that fails returns normally and rejects later, so `@throws {never}` describes a channel it cannot cover. It is refused rather than silently ignored (poc/src/language/README.md, `SMITHERS1502`: 'so an author can tell a believed claim from a dropped one'). The untrusted spelling of the same binding already charges Panic — 09-foreign-calls/foreign-rejection-becomes-panic — which is precisely what made the TRUSTED direction the fail-open one: adding a marker to a binding removed a channel the unmarked binding had."
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" The word that decides this case is REJECT. The marker is an opt-out for the CALL, and an `async` function that fails returns normally and rejects later, so `@throws {never}` describes a channel it cannot cover. It is refused rather than silently ignored (poc/src/language/README.md, `VIBE1502`: 'so an author can tell a believed claim from a dropped one'). The untrusted spelling of the same binding already charges Panic — 09-foreign-calls/foreign-rejection-becomes-panic — which is precisely what made the TRUSTED direction the fail-open one: adding a marker to a binding removed a channel the unmarked binding had."
 }

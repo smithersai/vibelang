@@ -1,0 +1,9 @@
+function compare(): string {
+  return `${"a".localeCompare("b")}`
+}
+
+const value = compare()
+
+export function main(): string[] {
+  return [value]
+}

@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const engine = crypto.subtle
+  return [typeof engine]
+}

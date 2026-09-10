@@ -1,0 +1,25 @@
+{
+  "title": "a capability crossing an Action persistence boundary is rejected: a service instance has no durable representation",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VIBE4199",
+      "line": 10,
+      "column": 29,
+      "messageContains": "no derivable durable contract"
+    },
+    {
+      "code": "VIBE1302",
+      "line": 11,
+      "column": 9
+    }
+  ],
+  "notes": "specification/durable-execution.mdx, 'Durable Boundary': 'Functions, capabilities, process handles, and other ephemeral values MUST be rejected unless they define an explicit durable representation', and 'Action': capabilities 'MUST NOT become explicit Action inputs or source-level context parameters' — a Clock in an Action's input type is both violations at once. This is the second named noun of the boundary sentence, pinned beside an-ephemeral-value-at-the-durable-boundary-is-rejected (a function value): the two derivation failures have different causes and a rule that special-cased function types would wave the service instance through. Effects.mdx 'The Journaling Classifier' is the same line read from the runtime side: a service is not codec-representable, so it is exactly what must never be asked to cross a persistence boundary. The capability rides the Flow's own input rather than a module-scope binding so the refusal is isolated from the closure-capture wall (VIBE4110), which fires first when the service arrives as a captured value.\n\n2026-09-07 native body integration: the independent Manifest refuses the Flow at its root before executable extraction. The source checker also reports the unconsumed saved Result. Both diagnostics are now required; no ownership error is suppressed to reproduce the retired JavaScript compiler's single-diagnostic convention. The boundary-specific message remains mandatory. Standalone Plan emission still refuses earlier while deriving its structural input/Action contract, so its existing comparison marker remains.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "The SDK body's native Manifest reports VIBE4199@10:29 naming the underivable durable contract and VIBE1302@11:9 for the unconsumed Result. The standalone Plan profile reports VIBE4110@10:30 while deriving its structural contract and the same VIBE1302@11:9. Both refuse; the difference is the contract-validation stage, not permission to persist an ephemeral/any value. Measured 2026-09-07 after the compiler-library retirement.",
+    "doc": "specification/durable-execution.mdx 'Durable Boundary': capabilities 'MUST be rejected unless they define an explicit durable representation' — both backends satisfy the MUST at different codes."
+  }
+}

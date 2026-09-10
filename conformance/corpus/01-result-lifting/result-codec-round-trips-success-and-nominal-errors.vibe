@@ -1,0 +1,18 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`missing:${key}`) }
+}
+
+function read(value: number): Result<number, Missing> {
+  if (value < 0) throw new Missing("key")
+  return value
+}
+
+export function main(): string[] {
+  const codec = Result.codec({ encode: (value: number) => value, decode: value => Number(value) }, [Missing])
+  const success = codec.decode(codec.encode(read(42)))
+  const failure = codec.decode(codec.encode(read(-1)))
+  return [
+    String(success.unwrapOr(0)),
+    failure.match({ ok: () => "wrong", error: error => error.match({ Missing: found => found.key }) }),
+  ]
+}

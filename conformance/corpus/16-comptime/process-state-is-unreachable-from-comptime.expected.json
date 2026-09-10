@@ -1,0 +1,12 @@
+{
+  "title": "comptime evaluation cannot observe process state: process identity is unreachable",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 3,
+      "column": 28
+    }
+  ],
+  "notes": "specification/comptime.mdx, 'Determinism': comptime 'MUST NOT observe ambient ... process state'. Distinct from the-environment-is-unreachable-from-comptime: `process.env` is the environment-variable source and `process.pid` is process state, two separately named rows of the same seven-source list. Both reach the evaluator through the same ambient root, so the pair also pins that the refusal is of the binding, not of one member."
+}

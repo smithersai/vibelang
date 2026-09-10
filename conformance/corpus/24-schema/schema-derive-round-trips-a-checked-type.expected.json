@@ -1,0 +1,9 @@
+{
+  "title": "a validator derived at comptime from an ordinary type accepts a conforming value and locates a violation",
+  "expect": "output",
+  "stdout": [
+    "ok ada@example.com 36",
+    "bad $.age expected number"
+  ],
+  "notes": "The corpus's first reach into vibelang:schema, which COVERAGE.md 22.1 records at zero cases. The declared stdout was measured through the shipped CLI rather than invented: the good half pins that the derived validator admits a conforming value with its typed shape intact, and the bad half pins that a violation is LOCATED (a pointer into the value, $.age) rather than merely refused. COVERAGE.md 22.3 records the same structural fact from the requirement side: a function deriving a schema carries the conservative TypeScript requirement, i.e. the derived value sits in the foreign bucket — which is exactly the seam this marker holds open until the runtime edge is trusted as compiler-owned.\n\nJS MARKER RETIRED 2026-09-05 after XPASS: the harness now preserves vibelang/schema-runtime through row analysis and resolves that exact seam during stock emit checking and execution. Its previous absolute-path rewrite caused the false foreign-boundary classification. Both checking stages still run, and the source runtime instance is shared with the harness. The compiler also distinguishes this validated schema factory from private Result/continuation hooks.\n\nGO MARKER RETIRED 2026-09-06 after measured XPASS: the native compiler now owns the schema module, derives bounded descriptors from checked Go types, and emits the shared validator with native branded Results. The existing stdout and exact VCT1204 type-argument positions pass unchanged. Both compiler checking and runtime execution remain required."
+}

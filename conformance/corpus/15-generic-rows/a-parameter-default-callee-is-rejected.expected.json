@@ -1,15 +1,11 @@
 {
-  "title": "a cross-module callee in a parameter default stays fail-closed because no requirement row is attributed to it",
-  "expect": "diagnostics",
-  "diagnostics": [
-    {
-      "code": "SMITHERS1802",
-      "line": 3,
-      "column": 38
-    }
+  "title": "a cross-module call in a parameter default carries the callee's requirement row",
+  "expect": "output",
+  "stdout": [
+    "0"
   ],
   "modules": [
-    "a-parameter-default-callee-is-rejected.mod.sm"
+    "a-parameter-default-callee-is-rejected.mod.vibe"
   ],
-  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. A parameter default is walked by neither the function-body pass nor the top-level passes, so the callee's requirement row is charged nowhere — measured, not assumed. The Go fork ACCEPTED this before 2026-08-25 while the reference refused it: a fork fail-open, now closed by making the fork ask whether the call site is analyzed rather than whether it looks syntactically like a call."
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" A parameter default executes inside its callee, so its calls contribute to that function's row. The called count function here is pure and the unchanged program prints 0. Measured 2026-09-07: native compile and execution succeed with stdout [\"0\"]; the legacy JS-labelled emitter still reports VIBE1802 at 3:38. Native unit tests additionally verify missing-provider rejection, provided execution, nested binding defaults, callbacks, methods, constructors, and preservation of the default's requirement in source-free published declarations. History: this case formerly required VIBE1802 because neither implementation attributed a default initializer's row; that safety wall was appropriate while the analysis was absent, not a language rule prohibiting defaults. The historical case id is retained.\n\n2026-09-07 retirement: the SDK-hosted path now uses the native lowerer, meeting this marker's declared emitter-migration retirement condition. Both profiles execute the unchanged source and print 0; no source or output expectation changed."
 }

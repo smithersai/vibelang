@@ -1,5 +1,0 @@
-export function main(): string[] {
-  const failed = false
-  const value: string = ["smithers"].join("")
-  return [!failed ? "ok" : "bad", String(!!value), String(value !== "typescript")]
-}

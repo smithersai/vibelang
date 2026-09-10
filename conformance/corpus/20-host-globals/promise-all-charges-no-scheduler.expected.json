@@ -1,0 +1,6 @@
+{
+  "title": "Promise.all charges nothing: every Promise member but race and any stays free",
+  "expect": "output",
+  "stdout": ["function"],
+  "notes": "specification/compatibility.mdx, 'Determinism-Sensitive Members' row three: 'Every other Promise member stays free', and specification/durable-execution.mdx, 'Deterministic Scheduling': Promise.all and its variants 'remain ordinary and charge no Scheduler requirement'. This is the same program as promise-race-charges-a-scheduler-requirement with one member name changed, so the pair is an A/B on the member: a backend that charges nothing at all passes this and fails that one, and a backend that charges the whole Promise root passes that one and fails this. Shared vector: compiler/ambient-charge-vectors.json promise-all-charges-nothing."
+}

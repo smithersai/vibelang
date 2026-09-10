@@ -6,5 +6,5 @@
     "payments has no zoe",
     "local error is a payments Missing: false"
   ],
-  "modules": ["same-named-errors-in-two-modules.mod.sm"]
+  "modules": ["same-named-errors-in-two-modules.mod.vibe"]
 }

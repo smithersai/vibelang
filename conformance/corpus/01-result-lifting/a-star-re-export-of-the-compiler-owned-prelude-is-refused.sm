@@ -1,5 +1,0 @@
-export * from "./__smithers_prelude.ts"
-
-export function main(): string[] {
-  return ["ok"]
-}

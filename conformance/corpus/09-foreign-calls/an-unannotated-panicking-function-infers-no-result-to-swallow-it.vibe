@@ -1,0 +1,18 @@
+import { panic } from "vibelang:exceptions"
+
+// No return annotation at all. Inference must not put the panic in E either:
+// there is no Result on this function, so `unwrapOr`, `recover` and `match`
+// have nothing to swallow the panic with.
+function guarded(ok: boolean) {
+  if (!ok) panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  const caught = Result.try(() => guarded(false))
+  caught.isError() // Do not defer the obligation across a panicking call.
+  return [
+    guarded(true),
+    caught.match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+  ]
+}

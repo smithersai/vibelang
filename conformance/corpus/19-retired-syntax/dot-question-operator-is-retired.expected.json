@@ -1,6 +1,6 @@
 {
   "title": "the `.?` postfix operator is retired: use ordinary narrowing or optional chaining",
   "expect": "diagnostics",
-  "diagnostics": [{ "code": "SMITHERS1001", "line": 6, "column": 25 }],
+  "diagnostics": [{ "code": "VIBE1001", "line": 6, "column": 25 }],
   "notes": "specification/type-system.mdx, 'Absence': the earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the language, while ordinary optional chaining remains TypeScript behavior. The receiver is a T | undefined call, so the frontend must reject only the authored retired operator without claiming invalid map provenance or inventing an Optional container."
 }

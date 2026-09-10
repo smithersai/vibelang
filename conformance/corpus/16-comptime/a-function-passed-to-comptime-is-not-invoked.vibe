@@ -1,0 +1,19 @@
+import { comptime } from "vibelang:comptime"
+
+// Passing a function to comptime returns a compile-time function without
+// running it. If the pass invoked `spin` merely because it was passed, the
+// evaluator would exhaust its step budget and this program would not
+// compile; printing proves the function body was never entered.
+const spin = comptime(() => {
+  let steps = 0
+  while (steps >= 0) {
+    steps += 1
+  }
+  return steps
+})
+
+const cheap = comptime(() => 2 + 3)()
+
+export function main(): string[] {
+  return [`cheap ${cheap}`, "spin was not invoked"]
+}

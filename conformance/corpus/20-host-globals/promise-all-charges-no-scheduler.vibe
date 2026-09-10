@@ -1,0 +1,9 @@
+function allKind(): string {
+  return typeof Promise.all
+}
+
+const kind = allKind()
+
+export function main(): string[] {
+  return [kind]
+}

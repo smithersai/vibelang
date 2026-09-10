@@ -1,0 +1,17 @@
+{
+  "title": "an authored generator cannot carry a failure row: the fallible generator is refused at its declaration",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VIBE1101",
+      "line": 10,
+      "column": 1
+    },
+    {
+      "code": "VIBE1106",
+      "line": 10,
+      "column": 1
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Refusal Conditions': 'An authored function* MUST NOT declare or infer a non-empty effect row: the iterator protocol's throw() and return() injection points mean an authored generator's row is not a function of its own text. The resumable generator form is reserved for compiler emission.' The refusal direction of COVERAGE.md 2.17; the acceptance direction — a generator that panics and keeps its declared Generator type — is 09-foreign-calls/a-generator-may-abort-with-a-panic, and panic is deliberately not a row. The ! inside the body is the smallest spelling that would give the generator a non-empty row. The cascade is declared in full: the declared Generator annotation cannot represent the inferred Missing failure (VIBE1101), and the generator form itself cannot be given a Result channel (VIBE1106) — both land on the declaration, and a backend reporting only one of the two is a different rule."
+}
