@@ -8,22 +8,22 @@ Date: 2026-08-23
 
 The Go fork now recognizes the compiler-owned durable surface and lowers a useful checked-AST subset to a static, serializable, digest-pinned Plan descriptor. A successfully lowered call emits `{ artifactSource, id, plan, version }`; it does not emit or retain a runtime callback wrapper.
 
-The live repository was renamed from VibeLang/VIBE to Smithers while this lane was in progress. The checked-in TypeScript reference and normative document now use `smithers:flows` and `SMITHERS41xx`. The Go bridge accepts both `vibelang:flows` (the task's pinned spelling) and `smithers:flows` as aliases of the same compiler-owned virtual module, and reports the live reference's `SMITHERS41xx` codes.
+The live repository was renamed from VibeLang/VIBE to VibeLang while this lane was in progress. The checked-in TypeScript reference and normative document now use `vibelang:flows` and `VIBE41xx`. The Go bridge accepts both `vibelang:flows` (the task's pinned spelling) and `vibelang:flows` as aliases of the same compiler-owned virtual module, and reports the live reference's `VIBE41xx` codes.
 
 ## Files and integration
 
 - `compiler/forkbridge/durable.go.txt` is the checked-AST Plan lowerer and compiler-owned flows module.
-- `compiler/forkbridge/lowering.go.txt` gives the flows module an isolated resolution target, rewrites its emitted import to `__smithers_flows.js`, and invokes durable lowering at the expression visitor.
+- `compiler/forkbridge/lowering.go.txt` gives the flows module an isolated resolution target, rewrites its emitted import to `__vibelang_flows.js`, and invokes durable lowering at the expression visitor.
 - `compiler/forkbridge/main.go.txt` injects the flows module into checking and emission with a collision guard.
-- `compiler/fork.go` embeds the new bridge unit as `cmd/tsc/smithersdurable.go`.
+- `compiler/fork.go` embeds the new bridge unit as `cmd/tsc/vibelangdurable.go`.
 - `compiler/fork_durable_test.go` contains pinned-fork semantic, fail-closed, artifact-validation, and determinism tests.
 - `conformance/corpus/17-durable/` contains three new corpus cases.
 
-No forkpatch, PoC source, root source, vendor, docs, or `cmd/vibec`/`cmd/smithersc` implementation file was changed by this lane.
+No forkpatch, PoC source, root source, vendor, docs, or `cmd/vibec`/`cmd/vibec` implementation file was changed by this lane.
 
 ## Resolved intrinsic identity
 
-`smithers:flows` and compatibility spelling `vibelang:flows` resolve through compiler `paths` to the distinct virtual source `/src/__smithers_flows.ts`. Recognition asks the checker for the expression's symbol, repeatedly unwraps aliases, and accepts it only when a declaration belongs to that virtual source and has the expected exported declaration. Type-only imports do not count.
+`vibelang:flows` and compatibility spelling `vibelang:flows` resolve through compiler `paths` to the distinct virtual source `/src/__vibelang_flows.ts`. Recognition asks the checker for the expression's symbol, repeatedly unwraps aliases, and accepts it only when a declaration belongs to that virtual source and has the expected exported declaration. Type-only imports do not count.
 
 This identity rule covers:
 
@@ -59,12 +59,12 @@ The descriptor contains the reference Plan fields, node dependencies/control dep
 
 The Go subset intentionally rejects rather than approximates:
 
-- stable-key `fanOut`, including multi-step templates (`SMITHERS4117`);
-- child Flow invocation (`SMITHERS4120`);
-- budgeted `loopWhile` (`SMITHERS4121`);
-- broadcast waits (`SMITHERS4122`);
-- queue dequeue (`SMITHERS4123`);
-- statement `if`/`switch` and loops (`SMITHERS4106`/`SMITHERS4107`);
+- stable-key `fanOut`, including multi-step templates (`VIBE4117`);
+- child Flow invocation (`VIBE4120`);
+- budgeted `loopWhile` (`VIBE4121`);
+- broadcast waits (`VIBE4122`);
+- queue dequeue (`VIBE4123`);
+- statement `if`/`switch` and loops (`VIBE4106`/`VIBE4107`);
 - optional/dynamic projections, dynamic or higher-order calls, unsupported captures, and non-persistence types;
 - complete composed success/error schema inference across arbitrary Action-result projections. Action-bearing flows currently use the reference legacy success/error schema where a sound composed result type is not available.
 
@@ -90,7 +90,7 @@ New cases:
 
 - `17-durable/unrelated-local-durable-stays-ordinary`: both JS and Go pass; proves spelling is not authority.
 - `17-durable/static-plan-shape-is-digest-pinned`: Go passes; observes the static descriptor marker, node sequence `action,branch,timer,action,action,signal`, 64-character digest, unwrap edge, sequential edge, and sorted requirements.
-- `17-durable/statement-branch-fails-closed`: Go passes with exact `SMITHERS4106` at authored line 4, column 3.
+- `17-durable/statement-branch-fails-closed`: Go passes with exact `VIBE4106` at authored line 4, column 3.
 
 Final isolated area result using the real runner backends and the pinned checkout:
 
@@ -100,12 +100,12 @@ Go fork match: 3/3 match the reference, 0 xfail, 0 unsupported, 0 divergent, 0 u
 Backend agreement: 1/3 identical observations
 ```
 
-The two JS xfails are explicit adapter limitations, not claimed reference failures: `conformance/runner` sends JS cases only through `poc/src/language/compileProject`, which does not compose the standalone `poc/src/durable/source-compiler.ts`. It therefore cannot currently observe durable Plan IR or its `SMITHERS4106` diagnostic. The expectation files cite that source and state the limitation. The standalone TypeScript artifact validator is exercised directly by the Go pinned test.
+The two JS xfails are explicit adapter limitations, not claimed reference failures: `conformance/runner` sends JS cases only through `poc/src/language/compileProject`, which does not compose the standalone `poc/src/durable/source-compiler.ts`. It therefore cannot currently observe durable Plan IR or its `VIBE4106` diagnostic. The expectation files cite that source and state the limitation. The standalone TypeScript artifact validator is exercised directly by the Go pinned test.
 
 The exact requested unfiltered command could not produce a final shared-tree scoreboard at handoff because a concurrently added, out-of-scope case is incomplete:
 
 ```text
-conformance/corpus/21-native-pin/a-clean-graph-satisfies-the-pin.sm:
+conformance/corpus/21-native-pin/a-clean-graph-satisfies-the-pin.vibe:
 missing the sibling a-clean-graph-satisfies-the-pin.expected.json expectation
 ```
 
@@ -115,7 +115,7 @@ The runner fails during corpus loading before applying `--filter` or starting ei
 
 - Pinned checkout status: `state: applied`, `divergentFromApplied: 0`.
 - `go build ./...`: pass.
-- `go vet ./compiler ./cmd/smithersc-go`: pass. (`cmd/vibec-go` has been renamed in the live tree.)
+- `go vet ./compiler ./cmd/vibec-go`: pass. (`cmd/vibec-go` has been renamed in the live tree.)
 - `go test ./compiler -count=1` against `/private/tmp/vibelang-ts-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c`: pass, 166.721s.
 - `go test ./compiler -run '^TestPinnedForkDurable' -count=1 -v`: both durable tests pass, including TypeScript artifact validation.
 - `git diff --check` on C21-owned implementation and corpus paths: pass.

@@ -22,8 +22,8 @@
 ## Claims deliberately not updated
 
 - Specification MUST/MAY requirements and open questions were left normative. In particular, `docs/src/pages/specification/durable-execution.mdx` still treats final handle/transport syntax as open because the implemented Bun spellings are explicitly provisional; current evidence is documented in the design draft and guide instead.
-- Re-exported, literal-dynamic, and depth-four nested asset graphs were not claimed as root CLI execution support. `poc/src/build/README.md` says the programmatic source-asset seam issues them, but the Smithers emitter, semantic re-export binding, and root relative runtime graph have not caught up.
-- Platform and data POCs were not described as root package APIs because `package.json` has no `smthrs/platform` or `smthrs/data` export. Concurrency alone is exported through `smthrs/concurrency`.
+- Re-exported, literal-dynamic, and depth-four nested asset graphs were not claimed as root CLI execution support. `poc/src/build/README.md` says the programmatic source-asset seam issues them, but the VibeLang emitter, semantic re-export binding, and root relative runtime graph have not caught up.
+- Platform and data POCs were not described as root package APIs because `package.json` has no `vibelang/platform` or `vibelang/data` export. Concurrency alone is exported through `vibelang/concurrency`.
 - `Sleeper` was not claimed as part of `NodePlatform` or `TestPlatform`; it has live/test implementations, but `poc/src/platform/layers.ts` does not bundle it.
 - The Anthropic adapter was not described as the package default or a published export. It lives under `poc/examples/agent`, examples are excluded from POC emit, and `@anthropic-ai/sdk` remains a POC dev dependency.
 - `spawn module {}`, shared structs, compiler-derived worker codecs/contracts, unlabeled loop expressions, arbitrary computed/mapped/generic comptime types, remote signal authorization/transport, queues/broadcast, and durable migration remain explicitly unimplemented or open.

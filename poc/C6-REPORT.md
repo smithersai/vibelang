@@ -4,87 +4,87 @@
 
 ## Settled policy
 
-`docs/DECISIONS.md` line 21 locks `.sm` as the Smithers source extension, and
-`skills/smithers/SKILL.md` says that `.sm` opts into Smithers checking and
-lowering. Neither source authorizes `.smithers` as a legacy alias, so the toolchain
-must accept `.sm` only. `.smx` remains an open candidate and is not an
+`docs/DECISIONS.md` line 21 locks `.vibe` as the VibeLang source extension, and
+`skills/vibelang/SKILL.md` says that `.vibe` opts into VibeLang checking and
+lowering. Neither source authorizes `.vibelang` as a legacy alias, so the toolchain
+must accept `.vibe` only. `.vibex` remains an open candidate and is not an
 implemented source mode; the compatibility wrapper only rejects it with the
-same honest `NotImplementedError` used for `.sm`.
+same honest `NotImplementedError` used for `.vibe`.
 
-Product and protocol names remain Smithers names. In particular, `smithers`,
-`smthrs/runtime`, `smithers:comptime`, `smithers:flows`, `.smithers-*`, the
-`smithers` CLI/bin, `kind: "smithers"`, `smithers:` nominal-identity prefixes, and
-`.smithers-*` documentation CSS classes are not source extensions and were left
+Product and protocol names remain VibeLang names. In particular, `vibe`,
+`vibelang/runtime`, `vibelang:comptime`, `vibelang:flows`, `.vibelang-*`, the
+`vibe` CLI/bin, `kind: "vibelang"`, `vibelang:` nominal-identity prefixes, and
+`.vibelang-*` documentation CSS classes are not source extensions and were left
 unchanged.
 
 ## Rename corruption repaired in owned files
 
 - `scripts/fork-e2e.mjs:61`: `process.env.SMLANG_TYPESCRIPT_FORK` ->
-  `process.env.SMITHERS_TYPESCRIPT_FORK`. The former silently ignored the
-  documented and tested Smithers fork override.
+  `process.env.VIBELANG_TYPESCRIPT_FORK`. The former silently ignored the
+  documented and tested VibeLang fork override.
 - `scripts/fork-e2e.mjs:65`: `process.env.SMLANG_TYPESCRIPT_FORK_CACHE` ->
-  `process.env.SMITHERS_TYPESCRIPT_FORK_CACHE`.
+  `process.env.VIBELANG_TYPESCRIPT_FORK_CACHE`.
 - `scripts/verify-pack.mjs:31`: `process.env.SM_VERIFY_TIMEOUT_MS` ->
-  `process.env.SMITHERS_VERIFY_TIMEOUT_MS`. The package verification namespace is
+  `process.env.VIBELANG_VERIFY_TIMEOUT_MS`. The package verification namespace is
   a product/CLI identifier, not the source extension.
 
 ## Legacy-extension inconsistencies repaired in owned files
 
 These virtual source names are compiler inputs, so they must follow the
-settled `.sm` convention. There is no legacy `.smithers` compatibility path.
+settled `.vibe` convention. There is no legacy `.vibelang` compatibility path.
 
 - `poc/src/durable/broadcast.test.ts:44`:
-  ``flows/${id.toLowerCase()}.smithers.ts`` ->
-  ``flows/${id.toLowerCase()}.sm.ts``.
+  ``flows/${id.toLowerCase()}.vibelang.ts`` ->
+  ``flows/${id.toLowerCase()}.vibe.ts``.
 - `poc/src/durable/crash-matrix.test.ts:385`:
-  `flows/crash-queue.smithers.ts` -> `flows/crash-queue.sm.ts`.
+  `flows/crash-queue.vibelang.ts` -> `flows/crash-queue.vibe.ts`.
 - `poc/src/durable/crash-matrix.test.ts:442`:
-  `flows/crash-broadcast.smithers.ts` -> `flows/crash-broadcast.sm.ts`.
+  `flows/crash-broadcast.vibelang.ts` -> `flows/crash-broadcast.vibe.ts`.
 - `poc/src/durable/migration.test.ts:346`:
-  ``flows/${id}.smithers.ts`` -> ``flows/${id}.sm.ts``.
+  ``flows/${id}.vibelang.ts`` -> ``flows/${id}.vibe.ts``.
 - `poc/src/durable/migration.test.ts:362` and `:378`:
-  `flows/Contract.smithers.ts` -> `flows/Contract.sm.ts`.
+  `flows/Contract.vibelang.ts` -> `flows/Contract.vibe.ts`.
 - `poc/src/durable/queue.test.ts:37`:
-  ``flows/${id.toLowerCase()}.smithers.ts`` ->
-  ``flows/${id.toLowerCase()}.sm.ts``.
+  ``flows/${id.toLowerCase()}.vibelang.ts`` ->
+  ``flows/${id.toLowerCase()}.vibe.ts``.
 - `poc/src/durable/queue.test.ts:116`:
-  ``flows/invalid-queue-${index}.smithers.ts`` ->
-  ``flows/invalid-queue-${index}.sm.ts``.
+  ``flows/invalid-queue-${index}.vibelang.ts`` ->
+  ``flows/invalid-queue-${index}.vibe.ts``.
 - `poc/src/durable/queue.test.ts:132`:
-  `flows/conflicting-queue.smithers.ts` -> `flows/conflicting-queue.sm.ts`.
+  `flows/conflicting-queue.vibelang.ts` -> `flows/conflicting-queue.vibe.ts`.
 - `poc/src/durable/queue.test.ts:427`:
-  `flows/other.smithers.ts` -> `flows/other.sm.ts`.
-- `poc/.scratch-w4w/bundle-e2e-probe.ts:8`: `probe-action.smithers` ->
-  `probe-action.sm`.
+  `flows/other.vibelang.ts` -> `flows/other.vibe.ts`.
+- `poc/.scratch-w4w/bundle-e2e-probe.ts:8`: `probe-action.vibelang` ->
+  `probe-action.vibe`.
 - `poc/.scratch-w4w/bundle-e2e-probe.ts:23` and `:50`:
-  `probe-helper.smithers` -> `probe-helper.sm`.
+  `probe-helper.vibelang` -> `probe-helper.vibe`.
 - `poc/.scratch-w4w/bundle-probe.ts:11`, `:25`, and `:26`:
-  `helper.smithers`/`impl.smithers` -> `helper.sm`/`impl.sm`.
+  `helper.vibelang`/`impl.vibelang` -> `helper.vibe`/`impl.vibe`.
 - `poc/.scratch-w4w/subset-probe.ts:31`, `:35`, and `:37`:
-  `probe.smithers` -> `probe.sm`.
+  `probe.vibelang` -> `probe.vibe`.
 
 ## Toolchain consistency audit
 
 - Root CLI input detection, formatter acceptance, project discovery,
   extensionless/`.js` authored-import resolution, and output rewriting all use
-  `.sm` only.
+  `.vibe` only.
 - The language frontend semantic checks, LSP file-kind checks, project
   lowering, target classifier, comptime resolver, durable source closure, and
-  portable backend all use `.sm` only.
+  portable backend all use `.vibe` only.
 - Source assets and the bounded foreign runtime graph recognize authored
-  `.sm`; runtime outputs strip it to `.mjs`. Root declaration output remains
+  `.vibe`; runtime outputs strip it to `.mjs`. Root declaration output remains
   `.d.mts`/`.d.cts` as designed.
-- The forbidden Go content-mapper bridge consistently maps authored `.sm` to
-  virtual `.sm.ts`, runtime `.js`, and content-mapper declarations
-  `.d.sm.ts`. That is a documented fork-specific naming rule, distinct from
+- The forbidden Go content-mapper bridge consistently maps authored `.vibe` to
+  virtual `.vibe.ts`, runtime `.js`, and content-mapper declarations
+  `.d.vibe.ts`. That is a documented fork-specific naming rule, distinct from
   the root CLI's `.d.mts` policy.
-- Every deleted tracked `*.smithers` fixture/example has a corresponding `*.sm`
+- Every deleted tracked `*.vibelang` fixture/example has a corresponding `*.vibe`
   file. Comparing each old file after the mechanical extension substitution
   with its new file found no missing or divergent rename.
-- No actual `*.smithers` source file remains in the worktree. Remaining `.smithers`
+- No actual `*.vibelang` source file remains in the worktree. Remaining `.vibelang`
   substrings are the intentionally preserved product/protocol identifiers
   listed above.
-- No `.sm.sm`, `sm.sm`, `visms`, or `sms` mangling remains. `.smx` occurs only
+- No `.vibe.vibe`, `sm.vibe`, `visms`, or `sms` mangling remains. `.vibex` occurs only
   as the explicitly open/unimplemented JSX candidate and in the compatibility
   rejection guard.
 
@@ -92,13 +92,13 @@ settled `.sm` convention. There is no legacy `.smithers` compatibility path.
 
 - `conformance/runner/backend-go.mjs:45` still says
   `SMLANG_TYPESCRIPT_FORK`. Its owner must change that token to
-  `SMITHERS_TYPESCRIPT_FORK`; it is the same product-environment corruption
+  `VIBELANG_TYPESCRIPT_FORK`; it is the same product-environment corruption
   repaired in `scripts/fork-e2e.mjs`. I did not edit `conformance/**`.
 
 No other remaining rename damage was found in the forbidden paths. In
 particular, `compiler/forkbridge/main.go.txt:935` and `:941` correctly use the
-`target.smithers` field, and the forbidden Go/fixture/fork files consistently use
-`.sm` for source-extension checks.
+`target.vibelang` field, and the forbidden Go/fixture/fork files consistently use
+`.vibe` for source-extension checks.
 
 ## Gate-only inconsistency repaired
 

@@ -7,13 +7,13 @@
 Outcome: completed.
 
 - Verified the current root export map before updating the package-entry-point
-  table. `smthrs/platform`, `smthrs/data`, `smthrs/schema-runtime`,
-  `smthrs/concurrency/bun`, and `smthrs/agent/bun` all exist. The docs now
+  table. `vibelang/platform`, `vibelang/data`, `vibelang/schema-runtime`,
+  `vibelang/concurrency/bun`, and `vibelang/agent/bun` all exist. The docs now
   distinguish the Node-safe concurrency/agent entries from their Bun-only
   worker, SQLite-journal, and durable-Flow surfaces. Platform and data are now
   described as provisional root package APIs rather than checkout-only POCs.
 - Verified all three formerly missing asset integrations in current code. The
-  Smithers emitter rewrites re-exports and literal dynamic asset imports, semantic
+  VibeLang emitter rewrites re-exports and literal dynamic asset imports, semantic
   binding follows generated-module re-exports, and the root relative runtime
   graph resolves re-export/dynamic edges plus nested generated sibling edges.
   The compatibility, CLI, asset guide, and loader-design docs now describe
@@ -21,9 +21,9 @@ Outcome: completed.
   graphs through depth four as end-to-end root support.
 - Kept the real asset limits: type-only and side-effect asset forms, bare star
   re-exports, nonliteral dynamic imports/attributes, general executable
-  generated modules, and non-asset dynamic `.sm` imports remain unsupported.
+  generated modules, and non-asset dynamic `.vibe` imports remain unsupported.
 - Verified root schema wiring in `src/cli.ts`, the published
-  `smthrs/schema-runtime` export, and the root compile/runtime test. The
+  `vibelang/schema-runtime` export, and the root compile/runtime test. The
   runtime-validation guide now describes `Schema.derive<T>()` in root `check`,
   `compile`, `run`, and `test`, while retaining the provisional virtual-module
   spelling and bounded reification grammar.
@@ -84,7 +84,7 @@ patches:
 
 Stock `WebAssembly.Module` accepts both patched binaries and reports the forged
 surfaces. After recalculating the binary/build digests, `executePortableWasm`
-rejects each with the exact diagnostic `{ code: "SMITHERS5059", message: "portable
+rejects each with the exact diagnostic `{ code: "VIBE5059", message: "portable
 Wasm exports do not match checked IR", line: 1, column: 1 }`. No change to
 `portable-backend.ts` was needed. The focused backend file reports 22 pass,
 0 fail.

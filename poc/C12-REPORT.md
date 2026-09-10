@@ -97,7 +97,7 @@ creates a typed temporary and compiler exit label, assigns the temporary at
 each value break, and targets the compiler wrapper. For a loop, normal
 completion and plain labeled breaks reach the `else` assignment; a value break
 skips it. Value breaks in nested functions and blocks with a reachable valueless
-completion are reported as `SMITHERS1714` rather than approximated.
+completion are reported as `VIBE1714` rather than approximated.
 
 Executed proof:
 
@@ -115,7 +115,7 @@ of `else`, and both normal and plain-break flow into `else`.
 fork binder's real `Locals` table. A block-scoped initializer becomes an
 authored declaration followed by the same `if` with `Initializer` cleared,
 inside a synthesized block. It does not re-derive the binding scope. `var` and
-unbraced branch chains remain explicit `SMITHERS1717` refusals.
+unbraced branch chains remain explicit `VIBE1717` refusals.
 
 ### Value-position `if` and `switch`
 
@@ -151,7 +151,7 @@ Six of the 12 unsupported cases are blocked before sound lowering receives the
 required AST or checker result:
 
 - Braceless value-if grammar: the corpus accepts a bounded initializer form and
-  expects `SMITHERS1709` for an unsafe general form, while the fork currently emits
+  expects `VIBE1709` for an unsafe general form, while the fork currently emits
   raw TS1005 parse diagnostics for both.
 - Value-switch clauses with prior statements followed by a final value are not
   represented; the current value grammar supplies `Value` with empty
@@ -159,9 +159,9 @@ required AST or checker result:
 - The ordinary statement-switch fixture receives the fork checker's TS2678 for
   the fallthrough case after a literal scrutinee.
 - An unlabeled loop expression has no recoverable fork AST for the required
-  `SMITHERS1702`.
+  `VIBE1702`.
 - A labeled loop expression without `else` is made syntactically unrepresentable
-  by patch `0600`, while the fixed corpus requires `SMITHERS1715` plus `SMITHERS1702` at
+  by patch `0600`, while the fixed corpus requires `VIBE1715` plus `VIBE1702` at
   authored positions.
 
 The other six unsupported cases are existing Go prelude/diagnostic gaps, not
@@ -172,13 +172,13 @@ error-match fallback.
 ## Verification
 
 Against
-`/private/tmp/smithers-c12-fork-cache-v2/c087644e82dc3d48cf87e4c5519eeaaea9daf35c`:
+`/private/tmp/vibelang-c12-fork-cache-v2/c087644e82dc3d48cf87e4c5519eeaaea9daf35c`:
 
 ```text
 go build ./...                                                       ok
-go vet ./compiler ./cmd/smithersc-go                                    ok
-SMITHERS_TYPESCRIPT_FORK=<prepared> go test ./compiler ./cmd/smithersc-go -count=1
-    compiler ok; cmd/smithersc-go ok; 53 top-level tests, none skipped/weakened
+go vet ./compiler ./cmd/vibec-go                                    ok
+VIBELANG_TYPESCRIPT_FORK=<prepared> go test ./compiler ./cmd/vibec-go -count=1
+    compiler ok; cmd/vibec-go ok; 53 top-level tests, none skipped/weakened
 node conformance/runner/run.mjs --backend go --jobs 1 --report-only
     79/91 match, 12 unsupported, 0 divergent, 0 xfail
 node conformance/runner/run.mjs --backend go --only-interop --jobs 1 --report-only

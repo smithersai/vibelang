@@ -13,14 +13,14 @@ node --test --test-name-pattern='post-comptime diagnostics map back to authored 
 ```
 
 The CLI exited successfully and reported `ok: true`. Its only portability
-diagnostic was warning `SMITHERS3006` at authored `10:5`:
+diagnostic was warning `VIBE3006` at authored `10:5`:
 
 ```text
 the /** @native */ marker no longer pins a function; import { native } from
-"smithers:native" and write native(nativePinned)
+"vibelang:native" and write native(nativePinned)
 ```
 
-There was no `SMITHERS3001`, and `diagnostic.mjs` was emitted. The fixture did
+There was no `VIBE3001`, and `diagnostic.mjs` was emitted. The fixture did
 not contain an unbounded comptime loop, so C33's budget-position change was not
 involved.
 
@@ -28,14 +28,14 @@ involved.
 
 **Stale test.** C25 deliberately retired `/** @native */` as a pin and made it
 a migration warning. The checker-owned contract is an import from
-`smithers:native` followed by `native(fn)`, and C25 deliberately anchors a
+`vibelang:native` followed by `native(fn)`, and C25 deliberately anchors a
 failed pin at that assertion.
 
 ### Fix
 
-`test/fixtures/comptime/diagnostic.sm` now imports the intrinsic and writes
+`test/fixtures/comptime/diagnostic.vibe` now imports the intrinsic and writes
 `native(nativePinned)` after the multiline comptime replacement. The test still
-requires `SMITHERS3001`, no output artifact, and a nontrivial multiline
+requires `VIBE3001`, no output artifact, and a nontrivial multiline
 provenance edit; its exact authored line assertion now points to the authored
 pin assertion. The isolated test passes.
 
@@ -44,13 +44,13 @@ pin assertion. The isolated test passes.
 ### Reproduction
 
 ```text
-node --test --test-name-pattern='\.sm compilation enforces checker-backed native portability pins' test/cli.test.mjs
+node --test --test-name-pattern='\.vibe compilation enforces checker-backed native portability pins' test/cli.test.mjs
 ```
 
 A direct CLI reproduction returned `ok: false`, but for
-`SMITHERS2102@6:1` (the direct top-level call's unsatisfied `TypeScript`
-requirement), plus warning `SMITHERS3006@1:5` on the retired marker. It emitted
-no `SMITHERS3001` because the fixture never invoked the new pin intrinsic.
+`VIBE2102@6:1` (the direct top-level call's unsatisfied `TypeScript`
+requirement), plus warning `VIBE3006@1:5` on the retired marker. It emitted
+no `VIBE3001` because the fixture never invoked the new pin intrinsic.
 
 ### Verdict
 
@@ -60,10 +60,10 @@ that decision and would restore a name-matched, typo-prone assertion.
 
 ### Fix
 
-`test/fixtures/project/invalid-native.sm` now imports `native` from
-`smithers:native` and asserts `native(nativePinned)`. The root test still
-requires compilation failure, `SMITHERS3001`, and no emitted module, and now
-also asserts that `SMITHERS3006` is absent so it cannot silently fall back to
+`test/fixtures/project/invalid-native.vibe` now imports `native` from
+`vibelang:native` and asserts `native(nativePinned)`. The root test still
+requires compilation failure, `VIBE3001`, and no emitted module, and now
+also asserts that `VIBE3006` is absent so it cannot silently fall back to
 the retired spelling. The isolated test passes.
 
 ## 3. `Schema.derive` runtime edge
@@ -71,41 +71,41 @@ the retired spelling. The isolated test passes.
 ### Reproduction
 
 ```text
-node --test --test-name-pattern='comptime Schema\.derive lowers to a resolvable smthrs/schema-runtime edge' test/comptime-schema.test.mjs
+node --test --test-name-pattern='comptime Schema\.derive lowers to a resolvable vibelang/schema-runtime edge' test/comptime-schema.test.mjs
 ```
 
 The original run returned `ok: false` with
-`SMITHERS1510@6:35` and `SMITHERS1505@6:35`. Both diagnostics named the
-unresolved `smthrs/schema-runtime` import inserted by the comptime lowering and
+`VIBE1510@6:35` and `VIBE1505@6:35`. Both diagnostics named the
+unresolved `vibelang/schema-runtime` import inserted by the comptime lowering and
 were correctly mapped to the authored `Schema.derive<Row>()` origin.
 
 ### Verdict
 
 **Implementation regression.** C30 composed whole-project checking after
 comptime lowering, while the exact compiler-owned module registries omitted
-the pre-existing compiler-injected `smthrs/schema-runtime` edge. The frontend
+the pre-existing compiler-injected `vibelang/schema-runtime` edge. The frontend
 therefore reclassified compiler output as an authored untrusted foreign import.
 
 After the implementation repair, the test reached a second, independent stale
 assertion: the declaration correctly contained
-`import("smthrs/schema-runtime").DerivedSchema<Row>`, while the regex still
-expected `smithers/schema-runtime`. The `smthrs` spelling is fixed by the root
-package name and its `./schema-runtime` export; the colon-form `smithers:...`
+`import("vibelang/schema-runtime").DerivedSchema<Row>`, while the regex still
+expected `vibelang/schema-runtime`. The `vibelang` spelling is fixed by the root
+package name and its `./schema-runtime` export; the colon-form `vibelang:...`
 namespace remains reserved for compiler virtual modules, as recorded by C30.
 
 ### Fix
 
 The frontend and portability classifier's mirrored exact registries now include
-only `smthrs/schema-runtime`; no prefix rule was restored. The package edge is
+only `vibelang/schema-runtime`; no prefix rule was restored. The package edge is
 still present byte-for-byte in emitted JavaScript and remains resolvable by an
 installed consumer. The declaration assertion was corrected to the exact
-`smthrs/schema-runtime` package spelling. The test still checks the full edit
+`vibelang/schema-runtime` package spelling. The test still checks the full edit
 sequence, generated import, descriptor lowering, declaration seam, runtime
 resolution, successful validation, and failure pointer. The isolated test
 passes.
 
 This required a surgical edit to `poc/src/language/semantic.ts`: that registry
-is the pass which emitted the false `SMITHERS1510`/`SMITHERS1505`, so the root
+is the pass which emitted the false `VIBE1510`/`VIBE1505`, so the root
 CLI and test layers could not correct the regression honestly.
 
 ## 4. Fork end-to-end artifact set
@@ -113,23 +113,23 @@ CLI and test layers could not correct the regression honestly.
 ### Reproduction
 
 ```text
-node --test --test-name-pattern='authored \.sm compiles through the pinned fork and the emitted JavaScript runs' test/fork-e2e.test.mjs
+node --test --test-name-pattern='authored \.vibe compiles through the pinned fork and the emitted JavaScript runs' test/fork-e2e.test.mjs
 ```
 
 The actual sorted keys were:
 
 ```text
 host.js, host.js.map, order.js, order.js.map,
-smithers-runtime.js, smithers-runtime.js.map, stock.js, stock.js.map
+vibelang-runtime.js, vibelang-runtime.js.map, stock.js, stock.js.map
 ```
 
 The expected value contained the same eight names but placed `stock.*` before
-`smithers-runtime.*`. No artifact was added, removed, or renamed.
+`vibelang-runtime.*`. No artifact was added, removed, or renamed.
 
 ### Verdict
 
-**Stale test.** The Vibe-to-Smithers runtime rename changed lexical ordering:
-`smithers-runtime.*` sorts before `stock.*`. The fork bridge's expanded prelude
+**Stale test.** The Vibe-to-VibeLang runtime rename changed lexical ordering:
+`vibelang-runtime.*` sorts before `stock.*`. The fork bridge's expanded prelude
 did not change the emitted file-set shape.
 
 ### Fix
@@ -198,7 +198,7 @@ npm test
     compatibility TypeScript compile: pass
     root Node tests: 101 pass, 0 fail
     compiler Go tests: pass
-    cmd/smithersc-go tests: pass
+    cmd/vibec-go tests: pass
     exit 0
 ```
 

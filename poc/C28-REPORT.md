@@ -6,7 +6,7 @@ Date: 2026-08-23
 
 ## Outcome
 
-The public documentation now describes Smithers rather than the retired
+The public documentation now describes VibeLang rather than the retired
 VibeLang surface, presents the TypeScript instrument and the real opt-in Go fork
 implementation as distinct compiler paths, documents both compiler intrinsics
 and all nine surface-grammar forms in the fork, records the provisional native
@@ -26,14 +26,14 @@ Nothing was committed.
 - `docs/README.md` — updated content conventions for the default TypeScript instrument, opt-in Go backend, and moving conformance totals.
 - `docs/TYPESCRIPT_FORK.md` — replaced the foundation-era story with the pinned source capsule, reversible forkpatch series, real Go lowering, both intrinsics, CLI selection, upstream-health evidence, tooling ownership, and distribution limits.
 - `docs/COMPATIBILITY_API.md` — documented `--backend go`, internal fork lowering, current comptime/durable division, formatter/LSP reality, live coverage source, and remaining compatibility gaps.
-- `docs/DECISIONS.md` — kept the native pin spelling Open while recording provisional `native(fn)` from `"smithers:native"`, binding-identity recognition, and the zero-grammar-cost rationale.
+- `docs/DECISIONS.md` — kept the native pin spelling Open while recording provisional `native(fn)` from `"vibelang:native"`, binding-identity recognition, and the zero-grammar-cost rationale.
 - `docs/src/pages/index.mdx` — replaced retired failure syntax and corrected the home-page TypeScript/native/Wasm claims.
 - `docs/src/pages/introduction/getting-started.mdx` — added Go backend commands and the current two-implementation boundary.
 - `docs/src/pages/introduction/overview.mdx` — updated the compiler, target, durable, formatter, and language-server status without claiming a conforming release.
 - `docs/src/pages/guide/features.mdx` — replaced the obsolete file-local-frontend warning and qualified target availability.
 - `docs/src/pages/guide/comptime.mdx` — documented the Go comptime subset and its tracked-asset/schema/loader/cache refusals.
 - `docs/src/pages/reference/comptime.mdx` — added the checker-owned Go comptime path and its exact bounded scope.
-- `docs/src/pages/guide/durable-execution.mdx` — documented Go `smithers:flows` lowering, supported Plan forms, and fail-closed remainder.
+- `docs/src/pages/guide/durable-execution.mdx` — documented Go `vibelang:flows` lowering, supported Plan forms, and fail-closed remainder.
 - `docs/src/pages/reference/actions-and-flows.mdx` — added the current TypeScript-versus-Go durable backend boundary.
 - `docs/src/pages/guide/control-flow.mdx` — recorded that the Go fork parses, type-checks, and lowers all nine surface-grammar forms.
 - `docs/src/pages/specification/control-flow.mdx` — resolved the prior loop-expression conflict by making only the labeled loop-value form Direction and retaining rejection of unlabeled loop expressions.
@@ -60,7 +60,7 @@ Nothing was committed.
   durable compilers. The evidence is TypeScript artifact validation and matching
   digest recomputation for the landed Go subset.
 - I did not close the native-pin spelling. `native(fn)` from
-  `"smithers:native"` remains a provisional candidate under an Open ledger
+  `"vibelang:native"` remains a provisional candidate under an Open ledger
   entry.
 - I did not claim a native/LLVM backend or general Wasm backend. The current
   Wasm work is a bounded proof.
@@ -78,8 +78,8 @@ them.
    - `compiler/forkbridge/durable.go.txt:38`
    - `compiler/forkbridge/lowering.go.txt:271`
    - `compiler/fork_durable_test.go:90,189,210,219,227`
-   - `conformance/corpus/17-durable/statement-branch-fails-closed.sm:1`
-   - `conformance/corpus/17-durable/static-plan-shape-is-digest-pinned.sm:1`
+   - `conformance/corpus/17-durable/statement-branch-fails-closed.vibe:1`
+   - `conformance/corpus/17-durable/static-plan-shape-is-digest-pinned.vibe:1`
    - `conformance/corpus/17-durable/unrelated-local-durable-stays-ordinary.expected.json:7`
 2. Coordinator-owned `poc/PRODUCTION_READINESS.md` has a deliberately untouched
    but stale top snapshot: lines 7–20 freeze the old 92-case result and say both

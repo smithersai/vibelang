@@ -13,8 +13,8 @@ harness-integrity stage:
 1. `compileProject` folds the whole-project portability classifier's diagnostics
    into its ordinary project diagnostics.
 2. `conformance/runner/js-lower.mjs` invokes the standalone durable source
-   compiler only for an exact `smithers:flows` module edge, after comptime and
-   before Smithers lowering.
+   compiler only for an exact `vibelang:flows` module edge, after comptime and
+   before VibeLang lowering.
 
 The native pin is also a complete compiler virtual module in the language POC:
 its declaration participates in checking, its exact import rewrites to the
@@ -30,27 +30,27 @@ was not forced green and its xfail now states the measured reason.
 
 ## Native-pin specifier and spelling evidence
 
-The registered specifier is exactly `smithers:native`.
+The registered specifier is exactly `vibelang:native`.
 
 This was read from the live tree rather than inferred from a prefix:
 
 - `poc/src/targets/classify.ts` declares
-  `NATIVE_PIN_MODULE = "smithers:native"`, declares that exact module in its
+  `NATIVE_PIN_MODULE = "vibelang:native"`, declares that exact module in its
   compiler prelude, and recognizes the resolved `native` export's checker
   symbol.
-- Every `conformance/corpus/21-native-pin/*.sm` case imports that spelling.
+- Every `conformance/corpus/21-native-pin/*.vibe` case imports that spelling.
 - `poc/src/targets/classify.test.ts` exercises direct, aliased, and namespace
   imports from that spelling, plus lookalike rejection.
 - The native-pin lane report selects the colon form because sibling
-  compiler-owned virtual modules already use `smithers:comptime`,
-  `smithers:exceptions`, and `smithers:flows` consistently.
+  compiler-owned virtual modules already use `vibelang:comptime`,
+  `vibelang:exceptions`, and `vibelang:flows` consistently.
 
 This does not conflate package modules and compiler virtual modules. The
-package-exported capability surface is `smthrs/context` and `smthrs/provider`
-because the package is named `smthrs`; compiler-owned virtual modules use the
-separate `smithers:...` colon namespace. Both the language frontend and the
-portability classifier use explicit membership sets. No `smithers:` or
-`smthrs/` prefix matching was added or restored.
+package-exported capability surface is `vibelang/context` and `vibelang/provider`
+because the package is named `vibelang`; compiler-owned virtual modules use the
+separate `vibelang:...` colon namespace. Both the language frontend and the
+portability classifier use explicit membership sets. No `vibelang:` or
+`vibelang/` prefix matching was added or restored.
 
 The corresponding implementation changes are:
 
@@ -59,14 +59,14 @@ The corresponding implementation changes are:
   the checker prelude.
 - `poc/src/language/compile.ts`: add the exact specifier to
   `isCompilerVirtualModule`, making the existing runtime-import rewrite used by
-  `smithers:exceptions` apply to the pin.
+  `vibelang:exceptions` apply to the pin.
 - `poc/src/runtime/index.ts`: export
   `native = <F>(pinned: F): F => pinned`.
 
 ## Portability composition
 
 `poc/src/language/project-compile.ts` now calls
-`analyzeCompatibilityProject` over the complete supplied Smithers source set.
+`analyzeCompatibilityProject` over the complete supplied VibeLang source set.
 Its diagnostics are converted to ordinary `ProjectDiagnostic` values with the
 original project file identity, authored line/column, and an authored offset,
 then appended to the semantic diagnostics. This mirrors the root CLI's
@@ -77,9 +77,9 @@ All five native-pin JS cases consequently observe the real rule:
 
 - the clean graph and capability-only graph compile, survive the stock emitted
   TypeScript check, execute, and print `48010`;
-- the host graph reports the declared `SMITHERS1510` cascade plus
-  `SMITHERS3001` at the assertion; and
-- the direct and transitive TypeScript graphs report `SMITHERS3001` at their
+- the host graph reports the declared `VIBE1510` cascade plus
+  `VIBE3001` at the assertion; and
+- the direct and transitive TypeScript graphs report `VIBE3001` at their
   assertions.
 
 Running this classifier for every `compileProject` call caused no status change
@@ -89,11 +89,11 @@ outside the five native-pin cases in the full corpus measurement.
 
 `conformance/runner/js-lower.mjs` now follows the comptime composition shape:
 
-1. It lexically looks for the exact `smithers:flows` module edge. A local
+1. It lexically looks for the exact `vibelang:flows` module edge. A local
    same-spelled `durable` function remains on the identity path.
 2. It calls `compileDurableSource` without executing author code.
 3. Durable diagnostics return through the normal successful driver protocol as
-   authored `SMITHERS41xx` language diagnostics with `emitChecked: false`.
+   authored `VIBE41xx` language diagnostics with `emitChecked: false`.
 4. A successful durable result replaces the compiler-owned call with its static
    descriptor, erases the virtual import, and builds an exact offset source map
    for all unchanged text. That map composes under comptime's map when both
@@ -102,11 +102,11 @@ outside the five native-pin cases in the full corpus measurement.
    mandatory for accepted output cases.
 
 The two corpus files with virtual imports were updated from the legacy
-`vibelang:flows` alias to the live canonical `smithers:flows` spelling. The Go
+`vibelang:flows` alias to the live canonical `vibelang:flows` spelling. The Go
 fork already accepts that canonical spelling and its observations did not move.
 
 `17-durable/statement-branch-fails-closed` now observes the standalone
-compiler's exact `SMITHERS4106` at authored 4:3 and passes on JS.
+compiler's exact `VIBE4106` at authored 4:3 and passes on JS.
 
 ### Genuine durable finding left visible
 
@@ -115,7 +115,7 @@ longer for unresolved-module plumbing. The adapter reaches
 `compileDurableSource`, which reports:
 
 ```text
-SMITHERS4100 at 7:24
+VIBE4100 at 7:24
 Property 'run' does not exist on type 'typeof Lookup'.
 ```
 
@@ -132,10 +132,10 @@ was retained and rewritten with this reason.
 
 - Removed the false Go xfail from
   `08-promise-chaining/promise-catch-is-rejected`. Both backends produce exactly
-  `SMITHERS1401@6:22` and `SMITHERS1402@6:22`; its status is now pass/pass.
+  `VIBE1401@6:22` and `VIBE1402@6:22`; its status is now pass/pass.
 - Corrected `conformance/COVERAGE.md`'s stale namespace claim. The settled split
-  is package modules `smthrs/context` and `smthrs/provider` versus exact
-  compiler virtual modules in the `smithers:...` colon namespace. The coverage
+  is package modules `vibelang/context` and `vibelang/provider` versus exact
+  compiler virtual modules in the `vibelang:...` colon namespace. The coverage
   text also no longer lists the retired Promise-catch xfail as active.
 
 ## Full before/after
@@ -174,7 +174,7 @@ One raw observation changed without a status movement:
 
 - `17-durable/static-plan-shape-is-digest-pinned` remains `xfail`, changing from
   unresolved virtual-module emitted-TypeScript plumbing to the real
-  `SMITHERS4100@7:24` same-file Action descriptor limitation described above.
+  `VIBE4100@7:24` same-file Action descriptor limitation described above.
 
 ## Xfails deliberately left
 
@@ -184,11 +184,11 @@ JS reference (2):
   genuine position mismatch; the reference reports `VCT1012` at authored 6:9,
   while the contract and Go fork anchor the exhausted loop at 5:3.
 - `17-durable/static-plan-shape-is-digest-pinned`: the newly measured
-  `SMITHERS4100@7:24` same-file Action descriptor limitation.
+  `VIBE4100@7:24` same-file Action descriptor limitation.
 
 Go fork (5), all area-21 native-pin cases:
 
-- the Go fork still does not register or implement `smithers:native` and
+- the Go fork still does not register or implement `vibelang:native` and
   reports `TS2307` at its import; the host-module case additionally reports
   `TS2591` for `node:fs`. Their reasons were narrowed to this Go-only gap when
   the JS xfails were retired.

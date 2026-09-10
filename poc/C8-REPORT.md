@@ -8,9 +8,9 @@ All three JS-reference defects are fixed. Each case was first reproduced as `0/1
 
 Conformance case: `01-result-lifting/result-transformations-preserve-the-error-type` — now `1/1 pass`, with no xfail marker.
 
-Root cause: `producerConsumed` and `referenceConsumes` in `poc/src/language/semantic.ts` recognized an explicit `return` statement and the concise callback boundary owned by `Result.try` / `Result.tryPromise`, but stopped at every other concise arrow function. Consequently, the `Result` call in `result.andThen(value => fallible(value))` reached the arrow-function node and incorrectly produced `SMITHERS1301`, even though `andThen` consumes and flattens that callback result.
+Root cause: `producerConsumed` and `referenceConsumes` in `poc/src/language/semantic.ts` recognized an explicit `return` statement and the concise callback boundary owned by `Result.try` / `Result.tryPromise`, but stopped at every other concise arrow function. Consequently, the `Result` call in `result.andThen(value => fallible(value))` reached the arrow-function node and incorrectly produced `VIBE1301`, even though `andThen` consumes and flattens that callback result.
 
-Fix: added a checker-backed concise-callback boundary restricted to Result receivers and the transformations that actually consume/flatten callback Results: `andThen` and `recover`. It is deliberately narrower than `RESULT_CONSUMERS`; `map` can nest a Result and `tap` discards its callback return. A focused language test proves both sides: a concise `andThen` return is accepted, while a separate discarded Result expression inside the same callback still receives exactly one `SMITHERS1301`.
+Fix: added a checker-backed concise-callback boundary restricted to Result receivers and the transformations that actually consume/flatten callback Results: `andThen` and `recover`. It is deliberately narrower than `RESULT_CONSUMERS`; `map` can nest a Result and `tap` discards its callback return. A focused language test proves both sides: a concise `andThen` return is accepted, while a separate discarded Result expression inside the same callback still receives exactly one `VIBE1301`.
 
 Specification basis: `docs/src/pages/specification/failures.mdx`, “Matching and Transformation”, requires `andThen` and says a Result is not discarded when it is returned or transformed.
 

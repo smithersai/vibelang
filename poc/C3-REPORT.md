@@ -1,4 +1,4 @@
-# C3 foundation report: fork-owned `smithersc`
+# C3 foundation report: fork-owned `vibec`
 
 > **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
 
@@ -12,7 +12,7 @@ subtree. At revision `c087644e82dc3d48cf87e4c5519eeaaea9daf35c` it contains:
 - 392 MiB allocated on this filesystem;
 - 60,190 files and 155,576,229 bytes under `tsc/testdata` alone.
 
-Before this work the Smithers repository had 1,003 tracked files and 35,822,782
+Before this work the VibeLang repository had 1,003 tracked files and 35,822,782
 tracked bytes. A literal subtree would therefore make the tracked file count
 about 66 times larger and tracked content about 6.8 times larger. It would also
 make repository-wide ripgrep, editor indexing, Git status, checkout, and backup
@@ -30,7 +30,7 @@ The implemented alternative is an exact-revision source capsule at
 - the complete vendor directory is 51,882,122 bytes in 88 files.
 
 This retains a real clean/editable checkout at the exact commit without making
-the Smithers worktree carry 65,532 expanded files. The default prepared sparse
+the VibeLang worktree carry 65,532 expanded files. The default prepared sparse
 checkout contains 757 `tsc` files; `--full-tsc` remains available when upstream
 test data is needed.
 
@@ -42,27 +42,27 @@ TypeScript configs use explicit includes, and Bun tests are scoped below `poc`.
 
 ## Fork-owned injection mechanism
 
-The reviewable source of truth is mirrored under `cmd/smithersc/forksrc`:
+The reviewable source of truth is mirrored under `cmd/vibec/forksrc`:
 
 ```text
-cmd/smithersc/forksrc/cmd/smithersc/main.go.txt
-cmd/smithersc/forksrc/internal/smithers/marker.go.txt
+cmd/vibec/forksrc/cmd/vibec/main.go.txt
+cmd/vibec/forksrc/internal/vibelang/marker.go.txt
 ```
 
 The build gate verifies an exact, completely clean checkout, temporarily copies
-those sources to `tsc/cmd/smithersc/main.go` and
-`tsc/internal/smithers/marker.go`, builds inside the fork module, removes the
+those sources to `tsc/cmd/vibec/main.go` and
+`tsc/internal/vibelang/marker.go`, builds inside the fork module, removes the
 injected files, and verifies that the checkout is clean again.
 
 Multi-file Go overlays were evaluated first. An overlay can replace or add a
 file in an already discoverable package, but it cannot introduce a new package
-directory: attempts to add `cmd/smithersc` or `internal/smithers` failed with `no Go
+directory: attempts to add `cmd/vibec` or `internal/vibelang` failed with `no Go
 files`. Controlled working-checkout population was selected because it survives
-clean rebuilds, keeps Smithers code reviewable in this repository, preserves
+clean rebuilds, keeps VibeLang code reviewable in this repository, preserves
 normal Go `internal` visibility, and needs no network in CI.
 
 The refusal gates were exercised explicitly. A checkout containing an untracked
-`dirty-probe` was rejected with exit 1 and its dirty status, and the Smithers
+`dirty-probe` was rejected with exit 1 and its dirty status, and the VibeLang
 repository checkout was rejected with exit 1 because its `HEAD` did not equal
 the pinned TypeScript revision.
 
@@ -71,29 +71,29 @@ the pinned TypeScript revision.
 The built command identifies itself as:
 
 ```text
-smithers-extension=0.1.0-foundation.1
+vibelang-extension=0.1.0-foundation.1
 typescript-fork=c087644e82dc3d48cf87e4c5519eeaaea9daf35c
 typescript-core=7.1.0-dev
 fork-internal=github.com/microsoft/TypeScript/tsc/internal/core.Version
 ```
 
 `go version -m` reports the command path as
-`github.com/microsoft/TypeScript/tsc/cmd/smithersc` in module
+`github.com/microsoft/TypeScript/tsc/cmd/vibec` in module
 `github.com/microsoft/TypeScript/tsc`, built by Go 1.26.0 with `CGO_ENABLED=0`
 and `-trimpath=true`. `go tool nm` shows both:
 
 ```text
 github.com/microsoft/TypeScript/tsc/internal/core.version
-github.com/microsoft/TypeScript/tsc/internal/smithers.Marker
+github.com/microsoft/TypeScript/tsc/internal/vibelang.Marker
 ```
 
 The marker therefore is not an external wrapper or cosmetic string: fork-owned
-`internal/smithers` runs and calls the real TypeScript compiler
+`internal/vibelang` runs and calls the real TypeScript compiler
 `internal/core.Version` function.
 
 ## Reproducibility evidence
 
-`npm run smithersc:verify-reproducible` performed two isolated builds. Each started
+`npm run vibec:verify-reproducible` performed two isolated builds. Each started
 from a newly materialized exact checkout and a fresh module cache whose only
 proxy was `vendor/typescript/go-proxy`. Automatic Go toolchain downloads were
 disabled; the build requires an already installed Go 1.26.0. Both builds used
@@ -116,7 +116,7 @@ The following completed successfully:
 
 - `go build ./...`;
 - `go vet ./...`;
-- `SMITHERS_TYPESCRIPT_FORK=/private/tmp/smithers-ts-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c go test ./compiler ./cmd/smithersc-go -count=1`;
+- `VIBELANG_TYPESCRIPT_FORK=/private/tmp/vibelang-ts-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c go test ./compiler ./cmd/vibec-go -count=1`;
 - all 35 currently listed Go tests across those two packages (the requested
   baseline described 29; parallel work has added tests);
 - `node --check` for all three vendoring/build `.mjs` scripts;
@@ -124,8 +124,8 @@ The following completed successfully:
 - a final npm pack dry run with no vendored source or cached binary.
 
 This settles fork source availability and the buildable extension seam, not the
-language implementation. The foundation `smithersc` is currently an identity
-marker; it does not yet compile Smithers. The generated binary is local and is
+language implementation. The foundation `vibec` is currently an identity
+marker; it does not yet compile VibeLang. The generated binary is local and is
 not signed, attested, published, or distributed.
 
 SOURCE SETTLED

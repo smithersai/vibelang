@@ -72,14 +72,14 @@ The case now observes only the same Promise diagnostics as its `.then()` and
 `.finally()` siblings:
 
 ```text
-SMITHERS1401 @ 6:22 — Promise instance chaining is unavailable
-SMITHERS1402 @ 6:22 — the started Promise is not consumed by an allowed form
+VIBE1401 @ 6:22 — Promise instance chaining is unavailable
+VIBE1402 @ 6:22 — the started Promise is not consumed by an allowed form
 ```
 
-There is no `SMITHERS1001` retired-syntax claim. The JS scope was removed from
+There is no `VIBE1001` retired-syntax claim. The JS scope was removed from
 the xfail and the required JS backend passes. The Go-only xfail remains because
 this task was forbidden to edit its live compiler implementation.
-(`SMITHERS1402` was retained because the already-passing sibling corpus cases
+(`VIBE1402` was retained because the already-passing sibling corpus cases
 explicitly make it part of the contract.)
 
 ## 3. Optional-call `.?` no longer crashes source-map generation
@@ -98,42 +98,42 @@ exception previously escaped `compileProject`.
 
 `compileSemanticModel` now applies the standing correct-or-absent rule at the
 known rejected spelling: when analysis already contains the source-located
-`SMITHERS1001` for the retired `.?` operator, it does not ask the malformed
+`VIBE1001` for the retired `.?` operator, it does not ask the malformed
 printer tree to claim source-map provenance. It still returns the authored,
 stable diagnostic. The source-map validator was not relaxed, and supported
 recovered syntax plus unrelated semantic errors continue to receive maps.
 
 The source-map unit test asserts that the Optional-call form returns
-`SMITHERS1001` at 3:25 and has no source map. The corpus case was strengthened
+`VIBE1001` at 3:25 and has no source map. The corpus case was strengthened
 from a plain string receiver to the original `Optional<string>` call reproducer
-and passes with exactly `SMITHERS1001` at authored 6:25. There is no crash or
+and passes with exactly `VIBE1001` at authored 6:25. There is no crash or
 unmeasured verdict.
 
 ## 4. Capability specifier decision and exact trust
 
 The correct capability/provider spellings in the current tree are
-**`smthrs/context` and `smthrs/provider`**. No spelling migration was needed:
+**`vibelang/context` and `vibelang/provider`**. No spelling migration was needed:
 
 - `docs/DECISIONS.md` locks those exact two spellings.
 - `docs/src/pages/specification/requirements.mdx` uses the same spellings.
-- the root package is named `smthrs` and exports `./context` and `./provider`,
+- the root package is named `vibelang` and exports `./context` and `./provider`,
   which yields those public specifiers;
 - the language prelude, semantic identity checks, lowering rewrite, target
   prelude, and every capability/layer corpus case agree;
-- `smithers:exceptions`, `smithers:comptime`, and `smithers:flows` deliberately
+- `vibelang:exceptions`, `vibelang:comptime`, and `vibelang:flows` deliberately
   use the separate colon-form compiler-module namespace.
 
 The broad trust predicate was nevertheless a real fail-open regression: it
-accepted bare `smthrs`, every `smthrs/*`, and every `smithers:*` string. It now
+accepted bare `vibelang`, every `vibelang/*`, and every `vibelang:*` string. It now
 uses an explicit exact allowlist. Tests prove that near misses such as
-`smthrs/contextual`, `smthrs/provider/extra`,
-`smithers:exceptions/extra`, and `smithers:unknown` remain foreign and receive
-`SMITHERS1510`. Exact matching survives.
+`vibelang/contextual`, `vibelang/provider/extra`,
+`vibelang:exceptions/extra`, and `vibelang:unknown` remain foreign and receive
+`VIBE1510`. Exact matching survives.
 
 No normative docs edit is needed. The conflict paragraph in
 `conformance/COVERAGE.md` and the external C22 scratchpad report is stale: both
-claim the ledger/specification say `smithers/context`, while the current files
-say `smthrs/context`. Another lane should correct that census prose, remove the
+claim the ledger/specification say `vibelang/context`, while the current files
+say `vibelang/context`. Another lane should correct that census prose, remove the
 two repaired xfail entries, and mark the Optional-call crash obligation covered.
 I did not edit it because ownership was limited to `conformance/corpus/**`.
 
@@ -176,11 +176,11 @@ The full-suite failures are unrelated rename fallout outside this task's file
 ownership, and were left untouched:
 
 - `poc/examples/agent/durable-turn.test.ts:215` expects
-  `action/smithers/agent-demo/Echo@3`, while the implementation returns
-  `action/smthrs/agent-demo/Echo@3`.
+  `action/vibelang/agent-demo/Echo@3`, while the implementation returns
+  `action/vibelang/agent-demo/Echo@3`.
 - `poc/examples/agent/flow-turn.test.ts:73` expects
-  `flow/smithers/agent-flow/Publishing@1`, while the implementation returns
-  `flow/smthrs/agent-flow/Publishing@1`.
+  `flow/vibelang/agent-flow/Publishing@1`, while the implementation returns
+  `flow/vibelang/agent-flow/Publishing@1`.
 
 The focused changed-file run was **74 pass / 0 fail**, and each of the three
 pinned conformance filters passed 1/1. Nothing was committed.

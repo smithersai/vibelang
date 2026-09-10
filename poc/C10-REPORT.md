@@ -17,8 +17,8 @@ The Go backend now matches the reference on **56/91** conformance cases, up from
 The required verification gates pass:
 
 - `go build ./...`
-- `go vet ./compiler ./cmd/smithersc-go`
-- pinned-fork `go test ./compiler ./cmd/smithersc-go -count=1`
+- `go vet ./compiler ./cmd/vibec-go`
+- pinned-fork `go test ./compiler ./cmd/vibec-go -count=1`
 - 47 Go tests pass (44 existing tests plus 3 cross-function/identity tests added here)
 
 ## What moved the score
@@ -34,17 +34,17 @@ The same analysis also completed the remaining reachable cases for inferred cros
 
 Diagnostics now produced directly by Go row analysis include:
 
-- failure contracts: `SMITHERS1101`, `SMITHERS1102`, `SMITHERS1103`, `SMITHERS1104`
-- must-consume boundaries and parameters: `SMITHERS1301`, `SMITHERS1302`
-- foreign access/trust: `SMITHERS1506`, `SMITHERS1510`
-- generic and higher-order rows: `SMITHERS1802`, `SMITHERS1803`, `SMITHERS1806`
-- requirements and layers: `SMITHERS2101`, `SMITHERS2102`, `SMITHERS2103`, `SMITHERS2104`, `SMITHERS2105`
+- failure contracts: `VIBE1101`, `VIBE1102`, `VIBE1103`, `VIBE1104`
+- must-consume boundaries and parameters: `VIBE1301`, `VIBE1302`
+- foreign access/trust: `VIBE1506`, `VIBE1510`
+- generic and higher-order rows: `VIBE1802`, `VIBE1803`, `VIBE1806`
+- requirements and layers: `VIBE2101`, `VIBE2102`, `VIBE2103`, `VIBE2104`, `VIBE2105`
 
 Diagnostics use authored AST nodes and trivia-skipped starts, so the codes and positions match the corpus. Synthesized lowering remains unmapped; rewritten authored statements/imports retain their authored span.
 
 ## Call graph and symbol identity
 
-The analyzer collects function-like declarations from every authored `.sm` source file in the program. A call edge is resolved first from the checker's resolved signature declaration. If that is unavailable, it falls back to the checker symbol on the callee expression/property access. Symbols are unaliased and canonicalized through merged symbols before lookup.
+The analyzer collects function-like declarations from every authored `.vibe` source file in the program. A call edge is resolved first from the checker's resolved signature declaration. If that is unavailable, it falls back to the checker symbol on the callee expression/property access. Symbols are unaliased and canonicalized through merged symbols before lookup.
 
 This makes direct calls, relative imports, aliased imports, namespace property access, and recursive module cycles converge on the same function node without consulting source spelling. Error and Context rows are likewise sets keyed by `*ast.Symbol`; duplicate names from different modules remain distinct and are qualified only when rendered. `TypeFlags` is read for type classification but is never mutated.
 
@@ -67,13 +67,13 @@ Each function starts with direct recoverable failures, direct Context requiremen
 
 Only symbols already present in the finite program can enter a row, and sets only grow, so recursive and mutually recursive components terminate naturally. There is no name-based recursion shortcut or iteration cap.
 
-When the bridge cannot prove a row, it rejects conservatively: unresolved generic rows use `SMITHERS1803`, cross-module higher-order escapes use `SMITHERS1802`, unresolved provider callbacks/layers use `SMITHERS2103`/`SMITHERS2104`, and unannotated foreign calls charge `Panic`.
+When the bridge cannot prove a row, it rejects conservatively: unresolved generic rows use `VIBE1803`, cross-module higher-order escapes use `VIBE1802`, unresolved provider callbacks/layers use `VIBE2103`/`VIBE2104`, and unannotated foreign calls charge `Panic`.
 
 ## Compiler-owned modules and foreign boundaries
 
-Internal compiler options now resolve the exact specifiers `smithers:context`, `smithers:provider`, `smithers:exceptions`, `smithers:comptime`, and `smithers:flows` to the injected declaration module. Import rewriting is gated by the checker-resolved module symbol, not the specifier text. Context, provider, and exception identities have working declarations and runtime lowering.
+Internal compiler options now resolve the exact specifiers `vibelang:context`, `vibelang:provider`, `vibelang:exceptions`, `vibelang:comptime`, and `vibelang:flows` to the injected declaration module. Import rewriting is gated by the checker-resolved module symbol, not the specifier text. Context, provider, and exception identities have working declarations and runtime lowering.
 
-`smithers:comptime` and `smithers:flows` now reach the compiler-owned module deterministically, but their API declarations and intrinsic lowering are not implemented in this lane. A requested API therefore fails closed with an ordinary missing-export diagnostic instead of being approximated at runtime.
+`vibelang:comptime` and `vibelang:flows` now reach the compiler-owned module deterministically, but their API declarations and intrinsic lowering are not implemented in this lane. A requested API therefore fails closed with an ordinary missing-export diagnostic instead of being approximated at runtime.
 
 Foreign calls are classified from their resolved declaration and immediate JSDoc contract. `@throws never` stays plain, declared nominal errors are added to the row, and an unannotated foreign call is wrapped through the injected boundary helper and charges `Panic`. Foreign module trust and property access are checked at the authored site.
 
@@ -91,7 +91,7 @@ The cross-function row work itself required no TypeScript fork change. The follo
 
 One case in that group, `statement-switch-keeps-typescript-fallthrough`, already parses but the pinned checker narrows the discriminant to the first literal and emits `TS2678` for the next fallthrough case. That needs checker behavior in the fork (or an equally exact checker hook), not row inference.
 
-The remaining 6 unsupported semantic-library cases do not need grammar work: the `Result.ok` authoring diagnostic (`SMITHERS1201`), nested Result normalization (`SMITHERS1203`), `Optional.fromNullable`, `Error.is`/root-cause support, and partial error matching. Together with the 29 fork-dependent cases, these account for all 35 unsupported observations. `smithers:comptime` and `smithers:flows` also still need their dedicated compiler API/intrinsic lowering beyond module resolution.
+The remaining 6 unsupported semantic-library cases do not need grammar work: the `Result.ok` authoring diagnostic (`VIBE1201`), nested Result normalization (`VIBE1203`), `Optional.fromNullable`, `Error.is`/root-cause support, and partial error matching. Together with the 29 fork-dependent cases, these account for all 35 unsupported observations. `vibelang:comptime` and `vibelang:flows` also still need their dedicated compiler API/intrinsic lowering beyond module resolution.
 
 ## Files
 

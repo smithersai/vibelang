@@ -43,7 +43,7 @@ Nominal domain Error identity is preserved when the Error declaration/codec regi
 - Automatic compiler-derived codecs and specialized typed-array/transferable codecs are not implemented; the provisional recursive value codec is intentionally narrower.
 - Worker modules are isolation realms, not security sandboxes. The private transport contains unsolicited public-channel messages, but code in a worker can still consume CPU/memory or use host APIs available to it.
 - Timed-out active functions are not cooperatively cancelled.
-- Contracts are supplied as TypeScript generics plus a runtime function allowlist; runtime schema generation from Smithers types is future compiler work.
+- Contracts are supplied as TypeScript generics plus a runtime function allowlist; runtime schema generation from VibeLang types is future compiler work.
 - Domain Error registration metadata is not automatically split/imported into the caller realm; both realms must execute the corresponding registration.
 
 SOURCE SETTLED

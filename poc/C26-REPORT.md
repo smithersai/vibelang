@@ -5,17 +5,17 @@
 ## Outcome
 
 The finding was real. `conformance/runner/js-lower.mjs` previously handed
-authored `.sm` sources directly to `compileProject`, while the canonical CLI
+authored `.vibe` sources directly to `compileProject`, while the canonical CLI
 first calls `compileComptimeIntrinsics`. Consequently, every corpus case with a
-`smithers:comptime` import reached the emitted-TypeScript check with an
+`vibelang:comptime` import reached the emitted-TypeScript check with an
 unresolved compiler-owned module and observed `TS2307` instead of comptime
 semantics.
 
 The JS reference now composes the frontend in this order:
 
-1. Lexically discover a `smithers:comptime` or `smithers:schema` module edge.
+1. Lexically discover a `vibelang:comptime` or `vibelang:schema` module edge.
 2. For a project with such an edge, call `compileComptimeIntrinsics` over the
-   complete authored Smithers source set with a `ComptimeCompiler`.
+   complete authored VibeLang source set with a `ComptimeCompiler`.
 3. Feed every `loweredFiles[file].code` to `compileProject` under the same
    logical file name.
 4. Run the existing stock emitted-TypeScript check and, for output cases,
@@ -25,7 +25,7 @@ A project with no compiler-owned module edge takes the identity path directly
 to `compileProject`. This is the required inert behavior for an unused
 compiler-owned pass. Calling the standalone pass unconditionally exposed an
 important collateral issue during development: its bounded recovery parser
-reported `VCT1000` against Smithers syntax owned by later stages in 14 unrelated
+reported `VCT1000` against VibeLang syntax owned by later stages in 14 unrelated
 cases. The lexical module-edge boundary avoids reclassifying unrelated syntax
 without filtering any project that can actually use comptime. Once an edge is
 present, the comptime pass still receives the whole project, preserving
@@ -38,7 +38,7 @@ new ComptimeCompiler({
   root: request.rootDir,
   cacheDirectory: request.comptimeCacheDirectory,
   target: "node-es2022",
-  options: { frontend: "smithers-conformance-js@1" },
+  options: { frontend: "vibelang-conformance-js@1" },
 })
 ```
 
@@ -49,8 +49,8 @@ package seam to a resolvable implementation.
 ## Cache hermeticity
 
 `runJsCase` already creates one unique staging tree with
-`mkdtemp(join(tmpdir(), "smithers-conformance-js-"))`. The request now assigns
-`join(directory, ".smithers-comptime-cache")` as the comptime cache directory.
+`mkdtemp(join(tmpdir(), "vibelang-conformance-js-"))`. The request now assigns
+`join(directory, ".vibelang-comptime-cache")` as the comptime cache directory.
 It is therefore:
 
 - unique to one case observation;
@@ -71,7 +71,7 @@ error, or an `unmeasured` result.
 
 After successful comptime lowering:
 
-- Smithers language diagnostics are mapped through that file's comptime source
+- VibeLang language diagnostics are mapped through that file's comptime source
   map before the driver returns them.
 - Each `compileProject` map (emitted TypeScript to comptime-lowered source) is
   composed with the comptime map (comptime-lowered source to authored source).
@@ -83,14 +83,14 @@ After successful comptime lowering:
 ## Diagnostic code-family decision
 
 The corpus now accepts `VCTnnnn` as a first-class diagnostic family alongside
-`SMITHERSnnnn` and `TSnnnn`. The four negative comptime expectations name the
+`VIBEnnnn` and `TSnnnn`. The four negative comptime expectations name the
 reference's actual codes: `VCT1004`, `VCT1005`, and `VCT1012`.
 
 The Go comptime port deliberately exposed the same `VCT10xx` rules as
-`SMITHERS19xx`, preserving the last two digits. The judge now canonicalizes
-exactly `SMITHERS19xx` to `VCT10xx` for expectation matching and backend
-agreement. Thus `SMITHERS1904`/`VCT1004`, `SMITHERS1905`/`VCT1005`, and
-`SMITHERS1912`/`VCT1012` express one contract. No other family is normalized,
+`VIBE19xx`, preserving the last two digits. The judge now canonicalizes
+exactly `VIBE19xx` to `VCT10xx` for expectation matching and backend
+agreement. Thus `VIBE1904`/`VCT1004`, `VIBE1905`/`VCT1005`, and
+`VIBE1912`/`VCT1012` express one contract. No other family is normalized,
 and the machine-readable observation retains the backend's raw code.
 
 This decision makes the reference-native family nameable while preserving the
@@ -128,7 +128,7 @@ code-family alias (the budget position is the one disagreement).
 
 Both measurements used the same 176-case corpus and the pinned checkout at
 `/private/tmp/c21-typescript-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c`
-through the runner's supported `SMITHERS_TYPESCRIPT_FORK` environment variable.
+through the runner's supported `VIBELANG_TYPESCRIPT_FORK` environment variable.
 Automatic discovery did not find that checkout on the first baseline attempt,
 so the reported two-backend baseline is the rerun with the explicit verified
 path.
@@ -179,7 +179,7 @@ in agreement.
 ## Verification
 
 ```text
-SMITHERS_TYPESCRIPT_FORK=<pinned> node conformance/runner/run.mjs --backend both --jobs 1
+VIBELANG_TYPESCRIPT_FORK=<pinned> node conformance/runner/run.mjs --backend both --jobs 1
     exit 0
     JS reference: 168/176 pass, 8 xfail, 0 divergent, 0 unmeasured
     Go fork:      146/176 pass, 1 xpass, 5 xfail, 17 unsupported,
@@ -187,7 +187,7 @@ SMITHERS_TYPESCRIPT_FORK=<pinned> node conformance/runner/run.mjs --backend both
     Agreement:    144/176 identical observations
     Harness integrity violations: 0
 
-SMITHERS_TYPESCRIPT_FORK=<pinned> node --test test/conformance.test.mjs
+VIBELANG_TYPESCRIPT_FORK=<pinned> node --test test/conformance.test.mjs
     6 tests passed, 0 failed, exit 0
     JS interop: 6/6
     Go interop: 6/6
