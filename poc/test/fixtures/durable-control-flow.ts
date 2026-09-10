@@ -29,7 +29,7 @@
  * ## What this module shares with the vertical slice, and why
  *
  * The same shape as `durable-vertical-slice.ts`: the compiler derives the site
- * table from `.sm`-dialect source text, and a hand-written generator stands in
+ * table from `.vibe`-dialect source text, and a hand-written generator stands in
  * for the emitted body until the emitter reaches Action calls. The site ids are
  * therefore never literals — a test that chose its own journal keys would make
  * "keyed by site id" true by construction and worth nothing.
@@ -46,7 +46,7 @@ export const CACHED_ID = "test/control-flow/Cached"
 export const POLL_ID = "test/control-flow/Poll"
 
 const contractSource = (exportName: string, input: string, success: string) =>
-  `import { Action } from "smithers:flows"
+  `import { Action } from "vibelang:flows"
 class ${exportName}Failed extends Error { constructor(readonly code: string) { super(code) } }
 export abstract class ${exportName} extends Action<
   (input: ${input}) => Result<${success}, ${exportName}Failed>
@@ -54,7 +54,7 @@ export abstract class ${exportName} extends Action<
 
 const boundAction = (exportName: string, input: string, success: string, id: string): DurableSourceActionBinding => {
   const contract = compileActionContract(contractSource(exportName, input, success), {
-    fileName: `contracts/${exportName.toLowerCase()}.sm`,
+    fileName: `contracts/${exportName.toLowerCase()}.vibe`,
     exportName,
     id,
     version: 1
@@ -85,7 +85,7 @@ export const BRANCH_FLOW_ID = "test/control-flow/Branch"
  * Manifest half — both Actions named — is observed by the corpus case. The
  * journal half is here.
  */
-export const BRANCH_SOURCE = `import { durable } from "smithers:flows"
+export const BRANCH_SOURCE = `import { durable } from "vibelang:flows"
 import { Fetch, Cached } from "test:control-flow-actions"
 export const Branch = durable(function Branch(input: { live: boolean; key: string }) {
   if (input.live) {
@@ -95,7 +95,7 @@ export const Branch = durable(function Branch(input: { live: boolean; key: strin
 })`
 
 export const BRANCH_COMPILE_OPTIONS = {
-  fileName: "flows/branch.sm",
+  fileName: "flows/branch.vibe",
   flowId: BRANCH_FLOW_ID,
   flowVersion: 1,
   actions: ACTIONS
@@ -117,7 +117,7 @@ export const LOOP_FLOW_ID = "test/control-flow/Loop"
  * looked complete. The run-time analogue of that defect is a loop whose rounds
  * all land on one journal key, and it looks just as complete.
  */
-export const LOOP_SOURCE = `import { durable } from "smithers:flows"
+export const LOOP_SOURCE = `import { durable } from "vibelang:flows"
 import { Poll } from "test:control-flow-actions"
 export const Loop = durable(function Loop(input: { rounds: number }) {
   let round = 0
@@ -130,7 +130,7 @@ export const Loop = durable(function Loop(input: { rounds: number }) {
 })`
 
 export const LOOP_COMPILE_OPTIONS = {
-  fileName: "flows/loop.sm",
+  fileName: "flows/loop.vibe",
   flowId: LOOP_FLOW_ID,
   flowVersion: 1,
   actions: ACTIONS

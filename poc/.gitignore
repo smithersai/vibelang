@@ -1,5 +1,5 @@
 node_modules/
-.smithers-cache/
+.vibelang-cache/
 **/.demo-cache/
 *.sqlite
 *.sqlite-shm
