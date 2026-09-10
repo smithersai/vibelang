@@ -1,4 +1,4 @@
-# Fork seam design: how Smithers becomes a real compiler inside the Go TypeScript fork
+# Fork seam design: how VibeLang becomes a real compiler inside the Go TypeScript fork
 
 > [!IMPORTANT]
 > **Specification drift — read `docs/DECISIONS.md` and
@@ -11,15 +11,15 @@
 >   breaks and loop `else` — grammar is now one form, `if (const x = f(); cond)`
 > - `Optional<T>` — absence is now `T | undefined`
 > - `.unwrap()` — propagation is now postfix `!`, and the TypeScript non-null
->   assertion is removed from `.sm`
+>   assertion is removed from `.vibe`
 > - the near-native/LLVM and Wasm compilation targets, the `TypeScript`
 >   requirement, the portable/required/forbidden classification, and the
 >   portability (native) pin — TypeScript is the only target
 >
 > **Concretely, on the diagnostic codes this document proposes to "retire"**
 > (added 2026-09-01, because a reader met them here and reasonably concluded they
-> exist): `SMITHERS1702`, `SMITHERS1704`, `SMITHERS1705`, `SMITHERS1706`,
-> `SMITHERS1707`, `SMITHERS1708` and `SMITHERS1709` are implemented in **neither**
+> exist): `VIBE1702`, `VIBE1704`, `VIBE1705`, `VIBE1706`,
+> `VIBE1707`, `VIBE1708` and `VIBE1709` are implemented in **neither**
 > backend. They were removed from the reference on 2026-08-23 by `4e1ff5c`, and
 > the constructs they judged are now forbidden outright by
 > `docs/src/pages/specification/control-flow.mdx` §No Expression-Form Grammar. So
@@ -27,7 +27,7 @@
 > weighing it against work that is already gone; nothing here is a live plan, and
 > none of these codes is a feature the language has. The reference's retirement
 > ledger is `poc/src/language/README.md`. The only surviving `17xx` codes are
-> `SMITHERS1703` and `SMITHERS1717`.
+> `VIBE1703` and `VIBE1717`.
 >
 > Retained and unaffected: the checked `panic` channel on unannotated foreign
 > calls, and Zig/Rust imports through generated Wasm bindings. Where this document
@@ -57,11 +57,11 @@ plugin protocol for hosting non-TypeScript source languages, with authored-posit
 span mapping, per-language-service-feature fidelity gating, plugin-authored
 diagnostics in authored coordinates, diagnostic suppression directives, supplemental
 virtual files, content-addressed transform caching, and ~26 LSP capabilities
-dynamically registered against a `**/*.sm` glob. `internal/ls` (41,158 lines) is
+dynamically registered against a `**/*.vibe` glob. `internal/ls` (41,158 lines) is
 already threaded with `spanmap.Feature` end to end.
 
 **But it is a plugin interface for *syntax*, not for *semantics*.** Three hard walls
-stop Smithers from living entirely behind it:
+stop VibeLang from living entirely behind it:
 
 1. Runtime JavaScript emit is *deliberately* switched off for content-mapped files
    (`internal/compiler/emitter.go:479`) and the printer's source-map writer is
@@ -79,8 +79,8 @@ stop Smithers from living entirely behind it:
 So the honest answer to Q7 is: **a substantial fork, but a substantially *additive*
 one.** The realistic end state is roughly **450-600 changed lines** spread over
 ~25 upstream files, plus **11,000-15,000 new lines** in fork-owned packages
-(`internal/smithers/`, `internal/transformers/smitherstransforms/`, `cmd/smithersc/`,
-`cmd/smithersmap/`). That is not a "minimal diff" by the letter of DECISIONS.md, but the
+(`internal/vibelang/`, `internal/transformers/vibelangtransforms/`, `cmd/vibec/`,
+`cmd/vibelangmap/`). That is not a "minimal diff" by the letter of DECISIONS.md, but the
 *upstream-merge* burden stays small, which is what that decision was actually
 protecting. The one place where the letter of the decision fails outright is
 grammar — and not for the reason we expected: **the AST is declarative
@@ -90,7 +90,7 @@ outside `tsc/`** (§3.3). That is a change to the *vendoring contract*, not to c
 
 Three findings worth more than any plan:
 
-- **The pinned revision has zero Smithers delta.** `git log` in the checkout shows
+- **The pinned revision has zero VibeLang delta.** `git log` in the checkout shows
   exactly one commit, `c087644e Downgrade too-new npm deps (#63925)`, an upstream
   microsoft/TypeScript merge. "The fork" today is pristine upstream. Every number
   in this document is therefore a *first* diff, not an incremental one.
@@ -265,7 +265,7 @@ diagnostic, not silent drift.
 
 Wiring: `contentmapper.TransformAndParse` (`transform.go:26`) → `ParseResult`
 (`transform.go:47`) parses `result.Text` as `FileName + VirtualExtension` (i.e.
-`/a/b.sm` + `.ts` → script kind derived from the string `/a/b.sm.ts`, `transform.go:59-64`)
+`/a/b.vibe` + `.ts` → script kind derived from the string `/a/b.vibe.ts`, `transform.go:59-64`)
 and stamps `sourceFile.SetContentMapperInfo(ast.ContentMapperSourceFileInfo{...})`
 (`internal/ast/ast.go:2631-2641`), which carries `VirtualFileName`, `OriginalText`,
 `SpanMap`, `DiagnosticDirectives`, `SupplementalSourceFiles`.
@@ -276,7 +276,7 @@ calls `file.SpanMap().VirtualToOriginalSpan(loc)`, and :141 prints the mapper na
 
 Emit naming is already what the POC observed:
 `outputpaths.ChangeToDeclarationExtension` (`internal/outputpaths/outputpaths.go:148-151`)
-produces `x.d.sm.ts` **because** `.sm` is a content-mapper extension.
+produces `x.d.vibe.ts` **because** `.vibe` is a content-mapper extension.
 
 **The exclusivity.** `internal/tsoptions/tsconfigparsing.go:1402, 1410-1411` rejects
 any mapper extension that is in `core.Flatten(tspath.AllSupportedExtensionsWithJson)`
@@ -284,33 +284,33 @@ with `Content_mapper_file_extension_0_is_a_built_in_extension_and_cannot_be_regi
 The same guard is at `internal/lsp/server.go:2529-2534` and
 `internal/contentmapper/hostimpl.go:1121-1126`. So:
 
-> `.sm` can be a content-mapper extension **XOR** a first-class `tspath` extension.
+> `.vibe` can be a content-mapper extension **XOR** a first-class `tspath` extension.
 > Never both. Choosing the second is a one-way door (§7).
 
 One friction point: content mappers require `--runExternalCode`
 (`internal/tsoptions/tsconfigparsing.go:1424-1429`, mappers are dropped entirely
 without it). But `RunExternalCode` is a plain `core.CompilerOptions` field
-(`internal/core/compileroptions.go:155`), so a `cmd/smithersc` driver sets it
+(`internal/core/compileroptions.go:155`), so a `cmd/vibec` driver sets it
 programmatically and the user never sees the flag.
 
 ### 2.4 Recommendation
 
-**Host `.sm` as a content-mapper extension. Do not make it first-class until §7's
+**Host `.vibe` as a content-mapper extension. Do not make it first-class until §7's
 Stage 4, and only if grammar forces it.** Fork diff for the content-mapper path is
 **0 changed lines** for file recognition. Everything — parse, resolve, program
-construction, `.d.sm.ts` naming, diagnostic mapping, LSP registration — already
+construction, `.d.vibe.ts` naming, diagnostic mapping, LSP registration — already
 works.
 
-### 2.5 Cost of the alternative (first-class `.sm`)
+### 2.5 Cost of the alternative (first-class `.vibe`)
 
 ~20 required sites, **60-90 changed lines**, no new files. The three that break
 everything silently if missed:
 
 | # | site | why |
 |---|---|---|
-| 1 | `internal/tspath/extension.go:43` `extensionsToRemove` | without it `RemoveFileExtension` no-ops and every output becomes `main.sm.js` |
-| 2 | `internal/module/resolver.go:1468-1583` `tryAddingExtensions` | without a `.sm` arm, `import "./x"` is unresolvable (~8-14 lines) |
-| 3 | `internal/module/util.go:158-177` `GetResolutionDiagnostic` | without `.sm` in the always-allowed case, every `.sm` import gets TS6263 and the file is dropped at `internal/compiler/fileloader.go:894` |
+| 1 | `internal/tspath/extension.go:43` `extensionsToRemove` | without it `RemoveFileExtension` no-ops and every output becomes `main.vibe.js` |
+| 2 | `internal/module/resolver.go:1468-1583` `tryAddingExtensions` | without a `.vibe` arm, `import "./x"` is unresolvable (~8-14 lines) |
+| 3 | `internal/module/util.go:158-177` `GetResolutionDiagnostic` | without `.vibe` in the always-allowed case, every `.vibe` import gets TS6263 and the file is dropped at `internal/compiler/fileloader.go:894` |
 
 Plus: `extension.go:26-35` (six slices), `extension.go:40` `ExtensionIsTs`,
 `extension.go:137-152` `GetDeclarationEmitExtensionForPath`, `extension.go:195-208`
@@ -321,8 +321,8 @@ Plus: `extension.go:26-35` (six slices), `extension.go:40` `ExtensionIsTs`,
 runtime list), `modulespecifiers/specifiers.go:642-700`
 (`removeExtensionAndIndexPostFix`, `getJSExtensionForFile` — otherwise auto-import
 writes broken specifiers), `outputpaths/outputpaths.go:116-129` `GetOutputExtension`
-(free: `.sm` already falls to `default: → .js`), and
-`ls/lsconv/converters.go:283-298` `LanguageKindToScriptKind` for a `"smithers"`
+(free: `.vibe` already falls to `default: → .js`), and
+`ls/lsconv/converters.go:283-298` `LanguageKindToScriptKind` for a `"vibelang"`
 language id.
 
 ### 2.6 Emit-path naming under the content-mapper path — one real gap
@@ -330,7 +330,7 @@ language id.
 `outputpaths.getOwnEmitOutputFilePath` (`internal/outputpaths/outputpaths.go:183-198`)
 computes the JS path as `tspath.RemoveFileExtension(fileName) + GetOutputExtension(...)`.
 `RemoveFileExtension` consults `extensionsToRemove` (`internal/tspath/extension.go:43`),
-which does not know `.sm`, so `main.sm` → `main.sm` → **`main.sm.js`**. Today this
+which does not know `.vibe`, so `main.vibe` → `main.vibe` → **`main.vibe.js`**. Today this
 is invisible because content-mapped files get no JS path at all
 (`outputpaths.go:57`). The moment we unsuppress JS emit (§5.2) we must add a
 `ChangeToJSExtension`-style helper mirroring `ChangeToDeclarationExtension`
@@ -455,7 +455,7 @@ but it also means touching `core.GetScriptKindFromFileName` and every
 **(c) The `checkJSSyntax` pattern — good messages, wrong gate.**
 `(*Parser).checkJSSyntax(node)` (`parser.go:6765`, called from ~30 sites) parses
 TypeScript syntax *unconditionally* and then emits "X can only be used in
-TypeScript files". Tempting for Smithers, and it would give far better errors than
+TypeScript files". Tempting for VibeLang, and it would give far better errors than
 option (a) does for `defer x` in a `.ts` file. **But it changes the `.ts` parse
 tree**, which breaks `poc/FINDINGS.md`'s P0 gate ("keep an upstream TypeScript
 corpus unchanged in `.ts`/`.tsx` interop tests"). Use (a) for acceptance; accept
@@ -558,11 +558,11 @@ matches.** `defer` (5) and `errdefer` (8) both qualify.
   picks it up automatically via `maps.Copy` at `scanner.go:188`.
 - Parser: two `case` arms in `parseStatement` (`parser.go:1063`) plus two ~12-line
   parse functions modelled on `parseThrowStatement`/`parseReturnStatement`
-  (`parser.go:1367-1379`), gated on `p.contextFlags & ast.NodeFlagsSmithers`.
+  (`parser.go:1367-1379`), gated on `p.contextFlags & ast.NodeFlagsVibeLang`.
 - AST: two new statement kinds inside the statement range, each
   `{ StatementBase; Expression }` — ~20 lines in `ast.json` each.
 - **Recommendation: real grammar.** The cheapest of the five forms, and the one
-  where pre-parse recovery is most fragile (`SMITHERS1710` exists precisely because
+  where pre-parse recovery is most fragile (`VIBE1710` exists precisely because
   textual recovery cannot see block structure).
 - Size: **changed ~25** (scanner 1, parser dispatch 4, parse functions ~24, the 11
   hand-written kind switches), **new ~45 in `ast.json`**.
@@ -583,7 +583,7 @@ Add a `Value` member to the existing `BreakStatement` node in `ast.json`
 
 - **Recommendation: real grammar.** The JS instrument's textual rewrite of
   `break :label value` into `{ value; break label; }` cannot survive nested
-  constructs — that is what `SMITHERS1714`'s cross-construct escape rule is refusing.
+  constructs — that is what `VIBE1714`'s cross-construct escape rule is refusing.
 - Size: **changed ~6 parser lines + ~15 downstream** (binder label handling
   `binder.go:639, 1691`; printer `printer.go:4186`; `ls/documenthighlights.go`,
   `ls/findallreferences.go`), **new ~8 in `ast.json`**.
@@ -606,7 +606,7 @@ Add an optional `ElseStatement` member to `LabeledStatement`
 (`ast.json:1602-1617`) and ~5 lines here. That matches the language design anyway:
 `poc/src/language/README.md` defines loop values only through *labeled* break
 values plus the loop `else`, and explicitly keeps unlabeled loop expressions
-fail-closed (`SMITHERS1702`).
+fail-closed (`VIBE1702`).
 
 The remaining cost is **control flow**, and it is real. The binder builds the flow
 graph (`internal/ast/flow.go`, `internal/binder/binder.go`); `internal/checker/flow.go`
@@ -616,7 +616,7 @@ completion and on plain `break label`, not on a value break — and
 `functionHasImplicitReturn` (`checker.go:20418`) both read that graph.
 
 - **Recommendation: real grammar, but last.** Keep the wrapper-block recovery
-  (`SMITHERS1715`) until the rest of the grammar has landed and the binder work can be
+  (`VIBE1715`) until the rest of the grammar has landed and the binder work can be
   a focused change.
 - Size: **changed ~12 parser + ~60-90 binder/checker flow + ~20 printer/format**,
   **new ~7 in `ast.json`**.
@@ -643,7 +643,7 @@ if p.token == ast.KindVarKeyword || p.token == ast.KindLetKeyword || p.token == 
 
 `IfStatement` gains an optional `Initializer` member and `"LocalsContainerBase"` in
 its `extends` list (`ast.json:1295-1323`), exactly mirroring `ForStatement`
-(`ast.json:1358-1387`). The scoping the POC calls "provisional" (`SMITHERS1717`: the
+(`ast.json:1358-1387`). The scoping the POC calls "provisional" (`VIBE1717`: the
 binding *is* visible in `else`) becomes **provable** — the binder creates the
 container — which is a genuine correctness upgrade over the block rewrite.
 
@@ -672,14 +672,14 @@ which is precisely "hoist the construct and every impure earlier operand into
 compiler temporaries before the statement".
 
 Doing this at parse time with real node provenance retires, as a class:
-`SMITHERS1707` (order-unpreservable placements), `SMITHERS1708` (callee stability via a
-whole-module write scan), `SMITHERS1709` (braceless branches in expression position),
+`VIBE1707` (order-unpreservable placements), `VIBE1708` (callee stability via a
+whole-module write scan), `VIBE1709` (braceless branches in expression position),
 the 256-construct / 32-edit-round budget, and the "prove the extent through the
 parser's own recovery shape, then mask it" pass. **This is the single biggest
 simplification available in the whole migration.**
 
 - Cost: the desugar itself is **new ~600-900** in a fork-owned
-  `internal/smithers/desugar` (or in `reparser.go`-style parser methods), plus the
+  `internal/vibelang/desugar` (or in `reparser.go`-style parser methods), plus the
   `astnav/tokens.go` audit from §3.1c (**~40-80 changed**), because the language
   service currently skips `NodeFlagsReparsed` nodes.
 
@@ -724,7 +724,7 @@ at minimum `tools/`, `Herebyfile.mjs`, `package.json`, `package-lock.json`, and
 blocked on a repo-shape change at exactly the moment it is most expensive to make.
 `internal/diagnostics/{diagnosticMessages,extraDiagnosticMessages}.json` and
 `internal/diagnostics/generate.go` are the happy exception — all three live *inside*
-`tsc/` and `go generate` needs nothing else, so **SMITHERS diagnostic codes are a
+`tsc/` and `go generate` needs nothing else, so **VIBE diagnostic codes are a
 self-contained, in-`tsc` change.** `extraDiagnosticMessages.json` (346 lines,
 codes from 100000) is the fork-owned host that avoids conflicting with upstream's
 8,559-line `diagnosticMessages.json`.
@@ -802,7 +802,7 @@ used. 23 free bits for markers like "this signature has a computed row".
 `checker.go:676-707`. Adding
 
 ```go
-smithersRowLinks core.LinkStore[*ast.Node, SmithersRowLinks]
+vibelangRowLinks core.LinkStore[*ast.Node, VibeLangRowLinks]
 ```
 
 next to `signatureLinks` is **2 changed lines** (field + struct definition) with
@@ -828,7 +828,7 @@ into `checker.NodeBuilder` (`internal/checker/nodebuilder.go:10`), whose
 `SerializeReturnTypeForSignature` (:117) *has the `*Signature` in hand* at the exact
 moment it builds the `.d.ts` return-type node — the ideal attach point.
 
-**`@smithersEffects` as a JSDoc carrier works, and there is exact precedent.**
+**`@vibelangEffects` as a JSDoc carrier works, and there is exact precedent.**
 `printer.EmitContext.AddSyntheticLeadingComment(node, kind, text, hasTrailingNewLine)`
 (`internal/printer/emitcontext.go:1018`) is already used by
 `DeclarationTransformer.preservePartialJsDoc` (`transform.go:1613`) with the
@@ -845,14 +845,14 @@ so avoid nodes it touches.
 Read-back: there is **no `ast.GetJSDocTags`**. The pattern is
 `node.JSDoc(file)` (`internal/ast/ast.go:1560`) → `jsdoc.AsJSDoc().Tags.Nodes`,
 canonically via the unexported `getAllJSDocTags` (`internal/checker/jsdoc.go:83`,
-the whole file is 100 lines — copy or export it). `@smithersEffects` lands as
+the whole file is 100 lines — copy or export it). `@vibelangEffects` lands as
 `ast.KindJSDocUnknownTag` and we parse the payload ourselves. Two caveats:
 
 - For TS/TSX files including `.d.ts`, **JSDoc is parsed lazily**
   (`internal/parser/jsdoc.go:60`): `withJSDoc` sets `NodeFlagsHasJSDoc` and returns
   without parsing unless the comment has `@see`/`@link`. First access triggers
   `(*SourceFile).resolveJSDoc` (`ast/ast.go:2758`), mutex-guarded and memoized into
-  `jsdocCache`. Reading rows back from a `.d.sm.ts` therefore costs a one-time lazy
+  `jsdocCache`. Reading rows back from a `.d.vibe.ts` therefore costs a one-time lazy
   parse per node — cheap, thread-safe, but not free.
 - The reparser (`internal/parser/reparser.go:54`) does **not** run for TS files, so
   the tag will never become typed syntax automatically.
@@ -886,7 +886,7 @@ declaration emit without touching `transform.go` at all.
 checker: `getTypeAtLocation`, `getSymbolAtPosition`, `getResolvedSignature`,
 `getTypeOfSymbol`, `getSignaturesOfType`, `transpileModule`, `parseConfigFile`
 (`internal/api/proto.go:62-110`). Combined with the fact that `cmd/` is inside the
-module (§1), this means a Smithers content mapper built as `tsc/cmd/smithersmap` can
+module (§1), this means a VibeLang content mapper built as `tsc/cmd/vibelangmap` can
 build its **own** `compiler.Program` over the lowered TypeScript and run real
 checker-backed row inference — exactly what the POC's `analyzeProject` does with
 `typescript-js` — with **zero fork diff**.
@@ -902,13 +902,13 @@ key := contentMappedParseCacheKey(parseOptions, fh.Hash(), transformIdentity, di
 where `transformIdentity` is `combinedIdentity(mapper, configIdentity, compilerOptions)`
 (`internal/contentmapper/hostimpl.go:641-651`) — mapper version, mapper options,
 the mapper's *declared* compiler options, and `ConfigIdentity`. **It does not
-include any other file's content.** A cross-module row change in `b.sm` will not
-invalidate the cached transform of `a.sm`.
+include any other file's content.** A cross-module row change in `b.vibe` will not
+invalidate the cached transform of `a.vibe`.
 
 The only escape is `Manifest.DynamicConfig` + `OpenProjectResult.WatchedFiles`
-(`hostimpl.go:75-84, 683-692`): a mapper that declares every project `.sm` file as
+(`hostimpl.go:75-84, 683-692`): a mapper that declares every project `.vibe` file as
 a watched file and folds their content hashes into `ConfigIdentity`. That is
-correct — and it invalidates **every** file's cached transform on **any** `.sm`
+correct — and it invalidates **every** file's cached transform on **any** `.vibe`
 edit. In batch `tsc` that is acceptable. In the LSP it is O(N) full re-transforms
 per keystroke.
 
@@ -921,14 +921,14 @@ per keystroke.
 
 ### 4.6 Recommended shape
 
-- **Now (0 changed lines):** rows computed in `cmd/smithersmap`'s own Program; emitted
+- **Now (0 changed lines):** rows computed in `cmd/vibelangmap`'s own Program; emitted
   into the virtual TypeScript as explicit `Result<A, E>` annotations so the main
-  Program checks them structurally; `@smithersEffects` written into `.d.sm.ts` by the
+  Program checks them structurally; `@vibelangEffects` written into `.d.vibe.ts` by the
   mapper's own declaration pass.
 - **Later (~60 changed, ~2,000 new):** `Signature.resolvedFailureRow` +
   `TypeSystemPropertyNameResolvedFailureRow` + `getFailureRowOfSignature` mirroring
   `getReturnTypeOfSignature` + `ast.ForEachThrowStatement` + a new
-  `internal/checker/vibrows.go`, with `@smithersEffects` emitted from
+  `internal/checker/vibrows.go`, with `@vibelangEffects` emitted from
   `NodeBuilder.SerializeReturnTypeForSignature` (`checker/nodebuilder.go:117`).
 - **Never:** a new `TypeFlags` bit. There isn't one.
 
@@ -956,13 +956,13 @@ list:
 [!isolatedModules]      ConstEnumInliningTransformer
 ```
 
-**Insert the Smithers transform between the `opts` literal (ends `emitter.go:135`)
+**Insert the VibeLang transform between the `opts` literal (ends `emitter.go:135`)
 and the `// transform TypeScript syntax` block (`:137`)** — before
 `NewTypeEraserTransformer` at :145, so the transform still sees TypeScript type
 annotations, which is what a `Result<A, E>` lowering needs.
 
 ```go
-tx = append(tx, smitherstransforms.NewSmithersTransformer(&opts))
+tx = append(tx, vibelangtransforms.NewVibeLangTransformer(&opts))
 ```
 
 **Changed: 2-4 lines** (one append plus an import).
@@ -987,14 +987,14 @@ type query in the whole interface is
 (:88), a 12-value enum used only for decorator metadata
 (`tstransforms/typeserializer.go:26`).
 
-So: **a Smithers transform that needs "is this type a `Result<A, E>`" must extend
+So: **a VibeLang transform that needs "is this type a `Result<A, E>`" must extend
 `printer.EmitResolver`.** Concretely — add the method to the interface
 (`internal/printer/emitresolver.go`), implement it on `checker.EmitResolver`
 (`internal/checker/emitresolver.go:34`) under `r.checkerMu` following the pattern
 at :53-57 and :950, and decide whether it belongs to the `...Unsafe` family
 (:117-119) that may recurse into checking. Also note `getScriptTransformers`
 substitutes a **checker-free** `binder.NewReferenceResolver` when nothing needs type
-info (`emitter.go:122-127`) — force `emitResolver` on whenever Smithers is active.
+info (`emitter.go:122-127`) — force `emitResolver` on whenever VibeLang is active.
 
 **Changed for one new resolver method: ~15-25 lines** across two files. This
 number scales linearly with how many distinct type questions the lowering asks,
@@ -1014,9 +1014,9 @@ control-flow rewrite plus symbol-level resolver queries. `estransforms/using.go`
 try/finally with a disposal stack — is the direct structural template for
 `defer`/`errdefer`.
 
-Realistic size for a Smithers lowering package covering Result lifting,
+Realistic size for a VibeLang lowering package covering Result lifting,
 `.unwrap()` propagation, and `defer`/`errdefer`: **new 1,500-3,000 lines** in
-`internal/transformers/smitherstransforms/`.
+`internal/transformers/vibelangtransforms/`.
 
 ### 5.3 What constrains source-map fidelity
 
@@ -1053,7 +1053,7 @@ Three further hard constraints:
 - **Names are not supported.** `Generator.AddNamedSourceMapping` exists
   (`generator.go:294`) but both printer call sites are commented out
   (`printer.go:5850-5868`, :5885-5897, `// TODO: Support emitting nameIndex for
-  source maps`). A renamed Smithers temporary cannot carry its authored identifier
+  source maps`). A renamed VibeLang temporary cannot carry its authored identifier
   into the map. This matches the POC's own "names/scopes are not encoded" limit.
 - **Generated positions must be monotonic**; source positions may backtrack
   (`isBacktrackingSourcePosition`, `generator.go:132`). Reordering source
@@ -1086,7 +1086,7 @@ emitDeclarationMap := e.emitOnly != EmitOnlyBuilderSignature && options.Declarat
 |---|---|---|---|
 | 1 | `internal/compiler/emitter.go:479` | gate the suppression on a new mapper capability (`Manifest.OwnsRuntimeEmit bool`) or `core.CompilerOptions` field | ~4 |
 | 2 | `internal/outputpaths/outputpaths.go:57` | same gate for the JS output path | ~3 |
-| 3 | `internal/outputpaths/outputpaths.go:183-198` | `ChangeToJSExtension` consulting `host.ContentMapperExtensions()`, mirroring `ChangeToDeclarationExtension` (:148-151) — else `main.sm` → `main.sm.js` (§2.6) | ~8 |
+| 3 | `internal/outputpaths/outputpaths.go:183-198` | `ChangeToJSExtension` consulting `host.ContentMapperExtensions()`, mirroring `ChangeToDeclarationExtension` (:148-151) — else `main.vibe` → `main.vibe.js` (§2.6) | ~8 |
 | 4 | `internal/printer/printer.go:5833` `emitPos` + a `contentMappedSource` implementing `sourcemap.Source` (a 3-method interface: `Text()`, `FileName()`, `ECMALineMap()`, `internal/sourcemap/source.go:5-9`) | map `pos` through `SpanMap.VirtualToOriginalPosition` and `return` on `FidelityNone`; `setSourceMapSource` (`printer.go:5805`) then registers the authored file name and text | ~30 changed + ~60 new |
 | 5 | `internal/compiler/emitter.go:230` + `internal/outputpaths/outputpaths.go:65` | enable declaration maps through the same double-mapping | ~5 |
 
@@ -1096,7 +1096,7 @@ emitDeclarationMap := e.emitOnly != EmitOnlyBuilderSignature && options.Declarat
 `planSpecifierEdits`, `applySpecifierEdits`, `rewriteSourceMapURL`,
 `decodeSuppliedMap`, `mapLoweredPosition`, `mapLoweredSpan`, and the whole
 `LoweredSource` / `LoweringExternal` protocol in `compiler/api.go` — roughly
-**900 lines of Smithers-owned code retired**, and it removes the POC's honest
+**900 lines of VibeLang-owned code retired**, and it removes the POC's honest
 admission that "authored columns advance one-for-one within a mapping run …
 approximate inside replaced tokens", because `spanmap` distinguishes verbatim from
 atom segments *by construction* and `Validate` enforces it.
@@ -1105,7 +1105,7 @@ atom segments *by construction* and `Validate` enforces it.
 
 ## 6. Q5 — Language service
 
-**`smithers lsp` needs almost nothing from the fork.**
+**`vibe lsp` needs almost nothing from the fork.**
 
 `internal/lsp/server.go:408-472`, `RegisterContentMapperExtensions`:
 
@@ -1157,7 +1157,7 @@ to the virtual file at :42. Diagnostics deliberately bypass feature filtering
 `internal/testutil/contentmappertest/`.
 
 **So: real diagnostics, hover, completion, go-to-definition, references, rename,
-and formatting for `.sm` cost 0 changed lines.** SMITHERS diagnostics ride the mapper's
+and formatting for `.vibe` cost 0 changed lines.** VIBE diagnostics ride the mapper's
 own `Diagnostic{Start, Length, Code, MessageText}` in **original** coordinates
 (`internal/contentmapper/hostimpl.go:212-218`) under a mapper-declared
 `diagnosticSource` (:59-60, validated non-empty and not `"typescript"`/`"tsc"` at
@@ -1207,15 +1207,15 @@ unknown is proved in Stage 2, before any upstream file is touched.
 
 JS instrument computes everything; `compiler/fork.go` builds a replacement
 `cmd/tsc/main.go` via `go build -overlay`; identity content mapper + external
-lowering; two `Program`s; ~900 lines of Smithers-owned map composition.
+lowering; two `Program`s; ~900 lines of VibeLang-owned map composition.
 Fork diff: **0 changed, 0 new** (the overlay writes nothing into the checkout).
 
 ### Stage 1 — own the entry point, delete the overlay
 
 **Moves:** `compiler/forkbridge/main.go.txt` becomes a real directory
-`tsc/cmd/smithersc/` in the fork (plus `tsc/cmd/smithersc/lsp.go` modelled on
+`tsc/cmd/vibec/` in the fork (plus `tsc/cmd/vibec/lsp.go` modelled on
 `cmd/tsc/lsp.go`, 115 lines, and `api.go` modelled on `cmd/tsc/api.go`, 82 lines).
-`compiler/fork.go` builds `./cmd/smithersc` instead of overlaying `./cmd/tsc`; the
+`compiler/fork.go` builds `./cmd/vibec` instead of overlaying `./cmd/tsc`; the
 `-overlay` flag, `forkBridgeSource` embed, and the digest-in-cache-key logic all go
 away. `PinnedTypeScriptRevision` verification and the `--revision` handshake stay.
 
@@ -1223,56 +1223,56 @@ away. `PinnedTypeScriptRevision` verification and the `--revision` handshake sta
 instrument, the whole `compiler/api.go` transport.
 
 **Why first:** it unblocks the vendoring work (a vendored subtree becomes
-`go build ./cmd/smithersc`, an ordinary Go build with no overlay machinery) and it
+`go build ./cmd/vibec`, an ordinary Go build with no overlay machinery) and it
 removes the "we neither patch the checkout nor import internals across their
-visibility boundary" contortion, because `cmd/smithersc` is *inside* the module and
+visibility boundary" contortion, because `cmd/vibec` is *inside* the module and
 legitimately sees `internal/*`.
 
 **Test:** `compiler/fork_integration_test.go`, `fork_lowering_integration_test.go`,
-`fork_protocol_test.go`, `cmd/smithersc-go` — all unchanged, all must still pass.
+`fork_protocol_test.go`, `cmd/vibec-go` — all unchanged, all must still pass.
 
 **Fork diff: 0 changed, ~1,600 new.** Risk: none.
 
-### Stage 2 — Smithers as a real content mapper (**highest-risk unknown, proved here**)
+### Stage 2 — VibeLang as a real content mapper (**highest-risk unknown, proved here**)
 
 **Moves:** the `identityProject` stub in `forkbridge/main.go.txt:134-152` is
 replaced by a real `contentmapper.Mapper` whose implementation is a second fork
-binary, `tsc/cmd/smithersmap`, speaking `contentmapper` protocol v1 over JSON-RPC
+binary, `tsc/cmd/vibelangmap`, speaking `contentmapper` protocol v1 over JSON-RPC
 (`internal/contentmapper/hostimpl.go:31-218`). It emits virtual TypeScript plus a
-`spanmap.SpanMap` and SMITHERS diagnostics in authored coordinates. Because it lives
+`spanmap.SpanMap` and VIBE diagnostics in authored coordinates. Because it lives
 inside the module it builds its own `compiler.Program` and uses the **real Go
 checker** for row inference — the JS instrument's `analyzeProject` ported to Go.
 
-**The unknown being proved:** *can Smithers's lowering be expressed as spanmap
+**The unknown being proved:** *can VibeLang's lowering be expressed as spanmap
 segments at the fidelity the POC's source maps achieve?* `spanmap.Validate`
 (`internal/spanmap/spanmap.go:192`) is strictly stronger than a source map — every
 `KindVerbatim` segment must match the original text byte-for-byte, segments must be
 ordered and disjoint in virtual space, original spans must not partially overlap.
-If Smithers's return/throw lifting, unwrap propagation, and defer nesting cannot be
+If VibeLang's return/throw lifting, unwrap propagation, and defer nesting cannot be
 segmented this way, **the entire content-mapper path collapses and we are forced
-straight to first-class `.sm` (Stage 4) with none of the intermediate wins.** Prove
+straight to first-class `.vibe` (Stage 4) with none of the intermediate wins.** Prove
 it before touching anything upstream.
 
 **Stays:** the JS instrument as the *reference implementation* for differential
-testing. Every `.sm` fixture must produce identical diagnostics and identical
+testing. Every `.vibe` fixture must produce identical diagnostics and identical
 authored spans from both.
 
 **Test:** port `poc/src/language/*.test.ts` fixtures to a Go corpus; run
 `tsc --noEmit` and assert authored spans; `spanmap.Validate` catches every mapping
 mistake as a structured error, so the test is "no `MappingError`, and every
-diagnostic's mapped span equals the JS instrument's". Ship `smithers check` and
-`smithers lsp` with real diagnostics/hover/completion for `.sm`.
+diagnostic's mapped span equals the JS instrument's". Ship `vibe check` and
+`vibe lsp` with real diagnostics/hover/completion for `.vibe`.
 
-**Fork diff: 0 changed, ~4,000-6,000 new** (`cmd/smithersmap` + `internal/smithers/`).
+**Fork diff: 0 changed, ~4,000-6,000 new** (`cmd/vibelangmap` + `internal/vibelang/`).
 
 **Known limitation to document, not fix, here:** cross-module row correctness
-requires `DynamicConfig` + `WatchedFiles` folding every `.sm` file into
+requires `DynamicConfig` + `WatchedFiles` folding every `.vibe` file into
 `ConfigIdentity`, which costs O(N) re-transforms per edit (§4.5). Acceptable for
 batch; measure it in the LSP and record the number.
 
 ### Stage 3 — unsuppress runtime JS emit and make source maps span-aware
 
-**Moves:** the five sites in §5.4. Runtime emit for `.sm` becomes single-Program.
+**Moves:** the five sites in §5.4. Runtime emit for `.vibe` becomes single-Program.
 The `LoweredSource` / `LoweringExternal` protocol in `compiler/api.go:43-96` and
 the whole composition layer in `forkbridge` are deleted.
 
@@ -1281,7 +1281,7 @@ the whole composition layer in `forkbridge` are deleted.
 **Test:** `compiler/fork_lowering_integration_test.go`'s existing assertions —
 `action` → `function` with an inserted helper line, authored positions preserved,
 helper-line mappings source-less — retargeted at the single-Program path. Add a
-regression asserting `main.sm` → `main.js` (not `main.sm.js`). Gate: an unchanged
+regression asserting `main.vibe` → `main.js` (not `main.vibe.js`). Gate: an unchanged
 upstream TypeScript corpus must still emit byte-identically, since sites 1, 2, 3,
 and 5 are all behind `sourceFile.ContentMapper() != ""` and site 4 is behind a nil
 span map.
@@ -1291,11 +1291,11 @@ span map.
 `internal/printer/printer.go`. All three changes are narrow, all are guarded by an
 existing content-mapper predicate, and all are individually revertible.
 
-### Stage 4 — first-class `.sm` and real grammar (**the point of no return**)
+### Stage 4 — first-class `.vibe` and real grammar (**the point of no return**)
 
-**Moves:** §2.5's 20 sites make `.sm` a `tspath` extension; §3.2's parser and AST
+**Moves:** §2.5's 20 sites make `.vibe` a `tspath` extension; §3.2's parser and AST
 work adds `defer`, `errdefer`, `break :label value`, `if (const x = f(); cond)`,
-and loop `else` behind `NodeFlagsSmithers`; value `if`/`switch` desugars onto the
+and loop `else` behind `NodeFlagsVibeLang`; value `if`/`switch` desugars onto the
 labeled forms through `p.reparseList` (§3.1c), which also requires the
 `internal/astnav/tokens.go` audit.
 
@@ -1304,17 +1304,17 @@ must carry `tools/`, `Herebyfile.mjs`, `package.json`, `package-lock.json`, and
 `packages/typescript/` (§3.3). Without them `ast_generated.go` is un-regenerable
 and will drift.
 
-**Stays:** row inference still in `cmd/smithersmap`'s Program — no, it cannot. Making
-`.sm` first-class **removes the content mapper**, because
+**Stays:** row inference still in `cmd/vibelangmap`'s Program — no, it cannot. Making
+`.vibe` first-class **removes the content mapper**, because
 `internal/tsoptions/tsconfigparsing.go:1410` forbids registering a built-in
 extension. So Stage 4 forces Stage 5's checker work to land with it or immediately
 after. This coupling is the main reason Stage 4 is expensive.
 
 **Why this is the true point of no return — three coupled one-way doors:**
 
-1. **Extension identity.** `.sm` as a content-mapper extension and `.sm` as a
+1. **Extension identity.** `.vibe` as a content-mapper extension and `.vibe` as a
    builtin are mutually exclusive by explicit upstream guard (§2.3). Flipping means
-   the `**/*.sm` LSP registration path, the `x.d.sm.ts` naming rule
+   the `**/*.vibe` LSP registration path, the `x.d.vibe.ts` naming rule
    (`outputpaths.go:148-151`), the `resolvedUsingExtraExtensions` bypass
    (`module/util.go:154`), and every downstream cache key all change at once. There
    is no A/B, no gradual rollout, no fallback.
@@ -1323,7 +1323,7 @@ after. This coupling is the main reason Stage 4 is expensive.
    and outside the current sparse checkout (§3.3). Every upstream rebase after this
    point is a regenerate-and-diff operation, not a text merge, and requires Node
    plus the repo's npm tree.
-3. **Published artifacts.** Once `.d.sm.ts` files with fork-defined shape are
+3. **Published artifacts.** Once `.d.vibe.ts` files with fork-defined shape are
    published to a registry, downstream consumers are pinned to our resolution and
    naming rules.
 
@@ -1331,14 +1331,14 @@ Stages 1-3 are all revertible in an afternoon. Stage 4 is not.
 
 **Test gate (from `poc/FINDINGS.md` P0):** an unmodified upstream TypeScript
 conformance corpus must stay byte-identical for `.ts`/`.tsx`, enforced by
-`NodeFlagsSmithers` gating on every new grammar rule — which is why we reject the
+`NodeFlagsVibeLang` gating on every new grammar rule — which is why we reject the
 `checkJSSyntax` pattern (§3.1a option c) despite its better error messages. Plus a
-separate `.sm` corpus for shared syntax and intentional divergences. A second gate
+separate `.vibe` corpus for shared syntax and intentional divergences. A second gate
 is mandatory here and easy to forget: **regenerate the Go and TypeScript sides of
 `api/encoder` together** and assert the LSP/API round-trip, because `Kind` crosses
 that boundary numerically (§3.1).
 
-**Fork diff: ~300-450 changed** (of which ~60-90 is `.sm` file recognition, ~120-200
+**Fork diff: ~300-450 changed** (of which ~60-90 is `.vibe` file recognition, ~120-200
 is grammar downstream support, ~40-80 is the `astnav` audit), **~700 new in
 `ast.json` and parser methods, ~600-900 new in the desugar pass**, plus generator
 input changes outside `tsc/`.
@@ -1349,28 +1349,28 @@ input changes outside `tsc/`.
 `resolvedRequirementRow`, `TypeSystemPropertyNameResolvedFailureRow`,
 `getFailureRowOfSignature` mirroring `getReturnTypeOfSignature`
 (`checker.go:20115`), `ast.ForEachThrowStatement` mirroring `ForEachReturnStatement`
-(`ast/utilities.go:1157`), a `core.LinkStore[*ast.Node, SmithersRowLinks]` on `Checker`
+(`ast/utilities.go:1157`), a `core.LinkStore[*ast.Node, VibeLangRowLinks]` on `Checker`
 (`checker.go:~677`), row emission from `NodeBuilder.SerializeReturnTypeForSignature`
-(`checker/nodebuilder.go:117`) as a synthetic `@smithersEffects` JSDoc comment
+(`checker/nodebuilder.go:117`) as a synthetic `@vibelangEffects` JSDoc comment
 (`emitcontext.go:1018`, precedent `declarations/transform.go:1613`), read-back
 through `ast.KindJSDocUnknownTag`.
 
-**Stays:** `@smithersEffects` remains the explicitly-unstable carrier. The eventual
-decision to make rows *real syntax* in `.d.sm.ts` is a separate, later,
+**Stays:** `@vibelangEffects` remains the explicitly-unstable carrier. The eventual
+decision to make rows *real syntax* in `.d.vibe.ts` is a separate, later,
 compatibility-breaking choice.
 
 **Test:** the POC's `generic-rows.test.ts`, `qualified-rows.test.ts`,
 `nominal-errors.test.ts` fixtures, ported; plus an incremental-checking suite that
-Stage 2 cannot pass (edit `b.sm`, assert `a.sm`'s row changes without re-checking
+Stage 2 cannot pass (edit `b.vibe`, assert `a.vibe`'s row changes without re-checking
 the world) — that suite is the *reason* for this stage.
 
 **Fork diff: ~60 changed, ~2,000-3,000 new.**
 
 ### Stage 6 — lowering moves into the fork's transform pipeline
 
-**Moves:** `internal/transformers/smitherstransforms/`, inserted at
+**Moves:** `internal/transformers/vibelangtransforms/`, inserted at
 `internal/compiler/emitter.go:137` (§5.1), plus whatever `printer.EmitResolver`
-methods it needs (§5.2). `cmd/smithersmap` is deleted.
+methods it needs (§5.2). `cmd/vibelangmap` is deleted.
 
 **Test:** every emitted-JS execution test the POC runs (`project.test.ts` writes
 modules to disk, stock-checks them, and runs the entry under a real Node loader),
@@ -1383,9 +1383,9 @@ retargeted at fork-emitted output.
 | stage | changed | new | revertible | ships |
 |---|---|---|---|---|
 | 1 entry point | 0 | ~1,600 | yes | overlay deleted, vendorable build |
-| 2 real content mapper | 0 | ~4,000-6,000 | yes | `smithers check` + `smithers lsp`, real diagnostics/hover |
-| 3 JS emit + span maps | ~50 | ~60 | yes | single-Program emit, ~900 Smithers lines retired |
-| **4 first-class `.sm` + grammar** | **~300-450** | **~1,300-1,600** | **no** | real syntax; `SMITHERS1702`/`1707`/`1708`/`1709` retired |
+| 2 real content mapper | 0 | ~4,000-6,000 | yes | `vibe check` + `vibe lsp`, real diagnostics/hover |
+| 3 JS emit + span maps | ~50 | ~60 | yes | single-Program emit, ~900 VibeLang lines retired |
+| **4 first-class `.vibe` + grammar** | **~300-450** | **~1,300-1,600** | **no** | real syntax; `VIBE1702`/`1707`/`1708`/`1709` retired |
 | 5 rows in checker | ~60 | ~2,000-3,000 | mostly | incremental cross-module rows |
 | 6 fork-owned lowering | ~40 | ~1,500-3,000 | yes | one pipeline, one Program |
 | **total** | **~450-600** | **~11,000-15,000** | | |
@@ -1397,23 +1397,23 @@ retargeted at fork-emitted output.
 ### The goal as written is half-right and half-wrong
 
 `docs/DECISIONS.md` says: *"The fork should make TypeScript extensible/configurable
-through a narrow plugin interface rather than embedding every Smithers feature
+through a narrow plugin interface rather than embedding every VibeLang feature
 directly throughout upstream code."*
 
 **Half-right, and better than we knew.** The narrow plugin interface exists,
 upstream, today: `internal/contentmapper` + `internal/spanmap` + the LSP's dynamic
-`**/*.sm` registration + the `tsc/cmd/` module-internal escape hatch. It is a
+`**/*.vibe` registration + the `tsc/cmd/` module-internal escape hatch. It is a
 *versioned, validated, cached, out-of-process, LSP-integrated* language-hosting
 protocol, and it is materially better than the `compiler.Extension` interface
 sketched in `compiler/api.go:152-159`. We should delete that sketch and adopt
-theirs. Stages 1 and 2 deliver a working `smithers check` and `smithers lsp` with **zero
+theirs. Stages 1 and 2 deliver a working `vibe check` and `vibe lsp` with **zero
 changed upstream lines**, which is a stronger result than the decision anticipated.
 
 **Half-wrong, in three specific places, and no amount of design avoids them:**
 
 1. **Emit.** Upstream *chose* to delegate runtime JavaScript to the mapper
    (`internal/compiler/emitter.go:477-481`) and *chose* not to double-map through
-   the span map (:227-230). Smithers is a language with a compiler, not a
+   the span map (:227-230). VibeLang is a language with a compiler, not a
    build-tool plugin; we must own emit. That is a ~50-line change to three upstream
    files. There is no plugin-shaped alternative — the printer's source-map writer
    (`internal/printer/printer.go:5805-5848`) has no concept of a span map, and the
@@ -1423,14 +1423,14 @@ changed upstream lines**, which is a stronger result than the decision anticipat
 2. **Incrementality.** The plugin cache identity is per-file by construction
    (`internal/project/parsecache.go:43`, `internal/contentmapper/hostimpl.go:641`).
    `E`/`R` rows are whole-program. This is not a gap to be worked around; it is the
-   protocol's design. A mapper can be *correct* (fold every `.sm` into
+   protocol's design. A mapper can be *correct* (fold every `.vibe` into
    `ConfigIdentity` via `DynamicConfig`) or *incremental*, never both. The moment
-   Smithers has a project of nontrivial size in an editor, rows must live in the
+   VibeLang has a project of nontrivial size in an editor, rows must live in the
    checker.
 
-3. **Grammar.** A content mapper receives text and returns text. Smithers has forms
+3. **Grammar.** A content mapper receives text and returns text. VibeLang has forms
    stock TypeScript cannot parse, and today we recover them with a bounded textual
-   pass (256 constructs, 32 edit rounds, `SMITHERS1702`/`SMITHERS1707`-`SMITHERS1717` refusing
+   pass (256 constructs, 32 edit rounds, `VIBE1702`/`VIBE1707`-`VIBE1717` refusing
    every shape whose extent is not textually provable). That is not a foundation for
    a language; it is a foundation for a POC, and `poc/src/language/README.md` says
    so.
@@ -1470,8 +1470,8 @@ a plan that accommodates them:
   `p.reparseList` (`parser.go:613-643`), which already does exactly the
   "splice synthesized statements before the containing statement, propagating
   outward when the nesting level cannot host them" job the POC's textual pass
-  approximates. That single decision retires `SMITHERS1702`, `SMITHERS1707`, `SMITHERS1708`,
-  `SMITHERS1709`, the 256-construct/32-round budget, and the callee-stability
+  approximates. That single decision retires `VIBE1702`, `VIBE1707`, `VIBE1708`,
+  `VIBE1709`, the 256-construct/32-round budget, and the callee-stability
   whole-module write scan, all as a class. Its price is an audit of
   `internal/astnav/tokens.go`, which currently skips `NodeFlagsReparsed` nodes in
   16 places.
@@ -1487,19 +1487,19 @@ a plan that accommodates them:
 
 ### The verdict
 
-**Hosting Smithers requires a substantial fork — but the substance is additive, and
+**Hosting VibeLang requires a substantial fork — but the substance is additive, and
 the merge-facing surface stays small.** Roughly 450-600 changed lines across ~25
 upstream files, and 11,000-15,000 new lines in fork-owned packages (plus a larger
 vendored subtree). That is a real fork, not a plugin. But:
 
 - The first two stages, which deliver a checking compiler and a working language
   server, cost **zero changed lines**.
-- The single largest category of new code (`smitherstransforms`, `internal/smithers`)
+- The single largest category of new code (`vibelangtransforms`, `internal/vibelang`)
   never conflicts on rebase.
 - The changed lines cluster in three files (`compiler/emitter.go`,
   `outputpaths/outputpaths.go`, `printer/printer.go`) plus the AST generator, and
   every one of them is guarded by an existing predicate
-  (`sourceFile.ContentMapper() != ""`, `NodeFlagsSmithers`, a nil span map), so
+  (`sourceFile.ContentMapper() != ""`, `NodeFlagsVibeLang`, a nil span map), so
   upstream conformance is protected by construction rather than by testing alone.
 
 The decision in `docs/DECISIONS.md` to "track upstream with a minimal diff" survives
@@ -1581,7 +1581,7 @@ All paths relative to `<fork>/tsc/`.
 - `internal/astnav/tokens.go:76, 104, 135, 146, 157, 165, 173, 176, 354, 375, 393,
   497, 501, 631, 641, 744` — `NodeFlagsReparsed` skips (the desugar hazard)
 - `internal/diagnostics/extraDiagnosticMessages.json` (346 lines, codes from 100000)
-  — the fork-owned SMITHERS diagnostic host; `internal/diagnostics/generate.go`
+  — the fork-owned VIBE diagnostic host; `internal/diagnostics/generate.go`
 
 **Checker**
 - `internal/checker/checker.go:57-66` `TypeSystemPropertyName`; `:585` `Checker`; `:676-707` link stores; `:4233` `checkThrowStatement`; `:19950` `getSignatureFromDeclaration`; `:20115` `getReturnTypeOfSignature`; `:20240` `getReturnTypeFromBody`; `:20373` `checkAndAggregateReturnExpressionTypes`

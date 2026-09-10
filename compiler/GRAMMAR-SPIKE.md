@@ -1,4 +1,4 @@
-# Grammar spike: what real Smithers syntax actually costs in the fork
+# Grammar spike: what real VibeLang syntax actually costs in the fork
 
 > [!IMPORTANT]
 > **Specification drift — read `docs/DECISIONS.md` and
@@ -11,15 +11,15 @@
 >   breaks and loop `else` — grammar is now one form, `if (const x = f(); cond)`
 > - `Optional<T>` — absence is now `T | undefined`
 > - `.unwrap()` — propagation is now postfix `!`, and the TypeScript non-null
->   assertion is removed from `.sm`
+>   assertion is removed from `.vibe`
 > - the near-native/LLVM and Wasm compilation targets, the `TypeScript`
 >   requirement, the portable/required/forbidden classification, and the
 >   portability (native) pin — TypeScript is the only target
 >
 > **Concretely, on the diagnostic codes this document argues about** (added
 > 2026-09-01, because a reader met them here and reasonably concluded they
-> exist): `SMITHERS1702`, `SMITHERS1704`, `SMITHERS1705`, `SMITHERS1706`,
-> `SMITHERS1707`, `SMITHERS1708` and `SMITHERS1709` are implemented in **neither**
+> exist): `VIBE1702`, `VIBE1704`, `VIBE1705`, `VIBE1706`,
+> `VIBE1707`, `VIBE1708` and `VIBE1709` are implemented in **neither**
 > backend. They were removed from the reference on 2026-08-23 by `4e1ff5c`, and
 > the constructs they judged are forbidden outright by
 > `docs/src/pages/specification/control-flow.mdx` §No Expression-Form Grammar. §5
@@ -27,7 +27,7 @@
 > exist; the measurements they record are still true of the fork, and the verdicts
 > are no longer decisions anyone has to take. The reference's retirement ledger is
 > `poc/src/language/README.md`. The only surviving `17xx` codes are
-> `SMITHERS1703` and `SMITHERS1717`.
+> `VIBE1703` and `VIBE1717`.
 >
 > Retained and unaffected: the checked `panic` channel on unannotated foreign
 > calls, and Zig/Rust imports through generated Wasm bindings. Where this document
@@ -52,22 +52,22 @@
 > `expected.json` says `expect: "diagnostics"`, i.e. the grammar refusing them is
 > the contract.**
 >
-> **Do not quote the `poc/examples/language/*.sm` diagnostic tables in §8.7 and
+> **Do not quote the `poc/examples/language/*.vibe` diagnostic tables in §8.7 and
 > §9.8 as coverage.** They count the *fork's* parse of seven forms, six of which
 > the language has since retired; §9.8's "Zero." is a zero against a grammar the
-> current language rejects. `expression-flow.sm`, one of the four files those
+> current language rejects. `expression-flow.vibe`, one of the four files those
 > tables read over, has been deleted for demonstrating only retired constructs.
 > §8.7.1 carries what the surviving fixtures measure today, through
-> `smithers check`.
+> `vibe check`.
 
 Status: **executed spike, measured numbers, source settled.** Everything below was
 produced by building and running the pinned fork revision
 `c087644e82dc3d48cf87e4c5519eeaaea9daf35c` (`smithersai/TypeScript`) in a throwaway
 copy at `/private/tmp/c7-spike/ts`. No repo file outside this document was touched,
-and the shared checkout at `/private/tmp/smithers-ts-fork-cache/...` was never
+and the shared checkout at `/private/tmp/vibelang-ts-fork-cache/...` was never
 modified.
 
-This document exists to size `FORK-SEAM-DESIGN.md`'s **Stage 4** — "`.sm` as a
+This document exists to size `FORK-SEAM-DESIGN.md`'s **Stage 4** — "`.vibe` as a
 first-class extension with real grammar", the stage that document calls the TRUE
 POINT OF NO RETURN.
 
@@ -82,7 +82,7 @@ line**, regenerates in **5.5 seconds**, and produced **zero regressions across t
 fork's own 132,873-subtest baseline corpus**.
 
 The genuinely expensive and irreversible parts of Stage 4 are elsewhere: the
-`.sm`-builtin-XOR-content-mapper guard, and the vendoring contract. This spike
+`.vibe`-builtin-XOR-content-mapper guard, and the vendoring contract. This spike
 reduces the vendoring problem to **a one-line edit costing 3.7 MB**.
 
 Two of `FORK-SEAM-DESIGN.md`'s load-bearing claims are **refuted** by measurement
@@ -175,7 +175,7 @@ go: cannot load module ../tools listed in go.work file: open ../tools/go.mod: no
 ```
 
 The repo already works around this by setting `GOWORK=off` everywhere it builds the
-fork (`scripts/vendor-typescript.mjs:160,192`, `scripts/build-smithersc.mjs:330`,
+fork (`scripts/vendor-typescript.mjs:160,192`, `scripts/build-vibec.mjs:330`,
 `compiler/fork.go:357-358`). Vendoring `tools/` makes `go.work` consistent for the
 first time. `GOWORK=off` remains compatible — I verified the stringer regeneration
 step runs correctly under it.
@@ -289,7 +289,7 @@ provably near zero.
 `tsc` compiled from the spike tree, run on a real file:
 
 ```ts
-// main.sm.ts
+// main.vibe.ts
 declare function open(): { close(): void };
 export function work(): number {
     const h = open();
@@ -299,13 +299,13 @@ export function work(): number {
 }
 ```
 
-produces, with **no errors**, a correct `main.sm.js` and a correct
-`main.sm.d.ts` (`export declare function work(): number;`). Parse → bind → check →
+produces, with **no errors**, a correct `main.vibe.js` and a correct
+`main.vibe.d.ts` (`export declare function work(): number;`). Parse → bind → check →
 JS emit → declaration emit all work. Lowering is deliberately not implemented
 (another lane owns semantics), so the statements pass through to JS verbatim —
 which is precisely the expected "additive, no-transformer-yet" behaviour.
 
-`internal/printer/smithers_spike_test.go` (112 new lines, fork-owned) asserts
+`internal/printer/vibelang_spike_test.go` (112 new lines, fork-owned) asserts
 round-tripping for 7 forms, node shape, `ForEachChild` reachability, authored
 positions, printer idempotence, and the dialect gate. All pass.
 
@@ -320,7 +320,7 @@ positions, printer idempotence, and the dialect gate. All pass.
 | `internal/printer/printer.go` | 22 | 2 dispatch arms, 2 emit functions |
 | `internal/checker/checker.go` | 9 | 1 dispatch arm, `checkDeferStatement` |
 | `internal/ast/ast.go` | 4 | 2 arms in `Node.Expression()` |
-| `internal/ast/nodeflags.go` | 2 (+1 mod) | `NodeFlagsSmithers = 1 << 29`, added to `NodeFlagsContextFlags` |
+| `internal/ast/nodeflags.go` | 2 (+1 mod) | `NodeFlagsVibeLang = 1 << 29`, added to `NodeFlagsContextFlags` |
 | `internal/ast/utilities.go` | 2 | 2 arms in `isStatementKindButNotDeclarationKind` |
 | `internal/scanner/scanner.go` | 1 | `"errdefer": ast.KindErrdeferKeyword` |
 
@@ -384,7 +384,7 @@ non-test Go returns **11 files** — `ast/utilities.go`, `binder/binder.go`,
 
 ### 3.4 The dialect gate works and is cheap
 
-`NodeFlags` bits 29-31 are free, as the recon said. `NodeFlagsSmithers = 1 << 29`
+`NodeFlags` bits 29-31 are free, as the recon said. `NodeFlagsVibeLang = 1 << 29`
 added to `NodeFlagsContextFlags` (so `mark`/`rewind` save and restore it), set in
 `initializeState` from the file extension. **3 lines in `nodeflags.go`, 5 in
 `parser.go`.**
@@ -395,7 +395,7 @@ The P0 interop gate holds, and is asserted in the test:
   the same diagnostics upstream produces today — **the `.ts` parse tree is
   unchanged**.
 - `const errdefer = 1; const defer = 2; errdefer + defer;` parses clean in **both**
-  `.ts` and `.sm`, because both keywords sit after `KindLastReservedWord` and
+  `.ts` and `.vibe`, because both keywords sit after `KindLastReservedWord` and
   `p.isIdentifier()` is `p.token > ast.KindLastReservedWord` (`parser.go:6312`).
   Existing code using these as variable names keeps working with zero effort.
 
@@ -425,7 +425,7 @@ the pristine baseline: it fails identically, with the same `ERR_MODULE_NOT_FOUND
 
 **Additive or invasive? Additive.** Every hand edit is an *added* case arm or an
 *added* function. Exactly **one** line is modified in place (appending
-`| NodeFlagsSmithers` to `NodeFlagsContextFlags`). The merge-conflict surface is 8
+`| NodeFlagsVibeLang` to `NodeFlagsContextFlags`). The merge-conflict surface is 8
 hunks in stable, rarely-edited switch statements. Nothing was deleted, no signature
 changed, no control flow rerouted.
 
@@ -436,14 +436,14 @@ changed, no control flow rerouted.
 ### **Verdict: not viable. Do not build on it.**
 
 `FORK-SEAM-DESIGN.md` §3.2 calls this "the single biggest simplification available
-in the whole migration" and claims it retires SMITHERS1707, SMITHERS1708, SMITHERS1709, the
+in the whole migration" and claims it retires VIBE1707, VIBE1708, VIBE1709, the
 braceless-branch rule, and the 256-construct / 32-round budget. I tested it rather
 than reasoned about it, and it does not hold.
 
 ### 5.1 How I tested it
 
 I wired a throwaway construct through the exact mechanism the recon proposes. In
-Smithers mode, `immediate E` in primary-expression position synthesizes
+VibeLang mode, `immediate E` in primary-expression position synthesizes
 `const __tN = E;`, pushes it onto `p.reparseList` via `finishReparsedNode` (so it
 inherits authored positions, as the recon specifies), and evaluates to `__tN`. That
 is a faithful model of a value-position `if`/`switch` desugar. I then parsed and
@@ -527,7 +527,7 @@ of `NodeFlagsReparsed`. Actual count: **83 references across 20 files**
 
 ### 5.4 What this means for the diagnostics it was supposed to retire
 
-`reparseList` does not eliminate SMITHERS1707/1708/1709 or the construct budget. It
+`reparseList` does not eliminate VIBE1707/1708/1709 or the construct budget. It
 **relocates** them from a text pre-pass into the parser, and in doing so changes the
 failure mode from *fail-closed diagnostic* (what the POC does today, and correctly)
 to *crash or silent miscompile*. That is strictly worse.
@@ -587,7 +587,7 @@ more**, genuinely merge-hostile (touches `checker.go`'s expression dispatch insi
 **So: the recon's "~300-450 changed" is about right in magnitude for the grammar,
 arrived at through two compensating errors. Its "~1,300-1,600 new" is far too high
 for grammar specifically** — that figure only makes sense if it includes the
-~600-900-line `internal/smithers/desugar` package built on `reparseList`, which §5
+~600-900-line `internal/vibelang/desugar` package built on `reparseList`, which §5
 says should not be built.
 
 ### 6.3 The actual point of no return
@@ -599,13 +599,13 @@ different risk:
 |---|---|---|
 | **new grammar** (this spike) | **yes** — purely additive, deletable, mechanically verifiable, 5.5 s to regenerate | 400-550 changed lines |
 | **vendoring contract** (`tools/`, `packages/`) | **yes** | 2 one-line edits, +3.7 MB |
-| **`.sm` as a builtin `tspath` extension** | **NO** | 60-90 changed lines — *and* it permanently forecloses the content-mapper path by explicit upstream guard, and pins downstream consumers via published `.d.sm.ts` |
+| **`.vibe` as a builtin `tspath` extension** | **NO** | 60-90 changed lines — *and* it permanently forecloses the content-mapper path by explicit upstream guard, and pins downstream consumers via published `.d.vibe.ts` |
 
 Grammar is not a one-way door. **The extension-registration choice is the only
 one-way door in Stage 4**, and it is independent of grammar: the dialect gate in
-this spike keys off the file name, and works identically for `.sm` and for the
-content-mapper's `.sm.ts` virtual file name. Real Smithers grammar can ship
-**while `.sm` remains a content-mapper extension**.
+this spike keys off the file name, and works identically for `.vibe` and for the
+content-mapper's `.vibe.ts` virtual file name. Real VibeLang grammar can ship
+**while `.vibe` remains a content-mapper extension**.
 
 **Recommendation: take the grammar. Defer the extension decision.** They were only
 ever coupled by assumption.
@@ -672,7 +672,7 @@ after. Full rationale and the rejected alternatives are in
 | `0100-defer-errdefer-grammar.patch` | hand-written | **124** | 1 |
 | `0200-break-label-value-grammar.patch` | hand-written | **53** | 3 |
 | `0800-regenerate-ast.patch` | generated | 423 | 209 |
-| `0900-smithers-grammar-tests.patch` | fork-owned tests | 448 | 0 |
+| `0900-vibelang-grammar-tests.patch` | fork-owned tests | 448 | 0 |
 
 `defer` / `errdefer` reproduces C7's 124 + 1 exactly, from a clean re-application
 of the spike diff to a freshly prepared pristine checkout.
@@ -702,7 +702,7 @@ Getting the order wrong is silent and is a *miscompile*, not a crash. With the
 bind moved after, `break :outer takesString(x)` where `x: string | number`
 reports **no error at all** — TS2345 disappears, because the argument is checked
 against an unreachable flow node. Proved by mutation:
-`TestSmithersBreakValueFlowAnalysis` goes from green to `[]int32{ − 2345 }`.
+`TestVibeLangBreakValueFlowAnalysis` goes from green to `[]int32{ − 2345 }`.
 
 Add it to the sweep list: **enumerated switches in the binder are as dangerous as
 the ones in the checker.**
@@ -713,13 +713,13 @@ Each trap has a test that goes red when the arm is removed:
 
 | trap | mutation | test that catches it |
 |---|---|---|
-| missing checker arm (silent) | delete the `KindDefer/ErrdeferStatement` case | `TestSmithersCheckerReportsErrorsInsideNewStatements/{defer,errdefer}` → 0 diagnostics instead of TS2304+TS2339 |
-| missing checker arm, value break (silent) | delete the `Value` check | `.../break_value` and `TestSmithersBreakValueFlowAnalysis` |
-| missing `Node.Expression()` arms (loud) | delete both arms | `TestSmithersAccessorParity` → `panic != *ast.Node` |
-| missing `isStatementKindButNotDeclarationKind` arms | delete both arms | `TestSmithersNodeShape` → `ast.IsStatement` false |
-| binder bind order | move the bind after the flow update | `TestSmithersBreakValueFlowAnalysis` → TS2345 vanishes |
+| missing checker arm (silent) | delete the `KindDefer/ErrdeferStatement` case | `TestVibeLangCheckerReportsErrorsInsideNewStatements/{defer,errdefer}` → 0 diagnostics instead of TS2304+TS2339 |
+| missing checker arm, value break (silent) | delete the `Value` check | `.../break_value` and `TestVibeLangBreakValueFlowAnalysis` |
+| missing `Node.Expression()` arms (loud) | delete both arms | `TestVibeLangAccessorParity` → `panic != *ast.Node` |
+| missing `isStatementKindButNotDeclarationKind` arms | delete both arms | `TestVibeLangNodeShape` → `ast.IsStatement` false |
+| binder bind order | move the bind after the flow update | `TestVibeLangBreakValueFlowAnalysis` → TS2345 vanishes |
 
-`TestSmithersAccessorParity` is a **generic** sweep rather than a hand-written
+`TestVibeLangAccessorParity` is a **generic** sweep rather than a hand-written
 list: it calls all 21 panicking accessors on each new node and on an upstream node
 with the same member shape (`ThrowStatement` for `defer`/`errdefer`, a valueless
 `BreakStatement` for the value break) and requires return-versus-panic parity. It
@@ -748,19 +748,19 @@ makes it pass on **both** trees, so the honest baseline is 62/62 green, not
 "61 ok + 1 known failure". `node_modules/` is gitignored in the fork, so the
 checkout stays clean.
 
-End to end from the patched tree, `tsc` on a `.sm.ts` file using all three forms
+End to end from the patched tree, `tsc` on a `.vibe.ts` file using all three forms
 with `strict: true`: **zero diagnostics**, correct `.js`, correct
 `.d.ts` (`export declare function work(n: number): number;`). The new statements
 pass through to JavaScript verbatim, which is the expected additive
 no-transformer-yet behaviour — lowering belongs to the semantic lane.
 
-### 7.7 `.sm` stayed a content-mapper extension
+### 7.7 `.vibe` stayed a content-mapper extension
 
 No `tspath` extension was registered. The dialect gate keys off the file name and
-matches both `.sm` and `.sm.ts` — the virtual name `contentmapper.ParseResult`
+matches both `.vibe` and `.vibe.ts` — the virtual name `contentmapper.ParseResult`
 produces — so real grammar shipped without touching the one-way door. The checker
-tests run entirely on `.sm.ts`, which is a legal TypeScript extension for program
-construction *and* a Smithers file for the parser; that is the whole reason the
+tests run entirely on `.vibe.ts`, which is a legal TypeScript extension for program
+construction *and* a VibeLang file for the parser; that is the whole reason the
 semantic proof needs no extension registration.
 
 ### 7.8 What grammar remains
@@ -795,7 +795,7 @@ Saved artifacts in `/private/tmp/c7-spike/`:
 |---|---|
 | `spike-handwritten.diff` | the 124-line hand-written diff (269 lines with context) |
 | `spike-full.diff` | everything including generated output (1,107 lines) |
-| `smithers_spike_test.go` | the 112-line round-trip / node-shape / dialect-gate test |
+| `vibelang_spike_test.go` | the 112-line round-trip / node-shape / dialect-gate test |
 | `reparse_probe_test.go.keep` | the §5 `reparseList` probe harness |
 | `parser-with-probe.diff` | the throwaway `immediate` parser probe |
 | `fulltest-clean.log` | full `go test ./...` output for the final spike |
@@ -841,7 +841,7 @@ five node kinds and therefore four separate `bind*Statement` functions to
 rewire. Putting it on **`LabeledStatement`** instead costs one bind function,
 and it makes the grammar itself enforce the reference's rule that a loop value
 requires a label — an unlabeled loop expression becomes unrepresentable rather
-than diagnosable (the reference's `SMITHERS1702` case). The flow-graph edge C7
+than diagnosable (the reference's `VIBE1702` case). The flow-graph edge C7
 correctly identified as the real cost is 41 added lines in `binder.go`, not 150.
 
 **The value-`if`/`switch` estimate held, and §5's warning was the reason.** Real
@@ -868,9 +868,9 @@ expression grammar came in at 359 lines with zero upstream regressions.
   **`switch ( Expression ) { case E : Expression … }`** — two new expression
   kinds, `IfExpression` and `SwitchExpression`, plus an optional `Value` member on
   the existing `CaseOrDefaultClause`. Braced branches and a mandatory `else`
-  branch are grammar, so `SMITHERS1709` (braceless branch in expression context) and
-  `SMITHERS1705` (no value branch) become parse errors rather than diagnostics.
-  `SMITHERS1707` and `SMITHERS1708` do not arise at all: there is no hoisting, so there
+  branch are grammar, so `VIBE1709` (braceless branch in expression context) and
+  `VIBE1705` (no value branch) become parse errors rather than diagnostics.
+  `VIBE1707` and `VIBE1708` do not arise at all: there is no hoisting, so there
   is no evaluation order to preserve and no callee-stability proof to make.
 
 ### 8.3 The flow-graph edge, concretely
@@ -943,7 +943,7 @@ materialized checkout produces all 32 files byte-identical to the first.
 `verify --regenerate` passes. `unapply` restores a byte-identical pinned tree
 (`git status --untracked-files=all` empty, `git diff HEAD` empty).
 
-`tsc` built from the patched tree, on a `.sm.ts` file using all five forms under
+`tsc` built from the patched tree, on a `.vibe.ts` file using all five forms under
 `strict: true`: **zero diagnostics**, and a fully correct `.d.ts` — including
 `describe(grade: Grade): string`, whose return type is inferred *through* a
 switch expression. The `.js` still carries the constructs verbatim, because
@@ -954,11 +954,11 @@ nothing lowers them yet.
 > **HISTORICAL — six of the seven forms below have since been RETIRED from the
 > language, and this table's fixture measurements MUST NOT be quoted as
 > coverage.** Everything in §8 and §9 measures a *fork of `tsc`* against a
-> grammar the Smithers language no longer has. Only `if (const x = f(); cond)`
+> grammar the VibeLang language no longer has. Only `if (const x = f(); cond)`
 > survives; `defer`/`errdefer`, `break :label value`, loop `else`, value-position
 > `if`/`switch`, the labeled block value and the labeled loop value are all
 > pinned as **rejected** by `conformance/corpus/19-retired-syntax/`
-> (`SMITHERS1001`), per `specification/control-flow.mdx`, "No Expression-Form
+> (`VIBE1001`), per `specification/control-flow.mdx`, "No Expression-Form
 > Grammar". See §8.7.1 for what the fixtures measure today.
 
 | form | status |
@@ -973,23 +973,23 @@ nothing lowers them yet.
 
 That list was measured, not guessed, **against the grammar as it stood on the
 day**. Running the POC's own divergent-syntax fixtures through the patched `tsc`
-as `.sm.ts` and counting only syntactic (TS1xxx) diagnostics gave, at that time:
+as `.vibe.ts` and counting only syntactic (TS1xxx) diagnostics gave, at that time:
 
 | fixture (as it stood then) | lines | syntactic diagnostics |
 |---|---|---|
-| `poc/examples/language/demo.sm` | 68 | **0** |
-| `poc/examples/language/conditional-declarations.sm` | 45 | **0** |
-| `poc/examples/language/divergent-forms.sm` | 97 | 7 |
-| `poc/examples/language/expression-flow.sm` | 45 | 7 |
+| `poc/examples/language/demo.vibe` | 68 | **0** |
+| `poc/examples/language/conditional-declarations.vibe` | 45 | **0** |
+| `poc/examples/language/divergent-forms.vibe` | 97 | 7 |
+| `poc/examples/language/expression-flow.vibe` | 45 | 7 |
 
 All 14 were the same two constructs — `const kind = verdict: { … }` and
 `const found = search: for (…) { … } else -1` — and nothing else in the fixture
 set failed to parse *the fork's grammar*.
 
-Both `divergent-forms.sm` and `expression-flow.sm` were fixtures **for forms that
+Both `divergent-forms.vibe` and `expression-flow.vibe` were fixtures **for forms that
 have since been withdrawn**, so neither row describes a file that exists in the
-shape it was measured in. `divergent-forms.sm` was ported to current syntax and
-`expression-flow.sm` was deleted; see §8.7.1.
+shape it was measured in. `divergent-forms.vibe` was ported to current syntax and
+`expression-flow.vibe` was deleted; see §8.7.1.
 
 The two outstanding forms are the same construct in a different position: the
 statement form of each is landed, and only the expression placement is missing.
@@ -1003,11 +1003,11 @@ JavaScript verbatim.
 ### 8.7.1 What those fixtures measure today
 
 The table above and the one in §9.8 count diagnostics from the *patched fork*,
-not from Smithers. The fork's grammar and the language's grammar are no longer
+not from VibeLang. The fork's grammar and the language's grammar are no longer
 the same thing, so neither table says anything about current coverage. Six of
 the seven forms are retired; the fixtures were cleaned up to match.
 
-`poc/examples/language/expression-flow.sm` **has been deleted.** Every construct
+`poc/examples/language/expression-flow.vibe` **has been deleted.** Every construct
 it demonstrated is now retired or rejected — the value-position `switch` and the
 braced value-position `if`
 (`19-retired-syntax/{switch-expression,braced-if-expression}-is-retired`), the
@@ -1015,21 +1015,21 @@ expression-position labeled block value and labeled loop value with `else`
 (`19-retired-syntax/{labeled-block-value,labeled-loop-value,loop-else-completion}-is-retired`),
 and `combine(checkedScore(score)!, …)`, a postfix `!` in a call argument
 (`02-unwrap-propagation/postfix-bang-in-a-call-argument-is-rejected`,
-`SMITHERS1204`). It did not `check`: 18 `TS1xxx` parse diagnostics, and the
-formatter refused it with `SMITHERS1901`. Each replacement the corpus names is
-ordinary TypeScript, and `divergent-forms.sm` already demonstrates every one of
+`VIBE1204`). It did not `check`: 18 `TS1xxx` parse diagnostics, and the
+formatter refused it with `VIBE1901`. Each replacement the corpus names is
+ordinary TypeScript, and `divergent-forms.vibe` already demonstrates every one of
 them under the same four function names (`describe`, `weighted`, `classify`,
 `firstPassing`), so a port would have produced a duplicate of a file that already
 exists.
 
-The surviving fixture set, measured through `smithers check`, which is the tool
+The surviving fixture set, measured through `vibe check`, which is the tool
 the language contract is defined against:
 
-| fixture | lines | `smithers check` | formatter |
+| fixture | lines | `vibe check` | formatter |
 |---|---|---|---|
-| `poc/examples/language/demo.sm` | 69 | `ok: true`, **0** diagnostics | accepted, idempotent |
-| `poc/examples/language/conditional-declarations.sm` | 44 | `ok: true`, **0** diagnostics | accepted, idempotent |
-| `poc/examples/language/divergent-forms.sm` | 83 | `ok: true`, **0** diagnostics | accepted, idempotent |
+| `poc/examples/language/demo.vibe` | 69 | `ok: true`, **0** diagnostics | accepted, idempotent |
+| `poc/examples/language/conditional-declarations.vibe` | 44 | `ok: true`, **0** diagnostics | accepted, idempotent |
+| `poc/examples/language/divergent-forms.vibe` | 83 | `ok: true`, **0** diagnostics | accepted, idempotent |
 
 Between them they demonstrate the one surviving grammar addition,
 `if (const x = f(); cond)`, and postfix `!` Result propagation in the placements
@@ -1109,16 +1109,16 @@ line was written. Those two are the entire reason a second expression kind cost
 Two illegal states are unrepresentable rather than diagnosable, both of which
 the reference has to detect and report:
 
-- **`SMITHERS1702`** — an unlabeled block or loop in expression position. The label
+- **`VIBE1702`** — an unlabeled block or loop in expression position. The label
   is the first token of the production, so there is nothing to diagnose.
-- **`SMITHERS1715`** — a value loop with no `else` completion. The `else` is required
+- **`VIBE1715`** — a value loop with no `else` completion. The `else` is required
   by the grammar in expression position (and only there: the statement form may
   still simply end).
 
 ### 9.3 What each form is, as grammar
 
 - **`Identifier : Block`** — an expression whose value is the join of the
-  `break :label value` exits inside it. **`SMITHERS1714`** — "a block that may
+  `break :label value` exits inside it. **`VIBE1714`** — "a block that may
   complete normally without reaching any `break :label value`" — is enforced by
   the **type system**, not a new diagnostic: the binder splits the label's
   normal-completion exit from its value exit and records the completion flow
@@ -1166,8 +1166,8 @@ independently, and it is what `getTypeOfNode`, `getSymbolAtLocation`,
 `isInExpressionContext` and the type/symbol baseline writer all go through.
 
 **`KindIfExpression` and `KindSwitchExpression` were missing from it** — a live
-hole left by §8, now closed for all three Smithers expression kinds. It is
-completely silent: with the arm deleted, every Smithers diagnostic test, every
+hole left by §8, now closed for all three VibeLang expression kinds. It is
+completely silent: with the arm deleted, every VibeLang diagnostic test, every
 round-trip test and every shape test still passes, and the only symptom is that
 asking a value `if` for its type answers with no type at all. Proved by
 mutation: deleting the arm turns exactly one test red and nothing else.
@@ -1207,7 +1207,7 @@ capsule:
 | packages FAIL | **0** | **0** |
 | `internal/testrunner` | **130,743 PASS / 0 FAIL / 2,130 SKIP** | **130,743 PASS / 0 FAIL / 2,130 SKIP** |
 
-`tsc` built from the patched tree, on one `.sm.ts` using **all seven forms**
+`tsc` built from the patched tree, on one `.vibe.ts` using **all seven forms**
 under `strict: true, declaration: true`: **exit 0, zero diagnostics**, and a
 `.d.ts` whose return types are inferred *through* the new constructs —
 `classify(input: string): string` through a labeled block value,
@@ -1217,7 +1217,7 @@ value `if`.
 
 ### 9.8 The surface syntax is complete
 
-> **Corrected by §11. This section measured against `poc/examples/language/*.sm`
+> **Corrected by §11. This section measured against `poc/examples/language/*.vibe`
 > — fixtures — and not against `conformance/corpus/**`, which is the contract.
 > Two corpus cases did not parse; §10.8 found them and §11 closed them. The
 > table below is still true of what it measured, and that is the point: it was
@@ -1227,26 +1227,26 @@ value `if`.
 > RETIRED, so the "Zero." reading is a measurement of a grammar the language
 > rejects and MUST NOT be quoted as coverage.** The zero counts the *fork's*
 > parse of forms that `conformance/corpus/19-retired-syntax/` now pins as
-> `SMITHERS1001` errors. `poc/examples/language/expression-flow.sm`, one of the
+> `VIBE1001` errors. `poc/examples/language/expression-flow.vibe`, one of the
 > four files it reads over, has been deleted — every construct in it is retired
 > or rejected, and it did not `check` (18 `TS1xxx`) nor format
-> (`SMITHERS1901`). §8.7.1 carries the current measurement of the surviving
-> fixtures through `smithers check`, which is what current coverage means.
+> (`VIBE1901`). §8.7.1 carries the current measurement of the surviving
+> fixtures through `vibe check`, which is what current coverage means.
 
-The POC's own divergent-syntax fixtures through the patched `tsc` as `.sm.ts`,
+The POC's own divergent-syntax fixtures through the patched `tsc` as `.vibe.ts`,
 counting only syntactic (TS1xxx) diagnostics, **as the files and the fork stood
 on the day**:
 
 | fixture (as it stood then) | lines | §8 | then |
 |---|---|---|---|
-| `poc/examples/language/demo.sm` | 68 | 0 | **0** |
-| `poc/examples/language/conditional-declarations.sm` | 45 | 0 | **0** |
-| `poc/examples/language/divergent-forms.sm` | 97 | 7 | **0** |
-| `poc/examples/language/expression-flow.sm` (deleted) | 45 | 7 | **0** |
+| `poc/examples/language/demo.vibe` | 68 | 0 | **0** |
+| `poc/examples/language/conditional-declarations.vibe` | 45 | 0 | **0** |
+| `poc/examples/language/divergent-forms.vibe` | 97 | 7 | **0** |
+| `poc/examples/language/expression-flow.vibe` (deleted) | 45 | 7 | **0** |
 
 **Zero — against the fork's grammar of the day, which is not the language's.**
 The 26 diagnostics that remained across the four files were all TS2304 / TS2307 /
-TS2339 / TS7006 for `Result`, `smthrs/context`, `smithers:exceptions` and the
+TS2339 / TS7006 for `Result`, `vibelang/context`, `vibelang:exceptions` and the
 other standard-library names that have no TypeScript declarations in this
 harness; not one was a grammar error. What the number does not say is that six of
 the seven forms it cleared were later withdrawn: today the same four files would
@@ -1297,7 +1297,7 @@ mechanism: the same switch with **no fallthrough at all** reports the same error
 and widening the scrutinee (`x: string`, or `let s = "a"`) makes it disappear.
 
 So the fork already obeys the locked compatibility rule — "syntax shared by
-Smithers and TypeScript keeps TypeScript behavior unless a divergence is
+VibeLang and TypeScript keeps TypeScript behavior unless a divergence is
 explicitly documented". Reporting TS2678 here *is* TypeScript's behavior.
 **Suppressing it would be the divergence**, and it was therefore not touched.
 
@@ -1377,7 +1377,7 @@ kind and asks whether the node is the member that parent evaluates. That makes i
 the first of these switches a new *member* trips even when no node kind is added,
 which is how it survived all six grammar patches.
 
-Every Smithers member holding an expression was missing from it:
+Every VibeLang member holding an expression was missing from it:
 
 | member | before |
 |---|---|
@@ -1427,10 +1427,10 @@ value the function actually returns, with no diagnostic anywhere. After:
 `number | "early"`.
 
 The walk now continues through every child, stopping at
-`IsFunctionLikeOrClassStaticBlockDeclaration`, **gated on `NodeFlagsSmithers`**.
+`IsFunctionLikeOrClassStaticBlockDeclaration`, **gated on `NodeFlagsVibeLang`**.
 That gate is not shyness: it makes the change provably inert for ordinary
-TypeScript — the flag is a parser context flag set only on nodes from a `.sm` or
-`.sm.ts` file, so no upstream traversal changes shape or cost, and the
+TypeScript — the flag is a parser context flag set only on nodes from a `.vibe` or
+`.vibe.ts` file, so no upstream traversal changes shape or cost, and the
 130,743-subtest baseline cannot move. §9's `ForEachValueBreakStatement` solved
 the same problem in the same shape and is where the function-boundary stop comes
 from.
@@ -1462,13 +1462,13 @@ Both measured on this machine, ok-package lists identical by diff.
 > **Both cases below are closed in §11**, with no node kind and no AST member.
 
 Two conformance-corpus forms do **not parse**, so §9.8's "surface syntax is
-complete" holds against `poc/examples/language/*.sm` but not against
+complete" holds against `poc/examples/language/*.vibe` but not against
 `conformance/corpus/**`:
 
 | case | what it needs |
 |---|---|
 | `11-expression-if-switch/switch-case-final-expression-is-the-value` | a value clause that is *statements followed by a final expression*, not a single expression. The grammar is `case E : Expression`. |
-| `11-expression-if-switch/braceless-if-in-a-variable-initializer` | a braceless value `if` in the bounded host of a variable initializer. The grammar requires braces everywhere; the corpus wants SMITHERS1709 only in general expression placements. |
+| `11-expression-if-switch/braceless-if-in-a-variable-initializer` | a braceless value `if` in the bounded host of a variable initializer. The grammar requires braces everywhere; the corpus wants VIBE1709 only in general expression placements. |
 
 Everything else in the 96-case corpus parses: the only other TS1xxx diagnostics
 are the four negative cases that are *supposed* to be parse errors.
@@ -1481,7 +1481,7 @@ value is the same problem the labeled block value already solves.
 
 ## 11. The corpus, not the fixtures — the last two forms
 
-§9.8 declared the surface syntax complete against `poc/examples/language/*.sm`.
+§9.8 declared the surface syntax complete against `poc/examples/language/*.vibe`.
 That was the wrong yardstick: `conformance/corpus/**` is the contract, and §10.7
 found two of its 96 cases that did not parse. Both are closed here, in one patch
 that adds **no node kind and no AST member** — `0800-regenerate-ast.patch` is
@@ -1501,7 +1501,7 @@ meaningful if statements may precede it. The second is the spelling the
 specification itself uses one section earlier, `const value = if (condition)
 consequent else alternate`, and the corpus is internally consistent about it: the
 sibling case `if-expression-with-a-braceless-branch-is-rejected` requires
-**SMITHERS1709** for the same spelling in a *call-argument* placement. So the rule is
+**VIBE1709** for the same spelling in a *call-argument* placement. So the rule is
 placement-conditional, not "braceless is illegal" and not "braceless is legal".
 
 ### 11.2 Neither one was a shape problem, and that is the whole cost story
@@ -1520,9 +1520,9 @@ what changed is which parse function the branch goes through.
 
 ### 11.3 The leverage: an illegal state that has no node
 
-SMITHERS1709 — "a braceless branch in a general expression placement" — is not
-diagnosed. It is **unrepresentable**, in the same way §9.2 made SMITHERS1702 and
-SMITHERS1715 unrepresentable: the branch brace is *required* outside the bounded
+VIBE1709 — "a braceless branch in a general expression placement" — is not
+diagnosed. It is **unrepresentable**, in the same way §9.2 made VIBE1702 and
+VIBE1715 unrepresentable: the branch brace is *required* outside the bounded
 host, so the shape never parses and there is nothing to report on. That removes a
 diagnostic, a checker arm, a message, and a position from the budget.
 
@@ -1537,7 +1537,7 @@ Position equality is what makes every other placement fail for one reason:
 | `const x = if (b) 1 else 2` | **yes** |
 | `let x = …`, a `for` initializer, the second declarator in a list | **yes** |
 | `const x = if (a) 1 else if (b) 2 else 3` — the chain inherits the host | **yes** |
-| `f(a, if (b) 1 else 2)` | no — SMITHERS1709's placement |
+| `f(a, if (b) 1 else 2)` | no — VIBE1709's placement |
 | `return if (b) 1 else 2`, an array element, an object property value | no |
 | `x = if (b) 1 else 2` (assignment), `const x = (if (b) 1 else 2)` | no — the `if` starts one token later |
 | a parameter default, a class property initializer | no — they go through `parseInitializer`, not `parseVariableInitializer` |
@@ -1614,7 +1614,7 @@ transformer gate identifier *substitution* on: a `false` answer is not a
 diagnostic and not a type, it is a `ReferenceError` at run time from a program
 that compiled clean. `KindCaseClause` was in the "only an `Expression()` child"
 group, which answered for the case *label* and never for a clause value, and
-`KindDefaultClause` was in no group at all. Every Smithers member added since
+`KindDefaultClause` was in no group at all. Every VibeLang member added since
 `0100` was affected; the whole-program emit test in the checker package is the
 proof, and it also asserts the negative — a jump-target label is an identifier
 with the same parent and must **not** become `dep_1.verdict`.
@@ -1692,7 +1692,7 @@ independently materialized checkouts produced all 35 post-image files
 byte-identical; `verify --regenerate` passes; `unapply` leaves an empty
 `git status --untracked-files=all` and an empty `git diff HEAD`.
 
-`tsc` built from the applied series, on one `.sm.ts` using **all nine forms**
+`tsc` built from the applied series, on one `.vibe.ts` using **all nine forms**
 under `strict: true, declaration: true`: **exit 0, zero diagnostics**, and a
 `.d.ts` including `earlyExit(grade: Grade): string | 0` — a return type inferred
 through a `return` written inside a value clause's statements.
@@ -1701,15 +1701,15 @@ through a `return` written inside a value clause's statements.
 
 | | cases | measured with |
 |---|---|---|
-| `conformance/corpus/**` that parse | **92 / 96** | every `.sm` compiled as `.sm.ts` by the patched `tsc`, counting TS1xxx |
+| `conformance/corpus/**` that parse | **92 / 96** | every `.vibe` compiled as `.vibe.ts` by the patched `tsc`, counting TS1xxx |
 | that do not | **4** | all four are `expect: "diagnostics"` negative cases |
 
-The four are `if-expression-with-a-braceless-branch-is-rejected` (SMITHERS1709),
-`unlabeled-loop-expression-is-rejected` (SMITHERS1702),
-`labeled-block-value-break-inside-a-nested-function-is-rejected` (SMITHERS1714) and
-`loop-value-without-an-else-is-rejected` (SMITHERS1715). Each is a shape the grammar
+The four are `if-expression-with-a-braceless-branch-is-rejected` (VIBE1709),
+`unlabeled-loop-expression-is-rejected` (VIBE1702),
+`labeled-block-value-break-inside-a-nested-function-is-rejected` (VIBE1714) and
+`loop-value-without-an-else-is-rejected` (VIBE1715). Each is a shape the grammar
 makes unrepresentable, so refusing it *is* the contract — the fork reports a
-TS1xxx where the reference reports a SMITHERS17xx, and mapping one to the other is
+TS1xxx where the reference reports a VIBE17xx, and mapping one to the other is
 the bridge lane's job, not the grammar's.
 
 **So: every conformance-corpus case that is meant to compile, parses.** That is
@@ -1717,9 +1717,9 @@ the honest completeness statement, and it is not the same claim §9.8 made.
 
 ### 11.10 What is still not reasoned about
 
-- **Diagnostic identity.** The grammar refuses SMITHERS1702 / SMITHERS1709 / SMITHERS1714 /
-  SMITHERS1715 with TS1005 / TS1107 / TS1109. Whether the corpus contract wants the
-  SMITHERS codes emitted by the fork, or mapped by the runner, is a language decision.
+- **Diagnostic identity.** The grammar refuses VIBE1702 / VIBE1709 / VIBE1714 /
+  VIBE1715 with TS1005 / TS1107 / TS1109. Whether the corpus contract wants the
+  VIBE codes emitted by the fork, or mapped by the runner, is a language decision.
 - **`statement-switch-keeps-typescript-fallthrough`** still fails on the Go
   backend for §10.1's reason — it is upstream TypeScript's own TS2678 — and needs
   a language decision, not a fork change.
@@ -1731,4 +1731,4 @@ the honest completeness statement, and it is not the same claim §9.8 made.
   mechanism is one more call site.
 - **Lowering.** Unchanged and untouched: all nine forms still reach JavaScript
   verbatim. The `IsIdentifierReference` fix above matters most to that lane —
-  before it, every Smithers value position emitted unqualified module bindings.
+  before it, every VibeLang value position emitted unqualified module bindings.
