@@ -1,0 +1,271 @@
+package main
+
+// Standalone checked Action contract compilation. This owns a bounded virtual
+// program, never executes source and never resolves ambient filesystem inputs.
+// Descriptor derivation is shared with native durable language lowering.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type actionContractRequest struct {
+	Source     string `json:"source"`
+	FileName   string `json:"fileName"`
+	ExportName string `json:"exportName"`
+	ID         string `json:"id"`
+	Version    int64  `json:"version"`
+}
+type actionContractResult struct {
+	OK           bool         `json:"ok"`
+	Diagnostics  []diagnostic `json:"diagnostics"`
+	ContractJSON string       `json:"contractJson"`
+}
+
+func serveActionContract(apiVersion int) {
+	response := struct {
+		APIVersion       int                  `json:"apiVersion"`
+		CompilerRevision string               `json:"compilerRevision"`
+		Result           actionContractResult `json:"result"`
+		Error            *wireError           `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: actionContractResult{Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input actionContractRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("Action contract request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = compileActionContract(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = actionContractResult{Diagnostics: []diagnostic{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_ACTION_CONTRACT", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func compileActionContract(ctx context.Context, input actionContractRequest) (actionContractResult, error) {
+	result := actionContractResult{Diagnostics: []diagnostic{}}
+	if len(input.Source) > 2*1024*1024 || input.FileName == "" || len(input.FileName) > 16*1024 ||
+		!durableSchemaIdentifier.MatchString(input.ExportName) || len(input.ExportName) > 2048 ||
+		strings.TrimSpace(input.ID) == "" || len(input.ID) > 16*1024 || input.Version < 1 || input.Version > 9007199254740991 {
+		return result, errors.New("invalid or oversized Action contract source/identity")
+	}
+	const sourceName = "/src/action-contract.ts"
+	const resultName = "/src/action-contract-result.d.ts"
+	const resultPrelude = `interface Result<A, E extends Error> { readonly __vibelangResult: { readonly success: A; readonly error: E } }`
+	const actionPrelude = `export declare abstract class Action<Signature extends (input: any) => any> { static run(input: never): never }`
+	options := &core.CompilerOptions{Target: core.ScriptTargetESNext, Module: core.ModuleKindESNext,
+		ModuleResolution: core.ModuleResolutionKindBundler, Strict: core.TSTrue, NoEmit: core.TSTrue,
+		SkipLibCheck: core.TSTrue, Types: []string{}}
+	configureInternalModules(options)
+	project := &project{checkedRoots: []string{sourceName, resultName, durableVirtualName},
+		checkedFiles: map[string]string{sourceName: input.Source, resultName: resultPrelude, durableVirtualName: actionPrelude}}
+	program := newCheckProgram(options, project)
+	file := program.GetSourceFile(sourceName)
+	if file == nil {
+		return result, errors.New("Action contract source is absent from the native program")
+	}
+	lines := newLineIndex(input.Source)
+	at := func(node *ast.Node, code, message string) diagnostic {
+		start := scanner.GetTokenPosOfNode(node, file, false)
+		first := lines.utf16Offset(start)
+		length := lines.utf16Offset(node.End()) - first
+		if length < 1 {
+			length = 1
+		}
+		return diagnostic{Code: code, Category: "error", Message: message, File: input.FileName,
+			Span: &span{Start: first, Length: length}, Phase: "check"}
+	}
+	refuse := func(node *ast.Node, code, message string) (actionContractResult, error) {
+		result.OK = false
+		result.ContractJSON = ""
+		result.Diagnostics = []diagnostic{at(node, code, message)}
+		return result, nil
+	}
+	issues := program.GetSyntacticDiagnostics(ctx, file)
+	// The ordinary parser can recover conditional-declaration syntax. Its
+	// braceless/list-only forms must not reach the native binder unchecked.
+	var invalid *ast.Node
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		if invalid == nil && conditionalDeclarationShapeError(node) != "" {
+			invalid = node
+		}
+	})
+	if len(issues) == 0 && invalid != nil {
+		return refuse(invalid, "VIBE4200", conditionalDeclarationShapeError(invalid))
+	}
+	if len(issues) == 0 {
+		issues = append(issues, program.GetSemanticDiagnostics(ctx, file)...)
+	}
+	if len(issues) != 0 {
+		sort.SliceStable(issues, func(i, j int) bool {
+			if issues[i].Pos() == issues[j].Pos() {
+				return issues[i].Code() < issues[j].Code()
+			}
+			return issues[i].Pos() < issues[j].Pos()
+		})
+		for _, issue := range issues {
+			anchor := file.AsNode()
+			var narrow func(*ast.Node) bool
+			narrow = func(node *ast.Node) bool {
+				if node.Pos() <= issue.Pos() && issue.Pos() < node.End() {
+					anchor = node
+					node.ForEachChild(narrow)
+				}
+				return false
+			}
+			narrow(file.AsNode())
+			result.Diagnostics = append(result.Diagnostics, at(anchor, "VIBE4200", issue.Localize(locale.Default)))
+			if len(result.Diagnostics) == 32 {
+				break
+			}
+		}
+		return result, nil
+	}
+	typeChecker, release := program.GetTypeChecker(ctx)
+	defer release()
+	canonical := func(symbol *ast.Symbol) *ast.Symbol {
+		if symbol == nil {
+			return nil
+		}
+		if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			symbol = typeChecker.GetAliasedSymbol(symbol)
+		}
+		return typeChecker.GetMergedSymbol(symbol)
+	}
+	resultFile := program.GetSourceFile(resultName)
+	resultDeclaration := resultFile.Statements.Nodes[0]
+	resultSymbol := canonical(typeChecker.GetSymbolAtLocation(resultDeclaration.Name()))
+	// A type-reference constraint's symbol lives on its name, not the wrapper.
+	constraint := resultDeclaration.TypeParameters()[1].AsTypeParameterDeclaration().Constraint
+	var errorSymbol *ast.Symbol
+	if ast.IsTypeReferenceNode(constraint) {
+		errorSymbol = canonical(typeChecker.GetSymbolAtLocation(constraint.AsTypeReferenceNode().TypeName))
+	}
+	if errorSymbol == nil || resultSymbol == nil {
+		return result, errors.New("Action contract prelude did not bind")
+	}
+	owner := &lowerer{checker: typeChecker, prelude: &preludeSymbols{error: errorSymbol}, file: file}
+	d := &durableFunctionLowerer{owner: owner, schemaLogicalName: input.FileName}
+	var declaration *ast.Node
+	if module := typeChecker.GetSymbolAtLocation(file.AsNode()); module != nil {
+		for _, exported := range typeChecker.GetExportsOfModule(module) {
+			if exported.Name == input.ExportName {
+				declaration = classDeclarationOf(canonical(exported))
+				break
+			}
+		}
+	}
+	if declaration == nil || declaration.Name() == nil {
+		return refuse(file.AsNode(), "VIBE4202", "export "+input.ExportName+" must be one abstract class extending compiler-owned Action<Signature>")
+	}
+	var signatureNode *ast.Node
+	bases := 0
+	if heritage := declaration.ClassLikeData().HeritageClauses; heritage != nil {
+		for _, clause := range heritage.Nodes {
+			if clause.AsHeritageClause().Token != ast.KindExtendsKeyword {
+				continue
+			}
+			for _, base := range clause.AsHeritageClause().Types.Nodes {
+				data := base.AsExpressionWithTypeArguments()
+				if owner.durableIntrinsic(data.Expression, "Action") {
+					bases++
+					if data.TypeArguments != nil && len(data.TypeArguments.Nodes) == 1 {
+						signatureNode = data.TypeArguments.Nodes[0]
+					}
+				}
+			}
+		}
+	}
+	if bases != 1 || signatureNode == nil {
+		return refuse(declaration, "VIBE4202", input.ExportName+" must extend the compiler-owned Action with exactly one function signature")
+	}
+	signatures := typeChecker.GetSignaturesOfType(typeChecker.GetTypeFromTypeNode(signatureNode), checker.SignatureKindCall)
+	if len(signatures) != 1 {
+		return refuse(signatureNode, "VIBE4202", "Action contract must contain exactly one non-overloaded call signature")
+	}
+	signature := signatures[0]
+	parameters := signature.Parameters()
+	if len(parameters) != 1 || signature.HasRestParameter() {
+		return refuse(signatureNode, "VIBE4202", "Action signature requires exactly one required non-rest input parameter")
+	}
+	parameter := parameters[0].ValueDeclaration
+	if parameter == nil && len(parameters[0].Declarations) > 0 {
+		parameter = parameters[0].Declarations[0]
+	}
+	if parameter == nil || (parameter.Kind == ast.KindParameter && parameter.AsParameterDeclaration().QuestionToken != nil) {
+		return refuse(signatureNode, "VIBE4202", "Action signature requires exactly one required non-rest input parameter")
+	}
+	inputType := typeChecker.GetTypeOfSymbolAtLocation(parameters[0], parameter)
+	returned := typeChecker.GetReturnTypeOfSignature(signature)
+	promise := func(t *checker.Type) *checker.Type {
+		if symbol := d.durableTypeSymbol(t); symbol != nil && symbol.Name == "Promise" {
+			for _, node := range symbol.Declarations {
+				if ast.GetSourceFileOfNode(node).IsDeclarationFile {
+					if arguments := typeChecker.GetTypeArguments(t); len(arguments) == 1 {
+						return arguments[0]
+					}
+				}
+			}
+		}
+		return nil
+	}
+	if promised := promise(returned); promised != nil {
+		returned = promised
+		if promise(returned) != nil {
+			return refuse(signatureNode, "VIBE4203", "nested Promise is not a durable Action value")
+		}
+	}
+	if d.durableTypeSymbol(returned) != resultSymbol {
+		return refuse(signatureNode, "VIBE4202", "bounded Action contracts must return Result<Success, Error> or Promise<Result<Success, Error>>")
+	}
+	arguments := typeChecker.GetTypeArguments(returned)
+	if len(arguments) != 2 {
+		return refuse(signatureNode, "VIBE4202", "Action Result must have success and failure arguments")
+	}
+	budget := &durableDescriptorBudget{}
+	inputDescriptor, err := d.durableTypeDescriptorAt(inputType, parameter, make(map[checker.TypeId]bool), false, budget, 0)
+	if err != nil {
+		return refuse(signatureNode, "VIBE4203", input.ExportName+" input: "+err.Error())
+	}
+	successDescriptor, err := d.durableTypeDescriptorAt(arguments[0], signatureNode, make(map[checker.TypeId]bool), false, budget, 0)
+	if err != nil {
+		return refuse(signatureNode, "VIBE4203", input.ExportName+" success: "+err.Error())
+	}
+	if collision := d.durableFailureIdentityCollides(arguments[1]); collision != nil {
+		return refuse(signatureNode, "VIBE4203", "Error "+collision.names[0]+" shares durable failure identity "+collision.identity+" with a different Error class "+collision.names[1])
+	}
+	errorSchema, err := d.durableErrorSchemaWithBudget(arguments[1], budget)
+	if err != nil {
+		return refuse(signatureNode, "VIBE4203", input.ExportName+" error: "+err.Error())
+	}
+	contract := map[string]any{"id": input.ID, "version": float64(input.Version),
+		"inputSchema": durableStructuralSchema("input", inputDescriptor), "successSchema": durableStructuralSchema("success", successDescriptor), "errorSchema": errorSchema}
+	contract["contractDigest"] = durableDigest(contract)
+	result.ContractJSON = durableCanonicalJSON(contract)
+	if len(result.ContractJSON) > 16*1024*1024 {
+		return refuse(signatureNode, "VIBE4203", "Action contract exceeds its serialized size budget")
+	}
+	if err := ctx.Err(); err != nil {
+		return actionContractResult{Diagnostics: []diagnostic{}}, err
+	}
+	result.OK = true
+	return result, nil
+}

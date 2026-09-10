@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 
-// forkpatch carries Smithers's *modifications* to pinned upstream TypeScript
+// forkpatch carries VibeLang's *modifications* to pinned upstream TypeScript
 // files. The repository already has two mechanisms for *additive* fork sources —
 // `go build -overlay` (compiler/fork.go) and controlled checkout population
-// (scripts/build-smithersc.mjs) — and neither can express a change to a file that
+// (scripts/build-vibec.mjs) — and neither can express a change to a file that
 // upstream also owns, nor to `tools/scripts/tsc/ast.json`, which is not Go at
 // all. See README.md for the mechanism contract and the rejected alternatives.
 //
-// Every command is offline and needs nothing but git. Only `record` and
-// `verify --regenerate` need Node >= 22.6 and dprint, and both are
-// authoring-time commands.
+// Ordinary commands are offline and need only Node and git. The authoring-time
+// `verify --regenerate` additionally uses the tools pinned in series.json.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -276,13 +275,20 @@ function commandUnapply(checkout) {
 }
 
 function regenerate(checkout, series) {
-  const node = process.env.SMITHERS_FORKPATCH_NODE ?? "node";
+  const node = process.env.VIBELANG_FORKPATCH_NODE ?? "node";
   const version = run(node, ["--version"]).stdout.trim();
-  const [major, minor] = version.replace(/^v/u, "").split(".").map(Number);
-  if (major < 22 || (major === 22 && minor < 6)) {
+  const actual = version.replace(/^v/u, "").split(".").map(Number);
+  const minimumText = series.generator.nodeMinimum;
+  if (typeof minimumText !== "string" || !/^\d+\.\d+\.\d+$/u.test(minimumText)) {
+    fail("series.json must record the AST generator's exact minimum Node version");
+  }
+  const minimum = minimumText.split(".").map(Number);
+  const different = minimum.findIndex((component, index) => actual[index] !== component);
+  if (actual.length !== 3 || actual.some((component) => !Number.isSafeInteger(component)) ||
+      (different >= 0 && actual[different] < minimum[different])) {
     fail(
-      `${node} is ${version}; the AST generator needs >= v22.6 for --experimental-strip-types ` +
-        "(set SMITHERS_FORKPATCH_NODE to a newer Node)",
+      `${node} is ${version}; the pinned AST generator needs >= v${minimumText} ` +
+        "(set VIBELANG_FORKPATCH_NODE to a newer Node)",
     );
   }
   run(node, [
@@ -291,7 +297,7 @@ function regenerate(checkout, series) {
     "./tools/scripts/tsc/generate.ts",
   ], { cwd: checkout });
 
-  const go = process.env.SMITHERS_GO ?? "go";
+  const go = process.env.VIBELANG_GO ?? "go";
   run(go, [
     "tool",
     "golang.org/x/tools/cmd/stringer",
@@ -423,8 +429,8 @@ function commandRecord(checkout) {
       stringer:
         "go tool golang.org/x/tools/cmd/stringer -type=Kind -output=kind_stringer_generated.go ./tsc/internal/ast",
       formatterCommand: "dprint",
-      formatter: "dprint@0.55.1 (the version .dprint.jsonc pins)",
-      nodeMinimum: "22.6.0",
+      formatter: "dprint@0.56.1 (from the pinned upstream package-lock.json)",
+      nodeMinimum: "22.18.0",
     },
     patches: names.map((name) => ({
       file: `patches/${name}`,

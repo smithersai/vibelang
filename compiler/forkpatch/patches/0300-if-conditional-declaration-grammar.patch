@@ -48,7 +48,7 @@ index 2c808601..89424c38 100644
  	NodeFlagsPossiblyContainsDeprecatedTag NodeFlags = 1 << 26 // Set during parse if comment text contains '@deprecated'; must confirm via JSDoc lookup
  	NodeFlagsUnreachable                   NodeFlags = 1 << 27 // If node is unreachable according to the binder
  	NodeFlagsReparserTransformedLiteral    NodeFlags = 1 << 28 // If node was transformed during parsing, making its' naive text source not match the AST
-+	NodeFlagsSmithers                      NodeFlags = 1 << 29 // If node was parsed in a Smithers file (enables Smithers-only grammar)
++	NodeFlagsVibeLang                      NodeFlags = 1 << 29 // If node was parsed in a VibeLang file (enables VibeLang-only grammar)
  
  	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
  	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
@@ -57,7 +57,7 @@ index 2c808601..89424c38 100644
  
  	// Parsing context flags
 -	NodeFlagsContextFlags NodeFlags = NodeFlagsDisallowInContext | NodeFlagsDisallowConditionalTypesContext | NodeFlagsYieldContext | NodeFlagsDecoratorContext | NodeFlagsAwaitContext | NodeFlagsJavaScriptFile | NodeFlagsInWithStatement | NodeFlagsAmbient
-+	NodeFlagsContextFlags NodeFlags = NodeFlagsDisallowInContext | NodeFlagsDisallowConditionalTypesContext | NodeFlagsYieldContext | NodeFlagsDecoratorContext | NodeFlagsAwaitContext | NodeFlagsJavaScriptFile | NodeFlagsInWithStatement | NodeFlagsAmbient | NodeFlagsSmithers
++	NodeFlagsContextFlags NodeFlags = NodeFlagsDisallowInContext | NodeFlagsDisallowConditionalTypesContext | NodeFlagsYieldContext | NodeFlagsDecoratorContext | NodeFlagsAwaitContext | NodeFlagsJavaScriptFile | NodeFlagsInWithStatement | NodeFlagsAmbient | NodeFlagsVibeLang
  
  	// Exclude these flags when parsing a Type
  	NodeFlagsTypeExcludesFlags NodeFlags = NodeFlagsYieldContext | NodeFlagsAwaitContext
@@ -70,7 +70,7 @@ index 42058ea2..c7f8cf68 100644
  		// see comment in binder.ts: bind(...), case for SyntaxKind.Block
  		return !IsFunctionLikeOrClassStaticBlockDeclaration(parentNode)
 +	case KindIfStatement:
-+		// Smithers: `if (const x = f(); cond)` scopes the binding to the whole
++		// VibeLang: `if (const x = f(); cond)` scopes the binding to the whole
 +		// conditional construct, so only such an `if` is a block scope. This must
 +		// agree with binder.GetContainerFlags, which decides whether the locals
 +		// table is created at all.
@@ -86,7 +86,7 @@ index 38769558..bc6b7967 100644
  
  func (b *Binder) bindIfStatement(node *ast.Node) {
  	stmt := node.AsIfStatement()
-+	// Smithers: the conditional declaration runs before the condition is
++	// VibeLang: the conditional declaration runs before the condition is
 +	// evaluated, so it must be bound first — the condition, both branches, and
 +	// any narrowing inside them are all computed from the flow it produces.
 +	// bindIfStatement binds its children by hand, so an unbound member here is a
@@ -100,7 +100,7 @@ index 38769558..bc6b7967 100644
  	case ast.KindCatchClause, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindCaseBlock:
  		return ContainerFlagsIsBlockScopedContainer | ContainerFlagsHasLocals
 +	case ast.KindIfStatement:
-+		// Smithers: only an `if` that declares a conditional binding is a block
++		// VibeLang: only an `if` that declares a conditional binding is a block
 +		// scope. A plain `if` keeps upstream's flags exactly.
 +		if node.AsIfStatement().Initializer != nil {
 +			return ContainerFlagsIsBlockScopedContainer | ContainerFlagsHasLocals
@@ -119,7 +119,7 @@ index 2a4ead50..f376a895 100644
  	c.checkGrammarStatementInAmbientContext(node)
 -	t := c.checkTruthinessExpression(node.Expression(), CheckModeNormal)
  	data := node.AsIfStatement()
-+	// Smithers: the conditional declaration must be checked here. checkIfStatement
++	// VibeLang: the conditional declaration must be checked here. checkIfStatement
 +	// reaches its children by hand and checkSourceElementWorker has no default
 +	// arm, so an unchecked initializer is silently NOT type-checked rather than
 +	// reported.
@@ -149,7 +149,7 @@ index 2a4ead50..f376a895 100644
  		case ast.KindSourceFile, ast.KindModuleDeclaration, ast.KindBlock, ast.KindCaseBlock, ast.KindForStatement, ast.KindForInStatement,
 -			ast.KindForOfStatement:
 +			ast.KindForOfStatement,
-+			// Smithers: an `if` with a conditional declaration owns a locals table.
++			// VibeLang: an `if` with a conditional declaration owns a locals table.
 +			ast.KindIfStatement:
  			c.checkUnusedLocalsAndParameters(node)
  		case ast.KindConstructor, ast.KindFunctionExpression, ast.KindFunctionDeclaration, ast.KindArrowFunction, ast.KindMethodDeclaration,
@@ -162,7 +162,7 @@ index 69b2362c..7b18b4db 100644
  	case ast.KindArrowFunction, ast.KindBlock, ast.KindCallSignature, ast.KindCaseBlock, ast.KindCatchClause,
  		ast.KindClassStaticBlockDeclaration, ast.KindConditionalType, ast.KindConstructor, ast.KindConstructorType,
  		ast.KindConstructSignature, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindFunctionDeclaration,
-+		// Smithers: `if (const x = f(); cond)` gives the IfStatement a locals table.
++		// VibeLang: `if (const x = f(); cond)` gives the IfStatement a locals table.
 +		ast.KindIfStatement,
  		ast.KindFunctionExpression, ast.KindFunctionType, ast.KindGetAccessor, ast.KindIndexSignature,
  		ast.KindJSDocSignature, ast.KindMappedType,
@@ -175,9 +175,9 @@ index 8b53a39b..83a0415f 100644
  	return core.IfElse(p.token == ast.KindEndOfFile && len(p.diagnostics) == 0, entityName, nil)
  }
  
-+// smithersLangExtensions selects the Smithers dialect. .sm.ts covers the
++// vibelangLangExtensions selects the VibeLang dialect. .vibe.ts covers the
 +// content-mapper virtual file name produced by contentmapper.ParseResult.
-+var smithersLangExtensions = []string{".sm", ".sm.ts"}
++var vibelangLangExtensions = []string{".vibe", ".vibe.ts"}
 +
  func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText string, scriptKind core.ScriptKind) {
  	if scriptKind == core.ScriptKindUnknown {
@@ -186,8 +186,8 @@ index 8b53a39b..83a0415f 100644
  	default:
  		p.contextFlags = ast.NodeFlagsNone
  	}
-+	if tspath.FileExtensionIsOneOf(opts.FileName, smithersLangExtensions) {
-+		p.contextFlags |= ast.NodeFlagsSmithers
++	if tspath.FileExtensionIsOneOf(opts.FileName, vibelangLangExtensions) {
++		p.contextFlags |= ast.NodeFlagsVibeLang
 +	}
  	p.scanner.SetText(p.sourceText)
  	p.scanner.SetOnError(p.scanError)
@@ -196,7 +196,7 @@ index 8b53a39b..83a0415f 100644
  	p.parseExpected(ast.KindIfKeyword)
  	openParenPosition := p.scanner.TokenStart()
  	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
-+	// Smithers: `if ( VariableDeclarationList ; Expression )` — a declaration
++	// VibeLang: `if ( VariableDeclarationList ; Expression )` — a declaration
 +	// scoped to the whole conditional construct, as in Go's `if v := f(); cond`.
 +	// The binding is visible in the then branch and in every `else`/`else if`
 +	// branch, and is out of scope after the construct, because the IfStatement is
@@ -204,7 +204,7 @@ index 8b53a39b..83a0415f 100644
 +	// all, so it is conflict-free; the lookahead keeps `let` usable as an
 +	// ordinary identifier in a condition.
 +	var initializer *ast.ForInitializer
-+	if p.contextFlags&ast.NodeFlagsSmithers != 0 &&
++	if p.contextFlags&ast.NodeFlagsVibeLang != 0 &&
 +		(p.token == ast.KindVarKeyword || p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword) &&
 +		p.lookAhead((*Parser).nextTokenIsBindingIdentifierOrStartOfDestructuring) {
 +		initializer = p.parseVariableDeclarationList(true /*inForStatementInitializer*/)
@@ -244,7 +244,7 @@ index 6f038678..35791350 100644
  	p.writeSpace()
 -	p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
 +	pos = p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
-+	// Smithers: `if (const x = f(); cond)` — the conditional declaration and the
++	// VibeLang: `if (const x = f(); cond)` — the conditional declaration and the
 +	// semicolon that separates it from the condition precede the condition.
 +	if node.Initializer != nil {
 +		p.emitForInitializer(node.Initializer)

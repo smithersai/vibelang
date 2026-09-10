@@ -1,0 +1,74 @@
+diff --git a/tsc/internal/module/contentmapper_extensions_test.go b/tsc/internal/module/contentmapper_extensions_test.go
+new file mode 100644
+--- /dev/null
++++ b/tsc/internal/module/contentmapper_extensions_test.go
+@@ -0,0 +1,69 @@
++package module
++
++import (
++	"testing"
++
++	"github.com/microsoft/TypeScript/tsc/internal/core"
++	"github.com/microsoft/TypeScript/tsc/internal/vfs"
++	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
++)
++
++type contentMapperResolutionHost struct{ fs vfs.FS }
++
++func (h contentMapperResolutionHost) FS() vfs.FS                  { return h.fs }
++func (h contentMapperResolutionHost) GetCurrentDirectory() string { return "/src" }
++
++// No language-specific extension is privileged. With no registered mapper this
++// is the unchanged upstream resolver, including Node ESM's explicit-extension rule.
++func TestVibeLangContentMapperExtensionResolution(t *testing.T) {
++	for _, tc := range []struct {
++		name, specifier, expected string
++		registered, files         []string
++		node, commonJS, extra     bool
++	}{
++		{name: "extensionless", specifier: "./library", registered: []string{".widget"}, files: []string{"library.widget"}, expected: "library.widget", extra: true},
++		{name: "different registered extension", specifier: "./library", registered: []string{".view"}, files: []string{"library.view"}, expected: "library.view", extra: true},
++		{name: "registration order", specifier: "./library", registered: []string{".widget", ".view"}, files: []string{"library.widget", "library.view"}, expected: "library.widget", extra: true},
++		{name: "reversed registration order", specifier: "./library", registered: []string{".view", ".widget"}, files: []string{"library.widget", "library.view"}, expected: "library.view", extra: true},
++		{name: "JavaScript output alias", specifier: "./library.js", registered: []string{".widget"}, files: []string{"library.widget"}, expected: "library.widget", extra: true},
++		{name: "TypeScript keeps priority", specifier: "./library", registered: []string{".widget"}, files: []string{"library.ts", "library.widget"}, expected: "library.ts"},
++		{name: "declarations keep priority", specifier: "./library", registered: []string{".widget"}, files: []string{"library.d.ts", "library.widget"}, expected: "library.d.ts"},
++		{name: "mapper before JavaScript fallback", specifier: "./library", registered: []string{".widget"}, files: []string{"library.widget", "library.js"}, expected: "library.widget", extra: true},
++		{name: "JavaScript fallback", specifier: "./library", registered: []string{".widget"}, files: []string{"library.js"}, expected: "library.js"},
++		{name: "explicit TypeScript is not renamed", specifier: "./library.ts", registered: []string{".widget"}, files: []string{"library.widget"}},
++		{name: "unregistered extension stays unresolved", specifier: "./library", files: []string{"library.widget"}},
++		{name: "registration is exact", specifier: "./library", registered: []string{".view"}, files: []string{"library.widget"}},
++		{name: "directory index", specifier: "./directory", registered: []string{".widget"}, files: []string{"directory/index.widget"}, expected: "directory/index.widget", extra: true},
++		{name: "explicit registered extension", specifier: "./library.widget", registered: []string{".widget"}, files: []string{"library.widget"}, expected: "library.widget", extra: true},
++		{name: "multi-dot registered extension", specifier: "./library", registered: []string{".component.view"}, files: []string{"library.component.view"}, expected: "library.component.view", extra: true},
++		{name: "Node ESM keeps explicit extension rule", specifier: "./library", registered: []string{".widget"}, files: []string{"library.widget"}, node: true},
++		{name: "Node CommonJS implicit lookup", specifier: "./library", registered: []string{".widget"}, files: []string{"library.widget"}, expected: "library.widget", extra: true, node: true, commonJS: true},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			files := map[string]string{"/src/main.ts": "", "/src/package.json": "{\"type\":\"module\"}"}
++			for _, name := range tc.files {
++				files["/src/"+name] = "export const value = 42;"
++			}
++			options := &core.CompilerOptions{Module: core.ModuleKindESNext, ModuleResolution: core.ModuleResolutionKindBundler}
++			mode := core.ResolutionModeESM
++			if tc.node {
++				options.Module = core.ModuleKindNodeNext
++				options.ModuleResolution = core.ModuleResolutionKindNodeNext
++			}
++			if tc.commonJS {
++				mode = core.ResolutionModeCommonJS
++			}
++			resolver := NewResolver(contentMapperResolutionHost{vfstest.FromMap(files, true)}, options, "", "", tc.registered)
++			got, _ := resolver.ResolveModuleName(tc.specifier, "/src/main.ts", mode, nil)
++			if tc.expected == "" {
++				if got.IsResolved() {
++					t.Fatalf("unexpected resolution: %+v", got)
++				}
++				return
++			}
++			if !got.IsResolved() || got.ResolvedFileName != "/src/"+tc.expected || got.ResolvedUsingExtraExtensions != tc.extra {
++				t.Fatalf("got=%+v expected=%s extra=%v", got, tc.expected, tc.extra)
++			}
++		})
++	}
++}

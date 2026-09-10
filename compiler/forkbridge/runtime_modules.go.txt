@@ -1,0 +1,416 @@
+package main
+
+// Bounded runtime-graph facts. The native parser owns literal spans and the
+// same conservative initialization/trust rules used by language checking.
+// Hosts still own source snapshots, output identities and asset issuance.
+// These facts are NOT a successful parse or a type-check certificate: recovery
+// diagnostics remain separate so the consuming compiler owns their reporting.
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type runtimeModuleSource struct {
+	Path                          string `json:"path"`
+	Text                          string `json:"text"`
+	DeferComputedDynamicSpecifier bool   `json:"deferComputedDynamicSpecifier,omitempty"`
+}
+type runtimeModulesRequest struct {
+	Files          []runtimeModuleSource `json:"files"`
+	ResolutionRoot string                `json:"resolutionRoot,omitempty"`
+}
+type runtimeModuleEdge struct {
+	Kind                 string `json:"kind"`
+	Specifier            string `json:"specifier"`
+	Start                int    `json:"start"`
+	End                  int    `json:"end"`
+	TypeOnly             bool   `json:"typeOnly"`
+	ModuleInitialization bool   `json:"moduleInitialization"`
+	Attributes           bool   `json:"attributes"`
+}
+type runtimeModuleDiagnostic struct {
+	assetImportPosition
+	Message string `json:"message"`
+}
+type runtimeModuleResolution struct {
+	Specifier   string `json:"specifier"`
+	RuntimePath string `json:"runtimePath,omitempty"`
+	TypePath    string `json:"typePath,omitempty"`
+	Message     string `json:"message"`
+}
+type runtimeModuleFile struct {
+	Path             string                    `json:"path"`
+	Edges            []runtimeModuleEdge       `json:"edges"`
+	LeadingNoThrow   bool                      `json:"leadingNoThrow"`
+	FirstStatement   assetImportPosition       `json:"firstStatement"`
+	Diagnostics      []runtimeModuleDiagnostic `json:"diagnostics"`
+	ParseDiagnostics []diagnostic              `json:"parseDiagnostics"`
+	Resolutions      []runtimeModuleResolution `json:"resolutions"`
+}
+type runtimeModulesResult struct {
+	Files []runtimeModuleFile `json:"files"`
+}
+
+func serveRuntimeModules(apiVersion int) {
+	response := struct {
+		APIVersion       int                  `json:"apiVersion"`
+		CompilerRevision string               `json:"compilerRevision"`
+		Result           runtimeModulesResult `json:"result"`
+		Error            *wireError           `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: runtimeModulesResult{Files: []runtimeModuleFile{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 1536*1024*1024 + 1}
+	var input runtimeModulesRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("runtime modules request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeRuntimeModules(input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_RUNTIME_MODULES", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// Reuse the root-confined, package-metadata-only filesystem. Unlike source
+// asset preflight, runtime graph resolution must report an attempted symbolic
+// alias, including a declaration companion. An alias cannot disappear into a
+// resolver's fallback to another candidate. No module body is read here.
+type runtimeResolutionFS struct {
+	*assetResolutionFS
+	alias      string
+	operations int
+}
+
+func (fs *runtimeResolutionFS) metadata(name string) os.FileInfo {
+	relative, ok := assetResolutionRelative(name)
+	if !ok || fs.root == nil || fs.fault != nil {
+		return nil
+	}
+	parts := strings.Split(relative, "/")
+	for index := range parts {
+		fs.operations++
+		if fs.operations > 1_000_000 {
+			fs.fault = errors.New("runtime module resolution exceeds its metadata operation budget")
+			return nil
+		}
+		part := strings.Join(parts[:index+1], "/")
+		info, err := fs.root.Lstat(part)
+		if err != nil {
+			return nil
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			if fs.alias == "" {
+				fs.alias = part
+			}
+			return nil
+		}
+		if index == len(parts)-1 {
+			return info
+		}
+	}
+	return nil
+}
+func (fs *runtimeResolutionFS) FileExists(name string) bool {
+	info := fs.metadata(name)
+	return info != nil && info.Mode().IsRegular()
+}
+func (fs *runtimeResolutionFS) DirectoryExists(name string) bool {
+	info := fs.metadata(name)
+	return info != nil && info.IsDir()
+}
+func (fs *runtimeResolutionFS) ReadFile(name string) (string, bool) {
+	if path.Base(name) != "package.json" || fs.metadata(name) == nil {
+		return "", false
+	}
+	return fs.assetResolutionFS.ReadFile(name)
+}
+
+type runtimeResolutionHost struct{ filesystem *runtimeResolutionFS }
+
+func (host runtimeResolutionHost) FS() vfs.FS                  { return host.filesystem }
+func (host runtimeResolutionHost) GetCurrentDirectory() string { return "/src" }
+
+func runtimeSourceKind(name string) (core.ScriptKind, bool) {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".ts", ".mts", ".cts", ".vibe":
+		return core.ScriptKindTS, true
+	case ".tsx":
+		return core.ScriptKindTSX, true
+	case ".jsx":
+		return core.ScriptKindJSX, true
+	case ".js", ".mjs", ".cjs":
+		return core.ScriptKindJS, true
+	default:
+		return core.ScriptKindUnknown, false
+	}
+}
+func runtimeDeclarationPath(name string) bool {
+	name = strings.ToLower(name)
+	return strings.HasSuffix(name, ".d.ts") || strings.HasSuffix(name, ".d.mts") || strings.HasSuffix(name, ".d.cts")
+}
+func runtimeJavaScriptPath(name string) bool {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".js", ".mjs", ".cjs":
+		return true
+	}
+	return false
+}
+
+func analyzeRuntimeModules(input runtimeModulesRequest) (runtimeModulesResult, error) {
+	result := runtimeModulesResult{Files: []runtimeModuleFile{}}
+	if len(input.Files) == 0 || len(input.Files) > 4096 {
+		return result, errors.New("runtime modules analysis requires 1 to 4096 sources")
+	}
+	seen, total := map[string]bool{}, 0
+	for _, file := range input.Files {
+		virtual, err := virtualFileName(file.Path)
+		if err != nil {
+			return result, err
+		}
+		if strings.ContainsRune(file.Path, 0) || file.Path != strings.TrimPrefix(virtual, "/src/") {
+			return result, errors.New("runtime module source path must be a normalized project-relative path without NUL")
+		}
+		if _, ok := runtimeSourceKind(file.Path); !ok {
+			return result, fmt.Errorf("unsupported runtime module source extension: %s", file.Path)
+		}
+		if seen[virtual] {
+			return result, fmt.Errorf("duplicate runtime module source %q", file.Path)
+		}
+		seen[virtual] = true
+		total += len(file.Text)
+		if total > 256*1024*1024 {
+			return result, errors.New("runtime module sources exceed the 256 MiB budget")
+		}
+	}
+	filesystem := &runtimeResolutionFS{assetResolutionFS: &assetResolutionFS{FS: vfstest.FromMap(map[string]string{}, true)}}
+	resolveModules := input.ResolutionRoot != ""
+	if input.ResolutionRoot != "" {
+		if !filepath.IsAbs(input.ResolutionRoot) || strings.ContainsRune(input.ResolutionRoot, 0) {
+			return result, errors.New("runtime module resolutionRoot must be an absolute directory")
+		}
+		root, err := os.OpenRoot(input.ResolutionRoot)
+		if err != nil {
+			return result, fmt.Errorf("open runtime module resolution root: %w", err)
+		}
+		defer root.Close()
+		filesystem.root = root
+	}
+	edges := 0
+	for _, source := range input.Files {
+		output, err := inspectRuntimeModule(source, &edges)
+		if err != nil {
+			return result, err
+		}
+		if resolveModules && len(output.Diagnostics) == 0 {
+			specifiers := map[string]bool{}
+			for _, edge := range output.Edges {
+				if strings.HasPrefix(edge.Specifier, ".") {
+					specifiers[edge.Specifier] = true
+				}
+			}
+			if runtimeJavaScriptPath(source.Path) {
+				specifiers["./"+path.Base(source.Path)] = true
+			}
+			ordered := make([]string, 0, len(specifiers))
+			for specifier := range specifiers {
+				ordered = append(ordered, specifier)
+			}
+			sort.Slice(ordered, func(i, j int) bool { return compareUTF16(ordered[i], ordered[j]) < 0 })
+			for _, specifier := range ordered {
+				output.Resolutions = append(output.Resolutions, resolveRuntimeModule(source.Path, specifier, filesystem))
+				if filesystem.fault != nil {
+					return result, filesystem.fault
+				}
+			}
+		}
+		result.Files = append(result.Files, output)
+	}
+	return result, nil
+}
+
+func resolveRuntimeModule(source, specifier string, fs *runtimeResolutionFS) runtimeModuleResolution {
+	output := runtimeModuleResolution{Specifier: specifier}
+	virtual, _ := virtualFileName(source)
+	exact := path.Clean(path.Join(path.Dir(virtual), strings.ReplaceAll(specifier, `\`, "/")))
+	if _, inside := assetResolutionRelative(exact); !inside {
+		output.Message = "relative runtime dependency is outside the project root: " + specifier
+		return output
+	}
+	fs.alias = ""
+	// A failed-candidate cache cannot erase an earlier symlink probe. Each
+	// distinct specifier gets its own native resolver; disk budgets are shared.
+	resolver := module.NewResolver(runtimeResolutionHost{fs}, &core.CompilerOptions{
+		Target: core.ScriptTargetES2022, Module: core.ModuleKindESNext, ModuleResolution: core.ModuleResolutionKindBundler,
+		AllowJs: core.TSTrue, CheckJs: core.TSTrue, AllowImportingTsExtensions: core.TSTrue, Jsx: core.JsxEmitReact,
+	}, "", "", nil)
+	resolved, _ := resolver.ResolveModuleName(specifier, virtual, core.ModuleKindNone, nil)
+	declared := ""
+	if resolved.IsResolved() && fs.FileExists(resolved.ResolvedFileName) {
+		if relative, inside := assetResolutionRelative(resolved.ResolvedFileName); inside && relative != "." {
+			declared = relative
+		}
+	}
+	exactRuntime := ""
+	if _, supported := runtimeSourceKind(exact); supported && !strings.HasSuffix(strings.ToLower(exact), ".vibe") && fs.FileExists(exact) {
+		exactRuntime, _ = assetResolutionRelative(exact)
+	}
+	if fs.alias != "" {
+		output.Message = "relative runtime dependency resolves through a symbolic-link alias: " + fs.alias
+		return output
+	}
+	if exactRuntime != "" && declared != "" && !runtimeDeclarationPath(declared) && declared != exactRuntime {
+		output.Message = "relative runtime import is ambiguous between " + exactRuntime + " and checker target " + declared
+		return output
+	}
+	output.RuntimePath, output.TypePath = exactRuntime, declared
+	if output.RuntimePath == "" {
+		output.RuntimePath = declared
+	}
+	if output.TypePath == "" {
+		output.TypePath = exactRuntime
+	}
+	return output
+}
+
+func inspectRuntimeModule(input runtimeModuleSource, count *int) (runtimeModuleFile, error) {
+	output := runtimeModuleFile{Path: input.Path, Edges: []runtimeModuleEdge{}, Diagnostics: []runtimeModuleDiagnostic{}, ParseDiagnostics: []diagnostic{}, Resolutions: []runtimeModuleResolution{}}
+	virtual, _ := virtualFileName(input.Path)
+	kind, _ := runtimeSourceKind(input.Path)
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: virtual, Path: tspath.Path(virtual)}, input.Text, kind)
+	lines, starts := newLineIndex(input.Text), formatLineStarts(input.Text)
+	position := func(offset int) assetImportPosition {
+		offset = max(0, min(offset, len(input.Text)))
+		line := formatLineOf(starts, offset)
+		return assetImportPosition{Start: lines.utf16Offset(offset), Line: line + 1, Column: lines.utf16Offset(offset) - lines.utf16Offset(starts[line]) + 1}
+	}
+	point := func(node *ast.Node) assetImportPosition {
+		if node == nil {
+			return position(0)
+		}
+		return position(scanner.GetTokenPosOfNode(node, file, false))
+	}
+	output.FirstStatement = position(0)
+	if len(file.Statements.Nodes) != 0 {
+		output.FirstStatement = point(file.Statements.Nodes[0])
+	}
+	for _, item := range file.Diagnostics() {
+		where := span{Start: lines.utf16Offset(item.Pos()), Length: lines.utf16Offset(item.End()) - lines.utf16Offset(item.Pos())}
+		output.ParseDiagnostics = append(output.ParseDiagnostics, diagnostic{Code: fmt.Sprintf("TS%d", item.Code()), Category: categoryName(item.Category()), Message: item.Localize(locale.Default), File: input.Path, Span: &where, Phase: "parse"})
+	}
+	output.LeadingNoThrow = trustedForeignModule(file)
+	classifier := newModuleInitializationClassifier(file)
+	var factError error
+	report := func(node *ast.Node, message string) {
+		output.Diagnostics = append(output.Diagnostics, runtimeModuleDiagnostic{assetImportPosition: point(node), Message: message})
+	}
+	add := func(kind string, expression *ast.Node, typeOnly, initialization, attributes bool) {
+		if expression == nil || !ast.IsStringLiteralLike(expression) {
+			if kind == "dynamic-import" && input.DeferComputedDynamicSpecifier {
+				return
+			}
+			report(expression, "module specifier must be a string literal")
+			return
+		}
+		if !utf8.ValidString(expression.Text()) || strings.ContainsRune(expression.Text(), 0) {
+			factError = errors.New("runtime module specifier must be well-formed text without NUL")
+			return
+		}
+		*count++
+		if *count > 100_000 {
+			factError = errors.New("runtime module syntax exceeds its 100000 entry budget")
+			return
+		}
+		output.Edges = append(output.Edges, runtimeModuleEdge{Kind: kind, Specifier: expression.Text(), Start: point(expression).Start, End: lines.utf16Offset(expression.End()), TypeOnly: typeOnly, ModuleInitialization: initialization, Attributes: attributes})
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch {
+		case ast.IsImportDeclaration(node):
+			declaration := node.AsImportDeclaration()
+			typeOnly := importIsTypeOnly(declaration)
+			add("import", declaration.ModuleSpecifier, typeOnly, !typeOnly, declaration.Attributes != nil)
+		case ast.IsExportDeclaration(node) && node.AsExportDeclaration().ModuleSpecifier != nil:
+			declaration := node.AsExportDeclaration()
+			typeOnly := nativeExportIsTypeOnly(declaration)
+			add("export", declaration.ModuleSpecifier, typeOnly, !typeOnly, declaration.Attributes != nil)
+		case ast.IsImportEqualsDeclaration(node):
+			declaration := node.AsImportEqualsDeclaration()
+			if declaration.ModuleReference != nil && ast.IsExternalModuleReference(declaration.ModuleReference) {
+				expression := declaration.ModuleReference.AsExternalModuleReference().Expression
+				if expression == nil {
+					report(node, "import=require needs a literal")
+				} else {
+					add("import-equals", expression, declaration.IsTypeOnly, !declaration.IsTypeOnly, false)
+				}
+			}
+		case ast.IsCallExpression(node):
+			call := node.AsCallExpression()
+			arguments := []*ast.Node{}
+			if call.Arguments != nil {
+				arguments = call.Arguments.Nodes
+			}
+			if call.Expression != nil && call.Expression.Kind == ast.KindImportKeyword {
+				if len(arguments) < 1 || len(arguments) > 2 {
+					report(node, "dynamic import must have one string literal and at most one attributes object")
+				} else if len(arguments) == 2 && !ast.IsObjectLiteralExpression(arguments[1]) {
+					report(arguments[1], "dynamic import attributes must be an object literal")
+				} else {
+					add("dynamic-import", arguments[0], false, classifier.isModuleInitializationEdge(node), len(arguments) == 2)
+				}
+			} else if call.Expression != nil && ast.IsIdentifier(call.Expression) && call.Expression.Text() == "require" {
+				if len(arguments) != 1 {
+					report(node, "require must have one string literal")
+				} else {
+					add("require", arguments[0], false, classifier.isModuleInitializationEdge(node), false)
+				}
+			}
+		case ast.IsIdentifier(node) && node.Text() == "require":
+			if node.Parent == nil || !ast.IsCallExpression(node.Parent) || node.Parent.AsCallExpression().Expression != node {
+				report(node, "require may not be aliased or accessed indirectly")
+			}
+		}
+		if factError != nil || len(output.Diagnostics) != 0 {
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
+	if factError != nil {
+		return output, factError
+	}
+	if len(output.Diagnostics) != 0 {
+		output.Edges = []runtimeModuleEdge{}
+		output.LeadingNoThrow = false
+	}
+	sort.SliceStable(output.Edges, func(i, j int) bool {
+		if output.Edges[i].Start == output.Edges[j].Start {
+			return output.Edges[i].End < output.Edges[j].End
+		}
+		return output.Edges[i].Start < output.Edges[j].Start
+	})
+	return output, nil
+}

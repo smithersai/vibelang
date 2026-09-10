@@ -1,0 +1,95 @@
+package main
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/text/unicode/norm"
+)
+
+// ECMAScript NFC is not Stream-Safe Text Format. x/text's normalizer inserts
+// U+034F after 30 non-starters; hashing that text silently changes layer and
+// capability identities, and can miss filesystem overlaps. Keep its fast path
+// for ordinary segments, but canonically order/compose overflowing segments
+// without inserting characters. Explicit authored U+034F is never removed.
+func keyedPlanNFC(value string) string {
+	normalized := norm.NFC.String(value)
+	if strings.Count(normalized, norm.GraphemeJoiner) == strings.Count(value, norm.GraphemeJoiner) {
+		return normalized
+	}
+	var out strings.Builder
+	out.Grow(len(value))
+	start := 0
+	flush := func(end int) {
+		segment := value[start:end]
+		normalized := norm.NFC.String(segment)
+		if strings.Count(normalized, norm.GraphemeJoiner) != strings.Count(segment, norm.GraphemeJoiner) {
+			normalized = keyedPlanComposeNFC(segment)
+		}
+		out.WriteString(normalized)
+		start = end
+	}
+	for offset := range value {
+		if offset > start && norm.NFC.PropertiesString(value[offset:]).BoundaryBefore() {
+			flush(offset)
+		}
+	}
+	flush(len(value))
+	return out.String()
+}
+
+func keyedPlanComposeNFC(value string) string {
+	type unit struct {
+		scalar rune
+		class  uint8
+	}
+	units := make([]unit, 0, utf8.RuneCountInString(value))
+	for _, scalar := range value {
+		// A single scalar's canonical decomposition is shorter than the
+		// stream-safety limit, so no synthetic separator can appear here.
+		for _, part := range norm.NFD.String(string(scalar)) {
+			units = append(units, unit{part, norm.NFD.PropertiesString(string(part)).CCC()})
+		}
+	}
+	// Stable canonical ordering within each starter-delimited sequence.
+	start := 0
+	order := func(end int) {
+		segment := units[start:end]
+		sort.SliceStable(segment, func(i, j int) bool { return segment[i].class < segment[j].class })
+	}
+	for index, item := range units {
+		if item.class == 0 {
+			order(index)
+			start = index + 1
+		}
+	}
+	order(len(units))
+	out := make([]rune, 0, len(units))
+	starter, lastClass := -1, uint8(0)
+	compositions := map[[2]rune]rune{}
+	for _, item := range units {
+		if starter >= 0 && (lastClass == 0 || lastClass < item.class) {
+			pair := [2]rune{out[starter], item.scalar}
+			composite, known := compositions[pair]
+			if !known {
+				text := norm.NFC.String(string(pair[:]))
+				first, size := utf8.DecodeRuneInString(text)
+				if size == len(text) {
+					composite = first
+				}
+				compositions[pair] = composite
+			}
+			if composite != 0 {
+				out[starter] = composite
+				continue
+			}
+		}
+		if item.class == 0 {
+			starter = len(out)
+		}
+		out = append(out, item.scalar)
+		lastClass = item.class
+	}
+	return string(out)
+}

@@ -1,0 +1,710 @@
+package main
+
+// Requirement-row subtyping over callable values. The parser and TS type graph
+// stay unchanged; inferred signatures retain their declaring node and authored
+// function types carry the empty row. Mirrors language/callable-rows.ts.
+
+import (
+	"path"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
+
+type callableRowMismatch struct {
+	path              string
+	required, allowed rowSet
+	unproven          bool
+	lostCompletion    string
+}
+
+// A spread materializes a data property but TS retains the getter's source
+// declarations on its symbol. A mapped type is still an accessor view.
+func accessorContractDeclarations(property *ast.Symbol, owner *checker.Type) []*ast.Node {
+	if property == nil || owner == nil {
+		return nil
+	}
+	if property.Flags&ast.SymbolFlagsAccessor == 0 && owner.Flags()&checker.TypeFlagsObject != 0 && owner.ObjectFlags()&checker.ObjectFlagsMapped == 0 {
+		return nil
+	}
+	var declarations []*ast.Node
+	for _, declaration := range symbolDeclarations(property) {
+		if ast.IsGetAccessorDeclaration(declaration) || ast.IsSetAccessorDeclaration(declaration) {
+			declarations = append(declarations, declaration)
+		}
+	}
+	return declarations
+}
+
+func (a *rowAnalysis) accessorPropertyRequirements(property *ast.Symbol, owner *checker.Type, operation string) rowSet {
+	row := make(rowSet)
+	for _, declaration := range accessorContractDeclarations(property, owner) {
+		if operation == "write" {
+			if !ast.IsSetAccessorDeclaration(declaration) {
+				continue
+			}
+		} else if !ast.IsGetAccessorDeclaration(declaration) {
+			continue
+		}
+		if operation == "enumerate" {
+			if declaration.Parent == nil || !(ast.IsObjectLiteralExpression(declaration.Parent) || ast.IsTypeLiteralNode(declaration.Parent) && a.publishedModule(ast.GetSourceFileOfNode(declaration)).value != nil) {
+				continue
+			}
+			if metadata, _ := readPublishedAccessor(declaration); metadata != nil && !metadata.Enumerable {
+				continue
+			}
+		}
+		if fn := a.byNode[declaration]; fn != nil {
+			addRows(row, fn.requirements)
+		}
+	}
+	return row
+}
+
+func (a *rowAnalysis) enumerableAccessorRequirements(t *checker.Type) rowSet {
+	row := make(rowSet)
+	for _, property := range a.checker.GetPropertiesOfType(t) {
+		addRows(row, a.accessorPropertyRequirements(property, t, "enumerate"))
+	}
+	return row
+}
+
+// A callback may borrow requirements without transferring ownership of its
+// completion. In particular TS's () => void assignability cannot hide Results
+// or Promises, including a Result hidden in a Promise fulfillment type.
+func (a *rowAnalysis) callableCompletionLoss(source, target *checker.Type) string {
+	if source == nil || target == nil || source == target || source.Flags()&checker.TypeFlagsNever != 0 {
+		return ""
+	}
+	sourceResult, targetResult := a.prelude.isResultType(source), a.prelude.isResultType(target)
+	if sourceResult && targetResult {
+		return ""
+	}
+	if source.IsUnion() && !sourceResult {
+		for _, part := range source.Types() {
+			if loss := a.callableCompletionLoss(part, target); loss != "" {
+				return loss
+			}
+		}
+		return ""
+	}
+	if target.IsUnion() && !targetResult {
+		first := ""
+		for _, part := range target.Types() {
+			if !a.checker.IsTypeAssignableTo(source, part) {
+				continue
+			}
+			loss := a.callableCompletionLoss(source, part)
+			if loss == "" {
+				return ""
+			}
+			if first == "" {
+				first = loss
+			}
+		}
+		return first
+	}
+	sourcePromise, targetPromise := a.checker.GetPromisedTypeOfPromise(source), a.checker.GetPromisedTypeOfPromise(target)
+	if sourcePromise != nil {
+		if targetPromise == nil {
+			return "Promise"
+		}
+		return a.callableCompletionLoss(sourcePromise, targetPromise)
+	}
+	if sourceResult && !targetResult {
+		return "Result"
+	}
+	return ""
+}
+
+func callableLibraryDeclaration(declaration *ast.Node) bool {
+	if declaration == nil {
+		return false
+	}
+	name := ast.GetSourceFileOfNode(declaration).FileName()
+	base := path.Base(name)
+	return name == preludeVirtualName || name == durableVirtualName || name == comptimeVirtualName || name == hostModulesVirtualName ||
+		strings.HasPrefix(base, "lib.") && strings.HasSuffix(base, ".d.ts")
+}
+
+func callableLibrarySymbol(symbol *ast.Symbol) bool {
+	if symbol == nil || len(symbol.Declarations) == 0 {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		if !callableLibraryDeclaration(declaration) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *rowAnalysis) callableSignatureRequirements(signature *checker.Signature) rowSet {
+	if signature == nil || signature.Declaration() == nil {
+		return nil
+	}
+	declaration := signature.Declaration()
+	if fn := a.byNode[declaration]; fn != nil {
+		return fn.requirements
+	}
+	if name := declaration.Name(); name != nil {
+		if fn := a.bySymbol[a.symbolAt(name)]; fn != nil {
+			return fn.requirements
+		}
+	}
+	return a.publishedRequirements(declaration)
+}
+
+func (a *rowAnalysis) callableTypeRequirements(t *checker.Type) rowSet {
+	result := make(rowSet)
+	if t == nil {
+		return result
+	}
+	if t.Flags()&checker.TypeFlagsUnionOrIntersection != 0 {
+		for _, part := range t.Types() {
+			addRows(result, a.callableTypeRequirements(part))
+		}
+	} else {
+		for _, signature := range a.checker.GetSignaturesOfType(t, checker.SignatureKindCall) {
+			addRows(result, a.callableSignatureRequirements(signature))
+		}
+	}
+	return result
+}
+
+func (a *rowAnalysis) callableValueRequirements(expression *ast.Node, seen map[*ast.Node]bool) rowSet {
+	result := make(rowSet)
+	if expression == nil {
+		return result
+	}
+	addRows(result, a.callableTypeRequirements(a.checker.GetTypeAtLocation(expression)))
+	if seen[expression] {
+		return result
+	}
+	seen[expression] = true
+	include := func(value *ast.Node) { addRows(result, a.callableValueRequirements(value, seen)) }
+	if inner := typeOnlyWrapperOperand(expression); inner != nil {
+		include(inner)
+	} else if expression.Kind == ast.KindConditionalExpression {
+		include(expression.AsConditionalExpression().WhenTrue)
+		include(expression.AsConditionalExpression().WhenFalse)
+	} else if expression.Kind == ast.KindBinaryExpression {
+		binary := expression.AsBinaryExpression()
+		if binary.OperatorToken.Kind == ast.KindBarBarToken || binary.OperatorToken.Kind == ast.KindAmpersandAmpersandToken || binary.OperatorToken.Kind == ast.KindQuestionQuestionToken {
+			include(binary.Left)
+			include(binary.Right)
+		}
+	} else if ast.IsIdentifier(expression) || ast.IsPropertyAccessExpression(expression) {
+		location := expression
+		if ast.IsPropertyAccessExpression(expression) {
+			location = expression.Name()
+		}
+		if symbol := a.canonical(a.referencedValueSymbol(location)); symbol != nil {
+			for _, declaration := range symbol.Declarations {
+				if (declaration.Kind == ast.KindVariableDeclaration || declaration.Kind == ast.KindPropertyAssignment || declaration.Kind == ast.KindPropertyDeclaration) && declaration.Type() == nil {
+					include(declaration.Initializer())
+				}
+			}
+		}
+	}
+	return result
+}
+
+// Generic methods freshen their type parameters on every instantiation. Key
+// recursive references by the parameter declaration and instantiated constraint,
+// not that fresh allocation. Concrete arguments/callable identities stay distinct.
+// Mirrors recursiveTypeKeys in language/callable-rows.ts.
+func (a *rowAnalysis) callableRecursiveTypeKeys() func(*checker.Type) string {
+	declarations := make(map[*ast.Node]int)
+	keys := make(map[*checker.Type]string)
+	active := make(map[*checker.Type]bool)
+	var key func(*checker.Type, int) string
+	key = func(t *checker.Type, depth int) string {
+		if t == nil {
+			return "nil"
+		}
+		if known, ok := keys[t]; ok {
+			return known
+		}
+		fallback := "t" + strconv.Itoa(int(t.Id()))
+		if depth >= 32 || active[t] {
+			return fallback
+		}
+		active[t] = true
+		result := fallback
+		if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+			if symbol := t.Symbol(); symbol != nil && len(symbol.Declarations) > 0 {
+				declaration := symbol.Declarations[0]
+				id, known := declarations[declaration]
+				if !known {
+					id = len(declarations)
+					declarations[declaration] = id
+				}
+				constraintKey := ""
+				if constraint := a.checker.GetBaseConstraintOfType(t); constraint != nil && constraint != t {
+					constraintKey = key(constraint, depth+1)
+				}
+				result = "p" + strconv.Itoa(id) + "[" + constraintKey + "]"
+			}
+		} else if t.Flags()&checker.TypeFlagsObject != 0 && t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+			var arguments []string
+			for _, argument := range a.checker.GetTypeArguments(t) {
+				arguments = append(arguments, key(argument, depth+1))
+			}
+			result = "r" + strconv.Itoa(int(t.Target().Id())) + "<" + strings.Join(arguments, ",") + ">"
+		} else if t.Flags()&checker.TypeFlagsUnionOrIntersection != 0 {
+			var parts []string
+			for _, part := range t.Types() {
+				parts = append(parts, key(part, depth+1))
+			}
+			prefix := "i"
+			if t.IsUnion() {
+				prefix = "u"
+			}
+			result = prefix + "[" + strings.Join(parts, ",") + "]"
+		}
+		delete(active, t)
+		if len(result) > 65_536 {
+			result = fallback
+		}
+		keys[t] = result
+		return result
+	}
+	return func(t *checker.Type) string { return key(t, 0) }
+}
+
+func (a *rowAnalysis) callableRowsMismatch(source, target *checker.Type, borrowed bool, completionChecked ...bool) *callableRowMismatch {
+	type pair struct {
+		source, target  string
+		borrow, checked bool
+	}
+	active := make(map[pair]bool)
+	typeKey := a.callableRecursiveTypeKeys()
+	comparisons, depth := 0, 0
+	var compare func(*checker.Type, *checker.Type, string, bool, bool) *callableRowMismatch
+	compare = func(from, to *checker.Type, at string, borrow, checked bool) *callableRowMismatch {
+		if from == nil || to == nil || from == to || from.Flags()&checker.TypeFlagsNever != 0 {
+			return nil
+		}
+		if from.Flags()&checker.TypeFlagsTypeParameter != 0 {
+			if constraint := a.checker.GetBaseConstraintOfType(from); constraint != nil && constraint != from {
+				return compare(constraint, to, at, borrow, checked)
+			}
+		}
+		if to.Flags()&checker.TypeFlagsTypeParameter != 0 {
+			if constraint := a.checker.GetBaseConstraintOfType(to); constraint != nil && constraint != to {
+				return compare(from, constraint, at, borrow, checked)
+			}
+		}
+		key := pair{typeKey(from), typeKey(to), borrow, checked}
+		if active[key] {
+			return nil
+		}
+		comparisons++
+		if comparisons > 16_384 || depth >= 128 {
+			return &callableRowMismatch{path: at, unproven: true}
+		}
+		active[key] = true
+		depth++
+		defer func() { delete(active, key); depth-- }()
+		if from.IsUnion() {
+			for _, part := range from.Types() {
+				if mismatch := compare(part, to, at, borrow, checked); mismatch != nil {
+					return mismatch
+				}
+			}
+			return nil
+		}
+		if to.IsUnion() {
+			var first *callableRowMismatch
+			for _, part := range to.Types() {
+				if !a.checker.IsTypeAssignableTo(from, part) {
+					continue
+				}
+				mismatch := compare(from, part, at, borrow, checked)
+				if mismatch == nil {
+					return nil
+				}
+				if first == nil {
+					first = mismatch
+				}
+			}
+			return first
+		}
+		if to.Flags()&checker.TypeFlagsIntersection != 0 {
+			for _, part := range to.Types() {
+				if mismatch := compare(from, part, at, borrow, checked); mismatch != nil {
+					return mismatch
+				}
+			}
+			return nil
+		}
+		if from.Flags()&checker.TypeFlagsObject != 0 && (to.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsNonPrimitive) != 0 || len(completionChecked) > 1 && completionChecked[1] && to.Flags()&checker.TypeFlagsTypeParameter != 0) {
+			required, allowed := a.enumerableAccessorRequirements(from), a.enumerableAccessorRequirements(to)
+			if len(missingRowSet(required, allowed)) > 0 {
+				return &callableRowMismatch{path: at + ".[[enumerate]]", required: required, allowed: allowed}
+			}
+			for _, property := range a.checker.GetPropertiesOfType(to) {
+				actual := a.checker.GetPropertyOfType(from, property.Name)
+				if actual == nil {
+					continue
+				}
+				for _, operation := range []string{"read", "write"} {
+					required, allowed := a.accessorPropertyRequirements(actual, from, operation), a.accessorPropertyRequirements(property, to, operation)
+					if len(missingRowSet(required, allowed)) > 0 {
+						return &callableRowMismatch{path: at + "." + property.Name + ".[[" + operation + "]]", required: required, allowed: allowed}
+					}
+				}
+			}
+		}
+		actuals := a.checker.GetSignaturesOfType(from, checker.SignatureKindCall)
+		for _, expected := range a.checker.GetSignaturesOfType(to, checker.SignatureKindCall) {
+			var first *callableRowMismatch
+			for _, actual := range actuals {
+				var mismatch *callableRowMismatch
+				required, allowed := a.callableSignatureRequirements(actual), a.callableSignatureRequirements(expected)
+				if !borrow && len(missingRowSet(required, allowed)) > 0 {
+					mismatch = &callableRowMismatch{path: at, required: required, allowed: allowed}
+				}
+				for index := 0; mismatch == nil && index < min(len(actual.Parameters()), len(expected.Parameters())); index++ {
+					mismatch = compare(a.checker.GetTypeOfSymbol(expected.Parameters()[index]), a.checker.GetTypeOfSymbol(actual.Parameters()[index]), at+".parameter["+strconv.Itoa(index)+"]", false, false)
+				}
+				if mismatch == nil && !checked {
+					if loss := a.callableCompletionLoss(a.checker.GetReturnTypeOfSignature(actual), a.checker.GetReturnTypeOfSignature(expected)); loss != "" {
+						mismatch = &callableRowMismatch{path: at + ".return", lostCompletion: loss}
+					}
+				}
+				if mismatch == nil {
+					mismatch = compare(a.checker.GetReturnTypeOfSignature(actual), a.checker.GetReturnTypeOfSignature(expected), at+".return", false, false)
+				}
+				if mismatch == nil {
+					first = nil
+					break
+				}
+				if first == nil {
+					first = mismatch
+				}
+			}
+			if first != nil {
+				return first
+			}
+		}
+		for _, indexer := range a.checker.GetIndexInfosOfType(to) {
+			numeric := indexer.KeyType().Flags()&checker.TypeFlagsNumberLike != 0
+			if numeric && to.IsTupleType() {
+				continue
+			}
+			for _, property := range a.checker.GetPropertiesOfType(from) {
+				if _, err := strconv.Atoi(property.Name); numeric && err != nil {
+					continue
+				}
+				for _, operation := range []string{"read", "write"} {
+					required := a.accessorPropertyRequirements(property, from, operation)
+					if len(required) > 0 {
+						return &callableRowMismatch{path: at + "." + property.Name + ".[[" + operation + "]]", required: required}
+					}
+				}
+			}
+			if actual := a.checker.GetIndexInfoOfType(from, indexer.KeyType()); actual != nil {
+				if mismatch := compare(actual.ValueType(), indexer.ValueType(), at+"[index]", borrow, checked); mismatch != nil {
+					return mismatch
+				}
+			} else {
+				for _, property := range a.checker.GetPropertiesOfType(from) {
+					if _, err := strconv.Atoi(property.Name); numeric && err != nil {
+						continue
+					}
+					if mismatch := compare(a.checker.GetTypeOfSymbol(property), indexer.ValueType(), at+"."+property.Name, borrow, checked); mismatch != nil {
+						return mismatch
+					}
+				}
+			}
+		}
+		if from.Flags()&checker.TypeFlagsObject == 0 || to.Flags()&checker.TypeFlagsObject == 0 {
+			return nil
+		}
+		if from.ObjectFlags()&checker.ObjectFlagsReference != 0 && to.ObjectFlags()&checker.ObjectFlagsReference != 0 &&
+			from.Target() == to.Target() && !to.IsTupleType() && callableLibrarySymbol(to.Symbol()) {
+			actual, expected := a.checker.GetTypeArguments(from), a.checker.GetTypeArguments(to)
+			for index := 0; index < min(len(actual), len(expected)); index++ {
+				if mismatch := compare(actual[index], expected[index], at+".typeArgument["+strconv.Itoa(index)+"]", borrow, checked); mismatch != nil {
+					return mismatch
+				}
+			}
+		}
+		for _, property := range a.checker.GetPropertiesOfType(to) {
+			if callableLibrarySymbol(property) {
+				continue
+			}
+			if actual := a.checker.GetPropertyOfType(from, property.Name); actual != nil {
+				if mismatch := compare(a.checker.GetTypeOfSymbol(actual), a.checker.GetTypeOfSymbol(property), at+"."+property.Name, borrow, checked); mismatch != nil {
+					return mismatch
+				}
+			}
+		}
+		return nil
+	}
+	return compare(source, target, "value", borrowed, len(completionChecked) > 0 && completionChecked[0])
+}
+
+func (a *rowAnalysis) reportCallableMismatch(node *ast.Node, mismatch *callableRowMismatch) {
+	if mismatch == nil {
+		return
+	}
+	if mismatch.lostCompletion != "" {
+		code := "VIBE1303"
+		if mismatch.lostCompletion == "Promise" {
+			code = "VIBE1404"
+		}
+		a.reportOwnership(node, code, "callable contract discards a returned "+mismatch.lostCompletion+" at "+mismatch.path+"; preserve its return channel and consume it at the invocation")
+	} else if mismatch.unproven {
+		a.report(node, "VIBE1809", "callable requirements could not be related within the bounded type expansion; simplify the recursive contract")
+	} else {
+		a.report(node, "VIBE1808", "callable requirement row "+formatRowSet(mismatch.required)+" is not assignable to "+formatRowSet(mismatch.allowed)+" at "+mismatch.path+"; preserve its row with an inferred type or typeof, or provide the missing capabilities inside the function")
+	}
+}
+
+func (a *rowAnalysis) callableValueMismatch(expression *ast.Node, target *checker.Type, borrowed bool, seen map[*ast.Node]bool, completionChecked ...bool) *callableRowMismatch {
+	if expression == nil || target == nil || seen[expression] {
+		return nil
+	}
+	seen[expression] = true
+	if mismatch := a.callableRowsMismatch(a.checker.GetTypeAtLocation(expression), target, borrowed, completionChecked...); mismatch != nil {
+		return mismatch
+	}
+	if !borrowed && len(a.checker.GetSignaturesOfType(target, checker.SignatureKindCall)) != 0 {
+		required := a.callableValueRequirements(expression, make(map[*ast.Node]bool))
+		allowed := a.callableTypeRequirements(target)
+		if len(missingRowSet(required, allowed)) != 0 {
+			return &callableRowMismatch{path: "value", required: required, allowed: allowed}
+		}
+	}
+	inspect := func(value *ast.Node, expected *checker.Type) *callableRowMismatch {
+		return a.callableValueMismatch(value, expected, borrowed, seen, completionChecked...)
+	}
+	if inner := typeOnlyWrapperOperand(expression); inner != nil {
+		return inspect(inner, target)
+	}
+	if expression.Kind == ast.KindConditionalExpression {
+		if mismatch := inspect(expression.AsConditionalExpression().WhenTrue, target); mismatch != nil {
+			return mismatch
+		}
+		return inspect(expression.AsConditionalExpression().WhenFalse, target)
+	}
+	if ast.IsIdentifier(expression) {
+		if symbol := a.canonical(a.referencedValueSymbol(expression)); symbol != nil {
+			for _, declaration := range symbol.Declarations {
+				if ast.IsVariableDeclaration(declaration) && declaration.Type() == nil {
+					if mismatch := inspect(declaration.Initializer(), target); mismatch != nil {
+						return mismatch
+					}
+				}
+			}
+		}
+	}
+	propertyType := func(name string, numeric bool) *checker.Type {
+		if property := a.checker.GetPropertyOfType(target, name); property != nil {
+			return a.checker.GetTypeOfSymbol(property)
+		}
+		for _, indexer := range a.checker.GetIndexInfosOfType(target) {
+			if (indexer.KeyType().Flags()&checker.TypeFlagsNumberLike != 0) == numeric {
+				return indexer.ValueType()
+			}
+		}
+		return nil
+	}
+	if ast.IsObjectLiteralExpression(expression) {
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			if property.Kind == ast.KindSpreadAssignment {
+				if mismatch := inspect(property.Expression(), target); mismatch != nil {
+					return mismatch
+				}
+			} else if property.Kind == ast.KindPropertyAssignment || property.Kind == ast.KindShorthandPropertyAssignment {
+				name := property.Name()
+				if !ast.IsIdentifier(name) && !ast.IsStringLiteral(name) && !ast.IsNumericLiteral(name) {
+					continue
+				}
+				value := name
+				if property.Kind == ast.KindPropertyAssignment {
+					value = property.Initializer()
+				}
+				if mismatch := inspect(value, propertyType(name.Text(), false)); mismatch != nil {
+					return mismatch
+				}
+			}
+		}
+	}
+	if ast.IsArrayLiteralExpression(expression) {
+		for index, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if element.Kind == ast.KindOmittedExpression || ast.IsSpreadElement(element) {
+				continue
+			}
+			if mismatch := inspect(element, propertyType(strconv.Itoa(index), true)); mismatch != nil {
+				return mismatch
+			}
+		}
+	}
+	return nil
+}
+
+var borrowedArrayCallbacks = map[string]bool{
+	"forEach": true, "map": true, "flatMap": true, "filter": true, "find": true, "findIndex": true,
+	"findLast": true, "findLastIndex": true, "every": true, "some": true, "reduce": true, "reduceRight": true,
+	"sort": true, "toSorted": true,
+}
+
+func (a *rowAnalysis) libraryPromiseConstruction(call *ast.Node) bool {
+	if !ast.IsNewExpression(call) {
+		return false
+	}
+	signature := a.checker.GetResolvedSignature(call)
+	return signature != nil && callableLibraryDeclaration(signature.Declaration()) &&
+		a.checker.GetPromisedTypeOfPromise(a.checker.GetTypeAtLocation(call)) != nil
+}
+
+func (a *rowAnalysis) borrowedCallableArgument(call *ast.Node, index int) bool {
+	if ast.IsNewExpression(call) {
+		return index == 0 && a.libraryPromiseConstruction(call)
+	}
+	if !ast.IsCallExpression(call) {
+		return false
+	}
+	if a.prelude.layerCall(call, "provide") {
+		return index == 1
+	}
+	if index != 0 {
+		return false
+	}
+	if a.prelude.resultConsumerCall(call) {
+		return true
+	}
+	if _, ok := a.prelude.resultBoundaryCall(call); ok {
+		return true
+	}
+	selection, selected := a.prelude.calleeSelection(call)
+	if !selected || !borrowedArrayCallbacks[selection.text] {
+		return false
+	}
+	signature := a.checker.GetResolvedSignature(call)
+	return signature != nil && callableLibraryDeclaration(signature.Declaration())
+}
+
+func (a *rowAnalysis) checkCallableRows(files []*ast.SourceFile) {
+	report := func(value *ast.Node, target *checker.Type, borrowed bool, completionChecked ...bool) bool {
+		mismatch := a.callableValueMismatch(value, target, borrowed, make(map[*ast.Node]bool), completionChecked...)
+		a.reportCallableMismatch(value, mismatch)
+		return mismatch != nil
+	}
+	returned := func(value, owner *ast.Node) {
+		if owner == nil || owner.Type() == nil {
+			return
+		}
+		target := a.checker.GetTypeFromTypeNode(owner.Type())
+		if awaited := a.checker.GetPromisedTypeOfPromise(target); awaited != nil {
+			target = awaited
+		}
+		report(value, target, false)
+	}
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			switch node.Kind {
+			case ast.KindVariableDeclaration, ast.KindParameter, ast.KindPropertyDeclaration:
+				if node.Type() != nil && node.Initializer() != nil {
+					report(node.Initializer(), a.checker.GetTypeFromTypeNode(node.Type()), false)
+				}
+			case ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
+				report(node.Expression(), a.checker.GetTypeFromTypeNode(node.Type()), false)
+			case ast.KindBinaryExpression:
+				binary := node.AsBinaryExpression()
+				if binary.OperatorToken.Kind == ast.KindEqualsToken {
+					report(binary.Right, a.checker.GetTypeAtLocation(binary.Left), false)
+				}
+			case ast.KindReturnStatement:
+				if node.Expression() != nil {
+					returned(node.Expression(), enclosingFunction(node))
+				}
+			case ast.KindArrowFunction:
+				if node.Body() != nil && !ast.IsBlock(node.Body()) {
+					returned(node.Body(), node)
+				}
+			case ast.KindCallExpression, ast.KindNewExpression:
+				var declaration *ast.Node
+				if signature := a.checker.GetResolvedSignature(node); signature != nil {
+					declaration = signature.Declaration()
+				}
+				for index, argument := range invocationArguments(node) {
+					keyOnly := index == 0 && declaration != nil && callableLibraryDeclaration(declaration) && declaration.Kind == ast.KindMethodSignature &&
+						declaration.Parent != nil && declaration.Parent.Kind == ast.KindInterfaceDeclaration && declaration.Parent.Name().Text() == "ObjectConstructor" &&
+						declaration.Name() != nil && (declaration.Name().Text() == "keys" || declaration.Name().Text() == "getOwnPropertyNames" || declaration.Name().Text() == "getOwnPropertySymbols")
+					if target := a.checker.GetContextualTypeForArgumentAtIndex(node, index); target != nil {
+						if !keyOnly {
+							if report(argument, target, a.borrowedCallableArgument(node, index), index == 0 && ast.IsCallExpression(node) && a.resultObserverCall(node)) {
+								continue
+							}
+						}
+					}
+					if declaration != nil && len(declaration.TypeParameters()) > 0 && !callableLibraryDeclaration(declaration) && index < len(declaration.Parameters()) {
+						parameter := declaration.Parameters()[index]
+						if parameter.Type() != nil {
+							declaredType := a.checker.GetTypeAtLocation(parameter.Type())
+							genericSignature := a.checker.GetSignatureFromDeclaration(declaration)
+							transferredIdentity := genericSignature != nil && a.checker.GetReturnTypeOfSignature(genericSignature) == declaredType && ast.IsCallExpression(node) && a.callbackOnlyTransferred(node, index)
+							if !transferredIdentity {
+								// Completion was checked against the instantiated signature;
+								// an uninstantiated return variable is not a void sink.
+								report(argument, declaredType, a.borrowedCallableArgument(node, index), true, true)
+							}
+						}
+					}
+				}
+			case ast.KindClassDeclaration, ast.KindClassExpression:
+				if symbol := a.symbolAt(node.Name()); symbol != nil && node.ClassLikeData().HeritageClauses != nil {
+					for _, clause := range node.ClassLikeData().HeritageClauses.Nodes {
+						for _, base := range clause.AsHeritageClause().Types.Nodes {
+							a.reportCallableMismatch(base, a.callableRowsMismatch(a.checker.GetDeclaredTypeOfSymbol(symbol), a.checker.GetTypeAtLocation(base), false))
+						}
+					}
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+func (a *rowAnalysis) callbackOnlyTransferred(call *ast.Node, index int) bool {
+	callee := a.resolveCallee(call)
+	if callee == nil || callee.node.Body() == nil || index >= len(callee.node.Parameters()) {
+		return false
+	}
+	parameter := callee.node.Parameters()[index]
+	if !ast.IsIdentifier(parameter.Name()) {
+		return false
+	}
+	for _, reference := range a.identifierReferences(callee.file, a.symbolAt(parameter.Name())) {
+		if reference == parameter.Name() || ast.IsPartOfTypeNode(reference) {
+			continue
+		}
+		value := reference
+		for value.Parent != nil {
+			parent := value.Parent
+			if typeOnlyWrapperOperand(parent) == value || parent.Kind == ast.KindArrayLiteralExpression || parent.Kind == ast.KindObjectLiteralExpression ||
+				parent.Kind == ast.KindShorthandPropertyAssignment || parent.Kind == ast.KindPropertyAssignment && parent.Initializer() == value {
+				value = parent
+				continue
+			}
+			if parent.Kind == ast.KindReturnStatement && enclosingFunction(parent) == callee.node {
+				break
+			}
+			if parent == callee.node && parent.Kind == ast.KindArrowFunction && parent.Body() == value {
+				break
+			}
+			return false
+		}
+	}
+	return true
+}

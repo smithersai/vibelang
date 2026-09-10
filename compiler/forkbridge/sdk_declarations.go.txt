@@ -1,0 +1,97 @@
+package main
+
+// Published SDK declarations describe language values, not the standalone Go
+// emitter's concrete Result classes. At the explicit SDK target, bind ONLY a
+// canonical published declaration's selected runtime edge to this compiler's
+// language signature facet. Source text, positions, nominal constructors and
+// callable metadata remain authored. This does not link runtime JavaScript or
+// authenticate a package. The separately returned SDK module still needs the
+// ordinary generated-program check against the actual selected SDK.
+//
+// The existing native CompilerHost hook owns the projection before binding.
+// It is never installed on standalone compilation and never projects ordinary
+// foreign modules, malformed metadata or another runtime's declaration.
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+)
+
+const sdkDeclarationVirtualName = "/src/__vibelang_sdk_declarations.d.ts"
+const sdkDeclarationText = `export { Context, Layer, Panic } from "./__vibelang_prelude.js";
+export type { VibeLangNominalError as NominalError } from "./__vibelang_prelude.js";
+export type ResultType<A, E extends Error> = Result<A, E>;
+export type ResultValue<A, E extends Error> = Result<A, E>;
+`
+
+func installSDKDeclarationTarget(p *project, runtime string) error {
+	if runtime == "" {
+		return nil
+	}
+	if strings.TrimSpace(runtime) == "" || len(runtime) > 16*1024 || strings.ContainsRune(runtime, 0) {
+		return errors.New("invalid native SDK declaration target")
+	}
+	if _, exists := p.checkedFiles[sdkDeclarationVirtualName]; exists {
+		return errors.New("source claims the private SDK declaration facet")
+	}
+	p.sdkRuntimeImport = runtime
+	p.checkedFiles[sdkDeclarationVirtualName] = sdkDeclarationText
+	p.emitFiles[sdkDeclarationVirtualName] = sdkDeclarationText
+	p.tsTexts[sdkDeclarationVirtualName] = sdkDeclarationText
+	p.logicalByVirtual[sdkDeclarationVirtualName] = "__vibelang_sdk_declarations.d.ts"
+	return nil
+}
+
+func sdkPublishedRuntimeLinked(runtime string, module *publishedModule) bool {
+	if runtime == "" || module == nil || module.Version != 2 {
+		return false
+	}
+	for _, declared := range module.Runtimes {
+		if declared != runtime {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *rowAnalysis) publishedRuntimeLinked(file *ast.SourceFile, module *publishedModule) bool {
+	if a.project.sdkRuntimeImport != "" {
+		return sdkPublishedRuntimeLinked(a.project.sdkRuntimeImport, module)
+	}
+	return publishedRuntimeLinked(file, module)
+}
+
+type sdkDeclarationHost struct {
+	compiler.CompilerHost
+	runtime string
+}
+
+func sdkDeclarationHostFor(host compiler.CompilerHost, p *project) compiler.CompilerHost {
+	if p.sdkRuntimeImport == "" {
+		return host
+	}
+	return &sdkDeclarationHost{CompilerHost: host, runtime: p.sdkRuntimeImport}
+}
+
+func (h *sdkDeclarationHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	file := h.CompilerHost.GetSourceFile(opts)
+	if file == nil || !file.IsDeclarationFile {
+		return file
+	}
+	metadata := readPublishedModule(file)
+	if metadata.failure != "" || !sdkPublishedRuntimeLinked(h.runtime, metadata.value) {
+		return file
+	}
+	// SourceFile.Imports enumerates parser-owned module literals, including
+	// import types and re-exports. No ordinary string or same-spelled symbol is
+	// rewritten. These are fresh, unbound nodes owned by this host/Program.
+	for _, literal := range file.Imports() {
+		if ast.IsStringLiteral(literal) && literal.Text() == h.runtime {
+			literal.AsStringLiteral().Text = sdkDeclarationVirtualName
+		}
+	}
+	return file
+}

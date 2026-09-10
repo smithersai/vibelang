@@ -1,0 +1,484 @@
+package main
+
+// Declaration text operations use the upstream AST and the same contract
+// encoding as native publication. Hosts receive text/rows, never AST objects.
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type declarationRows struct {
+	Failures     []string `json:"failures"`
+	Requirements []string `json:"requirements"`
+}
+type declarationTextRequest struct {
+	Operation string                     `json:"operation"`
+	Path      string                     `json:"path"`
+	Text      string                     `json:"text"`
+	Effects   map[string]declarationRows `json:"effects,omitempty"`
+	Runtimes  []string                   `json:"runtimes,omitempty"`
+}
+type declarationTextResult struct {
+	Text    string                     `json:"text"`
+	Effects map[string]declarationRows `json:"effects"`
+}
+
+func serveDeclarationText(apiVersion int) {
+	response := struct {
+		APIVersion       int                   `json:"apiVersion"`
+		CompilerRevision string                `json:"compilerRevision"`
+		Result           declarationTextResult `json:"result"`
+		Error            *wireError            `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: declarationTextResult{Effects: map[string]declarationRows{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var request declarationTextRequest
+	err := wirejson.Decode(limited, &request)
+	if limited.N == 0 {
+		err = errors.New("declaration text exceeds its wire budget")
+	}
+	if err == nil {
+		response.Result, err = transformDeclarationText(context.Background(), request)
+	}
+	if err != nil {
+		response.Result = declarationTextResult{Effects: map[string]declarationRows{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_DECLARATION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func declarationFile(name, code string) *ast.SourceFile {
+	return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, Path: tspath.Path(name)}, code, core.ScriptKindTS)
+}
+
+func declarationStatementName(node *ast.Node) string {
+	if ast.IsFunctionDeclaration(node) {
+		if node.Name() != nil && ast.IsIdentifier(node.Name()) {
+			return node.Name().Text()
+		}
+		if node.ModifierFlags()&ast.ModifierFlagsDefault != 0 {
+			return "default"
+		}
+	}
+	if ast.IsVariableStatement(node) {
+		items := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+		if len(items) == 1 && ast.IsIdentifier(items[0].Name()) {
+			return items[0].Name().Text()
+		}
+	}
+	return ""
+}
+
+func declarationRoot(node *ast.Node) *ast.Node {
+	if ast.IsFunctionDeclaration(node) {
+		return node.Type()
+	}
+	if ast.IsVariableStatement(node) {
+		items := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+		if len(items) == 1 {
+			return items[0].Type()
+		}
+	}
+	return nil
+}
+
+func canonicalDeclarationRows(row declarationRows) (declarationRows, error) {
+	row = declarationRows{Failures: append([]string{}, row.Failures...), Requirements: append([]string{}, row.Requirements...)}
+	sortUTF16(row.Failures)
+	sortUTF16(row.Requirements)
+	if !publishedNames(row.Failures) || !publishedNames(row.Requirements) {
+		return row, errors.New("effect rows must contain bounded, sorted and unique nominal names")
+	}
+	value := publishedEffects{Version: 2, Failures: row.Failures, Requirements: row.Requirements, Convention: "eager"}
+	if metadataLength(encodePublishedMetadata(value)) > 65536 {
+		return row, errors.New("effect metadata exceeds its bounded declaration envelope")
+	}
+	return row, nil
+}
+
+func declarationEdits(code string, edits []specifierEdit) string {
+	sort.SliceStable(edits, func(i, j int) bool { return edits[i].byteStart < edits[j].byteStart })
+	return applySpecifierEdits(code, edits)
+}
+
+func splitDeclarationVariables(code, name string, effects map[string]declarationRows) string {
+	file := declarationFile(name, code)
+	var edits []specifierEdit
+	for _, node := range file.Statements.Nodes {
+		if !ast.IsVariableStatement(node) {
+			continue
+		}
+		items := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+		if len(items) < 2 {
+			continue
+		}
+		needed := false
+		for _, item := range items {
+			if ast.IsIdentifier(item.Name()) {
+				if _, ok := effects[item.Name().Text()]; ok {
+					needed = true
+				}
+			}
+		}
+		if !needed {
+			continue
+		}
+		start := scanner.SkipTrivia(code, node.Pos())
+		prefix := code[start:scanner.SkipTrivia(code, items[0].Pos())]
+		parts := make([]string, 0, len(items))
+		for _, item := range items {
+			parts = append(parts, prefix+code[scanner.SkipTrivia(code, item.Pos()):item.End()]+";")
+		}
+		edits = append(edits, specifierEdit{byteStart: start, byteEnd: node.End(), replacement: strings.Join(parts, "\n")})
+	}
+	return declarationEdits(code, edits)
+}
+
+func declarationModuleIdentity(specifier, directory string) string {
+	if strings.HasPrefix(specifier, ".") {
+		specifier = path.Join(directory, specifier)
+	}
+	for _, suffix := range []string{".d.mts", ".d.cts", ".d.ts", ".d.tsx", ".d.jsx", ".mts", ".cts", ".mjs", ".cjs", ".tsx", ".jsx", ".ts", ".js"} {
+		if strings.HasSuffix(specifier, suffix) {
+			return strings.TrimSuffix(specifier, suffix)
+		}
+	}
+	return specifier
+}
+
+type declarationImportBinding struct{ module, export string }
+
+func declarationImports(file *ast.SourceFile) map[string]declarationImportBinding {
+	bindings := make(map[string]declarationImportBinding)
+	for _, node := range file.Statements.Nodes {
+		if !ast.IsImportDeclaration(node) {
+			continue
+		}
+		decl := node.AsImportDeclaration()
+		if !ast.IsStringLiteral(decl.ModuleSpecifier) || decl.ImportClause == nil {
+			continue
+		}
+		module := declarationModuleIdentity(decl.ModuleSpecifier.Text(), path.Dir(file.FileName()))
+		clause := decl.ImportClause.AsImportClause()
+		if clause.Name() != nil {
+			bindings[clause.Name().Text()] = declarationImportBinding{module, "default"}
+		}
+		if clause.NamedBindings == nil {
+			continue
+		}
+		if clause.NamedBindings.Kind == ast.KindNamespaceImport {
+			bindings[clause.NamedBindings.Name().Text()] = declarationImportBinding{module, "*"}
+		} else {
+			for _, item := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+				name := item.AsImportSpecifier().PropertyName
+				if name == nil {
+					name = item.Name()
+				}
+				bindings[item.Name().Text()] = declarationImportBinding{module, name.Text()}
+			}
+		}
+	}
+	return bindings
+}
+
+type declarationChannel struct {
+	head      string
+	node      *ast.Node
+	arguments []*ast.Node
+}
+
+func runtimeDeclarationChannel(node *ast.Node, file *ast.SourceFile, bindings map[string]declarationImportBinding, runtimes map[string]bool) *declarationChannel {
+	if node == nil || len(node.TypeArguments()) != 2 {
+		return nil
+	}
+	code := file.Text()
+	start := scanner.SkipTrivia(code, node.Pos())
+	if node.Kind == ast.KindTypeReference {
+		name := node.AsTypeReferenceNode().TypeName
+		var binding declarationImportBinding
+		valid := false
+		if ast.IsIdentifier(name) {
+			binding = bindings[name.Text()]
+			valid = binding.export == "Result"
+		} else if name.Kind == ast.KindQualifiedName {
+			qualified := name.AsQualifiedName()
+			if ast.IsIdentifier(qualified.Left) && qualified.Right.Text() == "Result" {
+				binding = bindings[qualified.Left.Text()]
+				valid = binding.export == "*"
+			}
+		}
+		if !valid || !runtimes[binding.module] {
+			return nil
+		}
+		return &declarationChannel{head: "reference:" + code[scanner.SkipTrivia(code, name.Pos()):name.End()], node: node, arguments: node.TypeArguments()}
+	}
+	if node.Kind == ast.KindImportType {
+		value := node.AsImportTypeNode()
+		if value.IsTypeOf || value.Qualifier == nil || !ast.IsIdentifier(value.Qualifier) || value.Qualifier.Text() != "Result" || value.Argument.Kind != ast.KindLiteralType {
+			return nil
+		}
+		literal := value.Argument.AsLiteralTypeNode().Literal
+		if !ast.IsStringLiteral(literal) || !runtimes[declarationModuleIdentity(literal.Text(), path.Dir(file.FileName()))] {
+			return nil
+		}
+		return &declarationChannel{head: "import:" + code[start:value.Qualifier.End()], node: node, arguments: node.TypeArguments()}
+	}
+	return nil
+}
+
+// Return-channel wrappers alone are traversed. Parameters, member types,
+// arbitrary unions and same-spelled foreign Result types are never widened.
+func normalizedDeclarationChannel(node *ast.Node, file *ast.SourceFile, bindings map[string]declarationImportBinding, runtimes map[string]bool, depth int) *specifierEdit {
+	if node == nil || depth > 8 {
+		return nil
+	}
+	if node.Kind == ast.KindUnionType {
+		parts := node.AsUnionTypeNode().Types.Nodes
+		if len(parts) < 2 {
+			return nil
+		}
+		var first *declarationChannel
+		channels := [2][]string{}
+		seen := [2]map[string]bool{{}, {}}
+		covered := [2]bool{}
+		for _, part := range parts {
+			ref := runtimeDeclarationChannel(part, file, bindings, runtimes)
+			if ref == nil || first != nil && ref.head != first.head {
+				return nil
+			}
+			if first == nil {
+				first = ref
+			}
+			left, right := ref.arguments[0].Kind == ast.KindNeverKeyword, ref.arguments[1].Kind == ast.KindNeverKeyword
+			if left == right {
+				return nil
+			}
+			for i, argument := range ref.arguments {
+				if argument.Kind == ast.KindNeverKeyword {
+					covered[i] = true
+					continue
+				}
+				text := file.Text()[scanner.SkipTrivia(file.Text(), argument.Pos()):argument.End()]
+				if !seen[i][text] {
+					seen[i][text] = true
+					channels[i] = append(channels[i], text)
+				}
+			}
+		}
+		if !covered[0] || !covered[1] {
+			return nil
+		}
+		code := file.Text()
+		prefix := code[scanner.SkipTrivia(code, first.node.Pos()):scanner.SkipTrivia(code, first.arguments[0].Pos())]
+		suffix := code[first.arguments[1].End():first.node.End()]
+		return &specifierEdit{byteStart: scanner.SkipTrivia(code, node.Pos()), byteEnd: node.End(), replacement: prefix + strings.Join(channels[0], " | ") + ", " + strings.Join(channels[1], " | ") + suffix}
+	}
+	if node.Kind == ast.KindParenthesizedType || node.Kind == ast.KindFunctionType {
+		return normalizedDeclarationChannel(node.Type(), file, bindings, runtimes, depth+1)
+	}
+	if (node.Kind == ast.KindTypeReference || node.Kind == ast.KindImportType) && len(node.TypeArguments()) == 1 {
+		return normalizedDeclarationChannel(node.TypeArguments()[0], file, bindings, runtimes, depth+1)
+	}
+	return nil
+}
+
+func declarationConvention(node *ast.Node, file *ast.SourceFile, runtimes []string) string {
+	root := declarationRoot(node)
+	if root == nil || root.Kind != ast.KindTypeReference || !ast.IsIdentifier(root.AsTypeReferenceNode().TypeName) {
+		return "eager"
+	}
+	binding := declarationImports(file)[root.AsTypeReferenceNode().TypeName.Text()]
+	for _, runtime := range runtimes {
+		if declarationModuleIdentity(runtime, path.Dir(file.FileName())) != binding.module {
+			continue
+		}
+		if binding.export == "Resumable" {
+			return "resumable"
+		}
+		if binding.export == "AsyncResumable" {
+			return "async-resumable"
+		}
+	}
+	return "eager"
+}
+
+// The historical v1 row remains inspectable, but this helper is never used to
+// grant a callable ABI in row checking. That path still requires current v2.
+func inspectDeclarationEffects(node *ast.Node) (*publishedEffects, error) {
+	claims := publishedTagPayloads(node, "vibelangEffects")
+	if len(claims) == 0 {
+		return nil, nil
+	}
+	if len(claims) != 1 {
+		return nil, errors.New("a callable must have exactly one effect metadata tag")
+	}
+	payload := claims[0]
+	if metadataLength(payload) > 65536 {
+		return nil, errors.New("effect metadata exceeds its bounded declaration envelope")
+	}
+	var fields map[string]json.RawMessage
+	var value publishedEffects
+	if json.Unmarshal([]byte(payload), &fields) != nil || json.Unmarshal([]byte(payload), &value) != nil {
+		return nil, errors.New("invalid effect metadata JSON")
+	}
+	_, hasConvention := fields["convention"]
+	if !(value.Version == 1 && len(fields) == 3 && !hasConvention || value.Version == 2 && len(fields) == 4 && hasConvention) || value.Failures == nil || value.Requirements == nil {
+		return nil, errors.New("effect metadata has an unsupported envelope")
+	}
+	if !publishedNames(value.Failures) || !publishedNames(value.Requirements) {
+		return nil, errors.New("effect metadata names must be sorted and unique")
+	}
+	canonical := encodePublishedMetadata(value)
+	if value.Version == 1 {
+		legacy := struct {
+			Version      int      `json:"version"`
+			Failures     []string `json:"failures"`
+			Requirements []string `json:"requirements"`
+		}{1, value.Failures, value.Requirements}
+		canonical = strings.NewReplacer("*\\/", "*/", "\\u2028", "\u2028", "\\u2029", "\u2029").Replace(encodePublishedMetadata(legacy))
+	} else if read := decodePublishedEffects(payload); read.value == nil {
+		return nil, fmt.Errorf("effect metadata must use its canonical encoding and supported calling convention: %s", read.failure)
+	}
+	if payload != canonical {
+		return nil, errors.New("effect metadata must use its canonical encoding")
+	}
+	return &value, nil
+}
+
+func transformDeclarationText(ctx context.Context, input declarationTextRequest) (declarationTextResult, error) {
+	out := declarationTextResult{Effects: map[string]declarationRows{}}
+	if !generatedAbsolutePath(input.Path) || len(input.Text) > 2*1024*1024 || len(input.Effects) > 4096 || len(input.Runtimes) > 8 {
+		return out, errors.New("declaration text requires bounded source, rows and an absolute normalized path")
+	}
+	if input.Operation != "read" && input.Operation != "normalize" && input.Operation != "annotate" {
+		return out, errors.New("unknown declaration text operation")
+	}
+	if input.Operation == "read" && (len(input.Effects) != 0 || len(input.Runtimes) != 0) {
+		return out, errors.New("declaration inspection accepts no row or runtime overrides")
+	}
+	for _, runtime := range input.Runtimes {
+		if runtime == "" || metadataLength(runtime) > 2048 || strings.ContainsAny(runtime, "\x00\r\n") {
+			return out, errors.New("runtimeModules must be bounded module specifiers")
+		}
+	}
+	effects := make(map[string]declarationRows, len(input.Effects))
+	for name, row := range input.Effects {
+		if name == "" || metadataLength(name) > 1024 || row.Failures == nil || row.Requirements == nil {
+			return out, errors.New("invalid declaration row entry")
+		}
+		canonical, err := canonicalDeclarationRows(row)
+		if err != nil {
+			return out, err
+		}
+		effects[name] = canonical
+	}
+	code := input.Text
+	if input.Operation != "read" {
+		code = splitDeclarationVariables(code, input.Path, effects)
+	}
+	file := declarationFile(input.Path, code)
+	if len(file.Diagnostics()) != 0 {
+		return out, errors.New("declaration text has invalid TypeScript syntax")
+	}
+	module := readPublishedModule(file)
+	if module.failure != "" {
+		return out, errors.New(module.failure)
+	}
+	if input.Operation == "read" {
+		for _, node := range file.Statements.Nodes {
+			metadata, err := inspectDeclarationEffects(node)
+			if err != nil {
+				return out, err
+			}
+			if metadata == nil {
+				continue
+			}
+			name := declarationStatementName(node)
+			if _, exists := out.Effects[name]; name == "" || exists {
+				return out, errors.New("invalid @vibelangEffects declaration metadata")
+			}
+			out.Effects[name] = declarationRows{metadata.Failures, metadata.Requirements}
+		}
+		out.Text = code
+		return out, nil
+	}
+	var edits []specifierEdit
+	if input.Operation == "normalize" {
+		runtimes := make(map[string]bool)
+		for _, runtime := range input.Runtimes {
+			runtimes[declarationModuleIdentity(runtime, path.Dir(input.Path))] = true
+		}
+		bindings := declarationImports(file)
+		for _, node := range file.Statements.Nodes {
+			if err := ctx.Err(); err != nil {
+				return out, err
+			}
+			if row, ok := effects[declarationStatementName(node)]; ok && len(row.Failures) != 0 {
+				if edit := normalizedDeclarationChannel(declarationRoot(node), file, bindings, runtimes, 0); edit != nil {
+					edits = append(edits, *edit)
+				}
+			}
+		}
+	} else {
+		requirements := ""
+		for _, node := range file.Statements.Nodes {
+			if node.Kind == ast.KindTypeAliasDeclaration && len(publishedTagPayloads(node, "vibelangRequirements")) != 0 {
+				if requirements != "" {
+					return out, errors.New("multiple compiler requirement tables in a declaration module")
+				}
+				requirements = node.Name().Text()
+			}
+			name := declarationStatementName(node)
+			row, ok := effects[name]
+			if !ok {
+				continue
+			}
+			existing, err := inspectDeclarationEffects(node)
+			if err != nil {
+				return out, err
+			}
+			if existing != nil {
+				if encodePublishedMetadata(declarationRows{existing.Failures, existing.Requirements}) != encodePublishedMetadata(row) {
+					return out, fmt.Errorf("declaration '%s' already contains a different @vibelangEffects contract", name)
+				}
+				continue
+			}
+			metadata := publishedEffects{2, row.Failures, row.Requirements, declarationConvention(node, file, input.Runtimes)}
+			if read := decodePublishedEffects(encodePublishedMetadata(metadata)); read.value == nil {
+				return out, errors.New(read.failure)
+			}
+			start := scanner.SkipTrivia(code, node.Pos())
+			edits = append(edits, specifierEdit{byteStart: start, byteEnd: start, replacement: "/** @vibelangEffects " + encodePublishedMetadata(metadata) + " */\n"})
+		}
+		if module.value == nil {
+			runtimes := unionPublishedNames(input.Runtimes, []string{})
+			header := "/** @vibelangModule " + encodePublishedMetadata(publishedModule{Version: 2, Runtimes: runtimes, Requirements: requirements}) + " */\n"
+			if checked := readPublishedModule(declarationFile("/generated/module.d.ts", header)); checked.value == nil {
+				return out, errors.New(checked.failure)
+			}
+			// Put the envelope before a callable insertion at the same offset.
+			edits = append([]specifierEdit{{byteStart: 0, byteEnd: 0, replacement: header}}, edits...)
+		}
+	}
+	out.Text = declarationEdits(code, edits)
+	if len(out.Text) > 4*1024*1024 {
+		return declarationTextResult{Effects: map[string]declarationRows{}}, errors.New("declaration text exceeds its output budget")
+	}
+	return out, nil
+}

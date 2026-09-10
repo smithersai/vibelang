@@ -1,0 +1,914 @@
+package main
+
+// The executable-body emission profile consumes the native authored analysis,
+// not a Plan and not editor metadata. Its TypeScript is an intermediate: the
+// generated SDK program and boundary codecs must still pass bodyContract.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"path"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type bodyLoweringOrigin struct {
+	Text             string `json:"text"`
+	SourceMap        string `json:"sourceMap"`
+	LoweringIdentity string `json:"loweringIdentity"`
+}
+type bodyLoweringRequest struct {
+	Source         string              `json:"source"`
+	FileName       string              `json:"fileName"`
+	FlowID         string              `json:"flowId"`
+	FlowVersion    int                 `json:"flowVersion"`
+	RuntimeImport  string              `json:"runtimeImport"`
+	OutputFileName string              `json:"outputFileName"`
+	SourceOrigin   *bodyLoweringOrigin `json:"sourceOrigin,omitempty"`
+}
+type bodyDerivedAction struct {
+	Name  string `json:"name"`
+	ID    string `json:"id"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+}
+type bodyErrorIdentity struct {
+	Durable string `json:"durable"`
+	Nominal string `json:"nominal"`
+}
+type bodyLoweringResult struct {
+	OK             bool                `json:"ok"`
+	Reason         string              `json:"reason"`
+	Diagnostics    []diagnostic        `json:"diagnostics"`
+	Code           string              `json:"code"`
+	SourceMap      string              `json:"sourceMap"`
+	ManifestJSON   string              `json:"manifestJson"`
+	Entry          string              `json:"entry"`
+	EntrySpan      *span               `json:"entrySpan"`
+	FunctionSpan   *span               `json:"functionSpan"`
+	Async          bool                `json:"async"`
+	Resumable      bool                `json:"resumable"`
+	DerivedActions []bodyDerivedAction `json:"derivedActions"`
+	Errors         []bodyErrorIdentity `json:"errors"`
+}
+
+func emptyBodyLowering() bodyLoweringResult {
+	return bodyLoweringResult{Diagnostics: []diagnostic{}, DerivedActions: []bodyDerivedAction{}, Errors: []bodyErrorIdentity{}}
+}
+
+// The comptime map extension is descriptive build metadata, not a semantic or
+// authentication proof. It must not make an otherwise valid v3 map unusable.
+// Its bytes remain covered by the caller's lowering identity. All actual map
+// sources, pinned contents and coordinates are validated independently below.
+// Other unknown fields (and duplicate fields) remain a protocol refusal.
+func decodeBodyOriginMap(origin *vibelangInput, source string) error {
+	// encoding/json otherwise accepts repeated object members with last-wins
+	// semantics. Standard v3 fields are all scalar/string arrays; the sole nested
+	// extension is opaque metadata, never read to decide a mapping or authority.
+	keys := json.NewDecoder(strings.NewReader(source))
+	opening, err := keys.Token()
+	if err != nil || opening != json.Delim('{') {
+		return errors.New("body source map must be one JSON object")
+	}
+	seen := map[string]bool{}
+	for keys.More() {
+		key, err := keys.Token()
+		if err != nil {
+			return err
+		}
+		name, ok := key.(string)
+		if !ok || seen[name] {
+			return errors.New("duplicate or invalid body source-map field")
+		}
+		seen[name] = true
+		var raw json.RawMessage
+		if err := keys.Decode(&raw); err != nil {
+			return err
+		}
+	}
+	var supplied struct {
+		suppliedSourceMap
+		Comptime json.RawMessage `json:"x_vibelang_comptime"`
+	}
+	if err := wirejson.Decode(strings.NewReader(source), &supplied); err != nil {
+		return err
+	}
+	if supplied.Comptime != nil {
+		var metadata map[string]json.RawMessage
+		if err := json.Unmarshal(supplied.Comptime, &metadata); err != nil || metadata == nil {
+			return errors.New("comptime source-map extension must be an object")
+		}
+	}
+	return adoptSuppliedMap(origin, supplied.suppliedSourceMap, true)
+}
+
+func serveBodyLowering(apiVersion int) {
+	response := struct {
+		APIVersion       int                `json:"apiVersion"`
+		CompilerRevision string             `json:"compilerRevision"`
+		Result           bodyLoweringResult `json:"result"`
+		Error            *wireError         `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyBodyLowering()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 32*1024*1024 + 1}
+	var input bodyLoweringRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("body lowering request exceeds its wire budget")
+	}
+	if err == nil {
+		response.Result, err = lowerBody(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyBodyLowering()
+		response.Error = &wireError{Code: "VIBELANG_GO_BODY_LOWERING", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+type bodyRequestBinding struct{ key, site string }
+type bodyLoweringProfile struct {
+	functions          map[*ast.Node]bool
+	journaledFunctions map[*ast.Node]bool
+	asyncFunctions     map[*ast.Node]bool
+	logicalFile        string
+	replacements       map[*ast.Node]*ast.Node
+	requests           map[*ast.Node]bodyRequestBinding
+	capabilities       map[*ast.Node]string
+	anchor             func(*ast.Node) (string, error)
+	invalidProvenance  bool
+}
+
+func lowerBody(ctx context.Context, input bodyLoweringRequest) (bodyLoweringResult, error) {
+	out := emptyBodyLowering()
+	if len(input.Source) > 2*1024*1024 || strings.TrimSpace(input.FileName) == "" || len(input.FileName) > 16*1024 ||
+		strings.ContainsRune(input.FileName, 0) || (input.FlowID != "" && strings.TrimSpace(input.FlowID) == "") || len(input.FlowID) > 16*1024 || strings.ContainsRune(input.FlowID, 0) ||
+		input.FlowVersion < 1 || input.FlowVersion > 9007199254740991 || strings.TrimSpace(input.RuntimeImport) == "" ||
+		len(input.RuntimeImport) > 16*1024 || strings.ContainsRune(input.RuntimeImport, 0) ||
+		!generatedAbsolutePath(input.OutputFileName) {
+		return out, errors.New("body lowering requires bounded source, identities, runtime and absolute output address")
+	}
+	stagedName := input.FileName
+	if !strings.HasSuffix(strings.ToLower(stagedName), ".vibe") {
+		stagedName += ".vibe"
+	}
+	project, err := buildProject(request{Lowering: "internal", RootNames: []string{stagedName},
+		Files: []sourceFile{{Path: stagedName, Kind: "vibelang", Text: input.Source}}})
+	if err != nil {
+		return out, err
+	}
+	if stagedName != input.FileName {
+		file := project.vibelangByLogical[stagedName]
+		delete(project.vibelangByLogical, stagedName)
+		file.logicalPath = input.FileName
+		project.vibelangByLogical[input.FileName] = file
+		project.logicalByVirtual[file.authoredName], project.logicalByVirtual[file.loweredName] = input.FileName, input.FileName
+	}
+	options, issues, err := compilerOptions(map[string]any{"target": "esnext"})
+	if err != nil || len(issues) != 0 {
+		return out, errors.New("native body compiler options are unavailable")
+	}
+	compiled, err := withInternalAuthoredAnalysis(ctx, options, project, true, nil, func(state *internalAuthoredAnalysis) (result, error) {
+		a, file := state.analysis, state.files[0]
+		collector := state.collector
+		finish := func() result {
+			return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: hasError(collector.converted)}
+		}
+		refuse := func(node *ast.Node, code, message, reason string) result {
+			start := scanner.GetTokenPosOfNode(node, file, false)
+			collector.addConverted(diagnostic{Code: code, Category: "error", File: input.FileName,
+				Message: message, Phase: "lower", Span: &span{Start: start, Length: max(1, node.End()-start)}})
+			out.Reason = reason
+			return finish()
+		}
+		// Duplicate bindings must not let a recovered alias certify an intrinsic.
+		collector.add("bind", state.program.GetBindDiagnostics(ctx, file))
+		// Import/local conflicts are checker diagnostics, not binder diagnostics.
+		// Keep this name-resolution refusal before erasing compiler imports. Other
+		// upstream type diagnostics belong to the generated program: authored
+		// Result lifting deliberately changes assignability.
+		for _, issue := range a.checker.GetDiagnostics(ctx, file) {
+			if issue.Code() == 2440 {
+				converted := project.convertDiagnostic(issue, "bind")
+				converted.Code = "VIBE4100"
+				collector.addConverted(converted)
+			}
+		}
+		if hasError(collector.converted) {
+			out.Reason = "entry"
+			return finish(), nil
+		}
+		low := newLowerer(a.checker, a.prelude, a, a.comptime, map[string]string{})
+		low.file, low.sdkRuntime, low.sdkSourceName, low.sdkOutputFile = file, input.RuntimeImport, input.FileName, input.OutputFileName
+		profile := &bodyLoweringProfile{functions: map[*ast.Node]bool{}, replacements: map[*ast.Node]*ast.Node{},
+			requests: map[*ast.Node]bodyRequestBinding{}, capabilities: map[*ast.Node]string{}, journaledFunctions: map[*ast.Node]bool{}, asyncFunctions: map[*ast.Node]bool{}, logicalFile: input.FileName}
+		low.bodyProfile = profile
+		var origin *vibelangInput
+		if supplied := input.SourceOrigin; supplied != nil {
+			if len(supplied.Text) > 2*1024*1024 || len(supplied.SourceMap) > 16*1024*1024 ||
+				len(supplied.LoweringIdentity) != 64 || strings.Trim(supplied.LoweringIdentity, "0123456789abcdef") != "" {
+				return refuse(file.AsNode(), "VIBE4101", "invalid durable source provenance", "provenance"), nil
+			}
+			origin = &vibelangInput{logicalPath: input.FileName, authoredText: supplied.Text,
+				authoredLines: newLineIndex(supplied.Text), loweredText: input.Source, loweredLines: newLineIndex(input.Source)}
+			if err := decodeBodyOriginMap(origin, supplied.SourceMap); err != nil {
+				return refuse(file.AsNode(), "VIBE4101", "invalid durable source provenance: "+err.Error(), "provenance"), nil
+			}
+		}
+		profile.anchor = func(node *ast.Node) (string, error) {
+			start := scanner.GetTokenPosOfNode(node, file, false)
+			line, column := scanner.GetECMALineAndUTF16CharacterOfPosition(file, start)
+			character := int(column)
+			if origin != nil {
+				var ok bool
+				line, character, ok = mapLoweredPosition(origin, line, character)
+				if !ok {
+					return "", errors.New("a durable request site has no authored location in its pinned source")
+				}
+			}
+			return strconv.Itoa(line) + ":" + strconv.Itoa(character), nil
+		}
+		var calls []*ast.Node
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if ast.IsCallExpression(node) && low.durableIntrinsic(node.Expression(), "durable") {
+				calls = append(calls, node)
+			}
+		})
+		if len(calls) != 1 {
+			return refuse(file.AsNode(), "VIBE4102", "an executable Flow requires one resolved durable(body) declaration", "entry"), nil
+		}
+		call := calls[0]
+		args := call.AsCallExpression().Arguments
+		if args == nil || len(args.Nodes) != 1 || call.AsCallExpression().TypeArguments != nil || call.AsCallExpression().QuestionDotToken != nil {
+			return refuse(call, "VIBE4103", "an executable Flow requires one resolved durable(body) declaration", "entry"), nil
+		}
+		rootNode := low.resolveDurableFunction(args.Nodes[0])
+		if rootNode == nil {
+			return refuse(args.Nodes[0], "VIBE4103", "durable(...) argument is not an inline or statically resolvable function", "entry"), nil
+		}
+		root := a.byNode[rootNode]
+		if root == nil || len(rootNode.Parameters()) != 1 || authoredGenerator(rootNode) {
+			return refuse(args.Nodes[0], "VIBE4104", "a durable Flow body requires one checked input parameter", "entry"), nil
+		}
+		declaration := call.Parent
+		if declaration == nil || !ast.IsVariableDeclaration(declaration) || !ast.IsIdentifier(declaration.Name()) ||
+			declaration.Parent == nil || !ast.IsVariableDeclarationList(declaration.Parent) || declaration.Parent.Parent == nil ||
+			!ast.IsVariableStatement(declaration.Parent.Parent) || declaration.Parent.Parent.Parent != file.AsNode() {
+			return refuse(call, "VIBE4103", "an executable Flow descriptor requires a module-level named binding; runtime closure factories are not supported", "entry"), nil
+		}
+		entry := declaration.Name().Text()
+		functionName := entry
+		if name := rootNode.Name(); name != nil && ast.IsIdentifier(name) {
+			functionName = name.Text()
+		}
+		flowID := input.FlowID
+		if flowID == "" {
+			flowID = input.FileName + "#" + entry
+		}
+		// Every executable initializer is retained in authored order. A symbol
+		// slice alone loses alias writes, calls, unused initializers and statics.
+		retained, scanned := map[*ast.Node]bool{}, map[*ast.Node]bool{}
+		topLevel := func(node *ast.Node) *ast.Node {
+			for node != nil && node.Parent != nil && node.Parent != file.AsNode() {
+				node = node.Parent
+			}
+			if node != nil && node.Parent == file.AsNode() {
+				return node
+			}
+			return nil
+		}
+		var retain func(*ast.Node)
+		retain = func(node *ast.Node) {
+			if node == nil || scanned[node] {
+				return
+			}
+			scanned[node] = true
+			if ast.IsIdentifier(node) {
+				symbol := a.checker.GetSymbolAtLocation(node)
+				if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
+					symbol = a.checker.GetShorthandAssignmentValueSymbol(node.Parent)
+				}
+				for _, candidate := range []*ast.Symbol{symbol, a.canonical(symbol)} {
+					if candidate == nil {
+						continue
+					}
+					for _, binding := range candidate.Declarations {
+						if ast.GetSourceFileOfNode(binding) != file {
+							continue
+						}
+						if statement := topLevel(binding); statement != nil && !retained[statement] {
+							retained[statement] = true
+							retain(statement)
+						}
+					}
+				}
+			}
+			node.ForEachChild(func(child *ast.Node) bool { retain(child); return false })
+		}
+		for _, statement := range file.Statements.Nodes {
+			switch statement.Kind {
+			case ast.KindFunctionDeclaration, ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindExportDeclaration, ast.KindEmptyStatement:
+				continue
+			case ast.KindImportDeclaration:
+				if statement.AsImportDeclaration().ImportClause != nil {
+					continue
+				}
+			}
+			retained[statement] = true
+			retain(statement)
+		}
+		profile.replacements[call] = args.Nodes[0]
+		// A profile must recognize that it lacks an intrinsic's calling and
+		// ownership convention before judging calls against its placeholder
+		// declaration (fanOut/loopWhile describe Plan templates, not resumable
+		// executable-body callbacks).
+		var unsupported *ast.Node
+		for _, statement := range file.Statements.Nodes {
+			if retained[statement] {
+				walkComptime(statement, func(node *ast.Node) {
+					if unsupported == nil && ast.IsCallExpression(node) {
+						for _, name := range []string{"waitSignal", "waitBroadcast", "dequeue", "fanOut", "sequential", "loopWhile"} {
+							if low.durableIntrinsic(node.Expression(), name) {
+								unsupported = node
+							}
+						}
+					}
+				})
+			}
+		}
+		if unsupported != nil {
+			return refuse(unsupported, "VIBE4199", "this durable intrinsic's executable driver is not connected yet", "unsupported"), nil
+		}
+		for _, statement := range file.Statements.Nodes {
+			if retained[statement] && ast.IsImportDeclaration(statement) {
+				var ambiguous *ast.Node
+				walkComptime(statement, func(node *ast.Node) {
+					if ast.IsImportSpecifier(node) || ast.IsNamespaceImport(node) || ast.IsImportClause(node) {
+						if node.Name() == nil {
+							return
+						}
+						if symbol := a.checker.GetSymbolAtLocation(node.Name()); symbol != nil {
+							symbol = a.checker.GetMergedSymbol(symbol)
+							if symbol.Flags&ast.SymbolFlagsAlias != 0 && symbol.Flags&(ast.SymbolFlagsValue|ast.SymbolFlagsExportValue) != 0 {
+								ambiguous = node
+							}
+						}
+					}
+				})
+				if ambiguous != nil {
+					// An unresolved imported contract can merge with a local value
+					// before TS2440 is decidable. The owning module profile must
+					// resolve that alias; its recovered local type is not a Flow
+					// boundary verdict.
+					return refuse(ambiguous, "VIBE4199", "the executable Flow requires the imported binding's contract to resolve this merged declaration", "unsupported"), nil
+				}
+			}
+		}
+		if signature := a.checker.GetSignatureFromDeclaration(rootNode); signature != nil {
+			returned := a.checker.GetReturnTypeOfSignature(signature)
+			if promised := a.checker.GetPromisedTypeOfPromise(returned); promised != nil {
+				returned = promised
+			}
+			if success, _, ok := a.resultArguments(returned); ok {
+				returned = success
+			}
+			if returned != nil && returned.Flags()&checker.TypeFlagsUnknown != 0 {
+				return refuse(rootNode, "VIBE4110", "durable Flow output is unknown and has no derivable persistence contract", "boundary"), nil
+			}
+		}
+		for _, statement := range file.Statements.Nodes {
+			if retained[statement] && ast.IsImportDeclaration(statement) {
+				specifier := statement.AsImportDeclaration().ModuleSpecifier.Text()
+				if specifier != "vibelang:flows" && specifier != "vibelang/context" && specifier != "vibelang/provider" && specifier != "vibelang:exceptions" {
+					// This single-source query does not receive imported contract
+					// bindings yet. Its unresolved-placeholder rows cannot judge
+					// that program; the binding-owning profile must check it.
+					return refuse(statement, "VIBE4199", "the executable Flow closure requires a compiler-bound module for this import", "unsupported"), nil
+				}
+			}
+		}
+		// A Manifest or unsupported-import refusal must not mask a source error
+		// and invite a compatibility backend to accept the invalid program.
+		contains := func(report loweringReport) bool {
+			if report.code == "VIBE1150" {
+				return true
+			}
+			for _, statement := range file.Statements.Nodes {
+				if retained[statement] && report.start >= scanner.GetTokenPosOfNode(statement, file, false) && report.start < statement.End() {
+					return true
+				}
+			}
+			return false
+		}
+		for _, reports := range [][]loweringReport{a.reports[file], a.comptime.reports[file]} {
+			for _, report := range reports {
+				if contains(report) {
+					collector.addConverted(diagnostic{Code: report.code, Category: loweringReportCategory(report),
+						Message: report.message, File: input.FileName, Span: &span{Start: report.start, Length: report.length}, Phase: "lower"})
+				}
+			}
+		}
+		manifest, failure := durableEffectManifest(low, input.FileName, flowID, input.FlowVersion, functionName, rootNode)
+		if failure != "" {
+			reason, code := "source", "VIBE4199"
+			if profile.invalidProvenance {
+				reason, code = "provenance", "VIBE4101"
+			}
+			refuse(rootNode, code, "durable effect manifest derivation failed closed: "+failure, reason)
+			// Keep the contract refusal primary without discarding authored
+			// failures. In particular an unconsumed invalid Action Result is
+			// both underivable and unconsumed; neither licenses a fallback.
+			if count := len(collector.converted); count > 1 {
+				last := collector.converted[count-1]
+				copy(collector.converted[1:], collector.converted[:count-1])
+				collector.converted[0] = last
+			}
+			return finish(), nil
+		}
+		if hasError(collector.converted) {
+			out.Reason = "source"
+			return finish(), nil
+		}
+		contracts := &durableFunctionLowerer{owner: low, logicalFile: input.FileName, schemaLogicalName: input.FileName}
+		lines := newLineIndex(input.Source)
+		for _, statement := range file.Statements.Nodes {
+			if ast.IsClassDeclaration(statement) && statement.Name() != nil {
+				if action, recognized := contracts.actionFor(statement.Name()); recognized && action.invalid == "" && action.collision == nil {
+					profile.replacements[statement] = nil
+					out.DerivedActions = append(out.DerivedActions, bodyDerivedAction{Name: statement.Name().Text(), ID: action.id,
+						Start: lines.utf16Offset(scanner.GetTokenPosOfNode(statement, file, false)), End: lines.utf16Offset(statement.End())})
+					continue
+				}
+			}
+			if ast.IsImportDeclaration(statement) {
+				specifier := statement.AsImportDeclaration().ModuleSpecifier.Text()
+				if !retained[statement] || specifier == "vibelang:flows" {
+					profile.replacements[statement] = nil
+				} else if specifier != "vibelang/context" && specifier != "vibelang/provider" && specifier != "vibelang:exceptions" {
+					return refuse(statement, "VIBE4199", "the executable Flow closure requires a compiler-bound module for this import", "unsupported"), nil
+				}
+			} else if !retained[statement] {
+				profile.replacements[statement] = nil
+			}
+		}
+		if issue := profile.bindRequests(low, rootNode, retained, manifest); issue != nil {
+			return refuse(issue.node, issue.code, issue.message, issue.reason), nil
+		}
+		lowered := low.transform(file)
+		for _, report := range low.reports {
+			collector.addConverted(diagnostic{Code: report.code, Category: loweringReportCategory(report),
+				Message: report.message, File: input.FileName, Span: &span{Start: report.start, Length: report.length}, Phase: "lower"})
+		}
+		if hasError(collector.converted) {
+			out.Reason = "source"
+			return finish(), nil
+		}
+		text, sourceMap, err := low.printSDK(lowered, options)
+		if err != nil {
+			return finish(), err
+		}
+		if sourceMap == nil || len(sourceMap.Sources) > 1 {
+			return finish(), errors.New("body lowering lost single-source provenance")
+		}
+		sourceMap.File, sourceMap.SourceRoot, sourceMap.Sources, sourceMap.SourcesContent = path.Base(input.OutputFileName), "", []string{input.FileName}, []*string{&input.Source}
+		if sourceMap.Names == nil {
+			sourceMap.Names = []string{}
+		}
+		encoded, err := json.Marshal(sourceMap)
+		if err != nil {
+			return finish(), err
+		}
+		if len(text) > 8*1024*1024 || len(encoded) > 16*1024*1024 {
+			return finish(), errors.New("body lowering output exceeds its byte budget")
+		}
+		out.Code, out.SourceMap, out.ManifestJSON, out.Entry = text, string(encoded), durableCanonicalJSON(manifest), entry
+		where := func(node *ast.Node) *span {
+			start := lines.utf16Offset(scanner.GetTokenPosOfNode(node, file, false))
+			return &span{Start: start, Length: lines.utf16Offset(node.End()) - start}
+		}
+		out.EntrySpan, out.FunctionSpan = where(call), where(rootNode)
+		out.Async, out.Resumable = ast.HasSyntacticModifier(rootNode, ast.ModifierFlagsAsync), profile.functions[rootNode]
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if a.isNominalErrorClass(node) {
+				out.Errors = append(out.Errors, bodyErrorIdentity{
+					Durable: durableFailureIdentity(input.FileName, node.Name().Text()), Nominal: stableErrorIdentity(input.FileName, node.Name().Text())})
+			}
+		})
+		sort.Slice(out.Errors, func(i, j int) bool { return out.Errors[i].Durable < out.Errors[j].Durable })
+		out.OK = true
+		return finish(), nil
+	})
+	if err != nil {
+		return emptyBodyLowering(), err
+	}
+	project.convertDiagnosticSpansToUTF16(&compiled)
+	out.Diagnostics = compiled.Diagnostics
+	if !out.OK {
+		if out.Reason == "" {
+			out.Reason = "entry"
+		}
+		// Refused partial work is not an artifact, including its derived tables.
+		out.Code, out.SourceMap, out.ManifestJSON, out.Entry = "", "", "", ""
+		out.EntrySpan, out.FunctionSpan, out.DerivedActions, out.Errors = nil, nil, []bodyDerivedAction{}, []bodyErrorIdentity{}
+	}
+	return out, nil
+}
+
+type bodyLoweringIssue struct {
+	node                  *ast.Node
+	code, message, reason string
+}
+
+func (p *bodyLoweringProfile) bindRequests(l *lowerer, root *ast.Node, retained map[*ast.Node]bool, manifest map[string]any) *bodyLoweringIssue {
+	var issue *bodyLoweringIssue
+	refuse := func(node *ast.Node, code, message, reason string) {
+		if issue == nil {
+			issue = &bodyLoweringIssue{node, code, message, reason}
+		}
+	}
+	sites := map[string]map[string]any{}
+	for _, value := range manifest["sites"].([]any) {
+		site := value.(map[string]any)
+		sites[site["kind"].(string)+"@"+site["anchor"].(string)] = site
+	}
+	owner := func(node *ast.Node, journaled bool) {
+		if fn := enclosingFunction(node); fn != nil {
+			p.functions[fn] = true
+			if journaled {
+				p.journaledFunctions[fn] = true
+			}
+		}
+	}
+	visit := func(node *ast.Node) {
+		if !ast.IsCallExpression(node) {
+			return
+		}
+		call := node.AsCallExpression()
+		kind := ""
+		if _, recognized := l.analysis.contextRequirement(node); recognized {
+			kind = "get"
+		}
+		if l.durableIntrinsic(call.Expression, "sleep") {
+			kind = "sleep"
+		}
+		if l.durableIntrinsic(call.Expression, "run") {
+			kind = "perform"
+		}
+		for _, name := range []string{"waitSignal", "waitBroadcast", "dequeue", "fanOut", "sequential", "loopWhile"} {
+			if l.durableIntrinsic(call.Expression, name) {
+				refuse(node, "VIBE4199", "this durable intrinsic's executable driver is not connected yet", "unsupported")
+				return
+			}
+		}
+		if kind == "" {
+			return
+		}
+		anchor, err := p.anchor(node)
+		if err != nil {
+			refuse(node, "VIBE4101", err.Error(), "provenance")
+			return
+		}
+		site := sites[kind+"@"+anchor]
+		if site == nil {
+			refuse(node, "VIBE4199", "durable request requires a checked Flow request site", "entry")
+			return
+		}
+		if kind == "get" {
+			p.capabilities[node] = site["id"].(string)
+			owner(node, false)
+			return
+		}
+		if call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.TypeArguments != nil || call.QuestionDotToken != nil || ast.IsSpreadElement(call.Arguments.Nodes[0]) {
+			if kind == "sleep" {
+				refuse(node, "VIBE4116", "compiler-owned sleep(...) requires one statically bound duration argument", "entry")
+			} else {
+				refuse(node, "VIBE4113", "Action.run requires exactly one input argument and no schema argument", "source")
+			}
+			return
+		}
+		key, _ := site["key"].(string)
+		if kind == "sleep" {
+			key = "vibelang:flows/sleep@1"
+			t := l.checker.GetTypeAtLocation(call.Arguments.Nodes[0])
+			if t != nil && t.Flags()&checker.TypeFlagsNumberLiteral != 0 {
+				value, err := strconv.ParseFloat(fmt.Sprint(t.AsLiteralType().Value()), 64)
+				if err != nil || math.IsNaN(value) || value < 0 || value > 9007199254740991 || math.Trunc(value) != value {
+					refuse(call.Arguments.Nodes[0], "VIBE4116", "durable sleep duration must be a non-negative safe integer number of milliseconds", "boundary")
+					return
+				}
+			}
+		}
+		if kind == "perform" {
+			if literal := bodyNonFiniteLiteral(call.Arguments.Nodes[0]); literal != nil {
+				refuse(literal, "VIBE4111", "non-finite numeric literal is not durable", "source")
+				return
+			}
+		}
+		p.requests[node] = bodyRequestBinding{key, site["id"].(string)}
+		owner(node, true)
+	}
+	for _, statement := range l.file.Statements.Nodes {
+		if retained[statement] {
+			walkComptime(statement, visit)
+		}
+	}
+	if issue != nil {
+		return issue
+	}
+	// A provided Context still suspends in its callback. Carry the convention
+	// across both ordinary call edges and checked Layer callback edges.
+	changed := true
+	for changed {
+		changed = false
+		for _, fn := range l.analysis.functions {
+			needs, journals := false, false
+			for _, call := range fn.calls {
+				if call.callee != nil && p.functions[call.callee.node] {
+					needs = true
+					journals = journals || p.journaledFunctions[call.callee.node]
+				}
+			}
+			for _, provide := range fn.provides {
+				if provide.callback != nil && p.functions[provide.callback.node] {
+					needs = true
+					journals = journals || p.journaledFunctions[provide.callback.node]
+				}
+			}
+			if needs && !p.functions[fn.node] {
+				p.functions[fn.node] = true
+				changed = true
+			}
+			if journals && !p.journaledFunctions[fn.node] {
+				p.journaledFunctions[fn.node] = true
+				changed = true
+			}
+		}
+	}
+	var carries func(*ast.Node, map[*ast.Node]bool) bool
+	carries = func(node *ast.Node, seen map[*ast.Node]bool) bool {
+		if node == nil || seen[node] {
+			return false
+		}
+		seen[node] = true
+		if p.functions[node] {
+			return true
+		}
+		if fn := l.analysis.resolveFunctionReference(node); fn != nil && p.functions[fn.node] {
+			return true
+		}
+		if ast.IsFunctionLike(node) || ast.IsCallExpression(node) || ast.IsNewExpression(node) {
+			return false
+		}
+		return node.ForEachChild(func(child *ast.Node) bool { return carries(child, seen) })
+	}
+	for _, statement := range l.file.Statements.Nodes {
+		if !retained[statement] {
+			continue
+		}
+		walkComptime(statement, func(node *ast.Node) {
+			for _, fn := range append(l.analysis.implicitInvocations(node), l.analysis.accessorInvocations(node)...) {
+				if p.functions[fn.node] {
+					refuse(node, "VIBE1802", "this implicit protocol invocation cannot drive a resumable Flow function; use an explicit checked call or finally body for durable work", "source")
+				}
+			}
+			if ast.IsCallExpression(node) && !l.durableIntrinsic(node.Expression(), "durable") && !l.prelude.layerCall(node, "provide") {
+				if args := node.AsCallExpression().Arguments; args != nil {
+					for _, arg := range args.Nodes {
+						if carries(arg, map[*ast.Node]bool{}) {
+							refuse(arg, "VIBE1802", "this callback consumer cannot drive a resumable Flow callback; its Actions would otherwise be silently skipped", "source")
+						}
+					}
+				}
+			}
+		})
+	}
+	for node := range p.functions {
+		p.asyncFunctions[node] = p.asyncFunctions[node] || ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync)
+		if node.Body() != nil && (ast.IsFunctionDeclaration(node) || ast.IsMethodDeclaration(node)) && node.Name() != nil {
+			if symbol := l.checker.GetSymbolAtLocation(node.Name()); symbol != nil {
+				for _, declaration := range symbol.Declarations {
+					if (ast.IsFunctionDeclaration(declaration) || ast.IsMethodDeclaration(declaration)) && declaration.Body() == nil && ast.GetSourceFileOfNode(declaration) == l.file {
+						p.functions[declaration] = true
+						p.asyncFunctions[declaration] = ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync)
+					}
+				}
+			}
+		}
+	}
+	return issue
+}
+
+func (l *lowerer) bodyDelegate(expression *ast.Node) *ast.Node {
+	return l.factory.NewYieldExpression(l.factory.NewToken(ast.KindAsteriskToken), expression)
+}
+
+func (l *lowerer) asBodyFunction(original, node *ast.Node) *ast.Node {
+	body, returned := node.Body(), node.Type()
+	async := ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync) || l.bodyProfile.asyncFunctions[original]
+	if body != nil && !ast.IsBlock(body) {
+		body = l.factory.NewBlock(l.factory.NewNodeList([]*ast.Node{l.factory.NewReturnStatement(body)}), true)
+	}
+	if returned != nil {
+		key := "SDKResumable"
+		if async {
+			key = "SDKAsyncResumable"
+			returned = l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("Awaited"), l.factory.NewNodeList([]*ast.Node{returned}))
+		}
+		returned = l.factory.NewTypeReferenceNode(l.newPreludeReference(key), l.factory.NewNodeList([]*ast.Node{returned}))
+	}
+	var star *ast.Node
+	if body != nil {
+		star = l.factory.NewToken(ast.KindAsteriskToken)
+	}
+	switch node.Kind {
+	case ast.KindFunctionDeclaration:
+		f := node.AsFunctionDeclaration()
+		return l.factory.UpdateFunctionDeclaration(f, f.Modifiers(), star, f.Name(), f.TypeParameters, f.Parameters, returned, f.FullSignature, body)
+	case ast.KindFunctionExpression:
+		f := node.AsFunctionExpression()
+		return l.factory.UpdateFunctionExpression(f, f.Modifiers(), star, f.Name(), f.TypeParameters, f.Parameters, returned, f.FullSignature, body)
+	case ast.KindMethodDeclaration:
+		f := node.AsMethodDeclaration()
+		return l.factory.UpdateMethodDeclaration(f, f.Modifiers(), star, f.Name(), f.PostfixToken, f.TypeParameters, f.Parameters, returned, f.FullSignature, body)
+	case ast.KindArrowFunction:
+		f := node.AsArrowFunction()
+		bindings, captured := l.captureGeneratorEnvironment(body)
+		inner := l.factory.NewFunctionExpression(f.Modifiers(), star, nil, nil, l.factory.NewNodeList(nil), returned, nil, captured)
+		invoked := l.factory.NewCallExpression(l.factory.NewParenthesizedExpression(inner), nil, nil, l.factory.NewNodeList(nil), ast.NodeFlagsNone)
+		modifiers := f.Modifiers()
+		if modifiers != nil {
+			kept := []*ast.Node{}
+			for _, item := range modifiers.Nodes {
+				if item.Kind != ast.KindAsyncKeyword {
+					kept = append(kept, item)
+				}
+			}
+			modifiers = l.factory.NewModifierList(kept)
+		}
+		return l.factory.UpdateArrowFunction(f, modifiers, f.TypeParameters, f.Parameters, returned, f.FullSignature, f.EqualsGreaterThanToken,
+			l.factory.NewBlock(l.factory.NewNodeList(append(bindings, l.factory.NewReturnStatement(invoked))), true))
+	}
+	l.report(l.emitContext.MostOriginal(node), "VIBE1802", "this callable cannot use the private resumable convention")
+	return node
+}
+
+func (l *lowerer) lowerBodyExpression(node *ast.Node) (*ast.Node, bool) {
+	if !ast.IsCallExpression(node) {
+		return nil, false
+	}
+	call := node.AsCallExpression()
+	if request, exists := l.bodyProfile.requests[node]; exists {
+		if !l.resumable {
+			l.report(node, "VIBE1802", "a compiler-bound durable request requires a resumable owner")
+			return node, true
+		}
+		signature := l.checker.GetResolvedSignature(node)
+		if signature == nil || len(signature.Parameters()) != 1 {
+			l.report(node, "VIBE4113", "durable request has no checked input parameter")
+			return node, true
+		}
+		answer := l.bodySDKType(l.checker.GetTypeAtLocation(node), node)
+		input := l.bodySDKType(l.checker.GetTypeOfSymbolAtLocation(signature.Parameters()[0], node), node)
+		if answer == nil || input == nil {
+			l.report(node, "VIBE4110", "durable request types cannot be emitted")
+			return node, true
+		}
+		invoked := l.factory.NewCallExpression(l.newPreludeReference("SDKPerform"), nil, l.factory.NewNodeList([]*ast.Node{answer, input}),
+			l.factory.NewNodeList([]*ast.Node{l.factory.NewStringLiteral(request.key, ast.TokenFlagsNone), l.visitor.VisitNode(call.Arguments.Nodes[0]), l.factory.NewStringLiteral(request.site, ast.TokenFlagsNone)}), ast.NodeFlagsNone)
+		return l.bodyDelegate(invoked), true
+	}
+	if site, exists := l.bodyProfile.capabilities[node]; exists {
+		selection, ok := l.prelude.calleeSelection(node)
+		// A nontrivial receiver retains its eager runtime lookup, inside the
+		// structural Layer's resume slice. Never duplicate its evaluation.
+		if !ok || call.QuestionDotToken != nil || call.Expression.Flags&ast.NodeFlagsOptionalChain != 0 || !bodyPlainReference(selection.receiver) {
+			return nil, false
+		}
+		if !l.resumable {
+			l.report(node, "VIBE1802", "a compiler-bound capability request requires a resumable owner")
+			return node, true
+		}
+		return l.bodyDelegate(l.newPreludeCall("SDKGet", l.visitor.VisitNode(selection.receiver), l.factory.NewStringLiteral(site, ast.TokenFlagsNone))), true
+	}
+	if edge, ok := l.analysis.provideEdge(node); ok && edge.callback != nil && l.bodyProfile.functions[edge.callback.node] {
+		if enclosingFunction(node) == nil && l.bodyProfile.journaledFunctions[edge.callback.node] {
+			l.report(node, "VIBE2102", "module initialization cannot execute an Action or timer outside the durable handler")
+			return node, true
+		}
+		key := "SDKProvide"
+		if ast.HasSyntacticModifier(edge.callback.node, ast.ModifierFlagsAsync) {
+			key = "SDKProvideAsync"
+		}
+		if !l.resumable {
+			if key == "SDKProvideAsync" {
+				key = "SDKProvideRootAsync"
+			} else {
+				key = "SDKProvideRoot"
+			}
+		}
+		invoked := l.newPreludeCall(key, l.visitor.VisitNode(edge.argument), l.visitor.VisitNode(edge.callbacks))
+		if l.resumable {
+			invoked = l.bodyDelegate(invoked)
+		}
+		return invoked, true
+	}
+	if fn := l.analysis.resolveCallee(node); fn != nil && l.bodyProfile.functions[fn.node] {
+		if enclosingFunction(node) == nil && l.bodyProfile.journaledFunctions[fn.node] {
+			l.report(node, "VIBE2102", "module initialization cannot execute an Action or timer outside the durable handler")
+			return node, true
+		}
+		invoked := l.visitor.VisitEachChild(node)
+		if l.resumable {
+			return l.bodyDelegate(invoked), true
+		}
+		return l.newPreludeCall("SDKRunEager", invoked), true
+	}
+	return nil, false
+}
+
+func bodyPlainReference(node *ast.Node) bool {
+	if node == nil {
+		return false
+	}
+	node = ast.SkipParentheses(node)
+	return ast.IsIdentifier(node) || (ast.IsPropertyAccessExpression(node) && node.AsPropertyAccessExpression().QuestionDotToken == nil && bodyPlainReference(node.Expression()))
+}
+
+// Only syntax that directly constructs a persisted argument is inspected.
+// Local arithmetic and callees execute normally and remain codec-checked.
+func bodyNonFiniteLiteral(node *ast.Node) *ast.Node {
+	if node == nil {
+		return nil
+	}
+	if ast.IsNumericLiteral(node) {
+		value, err := strconv.ParseFloat(strings.ReplaceAll(node.Text(), "_", ""), 64)
+		if math.IsInf(value, 0) || math.IsNaN(value) {
+			return node
+		}
+		_ = err // Non-decimal spellings are handled by the native parser/checker.
+		return nil
+	}
+	if operand := typeOnlyWrapperOperand(node); operand != nil {
+		return bodyNonFiniteLiteral(operand)
+	}
+	if ast.IsPrefixUnaryExpression(node) {
+		return bodyNonFiniteLiteral(node.AsPrefixUnaryExpression().Operand)
+	}
+	var values []*ast.Node
+	switch node.Kind {
+	case ast.KindArrayLiteralExpression:
+		values = node.AsArrayLiteralExpression().Elements.Nodes
+	case ast.KindObjectLiteralExpression:
+		for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+			if ast.IsPropertyAssignment(property) {
+				values = append(values, property.Initializer())
+			}
+		}
+	case ast.KindConditionalExpression:
+		values = []*ast.Node{node.AsConditionalExpression().WhenTrue, node.AsConditionalExpression().WhenFalse}
+	}
+	for _, value := range values {
+		if invalid := bodyNonFiniteLiteral(value); invalid != nil {
+			return invalid
+		}
+	}
+	return nil
+}
+
+// TypeToTypeNode emits fresh identifiers, which cannot be looked up again in
+// the authored Program. Translate the checker-proved Result/Promise shells
+// while their actual types are still available, not by their printed names.
+func (l *lowerer) bodySDKType(t *checker.Type, anchor *ast.Node) *ast.Node {
+	if t == nil {
+		return nil
+	}
+	if success, failure, result := l.analysis.resultArguments(t); result {
+		a, e := l.bodySDKType(success, anchor), l.bodySDKType(failure, anchor)
+		if a == nil || e == nil {
+			return nil
+		}
+		return l.factory.NewTypeReferenceNode(l.newPreludeReference("SDKResultType"), l.factory.NewNodeList([]*ast.Node{a, e}))
+	}
+	if promised := l.checker.GetPromisedTypeOfPromise(t); promised != nil {
+		value := l.bodySDKType(promised, anchor)
+		if value == nil {
+			return nil
+		}
+		return l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("Promise"), l.factory.NewNodeList([]*ast.Node{value}))
+	}
+	return l.checker.TypeToTypeNode(t, anchor, nodebuilder.FlagsNoTruncation|nodebuilder.FlagsUseAliasDefinedOutsideCurrentScope, nil)
+}

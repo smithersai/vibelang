@@ -1,19 +1,25 @@
 {
   "schemaVersion": 1,
-  "revision": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c",
+  "revision": "bf7f49d6f5ad3254d03ed83dd07ab510ae4e582a",
   "generator": {
     "ast": "node --experimental-strip-types --no-warnings ./tools/scripts/tsc/generate.ts",
     "stringer": "go tool golang.org/x/tools/cmd/stringer -type=Kind -output=kind_stringer_generated.go ./tsc/internal/ast",
     "formatterCommand": "dprint",
-    "formatter": "dprint@0.55.1 (the version .dprint.jsonc pins)",
-    "nodeMinimum": "22.6.0"
+    "formatter": "dprint@0.56.1 (from the pinned upstream package-lock.json)",
+    "nodeMinimum": "22.18.0"
   },
   "patches": [
     {
-      "file": "patches/0300-if-conditional-declaration-grammar.patch",
-      "sha256": "642697f1eeda0727543f3de3a1fc6a791280d06b21ffb7623728a0f56802522a",
+      "file": "patches/0200-content-mapper-extension-resolution.patch",
+      "sha256": "61ed039b32bc66294fea99ed286c8f9c1a4aa2934cc0149919a4c8ce0289c5f3",
       "kind": "handwritten",
-      "summary": "if (const x = f(); cond) — the .sm dialect gate plus an optional Initializer member on IfStatement and LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
+      "summary": "registered content-mapper extensions participate in implicit TypeScript module resolution and JavaScript output aliases, without language-specific suffixes or parser changes; standard TypeScript precedence and Node ESM extension rules remain intact"
+    },
+    {
+      "file": "patches/0300-if-conditional-declaration-grammar.patch",
+      "sha256": "39d92b2365cb60b180006c512adc2e385067008dee6c040a6156e433e747b2bf",
+      "kind": "handwritten",
+      "summary": "if (const x = f(); cond) — the .vibe dialect gate plus an optional Initializer member on IfStatement and LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
     },
     {
       "file": "patches/0800-regenerate-ast.patch",
@@ -22,10 +28,16 @@
       "summary": "output of tools/scripts/tsc/generate.ts and the Kind stringer for the surviving conditional-declaration grammar patch; re-derivable with verify --regenerate"
     },
     {
-      "file": "patches/0900-smithers-grammar-tests.patch",
-      "sha256": "b6a117c5aa16d7b63ac2d426bd42792909ca882a84611e9e4747342fc3522667",
+      "file": "patches/0900-vibelang-grammar-tests.patch",
+      "sha256": "1a6d296942430d63d328a0f8f1287065676e220f47ef1f99c8e0e28060cb5728",
       "kind": "forkowned",
       "summary": "fork-owned tests for the sole grammar addition: conditional-declaration round-trip and dialect gate, AST child order and block scope, checker reachability, narrowing, branch scope, and unused-local ownership"
+    },
+    {
+      "file": "patches/0950-content-mapper-resolution-tests.patch",
+      "sha256": "6e5181539068da7a2e6a856918c4ead40867dc9729d0dc88334a4073af174a8c",
+      "kind": "forkowned",
+      "summary": "generic registered-extension resolution tests: multiple suffixes, registration order, ordinary TypeScript/declaration precedence, JavaScript fallback/output aliases, directory indexes and Node ESM/CommonJS rules"
     }
   ],
   "generated": [
@@ -39,28 +51,30 @@
     "tsc/internal/ast/kind_stringer_generated.go"
   ],
   "created": [
-    "tsc/internal/checker/smithers_grammar_test.go",
-    "tsc/internal/printer/smithers_grammar_test.go"
+    "tsc/internal/checker/vibelang_grammar_test.go",
+    "tsc/internal/module/contentmapper_extensions_test.go",
+    "tsc/internal/printer/vibelang_grammar_test.go"
   ],
   "preImage": {
-    "packages/typescript/src/api/node/protocol.generated.ts": "2fee4b99e0facefd0c73bfb227cf6cf57c6eaa8c80f695a9c072791316900da6",
-    "packages/typescript/src/ast/ast.generated.ts": "38683aaabb7c9c1d669e24ea05fb14b2d1f031eb655765057569bce992867be8",
-    "packages/typescript/src/ast/factory.generated.ts": "14f44ef9429a9d103bc45e46172aac660def0dba13e409712a14fd9234e741a9",
-    "packages/typescript/src/ast/visitor.generated.ts": "bff752a888fec75c25daf6b0a7aaf517d044f887a4e3fe3bc14d3cbae55b2f09",
-    "tools/scripts/tsc/ast.json": "bd6e75d7b217f97293c7750f0fdb441f0e6d5533075ce42cdb629248278e70d6",
-    "tsc/internal/api/encoder/decoder_generated.go": "c7097005a40204ea16a63bf3ad13b5d1940668d1502226befa8a14635da543f8",
-    "tsc/internal/api/encoder/encoder_generated.go": "fede44c981f855355f2f13a483d7d3552bce1c1165a6963aed0ef2c19ca8d3d6",
-    "tsc/internal/ast/ast.go": "2b7b2dc5a2fe937b9beeec081d1ef900bce487c762800e8667bd66083b26428e",
-    "tsc/internal/ast/ast_generated.go": "27d2dc578bc7fc6bc6a977932cfd06ad7406c9185eafc2f4ab260d45ba8c5912",
+    "packages/typescript/src/api/node/protocol.generated.ts": "e0403d84525d4f548aa01a6dd816e62c80aed7e89a7c6c24abb01f526f825d0d",
+    "packages/typescript/src/ast/ast.generated.ts": "846f1be2bdefe85dc97e3b6fc75b1909a86bf5072b3988fc42db1bd14481e3db",
+    "packages/typescript/src/ast/factory.generated.ts": "81531fe5bbce52905833b803c71bc40e4b9c7af15d2c0f0e813186a781876653",
+    "packages/typescript/src/ast/visitor.generated.ts": "120274acb6f2e0d82db3446dd15b2e41977ee0aad0f63c0fb209b8572592cb98",
+    "tools/scripts/tsc/ast.json": "9ab3dfc6a2ff155ec1e315c6fee3deba8fe77c74256761ed38f475296a569574",
+    "tsc/internal/api/encoder/decoder_generated.go": "13d3e8cfb0359cc5f727bb18d87857ca776ba005dd08a1a406a3f8541d34ef0d",
+    "tsc/internal/api/encoder/encoder_generated.go": "30debe2294133a12e47ddd5c247cf6b5494ddfa211ea32a1933be4cbdd82b644",
+    "tsc/internal/ast/ast.go": "587805f5903d27e855ae68b4712f1d7b5652c8d57b46809aace802862a74f36b",
+    "tsc/internal/ast/ast_generated.go": "3f230a3441c80d0fcef442a29a47890712fe9866ad74dac10e77dc7ce41c1967",
     "tsc/internal/ast/kind_stringer_generated.go": "c3cdd3cdc865e44c3f6dbb45295556fb6321e5c555c7dfde7c652b2dbefc0a66",
     "tsc/internal/ast/nodeflags.go": "8be5737c5cfe5478fcef3f0b50847d7ca4045157a6d039ffaac658977a181dc2",
-    "tsc/internal/ast/utilities.go": "b1c0c79291a434270dd68addce48731b96cece614d54d0946b0d97b370651a8a",
-    "tsc/internal/binder/binder.go": "76c2386454954109ac686502b703aaf6020d2908b3857d64c3eb21f3fc1f1ed0",
-    "tsc/internal/checker/checker.go": "cde60c91b34316de028f90a1f95ad03043e8f1db78ab3e128ad487fbeb10385c",
-    "tsc/internal/checker/utilities.go": "479994600f9176d03a0f67166e6cc9e58a31b6236bcb724fcfb91c439e0769af",
-    "tsc/internal/parser/parser.go": "ebbd9bb34f30931188c2de74f670d185c3c8db2c7038a18a1beb0f15da22cbc8",
+    "tsc/internal/ast/utilities.go": "92efcd7eadfb9d348c30dd60a671f9481fa14ab3510a201e63ee72bf363b8a80",
+    "tsc/internal/binder/binder.go": "00b8528e353033a08a28f78f0c66f7c56d27d4634fd586b096e3330f6ef43883",
+    "tsc/internal/checker/checker.go": "26419963a703afd492b00b0c1b609cd2c4de07989a9f52aafc85c8373e615cb0",
+    "tsc/internal/checker/utilities.go": "2963591b55987316ea926d123d3b2c86db7aea957f9b0387387fbd944fcde31b",
+    "tsc/internal/module/resolver.go": "2327bd2509887f401591035516b643411a8a4a2ed046c928c521fcaa791cf629",
+    "tsc/internal/parser/parser.go": "1837634240986fc8342ce2d8b10212397b31b3c4af208a9bff3ba6cac853ac03",
     "tsc/internal/printer/emitcontext.go": "420f0b10319cf45f7e01e1ef88958d1b8c7a357cbc7d054f5a74eaba37894ae7",
-    "tsc/internal/printer/printer.go": "55d1a71598381e118df21ca6cdaee98dee1267f26020bb434523eb557c4a80a9",
+    "tsc/internal/printer/printer.go": "413b37f8ba0c6036e88f5f1f98f19894d25361a13a149a422c40363a46470028",
     "tsc/internal/transformers/estransforms/esdecorator.go": "a4688a298887bf8ee3c1291fc9766d74a084fcaaedf25991d76081875ea711aa",
     "tsc/internal/transformers/estransforms/forawait.go": "5829a1390005d4affb2a82e0a8f7ebcbdb25b2ad76486846cf0c2b6a603a5f4a",
     "tsc/internal/transformers/estransforms/objectrestspread.go": "36158036c41682a4148384e5ea1fa1cb99f16c2e7df5a0887da3197ff1eafd61",
@@ -68,30 +82,32 @@
     "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "093eaffb8a5cf9ecc5de13d7af2bc44275c01597331d1d2fdb56f6061f4cf42a"
   },
   "postImage": {
-    "packages/typescript/src/api/node/protocol.generated.ts": "cc36c0628e9da5a60de7001cc14ebff38adea7f5e5a78fb0640360acdc3be035",
-    "packages/typescript/src/ast/ast.generated.ts": "d4e6c597f6f321a97dad63a85108d67b29d27b171f28619fb7cab6aeacce70c8",
-    "packages/typescript/src/ast/factory.generated.ts": "c2d90b6a4d956a358c1f6cb4fba60effb488c77aadba88ae4d0d07f8110cb134",
-    "packages/typescript/src/ast/visitor.generated.ts": "859942141d37dcf8f64e733cd9edb15cc591e41f48fe909efeef0e9d5661a539",
-    "tools/scripts/tsc/ast.json": "f299d66ebadb942d17856773e1250c8310cd484b45248bd8518c885acfea18a1",
-    "tsc/internal/api/encoder/decoder_generated.go": "a106a171cd078fe03aab8d49e786497d210b6d4952eb0c31db15eb1e54328bd2",
-    "tsc/internal/api/encoder/encoder_generated.go": "5df68f7b602c404e5676f4e9b46821d0b0cad887a4c12ec024c6d1592826597e",
-    "tsc/internal/ast/ast.go": "2317f9fdf44928f6b57513047686b683794609445d98b7f440272829c7601e04",
-    "tsc/internal/ast/ast_generated.go": "90be6eeabc24bece6cb0bc96bba9cd3aa66fb5a47e58c58dce12e0ad2b2a9f75",
+    "packages/typescript/src/api/node/protocol.generated.ts": "3ab142d48ecb6b053472a8e3a3ad7dda2e3b90b4857acfa14a924a4abcb69cfe",
+    "packages/typescript/src/ast/ast.generated.ts": "d6bfff668d59c33211acdd80b5f5cb23f8903143988254e548610739416ac2e0",
+    "packages/typescript/src/ast/factory.generated.ts": "bc0ab0cd615b381f426a481140740491b75d7c34b91ba9e5a5f9134b0a4a5ba6",
+    "packages/typescript/src/ast/visitor.generated.ts": "c53fb581067ab9d3f41464033544be1b789e8bb594cdefe648670284e982576f",
+    "tools/scripts/tsc/ast.json": "b0b8fd0fbf9c8072c00a3e26af35e465a94da2ad6e02a64371e043a72184ec37",
+    "tsc/internal/api/encoder/decoder_generated.go": "f45853759bddc4b871e80e7dbb8aa31b0549c3392f54efce5952645a6d59bc59",
+    "tsc/internal/api/encoder/encoder_generated.go": "acf6e4450c7908abf93f25c8712301953aac71d6eb05d0f5569aabe51cb56228",
+    "tsc/internal/ast/ast.go": "92438c2663efab8b0936f74dc8d0a82b162af22dd334133bccbed70142352c4b",
+    "tsc/internal/ast/ast_generated.go": "b301527538cdc7c342f139eba90f39a4b9a036462ed52b230cf1be4906931853",
     "tsc/internal/ast/kind_stringer_generated.go": "7e5b2b992cde45366a4b7380e78ee033fd99354fd95ba8909a49efaecc1cfa6e",
-    "tsc/internal/ast/nodeflags.go": "eaaab3d1187cf03144422098a6e590a78be983a4d41663818bd71f4117caeb12",
-    "tsc/internal/ast/utilities.go": "5db1fb050a4436f35e8a9978b65bbdefd9dbb421ec3f5b1da3b5183d8bbb1fa3",
-    "tsc/internal/binder/binder.go": "ac4ecfd63124832fe534b20b61e320ab3500036d80ed7ab3aeb2b8bdf5b5b872",
-    "tsc/internal/checker/checker.go": "56db43602e58a0b2133896d4c2f168a5430dcf03f34c8aaaaf1abd5adf14cb4e",
-    "tsc/internal/checker/utilities.go": "c0936f7bc3efce6db1127001378c72da3212cf671136e865dd0e14b5ac094de9",
-    "tsc/internal/parser/parser.go": "0ef536a4feef373e013333c5dfbb7bef158b89bc86f932e41c4d415972166803",
+    "tsc/internal/ast/nodeflags.go": "69d20c7945c194a6e56fdda387f53958546bd2a1096368acfd725c7a10316a71",
+    "tsc/internal/ast/utilities.go": "7b4bbe2d971434b8045d6b7bb0491d7d144768983cd785de6cb518f2e7bf6e79",
+    "tsc/internal/binder/binder.go": "2a9730e7c798784c57ad6727edc7a1f11e54b555255c912ff72abe6382b8c2a1",
+    "tsc/internal/checker/checker.go": "364b2b829f9541720d5e4671a8320a3bb8ea58f7bfc58fcf99b7c8de583b92da",
+    "tsc/internal/checker/utilities.go": "62e42cf0120be23daa278f4d0287ad29a651f314be18dfbbae992ee3f2684abb",
+    "tsc/internal/module/resolver.go": "ee7de6363c8547496170f9ec15dbb483ef494dd2b3b1cb665f31502c33f82718",
+    "tsc/internal/parser/parser.go": "fdec8ad2ae8f0ceea879bc75e860584f7509fad333b8c2312399b28a4f5d4e56",
     "tsc/internal/printer/emitcontext.go": "847f497342831031fa564e354db9b0237bddaea83c5e3ab80a1b6d6fb1d77fde",
-    "tsc/internal/printer/printer.go": "f75dec9b28d594731dc47b249f846f0190ea74a1bef3ff6e8c028be5c941af3f",
+    "tsc/internal/printer/printer.go": "e6fc63b355bfb3630b089b0c7c0c0dcabcd9b56b94ce36d6c0d393bc8e5973ad",
     "tsc/internal/transformers/estransforms/esdecorator.go": "ef96bcd40b1e471b369e76c669a2a848003e305e679857e4af28d96848419b60",
     "tsc/internal/transformers/estransforms/forawait.go": "e77460454cc9cb34096c9a0b58e81c85555f2c8c0f1ff05755e29b94bf2a037c",
     "tsc/internal/transformers/estransforms/objectrestspread.go": "733f2b9e7c93731ec8559a91112a9e52b80cb1b8336a35765b4c5f583ca47994",
     "tsc/internal/transformers/estransforms/using.go": "2e6e359c113840f3e14b73460cf56edbfc926ba3c3e08d7b752c9a930371d240",
     "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "58dc3a587d98d92d38390a40a117a9474094b0287a2fcec159c6081c17151e7b",
-    "tsc/internal/checker/smithers_grammar_test.go": "c6ddecd5c1c3e5102f93578603f899da369279aeaa0fa61db21f7d653825f625",
-    "tsc/internal/printer/smithers_grammar_test.go": "7a2998ff75d15dacd27122881a2e6bdf06a8571fdcfcb5a5339bae304bb1c028"
+    "tsc/internal/checker/vibelang_grammar_test.go": "c4454f65f895fd213c39dc1405cb6eb517eee582c239d3603649e220be883b5c",
+    "tsc/internal/module/contentmapper_extensions_test.go": "2aa18cedd67b6ec39edcd52fc22544132289ea9aeaee874474b9d5dd3b37a323",
+    "tsc/internal/printer/vibelang_grammar_test.go": "6ae40928607efa115a6b8773cde8e5215c078b9077853d0048e87bab450f08ff"
   }
 }

@@ -9,18 +9,18 @@ package main
 // 2026-08-23, and the requirement vocabulary went with them. What remains is
 // the traversal itself, which two surviving rules depend on:
 //
-//   - asset identity (`assetValueProvenance`, smithersassets.go) has to decide
+//   - asset identity (`assetValueProvenance`, vibelangassets.go) has to decide
 //     whether a value reached through a re-export chain is the compiler-owned
 //     asset module or an ordinary foreign one;
-//   - the failure-channel walk (`collectFacts`, smitherslowering.go) has to
+//   - the failure-channel walk (`collectFacts`, vibelanglowering.go) has to
 //     decide whether a nested callable runs where it is written.
 //
 // So the questions this file answers are now "does this reference reach a
 // FOREIGN RUNTIME module edge" and "does it reach a COMPILE-TIME asset edge",
 // both booleans. It no longer names, classifies or charges a requirement, and
 // it must not grow that vocabulary back: nominal capability rows are the
-// frontend's (`checkLayerSatisfaction`, smitherslowering.go), and host globals
-// are smithershostrules.go's.
+// frontend's (`checkLayerSatisfaction`, vibelanglowering.go), and host globals
+// are vibelanghostrules.go's.
 
 import (
 	"sort"
@@ -34,7 +34,7 @@ import (
 // nativeForeignRuntimeModule reports whether one checker-resolved module edge
 // leaves the project for a foreign runtime module. The compiler-owned registry
 // is exact because identity is asked first; there is deliberately no
-// smithers:/smthrs/ prefix test here.
+// vibelang:/vibelang/ prefix test here.
 func (a *rowAnalysis) nativeForeignRuntimeModule(specifier *ast.Node) bool {
 	if specifier == nil || !ast.IsStringLiteralLike(specifier) {
 		return false
@@ -45,12 +45,12 @@ func (a *rowAnalysis) nativeForeignRuntimeModule(specifier *ast.Node) bool {
 	if strings.HasPrefix(specifier.Text(), "node:") {
 		return true
 	}
-	resolved := a.checker.ResolveExternalModuleName(specifier)
+	resolved := a.checker.ResolveExternalModuleNameAtLocation(specifier)
 	if resolved != nil {
 		resolved = a.checker.GetMergedSymbol(resolved)
 		for _, declaration := range resolved.Declarations {
 			file := ast.GetSourceFileOfNode(declaration)
-			if file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".sm") {
+			if file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".vibe") {
 				return false
 			}
 		}
@@ -132,8 +132,8 @@ func nativeFlowOptions(value *nativeFlowValue) []*nativeFlowValue {
 // virtualFileName (main.go.txt) refuses an input path containing ':' and
 // nothing else, so ',', '|' and '#' — the three separators used here — are all
 // spellable by an ordinary file on disk. Without a length, `[` a list of the two
-// values `x.sm:1:2` and `y.sm:3:4` `]` and a list of the ONE value from a file
-// named `x.sm:1:2,y.sm` are the same string, and these keys are what
+// values `x.vibe:1:2` and `y.vibe:3:4` `]` and a list of the ONE value from a file
+// named `x.vibe:1:2,y.vibe` are the same string, and these keys are what
 // nativeFlowUnionValue dedups options by and what the launder walk memoizes on.
 // A collision merges two distinct provenance values or short-circuits a
 // recursion that had not actually been entered, and both of those are
@@ -227,7 +227,7 @@ func nativeFlowListOf(value *nativeFlowValue) ([]*nativeFlowValue, bool) {
 
 func nativeProjectSourceNode(node *ast.Node) bool {
 	file := ast.GetSourceFileOfNode(node)
-	return file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".sm")
+	return file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".vibe")
 }
 
 func nativeProjectCallable(node *ast.Node) *ast.Node {
@@ -448,8 +448,13 @@ func (a *rowAnalysis) nativeFlowReturnValue(
 	bindings nativeFlowBindings,
 	seen *nativeFlowSeen,
 ) *nativeFlowValue {
+	if seen.nodes[call] {
+		return nil
+	}
+	seen = seen.clone()
+	seen.nodes[call] = true
 	values := make([]*nativeFlowValue, 0)
-	for _, callee := range a.nativeInvokedCallables(call, bindings) {
+	for _, callee := range a.nativeInvokedCallablesSeen(call, bindings, seen) {
 		if seen.nodes[callee] {
 			continue
 		}
@@ -863,10 +868,17 @@ func (a *rowAnalysis) nativeSelectedCallable(call *ast.Node) *ast.Node {
 }
 
 func (a *rowAnalysis) nativeInvokedCallables(call *ast.Node, bindings nativeFlowBindings) []*ast.Node {
+	return a.nativeInvokedCallablesSeen(call, bindings, newNativeFlowSeen())
+}
+
+func (a *rowAnalysis) nativeInvokedCallablesSeen(call *ast.Node, bindings nativeFlowBindings, seen *nativeFlowSeen) []*ast.Node {
 	if selected := a.nativeSelectedCallable(call); selected != nil {
 		return []*ast.Node{selected}
 	}
-	return a.nativeFlowCallables(a.nativeCalleeTarget(call), bindings, newNativeFlowSeen())
+	// Callee resolution may itself inspect a call initializer. A fresh visited
+	// set here would infinitely re-enter `const f: () => string = f()` before
+	// upstream can report its ordinary type/use-before-initialization errors.
+	return a.nativeFlowCallables(a.nativeCalleeTarget(call), bindings, seen.clone())
 }
 
 func (a *rowAnalysis) nativeAccessorOfValue(
@@ -1039,14 +1051,14 @@ func (a *rowAnalysis) nativeProjectModuleFile(specifier *ast.Node) *ast.SourceFi
 	if specifier == nil {
 		return nil
 	}
-	module := a.checker.ResolveExternalModuleName(specifier)
+	module := a.checker.ResolveExternalModuleNameAtLocation(specifier)
 	if module == nil {
 		return nil
 	}
 	module = a.checker.GetMergedSymbol(module)
 	for _, declaration := range module.Declarations {
 		file := ast.GetSourceFileOfNode(declaration)
-		if file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".sm") {
+		if file != nil && strings.HasSuffix(strings.ToLower(file.FileName()), ".vibe") {
 			return file
 		}
 	}
@@ -1127,7 +1139,7 @@ func (walk *nativeLaunderWalk) dependencyForDeclaration(declaration *ast.Node, s
 
 	if ast.IsSourceFile(declaration) {
 		file := declaration.AsSourceFile()
-		if !strings.HasSuffix(strings.ToLower(file.FileName()), ".sm") {
+		if !strings.HasSuffix(strings.ToLower(file.FileName()), ".vibe") {
 			return false
 		}
 		for _, exported := range a.checker.GetExportsOfModule(symbol) {
@@ -1152,7 +1164,7 @@ func (walk *nativeLaunderWalk) dependencyThroughStarExports(file *ast.SourceFile
 		return false
 	}
 	// Length-prefixed for the reason nativeKeyPart states: both components are
-	// author-controlled and may hold '#' — a file on disk may be named `a#b.sm`,
+	// author-controlled and may hold '#' — a file on disk may be named `a#b.vibe`,
 	// and an export name reaches here from `export { x as "a#b" }`. This key is
 	// the RECURSION GUARD for `export *` cycles, so a collision makes the walk
 	// report a cycle it never entered and return false: a dependency edge the

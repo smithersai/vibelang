@@ -1,0 +1,116 @@
+package main
+
+// This is a relation between serialized value contracts, not TypeScript type
+// inference. A value-view type can be provisional before Result lowering, and
+// structural TypeScript assignment admits extra fields that the exact durable
+// codec does not. Before erasing a template, every value its IR can produce
+// must fit the receiving wire contract. Inputs are compiler-derived descriptors.
+func durableDescriptorFits(actual, expected any) bool {
+	budget := 100_000
+	var fits func(any, any, int) bool
+	fits = func(actual, expected any, depth int) bool {
+		budget--
+		if budget < 0 || depth > 64 || durableIsUnknownDescriptor(actual) || durableIsUnknownDescriptor(expected) {
+			return false
+		}
+		from, aok := actual.(map[string]any)
+		to, eok := expected.(map[string]any)
+		if !aok || !eok {
+			return false
+		}
+		if from["kind"] == "never" || durableCanonicalJSON(from) == durableCanonicalJSON(to) {
+			return true
+		}
+		if from["kind"] == "union" {
+			for _, variant := range from["variants"].([]any) {
+				if !fits(variant, to, depth+1) {
+					return false
+				}
+			}
+			return true
+		}
+		if to["kind"] == "union" {
+			if from["kind"] == "boolean" {
+				return fits(map[string]any{"kind": "literal", "value": false}, to, depth+1) &&
+					fits(map[string]any{"kind": "literal", "value": true}, to, depth+1)
+			}
+			for _, variant := range to["variants"].([]any) {
+				if fits(from, variant, depth+1) {
+					return true
+				}
+			}
+			return false
+		}
+		if from["kind"] == "null" && to["kind"] == "literal" && to["value"] == nil {
+			return true
+		}
+		if from["kind"] == "literal" {
+			switch from["value"].(type) {
+			case nil:
+				return to["kind"] == "null"
+			case bool:
+				return to["kind"] == "boolean"
+			case string:
+				return to["kind"] == "string"
+			case int, int64, float64:
+				return to["kind"] == "number"
+			}
+			return false
+		}
+		if to["kind"] == "array" {
+			if from["kind"] == "array" {
+				return fits(from["element"], to["element"], depth+1)
+			}
+			if from["kind"] == "tuple" {
+				for _, item := range from["items"].([]any) {
+					if !fits(item, to["element"], depth+1) {
+						return false
+					}
+				}
+				return true
+			}
+			return false
+		}
+		if from["kind"] != to["kind"] {
+			return false
+		}
+		switch from["kind"] {
+		case "tuple":
+			a, b := from["items"].([]any), to["items"].([]any)
+			if len(a) != len(b) {
+				return false
+			}
+			for index := range a {
+				if !fits(a[index], b[index], depth+1) {
+					return false
+				}
+			}
+			return true
+		case "object":
+			fields := map[string]map[string]any{}
+			for _, value := range to["fields"].([]any) {
+				field := value.(map[string]any)
+				fields[field["name"].(string)] = field
+			}
+			for _, value := range from["fields"].([]any) {
+				field := value.(map[string]any)
+				name := field["name"].(string)
+				target := fields[name]
+				if target == nil || field["optional"] == true && target["optional"] != true || !fits(field["value"], target["value"], depth+1) {
+					return false
+				}
+				delete(fields, name)
+			}
+			for _, field := range fields {
+				if field["optional"] != true {
+					return false
+				}
+			}
+			return true
+		case "error":
+			return from["identity"] == to["identity"] && fits(from["payload"], to["payload"], depth+1)
+		}
+		return false
+	}
+	return fits(actual, expected, 0)
+}

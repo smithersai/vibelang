@@ -1,0 +1,185 @@
+package main
+
+// SDK-targeted TypeScript is an explicit intermediate artifact. Authored
+// sources must pass native language checking before it is returned. Consumers
+// still check the generated program against their selected SDK/dependencies;
+// this response is not a signed body or a generated-program type proof.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+)
+
+type languageLoweringRequest struct {
+	Project                    languageAnalysisRequest  `json:"project"`
+	RuntimeImport              string                   `json:"runtimeImport"`
+	Outputs                    []languageLoweringOutput `json:"outputs,omitempty"`
+	PreserveVibeLangSpecifiers bool                     `json:"preserveVibeLangSpecifiers,omitempty"`
+}
+type languageLoweringOutput struct {
+	Path                  string `json:"path"`
+	OutputFileName        string `json:"outputFileName,omitempty"`
+	SourceName            string `json:"sourceName,omitempty"`
+	StripImportAttributes bool   `json:"stripImportAttributes,omitempty"`
+}
+type languageLoweredFile struct {
+	Path      string `json:"path"`
+	Text      string `json:"text"`
+	SourceMap string `json:"sourceMap"`
+}
+type languageLoweringResult struct {
+	OK          bool                   `json:"ok"`
+	Analysis    languageAnalysisResult `json:"analysis"`
+	Diagnostics []diagnostic           `json:"diagnostics"`
+	Files       []languageLoweredFile  `json:"files"`
+}
+
+func emptyLanguageLowering() languageLoweringResult {
+	return languageLoweringResult{Analysis: emptyLanguageAnalysis(), Diagnostics: []diagnostic{}, Files: []languageLoweredFile{}}
+}
+
+func serveLanguageLowering(apiVersion int) {
+	response := struct {
+		APIVersion       int                    `json:"apiVersion"`
+		CompilerRevision string                 `json:"compilerRevision"`
+		Result           languageLoweringResult `json:"result"`
+		Error            *wireError             `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyLanguageLowering()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input languageLoweringRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("language lowering request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = lowerLanguage(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyLanguageLowering()
+		response.Error = &wireError{Code: "VIBELANG_GO_LANGUAGE_LOWERING", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func lowerLanguage(ctx context.Context, input languageLoweringRequest) (languageLoweringResult, error) {
+	answer := emptyLanguageLowering()
+	if strings.TrimSpace(input.RuntimeImport) == "" || len(input.RuntimeImport) > 16*1024 || strings.ContainsRune(input.RuntimeImport, 0) {
+		return answer, errors.New("language lowering requires a bounded runtime import specifier")
+	}
+	requested := map[string]bool{}
+	for _, file := range input.Project.Files {
+		if file.Kind == "vibelang" {
+			requested[file.Path] = true
+		}
+	}
+	outputs := map[string]languageLoweringOutput{}
+	if len(input.Outputs) > 4096 {
+		return answer, errors.New("language lowering output mapping budget exceeded")
+	}
+	for _, output := range input.Outputs {
+		// Addresses also cover resolver-discovered foreign modules and their
+		// .js -> .ts/.d.ts aliases. They change printed import destinations;
+		// they neither introduce source files nor authorize additional emit.
+		// Requiring an explicitly staged source here silently loses those
+		// relocations when a caller supplies a filesystem resolution root.
+		if output.Path == "" || output.Path == "." || output.Path == ".." || len(output.Path) > 16*1024 ||
+			path.IsAbs(output.Path) || path.Clean(output.Path) != output.Path || strings.HasPrefix(output.Path, "../") ||
+			strings.ContainsAny(output.Path, "\\:\x00") || outputs[output.Path].Path != "" || len(output.OutputFileName) > 16*1024 || len(output.SourceName) > 16*1024 ||
+			strings.ContainsRune(output.OutputFileName, 0) || strings.ContainsRune(output.SourceName, 0) ||
+			(output.OutputFileName != "" && !filepath.IsAbs(output.OutputFileName)) || (output.SourceName != "" && strings.TrimSpace(output.SourceName) == "") {
+			return answer, errors.New("invalid native SDK output mapping")
+		}
+		outputs[output.Path] = output
+	}
+	var generated []languageLoweredFile
+	projectRequest := input.Project
+	if projectRequest.SDKRuntimeImport != "" && projectRequest.SDKRuntimeImport != input.RuntimeImport {
+		return answer, errors.New("SDK declaration target must match SDK emission")
+	}
+	projectRequest.SDKRuntimeImport = input.RuntimeImport
+	analysis, err := analyzeLanguageObserved(ctx, projectRequest, func(a *rowAnalysis, files []*ast.SourceFile, options *core.CompilerOptions) error {
+		identities := map[string]string{}
+		bytes := 0
+		for _, file := range files {
+			logical := a.project.logicalByVirtual[file.FileName()]
+			if !requested[logical] {
+				continue
+			}
+			low := newLowerer(a.checker, a.prelude, a, a.comptime, identities)
+			low.sdkRuntime = input.RuntimeImport
+			low.sdkSourceName = outputs[logical].SourceName
+			low.sdkOutputFile = outputs[logical].OutputFileName
+			low.sdkSourceRoot = input.Project.ResolutionRoot
+			low.sdkOutputs = outputs
+			low.sdkPreserveSpecifiers = input.PreserveVibeLangSpecifiers
+			low.publishDeclarations = true
+			lowered := low.transform(file)
+			text, sourceMap, err := low.printSDK(lowered, options)
+			if err != nil {
+				return err
+			}
+			if sourceMap == nil || len(sourceMap.Sources) > 1 {
+				return errors.New("native SDK lowering lost single-source provenance")
+			}
+			// A wholly synthesized/empty file can have no source entry. Preserve
+			// the authored identity even then; no mapping is fabricated for glue.
+			source := file.Text()
+			sourceMap.File = path.Base(logical) + ".ts"
+			if low.sdkOutputFile != "" {
+				sourceMap.File = path.Base(low.sdkOutputFile)
+			}
+			sourceMap.SourceRoot = ""
+			sourceMap.Sources = []string{logical}
+			if low.sdkSourceName != "" {
+				sourceMap.Sources = []string{low.sdkSourceName}
+			}
+			sourceMap.SourcesContent = []*string{&source}
+			if sourceMap.Names == nil {
+				sourceMap.Names = []string{}
+			}
+			encoded, err := json.Marshal(sourceMap)
+			if err != nil {
+				return err
+			}
+			bytes += len(text) + len(encoded)
+			if len(text) > 8*1024*1024 || bytes > 32*1024*1024 {
+				return errors.New("native SDK lowering output budget exceeded")
+			}
+			lines := newLineIndex(source)
+			for _, report := range low.reports {
+				start := lines.utf16Offset(report.start)
+				end := lines.utf16Offset(report.start + report.length)
+				answer.Diagnostics = append(answer.Diagnostics, diagnostic{Code: report.code, Category: loweringReportCategory(report), Message: report.message,
+					File: logical, Span: &span{Start: start, Length: end - start}, Phase: "lower"})
+			}
+			generated = append(generated, languageLoweredFile{Path: logical, Text: text, SourceMap: string(encoded)})
+		}
+		return nil
+	})
+	if err != nil {
+		return emptyLanguageLowering(), err
+	}
+	answer.Analysis = analysis
+	answer.OK = analysis.Checked && !hasError(answer.Diagnostics)
+	if answer.OK {
+		if len(generated) != len(requested) {
+			return emptyLanguageLowering(), errors.New("native SDK lowering omitted requested sources")
+		}
+		answer.Files = append(answer.Files, generated...)
+	}
+	return answer, nil
+}

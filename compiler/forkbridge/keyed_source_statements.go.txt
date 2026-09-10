@@ -1,0 +1,295 @@
+package main
+
+// Structured, acyclic source control flow becomes Plan DATA. These Go
+// continuations walk checked syntax; they never invoke an authored callback.
+// Fallthrough-only branches leave independent continuation work in the parent
+// scope. An early return places the continuation only on fallthrough paths.
+
+import (
+	"maps"
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+type keyedStatementMode uint8
+
+const (
+	keyedStatementNormal keyedStatementMode = 1 << iota
+	keyedStatementReturned
+)
+
+type keyedStatementLowerer struct {
+	d             *durableFunctionLowerer
+	modes         map[*ast.Node]keyedStatementMode
+	visits, depth int
+}
+
+type keyedStatementNext func() (durableValue, bool)
+
+// Reuse the retained-body native checker's control-flow facts. A fact is eligible
+// only when the checked declaration and lowered value have the SAME structural
+// contract. The extraction program's non-null value view cannot grant authority:
+// unlike propagation it removes null from a nullable Action success.
+// This private proof is erased during graph expansion; it is neither an author
+// assertion nor a new wire instruction. Publication still derives both arms.
+func (d *durableFunctionLowerer) keyedCheckedNarrowing(node *ast.Node, symbol *ast.Symbol, value durableValue) durableValue {
+	if !d.symbolicPlan || symbol == nil || symbol.ValueDeclaration == nil {
+		return value
+	}
+	declaration := symbol.ValueDeclaration
+	if declaration.Name() == nil || !(ast.IsParameterDeclaration(declaration) || ast.IsVariableDeclaration(declaration) && ast.IsVarConst(declaration)) {
+		return value
+	}
+	fact, found := d.owner.keyedSourceFacts[keyedSourceIdentifierLocation(node)]
+	if !found || fact.declaration != keyedSourceIdentifierLocation(declaration.Name()) {
+		return value
+	}
+	semantic := d.flowOutputDescriptor(value.ir, func(string, ...durableDescriptorFailureCause) any { return durableUnknownDescriptor{} })
+	if durableIsUnknownDescriptor(semantic) || !durableDescriptorFits(fact.declared, semantic) || !durableDescriptorFits(semantic, fact.declared) {
+		return value
+	}
+	if !durableDescriptorFits(fact.selected, semantic) {
+		return value
+	}
+	return durableValue{ir: map[string]any{"kind": "checked", "value": value.ir, "descriptor": fact.selected, "path": []any{}}}
+}
+
+func keyedStatementUnit() (durableValue, bool) {
+	return durableValue{ir: map[string]any{"kind": "literal", "value": nil}}, true
+}
+
+func (d *durableFunctionLowerer) lowerKeyedStatements(body *ast.Node) (durableValue, bool) {
+	s := &keyedStatementLowerer{d: d, modes: map[*ast.Node]keyedStatementMode{}}
+	if _, ok := s.classify(body, 0); !ok {
+		return durableValue{}, false
+	}
+	return s.sequence(body.AsBlock().Statements.Nodes, "body", func() (durableValue, bool) {
+		return d.fail(body, "4109", "a keyed Flow must return an encodable value on every path")
+	})
+}
+
+// Inspect only statement structure, not values or nested function bodies. This
+// prevents an unrelated later Action from being moved into a branch merely
+// because it occurs after it in source. Both alternatives are always classified.
+func (s *keyedStatementLowerer) classify(node *ast.Node, depth int) (keyedStatementMode, bool) {
+	if node == nil {
+		return keyedStatementNormal, true
+	}
+	s.visits++
+	if depth > 128 || s.visits > 100_000 {
+		s.d.fail(node, "4199", "keyed statement structure exceeds its traversal budget")
+		return 0, false
+	}
+	mode := keyedStatementNormal
+	switch node.Kind {
+	case ast.KindReturnStatement:
+		mode = keyedStatementReturned
+	case ast.KindBlock:
+		for _, statement := range node.AsBlock().Statements.Nodes {
+			child, ok := s.classify(statement, depth+1)
+			if !ok {
+				return 0, false
+			}
+			if mode&keyedStatementNormal != 0 {
+				mode = mode&keyedStatementReturned | child
+			}
+		}
+	case ast.KindIfStatement:
+		statement := node.AsIfStatement()
+		yes, ok := s.classify(statement.ThenStatement, depth+1)
+		if !ok {
+			return 0, false
+		}
+		no, ok := s.classify(statement.ElseStatement, depth+1)
+		if !ok {
+			return 0, false
+		}
+		mode = yes | no
+	}
+	s.modes[node] = mode
+	return mode, true
+}
+
+func (d *durableFunctionLowerer) lowerKeyedDeclarations(list *ast.Node, anchor string) bool {
+	if list == nil || list.Kind != ast.KindVariableDeclarationList || list.Flags&ast.NodeFlagsConst == 0 {
+		location := list
+		if location == nil {
+			location = d.owner.file.AsNode()
+		}
+		d.fail(location, "4105", "symbolic Flow bindings must use const")
+		return false
+	}
+	for index, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+		if !ast.IsIdentifier(declaration.Name()) || declaration.Initializer() == nil {
+			d.fail(declaration, "4105", "durable const bindings require one identifier and an initializer")
+			return false
+		}
+		symbol := d.owner.durableCanonicalSymbolAt(declaration.Name())
+		if symbol == nil {
+			d.fail(declaration.Name(), "4199", "compiler could not resolve const binding")
+			return false
+		}
+		value, ok := d.lowerExpression(declaration.Initializer(), anchor+":const/"+strconv.Itoa(index), false)
+		if !ok {
+			return false
+		}
+		d.values[symbol] = value
+	}
+	return true
+}
+
+func keyedStatementTail(nodes []*ast.Node) *ast.Node {
+	for _, node := range nodes {
+		if node.Kind != ast.KindEmptyStatement {
+			return node
+		}
+	}
+	return nil
+}
+
+func (s *keyedStatementLowerer) sequence(nodes []*ast.Node, anchor string, next keyedStatementNext) (durableValue, bool) {
+	s.depth++
+	defer func() { s.depth-- }()
+	for index, node := range nodes {
+		s.visits++
+		if s.depth > 128 || s.visits > 100_000 || len(s.d.nodeIDs) >= keyedPlanMaxNodes {
+			return s.d.fail(node, "4199", "keyed statement expansion exceeds its structural graph budget")
+		}
+		if node.Kind == ast.KindEmptyStatement {
+			continue
+		}
+		at := anchor + ":statement/" + strconv.Itoa(index)
+		mode := s.modes[node]
+		if mode == keyedStatementReturned {
+			if unreachable := keyedStatementTail(nodes[index+1:]); unreachable != nil {
+				return s.d.fail(unreachable, "4109", "statements after an unconditional durable return are not supported")
+			}
+		}
+		switch node.Kind {
+		case ast.KindVariableStatement:
+			if !s.d.lowerKeyedDeclarations(node.AsVariableStatement().DeclarationList, at) {
+				return durableValue{}, false
+			}
+		case ast.KindExpressionStatement:
+			// Postfix ! consumes an Action Result even when its success is not
+			// retained. The Action node remains declared work in the enclosing
+			// completion join. Unknown calls still have no lowering authority.
+			if _, ok := s.d.lowerExpression(node.Expression(), at, false); !ok {
+				return durableValue{}, false
+			}
+		case ast.KindReturnStatement:
+			if node.Expression() == nil {
+				return s.d.fail(node, "4109", "durable return requires an encodable value")
+			}
+			return s.d.lowerExpression(node.Expression(), at+":return", true)
+		case ast.KindBlock, ast.KindIfStatement:
+			// The continuation resumes in its original lexical environment,
+			// but remains in the current selected graph/ordering scope. Only
+			// paths which did not return can reach it.
+			values := maps.Clone(s.d.values)
+			after := func() (durableValue, bool) {
+				s.d.values = maps.Clone(values)
+				return s.sequence(nodes[index+1:], anchor+":after/"+strconv.Itoa(index), next)
+			}
+			continuation := keyedStatementNext(keyedStatementUnit)
+			if mode&keyedStatementReturned != 0 {
+				continuation = after
+			}
+			var value durableValue
+			var ok bool
+			if ast.IsIfStatement(node) {
+				value, ok = s.branch(node, at, continuation)
+			} else {
+				value, ok = s.block(node, at, continuation)
+			}
+			if !ok {
+				return durableValue{}, false
+			}
+			if mode&keyedStatementReturned != 0 {
+				return value, true
+			}
+		default:
+			// No fallback to body execution, including loops, mutation,
+			// switch/fallthrough or exceptional completion protocols.
+			return s.d.planUnrepresentable()
+		}
+	}
+	return next()
+}
+
+func (s *keyedStatementLowerer) block(node *ast.Node, anchor string, next keyedStatementNext) (durableValue, bool) {
+	parent := s.d.values
+	s.d.values = maps.Clone(parent)
+	defer func() { s.d.values = parent }()
+	if node == nil {
+		return next()
+	}
+	if ast.IsBlock(node) {
+		return s.sequence(node.AsBlock().Statements.Nodes, anchor, next)
+	}
+	return s.sequence([]*ast.Node{node}, anchor, next)
+}
+
+func (s *keyedStatementLowerer) branch(node *ast.Node, anchor string, next keyedStatementNext) (durableValue, bool) {
+	d, statement := s.d, node.AsIfStatement()
+	parentValues, parentNodes, parentSequence := d.values, d.activeNodes, d.sequence
+	nextSequence := parentSequence
+	defer func() { d.values, d.activeNodes, d.sequence = parentValues, parentNodes, nextSequence }()
+	d.values = maps.Clone(parentValues)
+	if statement.Initializer != nil {
+		if issue := conditionalDeclarationShapeError(node); issue != "" {
+			return d.fail(node, "1717", issue)
+		}
+		if statement.Locals == nil || !d.lowerKeyedDeclarations(statement.Initializer, anchor+":initializer") {
+			if !d.failed {
+				return d.fail(node, "4199", "conditional declaration has no native binding scope")
+			}
+			return durableValue{}, false
+		}
+	}
+	condition, ok := d.lowerExpression(statement.Expression, anchor+":condition", false)
+	if !ok {
+		return durableValue{}, false
+	}
+	// Ordinary if retains TypeScript truthiness, including zero, empty strings,
+	// null and objects. Only closed data is tested; coercion hooks cannot run.
+	conditionIR := map[string]any{"kind": "compute", "operator": "not", "operands": []any{
+		map[string]any{"kind": "compute", "operator": "not", "operands": []any{condition.ir}},
+	}}
+	values := maps.Clone(d.values)
+	arms := map[string]any{}
+	barrier := false
+	for _, arm := range []struct {
+		name string
+		node *ast.Node
+	}{{"whenTrue", statement.ThenStatement}, {"whenFalse", statement.ElseStatement}} {
+		nodes := []any{}
+		d.values, d.activeNodes, d.sequence = maps.Clone(values), &nodes, ""
+		value, ok := s.block(arm.node, anchor+":"+arm.name, next)
+		if !ok {
+			return durableValue{}, false
+		}
+		barrier = barrier || d.sequence != ""
+		arms[arm.name] = map[string]any{"nodes": nodes, "output": value.ir}
+	}
+	d.activeNodes, d.sequence = parentNodes, parentSequence
+	id, ok := d.stableNodeID(node, map[string]any{"anchor": anchor, "condition": conditionIR,
+		"file": d.logicalFile, "flowId": d.flowID, "flowVersion": d.flowVersion, "functionName": d.function, "kind": "branch"})
+	if !ok {
+		return durableValue{}, false
+	}
+	branch := map[string]any{"kind": "branch", "id": id, "condition": conditionIR,
+		"whenTrue": arms["whenTrue"], "whenFalse": arms["whenFalse"], "debug": d.debug(node, "if"),
+		"controlDependencies": durableControlDependencies(parentSequence), "dependencies": durableExpressionDependencies(conditionIR)}
+	if !durableStaticMaterialFits(branch) {
+		return d.fail(node, "4199", "keyed statement branch exceeds its serialization budget")
+	}
+	d.appendNode(branch)
+	if barrier {
+		// An explicit ordering barrier in an arm survives scope exit through
+		// its selected join, never through a direct edge to an untaken node.
+		nextSequence = id
+	}
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true
+}

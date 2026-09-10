@@ -1,0 +1,256 @@
+package main
+
+// The SDK profile changes the generated-code ABI, not the authored parser,
+// checker or row inference. In particular, an ordinary function remains eager:
+// dependency reads alone never turn a callable into an undriven generator.
+
+import (
+	"fmt"
+	"path"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type sdkBinding struct {
+	exported string
+	local    string
+	typeOnly bool
+}
+
+func sdkHelperBinding(key string) sdkBinding {
+	switch key {
+	case "VibeLangOk":
+		return sdkBinding{"__vsResultSuccess", "__vsResultSuccess", false}
+	case "VibeLangErr":
+		return sdkBinding{"__vsResultFailure", "__vsResultFailure", false}
+	case "Panic":
+		return sdkBinding{"Panic", "__vsPanicType", false}
+	case "vibelangMatchFailed":
+		return sdkBinding{"__vsMatchFailed", "__vsMatchFailed", false}
+	case "vibelangPropagate":
+		return sdkBinding{"__vsPropagate", "__vsPropagate", false}
+	case "vibelangUnwrapKnownSuccess":
+		return sdkBinding{"__vsUnwrapKnownSuccess", "__vsUnwrapKnownSuccess", false}
+	case "vibelangExpect":
+		return sdkBinding{"__vsExpect", "__vsExpect", false}
+	case "vibelangCompleteResult":
+		return sdkBinding{"__vsCompleteResult", "__vsCompleteResult", false}
+	case "vibelangRunResult":
+		return sdkBinding{"__vsRunResult", "__vsRunResult", false}
+	case "vibelangRunResultAsync":
+		return sdkBinding{"__vsRunResultAsync", "__vsRunResultAsync", false}
+	case "vibelangSuperReference":
+		return sdkBinding{"__vsSuperReference", "__vsSuperReference", false}
+	case "vibelangBindSuper":
+		return sdkBinding{"__vsBindSuper", "__vsBindSuper", false}
+	case "vibelangIsPanic":
+		return sdkBinding{"isPanic", "__vsIsPanic", false}
+	case "vibelangRegisterError":
+		return sdkBinding{"__vsRegisterError", "__vsRegisterError", false}
+	case "vibelangErrorIs":
+		return sdkBinding{"errorIs", "__vsErrorIs", false}
+	case "vibelangValidateForeignError":
+		return sdkBinding{"__vsValidateForeignError", "__vsValidateForeignError", false}
+	case "VibeLangNominalError":
+		return sdkBinding{"NominalError", "__vsNominalError", true}
+	case "VibeLangAbort":
+		return sdkBinding{"AnyRequest", "__vsAnyRequest", true}
+	case "SDKResult":
+		return sdkBinding{"Result", "__vsResult", false}
+	case "SDKResultType":
+		return sdkBinding{"ResultType", "__vsResultType", true}
+	case "SDKPanicType":
+		return sdkBinding{"Panic", "__vsPanic", true}
+	case "SDKResumable":
+		return sdkBinding{"Resumable", "__vsResumable", true}
+	case "SDKAsyncResumable":
+		return sdkBinding{"AsyncResumable", "__vsAsyncResumable", true}
+	case "SDKResultScope":
+		return sdkBinding{"__vsResultScope", "__vsResultScope", false}
+	case "SDKResultScopeAsync":
+		return sdkBinding{"__vsResultScopeAsync", "__vsResultScopeAsync", false}
+	case "SDKPerform":
+		return sdkBinding{"__vsPerform", "__vsPerform", false}
+	case "SDKGet":
+		return sdkBinding{"__vsGet", "__vsGet", false}
+	case "SDKProvide":
+		return sdkBinding{"__vsProvide", "__vsProvide", false}
+	case "SDKProvideAsync":
+		return sdkBinding{"__vsProvideAsync", "__vsProvideAsync", false}
+	case "SDKProvideRoot":
+		return sdkBinding{"__vsProvideRoot", "__vsProvideRoot", false}
+	case "SDKProvideRootAsync":
+		return sdkBinding{"__vsProvideRootAsync", "__vsProvideRootAsync", false}
+	case "SDKRunEager":
+		return sdkBinding{"__vsRunEager", "__vsRunEager", false}
+	}
+	panic(fmt.Sprintf("unmapped native SDK lowering helper %q", key))
+}
+
+func (l *lowerer) runtimeSpecifier() string {
+	if l.sdkRuntime != "" {
+		return l.sdkRuntime
+	}
+	return preludeSpecifierFor(l.file.FileName())
+}
+
+// One address-to-output relation for authored edges and compiler-synthesized
+// import types. Requirement publication happens after the authored edge walk;
+// its native-bound declaration references must use the same relocation table.
+func (l *lowerer) sdkOutputSpecifier(address string, output languageLoweringOutput) string {
+	if l.sdkOutputFile == "" {
+		return ""
+	}
+	target := output.OutputFileName
+	if target == "" {
+		if l.sdkSourceRoot == "" {
+			return ""
+		}
+		target = path.Join(strings.ReplaceAll(l.sdkSourceRoot, "\\", "/"), address)
+	}
+	return tspath.GetRelativePathFromFile(strings.ReplaceAll(l.sdkOutputFile, "\\", "/"), strings.ReplaceAll(target, "\\", "/"), tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+}
+
+// Relocation is based on native-bound module edges and explicit host output
+// addresses. No guessed JS/TS AST or second resolver is involved. The host has
+// already frozen input bytes; output addresses only change printed specifiers.
+func (l *lowerer) rewriteSDKModuleEdges(authored, lowered *ast.SourceFile) *ast.SourceFile {
+	if l.sdkOutputFile == "" {
+		return lowered
+	}
+	logical := l.analysis.project.logicalByVirtual[authored.FileName()]
+	edges := map[*ast.Node]string{}
+	strip := map[*ast.Node]bool{}
+	for _, literal := range authored.Imports() {
+		name := literal.Text()
+		if !strings.HasPrefix(name, "./") && !strings.HasPrefix(name, "../") {
+			continue
+		}
+		vibe := l.analysis.projectModuleSource(literal)
+		if l.sdkPreserveSpecifiers && (vibe != nil || strings.HasSuffix(name, ".vibe")) {
+			continue
+		}
+		address := path.Clean(path.Join(path.Dir(logical), name))
+		output := l.sdkOutputs[address]
+		if module := l.checker.ResolveExternalModuleNameAtLocation(literal); module != nil && output.OutputFileName == "" {
+			for _, declaration := range module.Declarations {
+				if file := ast.GetSourceFileOfNode(declaration); file != nil {
+					if candidate := l.sdkOutputs[l.analysis.project.logicalByVirtual[file.FileName()]]; candidate.OutputFileName != "" {
+						output = candidate
+						break
+					}
+				}
+			}
+		}
+		rewritten := l.sdkOutputSpecifier(address, output)
+		if rewritten != "" && rewritten != name {
+			edges[literal] = rewritten
+		}
+		if output.StripImportAttributes && literal.Parent != nil {
+			strip[literal.Parent] = true
+		}
+	}
+	var visitor *ast.NodeVisitor
+	visitor = l.emitContext.NewNodeVisitor(func(node *ast.Node) *ast.Node {
+		original := l.emitContext.MostOriginal(node)
+		if name, exists := edges[original]; exists {
+			replacement := l.factory.NewStringLiteral(name, ast.TokenFlagsNone)
+			l.emitContext.AssignCommentAndSourceMapRanges(replacement, original)
+			l.emitContext.SetOriginal(replacement, original)
+			return replacement
+		}
+		visited := l.retainSDKComments(node, visitor.VisitEachChild(node))
+		if strip[original] {
+			if ast.IsImportDeclaration(visited) {
+				decl := visited.AsImportDeclaration()
+				return l.retainSDKComments(visited, l.factory.UpdateImportDeclaration(decl, decl.Modifiers(), decl.ImportClause, decl.ModuleSpecifier, nil))
+			}
+			if ast.IsExportDeclaration(visited) {
+				decl := visited.AsExportDeclaration()
+				return l.retainSDKComments(visited, l.factory.UpdateExportDeclaration(decl, decl.Modifiers(), decl.IsTypeOnly, decl.ExportClause, decl.ModuleSpecifier, nil))
+			}
+			if ast.IsImportCall(visited) {
+				call := visited.AsCallExpression()
+				return l.retainSDKComments(visited, l.factory.UpdateCallExpression(call, call.Expression, call.QuestionDotToken, call.TypeArguments,
+					l.factory.NewNodeList(call.Arguments.Nodes[:1]), visited.Flags))
+			}
+		}
+		return visited
+	})
+	return visitor.VisitSourceFile(lowered)
+}
+
+func (l *lowerer) newSDKImport() *ast.Node {
+	keys := make([]string, 0, len(l.used))
+	for key := range l.used {
+		keys = append(keys, key)
+	}
+	sortUTF16(keys)
+	specifiers := make([]*ast.Node, 0, len(keys))
+	for _, key := range keys {
+		binding := sdkHelperBinding(key)
+		specifiers = append(specifiers, l.factory.NewImportSpecifier(binding.typeOnly,
+			l.factory.NewIdentifier(binding.exported), l.factory.NewIdentifier(l.preludeLocalName(key))))
+	}
+	var clause *ast.Node
+	if len(specifiers) != 0 {
+		clause = l.factory.NewImportClause(ast.KindUnknown, nil, l.factory.NewNamedImports(l.factory.NewNodeList(specifiers)))
+	}
+	declaration := l.factory.NewImportDeclaration(nil, clause, l.factory.NewStringLiteral(l.sdkRuntime, ast.TokenFlagsNone), nil)
+	return l.emitContext.AddSyntheticLeadingComment(declaration, ast.KindMultiLineCommentTrivia,
+		"* @vibelangModule "+encodePublishedMetadata(publishedModule{Version: 2, Runtimes: []string{l.sdkRuntime}, Requirements: l.publishedRequirements})+" ", true)
+}
+
+// Global language types have no global declaration in the SDK. Rewrite only
+// native-bound prelude references, after the core lowerer has finished asking
+// its authored checker about them. Local aliases and lexical shadows keep
+// their own bindings, and the inserted names share ordinary helper hygiene.
+func (l *lowerer) finalizeSDKTypes(file *ast.SourceFile) *ast.SourceFile {
+	var visitor *ast.NodeVisitor
+	visitor = l.emitContext.NewNodeVisitor(func(node *ast.Node) *ast.Node {
+		if ast.IsTypeReferenceNode(node) {
+			original := l.emitContext.MostOriginal(node)
+			if original.Parent != nil && ast.IsTypeReferenceNode(original) {
+				ref := original.AsTypeReferenceNode()
+				symbol := l.checker.GetSymbolAtLocation(ref.TypeName)
+				key := ""
+				if l.prelude.isResultSymbol(symbol) {
+					key = "SDKResultType"
+				}
+				if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias == 0 {
+					for _, declaration := range symbol.Declarations {
+						if declarationName(declaration) == "Panic" && ast.GetSourceFileOfNode(declaration).FileName() == preludeVirtualName {
+							key = "SDKPanicType"
+						}
+					}
+				}
+				if key != "" {
+					l.used[key] = true
+					result := l.factory.NewTypeReferenceNode(l.factory.NewIdentifier(l.preludeLocalName(key)), visitor.VisitNodes(node.AsTypeReferenceNode().TypeArguments))
+					l.emitContext.AssignSourceMapRange(result, original)
+					return result
+				}
+			}
+		}
+		return l.retainSDKComments(node, visitor.VisitEachChild(node))
+	})
+	return visitor.VisitSourceFile(file)
+}
+
+// Upstream's factory update hook preserves original-node identity, but not
+// synthetic comments attached by a preceding compiler phase. SDK type and
+// module-edge rewrites must carry callable rows through rebuilt parents too.
+func (l *lowerer) retainSDKComments(original, updated *ast.Node) *ast.Node {
+	if original == updated {
+		return updated
+	}
+	if comments := l.emitContext.GetSyntheticLeadingComments(original); len(comments) > 0 {
+		l.emitContext.SetSyntheticLeadingComments(updated, comments)
+	}
+	if comments := l.emitContext.GetSyntheticTrailingComments(original); len(comments) > 0 {
+		l.emitContext.SetSyntheticTrailingComments(updated, comments)
+	}
+	return updated
+}

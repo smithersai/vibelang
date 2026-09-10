@@ -1,0 +1,259 @@
+package main
+
+// Assemble an already-lowered ordinary TypeScript module as an isolated JS
+// factory. This is compiler-owned erasure/assembly, not a checked-source proof
+// or sandbox. The consuming body compiler still owns contracts and provenance.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/printer"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type runtimeFactoryRequest struct {
+	Source           string `json:"source"`
+	Entry            string `json:"entry"`
+	RuntimeSpecifier string `json:"runtimeSpecifier"`
+}
+
+func serveRuntimeFactory(apiVersion int) {
+	response := struct {
+		APIVersion       int                     `json:"apiVersion"`
+		CompilerRevision string                  `json:"compilerRevision"`
+		Result           canonicalFunctionResult `json:"result"`
+		Error            *wireError              `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input runtimeFactoryRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("runtime-factory request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = buildRuntimeFactory(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = canonicalFunctionResult{}
+		response.Error = &wireError{Code: "VIBELANG_GO_RUNTIME_FACTORY", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func buildRuntimeFactory(ctx context.Context, input runtimeFactoryRequest) (canonicalFunctionResult, error) {
+	refuse := func(message string) (canonicalFunctionResult, error) {
+		return canonicalFunctionResult{Message: message}, nil
+	}
+	if len(input.Source) > 16*1024*1024 || newLineIndex(input.Source).utf16Offset(len(input.Source)) > 4*1024*1024 ||
+		len(input.Entry) > 2048 || input.RuntimeSpecifier == "" || len(input.RuntimeSpecifier) > 4096 || strings.ContainsRune(input.RuntimeSpecifier, 0) {
+		return canonicalFunctionResult{}, errors.New("runtime-factory source/entry/runtime policy exceeds its bounds")
+	}
+	token, err := sourceTokenAt(tokenRequest{Text: input.Entry, Offset: 0})
+	if err != nil || token.Token == nil || token.Token.Kind != "Identifier" || token.Token.Start != 0 ||
+		token.Token.End != newLineIndex(input.Entry).utf16Offset(len(input.Entry)) {
+		return refuse("runtime-factory entry must be one identifier")
+	}
+	newProgram := func(source, name string) *compiler.Program {
+		options := &core.CompilerOptions{Target: core.ScriptTargetES2022, Module: core.ModuleKindESNext,
+			NoLib: core.TSTrue, NoResolve: core.TSTrue, NoCheck: core.TSTrue, NoEmit: core.TSTrue, AllowJs: core.TSTrue, Types: []string{}}
+		config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{FileNames: []string{name}, CompilerOptions: options}}
+		return compiler.NewProgram(compiler.ProgramOptions{Config: config, SingleThreaded: core.TSTrue, SkipModuleResolution: true,
+			Host: compiler.NewCompilerHost("/src", vfstest.FromMap(map[string]string{name: source}, true), "", nil, nil, nil)})
+	}
+	// Inspect the TS source before erasure can hide import-equals/export-equals
+	// or an erased module declaration. The factory convention is ESM only.
+	authored := newProgram(input.Source, "/src/runtime-factory.ts")
+	file := authored.GetSourceFile("/src/runtime-factory.ts")
+	if issues := authored.GetSyntacticDiagnostics(ctx, file); len(issues) > 0 {
+		return refuse("runtime-factory input did not parse: " + issues[0].Localize(locale.Default))
+	}
+	var unsupported string
+	lexicalFunction := func(node *ast.Node) *ast.Node {
+		for child := node; child.Parent != nil; child = child.Parent {
+			parent := child.Parent
+			if ast.IsFunctionLike(parent) && parent.Body() != nil {
+				if child == parent.Body() {
+					return parent
+				}
+				if child == parent.Name() {
+					continue
+				} // computed method keys use the outer context
+				return nil // parameter initializers cannot await/yield
+			}
+		}
+		return nil
+	}
+	var inspect func(*ast.Node) bool
+	inspect = func(node *ast.Node) bool {
+		if ast.IsImportEqualsDeclaration(node) || (ast.IsExportAssignment(node) && node.AsExportAssignment().IsExportEquals) {
+			unsupported = "runtime-factory input must use ES module syntax"
+			return true
+		}
+		if ast.IsImportCall(node) || (ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindImportKeyword) {
+			unsupported = "runtime-factory input retains an unbound dynamic module access"
+			return true
+		}
+		await := ast.IsAwaitExpression(node) || (ast.IsForOfStatement(node) && node.AsForInOrOfStatement().AwaitModifier != nil) ||
+			(ast.IsVariableDeclarationList(node) && node.Flags&ast.NodeFlagsBlockScoped == ast.NodeFlagsAwaitUsing)
+		if await || ast.IsYieldExpression(node) || ast.IsReturnStatement(node) {
+			owner := lexicalFunction(node)
+			if owner == nil || (await && !ast.HasSyntacticModifier(owner, ast.ModifierFlagsAsync)) ||
+				(ast.IsYieldExpression(node) && owner.BodyData().AsteriskToken == nil) {
+				unsupported = "runtime-factory cannot move this await/yield/return into a synchronous function"
+				return true
+			}
+		}
+		return node.ForEachChild(inspect)
+	}
+	inspect(file.AsNode())
+	if unsupported != "" {
+		return refuse(unsupported)
+	}
+	erased, err := transpileSources(ctx, transpileRequest{Files: []transpileSource{{Path: "runtime-factory.ts", Text: input.Source}},
+		Options: map[string]any{"target": "es2022", "module": "esnext"}})
+	if err != nil {
+		return canonicalFunctionResult{}, err
+	}
+	if len(erased.Files) != 1 || erased.Files[0].EmitSkipped {
+		return refuse("runtime-factory TypeScript erasure failed")
+	}
+	program := newProgram(erased.Files[0].JavaScript, "/src/runtime-factory.js")
+	file = program.GetSourceFile("/src/runtime-factory.js")
+	issues := program.GetSyntacticDiagnostics(ctx, file)
+	issues = append(issues, program.GetBindDiagnostics(ctx, file)...)
+	if len(issues) > 0 {
+		return refuse("runtime-factory module is invalid: " + issues[0].Localize(locale.Default))
+	}
+	checker, release := program.GetTypeChecker(ctx)
+	defer release()
+	entry := checker.ResolveName(input.Entry, file.AsNode(), ast.SymbolFlagsValue|ast.SymbolFlagsAlias, false)
+	bound := false
+	if entry != nil {
+		for _, declaration := range entry.Declarations {
+			bound = bound || ast.GetSourceFileOfNode(declaration) == file
+		}
+	}
+	if !bound {
+		return refuse("runtime-factory entry has no module binding")
+	}
+	identifiers := map[string]bool{}
+	visits := 0
+	var collect func(*ast.Node) bool
+	collect = func(node *ast.Node) bool {
+		visits++
+		if visits > 1_000_000 {
+			return true
+		}
+		if ast.IsIdentifier(node) {
+			identifiers[node.Text()] = true
+		}
+		return node.ForEachChild(collect)
+	}
+	if collect(file.AsNode()) {
+		return refuse("runtime-factory syntax exceeds its node budget")
+	}
+	parameter := "__runtime"
+	for index := 1; identifiers[parameter]; index++ {
+		parameter = fmt.Sprintf("__runtime_%d", index)
+	}
+	emitContext := printer.NewEmitContext()
+	factory := emitContext.Factory
+	p := printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF, Target: core.ScriptTargetES2022}, printer.PrintHandlers{}, emitContext)
+	defaultValueStatement := func(expression *ast.Node) *ast.Node {
+		// Anonymous default functions/classes acquire the name "default".
+		// A property initializer preserves that NamedEvaluation, including a
+		// class static initializer observing this.name, without a new binding.
+		property := factory.NewPropertyAssignment(nil, factory.NewIdentifier("default"), nil, nil, expression)
+		object := factory.NewObjectLiteralExpression(factory.NewNodeList([]*ast.Node{property}), false)
+		return factory.NewExpressionStatement(factory.NewPropertyAccessExpression(object, nil, factory.NewIdentifier("default"), ast.NodeFlagsNone))
+	}
+	parts := []string{}
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsImportDeclaration(statement) {
+			declaration := statement.AsImportDeclaration()
+			if !ast.IsStringLiteral(declaration.ModuleSpecifier) || declaration.ModuleSpecifier.Text() != input.RuntimeSpecifier ||
+				declaration.Attributes != nil || declaration.ImportClause == nil {
+				return refuse("runtime-factory retained an unbound runtime import")
+			}
+			clause := declaration.ImportClause.AsImportClause()
+			if clause.Name() != nil || clause.NamedBindings == nil || !ast.IsNamedImports(clause.NamedBindings) {
+				return refuse("runtime-factory requires named runtime imports")
+			}
+			elements := []*ast.Node{}
+			for _, binding := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+				item := binding.AsImportSpecifier()
+				name := item.PropertyName
+				if name == nil {
+					name = item.Name()
+				}
+				elements = append(elements, factory.NewBindingElement(nil, name, item.Name(), nil))
+			}
+			pattern := factory.NewBindingPattern(ast.KindObjectBindingPattern, factory.NewNodeList(elements))
+			variable := factory.NewVariableDeclaration(pattern, nil, nil, factory.NewIdentifier(parameter))
+			statement = factory.NewVariableStatement(nil, factory.NewVariableDeclarationList(factory.NewNodeList([]*ast.Node{variable}), ast.NodeFlagsConst))
+		} else if ast.IsExportDeclaration(statement) {
+			if statement.AsExportDeclaration().ModuleSpecifier != nil {
+				return refuse("runtime-factory retained an unbound module re-export")
+			}
+			continue
+		} else if ast.IsExportAssignment(statement) {
+			// A default expression still executes at its authored position even
+			// though the factory does not publish that module export.
+			statement = defaultValueStatement(statement.AsExportAssignment().Expression)
+		} else if ast.CanHaveModifiers(statement) {
+			modifiers := []*ast.Node{}
+			if statement.Modifiers() != nil {
+				for _, modifier := range statement.Modifiers().Nodes {
+					if modifier.Kind != ast.KindExportKeyword && modifier.Kind != ast.KindDefaultKeyword {
+						modifiers = append(modifiers, modifier)
+					}
+				}
+			}
+			var list *ast.ModifierList
+			if len(modifiers) > 0 {
+				list = factory.NewModifierList(modifiers)
+			}
+			if ast.IsFunctionDeclaration(statement) && statement.Name() == nil {
+				fn := statement.AsFunctionDeclaration()
+				statement = defaultValueStatement(factory.NewFunctionExpression(list, fn.AsteriskToken, nil, fn.TypeParameters, fn.Parameters, fn.Type, fn.FullSignature, fn.Body))
+			} else if ast.IsClassDeclaration(statement) && statement.Name() == nil {
+				class := statement.AsClassDeclaration()
+				statement = defaultValueStatement(factory.NewClassExpression(list, nil, class.TypeParameters, class.HeritageClauses, class.Members))
+			} else {
+				statement = ast.ReplaceModifiers(&factory.NodeFactory, statement, list)
+			}
+		}
+		parts = append(parts, p.Emit(statement, file))
+	}
+	code := "function (" + parameter + ") { \"use strict\";\n" + strings.Join(parts, "\n") + "\nreturn " + input.Entry + ";\n}"
+	if newLineIndex(code).utf16Offset(len(code)) > 4*1024*1024 {
+		return refuse("runtime-factory output exceeds its 4 MiB UTF-16 budget")
+	}
+	// Check the actual assembled strict function, not just its former module.
+	// This catches illegal function-context syntax and generated binding clashes.
+	validated := newProgram("("+code+");", "/src/runtime-factory-validation.js")
+	validationFile := validated.GetSourceFile("/src/runtime-factory-validation.js")
+	issues = validated.GetSyntacticDiagnostics(ctx, validationFile)
+	issues = append(issues, validated.GetBindDiagnostics(ctx, validationFile)...)
+	if len(issues) > 0 {
+		return refuse("runtime-factory assembly is invalid: " + issues[0].Localize(locale.Default))
+	}
+	if err := ctx.Err(); err != nil {
+		return canonicalFunctionResult{}, err
+	}
+	return canonicalFunctionResult{OK: true, Code: code}, nil
+}

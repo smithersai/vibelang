@@ -2,7 +2,7 @@ package main
 
 // Retired source grammar, and the grammar-mismatch backstop.
 //
-// Smithers has a published list of spellings that were once part of the design
+// VibeLang has a published list of spellings that were once part of the design
 // and were then retired, plus one spelling (`throw` as an expression) that was
 // never part of it. Every one of them is, by construction, something the fork's
 // parser cannot parse: there is no symbol to resolve and no typed node to
@@ -35,7 +35,7 @@ package main
 //     48-character window of its anchor.
 //
 // Anything the sweep does NOT recognize still reaches the author, relabeled as
-// SMITHERS1000: a parser failure in an authored `.sm` file means the source is
+// VIBE1000: a parser failure in an authored `.vibe` file means the source is
 // not the supported grammar, whatever TypeScript called it. That is a phase
 // rule, not a code lookup — the same TS1005 means different things in different
 // places, and none of them is "TS1005".
@@ -225,7 +225,7 @@ func sweepRetiredSyntax(text string) []retiredHit {
 	tokens := scanRetiredTokens(text)
 	hits := make([]retiredHit, 0)
 	report := func(token scannedToken, message string) {
-		hits = append(hits, retiredHit{code: "SMITHERS1001", start: token.start, message: message})
+		hits = append(hits, retiredHit{code: "VIBE1001", start: token.start, message: message})
 	}
 	for index, token := range tokens {
 		previous := tokenTextAt(tokens, index-1)
@@ -262,7 +262,7 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// Error. The following identifier and brace are required so an ordinary
 		// variable named `error` is not swept up.
 		if token.text == "error" && index+1 < len(tokens) && tokens[index+1].kind == ast.KindIdentifier &&
-			tokenTextAt(tokens, index+2) == "{" {
+			tokenTextAt(tokens, index+2) == "{" && !strings.ContainsAny(text[token.end:tokens[index+1].start], "\r\n\u2028\u2029") {
 			report(token, "the historical `error Name {}` declaration was removed; declare an ordinary `class Name extends Error`")
 		}
 
@@ -270,6 +270,8 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// identifiers elsewhere, so the rule fires only between a parameter
 		// list and a body, and never after a `.` (a member access).
 		if (token.text == "throws" || token.text == "uses") && previous != "." &&
+			!retiredMemberNameOccurrence(tokens, index) && retiredReturnTypeEnds(tokens, index-1) &&
+			index+1 < len(tokens) && tokens[index+1].kind == ast.KindIdentifier &&
 			isBetweenFunctionParametersAndBody(tokens, index) {
 			if token.text == "throws" {
 				report(token, "the `throws` row grammar was removed; declare Result<A, E> in public contracts and let local functions infer it")
@@ -281,13 +283,13 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// `orelse`. It is an identifier to the scanner, so a member named
 		// `orelse` is excluded by the preceding `.`, and a property named
 		// `orelse` by the requirement that a right operand follow.
-		if token.text == "orelse" && previous != "." && startsOperand(next) {
+		if token.text == "orelse" && !retiredMemberNameOccurrence(tokens, index) && endsExpression(tokens, index-1) && startsOperand(next) {
 			report(token, "the `orelse` operator was removed; use nullish coalescing or ordinary narrowing")
 		}
 
 		if token.text == "!" && next == ":" && index > 0 &&
 			(tokens[index-1].kind == ast.KindIdentifier || tokens[index-1].kind == ast.KindPrivateIdentifier) {
-			report(token, "the definite-assignment assertion x!: T is unavailable in .sm; initialize or narrow the binding explicitly")
+			report(token, "the definite-assignment assertion x!: T is unavailable in .vibe; initialize or narrow the binding explicitly")
 		}
 
 		// `.?`. The anchor is the DOT, not the question mark: that is where the
@@ -301,7 +303,7 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// public `Result.try(...)` adapter, which is a different thing; and the
 		// retired marker is a PREFIX, so an operand must follow it — which is
 		// what keeps a member named `try` in `{ try: … }` an ordinary property.
-		if token.text == "try" && next != "{" && previous != "." && startsOperand(next) {
+		if token.text == "try" && next != "{" && !retiredMemberNameOccurrence(tokens, index) && startsOperand(next) {
 			report(token, "the prefix `try` propagation marker was removed; use postfix !")
 		}
 
@@ -309,11 +311,11 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// and all four guards follow from that shape: a preceding `}` closes the
 		// block of a statement-form `try { } catch { }`; a preceding `.` is an
 		// ordinary `promise.catch(...)` member access, which the Promise
-		// discipline pass owns (SMITHERS1401) and which must not be misreported
+		// discipline pass owns (VIBE1401) and which must not be misreported
 		// as retired grammar; and the tokens on either side must actually be an
 		// expression end and an operand start, which is what keeps a property or
 		// method named `catch` an ordinary member.
-		if token.text == "catch" && previous != "}" && previous != "." &&
+		if token.text == "catch" && previous != "}" && !retiredMemberNameOccurrence(tokens, index) &&
 			endsExpression(tokens, index-1) && startsOperand(next) {
 			report(token, "the postfix catch expression was removed; recover with Result.match() or recover()")
 		}
@@ -330,10 +332,52 @@ func sweepRetiredSyntax(text string) []retiredHit {
 // `{ catch: … }`, which are ordinary object members.
 func startsOperand(next string) bool {
 	switch next {
-	case "", ":", ",", ")", "}", "]", ";", "=", "=>", ".", "?":
+	case "", ":", ",", ")", "}", "]", ";", "=", "=>", ".", "?", "?.":
 		return false
 	}
 	return true
+}
+
+// Reserved words in member-name positions have no operator meaning. Keep
+// these grammar guards shared by compilation and source-asset preflight.
+func retiredMemberNameOccurrence(tokens []scannedToken, index int) bool {
+	previous, next := tokenTextAt(tokens, index-1), tokenTextAt(tokens, index+1)
+	if previous == "." || previous == "?." || next == ":" {
+		return true
+	}
+	if next == "?" && (tokenTextAt(tokens, index+2) == ":" || tokenTextAt(tokens, index+2) == "(") {
+		return true
+	}
+	if next == "(" || next == "<" {
+		switch previous {
+		case "{", "}", ",", ";", "*", "static", "async", "get", "set", "public", "private", "protected", "readonly", "override", "abstract", "declare":
+			return true
+		}
+	}
+	return false
+}
+
+func retiredReturnTypeEnds(tokens []scannedToken, index int) bool {
+	if index < 0 {
+		return false
+	}
+	switch tokenTextAt(tokens, index) {
+	case "<", ",", "|", "&", "(", "[", ":", "?", "=>", ".", "...", "extends", "keyof", "typeof", "readonly", "infer", "new", "is", "asserts":
+		return false
+	}
+	return true
+}
+
+// Additional native-only facts available on a recovered, parse-refused tree.
+// Successful conditional declarations are not rewritten here. Only their
+// bounded native recovery planner's refusal messages are consumed.
+func recoveredGrammarHits(file *ast.SourceFile) []retiredHit {
+	hits := retiredTypeGrammarHits(file)
+	_, rejected, _ := planSourceRecovery(formatCodeTokens(formatScan(file.Text())))
+	for _, item := range rejected {
+		hits = append(hits, retiredHit{code: "VIBE1717", start: item.start, message: item.message})
+	}
+	return hits
 }
 
 // endsExpression reports whether the token before a postfix operator could be
@@ -383,11 +427,11 @@ func isBetweenFunctionParametersAndBody(tokens []scannedToken, index int) bool {
 	return false
 }
 
-// grammarMismatchMessage relabels a raw parser failure as the Smithers grammar
+// grammarMismatchMessage relabels a raw parser failure as the VibeLang grammar
 // rule it actually is. The TypeScript text is retained because it is the only
-// description of what the parser choked on, but the CODE is Smithers's: an
-// authored `.sm` file that does not parse is not "missing a semicolon", it is
+// description of what the parser choked on, but the CODE is VibeLang's: an
+// authored `.vibe` file that does not parse is not "missing a semicolon", it is
 // not the supported grammar.
 func grammarMismatchMessage(message string) string {
-	return "source does not match the supported .sm grammar: " + strings.TrimSpace(message)
+	return "source does not match the supported .vibe grammar: " + strings.TrimSpace(message)
 }

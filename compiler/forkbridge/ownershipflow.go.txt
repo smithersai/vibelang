@@ -1,0 +1,830 @@
+package main
+
+// Evaluation-order ownership CFG. Mirrors language/ownership-flow.ts without
+// changing the parser or upstream type graph. Each computation shares one
+// graph across its obligations; a literal function body only runs at a call.
+
+import (
+	"maps"
+	"slices"
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
+
+type ownershipFlowNode struct {
+	site      *ast.Node
+	valueSite *ast.Node
+	next      []int
+}
+
+type ownershipTargets struct {
+	returned, thrown, aborted, panicked int
+	breaks, continues                   map[string]int
+}
+
+type ownershipBindings map[*ast.Symbol]*ast.Node
+
+type ownershipFlow struct {
+	a       *rowAnalysis
+	nodes   []ownershipFlowNode
+	entry   int
+	active  map[*ast.Node]bool
+	bounded bool
+}
+
+func (a *rowAnalysis) ownershipFlowFor(node *ast.Node) *ownershipFlow {
+	owner := enclosingFunction(node)
+	if owner == nil || owner.Body() == nil {
+		return nil
+	}
+	if a.ownershipFlows == nil {
+		a.ownershipFlows = make(map[*ast.Node]*ownershipFlow)
+	}
+	if flow := a.ownershipFlows[owner]; flow != nil {
+		return flow
+	}
+	f := &ownershipFlow{a: a, nodes: []ownershipFlowNode{{}}, active: map[*ast.Node]bool{owner: true}, bounded: true}
+	targets := ownershipTargets{breaks: make(map[string]int), continues: make(map[string]int)}
+	f.entry = f.functionBody(owner, 0, targets, make(ownershipBindings))
+	delete(f.active, owner)
+	a.ownershipFlows[owner] = f
+	return f
+}
+
+// A second creation while still owing the first value is a loop-iteration
+// discard. Consuming only the last value cannot discharge previous values.
+func (f *ownershipFlow) consumedOnEveryPath(created *ast.Node, consumed, overwritten map[*ast.Node]bool, settled ...bool) bool {
+	if !f.bounded {
+		return false
+	}
+	visited := make(map[int]bool)
+	type state struct {
+		index int
+		owed  bool
+	}
+	pending := []state{{f.entry, false}}
+	for len(pending) > 0 {
+		current := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		key := current.index * 2
+		if current.owed {
+			key++
+		}
+		if visited[key] {
+			continue
+		}
+		visited[key] = true
+		node := f.nodes[current.index]
+		owed := current.owed
+		if owed && node.site != nil && overwritten[node.site] {
+			return false
+		}
+		afterAwait := len(settled) > 0 && settled[0]
+		if afterAwait && node.valueSite == created || !afterAwait && node.site == created && node.valueSite == nil {
+			if owed {
+				return false
+			}
+			owed = true
+		}
+		if node.site != nil && consumed[node.site] {
+			owed = false
+		}
+		if current.index == 0 && owed {
+			return false
+		}
+		for _, next := range node.next {
+			pending = append(pending, state{next, owed})
+		}
+	}
+	return true
+}
+
+func (f *ownershipFlow) node(site *ast.Node, next ...int) int {
+	if len(f.nodes) >= 20000 {
+		f.bounded = false
+		return 0
+	}
+	unique := make([]int, 0, len(next))
+	for _, value := range next {
+		if !slices.Contains(unique, value) {
+			unique = append(unique, value)
+		}
+	}
+	f.nodes = append(f.nodes, ownershipFlowNode{site: site, next: unique})
+	return len(f.nodes) - 1
+}
+
+func (f *ownershipFlow) sequence(nodes []*ast.Node, next int, targets ownershipTargets, bindings ownershipBindings) int {
+	for index := len(nodes) - 1; index >= 0; index-- {
+		next = f.build(nodes[index], next, targets, bindings, "")
+	}
+	return next
+}
+
+func ownershipTruth(node *ast.Node) (bool, bool) {
+	if node == nil {
+		return false, false
+	}
+	if ast.IsParenthesizedExpression(node) {
+		return ownershipTruth(node.Expression())
+	}
+	switch node.Kind {
+	case ast.KindTrueKeyword:
+		return true, true
+	case ast.KindFalseKeyword, ast.KindNullKeyword:
+		return false, true
+	case ast.KindNumericLiteral:
+		value, err := strconv.ParseFloat(node.Text(), 64)
+		return value != 0, err == nil
+	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
+		return node.Text() != "", true
+	case ast.KindPrefixUnaryExpression:
+		if unary := node.AsPrefixUnaryExpression(); unary.Operator == ast.KindExclamationToken {
+			value, known := ownershipTruth(unary.Operand)
+			return !value, known
+		}
+	}
+	return false, false
+}
+
+func (f *ownershipFlow) condition(expression *ast.Node, yes, no int, targets ownershipTargets, bindings ownershipBindings) int {
+	destinations := []int{yes, no}
+	if truth, known := ownershipTruth(expression); known {
+		if truth {
+			destinations = []int{yes}
+		} else {
+			destinations = []int{no}
+		}
+	}
+	return f.build(expression, f.node(nil, destinations...), targets, bindings, "")
+}
+
+func (f *ownershipFlow) resolve(expression *ast.Node, bindings ownershipBindings) *ast.Node {
+	expression = stripMustConsumeWrappers(expression)
+	if expression == nil {
+		return nil
+	}
+	if value := bindings[f.a.symbolAt(expression)]; value != nil {
+		return value
+	}
+	if fn := f.a.resolveFunctionReference(expression); fn != nil && fn.node.Body() != nil {
+		return fn.node
+	}
+	return nil
+}
+
+func (f *ownershipFlow) functionBody(fn *ast.Node, next int, targets ownershipTargets, bindings ownershipBindings) int {
+	body := fn.Body()
+	entry := next
+	if ast.IsBlock(body) {
+		entry = f.build(body, next, targets, bindings, "")
+	} else {
+		entry = f.build(body, f.node(fn, targets.returned), targets, bindings, "")
+	}
+	parameters := fn.Parameters()
+	for index := len(parameters) - 1; index >= 0; index-- {
+		parameter := parameters[index]
+		entry = f.node(parameter, entry)
+		if initializer := parameter.Initializer(); initializer != nil {
+			entry = f.node(nil, entry, f.build(initializer, entry, targets, bindings, ""))
+		}
+	}
+	return entry
+}
+
+func (f *ownershipFlow) invoke(fn *ast.Node, args []*ast.Node, next int, outer ownershipTargets, bindings ownershipBindings) int {
+	// Do not invent consumption by assuming a recursive call eventually does it.
+	if f.active[fn] || len(f.active) >= 32 {
+		return next
+	}
+	local := maps.Clone(bindings)
+	for index, parameter := range fn.Parameters() {
+		if index >= len(args) {
+			break
+		}
+		if value := f.resolve(args[index], bindings); value != nil {
+			if symbol := f.a.symbolAt(parameter.Name()); symbol != nil {
+				local[symbol] = value
+			}
+		}
+	}
+	info := f.a.byNode[fn]
+	result := info != nil && (info.declaredShape.result || info.inferredFallible())
+	async := ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync)
+	targets := outer
+	targets.returned = next
+	if result {
+		targets.aborted = next
+	}
+	if async {
+		targets.panicked = next
+	}
+	if result || async {
+		targets.thrown = next
+	}
+	targets.breaks = make(map[string]int)
+	targets.continues = make(map[string]int)
+	f.active[fn] = true
+	entry := f.functionBody(fn, next, targets, local)
+	delete(f.active, fn)
+	return entry
+}
+
+// nil alternatives mean the API may skip its callback (e.g. an empty array).
+func (f *ownershipFlow) callbacks(call *ast.Node) []*ast.Node {
+	args := call.AsCallExpression().Arguments.Nodes
+	if f.a.prelude.layerCall(call, "provide") && len(args) > 1 {
+		return []*ast.Node{args[1]}
+	}
+	if _, ok := f.a.prelude.resultBoundaryCall(call); ok && len(args) > 0 {
+		return []*ast.Node{args[0]}
+	}
+	selection, ok := f.a.prelude.calleeSelection(call)
+	if !ok || len(args) == 0 {
+		return nil
+	}
+	if f.a.boundProducedKind(selection.receiver) == boundConsumeResult {
+		argument := args[0]
+		if (selection.text == "match" || selection.text == "tapBoth" || selection.text == "tapBothAsync") && ast.IsObjectLiteralExpression(argument) {
+			var callbacks []*ast.Node
+			for _, property := range argument.AsObjectLiteralExpression().Properties.Nodes {
+				switch property.Kind {
+				case ast.KindPropertyAssignment:
+					callbacks = append(callbacks, property.Initializer())
+				case ast.KindShorthandPropertyAssignment:
+					callbacks = append(callbacks, property.Name())
+				case ast.KindMethodDeclaration:
+					callbacks = append(callbacks, property)
+				default:
+					callbacks = append(callbacks, nil)
+				}
+			}
+			return callbacks
+		}
+		if resultConsumerSpelling(selection.text) {
+			return []*ast.Node{argument, nil}
+		}
+	}
+	signature := f.a.checker.GetResolvedSignature(call)
+	if signature != nil && callableLibraryDeclaration(signature.Declaration()) &&
+		slices.Contains([]string{"forEach", "map", "filter", "some", "every", "find", "findIndex"}, selection.text) {
+		receiver := ast.SkipParentheses(selection.receiver)
+		if ast.IsArrayLiteralExpression(receiver) {
+			for _, element := range receiver.AsArrayLiteralExpression().Elements.Nodes {
+				if element.Kind != ast.KindOmittedExpression && element.Kind != ast.KindSpreadElement {
+					return []*ast.Node{args[0]}
+				}
+			}
+		}
+		return []*ast.Node{args[0], nil}
+	}
+	return nil
+}
+
+func (f *ownershipFlow) build(node *ast.Node, next int, targets ownershipTargets, bindings ownershipBindings, label string) int {
+	if node == nil || !f.bounded || ast.IsTypeNode(node) {
+		return next
+	}
+	switch node.Kind {
+	case ast.KindBlock:
+		return f.sequence(node.Statements(), next, targets, bindings)
+	case ast.KindVariableStatement:
+		return f.build(node.AsVariableStatement().DeclarationList, next, targets, bindings, "")
+	case ast.KindVariableDeclarationList:
+		return f.sequence(node.AsVariableDeclarationList().Declarations.Nodes, next, targets, bindings)
+	case ast.KindVariableDeclaration:
+		return f.build(node.Initializer(), f.node(node, next), targets, bindings, "")
+	case ast.KindExpressionStatement:
+		return f.build(node.Expression(), next, targets, bindings, "")
+	case ast.KindReturnStatement:
+		return f.build(node.Expression(), f.node(node, targets.returned), targets, bindings, "")
+	case ast.KindThrowStatement:
+		return f.build(node.Expression(), f.node(node, targets.thrown), targets, bindings, "")
+	case ast.KindBreakStatement, ast.KindContinueStatement:
+		name := ""
+		if node.Label() != nil {
+			name = node.Label().Text()
+		}
+		destination := targets.breaks[name]
+		if node.Kind == ast.KindContinueStatement {
+			destination = targets.continues[name]
+		}
+		return f.node(node, destination)
+	case ast.KindLabeledStatement:
+		name := node.Label().Text()
+		inside := targets
+		inside.breaks = maps.Clone(targets.breaks)
+		inside.breaks[name] = next
+		return f.build(node.Statement(), next, inside, bindings, name)
+	case ast.KindIfStatement:
+		statement := node.AsIfStatement()
+		return f.condition(statement.Expression, f.build(statement.ThenStatement, next, targets, bindings, ""), f.build(statement.ElseStatement, next, targets, bindings, ""), targets, bindings)
+	case ast.KindTryStatement:
+		statement := node.AsTryStatement()
+		finalizers := make(map[int]int)
+		finalized := func(destination int) int {
+			if statement.FinallyBlock == nil {
+				return destination
+			}
+			if known, ok := finalizers[destination]; ok {
+				return known
+			}
+			entry := f.build(statement.FinallyBlock, destination, targets, bindings, "")
+			finalizers[destination] = entry
+			return entry
+		}
+		inside := ownershipTargets{returned: finalized(targets.returned), thrown: finalized(targets.thrown), aborted: finalized(targets.aborted), panicked: finalized(targets.panicked), breaks: make(map[string]int), continues: make(map[string]int)}
+		for name, value := range targets.breaks {
+			inside.breaks[name] = finalized(value)
+		}
+		for name, value := range targets.continues {
+			inside.continues[name] = finalized(value)
+		}
+		normal := finalized(next)
+		if statement.CatchClause != nil {
+			inside.thrown = f.build(statement.CatchClause.AsCatchClause().Block, normal, inside, bindings, "")
+		}
+		return f.build(statement.TryBlock, normal, inside, bindings, "")
+	case ast.KindWhileStatement, ast.KindDoStatement, ast.KindForStatement, ast.KindForOfStatement, ast.KindForInStatement:
+		loop := f.node(nil)
+		inside := targets
+		inside.breaks = maps.Clone(targets.breaks)
+		inside.continues = maps.Clone(targets.continues)
+		inside.breaks[""] = next
+		update := loop
+		if ast.IsForStatement(node) {
+			update = f.build(node.AsForStatement().Incrementor, loop, targets, bindings, "")
+		}
+		inside.continues[""] = update
+		if label != "" {
+			inside.breaks[label] = next
+			inside.continues[label] = update
+		}
+		body := f.build(node.Statement(), update, inside, bindings, "")
+		iteration := node.Kind == ast.KindForOfStatement || node.Kind == ast.KindForInStatement
+		if iteration {
+			body = f.build(node.Initializer(), body, inside, bindings, "")
+		}
+		condition := body
+		if ast.IsForStatement(node) {
+			if expression := node.AsForStatement().Condition; expression != nil {
+				condition = f.condition(expression, body, next, inside, bindings)
+			}
+		} else if iteration {
+			condition = f.node(nil, body, next)
+		} else {
+			condition = f.condition(node.Expression(), body, next, inside, bindings)
+		}
+		f.nodes[loop].next = append(f.nodes[loop].next, condition)
+		if node.Kind == ast.KindDoStatement {
+			return body
+		}
+		if ast.IsForStatement(node) {
+			return f.build(node.Initializer(), loop, targets, bindings, "")
+		}
+		if iteration {
+			return f.build(node.Expression(), loop, targets, bindings, "")
+		}
+		return loop
+	case ast.KindSwitchStatement:
+		inside := targets
+		inside.breaks = maps.Clone(targets.breaks)
+		inside.breaks[""] = next
+		clauses := node.AsSwitchStatement().CaseBlock.AsCaseBlock().Clauses.Nodes
+		entries := make([]int, len(clauses))
+		following := next
+		defaultIndex := -1
+		for index := len(clauses) - 1; index >= 0; index-- {
+			clause := clauses[index]
+			following = f.sequence(clause.Statements(), following, inside, bindings)
+			entries[index] = following
+			if clause.Kind == ast.KindDefaultClause {
+				defaultIndex = index
+			}
+		}
+		selection := next
+		if defaultIndex >= 0 {
+			selection = entries[defaultIndex]
+		}
+		for index := len(clauses) - 1; index >= 0; index-- {
+			if clauses[index].Kind == ast.KindCaseClause {
+				selection = f.build(clauses[index].Expression(), f.node(nil, entries[index], selection), targets, bindings, "")
+			}
+		}
+		return f.build(node.Expression(), selection, targets, bindings, "")
+	case ast.KindConditionalExpression:
+		conditional := node.AsConditionalExpression()
+		return f.condition(conditional.Condition, f.build(conditional.WhenTrue, f.node(node, next), targets, bindings, ""), f.build(conditional.WhenFalse, f.node(node, next), targets, bindings, ""), targets, bindings)
+	case ast.KindBinaryExpression:
+		binary := node.AsBinaryExpression()
+		if slices.Contains([]ast.Kind{ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken}, binary.OperatorToken.Kind) {
+			complete := f.node(node, next)
+			right := f.build(binary.Right, complete, targets, bindings, "")
+			if binary.OperatorToken.Kind == ast.KindAmpersandAmpersandToken {
+				return f.condition(binary.Left, right, complete, targets, bindings)
+			}
+			if binary.OperatorToken.Kind == ast.KindBarBarToken {
+				return f.condition(binary.Left, complete, right, targets, bindings)
+			}
+			return f.build(binary.Left, f.node(nil, right, complete), targets, bindings, "")
+		}
+	case ast.KindCallExpression:
+		call := node.AsCallExpression()
+		destinations := []int{next}
+		if f.a.prelude.isPanicCall(node) {
+			destinations = []int{targets.panicked}
+		} else if _, expect := f.a.prelude.expectCall(node); expect {
+			destinations = append(destinations, targets.panicked)
+		}
+		complete := f.node(node, destinations...)
+		invocation := complete
+		if callee := f.resolve(call.Expression, bindings); callee != nil {
+			invocation = f.invoke(callee, call.Arguments.Nodes, complete, targets, bindings)
+		} else {
+			if callbacks := f.callbacks(node); len(callbacks) > 0 {
+				var entries []int
+				for _, expression := range callbacks {
+					entry := complete
+					if callback := f.resolve(expression, bindings); callback != nil {
+						entry = f.invoke(callback, nil, complete, targets, bindings)
+					}
+					entries = append(entries, entry)
+				}
+				invocation = f.node(nil, entries...)
+			}
+		}
+		arguments := f.sequence(call.Arguments.Nodes, invocation, targets, bindings)
+		if call.QuestionDotToken != nil {
+			arguments = f.node(nil, arguments, complete)
+		}
+		return f.build(call.Expression, arguments, targets, bindings, "")
+	case ast.KindNewExpression:
+		complete := f.node(node, next)
+		invocation := complete
+		args := invocationArguments(node)
+		if f.a.libraryPromiseConstruction(node) && len(args) > 0 {
+			if callback := f.resolve(args[0], bindings); callback != nil {
+				inside := targets
+				inside.thrown = complete
+				inside.panicked = complete
+				invocation = f.invoke(callback, nil, complete, inside, bindings)
+			}
+		}
+		return f.build(node.Expression(), f.sequence(args, invocation, targets, bindings), targets, bindings, "")
+	case ast.KindNonNullExpression, ast.KindAwaitExpression:
+		if ast.IsAwaitExpression(node) {
+			fulfilled := f.node(node, next)
+			f.nodes[fulfilled].valueSite = node
+			destinations := []int{fulfilled}
+			if f.a.boundProducedKind(node.Expression()) == boundConsumePromise {
+				destinations = append(destinations, targets.thrown)
+			}
+			return f.build(node.Expression(), f.node(node, destinations...), targets, bindings, "")
+		}
+		destinations := []int{next}
+		if operand := f.a.resultPropagations[node]; operand != nil {
+			_, failure, known := f.a.resultArguments(f.a.checker.GetTypeAtLocation(operand))
+			if !known || failure.Flags()&checker.TypeFlagsNever == 0 {
+				destinations = append(destinations, targets.aborted)
+			}
+		} else if ast.IsAwaitExpression(node) && f.a.boundProducedKind(node.Expression()) == boundConsumePromise {
+			destinations = append(destinations, targets.thrown)
+		}
+		return f.build(node.Expression(), f.node(node, destinations...), targets, bindings, "")
+	case ast.KindClassDeclaration, ast.KindClassExpression:
+		var evaluated []*ast.Node
+		for _, member := range node.Members() {
+			if name := member.Name(); name != nil && name.Kind == ast.KindComputedPropertyName {
+				evaluated = append(evaluated, name.Expression())
+			}
+			if member.Kind == ast.KindPropertyDeclaration && ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) {
+				evaluated = append(evaluated, member.Initializer())
+			}
+		}
+		return f.sequence(evaluated, f.node(node, next), targets, bindings)
+	}
+	if ast.IsFunctionLikeDeclaration(node) {
+		return f.node(node, next)
+	}
+	var children []*ast.Node
+	node.ForEachChild(func(child *ast.Node) bool {
+		if !ast.IsTypeNode(child) {
+			children = append(children, child)
+		}
+		return false
+	})
+	return f.sequence(children, f.node(node, next), targets, bindings)
+}
+
+func ownershipAssignment(reference *ast.Node) *ast.Node {
+	parent := reference.Parent
+	if parent != nil && ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().Left == reference && parent.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken {
+		return parent
+	}
+	return nil
+}
+
+// Find completion events, not identifier reads: r.unwrapOr(g()!) cannot consume
+// r before g's argument has finished evaluating. Literal collection paths keep
+// each member separate instead of treating one inspected element as all of them.
+func (a *rowAnalysis) ownershipConsumptionSites(start *ast.Node, kind boundConsumeKind, initialPath []string) map[*ast.Node]bool {
+	sites := make(map[*ast.Node]bool)
+	seen := make(map[*ast.Symbol]bool)
+	var follow func(*ast.Node, []string, bool)
+	follow = func(start *ast.Node, path []string, fresh bool) {
+		current := start
+		stored := slices.Clone(path)
+		for current != nil && current.Parent != nil {
+			parent := current.Parent
+			if typeOnlyWrapperOperand(parent) == current || ast.IsParenthesizedExpression(parent) {
+				current = parent
+				continue
+			}
+			// VIBE1207 owns an invalid bang. Its operand still forwards
+			// unchanged, so it neither invents nor discharges an obligation.
+			if ast.IsNonNullExpression(parent) && a.resultPropagations[parent] == nil {
+				current = parent
+				continue
+			}
+			if ast.IsConditionalExpression(parent) && parent.AsConditionalExpression().Condition != current {
+				if !fresh {
+					return
+				}
+				current = parent
+				continue
+			}
+			if ast.IsReturnStatement(parent) {
+				if len(stored) == 0 || a.transferReachesCaller(parent) {
+					sites[parent] = true
+				}
+				return
+			}
+			if ast.IsFunctionLikeDeclaration(parent) && parent.Body() == current {
+				if len(stored) == 0 || a.transferReachesCaller(parent) {
+					sites[current] = true
+				}
+				return
+			}
+			if kind == boundConsumeResult && len(stored) == 0 {
+				if ast.IsNonNullExpression(parent) && a.resultPropagations[parent] != nil {
+					sites[parent] = true
+					return
+				}
+				if selection, ok := a.prelude.selectMember(parent); ok && selection.receiver == current && parent.Parent != nil && ast.IsCallExpression(parent.Parent) && parent.Parent.Expression() == parent && (a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.text) || selection.text == "unwrap") {
+					sites[parent.Parent] = true
+					return
+				}
+				if ast.IsCallExpression(parent) && len(parent.AsCallExpression().Arguments.Nodes) > 0 && parent.AsCallExpression().Arguments.Nodes[0] == current {
+					if selection, ok := a.prelude.calleeSelection(parent); ok && symbolDeclaredBy(a.prelude.memberSymbol(selection), a.prelude.resultCodecEncodeDecls) {
+						sites[parent] = true
+						return
+					}
+				}
+			}
+			if len(stored) == 0 && kind == boundConsumePromise && ast.IsAwaitExpression(parent) {
+				sites[parent] = true
+				return
+			}
+			if combinator := enclosingCollectionCall(current, true); combinator != nil {
+				member, matched := a.prelude.resultNamespaceCall(combinator)
+				if a.prelude.promiseCombinatorCall(combinator) || matched && resultCollectionMember(member) {
+					sites[combinator] = true
+					return
+				}
+			}
+			if ast.IsArrayLiteralExpression(parent) {
+				stored = append([]string{strconv.Itoa(slices.Index(parent.AsArrayLiteralExpression().Elements.Nodes, current))}, stored...)
+				current = parent
+				continue
+			}
+			if parent.Kind == ast.KindPropertyAssignment && parent.Initializer() == current && parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+				name, ok := ownershipPropertyKey(parent.Name())
+				if !ok {
+					return
+				}
+				stored = append([]string{name}, stored...)
+				current = parent.Parent
+				continue
+			}
+			if parent.Kind == ast.KindShorthandPropertyAssignment && parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+				stored = append([]string{parent.Name().Text()}, stored...)
+				current = parent.Parent
+				continue
+			}
+			if ast.IsVariableDeclaration(parent) && parent.Initializer() == current && ast.IsIdentifier(parent.Name()) {
+				symbol := a.symbolAt(parent.Name())
+				if symbol == nil || seen[symbol] {
+					return
+				}
+				references := a.identifierReferences(ast.GetSourceFileOfNode(parent), symbol)
+				for _, reference := range references {
+					if ownershipAssignment(reference) != nil {
+						return
+					}
+				}
+				seen[symbol] = true
+				for _, reference := range references {
+					if reference != parent.Name() {
+						follow(reference, stored, false)
+					}
+				}
+				return
+			}
+			if len(stored) > 0 && (ast.IsPropertyAccessExpression(parent) || ast.IsElementAccessExpression(parent)) && parent.Expression() == current {
+				var key *ast.Node
+				if ast.IsPropertyAccessExpression(parent) {
+					key = parent.Name()
+				} else {
+					key = parent.AsElementAccessExpression().ArgumentExpression
+				}
+				name, ok := ownershipPropertyKey(key)
+				if !ok || name != stored[0] {
+					return
+				}
+				stored = stored[1:]
+				current = parent
+				continue
+			}
+			return
+		}
+	}
+	follow(start, initialPath, ast.IsCallExpression(start) || ast.IsNewExpression(start))
+	return sites
+}
+
+func ownershipPropertyKey(node *ast.Node) (string, bool) {
+	if node != nil && (ast.IsIdentifier(node) || ast.IsStringLiteralLike(node) || ast.IsNumericLiteral(node)) {
+		return node.Text(), true
+	}
+	return "", false
+}
+
+func (a *rowAnalysis) ownershipPromiseOrigin(expression *ast.Node, seen map[*ast.Symbol]bool) *ast.Node {
+	inner := stripMustConsumeWrappers(expression)
+	if ast.IsCallExpression(inner) || ast.IsNewExpression(inner) {
+		return inner
+	}
+	if !ast.IsIdentifier(inner) {
+		return nil
+	}
+	symbol := a.canonical(a.referencedValueSymbol(inner))
+	if symbol == nil || seen[symbol] {
+		return nil
+	}
+	seen[symbol] = true
+	declaration := symbol.ValueDeclaration
+	if declaration == nil || !ast.IsVariableDeclaration(declaration) || declaration.Initializer() == nil {
+		return nil
+	}
+	for _, reference := range a.identifierReferences(ast.GetSourceFileOfNode(inner), symbol) {
+		if ownershipAssignment(reference) != nil {
+			return nil
+		}
+	}
+	return a.ownershipPromiseOrigin(declaration.Initializer(), seen)
+}
+
+func (a *rowAnalysis) checkAwaitedOwnership(node *ast.Node) {
+	if a.awaitedResultProducer(node) {
+		consumed := a.unboundProducerConsumed(node, boundConsumeResult, make(map[*ast.Node]bool))
+		if consumed && !a.ownershipDirectlyBound(node) {
+			if flow := a.ownershipFlowFor(node); flow != nil {
+				consumed = flow.consumedOnEveryPath(node, a.ownershipConsumptionSites(node, boundConsumeResult, nil), nil, true)
+			}
+		}
+		if !consumed {
+			a.report(node, "VIBE1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
+		}
+		return
+	}
+	if a.boundProducedKind(node.Expression()) != boundConsumePromise {
+		return
+	}
+	held := a.heldChannel(a.checker.GetTypeAtLocation(node), 0)
+	if held == boundConsumePlain {
+		return
+	}
+	flow := a.ownershipFlowFor(node)
+	if flow == nil {
+		return
+	}
+	paths := [][]string{{"*"}}
+	if origin := a.ownershipPromiseOrigin(node.Expression(), make(map[*ast.Symbol]bool)); origin != nil {
+		paths = a.ownershipReturnedPaths(origin, held)
+	}
+	legacyConsumed := a.ownershipConsumed(node, true, ownershipWalk{kind: held, fromProducer: true, seen: make(map[*ast.Node]bool), seenBindings: make(map[*ast.Symbol]bool)})
+	if !legacyConsumed {
+		return
+	}
+	for _, path := range paths {
+		if !flow.consumedOnEveryPath(node, a.ownershipConsumptionSites(node, held, path), nil, true) {
+			code := "VIBE1301"
+			if held == boundConsumePromise {
+				code = "VIBE1402"
+			}
+			a.report(node, code, "awaited collection is not fully consumed on every path; consume every known member, return it, or use a recognized combinator")
+			return
+		}
+	}
+}
+
+func (a *rowAnalysis) ownershipBindingSites(name *ast.Node, kind boundConsumeKind) (map[*ast.Node]bool, map[*ast.Node]bool) {
+	sites := make(map[*ast.Node]bool)
+	overwritten := make(map[*ast.Node]bool)
+	for _, reference := range a.identifierReferences(ast.GetSourceFileOfNode(name), a.symbolAt(name)) {
+		if reference == name {
+			continue
+		}
+		maps.Copy(sites, a.ownershipConsumptionSites(reference, kind, nil))
+		if assignment := ownershipAssignment(reference); assignment != nil {
+			overwritten[assignment] = true
+		}
+	}
+	return sites, overwritten
+}
+
+func (a *rowAnalysis) ownershipDirectlyBound(node *ast.Node) bool {
+	for node.Parent != nil && (ast.IsParenthesizedExpression(node.Parent) || typeOnlyWrapperOperand(node.Parent) == node || ast.IsNonNullExpression(node.Parent) && a.resultPropagations[node.Parent] == nil) {
+		node = node.Parent
+	}
+	return node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && ast.IsIdentifier(node.Parent.Name()) && node.Parent.Initializer() == node && a.boundProducedKind(node) != boundConsumePlain
+}
+
+func (a *rowAnalysis) ownershipReturnedPaths(producer *ast.Node, kind boundConsumeKind) [][]string {
+	var value *ast.Node
+	if ast.IsCallExpression(producer) {
+		if callee := a.resolveCallee(producer); callee != nil && callee.node.Body() != nil {
+			body := callee.node.Body()
+			if !ast.IsBlock(body) {
+				value = body
+			} else {
+				var returns []*ast.Node
+				var visit func(*ast.Node) bool
+				visit = func(node *ast.Node) bool {
+					if node != body && ast.IsFunctionLikeDeclaration(node) {
+						return false
+					}
+					if ast.IsReturnStatement(node) && node.Expression() != nil {
+						returns = append(returns, node.Expression())
+					}
+					node.ForEachChild(visit)
+					return false
+				}
+				visit(body)
+				if len(returns) == 1 {
+					value = returns[0]
+				}
+			}
+		}
+	}
+	var paths func(*ast.Node, []string) ([][]string, bool)
+	paths = func(expression *ast.Node, prefix []string) ([][]string, bool) {
+		inner := stripMustConsumeWrappers(expression)
+		if a.boundProducedKind(inner) == kind {
+			return [][]string{prefix}, true
+		}
+		var result [][]string
+		if ast.IsArrayLiteralExpression(inner) {
+			for index, element := range inner.AsArrayLiteralExpression().Elements.Nodes {
+				if element.Kind == ast.KindOmittedExpression {
+					continue
+				}
+				if element.Kind == ast.KindSpreadElement {
+					return nil, false
+				}
+				child, ok := paths(element, append(slices.Clone(prefix), strconv.Itoa(index)))
+				if !ok {
+					return nil, false
+				}
+				result = append(result, child...)
+			}
+			return result, true
+		}
+		if ast.IsObjectLiteralExpression(inner) {
+			for _, property := range inner.AsObjectLiteralExpression().Properties.Nodes {
+				if property.Kind != ast.KindPropertyAssignment {
+					return nil, false
+				}
+				name, ok := ownershipPropertyKey(property.Name())
+				if !ok {
+					return nil, false
+				}
+				child, ok := paths(property.Initializer(), append(slices.Clone(prefix), name))
+				if !ok {
+					return nil, false
+				}
+				result = append(result, child...)
+			}
+			return result, true
+		}
+		return nil, a.heldChannel(a.checker.GetTypeAtLocation(inner), 0) == boundConsumePlain
+	}
+	if value != nil {
+		if result, ok := paths(value, nil); ok {
+			return result
+		}
+	}
+	return [][]string{{"*"}}
+}

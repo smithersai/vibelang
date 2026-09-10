@@ -1,15 +1,30 @@
 package checker
 
-// This file is injected into the pinned fork's internal/checker package by the
-// bridge build overlay. The Smithers expression kinds are typed by
-// checkExpressionWorker, while the generic GetTypeAtLocation query does not
-// expose that result for the new kinds. Lowering needs the exact checked type
-// (especially the switch expression's undefined-vs-exhaustive join), so this
-// narrow seam delegates to the fork's own expression checker instead of
-// re-deriving its decision.
+// Narrow queries injected into the pinned compiler's checker by the build
+// overlay. Every query delegates to upstream's checked facts; it must not
+// duplicate resolution or type inference in the language implementation.
 
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
-func (c *Checker) SmithersCheckExpression(node *ast.Node) *Type {
+func (c *Checker) VibeLangCheckExpression(node *ast.Node) *Type {
 	return c.checkExpression(node)
+}
+
+// An inferred error type on the authored (pre-lowering) expression may admit
+// undefined even when every control-flow path returns. The upstream flow graph,
+// not that provisional type, decides whether to synthesize a fallthrough return.
+func (c *Checker) VibeLangFunctionHasImplicitReturn(node *ast.Node) bool {
+	return c.functionHasImplicitReturn(node)
+}
+
+// ResolveExternalModuleNameAtLocation retains the import attributes attached
+// to the authored import/export/type query. Upstream's explicit attributes
+// argument must not become an unconditional nil at our call sites: attributes
+// can select a different ambient module and therefore a different trust or
+// intrinsic identity.
+func (c *Checker) ResolveExternalModuleNameAtLocation(specifier *ast.Node) *ast.Symbol {
+	if specifier == nil {
+		return nil
+	}
+	return c.ResolveExternalModuleName(specifier, c.getImportAttributesTypeForModuleSpecifier(specifier))
 }

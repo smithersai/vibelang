@@ -1,0 +1,337 @@
+package main
+
+// Temporary source recovery for the remaining legacy semantic adapter. All
+// scanning and rewrite decisions are native. The actual native language
+// compiler parses/binds conditional declarations directly, without this pass.
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+type recoveryDiagnostic struct {
+	Severity string `json:"severity"`
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+	Start    int    `json:"start"`
+}
+type recoveryRun struct {
+	DerivedStart  int `json:"derivedStart"`
+	AuthoredStart int `json:"authoredStart"`
+	Length        int `json:"length"`
+}
+type recoveryGlue struct {
+	DerivedStart int `json:"derivedStart"`
+	Length       int `json:"length"`
+	Anchor       int `json:"anchor"`
+}
+type recoveryToken struct {
+	sourceToken
+	EndsExpression bool `json:"endsExpression"`
+}
+type recoveryResult struct {
+	Code             string               `json:"code"`
+	Changed          bool                 `json:"changed"`
+	IdentityFallback bool                 `json:"identityFallback"`
+	Diagnostics      []recoveryDiagnostic `json:"diagnostics"`
+	RejectedStarts   []int                `json:"rejectedStarts"`
+	Verbatim         []recoveryRun        `json:"verbatim"`
+	Glue             []recoveryGlue       `json:"glue"`
+	Tokens           []recoveryToken      `json:"tokens"`
+}
+type recoveryPiece struct {
+	text               string
+	start, end, anchor int
+	exact              bool
+}
+type recoveryEdit struct {
+	start, end int
+	pieces     []recoveryPiece
+}
+type recoveryRejection struct {
+	start   int
+	message string
+}
+
+func serveSourceRecovery(apiVersion int) {
+	response := struct {
+		APIVersion       int            `json:"apiVersion"`
+		CompilerRevision string         `json:"compilerRevision"`
+		Result           recoveryResult `json:"result"`
+		Error            *wireError     `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input struct {
+		Text string `json:"text"`
+	}
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("source recovery request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = recoverSource(input.Text)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_RECOVERY", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func recoveryGroupEnd(tokens []formatToken, openIndex int, open, close ast.Kind) int {
+	depth := 0
+	for i := openIndex; i < len(tokens); i++ {
+		if tokens[i].kind == open {
+			depth++
+		} else if tokens[i].kind == close {
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+func recoveryChainEnd(tokens []formatToken, closeIndex int) int {
+	i := closeIndex + 1
+	for {
+		if i >= len(tokens) || tokens[i].kind != ast.KindOpenBraceToken {
+			return -1
+		}
+		end := recoveryGroupEnd(tokens, i, ast.KindOpenBraceToken, ast.KindCloseBraceToken)
+		if end < 0 {
+			return -1
+		}
+		i = end + 1
+		if i >= len(tokens) || tokens[i].kind != ast.KindElseKeyword {
+			return tokens[end].end
+		}
+		i++
+		if i >= len(tokens) {
+			return -1
+		}
+		if tokens[i].kind != ast.KindIfKeyword {
+			continue
+		}
+		i++
+		if i >= len(tokens) || tokens[i].kind != ast.KindOpenParenToken {
+			return -1
+		}
+		header := recoveryGroupEnd(tokens, i, ast.KindOpenParenToken, ast.KindCloseParenToken)
+		if header < 0 {
+			return -1
+		}
+		i = header + 1
+	}
+}
+func planSourceRecovery(tokens []formatToken) (edits []recoveryEdit, rejected []recoveryRejection, count int) {
+	claimed := -1
+	for index, token := range tokens {
+		if token.kind != ast.KindIfKeyword || index+1 >= len(tokens) || tokens[index+1].kind != ast.KindOpenParenToken {
+			continue
+		}
+		open := index + 1
+		parens, braces, close := 0, 0, -1
+		separators := []int{}
+		for i := open; i < len(tokens); i++ {
+			switch tokens[i].kind {
+			case ast.KindOpenParenToken:
+				parens++
+			case ast.KindCloseParenToken:
+				parens--
+				if parens == 0 {
+					close = i
+				}
+			case ast.KindOpenBraceToken:
+				braces++
+			case ast.KindCloseBraceToken:
+				braces--
+			case ast.KindSemicolonToken:
+				if parens == 1 && braces == 0 {
+					separators = append(separators, i)
+				}
+			}
+			if close >= 0 {
+				break
+			}
+		}
+		if close < 0 || len(separators) == 0 {
+			continue
+		}
+		count++
+		reject := func(message string) { rejected = append(rejected, recoveryRejection{token.start, message}) }
+		if len(separators) > 1 {
+			reject("a conditional declaration takes exactly one `;` between the declaration and the condition")
+			continue
+		}
+		separator := separators[0]
+		declaration := tokens[open+1].kind
+		if declaration == ast.KindVarKeyword {
+			reject("`var` in a conditional declaration hoists out of the conditional construct; use `const` or `let`")
+			continue
+		}
+		if declaration != ast.KindConstKeyword && declaration != ast.KindLetKeyword {
+			reject("a declaration in a conditional must begin with `const` or `let`")
+			continue
+		}
+		if separator <= open+1 || separator+1 >= close {
+			reject("a conditional declaration needs both a declaration and a condition around its `;`")
+			continue
+		}
+		end := recoveryChainEnd(tokens, close)
+		if end < 0 {
+			reject("a conditional declaration requires braced branches so the binding scope is provable")
+			continue
+		}
+		if token.start < claimed {
+			continue
+		}
+		claimed = end
+		edits = append(edits, recoveryEdit{start: token.start, end: end, pieces: []recoveryPiece{
+			{text: "{ ", anchor: token.start},
+			{start: tokens[open+1].start, end: tokens[separator].end, exact: true},
+			{text: " if (", anchor: token.start},
+			{start: tokens[separator+1].start, end: end, exact: true},
+			{text: " }", anchor: token.start},
+		}})
+	}
+	return
+}
+func recoveryExact(runs []recoveryRun, offset int) (int, bool) {
+	for _, run := range runs {
+		if offset >= run.DerivedStart && offset < run.DerivedStart+run.Length {
+			return run.AuthoredStart + offset - run.DerivedStart, true
+		}
+	}
+	return 0, false
+}
+func recoveryAnchor(runs []recoveryRun, glue []recoveryGlue, offset int) int {
+	if exact, ok := recoveryExact(runs, offset); ok {
+		return exact
+	}
+	for _, run := range glue {
+		if offset >= run.DerivedStart && offset < run.DerivedStart+run.Length {
+			return run.Anchor
+		}
+	}
+	return 0
+}
+func applySourceRecovery(source string, edits []recoveryEdit, previous []recoveryRun, oldGlue []recoveryGlue) (string, []recoveryRun, []recoveryGlue) {
+	var output strings.Builder
+	runs := []recoveryRun{}
+	glue := []recoveryGlue{}
+	exact := func(start, end int) {
+		for cursor := start; cursor < end; {
+			upper, authored, isExact := end, 0, false
+			for _, run := range previous {
+				if cursor >= run.DerivedStart && cursor < run.DerivedStart+run.Length {
+					upper = min(end, run.DerivedStart+run.Length)
+					authored = run.AuthoredStart + cursor - run.DerivedStart
+					isExact = true
+					break
+				}
+			}
+			if isExact {
+				runs = append(runs, recoveryRun{output.Len(), authored, upper - cursor})
+			} else {
+				anchor := 0
+				for _, run := range oldGlue {
+					if cursor >= run.DerivedStart && cursor < run.DerivedStart+run.Length {
+						upper = min(end, run.DerivedStart+run.Length)
+						anchor = run.Anchor
+						break
+					}
+				}
+				glue = append(glue, recoveryGlue{output.Len(), upper - cursor, anchor})
+			}
+			output.WriteString(source[cursor:upper])
+			cursor = upper
+		}
+	}
+	cursor := 0
+	for _, edit := range edits {
+		if edit.start > cursor {
+			exact(cursor, edit.start)
+		}
+		for _, piece := range edit.pieces {
+			if piece.exact {
+				exact(piece.start, piece.end)
+			} else if piece.text != "" {
+				glue = append(glue, recoveryGlue{output.Len(), len(piece.text), recoveryAnchor(previous, oldGlue, piece.anchor)})
+				output.WriteString(piece.text)
+			}
+		}
+		cursor = edit.end
+	}
+	if cursor < len(source) {
+		exact(cursor, len(source))
+	}
+	return output.String(), runs, glue
+}
+
+func recoverSource(source string) (recoveryResult, error) {
+	result := recoveryResult{Code: source, Diagnostics: []recoveryDiagnostic{}, RejectedStarts: []int{},
+		Verbatim: []recoveryRun{{0, 0, len(source)}}, Glue: []recoveryGlue{}, Tokens: []recoveryToken{}}
+	lines := newLineIndex(source)
+	if lines.utf16Offset(len(source)) > maxFormatUnits {
+		return result, errors.New("source recovery exceeds its 4 Mi UTF16 unit budget")
+	}
+	tokens := formatCodeTokens(formatScan(source))
+	if len(tokens) > 1_000_000 {
+		return result, errors.New("source recovery exceeds its million token budget")
+	}
+	for _, token := range tokens {
+		result.Tokens = append(result.Tokens, recoveryToken{sourceToken: sourceToken{Kind: strings.TrimPrefix(token.kind.String(), "Kind"), Text: token.text,
+			Start: lines.utf16Offset(token.start), End: lines.utf16Offset(token.end)}, EndsExpression: !formatRegexAllowed(token.kind)})
+	}
+	rejectedAuthored := []int{}
+	for round := 0; ; round++ {
+		edits, rejected, count := planSourceRecovery(tokens)
+		if round >= 32 || count > 256 {
+			result.Code = source
+			result.Changed = false
+			result.IdentityFallback = true
+			result.Verbatim = []recoveryRun{{0, 0, len(source)}}
+			result.Glue = []recoveryGlue{}
+			result.Diagnostics = []recoveryDiagnostic{{"error", "VIBE1717", "conditional-declaration recovery exceeded its checked construct or iteration bound", 0}}
+			break
+		}
+		if len(edits) == 0 {
+			for _, rejection := range rejected {
+				start := recoveryAnchor(result.Verbatim, result.Glue, rejection.start)
+				rejectedAuthored = append(rejectedAuthored, start)
+				result.Diagnostics = append(result.Diagnostics, recoveryDiagnostic{"error", "VIBE1717", rejection.message, lines.utf16Offset(start)})
+			}
+			break
+		}
+		result.Code, result.Verbatim, result.Glue = applySourceRecovery(result.Code, edits, result.Verbatim, result.Glue)
+		tokens = formatCodeTokens(formatScan(result.Code))
+		result.Changed = true
+	}
+	derived := newLineIndex(result.Code)
+	for _, authored := range rejectedAuthored {
+		for _, run := range result.Verbatim {
+			if authored >= run.AuthoredStart && authored < run.AuthoredStart+run.Length {
+				result.RejectedStarts = append(result.RejectedStarts, derived.utf16Offset(run.DerivedStart+authored-run.AuthoredStart))
+				break
+			}
+		}
+	}
+	sort.Ints(result.RejectedStarts)
+	for index, run := range result.Verbatim {
+		result.Verbatim[index] = recoveryRun{derived.utf16Offset(run.DerivedStart), lines.utf16Offset(run.AuthoredStart), lines.utf16Offset(run.AuthoredStart+run.Length) - lines.utf16Offset(run.AuthoredStart)}
+	}
+	for index, run := range result.Glue {
+		result.Glue[index] = recoveryGlue{derived.utf16Offset(run.DerivedStart), derived.utf16Offset(run.DerivedStart+run.Length) - derived.utf16Offset(run.DerivedStart), lines.utf16Offset(run.Anchor)}
+	}
+	return result, nil
+}

@@ -1,0 +1,375 @@
+package main
+
+// Protocol adaptation: see THIRD_PARTY_NOTICES.md. Paths remain declarations;
+// this module never reads the filesystem or measures an execution boundary.
+
+import (
+	"regexp"
+	"strings"
+)
+
+type keyedPlanEffectsContext struct {
+	patterns       map[string]*regexp.Regexp
+	expansionBytes int
+}
+
+// Refuse a dense graph before constructing an unbounded conflict matrix.
+// This conservative expansion charge is in addition to the exact final
+// artifact byte/traversal check; it is a transport limit, not effect semantics.
+func (c *keyedPlanEffectsContext) chargeExpansion(bytes int) error {
+	c.expansionBytes += bytes
+	if c.expansionBytes > keyedPlanMaxBytes {
+		return keyedPlanFail("graph_too_large", "Plan effect expansion exceeds its encoded byte budget")
+	}
+	return nil
+}
+
+func keyedPlanPath(path string) string { return keyedPlanNFC(strings.ReplaceAll(path, "\\", "/")) }
+
+func keyedPlanPattern(value any) (string, bool) {
+	path, ok := value.(string)
+	if !ok || path == "" {
+		return "", false
+	}
+	for _, unit := range path {
+		if unit <= 0x1f || unit == 0x7f {
+			return "", false
+		}
+	}
+	parts := strings.Split(keyedPlanPath(path), "/")
+	if strings.HasSuffix(parts[0], ":") {
+		return "", false
+	}
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." {
+			return "", false
+		}
+	}
+	return path, true
+}
+
+func (c *keyedPlanEffectsContext) compilePattern(pattern string) error {
+	pattern = keyedPlanPath(pattern)
+	if c.patterns[pattern] != nil {
+		return nil
+	}
+	parts := strings.Split(pattern, "/")
+	var source strings.Builder
+	source.WriteString("^(?:")
+	for index, part := range parts {
+		if part == "**" {
+			if index == len(parts)-1 {
+				// JavaScript dot excludes all four line terminators. C0 paths
+				// are already refused, but Unicode line separators are legal.
+				source.WriteString("[^\\n\\r\\x{2028}\\x{2029}]*")
+			} else {
+				source.WriteString("(?:[^/]+/)*")
+			}
+			continue
+		}
+		source.WriteString(strings.ReplaceAll(regexp.QuoteMeta(part), "\\*", "[^/]*"))
+		if index != len(parts)-1 {
+			source.WriteByte('/')
+		}
+	}
+	// The upstream matcher has no multiline flag: $ requires the input end.
+	source.WriteString(")$")
+	compiled, err := regexp.Compile(source.String())
+	if err != nil {
+		return keyedPlanFail("invalid_node", "file glob exceeds the native matcher budget")
+	}
+	c.patterns[pattern] = compiled
+	return nil
+}
+
+func (c *keyedPlanEffectsContext) declaration(value any, read, group bool) (any, error) {
+	invalid := func() (any, error) {
+		return nil, keyedPlanFail("invalid_node", "invalid workspace-relative effect declaration")
+	}
+	if _, ok := value.(string); ok {
+		path, valid := keyedPlanPattern(value)
+		if !valid {
+			return invalid()
+		}
+		return path, nil
+	}
+	record, ok := value.(map[string]any)
+	if !ok {
+		return invalid()
+	}
+	switch record["_tag"] {
+	case "Glob":
+		out := map[string]any{"_tag": "Glob"}
+		for _, field := range []string{"include", "exclude"} {
+			values, present := record[field]
+			if field == "exclude" && !present {
+				continue
+			}
+			items, ok := keyedPlanStrings(values)
+			if !ok || field == "include" && len(items) == 0 {
+				return invalid()
+			}
+			for _, item := range items {
+				if _, valid := keyedPlanPattern(item); !valid {
+					return invalid()
+				}
+				if err := c.compilePattern(item); err != nil {
+					return nil, err
+				}
+			}
+			out[field] = items
+		}
+		return out, nil
+	case "TreeArtifact":
+		path, valid := keyedPlanPattern(record["path"])
+		if read || !valid {
+			return invalid()
+		}
+		return map[string]any{"_tag": "TreeArtifact", "path": path}, nil
+	case "Filegroup":
+		name, valid := record["name"].(string)
+		entries, ok := record["entries"].([]any)
+		if !group || !valid || name == "" || !ok {
+			return invalid()
+		}
+		projected := []any{}
+		for _, entry := range entries {
+			value, err := c.declaration(entry, read, false)
+			if err != nil {
+				return nil, err
+			}
+			projected = append(projected, value)
+		}
+		return map[string]any{"_tag": "Filegroup", "name": name, "entries": projected}, nil
+	}
+	return invalid()
+}
+
+func (c *keyedPlanEffectsContext) decode(value any) (map[string]any, error) {
+	record, ok := value.(map[string]any)
+	if !ok || (record["boundaryMode"] != "hard" && record["boundaryMode"] != "expected") {
+		return nil, keyedPlanFail("invalid_node", "effects require an explicit hard/expected boundary")
+	}
+	out := map[string]any{"boundaryMode": record["boundaryMode"]}
+	for _, field := range []string{"reads", "writes"} {
+		items, ok := record[field].([]any)
+		if !ok {
+			return nil, keyedPlanFail("invalid_node", "effects require reads and writes arrays")
+		}
+		projected := []any{}
+		for _, item := range items {
+			value, err := c.declaration(item, field == "reads", true)
+			if err != nil {
+				return nil, err
+			}
+			projected = append(projected, value)
+		}
+		out[field] = projected
+	}
+	if value, present := record["removes"]; present {
+		items, ok := keyedPlanStrings(value)
+		if !ok {
+			return nil, keyedPlanFail("invalid_node", "removes must be a path array")
+		}
+		for _, item := range items {
+			if _, valid := keyedPlanPattern(item); !valid {
+				return nil, keyedPlanFail("invalid_node", "invalid removal path")
+			}
+		}
+		out["removes"] = items
+	}
+	return out, nil
+}
+
+func keyedPlanExpanded(values any) []any {
+	out := []any{}
+	for _, value := range values.([]any) {
+		if record, ok := value.(map[string]any); ok && record["_tag"] == "Filegroup" {
+			out = append(out, record["entries"].([]any)...)
+		} else {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func keyedPlanProduced(effects map[string]any) []any {
+	out := keyedPlanExpanded(effects["writes"])
+	if removes, ok := effects["removes"].([]string); ok {
+		for _, path := range removes {
+			out = append(out, path)
+		}
+	}
+	return out
+}
+
+func (c *keyedPlanEffectsContext) matchesGlob(glob map[string]any, path string) bool {
+	match := func(field string) bool {
+		patterns, _ := glob[field].([]string)
+		for _, pattern := range patterns {
+			if c.patterns[keyedPlanPath(pattern)].MatchString(path) {
+				return true
+			}
+		}
+		return false
+	}
+	return match("include") && !match("exclude")
+}
+
+func (c *keyedPlanEffectsContext) overlaps(left, right any) bool {
+	ls, lString := left.(string)
+	rs, rString := right.(string)
+	lm, _ := left.(map[string]any)
+	rm, _ := right.(map[string]any)
+	if lString && rString {
+		return keyedPlanPath(ls) == keyedPlanPath(rs)
+	}
+	if lString && rm["_tag"] == "Glob" {
+		return c.matchesGlob(rm, keyedPlanPath(ls))
+	}
+	if lm["_tag"] == "Glob" && rString {
+		return c.matchesGlob(lm, keyedPlanPath(rs))
+	}
+	beneath := func(root, path string) bool {
+		root, path = keyedPlanPath(root), keyedPlanPath(path)
+		return path == root || strings.HasPrefix(path, root+"/")
+	}
+	if lm["_tag"] == "TreeArtifact" && rString {
+		return beneath(lm["path"].(string), rs)
+	}
+	if lString && rm["_tag"] == "TreeArtifact" {
+		return beneath(rm["path"].(string), ls)
+	}
+	if lm["_tag"] == "TreeArtifact" && rm["_tag"] == "TreeArtifact" {
+		return beneath(lm["path"].(string), rm["path"].(string)) || beneath(rm["path"].(string), lm["path"].(string))
+	}
+	// Glob/Glob and Glob/Tree are deliberately conservative, including when
+	// exclusions appear disjoint. Proving those sets disjoint is not this API.
+	return true
+}
+
+func (c *keyedPlanEffectsContext) overlap(left, right []any) []string {
+	out := []string{}
+	for _, entry := range left {
+		for _, other := range right {
+			if !c.overlaps(entry, other) {
+				continue
+			}
+			if path, ok := entry.(string); ok {
+				out = append(out, path)
+			} else {
+				record := entry.(map[string]any)
+				if record["_tag"] == "TreeArtifact" {
+					out = append(out, record["path"].(string))
+				} else {
+					out = append(out, strings.Join(record["include"].([]string), ","))
+				}
+			}
+			break
+		}
+	}
+	return out
+}
+
+func keyedPlanReaches(edges map[string][]string, from, to string) bool {
+	seen := map[string]bool{from: true}
+	pending := []string{from}
+	for len(pending) != 0 {
+		current := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		if current == to {
+			return true
+		}
+		for _, next := range edges[current] {
+			if !seen[next] {
+				seen[next] = true
+				pending = append(pending, next)
+			}
+		}
+	}
+	return false
+}
+
+func (c *keyedPlanEffectsContext) annotate(nodes []keyedPlanNode, frozen int) error {
+	edges, declared := map[string][]string{}, map[string][]string{}
+	produced, reads := make([][]any, len(nodes)), make([][]any, len(nodes))
+	writers := []int{}
+	for index, node := range nodes {
+		edges[node.ID], declared[node.ID] = node.DependsOn, keyedPlanDependencies(node.Material)
+		produced[index], reads[index] = keyedPlanProduced(node.Effects), keyedPlanExpanded(node.Effects["reads"])
+		if len(produced[index]) != 0 {
+			writers = append(writers, index)
+		}
+	}
+	for index := frozen; index < len(nodes); index++ {
+		later := &nodes[index]
+		if len(produced[index]) == 0 {
+			continue
+		}
+		for _, before := range writers {
+			if before >= index {
+				break
+			}
+			earlier := &nodes[before]
+			paths := c.overlap(produced[before], produced[index])
+			if len(paths) == 0 || keyedPlanReaches(edges, later.ID, earlier.ID) {
+				continue
+			}
+			strategy, runtime := "serialize", "delay-rebase"
+			if earlier.Strategy == "lane" || later.Strategy == "lane" {
+				strategy = "lane"
+			}
+			if earlier.Strategy == "fail" || later.Strategy == "fail" {
+				return keyedPlanFail("overlap_forbidden", "unordered writers require disjoint effects")
+			}
+			if earlier.Runtime == "stop-merge" || later.Runtime == "stop-merge" {
+				runtime = "stop-merge"
+			}
+			annotation := func(other string) any {
+				return map[string]any{"with": other, "paths": paths, "strategy": strategy, "runtime": runtime}
+			}
+			cost := 128 + len(earlier.ID) + len(later.ID)
+			for _, path := range paths {
+				cost += len(path) + 3
+			}
+			if before >= frozen {
+				cost *= 2
+			}
+			if err := c.chargeExpansion(cost); err != nil {
+				return err
+			}
+			if before >= frozen {
+				earlier.Conflicts = append(earlier.Conflicts, annotation(later.ID))
+			}
+			later.Conflicts = append(later.Conflicts, annotation(earlier.ID))
+			if strategy == "serialize" {
+				later.DependsOn = append(later.DependsOn, earlier.ID)
+				edges[later.ID] = later.DependsOn
+			}
+		}
+	}
+	for index := frozen; index < len(nodes); index++ {
+		reader := &nodes[index]
+		if len(reads[index]) == 0 {
+			continue
+		}
+		for _, writerIndex := range writers {
+			writer := nodes[writerIndex]
+			if writerIndex == index || len(c.overlap(reads[index], produced[writerIndex])) == 0 {
+				continue
+			}
+			if keyedPlanReaches(edges, reader.ID, writer.ID) || keyedPlanReaches(declared, writer.ID, reader.ID) {
+				continue
+			}
+			if keyedPlanReaches(edges, writer.ID, reader.ID) {
+				return keyedPlanFail("cycle", "reader ordering contradicts inferred producer ordering")
+			}
+			reader.DependsOn = append(reader.DependsOn, writer.ID)
+			if err := c.chargeExpansion(len(writer.ID) + 3); err != nil {
+				return err
+			}
+			edges[reader.ID] = reader.DependsOn
+		}
+	}
+	return nil
+}

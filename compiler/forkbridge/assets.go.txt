@@ -27,18 +27,18 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 )
 
-const unsupportedAssetLoaderCode = "SMITHERS_GO_ASSET_LOADER_UNSUPPORTED"
+const unsupportedAssetLoaderCode = "VIBELANG_GO_ASSET_LOADER_UNSUPPORTED"
 
 var sourceCodeExtensions = map[string]bool{
-	".sm":  true,
-	".ts":  true,
-	".tsx": true,
-	".mts": true,
-	".cts": true,
-	".js":  true,
-	".jsx": true,
-	".mjs": true,
-	".cjs": true,
+	".vibe": true,
+	".ts":   true,
+	".tsx":  true,
+	".mts":  true,
+	".cts":  true,
+	".js":   true,
+	".jsx":  true,
+	".mjs":  true,
+	".cjs":  true,
 }
 
 // isPotentialAssetFilePath classifies an input as non-code. It never selects a
@@ -94,7 +94,7 @@ func assetAttributes(node *ast.Node) assetAttributeSelection {
 				issueNode = entryNode
 			}
 			selection.issues = append(selection.issues, assetAttributeIssue{
-				node: issueNode, code: "SMITHERS5203",
+				node: issueNode, code: "VIBE5203",
 				message: "asset import attribute names must be static identifiers",
 			})
 			continue
@@ -102,7 +102,7 @@ func assetAttributes(node *ast.Node) assetAttributeSelection {
 		attributeName := name.Text()
 		if _, duplicate := selection.values[attributeName]; duplicate {
 			selection.issues = append(selection.issues, assetAttributeIssue{
-				node: name, code: "SMITHERS5204",
+				node: name, code: "VIBE5204",
 				message: "duplicate asset import attribute '" + attributeName + "'",
 			})
 			continue
@@ -113,7 +113,7 @@ func assetAttributes(node *ast.Node) assetAttributeSelection {
 				issueNode = entryNode
 			}
 			selection.issues = append(selection.issues, assetAttributeIssue{
-				node: issueNode, code: "SMITHERS5205",
+				node: issueNode, code: "VIBE5205",
 				message: "asset import attribute '" + attributeName + "' must be a string literal",
 			})
 			continue
@@ -161,6 +161,24 @@ func potentialAssetImport(p *project, importer *ast.SourceFile, declaration *ast
 		return true
 	}
 	return p != nil && p.hasStagedAsset(importer, specifier)
+}
+
+func assetImportHasRuntimeBindings(declaration *ast.ImportDeclaration) bool {
+	if declaration == nil || declaration.ImportClause == nil || importIsTypeOnly(declaration) {
+		return false
+	}
+	clause := declaration.ImportClause.AsImportClause()
+	if clause.Name() != nil {
+		return true
+	}
+	if clause.NamedBindings == nil {
+		return false
+	}
+	if ast.IsNamespaceImport(clause.NamedBindings) {
+		return true
+	}
+	elements := clause.NamedBindings.AsNamedImports().Elements
+	return elements != nil && len(elements.Nodes) > 0
 }
 
 func assetExportHasRuntimeBindings(declaration *ast.ExportDeclaration) bool {
@@ -226,7 +244,7 @@ func dynamicAssetAttributes(node *ast.Node) dynamicAssetAttributesResult {
 		}
 		result.ok = false
 		result.selection.issues = append(result.selection.issues, assetAttributeIssue{
-			node: target, code: "SMITHERS5218",
+			node: target, code: "VIBE5218",
 			message: "dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object",
 		})
 	}
@@ -275,7 +293,7 @@ func dynamicAssetAttributes(node *ast.Node) dynamicAssetAttributesResult {
 			}
 			result.ok = false
 			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
-				node: name, code: "SMITHERS5203",
+				node: name, code: "VIBE5203",
 				message: "asset import attribute names must be static identifiers",
 			})
 			continue
@@ -284,7 +302,7 @@ func dynamicAssetAttributes(node *ast.Node) dynamicAssetAttributesResult {
 		if _, duplicate := result.selection.values[attributeName]; duplicate {
 			result.ok = false
 			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
-				node: name, code: "SMITHERS5204",
+				node: name, code: "VIBE5204",
 				message: "duplicate asset import attribute '" + attributeName + "'",
 			})
 			continue
@@ -293,7 +311,7 @@ func dynamicAssetAttributes(node *ast.Node) dynamicAssetAttributesResult {
 		if !ast.IsStringLiteral(value) {
 			result.ok = false
 			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
-				node: value, code: "SMITHERS5205",
+				node: value, code: "VIBE5205",
 				message: "asset import attribute '" + attributeName + "' must be a string literal",
 			})
 			continue
@@ -345,7 +363,7 @@ func sourceAssetSites(p *project, file *ast.SourceFile) []sourceAssetSite {
 				node: statement, specifierNode: declaration.ModuleSpecifier,
 				specifier: declaration.ModuleSpecifier.Text(), selection: assetAttributes(declaration.Attributes),
 				potentialAsset:     potentialAssetImport(p, file, declaration),
-				hasRuntimeBindings: declaration.ImportClause != nil && !importIsTypeOnly(declaration),
+				hasRuntimeBindings: assetImportHasRuntimeBindings(declaration),
 				hasAttributes:      declaration.Attributes != nil, attributesOK: true,
 			})
 		case ast.IsExportDeclaration(statement):
@@ -402,7 +420,7 @@ func sourceAssetSites(p *project, file *ast.SourceFile) []sourceAssetSite {
 // legacyAssetAssertionDiagnostics runs while raw parser diagnostics are still
 // available. The fork deliberately parses the withdrawn `assert` clause but
 // emits a syntax diagnostic for it; recognizing the recovered ImportAttributes
-// node lets Smithers own the situation as SMITHERS5202 and suppress that parser
+// node lets VibeLang own the situation as VIBE5202 and suppress that parser
 // cascade without translating a TypeScript diagnostic code.
 func legacyAssetAssertionDiagnostics(p *project, file *ast.SourceFile, logical string) []diagnostic {
 	reports := make([]diagnostic, 0)
@@ -417,7 +435,7 @@ func legacyAssetAssertionDiagnostics(p *project, file *ast.SourceFile, logical s
 		}
 		start, length := syntaxSpan(declaration.Attributes, file.Text())
 		reports = append(reports, diagnostic{
-			Code: "SMITHERS5202", Category: "error",
+			Code: "VIBE5202", Category: "error",
 			Message: "asset imports use `with { ... }`; legacy import assertions are unsupported",
 			File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
 		})
@@ -455,7 +473,7 @@ type compiledAssetModule struct {
 //
 // Byte order is CORRECT here and is left alone deliberately: the result is an
 // EQUALITY key, not an order anyone observes. It is compared only against other
-// keys this function built in the same process (the SMITHERS5215
+// keys this function built in the same process (the VIBE5215
 // conflicting-attributes test and the `assetModules` map), and any
 // deterministic total order gives the same equality classes.
 func assetAttributesKey(values map[string]string) string {
@@ -485,7 +503,7 @@ func assetDeclarationPath(target string) string {
 
 func assetGeneratedPath(target string, attributes string) string {
 	digest := sha256.Sum256([]byte(target + "\x00" + attributes))
-	return path.Join(path.Dir(target), ".smithers-assets", fmt.Sprintf("%x.ts", digest))
+	return path.Join(path.Dir(target), ".vibelang-assets", fmt.Sprintf("%x.ts", digest))
 }
 
 func assetDataLiteral(value ctValue) string {
@@ -563,7 +581,7 @@ func compiledAssetTypeScript(module *compiledAssetModule) string {
 }
 
 func compiledAssetDeclaration(module *compiledAssetModule, generatedPath string) string {
-	specifier := "./.smithers-assets/" + path.Base(generatedPath)
+	specifier := "./.vibelang-assets/" + path.Base(generatedPath)
 	var builder strings.Builder
 	if module.defaultValue != nil && module.defaultExportName == "" {
 		builder.WriteString("declare const value: ")
@@ -1446,23 +1464,28 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 	attributesByTarget := make(map[string]string)
 	files := append([]*ast.SourceFile(nil), program.SourceFiles()...)
 	// Authored file names. This order decides which of two sites importing one
-	// asset path with conflicting attributes is the one SMITHERS5215 is
+	// asset path with conflicting attributes is the one VIBE5215 is
 	// reported at, so it is observable; the reference stages the same files
 	// with `compareText` (poc/src/language/semantic.ts:874).
 	sortUTF16By(files, func(file *ast.SourceFile) string { return file.FileName() })
 	for _, file := range files {
 		logical := logicalNameForSourceFile(p, file)
-		if p.smithersByLogical[logical] == nil {
+		if p.vibelangByLogical[logical] == nil {
 			continue
 		}
 		for _, site := range sourceAssetSites(p, file) {
+			if _, supplied := p.analysisRuntimeAt(file, site.specifier); supplied {
+				// This no-emit query already received a checker-only runtime
+				// module. It must not invoke a loader or discover new asset bytes.
+				continue
+			}
 			selection := site.selection
 			if len(selection.issues) > 0 {
 				for _, issue := range selection.issues {
 					reports = append(reports, assetDiagnostic(p, file, issue.node, issue.code, issue.message))
 				}
 				if site.potentialAsset && !site.hasSelectedLoader() {
-					reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5201",
+					reports = append(reports, assetDiagnostic(p, file, site.node, "VIBE5201",
 						"non-code imports require `with { type: \"...\" }`"))
 				}
 				continue
@@ -1479,7 +1502,7 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 			}
 			attributeKey := assetAttributesKey(selection.values)
 			if prior, exists := attributesByTarget[target]; exists && prior != attributeKey {
-				reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5215",
+				reports = append(reports, assetDiagnostic(p, file, site.node, "VIBE5215",
 					"one asset path is imported with conflicting attributes; the bounded module graph requires one canonical shape"))
 				continue
 			}
@@ -1506,14 +1529,14 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 				module, err = compileMdxAsset(target, p.assetByVirtual[target], selection)
 			}
 			if err != nil {
-				reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5213", err.Error()))
+				reports = append(reports, assetDiagnostic(p, file, site.node, "VIBE5213", err.Error()))
 				continue
 			}
 			generatedPath := assetGeneratedPath(target, attributeKey)
 			declarationPath := assetDeclarationPath(target)
 			for _, candidate := range []string{generatedPath, declarationPath} {
 				if _, exists := p.checkedFiles[candidate]; exists {
-					reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5216",
+					reports = append(reports, assetDiagnostic(p, file, site.node, "VIBE5216",
 						"generated asset identity collides with a project path: "+strings.TrimPrefix(candidate, "/src/")))
 					module = nil
 					break
@@ -1528,7 +1551,7 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 		}
 	}
 	// `File` is an authored module path and is ordered by UTF-16 code unit.
-	// `Code` is not: a diagnostic code is compiler-owned (`SMITHERS5215`,
+	// `Code` is not: a diagnostic code is compiler-owned (`VIBE5215`,
 	// `TS2678`), provably ASCII, and byte order is the same order there.
 	sort.SliceStable(reports, func(i, j int) bool {
 		if order := compareUTF16(reports[i].File, reports[j].File); order != 0 {
@@ -1549,10 +1572,25 @@ func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
 	for _, file := range files {
 		for _, site := range sourceAssetSites(a.project, file) {
 			selection := site.selection
+			if supplied, exists := a.project.analysisRuntimeAt(file, site.specifier); exists {
+				for _, issue := range selection.issues {
+					a.report(issue.node, issue.code, issue.message)
+				}
+				if supplied.data {
+					// Admission proved the complete graph consists of data only.
+					// Keep its provenance through the same binding-owned asset
+					// walk; nil module intentionally leaves emit to the host's
+					// separately mapped runtime graph. This query emits nothing.
+					a.assetImports[site.node] = assetImportEdge{loader: selection.loader}
+				}
+				// Unissued sources retain all ordinary foreign initialization
+				// and value-boundary rules, even when they carry an asset alias.
+				continue
+			}
 			if ast.IsImportCall(site.node) && (site.potentialAsset || site.hasAttributes || site.computedAttributed) {
 				// Dynamic asset syntax stays owned by this pass even when its
 				// literal attribute grammar is invalid. The module-import refusal
-				// must not add an unrelated SMITHERS1510 cascade to a 52xx asset
+				// must not add an unrelated VIBE1510 cascade to a 52xx asset
 				// diagnostic.
 				a.assetImports[site.node] = assetImportEdge{loader: selection.loader}
 			}
@@ -1561,7 +1599,7 @@ func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
 					a.report(issue.node, issue.code, issue.message)
 				}
 				if site.potentialAsset && !site.hasSelectedLoader() {
-					a.report(site.node, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`")
+					a.report(site.node, "VIBE5201", "non-code imports require `with { type: \"...\" }`")
 				}
 				continue
 			}
@@ -1570,7 +1608,7 @@ func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
 				// resolved as an asset without evaluating author code. It is owned and
 				// refused here; a bare computed import remains an ordinary runtime edge.
 				a.assetImports[site.node] = assetImportEdge{loader: selection.loader}
-				a.report(site.node, "SMITHERS5218",
+				a.report(site.node, "VIBE5218",
 					"dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object")
 				continue
 			}
@@ -1583,24 +1621,24 @@ func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
 			a.assetImports[site.node] = edge
 
 			if !strings.HasPrefix(site.specifier, ".") {
-				a.report(site.specifierNode, "SMITHERS5207", "asset imports must use a relative path")
+				a.report(site.specifierNode, "VIBE5207", "asset imports must use a relative path")
 				continue
 			}
 			if site.starExport {
-				a.report(site.node, "SMITHERS5206", "asset re-exports require an explicit named or namespace export")
+				a.report(site.node, "VIBE5206", "asset re-exports require an explicit named or namespace export")
 				continue
 			}
 			if !site.hasRuntimeBindings {
-				a.report(site.node, "SMITHERS5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only")
+				a.report(site.node, "VIBE5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only")
 				continue
 			}
 			if !site.hasSelectedLoader() {
-				a.report(site.node, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`")
+				a.report(site.node, "VIBE5201", "non-code imports require `with { type: \"...\" }`")
 				continue
 			}
 			_, inside := assetSpecifierTarget(file, site.specifier)
 			if !inside || !a.project.hasStagedAsset(file, site.specifier) {
-				a.report(site.specifierNode, "SMITHERS5209", "asset must be a staged regular file beneath the project root")
+				a.report(site.specifierNode, "VIBE5209", "asset must be a staged regular file beneath the project root")
 				continue
 			}
 			target, _ := assetSpecifierTarget(file, site.specifier)
@@ -1658,7 +1696,10 @@ func (a *rowAnalysis) assetImportAtReference(node *ast.Node) *ast.Node {
 // from a fourth copy of the same case list, and `await`/`!` keep their own
 // branch here exactly as they do there.
 func (a *rowAnalysis) assetValueProvenance(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
-	if expression == nil {
+	// Both the direct lookup and the re-export walk can only discover edges
+	// from this table. Without an asset import there is no provenance to find;
+	// traversing a repeated local alias DAG here can otherwise be exponential.
+	if expression == nil || len(a.assetImports) == 0 {
 		return false
 	}
 	if operand := typeOnlyWrapperOperand(expression); operand != nil {
@@ -1680,7 +1721,7 @@ func (a *rowAnalysis) assetValueProvenance(expression *ast.Node, seen map[*ast.S
 			return true
 		}
 		// The same compiler-owned edge may be reached through a project
-		// re-export, so the binding walk in smithersnativeprovenance.go answers
+		// re-export, so the binding walk in vibelangnativeprovenance.go answers
 		// the same question one module further away.
 		if a.assetProvenanceThroughBindings(expression) {
 			return true
@@ -1787,7 +1828,7 @@ func (l *lowerer) compiledDynamicAssetImport(node *ast.Node, module *compiledAss
 	if module.defaultExportName != "" {
 		value, ok := module.exports[module.defaultExportName]
 		if !ok {
-			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+			l.report(node, "VIBE5217", "the selected asset loader's default export does not name a generated value")
 		} else {
 			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
 			l.nextTemp++
@@ -1833,7 +1874,7 @@ func (l *lowerer) assetBindingDeclarationForValue(authoredName *ast.Node, initia
 	identifier := l.factory.NewIdentifier(authoredName.Text())
 	// The binding name is the one authored token this generated declaration
 	// truthfully represents. The embedded value comes from the asset file and is
-	// deliberately left unmapped instead of being assigned an invented `.sm`
+	// deliberately left unmapped instead of being assigned an invented `.vibe`
 	// position.
 	l.emitContext.AssignSourceMapRange(identifier, authoredName)
 	l.emitContext.SetOriginal(identifier, authoredName)
@@ -1858,7 +1899,7 @@ func (l *lowerer) lowerAssetImport(node *ast.Node, module *compiledAssetModule) 
 	if module.defaultExportName != "" {
 		value, ok := module.exports[module.defaultExportName]
 		if !ok {
-			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+			l.report(node, "VIBE5217", "the selected asset loader's default export does not name a generated value")
 		} else {
 			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
 			l.nextTemp++
@@ -1869,7 +1910,7 @@ func (l *lowerer) lowerAssetImport(node *ast.Node, module *compiledAssetModule) 
 	}
 	if name := clause.Name(); name != nil {
 		if module.defaultValue == nil {
-			l.report(name, "SMITHERS5217", "the selected asset loader has no default export")
+			l.report(name, "VIBE5217", "the selected asset loader has no default export")
 		} else {
 			initializer := l.compiledAssetValueExpression(*module.defaultValue)
 			if sharedDefault != "" {
@@ -1894,7 +1935,7 @@ func (l *lowerer) lowerAssetImport(node *ast.Node, module *compiledAssetModule) 
 				}
 				value, ok := l.compiledAssetExport(module, imported)
 				if !ok {
-					l.report(element, "SMITHERS5217", "the selected asset loader has no export named "+strconvQuote(imported))
+					l.report(element, "VIBE5217", "the selected asset loader has no export named "+strconvQuote(imported))
 					continue
 				}
 				initializer := l.compiledAssetValueExpression(value)
@@ -1910,7 +1951,7 @@ func (l *lowerer) lowerAssetImport(node *ast.Node, module *compiledAssetModule) 
 		// mixed named list may contain only erased type specifiers after a future
 		// grammar extension; keep that situation fail closed rather than emit an
 		// empty statement that loses the tracked edge.
-		l.report(node, "SMITHERS5208", "asset imports require at least one runtime binding")
+		l.report(node, "VIBE5208", "asset imports require at least one runtime binding")
 		return nil
 	}
 	list := l.factory.NewVariableDeclarationList(l.factory.NewNodeList(bindings), ast.NodeFlagsConst)
@@ -1929,7 +1970,7 @@ func (l *lowerer) lowerAssetExport(node *ast.Node, module *compiledAssetModule) 
 	if module.defaultExportName != "" {
 		value, ok := module.exports[module.defaultExportName]
 		if !ok {
-			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+			l.report(node, "VIBE5217", "the selected asset loader's default export does not name a generated value")
 		} else {
 			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
 			l.nextTemp++
@@ -1945,7 +1986,7 @@ func (l *lowerer) lowerAssetExport(node *ast.Node, module *compiledAssetModule) 
 	addExport := func(authoredName *ast.Node, imported string) {
 		value, ok := l.compiledAssetExport(module, imported)
 		if !ok {
-			l.report(authoredName, "SMITHERS5217", "the selected asset loader has no export named "+strconvQuote(imported))
+			l.report(authoredName, "VIBE5217", "the selected asset loader has no export named "+strconvQuote(imported))
 			return
 		}
 		initializer := l.compiledAssetValueExpression(value)
@@ -1987,7 +2028,7 @@ func (l *lowerer) lowerAssetExport(node *ast.Node, module *compiledAssetModule) 
 		statements = append(statements, l.factory.NewVariableStatement(modifiers, list))
 	}
 	if len(statements) == 0 {
-		l.report(node, "SMITHERS5208", "asset re-exports require at least one runtime binding")
+		l.report(node, "VIBE5208", "asset re-exports require at least one runtime binding")
 		return nil
 	}
 	for _, statement := range statements {

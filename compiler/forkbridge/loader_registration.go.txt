@@ -1,0 +1,474 @@
+package main
+
+// Provisional source-loader registration, recognized against the native
+// checker's compiler-owned declarations. Source is never imported or executed.
+// The host receives only a sandbox module and located diagnostics, not an AST.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"regexp"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/collections"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+const maxLoaderSourceBytes = 1024 * 1024
+const loaderVirtualRoot = "/src/vibelang-loader-project"
+const loaderPreludeName = "/src/__vibelang_loader_comptime.d.ts"
+const loaderDeclarationText = comptimeDeclarationText + `
+export declare namespace comptime {
+    interface LoaderRegistration { readonly type: string; }
+    function loader<A, C, M>(type: string, load: (asset: A, context: C) => M): LoaderRegistration;
+}
+`
+
+var loaderTypeName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+type loaderRegistrationRequest struct {
+	Mode     string `json:"mode"`
+	FileName string `json:"fileName"`
+	Source   string `json:"source"`
+}
+type loaderRegistrationDiagnostic struct {
+	Code     string `json:"code"`
+	Severity string `json:"severity"`
+	Message  string `json:"message"`
+	FileName string `json:"fileName"`
+	Line     int    `json:"line"`
+	Column   int    `json:"column"`
+}
+type loaderRegistration struct {
+	FileName      string `json:"fileName"`
+	Type          string `json:"type"`
+	SandboxSource string `json:"sandboxSource"`
+	Line          int    `json:"line"`
+	Column        int    `json:"column"`
+}
+type loaderRegistrationResult struct {
+	Candidate    bool                           `json:"candidate"`
+	OK           bool                           `json:"ok"`
+	Identified   bool                           `json:"identified"`
+	Registration *loaderRegistration            `json:"registration,omitempty"`
+	Diagnostics  []loaderRegistrationDiagnostic `json:"diagnostics"`
+}
+
+func serveLoaderRegistration(apiVersion int) {
+	response := struct {
+		APIVersion       int                      `json:"apiVersion"`
+		CompilerRevision string                   `json:"compilerRevision"`
+		Result           loaderRegistrationResult `json:"result"`
+		Error            *wireError               `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 8*1024*1024 + 1}
+	var input loaderRegistrationRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("loader registration request exceeds its 8 MiB encoded budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeLoaderRegistration(context.Background(), input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_LOADER_REGISTRATION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func loaderScriptKind(fileName string) core.ScriptKind {
+	switch strings.ToLower(path.Ext(fileName)) {
+	case ".js", ".mjs":
+		return core.ScriptKindJS
+	}
+	return core.ScriptKindTS
+}
+
+func loaderFileNameAllowed(fileName string) bool {
+	base := strings.ToLower(path.Base(strings.ReplaceAll(fileName, `\`, "/")))
+	if strings.HasSuffix(base, ".d.ts") || strings.HasSuffix(base, ".d.mts") {
+		return false
+	}
+	switch path.Ext(base) {
+	case ".ts", ".mts", ".js", ".mjs":
+		return true
+	}
+	return false
+}
+
+func parseLoaderSource(fileName, source string) *ast.SourceFile {
+	// Parser-only queries use a fixed normalized virtual name. The request's
+	// fileName is a diagnostic label and script-kind selector, never an upstream
+	// Path (which must already be absolute and normalized).
+	kind := loaderScriptKind(fileName)
+	virtual := "/src/__loader_candidate.ts"
+	if kind == core.ScriptKindJS {
+		virtual = "/src/__loader_candidate.js"
+	}
+	return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: virtual, Path: tspath.Path(virtual)}, source, kind)
+}
+
+// A spelling trigger selects candidates without granting authority or blame.
+func discoverLoaderRegistration(fileName, source string) bool {
+	if len(source) > maxLoaderSourceBytes || !strings.Contains(source, comptimeModuleSpecifier) {
+		return false
+	}
+	file := parseLoaderSource(fileName, source)
+	for _, statement := range file.Statements.Nodes {
+		if !ast.IsExportAssignment(statement) || statement.AsExportAssignment().IsExportEquals {
+			continue
+		}
+		expression := unwrapComptimeExpression(statement.AsExportAssignment().Expression)
+		if !ast.IsCallExpression(expression) {
+			continue
+		}
+		callee := unwrapComptimeExpression(expression.AsCallExpression().Expression)
+		switch {
+		case ast.IsPropertyAccessExpression(callee):
+			if callee.Name().Text() == "loader" {
+				return true
+			}
+		case ast.IsElementAccessExpression(callee):
+			argument := callee.AsElementAccessExpression().ArgumentExpression
+			if ast.IsStringLiteralLike(argument) && argument.Text() == "loader" {
+				return true
+			}
+		case ast.IsIdentifier(callee):
+			if callee.Text() == "loader" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func nativeLoaderProgram(fileName, source string) (*compiler.Program, *ast.SourceFile, error) {
+	portable := strings.TrimLeft(strings.ReplaceAll(fileName, `\`, "/"), "/")
+	if len(portable) >= 2 && portable[1] == ':' && ((portable[0] >= 'a' && portable[0] <= 'z') || (portable[0] >= 'A' && portable[0] <= 'Z')) {
+		portable = portable[2:]
+	}
+	internalName := path.Clean(loaderVirtualRoot + "/" + portable)
+	if strings.ContainsRune(fileName, 0) || !strings.HasPrefix(internalName, loaderVirtualRoot+"/") {
+		return nil, nil, fmt.Errorf("loader file name escaped the virtual project: %s", fileName)
+	}
+	extension := path.Ext(internalName)
+	internalName = strings.TrimSuffix(internalName, extension) + strings.ToLower(extension)
+	// The only filesystem is the supplied source, the declaration and upstream's
+	// embedded libraries. Even a triple-slash directive cannot read host files.
+	fs := bundled.WrapFS(vfstest.FromMap(map[string]string{internalName: source, loaderPreludeName: loaderDeclarationText}, true))
+	options := &core.CompilerOptions{
+		Target: core.ScriptTargetESNext, Module: core.ModuleKindESNext, ModuleResolution: core.ModuleResolutionKindBundler,
+		AllowJs: core.TSTrue, CheckJs: core.TSFalse, Strict: core.TSTrue, Types: []string{},
+		SkipLibCheck: core.TSTrue, NoEmit: core.TSTrue, AllowImportingTsExtensions: core.TSTrue,
+	}
+	options.Paths = collections.NewOrderedMapWithSizeHint[string, []string](1)
+	options.Paths.Set(comptimeModuleSpecifier, []string{loaderPreludeName})
+	options.PathsBasePath = "/src"
+	config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{
+		FileNames: []string{internalName, loaderPreludeName}, CompilerOptions: options,
+	}}
+	program := compiler.NewProgram(compiler.ProgramOptions{
+		Config: config, Host: compiler.NewCompilerHost("/src", fs, bundled.LibPath(), nil, nil, nil), SingleThreaded: core.TSTrue,
+	})
+	file := program.GetSourceFile(internalName)
+	if file == nil {
+		return nil, nil, errors.New("native loader source was not part of its checked program")
+	}
+	return program, file, nil
+}
+
+func analyzeLoaderRegistration(ctx context.Context, input loaderRegistrationRequest) (loaderRegistrationResult, error) {
+	result := loaderRegistrationResult{OK: true, Diagnostics: []loaderRegistrationDiagnostic{}}
+	if input.Mode != "discover" && input.Mode != "recognize" {
+		return result, errors.New("loader registration mode must be discover or recognize")
+	}
+	result.Candidate = discoverLoaderRegistration(input.FileName, input.Source)
+	if input.Mode == "discover" {
+		return result, nil
+	}
+	lines := newLineIndex(input.Source)
+	starts := formatLineStarts(input.Source)
+	position := func(offset int) (int, int) {
+		offset = max(0, min(offset, len(input.Source)))
+		line := formatLineOf(starts, offset)
+		return line + 1, lines.utf16Offset(offset) - lines.utf16Offset(starts[line]) + 1
+	}
+	report := func(offset int, code, message string) {
+		line, column := position(offset)
+		result.Diagnostics = append(result.Diagnostics, loaderRegistrationDiagnostic{Code: code, Severity: "error", Message: message, FileName: input.FileName, Line: line, Column: column})
+		result.OK = false
+	}
+	done := func() (loaderRegistrationResult, error) {
+		sort.SliceStable(result.Diagnostics, func(i, j int) bool {
+			a, b := result.Diagnostics[i], result.Diagnostics[j]
+			if a.Line != b.Line {
+				return a.Line < b.Line
+			}
+			if a.Column != b.Column {
+				return a.Column < b.Column
+			}
+			return a.Code < b.Code
+		})
+		return result, nil
+	}
+	if len(input.Source) > maxLoaderSourceBytes {
+		report(0, "VCT1301", fmt.Sprintf("a comptime loader file exceeds %d bytes", maxLoaderSourceBytes))
+		return done()
+	}
+	if !loaderFileNameAllowed(input.FileName) {
+		report(0, "VCT1301", "a comptime loader file must be one of .ts, .mts, .js, .mjs")
+		return done()
+	}
+	program, file, err := nativeLoaderProgram(input.FileName, input.Source)
+	if err != nil {
+		return result, err
+	}
+	for _, diagnostic := range program.GetSyntacticDiagnostics(ctx, file) {
+		report(diagnostic.Pos(), "VCT1300", "comptime loader file contains syntax the compiler cannot parse: "+diagnostic.Localize(locale.Default))
+	}
+	if !result.OK {
+		return done()
+	}
+	typeChecker, release := program.GetTypeChecker(ctx)
+	defer release()
+	resolver := &comptimeSymbols{checker: typeChecker}
+	var comptimeSymbol, loaderSymbol, moduleSymbol *ast.Symbol
+	prelude := program.GetSourceFile(loaderPreludeName)
+	if prelude != nil {
+		moduleSymbol = typeChecker.GetMergedSymbol(prelude.AsNode().Symbol())
+		walkComptime(prelude.AsNode(), func(node *ast.Node) {
+			if ast.IsFunctionDeclaration(node) {
+				switch declarationName(node) {
+				case "comptime":
+					comptimeSymbol = resolver.resolve(node.Name())
+				case "loader":
+					loaderSymbol = resolver.resolve(node.Name())
+				}
+			}
+		})
+	}
+	if comptimeSymbol == nil || loaderSymbol == nil {
+		report(0, "VCT1306", "compiler-owned comptime module identities could not be established")
+		return done()
+	}
+	start := func(node *ast.Node) int { return scanner.GetTokenPosOfNode(node, file, false) }
+	located := func(node *ast.Node, code, message string) { report(start(node), code, message) }
+	var comptimeImport *ast.Node
+	var exports []*ast.Node
+	for _, statement := range file.Statements.Nodes {
+		switch {
+		case ast.IsImportDeclaration(statement):
+			declaration := statement.AsImportDeclaration()
+			if !ast.IsStringLiteral(declaration.ModuleSpecifier) || declaration.ModuleSpecifier.Text() != comptimeModuleSpecifier {
+				located(statement, "VCT1301", `a comptime loader file may only import "vibelang:comptime"; the sandbox resolves no other module`)
+				continue
+			}
+			if comptimeImport != nil {
+				located(statement, "VCT1301", `duplicate "vibelang:comptime" import`)
+				continue
+			}
+			if declaration.ImportClause == nil || declaration.ImportClause.AsImportClause().PhaseModifier != ast.KindUnknown {
+				located(statement, "VCT1301", "the compiler-owned comptime module must be imported as a value binding named comptime")
+				continue
+			}
+			typeOnlyIntrinsic := false
+			walkComptime(declaration.ImportClause, func(node *ast.Node) {
+				if ast.IsImportSpecifier(node) && node.AsImportSpecifier().IsTypeOnly && resolver.resolve(node.Name()) == comptimeSymbol {
+					typeOnlyIntrinsic = true
+				}
+			})
+			if typeOnlyIntrinsic {
+				located(statement, "VCT1301", "the compiler-owned comptime module must be imported as a value binding named comptime")
+				continue
+			}
+			comptimeImport = statement
+		case ast.IsImportEqualsDeclaration(statement):
+			located(statement, "VCT1301", "a comptime loader file cannot use an import-equals declaration")
+		case ast.IsExportDeclaration(statement):
+			if statement.AsExportDeclaration().ModuleSpecifier != nil {
+				located(statement, "VCT1301", "a comptime loader file cannot re-export another module; the registration must be authored in this file")
+			}
+		case ast.IsExportAssignment(statement):
+			exports = append(exports, statement)
+		}
+	}
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		if ast.IsCallExpression(node) && node.AsCallExpression().Expression.Kind == ast.KindImportKeyword {
+			located(node, "VCT1301", "a comptime loader file cannot use a dynamic import")
+		}
+	})
+	if len(exports) != 1 {
+		report(0, "VCT1302", "a comptime loader file must default-export exactly one comptime.loader(...) registration")
+		return done()
+	}
+	exportNode := exports[0]
+	exportAssignment := exportNode.AsExportAssignment()
+	if exportAssignment.IsExportEquals {
+		located(exportNode, "VCT1302", "a comptime loader registration uses `export default`, not `export =`")
+		return done()
+	}
+	exported := unwrapComptimeExpression(exportAssignment.Expression)
+	if !ast.IsCallExpression(exported) {
+		located(exportAssignment.Expression, "VCT1302", "a comptime loader file must default-export a comptime.loader(...) call")
+		return done()
+	}
+	call := exported.AsCallExpression()
+	callee := unwrapComptimeExpression(call.Expression)
+	calleeName := callableSymbolNode(callee)
+	if ast.IsElementAccessExpression(callee) {
+		calleeName = callee.AsElementAccessExpression().ArgumentExpression
+	}
+	calleeSymbol := resolver.resolve(calleeName)
+	if calleeSymbol != loaderSymbol {
+		if calleeSymbol == nil {
+			located(callee, "VCT1304", `loader registration has no imported compiler identity from "vibelang:comptime"`)
+		} else {
+			located(callee, "VCT1303", `loader registration does not resolve to comptime.loader imported from "vibelang:comptime"`)
+		}
+		return done()
+	}
+	if comptimeImport == nil {
+		located(callee, "VCT1304", `loader registration requires a value import of "vibelang:comptime"`)
+		return done()
+	}
+	result.Identified = true
+	optional := call.QuestionDotToken != nil
+	if ast.IsPropertyAccessExpression(callee) {
+		optional = optional || callee.AsPropertyAccessExpression().QuestionDotToken != nil
+	}
+	if ast.IsElementAccessExpression(callee) {
+		optional = optional || callee.AsElementAccessExpression().QuestionDotToken != nil
+	}
+	if optional || (call.TypeArguments != nil && len(call.TypeArguments.Nodes) > 0) {
+		located(exported, "VCT1305", "comptime.loader is called directly, without optional chaining or explicit type arguments")
+		return done()
+	}
+	if ast.IsElementAccessExpression(callee) {
+		located(callee, "VCT1305", "the registration is written as comptime.loader(...); an element-access spelling is not recognized")
+		return done()
+	}
+	if call.Arguments == nil || len(call.Arguments.Nodes) != 2 {
+		located(exported, "VCT1305", "comptime.loader takes exactly two arguments: an import-attribute type literal and a loader function")
+		return done()
+	}
+	typeArgument := call.Arguments.Nodes[0]
+	if !ast.IsStringLiteral(typeArgument) {
+		located(typeArgument, "VCT1307", "the registered loader type must be a plain string literal the compiler can read without evaluation")
+		return done()
+	}
+	registeredType := typeArgument.Text()
+	if strings.ContainsAny(registeredType, "*?[]{}/.") {
+		located(typeArgument, "VCT1307", `this provisional registration takes a plain import-attribute type name such as "yaml"; glob and extension patterns like `+ctJSON(ctValue{kind: ctString, s: registeredType})+` are not supported yet`)
+		return done()
+	}
+	if !loaderTypeName.MatchString(registeredType) {
+		located(typeArgument, "VCT1307", "an import-attribute type must be a lowercase identifier matching /^[a-z][a-z0-9-]*$/")
+		return done()
+	}
+	functionText, refusal := nativeLoaderFunction(call.Arguments.Nodes[1], file, typeChecker, start(exportNode))
+	if refusal != "" {
+		located(call.Arguments.Nodes[1], "VCT1308", refusal)
+		return done()
+	}
+	allowed := make(map[*ast.Node]bool)
+	walkComptime(comptimeImport, func(node *ast.Node) { allowed[node] = true })
+	walkComptime(callee, func(node *ast.Node) { allowed[node] = true })
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		if !ast.IsIdentifier(node) || allowed[node] {
+			return
+		}
+		resolved := resolver.resolveValue(node)
+		if resolved != nil && (resolved == comptimeSymbol || resolved == loaderSymbol || resolved == moduleSymbol) {
+			located(node, "VCT1309", "a comptime loader file registers exactly one loader; compiler-owned comptime values cannot be used anywhere else in it")
+		}
+	})
+	if !result.OK {
+		return done()
+	}
+	sandboxSource, validEdits := formatApplyEdits(input.Source, []formatEdit{
+		{start: start(comptimeImport), end: comptimeImport.End()},
+		{start: start(exportNode), end: exportNode.End(), text: "export default " + functionText + ";"},
+	})
+	if !validEdits {
+		return result, errors.New("native loader registration edits overlap")
+	}
+	if diagnostics := parseLoaderSource(input.FileName, sandboxSource).Diagnostics(); len(diagnostics) > 0 {
+		located(exportNode, "VCT1302", "the compiler could not lower this registration into a sandbox module: "+diagnostics[0].Localize(locale.Default))
+		return done()
+	}
+	line, column := position(start(exported))
+	result.Registration = &loaderRegistration{FileName: input.FileName, Type: registeredType, SandboxSource: sandboxSource, Line: line, Column: column}
+	return done()
+}
+
+func nativeLoaderFunction(argument *ast.Node, file *ast.SourceFile, typeChecker *checker.Checker, registrationStart int) (string, string) {
+	expression := unwrapComptimeExpression(argument)
+	if ast.IsArrowFunction(expression) || ast.IsFunctionExpression(expression) {
+		if authoredGenerator(expression) {
+			return "", "a comptime loader cannot be a generator function"
+		}
+		return file.Text()[scanner.GetTokenPosOfNode(expression, file, false):expression.End()], ""
+	}
+	if !ast.IsIdentifier(expression) {
+		return "", "the loader function must be written inline or reference one same-file const or function declaration"
+	}
+	name := expression.Text()
+	symbol := typeChecker.GetSymbolAtLocation(expression)
+	if symbol == nil || len(symbol.Declarations) != 1 {
+		return "", name + " does not resolve to exactly one same-file loader declaration"
+	}
+	declaration := symbol.Declarations[0]
+	if ast.GetSourceFileOfNode(declaration) != file {
+		return "", name + " is not declared in this loader file"
+	}
+	if ast.IsFunctionDeclaration(declaration) {
+		if declaration.Parent != file.AsNode() {
+			return "", name + " must be declared at the top level of the loader file"
+		}
+		if authoredGenerator(declaration) {
+			return "", "a comptime loader cannot be a generator function"
+		}
+		if declaration.Body() == nil {
+			return "", name + " must have an executable function body in this loader file"
+		}
+		return name, ""
+	}
+	if !ast.IsVariableDeclaration(declaration) || !ast.IsIdentifier(declaration.Name()) {
+		return "", name + " is not a const-bound loader function"
+	}
+	list := declaration.Parent
+	if list == nil || !ast.IsVariableDeclarationList(list) || list.Flags&(ast.NodeFlagsConst|ast.NodeFlagsLet|ast.NodeFlagsUsing) != ast.NodeFlagsConst ||
+		len(list.AsVariableDeclarationList().Declarations.Nodes) != 1 || list.Parent == nil || !ast.IsVariableStatement(list.Parent) || list.Parent.Parent != file.AsNode() {
+		return "", name + " must be one top-level single-declaration const in this loader file"
+	}
+	if scanner.GetTokenPosOfNode(list.Parent, file, false) > registrationStart {
+		return "", name + " is declared after the registration; a const-bound loader must be declared above it, because the lowered sandbox module evaluates the reference in place"
+	}
+	initializer := unwrapComptimeExpression(declaration.AsVariableDeclaration().Initializer)
+	if initializer == nil || !(ast.IsArrowFunction(initializer) || ast.IsFunctionExpression(initializer)) {
+		return "", name + " must be initialized with a function expression"
+	}
+	if authoredGenerator(initializer) {
+		return "", "a comptime loader cannot be a generator function"
+	}
+	return name, ""
+}

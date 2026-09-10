@@ -1,0 +1,254 @@
+package main
+
+// Admission of loader-produced modules is a compiler policy, not a host parser
+// or JavaScript evaluation. Preserve the authored bytes; return only proven
+// dependency keys after the complete inert-data grammar has been validated.
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+)
+
+const maxGeneratedAssetSourceBytes = 2 * 1024 * 1024
+const maxGeneratedAssetDepth = 512
+
+var generatedAssetKey = regexp.MustCompile(`^[a-f0-9]{64}$`)
+var generatedAssetSpecifier = regexp.MustCompile(`^\./([a-f0-9]{64})\.ts$`)
+
+type assetOutputRequest struct {
+	Source              string   `json:"source"`
+	DeclaredLogicalKeys []string `json:"declaredLogicalKeys"`
+}
+type assetOutputResult struct {
+	OK         bool     `json:"ok"`
+	Message    string   `json:"message"`
+	References []string `json:"references"`
+}
+
+func serveAssetOutput(apiVersion int) {
+	response := struct {
+		APIVersion       int               `json:"apiVersion"`
+		CompilerRevision string            `json:"compilerRevision"`
+		Result           assetOutputResult `json:"result"`
+		Error            *wireError        `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input assetOutputRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("asset-output request exceeds its 16 MiB encoded budget")
+	}
+	if err == nil {
+		response.Result, err = validateAssetOutput(input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_ASSET_OUTPUT", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func validateAssetOutput(input assetOutputRequest) (assetOutputResult, error) {
+	refused := func(message string) (assetOutputResult, error) {
+		return assetOutputResult{Message: message, References: []string{}}, nil
+	}
+	if len(input.Source) > maxGeneratedAssetSourceBytes {
+		return refused(fmt.Sprintf("generated asset module exceeds %d bytes", maxGeneratedAssetSourceBytes))
+	}
+	if len(input.DeclaredLogicalKeys) > 1024 {
+		return assetOutputResult{}, errors.New("asset-output dependency keys exceed the 1024 entry budget")
+	}
+	declared := make(map[string]bool)
+	for _, key := range input.DeclaredLogicalKeys {
+		if !generatedAssetKey.MatchString(key) || declared[key] {
+			return assetOutputResult{}, errors.New("asset-output dependency keys must be unique lowercase SHA-256 digests")
+		}
+		declared[key] = true
+	}
+	file := parseLoaderSource("asset.generated.ts", input.Source)
+	if diagnostics := file.Diagnostics(); len(diagnostics) > 0 {
+		return refused("asset loader emitted invalid TypeScript: " + diagnostics[0].Localize(locale.Default))
+	}
+	bindings := make(map[string]bool)
+	bindName := func(name *ast.Node) string {
+		if !ast.IsIdentifier(name) || name.Text() == "Uint8Array" || bindings[name.Text()] {
+			return "compiler-generated asset bindings require unique plain identifiers"
+		}
+		bindings[name.Text()] = true
+		return ""
+	}
+	references := make(map[string]bool)
+	for _, statement := range file.Statements.Nodes {
+		if !ast.IsImportDeclaration(statement) {
+			continue
+		}
+		declaration := statement.AsImportDeclaration()
+		if declaration.Modifiers() != nil || declaration.Attributes != nil {
+			return refused("compiler-generated asset imports cannot carry modifiers or import attributes")
+		}
+		if !ast.IsStringLiteral(declaration.ModuleSpecifier) {
+			return refused("compiler-generated asset imports require a literal module specifier")
+		}
+		matched := generatedAssetSpecifier.FindStringSubmatch(declaration.ModuleSpecifier.Text())
+		if len(matched) != 2 {
+			return refused(`compiler-generated asset modules may only import another generated asset module as "./<logicalKey>.ts"`)
+		}
+		key := matched[1]
+		if !declared[key] {
+			return refused("compiler-generated asset module references an undeclared asset dependency: " + key)
+		}
+		if declaration.ImportClause == nil || declaration.ImportClause.AsImportClause().PhaseModifier != ast.KindUnknown {
+			return refused("compiler-generated asset imports require runtime bindings")
+		}
+		clause := declaration.ImportClause.AsImportClause()
+		if clause.Name() != nil {
+			if message := bindName(clause.Name()); message != "" {
+				return refused(message)
+			}
+		}
+		if clause.NamedBindings != nil {
+			if !ast.IsNamedImports(clause.NamedBindings) {
+				return refused("compiler-generated asset modules cannot bind an import namespace")
+			}
+			for _, element := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+				if element.AsImportSpecifier().IsTypeOnly {
+					return refused("compiler-generated asset imports require runtime bindings")
+				}
+				if message := bindName(element.Name()); message != "" {
+					return refused(message)
+				}
+			}
+		}
+		if clause.Name() == nil && clause.NamedBindings == nil {
+			return refused("compiler-generated asset imports require runtime bindings")
+		}
+		references[key] = true
+	}
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsImportDeclaration(statement) {
+			continue
+		}
+		if ast.IsVariableStatement(statement) {
+			list := statement.AsVariableStatement().DeclarationList
+			if list.Flags&(ast.NodeFlagsConst|ast.NodeFlagsLet|ast.NodeFlagsUsing) != ast.NodeFlagsConst {
+				return refused("compiler-generated asset bindings must be const")
+			}
+			for _, node := range list.AsVariableDeclarationList().Declarations.Nodes {
+				declaration := node.AsVariableDeclaration()
+				if declaration.Initializer == nil {
+					return refused("compiler-generated asset bindings require unique plain identifiers and initializers")
+				}
+				if message := validateAssetOutputExpression(declaration.Initializer, bindings, 0); message != "" {
+					return refused(message)
+				}
+				if message := bindName(declaration.Name()); message != "" {
+					return refused(message)
+				}
+			}
+			continue
+		}
+		if ast.IsExportAssignment(statement) && !statement.AsExportAssignment().IsExportEquals {
+			if message := validateAssetOutputExpression(statement.AsExportAssignment().Expression, bindings, 0); message != "" {
+				return refused(message)
+			}
+			continue
+		}
+		return refused("compiler-generated asset module contains executable statement " + statement.Kind.String())
+	}
+	keys := make([]string, 0, len(references))
+	for key := range references {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return assetOutputResult{OK: true, References: keys}, nil
+}
+
+func safeAssetOutputPropertyName(name *ast.Node) bool {
+	if name == nil {
+		return false
+	}
+	if ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name) {
+		return true
+	}
+	if ast.IsComputedPropertyName(name) {
+		expression := name.AsComputedPropertyName().Expression
+		return ast.IsStringLiteral(expression) || ast.IsNumericLiteral(expression)
+	}
+	return false
+}
+
+func validateAssetOutputExpression(node *ast.Node, bindings map[string]bool, depth int) string {
+	if depth > maxGeneratedAssetDepth {
+		return "compiler-generated asset expression exceeds the 512-level nesting budget"
+	}
+	expression := unwrapComptimeExpression(node)
+	switch {
+	case expression.Kind == ast.KindNullKeyword, expression.Kind == ast.KindTrueKeyword, expression.Kind == ast.KindFalseKeyword,
+		ast.IsStringLiteralLike(expression), ast.IsNumericLiteral(expression):
+		return ""
+	case ast.IsPrefixUnaryExpression(expression):
+		unary := expression.AsPrefixUnaryExpression()
+		if (unary.Operator == ast.KindMinusToken || unary.Operator == ast.KindPlusToken) && ast.IsNumericLiteral(unary.Operand) {
+			return ""
+		}
+	case ast.IsIdentifier(expression):
+		if bindings[expression.Text()] {
+			return ""
+		}
+	case ast.IsArrayLiteralExpression(expression):
+		for _, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if ast.IsOmittedExpression(element) || ast.IsSpreadElement(element) {
+				return "compiler-generated asset arrays cannot contain holes or spreads"
+			}
+			if message := validateAssetOutputExpression(element, bindings, depth+1); message != "" {
+				return message
+			}
+		}
+		return ""
+	case ast.IsObjectLiteralExpression(expression):
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			if !ast.IsPropertyAssignment(property) || !safeAssetOutputPropertyName(property.Name()) {
+				return "compiler-generated asset objects support only static data properties"
+			}
+			name := property.Name()
+			if !ast.IsComputedPropertyName(name) && (ast.IsIdentifier(name) || ast.IsStringLiteral(name)) && name.Text() == "__proto__" {
+				return "compiler-generated asset objects must use a computed '__proto__' data property"
+			}
+			if message := validateAssetOutputExpression(property.AsPropertyAssignment().Initializer, bindings, depth+1); message != "" {
+				return message
+			}
+		}
+		return ""
+	case ast.IsNewExpression(expression):
+		call := expression.AsNewExpression()
+		if ast.IsIdentifier(call.Expression) && call.Expression.Text() == "Uint8Array" && call.TypeArguments == nil && call.Arguments != nil && len(call.Arguments.Nodes) == 1 {
+			argument := call.Arguments.Nodes[0]
+			if !ast.IsArrayLiteralExpression(argument) {
+				return "compiler-generated Uint8Array values require one literal byte array"
+			}
+			for _, element := range argument.AsArrayLiteralExpression().Elements.Nodes {
+				if !ast.IsNumericLiteral(element) {
+					return "compiler-generated Uint8Array values must contain only integer bytes"
+				}
+				value, err := strconv.ParseFloat(element.Text(), 64)
+				if err != nil || math.Trunc(value) != value || value < 0 || value > 255 {
+					return "compiler-generated Uint8Array values must contain only integer bytes"
+				}
+			}
+			return ""
+		}
+	}
+	return "compiler-generated asset module contains executable expression " + expression.Kind.String()
+}

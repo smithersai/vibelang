@@ -1,0 +1,158 @@
+package main
+
+// Ordinary, in-memory TypeScript compilation uses the same native compiler as
+// the language. It is a source-kind boundary, never a .vibe checker bypass.
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type sourcePolicy struct {
+	Files                []string `json:"files"`
+	DiagnosticCode       string   `json:"diagnosticCode"`
+	MessagePrefix        string   `json:"messagePrefix"`
+	ForbidModuleSyntax   bool     `json:"forbidModuleSyntax"`
+	ForbiddenIdentifiers []string `json:"forbiddenIdentifiers"`
+}
+
+func compileTypeScriptProject(ctx context.Context, input request) (result, error) {
+	if input.ConfigFile != nil {
+		return result{EmitSkipped: true}, fmt.Errorf("TypeScript-only in-memory projects require explicit options, not a configFile")
+	}
+	project, err := buildProject(input)
+	if err != nil {
+		return result{EmitSkipped: true}, err
+	}
+	if err := validateSourcePolicy(project); err != nil {
+		return result{EmitSkipped: true}, err
+	}
+	// The transport owns artifact placement. Refuse competing locations instead
+	// of silently normalizing them, or emitting paths outside the staged set.
+	for _, name := range []string{"outDir", "rootDir", "outFile", "declarationDir", "tsBuildInfoFile"} {
+		if _, exists := input.Options[name]; exists {
+			return result{EmitSkipped: true}, fmt.Errorf("TypeScript-only in-memory transport owns %s", name)
+		}
+	}
+	fs := bundled.WrapFS(vfstest.FromMap(project.emitFiles, true))
+	host := compiler.NewCompilerHost("/src", fs, bundled.LibPath(), nil, nil, nil)
+	// Use upstream's validating JSON option parser. ParseCompilerOptions alone
+	// deliberately ignores unknown/malformed fields and is not this boundary.
+	parsed := tsoptions.ParseJsonConfigFileContent(map[string]any{
+		"compilerOptions": input.Options,
+		"files":           project.emitRoots,
+	}, host, "/src", nil, "/src/tsconfig.json", nil, nil)
+	collector := newDiagnosticCollector(project)
+	collector.add("parse", parsed.Errors)
+	if hasError(collector.converted) {
+		return result{EmitSkipped: true, Diagnostics: collector.converted}, nil
+	}
+	options := parsed.CompilerOptions().Clone()
+	options.RootDir = "/src"
+	options.OutDir = "/out"
+	// No implicit @types discovery: only supplied project inputs and upstream's
+	// embedded libraries exist in this host. The caller selects ordinary TS
+	// strictness and library options; .vibe inputs cannot reach this branch.
+	if options.Types == nil {
+		options.Types = []string{}
+	}
+	compiled, err := compileExternal(ctx, options, project)
+	project.convertDiagnosticSpansToUTF16(&compiled)
+	return compiled, err
+}
+
+func validateSourcePolicy(project *project) error {
+	policy := project.sourcePolicy
+	if policy == nil {
+		return nil
+	}
+	if len(policy.Files) == 0 || len(policy.Files) > 256 || len(policy.ForbiddenIdentifiers) > 256 ||
+		policy.DiagnosticCode == "" || len(policy.DiagnosticCode) > 64 || len(policy.MessagePrefix) > 1024 {
+		return fmt.Errorf("invalid or oversized sourcePolicy")
+	}
+	seen := make(map[string]bool)
+	for _, file := range policy.Files {
+		virtual, err := virtualFileName(file)
+		if err != nil {
+			return err
+		}
+		if _, ok := project.tsTexts[virtual]; !ok || seen[virtual] {
+			return fmt.Errorf("sourcePolicy file %q must name one unique supplied TypeScript input", file)
+		}
+		seen[virtual] = true
+	}
+	seen = make(map[string]bool)
+	for _, name := range policy.ForbiddenIdentifiers {
+		if name == "" || len(name) > 256 || seen[name] {
+			return fmt.Errorf("sourcePolicy identifiers must be nonempty, bounded and unique")
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
+func checkSourcePolicy(program *compiler.Program, project *project) []diagnostic {
+	policy := project.sourcePolicy
+	if policy == nil {
+		return nil
+	}
+	forbidden := make(map[string]bool)
+	for _, name := range policy.ForbiddenIdentifiers {
+		forbidden[name] = true
+	}
+	var diagnostics []diagnostic
+	for _, logical := range policy.Files {
+		virtual, _ := virtualFileName(logical) // validated before program creation
+		file := program.GetSourceFile(virtual)
+		if file == nil {
+			diagnostics = append(diagnostics, diagnostic{Code: policy.DiagnosticCode, Category: "error",
+				Message: policy.MessagePrefix + "policy source was not part of the checked program", File: logical, Phase: "check"})
+			continue
+		}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if node == nil {
+				return false
+			}
+			message := ""
+			if policy.ForbidModuleSyntax {
+				kind, _ := inspectModuleSyntax(node)
+				switch kind {
+				case "import-declaration":
+					message = "module imports are unavailable under the source policy"
+				case "import-equals":
+					message = "import-equals is unavailable under the source policy"
+				case "module-re-export":
+					message = "module re-exports are unavailable under the source policy"
+				case "import-type":
+					message = "import types are unavailable under the source policy"
+				case "import-meta":
+					message = "import.meta is unavailable under the source policy"
+				case "dynamic-import":
+					message = "dynamic import is unavailable under the source policy"
+				}
+			}
+			if message == "" && ast.IsIdentifier(node) && forbidden[node.Text()] {
+				message = node.Text() + " is unavailable under the source policy"
+			}
+			if message != "" {
+				start := scanner.GetTokenPosOfNode(node, file, false)
+				diagnostics = append(diagnostics, diagnostic{Code: policy.DiagnosticCode, Category: "error",
+					Message: policy.MessagePrefix + message, File: project.logicalByVirtual[virtual],
+					Span: &span{Start: start, Length: max(1, node.End()-start)}, Phase: "check"})
+				return false
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		visit(file.AsNode())
+	}
+	return diagnostics
+}

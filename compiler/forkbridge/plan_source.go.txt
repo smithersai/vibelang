@@ -1,0 +1,411 @@
+package main
+
+// Standalone bounded Plan construction and independent source Manifest query.
+// These return data, never JavaScript or a checked-program proof. Parsing,
+// binding, value-view types and durable contracts belong to the native compiler;
+// the host only validates/loads the returned artifacts. No source is evaluated.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type planSourceRequest struct {
+	Source      string                    `json:"source"`
+	FileName    string                    `json:"fileName"`
+	FlowID      string                    `json:"flowId"`
+	FlowVersion int                       `json:"flowVersion"`
+	Mode        string                    `json:"mode"`
+	Actions     []planSourceActionBinding `json:"actions,omitempty"`
+	Flows       []planSourceFlowBinding   `json:"flows,omitempty"`
+}
+
+type planSourceActionBinding struct {
+	ModuleSpecifier string `json:"moduleSpecifier"`
+	ExportName      string `json:"exportName"`
+	DescriptorJSON  string `json:"descriptorJson"`
+}
+
+// Resolve only explicit module bindings. This CompilerHost projection changes
+// fresh parser-owned import literals before binding; ordinary strings and
+// same-spelled values are untouched. No host filesystem or textual rewriting.
+type planSourceHost struct {
+	compiler.CompilerHost
+	modules map[string]string
+}
+
+func planSourceHostFor(host compiler.CompilerHost, p *project) compiler.CompilerHost {
+	if len(p.planSourceModules) == 0 {
+		return host
+	}
+	return &planSourceHost{CompilerHost: host, modules: p.planSourceModules}
+}
+
+func (h *planSourceHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	file := h.CompilerHost.GetSourceFile(opts)
+	h.projectImports(file)
+	return file
+}
+
+func (h *planSourceHost) projectImports(file *ast.SourceFile) {
+	if file != nil {
+		for _, literal := range file.Imports() {
+			if ast.IsStringLiteral(literal) {
+				if target := h.modules[literal.Text()]; target != "" {
+					literal.AsStringLiteral().Text = target
+				}
+			}
+		}
+	}
+}
+
+func (h *planSourceHost) GetContentMappedSourceFiles(opts ast.SourceFileParseOptions, mapper *contentmapper.Mapper) (contentmapper.SourceFiles, error) {
+	files, err := h.CompilerHost.GetContentMappedSourceFiles(opts, mapper)
+	h.projectImports(files.Canonical)
+	for _, file := range files.Supplemental {
+		h.projectImports(file)
+	}
+	return files, err
+}
+
+type planSourceResult struct {
+	Status          string              `json:"status"`
+	Diagnostics     []diagnostic        `json:"diagnostics"`
+	PlanJSON        string              `json:"planJson"`
+	ManifestJSON    string              `json:"manifestJson"`
+	ManifestFailure string              `json:"manifestFailure"`
+	DerivedActions  []bodyDerivedAction `json:"derivedActions"`
+}
+
+// A Plan never evaluates an Action.run expression as a Result object. Its
+// checked declaration presents the success value plus an absence sentinel;
+// upstream removes that sentinel at !, while the Plan lowerer separately
+// proves that ! belongs to a bound Action. The authored signature still uses
+// the real nominal Result, so contract derivation shares the language checker.
+// This is private to the data-only query, not a runtime ABI or an exemption
+// from the ordinary compiler's Result ownership rules.
+const planSourcePreludeText = `
+export interface VibeLangCompiledFlow<Input, Success> {
+  readonly id: string; readonly version: number; readonly plan: any; readonly manifest: any;
+  readonly artifactSource: "static-plan-artifact" | "effect-manifest";
+  readonly run: (input: Input) => Success;
+}
+export declare abstract class Action<Signature extends (input: any) => any> {
+  readonly __vibelangActionSignature: Signature;
+  static run<S extends (input: any) => any>(this: {readonly prototype: Action<S>}, input: Parameters<S>[0]):
+    Awaited<ReturnType<S>> extends Result<infer Success, any> ? Success | undefined : never;
+}
+type VibeLangPlanSuccess<Output> = [Output] extends [Result<infer Success, any>] ? Success : Output;
+export declare function durable<Input, Output>(body: (input: Input) => Output): VibeLangCompiledFlow<Input, VibeLangPlanSuccess<Output>>;
+export declare function sleep(durationMs: number): null;
+export declare function waitSignal<Payload>(identity: string): Payload;
+export declare function waitBroadcast<Payload>(identity: string): Payload;
+export declare function dequeue<Item>(identity: string): Item;
+export declare function fanOut<Item, Output>(items: readonly Item[], key: (item: Item) => unknown,
+  body: (item: Item) => Output): readonly Exclude<VibeLangPlanSuccess<Output>, undefined>[];
+export declare function sequential<First, Second>(first: First, second: Second): readonly [First, Second];
+export declare function loopWhile<State>(initial: State, condition: (state: State) => boolean,
+  body: (state: State) => State | undefined, maxRounds: number): State;
+`
+
+func emptyPlanSource() planSourceResult {
+	return planSourceResult{Status: "refused", Diagnostics: []diagnostic{}, DerivedActions: []bodyDerivedAction{}}
+}
+
+func servePlanSource(apiVersion int) {
+	response := struct {
+		APIVersion       int              `json:"apiVersion"`
+		CompilerRevision string           `json:"compilerRevision"`
+		Result           planSourceResult `json:"result"`
+		Error            *wireError       `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyPlanSource()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input planSourceRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("Plan source request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = compilePlanSource(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyPlanSource()
+		response.Error = &wireError{Code: "VIBELANG_GO_PLAN_SOURCE", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func compilePlanSource(ctx context.Context, input planSourceRequest) (planSourceResult, error) {
+	return compilePlanSourceProfile(ctx, input, nil)
+}
+
+// Private to keyed source compilation. Its caller first runs the normal
+// language checker; this pass additionally checks every upstream value-view
+// diagnostic before the Flow body can disappear into data.
+type keyedSourceProfile struct {
+	files      []sourceFile
+	exportName string
+	facts      map[keyedSourceLocation]keyedSourceFact
+	consume    func(*durableFunctionLowerer, durableValue) error
+}
+
+func compilePlanSourceProfile(ctx context.Context, input planSourceRequest, profile *keyedSourceProfile) (planSourceResult, error) {
+	out := emptyPlanSource()
+	if len(input.Source) > 2*1024*1024 || strings.TrimSpace(input.FileName) == "" || len(input.FileName) > 16*1024 ||
+		strings.ContainsRune(input.FileName, 0) || len(input.FlowID) > 16*1024 || strings.ContainsRune(input.FlowID, 0) ||
+		(input.FlowID != "" && strings.TrimSpace(input.FlowID) == "") || input.FlowVersion < 1 || input.FlowVersion > 9007199254740991 ||
+		(input.Mode != "plan" && input.Mode != "manifest") {
+		return out, errors.New("Plan source requires bounded source, identities and an explicit plan/manifest mode")
+	}
+	// Caller-controlled logical identities cannot replace compiler declarations.
+	// The source is staged under one private address and never resolved from disk.
+	stagedName := "__vibelang_plan_source__/input.vibe"
+	files := []sourceFile{{Path: stagedName, Kind: "vibelang", Text: input.Source}}
+	roots := []string{stagedName}
+	if profile != nil {
+		stagedName, files = input.FileName, profile.files
+		roots = nil
+		for _, file := range files {
+			roots = append(roots, file.Path)
+		}
+	}
+	project, err := buildProject(request{Lowering: "internal", RootNames: roots, Files: files})
+	if err != nil {
+		return out, err
+	}
+	project.checkedFiles[durableVirtualName], project.tsTexts[durableVirtualName] = planSourcePreludeText, planSourcePreludeText
+	bindings, err := installPlanActionBindings(project, input.Actions)
+	if err != nil {
+		return out, err
+	}
+	flows, err := installPlanFlowBindings(project, input.Flows, input.Actions)
+	if err != nil {
+		return out, err
+	}
+	options, issues, err := compilerOptions(map[string]any{"target": "esnext"})
+	if err != nil || len(issues) != 0 {
+		return out, errors.New("native Plan source compiler options are unavailable")
+	}
+	compiled, err := withInternalAuthoredAnalysis(ctx, options, project, true, nil, func(state *internalAuthoredAnalysis) (result, error) {
+		a, file, collector := state.analysis, state.files[0], state.collector
+		if profile != nil {
+			file = nil
+			for _, candidate := range state.files {
+				if durableLogicalFile(candidate) == input.FileName {
+					file = candidate
+					break
+				}
+			}
+			if file == nil {
+				return result{}, errors.New("keyed entry source is absent from the checked program")
+			}
+		}
+		lines := newLineIndex(input.Source)
+		finish := func() result {
+			return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: hasError(collector.converted)}
+		}
+		refuse := func(node *ast.Node, suffix, message string) result {
+			where, positions, name := file, lines, input.FileName
+			if profile != nil {
+				where = ast.GetSourceFileOfNode(node)
+				name = durableLogicalFile(where)
+				positions = newLineIndex(project.vibelangByLogical[name].authoredText)
+			}
+			start := scanner.GetTokenPosOfNode(node, where, false)
+			first := positions.utf16Offset(start)
+			collector.addConverted(diagnostic{Code: durableCode(suffix), Category: "error", File: name,
+				Message: message, Phase: "lower", Span: &span{Start: first, Length: max(1, positions.utf16Offset(node.End())-first)}})
+			return finish()
+		}
+		// Never let recovered symbols or incompatible authored value contracts
+		// survive erasure. These are the standalone source API's existing native
+		// binding/assignability gates, not a claim of full program checking.
+		checkFiles := []*ast.SourceFile{file}
+		if profile != nil {
+			checkFiles = state.files
+		}
+		for _, checkedFile := range checkFiles {
+			collector.add("bind", state.program.GetBindDiagnostics(ctx, checkedFile))
+			if profile != nil {
+				// The keyed caller has checked the complete retained-body program.
+				// This second native Program supplies success-value types to graph
+				// extraction; its intentional Result/value distinction is not a
+				// second definition of source validity. Never waive binder errors.
+				continue
+			}
+			for _, issue := range a.checker.GetDiagnostics(ctx, checkedFile) {
+				switch issue.Code() {
+				case 2300, 2395, 2440, 2451, 2322, 2339, 2345, 2353, 2741:
+					converted := project.convertDiagnostic(issue, "bind")
+					converted.Code = "VIBE4100"
+					collector.addConverted(converted)
+				}
+			}
+		}
+		if hasError(collector.converted) {
+			return finish(), nil
+		}
+		low := newLowerer(a.checker, a.prelude, a, a.comptime, map[string]string{})
+		low.file = file
+		if profile != nil {
+			low.keyedSourceFacts = profile.facts
+		}
+		if err := bindPlanSourceActions(low, state.program, bindings); err != nil {
+			return result{}, err
+		}
+		if err := bindPlanSourceFlows(low, state.program, flows); err != nil {
+			return result{}, err
+		}
+		calls := []*ast.Node{}
+		var find func(*ast.Node) bool
+		find = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && low.durableIntrinsic(node.AsCallExpression().Expression, "durable") {
+				calls = append(calls, node)
+			}
+			return node.ForEachChild(find)
+		}
+		file.AsNode().ForEachChild(find)
+		if len(calls) == 0 {
+			return refuse(file.AsNode(), "4102", "no imported vibelang:flows durable(...) call was found"), nil
+		}
+		if profile != nil {
+			selected, err := keyedSourceSelectFlow(low, file, calls, profile.exportName)
+			if err != nil {
+				return refuse(file.AsNode(), "4102", err.Error()), nil
+			}
+			calls = []*ast.Node{selected}
+		} else if len(calls) != 1 {
+			return refuse(calls[1], "4102", "bounded durable source compilation accepts exactly one durable(...) declaration"), nil
+		}
+		call := calls[0].AsCallExpression()
+		if call.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+			return refuse(calls[0], "4103", "durable(...) requires exactly one statically resolvable function argument"), nil
+		}
+		function := low.resolveDurableFunction(call.Arguments.Nodes[0])
+		if function == nil {
+			return refuse(call.Arguments.Nodes[0], "4103", "durable(...) argument is not an inline or statically resolvable function"), nil
+		}
+		if profile != nil && ast.GetSourceFileOfNode(function) != file {
+			return refuse(call.Arguments.Nodes[0], "4103", "keyed Flow bodies must be declared in the entry module"), nil
+		}
+		name := durableDeclarationName(calls[0], function)
+		flowID := input.FlowID
+		if flowID == "" {
+			flowID = input.FileName + "#" + name
+		}
+		functionName := name
+		if declared := function.Name(); declared != nil && ast.IsIdentifier(declared) {
+			functionName = declared.Text()
+		}
+		d := &durableFunctionLowerer{owner: low, flowID: flowID, flowVersion: input.FlowVersion, function: functionName,
+			logicalFile: input.FileName, schemaLogicalName: input.FileName, values: map[*ast.Symbol]durableValue{},
+			actions: map[string]durableAction{}, occurrences: map[string]int{}, nodeIDs: map[string]bool{}, signalIDs: map[string]bool{}, symbolicPlan: profile != nil}
+		d.activeNodes = &d.nodes
+		if profile != nil {
+			d.schemaLogicalName = "" // preserve the declaration module's nominal identity
+			if err := keyedSourceModule(d, file, calls[0], function); err != nil {
+				return refuse(calls[0], "4199", err.Error()), nil
+			}
+			for _, dependency := range state.files {
+				if dependency == file {
+					continue
+				}
+				if err := keyedSourceModule(d, dependency, nil, nil); err != nil {
+					return refuse(dependency.AsNode(), "4199", err.Error()), nil
+				}
+			}
+		}
+		// These are declaration facts, not the Plan's used-Action set. Even an
+		// unused declaration must be reported to a module-erasure consumer.
+		var collectActions func(*ast.Node) bool
+		collectActions = func(node *ast.Node) bool {
+			if ast.IsClassDeclaration(node) && node.Name() != nil {
+				if action, recognized := d.actionFor(node.Name()); recognized && action.invalid == "" && action.collision == nil {
+					out.DerivedActions = append(out.DerivedActions, bodyDerivedAction{Name: node.Name().Text(), ID: action.id,
+						Start: lines.utf16Offset(scanner.GetTokenPosOfNode(node, file, false)), End: lines.utf16Offset(node.End())})
+				}
+			}
+			return node.ForEachChild(collectActions)
+		}
+		file.AsNode().ForEachChild(collectActions)
+		if input.Mode == "plan" {
+			output, ok := d.lowerFunction(function)
+			for _, report := range low.reports {
+				start := lines.utf16Offset(report.start)
+				collector.addConverted(diagnostic{Code: report.code, Category: loweringReportCategory(report), File: input.FileName,
+					Message: report.message, Phase: "lower", Span: &span{Start: start, Length: max(1, lines.utf16Offset(report.start+report.length)-start)}})
+			}
+			if !ok || hasError(collector.converted) {
+				if profile != nil && !hasError(collector.converted) {
+					return refuse(function, "4199", "Flow has no supported static keyed Plan representation; executable-body fallback is disabled"), nil
+				}
+				if d.unrepresentable && !hasError(collector.converted) {
+					out.Status = "unrepresentable"
+				}
+				return finish(), nil
+			}
+			if profile != nil {
+				if err := profile.consume(d, output); err != nil {
+					return refuse(function, "4199", err.Error()), nil
+				}
+				out.Status = "plan"
+				return finish(), nil
+			}
+			out.PlanJSON = durableCanonicalJSON(d.plan(output))
+		}
+		// This invocation receives source and identities, never d or its Plan.
+		manifest, failure := durableEffectManifestWithIdentity(low, input.FileName, flowID, input.FlowVersion, functionName, function, input.FileName)
+		if failure != "" {
+			if input.Mode == "manifest" {
+				return refuse(function, "4199", "durable Flow effect manifest could not be derived: "+failure), nil
+			}
+			out.ManifestFailure = failure
+		} else {
+			out.ManifestJSON = durableCanonicalJSON(manifest)
+		}
+		out.Status = input.Mode
+		return finish(), nil
+	})
+	if err != nil {
+		return emptyPlanSource(), err
+	}
+	out.Diagnostics = compiled.Diagnostics
+	lines := newLineIndex(input.Source)
+	for index := range out.Diagnostics {
+		if profile == nil {
+			out.Diagnostics[index].File = input.FileName
+		} else if source := project.vibelangByLogical[out.Diagnostics[index].File]; source != nil {
+			lines = source.authoredLines
+		}
+		if where := out.Diagnostics[index].Span; where != nil {
+			// Project diagnostics are still byte spans until the public compile
+			// boundary. This query's own lowerer reports were converted above.
+			if out.Diagnostics[index].Phase != "lower" {
+				start := lines.utf16Offset(where.Start)
+				where.Length = lines.utf16Offset(where.Start+where.Length) - start
+				where.Start = start
+			}
+			where.Length = max(1, where.Length)
+		}
+		if out.Diagnostics[index].Phase == "parse" || out.Diagnostics[index].Phase == "bind" {
+			out.Diagnostics[index].Code = "VIBE4100"
+		}
+	}
+	if out.Status == "refused" || out.Status == "unrepresentable" {
+		out.PlanJSON, out.ManifestJSON, out.ManifestFailure, out.DerivedActions = "", "", "", []bodyDerivedAction{}
+	}
+	return out, nil
+}

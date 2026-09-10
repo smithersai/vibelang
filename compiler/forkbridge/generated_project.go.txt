@@ -1,0 +1,432 @@
+package main
+
+// The generated-project boundary is a native checker, not a compiler-library
+// compatibility facade. Only explicit roots are diagnosed. Dependencies retain
+// their own checking configuration, but their types participate in root checks.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnosticwriter"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type generatedProjectFile struct {
+	Path          string `json:"path"`
+	Text          string `json:"text"`
+	Configuration string `json:"configuration,omitempty"`
+}
+type generatedProjectRequest struct {
+	Files             []generatedProjectFile `json:"files"`
+	CurrentDirectory  string                 `json:"currentDirectory"`
+	DiskDependencies  *bool                  `json:"diskDependencies"`
+	ModuleOverrides   map[string]string      `json:"moduleOverrides,omitempty"`
+	TraceDependencies bool                   `json:"traceDependencies,omitempty"`
+}
+type generatedProjectResult struct {
+	Diagnostics  []diagnostic           `json:"diagnostics"`
+	Dependencies *nativeDependencyTrace `json:"dependencies,omitempty"`
+}
+
+func serveGeneratedProject(apiVersion int) {
+	response := struct {
+		APIVersion       int                    `json:"apiVersion"`
+		CompilerRevision string                 `json:"compilerRevision"`
+		Result           generatedProjectResult `json:"result"`
+		Error            *wireError             `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: generatedProjectResult{Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input generatedProjectRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("generated project exceeds its wire budget")
+	}
+	if err == nil {
+		response.Result, err = checkGeneratedProject(context.Background(), input)
+	}
+	if err != nil {
+		response.Result.Diagnostics = []diagnostic{}
+		response.Error = &wireError{Code: "VIBELANG_GO_GENERATED_PROJECT", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func generatedAbsolutePath(name string) bool {
+	return name != "" && len(name) <= 16*1024 && !strings.ContainsRune(name, 0) &&
+		!strings.Contains(name, "\\") && tspath.IsRootedDiskPath(name) && tspath.NormalizePath(name) == name
+}
+
+func checkGeneratedProject(ctx context.Context, input generatedProjectRequest) (generatedProjectResult, error) {
+	out := generatedProjectResult{Diagnostics: []diagnostic{}}
+	state, err := prepareGeneratedProject(input, false)
+	if err != nil {
+		return out, err
+	}
+	if err := state.check(ctx); err != nil {
+		return out, err
+	}
+	out.Diagnostics = state.diagnostics()
+	out.Dependencies, err = state.fs.trace.result()
+	if err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+type generatedProjectState struct {
+	program        *compiler.Program
+	foreignProgram *compiler.Program
+	foreignRoots   map[string]bool
+	project        *project
+	fs             *generatedProjectFS
+	roots          []string
+	collector      *diagnosticCollector
+}
+
+func prepareGeneratedProject(input generatedProjectRequest, declarations bool) (*generatedProjectState, error) {
+	if input.Files == nil || len(input.Files) > 256 || input.DiskDependencies == nil || !generatedAbsolutePath(input.CurrentDirectory) || len(input.ModuleOverrides) > 256 {
+		return nil, errors.New("generated project requires bounded sources, an absolute normalized currentDirectory and an explicit diskDependencies choice")
+	}
+	base := vfs.FS(vfstest.FromMap(map[string]string{}, true))
+	if *input.DiskDependencies {
+		base = osvfs.FS()
+	}
+	fs := &generatedProjectFS{FS: base, files: make(map[string]string), labels: make(map[string]string), directories: make(map[string]bool), reads: make(map[string]generatedRead), shadowed: make(map[string]bool)}
+	fs.trace = newDependencyTrace(input.TraceDependencies)
+	fs.diskDependencies = *input.DiskDependencies
+	roots := make([]string, 0, len(input.Files))
+	total := 0
+	for _, file := range input.Files {
+		if file.Configuration != "" && file.Configuration != "language" && file.Configuration != "typescript" {
+			return nil, errors.New("unknown generated source checking configuration")
+		}
+		if !generatedAbsolutePath(file.Path) || !tspath.FileExtensionIsOneOf(file.Path, []string{".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"}) || len(file.Text) > 2*1024*1024 {
+			return nil, errors.New("generated sources require normalized absolute TypeScript/output paths and bounded text")
+		}
+		key := fs.key(file.Path)
+		if _, exists := fs.files[key]; exists {
+			return nil, errors.New("duplicate generated project source identity")
+		}
+		fs.files[key], fs.labels[key] = file.Text, file.Path
+		// An older declaration artifact beside an explicit generated root is
+		// an output, not a source dependency. It must not replace the supplied
+		// bytes on a warm build. Explicitly supplied declaration roots still
+		// win through files above; no file is removed from the real filesystem.
+		if output := generatedDeclarationName(file.Path); output != file.Path {
+			fs.shadowed[fs.key(output)] = true
+		}
+		for dir := tspath.GetDirectoryPath(file.Path); dir != "" && !fs.directories[fs.key(dir)]; dir = tspath.GetDirectoryPath(dir) {
+			fs.directories[fs.key(dir)] = true
+		}
+		roots = append(roots, file.Path)
+		total += len(file.Text)
+	}
+	if total > 8*1024*1024 {
+		return nil, errors.New("generated sources exceed the combined source budget")
+	}
+	paths := make(map[string]any, len(input.ModuleOverrides))
+	for specifier, target := range input.ModuleOverrides {
+		if specifier == "" || len(specifier) > 2048 || strings.HasPrefix(specifier, ".") || strings.ContainsAny(specifier, "*\\\x00") || tspath.IsRootedDiskPath(specifier) || !generatedAbsolutePath(target) {
+			return nil, errors.New("generated module overrides require exact bare specifiers and normalized absolute targets")
+		}
+		paths[specifier] = []string{target}
+	}
+	project := &project{logicalByVirtual: make(map[string]string), tsTexts: make(map[string]string)}
+	for _, file := range input.Files {
+		project.logicalByVirtual[file.Path], project.tsTexts[file.Path] = file.Path, file.Text
+	}
+	state := &generatedProjectState{project: project, fs: fs, roots: roots, collector: newDiagnosticCollector(project), foreignRoots: make(map[string]bool)}
+	for _, file := range input.Files {
+		if file.Configuration == "typescript" {
+			state.foreignRoots[file.Path] = true
+		}
+	}
+	if len(roots) == 0 {
+		return state, nil
+	}
+	sort.Strings(roots)
+	// Bundled libs cannot be replaced by disk/virtual inputs. No tsconfig is
+	// loaded, no JS runs, and the filesystem rejects every write operation.
+	host := &generatedProjectHost{CompilerHost: compiler.NewCompilerHost(input.CurrentDirectory, bundled.WrapFS(fs), bundled.LibPath(), nil, nil, nil), project: fs}
+	options := map[string]any{"target": "esnext", "module": "esnext", "moduleResolution": "bundler", "allowJs": true, "checkJs": true,
+		"allowImportingTsExtensions": true, "noEmit": true, "skipLibCheck": true, "types": []string{"*"}}
+	if declarations {
+		// Already-lowered modules have passed the root-scoped mandatory gate.
+		// Imported implementations keep their own optional checking policy.
+		delete(options, "noEmit")
+		options["strict"], options["declaration"], options["emitDeclarationOnly"] = true, true, true
+	} else {
+		for _, name := range vibelangMandatoryOptions {
+			options[name] = true
+		}
+	}
+	if len(paths) != 0 {
+		options["paths"] = paths
+	}
+	parsed := tsoptions.ParseJsonConfigFileContent(map[string]any{"compilerOptions": options, "files": roots}, host, input.CurrentDirectory, nil, tspath.CombinePaths(input.CurrentDirectory, "tsconfig.json"), nil, nil)
+	state.collector.add("parse", parsed.Errors)
+	if hasError(state.collector.converted) {
+		return state, nil
+	}
+	// `paths` with an existing exact .js target takes that file literally.
+	// Resolve the declared target as an ordinary module first, so the native
+	// resolver (not a host suffix heuristic) selects its .ts/.d.ts sibling.
+	// An invalid override is a request failure, never permission to fall back
+	// to a different installed package with the same bare name.
+	if len(paths) != 0 {
+		resolutionOptions := parsed.CompilerOptions().Clone()
+		resolutionOptions.Paths = nil
+		resolver := module.NewResolver(host, resolutionOptions, "", "", nil)
+		for specifier, target := range input.ModuleOverrides {
+			resolved, _ := resolver.ResolveModuleName(target, roots[0], core.ModuleKindESNext, nil)
+			if !resolved.IsResolved() {
+				return nil, fmt.Errorf("generated module override %q could not resolve its declared target", specifier)
+			}
+			parsed.CompilerOptions().Paths.Set(specifier, []string{resolved.ResolvedFileName})
+		}
+	}
+	state.program = compiler.NewProgram(compiler.ProgramOptions{Host: host, Config: parsed, SingleThreaded: core.TSTrue})
+	if !declarations && len(state.foreignRoots) > 0 {
+		// Foreign implementation projections retain ordinary strict TS policy;
+		// language options apply only to lowered language roots. Both programs
+		// use the same frozen overlay/read cache, native resolver and libraries.
+		for _, name := range vibelangMandatoryOptions {
+			delete(options, name)
+		}
+		options["strict"] = true
+		foreign := tsoptions.ParseJsonConfigFileContent(map[string]any{"compilerOptions": options, "files": roots}, host, input.CurrentDirectory, nil, tspath.CombinePaths(input.CurrentDirectory, "tsconfig.json"), nil, nil)
+		foreign.CompilerOptions().Paths = parsed.CompilerOptions().Paths
+		state.foreignProgram = compiler.NewProgram(compiler.ProgramOptions{Host: host, Config: foreign, SingleThreaded: core.TSTrue})
+	}
+	return state, nil
+}
+
+func (s *generatedProjectState) add(phase string, items []*ast.Diagnostic) {
+	// Query only roots, so imported implementations are not charged the
+	// language's mandatory options. Program/global diagnostics remain visible.
+	for _, issue := range items {
+		if file := issue.File(); file != nil {
+			if _, exists := s.fs.files[s.fs.key(file.FileName())]; !exists {
+				continue
+			}
+		}
+		converted := s.project.convertDiagnostic(issue, phase)
+		converted.Message = diagnosticwriter.FlattenDiagnosticMessage(diagnosticwriter.WrapASTDiagnostic(issue), "\n", locale.Default)
+		s.collector.addConverted(converted)
+	}
+}
+
+func (s *generatedProjectState) check(ctx context.Context) error {
+	if s.program == nil {
+		return nil
+	}
+	s.add("check", s.program.GetProgramDiagnostics())
+	s.add("check", s.program.GetGlobalDiagnostics(ctx))
+	if s.foreignProgram != nil {
+		s.add("check", s.foreignProgram.GetProgramDiagnostics())
+		s.add("check", s.foreignProgram.GetGlobalDiagnostics(ctx))
+	}
+	for _, name := range s.roots {
+		program := s.program
+		if s.foreignProgram != nil && s.foreignRoots[name] {
+			program = s.foreignProgram
+		}
+		file := program.GetSourceFile(name)
+		if file == nil {
+			return fmt.Errorf("generated root %q was not checked", name)
+		}
+		s.add("parse", program.GetSyntacticDiagnostics(ctx, file))
+		s.add("bind", program.GetBindDiagnostics(ctx, file))
+		s.add("check", program.GetSemanticDiagnostics(ctx, file))
+	}
+	if s.fs.err != nil {
+		return s.fs.err
+	}
+	if len(s.collector.converted) > 4096 {
+		return errors.New("generated diagnostics exceed the response budget")
+	}
+	return nil
+}
+
+func (s *generatedProjectState) diagnostics() []diagnostic {
+	converted := result{Diagnostics: append([]diagnostic{}, s.collector.converted...)}
+	for index := range converted.Diagnostics {
+		if span := converted.Diagnostics[index].Span; span != nil {
+			copy := *span
+			converted.Diagnostics[index].Span = &copy
+		}
+	}
+	s.project.convertDiagnosticSpansToUTF16(&converted)
+	return converted.Diagnostics
+}
+
+// Only explicitly generated roots are parsed as TS even when named .js. Disk
+// dependencies use upstream's own source-kind selection unchanged.
+type generatedProjectHost struct {
+	compiler.CompilerHost
+	project *generatedProjectFS
+}
+
+func (h *generatedProjectHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	if text, ok := h.project.files[h.project.key(opts.FileName)]; ok {
+		return parser.ParseSourceFile(opts, text, core.ScriptKindTS)
+	}
+	return h.CompilerHost.GetSourceFile(opts)
+}
+
+type generatedRead struct {
+	text string
+	ok   bool
+}
+type generatedProjectFS struct {
+	vfs.FS
+	files            map[string]string
+	labels           map[string]string
+	directories      map[string]bool
+	mu               sync.Mutex
+	reads            map[string]generatedRead
+	shadowed         map[string]bool
+	bytes            int
+	err              error
+	trace            *dependencyTrace
+	diskDependencies bool
+}
+
+func (f *generatedProjectFS) tracePath(name string, directory bool) {
+	if f.diskDependencies {
+		f.trace.record(tspath.NormalizePath(name), directory)
+	}
+}
+
+func (f *generatedProjectFS) key(name string) string {
+	return tspath.GetCanonicalFileName(tspath.NormalizePath(name), f.UseCaseSensitiveFileNames())
+}
+func (f *generatedProjectFS) FileExists(name string) bool {
+	if _, ok := f.files[f.key(name)]; ok {
+		return true
+	}
+	if f.shadowed[f.key(name)] {
+		return false
+	}
+	f.tracePath(name, false)
+	return f.FS.FileExists(name)
+}
+func (f *generatedProjectFS) DirectoryExists(name string) bool {
+	if f.directories[f.key(name)] {
+		return true
+	}
+	exists := f.FS.DirectoryExists(name)
+	if !exists {
+		f.tracePath(name, true)
+	}
+	return exists
+}
+func (f *generatedProjectFS) Realpath(name string) string {
+	if label, ok := f.labels[f.key(name)]; ok {
+		return label
+	}
+	f.tracePath(name, false)
+	target := f.FS.Realpath(name)
+	f.tracePath(target, false)
+	return target
+}
+func (f *generatedProjectFS) ReadFile(name string) (string, bool) {
+	key := f.key(name)
+	if text, ok := f.files[key]; ok {
+		return text, true
+	}
+	if f.shadowed[key] {
+		return "", false
+	}
+	f.tracePath(name, false)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if found, ok := f.reads[key]; ok {
+		return found.text, found.ok
+	}
+	if f.err != nil {
+		return "", false
+	}
+	if len(f.reads) >= 4096 {
+		f.err = errors.New("generated dependency reads exceed the file budget")
+		return "", false
+	}
+	info := f.FS.Stat(name)
+	if info == nil || !info.Mode().IsRegular() {
+		f.reads[key] = generatedRead{}
+		return "", false
+	}
+	if info.Size() > 8*1024*1024 {
+		f.err = errors.New("generated dependency exceeds the per-file byte budget")
+		return "", false
+	}
+	text, ok := f.FS.ReadFile(name)
+	f.bytes += len(text)
+	if len(text) > 8*1024*1024 || f.bytes > 64*1024*1024 {
+		f.err = errors.New("generated dependency reads exceed the byte budget")
+		return "", false
+	}
+	f.reads[key] = generatedRead{text, ok}
+	return text, ok
+}
+func (f *generatedProjectFS) GetAccessibleEntries(name string) vfs.Entries {
+	f.tracePath(name, true)
+	entries := f.FS.GetAccessibleEntries(name)
+	files, dirs := make(map[string]bool), make(map[string]bool)
+	for _, entry := range entries.Files {
+		if !f.shadowed[f.key(tspath.CombinePaths(name, entry))] {
+			files[entry] = true
+		}
+	}
+	for _, entry := range entries.Directories {
+		dirs[entry] = true
+	}
+	key := f.key(name)
+	for file := range f.files {
+		if f.key(tspath.GetDirectoryPath(file)) == key {
+			files[tspath.GetBaseFileName(file)] = true
+		}
+	}
+	for dir := range f.directories {
+		if dir != key && f.key(tspath.GetDirectoryPath(dir)) == key {
+			dirs[tspath.GetBaseFileName(dir)] = true
+		}
+	}
+	entries.Files, entries.Directories = []string{}, []string{}
+	for entry := range files {
+		entries.Files = append(entries.Files, entry)
+	}
+	for entry := range dirs {
+		entries.Directories = append(entries.Directories, entry)
+	}
+	sort.Strings(entries.Files)
+	sort.Strings(entries.Directories)
+	return entries
+}
+func (*generatedProjectFS) WriteFile(string, string) error             { return vfs.ErrPermission }
+func (*generatedProjectFS) AppendFile(string, string) error            { return vfs.ErrPermission }
+func (*generatedProjectFS) Remove(string) error                        { return vfs.ErrPermission }
+func (*generatedProjectFS) Chtimes(string, time.Time, time.Time) error { return vfs.ErrPermission }

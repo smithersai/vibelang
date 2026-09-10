@@ -1,0 +1,541 @@
+package main
+
+// The versioned, compiler-owned declaration contract. This is an independent
+// reader of language/declaration-metadata.ts's callable wire format and the
+// runtime-identified module envelope, not a second source annotation language.
+// Invalid or unreadable metadata is reported at the
+// importing source edge; it must never silently become an empty effect row.
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"path"
+	"strings"
+	"unicode/utf16"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+const declarationTypeModule = "vibelang:declaration-types"
+
+// A module envelope needs to distinguish runtime brands/environments, not
+// merely name a file exporting similarly spelled types. Version 3 adds that
+// identity. Older readers refuse it rather than pretending the Go and JS
+// runtime copies are interchangeable. Callable row envelopes remain v2.
+const goDeclarationRuntimeABI = "vibelang-go-eager@1"
+
+type publishedEffects struct {
+	Version      int      `json:"version"`
+	Failures     []string `json:"failures"`
+	Requirements []string `json:"requirements"`
+	Convention   string   `json:"convention"`
+}
+
+type publishedModule struct {
+	Version      int      `json:"version"`
+	Runtimes     []string `json:"runtimes"`
+	Requirements string   `json:"requirements,omitempty"`
+	RuntimeABI   string   `json:"runtimeABI,omitempty"`
+}
+
+type publishedEffectsRead struct {
+	value   *publishedEffects
+	present bool
+	failure string
+}
+
+type publishedModuleRead struct {
+	value   *publishedModule
+	present bool
+	failure string
+}
+
+func metadataLength(text string) int { return len(utf16.Encode([]rune(text))) }
+
+// JSON is not arbitrary here. Canonical re-encoding also rejects repeated keys,
+// alternate key orders, unknown fields, and insignificant whitespace. A struct's
+// field order matches the JS encoder. HTML is not escaped; comment terminators
+// and line separators are, so metadata can safely precede an inline callable.
+func encodePublishedMetadata(value any) string {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		panic(err)
+	}
+	return strings.ReplaceAll(strings.TrimSuffix(buffer.String(), "\n"), "*/", "*\\/")
+}
+
+func decodePublishedJSON(payload string, value any) error {
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(value); err != nil {
+		return err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("metadata must contain one JSON value")
+	}
+	if payload != encodePublishedMetadata(value) {
+		return fmt.Errorf("metadata must use its canonical encoding")
+	}
+	return nil
+}
+
+func publishedRowName(name string) bool {
+	if metadataLength(name) > 1024 {
+		return false
+	}
+	if hash := strings.LastIndexByte(name, '#'); hash > 0 {
+		for _, character := range name[:hash] {
+			if character < 0x20 {
+				return false
+			}
+		}
+		return scanner.IsIdentifierText(name[hash+1:], core.LanguageVariantStandard)
+	}
+	identifier, qualifier, qualified := strings.Cut(name, "@")
+	if !scanner.IsIdentifierText(identifier, core.LanguageVariantStandard) {
+		return false
+	}
+	if !qualified {
+		return true
+	}
+	if qualifier == "" {
+		return false
+	}
+	for position := 0; position < len(qualifier); position++ {
+		character := qualifier[position]
+		if character >= 'A' && character <= 'Z' || character >= 'a' && character <= 'z' ||
+			character >= '0' && character <= '9' || strings.ContainsRune("._/-", rune(character)) {
+			continue
+		}
+		if character != '+' || position+4 >= len(qualifier) {
+			return false
+		}
+		for _, digit := range qualifier[position+1 : position+5] {
+			if !(digit >= '0' && digit <= '9' || digit >= 'A' && digit <= 'F') {
+				return false
+			}
+		}
+		position += 4
+	}
+	return true
+}
+
+func publishedNames(names []string) bool {
+	if names == nil || len(names) > 1024 {
+		return false
+	}
+	for index, name := range names {
+		if !publishedRowName(name) || index > 0 && compareUTF16(names[index-1], name) >= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func decodePublishedEffects(payload string) publishedEffectsRead {
+	read := publishedEffectsRead{present: true}
+	var value publishedEffects
+	switch {
+	case metadataLength(payload) > 65536:
+		read.failure = "effect metadata exceeds its bounded declaration envelope"
+	case decodePublishedJSON(payload, &value) != nil:
+		read.failure = "effect metadata must use the exact canonical versioned envelope"
+	case value.Version != 2:
+		read.failure = "published callable metadata needs an explicit current calling convention; rebuild this package"
+	case !publishedNames(value.Failures) || !publishedNames(value.Requirements):
+		read.failure = "effect metadata needs sorted, unique nominal names"
+	case value.Convention != "eager" && value.Convention != "resumable" && value.Convention != "async-resumable":
+		read.failure = "effect metadata has an unsupported calling convention"
+	case value.Convention != "eager" && len(value.Failures) == 0 && len(value.Requirements) == 0:
+		read.failure = "an empty effect row cannot publish a resumable calling convention"
+	default:
+		read.value = &value
+	}
+	return read
+}
+
+func readPublishedModule(file *ast.SourceFile) publishedModuleRead {
+	if file == nil || !file.IsDeclarationFile {
+		return publishedModuleRead{}
+	}
+	var claims []string
+	factory := ast.NewNodeFactory(ast.NodeFactoryHooks{})
+	for item := range scanner.GetLeadingCommentRanges(factory, file.Text(), 0) {
+		if item.Kind != ast.KindMultiLineCommentTrivia {
+			continue
+		}
+		comment := file.Text()[item.Pos():item.End()]
+		if strings.HasPrefix(comment, "/**") && strings.Contains(comment, "@vibelangModule") {
+			claims = append(claims, comment)
+		}
+	}
+	if len(claims) == 0 {
+		return publishedModuleRead{}
+	}
+	read := publishedModuleRead{present: true}
+	const prefix = "/** @vibelangModule "
+	if len(claims) != 1 || metadataLength(claims[0]) > 16384 ||
+		!strings.HasPrefix(claims[0], prefix) || !strings.HasSuffix(claims[0], " */") {
+		read.failure = "declaration module metadata must be one canonical bounded JSDoc envelope"
+		return read
+	}
+	payload := strings.TrimSuffix(strings.TrimPrefix(claims[0], prefix), " */")
+	var value publishedModule
+	valid := decodePublishedJSON(payload, &value) == nil && value.Runtimes != nil && len(value.Runtimes) <= 8 &&
+		(value.Version == 2 && value.RuntimeABI == "" || value.Version == 3 && value.RuntimeABI != "" && metadataLength(value.RuntimeABI) <= 256)
+	if value.Requirements != "" {
+		valid = valid && metadataLength(value.Requirements) <= 256 && scanner.IsIdentifierText(value.Requirements, core.LanguageVariantStandard)
+	}
+	for index, runtime := range value.Runtimes {
+		valid = valid && runtime != "" && metadataLength(runtime) <= 2048 && (index == 0 || compareUTF16(value.Runtimes[index-1], runtime) < 0)
+		for _, character := range runtime {
+			if character < 0x20 {
+				valid = false
+			}
+		}
+	}
+	if !valid {
+		read.failure = "unsupported or noncanonical declaration module envelope"
+	} else {
+		read.value = &value
+	}
+	return read
+}
+
+func (a *rowAnalysis) publishedModule(file *ast.SourceFile) publishedModuleRead {
+	if read, ok := a.declarationModules[file]; ok {
+		return read
+	}
+	read := readPublishedModule(file)
+	a.declarationModules[file] = read
+	return read
+}
+
+// Only scanner-classified adjacent JSDoc comments are carriers. Looking for a
+// substring in the file would give strings and unrelated comments authority.
+// Both trivia directions matter for inline method and returned-function types.
+func publishedComments(node *ast.Node) []string {
+	if node == nil {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(node)
+	if file == nil {
+		return nil
+	}
+	text := file.Text()
+	start := node.Pos()
+	if start < 0 || start > len(text) {
+		return nil
+	}
+	factory := ast.NewNodeFactory(ast.NodeFactoryHooks{})
+	seen := make(map[int]bool)
+	var comments []string
+	appendRange := func(comment ast.CommentRange) {
+		if seen[comment.Pos()] || comment.Kind != ast.KindMultiLineCommentTrivia || comment.End() > scanner.SkipTrivia(text, start) {
+			return
+		}
+		seen[comment.Pos()] = true
+		value := text[comment.Pos():comment.End()]
+		if strings.HasPrefix(value, "/**") {
+			comments = append(comments, value)
+		}
+	}
+	for comment := range scanner.GetLeadingCommentRanges(factory, text, start) {
+		appendRange(comment)
+	}
+	for comment := range scanner.GetTrailingCommentRanges(factory, text, start) {
+		appendRange(comment)
+	}
+	return comments
+}
+
+func publishedTagPayloads(node *ast.Node, tag string) []string {
+	var payloads []string
+	for _, comment := range publishedComments(node) {
+		body := strings.TrimSuffix(strings.TrimPrefix(comment, "/**"), "*/")
+		for _, line := range strings.Split(body, "\n") {
+			line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "*"))
+			if !strings.HasPrefix(line, "@"+tag) {
+				continue
+			}
+			rest := strings.TrimPrefix(line, "@"+tag)
+			if rest != "" && !isJSDocWhitespace(rest[0]) {
+				continue
+			}
+			payloads = append(payloads, strings.TrimSpace(rest))
+		}
+	}
+	return payloads
+}
+
+type publishedAccessor struct {
+	Version    int  `json:"version"`
+	Enumerable bool `json:"enumerable"`
+}
+
+func readPublishedAccessor(node *ast.Node) (*publishedAccessor, string) {
+	claims := publishedTagPayloads(node, "vibelangAccessor")
+	if len(claims) == 0 {
+		return nil, ""
+	}
+	var value publishedAccessor
+	if len(claims) != 1 || metadataLength(claims[0]) > 256 ||
+		decodePublishedJSON(claims[0], &value) != nil || value.Version != 1 {
+		return nil, "accessor metadata must be one supported bounded canonical envelope"
+	}
+	return &value, ""
+}
+
+func (a *rowAnalysis) publishedEffects(node *ast.Node) publishedEffectsRead {
+	if read, ok := a.declarationEffects[node]; ok {
+		return read
+	}
+	claims := publishedTagPayloads(node, "vibelangEffects")
+	read := publishedEffectsRead{}
+	if len(claims) == 1 {
+		read = decodePublishedEffects(claims[0])
+	} else if len(claims) > 1 {
+		read = publishedEffectsRead{present: true, failure: "a callable must have exactly one effect metadata tag"}
+	}
+	a.declarationEffects[node] = read
+	return read
+}
+
+func (a *rowAnalysis) publishedRequirementType(file *ast.SourceFile, name string) *checker.Type {
+	module := a.publishedModule(file)
+	if module.value == nil || module.value.Requirements == "" {
+		return nil
+	}
+	symbol := a.checker.GetSymbolAtLocation(file.AsNode())
+	if symbol == nil {
+		return nil
+	}
+	for _, table := range a.checker.GetExportsOfModule(symbol) {
+		if table.Name != module.value.Requirements {
+			continue
+		}
+		table = a.canonical(table)
+		property := a.checker.GetPropertyOfType(a.checker.GetDeclaredTypeOfSymbol(table), name)
+		if property == nil {
+			return nil
+		}
+		return a.checker.GetTypeOfSymbolAtLocation(property, file.AsNode())
+	}
+	return nil
+}
+
+func (a *rowAnalysis) publishedRequirement(file *ast.SourceFile, name string) *ast.Symbol {
+	constructor := a.publishedRequirementType(file, name)
+	if !a.isContextConstructorType(constructor) {
+		return nil
+	}
+	for _, signature := range a.checker.GetSignaturesOfType(constructor, checker.SignatureKindConstruct) {
+		instance := a.checker.GetReturnTypeOfSignature(signature)
+		if instance != nil {
+			return a.canonical(instance.Symbol())
+		}
+	}
+	return nil
+}
+
+func ambientPublishedRequirement(name string) bool {
+	switch name {
+	case "Clock", "Locale", "Random", "Host", "Scheduler":
+		return true
+	}
+	return strings.Contains(name, "#")
+}
+
+// The standalone Go emitter currently links its own prelude. A calling
+// convention is not a Result brand or a capability environment: granting
+// compiler authority to a declaration for a different runtime would skip the
+// foreign boundary while leaving incompatible runtime values behind it. Keep
+// that boundary closed until the shared-runtime linker is installed. Empty
+// lists describe declarations that use only the source-language prelude.
+func publishedRuntimeLinked(file *ast.SourceFile, module *publishedModule) bool {
+	if module.Version == 3 && module.RuntimeABI != goDeclarationRuntimeABI {
+		return false
+	}
+	for _, runtime := range module.Runtimes {
+		if !strings.HasPrefix(runtime, ".") && !strings.HasPrefix(runtime, "/") {
+			return false
+		}
+		resolved := runtime
+		if !path.IsAbs(resolved) {
+			resolved = path.Join(path.Dir(file.FileName()), resolved)
+		}
+		resolved = path.Clean(resolved)
+		if resolved != preludeVirtualName && resolved != strings.TrimSuffix(preludeVirtualName, ".ts")+".js" &&
+			resolved != strings.TrimSuffix(preludeVirtualName, ".ts")+".d.ts" {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *rowAnalysis) publishedRequirements(node *ast.Node) rowSet {
+	rows := make(rowSet)
+	metadata := a.publishedEffects(node)
+	file := ast.GetSourceFileOfNode(node)
+	if metadata.value == nil || a.publishedModule(file).value == nil {
+		return rows
+	}
+	for _, name := range metadata.value.Requirements {
+		if symbol := a.publishedRequirement(file, name); symbol != nil {
+			addRow(rows, a.row(symbol))
+		} else if ambientPublishedRequirement(name) {
+			addRow(rows, ambientRow(name))
+		}
+	}
+	return rows
+}
+
+func (a *rowAnalysis) collectPublishedFunctions(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsFunctionLike(node) {
+				shape, failures, _ := a.declaredFunctionShape(node)
+				binding := node.Name()
+				symbol := a.symbolAt(binding)
+				fn := &functionRows{node: node, file: file, symbol: symbol, name: bindingText(binding),
+					explicitReturn: true, declaredShape: shape, declaredFailures: failures, failures: failures,
+					requirements: a.publishedRequirements(node), unconsumedParams: make(map[int]bool)}
+				a.byNode[node] = fn
+				if symbol != nil {
+					a.bySymbol[symbol] = fn
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+func (a *rowAnalysis) checkDeclarationContracts(files []*ast.SourceFile) {
+	for _, source := range files {
+		inspected := make(map[*ast.SourceFile]bool)
+		inspect := func(file *ast.SourceFile, site *ast.Node) {
+			if file == nil || !file.IsDeclarationFile || file.FileName() == preludeVirtualName || inspected[file] {
+				return
+			}
+			inspected[file] = true
+			module := a.publishedModule(file)
+			if !module.present && !strings.Contains(file.Text(), "@vibelangEffects") && !strings.Contains(file.Text(), "@vibelangAccessor") {
+				return
+			}
+			failure := module.failure
+			if failure == "" && module.value != nil && !a.publishedRuntimeLinked(file, module.value) {
+				failure = "the published runtime ABI is not linked to this backend's Result and capability environment"
+			}
+			var visit func(*ast.Node) bool
+			visit = func(node *ast.Node) bool {
+				accessor, accessorFailure := readPublishedAccessor(node)
+				if failure == "" {
+					failure = accessorFailure
+				}
+				if failure == "" && accessor != nil && (module.value == nil ||
+					!(ast.IsGetAccessorDeclaration(node) || ast.IsSetAccessorDeclaration(node))) {
+					failure = "accessor metadata needs a published accessor declaration"
+				}
+				metadata := a.publishedEffects(node)
+				if failure == "" {
+					if metadata.failure != "" {
+						failure = metadata.failure
+					} else if metadata.value != nil {
+						if module.value == nil {
+							failure = "published callable metadata needs a versioned module; rebuild this package"
+						} else if metadata.value.Convention != "eager" {
+							failure = "this backend cannot yet drive the published resumable calling convention"
+						} else {
+							for _, name := range metadata.value.Requirements {
+								constructor := a.publishedRequirementType(file, name)
+								if constructor != nil && !a.isContextConstructorType(constructor) || constructor == nil && !ambientPublishedRequirement(name) {
+									failure = "requirement '" + name + "' has no nominal constructor in the compiler requirement table"
+									break
+								}
+							}
+						}
+					}
+				}
+				node.ForEachChild(visit)
+				return false
+			}
+			file.AsNode().ForEachChild(visit)
+			if failure != "" {
+				a.report(site, "VIBE1810", "cannot read the published VibeLang contract in '"+strings.TrimPrefix(file.FileName(), "/src/")+"': "+failure)
+			}
+		}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			// Only the declaration materializer may introduce this bridge. Match
+			// module specifiers, not ordinary strings with the same contents.
+			var authoredSpecifier *ast.Node
+			switch {
+			case ast.IsImportDeclaration(node):
+				authoredSpecifier = node.AsImportDeclaration().ModuleSpecifier
+			case ast.IsExportDeclaration(node):
+				authoredSpecifier = node.AsExportDeclaration().ModuleSpecifier
+			case node.Kind == ast.KindImportType:
+				argument := node.AsImportTypeNode().Argument
+				if argument != nil && argument.Kind == ast.KindLiteralType {
+					authoredSpecifier = argument.AsLiteralTypeNode().Literal
+				}
+			case ast.IsCallExpression(node) && node.Expression().Kind == ast.KindImportKeyword:
+				if len(node.AsCallExpression().Arguments.Nodes) > 0 {
+					authoredSpecifier = node.AsCallExpression().Arguments.Nodes[0]
+				}
+			case ast.IsImportEqualsDeclaration(node):
+				authoredSpecifier = importEqualsModuleSpecifier(node)
+			}
+			if authoredSpecifier != nil && ast.IsStringLiteral(authoredSpecifier) && authoredSpecifier.Text() == declarationTypeModule {
+				a.report(authoredSpecifier, "VIBE1810", "the declaration type bridge is compiler-owned and cannot be imported by authored source")
+				return false
+			}
+			if ast.IsImportDeclaration(node) || ast.IsExportDeclaration(node) {
+				var specifier *ast.Node
+				if ast.IsImportDeclaration(node) {
+					specifier = node.AsImportDeclaration().ModuleSpecifier
+				} else {
+					specifier = node.AsExportDeclaration().ModuleSpecifier
+				}
+				if specifier != nil {
+					if module := a.checker.ResolveExternalModuleNameAtLocation(specifier); module != nil {
+						for _, declaration := range module.Declarations {
+							inspect(ast.GetSourceFileOfNode(declaration), specifier)
+						}
+					}
+				}
+			}
+			if ast.IsCallExpression(node) || ast.IsNewExpression(node) {
+				if signature := a.checker.GetResolvedSignature(node); signature != nil && signature.Declaration() != nil {
+					inspect(ast.GetSourceFileOfNode(signature.Declaration()), node)
+				}
+			}
+			if ast.IsIdentifier(node) {
+				if symbol := a.symbolAt(node); symbol != nil {
+					for _, declaration := range symbol.Declarations {
+						inspect(ast.GetSourceFileOfNode(declaration), node)
+					}
+				}
+			}
+			if a.publishedEffects(node).present || len(publishedTagPayloads(node, "vibelangModule")) > 0 ||
+				len(publishedTagPayloads(node, "vibelangRequirements")) > 0 || len(publishedTagPayloads(node, "vibelangAccessor")) > 0 {
+				a.report(node, "VIBE1810", "VibeLang declaration metadata is compiler-owned, not an authored effect annotation")
+				return false
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		source.AsNode().ForEachChild(visit)
+	}
+}

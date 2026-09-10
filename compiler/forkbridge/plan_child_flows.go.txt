@@ -1,0 +1,504 @@
+package main
+
+// Child Plan graphs arrive as data artifacts, not source or executable code.
+// This query validates the envelope and every contract it uses for binding.
+// Full graph/opcode validation remains the runtime artifact boundary, exactly
+// as for the Plan returned by this query. A query result is not an execution
+// authorization or a replacement for PlanArtifact.validate.
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+)
+
+type planSourceFlowBinding struct {
+	ModuleSpecifier string `json:"moduleSpecifier"`
+	ExportName      string `json:"exportName"`
+	PlanJSON        string `json:"planJson"`
+	ManifestJSON    string `json:"manifestJson,omitempty"`
+}
+type durableBoundFlow struct {
+	plan, manifest map[string]any
+	input, success durableBindingSchema
+	actions        []durableBoundAction
+	depth          int
+	inputType      *checker.Type
+	runSymbol      *ast.Symbol
+	// Present only for a compiler-resolved source declaration, never wire data.
+	source *durableFunctionLowerer
+}
+type stagedPlanFlow struct {
+	fileName, exportName string
+	contract             durableBoundFlow
+}
+
+func durableBindingStrings(value any) ([]string, error) {
+	items, ok := value.([]any)
+	if !ok || len(items) > 100_000 {
+		return nil, errors.New("invalid durable binding string table")
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		text, ok := item.(string)
+		if !ok || text == "" || len(text) > 16*1024 || strings.ContainsRune(text, 0) || len(out) > 0 && compareUTF16(out[len(out)-1], text) >= 0 {
+			return nil, errors.New("durable binding string table must be bounded, sorted and unique")
+		}
+		out = append(out, text)
+	}
+	return out, nil
+}
+func durableBindingVersion(value any) bool {
+	number, ok := value.(float64)
+	return ok && number >= 1 && number <= 9007199254740991 && math.Trunc(number) == number
+}
+func durableBindingIdentity(value any) bool {
+	text, ok := value.(string)
+	return ok && strings.TrimSpace(text) != "" && len(text) <= 16*1024 && !strings.ContainsRune(text, 0)
+}
+func durableBindingDigest(value map[string]any) bool {
+	identity := durableCopyMap(value)
+	delete(identity, "digest")
+	return value["digest"] == durableDigest(identity)
+}
+func durableBindingActions(value any) ([]durableBoundAction, error) {
+	items, ok := value.([]any)
+	if !ok || len(items) > 100_000 {
+		return nil, errors.New("invalid bound Action table")
+	}
+	out := make([]durableBoundAction, 0, len(items))
+	previous := ""
+	for index, item := range items {
+		action, err := validateDurableActionBinding(durableCanonicalJSON(item))
+		if err != nil {
+			return nil, err
+		}
+		id := action.descriptor["id"].(string)
+		if index > 0 && compareUTF16(previous, id) >= 0 {
+			return nil, errors.New("bound Action table must be sorted and unique")
+		}
+		previous = id
+		out = append(out, action)
+	}
+	return out, nil
+}
+
+func durableChildContract(value map[string]any, depth int) (durableBoundFlow, error) {
+	invalid := func() (durableBoundFlow, error) {
+		return durableBoundFlow{}, errors.New("invalid child Plan binding envelope/contracts")
+	}
+	if depth > 8 {
+		return invalid()
+	}
+	keys := []string{"formatVersion", "flowId", "flowVersion", "nodes", "output", "requirements", "actions", "digest", "flowSchemas"}
+	for _, optional := range []string{"childFlows", "provenance"} {
+		if _, ok := value[optional]; ok {
+			keys = append(keys, optional)
+		}
+	}
+	if !durableExactKeys(value, keys...) || !durableBindingIdentity(value["flowId"]) || !durableBindingVersion(value["flowVersion"]) ||
+		!slices.Contains([]any{float64(1), float64(2), float64(3)}, value["formatVersion"]) || !durableBindingDigest(value) {
+		return invalid()
+	}
+	if provenance, exists := value["provenance"]; exists && provenance != "proxy-recorded" {
+		return invalid()
+	}
+	if _, ok := value["nodes"].([]any); !ok {
+		return invalid()
+	}
+	if _, ok := value["output"].(map[string]any); !ok {
+		return invalid()
+	}
+	schemas, ok := value["flowSchemas"].(map[string]any)
+	if !ok || !(durableExactKeys(schemas, "input", "success") || durableExactKeys(schemas, "input", "success", "error")) {
+		return invalid()
+	}
+	input, err := validateDurableBindingSchema(schemas["input"], "input")
+	if err != nil || input.value["shape"] != "structural" {
+		return invalid()
+	}
+	success, err := validateDurableBindingSchema(schemas["success"], "success")
+	if err != nil || success.value["shape"] != "structural" {
+		return invalid()
+	}
+	if failure, exists := schemas["error"]; exists {
+		if _, err := validateDurableBindingSchema(failure, "error"); err != nil {
+			return invalid()
+		}
+	}
+	actions, err := durableBindingActions(value["actions"])
+	if err != nil {
+		return invalid()
+	}
+	requirements, err := durableBindingStrings(value["requirements"])
+	if err != nil || len(requirements) != len(actions) {
+		return invalid()
+	}
+	for index, action := range actions {
+		if action.descriptor["id"] != requirements[index] {
+			return invalid()
+		}
+	}
+	out := durableBoundFlow{plan: value, input: input, success: success, actions: actions, depth: 1}
+	if raw, exists := value["childFlows"]; exists {
+		children, ok := raw.([]any)
+		if !ok || len(children) == 0 || value["formatVersion"] == float64(1) {
+			return invalid()
+		}
+		previous := ""
+		for index, item := range children {
+			record, ok := item.(map[string]any)
+			if !ok {
+				return invalid()
+			}
+			child, err := durableChildContract(record, depth+1)
+			if err != nil {
+				return invalid()
+			}
+			digest := record["digest"].(string)
+			if index > 0 && previous >= digest {
+				return invalid()
+			}
+			previous = digest
+			out.depth = max(out.depth, 1+child.depth)
+		}
+	}
+	return out, nil
+}
+
+var durableBoundDigest = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var durableBoundSiteID = regexp.MustCompile(`^src-[0-9a-f]{24}$`)
+var durableBoundAnchor = regexp.MustCompile(`^[0-9]+:[0-9]+$`)
+
+func durableChildManifest(source string, plan map[string]any) (map[string]any, error) {
+	value, err := decodeDurableBindingJSON(source)
+	invalid := func() (map[string]any, error) { return nil, errors.New("invalid child Effect Manifest binding") }
+	if err != nil || !durableExactKeys(value, "manifestVersion", "flowId", "flowVersion", "actions", "requirements", "contracts", "failures", "sites", "digest") ||
+		value["manifestVersion"] != float64(1) || value["flowId"] != plan["flowId"] || value["flowVersion"] != plan["flowVersion"] || !durableBindingDigest(value) {
+		return invalid()
+	}
+	actions, err := durableBindingActions(value["actions"])
+	if err != nil {
+		return invalid()
+	}
+	actionIDs := map[string]bool{}
+	for _, action := range actions {
+		actionIDs[action.descriptor["id"].(string)] = true
+	}
+	for _, key := range []string{"requirements", "failures"} {
+		if _, err := durableBindingStrings(value[key]); err != nil {
+			return invalid()
+		}
+	}
+	contracts, ok := value["contracts"].([]any)
+	if !ok {
+		return invalid()
+	}
+	contractIDs := map[string]bool{}
+	previous := ""
+	for index, item := range contracts {
+		row, ok := item.(map[string]any)
+		if !ok || !durableExactKeys(row, "kind", "identity", "contractDigest") || !slices.Contains([]any{"signal", "broadcast", "queue", "childFlow"}, row["kind"]) || !durableBindingIdentity(row["identity"]) {
+			return invalid()
+		}
+		digest, ok := row["contractDigest"].(string)
+		if !ok || !durableBoundDigest.MatchString(digest) {
+			return invalid()
+		}
+		key := row["kind"].(string) + "#" + row["identity"].(string)
+		ordered := key + "#" + digest
+		if index > 0 && compareUTF16(previous, ordered) >= 0 {
+			return invalid()
+		}
+		previous = ordered
+		contractIDs[key] = true
+	}
+	sites, ok := value["sites"].([]any)
+	if !ok {
+		return invalid()
+	}
+	previous = ""
+	for index, item := range sites {
+		row, ok := item.(map[string]any)
+		if !ok {
+			return invalid()
+		}
+		fields := []string{"id", "kind", "anchor"}
+		key, hasKey := row["key"]
+		if hasKey {
+			fields = append(fields, "key")
+			if !durableBindingIdentity(key) {
+				return invalid()
+			}
+		}
+		id, idOK := row["id"].(string)
+		anchor, anchorOK := row["anchor"].(string)
+		kind, kindOK := row["kind"].(string)
+		if !durableExactKeys(row, fields...) || !idOK || !anchorOK || !kindOK || !durableBoundSiteID.MatchString(id) || !durableBoundAnchor.MatchString(anchor) || index > 0 && previous >= id {
+			return invalid()
+		}
+		previous = id
+		switch kind {
+		case "get":
+			if !hasKey {
+				return invalid()
+			}
+		case "perform":
+			if !hasKey || !actionIDs[key.(string)] {
+				return invalid()
+			}
+		case "sleep":
+		case "signal", "broadcast", "queue", "childFlow":
+			if !hasKey || !contractIDs[kind+"#"+key.(string)] {
+				return invalid()
+			}
+		default:
+			return invalid()
+		}
+	}
+	return value, nil
+}
+
+func installPlanFlowBindings(p *project, inputs []planSourceFlowBinding, actions []planSourceActionBinding) ([]stagedPlanFlow, error) {
+	if len(inputs)+len(actions) > 256 {
+		return nil, errors.New("Plan source supports at most 256 explicit bindings")
+	}
+	seen := map[string]string{}
+	for _, action := range actions {
+		seen[action.ModuleSpecifier+"\x00"+action.ExportName] = "action"
+	}
+	staged := []stagedPlanFlow{}
+	total := 0
+	for _, input := range inputs {
+		total += len(input.PlanJSON) + len(input.ManifestJSON)
+		if total > 12*1024*1024 || !durableBindingIdentity(input.ModuleSpecifier) || slices.Contains(compilerModuleSpecifiers, input.ModuleSpecifier) || !durableBindingExportName.MatchString(input.ExportName) || len(input.ExportName) > 1024 {
+			return nil, errors.New("invalid Plan source Flow binding module/export/budget")
+		}
+		value, err := decodeDurableBindingJSON(input.PlanJSON)
+		if err != nil {
+			return nil, err
+		}
+		contract, err := durableChildContract(value, 0)
+		if err != nil {
+			return nil, err
+		}
+		if input.ManifestJSON != "" {
+			contract.manifest, err = durableChildManifest(input.ManifestJSON, value)
+			if err != nil {
+				return nil, err
+			}
+		}
+		key := input.ModuleSpecifier + "\x00" + input.ExportName
+		identity := value["digest"].(string) + ":" + durableCanonicalJSON(contract.manifest)
+		if prior, exists := seen[key]; exists {
+			if prior != identity {
+				return nil, errors.New("conflicting Plan source bindings for one module export")
+			}
+			continue
+		}
+		seen[key] = identity
+		target := p.planSourceModules[input.ModuleSpecifier]
+		if target == "" {
+			target = fmt.Sprintf("/src/__vibelang_plan_source__/bindings/%d", len(p.planSourceModules))
+			p.planSourceModules[input.ModuleSpecifier] = target
+		}
+		local := fmt.Sprintf("__VibeBoundFlow%d", len(staged))
+		p.checkedFiles[target+".ts"] += "declare const " + local + ": { readonly run: (input: " + contract.input.typeText + ") => " + contract.success.typeText + " };\nexport { " + local + " as " + input.ExportName + " };\n"
+		p.tsTexts[target+".ts"] = p.checkedFiles[target+".ts"]
+		p.logicalByVirtual[target+".ts"] = "__vibelang_plan_source__/bindings/" + input.ExportName + ".ts"
+		staged = append(staged, stagedPlanFlow{fileName: target + ".ts", exportName: input.ExportName, contract: contract})
+	}
+	return staged, nil
+}
+
+func bindPlanSourceFlows(owner *lowerer, program *compiler.Program, bindings []stagedPlanFlow) error {
+	owner.planFlows = map[*ast.Symbol]durableBoundFlow{}
+	for _, binding := range bindings {
+		file := program.GetSourceFile(binding.fileName)
+		if file == nil {
+			continue
+		}
+		module := owner.checker.GetSymbolAtLocation(file.AsNode())
+		if module == nil {
+			return errors.New("child Flow module did not bind")
+		}
+		var symbol *ast.Symbol
+		for _, exported := range owner.checker.GetExportsOfModule(module) {
+			if exported.Name == binding.exportName {
+				symbol = exported
+				if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+					symbol = owner.checker.GetAliasedSymbol(symbol)
+				}
+				symbol = owner.checker.GetMergedSymbol(symbol)
+				break
+			}
+		}
+		if symbol == nil {
+			return errors.New("child Flow export did not bind")
+		}
+		typeOf := owner.checker.GetTypeOfSymbolAtLocation(symbol, file.AsNode())
+		run := owner.checker.GetPropertyOfType(typeOf, "run")
+		if run == nil {
+			return errors.New("child Flow run contract did not bind")
+		}
+		signatures := owner.checker.GetSignaturesOfType(owner.checker.GetTypeOfSymbolAtLocation(run, file.AsNode()), checker.SignatureKindCall)
+		if len(signatures) != 1 || len(signatures[0].Parameters()) != 1 {
+			return errors.New("child Flow signature did not bind")
+		}
+		contract := binding.contract
+		contract.inputType = owner.checker.GetTypeOfSymbolAtLocation(signatures[0].Parameters()[0], file.AsNode())
+		contract.runSymbol = owner.checker.GetMergedSymbol(run)
+		owner.planFlows[symbol] = contract
+	}
+	return nil
+}
+
+func (l *lowerer) boundChildFlowCall(node *ast.Node) (durableBoundFlow, bool) {
+	if !ast.IsCallExpression(node) || !ast.IsPropertyAccessExpression(node.AsCallExpression().Expression) {
+		return durableBoundFlow{}, false
+	}
+	access := node.AsCallExpression().Expression.AsPropertyAccessExpression()
+	child, found := l.planFlows[l.durableCanonicalSymbolAt(ast.SkipParentheses(access.Expression))]
+	return child, found && l.durableCanonicalSymbolAt(access.Name()) == child.runSymbol
+}
+
+// Resolve and check the call once for both ordinary graph nodes and per-item
+// templates. Neither caller may weaken source identity, arity, depth or types.
+func (d *durableFunctionLowerer) checkedChildFlowCall(node *ast.Node) (durableBoundFlow, *ast.Node, bool, bool) {
+	child, found := d.owner.boundChildFlowCall(node)
+	if !found {
+		var err error
+		child, found, err = d.owner.sourceChildFlowCall(node, d.symbolicPlan)
+		if err != nil {
+			d.fail(node, "4120", err.Error())
+			return durableBoundFlow{}, nil, true, false
+		}
+		if !found {
+			return durableBoundFlow{}, nil, false, false
+		}
+	}
+	call := node.AsCallExpression()
+	flowID := child.plan["flowId"].(string)
+	fail := func(at *ast.Node, code, message string) (durableBoundFlow, *ast.Node, bool, bool) {
+		d.fail(at, code, message)
+		return durableBoundFlow{}, nil, true, false
+	}
+	if call.QuestionDotToken != nil || call.Expression.Flags&ast.NodeFlagsOptionalChain != 0 || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		return fail(node, "4120", flowID+".run requires exactly one input argument in durable source")
+	}
+	if child.depth >= 8 {
+		return fail(node, "4120", "child Flow "+flowID+" exceeds the child-boundary round budget of 8")
+	}
+	argument := call.Arguments.Nodes[0]
+	if !d.actionInputAssignable(argument, child.inputType) {
+		return fail(argument, "4100", "child Flow input is not assignable to its checked contract")
+	}
+	return child, argument, true, true
+}
+
+func (d *durableFunctionLowerer) rememberChildFlow(node *ast.Node, child durableBoundFlow) bool {
+	flowID := child.plan["flowId"].(string)
+	for _, prior := range d.childPlans {
+		if prior.plan["flowId"] == child.plan["flowId"] && prior.plan["flowVersion"] == child.plan["flowVersion"] && prior.plan["digest"] != child.plan["digest"] {
+			d.fail(node, "4114", fmt.Sprintf("child Flow %s@%v resolves to incompatible durable Plans", flowID, child.plan["flowVersion"]))
+			return false
+		}
+	}
+	for _, action := range child.actions {
+		contract := durableAction{id: action.descriptor["id"].(string), descriptor: action.descriptor}
+		if child.source != nil {
+			contract = child.source.actions[contract.id]
+		}
+		if !d.rememberAction(node, contract) {
+			return false
+		}
+	}
+	if d.childPlans == nil {
+		d.childPlans = map[string]durableBoundFlow{}
+	}
+	d.childPlans[child.plan["digest"].(string)] = child
+	d.formatVersion = max(d.formatVersion, 2)
+	return true
+}
+
+func (d *durableFunctionLowerer) lowerChildFlowCall(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	child, argument, recognized, ok := d.checkedChildFlowCall(node)
+	if !recognized || !ok {
+		return durableValue{}, recognized, false
+	}
+	input, ok := d.lowerExpression(argument, anchor+":input", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	projectionIssue := false
+	descriptor := d.flowOutputDescriptor(input.ir, func(string, ...durableDescriptorFailureCause) any {
+		projectionIssue = true
+		return durableUnknownDescriptor{}
+	})
+	if !projectionIssue && !durableDescriptorFits(descriptor, child.input.value["descriptor"]) {
+		d.fail(argument, "4100", "child Flow value does not satisfy its durable input contract")
+		return durableValue{}, true, false
+	}
+	if !d.rememberChildFlow(node, child) {
+		return durableValue{}, true, false
+	}
+	flowID := child.plan["flowId"].(string)
+	identity := map[string]any{"file": d.logicalFile, "flowId": d.flowID, "flowVersion": d.flowVersion, "functionName": d.function, "kind": "childFlow", "anchor": anchor, "childFlowId": flowID, "childFlowVersion": child.plan["flowVersion"], "childPlanDigest": child.plan["digest"], "input": input.ir}
+	id, ok := d.stableNodeID(node, identity)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	d.appendNode(map[string]any{"kind": "childFlow", "id": id, "flowId": flowID, "flowVersion": child.plan["flowVersion"], "planDigest": child.plan["digest"], "input": input.ir, "dependencies": durableExpressionDependencies(input.ir), "controlDependencies": durableControlDependencies(d.sequence), "debug": d.debug(node, "childFlow:"+flowID)})
+	if !d.symbolicPlan {
+		d.sequence = id
+	}
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+func (b *durableManifestBuilder) classifyBoundChild(node *ast.Node) bool {
+	child, found := b.owner.boundChildFlowCall(node)
+	if !found {
+		var err error
+		child, found, err = b.owner.sourceChildFlowCall(node, false)
+		if err != nil {
+			b.fail(err.Error())
+			return true
+		}
+		if !found {
+			return false
+		}
+	}
+	if child.manifest == nil {
+		b.fail("child Flow " + child.plan["flowId"].(string) + " has no Effect Manifest; the parent's transitive effect set cannot be stated")
+		return true
+	}
+	b.addContract("childFlow", child.plan["flowId"].(string), child.plan["digest"].(string))
+	b.recordSite(node, "childFlow", child.plan["flowId"].(string))
+	for _, item := range child.manifest["actions"].([]any) {
+		action := item.(map[string]any)
+		id := action["id"].(string)
+		if prior := b.actions[id]; prior != nil && prior["contractDigest"] != action["contractDigest"] {
+			b.fail("Action id " + id + " resolves to incompatible durable contracts")
+			return true
+		}
+		b.actions[id] = action
+	}
+	for _, item := range child.manifest["requirements"].([]any) {
+		b.requirements[item.(string)] = true
+	}
+	for _, item := range child.manifest["failures"].([]any) {
+		b.failures[item.(string)] = true
+	}
+	for _, item := range child.manifest["contracts"].([]any) {
+		row := item.(map[string]any)
+		b.addContract(row["kind"].(string), row["identity"].(string), row["contractDigest"].(string))
+	}
+	return true
+}

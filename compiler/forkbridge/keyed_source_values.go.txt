@@ -1,0 +1,587 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"math"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+// Source syntax is decoded only here, by the pinned Go parser/checker. The
+// worker interprets this closed data vocabulary, never authored JS callbacks.
+func keyedComputationSyntax(node *ast.Node) (string, []*ast.Node) {
+	if ast.IsPrefixUnaryExpression(node) {
+		prefix := node.AsPrefixUnaryExpression()
+		operator := map[ast.Kind]string{ast.KindPlusToken: "positive", ast.KindMinusToken: "negative",
+			ast.KindExclamationToken: "not", ast.KindTildeToken: "bit-not"}[prefix.Operator]
+		return operator, []*ast.Node{prefix.Operand}
+	}
+	if ast.IsBinaryExpression(node) {
+		binary := node.AsBinaryExpression()
+		operator := map[ast.Kind]string{
+			ast.KindPlusToken: "add", ast.KindMinusToken: "subtract", ast.KindAsteriskToken: "multiply",
+			ast.KindSlashToken: "divide", ast.KindPercentToken: "remainder", ast.KindAsteriskAsteriskToken: "power",
+			ast.KindAmpersandToken: "bit-and", ast.KindBarToken: "bit-or", ast.KindCaretToken: "bit-xor",
+			ast.KindLessThanLessThanToken: "shift-left", ast.KindGreaterThanGreaterThanToken: "shift-right",
+			ast.KindGreaterThanGreaterThanGreaterThanToken: "shift-unsigned",
+			ast.KindEqualsEqualsEqualsToken:                "equal", ast.KindExclamationEqualsEqualsToken: "not-equal",
+			ast.KindEqualsEqualsToken: "loose-equal", ast.KindExclamationEqualsToken: "loose-not-equal",
+			ast.KindLessThanToken: "less", ast.KindLessThanEqualsToken: "less-equal",
+			ast.KindGreaterThanToken: "greater", ast.KindGreaterThanEqualsToken: "greater-equal",
+			ast.KindAmpersandAmpersandToken: "and", ast.KindBarBarToken: "or", ast.KindQuestionQuestionToken: "nullish",
+		}[binary.OperatorToken.Kind]
+		return operator, []*ast.Node{binary.Left, binary.Right}
+	}
+	return "", nil
+}
+
+func (d *durableFunctionLowerer) lowerKeyedComputation(node *ast.Node, anchor string, allowFinalAction bool) (durableValue, bool, bool) {
+	operator, children := keyedComputationSyntax(node)
+	if operator == "" {
+		return durableValue{}, false, false
+	}
+	operands := []any{}
+	for index, child := range children {
+		if index == 1 && (operator == "and" || operator == "or" || operator == "nullish") {
+			// Compile the RHS in its own graph scope, even when the input makes
+			// the choice obvious. Never publish conditional work as eager nodes.
+			parent, sequence := d.activeNodes, d.sequence
+			rightNodes := []any{}
+			d.activeNodes, d.sequence = &rightNodes, ""
+			right, ok := d.lowerExpression(child, anchor+":operand/1", allowFinalAction)
+			d.activeNodes, d.sequence = parent, sequence
+			if !ok {
+				return durableValue{}, true, false
+			}
+			if len(rightNodes) != 0 {
+				value, ok := d.lowerKeyedShortCircuit(node, anchor, operator, operands[0], right.ir, rightNodes)
+				return value, true, ok
+			}
+			operands = append(operands, right.ir)
+			continue
+		}
+		value, ok := d.lowerExpression(child, anchor+":operand/"+strconv.Itoa(index), false)
+		if !ok {
+			return durableValue{}, true, false
+		}
+		operands = append(operands, value.ir)
+	}
+	value := durableValue{ir: map[string]any{"kind": "compute", "operator": operator, "operands": operands}}
+	// Aliases can form an exponentially expanding DAG. Bound its serialized
+	// tree BEFORE deriving a descriptor, not merely before emitting a Plan.
+	if !durableStaticMaterialFits(value.ir) {
+		value, ok := d.fail(node, "4199", "keyed computation exceeds its serialization budget")
+		return value, true, ok
+	}
+	issue := ""
+	d.flowOutputDescriptorWithPolicy(value.ir, func(message string, _ ...durableDescriptorFailureCause) any {
+		if issue == "" {
+			issue = message
+		}
+		return durableUnknownDescriptor{}
+	}, true)
+	if issue != "" {
+		value, ok := d.fail(node, "4199", "keyed computation "+issue)
+		return value, true, ok
+	}
+	return value, true, true
+}
+
+func keyedScalarDomains(descriptor any, domains map[string]bool) bool {
+	node, ok := descriptor.(map[string]any)
+	if !ok {
+		return false
+	}
+	switch node["kind"] {
+	case "never":
+		return true
+	case "null", "boolean", "number", "string":
+		domains[node["kind"].(string)] = true
+		return true
+	case "literal":
+		switch node["value"].(type) {
+		case nil:
+			domains["null"] = true
+		case bool:
+			domains["boolean"] = true
+		case float64:
+			domains["number"] = true
+		case string:
+			domains["string"] = true
+		default:
+			return false
+		}
+		return true
+	case "union":
+		for _, variant := range node["variants"].([]any) {
+			if !keyedScalarDomains(variant, domains) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func keyedComputationDescriptor(operator string, operands []any, fail durableOutputFail) any {
+	arity := 2
+	if operator == "positive" || operator == "negative" || operator == "not" || operator == "bit-not" || operator == "is-null" {
+		arity = 1
+	}
+	if len(operands) != arity {
+		return fail("has an invalid operator arity")
+	}
+	for _, operand := range operands {
+		if durableIsUnknownDescriptor(operand) {
+			return durableUnknownDescriptor{}
+		}
+	}
+	boolean, number := map[string]any{"kind": "boolean"}, map[string]any{"kind": "number"}
+	switch operator {
+	case "not", "is-null":
+		return boolean
+	case "and", "or":
+		return durableJoinDescriptors([]any{keyedSelectionDescriptor(operands[0], operator == "or"), operands[1]})
+	case "nullish":
+		var withoutNull func(any) any
+		withoutNull = func(value any) any {
+			node := value.(map[string]any)
+			if node["kind"] == "null" || node["kind"] == "literal" && node["value"] == nil {
+				return map[string]any{"kind": "never"}
+			}
+			if node["kind"] == "union" {
+				variants := []any{}
+				for _, variant := range node["variants"].([]any) {
+					variants = append(variants, withoutNull(variant))
+				}
+				return durableJoinDescriptors(variants)
+			}
+			return value
+		}
+		return durableJoinDescriptors([]any{withoutNull(operands[0]), operands[1]})
+	}
+	// Comparing a transported record to null observes no object identity and
+	// invokes no coercion hooks (including for ==/!=). Keep general object
+	// equality refused; a statically exact null operand is the proof here.
+	if operator == "equal" || operator == "not-equal" || operator == "loose-equal" || operator == "loose-not-equal" {
+		for _, operand := range operands {
+			node := operand.(map[string]any)
+			if node["kind"] == "null" || node["kind"] == "literal" && node["value"] == nil {
+				return boolean
+			}
+		}
+	}
+	domains := make([]map[string]bool, len(operands))
+	for index, operand := range operands {
+		domains[index] = map[string]bool{}
+		if !keyedScalarDomains(operand, domains[index]) {
+			return fail("requires scalar operands; object identity/coercion is not a wire-value operation")
+		}
+	}
+	switch operator {
+	case "equal", "not-equal", "loose-equal", "loose-not-equal":
+		return boolean
+	case "less", "less-equal", "greater", "greater-equal":
+		for _, domain := range domains {
+			for kind := range domain {
+				if kind != "number" && kind != "string" {
+					return fail("requires number or string comparison operands")
+				}
+			}
+		}
+		return boolean
+	case "add":
+		variants := []any{}
+		for left := range domains[0] {
+			for right := range domains[1] {
+				if left == "string" || right == "string" {
+					variants = append(variants, map[string]any{"kind": "string"})
+				} else if left == "number" && right == "number" {
+					variants = append(variants, number)
+				} else {
+					return fail("requires numbers or string concatenation operands")
+				}
+			}
+		}
+		return durableJoinDescriptors(variants)
+	case "positive", "negative", "bit-not", "subtract", "multiply", "divide", "remainder", "power", "bit-and", "bit-or", "bit-xor", "shift-left", "shift-right", "shift-unsigned":
+		for _, domain := range domains {
+			for kind := range domain {
+				if kind != "number" {
+					return fail("requires numeric operands")
+				}
+			}
+		}
+		return number
+	}
+	return fail("has an unknown operator")
+}
+
+// A logical operator returns its operand, not a coerced boolean. Retain the
+// checked subset selected on the left; this also preserves literal annotations
+// such as false|number. Numbers/strings cannot express nonzero/nonempty types.
+func keyedSelectionDescriptor(value any, truthy bool) any {
+	node := value.(map[string]any)
+	never := map[string]any{"kind": "never"}
+	literal := func(value any) any { return map[string]any{"kind": "literal", "value": value} }
+	switch node["kind"] {
+	case "never":
+		return never
+	case "union":
+		variants := []any{}
+		for _, variant := range node["variants"].([]any) {
+			variants = append(variants, keyedSelectionDescriptor(variant, truthy))
+		}
+		return durableJoinDescriptors(variants)
+	case "null":
+		if truthy {
+			return never
+		}
+		return value
+	case "boolean":
+		return literal(truthy)
+	case "number":
+		if truthy {
+			return value
+		}
+		return literal(float64(0))
+	case "string":
+		if truthy {
+			return value
+		}
+		return literal("")
+	case "literal":
+		selected := true
+		switch v := node["value"].(type) {
+		case nil:
+			selected = false
+		case bool:
+			selected = v
+		case float64:
+			selected = v != 0
+		case string:
+			selected = v != ""
+		}
+		if selected == truthy {
+			return value
+		}
+		return never
+	default:
+		if truthy {
+			return value
+		}
+		return never
+	}
+}
+
+// The input was already duplicate/Unicode/budget validated. Preserve object
+// insertion order as explicit entries, not Go map iteration or canonical JSON
+// key order. Interpreter bodies consequently bind observable construction order.
+func keyedSourceJSONExpression(source string) (any, error) {
+	decoder := json.NewDecoder(strings.NewReader(source))
+	var read func() (any, error)
+	read = func() (any, error) {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		switch token {
+		case json.Delim('{'):
+			fields, order := map[string]any{}, []any{}
+			for decoder.More() {
+				name, err := decoder.Token()
+				if err != nil {
+					return nil, err
+				}
+				value, err := read()
+				if err != nil {
+					return nil, err
+				}
+				fields[name.(string)], order = value, append(order, name)
+			}
+			_, err = decoder.Token()
+			return map[string]any{"kind": "object", "fields": fields, "order": order}, err
+		case json.Delim('['):
+			items := []any{}
+			for decoder.More() {
+				value, err := read()
+				if err != nil {
+					return nil, err
+				}
+				items = append(items, value)
+			}
+			_, err = decoder.Token()
+			return map[string]any{"kind": "array", "items": items}, err
+		default:
+			return map[string]any{"kind": "literal", "value": token}, nil
+		}
+	}
+	return read()
+}
+
+type keyedSourceExpressionBuilder struct {
+	input         any
+	addresses     map[string]string
+	groups        map[string]keyedSourceGroup
+	controls      map[string]bool
+	pendingGroups map[string]bool
+	ordering      []any
+	inputs        []any
+	visited       int
+	shared        *int
+}
+
+func (b *keyedSourceExpressionBuilder) pending(id string) error {
+	if b.controls == nil {
+		b.controls = map[string]bool{}
+	}
+	if b.controls[id] {
+		return nil
+	}
+	if group, ok := b.groups[id]; ok {
+		if b.pendingGroups == nil {
+			b.pendingGroups = map[string]bool{}
+		}
+		if b.pendingGroups[id] {
+			return errors.New("source composition has cyclic completion dependencies")
+		}
+		b.pendingGroups[id] = true
+		defer delete(b.pendingGroups, id)
+		for _, dependency := range group.dependencies {
+			if err := b.pending(dependency.(string)); err != nil {
+				return err
+			}
+		}
+		b.controls[id] = true
+		return nil
+	}
+	address, ok := b.addresses[id]
+	if !ok {
+		return errors.New("source sequencing refers to an unknown Action node")
+	}
+	b.controls[id] = true
+	b.ordering = append(b.ordering, map[string]any{"_tag": "Pending", "from": address})
+	return nil
+}
+
+// Keep every data slot before the ordering-only suffix, even if a nested
+// fan-out projection discovers its join before later object fields are lowered.
+func (b *keyedSourceExpressionBuilder) materialInputs() []any {
+	return append(b.inputs, b.ordering...)
+}
+
+func (b *keyedSourceExpressionBuilder) lower(value any, depth int) (any, error) {
+	b.visited++
+	if b.shared != nil {
+		*b.shared++
+	}
+	if depth > 128 || b.visited > 100_000 || b.shared != nil && *b.shared > 100_000 {
+		return nil, errors.New("keyed source expression exceeds its traversal budget")
+	}
+	node, ok := value.(map[string]any)
+	if !ok {
+		return nil, errors.New("invalid native source expression")
+	}
+	slot := func(input any) any {
+		index := len(b.inputs)
+		b.inputs = append(b.inputs, input)
+		return map[string]any{"kind": "slot", "index": index}
+	}
+	switch node["kind"] {
+	case "literal":
+		return slot(map[string]any{"_tag": "Literal", "value": node["value"]}), nil
+	case "compute":
+		operands := []any{}
+		for _, child := range node["operands"].([]any) {
+			value, err := b.lower(child, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			operands = append(operands, value)
+		}
+		return map[string]any{"kind": "compute", "operator": node["operator"], "operands": operands}, nil
+	case "input":
+		projected := b.input
+		for _, key := range node["path"].([]any) {
+			current := projected.(map[string]any)
+			switch current["kind"] {
+			case "object":
+				projected = current["fields"].(map[string]any)[key.(string)]
+			case "array":
+				index, err := strconv.Atoi(key.(string))
+				items := current["items"].([]any)
+				if err != nil || index < 0 || index >= len(items) {
+					return nil, errors.New("Flow input projection is out of bounds")
+				}
+				projected = items[index]
+			default:
+				return nil, errors.New("Flow input projection has no data field")
+			}
+			if projected == nil {
+				return nil, errors.New("Flow input projection is absent")
+			}
+		}
+		return b.lower(projected, depth+1)
+	case "node":
+		if group, ok := b.groups[node["nodeId"].(string)]; ok {
+			projected, err := keyedSourceProjectValue(group.value, node["path"].([]any))
+			if err != nil {
+				return nil, err
+			}
+			expression, err := b.lower(projected, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			// A fan-out result joins all declared child work, including an
+			// unused intermediate Action or a child outside this projection.
+			for _, dependency := range group.dependencies {
+				if err := b.pending(dependency.(string)); err != nil {
+					return nil, err
+				}
+			}
+			return expression, nil
+		}
+		address, ok := b.addresses[node["nodeId"].(string)]
+		if !ok {
+			return nil, errors.New("source expression refers to an unknown graph node")
+		}
+		// Provider answers are ordered keyed values, not raw canonical objects.
+		// Arrays and objects both expose encoded children through `items`, so
+		// the scheduler can still project/digest exactly the consumed subtree.
+		authored := node["path"].([]any)
+		if len(authored) > 64 {
+			return nil, errors.New("keyed source projection exceeds its encoded value depth budget")
+		}
+		wirePath := []any{}
+		for _, key := range authored {
+			wirePath = append(wirePath, "items", key)
+		}
+		return slot(map[string]any{"_tag": "Ref", "from": address, "path": wirePath}), nil
+	case "array":
+		items := []any{}
+		for _, item := range node["items"].([]any) {
+			lowered, err := b.lower(item, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, lowered)
+		}
+		return map[string]any{"kind": "array", "items": items}, nil
+	case "object":
+		order, ok := node["order"].([]any)
+		fields := node["fields"].(map[string]any)
+		if !ok || len(order) != len(fields) {
+			return nil, errors.New("source object has no preserved construction order")
+		}
+		entries := []any{}
+		for _, key := range order {
+			lowered, err := b.lower(fields[key.(string)], depth+1)
+			if err != nil {
+				return nil, err
+			}
+			entries = append(entries, map[string]any{"name": key, "value": lowered})
+		}
+		return map[string]any{"kind": "object", "entries": entries}, nil
+	default:
+		return nil, errors.New("keyed source interpreter has no expression for " + node["kind"].(string))
+	}
+}
+
+// Values are bounded JSON, and descriptors were derived by the Go checker.
+// Exact object contracts match durable serialization; undeclared fields do not
+// silently disappear before hashing or dispatch.
+func keyedSourceValueMatches(value, schema any, depth int) bool {
+	visited := 0
+	return keyedSourceValueMatchesAt(value, schema, depth, &visited)
+}
+
+func keyedSourceValueMatchesAt(value, schema any, depth int, visited *int) bool {
+	*visited++
+	if depth > 128 || *visited > 1_000_000 {
+		return false
+	}
+	// Unlike generic RFC 8785 key derivation, a durable value boundary must not
+	// turn an observable -0 input into +0 before an Action can consume it.
+	if number, ok := value.(float64); ok && number == 0 && math.Signbit(number) {
+		return false
+	}
+	descriptor, ok := schema.(map[string]any)
+	if !ok {
+		return false
+	}
+	switch descriptor["kind"] {
+	case "never":
+		return false
+	case "null":
+		return value == nil
+	case "boolean":
+		_, ok := value.(bool)
+		return ok
+	case "number":
+		number, ok := value.(float64)
+		return ok && !math.IsInf(number, 0) && !math.IsNaN(number)
+	case "string":
+		_, ok := value.(string)
+		return ok
+	case "literal":
+		switch value.(type) {
+		case nil, bool, string, float64:
+			return value == descriptor["value"]
+		}
+		return false
+	case "array", "tuple":
+		items, ok := value.([]any)
+		if !ok {
+			return false
+		}
+		if descriptor["kind"] == "array" {
+			for _, item := range items {
+				if !keyedSourceValueMatchesAt(item, descriptor["element"], depth+1, visited) {
+					return false
+				}
+			}
+		} else {
+			tuple := descriptor["items"].([]any)
+			if len(items) != len(tuple) {
+				return false
+			}
+			for index, item := range items {
+				if !keyedSourceValueMatchesAt(item, tuple[index], depth+1, visited) {
+					return false
+				}
+			}
+		}
+		return true
+	case "union":
+		for _, variant := range descriptor["variants"].([]any) {
+			if keyedSourceValueMatchesAt(value, variant, depth+1, visited) {
+				return true
+			}
+		}
+	case "object":
+		object, ok := value.(map[string]any)
+		if !ok {
+			return false
+		}
+		consumed := 0
+		for _, value := range descriptor["fields"].([]any) {
+			field := value.(map[string]any)
+			child, exists := object[field["name"].(string)]
+			if !exists {
+				if field["optional"] != true {
+					return false
+				}
+				continue
+			}
+			consumed++
+			if !keyedSourceValueMatchesAt(child, field["value"], depth+1, visited) {
+				return false
+			}
+		}
+		return consumed == len(object)
+	}
+	return false
+}

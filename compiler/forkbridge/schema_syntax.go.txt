@@ -1,0 +1,333 @@
+package main
+
+// The small declaration-to-validator-IR API is distinct from the checked
+// vibelang:schema intrinsic. It preserves that helper's bounded syntax grammar;
+// native binding owns reference/shadow identity. No source is evaluated.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+	"unicode/utf16"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type syntaxSchemaRequest struct {
+	Source   string `json:"source"`
+	TypeName string `json:"typeName"`
+}
+type syntaxSchemaResult struct {
+	OK         bool   `json:"ok"`
+	SchemaJSON string `json:"schemaJson"`
+	Message    string `json:"message"`
+	ParseError bool   `json:"parseError"`
+}
+
+func serveSyntaxSchema(apiVersion int) {
+	response := struct {
+		APIVersion       int                `json:"apiVersion"`
+		CompilerRevision string             `json:"compilerRevision"`
+		Result           syntaxSchemaResult `json:"result"`
+		Error            *wireError         `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input syntaxSchemaRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("syntax-schema request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = deriveSyntaxSchema(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = syntaxSchemaResult{}
+		response.Error = &wireError{Code: "VIBELANG_GO_SYNTAX_SCHEMA", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// Encode data strings as JSON UTF-16 escapes. The enclosing wire carries ASCII,
+// never repaired CESU-8; JSON.parse recovers exact JS keys/literal values,
+// including lone surrogates. Source bytes and compiler identities still obey
+// the stricter scalar-text wire contract.
+func syntaxSchemaString(value string) string {
+	var out strings.Builder
+	out.WriteByte('"')
+	for offset := 0; offset < len(value); {
+		character, width := stringutil.DecodeJSStringRune(value[offset:])
+		offset += width
+		if character > 0xffff {
+			high, low := utf16.EncodeRune(character)
+			fmt.Fprintf(&out, `\u%04x\u%04x`, high, low)
+		} else {
+			fmt.Fprintf(&out, `\u%04x`, character)
+		}
+	}
+	out.WriteByte('"')
+	return out.String()
+}
+
+func deriveSyntaxSchema(ctx context.Context, input syntaxSchemaRequest) (syntaxSchemaResult, error) {
+	if len(input.Source) > 2*1024*1024 || len(input.TypeName) > 2048 {
+		return syntaxSchemaResult{}, errors.New("syntax-schema source/name exceeds its 2 MiB/2048 byte budget")
+	}
+	const fileName = "/src/schema.ts"
+	options := &core.CompilerOptions{Target: core.ScriptTargetESNext, Module: core.ModuleKindESNext,
+		NoLib: core.TSTrue, NoResolve: core.TSTrue, NoCheck: core.TSTrue, NoEmit: core.TSTrue, Types: []string{}}
+	config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{FileNames: []string{fileName}, CompilerOptions: options}}
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, SingleThreaded: core.TSTrue, SkipModuleResolution: true,
+		Host: compiler.NewCompilerHost("/src", vfstest.FromMap(map[string]string{fileName: input.Source}, true), "", nil, nil, nil)})
+	file := program.GetSourceFile(fileName)
+	if file == nil {
+		return syntaxSchemaResult{}, errors.New("syntax-schema input is absent from its native program")
+	}
+	if issues := file.Diagnostics(); len(issues) > 0 {
+		messages := make([]string, 0, len(issues))
+		for _, issue := range issues {
+			messages = append(messages, issue.Localize(locale.Default))
+		}
+		return syntaxSchemaResult{ParseError: true, Message: "Schema.derive input did not parse: " + strings.Join(messages, "; ")}, nil
+	}
+	refuse := func(message string) (syntaxSchemaResult, error) { return syntaxSchemaResult{Message: message}, nil }
+	declarations := map[string]*ast.Node{}
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsTypeAliasDeclaration(statement) || ast.IsInterfaceDeclaration(statement) {
+			name := statement.Name().Text()
+			if declarations[name] != nil {
+				return refuse("Schema.derive found duplicate declaration '" + name + "'")
+			}
+			declarations[name] = statement
+		}
+	}
+	root := declarations[input.TypeName]
+	if root == nil {
+		return refuse("type '" + input.TypeName + "' was not found")
+	}
+	checker, release := program.GetTypeChecker(ctx)
+	defer release()
+	textOf := func(node *ast.Node) string {
+		return file.Text()[scanner.GetTokenPosOfNode(node, file, false):node.End()]
+	}
+	visiting := map[*ast.Node]bool{}
+	nodes := 0
+	var output strings.Builder
+	var issue error
+	write := func(value string) {
+		if output.Len()+len(value) > 16*1024*1024 {
+			issue = errors.New("Schema.derive output exceeds the 16 MiB budget")
+			return
+		}
+		if issue == nil {
+			output.WriteString(value)
+		}
+	}
+	fail := func(message string) {
+		if issue == nil {
+			issue = errors.New(message)
+		}
+	}
+	var convert func(*ast.Node, int)
+	members := func(members []*ast.Node, depth int) {
+		write(`{"kind":"object","properties":{`)
+		names := map[string]bool{}
+		for index, member := range members {
+			if issue != nil {
+				return
+			}
+			if !ast.IsPropertySignatureDeclaration(member) || member.Type() == nil || member.Name() == nil {
+				fail("Schema.derive only supports property signatures (" + textOf(member) + ")")
+				return
+			}
+			nameNode := member.Name()
+			if !ast.IsIdentifier(nameNode) && !ast.IsStringLiteral(nameNode) && !ast.IsNumericLiteral(nameNode) {
+				fail("computed schema property names are not durable: " + textOf(nameNode))
+				return
+			}
+			name := nameNode.Text()
+			if names[name] {
+				display := name
+				if !utf8.ValidString(display) {
+					display = syntaxSchemaString(display)
+				}
+				fail("Schema.derive found duplicate property '" + display + "'")
+				return
+			}
+			names[name] = true
+			if index > 0 {
+				write(",")
+			}
+			write(syntaxSchemaString(name) + `:{"optional":` + strconv.FormatBool(member.QuestionToken() != nil) + `,"schema":`)
+			convert(member.Type(), depth+1)
+			write("}")
+		}
+		write("}}")
+	}
+	convert = func(node *ast.Node, depth int) {
+		if issue != nil {
+			return
+		}
+		nodes++
+		if nodes > 10_000 || depth > 128 {
+			fail("Schema.derive exceeds its 10000 node / 128 depth budget")
+			return
+		}
+		if ast.IsTypeAliasDeclaration(node) {
+			convert(node.Type(), depth+1)
+			return
+		}
+		if ast.IsInterfaceDeclaration(node) {
+			if node.AsInterfaceDeclaration().HeritageClauses != nil {
+				fail("Schema.derive does not support interface inheritance yet (" + node.Name().Text() + ")")
+				return
+			}
+			members(node.Members(), depth)
+			return
+		}
+		switch node.Kind {
+		case ast.KindStringKeyword:
+			write(`{"kind":"string"}`)
+			return
+		case ast.KindNumberKeyword:
+			write(`{"kind":"number"}`)
+			return
+		case ast.KindBooleanKeyword:
+			write(`{"kind":"boolean"}`)
+			return
+		case ast.KindUnknownKeyword:
+			write(`{"kind":"unknown"}`)
+			return
+		}
+		if ast.IsLiteralTypeNode(node) {
+			literal := node.AsLiteralTypeNode().Literal
+			if literal.Kind == ast.KindNullKeyword {
+				write(`{"kind":"null"}`)
+				return
+			}
+			if literal.Kind == ast.KindTrueKeyword || literal.Kind == ast.KindFalseKeyword {
+				write(`{"kind":"literal","value":` + strconv.FormatBool(literal.Kind == ast.KindTrueKeyword) + "}")
+				return
+			}
+			if ast.IsStringLiteral(literal) {
+				write(`{"kind":"literal","value":` + syntaxSchemaString(literal.Text()) + "}")
+				return
+			}
+			negative := false
+			if ast.IsPrefixUnaryExpression(literal) && literal.AsPrefixUnaryExpression().Operator == ast.KindMinusToken {
+				literal, negative = literal.AsPrefixUnaryExpression().Operand, true
+			}
+			if ast.IsNumericLiteral(literal) {
+				number, err := strconv.ParseFloat(literal.Text(), 64)
+				if negative {
+					number = -number
+				}
+				if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+					fail("Schema.derive does not support the non-finite numeric literal '" + textOf(node) + "'")
+					return
+				}
+				if number == 0 {
+					number = 0
+				}
+				write(`{"kind":"literal","value":` + strconv.FormatFloat(number, 'g', -1, 64) + "}")
+				return
+			}
+		}
+		if ast.IsArrayTypeNode(node) {
+			write(`{"kind":"array","element":`)
+			convert(node.AsArrayTypeNode().ElementType, depth+1)
+			write("}")
+			return
+		}
+		if ast.IsTupleTypeNode(node) || ast.IsUnionTypeNode(node) {
+			var elements []*ast.Node
+			if ast.IsTupleTypeNode(node) {
+				elements = node.AsTupleTypeNode().Elements.Nodes
+				write(`{"kind":"tuple","elements":[`)
+			} else {
+				elements = node.AsUnionTypeNode().Types.Nodes
+				write(`{"kind":"union","variants":[`)
+			}
+			for index, element := range elements {
+				if index > 0 {
+					write(",")
+				}
+				convert(element, depth+1)
+				if issue != nil {
+					return
+				}
+			}
+			write("]}")
+			return
+		}
+		if ast.IsTypeLiteralNode(node) {
+			members(node.Members(), depth)
+			return
+		}
+		if ast.IsTypeReferenceNode(node) {
+			nameNode := node.AsTypeReferenceNode().TypeName
+			name := textOf(nameNode)
+			if ast.IsIdentifier(nameNode) {
+				name = nameNode.Text()
+			}
+			var declaration *ast.Node
+			binding := checker.GetSymbolAtLocation(nameNode)
+			if ast.IsIdentifier(nameNode) {
+				// Resolve the lexical type name directly. The editor-oriented
+				// GetSymbolAtLocation may return a synthetic unknown symbol for
+				// the library-free built-in fallback.
+				binding = checker.ResolveName(name, nameNode, ast.SymbolFlagsType|ast.SymbolFlagsAlias, false)
+			}
+			if binding != nil {
+				for _, candidate := range binding.Declarations {
+					if candidate == declarations[name] {
+						declaration = candidate
+					}
+				}
+			}
+			if declaration == nil {
+				if binding == nil && name == "Array" && len(node.TypeArguments()) == 1 {
+					write(`{"kind":"array","element":`)
+					convert(node.TypeArguments()[0], depth+1)
+					write("}")
+					return
+				}
+				fail("Schema.derive cannot resolve '" + name + "'")
+				return
+			}
+			if visiting[declaration] {
+				fail("recursive durable schema '" + name + "' needs an explicit representation")
+				return
+			}
+			visiting[declaration] = true
+			convert(declaration, depth+1)
+			delete(visiting, declaration)
+			return
+		}
+		fail("Schema.derive does not support " + strings.TrimPrefix(node.Kind.String(), "Kind") + " yet")
+	}
+	convert(root, 0)
+	if issue != nil {
+		return refuse(issue.Error())
+	}
+	if err := ctx.Err(); err != nil {
+		return syntaxSchemaResult{}, err
+	}
+	return syntaxSchemaResult{OK: true, SchemaJSON: output.String()}, nil
+}

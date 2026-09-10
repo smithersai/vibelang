@@ -22,8 +22,9 @@ package main
 //     identity, and NOTHING else from the lowering. It never reads
 //     durableFunctionLowerer.nodes, .actions, .occurrences, or the map that
 //     plan() returns.
-//   - it runs its own traversal — a plain ForEachChild descent — with no value
-//     environment, no dependency edges, no node ids, and no ordering.
+//   - it runs a checked-source closure traversal, including helper/callback
+//     implementations and implicit invocations, with no value environment,
+//     control-flow edges, execution counts, or ordering.
 //   - the one thing it borrows is CONTRACT DERIVATION: actionFor and
 //     durableTypeDescriptor, reached through a scratch durableFunctionLowerer
 //     that exists only to carry the checker. Those functions define what an
@@ -31,28 +32,14 @@ package main
 //     them would not test reachability; it would test whether two copies of one
 //     hash agree, and would let a real divergence hide behind a spurious one.
 //
-// A ForEachChild descent gets reachability soundness for free and cannot
-// express anything else: both arms of a conditional are just children, so both
-// arms' Actions are in the Manifest, and the Manifest has no way to say which
-// arm, how many times, or in what order. That is exactly PR-1's discipline —
-// "sound with respect to reachability and imprecise about everything else".
+// Both arms of a conditional are visited, without predicting which one runs.
+// Unknown callees fail closed; an arbitrary `context` spelling or a library
+// callback must not become a hole in the closure. This unit supports the
+// currently shipped inspection artifact. It does not decide the September 6
+// Plan-vs-body direction or certify that a descriptor is executable.
 //
-// # Why the emission is opt-in
-//
-// This is migration step 5, whose whole job is to prove the Manifest against
-// the Plan *before anything is deleted*, under a hard constraint that nothing
-// existing may change. Emitting an extra artifact unconditionally would move
-// the artifact list of every durable compile in the tree. The request option
-// `smithersEffectManifest` therefore gates it: with the option absent — which
-// is every existing caller — this unit produces nothing and observes nothing.
-// Step 12, which retargets `smithers plan` at the Manifest, is where the gate
-// comes off.
-//
-// The `.plan.json` companion is emitted from the same option for one reason:
-// the cross-check test has to compare the two artifacts, and reading the Plan
-// back out of the emitted JavaScript object literal would mean re-parsing
-// generated code. Exposing the Plan for comparison is not the same thing as
-// deriving the Manifest from it.
+// The descriptor always includes its Manifest. `vibelangEffectManifest` only
+// opts into separate .manifest.json/.plan.json companions for cross-checking.
 
 import (
 	"sort"
@@ -64,7 +51,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// requestedEffectManifest is set from the `smithersEffectManifest` request
+// requestedEffectManifest is set from the `vibelangEffectManifest` request
 // option. The bridge serves exactly one request per process, so a request
 // option is the whole lifetime of this value — the same reasoning
 // `requestedComptimeTarget` is written under.
@@ -102,12 +89,23 @@ type durableManifestBuilder struct {
 	// says a call the compiler cannot resolve "MUST either be rejected inside a
 	// Flow body or force the Manifest to include the full effect set of the
 	// callee's module; it MUST NOT silently narrow the Manifest".
-	failed string
+	failed          string
+	visit           func(*ast.Node) bool
+	classes         map[*ast.Node]bool
+	assignedSymbols map[*ast.Symbol]bool
 }
 
 // durableManifestAnchor is the authored `line:character` of a node, zero-based,
 // matching the reference frontend's site anchors.
 func (b *durableManifestBuilder) anchor(node *ast.Node) string {
+	if b.owner.bodyProfile != nil {
+		anchor, err := b.owner.bodyProfile.anchor(node)
+		if err != nil {
+			b.owner.bodyProfile.invalidProvenance = true
+			b.fail(err.Error())
+		}
+		return anchor
+	}
 	start := scanner.SkipTrivia(b.owner.file.Text(), node.Pos())
 	line, character := scanner.GetECMALineAndUTF16CharacterOfPosition(b.owner.file, start)
 	return strconv.Itoa(line) + ":" + strconv.Itoa(int(character))
@@ -149,7 +147,7 @@ func (b *durableManifestBuilder) anchor(node *ast.Node) string {
 // the outer's receiver is a call expression, which actionFor does not
 // recognize. That invariant lives in the parser, far from here, which is why
 // the id set below holds the line rather than resting on it: 24 hex digits is
-// 96 bits of a SHA-256, and SMITHERS4199 is what the Plan lowerer raises on
+// 96 bits of a SHA-256, and VIBE4199 is what the Plan lowerer raises on
 // exactly this condition (durable.go.txt, `stable durable node id collision`).
 func (b *durableManifestBuilder) recordSite(node *ast.Node, kind string, key string) {
 	anchor := b.anchor(node)
@@ -218,13 +216,73 @@ func (b *durableManifestBuilder) declaredInTheDefaultLibrary(symbol *ast.Symbol)
 	if symbol == nil || len(symbol.Declarations) == 0 {
 		return false
 	}
+	valueDeclaration := false
 	for _, declaration := range symbol.Declarations {
+		// A type-only augmentation (notably the language's Error.is interface)
+		// does not replace a default-library constructor's runtime value. A
+		// user function/variable/namespace declaration still disqualifies it.
+		if ast.IsInterfaceDeclaration(declaration) || ast.IsTypeAliasDeclaration(declaration) {
+			continue
+		}
+		valueDeclaration = true
 		file := ast.GetSourceFileOfNode(declaration)
 		if file == nil || strings.HasPrefix(file.FileName(), durableManifestProjectRoot) {
 			return false
 		}
 	}
-	return true
+	return valueDeclaration
+}
+
+// The authored upstream type of postfix ! is not its language value type.
+// Follow only checked propagation and immutable unannotated aliases when
+// selecting a payload member. Its native symbol, never the text "push"/"map",
+// may establish the default-library exemption. Generated checking still owns
+// assignability and callback parameter types.
+func (b *durableManifestBuilder) valueType(node *ast.Node, seen map[*ast.Node]bool) *checker.Type {
+	if node == nil {
+		return nil
+	}
+	if seen[node] || len(seen) >= 128 {
+		return b.owner.checker.GetTypeAtLocation(node)
+	}
+	seen[node] = true
+	if ast.IsParenthesizedExpression(node) || ast.IsSatisfiesExpression(node) {
+		return b.valueType(node.Expression(), seen)
+	}
+	if b.owner.analysis != nil && ast.IsNonNullExpression(node) {
+		if receiver := b.owner.analysis.resultPropagations[node]; receiver != nil {
+			if success, _, ok := b.owner.analysis.resultArguments(b.valueType(receiver, seen)); ok {
+				return success
+			}
+		}
+	}
+	if ast.IsIdentifier(node) {
+		if symbol := b.owner.checker.GetSymbolAtLocation(node); symbol != nil {
+			if declaration := symbol.ValueDeclaration; declaration != nil && ast.IsVariableDeclaration(declaration) &&
+				declaration.Type() == nil && ast.IsVarConst(declaration) && declaration.Initializer() != nil {
+				return b.valueType(declaration.Initializer(), seen)
+			}
+		}
+	}
+	if member := b.valueMember(node, seen); member != nil {
+		return b.owner.checker.GetTypeOfSymbolAtLocation(member, node)
+	}
+	return b.owner.checker.GetTypeAtLocation(node)
+}
+
+func (b *durableManifestBuilder) valueMember(node *ast.Node, seen map[*ast.Node]bool) *ast.Symbol {
+	if node == nil {
+		return nil
+	}
+	selection, selected := b.owner.prelude.selectMember(ast.SkipParentheses(node))
+	if !selected {
+		return nil
+	}
+	receiver := b.valueType(selection.receiver, seen)
+	if receiver == nil {
+		return nil
+	}
+	return b.owner.checker.GetPropertyOfType(b.owner.checker.GetApparentType(receiver), selection.text)
 }
 
 // unaccounted FAILS CLOSED on a call this walk did not account for.
@@ -238,13 +296,26 @@ func (b *durableManifestBuilder) declaredInTheDefaultLibrary(symbol *ast.Symbol)
 // include the full effect set of the callee's module; it never silently narrows
 // the Manifest."
 //
-// THE ONE EXEMPTION is `Capability.context()`, and it is a hole with a name
-// rather than a hole: PR-1 locks a capability requirement row as Manifest
-// content and neither backend derives one yet. Exempting it by name keeps the
-// gap to one recognised form. The reference twin exempts exactly the same form.
-func (b *durableManifestBuilder) unaccounted(callee *ast.Node, symbol *ast.Symbol) {
+// Resolved project implementations are followed transitively. A method merely
+// named context is ordinary code: exempting its spelling used to publish an
+// empty Manifest even when the method performed an Action.
+func (b *durableManifestBuilder) unaccounted(call *ast.Node, callee *ast.Node, symbol *ast.Symbol) {
 	if b.declaredInTheDefaultLibrary(symbol) {
 		return
+	}
+	if b.declaredInTheDefaultLibrary(b.valueMember(callee, map[*ast.Node]bool{})) {
+		return
+	}
+	// The language prelude's ordinary adapters introduce no request sites of
+	// their own. Context reads are classified before this point; callbacks are
+	// still followed below. The resolved declaration owns this exemption, not
+	// an authored member's spelling (including Layer/Result lookalikes).
+	if signature := b.owner.checker.GetResolvedSignature(call); signature != nil {
+		if declaration := signature.Declaration(); declaration != nil {
+			if file := ast.GetSourceFileOfNode(declaration); file != nil && file.FileName() == preludeVirtualName {
+				return
+			}
+		}
 	}
 	// A compiler-owned combinator's effects live in the callbacks it is handed,
 	// and the descent has already visited those as CHILDREN of this call. The
@@ -255,26 +326,126 @@ func (b *durableManifestBuilder) unaccounted(callee *ast.Node, symbol *ast.Symbo
 			return
 		}
 	}
-	if ast.IsPropertyAccessExpression(callee) &&
-		callee.AsPropertyAccessExpression().Name().Text() == "context" {
-		return
+	if b.owner.analysis != nil {
+		if b.owner.analysis.namesMutableBinding(callee) {
+			b.fail("this Flow body calls a mutable function binding whose effects the Effect Manifest cannot state")
+			return
+		}
+		if ast.IsCallExpression(call) && callee.Kind == ast.KindSuperKeyword {
+			// A synthesized base constructor has no functionRows entry. Its
+			// work is nevertheless covered by the class construction closure.
+			if class := enclosingClassLike(call); class != nil {
+				b.visitClassConstruction(class)
+				return
+			}
+		}
+		if ast.IsNewExpression(call) {
+			// The resolved signature names the constructor body, which does not
+			// contain instance field initializers. An inherited signature even
+			// names the BASE class, omitting the constructed subclass entirely.
+			// Follow the actual class value, not its possibly narrowed type.
+			if class := b.classValue(callee, 0); class != nil {
+				b.visitClassConstruction(class)
+			} else {
+				b.fail("this Flow body constructs a value whose initialization effects the Effect Manifest cannot state")
+			}
+			return
+		}
+		if implementation := b.owner.analysis.resolveCallee(call); implementation != nil && implementation.node.Body() != nil &&
+			!implementation.file.IsDeclarationFile && implementation.file == b.owner.file {
+			b.visit(implementation.node)
+			return
+		}
 	}
 	b.fail("this Flow body calls a function whose effects the Effect Manifest cannot state; a Manifest that " +
 		"omitted it would claim a Flow reaches no effect it does reach")
 }
 
+// classValue proves a constructor VALUE through immutable aliases and type-only
+// wrappers. A selected construct signature is not value provenance: structural
+// types can collapse two classes whose field initializers have different effects.
+func (b *durableManifestBuilder) classValue(expression *ast.Node, depth int) *ast.Node {
+	if expression == nil || depth > 128 {
+		return nil
+	}
+	if operand := typeOnlyWrapperOperand(expression); operand != nil {
+		return b.classValue(operand, depth+1)
+	}
+	if ast.IsClassExpression(expression) {
+		return expression
+	}
+	if !ast.IsIdentifier(expression) {
+		return nil
+	}
+	symbol := b.owner.durableCanonicalSymbolAt(expression)
+	if symbol == nil || b.assignedSymbols[symbol] {
+		return nil
+	}
+	if class := classDeclarationOf(symbol); class != nil {
+		return class
+	}
+	return b.classValue(constantInitializerOfSymbol(symbol), depth+1)
+}
+
+// Instance initializers and constructor bodies are a single construction edge.
+// Base classes contribute both even when there is no authored `super` call.
+// Static initializers are module/class evaluation, not repeated by `new`.
+func (b *durableManifestBuilder) visitClassConstruction(class *ast.Node) {
+	if b.classes[class] || b.failed != "" {
+		return
+	}
+	b.classes[class] = true
+	if file := ast.GetSourceFileOfNode(class); file == nil || file != b.owner.file || file.IsDeclarationFile {
+		b.fail("this Flow body constructs a class whose initialization effects the Effect Manifest cannot state")
+		return
+	}
+	if heritage := class.ClassLikeData().HeritageClauses; heritage != nil {
+		for _, clause := range heritage.Nodes {
+			if clause.AsHeritageClause().Token != ast.KindExtendsKeyword || clause.AsHeritageClause().Types == nil {
+				continue
+			}
+			for _, typeNode := range clause.AsHeritageClause().Types.Nodes {
+				expression := typeNode.Expression()
+				if base := b.classValue(expression, 0); base != nil {
+					b.visitClassConstruction(base)
+				} else if !b.declaredInTheDefaultLibrary(b.owner.durableCanonicalSymbolAt(expression)) {
+					b.fail("this Flow body constructs a class whose base initialization effects the Effect Manifest cannot state")
+				}
+			}
+		}
+	}
+	for _, member := range class.Members() {
+		if ast.IsPropertyDeclaration(member) && !ast.HasStaticModifier(member) && member.Initializer() != nil {
+			b.visit(member.Initializer())
+		}
+		if ast.IsConstructorDeclaration(member) && member.Body() != nil {
+			b.visit(member)
+		}
+	}
+}
+
 // classify records what one call expression contributes to the Manifest.
 func (b *durableManifestBuilder) classify(node *ast.Node) {
+	if b.classifyBoundChild(node) {
+		return
+	}
 	call := node.AsCallExpression()
-	if ast.IsPropertyAccessExpression(call.Expression) {
-		access := call.Expression.AsPropertyAccessExpression()
-		if !b.owner.durableIntrinsic(access.Name(), "run") {
-			b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(access.Name()))
+	if b.owner.analysis != nil {
+		if capability, recognized := b.owner.analysis.contextRequirement(node); recognized {
+			key := b.capabilityIdentity(capability.symbol)
+			if capability.kind != contextReceiverCapability || key == "" {
+				b.fail("durable capability read has no statically bound nominal identity")
+				return
+			}
+			b.recordSite(node, "get", key)
 			return
 		}
+	}
+	if ast.IsPropertyAccessExpression(call.Expression) && b.owner.durableIntrinsic(call.Expression, "run") {
+		access := call.Expression.AsPropertyAccessExpression()
 		action, recognized := b.contracts.actionFor(access.Expression)
 		if !recognized {
-			b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(access.Expression))
+			b.unaccounted(node, call.Expression, b.owner.durableCanonicalSymbolAt(access.Expression))
 			return
 		}
 		// FAIL CLOSED on an Action whose durable contract cannot be derived —
@@ -297,16 +468,23 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 		// it. Read straight off `action.descriptor` rather than re-derived: a
 		// second derivation would be a second answer to compare, not the
 		// contract the digest was taken over.
+		if prior := b.actions[action.id]; prior != nil && prior["contractDigest"] != action.descriptor["contractDigest"] {
+			b.fail("Action id " + action.id + " resolves to incompatible durable contracts")
+			return
+		}
 		b.actions[action.id] = map[string]any{
 			"contractDigest": action.descriptor["contractDigest"],
 			"errorSchema":    action.descriptor["errorSchema"],
 			"id":             action.id,
 			"inputSchema":    action.descriptor["inputSchema"],
 			"successSchema":  action.descriptor["successSchema"],
-			"version":        1,
+			"version":        action.descriptor["version"],
 		}
 		b.requirements[action.id] = true
 		for _, identity := range durableManifestFailureRow(b.contracts, action.failureType) {
+			b.failures[identity] = true
+		}
+		for _, identity := range action.failureIDs {
 			b.failures[identity] = true
 		}
 		b.recordSite(node, "perform", action.id)
@@ -316,14 +494,25 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 		b.recordSite(node, "sleep", "")
 		return
 	}
-	if b.owner.durableIntrinsic(call.Expression, "waitSignal") {
+	inputKind, what := "", ""
+	for _, input := range []struct{ name, kind, what string }{
+		{"waitSignal", "signal", "signal"},
+		{"waitBroadcast", "broadcast", "broadcast signal"},
+		{"dequeue", "queue", "queue"},
+	} {
+		if b.owner.durableIntrinsic(call.Expression, input.name) {
+			inputKind, what = input.kind, input.what
+			break
+		}
+	}
+	if inputKind != "" {
 		if call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
-			b.fail("durable signal requires one explicit payload type and one static identity")
+			b.fail("durable " + what + " requires one explicit payload type and one static identity")
 			return
 		}
 		identityExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
 		if !ast.IsStringLiteralLike(identityExpression) {
-			b.fail("durable signal identity must be a string literal, not a runtime value")
+			b.fail("durable " + what + " identity must be a string literal, not a runtime value")
 			return
 		}
 		signalID := identityExpression.Text()
@@ -331,18 +520,58 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 		descriptor, err := b.contracts.durableTypeDescriptor(
 			b.owner.checker.GetTypeFromTypeNode(typeNode), typeNode, make(map[checker.TypeId]bool), false)
 		if err != nil {
-			b.fail("durable signal payload is not structurally encodable: " + err.Error())
+			b.fail("durable " + what + " payload is not structurally encodable: " + err.Error())
 			return
 		}
 		payloadSchema := durableStructuralSchema("input", descriptor)
-		b.addContract("signal", signalID, durableDigest(map[string]any{
+		contract := map[string]any{
 			"payloadSchema": payloadSchema,
 			"signalId":      signalID,
-		}))
-		b.recordSite(node, "signal", signalID)
+		}
+		if inputKind == "broadcast" {
+			contract["delivery"] = "broadcast"
+		} else if inputKind == "queue" {
+			contract = map[string]any{"queueId": signalID, "itemSchema": payloadSchema}
+		}
+		b.addContract(inputKind, signalID, durableDigest(contract))
+		b.recordSite(node, inputKind, signalID)
 		return
 	}
-	b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(call.Expression))
+	b.unaccounted(node, call.Expression, b.owner.durableCanonicalSymbolAt(call.Expression))
+}
+
+func (b *durableManifestBuilder) capabilityIdentity(symbol *ast.Symbol) string {
+	declaration := classDeclarationOf(symbol)
+	if declaration == nil || declaration.Name() == nil || b.owner.analysis == nil || b.owner.analysis.project == nil {
+		return ""
+	}
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil {
+		return ""
+	}
+	logical := b.owner.analysis.project.logicalByVirtual[file.FileName()]
+	if file == b.owner.file {
+		logical = b.logicalFile
+	}
+	if logical == "" {
+		return ""
+	}
+	return logical + "#" + declaration.Name().Text()
+}
+
+// A selected overload names a signature, not its implementation. Resolve the
+// unique checked body on the same symbol, as resolveCallee does for calls.
+func (b *durableManifestBuilder) callbackImplementation(declaration *ast.Node) *functionRows {
+	if declaration == nil || b.owner.analysis == nil {
+		return nil
+	}
+	if fn := b.owner.analysis.byNode[declaration]; fn != nil {
+		return fn
+	}
+	if (ast.IsFunctionDeclaration(declaration) || ast.IsMethodDeclaration(declaration)) && declaration.Name() != nil {
+		return b.owner.analysis.bySymbol[b.owner.analysis.symbolAt(declaration.Name())]
+	}
+	return nil
 }
 
 // durableManifestFailureRow enumerates the durable failure identities one
@@ -364,6 +593,10 @@ func durableManifestFailureRow(d *durableFunctionLowerer, failure *checker.Type)
 	}
 	identities := make([]string, 0, len(constituents))
 	for _, constituent := range constituents {
+		if d.durableTypeSymbol(constituent) == d.durableErrorSymbol() {
+			identities = append(identities, "javascript:Error@1")
+			continue
+		}
 		symbol := constituent.Symbol()
 		if symbol == nil {
 			continue
@@ -377,7 +610,7 @@ func durableManifestFailureRow(d *durableFunctionLowerer, failure *checker.Type)
 			continue
 		}
 		identities = append(identities, durableFailureIdentity(
-			durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text()))
+			d.schemaLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text()))
 	}
 	return identities
 }
@@ -392,6 +625,19 @@ func durableEffectManifest(
 	function string,
 	body *ast.Node,
 ) (map[string]any, string) {
+	schemaLogicalName := ""
+	if owner.bodyProfile != nil {
+		schemaLogicalName = owner.bodyProfile.logicalFile
+	}
+	return durableEffectManifestWithIdentity(owner, logicalFile, flowID, flowVersion, function, body, schemaLogicalName)
+}
+
+// The standalone source API stages one input at a private address. Its
+// schema identity remains the authored identity, without pretending that the
+// source uses the executable-body emission profile or deriving from a Plan.
+func durableEffectManifestWithIdentity(owner *lowerer, logicalFile, flowID string, flowVersion int, function string,
+	body *ast.Node, schemaLogicalName string,
+) (map[string]any, string) {
 	builder := &durableManifestBuilder{
 		contracts: &durableFunctionLowerer{
 			owner:       owner,
@@ -405,30 +651,104 @@ func durableEffectManifest(
 			nodeIDs:     make(map[string]bool),
 			signalIDs:   make(map[string]bool),
 		},
-		owner:        owner,
-		logicalFile:  logicalFile,
-		flowID:       flowID,
-		flowVersion:  flowVersion,
-		function:     function,
-		actions:      make(map[string]map[string]any),
-		requirements: make(map[string]bool),
-		contractRows: make(map[string]map[string]any),
-		failures:     make(map[string]bool),
-		occurrences:  make(map[string]int),
-		siteIDs:      make(map[string]string),
+		owner:           owner,
+		logicalFile:     logicalFile,
+		flowID:          flowID,
+		flowVersion:     flowVersion,
+		function:        function,
+		actions:         make(map[string]map[string]any),
+		requirements:    make(map[string]bool),
+		contractRows:    make(map[string]map[string]any),
+		failures:        make(map[string]bool),
+		occurrences:     make(map[string]int),
+		siteIDs:         make(map[string]string),
+		classes:         make(map[*ast.Node]bool),
+		assignedSymbols: make(map[*ast.Symbol]bool),
 	}
 	builder.contracts.activeNodes = &builder.contracts.nodes
+	builder.contracts.schemaLogicalName = schemaLogicalName
+	var collectAssignments func(*ast.Node) bool
+	collectAssignments = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) && ast.IsAssignmentTarget(node) {
+			if symbol := owner.durableCanonicalSymbolAt(node); symbol != nil {
+				builder.assignedSymbols[symbol] = true
+			}
+		}
+		return node.ForEachChild(collectAssignments)
+	}
+	owner.file.AsNode().ForEachChild(collectAssignments)
+	// A lexical Layer discharges its capabilities, not the get-site itself.
+	// Publish the fixed-point root requirement row and record all reachable
+	// reads separately; adding every read to requirements would lose discharge.
+	if owner.analysis != nil {
+		if root := owner.analysis.byNode[body]; root != nil {
+			for _, row := range root.requirements {
+				if row.symbol != nil && owner.analysis.extendsContext(row.symbol) {
+					key := builder.capabilityIdentity(row.symbol)
+					if key == "" {
+						builder.fail("durable capability requirement has no nominal identity")
+					} else {
+						builder.requirements[key] = true
+					}
+				}
+			}
+		}
+	}
 
+	visited := map[*ast.Node]bool{}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if visited[node] || builder.failed != "" {
+			return false
+		}
+		visited[node] = true
 		if ast.IsCallExpression(node) {
 			builder.classify(node)
+		} else if isInvocationExpression(node) {
+			var callee *ast.Node
+			if ast.IsTaggedTemplateExpression(node) {
+				callee = node.AsTaggedTemplateExpression().Tag
+			} else {
+				callee = node.AsNewExpression().Expression
+			}
+			builder.unaccounted(node, callee, owner.durableCanonicalSymbolAt(callee))
+		}
+		if owner.analysis != nil {
+			for _, fn := range owner.analysis.accessorInvocations(node) {
+				if fn.file == owner.file && fn.node.Body() != nil {
+					visit(fn.node)
+				} else {
+					builder.fail("this Flow body invokes an accessor whose effects the Effect Manifest cannot state")
+				}
+			}
+			for _, fn := range owner.analysis.implicitInvocations(node) {
+				if fn.file == owner.file && fn.node.Body() != nil {
+					visit(fn.node)
+				} else {
+					builder.fail("this Flow body implicitly invokes a function whose effects the Effect Manifest cannot state")
+				}
+			}
+			// A callback carried by a checked function value is as reachable as
+			// an inline callback. The visited set closes recursive helpers and
+			// gives their request sites one row, regardless of call count.
+			for _, argument := range invocationArguments(node) {
+				for _, signature := range owner.checker.GetSignaturesOfType(owner.checker.GetTypeAtLocation(argument), checker.SignatureKindCall) {
+					declaration := signature.Declaration()
+					if fn := builder.callbackImplementation(declaration); fn != nil && !owner.analysis.namesMutableBinding(argument) && fn.file == owner.file && fn.node.Body() != nil {
+						visit(fn.node)
+					} else if declaration == nil || ast.GetSourceFileOfNode(declaration) == nil ||
+						strings.HasPrefix(ast.GetSourceFileOfNode(declaration).FileName(), durableManifestProjectRoot) && ast.GetSourceFileOfNode(declaration).FileName() != preludeVirtualName {
+						builder.fail("this Flow body passes a callback whose effects the Effect Manifest cannot state")
+					}
+				}
+			}
 		}
 		node.ForEachChild(visit)
 		return false
 	}
+	builder.visit = visit
 	if bodyNode := body.Body(); bodyNode != nil {
-		bodyNode.ForEachChild(visit)
+		visit(bodyNode)
 	}
 	if builder.failed != "" {
 		return nil, builder.failed

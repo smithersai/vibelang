@@ -1,0 +1,805 @@
+package main
+
+// Checked, bounded Plan templates. These are data builders, never evaluators:
+// callbacks contribute an input template and an Action contract, not a closure
+// that executes during compilation or preview. The runtime expands the pinned
+// template only within its declared round/item budgets.
+
+import (
+	"fmt"
+	"math"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
+
+const durableMaxLoopRounds = 1000
+const durableMaxFanOutSteps = 16
+
+type durableTemplateEnvironment struct {
+	root     *ast.Symbol
+	kind     string // state for loops, item for fan-out
+	code     string
+	bindings map[*ast.Symbol]map[string]any
+	// Static keyed fan-out bodies may refer to already checked values in the
+	// enclosing source Flow. Keys and legacy runtime templates do not opt in.
+	captures bool
+	nodes    int
+}
+
+func (env *durableTemplateEnvironment) label() string {
+	if env.kind == "state" {
+		return "loop"
+	}
+	return "fanOut"
+}
+
+func (d *durableFunctionLowerer) templateFail(node *ast.Node, code, message string) (map[string]any, bool) {
+	d.fail(node, code, message)
+	return nil, false
+}
+
+func (d *durableFunctionLowerer) lowerTemplate(node *ast.Node, env *durableTemplateEnvironment, depth int) (map[string]any, bool) {
+	expression := ast.SkipParentheses(node)
+	label := env.label()
+	fail := func(at *ast.Node, message string) (map[string]any, bool) {
+		return d.templateFail(at, env.code, message)
+	}
+	env.nodes++
+	if expression == nil || depth > 256 || env.nodes > 100000 {
+		return fail(node, "durable "+label+" template exceeds the structural complexity budget")
+	}
+	lower := func(child *ast.Node) (map[string]any, bool) { return d.lowerTemplate(child, env, depth+1) }
+	if ast.IsIdentifier(expression) {
+		symbol := d.owner.durableCanonicalSymbolAt(expression)
+		if symbol != nil && symbol == env.root {
+			return map[string]any{"kind": env.kind, "path": []any{}}, true
+		}
+		if value := env.bindings[symbol]; value != nil {
+			return value, true
+		}
+		if env.captures && d.symbolicPlan && symbol != nil {
+			if value, present := d.values[symbol]; present {
+				// This is immutable compiler IR, never a source closure or a
+				// snapshot of module state. Scope substitution occurs during
+				// graph composition, keeping planned values as references.
+				return map[string]any{"kind": "capture", "value": value.ir, "path": []any{}}, true
+			}
+		}
+		if env.captures {
+			return fail(expression, "durable "+label+" templates cannot capture "+expression.Text()+"; only the enclosing Flow input, prior const bindings, current item and literals are available")
+		}
+		return fail(expression, "durable "+label+" templates cannot capture "+expression.Text()+"; use only the current "+env.kind+" and literals")
+	}
+	var literal any
+	matched := true
+	switch expression.Kind {
+	case ast.KindNullKeyword:
+		literal = nil
+	case ast.KindTrueKeyword:
+		literal = true
+	case ast.KindFalseKeyword:
+		literal = false
+	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
+		literal = expression.Text()
+	case ast.KindNumericLiteral:
+		number, err := strconv.ParseFloat(expression.Text(), 64)
+		if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+			return fail(expression, label+" template number is not canonical")
+		}
+		literal = number
+	default:
+		matched = false
+	}
+	if matched {
+		return map[string]any{"kind": "literal", "value": literal}, true
+	}
+	if ast.IsPrefixUnaryExpression(expression) {
+		prefix := expression.AsPrefixUnaryExpression()
+		if prefix.Operator == ast.KindMinusToken && ast.IsNumericLiteral(prefix.Operand) {
+			number, err := strconv.ParseFloat(prefix.Operand.Text(), 64)
+			number = -number
+			if err != nil || math.IsInf(number, 0) || math.IsNaN(number) || number == 0 && math.Signbit(number) {
+				return fail(expression, label+" template number is not canonical")
+			}
+			return map[string]any{"kind": "literal", "value": number}, true
+		}
+		if env.kind == "state" && prefix.Operator == ast.KindExclamationToken {
+			value, ok := lower(prefix.Operand)
+			return map[string]any{"kind": "unary", "operator": "not", "value": value}, ok
+		}
+	}
+	if d.symbolicPlan && env.captures {
+		if operator, children := keyedComputationSyntax(expression); operator != "" {
+			operands := []any{}
+			for _, child := range children {
+				value, ok := lower(child)
+				if !ok {
+					return nil, false
+				}
+				operands = append(operands, value)
+			}
+			return map[string]any{"kind": "compute", "operator": operator, "operands": operands}, true
+		}
+	}
+	if env.kind == "state" && ast.IsBinaryExpression(expression) {
+		binary := expression.AsBinaryExpression()
+		operators := map[ast.Kind]string{
+			ast.KindEqualsEqualsEqualsToken: "eq", ast.KindExclamationEqualsEqualsToken: "neq",
+			ast.KindGreaterThanToken: "gt", ast.KindGreaterThanEqualsToken: "gte",
+			ast.KindLessThanToken: "lt", ast.KindLessThanEqualsToken: "lte",
+			ast.KindAmpersandAmpersandToken: "and", ast.KindBarBarToken: "or",
+		}
+		operator := operators[binary.OperatorToken.Kind]
+		if binary.OperatorToken.Kind == ast.KindPlusToken {
+			t := d.owner.checker.GetTypeAtLocation(expression)
+			if t != nil && t.Flags()&(checker.TypeFlagsString|checker.TypeFlagsStringLiteral) != 0 {
+				operator = "concat"
+			}
+			if t != nil && t.Flags()&(checker.TypeFlagsNumber|checker.TypeFlagsNumberLiteral) != 0 {
+				operator = "add"
+			}
+			if operator == "" {
+				return fail(expression, "loop template + must be statically number or string")
+			}
+		}
+		if operator == "" {
+			return fail(binary.OperatorToken, "unsupported loop template operator "+binary.OperatorToken.Kind.String())
+		}
+		left, ok := lower(binary.Left)
+		if !ok {
+			return nil, false
+		}
+		right, ok := lower(binary.Right)
+		return map[string]any{"kind": "binary", "operator": operator, "left": left, "right": right}, ok
+	}
+	if ast.IsObjectLiteralExpression(expression) {
+		fields := map[string]any{}
+		order := []any{}
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			var name string
+			var initializer *ast.Node
+			if ast.IsPropertyAssignment(property) {
+				key := property.Name()
+				if key == nil || !(ast.IsIdentifier(key) || ast.IsStringLiteral(key) || ast.IsNumericLiteral(key)) {
+					return fail(property, "durable "+label+" object field names must be static")
+				}
+				name, initializer = key.Text(), property.AsPropertyAssignment().Initializer
+				if d.symbolicPlan && name == "__proto__" {
+					return fail(property, "a prototype-setting object literal has no static keyed data representation")
+				}
+			} else if ast.IsShorthandPropertyAssignment(property) {
+				name, initializer = property.Name().Text(), property.Name()
+			} else {
+				return fail(property, label+" templates do not support spreads, methods, or accessors")
+			}
+			if _, found := fields[name]; found {
+				return fail(property, "duplicate "+label+" template field "+name)
+			}
+			value, ok := lower(initializer)
+			if !ok {
+				return nil, false
+			}
+			fields[name] = value
+			order = append(order, name)
+		}
+		object := map[string]any{"kind": "object", "fields": fields}
+		if d.symbolicPlan {
+			object["order"] = order
+		}
+		return object, true
+	}
+	if ast.IsArrayLiteralExpression(expression) {
+		items := []any{}
+		for _, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if element.Kind == ast.KindOmittedExpression || element.Kind == ast.KindSpreadElement {
+				return fail(element, label+" template arrays cannot contain holes or spreads")
+			}
+			value, ok := lower(element)
+			if !ok {
+				return nil, false
+			}
+			items = append(items, value)
+		}
+		return map[string]any{"kind": "array", "items": items}, true
+	}
+	if ast.IsPropertyAccessExpression(expression) || ast.IsElementAccessExpression(expression) {
+		if expression.Flags&ast.NodeFlagsOptionalChain != 0 {
+			return fail(expression, label+" templates cannot use optional projection")
+		}
+		var receiver *ast.Node
+		var key string
+		if ast.IsPropertyAccessExpression(expression) {
+			receiver, key = expression.Expression(), expression.Name().Text()
+		} else {
+			access := expression.AsElementAccessExpression()
+			receiver = access.Expression
+			argument := ast.SkipParentheses(access.ArgumentExpression)
+			if argument == nil || !(ast.IsStringLiteral(argument) || ast.IsNumericLiteral(argument)) {
+				return fail(expression, label+" template projection keys must be static")
+			}
+			key = argument.Text()
+		}
+		value, ok := lower(receiver)
+		if !ok {
+			return nil, false
+		}
+		switch value["kind"] {
+		case "state", "item", "step", "capture":
+			projected := durableCopyMap(value)
+			projected["path"] = append(append([]any{}, value["path"].([]any)...), key)
+			return projected, true
+		case "object":
+			if projected, ok := value["fields"].(map[string]any)[key].(map[string]any); ok {
+				return projected, true
+			}
+		case "array":
+			if durableDescriptorIndexKey(key) {
+				index, err := strconv.Atoi(key)
+				items := value["items"].([]any)
+				if err == nil && index >= 0 && index < len(items) {
+					return items[index].(map[string]any), true
+				}
+			}
+		}
+		return fail(expression, "cannot project "+durableCanonicalJSON(key)+" from this "+label+" template")
+	}
+	return fail(expression, "unsupported "+label+" template expression "+expression.Kind.String())
+}
+
+func (d *durableFunctionLowerer) inlineTemplateCallback(node *ast.Node, code, form, label string, block bool) (*ast.Symbol, *ast.Node, bool) {
+	expression := ast.SkipParentheses(node)
+	fail := func(at *ast.Node, message string) (*ast.Symbol, *ast.Node, bool) {
+		d.fail(at, code, message)
+		return nil, nil, false
+	}
+	if expression == nil || !ast.IsArrowFunction(expression) || !block && ast.IsBlock(expression.Body()) ||
+		len(expression.Parameters()) != 1 || len(expression.TypeParameters()) != 0 || ast.HasSyntacticModifier(expression, ast.ModifierFlagsAsync) {
+		return fail(node, "durable "+form+" "+label+" must be one inline, synchronous expression arrow with one parameter")
+	}
+	parameter := expression.Parameters()[0]
+	data := parameter.AsParameterDeclaration()
+	if !ast.IsIdentifier(parameter.Name()) || data.Initializer != nil || data.DotDotDotToken != nil || data.QuestionToken != nil {
+		return fail(parameter, "durable "+form+" "+label+" parameter must be one required identifier")
+	}
+	symbol := d.owner.durableCanonicalSymbolAt(parameter.Name())
+	if symbol == nil {
+		return fail(parameter, "compiler could not bind "+form+" callback parameter")
+	}
+	return symbol, expression.Body(), true
+}
+
+func (d *durableFunctionLowerer) templateAction(node *ast.Node, code, form string) (durableAction, *ast.Node, bool) {
+	expression := ast.SkipParentheses(node)
+	fail := func(at *ast.Node, message string) (durableAction, *ast.Node, bool) {
+		d.fail(at, code, message)
+		return durableAction{}, nil, false
+	}
+	if expression == nil || !ast.IsCallExpression(expression) || !ast.IsPropertyAccessExpression(expression.Expression()) {
+		return fail(node, "durable "+form+" body must be exactly one compiler-bound Action.run(input) call")
+	}
+	call, access := expression.AsCallExpression(), expression.Expression().AsPropertyAccessExpression()
+	if call.QuestionDotToken != nil || access.QuestionDotToken != nil || !d.owner.durableIntrinsic(access.Name(), "run") {
+		return fail(expression, form+" body must target one compiler-bound Action")
+	}
+	action, bound := d.actionFor(access.Expression)
+	if action.collision != nil {
+		d.fail(access.Expression, "4124", durableFailureIdentityCollisionMessage(action.collision))
+		return durableAction{}, nil, false
+	}
+	if !bound || action.invalid != "" {
+		return fail(access.Expression, form+" body must target one derivable compiler-bound Action")
+	}
+	if call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		return fail(expression, action.id+".run requires exactly one "+form+" input")
+	}
+	argument := call.Arguments.Nodes[0]
+	if !d.actionInputAssignable(argument, action.inputType) {
+		return fail(argument, form+" Action input is not assignable to its checked contract")
+	}
+	if !d.rememberAction(expression, action) {
+		return durableAction{}, nil, false
+	}
+	return action, argument, true
+}
+
+func (d *durableFunctionLowerer) checkTemplateProjections(value map[string]any, root any, steps []any, fail durableOutputFail) any {
+	visit := func(child any) any {
+		if record, ok := child.(map[string]any); ok {
+			return d.checkTemplateProjections(record, root, steps, fail)
+		}
+		return fail("holds an invalid template expression")
+	}
+	switch value["kind"] {
+	case "literal":
+		return map[string]any{"kind": "literal", "value": value["value"]}
+	case "compute":
+		if !d.symbolicPlan {
+			return fail("uses computation outside the checked keyed source profile")
+		}
+		operands := []any{}
+		for _, operand := range value["operands"].([]any) {
+			operands = append(operands, visit(operand))
+		}
+		return keyedComputationDescriptor(value["operator"].(string), operands, fail)
+	case "state", "item":
+		return durableProjectDescriptorWithPolicy(root, value["path"].([]any), fail, true)
+	case "capture":
+		if !d.symbolicPlan {
+			return fail("captures are unavailable outside checked static source templates")
+		}
+		// Re-derive from the checked source value. A prior alias must not
+		// erase the stronger presence proof required at a template boundary.
+		descriptor := d.flowOutputDescriptorWithPolicy(value["value"], fail, true)
+		return durableProjectDescriptorWithPolicy(descriptor, value["path"].([]any), fail, true)
+	case "step":
+		step, ok := value["step"].(int)
+		if !ok || step < 0 || step >= len(steps) {
+			return fail("references a step this template does not declare")
+		}
+		return durableProjectDescriptorWithPolicy(steps[step], value["path"].([]any), fail, true)
+	case "object":
+		fields := value["fields"].(map[string]any)
+		names := make([]string, 0, len(fields))
+		for name := range fields {
+			names = append(names, name)
+		}
+		sortUTF16(names)
+		descriptors := make([]any, 0, len(names))
+		unknown := false
+		for _, name := range names {
+			descriptor := visit(fields[name])
+			unknown = unknown || durableIsUnknownDescriptor(descriptor)
+			descriptors = append(descriptors, map[string]any{"name": name, "optional": false, "value": descriptor})
+		}
+		if unknown {
+			return durableUnknownDescriptor{}
+		}
+		return map[string]any{"kind": "object", "fields": descriptors}
+	case "array":
+		descriptors := []any{}
+		unknown := false
+		for _, item := range value["items"].([]any) {
+			descriptor := visit(item)
+			unknown = unknown || durableIsUnknownDescriptor(descriptor)
+			descriptors = append(descriptors, descriptor)
+		}
+		if unknown {
+			return durableUnknownDescriptor{}
+		}
+		return map[string]any{"kind": "tuple", "items": descriptors}
+	case "unary":
+		if descriptor := visit(value["value"]); durableIsUnknownDescriptor(descriptor) {
+			return descriptor
+		}
+		return map[string]any{"kind": "boolean"}
+	case "binary":
+		left, right := visit(value["left"]), visit(value["right"])
+		if durableIsUnknownDescriptor(left) || durableIsUnknownDescriptor(right) {
+			return durableUnknownDescriptor{}
+		}
+		switch value["operator"] {
+		case "and", "or":
+			return durableJoinDescriptors([]any{left, right})
+		case "add":
+			return map[string]any{"kind": "number"}
+		case "concat":
+			return map[string]any{"kind": "string"}
+		default:
+			return map[string]any{"kind": "boolean"}
+		}
+	}
+	return fail("holds an unsupported template expression")
+}
+
+func (d *durableFunctionLowerer) lowerLoopTemplateCall(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	if !d.owner.durableIntrinsic(call.Expression, "loopWhile") {
+		return durableValue{}, false, false
+	}
+	fail := func(at *ast.Node, message string) (durableValue, bool, bool) {
+		value, ok := d.fail(at, "4121", message)
+		return value, true, ok
+	}
+	if call.QuestionDotToken != nil || call.Expression.Flags&ast.NodeFlagsOptionalChain != 0 || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 4 {
+		return fail(node, "compiler-owned loopWhile(initial, state => condition, state => Action.run(input), maxRounds) requires exactly four static arguments")
+	}
+	arguments := call.Arguments.Nodes
+	initial, ok := d.lowerExpression(arguments[0], anchor+":initial", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	conditionSymbol, conditionBody, ok := d.inlineTemplateCallback(arguments[1], "4121", "loopWhile", "condition", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	if !durableBooleanType(d.owner.checker.GetTypeAtLocation(conditionBody)) {
+		return fail(conditionBody, "durable loopWhile condition must statically be boolean")
+	}
+	condition, ok := d.lowerTemplate(conditionBody, &durableTemplateEnvironment{root: conditionSymbol, kind: "state", code: "4121"}, 0)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	bodySymbol, body, ok := d.inlineTemplateCallback(arguments[2], "4121", "loopWhile", "body", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	action, argument, ok := d.templateAction(body, "4121", "loopWhile")
+	if !ok {
+		return durableValue{}, true, false
+	}
+	// The source callback disappears in the emitted Plan. Check its transition
+	// explicitly here, before erasure can hide a type-incompatible later round.
+	stateType := d.owner.checker.GetTypeOfSymbolAtLocation(bodySymbol, body)
+	conditionType := d.owner.checker.GetTypeOfSymbolAtLocation(conditionSymbol, conditionBody)
+	initialType := d.owner.checker.GetTypeAtLocation(arguments[0])
+	if action.successType == nil || stateType == nil || conditionType == nil || initialType == nil ||
+		!d.owner.checker.IsTypeAssignableTo(action.successType, stateType) ||
+		!d.owner.checker.IsTypeAssignableTo(action.successType, conditionType) {
+		return fail(body, "loopWhile Action success is not assignable to its checked state contract")
+	}
+	if !d.owner.checker.IsTypeAssignableTo(initialType, stateType) || !d.owner.checker.IsTypeAssignableTo(initialType, conditionType) {
+		return fail(arguments[0], "loopWhile initial value is not assignable to its checked state contract")
+	}
+	template, ok := d.lowerTemplate(argument, &durableTemplateEnvironment{root: bodySymbol, kind: "state", code: "4121"}, 0)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	var projectionFailure string
+	projectionFail := func(message string, cause ...durableDescriptorFailureCause) any {
+		if projectionFailure == "" && (len(cause) == 0 || cause[0] != durableDescriptorNonStructural) {
+			projectionFailure = message
+		}
+		return durableUnknownDescriptor{}
+	}
+	// The common Flow boundary walk owns initial-value projection defects and
+	// its output-first diagnostic order. Keep that cause separate from defects
+	// in the erased round callback, which this template check owns.
+	initialDescriptor := d.flowOutputDescriptor(initial.ir, func(string, ...durableDescriptorFailureCause) any {
+		return durableUnknownDescriptor{}
+	})
+	successDescriptor, structuralSuccess := durableSchemaDescriptor(action.descriptor["successSchema"].(map[string]any))
+	if !structuralSuccess {
+		successDescriptor = durableUnknownDescriptor{}
+	}
+	stateDescriptor := durableJoinDescriptors([]any{initialDescriptor, successDescriptor})
+	d.checkTemplateProjections(condition, stateDescriptor, nil, projectionFail)
+	inputDescriptor := d.checkTemplateProjections(template, stateDescriptor, nil, projectionFail)
+	if projectionFailure != "" {
+		return fail(body, "durable loop template "+projectionFailure)
+	}
+	if expected, structural := durableSchemaDescriptor(action.descriptor["inputSchema"].(map[string]any)); structural && !durableIsUnknownDescriptor(inputDescriptor) && !durableDescriptorFits(inputDescriptor, expected) {
+		return fail(argument, "loopWhile Action template does not satisfy its durable input contract")
+	}
+	budget := ast.SkipParentheses(arguments[3])
+	if !ast.IsNumericLiteral(budget) {
+		return fail(arguments[3], "durable loopWhile round budget must be a static numeric literal")
+	}
+	rounds, err := strconv.ParseFloat(budget.Text(), 64)
+	if err != nil || rounds < 1 || rounds > durableMaxLoopRounds || math.Trunc(rounds) != rounds {
+		return fail(budget, fmt.Sprintf("durable loopWhile round budget must be an integer between 1 and %d", durableMaxLoopRounds))
+	}
+	identity := map[string]any{"file": d.logicalFile, "flowId": d.flowID, "flowVersion": d.flowVersion, "functionName": d.function,
+		"kind": "loop", "anchor": anchor, "initial": initial.ir, "condition": condition, "actionId": action.id,
+		"actionVersion": action.descriptor["version"], "actionContractDigest": action.descriptor["contractDigest"], "body": template, "maxRounds": rounds}
+	id, ok := d.stableNodeID(node, identity)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	value := map[string]any{"kind": "loop", "id": id, "initial": initial.ir, "condition": condition, "body": template, "maxRounds": rounds,
+		"actionId": action.id, "actionVersion": action.descriptor["version"], "actionContractDigest": action.descriptor["contractDigest"],
+		"dependencies": durableExpressionDependencies(initial.ir), "controlDependencies": durableControlDependencies(d.sequence), "debug": d.debug(node, "loopWhile:"+action.id)}
+	d.appendNode(value)
+	d.sequence, d.formatVersion = id, max(d.formatVersion, 2)
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+func durableStableScalarKeyType(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.IsUnion() {
+		if len(t.Types()) == 0 {
+			return false
+		}
+		for _, part := range t.Types() {
+			if !durableStableScalarKeyType(part) {
+				return false
+			}
+		}
+		return true
+	}
+	return t.Flags()&(checker.TypeFlagsString|checker.TypeFlagsStringLiteral|checker.TypeFlagsNumber|checker.TypeFlagsNumberLiteral|checker.TypeFlagsBoolean|checker.TypeFlagsBooleanLiteral) != 0
+}
+
+func durableTemplateItemDescriptor(descriptor any, fail durableOutputFail) any {
+	if durableIsUnknownDescriptor(descriptor) {
+		return descriptor
+	}
+	record, ok := descriptor.(map[string]any)
+	if !ok {
+		return fail("items have no structural durable descriptor")
+	}
+	switch record["kind"] {
+	case "array":
+		return record["element"]
+	case "tuple":
+		return durableJoinDescriptors(record["items"].([]any))
+	case "union":
+		variants := []any{}
+		for _, variant := range record["variants"].([]any) {
+			variants = append(variants, durableTemplateItemDescriptor(variant, fail))
+		}
+		return durableJoinDescriptors(variants)
+	}
+	return fail("items are not a durable array or tuple")
+}
+
+func (d *durableFunctionLowerer) lowerFanOutTemplateBody(body *ast.Node, env *durableTemplateEnvironment, itemDescriptor any) ([]any, bool) {
+	steps, descriptors := []any{}, []any{}
+	fail := func(node *ast.Node, message string) ([]any, bool) { d.fail(node, "4117", message); return nil, false }
+	lowerRun := func(node *ast.Node, propagation bool) (int, bool) {
+		candidate := ast.SkipParentheses(node)
+		if propagation || d.symbolicPlan && ast.IsNonNullExpression(candidate) {
+			if !ast.IsNonNullExpression(candidate) {
+				d.fail(node, "4117", "intermediate fanOut steps must be direct compiler-bound Action.run(...)! expressions")
+				return 0, false
+			}
+			candidate = ast.SkipParentheses(candidate.AsNonNullExpression().Expression)
+		}
+		var step, inputSchema, successSchema map[string]any
+		var argument *ast.Node
+		if d.symbolicPlan {
+			child, input, recognized, ok := d.checkedChildFlowCall(candidate)
+			if recognized {
+				if !ok {
+					return 0, false
+				}
+				if child.source == nil {
+					d.fail(candidate, "4117", "keyed fanOut requires a checked source child Flow, not an opaque legacy Plan")
+					return 0, false
+				}
+				if !d.rememberChildFlow(candidate, child) {
+					return 0, false
+				}
+				argument, inputSchema, successSchema = input, child.input.value, child.success.value
+				step = map[string]any{"childFlowId": child.plan["flowId"], "childFlowVersion": child.plan["flowVersion"],
+					"childPlanDigest": child.plan["digest"]}
+			}
+		}
+		if step == nil {
+			action, input, ok := d.templateAction(candidate, "4117", "fanOut")
+			if !ok {
+				return 0, false
+			}
+			argument = input
+			inputSchema, successSchema = action.descriptor["inputSchema"].(map[string]any), action.descriptor["successSchema"].(map[string]any)
+			step = map[string]any{"actionId": action.id, "actionVersion": action.descriptor["version"],
+				"actionContractDigest": action.descriptor["contractDigest"]}
+		}
+		input, ok := d.lowerTemplate(argument, env, 0)
+		if !ok {
+			return 0, false
+		}
+		// A captured const DAG can expand exponentially when serialized or
+		// described. Bound it before either walk, not only at the final Plan.
+		if !durableStaticMaterialFits(input) {
+			d.fail(argument, "4117", "durable fanOut template exceeds its serialization budget")
+			return 0, false
+		}
+		var issue string
+		inputDescriptor := d.checkTemplateProjections(input, itemDescriptor, descriptors, func(message string, _ ...durableDescriptorFailureCause) any {
+			if issue == "" {
+				issue = message
+			}
+			return durableUnknownDescriptor{}
+		})
+		if issue != "" {
+			d.fail(argument, "4117", "durable fanOut template "+issue)
+			return 0, false
+		}
+		if expected, structural := durableSchemaDescriptor(inputSchema); structural && !durableIsUnknownDescriptor(inputDescriptor) && !durableDescriptorFits(inputDescriptor, expected) {
+			kind := "Action"
+			if step["childPlanDigest"] != nil {
+				kind = "child Flow"
+			}
+			d.fail(argument, "4117", "fanOut "+kind+" template does not satisfy its durable input contract")
+			return 0, false
+		}
+		if len(steps) >= durableMaxFanOutSteps {
+			kind := "Action"
+			if d.symbolicPlan {
+				kind = "Action or child Flow"
+			}
+			d.fail(candidate, "4117", fmt.Sprintf("fanOut bodies support at most %d %s steps", durableMaxFanOutSteps, kind))
+			return 0, false
+		}
+		step["input"] = input
+		steps = append(steps, step)
+		descriptor, structural := durableSchemaDescriptor(successSchema)
+		if !structural {
+			descriptor = durableUnknownDescriptor{}
+		}
+		descriptors = append(descriptors, descriptor)
+		return len(steps) - 1, true
+	}
+	if !ast.IsBlock(body) {
+		_, ok := lowerRun(body, false)
+		return steps, ok
+	}
+	returned := false
+	for _, statement := range body.AsBlock().Statements.Nodes {
+		if returned {
+			return fail(statement, "statements after the fanOut body return are not supported")
+		}
+		if statement.Kind == ast.KindEmptyStatement {
+			continue
+		}
+		if ast.IsVariableStatement(statement) {
+			list := statement.AsVariableStatement().DeclarationList
+			if list.Flags&ast.NodeFlagsConst == 0 {
+				return fail(statement, "fanOut body bindings must use const")
+			}
+			for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+				if !ast.IsIdentifier(declaration.Name()) || declaration.Initializer() == nil {
+					return fail(declaration, "fanOut body const bindings require one identifier and an initializer")
+				}
+				symbol := d.owner.durableCanonicalSymbolAt(declaration.Name())
+				if symbol == nil {
+					return fail(declaration, "compiler could not resolve fanOut body binding")
+				}
+				if symbol == env.root || env.bindings[symbol] != nil {
+					return fail(declaration, "duplicate fanOut body binding")
+				}
+				initializer := ast.SkipParentheses(declaration.Initializer())
+				if ast.IsNonNullExpression(initializer) {
+					step, ok := lowerRun(initializer, true)
+					if !ok {
+						return nil, false
+					}
+					env.bindings[symbol] = map[string]any{"kind": "step", "step": step, "path": []any{}}
+				} else {
+					value, ok := d.lowerTemplate(initializer, env, 0)
+					if !ok {
+						return nil, false
+					}
+					env.bindings[symbol] = value
+				}
+			}
+			continue
+		}
+		if ast.IsReturnStatement(statement) {
+			if statement.Expression() == nil {
+				return fail(statement, "fanOut body must return its final Action.run(...) call")
+			}
+			if _, ok := lowerRun(statement.Expression(), false); !ok {
+				return nil, false
+			}
+			returned = true
+			continue
+		}
+		return fail(statement, "unsupported fanOut body statement "+statement.Kind.String())
+	}
+	if !returned {
+		return fail(body, "fanOut body must return its final Action.run(...) call")
+	}
+	return steps, true
+}
+
+func (d *durableFunctionLowerer) lowerFanOutTemplateCall(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	if !d.owner.durableIntrinsic(call.Expression, "fanOut") {
+		return durableValue{}, false, false
+	}
+	fail := func(at *ast.Node, message string) (durableValue, bool, bool) {
+		value, ok := d.fail(at, "4117", message)
+		return value, true, ok
+	}
+	if call.QuestionDotToken != nil || call.Expression.Flags&ast.NodeFlagsOptionalChain != 0 || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 3 {
+		return fail(node, "compiler-owned fanOut(items, item => item.key, item => Action.run(input)) requires exactly three static arguments")
+	}
+	arguments := call.Arguments.Nodes
+	items, ok := d.lowerExpression(arguments[0], anchor+":items", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	for _, dependency := range durableExpressionDependencies(items.ir) {
+		if id, ok := dependency.(string); ok && d.fanOutNodeIDs[id] {
+			return fail(arguments[0], "nested fanOut is outside the bounded runtime template subset")
+		}
+	}
+	keySymbol, keyBody, ok := d.inlineTemplateCallback(arguments[1], "4117", "fanOut", "key", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	if !durableStableScalarKeyType(d.owner.checker.GetTypeAtLocation(keyBody)) {
+		return fail(keyBody, "durable fanOut key must statically be a string, number, or boolean")
+	}
+	key, ok := d.lowerTemplate(keyBody, &durableTemplateEnvironment{root: keySymbol, kind: "item", code: "4117"}, 0)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	if key["kind"] != "item" {
+		return fail(keyBody, "durable fanOut key must be a direct projection of the current item")
+	}
+	var issue string
+	projectionFail := func(message string, cause ...durableDescriptorFailureCause) any {
+		if issue == "" && (len(cause) == 0 || cause[0] != durableDescriptorNonStructural) {
+			issue = message
+		}
+		return durableUnknownDescriptor{}
+	}
+	itemDescriptor := durableTemplateItemDescriptor(d.flowOutputDescriptor(items.ir, projectionFail), projectionFail)
+	d.checkTemplateProjections(key, itemDescriptor, nil, projectionFail)
+	if issue != "" {
+		return fail(keyBody, "durable fanOut template "+issue)
+	}
+	bodySymbol, body, ok := d.inlineTemplateCallback(arguments[2], "4117", "fanOut", "body", true)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	// Both source callbacks disappear in the Plan. An explicitly annotated
+	// parameter must not substitute a different item type when that happens.
+	// The native numeric index type includes every member of a tuple or array
+	// (including a union of collections), without an artificial indexed-access
+	// undefined: each callback runs only for an element that actually exists.
+	itemsType := d.owner.checker.GetTypeAtLocation(arguments[0])
+	var itemType *checker.Type
+	if itemsType != nil {
+		if info := d.owner.checker.GetIndexInfoOfType(itemsType, d.owner.checker.GetNumberType()); info != nil {
+			itemType = info.ValueType()
+		}
+	}
+	for _, callback := range []struct {
+		symbol *ast.Symbol
+		body   *ast.Node
+		name   string
+	}{{keySymbol, keyBody, "key"}, {bodySymbol, body, "body"}} {
+		parameterType := d.owner.checker.GetTypeOfSymbolAtLocation(callback.symbol, callback.body)
+		if itemType == nil || parameterType == nil || !d.owner.checker.IsTypeAssignableTo(itemType, parameterType) {
+			return fail(callback.body, "fanOut item is not assignable to its checked "+callback.name+" parameter contract")
+		}
+	}
+	env := &durableTemplateEnvironment{root: bodySymbol, kind: "item", code: "4117", bindings: map[*ast.Symbol]map[string]any{}, captures: d.symbolicPlan}
+	steps, ok := d.lowerFanOutTemplateBody(body, env, itemDescriptor)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	identity := map[string]any{"file": d.logicalFile, "flowId": d.flowID, "flowVersion": d.flowVersion, "functionName": d.function,
+		"kind": "fanout", "anchor": anchor, "items": items.ir, "keyPath": key["path"]}
+	value := map[string]any{"kind": "fanout", "items": items.ir, "keyPath": key["path"],
+		"dependencies": durableExpressionDependencies(items.ir), "controlDependencies": durableControlDependencies(d.sequence)}
+	labels := make([]string, 0, len(steps))
+	for _, step := range steps {
+		value := step.(map[string]any)
+		label, ok := value["actionId"].(string)
+		if !ok {
+			label = value["childFlowId"].(string)
+		}
+		labels = append(labels, label)
+	}
+	if len(steps) > 1 {
+		identity["steps"], value["steps"] = steps, steps
+		d.formatVersion = max(d.formatVersion, 2)
+	} else {
+		for name, field := range steps[0].(map[string]any) {
+			identity[name], value[name] = field, field
+		}
+	}
+	id, ok := d.stableNodeID(node, identity)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	value["id"], value["debug"] = id, d.debug(node, "fanOut:"+strings.Join(labels, "+"))
+	d.appendNode(value)
+	if d.fanOutNodeIDs == nil {
+		d.fanOutNodeIDs = map[string]bool{}
+	}
+	d.fanOutNodeIDs[id] = true
+	if !d.symbolicPlan {
+		d.sequence = id
+	}
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}

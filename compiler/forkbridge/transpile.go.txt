@@ -1,0 +1,171 @@
+package main
+
+// Explicit single-file TypeScript erasure / module conversion, backed by
+// upstream's native transpile package. This operation never claims type or
+// VibeLang checking. It is for host runtime sources and already-checked output,
+// not an alternative language compiler or a fallback after failed checking.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/transpile"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type transpileSource struct {
+	Path string `json:"path"`
+	Text string `json:"text"`
+}
+type transpileRequest struct {
+	Files   []transpileSource `json:"files"`
+	Options map[string]any    `json:"options,omitempty"`
+}
+type transpiledSource struct {
+	Path        string       `json:"path"`
+	EmitSkipped bool         `json:"emitSkipped"`
+	JavaScript  string       `json:"javascript"`
+	SourceMap   string       `json:"sourceMap"`
+	Diagnostics []diagnostic `json:"diagnostics"`
+}
+type transpileResult struct {
+	Files []transpiledSource `json:"files"`
+}
+
+func serveTranspile(apiVersion int) {
+	response := struct {
+		APIVersion       int             `json:"apiVersion"`
+		CompilerRevision string          `json:"compilerRevision"`
+		Result           transpileResult `json:"result"`
+		Error            *wireError      `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: transpileResult{Files: []transpiledSource{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 1536*1024*1024 + 1}
+	var input transpileRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("transpilation request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = transpileSources(context.Background(), input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_TRANSPILE", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// Only emission controls are meaningful for this deliberately unchecked seam.
+// Upstream's validating parser still owns option names, enum values and types.
+// Controls that upstream's transpiler silently overrides are not accepted here.
+var transpileOptionNames = map[string]bool{
+	"target": true, "module": true, "jsx": true, "jsxFactory": true,
+	"jsxFragmentFactory": true, "jsxImportSource": true, "esModuleInterop": true,
+	"verbatimModuleSyntax": true, "removeComments": true, "sourceMap": true,
+	"inlineSourceMap": true, "inlineSources": true, "newLine": true,
+	"useDefineForClassFields": true, "experimentalDecorators": true,
+	"emitDecoratorMetadata": true, "alwaysStrict": true, "importHelpers": true,
+	"noEmitHelpers": true, "preserveConstEnums": true, "moduleDetection": true,
+}
+
+func transpileSources(ctx context.Context, input transpileRequest) (transpileResult, error) {
+	result := transpileResult{Files: []transpiledSource{}}
+	if len(input.Files) == 0 || len(input.Files) > 4096 {
+		return result, errors.New("transpilation requires 1 to 4096 ordinary TypeScript/JavaScript sources")
+	}
+	options := map[string]any{"target": "es2022", "module": "esnext", "newLine": "lf"}
+	for key, value := range input.Options {
+		if !transpileOptionNames[key] {
+			return result, fmt.Errorf("option %q is not an emission control for unchecked single-file transpilation", key)
+		}
+		options[key] = value
+	}
+	// Parsing compiler options uses only an empty in-memory filesystem. The
+	// synthesized filename prevents an empty-project diagnostic; no file is read.
+	host := compiler.NewCompilerHost("/src", vfstest.FromMap(map[string]string{}, true), "", nil, nil, nil)
+	config := tsoptions.ParseJsonConfigFileContent(map[string]any{"compilerOptions": options, "files": []string{"module.ts"}}, host, "/src", nil, "/src/tsconfig.json", nil, nil)
+	if len(config.Errors) > 0 {
+		messages := make([]string, 0, len(config.Errors))
+		for _, item := range config.Errors {
+			messages = append(messages, fmt.Sprintf("TS%d: %s", item.Code(), item.Localize(locale.Default)))
+		}
+		return result, errors.New(strings.Join(messages, "\n"))
+	}
+	inspection := inspectionRequest{Files: make([]inspectionSource, 0, len(input.Files))}
+	for _, source := range input.Files {
+		virtual, err := virtualFileName(source.Path)
+		if err != nil {
+			return result, err
+		}
+		lower := strings.ToLower(virtual)
+		if strings.HasSuffix(lower, ".vibe.ts") {
+			return result, fmt.Errorf("transpilation source %q selects the internal VibeLang parser dialect; use checked internal lowering", source.Path)
+		}
+		if strings.ContainsRune(source.Path, 0) || strings.HasSuffix(lower, ".d.ts") || strings.HasSuffix(lower, ".d.mts") || strings.HasSuffix(lower, ".d.cts") {
+			return result, fmt.Errorf("transpilation source %q is not an executable ordinary TypeScript/JavaScript file", source.Path)
+		}
+		kind := "typescript"
+		switch path.Ext(lower) {
+		case ".ts", ".mts", ".cts":
+		case ".js", ".mjs", ".cjs":
+			kind = "javascript"
+		case ".tsx":
+			kind = "tsx"
+		case ".jsx":
+			kind = "jsx"
+		default:
+			return result, fmt.Errorf("transpilation source %q is not ordinary TypeScript/JavaScript; VibeLang sources require checked internal lowering", source.Path)
+		}
+		inspection.Files = append(inspection.Files, inspectionSource{Path: source.Path, Text: source.Text, ScriptKind: kind})
+	}
+	// Syntax is checked before calling the emitting API, so malformed programs
+	// never expose a partial output. The inspection also enforces byte/name bounds.
+	inspected, err := inspectSources(inspection)
+	if err != nil {
+		return result, err
+	}
+	for index, source := range input.Files {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
+		file := transpiledSource{Path: source.Path, Diagnostics: inspected.Files[index].Diagnostics}
+		if hasError(file.Diagnostics) {
+			file.EmitSkipped = true
+			result.Files = append(result.Files, file)
+			continue
+		}
+		virtual, _ := virtualFileName(source.Path)
+		emitted := transpile.TranspileModule(ctx, source.Text, transpile.Options{
+			FileName: virtual, CompilerOptions: config.CompilerOptions(), ReportDiagnostics: true,
+		})
+		if emitted == nil {
+			return result, errors.New("native transpilation was cancelled before emission completed")
+		}
+		lines := newLineIndex(source.Text)
+		for _, item := range emitted.Diagnostics {
+			report := diagnostic{Code: fmt.Sprintf("TS%d", item.Code()), Category: categoryName(item.Category()), Message: item.Localize(locale.Default), Phase: "emit"}
+			if item.File() != nil {
+				start := lines.utf16Offset(item.Pos())
+				report.File, report.Span = source.Path, &span{Start: start, Length: max(0, lines.utf16Offset(item.End())-start)}
+			}
+			file.Diagnostics = append(file.Diagnostics, report)
+		}
+		file.EmitSkipped = hasError(file.Diagnostics)
+		if !file.EmitSkipped {
+			file.JavaScript, file.SourceMap = emitted.OutputText, emitted.SourceMapText
+		}
+		result.Files = append(result.Files, file)
+	}
+	return result, nil
+}

@@ -19,32 +19,37 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-const durableDiagnosticPrefix = "SMITHERS"
+const durableDiagnosticPrefix = "VIBE"
 
 const (
-	durableLogicalPath = "__smithers_flows.ts"
+	durableLogicalPath = "__vibelang_flows.ts"
 	durableVirtualName = "/src/" + durableLogicalPath
-	durableModuleAlias = "./__smithers_flows"
-	durableModuleBase  = "__smithers_flows.js"
+	durableModuleAlias = "./__vibelang_flows"
+	durableModuleBase  = "__vibelang_flows.js"
 )
 
 var durableModuleSpecifiers = map[string]bool{
-	"smithers:flows": true,
+	"vibelang:flows": true,
 }
 
 var durablePortableIdentity = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$`)
+
+// The standalone Action export option retains its existing ASCII spelling.
+// Authored Error class names are native identifiers, including Unicode.
+var durableSchemaIdentifier = regexp.MustCompile(`^[$A-Z_a-z][$0-9A-Z_a-z]*$`)
 
 // The compiler prelude supplies runtime definitions only so an Action class
 // declaration can survive ordinary module evaluation. A successfully lowered
 // durable(...) call never reaches any of these throwing bodies.
 const durablePreludeText = `
-export interface SmithersCompiledFlow<Input, Success> {
+export interface VibeLangCompiledFlow<Input, Success> {
 	readonly id: string;
 	readonly version: number;
 	readonly plan: any;
@@ -53,7 +58,7 @@ export interface SmithersCompiledFlow<Input, Success> {
 	readonly run: (input: Input) => Result<Success, unknown>;
 }
 export abstract class Action<Signature extends (input: any) => Result<any, any>> {
-	declare readonly __smithersActionSignature: Signature;
+	declare readonly __vibelangActionSignature: Signature;
 	static run<S extends (input: any) => Result<any, any>>(
 		this: { readonly prototype: Action<S> },
 		input: Parameters<S>[0]
@@ -61,22 +66,25 @@ export abstract class Action<Signature extends (input: any) => Result<any, any>>
 		throw new Error("compiler-owned Action.run reached runtime without durable lowering");
 	}
 }
-export function durable<Input, Success>(body: (input: Input) => Success): SmithersCompiledFlow<Input, Success> {
+export function durable<Input, Output>(body: (input: Input) => Output):
+	VibeLangCompiledFlow<Input, [Output] extends [Result<infer Success, any>] ? Success : Output> {
 	throw new Error("compiler-owned durable reached runtime without durable lowering");
 }
-export function sleep(durationMs: number): void {
+export function sleep(durationMs: number): null {
 	throw new Error("compiler-owned sleep reached runtime without durable lowering");
 }
 export function waitSignal<Payload>(identity: string): Payload {
 	throw new Error("compiler-owned waitSignal reached runtime without durable lowering");
 }
-export function fanOut(..._arguments: readonly unknown[]): unknown {
+export function fanOut<Item, Success, Failure extends Error>(items: readonly Item[], key: (item: Item) => unknown,
+	body: (item: Item) => Result<Success, Failure>): readonly Success[] {
 	throw new Error("compiler-owned fanOut reached runtime without durable lowering");
 }
 export function sequential<First, Second>(first: First, second: Second): readonly [First, Second] {
 	return [first, second] as const;
 }
-export function loopWhile(..._arguments: readonly unknown[]): unknown {
+export function loopWhile<State>(initial: State, condition: (state: State) => boolean,
+	body: (state: State) => State | Result<State, any>, maxRounds: number): State {
 	throw new Error("compiler-owned loopWhile reached runtime without durable lowering");
 }
 export function dequeue<Item>(identity: string): Item {
@@ -110,7 +118,7 @@ type durableFailureCollision struct {
 	names [2]string
 }
 
-// durableFailureIdentityCollisionMessage is the sentence SMITHERS4124 carries,
+// durableFailureIdentityCollisionMessage is the sentence VIBE4124 carries,
 // byte-for-byte the reference's `durableFailureIdentityCollisionMessage`
 // (poc/src/durable/source-compiler.ts). Kept identical on purpose: a conformance
 // case may declare `messageContains`, and a case declares it once for both
@@ -123,10 +131,11 @@ func durableFailureIdentityCollisionMessage(collision *durableFailureCollision) 
 }
 
 type durableAction struct {
-	id         string
-	descriptor map[string]any
-	inputType  *checker.Type
-	invalid    string
+	id          string
+	descriptor  map[string]any
+	inputType   *checker.Type
+	successType *checker.Type
+	invalid     string
 	// collision marks a declaration that IS a compiler-bound Action but whose
 	// durable contract cannot be derived, because two Error classes in its
 	// failure channel mint one durable identity. It carries the reason rather
@@ -136,7 +145,7 @@ type durableAction struct {
 	// reference's generic unsupported-call sentence — "higher-order and dynamic
 	// calls are unavailable in durable source lowering" — which is FALSE of the
 	// program that reaches it: `X.run({ ... })` is an ordinary compiler-bound
-	// Action call. Both backends now report SMITHERS4124 at the same position.
+	// Action call. Both backends now report VIBE4124 at the same position.
 	// See lowerAction.
 	collision *durableFailureCollision
 	// failureType is the Action's declared failure channel, kept so the Effect
@@ -145,25 +154,38 @@ type durableAction struct {
 	// is meant to be an independent derivation, and projecting it out of the
 	// Plan would validate nothing about a world with no Plan in it.
 	failureType *checker.Type
+	failureIDs  []string // explicit imported contract facts, not a projected Plan row
 }
 
 type durableFunctionLowerer struct {
-	owner         *lowerer
-	flowID        string
-	flowVersion   int
-	function      string
-	logicalFile   string
-	values        map[*ast.Symbol]durableValue
-	nodes         []any
-	activeNodes   *[]any
-	sequence      string
-	actions       map[string]durableAction
-	occurrences   map[string]int
-	nodeIDs       map[string]bool
-	signalIDs     map[string]bool
-	inputSchema   map[string]any
-	successSchema map[string]any
-	failed        bool
+	owner       *lowerer
+	flowID      string
+	flowVersion int
+	function    string
+	logicalFile string
+	// Only the standalone single-source contract API overrides the virtual
+	// input's logical identity. Whole-project lowering derives it per file.
+	schemaLogicalName string
+	childPlans        map[string]durableBoundFlow
+	values            map[*ast.Symbol]durableValue
+	nodes             []any
+	activeNodes       *[]any
+	declaredNodes     map[string]map[string]any
+	sequence          string
+	actions           map[string]durableAction
+	occurrences       map[string]int
+	nodeIDs           map[string]bool
+	signalIDs         map[string]bool
+	queueContracts    map[string]string
+	fanOutNodeIDs     map[string]bool
+	formatVersion     int
+	inputSchema       map[string]any
+	successSchema     map[string]any
+	// The explicit keyed-source profile describes a graph: independent Action
+	// results do not acquire an ordering edge merely because their bindings are
+	// written in sequence. Keep object insertion order in its interpreter IR.
+	symbolicPlan bool
+	failed       bool
 	// unrepresentable records that the body is a program the PLAN cannot hold —
 	// a branch, a loop, an operator over a runtime value, a call the Plan cannot
 	// name. It is not a defect in the body and draws no diagnostic; see
@@ -176,6 +198,23 @@ func durableCode(suffix string) string { return durableDiagnosticPrefix + suffix
 func (l *lowerer) durableCanonicalSymbolAt(node *ast.Node) *ast.Symbol {
 	if node == nil {
 		return nil
+	}
+	// A selected export can have a value symbol even when the namespace used
+	// to select it was imported only as a type. Prove each runtime receiver,
+	// not just the terminal member, before erasing an intrinsic reference.
+	for receiver := ast.SkipParentheses(node); receiver != nil; {
+		if symbol := l.checker.GetSymbolAtLocation(receiver); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			for _, declaration := range symbol.Declarations {
+				if ast.IsTypeOnlyImportOrExportDeclaration(declaration) {
+					return nil
+				}
+			}
+		}
+		if ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) {
+			receiver = ast.SkipParentheses(receiver.Expression())
+		} else {
+			break
+		}
 	}
 	symbol := l.checker.GetSymbolAtLocation(node)
 	if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
@@ -223,7 +262,7 @@ func durableResolvedModule(typeChecker *checker.Checker, specifier *ast.Node) bo
 	if typeChecker == nil || specifier == nil {
 		return false
 	}
-	symbol := typeChecker.ResolveExternalModuleName(specifier)
+	symbol := typeChecker.ResolveExternalModuleNameAtLocation(specifier)
 	if symbol == nil {
 		return false
 	}
@@ -248,9 +287,16 @@ func durablePreludeSpecifierFor(virtualName string) string {
 
 func durableLogicalFile(file *ast.SourceFile) string {
 	if file == nil {
-		return "durable-source.sm"
+		return "durable-source.vibe"
 	}
 	return strings.TrimPrefix(path.Clean(file.FileName()), "/src/")
+}
+
+func (d *durableFunctionLowerer) schemaLogicalFile(file *ast.SourceFile) string {
+	if d.schemaLogicalName != "" {
+		return d.schemaLogicalName
+	}
+	return durableLogicalFile(file)
 }
 
 // durableMaxIdentityLength bounds a durable failure identity in UTF-16 code
@@ -286,7 +332,7 @@ func isDurableIdentityUnit(unit uint16) bool {
 // escapeDurableIdentityComponent (poc/src/durable/site-id.ts), unit for unit.
 //
 // There is no index-0 special case, matching the reference: the composed
-// identity always begins with the literal "smithers:", so the envelope
+// identity always begins with the literal "vibelang:", so the envelope
 // validator's leading-character rule is already satisfied.
 func escapeDurableIdentityComponent(component string) []uint16 {
 	escaped := []uint16{}
@@ -301,7 +347,7 @@ func escapeDurableIdentityComponent(component string) []uint16 {
 }
 
 // durableFailureIdentity mints the identity a durable CONTRACT carries for one
-// nominal Error class: "smithers:<logical file>@<class name>@1", both components
+// nominal Error class: "vibelang:<logical file>@<class name>@1", both components
 // reversibly escaped. It is a port of the reference frontend's
 // `durableFailureIdentity` (poc/src/durable/site-id.ts), and the two are pinned
 // against each other by the shared vectors in
@@ -309,7 +355,7 @@ func escapeDurableIdentityComponent(component string) []uint16 {
 // they are NOT maintained by reading one another.
 //
 // It is deliberately NOT `stableErrorIdentity`, the RUNTIME spelling
-// `smithers:<file>:<Name>` this bridge emits into `__smithersRegisterError`. The
+// `vibelang:<file>:<Name>` this bridge emits into `__vibelangRegisterError`. The
 // two spellings coexist on purpose and must not be unified: they are validated
 // by two different rules — the runtime registry's STABLE_ERROR_IDENTITY, and the
 // durable failure ENVELOPE validator, which does not accept '$' or an arbitrary
@@ -319,16 +365,16 @@ func escapeDurableIdentityComponent(component string) []uint16 {
 // variant, so it is hashed into the Action's `errorSchema` digest, its
 // `contractDigest`, the Flow's `flowSchemas.error`, and the Plan digest.
 //
-// THE INJECTIVITY RULE. Until 2026-08-28 this spelled `smithers:<file>#<name>@1`
+// THE INJECTIVITY RULE. Until 2026-08-28 this spelled `vibelang:<file>#<name>@1`
 // and then rewrote every unit outside [A-Za-z0-9._/@:+-] to '_'. '#' is not in
 // that class, so the SEPARATOR was the first thing destroyed, and the fold was
 // many-to-one on both components besides. Measured on this backend, zero
 // diagnostics, ending in a runtime "already registered" throw:
 //
-//	"a b.sm"/Boom, "a_b.sm"/Boom, "a#b.sm"/Boom, "a%b.sm"/Boom, "a!b.sm"/Boom
-//	  -> smithers:a_b.sm_Boom@1        (charset collapse, a five-member family)
-//	"a.sm_B"/C and "a.sm#B"/C and "a.sm"/B_C
-//	  -> smithers:a.sm_B_C@1           (separator destruction — and two of those
+//	"a b.vibe"/Boom, "a_b.vibe"/Boom, "a#b.vibe"/Boom, "a%b.vibe"/Boom, "a!b.vibe"/Boom
+//	  -> vibelang:a_b.vibe_Boom@1        (charset collapse, a five-member family)
+//	"a.vibe_B"/C and "a.vibe#B"/C and "a.vibe"/B_C
+//	  -> vibelang:a.vibe_B_C@1           (separator destruction — and two of those
 //	                                    three hold NO character outside the
 //	                                    alphabet, so escaping alone is not a fix)
 //	$Failed and _Failed in one file    (class-name collapse)
@@ -336,8 +382,8 @@ func escapeDurableIdentityComponent(component string) []uint16 {
 // So no step here may destroy information: both components are escaped
 // reversibly, the separator is withheld from the alphabet so neither component
 // can spell it, and the bound is honoured by DIGESTING the exact spelling rather
-// than by cutting it or by keeping a 48-hex-digit prefix. "smithers.digest:"
-// cannot be confused with the ordinary "smithers:" spelling — the ninth unit is
+// than by cutting it or by keeping a 48-hex-digit prefix. "vibelang.digest:"
+// cannot be confused with the ordinary "vibelang:" spelling — the ninth unit is
 // '.' in one and ':' in the other.
 //
 // Every step is defined on UTF-16 code units because the reference is JavaScript
@@ -346,7 +392,7 @@ func escapeDurableIdentityComponent(component string) []uint16 {
 // contributes two escapes rather than one, and the bound is 256 units rather
 // than 256 runes.
 func durableFailureIdentity(sourceName string, name string) string {
-	units := utf16.Encode([]rune("smithers:"))
+	units := utf16.Encode([]rune("vibelang:"))
 	units = append(units, escapeDurableIdentityComponent(sourceName)...)
 	units = append(units, '@')
 	units = append(units, escapeDurableIdentityComponent(name)...)
@@ -359,7 +405,7 @@ func durableFailureIdentity(sourceName string, name string) string {
 	// injective for free: the spelling is already injective over (file, name), so
 	// the digest inherits that up to SHA-256 collision resistance. []byte(spelled)
 	// is the same byte sequence Node's update(..., "utf8") hashes.
-	return fmt.Sprintf("smithers.digest:%x@1", sha256.Sum256([]byte(spelled)))
+	return fmt.Sprintf("vibelang.digest:%x@1", sha256.Sum256([]byte(spelled)))
 }
 
 // durableFailureIdentityCollides answers the collision in one Action's checked
@@ -367,14 +413,14 @@ func durableFailureIdentity(sourceName string, name string) string {
 // that minted it — or nil when the channel is describable.
 //
 // It returns the pair rather than a bool because the diagnostic names both
-// classes. Naming them is the whole reason SMITHERS4124 exists: with only a
+// classes. Naming them is the whole reason VIBE4124 exists: with only a
 // bool, the call site had nothing to say and reported the reference's generic
 // unsupported-call sentence instead.
 //
 // The identity is a function of (logical source file, class name) alone, so it
 // is not injective over class declarations. Two spellings of that are reachable
-// from authored `.sm`: two same-named classes in one logical file, which this
-// bridge already refuses earlier and module-wide as SMITHERS1150, and two
+// from authored `.vibe`: two same-named classes in one logical file, which this
+// bridge already refuses earlier and module-wide as VIBE1150, and two
 // DIFFERENT names that normalize together — `$Failed` and `_Failed` are the
 // smallest such pair, and the only member of the class that reaches a running
 // wire. A failure channel holding a collision is not describable on the far side
@@ -418,7 +464,7 @@ func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker
 		if name == nil || !ast.IsIdentifier(name) {
 			continue
 		}
-		identity := durableFailureIdentity(durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text())
+		identity := durableFailureIdentity(d.schemaLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text())
 		claimant, claimedBefore := claimed[identity]
 		if !claimedBefore {
 			claimed[identity] = claim{declaration: declaration, name: name.Text()}
@@ -427,7 +473,7 @@ func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker
 		if claimant.declaration != declaration {
 			// Authored class names. The reference sorts the same pair with
 			// `compareText` (poc/src/durable/schema.ts:454) before building the
-			// SMITHERS4124 sentence, so byte order here would name the two
+			// VIBE4124 sentence, so byte order here would name the two
 			// classes in the other order for a program whose Error classes are
 			// spelled with characters straddling the surrogate boundary — a
 			// legal identifier spelling, since ID_Start admits astral letters.
@@ -476,54 +522,23 @@ func (d *durableFunctionLowerer) durableTypeSymbol(t *checker.Type) *ast.Symbol 
 	return d.owner.checker.GetMergedSymbol(t.Symbol())
 }
 
-// durableErrorSchemaFor derives the error schema one Action contract carries, or
-// the legacy weakened schema for the one failure channel the reference also
-// declines to describe.
-//
-// THE WEAKENING IS NOT A FALLBACK. `Result<Success, Error>` — the built-in
-// `Error` and nothing else — carries no nominal payload either implementation
-// can describe, and the reference's `weakenUnderivableErrors` reaches
-// `derivedSchema("error")` for exactly that channel and no other. Every other
-// underivable channel is refused on both sides. Widening this to "derivation
-// threw, so emit the stub" would be the fail-open that produced this bridge's
-// original defect: a stub schema is a DIFFERENT digest, so a silent fallback
-// mints a contract identity the reference never mints and the two backends
-// disagree again with no diagnostic anywhere.
+// durableErrorSchemaFor derives a structural codec for every declared failure.
+// Native Error has the pinned javascript:Error@1 message payload. Underivable
+// channels are refused; no error contract falls back to arbitrary JSON.
 func (d *durableFunctionLowerer) durableErrorSchemaFor(failure *checker.Type) (map[string]any, error) {
+	return d.durableErrorSchemaWithBudget(failure, &durableDescriptorBudget{})
+}
+
+func (d *durableFunctionLowerer) durableErrorSchemaWithBudget(failure *checker.Type, budget *durableDescriptorBudget) (map[string]any, error) {
 	errorSymbol := d.durableErrorSymbol()
 	if errorSymbol == nil {
 		return nil, fmt.Errorf("compiler could not resolve the built-in Error type")
 	}
-	if durableIsWhollyBuiltInErrorChannel(d, failure, errorSymbol) {
-		return durableLegacySchema("error"), nil
-	}
-	descriptor, err := d.durableErrorDescriptor(failure, errorSymbol)
+	descriptor, err := d.durableErrorDescriptor(failure, errorSymbol, budget, 0)
 	if err != nil {
 		return nil, err
 	}
 	return durableStructuralSchema("error", descriptor), nil
-}
-
-// durableIsWhollyBuiltInErrorChannel is the reference's
-// `isWhollyBuiltInErrorChannel`: every constituent resolves to the built-in
-// `Error` symbol itself, rather than to a class declaration extending it.
-func durableIsWhollyBuiltInErrorChannel(d *durableFunctionLowerer, failure *checker.Type, errorSymbol *ast.Symbol) bool {
-	if failure == nil {
-		return false
-	}
-	constituents := []*checker.Type{failure}
-	if failure.IsUnion() {
-		constituents = failure.Types()
-	}
-	if len(constituents) == 0 {
-		return false
-	}
-	for _, constituent := range constituents {
-		if d.durableTypeSymbol(constituent) != errorSymbol {
-			return false
-		}
-	}
-	return true
 }
 
 // durableErrorDescriptor is the reference's `DescriptorBuilder.error`: one
@@ -538,9 +553,17 @@ func durableIsWhollyBuiltInErrorChannel(d *durableFunctionLowerer, failure *chec
 func (d *durableFunctionLowerer) durableErrorDescriptor(
 	failure *checker.Type,
 	errorSymbol *ast.Symbol,
+	budget *durableDescriptorBudget,
+	depth int,
 ) (any, error) {
+	if err := budget.visit(depth); err != nil {
+		return nil, err
+	}
 	if failure == nil {
 		return nil, fmt.Errorf("checker returned no failure type")
+	}
+	if failure.Flags()&checker.TypeFlagsNever != 0 {
+		return map[string]any{"kind": "never"}, nil
 	}
 	if failure.IsUnion() {
 		members := failure.Types()
@@ -549,7 +572,7 @@ func (d *durableFunctionLowerer) durableErrorDescriptor(
 		}
 		variants := make([]any, 0, len(members))
 		for _, member := range members {
-			variant, err := d.durableErrorDescriptor(member, errorSymbol)
+			variant, err := d.durableErrorDescriptor(member, errorSymbol, budget, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -564,6 +587,20 @@ func (d *durableFunctionLowerer) durableErrorDescriptor(
 		return nil, fmt.Errorf("failure channel must name a concrete Error class or union")
 	}
 	declaration := classDeclarationOf(d.durableTypeSymbol(failure))
+	if d.durableTypeSymbol(failure) == errorSymbol && declaration == nil {
+		if err := budget.visit(depth + 2); err != nil {
+			return nil, err
+		}
+		if err := budget.visit(depth + 1); err != nil {
+			return nil, err
+		}
+		return map[string]any{
+			"kind": "error", "identity": "javascript:Error@1", "name": "Error",
+			"payload": map[string]any{"kind": "object", "fields": []any{
+				map[string]any{"name": "message", "optional": false, "value": map[string]any{"kind": "string"}},
+			}},
+		}, nil
+	}
 	if declaration == nil {
 		return nil, fmt.Errorf("failure channel must be an ordinary named class extending Error")
 	}
@@ -571,15 +608,22 @@ func (d *durableFunctionLowerer) durableErrorDescriptor(
 	if name == nil || !ast.IsIdentifier(name) {
 		return nil, fmt.Errorf("failure channel must be an ordinary named class extending Error")
 	}
+	identity := durableFailureIdentity(d.schemaLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text())
+	if err := budget.text(name.Text()); err != nil {
+		return nil, err
+	}
+	if err := budget.text(identity); err != nil {
+		return nil, err
+	}
 	if !d.durableExtendsError(declaration, errorSymbol, make(map[*ast.Node]bool)) {
 		return nil, fmt.Errorf("failure channel class %s does not extend Error", name.Text())
 	}
-	payload, err := d.durableErrorPayload(declaration, errorSymbol, make(map[*ast.Node]bool))
+	payload, err := d.durableErrorPayload(declaration, errorSymbol, make(map[*ast.Node]bool), budget, depth+1)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
-		"identity": durableFailureIdentity(durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text()),
+		"identity": identity,
 		"kind":     "error",
 		"name":     name.Text(),
 		"payload":  payload,
@@ -633,7 +677,12 @@ func (d *durableFunctionLowerer) durableErrorPayload(
 	declaration *ast.Node,
 	errorSymbol *ast.Symbol,
 	visited map[*ast.Node]bool,
+	budget *durableDescriptorBudget,
+	depth int,
 ) (any, error) {
+	if err := budget.visit(depth); err != nil {
+		return nil, err
+	}
 	if visited[declaration] {
 		return nil, fmt.Errorf("Error inheritance chain is recursive")
 	}
@@ -641,6 +690,12 @@ func (d *durableFunctionLowerer) durableErrorPayload(
 	defer delete(visited, declaration)
 
 	fields := make(map[string]map[string]any)
+	for _, name := range []string{"message", "name"} {
+		if err := budget.visit(depth + 1); err != nil {
+			return nil, err
+		}
+		fields[name] = map[string]any{"name": name, "optional": true, "value": map[string]any{"kind": "string"}}
+	}
 	if clauses := declaration.ClassLikeData().HeritageClauses; clauses != nil {
 		for _, clauseNode := range clauses.Nodes {
 			clause := clauseNode.AsHeritageClause()
@@ -656,7 +711,7 @@ func (d *durableFunctionLowerer) durableErrorPayload(
 				if baseDeclaration == nil {
 					return nil, fmt.Errorf("Error class has an unsupported base class")
 				}
-				inherited, err := d.durableErrorPayload(baseDeclaration, errorSymbol, visited)
+				inherited, err := d.durableErrorPayload(baseDeclaration, errorSymbol, visited, budget, depth)
 				if err != nil {
 					return nil, err
 				}
@@ -675,8 +730,14 @@ func (d *durableFunctionLowerer) durableErrorPayload(
 	}
 
 	add := func(fieldName string, optional bool, typeNode *ast.Node, location *ast.Node) error {
-		value, err := d.durableTypeDescriptor(
-			d.owner.checker.GetTypeFromTypeNode(typeNode), location, make(map[checker.TypeId]bool), optional)
+		if fieldName == "" || !utf8.ValidString(fieldName) {
+			return fmt.Errorf("Error payload field needs a non-empty scalar name")
+		}
+		if err := budget.text(fieldName); err != nil {
+			return err
+		}
+		value, err := d.durableTypeDescriptorAt(
+			d.owner.checker.GetTypeFromTypeNode(typeNode), location, make(map[checker.TypeId]bool), optional, budget, depth+1)
 		if err != nil {
 			return fmt.Errorf("Error payload field %s: %w", fieldName, err)
 		}
@@ -825,6 +886,24 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 		return nil, false
 	}
 	call := node.AsCallExpression()
+	if l.staticPlanFunctions[enclosingFunction(node)] && l.durableIntrinsic(call.Expression, "fanOut") {
+		// A checked static callback may return a success value or forward a
+		// Result. Its failure row is separately checked before body erasure.
+		return l.factory.UpdateCallExpression(call, l.newPreludeReference("vibelangCheckedPlanFanOut"), call.QuestionDotToken,
+			l.visitor.VisitNodes(call.TypeArguments), l.visitor.VisitNodes(call.Arguments), node.Flags), true
+	}
+	if l.staticPlanFunctions[enclosingFunction(node)] && l.durableIntrinsic(call.Expression, "sequential") {
+		arguments := make([]*ast.Node, 0, len(node.Arguments()))
+		for _, argument := range node.Arguments() {
+			value := l.visitor.VisitNode(argument)
+			if l.prelude.isResultType(l.checker.GetTypeAtLocation(argument)) {
+				value = l.newPreludeCall("vibelangCheckedPlanSuccess", value)
+			}
+			arguments = append(arguments, value)
+		}
+		return l.factory.UpdateCallExpression(call, l.visitor.VisitNode(call.Expression), call.QuestionDotToken,
+			l.visitor.VisitNodes(call.TypeArguments), l.factory.NewNodeList(arguments), node.Flags), true
+	}
 	if !l.durableIntrinsic(call.Expression, "durable") {
 		return nil, false
 	}
@@ -837,6 +916,11 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 	if function == nil {
 		l.report(call.Arguments.Nodes[0], durableCode("4103"), "durable(...) argument is not an inline or statically resolvable function")
 		return node, true
+	}
+	if l.staticPlanFunctions != nil {
+		// Check the actual body, including otherwise unused declarations. This
+		// query-only program cannot escape as JavaScript or an execution proof.
+		return l.visitor.VisitEachChild(node), true
 	}
 	name := durableDeclarationName(node, function)
 	functionName := name
@@ -982,6 +1066,33 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 	d.values[inputSymbol] = durableValue{ir: map[string]any{"kind": "input", "path": []any{}}}
 
 	var output durableValue
+	var ok bool
+	if d.symbolicPlan {
+		output, ok = d.lowerKeyedStatements(body)
+	} else {
+		output, ok = d.lowerLegacyStatements(body)
+	}
+	if !ok {
+		return durableValue{}, false
+	}
+	// All source work and the output are complete before contract derivation.
+	// Bound alias/child DAG serialization before recursively visiting descriptors.
+	if !durableStaticMaterialFits(d.planMaterial(output)) {
+		return d.fail(function, "4199", "durable static graph exceeds its serialization budget")
+	}
+	if !d.checkFlowBoundary(function, output) {
+		return durableValue{}, false
+	}
+	if !durableStaticMaterialFits(d.planMaterial(output)) {
+		return d.fail(function, "4199", "durable static graph exceeds its serialization budget")
+	}
+	return output, true
+}
+
+// Compatibility extraction retains its original statement subset. It cannot
+// select the keyed source profile or acquire its execution semantics implicitly.
+func (d *durableFunctionLowerer) lowerLegacyStatements(body *ast.Node) (durableValue, bool) {
+	var output durableValue
 	returned := false
 	for _, statement := range body.AsBlock().Statements.Nodes {
 		if returned {
@@ -1055,24 +1166,6 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 	if !returned {
 		return d.fail(body, "4109", "durable source function must return a value")
 	}
-	// The output expression is complete here, and so are `d.nodes`, `d.actions`
-	// and `d.inputSchema` — everything the boundary walk reads. It covers the
-	// output AND every value a Plan node consumes; an Action input is the
-	// position that compiled and ran with an unsatisfiable projection until this
-	// covered it.
-	//
-	// The walk's OUTPUT descriptor is the Flow's success contract, and this is
-	// where `d.successSchema` is now set from. It used to be derived here only
-	// for an action-free Flow, and from the return expression's TypeScript TYPE
-	// rather than from the Plan — two different answers to two different
-	// questions. The TypeScript type is WIDENED (`return { ok: true }` typed
-	// `{ ok: boolean }`), while the reference derives `{kind:"literal",
-	// value:true}` from the Plan value expression, so even the action-free case
-	// the fork did derive could disagree; a Flow with an Action got the legacy
-	// stub and disagreed always.
-	if !d.checkFlowBoundary(function, output) {
-		return durableValue{}, false
-	}
 	return output, true
 }
 
@@ -1081,7 +1174,7 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 	if ast.IsIdentifier(expression) {
 		symbol := d.owner.durableCanonicalSymbolAt(expression)
 		if value, ok := d.values[symbol]; ok {
-			return value, true
+			return d.keyedCheckedNarrowing(expression, symbol, value), true
 		}
 		return d.fail(expression, "4110", "unsupported runtime capture "+expression.Text()+"; only input and prior const bindings are available")
 	}
@@ -1111,8 +1204,14 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 			return durableValue{ir: map[string]any{"kind": "literal", "value": value}}, true
 		}
 	}
+	if d.symbolicPlan {
+		if value, recognized, ok := d.lowerKeyedComputation(expression, anchor, allowFinalAction); recognized {
+			return value, ok
+		}
+	}
 	if ast.IsObjectLiteralExpression(expression) {
 		fields := make(map[string]any)
+		order := []any{}
 		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
 			var name string
 			var initializer *ast.Node
@@ -1123,6 +1222,9 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 					return d.fail(property, "4111", "durable object field names must be static")
 				}
 				name = propertyName.Text()
+				if d.symbolicPlan && name == "__proto__" {
+					return d.fail(property, "4111", "a prototype-setting object literal has no static keyed data representation")
+				}
 				initializer = property.AsPropertyAssignment().Initializer
 			case ast.IsShorthandPropertyAssignment(property):
 				name = property.Name().Text()
@@ -1138,8 +1240,13 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 				return durableValue{}, false
 			}
 			fields[name] = value.ir
+			order = append(order, name)
 		}
-		return durableValue{ir: map[string]any{"fields": fields, "kind": "object"}}, true
+		object := map[string]any{"fields": fields, "kind": "object"}
+		if d.symbolicPlan {
+			object["order"] = order
+		}
+		return durableValue{ir: object}, true
 	}
 	if ast.IsArrayLiteralExpression(expression) {
 		items := make([]any, 0, len(expression.AsArrayLiteralExpression().Elements.Nodes))
@@ -1190,9 +1297,12 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 		if ast.IsCallExpression(candidate) {
 			value, recognized, ok := d.lowerAction(candidate, anchor)
 			if recognized {
-				if ok {
+				if ok && !d.symbolicPlan {
 					d.sequence = value.ir.(map[string]any)["nodeId"].(string)
 				}
+				return value, ok
+			}
+			if value, recognized, ok := d.lowerChildFlowCall(candidate, anchor); recognized {
 				return value, ok
 			}
 		}
@@ -1208,20 +1318,14 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 		if value, recognized, ok := d.lowerSequential(expression, anchor); recognized {
 			return value, ok
 		}
-		call := expression.AsCallExpression()
-		for _, unsupported := range []struct {
-			name    string
-			suffix  string
-			message string
-		}{
-			{name: "fanOut", suffix: "4117", message: "compiler-owned fanOut requires a bounded stable-key template not implemented by the Go durable subset"},
-			{name: "loopWhile", suffix: "4121", message: "compiler-owned loopWhile requires a bounded loop template not implemented by the Go durable subset"},
-			{name: "waitBroadcast", suffix: "4122", message: "compiler-owned waitBroadcast is not implemented by the Go durable subset"},
-			{name: "dequeue", suffix: "4123", message: "compiler-owned dequeue is not implemented by the Go durable subset"},
-		} {
-			if d.owner.durableIntrinsic(call.Expression, unsupported.name) {
-				return d.fail(expression, unsupported.suffix, unsupported.message)
-			}
+		if value, recognized, ok := d.lowerPersistentInput(expression, anchor); recognized {
+			return value, ok
+		}
+		if value, recognized, ok := d.lowerLoopTemplateCall(expression, anchor); recognized {
+			return value, ok
+		}
+		if value, recognized, ok := d.lowerFanOutTemplateCall(expression, anchor); recognized {
+			return value, ok
 		}
 		if value, recognized, ok := d.lowerAction(expression, anchor); recognized {
 			if ok && !allowFinalAction {
@@ -1229,8 +1333,14 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 			}
 			return value, ok
 		}
+		if value, recognized, ok := d.lowerChildFlowCall(expression, anchor); recognized {
+			if ok && d.symbolicPlan && !allowFinalAction {
+				return d.fail(expression, "4115", "an intermediate Flow.run(...) must use postfix !; only the final returned Result may remain wrapped")
+			}
+			return value, ok
+		}
 		if d.isChildFlowRun(expression) {
-			return d.fail(expression, "4120", "child Flow embedding is not implemented by the Go durable subset")
+			return d.fail(expression, "4120", "child Flow embedding requires an explicit compiled Flow binding")
 		}
 		// WALL 6 (4112), withdrawn. This is the FALLTHROUGH `MIGRATION-PLAN.md`
 		// §5 R3 names, not a rule about higher-order calls: every call the Plan
@@ -1251,6 +1361,10 @@ func (d *durableFunctionLowerer) project(value durableValue, key string, node *a
 	}
 	kind, _ := record["kind"].(string)
 	switch kind {
+	case "checked":
+		copyRecord := durableCopyMap(record)
+		copyRecord["path"] = append(append([]any{}, record["path"].([]any)...), key)
+		return durableValue{ir: copyRecord}, true
 	case "input", "node":
 		pathValue, _ := record["path"].([]any)
 		copyRecord := make(map[string]any, len(record))
@@ -1295,12 +1409,20 @@ func durableBooleanType(t *checker.Type) bool {
 func (d *durableFunctionLowerer) lowerConditional(node *ast.Node, anchor string, allowFinalAction bool) (durableValue, bool) {
 	conditional := node.AsConditionalExpression()
 	// WALL 4 (4106), withdrawn.
-	if !durableBooleanType(d.owner.checker.GetTypeAtLocation(conditional.Condition)) {
+	if !d.symbolicPlan && !durableBooleanType(d.owner.checker.GetTypeAtLocation(conditional.Condition)) {
 		return d.planUnrepresentable()
 	}
 	condition, ok := d.lowerExpression(conditional.Condition, anchor+":condition", false)
 	if !ok {
 		return durableValue{}, false
+	}
+	if d.symbolicPlan {
+		descriptor := d.flowOutputDescriptor(condition.ir, func(message string, _ ...durableDescriptorFailureCause) any {
+			return durableUnknownDescriptor{}
+		})
+		if !keyedBranchBooleanDescriptor(descriptor) {
+			return d.fail(conditional.Condition, "4199", "a keyed branch requires a checked boolean condition")
+		}
 	}
 	parentNodes := d.activeNodes
 	parentSequence := d.sequence
@@ -1351,16 +1473,114 @@ func (d *durableFunctionLowerer) lowerConditional(node *ast.Node, anchor string,
 		// difference between the two backends' Plans once the three stub schemas
 		// below were derived — it is why static-plan-shape-is-digest-pinned still
 		// minted two digests when every schema in it already agreed.
-		"debug": d.debug(conditional.QuestionToken, "conditional"),
-		"dependencies":        durableExpressionDependencies(condition.ir),
-		"id":                  id,
-		"kind":                "branch",
-		"whenFalse":           map[string]any{"nodes": falseNodes, "output": whenFalse.ir},
-		"whenTrue":            map[string]any{"nodes": trueNodes, "output": whenTrue.ir},
+		"debug":        d.debug(conditional.QuestionToken, "conditional"),
+		"dependencies": durableExpressionDependencies(condition.ir),
+		"id":           id,
+		"kind":         "branch",
+		"whenFalse":    map[string]any{"nodes": falseNodes, "output": whenFalse.ir},
+		"whenTrue":     map[string]any{"nodes": trueNodes, "output": whenTrue.ir},
 	}
-	*d.activeNodes = append(*d.activeNodes, branch)
-	d.sequence = id
+	d.appendNode(branch)
+	if !d.symbolicPlan {
+		d.sequence = id
+	}
 	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true
+}
+
+// Compare supported constructed values in their propagated value view. The
+// upstream type of {value: Action.run(n)!} still contains a Result property.
+// Do not synthesize checker types or strip arbitrary wrappers: descend only
+// authored literals and immutable unannotated aliases, against native target
+// member types. Exact serialized shape checking remains a separate gate.
+func (d *durableFunctionLowerer) actionInputAssignable(node *ast.Node, target *checker.Type) bool {
+	type pair struct {
+		node   *ast.Node
+		target *checker.Type
+	}
+	seen := map[pair]bool{}
+	visited := 0
+	view := &durableManifestBuilder{owner: d.owner}
+	var check func(*ast.Node, *checker.Type) bool
+	check = func(node *ast.Node, target *checker.Type) bool {
+		visited++
+		if node == nil || target == nil || len(seen) >= 128 || visited > 100_000 {
+			return false
+		}
+		node = ast.SkipParentheses(node)
+		key := pair{node, target}
+		if seen[key] {
+			return false
+		}
+		seen[key] = true
+		defer delete(seen, key)
+		if d.symbolicPlan && ast.IsIdentifier(node) {
+			symbol := d.owner.durableCanonicalSymbolAt(node)
+			if value, found := d.values[symbol]; found {
+				proof := d.keyedCheckedNarrowing(node, symbol, value).ir.(map[string]any)
+				if proof["kind"] == "checked" {
+					contract, err := d.durableTypeDescriptor(target, node, map[checker.TypeId]bool{}, false)
+					if err == nil && durableDescriptorFits(proof["descriptor"], contract) {
+						return true
+					}
+				}
+			}
+		}
+		if actual := view.valueType(node, map[*ast.Node]bool{}); actual != nil && d.owner.checker.IsTypeAssignableTo(actual, target) {
+			return true
+		}
+		if target.IsUnion() {
+			for _, variant := range target.Types() {
+				if check(node, variant) {
+					return true
+				}
+			}
+			return false
+		}
+		if ast.IsIdentifier(node) {
+			if symbol := d.owner.durableCanonicalSymbolAt(node); symbol != nil {
+				declaration := symbol.ValueDeclaration
+				if declaration != nil && ast.IsVariableDeclaration(declaration) && ast.IsVarConst(declaration) && declaration.Type() == nil {
+					return check(declaration.Initializer(), target)
+				}
+			}
+		}
+		if ast.IsObjectLiteralExpression(node) {
+			for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+				name := property.Name()
+				if name == nil || !(ast.IsIdentifier(name) || ast.IsStringOrNumericLiteralLike(name)) {
+					return false
+				}
+				var value *ast.Node
+				if ast.IsPropertyAssignment(property) {
+					value = property.Initializer()
+				} else if ast.IsShorthandPropertyAssignment(property) {
+					value = name
+				} else {
+					return false
+				}
+				if !check(value, d.owner.checker.GetTypeOfPropertyOfType(target, name.Text())) {
+					return false
+				}
+			}
+			return true // required/excess wire fields are proved below
+		}
+		if ast.IsArrayLiteralExpression(node) {
+			for index, value := range node.AsArrayLiteralExpression().Elements.Nodes {
+				member := d.owner.checker.GetTypeOfPropertyOfType(target, strconv.Itoa(index))
+				if member == nil {
+					if info := d.owner.checker.GetIndexInfoOfType(target, d.owner.checker.GetNumberType()); info != nil {
+						member = info.ValueType()
+					}
+				}
+				if !check(value, member) {
+					return false
+				}
+			}
+			return true // tuple length is also a wire-contract obligation
+		}
+		return false
+	}
+	return check(node, target)
 }
 
 func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (durableValue, bool, bool) {
@@ -1392,18 +1612,18 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 	// this is reported, and it is still where the reference reports it.
 	//
 	// The CODE and the SENTENCE are no longer the generic ones. Both backends
-	// used to answer SMITHERS4112, "higher-order and dynamic calls are
+	// used to answer VIBE4112, "higher-order and dynamic calls are
 	// unavailable in durable source lowering", which is false of the program
 	// that reaches here — `X.run({ ... })` is an ordinary compiler-bound Action
 	// call, and an author was sent looking for a higher-order call that does not
 	// exist. The reference now keeps the collision's reason out of its `catch`
-	// and re-reports it at the same node as SMITHERS4124; this does the same,
+	// and re-reports it at the same node as VIBE4124; this does the same,
 	// from its own detector, with the same text.
 	//
 	// Still reported here rather than by falling through to the shared
 	// unsupported-call branch below, because falling through would first meet
 	// `isChildFlowRun`, which recognises any compiler-owned `.run` whose
-	// receiver is not `Action` itself and would answer SMITHERS4120 instead.
+	// receiver is not `Action` itself and would answer VIBE4120 instead.
 	if action.collision != nil {
 		value, valid := d.fail(node, "4124", durableFailureIdentityCollisionMessage(action.collision))
 		return value, true, valid
@@ -1412,8 +1632,11 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 		value, valid := d.fail(node, "4113", action.id+".run requires exactly one input argument in durable source")
 		return value, true, valid
 	}
-	argumentType := d.owner.checker.GetTypeAtLocation(call.Arguments.Nodes[0])
-	if action.inputType == nil || argumentType == nil || !d.owner.checker.IsTypeAssignableTo(argumentType, action.inputType) {
+	// Reuse the native propagated-value view, not the upstream non-null type:
+	// const x = First.run(input)! passes the success value to Second.run(x).
+	// No Manifest is built or consulted here; the IR contract check below stays
+	// independent and still rejects absent projections and extra wire fields.
+	if !d.actionInputAssignable(call.Arguments.Nodes[0], action.inputType) {
 		value, valid := d.fail(call.Arguments.Nodes[0], "4100", action.id+".run input is not assignable to the Action's checked input contract")
 		return value, true, valid
 	}
@@ -1421,11 +1644,26 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 	if !valid {
 		return durableValue{}, true, false
 	}
-	d.actions[action.id] = action
+	// The authored upstream type of a propagated member can still be an error
+	// type that passes assignability. Check the actual serialized IR contract
+	// too, before the function body (and its type error) disappears into a Plan.
+	// Projection defects retain the output-first boundary diagnostic below.
+	projectionIssue := false
+	inputDescriptor := d.flowOutputDescriptor(input.ir, func(string, ...durableDescriptorFailureCause) any {
+		projectionIssue = true
+		return durableUnknownDescriptor{}
+	})
+	if expected, structural := durableSchemaDescriptor(action.descriptor["inputSchema"].(map[string]any)); !projectionIssue && structural && !durableDescriptorFits(inputDescriptor, expected) {
+		value, valid := d.fail(call.Arguments.Nodes[0], "4100", action.id+".run value does not satisfy the Action's durable input contract")
+		return value, true, valid
+	}
+	if !d.rememberAction(node, action) {
+		return durableValue{}, true, false
+	}
 	identity := map[string]any{
 		"actionContractDigest": action.descriptor["contractDigest"],
 		"actionId":             action.id,
-		"actionVersion":        1,
+		"actionVersion":        action.descriptor["version"],
 		"anchor":               anchor,
 		"file":                 d.logicalFile,
 		"flowId":               d.flowID,
@@ -1440,7 +1678,7 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 	actionNode := map[string]any{
 		"actionContractDigest": action.descriptor["contractDigest"],
 		"actionId":             action.id,
-		"actionVersion":        1,
+		"actionVersion":        action.descriptor["version"],
 		"controlDependencies":  durableControlDependencies(d.sequence),
 		"debug":                d.debug(node, action.id),
 		"dependencies":         durableExpressionDependencies(input.ir),
@@ -1448,12 +1686,15 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 		"input":                input.ir,
 		"kind":                 "action",
 	}
-	*d.activeNodes = append(*d.activeNodes, actionNode)
+	d.appendNode(actionNode)
 	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
 }
 
 func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, bool) {
 	symbol := d.owner.durableCanonicalSymbolAt(ast.SkipParentheses(reference))
+	if action, found := d.owner.planActions[symbol]; found {
+		return action, true
+	}
 	declaration := classDeclarationOf(symbol)
 	if symbol == nil || declaration == nil || declaration.ClassLikeData().HeritageClauses == nil {
 		return durableAction{}, false
@@ -1498,13 +1739,14 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 		return durableAction{invalid: "Action signature must return Result<Success, Error>"}, true
 	}
 	file := ast.GetSourceFileOfNode(declaration)
-	logical := durableLogicalFile(file)
+	logical := d.schemaLogicalFile(file)
 	id := logical + "#" + symbol.Name
-	inputDescriptor, err := d.durableTypeDescriptor(inputType, declaration, make(map[checker.TypeId]bool), false)
+	budget := &durableDescriptorBudget{}
+	inputDescriptor, err := d.durableTypeDescriptorAt(inputType, declaration, make(map[checker.TypeId]bool), false, budget, 0)
 	if err != nil {
 		return durableAction{invalid: "Action input is not structurally encodable: " + err.Error()}, true
 	}
-	successDescriptor, err := d.durableTypeDescriptor(successType, declaration, make(map[checker.TypeId]bool), false)
+	successDescriptor, err := d.durableTypeDescriptorAt(successType, declaration, make(map[checker.TypeId]bool), false, budget, 0)
 	if err != nil {
 		return durableAction{invalid: "Action success is not structurally encodable: " + err.Error()}, true
 	}
@@ -1517,7 +1759,7 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 	}
 	inputSchema := durableStructuralSchema("input", inputDescriptor)
 	successSchema := durableStructuralSchema("success", successDescriptor)
-	errorSchema, err := d.durableErrorSchemaFor(failureType)
+	errorSchema, err := d.durableErrorSchemaWithBudget(failureType, budget)
 	if err != nil {
 		return durableAction{invalid: "Action failure channel is not structurally encodable: " + err.Error()}, true
 	}
@@ -1530,7 +1772,16 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 	}
 	descriptor := durableCopyMap(contract)
 	descriptor["contractDigest"] = durableDigest(contract)
-	return durableAction{id: id, descriptor: descriptor, inputType: inputType, failureType: failureType}, true
+	return durableAction{id: id, descriptor: descriptor, inputType: inputType, successType: successType, failureType: failureType}, true
+}
+
+func (d *durableFunctionLowerer) rememberAction(node *ast.Node, action durableAction) bool {
+	if prior, found := d.actions[action.id]; found && prior.descriptor["contractDigest"] != action.descriptor["contractDigest"] {
+		d.fail(node, "4114", "Action id "+action.id+" resolves to incompatible durable contracts")
+		return false
+	}
+	d.actions[action.id] = action
+	return true
 }
 
 func (d *durableFunctionLowerer) lowerTimer(node *ast.Node, anchor string) (durableValue, bool, bool) {
@@ -1574,7 +1825,7 @@ func (d *durableFunctionLowerer) lowerTimer(node *ast.Node, anchor string) (dura
 		"id":                  id,
 		"kind":                "timer",
 	}
-	*d.activeNodes = append(*d.activeNodes, timer)
+	d.appendNode(timer)
 	d.sequence = id
 	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
 }
@@ -1588,8 +1839,15 @@ func (d *durableFunctionLowerer) lowerSequential(node *ast.Node, anchor string) 
 		value, ok := d.fail(node, "4119", "compiler-owned sequential(first, second) requires exactly two direct imported Action.run(...) arguments")
 		return value, true, ok
 	}
+	lowerOrdered := func(expression *ast.Node, slot string) (durableValue, bool, bool) {
+		value, recognized, ok := d.lowerAction(expression, slot)
+		if !recognized {
+			return d.lowerChildFlowCall(expression, slot)
+		}
+		return value, recognized, ok
+	}
 	firstExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
-	first, recognized, ok := d.lowerAction(firstExpression, anchor+":first")
+	first, recognized, ok := lowerOrdered(firstExpression, anchor+":first")
 	if !recognized {
 		value, valid := d.fail(call.Arguments.Nodes[0], "4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
 		return value, true, valid
@@ -1599,7 +1857,7 @@ func (d *durableFunctionLowerer) lowerSequential(node *ast.Node, anchor string) 
 	}
 	d.sequence = first.ir.(map[string]any)["nodeId"].(string)
 	secondExpression := ast.SkipParentheses(call.Arguments.Nodes[1])
-	second, recognized, ok := d.lowerAction(secondExpression, anchor+":second")
+	second, recognized, ok := lowerOrdered(secondExpression, anchor+":second")
 	if !recognized {
 		value, valid := d.fail(call.Arguments.Nodes[1], "4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
 		return value, true, valid
@@ -1667,16 +1925,145 @@ func (d *durableFunctionLowerer) lowerSignal(node *ast.Node, anchor string) (dur
 		"signalContractDigest": contractDigest,
 		"signalId":             signalID,
 	}
-	*d.activeNodes = append(*d.activeNodes, signal)
+	d.appendNode(signal)
 	d.sequence = id
 	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
 }
 
+// Queue and broadcast waits share a checked identity/payload contract, but not
+// delivery semantics: a queue may have several consumers of the SAME contract;
+// unicast and broadcast share the unique signal-identity namespace. No source
+// value or implementation is evaluated while constructing these Plan nodes.
+func (d *durableFunctionLowerer) lowerPersistentInput(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	queue := d.owner.durableIntrinsic(call.Expression, "dequeue")
+	broadcast := d.owner.durableIntrinsic(call.Expression, "waitBroadcast")
+	if !queue && !broadcast {
+		return durableValue{}, false, false
+	}
+	code, what, spelling := "4122", "broadcast signal", `waitBroadcast<Payload>("identity")`
+	if queue {
+		code, what, spelling = "4123", "queue", `dequeue<Item>("queue.identity")`
+	}
+	fail := func(at *ast.Node, message string) (durableValue, bool, bool) {
+		value, ok := d.fail(at, code, message)
+		return value, true, ok
+	}
+	if call.QuestionDotToken != nil || call.Expression.Flags&ast.NodeFlagsOptionalChain != 0 ||
+		call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+		return fail(node, "provisional compiler-owned "+spelling+" requires one explicit type argument and one static identity")
+	}
+	identityExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
+	if !ast.IsStringLiteralLike(identityExpression) {
+		return fail(call.Arguments.Nodes[0], "durable "+what+" identity must be a string literal, not a runtime value")
+	}
+	identity := identityExpression.Text()
+	if !durablePortableIdentity.MatchString(identity) {
+		return fail(identityExpression, "durable "+what+" identity must be 1-128 portable characters")
+	}
+	typeNode := call.TypeArguments.Nodes[0]
+	descriptor, err := d.durableTypeDescriptor(d.owner.checker.GetTypeFromTypeNode(typeNode), typeNode, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return fail(typeNode, "durable "+what+" payload is not structurally encodable: "+err.Error())
+	}
+	schema := durableStructuralSchema("input", descriptor)
+	kind, label := "signal", "broadcast:"
+	contract := map[string]any{"delivery": "broadcast", "signalId": identity, "payloadSchema": schema}
+	if queue {
+		kind, label = "queue", "queue:"
+		contract = map[string]any{"queueId": identity, "itemSchema": schema}
+	}
+	contractDigest := durableDigest(contract)
+	if queue {
+		if prior := d.queueContracts[identity]; prior != "" && prior != contractDigest {
+			return fail(typeNode, "durable queue "+identity+" is consumed with two different item types in this Flow")
+		}
+		if d.queueContracts == nil {
+			d.queueContracts = make(map[string]string)
+		}
+		d.queueContracts[identity] = contractDigest
+	} else {
+		if d.signalIDs[identity] {
+			return fail(call.Arguments.Nodes[0], "durable signal identity "+identity+" is duplicated in this Flow")
+		}
+		d.signalIDs[identity] = true
+	}
+	nodeIdentity := map[string]any{"file": d.logicalFile, "flowId": d.flowID, "flowVersion": d.flowVersion,
+		"functionName": d.function, "kind": kind, "anchor": anchor}
+	nodeValue := map[string]any{"kind": kind, "dependencies": []any{},
+		"controlDependencies": durableControlDependencies(d.sequence), "debug": d.debug(node, label+identity)}
+	if queue {
+		nodeIdentity["queueId"], nodeIdentity["queueContractDigest"] = identity, contractDigest
+		nodeValue["queueId"], nodeValue["queueContractDigest"], nodeValue["itemSchema"] = identity, contractDigest, schema
+	} else {
+		nodeIdentity["signalId"], nodeIdentity["signalContractDigest"], nodeIdentity["delivery"] = identity, contractDigest, "broadcast"
+		nodeValue["signalId"], nodeValue["signalContractDigest"], nodeValue["delivery"], nodeValue["payloadSchema"] = identity, contractDigest, "broadcast", schema
+	}
+	id, ok := d.stableNodeID(node, nodeIdentity)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	nodeValue["id"] = id
+	d.appendNode(nodeValue)
+	d.sequence, d.formatVersion = id, 3
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+const durableMaxDescriptorDepth = 64
+const durableMaxDescriptorNodes = 10_000
+
+type durableDescriptorBudget struct{ nodes, bytes int }
+
+// Count repeated literal/key text during traversal, before hashing can expand
+// shared source aliases into an arbitrarily large canonical JSON string. The
+// fixed per-node allowance also bounds container/field metadata overhead.
+func (budget *durableDescriptorBudget) text(value string) error {
+	budget.bytes += len(ctQuote(value))
+	if budget.bytes > 8*1024*1024 {
+		return fmt.Errorf("durable descriptor exceeds its byte budget")
+	}
+	return nil
+}
+
+func (budget *durableDescriptorBudget) visit(depth int) error {
+	if depth > durableMaxDescriptorDepth {
+		return fmt.Errorf("durable type exceeds the descriptor depth limit")
+	}
+	budget.nodes++
+	if budget.nodes > durableMaxDescriptorNodes {
+		return fmt.Errorf("durable type exceeds the descriptor node limit")
+	}
+	budget.bytes += 128
+	if budget.bytes > 8*1024*1024 {
+		return fmt.Errorf("durable descriptor exceeds its byte budget")
+	}
+	return nil
+}
+
 func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location *ast.Node, seen map[checker.TypeId]bool, omitUndefined bool) (any, error) {
+	return d.durableTypeDescriptorAt(t, location, seen, omitUndefined, &durableDescriptorBudget{}, 0)
+}
+
+func (d *durableFunctionLowerer) durableTypeDescriptorAt(t *checker.Type, location *ast.Node, seen map[checker.TypeId]bool, omitUndefined bool, budget *durableDescriptorBudget, depth int) (any, error) {
+	if err := budget.visit(depth); err != nil {
+		return nil, err
+	}
 	if t == nil {
 		return nil, fmt.Errorf("checker returned no type")
 	}
 	flags := t.Flags()
+	for _, rule := range []struct {
+		flags checker.TypeFlags
+		name  string
+	}{
+		{checker.TypeFlagsAny, "any"}, {checker.TypeFlagsUnknown, "unknown"},
+		{checker.TypeFlagsBigIntLike, "bigint"}, {checker.TypeFlagsESSymbolLike, "symbol"},
+		{checker.TypeFlagsVoid, "void"}, {checker.TypeFlagsTypeParameter, "an unresolved generic type"},
+	} {
+		if flags&rule.flags != 0 {
+			return nil, fmt.Errorf("%s is not a canonical JSON persistence type", rule.name)
+		}
+	}
 	if flags&checker.TypeFlagsUndefined != 0 {
 		if omitUndefined {
 			return nil, nil
@@ -1698,20 +2085,31 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 	if flags&checker.TypeFlagsLiteral != 0 {
 		value := t.AsLiteralType().Value()
 		switch value := value.(type) {
-		case string, bool:
+		case string:
+			if !utf8.ValidString(value) {
+				return nil, fmt.Errorf("literal contains an unpaired surrogate")
+			}
+			if err := budget.text(value); err != nil {
+				return nil, err
+			}
+			return map[string]any{"kind": "literal", "value": value}, nil
+		case bool:
 			return map[string]any{"kind": "literal", "value": value}, nil
 		default:
 			number, err := strconv.ParseFloat(fmt.Sprint(value), 64)
-			if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+			if err != nil || math.IsInf(number, 0) || math.IsNaN(number) || (number == 0 && math.Signbit(number)) {
 				return nil, fmt.Errorf("unsupported literal type")
 			}
 			return map[string]any{"kind": "literal", "value": number}, nil
 		}
 	}
 	if t.IsUnion() {
+		if len(t.Types()) > durableMaxUnionVariants {
+			return nil, fmt.Errorf("durable type exceeds the union variant limit")
+		}
 		variants := make([]any, 0, len(t.Types()))
 		for _, item := range t.Types() {
-			variant, err := d.durableTypeDescriptor(item, location, seen, omitUndefined)
+			variant, err := d.durableTypeDescriptorAt(item, location, seen, omitUndefined, budget, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -1724,8 +2122,8 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 		}
 		return durableCanonicalUnion(variants), nil
 	}
-	if flags&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsNever|checker.TypeFlagsBigIntLike|checker.TypeFlagsESSymbolLike|checker.TypeFlagsVoid) != 0 {
-		return nil, fmt.Errorf("type is not a canonical JSON persistence type")
+	if flags&checker.TypeFlagsNever != 0 {
+		return map[string]any{"kind": "never"}, nil
 	}
 	if flags&checker.TypeFlagsObject == 0 {
 		return nil, fmt.Errorf("unsupported persistence type")
@@ -1736,10 +2134,15 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 	seen[t.Id()] = true
 	defer delete(seen, t.Id())
 	if checker.IsTupleType(t) {
+		for _, flags := range t.TargetTupleType().ElementFlags() {
+			if flags != checker.ElementFlagsRequired {
+				return nil, fmt.Errorf("optional/rest tuple elements require an explicit durable representation")
+			}
+		}
 		arguments := d.owner.checker.GetTypeArguments(t)
 		items := make([]any, 0, len(arguments))
 		for _, argument := range arguments {
-			item, err := d.durableTypeDescriptor(argument, location, seen, false)
+			item, err := d.durableTypeDescriptorAt(argument, location, seen, false, budget, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -1752,16 +2155,50 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 		if len(arguments) != 1 {
 			return nil, fmt.Errorf("array element type is unavailable")
 		}
-		element, err := d.durableTypeDescriptor(arguments[0], location, seen, false)
+		element, err := d.durableTypeDescriptorAt(arguments[0], location, seen, false, budget, depth+1)
 		if err != nil {
 			return nil, err
 		}
 		return map[string]any{"element": element, "kind": "array"}, nil
 	}
-	if len(d.owner.checker.GetIndexInfosOfType(t)) != 0 || len(d.owner.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
-		return nil, fmt.Errorf("index signatures and callable objects are not durable structural records")
+	if symbol := d.durableTypeSymbol(t); symbol != nil && symbol.Name == "Promise" {
+		for _, declaration := range symbol.Declarations {
+			if ast.GetSourceFileOfNode(declaration).IsDeclarationFile {
+				return nil, fmt.Errorf("a nested Promise cannot cross a persistence boundary")
+			}
+		}
+	}
+	if len(d.owner.checker.GetIndexInfosOfType(t)) != 0 || len(d.owner.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 ||
+		len(d.owner.checker.GetSignaturesOfType(t, checker.SignatureKindConstruct)) != 0 {
+		return nil, fmt.Errorf("executable authority, index signatures and callable objects are not durable structural records")
+	}
+	if t.IsClass() || (t.Target() != nil && t.Target().IsClass()) {
+		return nil, fmt.Errorf("class instances are not durable structural records")
+	}
+	// The checked contract subset excludes library/host objects and still-
+	// named generic boundaries. Instantiation is not proof of a plain record.
+	symbols := []*ast.Symbol{d.durableTypeSymbol(t)}
+	if t.Alias() != nil {
+		symbols = append(symbols, t.Alias().Symbol())
+	}
+	for _, symbol := range symbols {
+		if symbol == nil {
+			continue
+		}
+		for _, declaration := range symbol.Declarations {
+			if ast.GetSourceFileOfNode(declaration).IsDeclarationFile {
+				return nil, fmt.Errorf("class instance/host objects are not durable structural records")
+			}
+			if (ast.IsClassDeclaration(declaration) || ast.IsClassExpression(declaration) ||
+				ast.IsInterfaceDeclaration(declaration) || ast.IsTypeAliasDeclaration(declaration)) && len(declaration.TypeParameters()) != 0 {
+				return nil, fmt.Errorf("generic declarations require a non-generic durable boundary type")
+			}
+		}
 	}
 	properties := append([]*ast.Symbol(nil), d.owner.checker.GetPropertiesOfType(t)...)
+	if len(properties) > durableMaxObjectFields {
+		return nil, fmt.Errorf("durable type exceeds the object field limit")
+	}
 	// Field names are authored text, and this order IS the contract: it is the
 	// order the descriptor records, so it is hashed into the successSchema
 	// digest, the Action contractDigest, and the Plan digest. The reference
@@ -1774,9 +2211,30 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 	sortUTF16By(properties, func(property *ast.Symbol) string { return property.Name })
 	fields := make([]any, 0, len(properties))
 	for _, property := range properties {
+		if property.Name == "" {
+			return nil, fmt.Errorf("durable object fields need non-empty names")
+		}
+		if strings.HasPrefix(property.Name, ast.InternalSymbolNamePrefix) {
+			return nil, fmt.Errorf("symbol-named properties are not durable data")
+		}
+		if !utf8.ValidString(property.Name) {
+			return nil, fmt.Errorf("property name contains an unpaired surrogate")
+		}
+		if err := budget.text(property.Name); err != nil {
+			return nil, err
+		}
+		if len(property.Declarations) == 0 {
+			return nil, fmt.Errorf("field %s has no compiler-owned declaration", property.Name)
+		}
+		for _, declaration := range property.Declarations {
+			if declaration.Kind == ast.KindMethodSignature || ast.IsMethodDeclaration(declaration) ||
+				ast.IsGetAccessorDeclaration(declaration) || ast.IsSetAccessorDeclaration(declaration) {
+				return nil, fmt.Errorf("field %s is executable/accessor state", property.Name)
+			}
+		}
 		optional := property.Flags&ast.SymbolFlagsOptional != 0
 		propertyType := d.owner.checker.GetTypeOfSymbolAtLocation(property, location)
-		value, err := d.durableTypeDescriptor(propertyType, location, seen, optional)
+		value, err := d.durableTypeDescriptorAt(propertyType, location, seen, optional, budget, depth+1)
 		if err != nil {
 			return nil, fmt.Errorf("field %s: %w", property.Name, err)
 		}
@@ -1840,7 +2298,7 @@ func durableCanonicalUnion(variants []any) any {
 // This walk is the reference frontend's `flowSuccessDescriptor`
 // (poc/src/durable/source-compiler.ts) ported to the Plan IR this bridge builds.
 // It derives the descriptor the Flow output WOULD carry and reports every
-// projection that descriptor cannot answer, at the same code (SMITHERS4110),
+// projection that descriptor cannot answer, at the same code (VIBE4110),
 // the same position (the durable source function), and with the same sentence
 // as the reference, so a conformance case can declare one text for both
 // backends.
@@ -1854,39 +2312,13 @@ func durableCanonicalUnion(variants []any) any {
 // the output descriptor as the Flow's success schema, which is what the reference
 // has always done with the same walk's result.
 //
-// ON THE CAUSE SPLIT THE REFERENCE NEEDED, AND WHY THIS BRIDGE DOES NOT.
-// The reference has to tell two failures apart, because a legacy `Action.define`
-// artifact reaches it through `smithers plan --bindings` carrying a success
-// schema with no descriptor at all: a walk that reads one has learned nothing
-// about the authored Flow, and refusing there would break every descriptor
-// minted before schema derivation existed. So its `fail` takes a cause, a
-// `non-structural` cause may be swallowed into the weaker contract, and a
-// `defect` may not.
-//
-// This bridge has no such artifact. Every Action it lowers is a same-file class
-// whose success descriptor `actionFor` derives structurally, and a declaration
-// whose success type is NOT structurally encodable is refused outright there
-// (SMITHERS4113) rather than admitted with a weaker contract. `fanOut`,
-// `loopWhile`, `dequeue`, `waitBroadcast` and child Flows — the reference's
-// other three non-structural sites — are refused wholesale by this subset. So
-// every failure this walk can record is a defect, measured rather than assumed,
-// and the split would be an enum with one member and an untestable branch.
-//
-// What DOES transfer is the reason the reference stopped aborting on the first
-// failure: the walk keeps going, records every failure, and the diagnostic is
-// the first one in a DETERMINISTIC traversal order. Aborting early is not what
-// makes that wrong here — with one cause, first-failure and first-defect name
-// the same failure. Unordered traversal is. Go randomizes `map` iteration, so a
-// walk that visited an output object's fields in map order would report a
-// different sentence on different runs of the same compiler over the same
-// source. `flowOutputDescriptor` sorts field names with `sortUTF16`, which is
-// the ordering the reference's `Object.keys(...).sort()` produces, so the two
-// implementations also choose the SAME failure to report.
-//
-// A future lane that gives this bridge a binding surface for externally
-// supplied Action descriptors must add the cause back before it adds the weaker
-// contract: swallowing on "this Flow contains a legacy Action" is precisely the
-// fail-open the reference closed.
+// Imported legacy Action artifacts can explicitly state no success descriptor.
+// That non-structural cause preserves their weaker compatibility contract, but
+// cannot excuse an unrelated projection defect. Every sibling is walked even
+// after encountering an unknown leg. UTF-16 field order makes the first real
+// defect deterministic. Same-source Action declarations still require fully
+// derivable structural codecs; only validated artifact bindings admit the old
+// envelope. The source API, fan-out and loop tests exercise both cause paths.
 
 // durableUnknownDescriptor stands in for a descriptor the walk could not derive.
 //
@@ -1915,7 +2347,16 @@ func durableIsUnknownDescriptor(descriptor any) bool {
 
 // durableOutputFail records one failure and yields the placeholder so the walk
 // can continue instead of aborting at the first one.
-type durableOutputFail func(message string) any
+type durableDescriptorFailureCause uint8
+
+const (
+	durableDescriptorDefect durableDescriptorFailureCause = iota
+	durableDescriptorNonStructural
+)
+
+// Omitted cause means a real defect. Only a validated legacy Action contract
+// can explicitly report NonStructural; unrelated defects still outrank it.
+type durableOutputFail func(message string, cause ...durableDescriptorFailureCause) any
 
 // durableDescriptorIndexKey is the reference's `^(0|[1-9][0-9]*)$`: the only
 // projection spellings a tuple or array descriptor can answer.
@@ -1950,6 +2391,15 @@ func durableJoinDescriptors(variants []any) any {
 // descriptor, recording a failure for every component the descriptor cannot
 // answer. Ported from the reference's `projectDescriptor`, message for message.
 func durableProjectDescriptor(descriptor any, path []any, fail durableOutputFail) any {
+	return durableProjectDescriptorWithPolicy(descriptor, path, fail, false)
+}
+
+// Templates execute without the source checker's control-flow facts. A path
+// used by a template must exist on every admitted round/item, including the
+// initial state: an optional property or unbounded array index is not proof
+// of a present, serializable value. Existing ordinary Plan projection policy
+// is unchanged; template construction opts into this stronger requirement.
+func durableProjectDescriptorWithPolicy(descriptor any, path []any, fail durableOutputFail, requirePresent bool) any {
 	if durableIsUnknownDescriptor(descriptor) {
 		return descriptor
 	}
@@ -1964,11 +2414,14 @@ func durableProjectDescriptor(descriptor any, path []any, fail durableOutputFail
 		return fail("projects through a value with no durable descriptor")
 	}
 	kind, _ := record["kind"].(string)
+	if requirePresent && kind == "never" {
+		return descriptor
+	}
 	if kind == "union" {
 		variants, _ := record["variants"].([]any)
 		projected := make([]any, 0, len(variants))
 		for _, variant := range variants {
-			projected = append(projected, durableProjectDescriptor(variant, path, fail))
+			projected = append(projected, durableProjectDescriptorWithPolicy(variant, path, fail, requirePresent))
 		}
 		return durableJoinDescriptors(projected)
 	}
@@ -1983,7 +2436,10 @@ func durableProjectDescriptor(descriptor any, path []any, fail durableOutputFail
 				continue
 			}
 			if name, _ := field["name"].(string); name == head {
-				return durableProjectDescriptor(field["value"], tail, fail)
+				if requirePresent && field["optional"] == true {
+					return fail("cannot prove optional durable field " + head + " is present")
+				}
+				return durableProjectDescriptorWithPolicy(field["value"], tail, fail, requirePresent)
 			}
 		}
 		return fail("projects missing durable field " + head)
@@ -1994,43 +2450,30 @@ func durableProjectDescriptor(descriptor any, path []any, fail durableOutputFail
 			if err != nil || index >= len(items) {
 				return fail("projects missing durable tuple index " + head)
 			}
-			return durableProjectDescriptor(items[index], tail, fail)
+			return durableProjectDescriptorWithPolicy(items[index], tail, fail, requirePresent)
 		}
 	case "array":
 		if durableDescriptorIndexKey(head) {
-			return durableProjectDescriptor(record["element"], tail, fail)
+			if requirePresent {
+				return fail("cannot prove durable array index " + head + " is present")
+			}
+			return durableProjectDescriptorWithPolicy(record["element"], tail, fail, requirePresent)
 		}
 	}
 	return fail("cannot project " + head + " from durable " + kind)
 }
 
-// durableFindNode resolves one Plan node id, descending into branch arms: an
-// arm's own output references nodes that live inside that arm's node list, not
-// in the Flow's top-level one.
-func durableFindNode(nodes []any, id string) map[string]any {
-	for _, item := range nodes {
-		node, _ := item.(map[string]any)
-		if node == nil {
-			continue
-		}
-		if candidate, _ := node["id"].(string); candidate == id {
-			return node
-		}
-		if kind, _ := node["kind"].(string); kind != "branch" {
-			continue
-		}
-		for _, arm := range []string{"whenTrue", "whenFalse"} {
-			fragment, _ := node[arm].(map[string]any)
-			if fragment == nil {
-				continue
-			}
-			nested, _ := fragment["nodes"].([]any)
-			if found := durableFindNode(nested, id); found != nil {
-				return found
-			}
-		}
+// Register a declared node when it enters its lexical graph scope, not when
+// that scope's enclosing branch eventually closes. Nested conditions and
+// arguments may refer to already-declared work in still-open ancestor arms.
+// This index never creates a node or grants a source binding visibility: those
+// remain owned by the append and native symbol environments respectively.
+func (d *durableFunctionLowerer) appendNode(node map[string]any) {
+	if d.declaredNodes == nil {
+		d.declaredNodes = map[string]map[string]any{}
 	}
-	return nil
+	d.declaredNodes[node["id"].(string)] = node
+	*d.activeNodes = append(*d.activeNodes, node)
 }
 
 // durableSchemaDescriptor reads the structural descriptor out of one durable
@@ -2048,10 +2491,10 @@ func durableSchemaDescriptor(schema map[string]any) (any, bool) {
 
 // flowNodeDescriptor derives the descriptor one Plan node's value carries, then
 // answers the projection path recorded against it.
-func (d *durableFunctionLowerer) flowNodeDescriptor(expression map[string]any, fail durableOutputFail) any {
+func (d *durableFunctionLowerer) flowNodeDescriptorWithPolicy(expression map[string]any, fail durableOutputFail, requirePresent bool) any {
 	nodeID, _ := expression["nodeId"].(string)
 	path, _ := expression["path"].([]any)
-	node := durableFindNode(d.nodes, nodeID)
+	node := d.declaredNodes[nodeID]
 	if node == nil {
 		return fail("references node " + nodeID + ", which this Plan does not declare")
 	}
@@ -2066,39 +2509,105 @@ func (d *durableFunctionLowerer) flowNodeDescriptor(expression map[string]any, f
 		successSchema, _ := action.descriptor["successSchema"].(map[string]any)
 		descriptor, structural := durableSchemaDescriptor(successSchema)
 		if !structural {
-			// Unreachable today: `actionFor` mints every success schema with
-			// `durableStructuralSchema` and refuses a success type it cannot
-			// describe. Kept because it is the one site a binding surface would
-			// make reachable, and it must fail closed until the cause split
-			// above is put back with it.
-			return fail("references an Action without a structural success descriptor")
+			return fail("references an Action without a structural success descriptor", durableDescriptorNonStructural)
 		}
-		return durableProjectDescriptor(descriptor, path, fail)
+		return durableProjectDescriptorWithPolicy(descriptor, path, fail, requirePresent)
 	case "branch":
 		whenTrue, _ := node["whenTrue"].(map[string]any)
 		whenFalse, _ := node["whenFalse"].(map[string]any)
+		if operator, ok := node["valueOperator"].(string); ok && d.symbolicPlan {
+			left, right := whenFalse["output"], whenTrue["output"]
+			if operator == "or" {
+				left, right = right, left
+			}
+			value := keyedComputationDescriptor(operator, []any{
+				d.flowOutputDescriptorWithPolicy(left, fail, requirePresent),
+				d.flowOutputDescriptorWithPolicy(right, fail, requirePresent),
+			}, fail)
+			return durableProjectDescriptorWithPolicy(value, path, fail, requirePresent)
+		}
 		joined := durableJoinDescriptors([]any{
-			d.flowOutputDescriptor(whenTrue["output"], fail),
-			d.flowOutputDescriptor(whenFalse["output"], fail),
+			d.flowOutputDescriptorWithPolicy(whenTrue["output"], fail, requirePresent),
+			d.flowOutputDescriptorWithPolicy(whenFalse["output"], fail, requirePresent),
 		})
-		return durableProjectDescriptor(joined, path, fail)
+		return durableProjectDescriptorWithPolicy(joined, path, fail, requirePresent)
 	case "timer":
 		// `sleep(...)` completes with no value; the reference derives the same
 		// `null` descriptor for a timer node.
-		return durableProjectDescriptor(map[string]any{"kind": "null"}, path, fail)
+		return durableProjectDescriptorWithPolicy(map[string]any{"kind": "null"}, path, fail, requirePresent)
+	case "childFlow":
+		digest, _ := node["planDigest"].(string)
+		child, found := d.childPlans[digest]
+		if !found {
+			return fail("references a child Flow this Plan does not declare")
+		}
+		return durableProjectDescriptorWithPolicy(child.success.value["descriptor"], path, fail, requirePresent)
 	case "signal":
 		payloadSchema, _ := node["payloadSchema"].(map[string]any)
 		descriptor, structural := durableSchemaDescriptor(payloadSchema)
 		if !structural {
 			return fail("references a signal without a structural payload descriptor")
 		}
-		return durableProjectDescriptor(descriptor, path, fail)
+		return durableProjectDescriptorWithPolicy(descriptor, path, fail, requirePresent)
+	case "queue":
+		itemSchema, _ := node["itemSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(itemSchema)
+		if !structural {
+			return fail("references a queue without a structural item descriptor")
+		}
+		return durableProjectDescriptorWithPolicy(descriptor, path, fail, requirePresent)
+	case "loop":
+		actionID, _ := node["actionId"].(string)
+		action, declared := d.actions[actionID]
+		if !declared {
+			return fail("references loop Action " + actionID + ", which this Plan does not declare")
+		}
+		schema, _ := action.descriptor["successSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(schema)
+		if !structural {
+			return fail("references a loop Action without a structural success descriptor", durableDescriptorNonStructural)
+		}
+		joined := durableJoinDescriptors([]any{d.flowOutputDescriptorWithPolicy(node["initial"], fail, requirePresent), descriptor})
+		return durableProjectDescriptorWithPolicy(joined, path, fail, requirePresent)
+	case "fanout":
+		step := node
+		if steps, ok := node["steps"].([]any); ok {
+			if len(steps) == 0 {
+				return fail("references a fan-out node with no Action steps")
+			}
+			step, _ = steps[len(steps)-1].(map[string]any)
+		}
+		if digest, ok := step["childPlanDigest"].(string); ok && d.symbolicPlan {
+			child, declared := d.childPlans[digest]
+			if !declared || child.source == nil {
+				return fail("references a fan-out child Flow this Plan does not declare")
+			}
+			return durableProjectDescriptorWithPolicy(map[string]any{"kind": "array", "element": child.success.value["descriptor"]}, path, fail, requirePresent)
+		}
+		actionID, _ := step["actionId"].(string)
+		action, declared := d.actions[actionID]
+		if !declared {
+			return fail("references fan-out Action " + actionID + ", which this Plan does not declare")
+		}
+		schema, _ := action.descriptor["successSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(schema)
+		if !structural {
+			return fail("references a fan-out Action without a structural success descriptor", durableDescriptorNonStructural)
+		}
+		return durableProjectDescriptorWithPolicy(map[string]any{"kind": "array", "element": descriptor}, path, fail, requirePresent)
 	}
 	return fail("references a node without a supported success descriptor")
 }
 
 // flowOutputDescriptor derives the descriptor one Plan value expression carries.
 func (d *durableFunctionLowerer) flowOutputDescriptor(value any, fail durableOutputFail) any {
+	return d.flowOutputDescriptorWithPolicy(value, fail, false)
+}
+
+// Preserve the requested projection policy through aliases, aggregate values
+// and node references. Static templates require present paths even when a
+// projection was authored in a const initializer outside the callback.
+func (d *durableFunctionLowerer) flowOutputDescriptorWithPolicy(value any, fail durableOutputFail, requirePresent bool) any {
 	record, isRecord := value.(map[string]any)
 	if !isRecord {
 		return fail("holds a value expression with no durable descriptor")
@@ -2107,15 +2616,29 @@ func (d *durableFunctionLowerer) flowOutputDescriptor(value any, fail durableOut
 	switch kind {
 	case "literal":
 		return map[string]any{"kind": "literal", "value": record["value"]}
+	case "checked":
+		if !d.symbolicPlan {
+			return fail("uses checked source narrowing outside the keyed profile")
+		}
+		return durableProjectDescriptorWithPolicy(record["descriptor"], record["path"].([]any), fail, requirePresent)
+	case "compute":
+		if !d.symbolicPlan {
+			return fail("uses computation outside the checked keyed source profile")
+		}
+		operands := []any{}
+		for _, operand := range record["operands"].([]any) {
+			operands = append(operands, d.flowOutputDescriptorWithPolicy(operand, fail, true))
+		}
+		return keyedComputationDescriptor(record["operator"].(string), operands, fail)
 	case "input":
 		path, _ := record["path"].([]any)
 		descriptor, structural := durableSchemaDescriptor(d.inputSchema)
 		if !structural {
 			return fail("reads a Flow input with no structural descriptor")
 		}
-		return durableProjectDescriptor(descriptor, path, fail)
+		return durableProjectDescriptorWithPolicy(descriptor, path, fail, requirePresent)
 	case "node":
-		return d.flowNodeDescriptor(record, fail)
+		return d.flowNodeDescriptorWithPolicy(record, fail, requirePresent)
 	case "object":
 		fields, _ := record["fields"].(map[string]any)
 		// Sorted, not map order: see the note above. Go randomizes `map`
@@ -2131,7 +2654,7 @@ func (d *durableFunctionLowerer) flowOutputDescriptor(value any, fail durableOut
 		for _, name := range names {
 			// Every field is walked even after one is unknown, so a defect in a
 			// later field is still recorded rather than masked by an earlier one.
-			field := d.flowOutputDescriptor(fields[name], fail)
+			field := d.flowOutputDescriptorWithPolicy(fields[name], fail, requirePresent)
 			if durableIsUnknownDescriptor(field) {
 				unknown = true
 				continue
@@ -2147,7 +2670,7 @@ func (d *durableFunctionLowerer) flowOutputDescriptor(value any, fail durableOut
 		derived := make([]any, 0, len(items))
 		unknown := false
 		for _, item := range items {
-			element := d.flowOutputDescriptor(item, fail)
+			element := d.flowOutputDescriptorWithPolicy(item, fail, requirePresent)
 			if durableIsUnknownDescriptor(element) {
 				unknown = true
 				continue
@@ -2198,8 +2721,15 @@ func durablePlanNodeValues(nodes []any) []durablePlanValue {
 			case "action":
 				actionID, _ := node["actionId"].(string)
 				values = append(values, durablePlanValue{subject: "Action " + actionID + " input", value: node["input"]})
+			case "childFlow":
+				flowID, _ := node["flowId"].(string)
+				values = append(values, durablePlanValue{subject: "child Flow " + flowID + " input", value: node["input"]})
 			case "timer":
 				values = append(values, durablePlanValue{subject: "sleep duration", value: node["durationMs"]})
+			case "loop":
+				values = append(values, durablePlanValue{subject: "loopWhile initial state", value: node["initial"]})
+			case "fanout":
+				values = append(values, durablePlanValue{subject: "fanOut items", value: node["items"]})
 			case "branch":
 				values = append(values, durablePlanValue{subject: "branch condition", value: node["condition"]})
 				for _, arm := range []string{"whenTrue", "whenFalse"} {
@@ -2210,12 +2740,11 @@ func durablePlanNodeValues(nodes []any) []durablePlanValue {
 					nested, _ := fragment["nodes"].([]any)
 					visit(nested)
 				}
-			case "signal":
+			case "signal", "queue":
 				// A suspension consumes no Plan value; its payload schema is the
 				// contract and is already pinned into the node's identity.
 			default:
-				// Fail closed. This subset mints exactly `action`, `branch`,
-				// `timer` and `signal`; a fifth kind added without extending
+				// Fail closed. Adding a new kind without extending
 				// this switch would otherwise reopen the hole silently, which is
 				// how the Action-input case survived the output check.
 				values = append(values, durablePlanValue{
@@ -2240,19 +2769,21 @@ func durablePlanNodeValues(nodes []any) []durablePlanValue {
 // output is clean can newly refuse — so no already-refused program changes its
 // answer.
 //
-// On accepting, it records the output descriptor as `d.successSchema`. The
-// reference does exactly this: `flowSchemas` runs the same walk and, when the
-// output produced no failure, emits `structuralSchema("success",
-// successDescriptor)`. Its two other outcomes are unreachable here — the weaker
-// `derivedSchema("success")` needs a legacy Action descriptor this bridge has no
-// binding surface for, and its `throw` is this function's refusal — so
-// "accepted" and "structural success schema" are the same condition, and the
-// schema is set on exactly the path that proved the descriptor is complete.
+// On accepting, records the structural output descriptor, or the explicit
+// legacy envelope if only an output leg lacks a descriptor. A weak node input
+// does not weaken a structural output, and any genuine defect refuses both.
 func (d *durableFunctionLowerer) checkFlowBoundary(function *ast.Node, output durableValue) bool {
 	failures := make([]string, 0, 1)
+	weakOutput := false
 	walk := func(value any, subject string) any {
-		return d.flowOutputDescriptor(value, func(reason string) any {
-			failures = append(failures, subject+" "+reason)
+		return d.flowOutputDescriptor(value, func(reason string, cause ...durableDescriptorFailureCause) any {
+			if len(cause) != 0 && cause[0] == durableDescriptorNonStructural {
+				if subject == "Flow output" {
+					weakOutput = true
+				}
+			} else {
+				failures = append(failures, subject+" "+reason)
+			}
 			return durableUnknownDescriptor{}
 		})
 	}
@@ -2261,7 +2792,11 @@ func (d *durableFunctionLowerer) checkFlowBoundary(function *ast.Node, output du
 		walk(entry.value, entry.subject)
 	}
 	if len(failures) == 0 {
-		d.successSchema = durableStructuralSchema("success", successDescriptor)
+		if weakOutput {
+			d.successSchema = durableLegacySchema("success")
+		} else {
+			d.successSchema = durableStructuralSchema("success", successDescriptor)
+		}
 		return true
 	}
 	d.fail(function, "4110", "durable Flow boundary is not structurally encodable: "+failures[0])
@@ -2273,10 +2808,17 @@ func (d *durableFunctionLowerer) isChildFlowRun(node *ast.Node) bool {
 		return false
 	}
 	access := node.AsCallExpression().Expression.AsPropertyAccessExpression()
+	if d.owner.durableCanonicalSymbolAt(access.Expression) == nil {
+		return false
+	}
 	return d.owner.durableIntrinsic(access.Name(), "run") && !d.owner.durableIntrinsic(access.Expression, "Action")
 }
 
 func (d *durableFunctionLowerer) stableNodeID(node *ast.Node, identity map[string]any) (string, bool) {
+	if !durableStaticMaterialFits(identity) {
+		d.fail(node, "4199", "durable static graph exceeds its serialization budget")
+		return "", false
+	}
 	occurrenceKey := durableDigest(identity)
 	occurrence := d.occurrences[occurrenceKey]
 	d.occurrences[occurrenceKey] = occurrence + 1
@@ -2397,6 +2939,12 @@ func (d *durableFunctionLowerer) flowErrorSchema(actionIDs []string) map[string]
 }
 
 func (d *durableFunctionLowerer) plan(output durableValue) map[string]any {
+	plan := d.planMaterial(output)
+	plan["digest"] = durableDigest(plan)
+	return plan
+}
+
+func (d *durableFunctionLowerer) planMaterial(output durableValue) map[string]any {
 	actionIDs := make([]string, 0, len(d.actions))
 	for id := range d.actions {
 		actionIDs = append(actionIDs, id)
@@ -2432,14 +2980,67 @@ func (d *durableFunctionLowerer) plan(output durableValue) map[string]any {
 		"flowId":        d.flowID,
 		"flowSchemas":   flowSchemas,
 		"flowVersion":   d.flowVersion,
-		"formatVersion": 1,
+		"formatVersion": max(1, d.formatVersion),
 		"nodes":         d.nodes,
 		"output":        output.ir,
 		"requirements":  requirements,
 	}
-	plan := durableCopyMap(semantic)
-	plan["digest"] = durableDigest(semantic)
-	return plan
+	if len(d.childPlans) != 0 {
+		digests := make([]string, 0, len(d.childPlans))
+		for digest := range d.childPlans {
+			digests = append(digests, digest)
+		}
+		sortUTF16(digests)
+		children := make([]any, 0, len(digests))
+		for _, digest := range digests {
+			children = append(children, d.childPlans[digest].plan)
+		}
+		semantic["childFlows"] = children
+	}
+	return semantic
+}
+
+// Visit repeated references on EACH occurrence, matching their serialized cost.
+// No giant canonical JSON allocation is needed to reject an expanding alias DAG.
+func durableStaticMaterialFits(value any) bool {
+	visits, size := 0, 0
+	var visit func(any, int) bool
+	visit = func(value any, depth int) bool {
+		visits++
+		if visits > 100_000 || depth > 128 || size > 16*1024*1024 {
+			return false
+		}
+		size += 2
+		switch value := value.(type) {
+		case map[string]any:
+			for key, item := range value {
+				size += len(ctQuote(key)) + 2
+				if !visit(item, depth+1) {
+					return false
+				}
+			}
+		case []any:
+			for _, item := range value {
+				if !visit(item, depth+1) {
+					return false
+				}
+			}
+		case []string:
+			for _, item := range value {
+				if !visit(item, depth+1) {
+					return false
+				}
+			}
+		case string:
+			size += len(ctQuote(value))
+		case nil, bool, int, float64:
+			size += 24
+		default:
+			return false
+		}
+		return size <= 16*1024*1024
+	}
+	return visit(value, 0)
 }
 
 func durableCopyMap(source map[string]any) map[string]any {

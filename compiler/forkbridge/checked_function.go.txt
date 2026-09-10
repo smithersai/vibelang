@@ -1,0 +1,262 @@
+package main
+
+// Checked semantic facts for one exported ordinary function. The standard
+// native compilation pipeline owns every check; this query consumes its final
+// authored rows while that Program's checker is still alive. It never loads or
+// executes emitted JavaScript and never authenticates a host callback.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type checkedFunctionRequest struct {
+	Files           []sourceFile `json:"files"`
+	EntryFile       string       `json:"entryFile"`
+	ExportName      string       `json:"exportName"`
+	DurableBoundary bool         `json:"durableBoundary,omitempty"`
+}
+type checkedFunctionFacts struct {
+	File              string   `json:"file"`
+	Name              string   `json:"name"`
+	Span              span     `json:"span"`
+	Requirements      []string `json:"requirements"`
+	TypedFailures     []string `json:"typedFailures"`
+	Panic             bool     `json:"panic"`
+	FailureSchemaJSON string   `json:"failureSchemaJson"`
+	ValueSchemasJSON  string   `json:"valueSchemasJson"`
+}
+type checkedFunctionResult struct {
+	OK          bool                  `json:"ok"`
+	Diagnostics []diagnostic          `json:"diagnostics"`
+	Message     string                `json:"message"`
+	Function    *checkedFunctionFacts `json:"function"`
+}
+
+func serveCheckedFunction(apiVersion int) {
+	response := struct {
+		APIVersion       int                   `json:"apiVersion"`
+		CompilerRevision string                `json:"compilerRevision"`
+		Result           checkedFunctionResult `json:"result"`
+		Error            *wireError            `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: checkedFunctionResult{Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input checkedFunctionRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("checked function request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = inspectCheckedFunction(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = checkedFunctionResult{Diagnostics: []diagnostic{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_CHECKED_FUNCTION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func inspectCheckedFunction(ctx context.Context, input checkedFunctionRequest) (checkedFunctionResult, error) {
+	answer := checkedFunctionResult{Diagnostics: []diagnostic{}}
+	if len(input.Files) == 0 || len(input.Files) > 256 || input.EntryFile == "" || len(input.EntryFile) > 16*1024 ||
+		input.ExportName == "" || len(input.ExportName) > 2048 || strings.ContainsRune(input.ExportName, 0) {
+		return answer, errors.New("invalid or oversized checked function source set/export")
+	}
+	roots := make([]string, 0, len(input.Files))
+	total, entryFound := 0, false
+	for _, file := range input.Files {
+		total += len(file.Text)
+		if file.Kind != "vibelang" || file.Lowered != nil || len(file.Text) > 2*1024*1024 || total > 8*1024*1024 {
+			return answer, errors.New("checked functions require a bounded explicit VibeLang source closure")
+		}
+		roots = append(roots, file.Path)
+		entryFound = entryFound || file.Path == input.EntryFile
+	}
+	if !entryFound {
+		return answer, errors.New("checked function entry file is absent from the source closure")
+	}
+	options, diagnostics, err := compilerOptions(nil)
+	if err != nil || len(diagnostics) != 0 {
+		return answer, errors.New("checked function compiler options are unavailable")
+	}
+	project, err := buildProject(request{RootNames: roots, Files: input.Files, Lowering: "internal"})
+	if err != nil {
+		return answer, err
+	}
+	compiled, err := compileInternalObserved(ctx, options, project, func(analysis *rowAnalysis) {
+		facts, failure := checkedFunctionFromAnalysis(analysis, input)
+		answer.Function = facts
+		if failure != nil {
+			answer.Message = failure.Error()
+		}
+	})
+	if err != nil {
+		return checkedFunctionResult{Diagnostics: []diagnostic{}}, err
+	}
+	project.convertDiagnosticSpansToUTF16(&compiled)
+	if len(compiled.Diagnostics) > 4096 {
+		return answer, errors.New("checked function diagnostics exceed the response budget")
+	}
+	answer.Diagnostics = append(answer.Diagnostics, compiled.Diagnostics...)
+	if compiled.EmitSkipped || hasError(answer.Diagnostics) {
+		answer.Function = nil
+		answer.Message = "implementation project did not pass native checked lowering (type and row checker)"
+	} else if answer.Function == nil && answer.Message == "" {
+		answer.Message = "native compilation returned no checked function facts"
+	}
+	answer.OK = answer.Function != nil && answer.Message == ""
+	return answer, nil
+}
+
+func checkedFunctionFromAnalysis(a *rowAnalysis, input checkedFunctionRequest) (*checkedFunctionFacts, error) {
+	entry := a.project.vibelangByLogical[input.EntryFile]
+	if entry == nil {
+		return nil, errors.New("checked function entry is not an authored VibeLang module")
+	}
+	var file *ast.SourceFile
+	for _, fn := range a.functions {
+		if fn.file.FileName() == entry.authoredName {
+			file = fn.file
+			break
+		}
+	}
+	missing := func() (*checkedFunctionFacts, error) {
+		return nil, fmt.Errorf("%s must export an ordinary checked function named %s", input.EntryFile, input.ExportName)
+	}
+	if file == nil {
+		return missing()
+	}
+	var selected *functionRows
+	if module := a.checker.GetSymbolAtLocation(file.AsNode()); module != nil {
+		for _, exported := range a.checker.GetExportsOfModule(module) {
+			if exported.Name == input.ExportName {
+				if exported.Flags&ast.SymbolFlagsAlias != 0 {
+					exported = a.checker.GetAliasedSymbol(exported)
+				}
+				selected = a.bySymbol[a.checker.GetMergedSymbol(exported)]
+				break
+			}
+		}
+	}
+	if selected == nil || selected.file != file ||
+		(!ast.IsFunctionDeclaration(selected.node) && !ast.IsArrowFunction(selected.node) && !ast.IsFunctionExpression(selected.node)) {
+		return missing()
+	}
+	owner := &lowerer{checker: a.checker, prelude: a.prelude, file: file, analysis: a}
+	d := &durableFunctionLowerer{owner: owner}
+	types := make([]*checker.Type, 0, len(selected.failures))
+	names := make(map[string]bool)
+	panics := false
+	for _, row := range selected.failures {
+		if row.symbol == a.prelude.panic {
+			panics = true
+			continue
+		}
+		if row.symbol == nil || row.ambient {
+			return nil, errors.New("implementation failure row has no concrete nominal Error identity")
+		}
+		if row.symbol.Name == "Panic" {
+			return nil, errors.New("Panic is a reserved defect row and cannot also name a recoverable implementation Error")
+		}
+		if declaration := classDeclarationOf(row.symbol); declaration != nil {
+			logical := a.project.logicalByVirtual[ast.GetSourceFileOfNode(declaration).FileName()]
+			if a.project.vibelangByLogical[logical] == nil {
+				return nil, errors.New("typed failure declaration is outside the checked source closure")
+			}
+		}
+		names[row.name] = true
+		types = append(types, a.checker.GetDeclaredTypeOfSymbol(row.symbol))
+	}
+	if len(types) > durableMaxUnionVariants {
+		return nil, errors.New("implementation typed failure schema exceeds the Error union variant limit")
+	}
+	failureType := a.checker.GetUnionType(types)
+	if collision := d.durableFailureIdentityCollides(failureType); collision != nil {
+		return nil, errors.New(durableFailureIdentityCollisionMessage(collision))
+	}
+	schema, err := d.durableErrorSchemaFor(failureType)
+	if err != nil {
+		return nil, fmt.Errorf("implementation typed failure schema is not durable: %w", err)
+	}
+	schemaJSON := durableCanonicalJSON(schema)
+	if len(schemaJSON) > 8*1024*1024 {
+		return nil, errors.New("implementation typed failure schema exceeds the output budget")
+	}
+	typedFailures := make([]string, 0, len(names))
+	for name := range names {
+		typedFailures = append(typedFailures, name)
+	}
+	sortUTF16(typedFailures)
+	valueSchemasJSON := ""
+	if input.DurableBoundary {
+		valueSchemasJSON, err = checkedFunctionValueSchemas(a, selected, d)
+		if err != nil {
+			return nil, err
+		}
+		if err := wirejson.ValidateUnique([]byte("[" + schemaJSON + "," + valueSchemasJSON + "]")); err != nil {
+			return nil, errors.New("implementation schemas exceed the shared JSON traversal budget")
+		}
+	}
+	start := entry.authoredLines.utf16Offset(scanner.GetTokenPosOfNode(selected.node, file, false))
+	end := entry.authoredLines.utf16Offset(selected.node.End())
+	return &checkedFunctionFacts{File: input.EntryFile, Name: input.ExportName, Span: span{Start: start, Length: end - start},
+		Requirements: publishedRowNames(selected.requirements), TypedFailures: typedFailures, Panic: panics,
+		FailureSchemaJSON: schemaJSON, ValueSchemasJSON: valueSchemasJSON}, nil
+}
+
+// A durable provider receives one ordinary data value and yields one awaited
+// success value. Derive that boundary from the checked implementation itself,
+// not a host callback, a caller-supplied schema, or textual type annotations.
+// This optional profile does not restrict ordinary checked-function inspection.
+func checkedFunctionValueSchemas(a *rowAnalysis, fn *functionRows, d *durableFunctionLowerer) (string, error) {
+	signatures := a.checker.GetSignaturesOfType(a.checker.GetTypeAtLocation(fn.node), checker.SignatureKindCall)
+	if fn.node.BodyData().AsteriskToken != nil || len(signatures) != 1 || signatures[0].Declaration() != fn.node ||
+		len(signatures[0].Parameters()) != 1 || signatures[0].MinArgumentCount() != 1 || signatures[0].HasRestParameter() ||
+		len(signatures[0].TypeParameters()) != 0 || signatures[0].ThisParameter() != nil {
+		return "", errors.New("durable implementation requires one non-generic, non-generator signature with one required input and no this parameter or overload")
+	}
+	signature := signatures[0]
+	inputType := a.checker.GetTypeOfSymbolAtLocation(signature.Parameters()[0], fn.node)
+	returned := a.checker.GetReturnTypeOfSignature(signature)
+	completion := "value"
+	if promised := a.checker.GetPromisedTypeOfPromise(returned); promised != nil {
+		promise := a.checker.ResolveName("Promise", nil, ast.SymbolFlagsType, false)
+		if promise == nil || d.durableTypeSymbol(returned) != a.checker.GetMergedSymbol(promise) {
+			return "", errors.New("durable implementation must use the native Promise, not a structural thenable")
+		}
+		returned = promised
+		completion = "promise"
+	}
+	if success, _, ok := a.resultArguments(returned); ok {
+		returned = success
+	}
+	inputDescriptor, err := d.durableTypeDescriptor(inputType, fn.node, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return "", fmt.Errorf("durable implementation input is not structurally encodable: %w", err)
+	}
+	successDescriptor, err := d.durableTypeDescriptor(returned, fn.node, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return "", fmt.Errorf("durable implementation success is not structurally encodable: %w", err)
+	}
+	schemas := durableCanonicalJSON(map[string]any{
+		"completion":    completion,
+		"inputSchema":   durableStructuralSchema("input", inputDescriptor),
+		"successSchema": durableStructuralSchema("success", successDescriptor),
+	})
+	if len(schemas) > 16*1024*1024 {
+		return "", errors.New("durable implementation value schemas exceed the output budget")
+	}
+	return schemas, nil
+}

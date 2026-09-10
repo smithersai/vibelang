@@ -1,0 +1,179 @@
+package main
+
+// JavaScript strings are UTF16 sequences, not Unicode scalar sequences. The
+// pinned Go compiler stores lone units using its lossless JS-string encoding.
+// Use those same helpers here; Go's []rune / utf16.Decode repairs lone units.
+
+import (
+	"fmt"
+	"strings"
+	"unicode/utf16"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
+)
+
+func ctStringUnits(value string) []uint16 {
+	units := make([]uint16, 0, len(value))
+	for offset := 0; offset < len(value); {
+		character, width := stringutil.DecodeJSStringRune(value[offset:])
+		if character > 0xffff {
+			high, low := utf16.EncodeRune(character)
+			units = append(units, uint16(high), uint16(low))
+		} else {
+			units = append(units, uint16(character))
+		}
+		offset += width
+	}
+	return units
+}
+func ctStringLength(value string) int {
+	length := 0
+	for offset := 0; offset < len(value); {
+		character, width := stringutil.DecodeJSStringRune(value[offset:])
+		length++
+		if character > 0xffff {
+			length++
+		}
+		offset += width
+	}
+	return length
+}
+func ctStringFromUnits(units []uint16) string {
+	var output strings.Builder
+	for index := 0; index < len(units); index++ {
+		character := rune(units[index])
+		if stringutil.IsHighSurrogate(character) && index+1 < len(units) && stringutil.IsLowSurrogate(rune(units[index+1])) {
+			output.WriteRune(utf16.DecodeRune(character, rune(units[index+1])))
+			index++
+		} else {
+			output.WriteString(stringutil.EncodeJSStringRune(character))
+		}
+	}
+	return output.String()
+}
+
+// Quote values, never scan the already-escaped output for surrogate-looking
+// text: a literal backslash followed by "ud800" is six ordinary characters.
+func ctQuote(value string) string {
+	var output strings.Builder
+	output.WriteByte('"')
+	value = stringutil.CombineSurrogatePairs(value)
+	for offset := 0; offset < len(value); {
+		character, width := stringutil.DecodeJSStringRune(value[offset:])
+		offset += width
+		switch character {
+		case '"':
+			output.WriteString(`\"`)
+		case '\\':
+			output.WriteString(`\\`)
+		case '\b':
+			output.WriteString(`\b`)
+		case '\f':
+			output.WriteString(`\f`)
+		case '\n':
+			output.WriteString(`\n`)
+		case '\r':
+			output.WriteString(`\r`)
+		case '\t':
+			output.WriteString(`\t`)
+		default:
+			if character < 0x20 || stringutil.IsSurrogate(character) {
+				output.WriteString(fmt.Sprintf(`\u%04x`, character))
+			} else {
+				output.WriteRune(character)
+			}
+		}
+	}
+	output.WriteByte('"')
+	return output.String()
+}
+
+// Linear-time UTF16 search. Byte search cannot find one surrogate half inside
+// a scalar-encoded astral character, and naive unit search is quadratic.
+func ctIndexOfUnits(text, needle []uint16, last bool) int {
+	if len(needle) == 0 {
+		if last {
+			return len(text)
+		}
+		return 0
+	}
+	failure := make([]int, len(needle))
+	for index, matched := 1, 0; index < len(needle); index++ {
+		for matched > 0 && needle[index] != needle[matched] {
+			matched = failure[matched-1]
+		}
+		if needle[index] == needle[matched] {
+			matched++
+		}
+		failure[index] = matched
+	}
+	found, matched := -1, 0
+	for index, unit := range text {
+		for matched > 0 && unit != needle[matched] {
+			matched = failure[matched-1]
+		}
+		if unit == needle[matched] {
+			matched++
+		}
+		if matched == len(needle) {
+			found = index + 1 - matched
+			if !last {
+				return found
+			}
+			matched = failure[matched-1]
+		}
+	}
+	return found
+}
+
+// String-pattern replacement has no capture groups, but does interpret $$,
+// $&, $` and $'. Empty matches occur between UTF16 units, including pair halves.
+func (e *comptimeEvaluator) replaceAllUnits(text, needle, replacement []uint16, node *ast.Node) ctValue {
+	output := make([]uint16, 0, len(text))
+	appendUnits := func(units []uint16) {
+		if len(units) > maxComptimeStringUnits-len(output) {
+			e.budget(node, "comptime string exceeds its UTF16 unit budget")
+		}
+		output = append(output, units...)
+	}
+	cursor, search := 0, 0
+	for search <= len(text) {
+		index := ctIndexOfUnits(text[search:], needle, false)
+		if index < 0 {
+			break
+		}
+		index += search
+		appendUnits(text[cursor:index])
+		for offset := 0; offset < len(replacement); offset++ {
+			if replacement[offset] == '$' && offset+1 < len(replacement) {
+				switch replacement[offset+1] {
+				case '$':
+					appendUnits([]uint16{'$'})
+					offset++
+					continue
+				case '&':
+					appendUnits(text[index : index+len(needle)])
+					offset++
+					continue
+				case '`':
+					appendUnits(text[:index])
+					offset++
+					continue
+				case '\'':
+					appendUnits(text[index+len(needle):])
+					offset++
+					continue
+				}
+			}
+			appendUnits(replacement[offset : offset+1])
+		}
+		cursor = index + len(needle)
+		search = cursor
+		if len(needle) == 0 {
+			search++
+		}
+	}
+	appendUnits(text[cursor:])
+	return ctStringValue(ctStringFromUnits(output))
+}

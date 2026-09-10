@@ -1,13 +1,14 @@
-# forkpatch — carrying the TypeScript grammar delta
+# forkpatch — carrying the TypeScript extension and grammar deltas
 
 `compiler/forkpatch` carries changes to files owned by the pinned TypeScript
 fork. The Go build overlay can add whole Go files, but only an ordered patch
 series can modify the upstream parser, AST, binder, checker, printer, generated
 sources, and tests.
 
-The language has one grammar addition: declarations in conditionals,
-`if (const x = f(); cond)`. The patch series therefore contains exactly three
-patches:
+The existing grammar delta is declarations in conditionals,
+`if (const x = f(); cond)`. A separate generalized resolver extension makes
+registered content-mapper suffixes participate in implicit module lookup.
+The patch series contains five patches:
 
 ```text
 compiler/forkpatch/
@@ -15,13 +16,22 @@ compiler/forkpatch/
   series.json
   summaries.json
   patches/
+    0200-content-mapper-extension-resolution.patch handwritten
     0300-if-conditional-declaration-grammar.patch  handwritten (+89 / -9)
     0800-regenerate-ast.patch                      generated   (+32 / -20)
-    0900-smithers-grammar-tests.patch              fork-owned (+199)
+    0900-vibelang-grammar-tests.patch              fork-owned (+199)
+    0950-content-mapper-resolution-tests.patch     fork-owned
   forkpatch.test.mjs
 ```
 
-`0300` contains the `.sm` dialect gate and the handwritten parser, AST,
+`0200` consults the existing registered-extension list after TypeScript and
+declaration candidates, before JavaScript fallback. It preserves registration
+order, explicit-TypeScript lookup and Node ESM's explicit-extension rule; it
+contains no `.vibe` special case and changes no parser or AST. `0950` tests it
+with unrelated registered suffixes, output aliases, precedence and directory
+indices.
+
+`0300` contains the `.vibe` dialect gate and the handwritten parser, AST,
 binder, checker, and printer work. `0800` is derived exclusively from that
 handwritten grammar patch. `0900` pins the survivor's parser/printer shape,
 scope, narrowing, checker reachability, unused-local ownership, and dialect
@@ -77,8 +87,9 @@ from a pristine checkout:
    node compiler/forkpatch/forkpatch.mjs record --checkout <checkout>
    ```
 
-The generator requires Node 22.6 or newer, `execa`, and the repository-pinned
-`dprint@0.55.1`. `kind_stringer_generated.go` is not produced by
+The current upstream generator requires Node 22.18 or newer, `tinyexec@1.3.0`,
+and the repository-pinned `dprint@0.56.1` with its locked npm plugins.
+`kind_stringer_generated.go` is not produced by
 `generate.ts`; omitting the stringer step fails the Go build.
 
 Verify that the derived patch is exact:
@@ -90,7 +101,7 @@ node compiler/forkpatch/forkpatch.mjs verify \
 
 ## Review and test checklist
 
-- `series.json` lists only `0300`, `0800`, and `0900`.
+- `series.json` lists `0200`, `0300`, `0800`, `0900`, and `0950` in that order.
 - Handwritten patches do not touch generated files.
 - `verify --regenerate` produces no diff.
 - `status` reports `state: applied` and `divergentFromApplied: 0`.
@@ -103,7 +114,7 @@ node compiler/forkpatch/forkpatch.mjs verify \
 Mechanism tests can exercise a real checkout when one is supplied:
 
 ```bash
-SMITHERS_FORKPATCH_TEST_CHECKOUT=<checkout> \
+VIBELANG_FORKPATCH_TEST_CHECKOUT=<checkout> \
   node --test compiler/forkpatch/forkpatch.test.mjs
 ```
 

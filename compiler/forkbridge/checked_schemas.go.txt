@@ -1,0 +1,222 @@
+package main
+
+// A bounded checker query, not a language acceptance gate. The caller supplies
+// the complete immutable virtual source set and exact call spans. Parsing,
+// module resolution, scope, type identity and descriptor reification belong to
+// Go. No source is evaluated and no host filesystem is available.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/collections"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type checkedSchemaQuery struct {
+	File string `json:"file"`
+	Span span   `json:"span"`
+}
+type checkedSchemasRequest struct {
+	Files   []inspectionSource   `json:"files"`
+	Modules map[string]string    `json:"modules"`
+	Queries []checkedSchemaQuery `json:"queries"`
+}
+type checkedSchemaResult struct {
+	OK         bool   `json:"ok"`
+	SchemaJSON string `json:"schemaJson"`
+	Failure    string `json:"failure"`
+	Message    string `json:"message"`
+}
+type checkedSchemasResult struct {
+	Schemas []checkedSchemaResult `json:"schemas"`
+}
+
+func serveCheckedSchemas(apiVersion int) {
+	response := struct {
+		APIVersion       int                  `json:"apiVersion"`
+		CompilerRevision string               `json:"compilerRevision"`
+		Result           checkedSchemasResult `json:"result"`
+		Error            *wireError           `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: checkedSchemasResult{Schemas: []checkedSchemaResult{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input checkedSchemasRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("checked-schema request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = deriveCheckedSchemas(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = checkedSchemasResult{Schemas: []checkedSchemaResult{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_CHECKED_SCHEMAS", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+type checkedSchemaHost struct {
+	compiler.CompilerHost
+	kinds map[string]core.ScriptKind
+}
+
+func (h *checkedSchemaHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	if kind, ok := h.kinds[opts.FileName]; ok {
+		text, exists := h.FS().ReadFile(opts.FileName)
+		if !exists {
+			return nil
+		}
+		return parser.ParseSourceFile(opts, text, kind)
+	}
+	return h.CompilerHost.GetSourceFile(opts)
+}
+
+func deriveCheckedSchemas(ctx context.Context, input checkedSchemasRequest) (checkedSchemasResult, error) {
+	result := checkedSchemasResult{Schemas: []checkedSchemaResult{}}
+	if len(input.Files) == 0 || len(input.Files) > 1024 || len(input.Queries) == 0 || len(input.Queries) > 512 || len(input.Modules) > 128 {
+		return result, errors.New("checked-schema source/query/module counts exceed their 1024/512/128 budgets")
+	}
+	files, kinds, names := map[string]string{}, map[string]core.ScriptKind{}, map[string]string{}
+	roots := []string{}
+	total := 0
+	for _, file := range input.Files {
+		if len(file.Path) > 16*1024 || strings.ContainsRune(file.Path, 0) {
+			return result, errors.New("invalid or oversized checked-schema source path")
+		}
+		name, err := virtualFileName(file.Path)
+		if err != nil {
+			return result, err
+		}
+		if _, exists := files[name]; exists {
+			return result, errors.New("duplicate checked-schema source")
+		}
+		if len(file.Text) > 2*1024*1024 {
+			return result, errors.New("checked-schema source exceeds its 2 MiB budget")
+		}
+		total += len(file.Text)
+		if total > 16*1024*1024 {
+			return result, errors.New("checked-schema project exceeds its 16 MiB budget")
+		}
+		var kind core.ScriptKind
+		switch file.ScriptKind {
+		case "typescript":
+			kind = core.ScriptKindTS
+		case "javascript":
+			kind = core.ScriptKindJS
+		case "tsx":
+			kind = core.ScriptKindTSX
+		case "jsx":
+			kind = core.ScriptKindJSX
+		default:
+			return result, errors.New("invalid checked-schema script kind")
+		}
+		files[name], kinds[name], names[file.Path] = file.Text, kind, name
+		roots = append(roots, name)
+	}
+	options, _, err := compilerOptions(nil)
+	if err != nil {
+		return result, err
+	}
+	options.Target, options.NoEmit, options.AllowJs, options.CheckJs = core.ScriptTargetESNext, core.TSTrue, core.TSTrue, core.TSTrue
+	options.Types = []string{}
+	options.Paths = collections.NewOrderedMapWithSizeHint[string, []string](len(input.Modules))
+	moduleNames := make([]string, 0, len(input.Modules))
+	for specifier := range input.Modules {
+		moduleNames = append(moduleNames, specifier)
+	}
+	sortUTF16(moduleNames)
+	for _, specifier := range moduleNames {
+		target, exists := names[input.Modules[specifier]]
+		if !exists || specifier == "" || len(specifier) > 16*1024 || strings.ContainsAny(specifier, "*\x00") || strings.HasPrefix(specifier, ".") || strings.HasPrefix(specifier, "/") {
+			return result, errors.New("invalid checked-schema virtual module mapping")
+		}
+		options.Paths.Set(specifier, []string{target})
+	}
+	options.PathsBasePath = "/src"
+	fs := bundled.WrapFS(vfstest.FromMap(files, true))
+	host := &checkedSchemaHost{CompilerHost: compiler.NewCompilerHost("/src", fs, bundled.LibPath(), nil, nil, identityProject{}), kinds: kinds}
+	mapper := &contentmapper.Mapper{Definition: contentmapper.Definition{Package: "vibelang", Extensions: []string{".vibe"}},
+		Manifest: contentmapper.Manifest{Name: "vibelang-poc", Version: "1"}}
+	config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{FileNames: roots, CompilerOptions: options, ContentMappers: []*contentmapper.Mapper{mapper}}}
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: host, SingleThreaded: core.TSTrue})
+	// Recovered syntax must never reach a binder shape the fork cannot handle.
+	for _, name := range roots {
+		file := program.GetSourceFile(name)
+		if file == nil {
+			return result, errors.New("checked-schema source is absent from its program")
+		}
+		var shape string
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if shape == "" {
+				shape = conditionalDeclarationShapeError(node)
+			}
+		})
+		if shape != "" {
+			return result, errors.New(shape)
+		}
+	}
+	c, release := program.GetTypeChecker(ctx)
+	defer release()
+	outputBytes := 0
+	for _, query := range input.Queries {
+		name, exists := names[query.File]
+		if !exists || query.Span.Start < 0 || query.Span.Length < 1 {
+			return result, errors.New("invalid checked-schema query source/span")
+		}
+		file := program.GetSourceFile(name)
+		lines := newLineIndex(file.Text())
+		if query.Span.Start > lines.utf16Offset(len(file.Text()))-query.Span.Length {
+			return result, errors.New("checked-schema query escapes its source")
+		}
+		var call *ast.Node
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if !ast.IsCallExpression(node) {
+				return
+			}
+			start := lines.utf16Offset(scanner.GetTokenPosOfNode(node, file, false))
+			if start == query.Span.Start && lines.utf16Offset(node.End())-start == query.Span.Length {
+				call = node
+			}
+		})
+		if call == nil || call.AsCallExpression().TypeArguments == nil || len(call.AsCallExpression().TypeArguments.Nodes) != 1 {
+			return result, errors.New("checked-schema query must exactly select a call with one type argument")
+		}
+		d := schemaTypeDeriver{checker: c, location: call, stack: map[*checker.Type]bool{}}
+		descriptor, failure := d.convert(c.GetTypeFromTypeNode(call.AsCallExpression().TypeArguments.Nodes[0]), 0)
+		if failure != nil {
+			kind := "unsupported"
+			if failure.code == schemaCodeBudget {
+				kind = "budget"
+			}
+			result.Schemas = append(result.Schemas, checkedSchemaResult{Failure: kind, Message: failure.message})
+		} else {
+			encoded := ctJSON(descriptor)
+			if len(encoded) > 2*1024*1024 {
+				result.Schemas = append(result.Schemas, checkedSchemaResult{Failure: "budget", Message: "derived schema exceeds the 2 MiB descriptor output limit"})
+			} else if outputBytes+len(encoded) > 16*1024*1024 {
+				result.Schemas = append(result.Schemas, checkedSchemaResult{Failure: "budget", Message: "derived schemas exceed the 16 MiB batch output limit"})
+			} else {
+				outputBytes += len(encoded)
+				result.Schemas = append(result.Schemas, checkedSchemaResult{OK: true, SchemaJSON: encoded})
+			}
+		}
+	}
+	return result, nil
+}

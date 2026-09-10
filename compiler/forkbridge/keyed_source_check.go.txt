@@ -1,0 +1,78 @@
+package main
+
+// A discarded native lowering checks the complete source before static graph
+// extraction erases Flow bodies. This is not an executable-body frontend.
+
+import (
+	"context"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+const staticPlanCheckPrelude = `
+export declare function vibelangCheckedPlanSuccess<A, E>(value: Result<A, E>): A;
+export declare function vibelangCheckedPlanFanOut<Item, Output>(items: readonly Item[], key: (item: Item) => unknown,
+  body: (item: Item) => Output): readonly ([Output] extends [Result<infer Success, any>] ? Success : Output)[];
+`
+
+func configureStaticPlanCheck(project *project) {
+	project.staticPlanCheck = true
+	for _, files := range []map[string]string{project.tsTexts, project.checkedFiles, project.emitFiles} {
+		files[preludeVirtualName] += staticPlanCheckPrelude
+	}
+}
+
+func checkStaticPlanSource(ctx context.Context, input request) (result, map[keyedSourceLocation]keyedSourceFact, error) {
+	options, diagnostics, err := compilerOptions(input.Options)
+	if err != nil || len(diagnostics) != 0 {
+		return result{EmitSkipped: true, Diagnostics: diagnostics}, nil, err
+	}
+	project, err := buildProject(input)
+	if err != nil {
+		return result{EmitSkipped: true}, nil, err
+	}
+	configureStaticPlanCheck(project)
+	checked, err := compileInternal(ctx, options, project)
+	project.convertDiagnosticSpansToUTF16(&checked)
+	// Even internal callers receive no runnable artifacts from this profile.
+	checked.Artifacts = []artifact{}
+	return checked, project.staticPlanFacts, err
+}
+
+func collectStaticPlanFunctions(analysis *rowAnalysis, files []*ast.SourceFile) map[*ast.Node]bool {
+	functions := map[*ast.Node]bool{}
+	owner := &lowerer{checker: analysis.checker, prelude: analysis.prelude}
+	// Only compiler-owned combinator callbacks inside a static Flow share its
+	// value view. An unrelated callback elsewhere remains ordinary code.
+	var callbacks func(*ast.Node) bool
+	callbacks = func(node *ast.Node) bool {
+		if ast.IsCallExpression(node) && len(node.Arguments()) > 2 &&
+			(owner.durableIntrinsic(node.Expression(), "fanOut") || owner.durableIntrinsic(node.Expression(), "loopWhile")) {
+			if function := owner.resolveDurableFunction(node.Arguments()[2]); function != nil && !functions[function] {
+				functions[function] = true
+				function.ForEachChild(callbacks)
+			}
+		}
+		if ast.IsFunctionLike(node) {
+			return false
+		}
+		node.ForEachChild(callbacks)
+		return false
+	}
+	for _, file := range files {
+		owner.file = file
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && owner.durableIntrinsic(node.Expression(), "durable") && len(node.Arguments()) == 1 {
+				if function := owner.resolveDurableFunction(node.Arguments()[0]); function != nil && !functions[function] {
+					functions[function] = true
+					function.ForEachChild(callbacks)
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+	return functions
+}

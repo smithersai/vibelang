@@ -1,0 +1,203 @@
+package main
+
+// Source Flow composition is native checked-AST work. A resolved immutable
+// declaration contributes a graph, never an evaluated module or callback.
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+type durableSourceFlowKey struct {
+	symbol *ast.Symbol
+	keyed  bool
+}
+
+type durableSourceFlows struct {
+	ready  map[durableSourceFlowKey]durableBoundFlow
+	active map[*ast.Symbol]bool
+	visits int
+}
+
+// Static combinators consume their steps' failure channels; an array or tuple
+// of success values is not permission to erase those channels from the Flow.
+// Keep these graph edges in the ordinary fixed point, including source children.
+func (a *rowAnalysis) collectDurableCombinatorRows(fn *functionRows, call *ast.Node) {
+	if !a.staticPlanFunctions[fn.node] {
+		return
+	}
+	owner := &lowerer{checker: a.checker, prelude: a.prelude}
+	if (owner.durableIntrinsic(call.Expression(), "fanOut") || owner.durableIntrinsic(call.Expression(), "loopWhile")) && len(call.Arguments()) > 2 {
+		if callback := a.resolveFunctionReference(call.Arguments()[2]); callback != nil {
+			fn.calls = append(fn.calls, rowCallEdge{node: call, callee: callback, propagatesFailure: true})
+		}
+	}
+	if owner.durableIntrinsic(call.Expression(), "sequential") {
+		for _, argument := range call.Arguments() {
+			if _, failure, ok := a.resultArguments(a.checker.GetTypeAtLocation(argument)); ok {
+				if rows, known := a.rowsOfType(failure); known {
+					addRows(fn.directFailures, rows)
+				}
+			}
+			if callee := a.resolveCallee(ast.SkipParentheses(argument)); callee != nil {
+				fn.calls = append(fn.calls, rowCallEdge{node: argument, callee: callee, propagatesFailure: true,
+					instantiatedFailures: a.instantiatedFailures(argument, callee)})
+			}
+		}
+	}
+}
+
+func (l *lowerer) sourceFlowDeclaration(symbol *ast.Symbol) (*ast.Node, *ast.Node) {
+	if symbol == nil || symbol.ValueDeclaration == nil {
+		return nil, nil
+	}
+	declaration := symbol.ValueDeclaration
+	if !ast.IsVariableDeclaration(declaration) || !ast.IsVarConst(declaration) || declaration.Initializer() == nil ||
+		declaration.Parent == nil || declaration.Parent.Parent == nil || declaration.Parent.Parent.Parent != ast.GetSourceFileOfNode(declaration).AsNode() {
+		return nil, nil
+	}
+	call := ast.SkipParentheses(declaration.Initializer())
+	if !ast.IsCallExpression(call) || !l.durableIntrinsic(call.Expression(), "durable") {
+		return nil, nil
+	}
+	return declaration, call
+}
+
+// Row inference must follow the source body, not the structural .run signature
+// in the prelude. This lookup performs no graph construction (and therefore
+// cannot recursively enter row inference while the fixed point is in progress).
+func (a *rowAnalysis) sourceChildFlowFunction(node *ast.Node) *functionRows {
+	if !ast.IsCallExpression(node) || !ast.IsPropertyAccessExpression(node.Expression()) {
+		return nil
+	}
+	owner := &lowerer{checker: a.checker, prelude: a.prelude}
+	access := node.Expression().AsPropertyAccessExpression()
+	if !owner.durableIntrinsic(access.Name(), "run") {
+		return nil
+	}
+	declaration, call := owner.sourceFlowDeclaration(a.symbolAt(ast.SkipParentheses(access.Expression)))
+	if declaration == nil || len(call.Arguments()) != 1 {
+		return nil
+	}
+	owner.file = ast.GetSourceFileOfNode(declaration)
+	return a.byNode[owner.resolveDurableFunction(call.Arguments()[0])]
+}
+
+// A source Flow is a descriptor, not an executable callback. References to its
+// compiler-owned .run outside a static Flow body would read a missing method at
+// runtime, so reject them before emission rather than implying authorization.
+func (a *rowAnalysis) checkSourceFlowReferences(files []*ast.SourceFile) {
+	bodies := map[*ast.Node]bool{}
+	owner := &lowerer{checker: a.checker, prelude: a.prelude}
+	for _, file := range files {
+		owner.file = file
+		var collect func(*ast.Node) bool
+		collect = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && owner.durableIntrinsic(node.Expression(), "durable") && len(node.Arguments()) == 1 {
+				if function := owner.resolveDurableFunction(node.Arguments()[0]); function != nil {
+					bodies[function] = true
+				}
+			}
+			node.ForEachChild(collect)
+			return false
+		}
+		file.AsNode().ForEachChild(collect)
+	}
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if bodies[node] {
+				return false
+			}
+			if ast.IsPropertyAccessExpression(node) && owner.durableIntrinsic(node.Name(), "run") {
+				if declaration, _ := owner.sourceFlowDeclaration(a.symbolAt(ast.SkipParentheses(node.Expression()))); declaration != nil {
+					a.report(node, "VIBE4120", "source Flow.run is a static composition operation, not a runtime invocation; compile a Plan and use the approved execution surface")
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+func (l *lowerer) sourceChildFlowCall(node *ast.Node, keyed bool) (durableBoundFlow, bool, error) {
+	if !ast.IsCallExpression(node) || !ast.IsPropertyAccessExpression(node.Expression()) {
+		return durableBoundFlow{}, false, nil
+	}
+	access := node.Expression().AsPropertyAccessExpression()
+	if !l.durableIntrinsic(access.Name(), "run") {
+		return durableBoundFlow{}, false, nil
+	}
+	symbol := l.durableCanonicalSymbolAt(ast.SkipParentheses(access.Expression))
+	declaration, callNode := l.sourceFlowDeclaration(symbol)
+	if declaration == nil {
+		return durableBoundFlow{}, false, nil
+	}
+	if l.sourceFlows == nil {
+		l.sourceFlows = &durableSourceFlows{ready: map[durableSourceFlowKey]durableBoundFlow{}, active: map[*ast.Symbol]bool{}}
+	}
+	cache := l.sourceFlows
+	key := durableSourceFlowKey{symbol: symbol, keyed: keyed}
+	if ready, found := cache.ready[key]; found {
+		return ready, true, nil
+	}
+	if cache.active[symbol] {
+		return durableBoundFlow{}, true, errors.New("recursive source Flow composition requires an explicit bounded round")
+	}
+	cache.visits++
+	if len(cache.active) >= 8 || cache.visits > keyedPlanMaxNodes {
+		return durableBoundFlow{}, true, errors.New("source Flow composition exceeds its structural graph budget")
+	}
+	cache.active[symbol] = true
+	defer delete(cache.active, symbol)
+	call := callNode.AsCallExpression()
+	if call.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		return durableBoundFlow{}, true, errors.New("child durable(...) requires exactly one static function")
+	}
+	owner := newLowerer(l.checker, l.prelude, l.analysis, l.comptime, map[string]string{})
+	owner.file = ast.GetSourceFileOfNode(declaration)
+	owner.planActions, owner.planFlows, owner.sourceFlows = l.planActions, l.planFlows, cache
+	owner.keyedSourceFacts = l.keyedSourceFacts
+	function := owner.resolveDurableFunction(call.Arguments.Nodes[0])
+	if function == nil {
+		return durableBoundFlow{}, true, errors.New("source child Flow has no statically resolved function in its declaration module")
+	}
+	name, logical := durableDeclarationName(callNode, function), durableLogicalFile(owner.file)
+	functionName := name
+	if declared := function.Name(); declared != nil && ast.IsIdentifier(declared) {
+		functionName = declared.Text()
+	}
+	d := &durableFunctionLowerer{owner: owner, logicalFile: logical, flowID: logical + "#" + name,
+		flowVersion: 1, function: functionName, symbolicPlan: keyed, values: map[*ast.Symbol]durableValue{},
+		actions: map[string]durableAction{}, occurrences: map[string]int{}, nodeIDs: map[string]bool{}, signalIDs: map[string]bool{}}
+	d.activeNodes = &d.nodes
+	output, ok := d.lowerFunction(function)
+	if !ok || d.failed || d.inputSchema["shape"] != "structural" || d.successSchema["shape"] != "structural" {
+		reason := "has no complete static structural graph"
+		if len(owner.reports) != 0 {
+			reason = owner.reports[0].code + ": " + owner.reports[0].message
+		}
+		return durableBoundFlow{}, true, fmt.Errorf("source child Flow %s %s", d.flowID, reason)
+	}
+	child := durableBoundFlow{plan: d.plan(output), input: durableBindingSchema{value: d.inputSchema},
+		success: durableBindingSchema{value: d.successSchema}, depth: 1, source: d,
+		inputType: owner.checker.GetTypeAtLocation(function.Parameters()[0].Name())}
+	for _, nested := range d.childPlans {
+		child.depth = max(child.depth, nested.depth+1)
+	}
+	for _, action := range d.actions {
+		child.actions = append(child.actions, durableBoundAction{descriptor: action.descriptor})
+	}
+	if !keyed {
+		manifest, failure := durableEffectManifest(owner, logical, d.flowID, 1, functionName, function)
+		if failure != "" {
+			return durableBoundFlow{}, true, fmt.Errorf("source child Flow %s has no complete Effect Manifest: %s", d.flowID, failure)
+		}
+		child.manifest = manifest
+	}
+	cache.ready[key] = child
+	return child, true, nil
+}

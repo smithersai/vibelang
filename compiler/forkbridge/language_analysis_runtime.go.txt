@@ -1,0 +1,256 @@
+package main
+
+// These aliases belong only to the no-emit language query. Native TypeScript
+// forwarding modules retain the target's actual export symbols; no source text
+// is rewritten and no host parser, resolver heuristic over source, or compiler
+// AST facade participates. The separate emitter must still map runtime outputs.
+
+import (
+	"errors"
+	"fmt"
+	"path"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type languageAnalysisRuntimeModule struct {
+	Path         string   `json:"path"`
+	Aliases      []string `json:"aliases"`
+	CompilerData bool     `json:"compilerData,omitempty"`
+}
+
+type languageAnalysisRuntimeAlias struct {
+	target string
+	data   bool
+}
+
+type languageAnalysisRuntimeGraph struct {
+	aliases  map[string]languageAnalysisRuntimeAlias
+	forwards map[string]string
+	labels   map[string]string
+}
+
+func (p *project) analysisRuntimeAt(file *ast.SourceFile, specifier string) (languageAnalysisRuntimeAlias, bool) {
+	if p == nil || p.analysisRuntime == nil {
+		return languageAnalysisRuntimeAlias{}, false
+	}
+	target, inside := assetSpecifierTarget(file, specifier)
+	if !inside {
+		return languageAnalysisRuntimeAlias{}, false
+	}
+	alias, ok := p.analysisRuntime.aliases[target]
+	return alias, ok
+}
+
+func (g *languageAnalysisRuntimeGraph) install(p *project) error {
+	if g == nil {
+		return nil
+	}
+	for name, text := range g.forwards {
+		if _, exists := p.logicalByVirtual[name]; exists {
+			return fmt.Errorf("runtime alias resolves to a duplicate path: %s", strings.TrimPrefix(name, "/src/"))
+		}
+		p.checkedFiles[name], p.emitFiles[name], p.tsTexts[name] = text, text, text
+		p.logicalByVirtual[name] = g.labels[name]
+	}
+	p.analysisRuntime = g
+	return nil
+}
+
+// Native extension substitution resolves an authored .js alias through .ts;
+// arbitrary non-code extensions use upstream's .d.<extension>.ts convention.
+// The original filename is still the exact public alias key above.
+func languageAnalysisAliasFile(name string) (string, error) {
+	switch extension := strings.ToLower(path.Ext(name)); extension {
+	case ".vibe", ".vibex":
+		return "", errors.New("runtime aliases cannot claim authored language sources")
+	case ".ts", ".tsx", ".mts", ".cts":
+		return name, nil
+	case ".js":
+		return strings.TrimSuffix(name, path.Ext(name)) + ".ts", nil
+	case ".jsx":
+		return strings.TrimSuffix(name, path.Ext(name)) + ".tsx", nil
+	case ".mjs":
+		return strings.TrimSuffix(name, path.Ext(name)) + ".mts", nil
+	case ".cjs":
+		return strings.TrimSuffix(name, path.Ext(name)) + ".cts", nil
+	case "":
+		return name + ".ts", nil
+	default:
+		return assetDeclarationPath(name), nil
+	}
+}
+
+func languageAnalysisHasDefault(file *ast.SourceFile) bool {
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsExportAssignment(statement) && !statement.AsExportAssignment().IsExportEquals ||
+			ast.HasSyntacticModifier(statement, ast.ModifierFlagsDefault) {
+			return true
+		}
+		if ast.IsExportDeclaration(statement) {
+			clause := statement.AsExportDeclaration().ExportClause
+			if clause != nil && ast.IsNamedExports(clause) && clause.AsNamedExports().Elements != nil {
+				for _, item := range clause.AsNamedExports().Elements.Nodes {
+					if item.Name() != nil && item.Name().Text() == "default" {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func prepareLanguageAnalysisRuntime(p *project, inputs []languageAnalysisRuntimeModule) (*languageAnalysisRuntimeGraph, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+	if len(inputs) > 1024 {
+		return nil, errors.New("language analysis runtime modules exceed 1024 entries")
+	}
+	g := &languageAnalysisRuntimeGraph{aliases: map[string]languageAnalysisRuntimeAlias{}, forwards: map[string]string{}, labels: map[string]string{}}
+	files := map[string]*ast.SourceFile{}
+	data := map[string]bool{}
+	for _, input := range inputs {
+		if input.Aliases == nil || len(input.Path) > 16*1024 || strings.ContainsRune(input.Path, 0) {
+			return nil, errors.New("runtime module path exceeds the language query path budget")
+		}
+		name, err := virtualFileName(input.Path)
+		if err != nil {
+			return nil, err
+		}
+		text, supplied := p.tsTexts[name]
+		if !supplied || p.logicalByVirtual[name] != input.Path || files[name] != nil ||
+			name == preludeVirtualName || name == comptimeVirtualName || name == hostModulesVirtualName ||
+			name == durableVirtualName || isSchemaOwnedFile(name) {
+			return nil, errors.New("runtime modules must name unique supplied TypeScript sources")
+		}
+		files[name] = parseLoaderSource(name, text)
+		data[name] = input.CompilerData
+		g.aliases[name] = languageAnalysisRuntimeAlias{target: name, data: input.CompilerData}
+	}
+	forwardBytes := 0
+	for _, input := range inputs {
+		name, _ := virtualFileName(input.Path)
+		for _, alias := range input.Aliases {
+			if len(alias) > 16*1024 || strings.ContainsRune(alias, 0) {
+				return nil, errors.New("runtime alias exceeds the language query path budget")
+			}
+			virtual, err := virtualFileName(alias)
+			if err != nil {
+				return nil, err
+			}
+			if _, exists := g.aliases[virtual]; exists {
+				return nil, errors.New("runtime alias resolves to a duplicate path")
+			}
+			if _, exists := p.logicalByVirtual[virtual]; exists {
+				return nil, errors.New("runtime alias resolves to a duplicate path")
+			}
+			forward, err := languageAnalysisAliasFile(virtual)
+			if err != nil {
+				return nil, err
+			}
+			if _, exists := p.logicalByVirtual[forward]; exists || g.forwards[forward] != "" {
+				return nil, errors.New("runtime alias substitutes to a duplicate path")
+			}
+			// Use the pinned compiler's path operation, not source substitution.
+			// Relative edges also retain its ordinary TS-extension emit rules.
+			specifier := tspath.GetRelativePathFromDirectory(path.Dir(forward), name, tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+			if !strings.HasPrefix(specifier, "./") && !strings.HasPrefix(specifier, "../") {
+				specifier = "./" + specifier
+			}
+			text := "/** @module @throws {never} */\nexport * from " + ctQuote(specifier) + ";\n"
+			if languageAnalysisHasDefault(files[name]) {
+				text += "export { default } from " + ctQuote(specifier) + ";\n"
+			}
+			g.aliases[virtual] = languageAnalysisRuntimeAlias{target: name, data: input.CompilerData}
+			// Forwarder diagnostics have their own alias identity, never an
+			// invented offset in the target module's original source text.
+			g.forwards[forward], g.labels[forward] = text, alias
+			forwardBytes += len(text)
+			if len(g.forwards) > 4096 || forwardBytes > 8*1024*1024 {
+				return nil, errors.New("language analysis runtime aliases exceed 4096 entries or 8 MiB")
+			}
+		}
+	}
+	// A transport boolean cannot grant compiler-owned value provenance to
+	// executable code. Revalidate the complete inert-data closure in Go.
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sortUTF16(names)
+	dependencies := map[string][]string{}
+	for _, name := range names {
+		file := files[name]
+		if !data[name] {
+			continue
+		}
+		keys := []string{}
+		for candidate, owned := range data {
+			if owned && path.Dir(candidate) == path.Dir(name) {
+				key := strings.TrimSuffix(path.Base(candidate), ".ts")
+				if generatedAssetKey.MatchString(key) {
+					keys = append(keys, key)
+				}
+			}
+		}
+		validation, err := validateAssetOutput(assetOutputRequest{Source: file.Text(), DeclaredLogicalKeys: keys})
+		if err != nil || !validation.OK || !trustedForeignModule(file) {
+			return nil, fmt.Errorf("compiler-data runtime module %q failed native admission: %s", strings.TrimPrefix(name, "/src/"), validation.Message)
+		}
+		if len(file.ReferencedFiles) != 0 || len(file.TypeReferenceDirectives) != 0 || len(file.LibReferenceDirectives) != 0 {
+			return nil, errors.New("compiler-data runtime modules cannot load ambient references")
+		}
+		for _, key := range validation.References {
+			dependencies[name] = append(dependencies[name], path.Join(path.Dir(name), key+".ts"))
+		}
+		unsafeType := false
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsVariableDeclaration(node) && node.Type() != nil || node.Kind == ast.KindTypeAssertionExpression ||
+				ast.IsAsExpression(node) && !ast.IsConstAssertion(node) {
+				unsafeType = true
+				return true
+			}
+			return node.ForEachChild(visit)
+		}
+		file.AsNode().ForEachChild(visit)
+		if unsafeType {
+			return nil, errors.New("compiler-data runtime modules require inferred data types and only const assertions")
+		}
+	}
+	visiting, heights := map[string]bool{}, map[string]int{}
+	var visit func(string) (int, error)
+	visit = func(name string) (int, error) {
+		if visiting[name] {
+			return 0, errors.New("compiler-data runtime dependency graph is cyclic")
+		}
+		if height := heights[name]; height != 0 {
+			return height, nil
+		}
+		visiting[name] = true
+		height := 1
+		for _, dependency := range dependencies[name] {
+			child, err := visit(dependency)
+			if err != nil {
+				return 0, err
+			}
+			height = max(height, child+1)
+			if height > 128 {
+				return 0, errors.New("compiler-data runtime dependency graph exceeds 128 levels")
+			}
+		}
+		delete(visiting, name)
+		heights[name] = height
+		return height, nil
+	}
+	for _, name := range names {
+		if _, err := visit(name); err != nil {
+			return nil, err
+		}
+	}
+	return g, nil
+}

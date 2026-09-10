@@ -1,0 +1,620 @@
+package main
+
+// Serializable language analysis from the native compilation pipeline. This
+// is an editor/query result, not an authenticated implementation contract.
+// Refused programs may retain provisional declaration/row information; checked
+// is true only when the same source closure passes ordinary native compilation.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type languageAnalysisRequest struct {
+	Files                   []sourceFile                    `json:"files"`
+	ResolutionRoot          string                          `json:"resolutionRoot,omitempty"`
+	ExplicitVibeLangSources bool                            `json:"explicitVibeLangSources,omitempty"`
+	RuntimeModules          []languageAnalysisRuntimeModule `json:"runtimeModules,omitempty"`
+	SDKRuntimeImport        string                          `json:"sdkRuntimeImport,omitempty"`
+	StaticPlanCheck         bool                            `json:"staticPlanCheck,omitempty"`
+	TraceDependencies       bool                            `json:"traceDependencies,omitempty"`
+}
+
+type analyzedError struct {
+	Name         string `json:"name"`
+	FieldsSource string `json:"fieldsSource"`
+	Start        int    `json:"start"`
+	End          int    `json:"end"`
+}
+
+type analyzedFunction struct {
+	Name           string   `json:"name"`
+	Exported       bool     `json:"exported"`
+	Async          bool     `json:"async"`
+	Channel        string   `json:"channel"`
+	ExplicitReturn bool     `json:"explicitReturn"`
+	Start          int      `json:"start"`
+	End            int      `json:"end"`
+	BodyStart      int      `json:"bodyStart"`
+	BodyEnd        int      `json:"bodyEnd"`
+	ModuleScope    bool     `json:"moduleScope"`
+	Failures       []string `json:"failures"`
+	Requirements   []string `json:"requirements"`
+}
+
+type analyzedFile struct {
+	Path      string             `json:"path"`
+	Analyzed  bool               `json:"analyzed"`
+	Errors    []analyzedError    `json:"errors"`
+	Functions []analyzedFunction `json:"functions"`
+}
+
+type languageAnalysisResult struct {
+	Checked      bool                   `json:"checked"`
+	Diagnostics  []diagnostic           `json:"diagnostics"`
+	Files        []analyzedFile         `json:"files"`
+	Dependencies *nativeDependencyTrace `json:"dependencies,omitempty"`
+}
+
+func emptyLanguageAnalysis() languageAnalysisResult {
+	return languageAnalysisResult{Diagnostics: []diagnostic{}, Files: []analyzedFile{}}
+}
+
+func serveLanguageAnalysis(apiVersion int) {
+	response := struct {
+		APIVersion       int                    `json:"apiVersion"`
+		CompilerRevision string                 `json:"compilerRevision"`
+		Result           languageAnalysisResult `json:"result"`
+		Error            *wireError             `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyLanguageAnalysis()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input languageAnalysisRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("language analysis request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeLanguage(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyLanguageAnalysis()
+		response.Error = &wireError{Code: "VIBELANG_GO_LANGUAGE_ANALYSIS", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func analyzeLanguage(ctx context.Context, input languageAnalysisRequest) (languageAnalysisResult, error) {
+	return analyzeLanguageObserved(ctx, input, nil)
+}
+
+// A compiler phase can consume the very same checked Program without exposing
+// it to the host. Provisional editor facts never authorize this callback.
+func analyzeLanguageObserved(ctx context.Context, input languageAnalysisRequest, checked func(*rowAnalysis, []*ast.SourceFile, *core.CompilerOptions) error) (languageAnalysisResult, error) {
+	answer := emptyLanguageAnalysis()
+	trace := newDependencyTrace(input.TraceDependencies)
+	answer.Dependencies, _ = trace.result()
+	if input.StaticPlanCheck && checked != nil {
+		return answer, errors.New("retained Plan body checking cannot authorize runtime lowering or checked implementation artifacts")
+	}
+	if len(input.Files) > 1024 {
+		return answer, errors.New("language analysis source closure exceeds 1024 files")
+	}
+	if input.ResolutionRoot != "" && (len(input.ResolutionRoot) > 16*1024 || !filepath.IsAbs(input.ResolutionRoot) || strings.ContainsRune(input.ResolutionRoot, 0)) {
+		return answer, errors.New("language analysis resolutionRoot must be an absolute directory")
+	}
+	request := request{Files: input.Files, RootNames: []string{}, Lowering: "internal"}
+	total := 0
+	for _, file := range input.Files {
+		total += len(file.Text)
+		if len(file.Path) > 16*1024 || strings.ContainsRune(file.Path, 0) || len(file.Text) > 2*1024*1024 || total > 16*1024*1024 || file.Lowered != nil ||
+			(file.Kind != "vibelang" && file.Kind != "typescript" && file.Kind != "asset") {
+			return answer, errors.New("invalid or oversized language analysis source")
+		}
+		if file.Kind != "asset" {
+			request.RootNames = append(request.RootNames, file.Path)
+		}
+	}
+	if len(input.Files) == 0 {
+		if len(input.RuntimeModules) != 0 {
+			return answer, errors.New("runtime modules require supplied TypeScript sources")
+		}
+		answer.Checked = true
+		return answer, nil
+	}
+	project, err := buildProject(request)
+	if err != nil {
+		return answer, err
+	}
+	if err := installSDKDeclarationTarget(project, input.SDKRuntimeImport); err != nil {
+		return answer, err
+	}
+	graph, err := prepareLanguageAnalysisRuntime(project, input.RuntimeModules)
+	if err != nil {
+		return answer, err
+	}
+	if err := graph.install(project); err != nil {
+		return answer, err
+	}
+	if input.ResolutionRoot != "" {
+		project, err = expandLanguageAnalysisProject(input.ResolutionRoot, request, project, input.ExplicitVibeLangSources, trace)
+		if err != nil {
+			return answer, err
+		}
+		answer.Dependencies, err = trace.result()
+		if err != nil {
+			return answer, err
+		}
+	}
+	project.languageAnalysis = true
+	if input.StaticPlanCheck {
+		configureStaticPlanCheck(project)
+	}
+	paths := make([]string, 0, len(project.vibelangByLogical))
+	for _, file := range input.Files {
+		if file.Kind == "vibelang" {
+			paths = append(paths, file.Path)
+		}
+	}
+	sortUTF16(paths)
+	byPath := map[string]int{}
+	for _, name := range paths {
+		byPath[name] = len(answer.Files)
+		answer.Files = append(answer.Files, analyzedFile{Path: name, Errors: []analyzedError{}, Functions: []analyzedFunction{}})
+	}
+	// The public language SDK retains its latest ECMAScript surface, including
+	// the determinism table's Float16Array and current Promise members. The
+	// standalone compiler's explicitly configurable ES2022 default is separate.
+	options, diagnostics, err := compilerOptions(map[string]any{"target": "esnext", "allowJs": true, "checkJs": false, "allowArbitraryExtensions": true})
+	if err != nil || len(diagnostics) != 0 {
+		return answer, errors.New("language analysis compiler options are unavailable")
+	}
+	// JSX remains foreign syntax; a .vibe source still uses the unchanged TS
+	// grammar gate. Resolution must nevertheless admit imported .tsx/.jsx files.
+	options.Jsx = core.JsxEmitReact
+	var factError error
+	var authoredFiles []*ast.SourceFile
+	compiled, err := compileInternalWithObservers(ctx, options, project, internalCompilationObservers{analyzed: func(a *rowAnalysis, files []*ast.SourceFile) {
+		authoredFiles = files
+		facts, outputBytes := 0, 0
+		takeFact := func(bytes int) bool {
+			facts++
+			// A JSON string can expand by at most six bytes per source byte.
+			// Stop before allocating the repeated metadata, not after marshaling.
+			outputBytes += 6*bytes + 512
+			if facts > 100_000 || outputBytes > 24*1024*1024 {
+				factError = errors.New("language analysis declaration/metadata budget exceeded")
+				return false
+			}
+			return true
+		}
+		functionsByFile := map[*ast.SourceFile][]*functionRows{}
+		for _, fn := range a.functions {
+			functionsByFile[fn.file] = append(functionsByFile[fn.file], fn)
+		}
+		for _, file := range files {
+			logical := project.logicalByVirtual[file.FileName()]
+			index, exists := byPath[logical]
+			if !exists {
+				// Dependencies participate in checking and row inference but the
+				// public file table addresses only explicitly requested sources.
+				continue
+			}
+			value := &answer.Files[index]
+			value.Analyzed = true
+			lines := newLineIndex(file.Text())
+			start := func(node *ast.Node) int { return lines.utf16Offset(scanner.GetTokenPosOfNode(node, file, false)) }
+			end := func(node *ast.Node) int { return lines.utf16Offset(node.End()) }
+			var visit func(*ast.Node) bool
+			visit = func(node *ast.Node) bool {
+				if factError != nil {
+					return true
+				}
+				if a.isNominalErrorClass(node) {
+					members := node.ClassLikeData().Members
+					fields := ""
+					if members != nil {
+						fields = file.Text()[members.Pos():members.End()]
+					}
+					if !takeFact(len(fields) + len(node.Name().Text())) {
+						return true
+					}
+					value.Errors = append(value.Errors, analyzedError{Name: node.Name().Text(), FieldsSource: fields, Start: start(node), End: end(node)})
+				}
+				node.ForEachChild(visit)
+				return false
+			}
+			file.AsNode().ForEachChild(visit)
+			if factError != nil {
+				return
+			}
+			for _, fn := range functionsByFile[file] {
+				if !analysisPubliclyNamedFunction(fn.node) {
+					continue
+				}
+				node := fn.node
+				name := ""
+				if node.Name() != nil && ast.IsIdentifier(node.Name()) {
+					name = node.Name().Text()
+				} else if node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && ast.IsIdentifier(node.Parent.Name()) {
+					name = node.Parent.Name().Text()
+				}
+				if name == "" {
+					line, column := lines.position(scanner.GetTokenPosOfNode(node, file, false))
+					name = fmt.Sprintf("<anonymous@%d:%d>", line+1, column+1)
+				}
+				channel := "plain"
+				if fn.declaredShape.result || len(fn.failures) > 0 {
+					channel = "result"
+				}
+				failures, requirements := analysisRowNames(fn.failures), analysisRowNames(fn.requirements)
+				bytes := len(name)
+				for _, row := range [][]string{failures, requirements} {
+					if len(row) > 10_000 {
+						factError = errors.New("language analysis row budget exceeded")
+						return
+					}
+					for _, name := range row {
+						bytes += len(name) + 4
+					}
+				}
+				if !takeFact(bytes) {
+					return
+				}
+				value.Functions = append(value.Functions, analyzedFunction{
+					Name: name, Exported: fn.exported, Async: ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync), Channel: channel,
+					ExplicitReturn: fn.explicitReturn, Start: start(node), End: end(node), BodyStart: start(node.Body()), BodyEnd: end(node.Body()),
+					ModuleScope: analysisModuleScopeFunction(node), Failures: failures, Requirements: requirements,
+				})
+			}
+		}
+	}, checked: func(a *rowAnalysis) {
+		if factError == nil && checked != nil {
+			factError = checked(a, authoredFiles, options)
+		}
+	}})
+	if err != nil {
+		return emptyLanguageAnalysis(), err
+	}
+	if factError != nil {
+		return emptyLanguageAnalysis(), factError
+	}
+	project.convertDiagnosticSpansToUTF16(&compiled)
+	answer.Diagnostics = append(answer.Diagnostics, compiled.Diagnostics...)
+	answer.Checked = !compiled.EmitSkipped && !hasError(answer.Diagnostics)
+	// Bound the encoded response as well as the number of declarations. Nested
+	// classes and large repeated rows otherwise amplify a small input closure.
+	encoded, err := json.Marshal(answer)
+	if err != nil || len(answer.Diagnostics) > 4096 || len(encoded) > 32*1024*1024 {
+		return emptyLanguageAnalysis(), errors.New("language analysis response budget exceeded")
+	}
+	return answer, nil
+}
+
+// The SDK's native query checks its language roots and compiler-owned support.
+// Foreign implementation bodies retain their own compiler environment (Node
+// globals and optional strictness flags, for example). Their resolved types
+// still participate in every language check; syntax and module-trust failures
+// remain fatal. The final SDK/product host checks and transpiles the foreign
+// runtime graph separately. Standalone compilation continues to check/emit all.
+func (p *project) languageDiagnosticFiles(program *compiler.Program) []*ast.SourceFile {
+	if !p.languageAnalysis {
+		return nil
+	}
+	files := []*ast.SourceFile{}
+	for _, file := range program.SourceFiles() {
+		name := file.FileName()
+		if _, foreign := p.tsTexts[name]; foreign && name != preludeVirtualName && name != durableVirtualName &&
+			name != comptimeVirtualName && name != hostModulesVirtualName && !isSchemaOwnedFile(name) {
+			data := false
+			if p.analysisRuntime != nil {
+				// Forwarders are compiler-created even for ordinary foreign
+				// targets. Their imports must resolve; hiding a broken forwarder
+				// would turn a default import into any and erase its contract.
+				_, data = p.analysisRuntime.forwards[name]
+				for _, alias := range p.analysisRuntime.aliases {
+					if alias.target == name && alias.data {
+						data = true
+						break
+					}
+				}
+			}
+			if !data {
+				continue
+			}
+		}
+		files = append(files, file)
+	}
+	return files
+}
+
+// The native resolver reads an overlay of explicit inputs and a root-confined
+// filesystem. Its discovered closure is then frozen into the ordinary in-memory
+// compilation path: no later pass rereads disk, loads a tsconfig, or executes a
+// source module. Package metadata and negative probes share that read snapshot.
+func expandLanguageAnalysisProject(rootPath string, input request, initial *project, explicitVibeLangSources bool, trace *dependencyTrace) (*project, error) {
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("open language analysis resolution root: %w", err)
+	}
+	defer root.Close()
+	files := map[string]string{}
+	for name, text := range initial.checkedFiles {
+		files[name] = text
+	}
+	for name, text := range initial.assetByVirtual {
+		files[name] = text
+	}
+	filesystem := &languageAnalysisFS{
+		runtimeResolutionFS:     &runtimeResolutionFS{assetResolutionFS: &assetResolutionFS{FS: vfstest.FromMap(files, true), root: root}},
+		reads:                   map[string]generatedRead{},
+		explicitVibeLangSources: explicitVibeLangSources,
+		trace:                   trace, traceRoot: rootPath,
+	}
+	for _, file := range input.Files {
+		filesystem.bytes += len(file.Text)
+	}
+	// Foreign JS contributes its native/JSDoc types without imposing the
+	// language's mandatory source-checking policy on its implementation.
+	options, issues, err := compilerOptions(map[string]any{"allowJs": true, "checkJs": false, "allowArbitraryExtensions": true})
+	if err != nil || len(issues) != 0 {
+		return nil, errors.New("language analysis resolution options are unavailable")
+	}
+	options.Jsx = core.JsxEmitReact
+	configureInternalModules(options)
+	program := newCheckProgramWithFS(options, initial, filesystem)
+	if filesystem.fault != nil {
+		return nil, filesystem.fault
+	}
+	if filesystem.alias != "" {
+		return nil, errors.New("language analysis dependency resolves through a symbolic-link alias: " + filesystem.alias)
+	}
+	seen := map[string]bool{}
+	for _, file := range input.Files {
+		seen[file.Path] = true
+	}
+	add := func(name, text, kind string) error {
+		logical, inside := assetResolutionRelative(name)
+		if !inside || logical == "." {
+			return errors.New("language analysis dependency escaped the project root")
+		}
+		if seen[logical] {
+			return nil
+		}
+		if len(input.Files) >= 1024 {
+			return errors.New("language analysis dependency closure exceeds 1024 files")
+		}
+		seen[logical] = true
+		input.Files = append(input.Files, sourceFile{Path: logical, Text: text, Kind: kind})
+		if kind != "asset" {
+			input.RootNames = append(input.RootNames, logical)
+		}
+		return nil
+	}
+	for _, file := range program.SourceFiles() {
+		name := file.OriginalFileName()
+		if _, supplied := initial.logicalByVirtual[name]; supplied {
+			continue
+		}
+		if !strings.HasPrefix(name, "/src/") {
+			continue
+		} // bundled, pinned libraries
+		kind := "typescript"
+		if strings.HasSuffix(strings.ToLower(name), ".vibe") {
+			kind = "vibelang"
+		} else if isPotentialAssetFilePath(name) {
+			kind = "asset"
+		}
+		if err := add(name, file.Text(), kind); err != nil {
+			return nil, err
+		}
+	}
+	// Asset data is not a source file in the native Program. Ask the same native
+	// AST ownership walk used by compilation which literal paths need staging.
+	for _, file := range program.SourceFiles() {
+		if !strings.HasSuffix(strings.ToLower(file.OriginalFileName()), ".vibe") {
+			continue
+		}
+		for _, site := range sourceAssetSites(initial, file) {
+			if _, supplied := initial.analysisRuntimeAt(file, site.specifier); supplied {
+				continue
+			}
+			if !site.potentialAsset || !strings.HasPrefix(site.specifier, ".") {
+				continue
+			}
+			target, inside := assetSpecifierTarget(file, site.specifier)
+			if !inside {
+				continue
+			} // the ordinary asset diagnostic owns this refusal
+			if text, ok := filesystem.ReadFile(target); ok {
+				if err := add(target, text, "asset"); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	if filesystem.fault != nil {
+		return nil, filesystem.fault
+	}
+	if filesystem.alias != "" {
+		return nil, errors.New("language analysis dependency resolves through a symbolic-link alias: " + filesystem.alias)
+	}
+	expanded, err := buildProject(input)
+	if err != nil {
+		return nil, err
+	}
+	if err := installSDKDeclarationTarget(expanded, initial.sdkRuntimeImport); err != nil {
+		return nil, err
+	}
+	if err := initial.analysisRuntime.install(expanded); err != nil {
+		return nil, err
+	}
+	for name, read := range filesystem.reads {
+		if read.ok && path.Base(name) == "package.json" {
+			expanded.checkedFiles[name], expanded.emitFiles[name] = read.text, read.text
+		}
+	}
+	return expanded, nil
+}
+
+type languageAnalysisFS struct {
+	*runtimeResolutionFS
+	reads                   map[string]generatedRead
+	bytes                   int
+	explicitVibeLangSources bool
+	trace                   *dependencyTrace
+	traceRoot               string
+}
+
+func (f *languageAnalysisFS) tracePath(name string, directory bool) {
+	if f.trace == nil {
+		return
+	}
+	if relative, inside := assetResolutionRelative(name); inside {
+		f.trace.record(filepath.ToSlash(filepath.Join(f.traceRoot, filepath.FromSlash(relative))), directory)
+	}
+}
+
+// Project analysis owns a supplied authored source set. Resolving foreign
+// declarations must not silently extend that set from disk, even through a
+// foreign module's imports. Test the policy before metadata or file reads;
+// explicit overlay inputs remain available under either policy.
+func (f *languageAnalysisFS) disallowedDiskSource(name string) bool {
+	return f.explicitVibeLangSources && strings.HasSuffix(strings.ToLower(name), ".vibe")
+}
+
+func (f *languageAnalysisFS) FileExists(name string) bool {
+	if f.FS.FileExists(name) {
+		return true
+	}
+	if f.disallowedDiskSource(name) {
+		return false
+	}
+	f.tracePath(name, false)
+	return f.runtimeResolutionFS.FileExists(name)
+}
+func (f *languageAnalysisFS) DirectoryExists(name string) bool {
+	if f.FS.DirectoryExists(name) {
+		return true
+	}
+	exists := f.runtimeResolutionFS.DirectoryExists(name)
+	if !exists {
+		f.tracePath(name, true)
+	}
+	return exists
+}
+func (f *languageAnalysisFS) Stat(name string) vfs.FileInfo {
+	if info := f.FS.Stat(name); info != nil {
+		return info
+	}
+	if f.disallowedDiskSource(name) {
+		return nil
+	}
+	f.tracePath(name, false)
+	return f.metadata(name)
+}
+func (f *languageAnalysisFS) ReadFile(name string) (string, bool) {
+	if text, ok := f.FS.ReadFile(name); ok {
+		return text, true
+	}
+	if f.disallowedDiskSource(name) {
+		return "", false
+	}
+	f.tracePath(name, false)
+	if read, exists := f.reads[name]; exists {
+		return read.text, read.ok
+	}
+	if f.fault != nil {
+		return "", false
+	}
+	if len(f.reads) >= 4096 {
+		f.fault = errors.New("language analysis dependency probe budget exceeded")
+		return "", false
+	}
+	f.reads[name] = generatedRead{}
+	info := f.metadata(name)
+	if info == nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+	if info.Size() > 2*1024*1024 {
+		f.fault = errors.New("language analysis dependency exceeds 2097152 bytes")
+		return "", false
+	}
+	relative, inside := assetResolutionRelative(name)
+	if !inside {
+		return "", false
+	}
+	file, err := f.root.Open(relative)
+	if err != nil {
+		return "", false
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil || !opened.Mode().IsRegular() {
+		return "", false
+	}
+	data, err := io.ReadAll(io.LimitReader(file, 2*1024*1024+1))
+	if err != nil {
+		return "", false
+	}
+	f.bytes += len(data)
+	if len(data) > 2*1024*1024 || f.bytes > 16*1024*1024 {
+		f.fault = errors.New("language analysis dependency byte budget exceeded")
+		return "", false
+	}
+	if !utf8.Valid(data) {
+		f.fault = errors.New("language analysis dependency is not valid UTF-8")
+		return "", false
+	}
+	text := string(data)
+	f.reads[name] = generatedRead{text: text, ok: true}
+	return text, true
+}
+
+func analysisRowNames(rows rowSet) []string {
+	unique := map[string]bool{}
+	for _, row := range rows {
+		unique[row.name] = true
+	}
+	answer := make([]string, 0, len(unique))
+	for name := range unique {
+		answer = append(answer, name)
+	}
+	sortUTF16(answer)
+	return answer
+}
+
+func analysisPubliclyNamedFunction(node *ast.Node) bool {
+	return ast.IsFunctionDeclaration(node) || ast.IsMethodDeclaration(node) ||
+		(node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && ast.IsIdentifier(node.Parent.Name()))
+}
+
+func analysisModuleScopeFunction(node *ast.Node) bool {
+	if ast.IsFunctionDeclaration(node) {
+		return node.Parent != nil && ast.IsSourceFile(node.Parent)
+	}
+	parent := node.Parent
+	if parent == nil || !ast.IsVariableDeclaration(parent) || parent.Parent == nil || !ast.IsVariableDeclarationList(parent.Parent) {
+		return false
+	}
+	statement := parent.Parent.Parent
+	return statement != nil && ast.IsVariableStatement(statement) && statement.Parent != nil && ast.IsSourceFile(statement.Parent)
+}

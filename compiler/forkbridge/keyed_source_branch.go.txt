@@ -1,0 +1,193 @@
+package main
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+// A logical RHS with work uses the same complete branch graph as a conditional
+// expression. The LHS's Actions already belong to the enclosing scope and are
+// referenced, never copied or dispatched twice. Reconstructing its closed pure
+// value in the selected join adds no authored callback or new storage boundary
+// for IEEE intermediates discarded by the logical selection.
+func (d *durableFunctionLowerer) lowerKeyedShortCircuit(node *ast.Node, anchor, operator string, left, right any, rightNodes []any) (durableValue, bool) {
+	compute := func(operator string, value any) any {
+		return map[string]any{"kind": "compute", "operator": operator, "operands": []any{value}}
+	}
+	condition := compute("not", compute("not", left))
+	if operator == "nullish" {
+		condition = compute("is-null", left)
+	}
+	whenTrue, whenFalse := map[string]any{"nodes": rightNodes, "output": right}, map[string]any{"nodes": []any{}, "output": left}
+	if operator == "or" {
+		whenTrue, whenFalse = whenFalse, whenTrue
+	}
+	id, ok := d.stableNodeID(node, map[string]any{"anchor": anchor, "condition": condition, "file": d.logicalFile,
+		"flowId": d.flowID, "flowVersion": d.flowVersion, "functionName": d.function, "kind": "branch", "valueOperator": operator})
+	if !ok {
+		return durableValue{}, false
+	}
+	branch := map[string]any{"kind": "branch", "id": id, "condition": condition, "whenTrue": whenTrue, "whenFalse": whenFalse,
+		"valueOperator": operator, "controlDependencies": durableControlDependencies(d.sequence),
+		"dependencies": durableExpressionDependencies(condition), "debug": d.debug(node.AsBinaryExpression().OperatorToken, "short-circuit")}
+	if !durableStaticMaterialFits(branch) {
+		return d.fail(node, "4199", "keyed short-circuit exceeds its serialization budget")
+	}
+	d.appendNode(branch)
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true
+}
+
+// The generic Plan compiler may add filesystem-conflict ordering edges. Until
+// the conditional effect adapter exists, an edge must not escape an arm except
+// through its selected completion join: it would demand untaken work. Preserve
+// the reference Plan's exact edges and refuse, rather than silently deleting an
+// approval-relevant dependency or interpreting it as an unconditional Action.
+func keyedSourceBranchBoundaries(planJSON string) error {
+	decoded, err := decodeKeyedPlanJSON(planJSON)
+	if err != nil {
+		return err
+	}
+	nodes := decoded.(map[string]any)["nodes"].([]any)
+	type arm struct{ prefix, join string }
+	owners := map[string][]arm{}
+	for _, value := range nodes {
+		id := value.(map[string]any)["id"].(string)
+		parts := strings.Split(id, "/")
+		for index := 0; index+2 < len(parts); index++ {
+			if parts[index] == "branch" && (parts[index+2] == "then" || parts[index+2] == "else") {
+				owners[id] = append(owners[id], arm{strings.Join(parts[:index+3], "/") + "/", strings.Join(parts[:index+2], "/")})
+			}
+		}
+	}
+	for _, value := range nodes {
+		node := value.(map[string]any)
+		id := node["id"].(string)
+		for _, value := range node["dependsOn"].([]any) {
+			dependency := value.(string)
+			for _, owner := range owners[dependency] {
+				if !strings.HasPrefix(id, owner.prefix) && !(id == owner.join && dependency == owner.prefix+"result") {
+					return errors.New("keyed branch ordering crosses a conditional arm; a branch-aware effect adapter is required")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func keyedBranchBooleanDescriptor(value any) bool {
+	descriptor, ok := value.(map[string]any)
+	if !ok {
+		return false
+	}
+	switch descriptor["kind"] {
+	case "boolean", "never":
+		return true
+	case "literal":
+		_, ok := descriptor["value"].(bool)
+		return ok
+	case "union":
+		for _, variant := range descriptor["variants"].([]any) {
+			if !keyedBranchBooleanDescriptor(variant) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func keyedBranchSchema(d *durableFunctionLowerer, expression any) (map[string]any, error) {
+	issue := ""
+	descriptor := d.flowOutputDescriptor(expression, func(message string, _ ...durableDescriptorFailureCause) any {
+		if issue == "" {
+			issue = message
+		}
+		return durableUnknownDescriptor{}
+	})
+	if issue != "" {
+		return nil, errors.New("keyed branch value has no durable contract: " + issue)
+	}
+	return durableStructuralSchema("success", descriptor), nil
+}
+
+func (e *keyedSourceExpansion) value(id, address, kind string, expression any, schema map[string]any, controls []any) (map[string]any, error) {
+	if len(e.nodes) >= keyedPlanMaxNodes-1 {
+		return nil, errors.New("keyed source branch exceeds its node budget including the result")
+	}
+	if _, exists := e.addresses[id]; exists {
+		return nil, errors.New("duplicate keyed branch address")
+	}
+	node := map[string]any{"kind": kind, "id": id, "input": expression, "successSchema": schema, "controlDependencies": controls}
+	e.addresses[id] = address
+	e.nodes = append(e.nodes, node)
+	return node, nil
+}
+
+// Publish both complete arms and their completion joins. A runtime demand
+// adapter selects one arm; the static dependency graph alone MUST NOT be swept
+// as if both alternatives were unconditional work.
+func (e *keyedSourceExpansion) branch(d *durableFunctionLowerer, node map[string]any, input any, namespace, address string, controls []any) error {
+	e.branchDepth++
+	defer func() { e.branchDepth-- }()
+	if e.branchDepth > 64 {
+		return errors.New("keyed source branch exceeds its nesting budget")
+	}
+	id := namespace + node["id"].(string)
+	conditionID := id + ":condition"
+	condition, err := e.bind(node["condition"], input, namespace, 0)
+	if err != nil {
+		return err
+	}
+	conditionSchema, err := keyedBranchSchema(d, node["condition"])
+	if err != nil {
+		return err
+	}
+	if !keyedBranchBooleanDescriptor(conditionSchema["descriptor"]) {
+		return errors.New("keyed branch condition is not boolean")
+	}
+	conditionNode, err := e.value(conditionID, address+"/condition", "value", condition, conditionSchema, controls)
+	if err != nil {
+		return err
+	}
+	conditionNode["branchInternal"] = true
+	ref := func(id string) any { return map[string]any{"kind": "node", "nodeId": id, "path": []any{}} }
+	inputs := []any{ref(conditionID)}
+	selection := map[string]any{"condition": conditionID}
+	for _, entry := range []struct{ field, label string }{{"whenTrue", "then"}, {"whenFalse", "else"}} {
+		arm := node[entry.field].(map[string]any)
+		start := len(e.nodes)
+		inherited := append(append([]any{}, controls...), conditionID)
+		// Branch arms retain their enclosing lexical namespace. Only their
+		// structural address changes; outer Action references must not be
+		// rebound to non-existent copies underneath the selected arm.
+		result, dependencies, err := e.scopeNodes(d, arm["nodes"].([]any), arm["output"], input, namespace, address+"/"+entry.label+"/", inherited)
+		if err != nil {
+			return err
+		}
+		schema, err := keyedBranchSchema(d, arm["output"])
+		if err != nil {
+			return err
+		}
+		armID := id + ":" + entry.label
+		if _, err := e.value(armID, address+"/"+entry.label+"/result", "value", result, schema, dependencies); err != nil {
+			return err
+		}
+		for _, value := range e.nodes[start:] {
+			value.(map[string]any)["branchInternal"] = true
+		}
+		selection[entry.field] = armID
+		inputs = append(inputs, ref(armID))
+	}
+	schema, err := keyedBranchSchema(d, map[string]any{"kind": "node", "nodeId": node["id"], "path": []any{}})
+	if err != nil {
+		return err
+	}
+	joined, err := e.value(id, address, "branch", map[string]any{"kind": "array", "items": inputs}, schema, controls)
+	if err != nil {
+		return err
+	}
+	joined["control"] = selection
+	return nil
+}

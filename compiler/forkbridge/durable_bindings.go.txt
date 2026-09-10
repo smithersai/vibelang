@@ -1,0 +1,378 @@
+package main
+
+// Imported durable contracts are explicit data, not ambient compiler modules.
+// Validate their exact schemas/digests before rendering native virtual types.
+// No caller-supplied declaration text becomes compiler-owned type authority.
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+var durableBoundErrorIdentity = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,255}$`)
+
+func durableExactKeys(value map[string]any, keys ...string) bool {
+	if value == nil || len(value) != len(keys) {
+		return false
+	}
+	for _, key := range keys {
+		if _, found := value[key]; !found {
+			return false
+		}
+	}
+	return true
+}
+
+// JSON objects cannot use last-key-wins to change the declaration being bound.
+// Inspect every nesting level before ordinary decoding discards duplicates.
+func decodeDurableBindingJSON(source string) (map[string]any, error) {
+	if len(source) > 16*1024*1024 || wirejson.Validate([]byte(source)) != nil {
+		return nil, errors.New("invalid or oversized durable binding JSON")
+	}
+	decoder := json.NewDecoder(strings.NewReader(source))
+	nodes := 0
+	var visit func(int) error
+	visit = func(depth int) error {
+		nodes++
+		if nodes > 100_000 || depth > 256 {
+			return errors.New("durable binding exceeds its JSON traversal budget")
+		}
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if number, ok := token.(float64); ok && (math.IsNaN(number) || math.IsInf(number, 0) || number == 0 && math.Signbit(number)) {
+			return errors.New("durable binding contains a non-canonical number")
+		}
+		switch token {
+		case json.Delim('{'):
+			keys := map[string]bool{}
+			for decoder.More() {
+				token, err := decoder.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := token.(string)
+				if !ok || keys[key] {
+					return errors.New("durable binding contains duplicate object fields")
+				}
+				keys[key] = true
+				if err := visit(depth + 1); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+		case json.Delim('['):
+			for decoder.More() {
+				if err := visit(depth + 1); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+		}
+		return err
+	}
+	if err := visit(0); err != nil {
+		return nil, err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, errors.New("durable binding requires exactly one JSON object")
+	}
+	var record map[string]any
+	if err := wirejson.Decode(strings.NewReader(source), &record); err != nil || record == nil {
+		return nil, errors.New("durable binding must be an object")
+	}
+	return record, nil
+}
+
+type durableBindingSchema struct {
+	value      map[string]any
+	typeText   string
+	failureIDs []string
+}
+
+func validateDurableBindingSchema(value any, role string) (durableBindingSchema, error) {
+	record, ok := value.(map[string]any)
+	invalid := func(message string) (durableBindingSchema, error) {
+		return durableBindingSchema{}, fmt.Errorf("invalid durable %s schema: %s", role, message)
+	}
+	if !ok || record["format"] != "canonical-json" || record["schemaVersion"] != float64(1) || record["role"] != role {
+		return invalid("unsupported envelope")
+	}
+	if record["shape"] == "json-value" {
+		if !durableExactKeys(record, "format", "schemaVersion", "role", "shape", "source", "digest") ||
+			record["source"] != "compiler-derived-poc-stub" || record["digest"] != durableLegacySchema(role)["digest"] {
+			return invalid("legacy envelope/digest mismatch")
+		}
+		return durableBindingSchema{value: record, typeText: "any"}, nil
+	}
+	if !durableExactKeys(record, "format", "schemaVersion", "role", "shape", "source", "descriptor", "digest") ||
+		record["shape"] != "structural" || record["source"] != "compiler-derived" {
+		return invalid("unsupported structural envelope")
+	}
+	nodes := 0
+	failures := map[string]bool{}
+	var render func(any, int) (string, error)
+	render = func(value any, depth int) (string, error) {
+		nodes++
+		if nodes > 10_000 || depth > 64 {
+			return "", errors.New("descriptor exceeds its traversal budget")
+		}
+		descriptor, ok := value.(map[string]any)
+		if !ok {
+			return "", errors.New("descriptor must be an object")
+		}
+		kind, _ := descriptor["kind"].(string)
+		switch kind {
+		case "never", "null", "boolean", "number", "string":
+			if durableExactKeys(descriptor, "kind") {
+				return kind, nil
+			}
+		case "literal":
+			if !durableExactKeys(descriptor, "kind", "value") {
+				break
+			}
+			switch value := descriptor["value"].(type) {
+			case nil, bool, string:
+				return durableCanonicalJSON(value), nil
+			case float64:
+				if !math.IsNaN(value) && !math.IsInf(value, 0) && !(value == 0 && math.Signbit(value)) {
+					return durableCanonicalJSON(value), nil
+				}
+			}
+		case "array":
+			if durableExactKeys(descriptor, "kind", "element") {
+				element, err := render(descriptor["element"], depth+1)
+				return "readonly (" + element + ")[]", err
+			}
+		case "tuple", "union":
+			key := "items"
+			if kind == "union" {
+				key = "variants"
+			}
+			items, ok := descriptor[key].([]any)
+			if !durableExactKeys(descriptor, "kind", key) || !ok || kind == "union" && (len(items) < 2 || len(items) > 128) {
+				break
+			}
+			parts, previous := []string{}, ""
+			for index, item := range items {
+				part, err := render(item, depth+1)
+				if err != nil {
+					return "", err
+				}
+				if kind == "union" {
+					identity := durableCanonicalJSON(item)
+					if index > 0 && compareUTF16(previous, identity) >= 0 {
+						return "", errors.New("union variants must be canonically sorted and unique")
+					}
+					previous, part = identity, "("+part+")"
+				}
+				parts = append(parts, part)
+			}
+			if kind == "union" {
+				return strings.Join(parts, " | "), nil
+			}
+			return "readonly [" + strings.Join(parts, ", ") + "]", nil
+		case "object":
+			fields, ok := descriptor["fields"].([]any)
+			if !durableExactKeys(descriptor, "kind", "fields") || !ok || len(fields) > 1024 {
+				break
+			}
+			parts, previous := []string{}, ""
+			for index, value := range fields {
+				field, ok := value.(map[string]any)
+				if !ok || !durableExactKeys(field, "name", "optional", "value") {
+					return "", errors.New("object field has unexpected fields")
+				}
+				name, named := field["name"].(string)
+				optional, flagged := field["optional"].(bool)
+				if !named || name == "" || !flagged || index > 0 && compareUTF16(previous, name) >= 0 {
+					return "", errors.New("object fields must have valid flags and sorted unique names")
+				}
+				previous = name
+				part, err := render(field["value"], depth+1)
+				if err != nil {
+					return "", err
+				}
+				marker := ""
+				if optional {
+					marker = "?"
+				}
+				parts = append(parts, "readonly "+ctQuote(name)+marker+": "+part)
+			}
+			return "{ " + strings.Join(parts, "; ") + " }", nil
+		case "error":
+			identity, _ := descriptor["identity"].(string)
+			name, _ := descriptor["name"].(string)
+			payload, ok := descriptor["payload"].(map[string]any)
+			if !durableExactKeys(descriptor, "kind", "identity", "name", "payload") || !durableBoundErrorIdentity.MatchString(identity) ||
+				!scanner.IsIdentifierText(name, core.LanguageVariantStandard) || !ok || payload["kind"] != "object" {
+				break
+			}
+			part, err := render(payload, depth+1)
+			if err != nil {
+				return "", err
+			}
+			failures[identity] = true
+			return "{ readonly version: 1; readonly identity: " + ctQuote(identity) + "; readonly payload: " + part + " }", nil
+		}
+		return "", errors.New("unsupported or malformed descriptor " + kind)
+	}
+	typeText, err := render(record["descriptor"], 0)
+	if err != nil {
+		return invalid(err.Error())
+	}
+	if record["digest"] != durableStructuralSchema(role, record["descriptor"])["digest"] {
+		return invalid("digest mismatch")
+	}
+	ids := make([]string, 0, len(failures))
+	for identity := range failures {
+		ids = append(ids, identity)
+	}
+	sortUTF16(ids)
+	return durableBindingSchema{value: record, typeText: typeText, failureIDs: ids}, nil
+}
+
+type durableBoundAction struct {
+	descriptor              map[string]any
+	input, success, failure durableBindingSchema
+}
+
+func validateDurableActionBinding(source string) (durableBoundAction, error) {
+	value, err := decodeDurableBindingJSON(source)
+	if err != nil {
+		return durableBoundAction{}, err
+	}
+	id, _ := value["id"].(string)
+	version, numbered := value["version"].(float64)
+	if !durableExactKeys(value, "id", "version", "inputSchema", "successSchema", "errorSchema", "contractDigest") ||
+		strings.TrimSpace(id) == "" || len(id) > 16*1024 || !numbered || version < 1 || version > 9007199254740991 || math.Trunc(version) != version {
+		return durableBoundAction{}, errors.New("invalid Action binding identity/fields")
+	}
+	input, err := validateDurableBindingSchema(value["inputSchema"], "input")
+	if err != nil {
+		return durableBoundAction{}, err
+	}
+	success, err := validateDurableBindingSchema(value["successSchema"], "success")
+	if err != nil {
+		return durableBoundAction{}, err
+	}
+	failure, err := validateDurableBindingSchema(value["errorSchema"], "error")
+	if err != nil {
+		return durableBoundAction{}, err
+	}
+	semantic := durableCopyMap(value)
+	delete(semantic, "contractDigest")
+	if value["contractDigest"] != durableDigest(semantic) {
+		return durableBoundAction{}, errors.New("Action binding contract digest mismatch")
+	}
+	return durableBoundAction{descriptor: value, input: input, success: success, failure: failure}, nil
+}
+
+type stagedPlanAction struct {
+	fileName, exportName string
+	contract             durableBoundAction
+}
+
+func installPlanActionBindings(p *project, inputs []planSourceActionBinding) ([]stagedPlanAction, error) {
+	if len(inputs) > 256 {
+		return nil, errors.New("Plan source supports at most 256 explicit Action bindings")
+	}
+	p.planSourceModules = map[string]string{}
+	staged := []stagedPlanAction{}
+	seen := map[string]string{}
+	total := 0
+	for _, input := range inputs {
+		total += len(input.DescriptorJSON)
+		if total > 12*1024*1024 || strings.TrimSpace(input.ModuleSpecifier) == "" || len(input.ModuleSpecifier) > 16*1024 ||
+			strings.ContainsRune(input.ModuleSpecifier, 0) || slices.Contains(compilerModuleSpecifiers, input.ModuleSpecifier) ||
+			!durableBindingExportName.MatchString(input.ExportName) || len(input.ExportName) > 1024 {
+			return nil, errors.New("invalid Plan source Action binding module/export/budget")
+		}
+		contract, err := validateDurableActionBinding(input.DescriptorJSON)
+		if err != nil {
+			return nil, err
+		}
+		key := input.ModuleSpecifier + "\x00" + input.ExportName
+		digest := contract.descriptor["contractDigest"].(string)
+		if previous, found := seen[key]; found {
+			if previous != digest {
+				return nil, errors.New("conflicting Plan source Action bindings for one module export")
+			}
+			continue
+		}
+		seen[key] = digest
+		target := p.planSourceModules[input.ModuleSpecifier]
+		if target == "" {
+			target = fmt.Sprintf("/src/__vibelang_plan_source__/bindings/%d", len(p.planSourceModules))
+			p.planSourceModules[input.ModuleSpecifier] = target
+			p.checkedFiles[target+".ts"] = `import { Action as __VibeAction } from "vibelang:flows";` + "\n"
+		}
+		// Alias the local class so even a reserved-word export is represented as
+		// syntax data, never interpolated into a declaration identifier.
+		local := fmt.Sprintf("__VibeBoundAction%d", len(staged))
+		p.checkedFiles[target+".ts"] += "declare class " + local + " extends __VibeAction<(input: " + contract.input.typeText +
+			") => Result<" + contract.success.typeText + ", never>> {}\nexport { " + local + " as " + input.ExportName + " };\n"
+		p.tsTexts[target+".ts"] = p.checkedFiles[target+".ts"]
+		p.logicalByVirtual[target+".ts"] = "__vibelang_plan_source__/bindings/" + input.ExportName + ".ts"
+		staged = append(staged, stagedPlanAction{fileName: target + ".ts", exportName: input.ExportName, contract: contract})
+	}
+	return staged, nil
+}
+
+var durableBindingExportName = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+
+func bindPlanSourceActions(owner *lowerer, program *compiler.Program, bindings []stagedPlanAction) error {
+	owner.planActions = map[*ast.Symbol]durableAction{}
+	for _, binding := range bindings {
+		file := program.GetSourceFile(binding.fileName)
+		// An unused import may never enter the checked graph. Its contract was
+		// still validated at installation; it has no source value to bind.
+		if file == nil {
+			continue
+		}
+		var symbol *ast.Symbol
+		if module := owner.checker.GetSymbolAtLocation(file.AsNode()); module != nil {
+			for _, exported := range owner.checker.GetExportsOfModule(module) {
+				if exported.Name == binding.exportName {
+					symbol = exported
+					if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+						symbol = owner.checker.GetAliasedSymbol(symbol)
+					}
+					symbol = owner.checker.GetMergedSymbol(symbol)
+					break
+				}
+			}
+		}
+		declaration := classDeclarationOf(symbol)
+		if declaration == nil || declaration.ClassLikeData().HeritageClauses == nil {
+			return errors.New("validated Plan source Action declaration did not bind")
+		}
+		base := declaration.ClassLikeData().HeritageClauses.Nodes[0].AsHeritageClause().Types.Nodes[0].AsExpressionWithTypeArguments()
+		signatures := owner.checker.GetSignaturesOfType(owner.checker.GetTypeFromTypeNode(base.TypeArguments.Nodes[0]), checker.SignatureKindCall)
+		if len(signatures) != 1 || len(signatures[0].Parameters()) != 1 {
+			return errors.New("validated Plan source Action signature did not bind")
+		}
+		input := owner.checker.GetTypeOfSymbolAtLocation(signatures[0].Parameters()[0], declaration)
+		success, _, valid := owner.analysis.resultArguments(owner.checker.GetReturnTypeOfSignature(signatures[0]))
+		if input == nil || success == nil || !valid {
+			return errors.New("validated Plan source Action value contract did not bind")
+		}
+		owner.planActions[symbol] = durableAction{id: binding.contract.descriptor["id"].(string), descriptor: binding.contract.descriptor,
+			inputType: input, successType: success, failureIDs: binding.contract.failure.failureIDs}
+	}
+	return nil
+}

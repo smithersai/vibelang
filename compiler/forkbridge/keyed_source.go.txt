@@ -1,0 +1,446 @@
+package main
+
+// Checked source -> explicit keyed graph. This is an additive static profile,
+// never a body-replay fallback. Provider declarations bind identities/effects;
+// they do not authenticate implementations or approve execution.
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"regexp"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+const keyedSourceABI = "vibelang/keyed-source/v2"
+
+type keyedSourceRequest struct {
+	Source        string                  `json:"source"`
+	FileName      string                  `json:"fileName"`
+	ExportName    string                  `json:"exportName,omitempty"`
+	FlowID        string                  `json:"flowId"`
+	FlowVersion   int                     `json:"flowVersion"`
+	PlanID        string                  `json:"planId"`
+	InputJSON     string                  `json:"inputJson"`
+	ProvidersJSON string                  `json:"providersJson"`
+	Dependencies  []keyedSourceDependency `json:"dependencies,omitempty"`
+}
+
+type keyedSourceDependency struct {
+	FileName string `json:"fileName"`
+	Source   string `json:"source"`
+}
+
+func keyedSourcePath(name string) bool {
+	return strings.HasSuffix(name, ".vibe") && len(name) <= 16*1024 && path.Clean(name) == name &&
+		!path.IsAbs(name) && !strings.HasPrefix(name, "../") && !strings.Contains(name, "\\") &&
+		strings.TrimSpace(name) != "" && !strings.ContainsRune(name, 0)
+}
+
+func keyedSourceProject(input keyedSourceRequest) ([]sourceFile, []string, error) {
+	if len(input.Dependencies) > 256 {
+		return nil, nil, errors.New("keyed source supports at most 256 explicit source dependencies")
+	}
+	texts := map[string]string{input.FileName: input.Source}
+	paths, total := []string{input.FileName}, len(input.Source)
+	for _, dependency := range input.Dependencies {
+		if !keyedSourcePath(dependency.FileName) {
+			return nil, nil, errors.New("keyed dependency requires a canonical relative .vibe path")
+		}
+		if _, found := texts[dependency.FileName]; found {
+			return nil, nil, errors.New("duplicate keyed source module")
+		}
+		total += len(dependency.Source)
+		if total > 2*1024*1024 {
+			return nil, nil, errors.New("keyed source modules exceed the aggregate source budget")
+		}
+		texts[dependency.FileName] = dependency.Source
+		paths = append(paths, dependency.FileName)
+	}
+	sortUTF16(paths)
+	files := make([]sourceFile, 0, len(paths))
+	for _, name := range paths {
+		files = append(files, sourceFile{Path: name, Kind: "vibelang", Text: texts[name]})
+	}
+	return files, paths, nil
+}
+
+type keyedSourceResult struct {
+	OK          bool         `json:"ok"`
+	PlanJSON    string       `json:"planJson"`
+	Diagnostics []diagnostic `json:"diagnostics"`
+}
+
+func serveKeyedSource(apiVersion int) {
+	response := struct {
+		APIVersion       int               `json:"apiVersion"`
+		CompilerRevision string            `json:"compilerRevision"`
+		Result           keyedSourceResult `json:"result"`
+		Error            *wireError        `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: keyedSourceResult{Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 40*1024*1024 + 1}
+	var input keyedSourceRequest
+	payload, err := io.ReadAll(limited)
+	if limited.N == 0 {
+		err = errors.New("keyed source request exceeds its wire budget")
+	}
+	if err == nil {
+		_, err = decodeKeyedPlanBoundedJSON(string(payload), 40*1024*1024)
+	}
+	if err == nil {
+		err = wirejson.Decode(bytes.NewReader(payload), &input)
+	}
+	if err == nil {
+		response.Result, err = compileKeyedSource(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = keyedSourceResult{Diagnostics: []diagnostic{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_KEYED_SOURCE", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func compileKeyedSource(ctx context.Context, input keyedSourceRequest) (keyedSourceResult, error) {
+	out := keyedSourceResult{Diagnostics: []diagnostic{}}
+	if len(input.Source) > 2*1024*1024 || !keyedSourcePath(input.FileName) ||
+		len(input.ExportName) > 16*1024 || strings.ContainsRune(input.ExportName, 0) || (input.ExportName != "" && strings.TrimSpace(input.ExportName) == "") ||
+		len(input.FlowID) > 16*1024 || strings.ContainsRune(input.FlowID, 0) || (input.FlowID != "" && strings.TrimSpace(input.FlowID) == "") ||
+		input.FlowVersion < 1 || input.FlowVersion > 9007199254740991 || strings.TrimSpace(input.PlanID) == "" ||
+		len(input.PlanID) > 16*1024 || strings.ContainsRune(input.PlanID, 0) {
+		return out, errors.New("keyed source requires a bounded .vibe source, Flow identity/version and explicit Plan id")
+	}
+	files, roots, err := keyedSourceProject(input)
+	if err != nil {
+		return out, err
+	}
+	refuse := func(message string) (keyedSourceResult, error) {
+		return keyedSourceResult{Diagnostics: []diagnostic{{Code: "VIBE4199", Category: "error", File: input.FileName,
+			Phase: "lower", Span: &span{Start: 0, Length: 1}, Message: message}}}, nil
+	}
+	value, err := decodeKeyedPlanJSON(input.InputJSON)
+	if err != nil {
+		return refuse("invalid Flow input: " + err.Error())
+	}
+	providers, err := keyedSourceProviders(input.ProvidersJSON)
+	if err != nil {
+		return refuse(err.Error())
+	}
+	// Check every body before erasure. The extraction view is not a substitute
+	// for this complete native grammar, row, ownership and type check.
+	checked, facts, err := checkStaticPlanSource(ctx, request{Lowering: "internal", RootNames: roots, Files: files})
+	if err != nil {
+		return out, err
+	}
+	for _, issue := range checked.Diagnostics {
+		if issue.Category == "error" {
+			// Native parse/check diagnostics may point exactly at EOF with an
+			// empty span. This query's wire contract uses a one-unit caret there,
+			// just like the extraction pass. Do not turn a source refusal into
+			// a host protocol error (or mutate the shared compiler diagnostic).
+			if issue.Span != nil && issue.Span.Length == 0 {
+				where := *issue.Span
+				where.Length = 1
+				issue.Span = &where
+			}
+			out.Diagnostics = append(out.Diagnostics, issue)
+		}
+	}
+	if len(out.Diagnostics) != 0 {
+		return out, nil
+	}
+	if checked.EmitSkipped {
+		return refuse("source checking did not complete; no keyed Plan was published")
+	}
+	inputIR, err := keyedSourceJSONExpression(input.InputJSON)
+	if err != nil {
+		return refuse(err.Error())
+	}
+	var planJSON string
+	profile := &keyedSourceProfile{files: files, exportName: input.ExportName, facts: facts, consume: func(d *durableFunctionLowerer, output durableValue) error {
+		if !keyedSourceValueMatches(value, d.inputSchema["descriptor"], 0) {
+			return errors.New("Flow input does not match its compiler-derived structural contract")
+		}
+		compiled, err := keyedSourceGraph(input, inputIR, providers, d, output)
+		planJSON = compiled
+		return err
+	}}
+	extracted, err := compilePlanSourceProfile(ctx, planSourceRequest{Source: input.Source, FileName: input.FileName,
+		FlowID: input.FlowID, FlowVersion: input.FlowVersion, Mode: "plan"}, profile)
+	if err != nil {
+		return out, err
+	}
+	out.Diagnostics = extracted.Diagnostics
+	if extracted.Status != "plan" || len(out.Diagnostics) != 0 {
+		return out, nil
+	}
+	if planJSON == "" {
+		return refuse("static source extraction did not publish a complete keyed Plan")
+	}
+	out.OK, out.PlanJSON = true, planJSON
+	return out, nil
+}
+
+// An explicit export chooses a declaration, not a caller-supplied Flow id.
+// Preserve the single-declaration API; otherwise select the unique exported
+// Flow or require an explicit export. Native alias resolution owns the match.
+func keyedSourceSelectFlow(owner *lowerer, file *ast.SourceFile, calls []*ast.Node, exportName string) (*ast.Node, error) {
+	if exportName == "" && len(calls) == 1 {
+		return calls[0], nil
+	}
+	declared := map[*ast.Node]bool{}
+	for _, call := range calls {
+		declared[call] = true
+	}
+	selected := map[*ast.Node]bool{}
+	module := owner.checker.GetSymbolAtLocation(file.AsNode())
+	if module != nil {
+		for _, symbol := range owner.checker.GetExportsOfModule(module) {
+			if exportName != "" && symbol.Name != exportName {
+				continue
+			}
+			if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+				symbol = owner.checker.GetAliasedSymbol(symbol)
+			}
+			_, call := owner.sourceFlowDeclaration(owner.checker.GetMergedSymbol(symbol))
+			if declared[call] {
+				selected[call] = true
+			}
+		}
+	}
+	if len(selected) != 1 {
+		return nil, errors.New("keyed source requires one selected module-level Flow; use exportName to name its entry-module export")
+	}
+	for call := range selected {
+		return call, nil
+	}
+	panic("unreachable selected Flow")
+}
+
+// A Plan module is declarations, not a module-initialization program. Captured
+// values and helper calls are independently refused by the static lowerer.
+func keyedSourceModule(d *durableFunctionLowerer, file *ast.SourceFile, call, function *ast.Node) error {
+	if call != nil {
+		parent := call.Parent
+		if parent == nil || !ast.IsVariableDeclaration(parent) || !ast.IsIdentifier(parent.Name()) || !ast.IsVarConst(parent) ||
+			parent.Parent == nil || parent.Parent.Parent == nil || parent.Parent.Parent.Parent != file.AsNode() {
+			return errors.New("a static keyed Flow requires a module-level const binding")
+		}
+	}
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsClassDeclaration(statement) {
+			if len(classDecorators(statement)) != 0 {
+				return errors.New("static keyed Plan modules do not evaluate decorators")
+			}
+			if statement.Name() != nil {
+				if _, recognized := d.actionFor(statement.Name()); recognized && len(statement.ClassLikeData().Members.Nodes) != 0 {
+					return errors.New("a static keyed Action is an abstract contract; implementation members and overrides require an explicit provider")
+				}
+			}
+			for _, member := range statement.ClassLikeData().Members.Nodes {
+				if member.Kind == ast.KindClassStaticBlockDeclaration ||
+					member.Name() != nil && ast.IsComputedPropertyName(member.Name()) ||
+					ast.IsPropertyDeclaration(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) && member.Initializer() != nil {
+					return errors.New("static keyed Plan modules do not evaluate class static initializers or computed names")
+				}
+			}
+			if clauses := statement.ClassLikeData().HeritageClauses; clauses != nil {
+				for _, clause := range clauses.Nodes {
+					for _, item := range clause.AsHeritageClause().Types.Nodes {
+						expression := item.AsExpressionWithTypeArguments().Expression
+						if !ast.IsIdentifier(expression) && !d.owner.durableIntrinsic(expression, "Action") {
+							return errors.New("static keyed Plan class heritage must name a declaration without evaluating an expression")
+						}
+					}
+				}
+			}
+		}
+		switch {
+		case ast.IsImportDeclaration(statement), ast.IsExportDeclaration(statement), ast.IsInterfaceDeclaration(statement), ast.IsTypeAliasDeclaration(statement),
+			ast.IsFunctionDeclaration(statement), ast.IsClassDeclaration(statement), statement.Kind == ast.KindEmptyStatement:
+		case ast.IsVariableStatement(statement):
+			for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+				initializer := declaration.AsVariableDeclaration().Initializer
+				if !ast.IsVarConst(declaration) || initializer == nil {
+					return errors.New("static keyed Plan modules do not evaluate module-level value initializers or captures")
+				}
+				value := ast.SkipParentheses(initializer)
+				_, sourceFlow := d.owner.sourceFlowDeclaration(d.owner.durableCanonicalSymbolAt(declaration.Name()))
+				if value != call && value != function && sourceFlow != value && !ast.IsArrowFunction(value) && !ast.IsFunctionExpression(value) {
+					return errors.New("static keyed Plan modules do not evaluate module-level value initializers or captures")
+				}
+			}
+		default:
+			return errors.New("static keyed Plan modules do not evaluate module-level executable statements")
+		}
+	}
+	return nil
+}
+
+func keyedSourceProviders(source string) (map[string]map[string]any, error) {
+	value, err := decodeKeyedPlanJSON(source)
+	if err != nil {
+		return nil, err
+	}
+	items, ok := value.([]any)
+	if !ok || len(items) > keyedPlanMaxNodes {
+		return nil, errors.New("providers must be a bounded explicit array of Action implementation/effect declarations")
+	}
+	out := map[string]map[string]any{}
+	effects := keyedPlanEffectsContext{patterns: map[string]*regexp.Regexp{}}
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok || !durableExactKeys(entry, "actionId", "implementationId", "implementationDigest", "tier", "effects", "layers", "capabilities") {
+			return nil, errors.New("provider declaration requires exact Action, implementation, tier, effects, layers and capabilities fields")
+		}
+		id, idOK := entry["actionId"].(string)
+		implementation, implementationOK := entry["implementationId"].(string)
+		digest, digestOK := entry["implementationDigest"].(string)
+		_, tierOK := keyedPlanEnum(entry["tier"], "sealed", "compensable", "irreversible")
+		_, layersOK := keyedPlanStrings(entry["layers"])
+		_, capabilitiesOK := keyedPlanStrings(entry["capabilities"])
+		_, effectsOK := entry["effects"].(map[string]any)
+		if !idOK || id == "" || !implementationOK || implementation == "" || !digestOK || len(digest) != 64 ||
+			strings.Trim(digest, "0123456789abcdef") != "" || !tierOK || !layersOK || !capabilitiesOK || !effectsOK {
+			return nil, errors.New("invalid explicit provider identity, implementation digest, tier or declarations")
+		}
+		if out[id] != nil {
+			return nil, errors.New("duplicate provider for Action " + id)
+		}
+		if _, err := effects.decode(entry["effects"]); err != nil {
+			return nil, errors.New("invalid provider effects: " + err.Error())
+		}
+		out[id] = entry
+	}
+	return out, nil
+}
+
+func keyedSourceGraph(input keyedSourceRequest, inputIR any, providers map[string]map[string]any,
+	d *durableFunctionLowerer, output durableValue) (string, error) {
+	if len(d.nodes) >= keyedPlanMaxNodes {
+		return "", errors.New("keyed source graph exceeds its node budget including the result node")
+	}
+	if len(providers) != len(d.actions) {
+		return "", errors.New("provider declarations must match the exact reachable Action set")
+	}
+	for id := range d.actions {
+		if providers[id] == nil {
+			return "", errors.New("no explicit implementation/effect declaration for Action " + id)
+		}
+	}
+	hash := sha256.Sum256([]byte(input.Source))
+	evidence := map[string]any{"fileName": input.FileName, "sourceDigest": hex.EncodeToString(hash[:]),
+		"flowId": d.flowID, "flowVersion": d.flowVersion, "compilerRevision": compilerRevision,
+		"compilerPatchSeries": compilerPatchSeries, "compilerAPI": bridgeAPIVersion}
+	if input.ExportName != "" {
+		evidence["exportName"] = input.ExportName
+	}
+	if len(input.Dependencies) != 0 {
+		files, _, err := keyedSourceProject(input)
+		if err != nil {
+			return "", err
+		}
+		identities := make([]any, 0, len(files))
+		for _, file := range files {
+			hash := sha256.Sum256([]byte(file.Text))
+			identities = append(identities, map[string]any{"fileName": file.Path, "sourceDigest": hex.EncodeToString(hash[:])})
+		}
+		evidence["projectDigest"] = durableDigest(identities)
+	}
+	visited := 0
+	nodes, addresses, groups, expandedOutput, err := keyedSourceExpandNodes(d, output.ir, inputIR, &visited)
+	if err != nil {
+		return "", err
+	}
+	drafts := []any{}
+	encoded := 0
+	add := func(draft map[string]any) error {
+		encoded += len(durableCanonicalJSON(draft))
+		if encoded > keyedPlanMaxBytes {
+			return errors.New("keyed source graph exceeds its encoded expansion budget")
+		}
+		drafts = append(drafts, draft)
+		return nil
+	}
+	for _, value := range nodes {
+		node := value.(map[string]any)
+		builder := keyedSourceExpressionBuilder{input: inputIR, addresses: addresses, groups: groups, inputs: []any{}, shared: &visited}
+		expression, err := builder.lower(node["input"], 0)
+		if err != nil {
+			return "", err
+		}
+		for _, dependency := range node["controlDependencies"].([]any) {
+			if err := builder.pending(dependency.(string)); err != nil {
+				return "", err
+			}
+		}
+		body := map[string]any{"abi": keyedSourceABI, "operation": node["kind"], "source": evidence}
+		var tier, effects, layers, capabilities any = "sealed", map[string]any{"boundaryMode": "hard", "reads": []any{}, "writes": []any{}}, []any{}, []any{}
+		if node["kind"] == "action" {
+			id := node["actionId"].(string)
+			provider := providers[id]
+			tier, effects, layers, capabilities = provider["tier"], provider["effects"], provider["layers"], provider["capabilities"]
+			body["expression"], body["contract"] = expression, d.actions[id].descriptor
+			body["implementationId"], body["implementationDigest"] = provider["implementationId"], provider["implementationDigest"]
+		} else {
+			body["successSchema"] = node["successSchema"]
+			if node["kind"] == "branch" {
+				control := map[string]any{}
+				for field, id := range node["control"].(map[string]any) {
+					control[field] = addresses[id.(string)]
+				}
+				body["control"] = control
+			} else if node["kind"] == "value" {
+				body["expression"] = expression
+			} else {
+				return "", errors.New("unknown keyed source expanded node")
+			}
+		}
+		if err := add(map[string]any{"id": addresses[node["id"].(string)], "effects": effects,
+			"material": map[string]any{"version": keyedPlanMaterialVersion, "kind": tier, "body": body,
+				"inputs": builder.materialInputs(), "layers": layers, "capabilities": capabilities}}); err != nil {
+			return "", err
+		}
+	}
+	builder := keyedSourceExpressionBuilder{input: inputIR, addresses: addresses, groups: groups, inputs: []any{}, shared: &visited}
+	expression, err := builder.lower(expandedOutput, 0)
+	if err != nil {
+		return "", err
+	}
+	// An unused successful Action is still declared work. Returning an unrelated
+	// value must not let the scheduler complete before that work has settled.
+	for _, value := range nodes {
+		if value.(map[string]any)["branchInternal"] == true {
+			continue
+		}
+		if err := builder.pending(value.(map[string]any)["id"].(string)); err != nil {
+			return "", err
+		}
+	}
+	if err := add(map[string]any{"id": "result", "effects": map[string]any{"boundaryMode": "hard", "reads": []any{}, "writes": []any{}}, "material": map[string]any{
+		"version": keyedPlanMaterialVersion, "kind": "sealed", "layers": []any{}, "capabilities": []any{}, "inputs": builder.materialInputs(),
+		"body": map[string]any{"abi": keyedSourceABI, "operation": "result", "source": evidence, "expression": expression,
+			"inputSchema": d.inputSchema, "successSchema": d.successSchema}}}); err != nil {
+		return "", err
+	}
+	compiled := compileKeyedPlan(keyedPlanRequest{Operation: "compile", InputJSON: durableCanonicalJSON(map[string]any{
+		"planId": input.PlanID, "flow": d.flowID, "nodes": drafts})})
+	if !compiled.OK {
+		return "", errors.New("keyed Plan construction refused: " + compiled.ErrorCode + ": " + compiled.Message)
+	}
+	if err := keyedSourceBranchBoundaries(compiled.PlanJSON); err != nil {
+		return "", err
+	}
+	return compiled.PlanJSON, nil
+}

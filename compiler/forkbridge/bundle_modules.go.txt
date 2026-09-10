@@ -1,0 +1,268 @@
+package main
+
+// Compiler-owned analysis of already-lowered worker modules. Hosts retain the
+// byte assembly and signing policy, but neither parse imports nor infer binding
+// identity. This seam does not certify that an input was language-checked.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type bundleModulesRequest struct {
+	Files              []transpileSource `json:"files"`
+	RuntimeSpecifier   string            `json:"runtimeSpecifier"`
+	RuntimeHelpers     []string          `json:"runtimeHelpers"`
+	RegistrationExport string            `json:"registrationExport"`
+}
+type bundleModuleDiagnostic struct {
+	Path    string `json:"path"`
+	Message string `json:"message"`
+}
+type bundleRegistration struct {
+	Path      string `json:"path"`
+	ClassName string `json:"className"`
+	Identity  string `json:"identity"`
+}
+type bundleModulesResult struct {
+	Diagnostics   []bundleModuleDiagnostic `json:"diagnostics"`
+	Registrations []bundleRegistration     `json:"registrations"`
+}
+
+func serveBundleModules(apiVersion int) {
+	response := struct {
+		APIVersion       int                 `json:"apiVersion"`
+		CompilerRevision string              `json:"compilerRevision"`
+		Result           bundleModulesResult `json:"result"`
+		Error            *wireError          `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: bundleModulesResult{Diagnostics: []bundleModuleDiagnostic{}, Registrations: []bundleRegistration{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 1536*1024*1024 + 1}
+	var input bundleModulesRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("bundle-module request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeBundleModules(context.Background(), input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_BUNDLE_MODULES", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func analyzeBundleModules(ctx context.Context, input bundleModulesRequest) (bundleModulesResult, error) {
+	result := bundleModulesResult{Diagnostics: []bundleModuleDiagnostic{}, Registrations: []bundleRegistration{}}
+	validName := func(value string) bool {
+		return value != "" && len(value) <= 2048 && !strings.ContainsRune(value, 0) && utf8.ValidString(value)
+	}
+	if !validName(input.RuntimeSpecifier) || strings.HasPrefix(input.RuntimeSpecifier, ".") || strings.HasPrefix(input.RuntimeSpecifier, "/") ||
+		!validName(input.RegistrationExport) || len(input.RuntimeHelpers) == 0 || len(input.RuntimeHelpers) > 4096 {
+		return result, errors.New("invalid bundle runtime policy")
+	}
+	helpers := map[string]bool{}
+	for _, name := range input.RuntimeHelpers {
+		if !validName(name) || helpers[name] {
+			return result, errors.New("bundle runtime helper names must be bounded, nonempty and unique")
+		}
+		helpers[name] = true
+	}
+	if !helpers[input.RegistrationExport] {
+		return result, errors.New("the registration export must be one of the declared runtime helpers")
+	}
+	inspection := inspectionRequest{Files: make([]inspectionSource, 0, len(input.Files))}
+	texts := map[string]string{}
+	names := make([]string, 0, len(input.Files))
+	for _, source := range input.Files {
+		virtual, err := virtualFileName(source.Path)
+		if err != nil {
+			return result, err
+		}
+		// Bundle factory IDs and native resolution must have exactly one spelling.
+		// No extension substitution, ambient files or alias normalization occurs.
+		if source.Path != strings.TrimPrefix(virtual, "/src/") || strings.ContainsRune(source.Path, 0) ||
+			!strings.HasSuffix(source.Path, ".ts") || strings.HasSuffix(source.Path, ".d.ts") || strings.HasSuffix(strings.ToLower(source.Path), ".vibe.ts") {
+			return result, errors.New("bundle module paths must be normalized project-relative executable .ts paths")
+		}
+		inspection.Files = append(inspection.Files, inspectionSource{Path: source.Path, Text: source.Text, ScriptKind: "typescript"})
+		texts[virtual], names = source.Text, append(names, virtual)
+	}
+	inspected, err := inspectSources(inspection)
+	if err != nil {
+		return result, err
+	}
+	for _, file := range inspected.Files {
+		for _, diagnostic := range file.Diagnostics {
+			result.Diagnostics = append(result.Diagnostics, bundleModuleDiagnostic{Path: file.Path, Message: "has invalid lowered TypeScript: " + diagnostic.Code + ": " + diagnostic.Message})
+		}
+	}
+	if len(result.Diagnostics) != 0 {
+		return result, nil
+	}
+	// A virtual binder supplies lexical symbol identity. There is intentionally
+	// no library, resolution, host filesystem or full-project type certification.
+	fs := vfstest.FromMap(texts, true)
+	options := &core.CompilerOptions{Target: core.ScriptTargetES2022, Module: core.ModuleKindESNext,
+		NoLib: core.TSTrue, NoResolve: core.TSTrue, NoCheck: core.TSTrue, NoEmit: core.TSTrue, Types: []string{}}
+	config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{FileNames: names, CompilerOptions: options}}
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config,
+		Host: compiler.NewCompilerHost("/src", fs, "", nil, nil, nil), SingleThreaded: core.TSTrue, SkipModuleResolution: true})
+	checker, release := program.GetTypeChecker(ctx)
+	defer release()
+	identities := map[string]string{}
+	for index, source := range input.Files {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
+		file := program.GetSourceFile(names[index])
+		if file == nil {
+			return result, errors.New("native bundle module is missing from its virtual program")
+		}
+		refuse := func(message string) {
+			result.Diagnostics = append(result.Diagnostics, bundleModuleDiagnostic{Path: source.Path, Message: message})
+		}
+		checkSpecifier := func(node *ast.Node) {
+			if node == nil || !ast.IsStringLiteral(node) {
+				refuse("has a non-literal import specifier")
+				return
+			}
+			specifier := node.Text()
+			if strings.HasPrefix(specifier, ".") {
+				resolved := path.Join(path.Dir(names[index]), specifier)
+				if !strings.HasPrefix(resolved, "/src/") {
+					refuse(fmt.Sprintf("bundle import '%s' escapes the checked source closure", specifier))
+				} else if _, ok := texts[resolved]; !ok {
+					refuse(fmt.Sprintf("imports '%s' which is outside the checked source closure", specifier))
+				}
+				return
+			}
+			refuse(fmt.Sprintf("imports external module '%s'; worker bundles must be self-contained", specifier))
+		}
+		registerSymbols := map[*ast.Symbol]bool{}
+		for _, statement := range file.Statements.Nodes {
+			if !ast.IsImportDeclaration(statement) {
+				continue
+			}
+			declaration := statement.AsImportDeclaration()
+			if !ast.IsStringLiteral(declaration.ModuleSpecifier) || declaration.ModuleSpecifier.Text() != input.RuntimeSpecifier {
+				continue
+			}
+			if declaration.ImportClause == nil {
+				continue
+			}
+			clause := declaration.ImportClause.AsImportClause()
+			if clause.PhaseModifier != ast.KindUnknown || clause.NamedBindings == nil || !ast.IsNamedImports(clause.NamedBindings) {
+				continue
+			}
+			for _, element := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+				item := element.AsImportSpecifier()
+				imported := item.PropertyName
+				if imported == nil {
+					imported = item.Name()
+				}
+				if !item.IsTypeOnly && imported.Text() == input.RegistrationExport {
+					if symbol := checker.GetSymbolAtLocation(item.Name()); symbol != nil {
+						registerSymbols[symbol] = true
+					}
+				}
+			}
+		}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if len(result.Diagnostics) >= 100_000 || len(result.Registrations) >= 100_000 {
+				return true
+			}
+			switch {
+			case ast.IsImportDeclaration(node):
+				declaration := node.AsImportDeclaration()
+				if !ast.IsStringLiteral(declaration.ModuleSpecifier) || declaration.ModuleSpecifier.Text() != input.RuntimeSpecifier {
+					checkSpecifier(declaration.ModuleSpecifier)
+					break
+				}
+				if declaration.ImportClause == nil {
+					refuse("must import compiler helpers as named bindings")
+					break
+				}
+				clause := declaration.ImportClause.AsImportClause()
+				if clause.Name() != nil || clause.NamedBindings == nil || !ast.IsNamedImports(clause.NamedBindings) {
+					refuse("must import compiler helpers as named bindings")
+					break
+				}
+				for _, element := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+					imported := element.AsImportSpecifier().PropertyName
+					if imported == nil {
+						imported = element.Name()
+					}
+					if !helpers[imported.Text()] {
+						refuse(fmt.Sprintf("imports runtime helper '%s' which the embedded worker bundle runtime does not provide", imported.Text()))
+					}
+				}
+			case ast.IsExportDeclaration(node) && node.AsExportDeclaration().ModuleSpecifier != nil:
+				specifier := node.AsExportDeclaration().ModuleSpecifier
+				if ast.IsStringLiteral(specifier) && specifier.Text() == input.RuntimeSpecifier {
+					refuse("re-exports the compiler-owned worker bundle runtime")
+				} else {
+					checkSpecifier(specifier)
+				}
+			case ast.IsImportEqualsDeclaration(node):
+				ref := node.AsImportEqualsDeclaration().ModuleReference
+				if ast.IsExternalModuleReference(ref) {
+					checkSpecifier(ref.AsExternalModuleReference().Expression)
+				}
+			case ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindImportKeyword:
+				refuse("uses import.meta, which cannot execute in a bundled CommonJS factory")
+			case ast.IsCallExpression(node):
+				call, args := node.AsCallExpression(), node.Arguments()
+				if ast.IsImportCall(node) {
+					var argument *ast.Node
+					if len(args) > 0 {
+						argument = args[0]
+					}
+					checkSpecifier(argument)
+				} else if ast.IsIdentifier(call.Expression) && call.Expression.Text() == "require" && checker.GetSymbolAtLocation(call.Expression) == nil {
+					if len(args) != 1 {
+						refuse("has a non-literal import specifier")
+					} else {
+						checkSpecifier(args[0])
+					}
+				} else if ast.IsIdentifier(call.Expression) && registerSymbols[checker.GetSymbolAtLocation(call.Expression)] {
+					if len(args) != 2 || !ast.IsIdentifier(args[0]) || !ast.IsStringLiteral(args[1]) || !utf8.ValidString(args[1].Text()) {
+						refuse("emits an Error registration this bundle cannot read a compiler-issued identity from")
+						break
+					}
+					name, identity := args[0].Text(), args[1].Text()
+					if prior, ok := identities[name]; ok && prior != identity {
+						refuse(fmt.Sprintf("registers Error class %s under two nominal identities (%s, %s); a bundled failure identity must be unambiguous", name, prior, identity))
+					} else if !ok {
+						identities[name] = identity
+						result.Registrations = append(result.Registrations, bundleRegistration{Path: source.Path, ClassName: name, Identity: identity})
+					}
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		if visit(file.AsNode()) {
+			return result, errors.New("bundle module facts exceed the 100000 entry budget")
+		}
+	}
+	if len(result.Diagnostics) > 0 {
+		result.Registrations = []bundleRegistration{}
+	}
+	return result, nil
+}

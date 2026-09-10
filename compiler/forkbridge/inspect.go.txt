@@ -1,0 +1,293 @@
+package main
+
+// Native syntax facts, not a serialized AST and not a second checker. Hosts
+// decide what these facts mean for their pipeline; only the compiler parses.
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type inspectionSource struct {
+	Path                string `json:"path"`
+	Text                string `json:"text"`
+	ScriptKind          string `json:"scriptKind"`
+	DeclarationBindings bool   `json:"declarationBindings,omitempty"`
+}
+type inspectionRequest struct {
+	Files []inspectionSource `json:"files"`
+}
+type moduleSyntax struct {
+	Kind          string  `json:"kind"`
+	TopLevel      bool    `json:"topLevel"`
+	Span          span    `json:"span"`
+	Specifier     *string `json:"specifier,omitempty"`
+	SpecifierSpan *span   `json:"specifierSpan,omitempty"`
+	SpecifierKind string  `json:"specifierKind,omitempty"`
+}
+type inspectedSource struct {
+	Path                string                `json:"path"`
+	Diagnostics         []diagnostic          `json:"diagnostics"`
+	ModuleSyntax        []moduleSyntax        `json:"moduleSyntax"`
+	JSONDuplicateKeys   *[]span               `json:"jsonDuplicateKeys,omitempty"`
+	DeclarationBindings *[]declarationBinding `json:"declarationBindings,omitempty"`
+}
+type declarationBinding struct {
+	Kind     string  `json:"kind"`
+	Span     span    `json:"span"`
+	Name     *string `json:"name"`
+	NameSpan *span   `json:"nameSpan"`
+}
+type inspectionResult struct {
+	Files []inspectedSource `json:"files"`
+}
+
+func serveInspection(apiVersion int) {
+	response := struct {
+		APIVersion       int              `json:"apiVersion"`
+		CompilerRevision string           `json:"compilerRevision"`
+		Result           inspectionResult `json:"result"`
+		Error            *wireError       `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: inspectionResult{Files: []inspectedSource{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 1536*1024*1024 + 1}
+	var input inspectionRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("inspection request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = inspectSources(input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_INSPECTION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func inspectSources(input inspectionRequest) (inspectionResult, error) {
+	result := inspectionResult{Files: []inspectedSource{}}
+	if len(input.Files) == 0 || len(input.Files) > 4096 {
+		return result, errors.New("inspection requires 1 to 4096 sources")
+	}
+	seen := map[string]bool{}
+	total := 0
+	for _, file := range input.Files {
+		virtual, err := virtualFileName(file.Path)
+		if err != nil {
+			return result, err
+		}
+		if seen[virtual] {
+			return result, fmt.Errorf("duplicate inspection source %q", file.Path)
+		}
+		seen[virtual] = true
+		total += len(file.Text)
+		if total > 256*1024*1024 {
+			return result, errors.New("inspection sources exceed the 256 MiB budget")
+		}
+		var kind core.ScriptKind
+		switch file.ScriptKind {
+		case "typescript":
+			kind = core.ScriptKindTS
+		case "javascript":
+			kind = core.ScriptKindJS
+		case "tsx":
+			kind = core.ScriptKindTSX
+		case "jsx":
+			kind = core.ScriptKindJSX
+		case "json":
+			kind = core.ScriptKindJSON
+		default:
+			return result, fmt.Errorf("invalid inspection scriptKind %q", file.ScriptKind)
+		}
+		if kind == core.ScriptKindJSON && file.DeclarationBindings {
+			return result, errors.New("JSON syntax has no declaration bindings")
+		}
+		parsed := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: virtual, Path: tspath.Path(virtual)}, file.Text, kind)
+		lines := newLineIndex(file.Text)
+		locate := func(start, end int) span {
+			first := lines.utf16Offset(start)
+			return span{Start: first, Length: max(0, lines.utf16Offset(end)-first)}
+		}
+		output := inspectedSource{Path: file.Path, Diagnostics: []diagnostic{}, ModuleSyntax: []moduleSyntax{}}
+		for _, item := range parsed.Diagnostics() {
+			where := locate(item.Pos(), item.End())
+			output.Diagnostics = append(output.Diagnostics, diagnostic{Code: fmt.Sprintf("TS%d", item.Code()), Category: categoryName(item.Category()),
+				Message: item.Localize(locale.Default), File: file.Path, Span: &where, Phase: "parse"})
+		}
+		if file.DeclarationBindings {
+			bindings := []declarationBinding{}
+			output.DeclarationBindings = &bindings
+			add := func(node *ast.Node, kind string) error {
+				if len(bindings) == 100_000 {
+					return errors.New("inspection declarations exceed the 100000 entry budget")
+				}
+				binding := declarationBinding{Kind: kind, Span: locate(scanner.GetTokenPosOfNode(node, parsed, false), node.End())}
+				if name := node.Name(); name != nil {
+					where := locate(scanner.GetTokenPosOfNode(name, parsed, false), name.End())
+					binding.NameSpan = &where
+					if ast.IsIdentifier(name) {
+						text := name.Text()
+						binding.Name = &text
+					}
+				}
+				bindings = append(bindings, binding)
+				return nil
+			}
+			// Recovered syntax still returns parser diagnostics/module facts, but
+			// cannot supply a complete declaration inventory. This is not a
+			// type check: private/ambient/overload declarations remain present.
+			if len(output.Diagnostics) == 0 {
+				for _, statement := range parsed.Statements.Nodes {
+					if ast.IsVariableStatement(statement) {
+						for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+							if err := add(declaration, "variable"); err != nil {
+								return result, err
+							}
+						}
+					} else if ast.IsFunctionDeclaration(statement) {
+						if err := add(statement, "function"); err != nil {
+							return result, err
+						}
+					}
+				}
+			}
+		}
+		if kind == core.ScriptKindJSON {
+			duplicates := []span{}
+			properties := 0
+			var visitJSON func(*ast.Node) bool
+			visitJSON = func(node *ast.Node) bool {
+				if ast.IsObjectLiteralExpression(node) {
+					names := map[string]bool{}
+					for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+						properties++
+						if properties > 100_000 {
+							return true
+						}
+						if !ast.IsPropertyAssignment(property) || property.Name() == nil || !ast.IsStringLiteral(property.Name()) {
+							continue
+						}
+						name := property.Name()
+						if names[name.Text()] {
+							duplicates = append(duplicates, locate(scanner.GetTokenPosOfNode(name, parsed, false), name.End()))
+						}
+						names[name.Text()] = true
+					}
+				}
+				return node.ForEachChild(visitJSON)
+			}
+			// JSON is data, never recovered executable module syntax. Parent
+			// object duplicates precede nested ones, as in the prior config walk.
+			if visitJSON(parsed.AsNode()) {
+				return result, errors.New("JSON inspection exceeds its 100000 property budget")
+			}
+			output.JSONDuplicateKeys = &duplicates
+			result.Files = append(result.Files, output)
+			continue
+		}
+		var visit func(*ast.Node) bool
+		var factError error
+		visit = func(node *ast.Node) bool {
+			if node == nil {
+				return false
+			}
+			kind, specifier := inspectModuleSyntax(node)
+			if kind != "" {
+				if len(output.ModuleSyntax) >= 100_000 {
+					return true
+				}
+				item := moduleSyntax{Kind: kind, TopLevel: node.Parent != nil && ast.IsSourceFile(node.Parent), Span: locate(scanner.GetTokenPosOfNode(node, parsed, false), node.End())}
+				if specifier != nil && ast.IsStringLiteralLike(specifier) {
+					text := specifier.Text()
+					if !utf8.ValidString(text) {
+						factError = fmt.Errorf("inspection source %q has a module specifier with an unpaired UTF-16 surrogate", file.Path)
+						return true
+					}
+					item.Specifier = &text
+					literal := locate(scanner.GetTokenPosOfNode(specifier, parsed, false), specifier.End())
+					item.SpecifierSpan = &literal
+					item.SpecifierKind = "string"
+					if specifier.Kind == ast.KindNoSubstitutionTemplateLiteral {
+						item.SpecifierKind = "template"
+					}
+				}
+				output.ModuleSyntax = append(output.ModuleSyntax, item)
+			}
+			return node.ForEachChild(visit)
+		}
+		if visit(parsed.AsNode()) {
+			if factError != nil {
+				return result, factError
+			}
+			return result, errors.New("inspection module syntax exceeds the 100000 entry budget")
+		}
+		result.Files = append(result.Files, output)
+	}
+	return result, nil
+}
+
+// Syntactic facts intentionally include references inside uncalled functions
+// and shadowed require/URL names. Consumers must not confuse them with resolved
+// effects, initialization reachability, or capability charges.
+func inspectModuleSyntax(node *ast.Node) (string, *ast.Node) {
+	switch {
+	case ast.IsImportDeclaration(node):
+		return "import-declaration", node.AsImportDeclaration().ModuleSpecifier
+	case ast.IsImportEqualsDeclaration(node):
+		ref := node.AsImportEqualsDeclaration().ModuleReference
+		if ref != nil && ast.IsExternalModuleReference(ref) {
+			return "import-equals", ref.AsExternalModuleReference().Expression
+		}
+		return "import-equals", nil
+	case ast.IsExportDeclaration(node) && node.AsExportDeclaration().ModuleSpecifier != nil:
+		return "module-re-export", node.AsExportDeclaration().ModuleSpecifier
+	case ast.IsImportTypeNode(node):
+		argument := node.AsImportTypeNode().Argument
+		if argument != nil && ast.IsLiteralTypeNode(argument) {
+			return "import-type", argument.AsLiteralTypeNode().Literal
+		}
+		return "import-type", nil
+	case ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindImportKeyword:
+		return "import-meta", nil
+	case ast.IsCallExpression(node):
+		call := node.AsCallExpression()
+		arguments := node.Arguments()
+		var first *ast.Node
+		if len(arguments) > 0 {
+			first = arguments[0]
+		}
+		if ast.IsImportCall(node) {
+			return "dynamic-import", first
+		}
+		if len(arguments) == 1 {
+			if call.Expression != nil && ast.IsIdentifier(call.Expression) && call.Expression.Text() == "require" {
+				return "require", first
+			}
+			if call.Expression != nil && ast.IsPropertyAccessExpression(call.Expression) {
+				access := call.Expression.AsPropertyAccessExpression()
+				if access.Expression != nil && ast.IsIdentifier(access.Expression) && access.Expression.Text() == "require" && access.Name() != nil && access.Name().Text() == "resolve" {
+					return "require-resolve", first
+				}
+			}
+		}
+	case ast.IsNewExpression(node):
+		if expression := node.AsNewExpression().Expression; expression != nil && ast.IsIdentifier(expression) && expression.Text() == "URL" && len(node.Arguments()) == 2 {
+			return "module-url", node.Arguments()[0]
+		}
+	}
+	return "", nil
+}

@@ -1,0 +1,586 @@
+package main
+
+// A compiler phase, not an independent TypeScript implementation. Recognition,
+// interpretation, schema derivation and replacement planning all use the same
+// native program and comptime analysis as the Go language compiler. No author
+// module is executed and no host filesystem is consulted.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type comptimePlanInput struct {
+	File      string `json:"file"`
+	Specifier string `json:"specifier"`
+	Text      string `json:"text"`
+	Error     string `json:"error"`
+}
+type comptimePlanRequest struct {
+	Files               []inspectionSource  `json:"files"`
+	Target              string              `json:"target"`
+	Inputs              []comptimePlanInput `json:"inputs"`
+	SchemaRuntimeImport string              `json:"schemaRuntimeImport"`
+}
+type comptimePlanRange struct {
+	File string `json:"file"`
+	Span span   `json:"span"`
+}
+type comptimePlanRead struct {
+	At        comptimePlanRange `json:"at"`
+	Specifier string            `json:"specifier"`
+}
+type comptimePlanIssue struct {
+	At      comptimePlanRange `json:"at"`
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+}
+type comptimePlanCall struct {
+	At           comptimePlanRange   `json:"at"`
+	Argument     comptimePlanRange   `json:"argument"`
+	MappedOrigin comptimePlanRange   `json:"mappedOrigin"`
+	Origins      []comptimePlanRange `json:"origins"`
+	Inputs       []int               `json:"inputs"`
+	ValueJSON    string              `json:"valueJson"`  // ordered, alias-preserving ComptimeValueGraph v1
+	SchemaType   string              `json:"schemaType"` // empty for ordinary data
+}
+type comptimePlanEdit struct {
+	At           comptimePlanRange   `json:"at"`
+	Kind         string              `json:"kind"`
+	Text         string              `json:"text"`
+	MappedOrigin comptimePlanRange   `json:"mappedOrigin"`
+	Origins      []comptimePlanRange `json:"origins"`
+}
+type comptimePlanResult struct {
+	Complete    bool                `json:"complete"`
+	Diagnostics []comptimePlanIssue `json:"diagnostics"`
+	Reads       []comptimePlanRead  `json:"reads"`
+	Calls       []comptimePlanCall  `json:"calls"`
+	Edits       []comptimePlanEdit  `json:"edits"`
+}
+
+func emptyComptimePlan() comptimePlanResult {
+	return comptimePlanResult{Diagnostics: []comptimePlanIssue{}, Reads: []comptimePlanRead{}, Calls: []comptimePlanCall{}, Edits: []comptimePlanEdit{}}
+}
+func serveComptimePlan(apiVersion int) {
+	response := struct {
+		APIVersion       int                `json:"apiVersion"`
+		CompilerRevision string             `json:"compilerRevision"`
+		Result           comptimePlanResult `json:"result"`
+		Error            *wireError         `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyComptimePlan()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input comptimePlanRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("comptime phase request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = planComptime(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyComptimePlan()
+		response.Error = &wireError{Code: "VIBELANG_GO_COMPTIME_PLAN", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func planComptime(ctx context.Context, input comptimePlanRequest) (comptimePlanResult, error) {
+	result := emptyComptimePlan()
+	if len(input.Files) > 1024 || len(input.Inputs) > 10_000 || len(input.Target) > 1024 || len(input.SchemaRuntimeImport) > 16*1024 || strings.ContainsRune(input.SchemaRuntimeImport, 0) {
+		return result, errors.New("comptime phase inputs exceed their declared budgets")
+	}
+	if input.Target == "" || input.SchemaRuntimeImport == "" {
+		return result, errors.New("comptime target and schema runtime import must be explicit")
+	}
+	request := request{RootNames: []string{}, Files: []sourceFile{}, Lowering: "internal"}
+	names, kinds := map[string]string{}, map[string]string{}
+	total := 0
+	for _, source := range input.Files {
+		if len(source.Path) > 16*1024 || strings.ContainsRune(source.Path, 0) || len(source.Text) > 2*1024*1024 {
+			return result, errors.New("invalid or oversized comptime source")
+		}
+		name, err := virtualFileName(source.Path)
+		if err != nil {
+			return result, err
+		}
+		if _, exists := names[name]; exists {
+			return result, errors.New("duplicate comptime source")
+		}
+		ext := strings.ToLower(path.Ext(source.Path))
+		want := "typescript"
+		if ext == ".js" || ext == ".mjs" || ext == ".cjs" {
+			want = "javascript"
+		}
+		if ext == ".tsx" {
+			want = "tsx"
+		}
+		if ext == ".jsx" {
+			want = "jsx"
+		}
+		if source.ScriptKind != want {
+			return result, errors.New("comptime script kind does not match its authored extension")
+		}
+		if ext != ".vibe" && ext != ".ts" && ext != ".mts" && ext != ".cts" && ext != ".js" && ext != ".mjs" && ext != ".cjs" && ext != ".tsx" && ext != ".jsx" {
+			return result, errors.New("unsupported comptime source extension")
+		}
+		names[name], kinds[name] = source.Path, want
+		total += len(source.Text)
+		if total > 16*1024*1024 {
+			return result, errors.New("comptime source closure exceeds its 16 MiB budget")
+		}
+		kind := "typescript"
+		if ext == ".vibe" {
+			kind = "vibelang"
+		}
+		request.RootNames = append(request.RootNames, source.Path)
+		request.Files = append(request.Files, sourceFile{Path: source.Path, Kind: kind, Text: source.Text})
+	}
+	inputIndexes := map[string]int{}
+	for index, value := range input.Inputs {
+		name, err := virtualFileName(value.File)
+		if err != nil || names[name] != value.File || value.Specifier == "" || len(value.Specifier) > 16*1024 || strings.ContainsRune(value.Specifier, 0) || len(value.Error) > 16*1024 || (value.Error != "" && value.Text != "") {
+			return result, errors.New("invalid comptime tracked-input identity or outcome")
+		}
+		key := value.File + "\x00" + value.Specifier
+		if _, exists := inputIndexes[key]; exists {
+			return result, errors.New("duplicate comptime tracked input")
+		}
+		inputIndexes[key] = index
+		total += len(value.Text)
+		if total > 32*1024*1024 {
+			return result, errors.New("comptime phase source and text inputs exceed 32 MiB")
+		}
+	}
+	if len(input.Files) == 0 {
+		result.Complete = true
+		return result, nil
+	}
+	project, err := buildProject(request)
+	if err != nil {
+		return result, err
+	}
+	options, _, err := compilerOptions(nil)
+	if err != nil {
+		return result, err
+	}
+	options.Target, options.AllowJs, options.CheckJs, options.NoEmit = core.ScriptTargetESNext, core.TSTrue, core.TSTrue, core.TSTrue
+	options.Types = []string{}
+	configureInternalModules(options)
+	program := newCheckProgram(options, project)
+	files := []*ast.SourceFile{}
+	lineIndexes := map[*ast.SourceFile]*lineIndex{}
+	orderedNames := make([]string, 0, len(names))
+	for name := range names {
+		orderedNames = append(orderedNames, name)
+	}
+	sortUTF16(orderedNames)
+	for _, name := range orderedNames {
+		file := program.GetSourceFile(name)
+		if file == nil {
+			return result, errors.New("comptime source is absent from its native program")
+		}
+		files = append(files, file)
+		lineIndexes[file] = newLineIndex(file.Text())
+	}
+	where := func(file *ast.SourceFile, start, end int) comptimePlanRange {
+		lines := lineIndexes[file]
+		if lines == nil || start < 0 || end < start || end > len(file.Text()) {
+			panic("comptime plan produced an out-of-project source range")
+		}
+		first := lines.utf16Offset(start)
+		return comptimePlanRange{File: names[file.FileName()], Span: span{Start: first, Length: lines.utf16Offset(end) - first}}
+	}
+	at := func(node *ast.Node) comptimePlanRange {
+		file := ast.GetSourceFileOfNode(node)
+		return where(file, scanner.GetTokenPosOfNode(node, file, false), node.End())
+	}
+	// The phase reports syntax before asking the native binder to consume an
+	// invalid conditional-declaration recovery shape.
+	for _, file := range files {
+		shapeFailures := []comptimePlanIssue{}
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if message := conditionalDeclarationShapeError(node); message != "" {
+				shapeFailures = append(shapeFailures, comptimePlanIssue{At: at(node), Code: "VCT1000", Message: "VIBE1717: " + message})
+			}
+		})
+		if len(shapeFailures) > 0 {
+			result.Diagnostics = append(result.Diagnostics, shapeFailures...)
+			continue
+		}
+		for _, issue := range program.GetSyntacticDiagnostics(ctx, file) {
+			position := issue.Pos()
+			suffix := file.Text()[position:]
+			// These are the existing language frontend's separately checked
+			// recovery hosts, not source the comptime phase claims to lower.
+			if issue.Code() == 1109 && (strings.HasPrefix(suffix, "if ") || strings.HasPrefix(suffix, "if(") || strings.HasPrefix(suffix, "switch") || strings.HasPrefix(suffix, "for") || strings.HasPrefix(suffix, "while")) {
+				continue
+			}
+			if issue.Code() == 1434 && (strings.HasPrefix(suffix, "defer ") || strings.HasPrefix(suffix, "errdefer ")) {
+				continue
+			}
+			result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: where(file, position, issue.End()), Code: "VCT1000", Message: "source contains syntax that the comptime frontend cannot parse"})
+		}
+	}
+	if len(result.Diagnostics) > 0 {
+		return result, nil
+	}
+	checker, release := program.GetTypeChecker(ctx)
+	defer release()
+	// This phase does not publish ordinary checker diagnostics before generated
+	// types exist. Preserve its specific missing-import diagnostic only when the
+	// native checker proves the name genuinely unbound. No spelling gains
+	// intrinsic authority. Ordinary Go compilation retains its own TS2304 path.
+	for _, file := range files {
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if !ast.IsCallExpression(node) {
+				return
+			}
+			expression := node.AsCallExpression().Expression
+			if ast.IsIdentifier(expression) && expression.Text() == "comptime" && checker.GetSymbolAtLocation(expression) == nil {
+				result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: at(expression), Code: "VCT1001",
+					Message: "comptime call has no imported compiler identity from " + ctQuote(comptimeModuleSpecifier)})
+			}
+		})
+	}
+	if len(result.Diagnostics) > 0 {
+		return result, nil
+	}
+	missing := map[*ast.Node]bool{}
+	readText := func(node *ast.Node, specifier string) (string, int, *ctFailure) {
+		location := at(node)
+		if specifier == "" || len(specifier) > 16*1024 || strings.ContainsRune(specifier, 0) {
+			return "", 0, &ctFailure{code: comptimeCodeUnsupported, node: node, message: "embed path must name a bounded relative text input"}
+		}
+		index, exists := inputIndexes[location.File+"\x00"+specifier]
+		if !exists {
+			missing[node] = true
+			result.Reads = append(result.Reads, comptimePlanRead{At: location, Specifier: specifier})
+			return "", 0, &ctFailure{code: comptimeCodeTrackedInput, node: node, message: "comptime phase requires an explicit tracked input"}
+		}
+		value := input.Inputs[index]
+		if value.Error != "" {
+			return "", 0, &ctFailure{code: comptimeCodeUnsupported, node: node, message: "tracked embed failed: " + value.Error}
+		}
+		return value.Text, index, nil
+	}
+	analysis := newComptimeAnalysisWithInputs(program, checker, files, input.Target, readText)
+	seenReads := map[comptimePlanRead]bool{}
+	uniqueReads := make([]comptimePlanRead, 0, len(result.Reads))
+	for _, read := range result.Reads {
+		if !seenReads[read] {
+			seenReads[read] = true
+			uniqueReads = append(uniqueReads, read)
+		}
+	}
+	result.Reads = uniqueReads
+	sort.Slice(result.Reads, func(i, j int) bool {
+		left, right := result.Reads[i], result.Reads[j]
+		if left.At != right.At {
+			return comptimeRangeLess(left.At, right.At)
+		}
+		return compareUTF16(left.Specifier, right.Specifier) < 0
+	})
+	for _, file := range files {
+		for _, issue := range analysis.reports[file] {
+			ignore := false
+			if issue.code == comptimeCodeTrackedInput {
+				for node := range missing {
+					if ast.GetSourceFileOfNode(node) == file && scanner.SkipTrivia(file.Text(), node.Pos()) == issue.start {
+						ignore = true
+						break
+					}
+				}
+			}
+			if ignore {
+				continue
+			}
+			code := issue.code
+			if strings.HasPrefix(code, "VIBE19") {
+				code = "VCT10" + strings.TrimPrefix(code, "VIBE19")
+			}
+			result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: where(file, issue.start, issue.start+issue.length), Code: code, Message: issue.message})
+		}
+	}
+	if len(result.Diagnostics) > 0 || len(result.Reads) > 0 {
+		return result, nil
+	}
+	// Stable, duplicate-free authored observations. Native node identity is
+	// never serialized; the host sees only source spans and input indexes.
+	origins := func(nodes []*ast.Node) []comptimePlanRange {
+		unique := map[comptimePlanRange]bool{}
+		for _, node := range nodes {
+			unique[at(node)] = true
+		}
+		values := make([]comptimePlanRange, 0, len(unique))
+		for value := range unique {
+			values = append(values, value)
+		}
+		sort.Slice(values, func(i, j int) bool { return comptimeRangeLess(values[i], values[j]) })
+		return values
+	}
+	callByNode := map[*ast.Node]comptimePlanCall{}
+	encodedBytes := 0
+	for _, file := range files {
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			value, exists := analysis.values[node]
+			schema := analysis.schemas[node]
+			if !exists && schema == nil {
+				return
+			}
+			observation := analysis.observations[node]
+			schemaType := ""
+			if schema != nil {
+				value = schema.descriptor
+				argument := node.AsCallExpression().Arguments.Nodes[0]
+				observation = comptimeObservation{argument: argument, mappedOrigin: unwrapComptimeExpression(argument), origins: []*ast.Node{unwrapComptimeExpression(argument)}, inputs: []int{}}
+				schemaType = file.Text()[scanner.GetTokenPosOfNode(schema.typeNode, file, false):schema.typeNode.End()]
+			}
+			graph, _, err := comptimePlanValue(value)
+			if err != nil {
+				result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: at(node), Code: "VCT1012", Message: err.Error()})
+				return
+			}
+			encodedBytes += len(graph)
+			if encodedBytes > 16*1024*1024 {
+				result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: at(node), Code: "VCT1012", Message: "comptime phase values exceed their 16 MiB output budget"})
+				return
+			}
+			call := comptimePlanCall{At: at(node), Argument: at(observation.argument), MappedOrigin: at(observation.mappedOrigin), Origins: origins(observation.origins), Inputs: observation.inputs, ValueJSON: graph, SchemaType: schemaType}
+			if call.Inputs == nil {
+				call.Inputs = []int{}
+			}
+			callByNode[node] = call
+			result.Calls = append(result.Calls, call)
+		})
+	}
+	if len(result.Diagnostics) > 0 {
+		result.Calls = []comptimePlanCall{}
+		return result, nil
+	}
+	add := func(location comptimePlanRange, kind, text string, origin comptimePlanRange, observed []comptimePlanRange) {
+		encodedBytes += len(text)
+		if encodedBytes > 32*1024*1024 {
+			result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: location, Code: "VCT1012", Message: "comptime phase replacements exceed their output budget"})
+			return
+		}
+		result.Edits = append(result.Edits, comptimePlanEdit{At: location, Kind: kind, Text: text, MappedOrigin: origin, Origins: observed})
+	}
+	for _, file := range files {
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if analysis.erase[node] {
+				location := at(node)
+				kind := "remove-import"
+				origin := location
+				observed := []comptimePlanRange{location}
+				if ast.IsVariableStatement(node) {
+					kind = "function-marker"
+					marker := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].AsVariableDeclaration().Initializer
+					argument := marker.AsCallExpression().Arguments.Nodes[0]
+					origin = at(argument)
+					observed = origins([]*ast.Node{marker, argument})
+				}
+				add(location, kind, "", origin, observed)
+			}
+			call, exists := callByNode[node]
+			if !exists {
+				return
+			}
+			production := (*typeProduction)(nil)
+			if declaration := typeProducingDeclaration(node); declaration != nil {
+				production = analysis.productions[declaration.Parent.Parent]
+			}
+			alias := ""
+			if production != nil {
+				alias = "type " + production.name + " = " + comptimeLiteralTypeText(production.value) + ";"
+				if production.exported {
+					alias = "export " + alias
+				}
+			}
+			if production != nil && production.eraseValue {
+				add(at(production.statement), "type-alias", alias, call.MappedOrigin, call.Origins)
+				return
+			}
+			value := analysis.values[node]
+			schema := analysis.schemas[node]
+			text := ""
+			if schema != nil {
+				text = schemaRuntimeBinding + "<" + call.SchemaType + ">(" + ctJSON(schema.descriptor) + ")"
+			} else {
+				_, literal, err := comptimePlanValue(value)
+				if err != nil {
+					result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: at(node), Code: "VCT1012", Message: err.Error()})
+					return
+				}
+				text = literal(kinds[file.FileName()] != "javascript" && kinds[file.FileName()] != "jsx")
+			}
+			add(call.At, "intrinsic-call", text, call.MappedOrigin, call.Origins)
+			if production != nil {
+				location := at(production.statement)
+				location.Span.Start += location.Span.Length
+				location.Span.Length = 0
+				add(location, "type-alias", "\n"+alias, call.MappedOrigin, call.Origins)
+			}
+		})
+		if analysis.schemaFiles[file] {
+			for _, call := range result.Calls {
+				if call.At.File == names[file.FileName()] && call.SchemaType != "" {
+					add(comptimePlanRange{File: call.At.File}, "schema-runtime-import", "import { "+schemaRuntimeBinding+" } from "+ctQuote(input.SchemaRuntimeImport)+";\n", call.MappedOrigin, []comptimePlanRange{call.MappedOrigin})
+					break
+				}
+			}
+		}
+	}
+	sort.SliceStable(result.Edits, func(i, j int) bool { return comptimeRangeLess(result.Edits[i].At, result.Edits[j].At) })
+	for i := 1; i < len(result.Edits); i++ {
+		left, right := result.Edits[i-1].At, result.Edits[i].At
+		if left.File == right.File && left.Span.Start+left.Span.Length > right.Span.Start {
+			result.Diagnostics = append(result.Diagnostics, comptimePlanIssue{At: right, Code: "VCT1009", Message: "overlapping or invalid comptime source replacement"})
+		}
+	}
+	if len(result.Diagnostics) > 0 {
+		result.Calls = []comptimePlanCall{}
+		result.Edits = []comptimePlanEdit{}
+		return result, nil
+	}
+	result.Complete = true
+	return result, nil
+}
+
+func comptimeRangeLess(left, right comptimePlanRange) bool {
+	if left.File != right.File {
+		return compareUTF16(left.File, right.File) < 0
+	}
+	if left.Span.Start != right.Span.Start {
+		return left.Span.Start < right.Span.Start
+	}
+	return left.Span.Length < right.Span.Length
+}
+
+// Encode the existing postorder graph wire format without losing observable
+// property order or allocation identity. Serialization work has its own byte
+// budget; a repeated large primitive cannot evade it through a compact AST.
+func comptimePlanValue(value ctValue) (string, func(bool) string, error) {
+	ids := map[any]int{}
+	nodes := []string{}
+	values := []ctValue{}
+	used := 0
+	shared := false
+	budgetFailure := errors.New("comptime graph exceeds its 8 MiB output budget")
+	chargeBytes := func(bytes int) {
+		used += bytes
+		if used > 8*1024*1024 {
+			panic(budgetFailure)
+		}
+	}
+	charge := func(text string) string {
+		chargeBytes(len(text))
+		return text
+	}
+	var visit func(ctValue) string
+	visit = func(value ctValue) string {
+		identity := ctContainerIdentity(value)
+		if identity == nil {
+			return charge(ctCanonical(value))
+		}
+		if prior, ok := ids[identity]; ok {
+			shared = true
+			return charge(fmt.Sprintf(`["ref",%d]`, prior))
+		}
+		parts := []string{}
+		node := ""
+		if value.kind == ctArray {
+			for _, item := range value.arr.items {
+				parts = append(parts, visit(item))
+			}
+			chargeBytes(len(`{"kind":"array","items":[]}`) + max(0, len(parts)-1))
+			node = `{"kind":"array","items":[` + strings.Join(parts, ",") + `]}`
+		} else {
+			for _, key := range value.obj.ownKeys() {
+				parts = append(parts, "["+charge(ctQuote(key))+","+visit(value.obj.values[key])+"]")
+			}
+			chargeBytes(len(`{"kind":"object","entries":[]}`) + 3*len(parts) + max(0, len(parts)-1))
+			node = `{"kind":"object","entries":[` + strings.Join(parts, ",") + `]}`
+		}
+		id := len(nodes)
+		nodes = append(nodes, node)
+		values = append(values, value)
+		ids[identity] = id
+		return charge(fmt.Sprintf(`["ref",%d]`, id))
+	}
+	var graph string
+	var failure error
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				if err == budgetFailure {
+					failure = budgetFailure
+				} else {
+					panic(err)
+				}
+			}
+		}()
+		root := visit(value)
+		chargeBytes(len(`{"version":1,"nodes":[],"root":}`) + max(0, len(nodes)-1))
+		graph = `{"version":1,"nodes":[` + strings.Join(nodes, ",") + `],"root":` + root + `}`
+	}()
+	if failure != nil {
+		return "", nil, failure
+	}
+	var literal func(ctValue, map[any]string) string
+	literal = func(current ctValue, aliases map[any]string) string {
+		if name, ok := aliases[ctContainerIdentity(current)]; ok {
+			return name
+		}
+		if current.kind != ctArray && current.kind != ctObject {
+			return ctCanonical(current)
+		}
+		parts := []string{}
+		if current.kind == ctArray {
+			for _, item := range current.arr.items {
+				parts = append(parts, literal(item, aliases))
+			}
+			return "[" + strings.Join(parts, ",") + "]"
+		}
+		for _, key := range current.obj.ownKeys() {
+			parts = append(parts, "["+ctQuote(key)+"]:"+literal(current.obj.values[key], aliases))
+		}
+		return "({" + strings.Join(parts, ",") + "})"
+	}
+	emit := func(typescript bool) string {
+		if !shared {
+			text := literal(value, nil)
+			if typescript {
+				return "(" + text + " as const)"
+			}
+			return text
+		}
+		aliases := map[any]string{}
+		parts := []string{}
+		for index, current := range values {
+			name := fmt.Sprintf("__vibelangComptimeValue%d", index)
+			text := literal(current, aliases)
+			if typescript {
+				text += " as const"
+			}
+			parts = append(parts, "const "+name+"="+text+";")
+			aliases[ctContainerIdentity(current)] = name
+		}
+		return "(()=>{" + strings.Join(parts, "") + "return " + literal(value, aliases) + ";})()"
+	}
+	return graph, emit, nil
+}

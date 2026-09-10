@@ -1,0 +1,498 @@
+package main
+
+// Protocol adaptation: see THIRD_PARTY_NOTICES.md. This is an inert graph
+// compiler, not a source-checking proof, deployment approval, or cache service.
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"regexp"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+)
+
+type keyedPlanNode struct {
+	ID, Kind, Key     string
+	Material, Effects map[string]any
+	DependsOn         []string
+	Conflicts         []any
+	Strategy, Runtime string
+	Priority          float64
+	Generation        int
+}
+
+func (n keyedPlanNode) wire() map[string]any {
+	return map[string]any{"id": n.ID, "kind": n.Kind, "key": n.Key, "material": n.Material,
+		"effects": n.Effects, "dependsOn": n.DependsOn, "conflicts": n.Conflicts,
+		"strategy": n.Strategy, "runtime": n.Runtime, "priority": n.Priority, "generation": n.Generation}
+}
+
+type keyedPlan struct {
+	ID, Flow, BaseDigest, Digest string
+	Generation                   int
+	Nodes                        []keyedPlanNode
+}
+
+func keyedPlanNodesWire(nodes []keyedPlanNode) []any {
+	out := make([]any, 0, len(nodes))
+	for _, node := range nodes {
+		out = append(out, node.wire())
+	}
+	return out
+}
+
+func (p keyedPlan) wire() map[string]any {
+	return map[string]any{"planId": p.ID, "flow": p.Flow, "baseDigest": p.BaseDigest, "digest": p.Digest,
+		"generation": p.Generation, "nodes": keyedPlanNodesWire(p.Nodes)}
+}
+
+func keyedPlanApproval(id, flow string, nodes []keyedPlanNode) string {
+	projected := []any{}
+	for _, node := range nodes {
+		value := node.wire()
+		delete(value, "material")
+		delete(value, "generation")
+		projected = append(projected, value)
+	}
+	return keyedPlanKey(map[string]any{"kind": "content", "body": map[string]any{"kind": "plan", "planId": id, "flow": flow},
+		"inputs": map[string]any{"nodes": map[string]any{"kind": "literal", "value": projected}},
+		"layers": []any{}, "capabilities": map[string]any{}})
+}
+
+func keyedPlanInteger(value any) (float64, bool) {
+	number, ok := value.(float64)
+	return number, ok && !math.IsNaN(number) && !math.IsInf(number, 0) && math.Trunc(number) == number && math.Abs(number) <= 9007199254740991
+}
+
+func keyedPlanEnum(value any, options ...string) (string, bool) {
+	text, ok := value.(string)
+	if ok {
+		for _, option := range options {
+			if text == option {
+				return text, true
+			}
+		}
+	}
+	return "", false
+}
+
+func keyedPlanIdentity(record map[string]any) (string, string, error) {
+	id, idOK := record["planId"].(string)
+	flow, flowOK := record["flow"].(string)
+	if !idOK || !flowOK || id == "" || flow == "" {
+		return "", "", keyedPlanFail("invalid_node", "planId and flow must be nonempty strings")
+	}
+	return id, flow, nil
+}
+
+func (c *keyedPlanEffectsContext) draft(value any) (keyedPlanNode, error) {
+	node := keyedPlanNode{Kind: "step", Strategy: "serialize", Runtime: "delay-rebase", DependsOn: []string{}, Conflicts: []any{}}
+	record, ok := value.(map[string]any)
+	if !ok {
+		return node, keyedPlanFail("invalid_node", "node must be an object")
+	}
+	node.ID, ok = record["id"].(string)
+	if !ok || node.ID == "" {
+		return node, keyedPlanFail("invalid_node", "node id must be nonempty")
+	}
+	for _, field := range []struct {
+		name    string
+		target  *string
+		options []string
+	}{
+		{"kind", &node.Kind, []string{"step", "agent", "merge"}},
+		{"conflictStrategy", &node.Strategy, []string{"serialize", "lane", "fail"}},
+		{"runtimeStrategy", &node.Runtime, []string{"delay-rebase", "stop-merge"}},
+	} {
+		if value, present := record[field.name]; present {
+			*field.target, ok = keyedPlanEnum(value, field.options...)
+			if !ok {
+				return node, keyedPlanFail("invalid_node", "invalid node "+field.name)
+			}
+		}
+	}
+	if value, present := record["priority"]; present {
+		node.Priority, ok = keyedPlanInteger(value)
+		if !ok {
+			return node, keyedPlanFail("invalid_node", "node priority must be a safe integer")
+		}
+	}
+	var err error
+	node.Material, err = keyedPlanMaterial(record["material"])
+	if err != nil {
+		return node, err
+	}
+	node.Effects, err = c.decode(record["effects"])
+	if err != nil {
+		return node, err
+	}
+	// The decoded declaration is the sole effect authority for plan identity.
+	// A caller cannot hash a different material.effects from the reviewed row.
+	node.Material["effects"] = node.Effects
+	node.DependsOn = keyedPlanDependencies(node.Material)
+	return node, nil
+}
+
+func (c *keyedPlanEffectsContext) keyNodes(values []any, existing []keyedPlanNode, generation int) ([]keyedPlanNode, error) {
+	if len(values)+len(existing) > keyedPlanMaxNodes {
+		return nil, keyedPlanFail("graph_too_large", "Plan exceeds 10000 nodes")
+	}
+	drafts := make([]keyedPlanNode, 0, len(values))
+	// Match the reference's validation-before-duplicate-detection order.
+	for _, value := range values {
+		draft, err := c.draft(value)
+		if err != nil {
+			return nil, err
+		}
+		drafts = append(drafts, draft)
+	}
+	digests, byID := map[string]string{}, map[string]int{}
+	for _, node := range existing {
+		digests[node.ID] = node.Key
+	}
+	for index, node := range drafts {
+		_, known := digests[node.ID]
+		_, repeated := byID[node.ID]
+		if known || repeated {
+			return nil, keyedPlanFail("duplicate_node", "duplicate node address")
+		}
+		byID[node.ID] = index
+	}
+	type frame struct{ index, next int }
+	state := make([]uint8, len(drafts))
+	ordered := []int{}
+	for index := range drafts {
+		if state[index] == 2 {
+			continue
+		}
+		state[index] = 1
+		stack := []frame{{index: index}}
+		for len(stack) != 0 {
+			current := &stack[len(stack)-1]
+			dependencies := drafts[current.index].DependsOn
+			if current.next == len(dependencies) {
+				state[current.index] = 2
+				ordered = append(ordered, current.index)
+				stack = stack[:len(stack)-1]
+				continue
+			}
+			dependency := dependencies[current.next]
+			current.next++
+			if _, known := digests[dependency]; known {
+				continue
+			}
+			next, found := byID[dependency]
+			if !found {
+				return nil, keyedPlanFail("unknown_dependency", "node references an unknown dependency")
+			}
+			if state[next] == 1 {
+				return nil, keyedPlanFail("cycle", "material dependency cycle")
+			}
+			if state[next] == 2 {
+				continue
+			}
+			state[next] = 1
+			stack = append(stack, frame{index: next})
+		}
+	}
+	out := make([]keyedPlanNode, 0, len(drafts))
+	for _, index := range ordered {
+		node := drafts[index]
+		if removes, ok := node.Effects["removes"].([]string); ok {
+			writes := keyedPlanExpanded(node.Effects["writes"])
+			for _, removal := range removes {
+				if len(c.overlap(writes, []any{removal})) != 0 {
+					return nil, keyedPlanFail("invalid_effects", "node both writes and removes an overlapping path")
+				}
+			}
+		}
+		var err error
+		node.Key, err = keyedPlanNodeKey(node.Material, digests)
+		if err != nil {
+			return nil, err
+		}
+		node.Generation = generation
+		digests[node.ID] = node.Key
+		out = append(out, node)
+	}
+	return out, nil
+}
+
+func (c *keyedPlanEffectsContext) compile(value any) (keyedPlan, error) {
+	plan := keyedPlan{}
+	record, ok := value.(map[string]any)
+	if !ok {
+		return plan, keyedPlanFail("invalid_node", "Plan options must be an object")
+	}
+	var err error
+	plan.ID, plan.Flow, err = keyedPlanIdentity(record)
+	if err != nil {
+		return plan, err
+	}
+	values, ok := record["nodes"].([]any)
+	if !ok {
+		return plan, keyedPlanFail("invalid_node", "Plan nodes must be an array")
+	}
+	plan.Nodes, err = c.keyNodes(values, nil, 0)
+	if err != nil {
+		return plan, err
+	}
+	if err := c.annotate(plan.Nodes, 0); err != nil {
+		return plan, err
+	}
+	plan.Digest = keyedPlanApproval(plan.ID, plan.Flow, plan.Nodes)
+	plan.BaseDigest = plan.Digest
+	return plan, nil
+}
+
+// Imported artifacts are reconstructed, never accepted because they carry a
+// plausible hash. Projection discards only schema-excess fields; all declared
+// node fields, including generation and the pre-projection material, are bound.
+func (c *keyedPlanEffectsContext) verify(value any) (keyedPlan, error) {
+	plan := keyedPlan{}
+	invalid := func() (keyedPlan, error) {
+		return plan, keyedPlanFail("invalid_plan", "Plan does not match its compiled contract")
+	}
+	record, ok := value.(map[string]any)
+	if !ok {
+		return invalid()
+	}
+	var err error
+	plan.ID, plan.Flow, err = keyedPlanIdentity(record)
+	if err != nil {
+		return invalid()
+	}
+	values, ok := record["nodes"].([]any)
+	if !ok {
+		return invalid()
+	}
+	if len(values) > keyedPlanMaxNodes {
+		return plan, keyedPlanFail("graph_too_large", "Plan exceeds 10000 nodes")
+	}
+	generation, valid := keyedPlanInteger(record["generation"])
+	if !valid || generation < 0 || generation > float64(len(values)) || !keyedPlanStoredKey(record["digest"]) || !keyedPlanStoredKey(record["baseDigest"]) {
+		return invalid()
+	}
+	plan.Generation = int(generation)
+	claimed, drafts := []any{}, []any{}
+	generations := map[string]int{}
+	previous := 0
+	for _, value := range values {
+		n, ok := value.(map[string]any)
+		if !ok {
+			return invalid()
+		}
+		material, err := keyedPlanMaterial(n["material"])
+		if err != nil {
+			return invalid()
+		}
+		draft := map[string]any{"id": n["id"], "kind": n["kind"], "material": n["material"], "effects": n["effects"],
+			"conflictStrategy": n["strategy"], "runtimeStrategy": n["runtime"], "priority": n["priority"]}
+		node, err := c.draft(draft)
+		if err != nil {
+			return invalid()
+		}
+		ng, valid := keyedPlanInteger(n["generation"])
+		if !valid || ng < float64(previous) || ng > float64(previous+1) || !keyedPlanStoredKey(n["key"]) {
+			return invalid()
+		}
+		if _, duplicate := generations[node.ID]; duplicate {
+			return plan, keyedPlanFail("duplicate_node", "duplicate node address")
+		}
+		node.Generation, previous = int(ng), int(ng)
+		generations[node.ID] = node.Generation
+		node.Key = n["key"].(string)
+		node.Material = material
+		node.DependsOn, valid = keyedPlanStrings(n["dependsOn"])
+		if !valid {
+			return invalid()
+		}
+		for _, dependency := range node.DependsOn {
+			if dependency == "" {
+				return invalid()
+			}
+		}
+		conflicts, ok := n["conflicts"].([]any)
+		if !ok {
+			return invalid()
+		}
+		for _, conflict := range conflicts {
+			annotation, ok := conflict.(map[string]any)
+			if !ok {
+				return invalid()
+			}
+			with, ok := annotation["with"].(string)
+			paths, pathOK := keyedPlanStrings(annotation["paths"])
+			strategy, strategyOK := keyedPlanEnum(annotation["strategy"], "serialize", "lane", "fail")
+			runtime, runtimeOK := keyedPlanEnum(annotation["runtime"], "delay-rebase", "stop-merge")
+			if !ok || with == "" || !pathOK || !strategyOK || !runtimeOK {
+				return invalid()
+			}
+			node.Conflicts = append(node.Conflicts, map[string]any{"with": with, "paths": paths, "strategy": strategy, "runtime": runtime})
+		}
+		claimed, drafts = append(claimed, node.wire()), append(drafts, draft)
+	}
+	if previous != plan.Generation {
+		return invalid()
+	}
+	for _, value := range claimed {
+		node := value.(map[string]any)
+		for _, dependency := range keyedPlanDependencies(node["material"].(map[string]any)) {
+			if next, ok := generations[dependency]; ok && next > node["generation"].(int) {
+				return invalid()
+			}
+		}
+	}
+	keyed, err := c.keyNodes(drafts, nil, 0)
+	if err != nil {
+		return plan, err
+	}
+	hasProducer := false
+	for index := range keyed {
+		keyed[index].Generation = generations[keyed[index].ID]
+		hasProducer = hasProducer || len(keyedPlanProduced(keyed[index].Effects)) != 0
+	}
+	plan.Nodes = keyed
+	if hasProducer {
+		// Replay generation boundaries. Later effects cannot rewrite a row
+		// that an earlier approval already published.
+		groups := make([][]keyedPlanNode, plan.Generation+1)
+		for _, node := range keyed {
+			groups[node.Generation] = append(groups[node.Generation], node)
+		}
+		plan.Nodes = []keyedPlanNode{}
+		for _, group := range groups {
+			frozen := len(plan.Nodes)
+			plan.Nodes = append(plan.Nodes, group...)
+			if err := c.annotate(plan.Nodes, frozen); err != nil {
+				return plan, err
+			}
+		}
+	}
+	base := []keyedPlanNode{}
+	for _, node := range plan.Nodes {
+		if node.Generation == 0 {
+			base = append(base, node)
+		}
+	}
+	plan.BaseDigest = keyedPlanApproval(plan.ID, plan.Flow, base)
+	plan.Digest = plan.BaseDigest
+	if plan.Generation != 0 {
+		plan.Digest = keyedPlanApproval(plan.ID, plan.Flow, plan.Nodes)
+	}
+	if record["baseDigest"] != plan.BaseDigest || record["digest"] != plan.Digest || keyedPlanKey(claimed) != keyedPlanKey(keyedPlanNodesWire(plan.Nodes)) {
+		return invalid()
+	}
+	return plan, nil
+}
+
+func (c *keyedPlanEffectsContext) append(value any) (keyedPlan, error) {
+	record, ok := value.(map[string]any)
+	if !ok {
+		return keyedPlan{}, keyedPlanFail("invalid_node", "append requires a plan and node drafts")
+	}
+	plan, err := c.verify(record["plan"])
+	if err != nil {
+		return plan, err
+	}
+	values, ok := record["nodes"].([]any)
+	if !ok || len(values) == 0 {
+		return plan, keyedPlanFail("invalid_node", "append requires at least one node draft")
+	}
+	keyed, err := c.keyNodes(values, plan.Nodes, plan.Generation+1)
+	if err != nil {
+		return plan, err
+	}
+	frozen := len(plan.Nodes)
+	plan.Nodes = append(plan.Nodes, keyed...)
+	if err := c.annotate(plan.Nodes, frozen); err != nil {
+		return plan, err
+	}
+	plan.Generation++
+	plan.Digest = keyedPlanApproval(plan.ID, plan.Flow, plan.Nodes)
+	return plan, nil
+}
+
+type keyedPlanRequest struct {
+	Operation string `json:"operation"`
+	InputJSON string `json:"inputJson"`
+}
+
+type keyedPlanResult struct {
+	OK        bool   `json:"ok"`
+	PlanJSON  string `json:"planJson"`
+	Key       string `json:"key"`
+	ErrorCode string `json:"errorCode"`
+	Message   string `json:"message"`
+}
+
+func compileKeyedPlan(input keyedPlanRequest) keyedPlanResult {
+	out := keyedPlanResult{}
+	value, err := decodeKeyedPlanJSON(input.InputJSON)
+	if err == nil {
+		c := &keyedPlanEffectsContext{patterns: map[string]*regexp.Regexp{}}
+		var plan keyedPlan
+		switch input.Operation {
+		case "derive-key":
+			out.Key = keyedPlanKey(value)
+		case "compile":
+			plan, err = c.compile(value)
+		case "verify":
+			plan, err = c.verify(value)
+		case "append":
+			plan, err = c.append(value)
+		default:
+			err = keyedPlanFail("invalid_operation", "expected compile, verify, append or derive-key")
+		}
+		if err == nil && input.Operation != "derive-key" {
+			out.PlanJSON = durableCanonicalJSON(plan.wire())
+			if _, invalid := decodeKeyedPlanJSON(out.PlanJSON); invalid != nil {
+				err = keyedPlanFail("graph_too_large", "compiled Plan exceeds its encoded byte or traversal budget")
+			}
+		}
+	}
+	if err != nil {
+		out = keyedPlanResult{ErrorCode: "invalid_plan", Message: err.Error()}
+		var failure *keyedPlanError
+		if errors.As(err, &failure) {
+			out.ErrorCode, out.Message = failure.Code, failure.Message
+		}
+		return out
+	}
+	out.OK = true
+	return out
+}
+
+func serveKeyedPlan(apiVersion int) {
+	response := struct {
+		APIVersion       int             `json:"apiVersion"`
+		CompilerRevision string          `json:"compilerRevision"`
+		Result           keyedPlanResult `json:"result"`
+		Error            *wireError      `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 2*keyedPlanMaxBytes + 65536 + 1}
+	var input keyedPlanRequest
+	payload, err := io.ReadAll(limited)
+	if limited.N == 0 {
+		err = errors.New("keyed Plan request exceeds encoded byte budget")
+	}
+	if err == nil {
+		_, err = decodeKeyedPlanBoundedJSON(string(payload), 2*keyedPlanMaxBytes+65536)
+	}
+	if err == nil {
+		err = wirejson.Decode(bytes.NewReader(payload), &input)
+	}
+	if err == nil {
+		response.Result = compileKeyedPlan(input)
+	} else {
+		response.Error = &wireError{Code: "VIBELANG_GO_KEYED_PLAN", Message: "invalid keyed Plan request: " + err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

@@ -1,0 +1,287 @@
+package main
+
+// Keyed Plan wire compatibility with the upstream durable library.
+// The protocol is defined by its MIT-licensed plan/StepKey and keys/Key modules;
+// see THIRD_PARTY_NOTICES.md and compiler/SMITHERS-INTEROP.md. // brand-gate: allow
+// These are data operations. They neither inspect nor execute source code.
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+)
+
+const keyedPlanMaterialVersion = "flows/key-material/v2"
+const keyedPlanMaxNodes = 10_000
+const keyedPlanMaxBytes = 16 * 1024 * 1024
+
+type keyedPlanError struct {
+	Code    string
+	Message string
+}
+
+func (e *keyedPlanError) Error() string { return e.Code + ": " + e.Message }
+
+func keyedPlanFail(code, message string) error {
+	return &keyedPlanError{Code: code, Message: message}
+}
+
+// Decode before computing identity: encoding/json alone repairs ill-formed
+// Unicode and accepts duplicate object keys. Neither is permitted in a signed
+// artifact. Unlike comptime materialization, RFC 8785 normalizes -0 to 0.
+func decodeKeyedPlanJSON(source string) (any, error) {
+	return decodeKeyedPlanBoundedJSON(source, keyedPlanMaxBytes)
+}
+
+func decodeKeyedPlanBoundedJSON(source string, byteBudget int) (any, error) {
+	if len(source) > byteBudget || wirejson.Validate([]byte(source)) != nil {
+		return nil, keyedPlanFail("invalid_json", "expected bounded, well-formed JSON")
+	}
+	decoder := json.NewDecoder(strings.NewReader(source))
+	visited := 0
+	var read func(int) (any, error)
+	read = func(depth int) (any, error) {
+		visited++
+		if depth > 256 || visited > 1_000_000 {
+			return nil, keyedPlanFail("invalid_json", "JSON traversal budget exceeded")
+		}
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, keyedPlanFail("invalid_json", "JSON value cannot be represented")
+		}
+		switch token {
+		case json.Delim('{'):
+			value := map[string]any{}
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return nil, keyedPlanFail("invalid_json", "invalid object field")
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return nil, keyedPlanFail("invalid_json", "object field must be a string")
+				}
+				if _, exists := value[key]; exists {
+					return nil, keyedPlanFail("invalid_json", "duplicate object fields are not identity material")
+				}
+				child, err := read(depth + 1)
+				if err != nil {
+					return nil, err
+				}
+				value[key] = child
+			}
+			if end, err := decoder.Token(); err != nil || end != json.Delim('}') {
+				return nil, keyedPlanFail("invalid_json", "unterminated object")
+			}
+			return value, nil
+		case json.Delim('['):
+			value := []any{}
+			for decoder.More() {
+				child, err := read(depth + 1)
+				if err != nil {
+					return nil, err
+				}
+				value = append(value, child)
+			}
+			if end, err := decoder.Token(); err != nil || end != json.Delim(']') {
+				return nil, keyedPlanFail("invalid_json", "unterminated array")
+			}
+			return value, nil
+		}
+		switch value := token.(type) {
+		case nil, bool, string:
+			return value, nil
+		case float64:
+			if !math.IsNaN(value) && !math.IsInf(value, 0) {
+				return value, nil
+			}
+		}
+		return nil, keyedPlanFail("invalid_json", "JSON contains a non-finite or unsupported value")
+	}
+	value, err := read(0)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		return nil, keyedPlanFail("invalid_json", "expected exactly one JSON value")
+	}
+	return value, nil
+}
+
+func keyedPlanKey(value any) string { return "key1_" + durableDigest(value) }
+
+func keyedPlanStoredKey(value any) bool {
+	text, ok := value.(string)
+	if !ok || len(text) != 69 || !strings.HasPrefix(text, "key1_") {
+		return false
+	}
+	for _, unit := range text[5:] {
+		if !(unit >= '0' && unit <= '9' || unit >= 'a' && unit <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func keyedPlanStrings(value any) ([]string, bool) {
+	items, ok := value.([]any)
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		text, ok := item.(string)
+		if !ok {
+			return nil, false
+		}
+		out = append(out, text)
+	}
+	return out, true
+}
+
+func keyedPlanStringSet(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = keyedPlanNFC(value)
+		if !seen[value] {
+			seen[value] = true
+			out = append(out, value)
+		}
+	}
+	sortUTF16(out)
+	return out
+}
+
+func keyedPlanMaterial(value any) (map[string]any, error) {
+	record, ok := value.(map[string]any)
+	if !ok || record["version"] != keyedPlanMaterialVersion {
+		return nil, keyedPlanFail("invalid_node", "unsupported key material/version")
+	}
+	if _, present := record["body"]; !present {
+		return nil, keyedPlanFail("invalid_node", "key material requires a body")
+	}
+	kind, _ := record["kind"].(string)
+	if kind != "sealed" && kind != "compensable" && kind != "irreversible" {
+		return nil, keyedPlanFail("invalid_node", "key material requires an explicit recovery tier")
+	}
+	inputs, inputOK := record["inputs"].([]any)
+	layers, layersOK := keyedPlanStrings(record["layers"])
+	capabilities, capabilitiesOK := keyedPlanStrings(record["capabilities"])
+	if !inputOK || !layersOK || !capabilitiesOK {
+		return nil, keyedPlanFail("invalid_node", "key material requires inputs, layers and capabilities arrays")
+	}
+	projected := []any{}
+	for _, input := range inputs {
+		entry, ok := input.(map[string]any)
+		if !ok {
+			return nil, keyedPlanFail("invalid_node", "material input must be a tagged reference")
+		}
+		item := map[string]any{"_tag": entry["_tag"]}
+		switch entry["_tag"] {
+		case "Literal":
+			value, present := entry["value"]
+			if !present {
+				return nil, keyedPlanFail("invalid_node", "Literal requires a value")
+			}
+			item["value"] = value
+		case "Ref", "Pending":
+			from, ok := entry["from"].(string)
+			if !ok || from == "" {
+				return nil, keyedPlanFail("invalid_node", "material dependency requires a nonempty address")
+			}
+			item["from"] = from
+			if entry["_tag"] == "Ref" {
+				path, ok := keyedPlanStrings(entry["path"])
+				if !ok {
+					return nil, keyedPlanFail("invalid_node", "Ref requires a string projection path")
+				}
+				item["path"] = path
+			}
+		default:
+			return nil, keyedPlanFail("invalid_node", "unsupported material input tag")
+		}
+		projected = append(projected, item)
+	}
+	out := map[string]any{"version": keyedPlanMaterialVersion, "kind": kind, "inputs": projected,
+		"layers": layers, "capabilities": capabilities}
+	for _, field := range []string{"body", "effects", "placement"} {
+		if value, present := record[field]; present {
+			out[field] = value
+		}
+	}
+	if value, present := record["nondeterministic"]; present {
+		if value != true {
+			return nil, keyedPlanFail("invalid_node", "nondeterministic must be true or absent")
+		}
+		out["nondeterministic"] = true
+	}
+	return out, nil
+}
+
+func keyedPlanDependencies(material map[string]any) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, input := range material["inputs"].([]any) {
+		reference := input.(map[string]any)
+		if reference["_tag"] == "Literal" {
+			continue
+		}
+		from := reference["from"].(string)
+		if !seen[from] {
+			out, seen[from] = append(out, from), true
+		}
+	}
+	return out
+}
+
+// This is a declaration identity, never authority to reuse an execution.
+// Structural node addresses resolve dependencies but are not hashed themselves.
+func keyedPlanNodeKey(material map[string]any, dependencies map[string]string) (string, error) {
+	body := map[string]any{"version": keyedPlanMaterialVersion}
+	if value, present := material["body"]; present {
+		body["declaration"] = value
+	}
+	for _, field := range []string{"nondeterministic", "effects", "placement"} {
+		if value, present := material[field]; present {
+			body[field] = value
+		}
+	}
+	inputs := map[string]any{}
+	for index, input := range material["inputs"].([]any) {
+		reference := input.(map[string]any)
+		item := map[string]any{}
+		if reference["_tag"] == "Literal" {
+			item["kind"] = "literal"
+			if value, present := reference["value"]; present {
+				item["value"] = value
+			}
+		} else {
+			digest, found := dependencies[reference["from"].(string)]
+			if !found {
+				return "", keyedPlanFail("missing_dependency", "missing graph dependency key")
+			}
+			item["kind"], item["digest"] = "digest", digest
+			if reference["_tag"] == "Pending" {
+				item["reference"] = "pending"
+			} else if path := reference["path"].([]string); len(path) != 0 {
+				item["reference"], item["path"] = "ref-projected", path
+			} else {
+				item["reference"] = "ref"
+			}
+		}
+		inputs[fmt.Sprint(index)] = item
+	}
+	identity := map[string]any{"kind": "content", "body": body, "inputs": inputs,
+		"layers":       keyedPlanStringSet(material["layers"].([]string)),
+		"capabilities": map[string]any{"declared": keyedPlanStringSet(material["capabilities"].([]string))}}
+	if material["kind"] != "sealed" {
+		identity["kind"], identity["tier"] = "plan-declaration", material["kind"]
+	}
+	return keyedPlanKey(identity), nil
+}

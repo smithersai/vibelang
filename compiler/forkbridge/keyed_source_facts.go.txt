@@ -1,0 +1,193 @@
+package main
+
+// Control-flow facts belong to the fully checked retained-body program, where
+// propagation has its actual success type (including null), not to TypeScript's
+// non-null assertion. Only inert descriptors cross into graph extraction.
+
+import (
+	"context"
+	"encoding/json"
+	"sort"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+type keyedSourceLocation struct {
+	file       string
+	start, end int
+	name       string
+}
+
+type keyedSourceFact struct {
+	declaration        keyedSourceLocation
+	declared, selected any
+}
+
+func keyedSourceIdentifierLocation(node *ast.Node) keyedSourceLocation {
+	file := ast.GetSourceFileOfNode(node)
+	return keyedSourceLocation{durableLogicalFile(file), scanner.GetTokenPosOfNode(node, file, false), node.End(), node.Text()}
+}
+
+// Record real authored binding identities BEFORE lowering. This admits Unicode
+// escape spellings without treating approximate source-map text as evidence.
+func recordKeyedSourceBindings(a *rowAnalysis, files []*ast.SourceFile, p *project) {
+	bindings := map[keyedSourceLocation]keyedSourceLocation{}
+	visits := 0
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		visits++
+		if visits > 100_000 {
+			return true
+		}
+		if ast.IsIdentifier(node) {
+			symbol := a.checker.GetSymbolAtLocation(node)
+			if symbol != nil && symbol.ValueDeclaration != nil {
+				declaration := symbol.ValueDeclaration
+				if declaration.Name() != nil && ast.IsIdentifier(declaration.Name()) &&
+					(ast.IsParameterDeclaration(declaration) || ast.IsVariableDeclaration(declaration) && ast.IsVarConst(declaration)) {
+					bindings[keyedSourceIdentifierLocation(node)] = keyedSourceIdentifierLocation(declaration.Name())
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	for _, file := range files {
+		file.AsNode().ForEachChild(visit)
+		if visits > 100_000 {
+			return
+		}
+	}
+	p.staticPlanBindings = bindings
+}
+
+// A diagnostic's best-effort position is not a binding proof. Require BOTH
+// token boundaries to have explicit printer mappings and a real authored
+// identifier at that exact span. Renamed/synthesized/ambiguous tokens supply no
+// fact; both Programs must also agree on the reference's declaration identity.
+func keyedSourceMappedIdentifier(p *project, node *ast.Node) (keyedSourceLocation, bool) {
+	file := ast.GetSourceFileOfNode(node)
+	input := p.vibelangByLowered[file.FileName()]
+	if input == nil || !ast.IsIdentifier(node) {
+		return keyedSourceLocation{}, false
+	}
+	position := func(offset int) (int, bool) {
+		line, column := input.loweredLines.position(offset)
+		if line < 0 || line >= len(input.points) {
+			return 0, false
+		}
+		points := input.points[line]
+		index := sort.Search(len(points), func(i int) bool { return points[i].generatedCharacter >= column })
+		mapped, found := 0, false
+		for ; index < len(points) && points[index].generatedCharacter == column; index++ {
+			point := points[index]
+			if !point.hasSource {
+				return 0, false
+			}
+			current := input.authoredLines.byteOffset(point.sourceLine, point.sourceCharacter)
+			if found && current != mapped {
+				return 0, false
+			}
+			mapped, found = current, true
+		}
+		return mapped, found
+	}
+	start, startOK := position(scanner.GetTokenPosOfNode(node, file, false))
+	end, endOK := position(node.End())
+	if !startOK || !endOK || start < 0 || end < start || end > len(input.authoredText) {
+		return keyedSourceLocation{}, false
+	}
+	location := keyedSourceLocation{input.logicalPath, start, end, node.Text()}
+	_, found := p.staticPlanBindings[location]
+	return location, found
+}
+
+func collectKeyedSourceFacts(ctx context.Context, program *compiler.Program, p *project) error {
+	if p.staticPlanBindings == nil {
+		return nil
+	}
+	types, done := program.GetTypeChecker(ctx)
+	defer done()
+	prelude, err := loadPreludeSymbols(program, types)
+	if err != nil {
+		return err
+	}
+	owner := newLowerer(types, prelude, nil, nil, map[string]string{})
+	d := &durableFunctionLowerer{owner: owner}
+	facts := map[keyedSourceLocation]keyedSourceFact{}
+	ambiguous := map[keyedSourceLocation]bool{}
+	descriptors := map[checker.TypeId]any{}
+	visits, bytes := 0, 0
+	var exceeded bool
+	describe := func(t *checker.Type, node *ast.Node) any {
+		if value, found := descriptors[t.Id()]; found {
+			return value
+		}
+		value, err := d.durableTypeDescriptor(t, node, map[checker.TypeId]bool{}, false)
+		if err != nil {
+			value = nil
+		} else {
+			encoded, err := json.Marshal(value)
+			if err != nil {
+				value = nil
+			} else {
+				bytes += len(encoded)
+				exceeded = bytes > 4*1024*1024
+			}
+		}
+		descriptors[t.Id()] = value
+		return value
+	}
+	for _, file := range program.SourceFiles() {
+		if p.vibelangByLowered[file.FileName()] == nil {
+			continue
+		}
+		owner.file = file
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			visits++
+			if exceeded || visits > 100_000 {
+				exceeded = true
+				return true
+			}
+			if ast.IsIdentifier(node) {
+				symbol := types.GetSymbolAtLocation(node)
+				if symbol != nil && symbol.ValueDeclaration != nil {
+					declaration := symbol.ValueDeclaration
+					if declaration.Name() != nil && ast.IsIdentifier(declaration.Name()) &&
+						(ast.IsParameterDeclaration(declaration) || ast.IsVariableDeclaration(declaration) && ast.IsVarConst(declaration)) {
+						use, useOK := keyedSourceMappedIdentifier(p, node)
+						binding, bindingOK := keyedSourceMappedIdentifier(p, declaration.Name())
+						if useOK && bindingOK && !ambiguous[use] && p.staticPlanBindings[use] == binding {
+							declared, selected := types.GetTypeAtLocation(declaration.Name()), types.GetTypeAtLocation(node)
+							if declared != selected {
+								plain, narrowed := describe(declared, declaration.Name()), describe(selected, node)
+								if plain != nil && narrowed != nil {
+									if _, duplicate := facts[use]; duplicate {
+										delete(facts, use)
+										ambiguous[use] = true
+									} else {
+										facts[use] = keyedSourceFact{binding, plain, narrowed}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		file.AsNode().ForEachChild(visit)
+		if exceeded {
+			// Facts are optional proof, not a source-validity gate. Discard ALL
+			// of them on saturation; extraction must then prove contracts from
+			// its value IR alone and refuse any unsupported narrowing.
+			p.staticPlanFacts = nil
+			return nil
+		}
+	}
+	p.staticPlanFacts = facts
+	return nil
+}

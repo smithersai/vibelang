@@ -1,0 +1,82 @@
+package main
+
+// Native resolution owns this read/probe inventory. Hosts may use it to watch
+// files and directory membership, but it is not a cache-validity proof: source
+// bytes, compiler identity and target still belong in the host's build key.
+// Files include negative file probes. Directories include negative directory
+// probes and actual membership reads, not successful existence checks: resolution
+// below a present directory records its individual file probes instead. Recording
+// every positive ancestor would make recursive host watchers scan entire drives.
+import (
+	"errors"
+	"sync"
+)
+
+type nativeDependencyTrace struct {
+	Files       []string `json:"files"`
+	Directories []string `json:"directories"`
+}
+
+type dependencyTrace struct {
+	mu          sync.Mutex
+	files       map[string]bool
+	directories map[string]bool
+	bytes       int
+	err         error
+}
+
+func newDependencyTrace(enabled bool) *dependencyTrace {
+	if !enabled {
+		return nil
+	}
+	return &dependencyTrace{files: map[string]bool{}, directories: map[string]bool{}}
+}
+
+func (t *dependencyTrace) record(name string, directory bool) {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.err != nil {
+		return
+	}
+	if !generatedAbsolutePath(name) {
+		t.err = errors.New("native dependency trace contains an invalid absolute path")
+		return
+	}
+	entries := t.files
+	if directory {
+		entries = t.directories
+	}
+	if entries[name] {
+		return
+	}
+	if len(t.files)+len(t.directories) >= 8192 || t.bytes+len(name) > 2*1024*1024 {
+		t.err = errors.New("native dependency trace exceeds its path budget")
+		return
+	}
+	entries[name] = true
+	t.bytes += len(name)
+}
+
+func (t *dependencyTrace) result() (*nativeDependencyTrace, error) {
+	if t == nil {
+		return nil, nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.err != nil {
+		return nil, t.err
+	}
+	result := &nativeDependencyTrace{Files: []string{}, Directories: []string{}}
+	for name := range t.files {
+		result.Files = append(result.Files, name)
+	}
+	for name := range t.directories {
+		result.Directories = append(result.Directories, name)
+	}
+	sortUTF16(result.Files)
+	sortUTF16(result.Directories)
+	return result, nil
+}

@@ -1,0 +1,382 @@
+package main
+
+// Expand checked graph templates as DATA. An item collection and its stable
+// keys must be known before publication. Action results remain references;
+// neither source callbacks nor implementations are evaluated by this pass.
+
+import (
+	"errors"
+	"fmt"
+	"strconv"
+)
+
+type keyedSourceGroup struct {
+	value        any
+	dependencies []any
+}
+
+// Project native value IR, retaining an unresolved Action/input reference.
+// This does not evaluate arithmetic, calls, getters or other source expressions.
+func keyedSourceProjectValue(value any, path []any) (any, error) {
+	for index, key := range path {
+		node, ok := value.(map[string]any)
+		if !ok {
+			return nil, errors.New("invalid keyed source projection")
+		}
+		switch node["kind"] {
+		case "input", "node":
+			out := durableCopyMap(node)
+			out["path"] = append(append([]any{}, node["path"].([]any)...), path[index:]...)
+			return out, nil
+		case "object":
+			value = node["fields"].(map[string]any)[key.(string)]
+		case "array":
+			i, err := strconv.Atoi(key.(string))
+			items := node["items"].([]any)
+			if err != nil || !durableDescriptorIndexKey(key.(string)) || i < 0 || i >= len(items) {
+				return nil, errors.New("keyed source projection is out of bounds")
+			}
+			value = items[i]
+		default:
+			return nil, errors.New("keyed source projection has no data field")
+		}
+		if value == nil {
+			return nil, errors.New("keyed source projection is absent")
+		}
+	}
+	return value, nil
+}
+
+// A field may exist only in the selected variant. Keep that projection as
+// closed data when composing the complete graph with the invocation input;
+// reading it now would incorrectly reject the valid *other* alternative.
+// The source descriptor walk has already proved presence under its guard.
+func keyedSourceDeferredProject(value any, path []any) any {
+	for _, key := range path {
+		value = map[string]any{"kind": "compute", "operator": "get", "operands": []any{
+			value, map[string]any{"kind": "literal", "value": key},
+		}}
+	}
+	return value
+}
+
+func (e *keyedSourceExpansion) templateValue(value, item any, steps []any, input any, prefix string, depth int) (any, error) {
+	*e.visited++
+	if depth > 128 || *e.visited > 100_000 {
+		return nil, errors.New("keyed source expansion exceeds its traversal budget")
+	}
+	node, ok := value.(map[string]any)
+	if !ok {
+		return nil, errors.New("invalid checked fan-out template")
+	}
+	lower := func(value any) (any, error) { return e.templateValue(value, item, steps, input, prefix, depth+1) }
+	switch node["kind"] {
+	case "literal":
+		return node, nil
+	case "checked":
+		value, err := lower(node["value"])
+		if err != nil {
+			return nil, err
+		}
+		return keyedSourceDeferredProject(value, node["path"].([]any)), nil
+	case "compute":
+		operands := []any{}
+		for _, operand := range node["operands"].([]any) {
+			converted, err := lower(operand)
+			if err != nil {
+				return nil, err
+			}
+			operands = append(operands, converted)
+		}
+		return map[string]any{"kind": "compute", "operator": node["operator"], "operands": operands}, nil
+	case "item":
+		return keyedSourceProjectValue(item, node["path"].([]any))
+	case "capture":
+		captured, err := e.bind(node["value"], input, prefix, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		return keyedSourceProjectValue(captured, node["path"].([]any))
+	case "step":
+		index, ok := node["step"].(int)
+		if !ok || index < 0 || index >= len(steps) {
+			return nil, errors.New("fan-out template refers to an unavailable Action binding")
+		}
+		return keyedSourceProjectValue(steps[index], node["path"].([]any))
+	case "array":
+		items := []any{}
+		for _, value := range node["items"].([]any) {
+			converted, err := lower(value)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, converted)
+		}
+		return map[string]any{"kind": "array", "items": items}, nil
+	case "object":
+		fields, order := map[string]any{}, node["order"]
+		if order == nil {
+			return nil, errors.New("fan-out template has no preserved construction order")
+		}
+		for _, name := range order.([]any) {
+			converted, err := lower(node["fields"].(map[string]any)[name.(string)])
+			if err != nil {
+				return nil, err
+			}
+			fields[name.(string)] = converted
+		}
+		return map[string]any{"kind": "object", "fields": fields, "order": order}, nil
+	}
+	return nil, errors.New("unsupported checked fan-out template expression")
+}
+
+type keyedSourceExpansion struct {
+	nodes       []any
+	addresses   map[string]string
+	groups      map[string]keyedSourceGroup
+	visited     *int
+	sourceNodes int
+	branchDepth int
+}
+
+// Substitute only compiler IR. Values from a caller remain opaque references;
+// literal array/object shape and construction order remain explicit data.
+func (e *keyedSourceExpansion) bind(value, input any, prefix string, depth int) (any, error) {
+	*e.visited++
+	if depth > 128 || *e.visited > 100_000 {
+		return nil, errors.New("keyed source composition exceeds its traversal budget")
+	}
+	node := value.(map[string]any)
+	switch node["kind"] {
+	case "literal":
+		return node, nil
+	case "checked":
+		value, err := e.bind(node["value"], input, prefix, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		return keyedSourceDeferredProject(value, node["path"].([]any)), nil
+	case "compute":
+		operands := []any{}
+		for _, operand := range node["operands"].([]any) {
+			converted, err := e.bind(operand, input, prefix, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			operands = append(operands, converted)
+		}
+		return map[string]any{"kind": "compute", "operator": node["operator"], "operands": operands}, nil
+	case "input":
+		return keyedSourceProjectValue(input, node["path"].([]any))
+	case "node":
+		out := durableCopyMap(node)
+		out["nodeId"] = prefix + node["nodeId"].(string)
+		return out, nil
+	case "array":
+		items := []any{}
+		for _, value := range node["items"].([]any) {
+			item, err := e.bind(value, input, prefix, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		return map[string]any{"kind": "array", "items": items}, nil
+	case "object":
+		order, ok := node["order"].([]any)
+		if !ok {
+			return nil, errors.New("source object has no preserved construction order")
+		}
+		fields := map[string]any{}
+		for _, name := range order {
+			field, err := e.bind(node["fields"].(map[string]any)[name.(string)], input, prefix, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			fields[name.(string)] = field
+		}
+		return map[string]any{"kind": "object", "fields": fields, "order": order}, nil
+	}
+	return nil, errors.New("unsupported source composition value")
+}
+
+// A composed Flow may return known data while still declaring work. Preserve
+// its completion barrier when its known array shape or key is consumed.
+func (e *keyedSourceExpansion) known(value any, depth int) (any, []any, error) {
+	*e.visited++
+	if depth > 128 || *e.visited > 100_000 {
+		return nil, nil, errors.New("keyed source composition exceeds its traversal budget")
+	}
+	node := value.(map[string]any)
+	if node["kind"] == "node" {
+		if group, ok := e.groups[node["nodeId"].(string)]; ok {
+			projected, err := keyedSourceProjectValue(group.value, node["path"].([]any))
+			if err != nil {
+				return nil, nil, err
+			}
+			known, dependencies, err := e.known(projected, depth+1)
+			return known, append(append([]any{}, group.dependencies...), dependencies...), err
+		}
+	}
+	return value, []any{}, nil
+}
+
+func (e *keyedSourceExpansion) action(id, address string, action any, input any, controls []any) error {
+	if len(e.nodes) >= keyedPlanMaxNodes-1 {
+		return errors.New("keyed source expansion exceeds its node budget including the result")
+	}
+	e.addresses[id] = address
+	e.nodes = append(e.nodes, map[string]any{"kind": "action", "id": id, "actionId": action, "input": input, "controlDependencies": controls})
+	return nil
+}
+
+func (e *keyedSourceExpansion) scope(d *durableFunctionLowerer, output, input any, prefix string, inherited []any) (any, []any, error) {
+	return e.scopeNodes(d, d.nodes, output, input, prefix, prefix, inherited)
+}
+
+func (e *keyedSourceExpansion) scopeNodes(d *durableFunctionLowerer, sourceNodes []any, output, input any, prefix, addressPrefix string, inherited []any) (any, []any, error) {
+	fail := func(err error) (any, []any, error) { return nil, nil, err }
+	e.sourceNodes += len(sourceNodes)
+	if e.sourceNodes >= keyedPlanMaxNodes {
+		return fail(errors.New("keyed source exceeds its source node budget including the result"))
+	}
+	start := len(e.nodes)
+	for ordinal, value := range sourceNodes {
+		node := value.(map[string]any)
+		id := prefix + node["id"].(string)
+		controls := append([]any{}, inherited...)
+		for _, dependency := range node["controlDependencies"].([]any) {
+			controls = append(controls, prefix+dependency.(string))
+		}
+		if node["kind"] == "branch" {
+			if err := e.branch(d, node, input, prefix, fmt.Sprintf("%sbranch/%d", addressPrefix, ordinal), controls); err != nil {
+				return fail(err)
+			}
+			continue
+		}
+		if node["kind"] == "action" || node["kind"] == "childFlow" {
+			argument, err := e.bind(node["input"], input, prefix, 0)
+			if err != nil {
+				return fail(err)
+			}
+			if node["kind"] == "action" {
+				if err := e.action(id, fmt.Sprintf("%saction/%d", addressPrefix, ordinal), node["actionId"], argument, controls); err != nil {
+					return fail(err)
+				}
+			} else {
+				child, found := d.childPlans[node["planDigest"].(string)]
+				if !found || child.source == nil {
+					return fail(errors.New("keyed composition requires a checked source Flow, not an opaque legacy Plan"))
+				}
+				result, dependencies, err := e.scope(child.source, child.plan["output"], argument, fmt.Sprintf("%sflow/%d/", addressPrefix, ordinal), controls)
+				if err != nil {
+					return fail(err)
+				}
+				e.groups[id] = keyedSourceGroup{value: result, dependencies: dependencies}
+			}
+			continue
+		}
+		if node["kind"] != "fanout" {
+			return fail(errors.New("static keyed source profile has no node interpreter for " + fmt.Sprint(node["kind"])))
+		}
+		collection, err := e.bind(node["items"], input, prefix, 0)
+		if err != nil {
+			return fail(err)
+		}
+		collection, joins, err := e.known(collection, 0)
+		if err != nil {
+			return fail(err)
+		}
+		controls = append(controls, joins...)
+		if collection.(map[string]any)["kind"] != "array" {
+			return fail(errors.New("fan-out collection is not known before execution; an explicit bounded round is required"))
+		}
+		items := collection.(map[string]any)["items"].([]any)
+		steps, ok := node["steps"].([]any)
+		if !ok {
+			steps = []any{node}
+		}
+		if len(steps) == 0 || len(steps) > durableMaxFanOutSteps || len(items) > (keyedPlanMaxNodes-1-len(e.nodes))/len(steps) {
+			return fail(errors.New("keyed source fan-out exceeds its node budget including the result"))
+		}
+		keys, byKey, keyIDs, keyJoins := []string{}, map[string]int{}, map[string]string{}, map[string][]any{}
+		for index, item := range items {
+			key, err := keyedSourceProjectValue(item, node["keyPath"].([]any))
+			if err != nil {
+				return fail(err)
+			}
+			key, joins, err := e.known(key, 0)
+			if err != nil {
+				return fail(err)
+			}
+			literal := key.(map[string]any)
+			if literal["kind"] != "literal" {
+				return fail(errors.New("fan-out item keys must be known before execution; an explicit bounded round is required"))
+			}
+			switch literal["value"].(type) {
+			case string, bool, float64:
+			default:
+				return fail(errors.New("fan-out item key is not a canonical scalar"))
+			}
+			encoded := durableCanonicalJSON(literal["value"])
+			if _, duplicate := byKey[encoded]; duplicate {
+				return fail(errors.New("duplicate fan-out item key"))
+			}
+			keys, byKey[encoded] = append(keys, encoded), index
+			keyIDs[encoded], keyJoins[encoded] = keyedPlanKey(literal["value"]), joins
+		}
+		sortUTF16(keys)
+		results, dependencies := make([]any, len(items)), append([]any{}, controls...)
+		for _, key := range keys {
+			index, previous := byKey[key], []any{}
+			itemControls := append(append([]any{}, controls...), keyJoins[key]...)
+			for stepIndex, value := range steps {
+				step := value.(map[string]any)
+				expression, err := e.templateValue(step["input"], items[index], previous, input, prefix, 0)
+				if err != nil {
+					return fail(err)
+				}
+				address := fmt.Sprintf("%sfanout/%d/%s/%d", addressPrefix, ordinal, keyIDs[key], stepIndex)
+				childID := id + ":" + address
+				if digest, ok := step["childPlanDigest"].(string); ok {
+					child, found := d.childPlans[digest]
+					if !found || child.source == nil {
+						return fail(errors.New("keyed fan-out requires a checked source child Flow"))
+					}
+					result, dependencies, err := e.scope(child.source, child.plan["output"], expression, address+"/", itemControls)
+					if err != nil {
+						return fail(err)
+					}
+					e.groups[childID] = keyedSourceGroup{value: result, dependencies: dependencies}
+				} else {
+					if err := e.action(childID, address, step["actionId"], expression, itemControls); err != nil {
+						return fail(err)
+					}
+				}
+				ref := map[string]any{"kind": "node", "nodeId": childID, "path": []any{}}
+				previous, dependencies, results[index] = append(previous, ref), append(dependencies, childID), ref
+			}
+		}
+		e.groups[id] = keyedSourceGroup{value: map[string]any{"kind": "array", "items": results}, dependencies: dependencies}
+	}
+	result, err := e.bind(output, input, prefix, 0)
+	if err != nil {
+		return fail(err)
+	}
+	dependencies := append([]any{}, inherited...)
+	for _, node := range e.nodes[start:] {
+		if node.(map[string]any)["branchInternal"] != true {
+			dependencies = append(dependencies, node.(map[string]any)["id"])
+		}
+	}
+	return result, dependencies, nil
+}
+
+func keyedSourceExpandNodes(d *durableFunctionLowerer, output, input any, visited *int) ([]any, map[string]string, map[string]keyedSourceGroup, any, error) {
+	e := keyedSourceExpansion{nodes: []any{}, addresses: map[string]string{}, groups: map[string]keyedSourceGroup{}, visited: visited}
+	result, _, err := e.scope(d, output, input, "", nil)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	return e.nodes, e.addresses, e.groups, result, nil
+}

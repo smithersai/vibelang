@@ -1,0 +1,235 @@
+package main
+
+// Checked codecs for a generated executable Flow entry. This query reuses the
+// native generated-project snapshot and durable descriptor builder; no AST or
+// checker object crosses the wire, no source executes, and no JSON-value
+// fallback can stand in for a derivable boundary.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
+
+type bodyContractRequest struct {
+	Project          generatedProjectRequest `json:"project"`
+	EntryFile        string                  `json:"entryFile"`
+	Entry            string                  `json:"entry"`
+	LogicalFileName  string                  `json:"logicalFileName"`
+	RuntimeSpecifier string                  `json:"runtimeSpecifier"`
+	Resumable        *bool                   `json:"resumable"`
+	Async            *bool                   `json:"async"`
+}
+type bodyContractResult struct {
+	OK          bool         `json:"ok"`
+	Diagnostics []diagnostic `json:"diagnostics"`
+	Reason      string       `json:"reason"`
+	Message     string       `json:"message"`
+	SchemasJSON string       `json:"schemasJson"`
+}
+
+func serveBodyContract(apiVersion int) {
+	response := struct {
+		APIVersion       int                `json:"apiVersion"`
+		CompilerRevision string             `json:"compilerRevision"`
+		Result           bodyContractResult `json:"result"`
+		Error            *wireError         `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: bodyContractResult{Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var input bodyContractRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("body contract exceeds its wire budget")
+	}
+	if err == nil {
+		response.Result, err = deriveBodyContract(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = bodyContractResult{Diagnostics: []diagnostic{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_BODY_CONTRACT", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func deriveBodyContract(ctx context.Context, input bodyContractRequest) (bodyContractResult, error) {
+	out := bodyContractResult{Diagnostics: []diagnostic{}}
+	if !generatedAbsolutePath(input.EntryFile) || len(input.Entry) > 2048 ||
+		strings.TrimSpace(input.LogicalFileName) == "" || len(input.LogicalFileName) > 16*1024 || strings.ContainsRune(input.LogicalFileName, 0) ||
+		input.RuntimeSpecifier == "" || len(input.RuntimeSpecifier) > 4096 || strings.ContainsRune(input.RuntimeSpecifier, 0) || input.Resumable == nil || input.Async == nil {
+		return out, errors.New("body contract requires a bounded entry, logical identity, runtime and explicit calling convention")
+	}
+	token, err := sourceTokenAt(tokenRequest{Text: input.Entry, Offset: 0})
+	if err != nil || token.Token == nil || token.Token.Kind != "Identifier" || token.Token.Start != 0 ||
+		token.Token.End != newLineIndex(input.Entry).utf16Offset(len(input.Entry)) {
+		return out, errors.New("body contract entry must be one identifier")
+	}
+	entryFound := false
+	for _, file := range input.Project.Files {
+		if file.Path == input.EntryFile {
+			entryFound = file.Configuration != "typescript" && !strings.HasSuffix(file.Path, ".d.ts") && !strings.HasSuffix(file.Path, ".d.mts") && !strings.HasSuffix(file.Path, ".d.cts")
+		}
+	}
+	if !entryFound {
+		return out, errors.New("body contract entry must be an explicit generated language root")
+	}
+	state, err := prepareGeneratedProject(input.Project, false)
+	if err != nil {
+		return out, err
+	}
+	if err := state.check(ctx); err != nil {
+		return out, err
+	}
+	out.Diagnostics = state.diagnostics()
+	refuse := func(reason, message string) (bodyContractResult, error) {
+		out.Reason, out.Message = reason, message
+		return out, nil
+	}
+	if hasError(out.Diagnostics) {
+		return refuse("check", "generated Flow body did not pass native checking")
+	}
+	file := state.program.GetSourceFile(input.EntryFile)
+	if file == nil {
+		return out, errors.New("body contract entry root is absent from its native program")
+	}
+	c, release := state.program.GetTypeChecker(ctx)
+	defer release()
+	canonical := func(symbol *ast.Symbol) *ast.Symbol {
+		if symbol == nil {
+			return nil
+		}
+		if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		return c.GetMergedSymbol(symbol)
+	}
+	var declaration *ast.Node
+	var runtime *ast.Symbol
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsVariableStatement(statement) {
+			for _, node := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+				if ast.IsIdentifier(node.Name()) && node.Name().Text() == input.Entry {
+					if declaration != nil {
+						return refuse("entry", "the emitted Flow entry has multiple declarations")
+					}
+					declaration = node
+				}
+			}
+		}
+		if ast.IsImportDeclaration(statement) {
+			specifier := statement.AsImportDeclaration().ModuleSpecifier
+			if ast.IsStringLiteral(specifier) && specifier.Text() == input.RuntimeSpecifier {
+				runtime = canonical(c.ResolveExternalModuleNameAtLocation(specifier))
+			}
+		}
+	}
+	if declaration == nil {
+		return refuse("entry", "the emitted Flow entry must be a module-level named variable")
+	}
+	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(declaration), checker.SignatureKindCall)
+	if len(signatures) != 1 || len(signatures[0].Parameters()) != 1 || signatures[0].HasRestParameter() || len(signatures[0].TypeParameters()) != 0 {
+		return refuse("entry", "the emitted Flow entry must have one non-generic call signature and one required non-rest input parameter")
+	}
+	signature := signatures[0]
+	parameter := signature.Parameters()[0]
+	anchor := parameter.ValueDeclaration
+	if anchor == nil && len(parameter.Declarations) > 0 {
+		anchor = parameter.Declarations[0]
+	}
+	if anchor == nil || (anchor.Kind == ast.KindParameter && anchor.AsParameterDeclaration().QuestionToken != nil) {
+		return refuse("entry", "the emitted Flow entry requires one non-optional input parameter")
+	}
+	var resultSymbol *ast.Symbol
+	if runtime != nil {
+		for _, symbol := range c.GetExportsOfModule(runtime) {
+			if symbol.Name == "ResultValue" {
+				resultSymbol = canonical(symbol)
+			}
+		}
+	}
+	// Bind the completion to the actual SDK class, not an alias named Result.
+	// The runtime identity is explicit host policy, resolved from the same
+	// import that the factory subsequently binds. This is not authentication.
+	// A completely pure entry may have no runtime import at all. Such a
+	// completion is described as ordinary data, never unwrapped by spelling.
+	if (runtime != nil && resultSymbol == nil) || (*input.Resumable && runtime == nil) {
+		return refuse("entry", "the generated Flow runtime must resolve its ResultValue declaration")
+	}
+	errorSymbol := canonical(c.ResolveName("Error", nil, ast.SymbolFlagsType, false))
+	owner := &lowerer{checker: c, prelude: &preludeSymbols{error: errorSymbol}, file: file}
+	d := &durableFunctionLowerer{owner: owner, schemaLogicalName: input.LogicalFileName}
+	completion := c.GetReturnTypeOfSignature(signature)
+	if *input.Resumable {
+		name := "Generator"
+		if *input.Async {
+			name = "AsyncGenerator"
+		}
+		expected := canonical(c.ResolveName(name, nil, ast.SymbolFlagsType, false))
+		if expected == nil || d.durableTypeSymbol(completion) != expected {
+			return refuse("entry", "the emitted Flow entry does not implement its declared "+name+" calling convention")
+		}
+		arguments := c.GetTypeArguments(completion)
+		if len(arguments) != 3 {
+			return refuse("entry", "the emitted Flow generator has no checked completion type")
+		}
+		completion = arguments[1]
+	} else if *input.Async {
+		expected := canonical(c.ResolveName("Promise", nil, ast.SymbolFlagsType, false))
+		if expected == nil || d.durableTypeSymbol(completion) != expected {
+			return refuse("entry", "the emitted async Flow entry must return the native Promise type")
+		}
+		arguments := c.GetTypeArguments(completion)
+		if len(arguments) != 1 {
+			return refuse("entry", "the emitted async Flow has no checked completion type")
+		}
+		completion = arguments[0]
+	}
+	var failure *checker.Type
+	if resultSymbol != nil && d.durableTypeSymbol(completion) == resultSymbol {
+		arguments := c.GetTypeArguments(completion)
+		if len(arguments) != 2 {
+			return refuse("entry", "the emitted Flow Result must have checked success and failure arguments")
+		}
+		completion, failure = arguments[0], arguments[1]
+	}
+	// Flow input, success and failure are separate codec boundaries, each
+	// retaining its own descriptor budget. Sharing one counter here would
+	// reject two valid codecs simply because a Flow uses both of them.
+	inputDescriptor, err := d.durableTypeDescriptor(c.GetTypeOfSymbolAtLocation(parameter, declaration), declaration, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return refuse("boundary", "Flow input: "+err.Error())
+	}
+	successDescriptor, err := d.durableTypeDescriptor(completion, declaration, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return refuse("boundary", "Flow output: "+err.Error())
+	}
+	failureSchema := durableStructuralSchema("error", map[string]any{"kind": "never"})
+	if failure != nil {
+		if collision := d.durableFailureIdentityCollides(failure); collision != nil {
+			return refuse("boundary", fmt.Sprintf("Flow failure classes %s and %s share one durable failure identity %s; declare distinct nominal failures before persisting them", collision.names[0], collision.names[1], collision.identity))
+		}
+		failureSchema, err = d.durableErrorSchemaFor(failure)
+		if err != nil {
+			return refuse("boundary", "Flow error: "+err.Error())
+		}
+	}
+	out.SchemasJSON = durableCanonicalJSON(map[string]any{
+		"inputSchema":   durableStructuralSchema("input", inputDescriptor),
+		"successSchema": durableStructuralSchema("success", successDescriptor),
+		"failureSchema": failureSchema,
+	})
+	if len(out.SchemasJSON) > 16*1024*1024 {
+		return bodyContractResult{Diagnostics: []diagnostic{}}, errors.New("body contract exceeds its schema response budget")
+	}
+	out.OK = true
+	return out, nil
+}

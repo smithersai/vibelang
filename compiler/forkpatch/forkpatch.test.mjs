@@ -7,7 +7,7 @@
 // without one:
 //
 //   node scripts/prepare-typescript-fork.mjs --cache /tmp/forkpatch-cache --full-tsc
-//   SMITHERS_FORKPATCH_TEST_CHECKOUT=/tmp/forkpatch-cache/<revision> \
+//   VIBELANG_FORKPATCH_TEST_CHECKOUT=/tmp/forkpatch-cache/<revision> \
 //     node --test compiler/forkpatch/forkpatch.test.mjs
 
 import assert from "node:assert/strict";
@@ -33,7 +33,7 @@ const series = JSON.parse(readFileSync(resolve(here, "series.json"), "utf8"));
 const manifest = JSON.parse(
   readFileSync(resolve(root, "typescript-fork.json"), "utf8"),
 );
-const checkout = process.env.SMITHERS_FORKPATCH_TEST_CHECKOUT;
+const checkout = process.env.VIBELANG_FORKPATCH_TEST_CHECKOUT;
 
 function forkpatch(...args) {
   const completed = spawnSync(process.execPath, [driver, ...args], {

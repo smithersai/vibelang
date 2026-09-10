@@ -1,0 +1,291 @@
+package main
+
+// Binding-owned host-module rewrite facts. This does not derive or authenticate
+// a Flow descriptor and is not a language/type-check certificate. In particular,
+// it never evaluates an initializer or prunes executable module initialization.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+const durableModuleInput = "durable-module.vibe"
+
+type durableModuleRequest struct {
+	Source string `json:"source"`
+}
+type durableModuleResult struct {
+	Diagnostics []diagnostic `json:"diagnostics"`
+	Imports     []span       `json:"imports"`
+	Calls       []span       `json:"calls"`
+	Removals    []span       `json:"removals"`
+}
+
+func emptyDurableModuleResult() durableModuleResult {
+	return durableModuleResult{Diagnostics: []diagnostic{}, Imports: []span{}, Calls: []span{}, Removals: []span{}}
+}
+
+func serveDurableModule(apiVersion int) {
+	response := struct {
+		APIVersion       int                 `json:"apiVersion"`
+		CompilerRevision string              `json:"compilerRevision"`
+		Result           durableModuleResult `json:"result"`
+		Error            *wireError          `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: emptyDurableModuleResult()}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input durableModuleRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("durable-module request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeDurableModule(context.Background(), input)
+	}
+	if err != nil {
+		response.Result = emptyDurableModuleResult()
+		response.Error = &wireError{Code: "VIBELANG_GO_DURABLE_MODULE", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func analyzeDurableModule(ctx context.Context, input durableModuleRequest) (durableModuleResult, error) {
+	result := emptyDurableModuleResult()
+	if len(input.Source) > 2*1024*1024 {
+		return result, errors.New("durable-module source exceeds the 2 MiB budget")
+	}
+	project, err := buildProject(request{Lowering: "internal", RootNames: []string{durableModuleInput},
+		Files: []sourceFile{{Path: durableModuleInput, Kind: "vibelang", Text: input.Source}}})
+	if err != nil {
+		return result, err
+	}
+	options, _, err := compilerOptions(nil)
+	if err != nil {
+		return result, err
+	}
+	configureInternalModules(options)
+	program := newCheckProgram(options, project)
+	file := program.GetSourceFile("/src/" + durableModuleInput)
+	if file == nil {
+		return result, errors.New("durable-module source is absent from its native program")
+	}
+	lines := newLineIndex(input.Source)
+	locate := func(start, end int) span {
+		first := lines.utf16Offset(start)
+		return span{Start: first, Length: lines.utf16Offset(end) - first}
+	}
+	startOf := func(node *ast.Node) int { return scanner.GetTokenPosOfNode(node, file, false) }
+	collector := newDiagnosticCollector(project)
+	raw, recognized := recognizeVibeLangSyntaxDiagnostics(project, program, program.GetSyntacticDiagnostics(ctx, file))
+	collector.add("parse", raw)
+	for _, issue := range recognized {
+		collector.addConverted(issue)
+	}
+	// Reject the recovered variable-list shapes before invoking the binder.
+	// This is the same parser-preserving rule as native lowering/preflight.
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		if message := conditionalDeclarationShapeError(node); message != "" {
+			where := locate(startOf(node), node.End())
+			collector.addConverted(diagnostic{Code: "VIBE1717", Category: "error", File: durableModuleInput,
+				Message: message, Span: &where, Phase: "parse"})
+		}
+	})
+	if !hasError(collector.converted) {
+		collector.add("bind", program.GetBindDiagnostics(ctx, file))
+	}
+	if len(collector.converted) != 0 {
+		result.Diagnostics = collector.converted
+		return result, nil
+	}
+	checker, release := program.GetTypeChecker(ctx)
+	defer release()
+	var calls []*ast.Node
+	visits := 0
+	var budgetError error
+	withinBudget := func() bool {
+		visits++
+		if visits > 1_000_000 {
+			budgetError = errors.New("durable-module analysis exceeds its 1000000 node-visit budget")
+		}
+		return budgetError == nil
+	}
+	var findCalls func(*ast.Node) bool
+	findCalls = func(node *ast.Node) bool {
+		if !withinBudget() {
+			return true
+		}
+		if ast.IsCallExpression(node) {
+			// Use the resolved callable declaration, including aliases and
+			// namespace accesses, never a textual `durable` match.
+			if signature := checker.GetResolvedSignature(node); signature != nil {
+				declaration := signature.Declaration()
+				if declaration != nil && ast.IsFunctionDeclaration(declaration) && declarationName(declaration) == "durable" &&
+					ast.GetSourceFileOfNode(declaration).FileName() == durableVirtualName {
+					calls = append(calls, node)
+					result.Calls = append(result.Calls, locate(startOf(node), node.End()))
+				}
+			}
+		}
+		return node.ForEachChild(findCalls)
+	}
+	findCalls(file.AsNode())
+	if budgetError != nil {
+		return emptyDurableModuleResult(), budgetError
+	}
+	private := map[*ast.Node]bool{}
+	functionLiteral := func(node *ast.Node) bool {
+		for node != nil {
+			switch {
+			case ast.IsArrowFunction(node), ast.IsFunctionExpression(node):
+				return true
+			case ast.IsParenthesizedExpression(node), ast.IsAsExpression(node), ast.IsSatisfiesExpression(node), node.Kind == ast.KindTypeAssertionExpression:
+				node = node.Expression()
+			default:
+				return false
+			}
+		}
+		return false
+	}
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsImportDeclaration(statement) {
+			specifier := statement.AsImportDeclaration().ModuleSpecifier
+			if ast.IsStringLiteral(specifier) && specifier.Text() == "vibelang:flows" {
+				result.Imports = append(result.Imports, locate(statement.Pos(), statement.End()))
+			}
+		}
+		if ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport|ast.ModifierFlagsDefault) {
+			continue
+		}
+		if ast.IsFunctionDeclaration(statement) && statement.Body() != nil {
+			private[statement] = true
+		}
+		if ast.IsVariableStatement(statement) {
+			list := statement.AsVariableStatement().DeclarationList
+			if list.Flags&ast.NodeFlagsConst != 0 {
+				for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+					if ast.IsIdentifier(declaration.Name()) && functionLiteral(declaration.Initializer()) {
+						private[declaration] = true
+					}
+				}
+			}
+		}
+	}
+	// A host only materializes a single successfully compiled Flow. With zero
+	// or multiple candidates there is no helper-removal plan to apply.
+	if len(calls) != 1 {
+		return result, nil
+	}
+	call := calls[0]
+	closure := func(roots []*ast.Node, skipBodies bool) map[*ast.Node]bool {
+		found := map[*ast.Node]bool{}
+		queue := []*ast.Node{}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if !withinBudget() {
+				return true
+			}
+			if node == call || (skipBodies && private[node]) {
+				return false
+			}
+			if ast.IsIdentifier(node) && node.Parent != nil && (ast.IsShorthandPropertyAssignment(node.Parent) ||
+				ast.IsExportSpecifier(node.Parent) || node.Parent.Name() != node) {
+				symbol := checker.GetSymbolAtLocation(node)
+				if ast.IsShorthandPropertyAssignment(node.Parent) {
+					symbol = checker.GetShorthandAssignmentValueSymbol(node.Parent)
+				}
+				if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+					symbol = checker.GetAliasedSymbol(symbol)
+				}
+				if symbol != nil {
+					for _, declaration := range symbol.Declarations {
+						if private[declaration] && !found[declaration] {
+							found[declaration] = true
+							queue = append(queue, declaration)
+						}
+					}
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		for _, root := range roots {
+			visit(root)
+		}
+		skipBodies = false
+		for index := 0; index < len(queue) && budgetError == nil; index++ {
+			fn := queue[index]
+			// Parameter defaults execute too. Following only a declaration's
+			// body can remove a helper still needed by an exported function's
+			// default argument. Walk the whole declaration after the initial
+			// outside-root pass has excluded private function creation.
+			visit(fn)
+		}
+		return found
+	}
+	outside := closure([]*ast.Node{file.AsNode()}, true)
+	inside := closure(call.Arguments(), false)
+	if budgetError != nil {
+		return emptyDurableModuleResult(), budgetError
+	}
+	removed := map[*ast.Node]bool{}
+	removedDeclarations := map[*ast.Node]bool{}
+	for fn := range inside {
+		// Even an invalid nested entry must never produce overlapping edits.
+		if outside[fn] || (fn.Pos() <= call.Pos() && fn.End() >= call.End()) {
+			continue
+		}
+		removed[fn] = true
+		if ast.IsFunctionDeclaration(fn) {
+			removedDeclarations[fn] = true
+			if symbol := checker.GetSymbolAtLocation(fn.Name()); symbol != nil {
+				for _, declaration := range symbol.Declarations {
+					if ast.IsFunctionDeclaration(declaration) && declaration.Body() == nil && ast.GetSourceFileOfNode(declaration) == file {
+						removedDeclarations[declaration] = true
+					}
+				}
+			}
+		}
+	}
+	for declaration := range removedDeclarations {
+		result.Removals = append(result.Removals, locate(startOf(declaration), declaration.End()))
+	}
+	for _, statement := range file.Statements.Nodes {
+		if !ast.IsVariableStatement(statement) {
+			continue
+		}
+		declarations := statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+		allRemoved := len(declarations) != 0
+		for _, declaration := range declarations {
+			allRemoved = allRemoved && removed[declaration]
+		}
+		if allRemoved {
+			result.Removals = append(result.Removals, locate(startOf(statement), statement.End()))
+			continue
+		}
+		for index := 0; index < len(declarations); index++ {
+			if !removed[declarations[index]] {
+				continue
+			}
+			first := index
+			for index+1 < len(declarations) && removed[declarations[index+1]] {
+				index++
+			}
+			if index+1 < len(declarations) {
+				result.Removals = append(result.Removals, locate(startOf(declarations[first]), startOf(declarations[index+1])))
+			} else {
+				result.Removals = append(result.Removals, locate(declarations[first-1].End(), declarations[index].End()))
+			}
+		}
+	}
+	sort.Slice(result.Removals, func(i, j int) bool { return result.Removals[i].Start < result.Removals[j].Start })
+	return result, ctx.Err()
+}

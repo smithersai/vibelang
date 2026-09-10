@@ -1,0 +1,21 @@
+diff --git a/tsc/internal/module/resolver.go b/tsc/internal/module/resolver.go
+--- a/tsc/internal/module/resolver.go
++++ b/tsc/internal/module/resolver.go
+@@ -1539,6 +1539,17 @@
+ 				return resolved
+ 			}
+ 		}
++		// Registered content-mapper extensions participate in ordinary implicit
++		// TypeScript resolution, after standard TS declarations and before the
++		// JavaScript fallback. Explicit TS and Node ESM extension rules stay intact.
++		if !r.isConfigLookup && extensions&extensionsTypeScript != 0 && (originalExtension == "" || originalExtension == tspath.ExtensionJs) {
++			for _, extension := range r.resolver.extraExtensions {
++				if resolved := r.tryExtension(extension, extensionless, false); !resolved.shouldContinueSearching() {
++					resolved.resolvedUsingExtraExtensions = true
++					return resolved
++				}
++			}
++		}
+ 		if extensions&extensionsJavaScript != 0 {
+ 			if resolved := r.tryExtension(tspath.ExtensionJs, extensionless, false); !resolved.shouldContinueSearching() {
+ 				return resolved

@@ -1,8 +1,8 @@
-diff --git a/tsc/internal/checker/smithers_grammar_test.go b/tsc/internal/checker/smithers_grammar_test.go
+diff --git a/tsc/internal/checker/vibelang_grammar_test.go b/tsc/internal/checker/vibelang_grammar_test.go
 new file mode 100644
 index 00000000..f44d926a
 --- /dev/null
-+++ b/tsc/internal/checker/smithers_grammar_test.go
++++ b/tsc/internal/checker/vibelang_grammar_test.go
 @@ -0,0 +1,107 @@
 +package checker_test
 +
@@ -19,18 +19,18 @@ index 00000000..f44d926a
 +	"gotest.tools/v3/assert"
 +)
 +
-+const smithersConditionalTestFile = "/main.sm.ts"
-+const smithersConditionalTestConfig = `{ "compilerOptions": { "strict": true, "noEmit": true }, "files": ["main.sm.ts"] }`
++const vibelangConditionalTestFile = "/main.vibe.ts"
++const vibelangConditionalTestConfig = `{ "compilerOptions": { "strict": true, "noEmit": true }, "files": ["main.vibe.ts"] }`
 +
-+func smithersConditionalDiagnosticCodes(t *testing.T, content string) []int32 {
++func vibelangConditionalDiagnosticCodes(t *testing.T, content string) []int32 {
 +	t.Helper()
-+	return smithersConditionalDiagnosticCodesWithOptions(t, content, smithersConditionalTestConfig)
++	return vibelangConditionalDiagnosticCodesWithOptions(t, content, vibelangConditionalTestConfig)
 +}
 +
-+func smithersConditionalDiagnosticCodesWithOptions(t *testing.T, content string, config string) []int32 {
++func vibelangConditionalDiagnosticCodesWithOptions(t *testing.T, content string, config string) []int32 {
 +	t.Helper()
 +	fs := vfstest.FromMap(map[string]string{
-+		smithersConditionalTestFile: content,
++		vibelangConditionalTestFile: content,
 +		"/tsconfig.json": config,
 +	}, false /*useCaseSensitiveFileNames*/)
 +	fs = bundled.WrapFS(fs)
@@ -38,7 +38,7 @@ index 00000000..f44d926a
 +	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, host, nil)
 +	assert.Equal(t, len(errors), 0, "unexpected command line errors")
 +	program := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: host})
-+	file := program.GetSourceFile(smithersConditionalTestFile)
++	file := program.GetSourceFile(vibelangConditionalTestFile)
 +	assert.Assert(t, file != nil, "source file missing from program")
 +	syntactic := program.GetSyntacticDiagnostics(t.Context(), file)
 +	assert.Equal(t, len(syntactic), 0, "unexpected syntactic diagnostics: %v", conditionalDiagnosticCodes(syntactic))
@@ -54,7 +54,7 @@ index 00000000..f44d926a
 +	return codes
 +}
 +
-+func TestSmithersConditionalDeclarationScope(t *testing.T) {
++func TestVibeLangConditionalDeclarationScope(t *testing.T) {
 +	t.Parallel()
 +	const prelude = `declare function get(): { name: string } | null;
 +declare function takes(value: { name: string }): void;
@@ -76,12 +76,12 @@ index 00000000..f44d926a
 +	for _, rec := range data {
 +		t.Run(rec.title, func(t *testing.T) {
 +			t.Parallel()
-+			assert.DeepEqual(t, smithersConditionalDiagnosticCodes(t, prelude+rec.body), rec.expected)
++			assert.DeepEqual(t, vibelangConditionalDiagnosticCodes(t, prelude+rec.body), rec.expected)
 +		})
 +	}
 +}
 +
-+func TestSmithersConditionalDeclarationInitializerIsChecked(t *testing.T) {
++func TestVibeLangConditionalDeclarationInitializerIsChecked(t *testing.T) {
 +	t.Parallel()
 +	const prelude = `declare function use(value: unknown): void;`
 +	data := []struct {
@@ -96,26 +96,26 @@ index 00000000..f44d926a
 +	for _, rec := range data {
 +		t.Run(rec.title, func(t *testing.T) {
 +			t.Parallel()
-+			assert.DeepEqual(t, smithersConditionalDiagnosticCodes(t, prelude+rec.body), rec.expected)
++			assert.DeepEqual(t, vibelangConditionalDiagnosticCodes(t, prelude+rec.body), rec.expected)
 +		})
 +	}
 +}
 +
-+func TestSmithersConditionalDeclarationLocals(t *testing.T) {
++func TestVibeLangConditionalDeclarationLocals(t *testing.T) {
 +	t.Parallel()
-+	const config = `{ "compilerOptions": { "strict": true, "noEmit": true, "noUnusedLocals": true }, "files": ["main.sm.ts"] }`
-+	codes := smithersConditionalDiagnosticCodesWithOptions(t,
++	const config = `{ "compilerOptions": { "strict": true, "noEmit": true, "noUnusedLocals": true }, "files": ["main.vibe.ts"] }`
++	codes := vibelangConditionalDiagnosticCodesWithOptions(t,
 +		"declare function get(): number; if (const unusedBinding = get(); get()) { get(); }", config)
 +	assert.DeepEqual(t, codes, []int32{6133})
-+	codes = smithersConditionalDiagnosticCodesWithOptions(t,
++	codes = vibelangConditionalDiagnosticCodesWithOptions(t,
 +		"declare function get(): number; if (const usedBinding = get(); usedBinding > 1) { get(); }", config)
 +	assert.DeepEqual(t, codes, []int32{})
 +}
-diff --git a/tsc/internal/printer/smithers_grammar_test.go b/tsc/internal/printer/smithers_grammar_test.go
+diff --git a/tsc/internal/printer/vibelang_grammar_test.go b/tsc/internal/printer/vibelang_grammar_test.go
 new file mode 100644
 index 00000000..c521278e
 --- /dev/null
-+++ b/tsc/internal/printer/smithers_grammar_test.go
++++ b/tsc/internal/printer/vibelang_grammar_test.go
 @@ -0,0 +1,92 @@
 +package printer_test
 +
@@ -131,14 +131,14 @@ index 00000000..c521278e
 +	"gotest.tools/v3/assert"
 +)
 +
-+func parseSmithersConditional(fileName string, text string) *ast.SourceFile {
++func parseVibeLangConditional(fileName string, text string) *ast.SourceFile {
 +	return parser.ParseSourceFile(ast.SourceFileParseOptions{
 +		FileName: fileName,
 +		Path:     tspath.Path(fileName),
 +	}, text, core.ScriptKindTS)
 +}
 +
-+func printSmithersConditional(file *ast.SourceFile) string {
++func printVibeLangConditional(file *ast.SourceFile) string {
 +	p := printer.NewPrinter(
 +		printer.PrinterOptions{NewLine: core.NewLineKindLF},
 +		printer.PrintHandlers{},
@@ -147,7 +147,7 @@ index 00000000..c521278e
 +	return strings.TrimSuffix(p.EmitSourceFile(file), "\n")
 +}
 +
-+func TestSmithersConditionalDeclarationRoundTrip(t *testing.T) {
++func TestVibeLangConditionalDeclarationRoundTrip(t *testing.T) {
 +	t.Parallel()
 +	data := []struct {
 +		title string
@@ -164,21 +164,21 @@ index 00000000..c521278e
 +	for _, rec := range data {
 +		t.Run(rec.title, func(t *testing.T) {
 +			t.Parallel()
-+			for _, fileName := range []string{"/main.sm", "/main.sm.ts"} {
-+				file := parseSmithersConditional(fileName, rec.input)
++			for _, fileName := range []string{"/main.vibe", "/main.vibe.ts"} {
++				file := parseVibeLangConditional(fileName, rec.input)
 +				assert.Equal(t, len(file.Diagnostics()), 0, "unexpected parse diagnostics in "+fileName)
-+				actual := printSmithersConditional(file)
-+				file = parseSmithersConditional(fileName, actual)
++				actual := printVibeLangConditional(file)
++				file = parseVibeLangConditional(fileName, actual)
 +				assert.Equal(t, len(file.Diagnostics()), 0, "unexpected reparse diagnostics")
-+				assert.Equal(t, printSmithersConditional(file), actual, "printer is not idempotent")
++				assert.Equal(t, printVibeLangConditional(file), actual, "printer is not idempotent")
 +			}
 +		})
 +	}
 +}
 +
-+func TestSmithersConditionalDeclarationNodeShape(t *testing.T) {
++func TestVibeLangConditionalDeclarationNodeShape(t *testing.T) {
 +	t.Parallel()
-+	file := parseSmithersConditional("/main.sm", "if (const u = f(); u) { g(u); } else { h(u); }")
++	file := parseVibeLangConditional("/main.vibe", "if (const u = f(); u) { g(u); } else { h(u); }")
 +	assert.Equal(t, len(file.Diagnostics()), 0)
 +	statement := file.Statements.Nodes[0]
 +	assert.Equal(t, statement.Kind, ast.KindIfStatement)
@@ -194,18 +194,18 @@ index 00000000..c521278e
 +	})
 +	assert.Assert(t, ast.IsBlockScope(statement, statement.Parent),
 +		"an if with a conditional declaration must be a block scope")
-+	plain := parseSmithersConditional("/main.sm", "if (u) { g(u); }").Statements.Nodes[0]
++	plain := parseVibeLangConditional("/main.vibe", "if (u) { g(u); }").Statements.Nodes[0]
 +	assert.Assert(t, plain.AsIfStatement().Initializer == nil)
 +	assert.Assert(t, !ast.IsBlockScope(plain, plain.Parent), "a plain if must not become a block scope")
 +}
 +
-+func TestSmithersConditionalDeclarationDialectGate(t *testing.T) {
++func TestVibeLangConditionalDeclarationDialectGate(t *testing.T) {
 +	t.Parallel()
-+	tsFile := parseSmithersConditional("/main.ts", "if (const u = f(); u) { g(u); }")
++	tsFile := parseVibeLangConditional("/main.ts", "if (const u = f(); u) { g(u); }")
 +	assert.Assert(t, len(tsFile.Diagnostics()) > 0, "a conditional declaration must not be accepted in .ts")
 +	assert.Assert(t, tsFile.Statements.Nodes[0].AsIfStatement().Initializer == nil,
 +		"a .ts if must never carry a conditional declaration")
-+	file := parseSmithersConditional("/main.sm", "if (let > 3) { g(); }")
++	file := parseVibeLangConditional("/main.vibe", "if (let > 3) { g(); }")
 +	assert.Equal(t, len(file.Diagnostics()), 0, "let must remain an identifier in a condition")
 +	assert.Assert(t, file.Statements.Nodes[0].AsIfStatement().Initializer == nil)
 +}

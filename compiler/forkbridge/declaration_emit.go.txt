@@ -1,0 +1,837 @@
+package main
+
+// Publication uses the same stock declaration serializer as ordinary
+// TypeScript. The lowering leaves compiler-owned contracts on real callable
+// nodes; a checked-type walk carries those contracts onto serialized callable
+// leaves, where TS does not itself retain anonymous-function JSDoc. No parser
+// changes or exported continuation types are needed.
+
+import (
+	"fmt"
+	"path"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+func publishedRowNames(rows rowSet) []string {
+	names := make(map[string]bool)
+	for _, row := range rows {
+		names[row.name] = true
+	}
+	result := make([]string, 0, len(names))
+	for name := range names {
+		result = append(result, name)
+	}
+	sortUTF16(result)
+	return result
+}
+
+func (l *lowerer) attachPublishedCallable(original, lowered *ast.Node) *ast.Node {
+	if !l.publishDeclarations {
+		return lowered
+	}
+	fn := l.analysis.byNode[original]
+	if fn == nil && original.Name() != nil {
+		// An overload's implementation is not serialized. Its R contract must
+		// be present on each visible signature, not only on the deleted body.
+		fn = l.analysis.bySymbol[l.analysis.symbolAt(original.Name())]
+	}
+	if fn == nil {
+		return lowered
+	}
+	if l.sdkRuntime != "" && len(fn.failures) == 0 && len(fn.requirements) == 0 {
+		return lowered
+	}
+	metadata := publishedEffects{Version: 2, Failures: publishedRowNames(fn.failures),
+		Requirements: publishedRowNames(fn.requirements), Convention: "eager"}
+	payload := encodePublishedMetadata(metadata)
+	if read := decodePublishedEffects(payload); read.failure != "" {
+		l.report(original, "VIBE1810", "cannot publish this callable's effect contract: "+read.failure)
+		return lowered
+	}
+	// This must stay inline: a newline after `return` would change a returned
+	// closure through ASI before declaration serialization even starts.
+	return l.emitContext.AddSyntheticLeadingComment(lowered, ast.KindMultiLineCommentTrivia,
+		"* @vibelangEffects "+payload+" ", false)
+}
+
+func (l *lowerer) publishedRequirementTable() *ast.Node {
+	if !l.publishDeclarations {
+		return nil
+	}
+	rows := make(rowSet)
+	for _, fn := range l.analysis.functions {
+		if fn.file == l.file {
+			addRows(rows, fn.requirements)
+		}
+	}
+	// An exported alias or container of imported functions has no new body.
+	// Keep the dependency's type-only constructor table available as well;
+	// these entries name identities, they do not add effects to any callable.
+	l.collectImportedPublicationRequirements(rows)
+	byName := make(map[string]*ast.Symbol)
+	ambiguous := make(map[string]bool)
+	for _, row := range rows {
+		if row.symbol != nil {
+			if previous := byName[row.name]; previous != nil && previous != row.symbol {
+				ambiguous[row.name] = true
+			}
+			byName[row.name] = row.symbol
+		}
+	}
+	for name := range ambiguous {
+		delete(byName, name)
+	}
+	names := make([]string, 0, len(byName))
+	for name := range byName {
+		names = append(names, name)
+	}
+	sortUTF16(names)
+	var fields []*ast.Node
+	for _, name := range names {
+		symbol := byName[name]
+		actual := l.checker.GetTypeOfSymbolAtLocation(symbol, l.file.AsNode())
+		if !l.analysis.isContextConstructorType(actual) {
+			continue
+		}
+		typeNode := l.forwardedRequirementType(symbol, actual)
+		if typeNode == nil {
+			typeNode = l.checker.TypeToTypeNode(actual, l.file.AsNode(), nodebuilder.FlagsNoTruncation|
+				nodebuilder.FlagsUseAliasDefinedOutsideCurrentScope|nodebuilder.FlagsUseFullyQualifiedType, nil)
+		}
+		if typeNode == nil || typeNode.Kind == ast.KindAnyKeyword {
+			continue
+		}
+		if typeNode.Kind == ast.KindTypeQuery && ast.IsIdentifier(typeNode.AsTypeQueryNode().ExprName) {
+			resolved := l.analysis.canonical(l.checker.ResolveName(typeNode.AsTypeQueryNode().ExprName.Text(), l.file.AsNode(), ast.SymbolFlagsValue, false))
+			if resolved != symbol {
+				// A function-local constructor cannot be published by inventing a
+				// same-spelled module-level key. Exported uses are refused below.
+				continue
+			}
+		}
+		fields = append(fields, l.factory.NewPropertySignatureDeclaration(
+			l.factory.NewModifierList([]*ast.Node{l.factory.NewToken(ast.KindReadonlyKeyword)}),
+			l.factory.NewStringLiteral(name, ast.TokenFlagsNone), nil, l.rebindPublishedType(typeNode), nil))
+	}
+	if len(fields) == 0 {
+		return nil
+	}
+	name := "__vibelangRequirements"
+	for suffix := 0; l.checker.ResolveName(name, l.file.AsNode(), ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsNamespace, false) != nil; suffix++ {
+		name = fmt.Sprintf("__vibelangRequirements%d", suffix)
+	}
+	l.publishedRequirements = name
+	table := l.factory.NewTypeAliasDeclaration(
+		l.factory.NewModifierList([]*ast.Node{l.factory.NewToken(ast.KindExportKeyword)}),
+		l.factory.NewIdentifier(name), nil, l.factory.NewTypeLiteralNode(l.factory.NewNodeList(fields)))
+	if l.sdkRuntime != "" {
+		return l.emitContext.AddSyntheticLeadingComment(table, ast.KindMultiLineCommentTrivia, "* @vibelangRequirements ", true)
+	}
+	return table
+}
+
+func (l *lowerer) collectImportedPublicationRequirements(rows rowSet) {
+	seen := make(map[*ast.SourceFile]bool)
+	for _, specifier := range l.file.Imports() {
+		moduleSymbol := l.checker.ResolveExternalModuleNameAtLocation(specifier.AsNode())
+		if moduleSymbol == nil {
+			continue
+		}
+		for _, declaration := range moduleSymbol.Declarations {
+			origin := ast.GetSourceFileOfNode(declaration)
+			if origin == nil || seen[origin] {
+				continue
+			}
+			seen[origin] = true
+			module := l.analysis.publishedModule(origin)
+			if module.value == nil || module.value.Requirements == "" {
+				continue
+			}
+			for _, table := range l.checker.GetExportsOfModule(moduleSymbol) {
+				if table.Name != module.value.Requirements {
+					continue
+				}
+				for _, property := range l.checker.GetPropertiesOfType(l.checker.GetDeclaredTypeOfSymbol(l.analysis.canonical(table))) {
+					actual := l.checker.GetTypeOfSymbolAtLocation(property, origin.AsNode())
+					if !l.analysis.isContextConstructorType(actual) {
+						continue
+					}
+					for _, signature := range l.checker.GetSignaturesOfType(actual, checker.SignatureKindConstruct) {
+						instance := l.checker.GetReturnTypeOfSignature(signature)
+						if instance != nil && instance.Symbol() != nil {
+							addRow(rows, l.analysis.row(instance.Symbol()))
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func (l *lowerer) forwardedRequirementType(symbol *ast.Symbol, actual *checker.Type) *ast.Node {
+	for _, declaration := range symbol.Declarations {
+		origin := ast.GetSourceFileOfNode(declaration)
+		module := l.analysis.publishedModule(origin)
+		if module.value == nil || module.value.Requirements == "" {
+			continue
+		}
+		moduleSymbol := l.checker.GetSymbolAtLocation(origin.AsNode())
+		for _, table := range l.checker.GetExportsOfModule(moduleSymbol) {
+			if table.Name != module.value.Requirements {
+				continue
+			}
+			for _, field := range l.checker.GetPropertiesOfType(l.checker.GetDeclaredTypeOfSymbol(l.analysis.canonical(table))) {
+				if l.checker.GetTypeOfSymbolAtLocation(field, origin.AsNode()) != actual {
+					continue
+				}
+				name := origin.FileName()
+				if strings.HasSuffix(name, ".d.vibe.ts") {
+					name = strings.TrimSuffix(name, ".d.vibe.ts") + ".vibe"
+				} else {
+					for _, extension := range []struct{ from, to string }{{".d.mts", ".mjs"}, {".d.cts", ".cjs"}, {".d.ts", ".js"}} {
+						if strings.HasSuffix(name, extension.from) {
+							name = strings.TrimSuffix(name, extension.from) + extension.to
+							break
+						}
+					}
+				}
+				importType := l.factory.NewImportTypeNode(false, l.factory.NewLiteralTypeNode(l.factory.NewStringLiteral(name, ast.TokenFlagsNone)),
+					nil, l.factory.NewIdentifier(table.Name), nil)
+				return l.factory.NewIndexedAccessTypeNode(importType, l.factory.NewLiteralTypeNode(l.factory.NewStringLiteral(field.Name, ast.TokenFlagsNone)))
+			}
+		}
+	}
+	return nil
+}
+
+func (l *lowerer) rebindPublishedType(node *ast.Node) *ast.Node {
+	var visitor *ast.NodeVisitor
+	visitor = l.emitContext.NewNodeVisitor(func(node *ast.Node) *ast.Node {
+		if node.Kind == ast.KindImportType {
+			importType := node.AsImportTypeNode()
+			if importType.Argument.Kind == ast.KindLiteralType && ast.IsStringLiteral(importType.Argument.AsLiteralTypeNode().Literal) {
+				name := importType.Argument.AsLiteralTypeNode().Literal.Text()
+				if strings.HasSuffix(name, ".vibe.ts") {
+					name = strings.TrimSuffix(name, ".ts")
+				}
+				if path.IsAbs(name) {
+					name = tspath.GetRelativePathFromDirectory(path.Dir(l.file.FileName()), name, tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+					if !strings.HasPrefix(name, "./") && !strings.HasPrefix(name, "../") {
+						name = "./" + name
+					}
+				}
+				if l.sdkRuntime != "" && (strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../")) &&
+					!(l.sdkPreserveSpecifiers && strings.HasSuffix(name, ".vibe")) {
+					logical := l.analysis.project.logicalByVirtual[l.file.FileName()]
+					address := path.Clean(path.Join(path.Dir(logical), name))
+					if relocated := l.sdkOutputSpecifier(address, l.sdkOutputs[address]); relocated != "" {
+						name = relocated
+					}
+				}
+				return l.factory.UpdateImportTypeNode(importType, importType.IsTypeOf, l.factory.NewLiteralTypeNode(l.factory.NewStringLiteral(name, ast.TokenFlagsNone)),
+					importType.Attributes, importType.Qualifier, importType.TypeArguments)
+			}
+		}
+		return visitor.VisitEachChild(node)
+	})
+	return visitor.VisitNode(node)
+}
+
+type declarationCarrier struct {
+	checker          *checker.Checker
+	source           *ast.SourceFile
+	output           *ast.SourceFile
+	metadata         *rowAnalysis
+	insertions       map[int]publishedEffects
+	nodes            map[int]*ast.Node
+	visited          map[*ast.Node]map[*checker.Type]bool
+	failure          error
+	requirementType  *checker.Type
+	accessors        map[*ast.Node]publishedAccessorShape
+	accessorTags     map[int]publishedAccessor
+	publishAccessors bool
+}
+
+type publishedAccessorShape struct{ getter, setter *ast.Node }
+
+func (c *declarationCarrier) attach(node, declaration *ast.Node) {
+	if declaration == nil || c.failure != nil {
+		return
+	}
+	read := c.metadata.publishedEffects(declaration)
+	if read.failure != "" {
+		c.failure = fmt.Errorf("%s", read.failure)
+		return
+	}
+	if read.value == nil {
+		return
+	}
+	position := scanner.SkipTrivia(c.output.Text(), node.Pos())
+	c.nodes[position] = node
+	value := *read.value
+	if origin := ast.GetSourceFileOfNode(declaration); origin != nil && origin.IsDeclarationFile {
+		value.Requirements = append([]string{}, value.Requirements...)
+		for index, name := range value.Requirements {
+			actual := c.metadata.publishedRequirementType(origin, name)
+			if actual == nil {
+				continue // Ambient requirements have no nominal constructor.
+			}
+			found := false
+			if c.requirementType != nil {
+				for _, field := range c.checker.GetPropertiesOfType(c.requirementType) {
+					if c.checker.GetTypeOfSymbolAtLocation(field, c.source.AsNode()) == actual {
+						value.Requirements[index] = field.Name
+						found = true
+						break
+					}
+				}
+			}
+			if !found {
+				c.failure = fmt.Errorf("imported requirement '%s' has no publishable nominal constructor", name)
+				return
+			}
+		}
+		sortUTF16(value.Requirements)
+	}
+	if previous, ok := c.insertions[position]; ok {
+		if previous.Convention != value.Convention {
+			c.failure = fmt.Errorf("declaration serialization merged incompatible callable conventions")
+			return
+		}
+		value.Failures = unionPublishedNames(previous.Failures, value.Failures)
+		value.Requirements = unionPublishedNames(previous.Requirements, value.Requirements)
+	}
+	c.insertions[position] = value
+}
+
+func unionPublishedNames(left, right []string) []string {
+	names := make(map[string]bool)
+	for _, list := range [][]string{left, right} {
+		for _, name := range list {
+			names[name] = true
+		}
+	}
+	result := make([]string, 0, len(names))
+	for name := range names {
+		result = append(result, name)
+	}
+	sortUTF16(result)
+	return result
+}
+
+func (c *declarationCarrier) signature(node *ast.Node, signature *checker.Signature) {
+	if signature == nil {
+		return
+	}
+	c.attach(node, signature.Declaration())
+	if c.publishAccessors && (ast.IsGetAccessorDeclaration(node) || ast.IsSetAccessorDeclaration(node)) {
+		declaration := signature.Declaration()
+		metadata, failure := readPublishedAccessor(declaration)
+		if failure != "" {
+			c.failure = fmt.Errorf("%s", failure)
+			return
+		}
+		if metadata == nil && declaration != nil && declaration.Parent != nil {
+			if ast.IsObjectLiteralExpression(declaration.Parent) {
+				metadata = &publishedAccessor{Version: 1, Enumerable: true}
+			} else if ast.IsClassDeclaration(declaration.Parent) || ast.IsClassExpression(declaration.Parent) {
+				metadata = &publishedAccessor{Version: 1, Enumerable: false}
+			}
+		}
+		if metadata != nil {
+			position := scanner.SkipTrivia(c.output.Text(), node.Pos())
+			c.accessorTags[position] = *metadata
+			c.nodes[position] = node
+		}
+	}
+	index := 0
+	for _, parameter := range node.Parameters() {
+		var symbol *ast.Symbol
+		if bindingText(parameter.Name()) == "this" {
+			symbol = signature.ThisParameter()
+		} else if index < len(signature.Parameters()) {
+			symbol = signature.Parameters()[index]
+			index++
+		}
+		if symbol != nil {
+			c.typeNode(parameter.Type(), c.checker.GetTypeOfSymbolAtLocation(symbol, c.source.AsNode()))
+		}
+	}
+	c.returnType(node.Type(), signature)
+}
+
+func (c *declarationCarrier) returnType(node *ast.Node, signature *checker.Signature) {
+	if signature == nil {
+		return
+	}
+	c.typeNode(node, c.checker.GetReturnTypeOfSignature(signature))
+	for _, alternative := range c.returnValues(signature, make(map[*ast.Node]bool)) {
+		c.typeNode(node, alternative)
+	}
+}
+
+func (c *declarationCarrier) returnValues(signature *checker.Signature, active map[*ast.Node]bool) []*checker.Type {
+	declaration := signature.Declaration()
+	if declaration == nil || declaration.Body() == nil || active[declaration] {
+		return nil
+	}
+	active[declaration] = true
+	var result []*checker.Type
+	var value func(*ast.Node)
+	value = func(node *ast.Node) {
+		if active[node] {
+			return
+		}
+		active[node] = true
+		result = append(result, c.checker.GetTypeAtLocation(node))
+		switch {
+		case ast.IsParenthesizedExpression(node):
+			value(node.Expression())
+		case ast.IsConditionalExpression(node):
+			value(node.AsConditionalExpression().WhenTrue)
+			value(node.AsConditionalExpression().WhenFalse)
+		case ast.IsIdentifier(node):
+			if symbol := c.checker.GetSymbolAtLocation(node); symbol != nil {
+				for _, declaration := range symbol.Declarations {
+					if ast.IsVariableDeclaration(declaration) && declaration.Type() == nil && declaration.AsVariableDeclaration().Initializer != nil {
+						value(declaration.AsVariableDeclaration().Initializer)
+					}
+				}
+			}
+		case ast.IsCallExpression(node):
+			if called := c.checker.GetResolvedSignature(node); called != nil {
+				result = append(result, c.returnValues(called, active)...)
+			}
+		}
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsFunctionLike(node) {
+			return false
+		}
+		if ast.IsReturnStatement(node) && node.AsReturnStatement().Expression != nil {
+			value(node.AsReturnStatement().Expression)
+		} else {
+			node.ForEachChild(visit)
+		}
+		return false
+	}
+	if declaration.Body().Kind == ast.KindBlock {
+		visit(declaration.Body())
+	} else {
+		value(declaration.Body())
+	}
+	return result
+}
+
+func publishedSignature(signatures []*checker.Signature, index int) *checker.Signature {
+	if index < len(signatures) {
+		return signatures[index]
+	}
+	return nil
+}
+
+func publishedComputedMemberKey(node *ast.Node) string {
+	if node == nil {
+		return ""
+	}
+	if ast.IsIdentifier(node) {
+		return node.Text()
+	}
+	if ast.IsPropertyAccessExpression(node) {
+		if base := publishedComputedMemberKey(node.AsPropertyAccessExpression().Expression); base != "" {
+			return base + "." + node.Name().Text()
+		}
+	}
+	return ""
+}
+
+func (c *declarationCarrier) memberProperty(node *ast.Node, actual *checker.Type) *ast.Symbol {
+	if name := bindingText(node.Name()); name != "" {
+		return c.checker.GetPropertyOfType(actual, name)
+	}
+	if node.Name() == nil || !ast.IsComputedPropertyName(node.Name()) {
+		return nil
+	}
+	key := publishedComputedMemberKey(node.Name().AsComputedPropertyName().Expression)
+	if key == "" {
+		return nil
+	}
+	for _, property := range c.checker.GetPropertiesOfType(actual) {
+		for _, declaration := range property.Declarations {
+			if name := declaration.Name(); name != nil && ast.IsComputedPropertyName(name) &&
+				publishedComputedMemberKey(name.AsComputedPropertyName().Expression) == key {
+				return property
+			}
+		}
+	}
+	return nil
+}
+
+func (c *declarationCarrier) members(nodes []*ast.Node, actual *checker.Type) {
+	overloads := make(map[*ast.Symbol]int)
+	call, construct := 0, 0
+	for _, node := range nodes {
+		switch node.Kind {
+		case ast.KindCallSignature:
+			c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(actual, checker.SignatureKindCall), call))
+			call++
+		case ast.KindConstructSignature:
+			c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(actual, checker.SignatureKindConstruct), construct))
+			construct++
+		case ast.KindIndexSignature:
+			key := c.checker.GetStringType()
+			if len(node.Parameters()) != 0 && node.Parameters()[0].Type() != nil && node.Parameters()[0].Type().Kind == ast.KindNumberKeyword {
+				key = c.checker.GetNumberType()
+			}
+			if info := c.checker.GetIndexInfoOfType(actual, key); info != nil {
+				c.typeNode(node.Type(), info.ValueType())
+			}
+		default:
+			if property := c.memberProperty(node, actual); property != nil {
+				value := c.checker.GetTypeOfSymbolAtLocation(property, c.source.AsNode())
+				if node.Kind == ast.KindMethodSignature || node.Kind == ast.KindMethodDeclaration {
+					c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(value, checker.SignatureKindCall), overloads[property]))
+					overloads[property]++
+				} else if node.Kind == ast.KindGetAccessor || node.Kind == ast.KindSetAccessor {
+					for _, declaration := range accessorContractDeclarations(property, actual) {
+						if declaration.Kind == node.Kind {
+							c.signature(node, c.checker.GetSignatureFromDeclaration(declaration))
+						}
+					}
+				} else {
+					if c.publishAccessors && ast.IsPropertySignatureDeclaration(node) && node.Type() != nil && node.QuestionToken() == nil {
+						shape := publishedAccessorShape{}
+						for _, declaration := range accessorContractDeclarations(property, actual) {
+							if ast.IsGetAccessorDeclaration(declaration) {
+								shape.getter = declaration
+							}
+							if ast.IsSetAccessorDeclaration(declaration) {
+								shape.setter = declaration
+							}
+						}
+						if shape.getter != nil || shape.setter != nil {
+							c.accessors[node] = shape
+						}
+					}
+					c.typeNode(node.Type(), value)
+				}
+			}
+		}
+	}
+}
+
+func (c *declarationCarrier) typeNode(node *ast.Node, actual *checker.Type) {
+	if node == nil || actual == nil {
+		return
+	}
+	if c.visited[node] == nil {
+		c.visited[node] = make(map[*checker.Type]bool)
+	}
+	if c.visited[node][actual] {
+		return
+	}
+	c.visited[node][actual] = true
+	if actual.Flags()&checker.TypeFlagsUnion != 0 && node.Kind != ast.KindUnionType {
+		for _, alternative := range actual.Types() {
+			c.typeNode(node, alternative)
+		}
+		return
+	}
+	switch node.Kind {
+	case ast.KindFunctionType:
+		c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(actual, checker.SignatureKindCall), 0))
+	case ast.KindConstructorType:
+		c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(actual, checker.SignatureKindConstruct), 0))
+	case ast.KindTypeLiteral:
+		c.members(node.Members(), actual)
+	case ast.KindArrayType:
+		if info := c.checker.GetIndexInfoOfType(actual, c.checker.GetNumberType()); info != nil {
+			c.typeNode(node.AsArrayTypeNode().ElementType, info.ValueType())
+		}
+	case ast.KindParenthesizedType, ast.KindTypeOperator, ast.KindOptionalType, ast.KindRestType:
+		c.typeNode(node.Type(), actual)
+	case ast.KindUnionType, ast.KindIntersectionType:
+		parts := []*checker.Type{actual}
+		if actual.Flags()&checker.TypeFlagsUnionOrIntersection != 0 {
+			parts = actual.Types()
+		}
+		var nodes []*ast.Node
+		if node.Kind == ast.KindUnionType {
+			nodes = node.AsUnionTypeNode().Types.Nodes
+		} else {
+			nodes = node.AsIntersectionTypeNode().Types.Nodes
+		}
+		if len(parts) == len(nodes) {
+			for index, part := range nodes {
+				c.typeNode(part, parts[index])
+			}
+		}
+	case ast.KindTupleType:
+		if actual.Flags()&checker.TypeFlagsObject == 0 || actual.ObjectFlags()&checker.ObjectFlagsReference == 0 {
+			return
+		}
+		parts := c.checker.GetTypeArguments(actual)
+		for index, element := range node.AsTupleTypeNode().Elements.Nodes {
+			if element.Kind == ast.KindNamedTupleMember {
+				element = element.Type()
+			}
+			if index < len(parts) {
+				c.typeNode(element, parts[index])
+			}
+		}
+	case ast.KindTypeReference:
+		if len(node.TypeArguments()) == 0 {
+			return
+		}
+		parts := []*checker.Type{}
+		if alias := actual.Alias(); alias != nil {
+			parts = alias.TypeArguments()
+		} else if actual.Flags()&checker.TypeFlagsObject != 0 && actual.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+			parts = c.checker.GetTypeArguments(actual)
+		}
+		for index, argument := range node.TypeArguments() {
+			if index < len(parts) {
+				c.typeNode(argument, parts[index])
+			}
+		}
+	}
+}
+
+func (c *declarationCarrier) symbolFor(node, scope *ast.Node) *ast.Symbol {
+	if node == nil {
+		return nil
+	}
+	if node.Name() != nil {
+		if symbol := c.checker.ResolveName(bindingText(node.Name()), scope,
+			ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsNamespace, false); symbol != nil {
+			return c.metadata.canonical(symbol)
+		}
+		// Stock TS introduces a fresh binding for an anonymous default value.
+		// Resolve that binding through the emitted default-export edge, not
+		// through a guessed `_default` spelling or an unrelated source name.
+		for _, statement := range c.output.Statements.Nodes {
+			if statement.Kind == ast.KindExportAssignment {
+				expression := statement.AsExportAssignment().Expression
+				if ast.IsIdentifier(expression) && expression.Text() == bindingText(node.Name()) {
+					return c.defaultSymbol(scope)
+				}
+			}
+		}
+	}
+	if node.ModifierFlags()&ast.ModifierFlagsDefault != 0 {
+		return c.defaultSymbol(scope)
+	}
+	return nil
+}
+
+func (c *declarationCarrier) defaultSymbol(scope *ast.Node) *ast.Symbol {
+	if module := c.checker.GetSymbolAtLocation(scope); module != nil {
+		for _, symbol := range c.checker.GetExportsOfModule(module) {
+			if symbol.Name == "default" {
+				return c.metadata.canonical(symbol)
+			}
+		}
+	}
+	return nil
+}
+
+func (c *declarationCarrier) statements(nodes []*ast.Node, scope *ast.Node) {
+	overloads := make(map[*ast.Symbol]int)
+	for _, node := range nodes {
+		if ast.IsVariableStatement(node) {
+			for _, declaration := range node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+				if symbol := c.symbolFor(declaration, scope); symbol != nil {
+					c.typeNode(declaration.Type(), c.checker.GetTypeOfSymbolAtLocation(symbol, c.source.AsNode()))
+				}
+			}
+			continue
+		}
+		symbol := c.symbolFor(node, scope)
+		if symbol == nil {
+			continue
+		}
+		switch node.Kind {
+		case ast.KindFunctionDeclaration:
+			c.signature(node, publishedSignature(c.checker.GetSignaturesOfType(c.checker.GetTypeOfSymbolAtLocation(symbol, c.source.AsNode()), checker.SignatureKindCall), overloads[symbol]))
+			overloads[symbol]++
+		case ast.KindTypeAliasDeclaration:
+			c.typeNode(node.Type(), c.checker.GetDeclaredTypeOfSymbol(symbol))
+		case ast.KindInterfaceDeclaration:
+			c.members(node.Members(), c.checker.GetDeclaredTypeOfSymbol(symbol))
+		case ast.KindClassDeclaration:
+			instance := c.checker.GetDeclaredTypeOfSymbol(symbol)
+			constructor := c.checker.GetTypeOfSymbolAtLocation(symbol, c.source.AsNode())
+			var instanceMembers, staticMembers []*ast.Node
+			construct := 0
+			for _, member := range node.Members() {
+				if member.Kind == ast.KindConstructor {
+					c.signature(member, publishedSignature(c.checker.GetSignaturesOfType(constructor, checker.SignatureKindConstruct), construct))
+					construct++
+				} else if member.ModifierFlags()&ast.ModifierFlagsStatic != 0 {
+					staticMembers = append(staticMembers, member)
+				} else {
+					instanceMembers = append(instanceMembers, member)
+				}
+			}
+			c.members(instanceMembers, instance)
+			c.members(staticMembers, constructor)
+		case ast.KindModuleDeclaration:
+			if body := node.Body(); body != nil && body.Kind == ast.KindModuleBlock {
+				for _, declaration := range symbol.Declarations {
+					if declaration.Kind == ast.KindModuleDeclaration && declaration.Body() != nil {
+						c.statements(body.AsModuleBlock().Statements.Nodes, declaration.Body())
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+func carryPublishedDeclaration(code, fileName string, source *ast.SourceFile, typeChecker *checker.Checker, module publishedModule) (string, [][]specifierEdit, error) {
+	return carryDeclarationContracts(code, fileName, source, typeChecker, &module)
+}
+
+// A generated ordinary/foreign declaration without a compiler module envelope
+// does not acquire nominal accessor claims merely by being copied or emitted.
+// Native VibeLang publication supplies its required runtime-identified envelope.
+func carryDeclarationContracts(code, fileName string, source *ast.SourceFile, typeChecker *checker.Checker, module *publishedModule) (string, [][]specifierEdit, error) {
+	output := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, Path: tspath.Path(fileName)}, code, core.ScriptKindTS)
+	var requirementType *checker.Type
+	if module != nil && module.Requirements != "" {
+		if symbol := typeChecker.ResolveName(module.Requirements, source.AsNode(), ast.SymbolFlagsType, false); symbol != nil {
+			requirementType = typeChecker.GetDeclaredTypeOfSymbol(symbol)
+		}
+	}
+	carrier := &declarationCarrier{checker: typeChecker, source: source, output: output,
+		metadata:        &rowAnalysis{checker: typeChecker, declarationEffects: make(map[*ast.Node]publishedEffectsRead), declarationModules: make(map[*ast.SourceFile]publishedModuleRead)},
+		requirementType: requirementType,
+		insertions:      make(map[int]publishedEffects), nodes: make(map[int]*ast.Node), visited: make(map[*ast.Node]map[*checker.Type]bool),
+		accessors: make(map[*ast.Node]publishedAccessorShape), accessorTags: make(map[int]publishedAccessor), publishAccessors: module != nil}
+	carrier.statements(output.Statements.Nodes, source.AsNode())
+	if carrier.failure != nil {
+		return "", nil, carrier.failure
+	}
+	lines := newLineIndex(code)
+	edit := func(start, end int, text string) specifierEdit {
+		line, column := lines.position(start)
+		endLine, endColumn := lines.position(end)
+		newLines, newColumn := newLineIndex(text).position(len(text))
+		return specifierEdit{byteStart: start, byteEnd: end, replacement: text,
+			line: line, endLine: endLine, utf16Start: column, utf16OldEnd: endColumn,
+			newLines: newLines, utf16NewLen: newColumn}
+	}
+	if len(carrier.accessors) > 0 {
+		// Restore outermost accessor shapes, then read their real signatures.
+		// A getter's returned callable and a setter's accepted callable may
+		// have different rows even when TS serializes their types identically.
+		// Copy only TS's type spelling here, never the getter's metadata.
+		var edits []specifierEdit
+		for node, shape := range carrier.accessors {
+			contained := false
+			for parent := range carrier.accessors {
+				if parent != node && parent.Pos() <= node.Pos() && parent.End() >= node.End() {
+					contained = true
+					break
+				}
+			}
+			if contained {
+				continue
+			}
+			start := scanner.SkipTrivia(code, node.Pos())
+			typeStart := scanner.SkipTrivia(code, node.Type().Pos())
+			name := code[scanner.SkipTrivia(code, node.Name().Pos()):node.Name().End()]
+			prefix := "get " + name + "(): "
+			if shape.getter == nil {
+				prefix = "set " + name + "(value: "
+			}
+			edits = append(edits, edit(start, typeStart, prefix))
+			if shape.getter == nil {
+				edits = append(edits, edit(node.Type().End(), node.End(), ");"))
+			} else if shape.setter != nil {
+				edits = append(edits, edit(node.End(), node.End(), " set "+name+"(value: "+code[typeStart:node.Type().End()]+");"))
+			}
+		}
+		sort.Slice(edits, func(i, j int) bool { return edits[i].byteStart < edits[j].byteStart })
+		text, remaining, err := carryDeclarationContracts(applySpecifierEdits(code, edits), fileName, source, typeChecker, module)
+		return text, append([][]specifierEdit{edits}, remaining...), err
+	}
+	// Required comments survive removeComments. Existing stock-copied tags are
+	// checked, not duplicated or silently overwritten with a contradictory row.
+	insertions := make(map[int]string)
+	existingModule := readPublishedModule(output)
+	if existingModule.failure != "" {
+		return "", nil, fmt.Errorf("%s", existingModule.failure)
+	}
+	if module != nil {
+		if existingModule.value != nil {
+			if encodePublishedMetadata(existingModule.value) != encodePublishedMetadata(module) {
+				return "", nil, fmt.Errorf("declaration serialization changed its module contract")
+			}
+		} else {
+			insertions[0] = "/** @vibelangModule " + encodePublishedMetadata(module) + " */ "
+			envelope := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, Path: tspath.Path(fileName)}, insertions[0], core.ScriptKindTS)
+			if read := readPublishedModule(envelope); read.value == nil {
+				return "", nil, fmt.Errorf("%s", read.failure)
+			}
+		}
+	}
+	positions := make([]int, 0, len(carrier.insertions))
+	for position := range carrier.insertions {
+		positions = append(positions, position)
+	}
+	sort.Ints(positions)
+	for _, position := range positions {
+		value := carrier.insertions[position]
+		for _, requirement := range value.Requirements {
+			if module != nil && !ambientPublishedRequirement(requirement) && (requirementType == nil || typeChecker.GetPropertyOfType(requirementType, requirement) == nil) {
+				return "", nil, fmt.Errorf("requirement '%s' has no publishable nominal constructor", requirement)
+			}
+		}
+		node := carrier.nodes[position]
+		read := carrier.metadata.publishedEffects(node)
+		if read.failure != "" {
+			return "", nil, fmt.Errorf("%s", read.failure)
+		}
+		if read.value != nil {
+			if encodePublishedMetadata(read.value) != encodePublishedMetadata(value) {
+				return "", nil, fmt.Errorf("declaration serialization changed a callable's effect contract")
+			}
+			continue
+		}
+		payload := encodePublishedMetadata(value)
+		if validated := decodePublishedEffects(payload); validated.failure != "" {
+			return "", nil, fmt.Errorf("%s", validated.failure)
+		}
+		insertions[position] += "/** @vibelangEffects " + payload + " */ "
+	}
+	for position, value := range carrier.accessorTags {
+		existing, failure := readPublishedAccessor(carrier.nodes[position])
+		if failure != "" {
+			return "", nil, fmt.Errorf("%s", failure)
+		}
+		if existing != nil {
+			if *existing != value {
+				return "", nil, fmt.Errorf("declaration serialization changed accessor placement")
+			}
+		} else {
+			insertions[position] += "/** @vibelangAccessor " + encodePublishedMetadata(value) + " */ "
+		}
+	}
+	edits := make([]specifierEdit, 0, len(insertions))
+	for position, text := range insertions {
+		edits = append(edits, edit(position, position, text))
+	}
+	sort.Slice(edits, func(i, j int) bool { return edits[i].byteStart < edits[j].byteStart })
+	return applySpecifierEdits(code, edits), [][]specifierEdit{edits}, nil
+}

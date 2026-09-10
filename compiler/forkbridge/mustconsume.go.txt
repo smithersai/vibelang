@@ -33,11 +33,32 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	if a.resultPropagations[stripMustConsumeWrappers(expression)] != nil {
 		return boundConsumePlain
 	}
+	// Both alternatives are authored values, not the checker's non-null-assertion
+	// view of them. A choice between two extracted successes does not recreate
+	// the Result each arm already consumed. An unconsumed arm keeps the existing
+	// channel analysis below; this does not discharge conditional ownership.
+	if choice := stripMustConsumeWrappers(expression); ast.IsConditionalExpression(choice) {
+		conditional := choice.AsConditionalExpression()
+		if a.boundProducedKind(conditional.WhenTrue) == boundConsumePlain && a.boundProducedKind(conditional.WhenFalse) == boundConsumePlain {
+			return boundConsumePlain
+		}
+	}
+	if choice := stripMustConsumeWrappers(expression); ast.IsBinaryExpression(choice) {
+		binary := choice.AsBinaryExpression()
+		switch binary.OperatorToken.Kind {
+		case ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken:
+			// As with ?: above, the upstream checker sees an authored postfix !
+			// as a non-null assertion. Do not recreate either consumed channel.
+			if a.boundProducedKind(binary.Left) == boundConsumePlain && a.boundProducedKind(binary.Right) == boundConsumePlain {
+				return boundConsumePlain
+			}
+		}
+	}
 	// Postfix ! on an un-awaited Promise<Result<A, E>> is NOT a Result
 	// extraction — specification/failures.mdx, "Promise Semantics": "Awaiting
 	// Promise<Result<A, E>> MUST produce Result<A, E>", so `await` is what
 	// removes the Promise layer and `!` alone extracts nothing. The operand
-	// violation is reported by SMITHERS1207 (specification/compatibility.mdx:72,
+	// violation is reported by VIBE1207 (specification/compatibility.mdx:72,
 	// "Postfix ! requires a Result operand"); the Promise itself passes through
 	// the invalid wrapper unchanged and the value that receives it still owes an
 	// await. When that receiver is a NAME, the obligation belongs on the name —
@@ -57,7 +78,7 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	// hands back: `` tag`bad` `` where `tag` returns `Result<string, Boom>` drops
 	// a Result on the floor exactly as `tag(parts)` does, and must-consume has to
 	// see it. `new` is deliberately not here: a constructor cannot legally carry
-	// a Result channel (SMITHERS1105), so the only obligation it can produce is
+	// a Result channel (VIBE1105), so the only obligation it can produce is
 	// the Promise one the checker type above already answers.
 	inner := stripMustConsumeWrappers(expression)
 	if ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner) {
@@ -75,8 +96,8 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 		// foreign table is the only thing that can answer for it, exactly as
 		// propagatedResultOperand already asks. Asking it HERE is what puts the
 		// foreign lift on the same ownership walk as an authored producer, and
-		// so gives it the same bound/unbound split: SMITHERS1301 at an unbound
-		// producer, SMITHERS1302 at a binding nothing consumes. The lift used to
+		// so gives it the same bound/unbound split: VIBE1301 at an unbound
+		// producer, VIBE1302 at a binding nothing consumes. The lift used to
 		// be charged by collectFacts instead, outside the must-consume machinery
 		// altogether, which is why it could not apply a split its own analysis
 		// applies everywhere else. A trusted call carries `kind == "never"` and
@@ -85,7 +106,56 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 			return boundConsumeResult
 		}
 	}
+	// An authored union can be lifted into a Result at a foreign boundary.
+	// That semantic outer channel must win over this checker-type-only choice.
+	if a.immediatePromiseChoice(t) {
+		return boundConsumePromise
+	}
+	if a.immediateResultChoice(t) {
+		return boundConsumeResult
+	}
 	return boundConsumePlain
+}
+
+// A Result alternative retains its obligation even when the other alternative
+// is a plain value: `flag && read()` has type false|Result, not Result, but a
+// binding must not silently discard the selected Result. As for Promise choices
+// below, nested channels remain on the collection path. This is classification,
+// not permission to unwrap a mixed value without narrowing it first.
+func (a *rowAnalysis) immediateResultChoice(t *checker.Type) bool {
+	if t == nil || !t.IsUnion() {
+		return false
+	}
+	result := false
+	for _, part := range t.Types() {
+		if a.prelude.isResultType(part) {
+			result = true
+		} else if a.holdsProducedChannel(part, 0) {
+			return false
+		}
+	}
+	return result
+}
+
+// A scalar Promise|value choice needs one await, not a collection combinator.
+// Payloads or alternatives that themselves own Results/Promises stay on the
+// collection path; discharging the outer await must not drop inner work.
+func (a *rowAnalysis) immediatePromiseChoice(t *checker.Type) bool {
+	if t == nil || t.Flags()&checker.TypeFlagsUnion == 0 {
+		return false
+	}
+	promise := false
+	for _, part := range t.Types() {
+		if payload := a.checker.GetPromisedTypeOfPromise(part); payload != nil {
+			if a.holdsProducedChannel(payload, 0) {
+				return false
+			}
+			promise = true
+		} else if a.holdsProducedChannel(part, 0) {
+			return false
+		}
+	}
+	return promise
 }
 
 func stripMustConsumeWrappers(node *ast.Node) *ast.Node {
@@ -170,8 +240,8 @@ func (a *rowAnalysis) holdsProducedChannel(t *checker.Type, depth int) bool {
 //
 // The answer has to name the channel because it is asked at BOTH ends of an
 // ownership transfer and the two ends need the same diagnostic: a container of
-// Results is a SMITHERS1301 when it is dropped and a container of started
-// Promises is a SMITHERS1402, exactly as the direct producers are.
+// Results is a VIBE1301 when it is dropped and a container of started
+// Promises is a VIBE1402, exactly as the direct producers are.
 //
 // A started Promise wins over a Result inside it (`Promise<Result<A, E>>` is a
 // Promise) because `await` is what removes the Promise layer, and the un-awaited
@@ -328,7 +398,7 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 		if ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
 			// `!` discharges a Result by extracting from it. On a COLLECTION, or
 			// on an un-awaited Promise<Result<A, E>>, it extracts nothing —
-			// SMITHERS1207 reports that operand violation separately — so the
+			// VIBE1207 reports that operand violation separately — so the
 			// value passes through unchanged and its position still has to answer.
 			if !collection && walk.kind == boundConsumeResult && a.resultPropagations[parent] != nil {
 				return true
@@ -395,7 +465,7 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 			if collection {
 				return a.bindingConsumes(parent, walk)
 			}
-			// Binding a Result names it, and the binding's own SMITHERS1302/1403
+			// Binding a Result names it, and the binding's own VIBE1302/1403
 			// check then owns it. Re-binding THROUGH a reference discharges
 			// nothing, which is why only the producer walk stops here.
 			return walk.fromProducer
@@ -420,6 +490,13 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 		}
 
 		if walk.kind == boundConsumeResult {
+			if ast.IsCallExpression(parent) && parent.AsCallExpression().Arguments != nil &&
+				len(parent.AsCallExpression().Arguments.Nodes) > 0 && parent.AsCallExpression().Arguments.Nodes[0] == current {
+				if selected, ok := a.prelude.calleeSelection(parent); ok &&
+					symbolDeclaredBy(a.prelude.memberSymbol(selected), a.prelude.resultCodecEncodeDecls) {
+					return true
+				}
+			}
 			if selection, selected := a.prelude.selectMember(parent); selected && selection.receiver == current {
 				// A bare member SELECTION discharges nothing; every discharge
 				// below requires a CALL.
@@ -429,11 +506,11 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 				// here, so `const r = f(); if (r.ok) { return [r.value] }
 				// return [r.error.key]` compiled and RAN on this backend
 				// (printing the error's own field) while the reference refused
-				// it with SMITHERS1302. That was a fail-open, and the corpus
+				// it with VIBE1302. That was a fail-open, and the corpus
 				// could not see it because no case spelled the shape.
 				//
 				// specification/failures.mdx, "Compiler-Owned Modules":
-				// `smthrs/result` "is the lowering target: emitted code imports
+				// `vibelang/result` "is the lowering target: emitted code imports
 				// it... The compiler links it directly, `!` and `expect` are
 				// rejected inside it, and its public API is instance methods."
 				// `ok` is a property of the runtime classes, not an instance
@@ -442,7 +519,7 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 				// match`, three methods and no properties.
 				//
 				// The emitted lowering still reads `.ok` on its own temporaries
-				// (`if (!__smithersUnwrapped0.ok)`); that is the compiler
+				// (`if (!__vibelangUnwrapped0.ok)`); that is the compiler
 				// writing the representation it owns, which is exactly the
 				// distinction this arm was blurring.
 				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
@@ -455,8 +532,8 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 						return true
 					}
 					if selection.text == "unwrap" {
-						// The retired spelling is owned by SMITHERS1206. It does not
-						// need a consequence-only SMITHERS1301 at the same producer.
+						// The retired spelling is owned by VIBE1206. It does not
+						// need a consequence-only VIBE1301 at the same producer.
 						return true
 					}
 				}
@@ -474,7 +551,7 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 			}
 			if all := enclosingCollectionCall(current, false); all != nil {
 				member, matched := a.prelude.resultNamespaceCall(all)
-				return matched && member == "all"
+				return matched && resultCollectionMember(member)
 			}
 		}
 		return false
@@ -488,7 +565,7 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 // A `return` is not a discharge; it is a TRANSFER, and a transfer conserves the
 // obligation only when the value that leaves is one the receiving side is
 // charged for. For a Result or a Promise that is automatic — the caller's own
-// SMITHERS1301/1402 is charged at the call. For a container it is a question,
+// VIBE1301/1402 is charged at the call. For a container it is a question,
 // and it is the SAME question heldObligation asks of the call: does the type the
 // caller receives still carry a must-consume channel?
 //
@@ -560,7 +637,7 @@ func (a *rowAnalysis) bindingConsumes(declaration *ast.Node, walk ownershipWalk)
 // set; the two are deliberately the same rule.
 func (a *rowAnalysis) collectionConsumed(current *ast.Node, parent *ast.Node, walk ownershipWalk) bool {
 	if all := enclosingCollectionCall(current, false); all != nil {
-		if member, matched := a.prelude.resultNamespaceCall(all); matched && member == "all" {
+		if member, matched := a.prelude.resultNamespaceCall(all); matched && resultCollectionMember(member) {
 			return true
 		}
 	}
@@ -574,7 +651,7 @@ func (a *rowAnalysis) collectionConsumed(current *ast.Node, parent *ast.Node, wa
 	if !isMemberRead(current, parent) {
 		return false
 	}
-	readType := a.checker.GetTypeAtLocation(parent)
+	readType := a.unwidenedIndexedAccessType(parent)
 	// Only a RESULT read leaves the collection: the value that came out is a
 	// Result again and answers as one. Anything else that still holds a channel
 	// — a nested collection, or a started Promise read out of a container — stays
@@ -618,7 +695,7 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 	for _, file := range files {
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
-			if ast.IsFunctionLikeDeclaration(node) && node.Parent != nil && ast.IsCallExpression(node.Parent) {
+			if !a.executableBodies && ast.IsFunctionLikeDeclaration(node) && node.Parent != nil && ast.IsCallExpression(node.Parent) {
 				call := node.Parent
 				arguments := call.AsCallExpression().Arguments
 				if arguments != nil && len(arguments.Nodes) != 0 && arguments.Nodes[0] == node {
@@ -635,9 +712,8 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 					}
 				}
 			}
-			if ast.IsAwaitExpression(node) && a.awaitedResultProducer(node) &&
-				!a.unboundProducerConsumed(node, boundConsumeResult, make(map[*ast.Node]bool)) {
-				a.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
+			if ast.IsAwaitExpression(node) {
+				a.checkAwaitedOwnership(node)
 			}
 			// A tagged template is an invocation and drops whatever its tag hands
 			// back; see boundProducedKind. Keying this walk on call/`new` alone made
@@ -652,11 +728,17 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 					}
 				}
 				kind := a.boundProducedKind(node)
-				if kind != boundConsumePlain && !a.unboundProducerConsumed(node, kind, make(map[*ast.Node]bool)) {
+				consumed := kind == boundConsumePlain || a.unboundProducerConsumed(node, kind, make(map[*ast.Node]bool))
+				if kind != boundConsumePlain && consumed && !a.ownershipDirectlyBound(node) {
+					if flow := a.ownershipFlowFor(node); flow != nil {
+						consumed = flow.consumedOnEveryPath(node, a.ownershipConsumptionSites(node, kind, nil), nil)
+					}
+				}
+				if kind != boundConsumePlain && !consumed {
 					if kind == boundConsumeResult {
-						a.report(node, "SMITHERS1301", "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !")
+						a.reportOwnership(node, "VIBE1301", "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !")
 					} else {
-						a.report(node, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
+						a.report(node, "VIBE1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
 					}
 				}
 				// The receiving half of a container transfer; see heldObligation. A
@@ -677,11 +759,21 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 						kind: held, fromProducer: true,
 						seen: make(map[*ast.Node]bool), seenBindings: make(map[*ast.Symbol]bool),
 					})
+					if consumed && kind == boundConsumePlain {
+						if flow := a.ownershipFlowFor(node); flow != nil {
+							for _, path := range a.ownershipReturnedPaths(node, held) {
+								if !flow.consumedOnEveryPath(node, a.ownershipConsumptionSites(node, held, path), nil) {
+									consumed = false
+									break
+								}
+							}
+						}
+					}
 					if !consumed {
 						if held == boundConsumeResult {
-							a.report(node, "SMITHERS1301", "this call hands back a collection of Results that is not consumed; read one back out with postfix !, pass the collection to Result.all, or return it")
+							a.report(node, "VIBE1301", "this call hands back a collection of Results that is not consumed; read one back out with postfix !, pass the collection to Result.all, or return it")
 						} else {
-							a.report(node, "SMITHERS1402", "this call hands back started Promises that are not consumed; await a recognized Promise combinator over the collection, or return it")
+							a.report(node, "VIBE1402", "this call hands back started Promises that are not consumed; await a recognized Promise combinator over the collection, or return it")
 						}
 					}
 				}
@@ -757,7 +849,7 @@ func (a *rowAnalysis) identifierReferences(file *ast.SourceFile, symbol *ast.Sym
 		var collect func(*ast.Node) bool
 		collect = func(node *ast.Node) bool {
 			if ast.IsIdentifier(node) {
-				if resolved := a.symbolAt(node); resolved != nil {
+				if resolved := a.canonical(a.referencedValueSymbol(node)); resolved != nil {
 					index[resolved] = append(index[resolved], node)
 				}
 			}
@@ -806,13 +898,35 @@ func (a *rowAnalysis) checkBoundMustConsume(files []*ast.SourceFile) {
 					break
 				}
 			}
+			sites, overwritten := a.ownershipBindingSites(name, kind)
+			if flow := a.ownershipFlowFor(node); flow != nil {
+				consumed = flow.consumedOnEveryPath(node, sites, overwritten)
+			}
+			initializer := stripMustConsumeWrappers(declaration.Initializer)
+			if ast.IsIdentifier(initializer) && a.boundProducedKind(initializer) == kind {
+				if origin := a.symbolAt(initializer); origin != nil && origin.ValueDeclaration != nil {
+					declaration := origin.ValueDeclaration
+					if enclosingFunction(declaration) == enclosingFunction(node) &&
+						(ast.IsVariableDeclaration(declaration) && declaration.Initializer() != nil || declaration.Kind == ast.KindParameter && kind == boundConsumeResult) {
+						consumed = true
+					}
+				}
+			}
 			if consumed {
 				continue
 			}
 			if kind == boundConsumeResult {
-				a.report(name, "SMITHERS1302", "Result '"+name.Text()+"' is never consumed")
+				message := "never consumed"
+				if len(sites) > 0 {
+					message = "not consumed on every path"
+				}
+				a.report(name, "VIBE1302", "Result '"+name.Text()+"' is "+message)
 			} else {
-				a.report(name, "SMITHERS1403", "Promise '"+name.Text()+"' is never consumed with await or return")
+				message := "never consumed with await or return"
+				if len(sites) > 0 {
+					message = "not consumed with await or return on every path"
+				}
+				a.report(name, "VIBE1403", "Promise '"+name.Text()+"' is "+message)
 			}
 		}
 	}

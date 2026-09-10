@@ -1,0 +1,461 @@
+package main
+
+// Asset preflight uses the same native syntax/attribute rules as compilation.
+// The transport returns authored positions, never parser nodes or rewritten
+// source. Optional disk resolution is read-only and confined to an explicit
+// root; it grants no asset or generated-module authority.
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+type assetImportSource struct {
+	Path string `json:"path"`
+	Text string `json:"text"`
+}
+type assetImportsRequest struct {
+	Files          []assetImportSource `json:"files"`
+	ResolutionRoot string              `json:"resolutionRoot,omitempty"`
+}
+type assetImportPosition struct {
+	Start  int `json:"start"`
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+type assetImportRequest struct {
+	Specifier     string              `json:"specifier"`
+	Attributes    map[string]string   `json:"attributes"`
+	Form          string              `json:"form"`
+	Site          assetImportPosition `json:"site"`
+	SpecifierSite assetImportPosition `json:"specifierSite"`
+}
+type assetOrdinaryImport struct {
+	Specifier    string `json:"specifier"`
+	ResolvedPath string `json:"resolvedPath,omitempty"`
+}
+type assetImportsFile struct {
+	Path            string                         `json:"path"`
+	Requests        []assetImportRequest           `json:"requests"`
+	OrdinaryImports []assetOrdinaryImport          `json:"ordinaryImports"`
+	Diagnostics     []loaderRegistrationDiagnostic `json:"diagnostics"`
+}
+type assetImportsResult struct {
+	Files []assetImportsFile `json:"files"`
+}
+
+func serveAssetImports(apiVersion int) {
+	response := struct {
+		APIVersion       int                `json:"apiVersion"`
+		CompilerRevision string             `json:"compilerRevision"`
+		Result           assetImportsResult `json:"result"`
+		Error            *wireError         `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: assetImportsResult{Files: []assetImportsFile{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 1536*1024*1024 + 1}
+	var input assetImportsRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("asset imports request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = analyzeAssetImports(input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_ASSET_IMPORTS", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// The resolver gets only the four read operations it needs. Other vfs methods
+// operate on an empty memory filesystem, so no compiler operation can write to
+// disk. os.Root confines reads even if a symlink changes during the request.
+type assetResolutionFS struct {
+	vfs.FS
+	root  *os.Root
+	reads int
+	bytes int
+	fault error
+}
+
+func assetResolutionRelative(name string) (string, bool) {
+	name = path.Clean(strings.ReplaceAll(name, `\`, "/"))
+	if name == "/src" {
+		return ".", true
+	}
+	if !strings.HasPrefix(name, "/src/") {
+		return "", false
+	}
+	return strings.TrimPrefix(name, "/src/"), true
+}
+func (fs *assetResolutionFS) metadata(name string) os.FileInfo {
+	relative, ok := assetResolutionRelative(name)
+	if !ok || fs.root == nil {
+		return nil
+	}
+	// Symbolic aliases are not code identities at the asset boundary. Check
+	// each component, not just the leaf, before using the root-confined stat.
+	parts := strings.Split(relative, "/")
+	for index := range parts {
+		info, err := fs.root.Lstat(strings.Join(parts[:index+1], "/"))
+		if err != nil || info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+		if index == len(parts)-1 {
+			return info
+		}
+	}
+	return nil
+}
+func (fs *assetResolutionFS) FileExists(name string) bool {
+	info := fs.metadata(name)
+	return info != nil && info.Mode().IsRegular()
+}
+func (fs *assetResolutionFS) DirectoryExists(name string) bool {
+	info := fs.metadata(name)
+	return info != nil && info.IsDir()
+}
+func (fs *assetResolutionFS) Realpath(name string) string { return name }
+func (fs *assetResolutionFS) ReadFile(name string) (string, bool) {
+	// Native module resolution reads package metadata, not module bodies.
+	if path.Base(name) != "package.json" || fs.fault != nil {
+		return "", false
+	}
+	info := fs.metadata(name)
+	if info == nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+	if info.Size() > 1024*1024 || fs.reads >= 1024 || fs.bytes+int(info.Size()) > 16*1024*1024 {
+		fs.fault = errors.New("asset import resolution exceeds its package metadata budget")
+		return "", false
+	}
+	relative, _ := assetResolutionRelative(name)
+	file, err := fs.root.Open(relative)
+	if err != nil {
+		return "", false
+	}
+	defer file.Close()
+	// Do not read special files if a file changed after the metadata check.
+	opened, err := file.Stat()
+	if err != nil || !opened.Mode().IsRegular() {
+		return "", false
+	}
+	bytes, err := io.ReadAll(io.LimitReader(file, 1024*1024+1))
+	if err != nil {
+		return "", false
+	}
+	fs.reads++
+	fs.bytes += len(bytes)
+	if len(bytes) > 1024*1024 || fs.bytes > 16*1024*1024 {
+		fs.fault = errors.New("asset import resolution exceeds its package metadata budget")
+		return "", false
+	}
+	return string(bytes), true
+}
+
+type assetResolutionHost struct{ filesystem *assetResolutionFS }
+
+func (host assetResolutionHost) FS() vfs.FS                  { return host.filesystem }
+func (host assetResolutionHost) GetCurrentDirectory() string { return "/src" }
+
+func analyzeAssetImports(input assetImportsRequest) (assetImportsResult, error) {
+	result := assetImportsResult{Files: []assetImportsFile{}}
+	if len(input.Files) > 4096 {
+		return result, errors.New("asset imports analysis exceeds 4096 sources")
+	}
+	seen := map[string]bool{}
+	total := 0
+	for _, file := range input.Files {
+		if strings.ContainsRune(file.Path, 0) {
+			return result, errors.New("asset import source path must not contain NUL")
+		}
+		virtual, err := virtualFileName(file.Path)
+		if err != nil {
+			return result, err
+		}
+		if seen[virtual] {
+			return result, fmt.Errorf("duplicate asset import source %q", file.Path)
+		}
+		seen[virtual] = true
+		total += len(file.Text)
+		if total > 256*1024*1024 {
+			return result, errors.New("asset import sources exceed the 256 MiB budget")
+		}
+	}
+	filesystem := &assetResolutionFS{FS: vfstest.FromMap(map[string]string{}, true)}
+	var resolver *module.Resolver
+	if input.ResolutionRoot != "" {
+		if !filepath.IsAbs(input.ResolutionRoot) || strings.ContainsRune(input.ResolutionRoot, 0) {
+			return result, errors.New("asset import resolutionRoot must be an absolute directory")
+		}
+		root, err := os.OpenRoot(input.ResolutionRoot)
+		if err != nil {
+			return result, fmt.Errorf("open asset import resolution root: %w", err)
+		}
+		defer root.Close()
+		filesystem.root = root
+		resolver = module.NewResolver(assetResolutionHost{filesystem}, &core.CompilerOptions{
+			Target: core.ScriptTargetES2022, Module: core.ModuleKindESNext, ModuleResolution: core.ModuleResolutionKindBundler,
+			AllowJs: core.TSTrue, CheckJs: core.TSTrue, AllowImportingTsExtensions: core.TSTrue, Jsx: core.JsxEmitReact,
+		}, "", "", []string{".vibe"})
+	}
+	for _, inputFile := range input.Files {
+		output, err := inspectAssetImportsFile(inputFile, resolver)
+		if err != nil {
+			return result, err
+		}
+		if filesystem.fault != nil {
+			return result, filesystem.fault
+		}
+		result.Files = append(result.Files, output)
+	}
+	return result, nil
+}
+
+func inspectAssetImportsFile(input assetImportSource, resolver *module.Resolver) (assetImportsFile, error) {
+	output := assetImportsFile{Path: input.Path, Requests: []assetImportRequest{}, OrdinaryImports: []assetOrdinaryImport{}, Diagnostics: []loaderRegistrationDiagnostic{}}
+	virtual, _ := virtualFileName(input.Path)
+	kind := core.ScriptKindTS
+	switch strings.ToLower(path.Ext(virtual)) {
+	case ".tsx":
+		kind = core.ScriptKindTSX
+	case ".jsx":
+		kind = core.ScriptKindJSX
+	case ".js", ".mjs", ".cjs":
+		kind = core.ScriptKindJS
+	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: virtual, Path: tspath.Path(virtual)}, input.Text, kind)
+	lines, starts := newLineIndex(input.Text), formatLineStarts(input.Text)
+	position := func(offset int) assetImportPosition {
+		offset = max(0, min(offset, len(input.Text)))
+		line := formatLineOf(starts, offset)
+		return assetImportPosition{Start: lines.utf16Offset(offset), Line: line + 1, Column: lines.utf16Offset(offset) - lines.utf16Offset(starts[line]) + 1}
+	}
+	point := func(node *ast.Node) assetImportPosition {
+		if node == nil {
+			return position(0)
+		}
+		return position(scanner.GetTokenPosOfNode(node, file, false))
+	}
+	reportAt := func(where assetImportPosition, code, message string) {
+		output.Diagnostics = append(output.Diagnostics, loaderRegistrationDiagnostic{Code: code, Severity: "error", Message: message, FileName: input.Path, Line: where.Line, Column: where.Column})
+	}
+	report := func(node *ast.Node, code, message string) { reportAt(point(node), code, message) }
+	if strings.HasSuffix(input.Path, ".vibe") && len(file.Diagnostics()) == 0 {
+		// A recovered malformed header can fabricate a braceless statement.
+		// Only inspect complete AST shapes here; the grammar gate below owns
+		// parse-refused headers and reports the actual separator/declaration gap.
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if message := conditionalDeclarationShapeError(node); message != "" {
+				report(node, "VIBE1717", message)
+			}
+		})
+		if len(output.Diagnostics) > 0 {
+			return output, nil
+		}
+	}
+	// Preserve parser diagnostics without turning preflight into a second
+	// language checker. Parseable retired constructs still reach checked rows.
+	if len(file.Diagnostics()) > 0 {
+		vibe := strings.HasSuffix(input.Path, ".vibe")
+		suppressed := []int{}
+		if vibe {
+			for _, hit := range append(sweepRetiredSyntax(input.Text), recoveredGrammarHits(file)...) {
+				// Retired sweep positions are native byte offsets.
+				reportAt(position(hit.start), hit.code, hit.message)
+				suppressed = append(suppressed, hit.start)
+			}
+		}
+		for _, item := range file.Diagnostics() {
+			if withinSuppressionWindow(suppressed, item.Pos()) {
+				continue
+			}
+			legacy := false
+			for _, statement := range file.Statements.Nodes {
+				var attributes *ast.Node
+				if ast.IsImportDeclaration(statement) {
+					attributes = statement.AsImportDeclaration().Attributes
+				}
+				if ast.IsExportDeclaration(statement) {
+					attributes = statement.AsExportDeclaration().Attributes
+				}
+				if attributes != nil && attributes.AsImportAttributes().Token == ast.KindAssertKeyword &&
+					item.Pos() >= attributes.Pos() && item.Pos() < attributes.End() {
+					legacy = true
+					break
+				}
+			}
+			if legacy {
+				continue
+			} // The attribute rule below owns this refusal.
+			code, message := fmt.Sprintf("TS%d", item.Code()), item.Localize(locale.Default)
+			if vibe {
+				code, message = "VIBE1000", grammarMismatchMessage(message)
+			}
+			reportAt(position(item.Pos()), code, message)
+		}
+		if len(output.Diagnostics) > 0 {
+			return output, nil
+		}
+	}
+	ordinary := map[string]bool{}
+	var factError error
+	recordOrdinary := func(specifier string) {
+		if ordinary[specifier] || !strings.HasPrefix(specifier, ".") {
+			return
+		}
+		ordinary[specifier] = true
+		item := assetOrdinaryImport{Specifier: specifier}
+		if resolver != nil {
+			resolved, _ := resolver.ResolveModuleName(specifier, virtual, core.ModuleKindNone, nil)
+			if resolved.IsResolved() {
+				if relative, inside := assetResolutionRelative(resolved.ResolvedFileName); inside && relative != "." {
+					item.ResolvedPath = relative
+				}
+			}
+		}
+		output.OrdinaryImports = append(output.OrdinaryImports, item)
+	}
+	sites := sourceAssetSites(nil, file)
+	if len(sites) > 100_000 {
+		return output, errors.New("asset import syntax exceeds its 100000 entry budget")
+	}
+	for _, site := range sites {
+		if !utf8.ValidString(site.specifier) || strings.ContainsRune(site.specifier, 0) {
+			return output, errors.New("asset import specifier must be well-formed text without NUL")
+		}
+		for name, value := range site.selection.values {
+			if !utf8.ValidString(name) || !utf8.ValidString(value) {
+				return output, errors.New("asset import attributes must be well-formed text")
+			}
+		}
+		if site.hasAttributes && site.selection.token == ast.KindAssertKeyword {
+			var attributes *ast.Node
+			if ast.IsImportDeclaration(site.node) {
+				attributes = site.node.AsImportDeclaration().Attributes
+			}
+			if ast.IsExportDeclaration(site.node) {
+				attributes = site.node.AsExportDeclaration().Attributes
+			}
+			report(attributes, "VIBE5202", "asset imports use `with { ... }`; legacy import assertions are unsupported")
+			continue
+		}
+		for _, issue := range site.selection.issues {
+			report(issue.node, issue.code, issue.message)
+		}
+		if len(site.selection.issues) > 0 {
+			// Preserve the complete selection refusal: a nonliteral `type`
+			// has both an invalid-value diagnostic and no selected loader.
+			// This is the same cascade the checked asset pass reports.
+			if site.potentialAsset && !site.hasSelectedLoader() {
+				report(site.node, "VIBE5201", "non-code imports require `with { type: \"...\" }`")
+			}
+			continue
+		}
+		if !site.attributesOK {
+			continue
+		}
+		if site.computedAttributed {
+			report(site.node, "VIBE5218", "dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object")
+			continue
+		}
+		if !site.potentialAsset {
+			recordOrdinary(site.specifier)
+			continue
+		}
+		if !strings.HasPrefix(site.specifier, ".") {
+			report(site.specifierNode, "VIBE5207", "asset imports must use a relative path")
+			continue
+		}
+		if site.starExport {
+			report(site.node, "VIBE5206", "`export * from` an asset is unsupported; re-export the named bindings or a namespace binding")
+			continue
+		}
+		if !site.hasRuntimeBindings {
+			report(site.node, "VIBE5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only")
+			continue
+		}
+		if !site.hasSelectedLoader() {
+			report(site.node, "VIBE5201", "non-code imports require `with { type: \"...\" }`")
+			continue
+		}
+		form := "import"
+		if ast.IsExportDeclaration(site.node) {
+			form = "re-export"
+		}
+		if ast.IsImportCall(site.node) {
+			form = "dynamic-import"
+		}
+		output.Requests = append(output.Requests, assetImportRequest{Specifier: site.specifier, Attributes: site.selection.values, Form: form, Site: point(site.node), SpecifierSite: point(site.specifierNode)})
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsImportTypeNode(node) {
+			argument := node.AsImportTypeNode().Argument
+			if ast.IsLiteralTypeNode(argument) {
+				literal := argument.AsLiteralTypeNode().Literal
+				if ast.IsStringLiteral(literal) && strings.HasPrefix(literal.Text(), ".") && isPotentialAssetFilePath(literal.Text()) {
+					report(node, "VIBE5208", "asset modules cannot be imported through a type-only import() query")
+				}
+			}
+		} else if ast.IsImportEqualsDeclaration(node) {
+			reference := node.AsImportEqualsDeclaration().ModuleReference
+			if ast.IsExternalModuleReference(reference) {
+				expression := reference.AsExternalModuleReference().Expression
+				if !ast.IsStringLiteral(expression) && !ast.IsNoSubstitutionTemplateLiteral(expression) {
+					report(reference, "VIBE5205", "import-assignment specifiers must be string literals")
+				} else if !utf8.ValidString(expression.Text()) || strings.ContainsRune(expression.Text(), 0) {
+					factError = errors.New("asset import specifier must be well-formed text without NUL")
+					return true
+				} else if strings.HasPrefix(expression.Text(), ".") && isPotentialAssetFilePath(expression.Text()) {
+					report(node, "VIBE5201", "non-code imports require `with { type: \"...\" }`, which an import assignment cannot carry")
+				} else {
+					recordOrdinary(expression.Text())
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
+	if factError != nil {
+		return output, factError
+	}
+	sort.SliceStable(output.OrdinaryImports, func(i, j int) bool {
+		return compareUTF16(output.OrdinaryImports[i].Specifier, output.OrdinaryImports[j].Specifier) < 0
+	})
+	sort.SliceStable(output.Diagnostics, func(i, j int) bool {
+		a, b := output.Diagnostics[i], output.Diagnostics[j]
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		if a.Column != b.Column {
+			return a.Column < b.Column
+		}
+		return a.Code < b.Code
+	})
+	if len(output.Diagnostics) > 0 {
+		output.Requests = []assetImportRequest{}
+		output.OrdinaryImports = []assetOrdinaryImport{}
+	}
+	return output, nil
+}

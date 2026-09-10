@@ -1,13 +1,21 @@
 {
+  "0200-content-mapper-extension-resolution.patch": {
+    "kind": "handwritten",
+    "summary": "registered content-mapper extensions participate in implicit TypeScript module resolution and JavaScript output aliases, without language-specific suffixes or parser changes; standard TypeScript precedence and Node ESM extension rules remain intact"
+  },
   "0300-if-conditional-declaration-grammar.patch": {
     "kind": "handwritten",
-    "summary": "if (const x = f(); cond) — the .sm dialect gate plus an optional Initializer member on IfStatement and LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
+    "summary": "if (const x = f(); cond) — the .vibe dialect gate plus an optional Initializer member on IfStatement and LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
   },
   "0800-regenerate-ast.patch": {
     "kind": "generated",
     "summary": "output of tools/scripts/tsc/generate.ts and the Kind stringer for the surviving conditional-declaration grammar patch; re-derivable with verify --regenerate"
   },
-  "0900-smithers-grammar-tests.patch": {
+  "0950-content-mapper-resolution-tests.patch": {
+    "kind": "forkowned",
+    "summary": "generic registered-extension resolution tests: multiple suffixes, registration order, ordinary TypeScript/declaration precedence, JavaScript fallback/output aliases, directory indexes and Node ESM/CommonJS rules"
+  },
+  "0900-vibelang-grammar-tests.patch": {
     "kind": "forkowned",
     "summary": "fork-owned tests for the sole grammar addition: conditional-declaration round-trip and dialect gate, AST child order and block scope, checker reachability, narrowing, branch scope, and unused-local ownership"
   }

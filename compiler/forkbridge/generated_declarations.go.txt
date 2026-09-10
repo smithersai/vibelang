@@ -1,0 +1,236 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type generatedDeclarationMetadata struct {
+	Effects       map[string]declarationRows `json:"effects,omitempty"`
+	RuntimeModule *string                    `json:"runtimeModule,omitempty"`
+}
+type generatedDeclarationsRequest struct {
+	Project  generatedProjectRequest                 `json:"project"`
+	Metadata map[string]generatedDeclarationMetadata `json:"metadata,omitempty"`
+}
+type generatedDeclarationsResult struct {
+	OK          bool                   `json:"ok"`
+	Outputs     []generatedProjectFile `json:"outputs"`
+	Diagnostics []diagnostic           `json:"diagnostics"`
+}
+
+func serveGeneratedDeclarations(apiVersion int) {
+	response := struct {
+		APIVersion       int                         `json:"apiVersion"`
+		CompilerRevision string                      `json:"compilerRevision"`
+		Result           generatedDeclarationsResult `json:"result"`
+		Error            *wireError                  `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision, Result: generatedDeclarationsResult{Outputs: []generatedProjectFile{}, Diagnostics: []diagnostic{}}}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var request generatedDeclarationsRequest
+	err := wirejson.Decode(limited, &request)
+	if limited.N == 0 {
+		err = errors.New("generated declarations exceed their wire budget")
+	}
+	if err == nil {
+		response.Result, err = emitGeneratedDeclarations(context.Background(), request)
+	}
+	if err != nil {
+		response.Result = generatedDeclarationsResult{Outputs: []generatedProjectFile{}, Diagnostics: []diagnostic{}}
+		response.Error = &wireError{Code: "VIBELANG_GO_DECLARATION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func generatedDeclarationName(name string) string {
+	if tspath.IsDeclarationFileName(name) {
+		return name
+	}
+	for _, pair := range [][2]string{{".mts", ".d.mts"}, {".mjs", ".d.mts"}, {".cts", ".d.cts"}, {".cjs", ".d.cts"}, {".ts", ".d.ts"}, {".js", ".d.ts"}} {
+		if strings.HasSuffix(name, pair[0]) {
+			return strings.TrimSuffix(name, pair[0]) + pair[1]
+		}
+	}
+	return ""
+}
+
+func generatedRuntimeModule(file *ast.SourceFile) string {
+	lines := strings.SplitN(file.Text(), "\n", 3)
+	banner := func(text string) bool {
+		return strings.HasPrefix(text, "// Generated from ") && strings.HasSuffix(text, " by the VibeLang checked POC.")
+	}
+	if len(lines) >= 2 && banner(lines[0]) && strings.HasPrefix(lines[1], "// VibeLang runtime: ") {
+		var name string
+		if json.Unmarshal([]byte(strings.TrimPrefix(lines[1], "// VibeLang runtime: ")), &name) == nil && name != "" {
+			return name
+		}
+	}
+	if len(file.Statements.Nodes) > 0 {
+		node := file.Statements.Nodes[0]
+		if ast.IsImportDeclaration(node) && banner(strings.TrimSpace(file.Text()[:scanner.SkipTrivia(file.Text(), node.Pos())])) {
+			if specifier := node.AsImportDeclaration().ModuleSpecifier; ast.IsStringLiteral(specifier) {
+				return specifier.Text()
+			}
+		}
+	}
+	return ""
+}
+
+func emitGeneratedDeclarations(ctx context.Context, input generatedDeclarationsRequest) (generatedDeclarationsResult, error) {
+	out := generatedDeclarationsResult{Outputs: []generatedProjectFile{}, Diagnostics: []diagnostic{}}
+	state, err := prepareGeneratedProject(input.Project, true)
+	if err != nil {
+		return out, err
+	}
+	if len(input.Metadata) > len(state.roots) {
+		return out, errors.New("declaration metadata escapes its source roots")
+	}
+	for name := range input.Metadata {
+		if _, ok := state.fs.files[state.fs.key(name)]; !ok || state.fs.labels[state.fs.key(name)] != name {
+			return out, errors.New("declaration metadata escapes its source roots")
+		}
+	}
+	expected := make(map[string]string, len(state.roots))
+	for _, name := range state.roots {
+		output := generatedDeclarationName(name)
+		if output == "" {
+			return out, errors.New("unsupported generated declaration source extension")
+		}
+		if _, exists := expected[state.fs.key(output)]; exists {
+			return out, errors.New("duplicate declaration output")
+		}
+		expected[state.fs.key(output)] = name
+	}
+	if err := state.check(ctx); err != nil {
+		return out, err
+	}
+	out.Diagnostics = state.diagnostics()
+	if hasError(out.Diagnostics) {
+		return out, nil
+	}
+	if len(state.roots) == 0 {
+		out.OK = true
+		return out, nil
+	}
+	emitted := make(map[string]string)
+	roots := make([]*ast.SourceFile, 0, len(state.roots))
+	for _, name := range state.roots {
+		file := state.program.GetSourceFile(name)
+		if file.IsDeclarationFile {
+			emitted[name] = file.Text()
+		} else {
+			roots = append(roots, file)
+		}
+	}
+	var outputErr error
+	outputBytes := 0
+	if len(roots) > 0 {
+		result := state.program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: roots, EmitOnly: compiler.EmitOnlyDts, WriteFile: func(name, code string, _ *compiler.WriteFileData) error {
+			name = tspath.NormalizePath(name)
+			if _, ok := expected[state.fs.key(name)]; !ok {
+				return nil
+			}
+			if _, exists := emitted[name]; exists {
+				outputErr = errors.New("duplicate generated declaration output")
+				return outputErr
+			}
+			outputBytes += len(code)
+			if len(code) > 4*1024*1024 || outputBytes > 16*1024*1024 {
+				outputErr = errors.New("generated declarations exceed their output budget")
+				return outputErr
+			}
+			emitted[name] = code
+			return nil
+		}})
+		if outputErr != nil {
+			return out, outputErr
+		}
+		if result == nil {
+			return out, errors.New("native declaration emit was cancelled")
+		}
+		state.add("emit", result.Diagnostics)
+		if len(state.collector.converted) > 4096 {
+			return out, errors.New("generated diagnostics exceed the response budget")
+		}
+		out.Diagnostics = state.diagnostics()
+		if result.EmitSkipped || hasError(out.Diagnostics) {
+			return out, nil
+		}
+	}
+	if state.fs.err != nil {
+		return out, state.fs.err
+	}
+	if len(emitted) != len(expected) {
+		return out, errors.New("native declaration emit omitted an expected root")
+	}
+	names := make([]string, 0, len(emitted))
+	for name := range emitted {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	typeChecker, release := state.program.GetTypeChecker(ctx)
+	defer release()
+	outputBytes = 0
+	for _, name := range names {
+		if err := ctx.Err(); err != nil {
+			return out, err
+		}
+		code := emitted[name]
+		sourceName := expected[state.fs.key(name)]
+		source := state.program.GetSourceFile(sourceName)
+		metadata := input.Metadata[sourceName]
+		if metadata.Effects != nil {
+			runtime := generatedRuntimeModule(source)
+			if metadata.RuntimeModule != nil {
+				runtime = *metadata.RuntimeModule
+				if runtime == "" {
+					return out, errors.New("runtimeModule must be a nonempty module specifier")
+				}
+			}
+			runtimes := []string{}
+			if runtime != "" {
+				runtimes = append(runtimes, runtime)
+				if target, ok := input.Project.ModuleOverrides[runtime]; ok {
+					runtimes = append(runtimes, target)
+				}
+			}
+			for _, operation := range []string{"normalize", "annotate"} {
+				transformed, err := transformDeclarationText(ctx, declarationTextRequest{Operation: operation, Path: name, Text: code, Effects: metadata.Effects, Runtimes: runtimes})
+				if err != nil {
+					return out, err
+				}
+				code = transformed.Text
+			}
+		}
+		module := readPublishedModule(declarationFile(name, code))
+		if module.failure != "" {
+			return out, errors.New(module.failure)
+		}
+		carried, _, err := carryDeclarationContracts(code, name, source, typeChecker, module.value)
+		if err != nil {
+			return out, err
+		}
+		outputBytes += len(carried)
+		if len(carried) > 4*1024*1024 || outputBytes > 16*1024*1024 {
+			return out, errors.New("generated declarations exceed their output budget")
+		}
+		out.Outputs = append(out.Outputs, generatedProjectFile{Path: name, Text: carried})
+	}
+	out.OK = true
+	return out, nil
+}

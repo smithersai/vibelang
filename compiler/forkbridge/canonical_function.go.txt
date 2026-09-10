@@ -1,0 +1,143 @@
+package main
+
+// Canonical, erased function spelling for checked-source fingerprints. This
+// operation never evaluates code, infers captured values, or issues a checked
+// contract. Parsing, erasure and printing all belong to the native compiler.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/printer"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type canonicalFunctionRequest struct {
+	Source string `json:"source"`
+}
+type canonicalFunctionResult struct {
+	OK      bool   `json:"ok"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+func serveCanonicalFunction(apiVersion int) {
+	response := struct {
+		APIVersion       int                     `json:"apiVersion"`
+		CompilerRevision string                  `json:"compilerRevision"`
+		Result           canonicalFunctionResult `json:"result"`
+		Error            *wireError              `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 16*1024*1024 + 1}
+	var input canonicalFunctionRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("canonical function request exceeds its encoded byte budget")
+	}
+	if err == nil {
+		response.Result, err = canonicalFunction(context.Background(), input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_CANONICAL_FUNCTION", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func canonicalFunction(ctx context.Context, input canonicalFunctionRequest) (canonicalFunctionResult, error) {
+	refused := canonicalFunctionResult{Message: "source is not a standalone function expression"}
+	if len(input.Source) > 2*1024*1024 {
+		return refused, errors.New("canonical function source exceeds 2097152 bytes")
+	}
+	parse := func(source string, kind core.ScriptKind) *ast.SourceFile {
+		return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/src/function.ts", Path: tspath.Path("/src/function.ts")}, source, kind)
+	}
+	emitContext := printer.NewEmitContext()
+	p := printer.NewPrinter(printer.PrinterOptions{RemoveComments: true, NewLine: core.NewLineKindLF, Target: core.ScriptTargetES2022}, printer.PrintHandlers{}, emitContext)
+	expression := input.Source
+	// A declaration can carry export/default modifiers; an expression cannot.
+	// Let the parser classify that form, then use the ordinary native factory to
+	// turn only that declaration into an expression. No textual keyword stripping.
+	declared := parse(input.Source, core.ScriptKindTS)
+	if len(declared.Diagnostics()) == 0 && len(declared.Statements.Nodes) == 1 && ast.IsFunctionDeclaration(declared.Statements.Nodes[0]) {
+		node := declared.Statements.Nodes[0].AsFunctionDeclaration()
+		if node.Body == nil {
+			return refused, nil
+		}
+		var modifiers []*ast.Node
+		if node.Modifiers() != nil {
+			for _, modifier := range node.Modifiers().Nodes {
+				if modifier.Kind == ast.KindExportKeyword || modifier.Kind == ast.KindDefaultKeyword {
+					continue
+				}
+				if modifier.Kind != ast.KindAsyncKeyword {
+					return refused, nil
+				}
+				modifiers = append(modifiers, modifier)
+			}
+		}
+		var list *ast.ModifierList
+		if len(modifiers) > 0 {
+			list = emitContext.Factory.NewModifierList(modifiers)
+		}
+		function := emitContext.Factory.NewFunctionExpression(list, node.AsteriskToken, node.Name(), node.TypeParameters, node.Parameters, node.Type, node.FullSignature, node.Body)
+		expression = p.Emit(function, declared)
+	}
+	const binding = "__vibelangImplementation"
+	wrapped := "const " + binding + " = (" + expression + "\n);\n"
+	parsed := parse(wrapped, core.ScriptKindTS)
+	if len(parsed.Diagnostics()) != 0 || len(parsed.Statements.Nodes) != 1 || !ast.IsVariableStatement(parsed.Statements.Nodes[0]) {
+		return refused, nil
+	}
+	declarations := parsed.Statements.Nodes[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+	if len(declarations) != 1 {
+		return refused, nil
+	}
+	initializer := unwrapComptimeExpression(declarations[0].AsVariableDeclaration().Initializer)
+	if initializer == nil || (!ast.IsFunctionExpression(initializer) && !ast.IsArrowFunction(initializer)) {
+		return refused, nil
+	}
+	erased, err := transpileSources(ctx, transpileRequest{Files: []transpileSource{{Path: "function.ts", Text: wrapped}},
+		Options: map[string]any{"target": "es2022", "module": "esnext", "removeComments": true}})
+	if err != nil {
+		return refused, err
+	}
+	if len(erased.Files) != 1 || erased.Files[0].EmitSkipped {
+		return refused, nil
+	}
+	emitted := parse(erased.Files[0].JavaScript, core.ScriptKindJS)
+	if len(emitted.Diagnostics()) != 0 {
+		return refused, errors.New("native function erasure produced malformed JavaScript")
+	}
+	// Emission may introduce module-scope helpers. Locate the compiler-owned
+	// binding by identity position/name, not 'the first emitted variable'. The
+	// project/source and compiler provenance remain separate contract inputs;
+	// this expression fingerprint is never an executable closure attestation.
+	var found *ast.Node
+	for _, statement := range emitted.Statements.Nodes {
+		if !ast.IsVariableStatement(statement) {
+			continue
+		}
+		for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+			if ast.IsIdentifier(declaration.Name()) && declaration.Name().Text() == binding {
+				if found != nil {
+					return refused, errors.New("native function erasure duplicated its binding")
+				}
+				found = declaration.AsVariableDeclaration().Initializer
+			}
+		}
+	}
+	if found == nil {
+		return refused, errors.New("native function erasure lost its binding")
+	}
+	return canonicalFunctionResult{OK: true, Code: p.Emit(found, emitted)}, nil
+}

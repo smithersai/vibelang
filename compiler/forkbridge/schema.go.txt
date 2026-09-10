@@ -1,0 +1,544 @@
+package main
+
+// Checked-type reification for comptime(Schema.derive<T>()). The upstream Go
+// checker owns type identity and resolution; the bounded descriptor below is
+// the existing JavaScript validator's data contract, not another type system.
+import (
+	"fmt"
+	"math"
+	"path"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+)
+
+const (
+	schemaModuleSpecifier    = "vibelang:schema"
+	schemaLogicalPath        = "__vibelang_schema.d.ts"
+	schemaVirtualName        = "/src/" + schemaLogicalPath
+	schemaModuleAlias        = "./__vibelang_schema"
+	schemaRuntimeLogicalPath = "__vibelang_schema_runtime.ts"
+	schemaRuntimeVirtualName = "/src/" + schemaRuntimeLogicalPath
+	schemaSupportLogicalPath = "__vibelang_schema_support.ts"
+	schemaSupportVirtualName = "/src/" + schemaSupportLogicalPath
+	schemaRuntimeBinding     = "__vsSchema"
+
+	schemaCodeOutsideComptime    = "VCT1200"
+	schemaCodeCallShape          = "VCT1201"
+	schemaCodeUnrelatedIdentity  = "VCT1202"
+	schemaCodeImportShape        = "VCT1203"
+	schemaCodeUnsupportedType    = "VCT1204"
+	schemaCodeReservedIdentifier = "VCT1205"
+	schemaCodeInternalIdentity   = "VCT1206"
+	schemaCodeBudget             = "VCT1207"
+
+	maxSchemaDepth         = 16
+	maxSchemaNodes         = 512
+	maxSchemaProperties    = 128
+	maxSchemaTupleElements = 64
+	maxSchemaUnionVariants = 64
+)
+
+const schemaDeclarationText = `import type { DerivedSchema } from "./__vibelang_schema_runtime.js";
+export declare namespace Schema {
+    function derive<T>(): DerivedSchema<T>;
+}
+`
+
+// This adapter supplies the native prelude's branded Results and Error codec.
+// The validator itself is embedded from poc/src/build/schema-runtime.ts and is
+// not forked. All three files are ordinary TypeScript checked/emitted by Go.
+const schemaSupportText = `import { VibeLangOk, VibeLangErr, vibelangRegisterErrorCodec } from "./__vibelang_prelude.js";
+import type { VibeLangJsonValue } from "./__vibelang_prelude.js";
+export type JsonValue = VibeLangJsonValue;
+export type Result<A, E> = VibeLangOk<A> | VibeLangErr<E>;
+export function __vsResultSuccess<A>(value: A): Result<A, never> { return new VibeLangOk(value); }
+export function __vsResultFailure<E extends Error>(error: E): Result<never, E> { return new VibeLangErr(error); }
+export function registerErrorCodec<E extends Error>(
+    type: abstract new (...args: never[]) => E,
+    id: string,
+    codec: { encode(error: E): JsonValue; decode(payload: JsonValue): E },
+): void {
+    vibelangRegisterErrorCodec(type, id, { encode: error => codec.encode(error as E), decode: codec.decode });
+}
+`
+
+func isSchemaOwnedFile(name string) bool {
+	return name == schemaVirtualName || name == schemaRuntimeVirtualName || name == schemaSupportVirtualName
+}
+
+func (p *project) installSchemaModules(claim func(string, string) error) error {
+	// This is relocation of two known, embedded runtime imports, never parsing
+	// or transformation of user input. Refuse if the runtime's dependency seam
+	// changes instead of silently shipping a partially adapted validator.
+	const edge = `"../runtime/index.ts"`
+	if strings.Count(schemaRuntimeSource, edge) != 2 {
+		return fmt.Errorf("shared schema runtime dependency seam changed")
+	}
+	runtimeText := strings.ReplaceAll(schemaRuntimeSource, edge, `"./__vibelang_schema_support.js"`)
+	for _, file := range []struct{ logical, virtual, text string }{
+		{schemaLogicalPath, schemaVirtualName, schemaDeclarationText},
+		{schemaRuntimeLogicalPath, schemaRuntimeVirtualName, runtimeText},
+		{schemaSupportLogicalPath, schemaSupportVirtualName, schemaSupportText},
+	} {
+		if err := claim(file.virtual, file.logical); err != nil {
+			return err
+		}
+		p.tsTexts[file.virtual] = file.text
+		p.checkedFiles[file.virtual] = file.text
+		p.emitFiles[file.virtual] = file.text
+	}
+	p.checkedRoots = append(p.checkedRoots, schemaVirtualName)
+	return nil
+}
+
+type schemaSymbols struct {
+	namespace, derive *ast.Node
+	module            *ast.Symbol
+}
+
+func loadSchemaSymbols(program *compiler.Program, typeChecker *checker.Checker) (*schemaSymbols, error) {
+	symbols := &schemaSymbols{}
+	for _, file := range program.SourceFiles() {
+		if file.FileName() != schemaVirtualName {
+			continue
+		}
+		if symbol := file.AsNode().Symbol(); symbol != nil {
+			symbols.module = typeChecker.GetMergedSymbol(symbol)
+		}
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if ast.IsModuleDeclaration(node) && declarationName(node) == "Schema" {
+				symbols.namespace = node
+			}
+			if ast.IsFunctionDeclaration(node) && declarationName(node) == "derive" {
+				symbols.derive = node
+			}
+		})
+	}
+	if symbols.namespace == nil || symbols.derive == nil || symbols.module == nil {
+		return nil, fmt.Errorf("compiler-owned schema module identities could not be established")
+	}
+	return symbols, nil
+}
+
+func schemaResolvedModule(typeChecker *checker.Checker, specifier *ast.Node) bool {
+	if specifier == nil {
+		return false
+	}
+	symbol := typeChecker.ResolveExternalModuleNameAtLocation(specifier)
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		if file := ast.GetSourceFileOfNode(declaration); file != nil && file.FileName() == schemaVirtualName {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *comptimeAnalysis) isSchemaDeriveCall(node *ast.Node) bool {
+	return node != nil && ast.IsCallExpression(node) && a.schemaSymbols != nil &&
+		declaresAnyOf(a.symbols.resolvedCallSymbol(node), a.schemaSymbols.derive)
+}
+
+func looksLikeSchemaDerive(node *ast.Node) bool {
+	if node == nil || !ast.IsCallExpression(node) {
+		return false
+	}
+	call := node.AsCallExpression()
+	return call.TypeArguments != nil && len(call.TypeArguments.Nodes) != 0 && ast.IsPropertyAccessExpression(call.Expression) &&
+		call.Expression.AsPropertyAccessExpression().Name().Text() == "derive"
+}
+
+func (a *comptimeAnalysis) collectSchemaImports(file *ast.SourceFile) {
+	for _, statement := range file.Statements.Nodes {
+		if !ast.IsImportDeclaration(statement) {
+			continue
+		}
+		declaration := statement.AsImportDeclaration()
+		if declaration.ModuleSpecifier == nil || !ast.IsStringLiteral(declaration.ModuleSpecifier) ||
+			(declaration.ModuleSpecifier.Text() != schemaModuleSpecifier && !schemaResolvedModule(a.checker, declaration.ModuleSpecifier)) {
+			continue
+		}
+		a.erase[statement] = true
+		markComptimeTree(statement, a.allowed)
+		if file.ScriptKind == core.ScriptKindJS || file.ScriptKind == core.ScriptKindJSX {
+			a.report(file, statement, schemaCodeImportShape,
+				"the compiler-owned schema module requires a TypeScript-family source because Schema.derive takes a type argument")
+		}
+		if declaration.ImportClause == nil {
+			continue
+		}
+		clause := declaration.ImportClause.AsImportClause()
+		if clause.Name() != nil || clause.IsTypeOnly() {
+			a.report(file, declaration.ImportClause, schemaCodeImportShape, "the compiler-owned schema module requires a value import of Schema or its namespace")
+		}
+		bindings := clause.NamedBindings
+		if bindings == nil || !ast.IsNamedImports(bindings) {
+			continue
+		}
+		for _, element := range bindings.AsNamedImports().Elements.Nodes {
+			binding := element.AsImportSpecifier()
+			name := binding.Name()
+			if binding.PropertyName != nil {
+				name = binding.PropertyName
+			}
+			if name.Text() != "Schema" || binding.IsTypeOnly {
+				a.report(file, element, schemaCodeImportShape, "the compiler-owned schema module only exposes the value intrinsic named Schema")
+			}
+		}
+	}
+}
+
+func (a *comptimeAnalysis) refuseSchemaOutsideVibeLangModules() {
+	for _, file := range a.guardFiles {
+		for _, statement := range file.Statements.Nodes {
+			if ast.IsImportDeclaration(statement) && schemaResolvedModule(a.checker, statement.AsImportDeclaration().ModuleSpecifier) {
+				a.report(file, statement, schemaCodeImportShape, "the schema intrinsic requires a VibeLang module; its import must not survive into ordinary JavaScript")
+			}
+		}
+	}
+}
+
+type schemaDerivation struct {
+	typeNode   *ast.Node
+	descriptor ctValue
+}
+
+func (a *comptimeAnalysis) schemaComptimeRoot(node *ast.Node) *ast.Node {
+	current := node
+	for current.Parent != nil && unwrapComptimeExpression(current.Parent) == node {
+		current = current.Parent
+	}
+	parent := current.Parent
+	if parent == nil || !ast.IsCallExpression(parent) {
+		return nil
+	}
+	call := parent.AsCallExpression()
+	if call.QuestionDotToken != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.Arguments.Nodes[0] != current ||
+		!a.symbols.isIntrinsic(a.symbols.resolvedCallSymbol(parent)) {
+		return nil
+	}
+	return parent
+}
+
+func (a *comptimeAnalysis) deriveSchemas(file *ast.SourceFile) {
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		if !a.isSchemaDeriveCall(node) {
+			return
+		}
+		call := node.AsCallExpression()
+		markComptimeTree(call.Expression, a.allowed)
+		root := a.schemaComptimeRoot(node)
+		if root == nil {
+			a.report(file, node, schemaCodeOutsideComptime, "Schema.derive is compiler-only; call it as the whole argument of an explicit comptime(...)")
+			return
+		}
+		if call.QuestionDotToken != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 0 || call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+			a.report(file, node, schemaCodeCallShape, "Schema.derive takes exactly one type argument, no value arguments, and no optional chaining")
+			return
+		}
+		typeNode := call.TypeArguments.Nodes[0]
+		deriver := schemaTypeDeriver{checker: a.checker, location: node, stack: make(map[*checker.Type]bool)}
+		descriptor, failure := deriver.convert(a.checker.GetTypeFromTypeNode(typeNode), 0)
+		if failure != nil {
+			a.report(file, typeNode, failure.code, "Schema.derive cannot reify this type: "+failure.message)
+			return
+		}
+		a.schemas[root] = &schemaDerivation{typeNode, descriptor}
+		a.schemaFiles[file] = true
+	})
+	if a.schemaFiles[file] {
+		walkComptime(file.AsNode(), func(node *ast.Node) {
+			if ast.IsIdentifier(node) && node.Text() == schemaRuntimeBinding {
+				a.report(file, node, schemaCodeReservedIdentifier, schemaRuntimeBinding+" is reserved for the generated derived-schema runtime binding")
+			}
+		})
+	}
+}
+
+func (a *comptimeAnalysis) checkSchemaEscapes(file *ast.SourceFile) {
+	walkComptimeSkippingImports(file.AsNode(), func(node *ast.Node) {
+		if !ast.IsIdentifier(node) || a.allowed[node] {
+			return
+		}
+		symbol := a.symbols.resolveValue(node)
+		if symbol != nil && (symbol == a.schemaSymbols.module || declaresAnyOf(symbol, a.schemaSymbols.namespace, a.schemaSymbols.derive)) {
+			a.report(file, node, schemaCodeOutsideComptime, "compiler-owned schema values may only be used in comptime(Schema.derive<T>())")
+		}
+	})
+}
+
+func (l *lowerer) newSchemaRuntimeImport(authoredName string) *ast.Node {
+	module := strings.TrimSuffix(schemaRuntimeLogicalPath, ".ts") + ".js"
+	rest := strings.Trim(strings.TrimPrefix(path.Dir(authoredName), "/src"), "/")
+	if rest == "" {
+		module = "./" + module
+	} else {
+		module = strings.Repeat("../", strings.Count(rest, "/")+1) + module
+	}
+	name := l.factory.NewImportSpecifier(false, nil, l.factory.NewIdentifier(schemaRuntimeBinding))
+	clause := l.factory.NewImportClause(ast.KindUnknown, nil, l.factory.NewNamedImports(l.factory.NewNodeList([]*ast.Node{name})))
+	return l.factory.NewImportDeclaration(nil, clause, l.factory.NewStringLiteral(module, ast.TokenFlagsNone), nil)
+}
+
+type schemaFailure struct{ code, message string }
+
+func schemaUnsupported(what string) (ctValue, *schemaFailure) {
+	return ctValue{}, &schemaFailure{schemaCodeUnsupportedType, what + " is not a reifiable type"}
+}
+func schemaBudget(message string) (ctValue, *schemaFailure) {
+	return ctValue{}, &schemaFailure{schemaCodeBudget, message}
+}
+func schemaNode(kind string) ctValue {
+	node := newCtObject()
+	node.obj.set("kind", ctStringValue(kind))
+	return node
+}
+func schemaMemberNode(kind, key string, value ctValue) ctValue {
+	node := schemaNode(kind)
+	node.obj.set(key, value)
+	return node
+}
+
+type schemaTypeDeriver struct {
+	checker  *checker.Checker
+	location *ast.Node
+	stack    map[*checker.Type]bool
+	nodes    int
+}
+
+func (d *schemaTypeDeriver) convert(t *checker.Type, depth int) (ctValue, *schemaFailure) {
+	if depth > maxSchemaDepth {
+		return schemaBudget(fmt.Sprintf("derived type nests deeper than the %d level POC limit", maxSchemaDepth))
+	}
+	d.nodes++
+	if d.nodes > maxSchemaNodes {
+		return schemaBudget(fmt.Sprintf("derived type expands past the %d descriptor node POC limit", maxSchemaNodes))
+	}
+	if t == nil {
+		return schemaUnsupported("a missing checker type")
+	}
+	flags := t.Flags()
+	for _, rule := range []struct {
+		flags checker.TypeFlags
+		name  string
+	}{
+		{checker.TypeFlagsAny, "any"}, {checker.TypeFlagsUnknown, "unknown"}, {checker.TypeFlagsNever, "never"},
+		{checker.TypeFlagsVoid, "void"}, {checker.TypeFlagsUndefined, "undefined"}, {checker.TypeFlagsTypeParameter, "a free type parameter"},
+		{checker.TypeFlagsIndex | checker.TypeFlagsIndexedAccess | checker.TypeFlagsConditional | checker.TypeFlagsSubstitution | checker.TypeFlagsTemplateLiteral | checker.TypeFlagsStringMapping, "an unresolved type operator"},
+		{checker.TypeFlagsEnumLike, "an enum"}, {checker.TypeFlagsBigIntLike, "bigint"}, {checker.TypeFlagsESSymbolLike, "symbol"},
+		{checker.TypeFlagsNonPrimitive, "the non-primitive object keyword"},
+	} {
+		if flags&rule.flags != 0 {
+			return schemaUnsupported(rule.name)
+		}
+	}
+	for _, rule := range []struct {
+		flags checker.TypeFlags
+		kind  string
+	}{
+		{checker.TypeFlagsNull, "null"}, {checker.TypeFlagsBoolean, "boolean"}, {checker.TypeFlagsString, "string"}, {checker.TypeFlagsNumber, "number"},
+	} {
+		if flags&rule.flags != 0 {
+			return schemaNode(rule.kind), nil
+		}
+	}
+	if flags&checker.TypeFlagsLiteral != 0 {
+		var literal ctValue
+		switch value := t.AsLiteralType().Value().(type) {
+		case string:
+			if !utf8.ValidString(value) {
+				return schemaUnsupported("a literal containing an unpaired surrogate")
+			}
+			literal = ctStringValue(value)
+		case bool:
+			literal = ctBoolValue(value)
+		default:
+			number, err := strconv.ParseFloat(fmt.Sprint(value), 64)
+			if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+				return schemaUnsupported("a non-finite numeric literal")
+			}
+			if number == 0 {
+				number = 0
+			}
+			literal = ctNumberValue(number)
+		}
+		return schemaMemberNode("literal", "value", literal), nil
+	}
+	if t.IsIntersection() {
+		return schemaUnsupported("an intersection type")
+	}
+	if t.IsUnion() {
+		return d.union(t.Types(), depth+1)
+	}
+	if flags&checker.TypeFlagsObject != 0 {
+		return d.object(t, depth)
+	}
+	return schemaUnsupported("an unsupported checked type")
+}
+
+func (d *schemaTypeDeriver) union(types []*checker.Type, depth int) (ctValue, *schemaFailure) {
+	if len(types) > maxSchemaUnionVariants {
+		return schemaBudget(fmt.Sprintf("union has more than the %d variant POC limit", maxSchemaUnionVariants))
+	}
+	variants := make([]ctValue, 0, len(types))
+	for _, t := range types {
+		value, failure := d.convert(t, depth)
+		if failure != nil {
+			return ctValue{}, failure
+		}
+		if value.obj.values["kind"].s == "union" {
+			variants = append(variants, value.obj.values["variants"].arr.items...)
+		} else {
+			variants = append(variants, value)
+		}
+	}
+	trueSeen, falseSeen := false, false
+	for _, variant := range variants {
+		value := variant.obj.values["value"]
+		if variant.obj.values["kind"].s == "literal" && value.kind == ctBool {
+			if value.b {
+				trueSeen = true
+			} else {
+				falseSeen = true
+			}
+		}
+	}
+	unique := make([]ctValue, 0, len(variants))
+	seen := make(map[string]bool)
+	for _, variant := range variants {
+		if trueSeen && falseSeen && variant.obj.values["kind"].s == "literal" && variant.obj.values["value"].kind == ctBool {
+			variant = schemaNode("boolean")
+		}
+		key := ctCanonical(variant)
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, variant)
+		}
+	}
+	if len(unique) == 0 {
+		return schemaUnsupported("an empty union")
+	}
+	if len(unique) == 1 {
+		return unique[0], nil
+	}
+	return schemaMemberNode("union", "variants", newCtArray(unique)), nil
+}
+
+func (d *schemaTypeDeriver) object(t *checker.Type, depth int) (ctValue, *schemaFailure) {
+	if d.stack[t] {
+		return schemaUnsupported("a recursive type")
+	}
+	d.stack[t] = true
+	defer delete(d.stack, t)
+	if checker.IsTupleType(t) {
+		for _, flags := range t.TargetTupleType().ElementFlags() {
+			if flags & ^checker.ElementFlagsRequired != 0 {
+				return schemaUnsupported("a tuple with optional, rest, or variadic elements")
+			}
+		}
+		types := d.checker.GetTypeArguments(t)
+		if len(types) > maxSchemaTupleElements {
+			return schemaBudget(fmt.Sprintf("tuple has more than the %d element POC limit", maxSchemaTupleElements))
+		}
+		elements := make([]ctValue, 0, len(types))
+		for _, item := range types {
+			value, failure := d.convert(item, depth+1)
+			if failure != nil {
+				return ctValue{}, failure
+			}
+			elements = append(elements, value)
+		}
+		return schemaMemberNode("tuple", "elements", newCtArray(elements)), nil
+	}
+	if d.checker.IsArrayType(t) {
+		types := d.checker.GetTypeArguments(t)
+		if len(types) != 1 {
+			return schemaUnsupported("an array without exactly one element type")
+		}
+		value, failure := d.convert(types[0], depth+1)
+		if failure != nil {
+			return ctValue{}, failure
+		}
+		return schemaMemberNode("array", "element", value), nil
+	}
+	if len(d.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
+		return schemaUnsupported("a function type")
+	}
+	if len(d.checker.GetSignaturesOfType(t, checker.SignatureKindConstruct)) != 0 {
+		return schemaUnsupported("a constructor type")
+	}
+	if t.IsClass() {
+		return schemaUnsupported("a class instance type")
+	}
+	if len(d.checker.GetIndexInfosOfType(t)) != 0 {
+		return schemaUnsupported("a type with an index signature")
+	}
+	symbols := append([]*ast.Symbol(nil), d.checker.GetPropertiesOfType(t)...)
+	if len(symbols) > maxSchemaProperties {
+		return schemaBudget(fmt.Sprintf("object has more than the %d property POC limit", maxSchemaProperties))
+	}
+	sortUTF16By(symbols, func(symbol *ast.Symbol) string { return symbol.Name })
+	properties := make([]ctValue, 0, len(symbols))
+	seen := make(map[string]bool)
+	for _, symbol := range symbols {
+		name := symbol.Name
+		// Native binder internal names use a non-UTF-8 sentinel, not the 5.9
+		// "__@" escape convention. Authored string keys named "__@x" stay data.
+		if strings.HasPrefix(name, ast.InternalSymbolNamePrefix) {
+			return schemaUnsupported("a symbol-keyed property")
+		}
+		if !utf8.ValidString(name) {
+			return schemaUnsupported("a property containing an unpaired surrogate")
+		}
+		if symbol.Flags&(ast.SymbolFlagsMethod|ast.SymbolFlagsFunction) != 0 {
+			return schemaUnsupported("property " + strconv.Quote(name) + ", which is a method")
+		}
+		if symbol.Flags&ast.SymbolFlagsAccessor != 0 {
+			return schemaUnsupported("property " + strconv.Quote(name) + ", which is an accessor")
+		}
+		for _, declaration := range symbol.Declarations {
+			if ast.HasSyntacticModifier(declaration, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+				return schemaUnsupported("property " + strconv.Quote(name) + ", which is not public")
+			}
+		}
+		if seen[name] {
+			return schemaUnsupported("duplicate property " + strconv.Quote(name))
+		}
+		seen[name] = true
+		optional := symbol.Flags&ast.SymbolFlagsOptional != 0
+		propertyType := d.checker.GetTypeOfSymbolAtLocation(symbol, d.location)
+		var value ctValue
+		var failure *schemaFailure
+		if optional && propertyType.IsUnion() {
+			defined := make([]*checker.Type, 0, len(propertyType.Types()))
+			for _, variant := range propertyType.Types() {
+				if variant.Flags()&checker.TypeFlagsUndefined == 0 {
+					defined = append(defined, variant)
+				}
+			}
+			if len(defined) == 0 {
+				return schemaUnsupported("an optional property with no defined type")
+			}
+			value, failure = d.union(defined, depth+2)
+		} else {
+			value, failure = d.convert(propertyType, depth+1)
+		}
+		if failure != nil {
+			return ctValue{}, failure
+		}
+		property := newCtObject()
+		property.obj.set("name", ctStringValue(name))
+		property.obj.set("optional", ctBoolValue(optional))
+		property.obj.set("value", value)
+		properties = append(properties, property)
+	}
+	return schemaMemberNode("object", "properties", newCtArray(properties)), nil
+}

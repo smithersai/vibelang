@@ -1,0 +1,664 @@
+package main
+
+// The native source tools use upstream's scanner, parser and whitespace-only
+// formatter. No AST crosses the host boundary. A formatted result is accepted
+// only after independent token/comment, parsed-structure and masked-line checks.
+// Conditional declarations use an offset-preserving mask, never a parser fork.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"slices"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/format"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+const maxFormatUnits = 4 * 1024 * 1024
+const maxFormatMasks = 1024
+const maxFormatDepth = 8
+
+type formatRequest struct {
+	Text       string `json:"text"`
+	FileName   string `json:"fileName,omitempty"`
+	IndentSize *int   `json:"indentSize,omitempty"`
+	NewLine    string `json:"newLine,omitempty"`
+}
+type formatDiagnostic struct {
+	Severity string `json:"severity"`
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+	Start    int    `json:"start"`
+	Line     int    `json:"line"`
+	Column   int    `json:"column"`
+}
+type formatResult struct {
+	OK          bool               `json:"ok"`
+	Code        string             `json:"code"`
+	Changed     bool               `json:"changed"`
+	Diagnostics []formatDiagnostic `json:"diagnostics"`
+}
+type tokenRequest struct {
+	Text   string `json:"text"`
+	Offset int    `json:"offset"`
+}
+type sourceToken struct {
+	Kind  string `json:"kind"`
+	Text  string `json:"text"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+}
+type tokenResult struct {
+	Token *sourceToken `json:"token"`
+}
+
+func serveSourceTools(apiVersion int, operation string) {
+	response := struct {
+		APIVersion       int        `json:"apiVersion"`
+		CompilerRevision string     `json:"compilerRevision"`
+		Result           any        `json:"result"`
+		Error            *wireError `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024*1024 + 1}
+	var err error
+	if operation == "--format" {
+		var input formatRequest
+		err = wirejson.Decode(limited, &input)
+		if err == nil && limited.N != 0 {
+			response.Result, err = formatSource(input)
+		}
+	} else {
+		var input tokenRequest
+		err = wirejson.Decode(limited, &input)
+		if err == nil && limited.N != 0 {
+			response.Result, err = sourceTokenAt(input)
+		}
+	}
+	if limited.N == 0 {
+		err = errors.New("source tool request exceeds its 64 MiB encoded budget")
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_SOURCE_TOOL", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+type formatToken struct {
+	kind       ast.Kind
+	text       string
+	start, end int // native byte offsets; conversion happens at the boundary
+}
+
+func formatWhitespace(kind ast.Kind) bool {
+	return kind == ast.KindWhitespaceTrivia || kind == ast.KindNewLineTrivia
+}
+
+func formatTrivia(kind ast.Kind) bool {
+	return formatWhitespace(kind) || kind == ast.KindSingleLineCommentTrivia || kind == ast.KindMultiLineCommentTrivia ||
+		kind == ast.KindNonTextFileMarkerTrivia || kind == ast.KindConflictMarkerTrivia
+}
+
+func formatRegexAllowed(previous ast.Kind) bool {
+	switch previous {
+	case ast.KindIdentifier, ast.KindPrivateIdentifier, ast.KindNumericLiteral, ast.KindBigIntLiteral,
+		ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateTail, ast.KindRegularExpressionLiteral,
+		ast.KindCloseParenToken, ast.KindCloseBracketToken, ast.KindPlusPlusToken, ast.KindMinusMinusToken,
+		ast.KindThisKeyword, ast.KindSuperKeyword, ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword:
+		return false
+	}
+	return true
+}
+
+// The scanner retains raw spelling and comments, including template and regex
+// contents. Regex guesses may conservatively refuse formatting; they are never
+// the only proof of preservation (the parsed literal contents are checked too).
+func formatScan(source string) []formatToken {
+	scan := scanner.NewScanner()
+	scan.SetText(source)
+	scan.SetScriptTarget(core.ScriptTargetLatest)
+	scan.SetLanguageVariant(core.LanguageVariantStandard)
+	scan.SetSkipTrivia(false)
+	tokens := []formatToken{}
+	if shebang := scanner.GetShebang(source); shebang != "" {
+		tokens = append(tokens, formatToken{kind: ast.KindSingleLineCommentTrivia, text: shebang, start: 0, end: len(shebang)})
+		scan.ResetPos(len(shebang))
+	}
+	braces := 0
+	var templates []int
+	previous := ast.KindUnknown
+	for {
+		kind := scan.Scan()
+		if kind == ast.KindEndOfFile {
+			return tokens
+		}
+		if (kind == ast.KindSlashToken || kind == ast.KindSlashEqualsToken) && formatRegexAllowed(previous) {
+			kind = scan.ReScanSlashToken()
+		}
+		if kind == ast.KindCloseBraceToken && len(templates) > 0 && braces == templates[len(templates)-1] {
+			kind = scan.ReScanTemplateToken(false)
+			if kind == ast.KindTemplateTail {
+				templates = templates[:len(templates)-1]
+			}
+		} else if kind == ast.KindOpenBraceToken {
+			braces++
+		} else if kind == ast.KindCloseBraceToken {
+			braces--
+		}
+		if kind == ast.KindTemplateHead {
+			templates = append(templates, braces)
+		}
+		tokens = append(tokens, formatToken{kind: kind, text: scan.TokenText(), start: scan.TokenStart(), end: scan.TokenEnd()})
+		if !formatTrivia(kind) {
+			previous = kind
+		}
+	}
+}
+
+func formatCodeTokens(tokens []formatToken) []formatToken {
+	code := make([]formatToken, 0, len(tokens))
+	for _, token := range tokens {
+		if !formatTrivia(token.kind) {
+			code = append(code, token)
+		}
+	}
+	return code
+}
+
+func formatLineBreak(r rune) bool          { return r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029' }
+func formatContainsBreak(text string) bool { return strings.ContainsAny(text, "\n\r\u2028\u2029") }
+
+type formatMask struct {
+	start, end int
+	text       string
+}
+type formatPlan struct{ masks []formatMask }
+
+func formatConditionalHeader(tokens []formatToken, index int) (start, semicolon int, ok bool) {
+	if index+2 >= len(tokens) || tokens[index].kind != ast.KindIfKeyword || tokens[index+1].kind != ast.KindOpenParenToken {
+		return
+	}
+	declaration := tokens[index+2].kind
+	if declaration != ast.KindConstKeyword && declaration != ast.KindLetKeyword && declaration != ast.KindVarKeyword {
+		return
+	}
+	parenDepth, close := 0, -1
+	for i := index + 1; i < len(tokens); i++ {
+		if tokens[i].kind == ast.KindOpenParenToken {
+			parenDepth++
+		}
+		if tokens[i].kind == ast.KindCloseParenToken {
+			parenDepth--
+			if parenDepth == 0 {
+				close = i
+				break
+			}
+		}
+	}
+	if close < 0 {
+		return
+	}
+	depth, separator := 0, -1
+	for i := index + 1; i < close; i++ {
+		switch tokens[i].kind {
+		case ast.KindOpenParenToken, ast.KindOpenBraceToken, ast.KindOpenBracketToken:
+			depth++
+		case ast.KindCloseParenToken, ast.KindCloseBraceToken, ast.KindCloseBracketToken:
+			depth--
+		case ast.KindSemicolonToken:
+			if depth == 1 {
+				if separator >= 0 {
+					return
+				}
+				separator = i
+			}
+		}
+	}
+	if separator <= index+2 || separator+1 >= close {
+		return
+	}
+	return index + 2, separator, true
+}
+
+// Filler keeps BOTH native byte offsets and UTF-16 width, including astral
+// initializers. Non-ASCII whitespace avoids making a three-byte character look
+// like three columns to upstream's formatter. Line terminators stay verbatim.
+func formatFiller(text, head string) (string, bool) {
+	if len(text) < len(head) || formatContainsBreak(text[:len(head)]) || !utf8.ValidString(text[:len(head)]) {
+		return "", false
+	}
+	var output strings.Builder
+	output.WriteString(head)
+	for _, r := range text[len(head):] {
+		if formatLineBreak(r) {
+			output.WriteRune(r)
+			continue
+		}
+		switch utf8.RuneLen(r) {
+		case 1:
+			output.WriteByte(' ')
+		case 2:
+			output.WriteRune('\u00a0')
+		case 3:
+			output.WriteRune('\u2000')
+		case 4:
+			output.WriteString("\u2000 ")
+		}
+	}
+	return output.String(), true
+}
+
+func formatPlanMasks(source string, tokens []formatToken) formatPlan {
+	plan := formatPlan{masks: []formatMask{}}
+	for i := range tokens {
+		start, semi, ok := formatConditionalHeader(tokens, i)
+		if !ok {
+			continue
+		}
+		first, end := tokens[start].start, tokens[semi].end
+		filler, ok := formatFiller(source[first:end-1], fmt.Sprintf("$c%d", len(plan.masks)))
+		if !ok {
+			continue
+		}
+		plan.masks = append(plan.masks, formatMask{start: first, end: end, text: filler + ","})
+	}
+	return plan
+}
+
+func formatApplyMasks(source string, plan formatPlan) (string, bool) {
+	var output strings.Builder
+	end := 0
+	for _, mask := range plan.masks {
+		if mask.start < end || mask.end > len(source) || len(mask.text) != mask.end-mask.start {
+			return "", false
+		}
+		output.WriteString(source[end:mask.start])
+		output.WriteString(mask.text)
+		end = mask.end
+	}
+	output.WriteString(source[end:])
+	return output.String(), true
+}
+
+type formatEdit struct {
+	start, end int
+	text       string
+}
+
+func formatApplyEdits(source string, edits []formatEdit) (string, bool) {
+	ordered := slices.Clone(edits)
+	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].start < ordered[j].start })
+	var output strings.Builder
+	cursor := 0
+	for _, edit := range ordered {
+		if edit.start < cursor || edit.end < edit.start || edit.end > len(source) {
+			return "", false
+		}
+		output.WriteString(source[cursor:edit.start])
+		output.WriteString(edit.text)
+		cursor = edit.end
+	}
+	output.WriteString(source[cursor:])
+	return output.String(), true
+}
+
+func formatShift(edits []formatEdit, offset int) int {
+	delta := 0
+	for _, edit := range edits {
+		if edit.end <= offset {
+			delta += len(edit.text) - (edit.end - edit.start)
+		}
+	}
+	return delta
+}
+
+func formatAuthoredOffset(edits []formatEdit, offset int) int {
+	delta := 0
+	for _, edit := range edits {
+		start := edit.start + delta
+		if offset < start {
+			break
+		}
+		if offset < start+len(edit.text) {
+			return edit.start
+		}
+		delta += len(edit.text) - (edit.end - edit.start)
+	}
+	return offset - delta
+}
+
+func formatNormalize(source string) (string, []formatEdit) {
+	tokens := formatCodeTokens(formatScan(source))
+	edits := []formatEdit{}
+	for i := range tokens {
+		_, semi, ok := formatConditionalHeader(tokens, i)
+		if !ok {
+			continue
+		}
+		start, end := tokens[semi].end, tokens[semi+1].start
+		gap := source[start:end]
+		// Comments between the declaration and condition are authored data.
+		if gap == " " || strings.Trim(gap, " \t\v\f") != "" {
+			continue
+		}
+		edits = append(edits, formatEdit{start: start, end: end, text: " "})
+	}
+	output, ok := formatApplyEdits(source, edits)
+	if !ok {
+		return source, nil
+	}
+	return output, edits
+}
+
+func formatPermitted(edit formatEdit, plan formatPlan) bool {
+	for _, mask := range plan.masks {
+		if edit.start == edit.end {
+			if edit.start > mask.start && edit.start <= mask.end {
+				return false
+			}
+		} else if edit.start < mask.end && edit.end > mask.start {
+			return false
+		}
+	}
+	return true
+}
+
+func formatParse(source string) *ast.SourceFile {
+	// Labels may be relative, absolute, or contain punctuation. They are never
+	// parser/filesystem identities; upstream requires a normalized virtual path.
+	const virtual = "/__vibelang_format__/input.ts"
+	return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: virtual, Path: tspath.Path(virtual)}, source, core.ScriptKindTS)
+}
+
+type formatStructureEntry struct {
+	kind    ast.Kind
+	literal string
+}
+
+func formatStructure(file *ast.SourceFile) []formatStructureEntry {
+	entries := []formatStructureEntry{}
+	var walk func(*ast.Node) bool
+	walk = func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+		entry := formatStructureEntry{kind: node.Kind}
+		if ast.IsLiteralExpression(node) || ast.IsTemplateLiteralToken(node) {
+			entry.literal = node.Text()
+		}
+		entries = append(entries, entry)
+		node.ForEachChild(walk)
+		entries = append(entries, formatStructureEntry{kind: ast.Kind(-1)})
+		return false
+	}
+	file.AsNode().ForEachChild(walk)
+	return entries
+}
+
+type formatStreamEntry struct {
+	token           formatToken
+	lineBreakBefore bool
+}
+
+func formatStream(source string) []formatStreamEntry {
+	stream := []formatStreamEntry{}
+	previousEnd := 0
+	for _, token := range formatScan(source) {
+		if formatWhitespace(token.kind) {
+			continue
+		}
+		stream = append(stream, formatStreamEntry{token: token, lineBreakBefore: formatContainsBreak(source[previousEnd:token.start])})
+		previousEnd = token.end
+	}
+	return stream
+}
+
+func formatLineStarts(source string) []int {
+	starts := []int{0}
+	for offset, r := range source {
+		if r == '\r' && offset+1 < len(source) && source[offset+1] == '\n' {
+			continue
+		}
+		if formatLineBreak(r) {
+			starts = append(starts, offset+utf8.RuneLen(r))
+		}
+	}
+	return starts
+}
+func formatLineOf(starts []int, offset int) int {
+	return sort.Search(len(starts), func(i int) bool { return starts[i] > offset }) - 1
+}
+
+func formatRoundTrip(source, output string, plan formatPlan, parsed *ast.SourceFile) string {
+	before, after := formatStream(source), formatStream(output)
+	if len(before) != len(after) {
+		return "formatting would change the module's token or comment stream; the module is reported instead of rewritten"
+	}
+	for i := range before {
+		if before[i].token.kind != after[i].token.kind || before[i].token.text != after[i].token.text {
+			return fmt.Sprintf("formatting would change the module's token or comment stream at entry %d; the module is reported instead of rewritten", i)
+		}
+	}
+	outputPlan := formatPlanMasks(output, formatCodeTokens(formatScan(output)))
+	if len(outputPlan.masks) != len(plan.masks) {
+		return "formatting would change which VibeLang constructs the module contains; it is reported instead of rewritten"
+	}
+	maskedOutput, ok := formatApplyMasks(output, outputPlan)
+	if !ok {
+		return "the formatted module could not be re-masked for verification; it is reported instead of rewritten"
+	}
+	formattedFile := formatParse(maskedOutput)
+	if len(formattedFile.Diagnostics()) > 0 {
+		return "the formatted module would not parse after VibeLang recovery; it is reported instead of rewritten"
+	}
+	if !slices.Equal(formatStructure(parsed), formatStructure(formattedFile)) {
+		return "formatting would change the module's parsed structure or literal contents; it is reported instead of rewritten"
+	}
+	// Use the authored mask plan for authored offsets. Spacing normalization can
+	// change byte offsets even though it never changes the number of lines.
+	authoredPlan := formatPlanMasks(source, formatCodeTokens(formatScan(source)))
+	starts := formatLineStarts(source)
+	sensitive := map[int]bool{}
+	for _, mask := range authoredPlan.masks {
+		first, last := formatLineOf(starts, mask.start), formatLineOf(starts, max(mask.start, mask.end-1))
+		for line := first; line <= last+1; line++ {
+			sensitive[line] = true
+		}
+	}
+	for i := range before {
+		if sensitive[formatLineOf(starts, before[i].token.start)] && before[i].lineBreakBefore != after[i].lineBreakBefore {
+			return fmt.Sprintf("formatting would move a line break next to a VibeLang construct at entry %d; it is reported instead of rewritten", i)
+		}
+	}
+	return ""
+}
+
+func formatFailure(source, code, message string, offset int) formatResult {
+	offset = max(0, min(offset, len(source)))
+	lines := newLineIndex(source)
+	starts := formatLineStarts(source)
+	line := formatLineOf(starts, offset)
+	return formatResult{Code: source, Diagnostics: []formatDiagnostic{{Severity: "error", Code: code, Message: message,
+		Start: lines.utf16Offset(offset), Line: line + 1, Column: lines.utf16Offset(offset) - lines.utf16Offset(starts[line]) + 1}}}
+}
+
+func formatDetectNewLine(source string) string {
+	first := strings.IndexByte(source, '\n')
+	if first > 0 && source[first-1] == '\r' {
+		return "\r\n"
+	}
+	return "\n"
+}
+
+func formatTrim(source, newLine string) string {
+	tokens := formatScan(source)
+	edits := []formatEdit{}
+	for i, token := range tokens {
+		if token.kind == ast.KindWhitespaceTrivia && (i+1 == len(tokens) || tokens[i+1].kind == ast.KindNewLineTrivia) {
+			edits = append(edits, formatEdit{start: token.start, end: token.end})
+		}
+	}
+	output, ok := formatApplyEdits(source, edits)
+	if !ok {
+		return source
+	}
+	output = strings.TrimRight(output, "\r\n\u2028\u2029")
+	if output == "" {
+		return ""
+	}
+	return output + newLine
+}
+
+func formatIndentAt(source string, offset int) string {
+	starts := formatLineStarts(source)
+	start := starts[formatLineOf(starts, offset)]
+	end := start
+	for end < len(source) && (source[end] == ' ' || source[end] == '\t') {
+		end++
+	}
+	return source[start:end]
+}
+
+func formatReindent(source, indent string) string {
+	if indent == "" {
+		return source
+	}
+	lines := strings.Split(source, "\n")
+	for i := 1; i < len(lines); i++ {
+		if lines[i] != "" {
+			lines[i] = indent + lines[i]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func formatSource(input formatRequest) (formatResult, error) {
+	if len(input.FileName) > 4096 {
+		return formatResult{}, errors.New("formatter fileName exceeds its 4096-byte label budget")
+	}
+	indent := 2
+	if input.IndentSize != nil {
+		indent = *input.IndentSize
+	}
+	if indent < 1 || indent > 8 {
+		return formatResult{}, errors.New("formatter indentSize must be an integer between 1 and 8")
+	}
+	if input.NewLine != "" && input.NewLine != "\n" && input.NewLine != "\r\n" {
+		return formatResult{}, errors.New("formatter newLine must be LF or CRLF")
+	}
+	if input.FileName == "" {
+		input.FileName = "input.vibe"
+	}
+	if input.NewLine == "" {
+		input.NewLine = formatDetectNewLine(input.Text)
+	}
+	return formatModuleNative(input.Text, indent, input.NewLine, 0), nil
+}
+
+func formatModuleNative(source string, indent int, newLine string, depth int) formatResult {
+	if newLineIndex(source).utf16Offset(len(source)) > maxFormatUnits {
+		return formatFailure(source, "VIBE1900", fmt.Sprintf("source exceeds the %d UTF-16 unit formatter budget", maxFormatUnits), 0)
+	}
+	normalized, normalizationEdits := formatNormalize(source)
+	plan := formatPlanMasks(normalized, formatCodeTokens(formatScan(normalized)))
+	if len(plan.masks) > maxFormatMasks {
+		return formatFailure(source, "VIBE1900", fmt.Sprintf("module masks more than %d VibeLang constructs", maxFormatMasks), 0)
+	}
+	masked, ok := formatApplyMasks(normalized, plan)
+	if !ok {
+		return formatFailure(source, "VIBE1901", "VibeLang construct masks overlap, so the module cannot be formatted soundly", 0)
+	}
+	parsed := formatParse(masked)
+	if diagnostics := parsed.Diagnostics(); len(diagnostics) != 0 {
+		first := diagnostics[0]
+		return formatFailure(source, "VIBE1901", "source does not parse after VibeLang recovery, so it is reported instead of rewritten: "+first.Localize(locale.Default),
+			formatAuthoredOffset(normalizationEdits, first.Pos()))
+	}
+	settings := lsutil.GetDefaultFormatCodeSettings()
+	settings.IndentSize, settings.TabSize, settings.BaseIndentSize = indent, indent, 0
+	settings.NewLineCharacter = newLine
+	settings.ConvertTabsToSpaces, settings.TrimTrailingWhitespace = core.TSTrue, core.TSTrue
+	settings.IndentStyle = lsutil.IndentStyleSmart
+	settings.Semicolons = lsutil.SemicolonPreferenceIgnore
+	ctx := format.WithFormatCodeSettings(context.Background(), settings, newLine)
+	edits := []formatEdit{}
+	for _, change := range format.FormatDocument(ctx, parsed) {
+		edit := formatEdit{start: change.Pos(), end: change.End(), text: change.NewText}
+		if formatPermitted(edit, plan) {
+			edits = append(edits, edit)
+		}
+	}
+	output, ok := formatApplyEdits(normalized, edits)
+	if !ok {
+		return formatFailure(source, "VIBE1902", "the native formatter produced overlapping formatting edits", 0)
+	}
+	if depth < maxFormatDepth {
+		regions := make([]formatMask, 0, len(plan.masks))
+		for _, mask := range plan.masks {
+			regions = append(regions, formatMask{start: mask.start + formatShift(edits, mask.start), end: mask.end + formatShift(edits, mask.end)})
+		}
+		sort.Slice(regions, func(i, j int) bool { return regions[i].start > regions[j].start })
+		for _, region := range regions {
+			if region.start < 0 || region.end < region.start || region.end > len(output) {
+				return formatFailure(source, "VIBE1902", "the native formatter produced an invalid masked region", 0)
+			}
+			text := output[region.start:region.end]
+			inner := formatModuleNative(text, indent, newLine, depth+1)
+			if !inner.OK {
+				continue
+			}
+			replacement := strings.TrimSuffix(strings.TrimSuffix(inner.Code, "\r\n"), "\n")
+			replacement = formatReindent(replacement, formatIndentAt(output, region.start))
+			output = output[:region.start] + replacement + output[region.end:]
+		}
+	}
+	output = formatTrim(output, newLine)
+	if refusal := formatRoundTrip(source, output, plan, parsed); refusal != "" {
+		return formatFailure(source, "VIBE1902", refusal, 0)
+	}
+	return formatResult{OK: true, Code: output, Changed: output != source, Diagnostics: []formatDiagnostic{}}
+}
+
+func sourceTokenAt(input tokenRequest) (tokenResult, error) {
+	lines := newLineIndex(input.Text)
+	if lines.utf16Offset(len(input.Text)) > maxFormatUnits {
+		return tokenResult{}, errors.New("token lookup exceeds the 4194304 UTF-16 unit source budget")
+	}
+	if input.Offset < 0 || input.Offset > lines.utf16Offset(len(input.Text)) {
+		return tokenResult{}, nil
+	}
+	var previous *sourceToken
+	for _, token := range formatCodeTokens(formatScan(input.Text)) {
+		item := sourceToken{Kind: strings.TrimPrefix(token.kind.String(), "Kind"), Text: token.text,
+			Start: lines.utf16Offset(token.start), End: lines.utf16Offset(token.end)}
+		if item.Start <= input.Offset && input.Offset < item.End {
+			return tokenResult{Token: &item}, nil
+		}
+		if item.Start > input.Offset {
+			if previous != nil && previous.End == input.Offset {
+				return tokenResult{Token: previous}, nil
+			}
+			return tokenResult{}, nil
+		}
+		previous = &item
+	}
+	if previous != nil && previous.End == input.Offset {
+		return tokenResult{Token: previous}, nil
+	}
+	return tokenResult{}, nil
+}

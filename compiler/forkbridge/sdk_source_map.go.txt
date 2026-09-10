@@ -1,0 +1,165 @@
+package main
+
+// Refine native printer provenance at emitted leaves. The stock printer maps
+// enclosing statements but can let that mapping cover an inserted helper. A
+// leaf's actual printer notification, never its spelling searched in the output,
+// supplies the generated range. Only unchanged authored token prefixes receive
+// character mappings; synthetic names and rewritten suffixes receive stops.
+
+import (
+	"path"
+	"sort"
+	"unicode/utf16"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/printer"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+type sdkPrintedLeaf struct {
+	node       *ast.Node
+	start, end int
+}
+
+func (l *lowerer) printSDK(file *ast.SourceFile, options *core.CompilerOptions) (string, *sourcemap.RawSourceMap, error) {
+	generator := sourcemap.NewGenerator(path.Base(file.FileName())+".ts", "", path.Dir(file.FileName()), tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+	writer := printer.NewTextWriter("\n", 0)
+	var leaves []sdkPrintedLeaf
+	starts := map[*ast.Node][]int{}
+	isLeaf := func(node *ast.Node) bool {
+		return node != nil && (ast.IsIdentifier(node) || ast.IsLiteralExpression(node) || ast.IsTemplateLiteralToken(node))
+	}
+	before := func(node *ast.Node) {
+		if isLeaf(node) {
+			starts[node] = append(starts[node], writer.GetTextPos())
+		}
+	}
+	after := func(node *ast.Node) {
+		if stack := starts[node]; isLeaf(node) && len(stack) > 0 {
+			leaves = append(leaves, sdkPrintedLeaf{node, stack[len(stack)-1], writer.GetTextPos()})
+			starts[node] = stack[:len(stack)-1]
+		}
+	}
+	p := printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF, Target: options.Target},
+		printer.PrintHandlers{OnBeforeEmitNode: before, OnAfterEmitNode: after, OnBeforeEmitToken: before, OnAfterEmitToken: after}, l.emitContext)
+	p.Write(file.AsNode(), file, writer, generator)
+	text := writer.String()
+	raw := generator.RawSourceMap()
+	unchanged := file == l.file
+	if !unchanged {
+		// Factory visitors may rebuild equivalent nodes even when no lowering
+		// was needed. Compare native printings with an independent emit context
+		// so compiler-inserted comments/metadata cannot disappear unnoticed.
+		original, _ := printLowered(printer.NewEmitContext(), l.file, options)
+		unchanged = text == original
+	}
+	if unchanged {
+		// No node, import, metadata or lowering changed: preserve source bytes.
+		text = l.file.Text()
+		lines := newLineIndex(text)
+		identity := sourcemap.NewGenerator(raw.File, "", path.Dir(file.FileName()), tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+		source := identity.AddSource(l.file.FileName())
+		for line := 0; line < lines.lineCount(); line++ {
+			for column := 0; column <= lines.utf16Length(line); column++ {
+				if err := identity.AddSourceMapping(line, core.UTF16Offset(column), source, line, core.UTF16Offset(column)); err != nil {
+					return "", nil, err
+				}
+			}
+		}
+		return text, identity.RawSourceMap(), nil
+	}
+	points := map[[2]int]sourcemap.Mapping{}
+	decoded := sourcemap.DecodeMappings(raw.Mappings)
+	for point := range decoded.Values() {
+		points[[2]int{point.GeneratedLine, int(point.GeneratedCharacter)}] = *point
+	}
+	if decoded.Error() != nil {
+		return "", nil, decoded.Error()
+	}
+	rawKeys := make([][2]int, 0, len(points))
+	for key := range points {
+		rawKeys = append(rawKeys, key)
+	}
+	less := func(left, right [2]int) bool { return left[0] < right[0] || left[0] == right[0] && left[1] < right[1] }
+	sort.Slice(rawKeys, func(i, j int) bool { return less(rawKeys[i], rawKeys[j]) })
+	generatedLines, authoredLines := newLineIndex(text), newLineIndex(l.file.Text())
+	put := func(line, column, sourceLine, sourceColumn int) {
+		point := sourcemap.Mapping{GeneratedLine: line, GeneratedCharacter: core.UTF16Offset(column), SourceIndex: sourcemap.MissingSource,
+			SourceLine: sourcemap.MissingLineOrColumn, SourceCharacter: sourcemap.MissingUTF16Column, NameIndex: sourcemap.MissingName}
+		if sourceLine >= 0 {
+			point.SourceIndex = 0
+			point.SourceLine = sourceLine
+			point.SourceCharacter = core.UTF16Offset(sourceColumn)
+		}
+		points[[2]int{line, column}] = point
+	}
+	for _, leaf := range leaves {
+		start := scanner.SkipTrivia(text, leaf.start)
+		if start < 0 || start >= leaf.end {
+			continue
+		}
+		scan := scanner.NewScanner()
+		scan.SetText(text)
+		scan.ResetPos(start)
+		scan.Scan()
+		if leaf.node.Kind == ast.KindTemplateMiddle || leaf.node.Kind == ast.KindTemplateTail {
+			// Scanning from `}` without parser context sees punctuation, not
+			// the template token the native printer just emitted.
+			scan.ReScanTemplateToken(false)
+		}
+		end := min(scan.TokenEnd(), leaf.end)
+		line, column := generatedLines.position(start)
+		endLine, endColumn := generatedLines.position(end)
+		// Remove parent mappings within this leaf; a synthetic name is not the
+		// nearest authored token, and an edited string suffix is not verbatim.
+		first := sort.Search(len(rawKeys), func(i int) bool { return !less(rawKeys[i], [2]int{line, column}) })
+		for i := first; i < len(rawKeys) && less(rawKeys[i], [2]int{endLine, endColumn}); i++ {
+			delete(points, rawKeys[i])
+		}
+		put(line, column, -1, 0)
+		put(endLine, endColumn, -1, 0)
+		original := l.emitContext.MostOriginal(leaf.node)
+		if original.Parent == nil || original.Kind != leaf.node.Kind || original.Pos() < 0 || original.End() > len(l.file.Text()) {
+			continue
+		}
+		authoredStart := scanner.GetTokenPosOfNode(original, l.file, false)
+		left, right := utf16.Encode([]rune(text[start:end])), utf16.Encode([]rune(l.file.Text()[authoredStart:original.End()]))
+		sourceLine, sourceColumn := authoredLines.position(authoredStart)
+		matched := 0
+		for i := 0; i < len(left) && i < len(right) && left[i] == right[i]; i++ {
+			if left[i] == '\n' || left[i] == '\r' || left[i] == 0x2028 || left[i] == 0x2029 {
+				break
+			}
+			put(line, column+i, sourceLine, sourceColumn+i)
+			matched++
+		}
+		if matched < len(left) {
+			put(line, column+matched, -1, 0)
+		}
+	}
+	keys := make([][2]int, 0, len(points))
+	for key := range points {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i][0] < keys[j][0] || keys[i][0] == keys[j][0] && keys[i][1] < keys[j][1]
+	})
+	refined := sourcemap.NewGenerator(raw.File, "", path.Dir(file.FileName()), tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+	refined.AddSource(l.file.FileName())
+	for _, key := range keys {
+		point := points[key]
+		var err error
+		if point.IsSourceMapping() {
+			err = refined.AddSourceMapping(point.GeneratedLine, point.GeneratedCharacter, 0, point.SourceLine, point.SourceCharacter)
+		} else {
+			err = refined.AddGeneratedMapping(point.GeneratedLine, point.GeneratedCharacter)
+		}
+		if err != nil {
+			return "", nil, err
+		}
+	}
+	return text, refined.RawSourceMap(), nil
+}

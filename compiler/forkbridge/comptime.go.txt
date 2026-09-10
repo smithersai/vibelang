@@ -1,6 +1,6 @@
 package main
 
-// The compiler-owned `smithers:comptime` intrinsic, lowered inside the pinned
+// The compiler-owned `vibelang:comptime` intrinsic, lowered inside the pinned
 // TypeScript fork.
 //
 // Three properties are load bearing and everything here is arranged around
@@ -30,9 +30,9 @@ package main
 //     the interpreter counts steps, allocations, call depth and string growth
 //     and turns exhaustion into a deterministic diagnostic.
 //
-// Diagnostic codes are the bridge's own SMITHERS19xx family. The last two
+// Diagnostic codes are the bridge's own VIBE19xx family. The last two
 // digits are deliberately the same as the reference frontend's VCT10xx code for
-// the same rule, so SMITHERS1912 and VCT1012 are the same budget refusal.
+// the same rule, so VIBE1912 and VCT1012 are the same budget refusal.
 
 import (
 	"fmt"
@@ -48,6 +48,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
 )
 
 const (
@@ -57,11 +58,11 @@ const (
 	// from the runtime prelude: sharing one file would make every other
 	// compiler-owned specifier export `comptime` too, and then an import from
 	// the wrong virtual module would resolve to the right symbol.
-	comptimeLogicalPath = "__smithers_comptime.d.ts"
+	comptimeLogicalPath = "__vibelang_comptime.d.ts"
 	comptimeVirtualName = "/src/" + comptimeLogicalPath
-	comptimeModuleAlias = "./__smithers_comptime"
+	comptimeModuleAlias = "./__vibelang_comptime"
 
-	comptimeModuleSpecifier = "smithers:comptime"
+	comptimeModuleSpecifier = "vibelang:comptime"
 
 	// defaultComptimeTarget matches the reference frontend's default so a
 	// `comptime.target` branch selects the same arm in both implementations.
@@ -78,7 +79,7 @@ export declare namespace comptime {
 export declare function embed(specifier: string): string;
 `
 
-// Budgets. Every one of them is a hard stop that produces SMITHERS1912; none of
+// Budgets. Every one of them is a hard stop that produces VIBE1912; none of
 // them is a heuristic and none of them can be exceeded quietly.
 const (
 	// maxComptimeSteps bounds the total interpreter operations for one comptime
@@ -95,20 +96,20 @@ const (
 	maxComptimeTypeAliasText = 100_000
 )
 
-// The SMITHERS19xx family. The trailing two digits match the reference
+// The VIBE19xx family. The trailing two digits match the reference
 // frontend's VCT10xx code for the same rule.
 const (
-	comptimeCodeMissingIdentity   = "SMITHERS1901" // a comptime-shaped call with no compiler identity at all
-	comptimeCodeUnrelatedIdentity = "SMITHERS1902" // a comptime-shaped call that resolved somewhere else
-	comptimeCodeArity             = "SMITHERS1903" // comptime called with the wrong shape
-	comptimeCodeUnsupported       = "SMITHERS1904" // outside the bounded evaluated subset
-	comptimeCodeNoncanonical      = "SMITHERS1905" // evaluated, but not canonical JSON data
-	comptimeCodeUnsupportedUse    = "SMITHERS1906" // a compiler-owned value used outside a comptime evaluation
-	comptimeCodeInternalIdentity  = "SMITHERS1908" // the compiler-owned module identities could not be established
-	comptimeCodeInvalidFunction   = "SMITHERS1910" // a compile-time function marker in an unsupported position
-	comptimeCodeTrackedInput      = "SMITHERS1911" // a tracked compiler input the bridge cannot serve
-	comptimeCodeBudget            = "SMITHERS1912" // a bounded evaluation budget was exhausted
-	comptimeCodeTypeProduction    = "SMITHERS1913" // the value cannot become a generated type alias
+	comptimeCodeMissingIdentity   = "VIBE1901" // a comptime-shaped call with no compiler identity at all
+	comptimeCodeUnrelatedIdentity = "VIBE1902" // retired: a different resolved binding is an ordinary function
+	comptimeCodeArity             = "VIBE1903" // comptime called with the wrong shape
+	comptimeCodeUnsupported       = "VIBE1904" // outside the bounded evaluated subset
+	comptimeCodeNoncanonical      = "VIBE1905" // evaluated, but not canonical JSON data
+	comptimeCodeUnsupportedUse    = "VIBE1906" // a compiler-owned value used outside a comptime evaluation
+	comptimeCodeInternalIdentity  = "VIBE1908" // the compiler-owned module identities could not be established
+	comptimeCodeInvalidFunction   = "VIBE1910" // a compile-time function marker in an unsupported position
+	comptimeCodeTrackedInput      = "VIBE1911" // a tracked compiler input the bridge cannot serve
+	comptimeCodeBudget            = "VIBE1912" // a bounded evaluation budget was exhausted
+	comptimeCodeTypeProduction    = "VIBE1913" // the value cannot become a generated type alias
 )
 
 // ---------------------------------------------------------------------------
@@ -156,7 +157,9 @@ type ctValue struct {
 func ctNullValue() ctValue            { return ctValue{kind: ctNull} }
 func ctBoolValue(v bool) ctValue      { return ctValue{kind: ctBool, b: v} }
 func ctNumberValue(v float64) ctValue { return ctValue{kind: ctNumber, n: v} }
-func ctStringValue(v string) ctValue  { return ctValue{kind: ctString, s: v} }
+func ctStringValue(v string) ctValue {
+	return ctValue{kind: ctString, s: stringutil.CombineSurrogatePairs(v)}
+}
 
 func newCtArray(items []ctValue) ctValue {
 	return ctValue{kind: ctArray, arr: &ctArrayData{items: items, owned: true}}
@@ -258,19 +261,21 @@ func isArrayIndexKey(key string) bool {
 // Canonical rendering
 // ---------------------------------------------------------------------------
 
-// ctCanonical renders the canonical JSON encoding used for `JSON.stringify`,
-// for the emitted comptime result, and for nothing else. It is NOT an equality
-// relation: language equality is ctStrictEquals, and canonical text must not
-// participate in it. Keys are sorted by UTF-16 code unit, which is what
-// JavaScript's default `Array.prototype.sort` does, so the two implementations
-// agree on non-ASCII keys as well.
+// ctCanonical is metadata encoding, never a program operation. JSON.stringify
+// observes ownKeys order, and emitted literals must preserve that order too.
 func ctCanonical(value ctValue) string {
 	var builder strings.Builder
-	writeCtCanonical(&builder, value)
+	writeCtJSON(&builder, value, true)
 	return builder.String()
 }
 
-func writeCtCanonical(builder *strings.Builder, value ctValue) {
+func ctJSON(value ctValue) string {
+	var builder strings.Builder
+	writeCtJSON(&builder, value, false)
+	return builder.String()
+}
+
+func writeCtJSON(builder *strings.Builder, value ctValue, canonical bool) {
 	switch value.kind {
 	case ctNull:
 		builder.WriteString("null")
@@ -290,12 +295,14 @@ func writeCtCanonical(builder *strings.Builder, value ctValue) {
 			if index != 0 {
 				builder.WriteByte(',')
 			}
-			writeCtCanonical(builder, item)
+			writeCtJSON(builder, item, canonical)
 		}
 		builder.WriteByte(']')
 	case ctObject:
-		keys := append([]string(nil), value.obj.keys...)
-		sortUTF16(keys)
+		keys := value.obj.ownKeys()
+		if canonical {
+			sortUTF16(keys)
+		}
 		builder.WriteByte('{')
 		for index, key := range keys {
 			if index != 0 {
@@ -303,7 +310,7 @@ func writeCtCanonical(builder *strings.Builder, value ctValue) {
 			}
 			builder.WriteString(ctQuote(key))
 			builder.WriteByte(':')
-			writeCtCanonical(builder, value.obj.values[key])
+			writeCtJSON(builder, value.obj.values[key], canonical)
 		}
 		builder.WriteByte('}')
 	}
@@ -363,8 +370,8 @@ func sortUTF16By[T any](items []T, key func(T) string) {
 }
 
 func compareUTF16(left string, right string) int {
-	leftUnits := utf16.Encode([]rune(left))
-	rightUnits := utf16.Encode([]rune(right))
+	leftUnits := ctStringUnits(left)
+	rightUnits := ctStringUnits(right)
 	for index := 0; index < len(leftUnits) && index < len(rightUnits); index++ {
 		if leftUnits[index] != rightUnits[index] {
 			if leftUnits[index] < rightUnits[index] {
@@ -380,71 +387,6 @@ func compareUTF16(left string, right string) int {
 		return 1
 	}
 	return 0
-}
-
-// ctQuote is `JSON.stringify` for a string: the JSON escapes plus \u for every
-// other control character. Go's encoding/json escapes `<`, `>` and `&` as well,
-// which would not round-trip through the reference.
-func ctQuote(value string) string {
-	var builder strings.Builder
-	builder.WriteByte('"')
-	for _, unit := range utf16.Encode([]rune(value)) {
-		switch unit {
-		case '"':
-			builder.WriteString(`\"`)
-		case '\\':
-			builder.WriteString(`\\`)
-		case '\b':
-			builder.WriteString(`\b`)
-		case '\f':
-			builder.WriteString(`\f`)
-		case '\n':
-			builder.WriteString(`\n`)
-		case '\r':
-			builder.WriteString(`\r`)
-		case '\t':
-			builder.WriteString(`\t`)
-		default:
-			if unit < 0x20 {
-				builder.WriteString(fmt.Sprintf(`\u%04x`, unit))
-				continue
-			}
-			if unit >= 0xD800 && unit <= 0xDFFF {
-				// A well-formed pair is written as the character it encodes; a
-				// lone surrogate keeps the escaped form ES2019 stringify uses.
-				builder.WriteString(fmt.Sprintf(`\u%04x`, unit))
-				continue
-			}
-			builder.WriteRune(rune(unit))
-		}
-	}
-	builder.WriteByte('"')
-	return replaceSurrogatePairs(builder.String())
-}
-
-// replaceSurrogatePairs turns a `\udXXX\udYYY` pair produced above back into the
-// character it encodes, so only genuinely lone surrogates stay escaped.
-func replaceSurrogatePairs(text string) string {
-	if !strings.Contains(text, `\ud`) {
-		return text
-	}
-	var builder strings.Builder
-	for index := 0; index < len(text); {
-		if index+12 <= len(text) && text[index:index+2] == `\u` {
-			high, highErr := strconv.ParseUint(text[index+2:index+6], 16, 32)
-			if highErr == nil && high >= 0xD800 && high <= 0xDBFF && text[index+6:index+8] == `\u` {
-				low, lowErr := strconv.ParseUint(text[index+8:index+12], 16, 32)
-				if lowErr == nil && low >= 0xDC00 && low <= 0xDFFF {
-					builder.WriteRune(utf16.DecodeRune(rune(high), rune(low)))
-					index += 12
-					continue
-				}
-			}
-		}
-		builder.WriteByte(text[index])
-		index++
-	}
-	return builder.String()
 }
 
 // ctNumberText is ECMAScript's Number::toString for a finite, non-negative-zero
@@ -635,7 +577,7 @@ func comptimeResolvedModule(typeChecker *checker.Checker, specifier *ast.Node) b
 	if specifier == nil {
 		return false
 	}
-	symbol := typeChecker.ResolveExternalModuleName(specifier)
+	symbol := typeChecker.ResolveExternalModuleNameAtLocation(specifier)
 	if symbol == nil {
 		return false
 	}
@@ -687,6 +629,19 @@ type typeProduction struct {
 	value      ctValue
 }
 
+// Source observations stay native. A phase transport can turn these nodes into
+// authored ranges without exposing a checker or re-interpreting source in JS.
+type comptimeObservation struct {
+	argument, mappedOrigin *ast.Node
+	origins                []*ast.Node
+	inputs                 []int
+}
+
+// An explicit, immutable host input channel. The interpreter never opens a
+// path. A phase adapter resolves only the reads actually reached by evaluation
+// and supplies their text plus an index into its declared input snapshot.
+type comptimeTextReader func(*ast.Node, string) (string, int, *ctFailure)
+
 // comptimeAnalysis is the whole comptime frontend for one checked program. It
 // decides everything before the lowering visitor runs, so the visitor only has
 // to substitute nodes it was handed.
@@ -703,7 +658,14 @@ type comptimeAnalysis struct {
 
 	// values maps each recognized comptime call site to the value it evaluated
 	// to. The lowering replaces exactly these nodes.
-	values map[*ast.Node]ctValue
+	values       map[*ast.Node]ctValue
+	observations map[*ast.Node]comptimeObservation
+	readText     comptimeTextReader
+	// schemas are generated runtime artifacts, not ordinary comptime data or
+	// candidates for generated literal type aliases.
+	schemas       map[*ast.Node]*schemaDerivation
+	schemaFiles   map[*ast.SourceFile]bool
+	schemaSymbols *schemaSymbols
 	// erase names whole statements that disappear: the compiler-owned imports
 	// and the private marker consts.
 	erase map[*ast.Node]bool
@@ -728,12 +690,20 @@ func newComptimeAnalysis(
 	files []*ast.SourceFile,
 	target string,
 ) *comptimeAnalysis {
+	return newComptimeAnalysisWithInputs(program, typeChecker, files, target, nil)
+}
+
+func newComptimeAnalysisWithInputs(program *compiler.Program, typeChecker *checker.Checker, files []*ast.SourceFile, target string, readText comptimeTextReader) *comptimeAnalysis {
 	analysis := &comptimeAnalysis{
 		checker:        typeChecker,
 		target:         target,
 		files:          make(map[*ast.SourceFile]bool, len(files)),
 		fileList:       files,
 		values:         make(map[*ast.Node]ctValue),
+		observations:   make(map[*ast.Node]comptimeObservation),
+		readText:       readText,
+		schemas:        make(map[*ast.Node]*schemaDerivation),
+		schemaFiles:    make(map[*ast.SourceFile]bool),
 		erase:          make(map[*ast.Node]bool),
 		productions:    make(map[*ast.Node]*typeProduction),
 		allowed:        make(map[*ast.Node]bool),
@@ -746,7 +716,7 @@ func newComptimeAnalysis(
 	}
 	for _, file := range program.SourceFiles() {
 		name := file.FileName()
-		if !strings.HasPrefix(name, "/src/") || name == preludeVirtualName || name == comptimeVirtualName {
+		if !strings.HasPrefix(name, "/src/") || name == preludeVirtualName || name == comptimeVirtualName || isSchemaOwnedFile(name) {
 			continue
 		}
 		if !slices.Contains(files, file) {
@@ -771,6 +741,13 @@ func newComptimeAnalysis(
 		return analysis
 	}
 	analysis.symbols = symbols
+	analysis.schemaSymbols, err = loadSchemaSymbols(program, typeChecker)
+	if err != nil {
+		if len(files) > 0 {
+			analysis.reportAt(files[0], files[0].AsNode(), schemaCodeInternalIdentity, err.Error())
+		}
+		return analysis
+	}
 	analysis.run()
 	if analysis.hasReports() {
 		// All or nothing. A project where any compiler-owned use was refused
@@ -779,8 +756,11 @@ func newComptimeAnalysis(
 		// request before it can ship. A partially applied comptime lowering
 		// would be a program neither the author nor the language defines.
 		analysis.values = map[*ast.Node]ctValue{}
+		analysis.observations = map[*ast.Node]comptimeObservation{}
 		analysis.erase = map[*ast.Node]bool{}
 		analysis.productions = map[*ast.Node]*typeProduction{}
+		analysis.schemas = map[*ast.Node]*schemaDerivation{}
+		analysis.schemaFiles = map[*ast.SourceFile]bool{}
 	}
 	return analysis
 }
@@ -817,27 +797,75 @@ func (a *comptimeAnalysis) hasReports() bool {
 // call is not also reported as escaping.
 func (a *comptimeAnalysis) run() {
 	for _, file := range a.fileList {
+		a.refuseVirtualModuleRuntimeEdges(file)
 		a.collectImports(file)
+		a.collectSchemaImports(file)
 	}
-	a.refuseComptimeOutsideSmithersModules()
+	for _, file := range a.guardFiles {
+		a.refuseVirtualModuleRuntimeEdges(file)
+	}
+	a.refuseComptimeOutsideVibeLangModules()
+	a.refuseSchemaOutsideVibeLangModules()
 	for _, file := range a.fileList {
 		a.collectMarkers(file)
+	}
+	for _, file := range a.fileList {
+		a.deriveSchemas(file)
 	}
 	for _, file := range a.fileList {
 		a.evaluateCalls(file)
 	}
 	for _, file := range a.fileList {
 		a.checkEscapes(file)
+		a.checkSchemaEscapes(file)
 	}
 	a.planTypeProductions()
 }
 
-// refuseComptimeOutsideSmithersModules reports a plain TypeScript module in the
-// project that imports the compiler-owned comptime module. Only authored `.sm`
+// Only ordinary import declarations have an erasure/lowering plan. A re-export,
+// import assignment or dynamic import of a compiler-owned virtual module would
+// leave a nonexistent runtime edge. Resolve its target as well as recognizing
+// the public virtual specifier so alternate paths cannot bypass this boundary.
+// Type-space import queries are deliberately not runtime edges.
+func (a *comptimeAnalysis) refuseVirtualModuleRuntimeEdges(file *ast.SourceFile) {
+	walkComptime(file.AsNode(), func(node *ast.Node) {
+		var specifier *ast.Node
+		switch {
+		case ast.IsExportDeclaration(node):
+			specifier = node.AsExportDeclaration().ModuleSpecifier
+		case ast.IsImportEqualsDeclaration(node):
+			reference := node.AsImportEqualsDeclaration().ModuleReference
+			if ast.IsExternalModuleReference(reference) {
+				specifier = reference.AsExternalModuleReference().Expression
+			}
+		case ast.IsImportCall(node):
+			arguments := node.AsCallExpression().Arguments
+			if arguments != nil && len(arguments.Nodes) > 0 {
+				specifier = arguments.Nodes[0]
+			}
+		}
+		if specifier == nil || (!ast.IsStringLiteral(specifier) && !ast.IsNoSubstitutionTemplateLiteral(specifier)) {
+			return
+		}
+		code := ""
+		if specifier.Text() == comptimeModuleSpecifier || comptimeResolvedModule(a.checker, specifier) {
+			code = comptimeCodeUnsupportedUse
+		} else if specifier.Text() == schemaModuleSpecifier || schemaResolvedModule(a.checker, specifier) {
+			code = schemaCodeImportShape
+		}
+		if code != "" {
+			a.report(file, node, code, "the compiler-owned module "+strconv.Quote(specifier.Text())+
+				" is erased during lowering, so it can only be reached through an ordinary import declaration")
+		}
+	})
+}
+
+// refuseComptimeOutsideVibeLangModules reports a plain TypeScript module in the
+// project that imports the compiler-owned comptime module. Only authored `.vibe`
 // modules are lowered, so such an import would survive into the emitted
 // JavaScript and fail at load time. Refusing it here turns a runtime module
 // resolution failure into a compile-time diagnostic at the authored specifier.
-func (a *comptimeAnalysis) refuseComptimeOutsideSmithersModules() {
+func (a *comptimeAnalysis) refuseComptimeOutsideVibeLangModules() {
 	for _, file := range a.guardFiles {
 		for _, statement := range file.Statements.Nodes {
 			if !ast.IsImportDeclaration(statement) {
@@ -848,15 +876,15 @@ func (a *comptimeAnalysis) refuseComptimeOutsideSmithersModules() {
 				continue
 			}
 			a.report(file, specifier, comptimeCodeUnsupportedUse,
-				"the comptime intrinsic is only available to Smithers modules; this module is compiled as plain TypeScript and its import would survive to runtime")
+				"the comptime intrinsic is only available to VibeLang modules; this module is compiled as plain TypeScript and its import would survive to runtime")
 		}
 	}
 }
 
 // collectImports validates the shape of every import of the compiler-owned
-// module and records the statement for erasure. The specifier text decides
-// which import declaration is the compiler's; the binding it introduces is
-// still recognized only by resolved symbol afterwards.
+// module and records the statement for erasure. Resolved identity also covers
+// an authored path reaching the compiler-owned declaration file; retaining that
+// import after replacing the call would leave a nonexistent runtime module.
 func (a *comptimeAnalysis) collectImports(file *ast.SourceFile) {
 	for _, statement := range file.Statements.Nodes {
 		if !ast.IsImportDeclaration(statement) {
@@ -867,7 +895,7 @@ func (a *comptimeAnalysis) collectImports(file *ast.SourceFile) {
 		if specifier == nil || !ast.IsStringLiteral(specifier) {
 			continue
 		}
-		exact := specifier.Text() == comptimeModuleSpecifier
+		exact := specifier.Text() == comptimeModuleSpecifier || comptimeResolvedModule(a.checker, specifier)
 		clause := declaration.ImportClause
 		if exact {
 			a.erase[statement] = true
@@ -1026,6 +1054,16 @@ func (a *comptimeAnalysis) evaluateCalls(file *ast.SourceFile) {
 				return
 			}
 			argument := call.Arguments.Nodes[0]
+			if a.isSchemaDeriveCall(unwrapComptimeExpression(argument)) {
+				// deriveSchemas either recorded this outer call or diagnosed the
+				// authored type/call. Never evaluate a runtime validator as data.
+				return
+			}
+			if looksLikeSchemaDerive(unwrapComptimeExpression(argument)) {
+				a.report(file, argument, schemaCodeUnrelatedIdentity,
+					"derive call does not resolve to the compiler intrinsic imported from "+strconv.Quote(schemaModuleSpecifier))
+				return
+			}
 			if function := a.resolveStaticFunction(argument); function != nil {
 				a.evaluateFunctionMarker(file, node, function)
 				return
@@ -1050,14 +1088,13 @@ func (a *comptimeAnalysis) evaluateCalls(file *ast.SourceFile) {
 			})
 			return
 		}
-		if a.looksLikeComptimeCall(file, call.Expression) {
-			code := comptimeCodeMissingIdentity
-			message := "comptime call has no imported compiler identity from " + strconv.Quote(comptimeModuleSpecifier)
-			if symbol != nil {
-				code = comptimeCodeUnrelatedIdentity
-				message = "call does not resolve to the compiler intrinsic imported from " + strconv.Quote(comptimeModuleSpecifier)
-			}
-			a.report(file, call.Expression, code, message)
+		// An imported local spelling is not authority over lexical shadows.
+		// specification/comptime: recognize the resolved imported binding;
+		// unrelated functions remain ordinary even when an outer import used
+		// that name. Only a genuinely unresolved candidate gets this diagnostic.
+		if symbol == nil && a.looksLikeComptimeCall(file, call.Expression) {
+			a.report(file, call.Expression, comptimeCodeMissingIdentity,
+				"comptime call has no imported compiler identity from "+strconv.Quote(comptimeModuleSpecifier))
 		}
 	})
 }
@@ -1094,13 +1131,41 @@ func (a *comptimeAnalysis) evaluateOne(
 	replace *ast.Node,
 	body func(*comptimeEvaluator) ctValue,
 ) {
-	evaluator := &comptimeEvaluator{analysis: a, file: file, phaseAllowed: []bool{true}}
-	value, failure := evaluator.guard(body)
+	evaluator := &comptimeEvaluator{analysis: a, file: file, phaseAllowed: []bool{true}, origins: map[*ast.Node]bool{}, inputReads: map[int]bool{}}
+	value, failure := evaluator.guard(func(e *comptimeEvaluator) ctValue {
+		value := body(e)
+		e.validateValueGraph(value, replace)
+		return value
+	})
 	if failure != nil {
-		a.report(file, failure.node, failure.code, failure.message)
+		// A called function or captured initializer can belong to another
+		// module. Its node offsets are relative to that authored source.
+		origin := ast.GetSourceFileOfNode(failure.node)
+		if !a.files[origin] {
+			origin = file
+		}
+		a.report(origin, failure.node, failure.code, failure.message)
 		return
 	}
 	a.values[replace] = value
+	argument, mapped := replace, evaluator.invocationOrigin
+	if ast.IsCallExpression(replace) && a.symbols.isIntrinsic(a.symbols.resolvedCallSymbol(replace)) {
+		argument = replace.AsCallExpression().Arguments.Nodes[0]
+		mapped = evaluator.primaryOrigin(argument, map[*ast.Symbol]bool{})
+	}
+	if mapped == nil {
+		mapped = argument
+	}
+	origins := []*ast.Node{argument}
+	for node := range evaluator.origins {
+		origins = append(origins, node)
+	}
+	inputs := make([]int, 0, len(evaluator.inputReads))
+	for input := range evaluator.inputReads {
+		inputs = append(inputs, input)
+	}
+	sort.Ints(inputs)
+	a.observations[replace] = comptimeObservation{argument: argument, mappedOrigin: mapped, origins: origins, inputs: inputs}
 	markComptimeTree(replace, a.allowed)
 }
 
@@ -1155,10 +1220,9 @@ func (a *comptimeAnalysis) checkEscapes(file *ast.SourceFile) {
 }
 
 // looksLikeComptimeCall is the one place a spelling is consulted, and it is
-// bounded to spellings this file's own compiler-owned import introduced. It
-// fires when such a name is shadowed by something else at the call site, which
-// is genuinely ambiguous and worth reporting; it never fires for an unrelated
-// name that merely happens to be spelled `comptime`.
+// bounded to unresolved spellings this file's compiler-owned import introduced.
+// The caller must first establish that no symbol resolved. A lexical shadow is
+// unambiguous ordinary code, never a missing or unrelated intrinsic identity.
 func (a *comptimeAnalysis) looksLikeComptimeCall(file *ast.SourceFile, expression *ast.Node) bool {
 	return expression != nil && ast.IsIdentifier(expression) && a.candidateNames[file][expression.Text()]
 }
@@ -1248,7 +1312,7 @@ func (a *comptimeAnalysis) planTypeProductions() {
 	bySymbol := make(map[*ast.Symbol]*candidate)
 	for _, file := range a.fileList {
 		walkComptime(file.AsNode(), func(node *ast.Node) {
-			if _, ok := a.values[node]; !ok {
+			if _, ok := a.values[node]; !ok && a.schemas[node] == nil {
 				return
 			}
 			declaration := typeProducingDeclaration(node)
@@ -1360,6 +1424,11 @@ func (a *comptimeAnalysis) planTypeProductions() {
 
 	for _, entry := range candidates {
 		if entry.typeUses == 0 {
+			continue
+		}
+		if a.schemas[entry.call] != nil {
+			a.report(entry.file, entry.nameNode, comptimeCodeTypeProduction,
+				"a derived schema is a runtime artifact, not data from which to generate a literal type alias")
 			continue
 		}
 		value := a.values[entry.call]
@@ -1528,8 +1597,9 @@ const (
 )
 
 type ctCompletion struct {
-	kind  ctCompletionKind
-	value ctValue
+	kind   ctCompletionKind
+	value  ctValue
+	origin *ast.Node
 }
 
 // comptimeEvaluator interprets one comptime call tree. It holds no host
@@ -1539,9 +1609,12 @@ type comptimeEvaluator struct {
 	analysis *comptimeAnalysis
 	file     *ast.SourceFile
 
-	memo   map[*ast.Symbol]ctValue
-	active map[*ast.Symbol]bool
-	scopes []map[*ast.Symbol]*ctBinding
+	memo             map[*ast.Symbol]ctValue
+	active           map[*ast.Symbol]bool
+	scopes           []map[*ast.Symbol]*ctBinding
+	origins          map[*ast.Node]bool
+	inputReads       map[int]bool
+	invocationOrigin *ast.Node
 
 	// phaseAllowed tracks whether the frame may observe compile-time-only
 	// operations. A function that is retained as runtime code may not.
@@ -1583,6 +1656,37 @@ func (e *comptimeEvaluator) fail(code string, node *ast.Node, message string) {
 	panic(&ctFailure{code: code, node: node, message: message})
 }
 
+func (e *comptimeEvaluator) observe(node *ast.Node) {
+	if node == nil {
+		return
+	}
+	if e.origins == nil {
+		e.origins = map[*ast.Node]bool{}
+	}
+	e.origins[node] = true
+}
+
+func (e *comptimeEvaluator) primaryOrigin(node *ast.Node, seen map[*ast.Symbol]bool) *ast.Node {
+	plain := unwrapComptimeExpression(node)
+	if plain == nil || !ast.IsIdentifier(plain) {
+		return plain
+	}
+	symbol := e.analysis.symbols.resolve(plain)
+	if symbol == nil || seen[symbol] || len(symbol.Declarations) != 1 {
+		return plain
+	}
+	declaration := symbol.Declarations[0]
+	if !ast.IsVariableDeclaration(declaration) || !e.analysis.files[ast.GetSourceFileOfNode(declaration)] {
+		return plain
+	}
+	initializer := declaration.AsVariableDeclaration().Initializer
+	if initializer == nil {
+		return plain
+	}
+	seen[symbol] = true
+	return e.primaryOrigin(initializer, seen)
+}
+
 func (e *comptimeEvaluator) unsupported(node *ast.Node, message string) ctValue {
 	e.fail(comptimeCodeUnsupported, node, message)
 	return ctValue{}
@@ -1591,6 +1695,40 @@ func (e *comptimeEvaluator) unsupported(node *ast.Node, message string) ctValue 
 func (e *comptimeEvaluator) noncanonical(node *ast.Node, message string) ctValue {
 	e.fail(comptimeCodeNoncanonical, node, message)
 	return ctValue{}
+}
+
+// Shared allocations are valid data; cycles are not. Validate the expanded
+// value before type/literal generation or JSON.stringify so neither a cyclic
+// result nor a compact exponentially expanding DAG can overflow those walks.
+func (e *comptimeEvaluator) validateValueGraph(value ctValue, node *ast.Node) {
+	active := make(map[any]bool)
+	count := 0
+	var visit func(ctValue, int)
+	visit = func(current ctValue, depth int) {
+		count++
+		if depth > 512 || count > 1_000_000 {
+			e.budget(node, "comptime value exceeds the data depth or expanded-size budget")
+		}
+		identity := ctContainerIdentity(current)
+		if identity == nil {
+			return
+		}
+		if active[identity] {
+			e.noncanonical(node, "cyclic comptime value cannot be materialized as data")
+		}
+		active[identity] = true
+		if current.kind == ctArray {
+			for _, item := range current.arr.items {
+				visit(item, depth+1)
+			}
+		} else {
+			for _, key := range current.obj.ownKeys() {
+				visit(current.obj.values[key], depth+1)
+			}
+		}
+		delete(active, identity)
+	}
+	visit(value, 0)
 }
 
 func (e *comptimeEvaluator) budget(node *ast.Node, message string) ctValue {
@@ -1636,7 +1774,7 @@ func (e *comptimeEvaluator) phaseSpecificAllowed() bool {
 }
 
 func (e *comptimeEvaluator) guardString(value string, node *ast.Node) string {
-	if utf16Extent(value) > maxComptimeStringUnits {
+	if ctStringLength(value) > maxComptimeStringUnits {
 		e.budget(node, fmt.Sprintf("comptime string exceeds %d UTF-16 units", maxComptimeStringUnits))
 	}
 	return value
@@ -1894,7 +2032,7 @@ func (e *comptimeEvaluator) member(value ctValue, key string, node *ast.Node) ct
 	switch value.kind {
 	case ctString:
 		if key == "length" {
-			return ctNumberValue(float64(utf16Extent(value.s)))
+			return ctNumberValue(float64(ctStringLength(value.s)))
 		}
 	case ctArray:
 		if key == "length" {
@@ -1972,6 +2110,7 @@ func (e *comptimeEvaluator) identifier(node *ast.Node) ctValue {
 		return e.unsupported(node,
 			"cyclic const reference "+strconv.Quote(node.Text())+" cannot be evaluated")
 	}
+	e.observe(data.Initializer)
 	e.active[symbol] = true
 	value := e.evaluate(data.Initializer)
 	delete(e.active, symbol)
@@ -2303,7 +2442,7 @@ func (e *comptimeEvaluator) setMember(receiver ctValue, key string, value ctValu
 
 func (e *comptimeEvaluator) invoke(function *ast.Node, args []ctValue, at *ast.Node, allowPhaseSpecific bool) ctValue {
 	if e.callDepth >= maxComptimeCallDepth {
-		e.budget(at, fmt.Sprintf("compile-time evaluation exceeded %d nested calls", maxComptimeCallDepth))
+		e.budget(function, fmt.Sprintf("compile-time evaluation exceeded %d nested calls", maxComptimeCallDepth))
 	}
 	body := function.Body()
 	if body == nil {
@@ -2333,7 +2472,12 @@ func (e *comptimeEvaluator) invoke(function *ast.Node, args []ctValue, at *ast.N
 		locals[symbol] = &ctBinding{value: args[index], mutable: true, initialized: true}
 	}
 	e.scopes = append(e.scopes, locals)
-	e.phaseAllowed = append(e.phaseAllowed, e.phaseSpecificAllowed() && allowPhaseSpecific)
+	// Permission follows source erasure, not just the calling frame. A retained
+	// helper is still runtime code after the outer comptime call is replaced;
+	// allowing embed/target there would erase its import but leave its use live.
+	// Inline/nested functions wholly inside a replaced region may inherit the
+	// phase. Passing an ordinary function to comptime does not erase its body.
+	e.phaseAllowed = append(e.phaseAllowed, e.phaseSpecificAllowed() && allowPhaseSpecific && e.analysis.functionErased(function))
 	e.callDepth++
 	defer func() {
 		e.callDepth--
@@ -2341,7 +2485,9 @@ func (e *comptimeEvaluator) invoke(function *ast.Node, args []ctValue, at *ast.N
 		e.scopes = e.scopes[:len(e.scopes)-1]
 	}()
 	if !ast.IsBlock(body) {
-		return e.evaluate(body)
+		value := e.evaluate(body)
+		e.invocationOrigin = e.primaryOrigin(body, map[*ast.Symbol]bool{})
+		return value
 	}
 	completion := e.statements(body.AsBlock().Statements.Nodes)
 	if completion.kind == ctCompletionNormal {
@@ -2350,7 +2496,12 @@ func (e *comptimeEvaluator) invoke(function *ast.Node, args []ctValue, at *ast.N
 	if completion.kind != ctCompletionReturn {
 		return e.unsupported(body, "break and continue must stay inside a compile-time loop")
 	}
+	e.invocationOrigin = completion.origin
 	return completion.value
+}
+
+func (a *comptimeAnalysis) functionErased(function *ast.Node) bool {
+	return a.erasedInline[function] || a.withinReplacedRegion(function)
 }
 
 func comptimeIsGenerator(function *ast.Node) bool {
@@ -2388,11 +2539,24 @@ func (e *comptimeEvaluator) statement(statement *ast.Node) ctCompletion {
 		if expression == nil {
 			e.noncanonical(statement, "compile-time functions must return canonical data")
 		}
-		return ctCompletion{kind: ctCompletionReturn, value: e.evaluate(expression)}
+		e.observe(expression)
+		value := e.evaluate(expression)
+		return ctCompletion{kind: ctCompletionReturn, value: value, origin: e.primaryOrigin(expression, map[*ast.Symbol]bool{})}
 	case ast.IsIfStatement(statement):
 		data := statement.AsIfStatement()
 		if data.Initializer != nil {
-			e.unsupported(statement, "a conditional declaration is not in the bounded comptime function subset")
+			// The native binder owns this declaration's scope over the condition
+			// and complete if/else chain. Model that same scope in the evaluator;
+			// a pre-parser rewrite is neither needed nor an authority here.
+			if message := conditionalDeclarationShapeError(statement); message != "" {
+				e.unsupported(statement, message)
+			}
+			if data.Initializer.Kind != ast.KindVariableDeclarationList || data.Locals == nil {
+				e.unsupported(statement, "a conditional declaration requires the native binder's declaration-list scope")
+			}
+			e.scopes = append(e.scopes, make(map[*ast.Symbol]*ctBinding))
+			defer func() { e.scopes = e.scopes[:len(e.scopes)-1] }()
+			e.declare(data.Initializer)
 		}
 		if ctTruthy(e.evaluate(data.Expression)) {
 			return e.statement(data.ThenStatement)
@@ -2482,6 +2646,7 @@ func (e *comptimeEvaluator) declare(list *ast.Node) {
 		}
 		binding := &ctBinding{mutable: mutable}
 		if data.Initializer != nil {
+			e.observe(data.Initializer)
 			binding.value = e.evaluate(data.Initializer)
 			binding.initialized = true
 		}
@@ -2548,8 +2713,10 @@ func (e *comptimeEvaluator) forOf(statement *ast.Node) ctCompletion {
 		items = append(items, iterable.arr.items...)
 	case ctString:
 		// The string iterator yields code points, not UTF-16 units.
-		for _, character := range iterable.s {
-			items = append(items, ctStringValue(string(character)))
+		for offset := 0; offset < len(iterable.s); {
+			character, width := stringutil.DecodeJSStringRune(iterable.s[offset:])
+			items = append(items, ctStringValue(stringutil.EncodeJSStringRune(character)))
+			offset += width
 		}
 	default:
 		e.unsupported(data.Expression, "comptime for-of iterates arrays and strings")
@@ -2596,17 +2763,34 @@ func (e *comptimeEvaluator) call(node *ast.Node) ctValue {
 	}
 
 	if symbols.isEmbed(symbol) {
-		markComptimeTree(data.Expression, e.analysis.allowed)
 		if !e.phaseSpecificAllowed() {
 			return e.unsupported(node, "a runtime-retained function cannot call the compiler-only embed intrinsic")
 		}
-		// The Go bridge has no tracked-input API: a compile request carries
-		// modules, not compiler-owned assets. Reading the ambient filesystem
-		// here would break the hermeticity the specification requires, and
-		// returning a placeholder would defer the work to runtime, so the only
-		// sound answer is to refuse.
-		return e.unsupported2(comptimeCodeTrackedInput, node,
-			"embed needs a compiler-owned tracked input; this compiler has no tracked-asset channel, and reading ambient files at compile time would break comptime hermeticity")
+		markComptimeTree(data.Expression, e.analysis.allowed)
+		if e.analysis.readText == nil {
+			return e.unsupported2(comptimeCodeTrackedInput, node,
+				"embed needs a compiler-owned tracked input; this compiler request has no tracked-asset channel, and reading ambient files at compile time would break comptime hermeticity")
+		}
+		if data.Arguments == nil || len(data.Arguments.Nodes) != 1 {
+			return e.unsupported(node, "embed requires exactly one relative text path")
+		}
+		specifier := e.evaluate(data.Arguments.Nodes[0])
+		if specifier.kind != ctString {
+			return e.unsupported(data.Arguments.Nodes[0], "embed path must evaluate to a string")
+		}
+		text, index, failure := e.analysis.readText(node, specifier.s)
+		if failure != nil {
+			panic(failure)
+		}
+		if ctStringLength(text) > maxComptimeStringUnits {
+			e.budget(node, "tracked comptime input exceeds the string-unit budget")
+		}
+		if e.inputReads == nil {
+			e.inputReads = map[int]bool{}
+		}
+		e.inputReads[index] = true
+		e.observe(node)
+		return ctStringValue(text)
 	}
 
 	if marker, ok := e.analysis.markers[symbol]; ok && symbol != nil {
@@ -2694,7 +2878,9 @@ func (e *comptimeEvaluator) jsonCall(member string, node *ast.Node) ctValue {
 		return value
 	}
 	if member == "stringify" && count == 1 {
-		return ctStringValue(e.guardString(ctCanonical(e.evaluate(data.Arguments.Nodes[0])), node))
+		value := e.evaluate(data.Arguments.Nodes[0])
+		e.validateValueGraph(value, node)
+		return ctStringValue(e.guardString(ctJSON(value), node))
 	}
 	return e.unsupported(node, "JSON."+member+" is not a permitted deterministic comptime operation")
 }
@@ -3030,7 +3216,7 @@ func (e *comptimeEvaluator) callbackFunction(node *ast.Node, minimum int, maximu
 }
 
 func (e *comptimeEvaluator) stringCall(receiver string, member string, args []ctValue, node *ast.Node) ctValue {
-	units := utf16.Encode([]rune(receiver))
+	units := ctStringUnits(receiver)
 	oneString := len(args) == 1 && args[0].kind == ctString
 	switch {
 	case member == "trim" && len(args) == 0:
@@ -3040,42 +3226,24 @@ func (e *comptimeEvaluator) stringCall(receiver string, member string, args []ct
 	case member == "trimEnd" && len(args) == 0:
 		return ctStringValue(strings.TrimRight(receiver, comptimeWhitespace))
 	case (member == "toLowerCase" || member == "toUpperCase") && len(args) == 0:
-		// Restricted to ASCII on purpose. Go's case mapping is the simple
-		// Unicode mapping; ECMAScript uses the full one, so `"\u00df".toUpperCase()`
-		// is "SS" there and unchanged here. Producing a different string than
-		// the language specifies is exactly the silent wrongness this frontend
-		// exists to avoid, so the case it cannot reproduce is refused.
-		if !isComptimeASCII(receiver) {
-			return e.unsupported(node,
-				"comptime case mapping is limited to ASCII: full Unicode case mapping is not reproducible here")
-		}
+		// Use the pinned compiler's ECMAScript full/contextual case tables,
+		// including its lossless handling of lone UTF16 units.
 		if member == "toLowerCase" {
-			return ctStringValue(strings.ToLower(receiver))
+			return ctStringValue(e.guardString(stringutil.ToLowerJS(receiver), node))
 		}
-		return ctStringValue(strings.ToUpper(receiver))
+		return ctStringValue(e.guardString(stringutil.ToUpperJS(receiver), node))
 	case member == "includes" && oneString:
-		return ctBoolValue(strings.Contains(receiver, args[0].s))
+		return ctBoolValue(ctIndexOfUnits(units, ctStringUnits(args[0].s), false) >= 0)
 	case member == "startsWith" && oneString:
-		return ctBoolValue(strings.HasPrefix(receiver, args[0].s))
+		needle := ctStringUnits(args[0].s)
+		return ctBoolValue(len(needle) <= len(units) && slices.Equal(units[:len(needle)], needle))
 	case member == "endsWith" && oneString:
-		return ctBoolValue(strings.HasSuffix(receiver, args[0].s))
+		needle := ctStringUnits(args[0].s)
+		return ctBoolValue(len(needle) <= len(units) && slices.Equal(units[len(units)-len(needle):], needle))
 	case (member == "indexOf" || member == "lastIndexOf") && oneString:
-		byteIndex := strings.Index(receiver, args[0].s)
-		if member == "lastIndexOf" {
-			byteIndex = strings.LastIndex(receiver, args[0].s)
-		}
-		if byteIndex < 0 {
-			return ctNumberValue(-1)
-		}
-		return ctNumberValue(float64(utf16Extent(receiver[:byteIndex])))
+		return ctNumberValue(float64(ctIndexOfUnits(units, ctStringUnits(args[0].s), member == "lastIndexOf")))
 	case member == "replaceAll" && len(args) == 2 && args[0].kind == ctString && args[1].kind == ctString:
-		if args[0].s == "" {
-			// ECMAScript inserts between UTF-16 units; Go inserts between runes.
-			// The two agree only for text with no astral characters, so the
-			// ambiguous form is refused rather than guessed at.
-			return e.unsupported(node, "comptime replaceAll needs a non-empty search string")
-		}
-		return ctStringValue(e.guardString(strings.ReplaceAll(receiver, args[0].s, args[1].s), node))
+		return e.replaceAllUnits(units, ctStringUnits(args[0].s), ctStringUnits(args[1].s), node)
 	case member == "slice" && len(args) >= 1 && len(args) <= 2:
 		for _, argument := range args {
 			if !comptimeIsSafeInteger(argument) {
@@ -3092,26 +3260,36 @@ func (e *comptimeEvaluator) stringCall(receiver string, member string, args []ct
 		}
 		return e.decodeUnits(units[start:end], node)
 	case member == "split" && oneString:
-		if args[0].s == "" && !isComptimeBMP(receiver) {
-			// Splitting on the empty string yields UTF-16 units in ECMAScript,
-			// which would be lone surrogates here. Refused rather than silently
-			// producing whole code points instead.
-			return e.unsupported(node,
-				"comptime split on the empty string is limited to text with no astral characters")
-		}
-		parts := strings.Split(receiver, args[0].s)
-		e.allocate(node, len(parts)+1)
-		items := make([]ctValue, 0, len(parts))
-		for _, part := range parts {
-			items = append(items, ctStringValue(part))
+		needle := ctStringUnits(args[0].s)
+		items := []ctValue{}
+		if len(needle) == 0 {
+			e.allocate(node, len(units)+1)
+			for _, unit := range units {
+				items = append(items, ctStringValue(ctStringFromUnits([]uint16{unit})))
+			}
+		} else {
+			e.allocate(node, 1)
+			for cursor := 0; ; {
+				index := ctIndexOfUnits(units[cursor:], needle, false)
+				e.allocate(node, 1)
+				if index < 0 {
+					items = append(items, ctStringValue(ctStringFromUnits(units[cursor:])))
+					break
+				}
+				index += cursor
+				items = append(items, ctStringValue(ctStringFromUnits(units[cursor:index])))
+				cursor = index + len(needle)
+			}
 		}
 		return newCtArray(items)
 	case member == "repeat" && len(args) == 1 && comptimeIsSafeInteger(args[0]) && args[0].n >= 0:
-		count := int(args[0].n)
-		if len(units)*count > maxComptimeStringUnits {
+		if len(units) == 0 {
+			return ctStringValue("")
+		}
+		if args[0].n > float64(maxComptimeStringUnits)/float64(len(units)) {
 			return e.budget(node, fmt.Sprintf("comptime string exceeds %d UTF-16 units", maxComptimeStringUnits))
 		}
-		return ctStringValue(strings.Repeat(receiver, count))
+		return ctStringValue(strings.Repeat(receiver, int(args[0].n)))
 	case (member == "padStart" || member == "padEnd") && len(args) >= 1 && len(args) <= 2 &&
 		comptimeIsSafeInteger(args[0]) && args[0].n >= 0 && (len(args) == 1 || args[1].kind == ctString):
 		width := int(args[0].n)
@@ -3127,24 +3305,6 @@ func (e *comptimeEvaluator) stringCall(receiver string, member string, args []ct
 	return e.unsupported(node, "string method "+member+" is not supported for these comptime arguments")
 }
 
-func isComptimeASCII(value string) bool {
-	for index := 0; index < len(value); index++ {
-		if value[index] >= 0x80 {
-			return false
-		}
-	}
-	return true
-}
-
-func isComptimeBMP(value string) bool {
-	for _, character := range value {
-		if character > 0xFFFF {
-			return false
-		}
-	}
-	return true
-}
-
 // comptimeWhitespace is ECMAScript's TrimString set: WhiteSpace plus
 // LineTerminator. It is spelled out with escapes rather than delegated to Go's
 // `unicode.IsSpace`, which both omits U+FEFF and includes U+0085.
@@ -3153,35 +3313,21 @@ const comptimeWhitespace = "\t\v\f \u00a0\ufeff" +
 	"\u202f\u205f\u3000" +
 	"\n\r\u2028\u2029"
 
-// decodeUnits turns a UTF-16 slice back into text and refuses a result that
-// split a surrogate pair, rather than substituting a replacement character and
-// producing a value the author never wrote.
+// A slice may intentionally split a surrogate pair. Preserve the resulting
+// code units using the native compiler's JS-string representation.
 func (e *comptimeEvaluator) decodeUnits(units []uint16, node *ast.Node) ctValue {
-	for index := 0; index < len(units); index++ {
-		unit := units[index]
-		if unit >= 0xD800 && unit <= 0xDBFF {
-			if index+1 >= len(units) || units[index+1] < 0xDC00 || units[index+1] > 0xDFFF {
-				return e.unsupported(node, "comptime string operation split a surrogate pair")
-			}
-			index++
-			continue
-		}
-		if unit >= 0xDC00 && unit <= 0xDFFF {
-			return e.unsupported(node, "comptime string operation split a surrogate pair")
-		}
-	}
-	return ctStringValue(string(utf16.Decode(units)))
+	return ctStringValue(ctStringFromUnits(units))
 }
 
 func (e *comptimeEvaluator) pad(receiver string, units []uint16, width int, filler string, start bool, node *ast.Node) ctValue {
 	if len(units) >= width || filler == "" {
 		return ctStringValue(receiver)
 	}
-	fillerUnits := utf16.Encode([]rune(filler))
+	fillerUnits := ctStringUnits(filler)
 	needed := width - len(units)
 	padding := make([]uint16, 0, needed)
 	for len(padding) < needed {
-		padding = append(padding, fillerUnits...)
+		padding = append(padding, fillerUnits[:min(len(fillerUnits), needed-len(padding))]...)
 	}
 	padded := e.decodeUnits(padding[:needed], node)
 	if start {
@@ -3314,15 +3460,44 @@ func (p *ctJSONParser) value(depth int) (ctValue, error) {
 		if p.text[p.index] == '-' {
 			p.index++
 		}
-		for p.index < len(p.text) && strings.IndexByte("0123456789.eE+-", p.text[p.index]) >= 0 {
+		isDigit := func() bool { return p.index < len(p.text) && p.text[p.index] >= '0' && p.text[p.index] <= '9' }
+		if !isDigit() {
+			return ctValue{}, fmt.Errorf("expected JSON number digit at offset %d", p.index)
+		}
+		if p.text[p.index] == '0' {
 			p.index++
+		} else {
+			for isDigit() {
+				p.index++
+			}
+		}
+		if p.index < len(p.text) && p.text[p.index] == '.' {
+			p.index++
+			if !isDigit() {
+				return ctValue{}, fmt.Errorf("expected JSON fraction digit at offset %d", p.index)
+			}
+			for isDigit() {
+				p.index++
+			}
+		}
+		if p.index < len(p.text) && (p.text[p.index] == 'e' || p.text[p.index] == 'E') {
+			p.index++
+			if p.index < len(p.text) && (p.text[p.index] == '+' || p.text[p.index] == '-') {
+				p.index++
+			}
+			if !isDigit() {
+				return ctValue{}, fmt.Errorf("expected JSON exponent digit at offset %d", p.index)
+			}
+			for isDigit() {
+				p.index++
+			}
 		}
 		parsed, err := strconv.ParseFloat(p.text[start:p.index], 64)
 		if err != nil || math.IsInf(parsed, 0) || math.IsNaN(parsed) {
 			return ctValue{}, fmt.Errorf("number at offset %d is not finite canonical JSON", start)
 		}
-		if parsed == 0 {
-			parsed = 0 // normalize -0
+		if parsed == 0 && math.Signbit(parsed) {
+			return ctValue{}, fmt.Errorf("number at offset %d is not canonical JSON: negative zero", start)
 		}
 		return ctNumberValue(parsed), nil
 	}
@@ -3337,9 +3512,12 @@ func (p *ctJSONParser) stringLiteral() (string, error) {
 	units := make([]uint16, 0)
 	for p.index < len(p.text) {
 		character := p.text[p.index]
+		if character < 0x20 {
+			return "", fmt.Errorf("unescaped JSON control character at offset %d", p.index)
+		}
 		if character == '"' {
 			p.index++
-			return string(utf16.Decode(units)), nil
+			return ctStringFromUnits(units), nil
 		}
 		if character == '\\' {
 			p.index++
@@ -3380,12 +3558,17 @@ func (p *ctJSONParser) stringLiteral() (string, error) {
 			continue
 		}
 		size := 1
-		runeValue, width := utf8.DecodeRuneInString(p.text[p.index:])
+		runeValue, width := stringutil.DecodeJSStringRune(p.text[p.index:])
 		if runeValue == utf8.RuneError && width == 1 {
 			return "", fmt.Errorf("invalid UTF-8 at offset %d", p.index)
 		}
 		size = width
-		units = append(units, utf16.Encode([]rune{runeValue})...)
+		if runeValue > 0xffff {
+			high, low := utf16.EncodeRune(runeValue)
+			units = append(units, uint16(high), uint16(low))
+		} else {
+			units = append(units, uint16(runeValue))
+		}
 		p.index += size
 	}
 	return "", fmt.Errorf("unterminated string")
@@ -3403,13 +3586,75 @@ func (p *ctJSONParser) stringLiteral() (string, error) {
 // type position and keeps a widened annotation a type error rather than a
 // silent success.
 func (l *lowerer) comptimeLiteral(value ctValue) *ast.Node {
+	seen := make(map[any]bool)
+	values := []ctValue{}
+	shared := false
+	var collect func(ctValue)
+	collect = func(current ctValue) {
+		identity := ctContainerIdentity(current)
+		if identity == nil {
+			return
+		}
+		if seen[identity] {
+			shared = true
+			return
+		}
+		seen[identity] = true
+		if current.kind == ctArray {
+			for _, item := range current.arr.items {
+				collect(item)
+			}
+		} else {
+			for _, key := range current.obj.ownKeys() {
+				collect(current.obj.values[key])
+			}
+		}
+		values = append(values, current)
+	}
+	collect(value)
+	if shared {
+		// Postorder definitions allocate each container once. The closed arrow
+		// introduces no user-visible binding and uses only stock TypeScript AST.
+		aliases := make(map[any]string)
+		statements := make([]*ast.Node, 0, len(values)+1)
+		for index, current := range values {
+			name := fmt.Sprintf("__vibelangComptimeValue%d", index)
+			initializer := l.factory.NewAsExpression(l.comptimeValueWithReferences(current, aliases),
+				l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("const"), nil))
+			declaration := l.factory.NewVariableDeclaration(l.factory.NewIdentifier(name), nil, nil, initializer)
+			statements = append(statements, l.factory.NewVariableStatement(nil,
+				l.factory.NewVariableDeclarationList(l.factory.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsConst)))
+			aliases[ctContainerIdentity(current)] = name
+		}
+		statements = append(statements, l.factory.NewReturnStatement(l.comptimeValueWithReferences(value, aliases)))
+		body := l.factory.NewArrowFunction(nil, nil, l.factory.NewNodeList([]*ast.Node{}), nil, nil,
+			l.factory.NewToken(ast.KindEqualsGreaterThanToken), l.factory.NewBlock(l.factory.NewNodeList(statements), true))
+		return l.factory.NewCallExpression(l.factory.NewParenthesizedExpression(body), nil, nil, l.factory.NewNodeList([]*ast.Node{}), ast.NodeFlagsNone)
+	}
 	return l.factory.NewAsExpression(
 		l.comptimeValueExpression(value),
 		l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("const"), nil),
 	)
 }
 
+func ctContainerIdentity(value ctValue) any {
+	if value.kind == ctArray {
+		return value.arr
+	}
+	if value.kind == ctObject {
+		return value.obj
+	}
+	return nil
+}
+
 func (l *lowerer) comptimeValueExpression(value ctValue) *ast.Node {
+	return l.comptimeValueWithReferences(value, nil)
+}
+
+func (l *lowerer) comptimeValueWithReferences(value ctValue, aliases map[any]string) *ast.Node {
+	if name, ok := aliases[ctContainerIdentity(value)]; ok {
+		return l.factory.NewIdentifier(name)
+	}
 	switch value.kind {
 	case ctNull:
 		return l.factory.NewKeywordExpression(ast.KindNullKeyword)
@@ -3431,12 +3676,11 @@ func (l *lowerer) comptimeValueExpression(value ctValue) *ast.Node {
 	case ctArray:
 		elements := make([]*ast.Node, 0, len(value.arr.items))
 		for _, item := range value.arr.items {
-			elements = append(elements, l.comptimeValueExpression(item))
+			elements = append(elements, l.comptimeValueWithReferences(item, aliases))
 		}
 		return l.factory.NewArrayLiteralExpression(l.factory.NewNodeList(elements), false)
 	}
-	keys := append([]string(nil), value.obj.keys...)
-	sortUTF16(keys)
+	keys := value.obj.ownKeys()
 	properties := make([]*ast.Node, 0, len(keys))
 	for _, key := range keys {
 		properties = append(properties, l.factory.NewPropertyAssignment(
@@ -3444,7 +3688,7 @@ func (l *lowerer) comptimeValueExpression(value ctValue) *ast.Node {
 			l.comptimePropertyNameNode(key),
 			nil,
 			nil,
-			l.comptimeValueExpression(value.obj.values[key]),
+			l.comptimeValueWithReferences(value.obj.values[key], aliases),
 		))
 	}
 	return l.factory.NewObjectLiteralExpression(l.factory.NewNodeList(properties), false)
@@ -3519,6 +3763,14 @@ func (l *lowerer) comptimeSubstitution(node *ast.Node) (*ast.Node, bool) {
 	if analysis == nil {
 		return nil, false
 	}
+	if derived := analysis.schemas[node]; derived != nil {
+		replacement := l.factory.NewCallExpression(l.factory.NewIdentifier(schemaRuntimeBinding), nil,
+			l.factory.NewNodeList([]*ast.Node{l.visitor.VisitNode(derived.typeNode)}),
+			l.factory.NewNodeList([]*ast.Node{l.comptimeValueExpression(derived.descriptor)}), ast.NodeFlagsNone)
+		l.emitContext.AssignCommentAndSourceMapRanges(replacement, node)
+		l.emitContext.SetOriginal(replacement, node)
+		return replacement, true
+	}
 	if value, ok := analysis.values[node]; ok {
 		replacement := l.comptimeLiteral(value)
 		l.emitContext.AssignCommentAndSourceMapRanges(replacement, node)
@@ -3531,7 +3783,7 @@ func (l *lowerer) comptimeSubstitution(node *ast.Node) (*ast.Node, bool) {
 		if production.eraseValue {
 			return alias, true
 		}
-		// `visitStatement` may itself return a SyntaxList when the Smithers
+		// `visitStatement` may itself return a SyntaxList when the VibeLang
 		// lowering hoisted something ahead of the statement, and a SyntaxList
 		// inside a SyntaxList is not something the visitor lifts. Flatten.
 		retained := []*ast.Node{l.visitStatement(node)}
