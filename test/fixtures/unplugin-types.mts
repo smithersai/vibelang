@@ -1,0 +1,22 @@
+import unplugin, { type VibeLangPluginOptions } from "vibelang/unplugin";
+import type { Plugin as RollupPlugin } from "rollup";
+import type { Plugin as VitePlugin } from "vite";
+import type { Plugin as RolldownPlugin } from "rolldown";
+import type { Plugin as EsbuildPlugin } from "esbuild";
+import type { WebpackPluginInstance } from "webpack";
+import type { RspackPluginInstance } from "@rspack/core";
+import type { RsbuildPlugin } from "@rsbuild/core";
+import type { JsPlugin as FarmPlugin } from "@farmfe/core";
+import type { BunPlugin } from "bun";
+
+const options: VibeLangPluginOptions = { entries: ["main.vibe"] };
+const rollup: RollupPlugin = unplugin.rollup(options);
+const vite: VitePlugin = unplugin.vite(options);
+const rolldown: RolldownPlugin = unplugin.rolldown(options);
+const esbuild: EsbuildPlugin = unplugin.esbuild(options);
+const webpack: WebpackPluginInstance = unplugin.webpack(options);
+const rspack: RspackPluginInstance = unplugin.rspack(options);
+const rsbuild: RsbuildPlugin = unplugin.rsbuild(options);
+const farm: FarmPlugin = unplugin.farm(options);
+const bun: BunPlugin = unplugin.bun(options);
+void [rollup, vite, rolldown, esbuild, webpack, rspack, rsbuild, farm, bun];
