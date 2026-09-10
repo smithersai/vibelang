@@ -1759,8 +1759,23 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		return "", &ForkError{Op: "lock preparation", Err: errors.Join(ErrForkUnavailable, err)}
 	}
 	defer release()
-	if err := verifyAndApplyPinnedCheckout(ctx, checkout, cacheDirectory, series); err != nil {
-		return "", err
+	// The lock above is per bridge cache; the checkout is shared by every cache
+	// that names it, so patching it needs a lock of its own or two preparations
+	// given different caches patch the same tree at once. It is held only while
+	// the checkout is verified or patched: once the series is applied nothing
+	// mutates the tree again, and the build below may read it freely.
+	checkoutLockPath, err := checkoutPreparationLockPath(checkout)
+	if err != nil {
+		return "", &ForkError{Op: "lock checkout", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	releaseCheckout, err := acquireForkPreparationLock(ctx, checkoutLockPath)
+	if err != nil {
+		return "", &ForkError{Op: "lock checkout", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	checkoutErr := verifyAndApplyPinnedCheckout(ctx, checkout, cacheDirectory, series)
+	releaseCheckout()
+	if checkoutErr != nil {
+		return "", checkoutErr
 	}
 
 	executableName := "vibelang-typescript-bridge"
