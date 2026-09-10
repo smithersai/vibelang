@@ -6,7 +6,7 @@ Status: **Locked**.
 
 Valid TypeScript statement forms MUST retain their TypeScript behavior on the TypeScript target.
 
-Smithers MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.
+VibeLang MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.
 
 ## No Expression-Form Grammar
 
@@ -14,7 +14,7 @@ Blocks, `if`, `switch`, `while`, and `for` are statements. None MUST be usable a
 
 A value-position conditional is a conditional expression (`c ? a : b`). A value-position multi-way choice is a function call, an object lookup, or a conditional chain. TypeScript expresses both today, so neither justifies new grammar.
 
-Smithers MUST NOT add:
+VibeLang MUST NOT add:
 
 - `if` or `switch` in expression position, braced or braceless
 - a block in expression position
@@ -32,13 +32,13 @@ Exhaustiveness over a closed union is a type-level concern and MUST NOT be expre
 
 ## Throw Statements
 
-Smithers MUST retain ordinary statement-form `throw`. Inside a fallible function, throwing an `Error` produces the function's Result error variant according to [Failure Semantics](/specification/failures).
+VibeLang MUST retain ordinary statement-form `throw`. Inside a fallible function, throwing an `Error` produces the function's Result error variant according to [Failure Semantics](/specification/failures).
 
 Expression-form `throw` MAY be reconsidered when the TC39 proposal reaches TypeScript.
 
 ## Declarations in Conditions
 
-This is the only grammar Smithers adds.
+This is the only grammar VibeLang adds.
 
 ```ts
 if (const user = cache.get(id); user !== undefined) {
@@ -48,11 +48,11 @@ if (const user = cache.get(id); user !== undefined) {
 
 The binding MUST be visible in the then branch and in every `else` branch, and MUST be out of scope after the construct.
 
-Smithers adopts this early from the TC39 **Declarations in Conditionals** proposal (Stage 1). It is accepted because it is standards-track: upstream adoption would eventually make the fork patch unnecessary, which is true of no invented form.
+VibeLang adopts this early from the TC39 **Declarations in Conditionals** proposal (Stage 1). It is accepted because it is standards-track: upstream adoption would eventually make the fork patch unnecessary, which is true of no invented form.
 
 ## Cleanup
 
-Smithers MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39 explicit resource management (`using` and `await using`), which TypeScript already supports and which Smithers inherits unchanged.
+VibeLang MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39 explicit resource management (`using` and `await using`), which TypeScript already supports and which VibeLang inherits unchanged.
 
 Cleanup that must run only on a Result error exit MUST be written explicitly in the failure path — through `mapError`, `recover`, `match`, or an ordinary JavaScript `try`/`catch` at an interop boundary.
 

@@ -16,7 +16,7 @@ Result<A, E>
 Promise<Result<A, E>>
 ```
 
-Failure MUST be represented in the ordinary return value. Smithers MUST NOT encode `E` as an erased `throws` annotation or a second Promise type parameter.
+Failure MUST be represented in the ordinary return value. VibeLang MUST NOT encode `E` as an erased `throws` annotation or a second Promise type parameter.
 
 ## Error Classes
 
@@ -40,11 +40,11 @@ Inside a function inferred or declared to return `Result<A, E>`:
 - `throw error` MUST produce the error variant and exit the function
 - returning an existing compatible Result MUST preserve it without nesting
 
-Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary Smithers authoring API.
+Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary VibeLang authoring API.
 
 A function with no fallible path MUST continue to return its ordinary success type rather than an unnecessary Result.
 
-A `.sm` function with a reachable recoverable Error exit MUST return or infer a Result. An explicit non-Result return annotation on such a function MUST be a compile error. The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.
+A `.vibe` function with a reachable recoverable Error exit MUST return or infer a Result. An explicit non-Result return annotation on such a function MUST be a compile error. The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.
 
 ## Inference and Public Contracts
 
@@ -57,7 +57,7 @@ When a function body has no explicit return annotation, the compiler MUST infer 
 
 Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.
 
-Smithers MUST NOT add a general `throws` clause, `!T` type marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
+VibeLang MUST NOT add a general `throws` clause, `!T` type marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
 
 ## Failure Propagation
 
@@ -72,7 +72,7 @@ function displayName(id: string) {
 
 This is the role Zig gives `try expr`, using an operator TypeScript already has, so it costs no grammar.
 
-`!` MUST NOT retain TypeScript's non-null assertion meaning in `.sm`. The definite-assignment form `x!: T` MUST also be rejected. Removing the prior meaning entirely is what makes the reuse unambiguous.
+`!` MUST NOT retain TypeScript's non-null assertion meaning in `.vibe`. The definite-assignment form `x!: T` MUST also be rejected. Removing the prior meaning entirely is what makes the reuse unambiguous.
 
 `??` and `?.` MUST keep their ordinary nullish semantics and MUST NOT be reinterpreted for failures. Failure and absence are separate axes and MAY appear in one expression:
 
@@ -101,42 +101,21 @@ maybe ?? r!      // accepted
 f(r!)            // accepted
 ```
 
-:::warning[(SA-1) — narrowed 2026-08-30; five of the six now compile]
-The withdrawal above landed in the implementation on 2026-08-30. `r!.length`,
-`r!.trim()`, `r![0]`, `r! ?? "fallback"` and `f(r!)` all compile and run on the
-reference backend, and the four conformance cases that certified the refusals of
-`r!.trim()`, `r![0]`, `f(r!)` and `scoreOf("a")! + scoreOf("b")!` were flipped to
-`expect: "output"` in the same change.
+:::note[(SA-1) — implemented 2026-09-05]
+All six forms above now compile and run on both backends. Propagation is emitted
+as a delegated suspension at its authored expression position, not a hoisted
+early-return guard. Conditionally evaluated operands, repeated loop headers, and
+`g() + r!` therefore preserve short-circuiting, repeated evaluation, and operand
+order. The former `VIBE1204` and `VIBE1703` placement refusals are retired.
 
-**One of the six is still refused**, and the reason is no longer a rule about
-placement:
-
-| Form | Today | Why |
-| --- | --- | --- |
-| `maybe ?? r!` | refused `SMITHERS1204` | the right operand of `??` is **conditionally evaluated** |
-
-The shipped lowering still spells the failure exit as an early `return`, which is
-a statement, so it hoists a guard to the front of the enclosing statement. Out of
-a conditionally evaluated operand that guard would run when the authored program
-would not have evaluated the operand at all. Two neighbouring positions fail the
-same way: a **repeated loop header** — a `while`/`do`/`for` condition or a `for`
-incrementor — refused as `SMITHERS1703`, where hoisting `while (next()!) {}`
-produces a program that never terminates; and a propagation **preceded in the
-same statement by an effect the lowering does not hoist**, such as `g() + r!`,
-refused as `SMITHERS1204`. A `for` initializer and a `for…of`/`for…in` iterable
-are evaluated once and are accepted.
-
-These three residues are conditions on the **shipped lowering**, not on the
-language. They are deliberately uniform across both `effectLowering` modes: a
-diagnostic that fired under one and not the other would be the per-file dialect
-`DECISIONS.md` warns against by name. They retire when the early-return lowering
-does — under the resumable calling convention the failure exit is a delegated
-suspension, which stays where it was written, and none of the three arises.
-
-The cases that certify what is left are
-`02-unwrap-propagation/postfix-bang-as-a-nullish-right-operand-is-rejected` and
-`02-unwrap-propagation/unwrap-in-a-loop-header-is-rejected`. The coverage rows
-that cite this family are `conformance/COVERAGE.md` §4.12–§4.19.
+The three corpus cases retain their historical filenames but now assert output:
+`02-unwrap-propagation/postfix-bang-as-a-nullish-right-operand-is-rejected`,
+`02-unwrap-propagation/unwrap-in-a-loop-header-is-rejected`, and
+`02-unwrap-propagation/an-unhoisted-effect-before-a-propagation-in-one-statement-is-rejected`.
+Their output distinguishes the authored evaluation order from the former hoisted
+lowering. Executed delimiter tests on both backends cover neighbouring positions
+and cleanup. The typing, enclosing-member, and caught-`try` restrictions below
+remain in force; retiring a placement limitation does not remove those checks.
 :::
 
 The `!` operator MUST be rejected unless the enclosing function declares a Result channel or infers a non-empty failure set, and unless the operand's checker-derived provenance is a Result. Each refusal MUST carry its own diagnostic code.
@@ -145,21 +124,21 @@ The `!` MUST NOT be inside a `try` block that has a `catch` clause. The emitted 
 
 A rejected `!` MUST be a diagnostic, never a silent lowering. Three distinct conditions refuse a `!` and a reader MUST NOT expect one code to cover them: no enclosing Result channel, non-Result provenance, and presence of an enclosing `catch`.
 
-Two further contracts disqualify the **enclosing member** from hosting any `!` rather than rejecting the placement: getters and constructors, and class static blocks. An **authored** `function*` MUST NOT declare or infer a non-empty effect row: the iterator protocol's `throw()` and `return()` injection points mean an authored generator's row is not a function of its own text. The resumable generator form is reserved for compiler emission; its resumption protocol is part of the compiler contract and MUST NOT be spellable in `.sm`.
+Two further contracts disqualify the **enclosing member** from hosting any `!` rather than rejecting the placement: getters and constructors, and class static blocks. An **authored** `function*` MUST NOT declare or infer a non-empty effect row: the iterator protocol's `throw()` and `return()` injection points mean an authored generator's row is not a function of its own text. The resumable generator form is reserved for compiler emission; its resumption protocol is part of the compiler contract and MUST NOT be spellable in `.vibe`.
 
 ## Compiler-Owned Modules
 
-`smthrs/result` and the Smithers runtime are **compiler-owned** and MUST NOT be required to be authored in Smithers.
+`vibelang/result` and the VibeLang runtime are **compiler-owned** and MUST NOT be required to be authored in VibeLang.
 
-The reason is structural rather than a matter of convenience. `smthrs/result` is the lowering target: emitted code imports it, so authoring it in the language whose lowering depends on it is circular. The compiler links it directly, `!` and `expect` are rejected inside it, and its public API is instance methods — which `.sm` cannot author, because `this` is never a Result operand.
+The reason is structural rather than a matter of convenience. `vibelang/result` is the lowering target: emitted code imports it, so authoring it in the language whose lowering depends on it is circular. The compiler links it directly, `!` and `expect` are rejected inside it, and its public API is instance methods — which `.vibe` cannot author, because `this` is never a Result operand.
 
-A standard library written in Smithers MAY therefore exclude these modules without being incomplete.
+A standard library written in VibeLang MAY therefore exclude these modules without being incomplete.
 
 ## Matching and Transformation
 
 Result values MUST provide a quality-of-life API modelled on the
 [better-result](https://github.com/dmmulroy/better-result) library, with
-Smithers's own construction rules.
+VibeLang's own construction rules.
 
 Inspection and matching:
 
@@ -200,46 +179,39 @@ Result.try  Result.tryPromise  Result.codec
 
 ### Authorability
 
-The API above is the contract Smithers programs may *call*. It is not a claim that every member can be *authored* in Smithers.
+The API above is the contract VibeLang programs may *call*. It is not a claim that every member can be *authored* in VibeLang.
 
-Members that must inspect a failure value — `tryRecover`, `tapError`, `mapError`, and the error half of `partition` — are not authorable today, because the language has no form that extracts the error from a Result: `!` propagates it and `match` is a method `.sm` can call but not define. `flatten` is likewise unauthorable, because `!` marks its own output as a plain value without checking, so a `Result<Result<A, E>, E>` cannot be unwrapped one level.
+User code can inspect or extract a failure through the public API. For example,
+`r.match({ ok: () => undefined, error: e => e })` returns the failure value or
+`undefined`. The lack of a dedicated extraction operator does not prevent
+error-inspecting combinators from using that API.
 
-**Open.** Whether Smithers gains an error-extraction form is undecided. It is a real language feature with a spelling to choose, not an oversight, and it is the root of most of the unauthorable members.
+Bootstrapping primitive Result operations is a different question: implementing
+`match` itself requires access to the compiler-owned representation, and ordinary
+`return` and `throw` are the construction surface. Whether every runtime member
+can be implemented entirely in authored VibeLang remains implementation work;
+it must not be inferred from whether user code can obtain an `E`.
 
-**(SA-7) — implementation status, measured 2026-08-28.**
-The sentence that stood here — "until it is decided, these members are supplied
-by the compiler-owned runtime" — was false, so record the gap rather than assert
-the fix. The list above is a `direction` obligation on an implementation, and it
-does not yet fully meet it. Callable from authored `.sm` today, on **both**
-backends: `isOk isError match map mapError andThen flatten recover tap
-tapError tapBoth unwrapOr expect`, plus the statics `Result.all
-Result.try Result.tryPromise`. `flatten` and `tapBoth` are the two names that
-moved, and they moved twice. First on the reference, whose checker Result
-surface now declares both (`RESULT_MEMBER_SIGNATURES` in
-`poc/src/language/semantic.ts` drives both the checker admission and the
-must-use discharge set); then on the Go fork, which carries its own, independent
-copy of that set in `compiler/forkbridge/lowering.go.txt` and had learned
-neither, so it went on refusing both with `SMITHERS1301` — an honest fail-closed
-refusal, recorded as `xfail(go)` — while the reference ran them. Both markers
-are retired: `01-result-lifting/result-flatten-collapses-one-level-of-nesting`
-and `01-result-lifting/result-tap-both-observes-whichever-variant-is-active`
-now compile and run on both backends (exit 0, `["Ada Lovelace", "no entry for
-zoe"]` and `["ok Ada Lovelace", "error zoe", "Ada Lovelace", "none"]`
-respectively). The fork's copy cannot be folded into the reference's — it is Go
-source compiled into a foreign checkout — so it is pinned instead:
-`compiler/fork_result_member_surface_test.go` reads both files and fails when
-the two name lists differ. `unwrap` is on neither list on purpose; the authored
-spelling is refused as `SMITHERS1206`.
-The other ten names above resolve nowhere on either backend, and the failure
-is not the obvious one — a Result member outside the recognized set does not
-report an unknown property, it fails the must-use walk and is refused as
-`SMITHERS1301`. See [Results and Errors](/reference/errors) §Deliberately
-absent for the per-member reasoning, including why the async mirror is blocked
-on the must-use ownership walk rather than on the runtime.
+**Open.** Whether VibeLang gains a dedicated error-extraction form is undecided.
+Such a proposal would need its own justification and TypeScript-parseable
+spelling; basic failure inspection already works without it.
+
+**(SA-7), re-measured 2026-09-05.** The listed Result operations now exist
+in both the reference runtime/checker and the Go prelude. The previously missing
+`andThenAsync`, `tryRecover`, `tryRecoverAsync`, async observers,
+`Result.allAsync`, partitions and `Result.codec` have executed regression
+coverage. Async collections join submitted work and choose failures by input
+order; recovery and partitioning preserve the distinguished panic channel.
+
+`compiler/fork_result_member_surface_test.go` pins the backend member lists.
+Shared callable-completion tests reject erasing owned callback returns, and
+async observers require joining their returned Promise. The authorability
+question above is separate from supplying these operations through the runtime.
+`unwrap()` remains deliberately refused as `VIBE1206`.
 
 `match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type. Async variants MUST return a Promise of the Result rather than a nested Result.
 
-Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. Smithers MUST NOT require `Result.gen`/`yield*` do-notation in authored source, because postfix `!` already provides propagation. This is a constraint on the authoring surface. The compiler MAY emit `yield*` in the lowered form of a function with a non-empty effect row; that form has no `.sm` spelling and MUST NOT appear in an authored type, a public declaration's value syntax, or a diagnostic.
+VibeLang MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. VibeLang MUST NOT require `Result.gen`/`yield*` do-notation in authored source, because postfix `!` already provides propagation. This is a constraint on the authoring surface. The compiler MAY emit `yield*` in the lowered form of a function with a non-empty effect row; that form has no `.vibe` spelling and MUST NOT appear in an authored type, a public declaration's value syntax, or a diagnostic.
 
 A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.
 
@@ -266,7 +238,14 @@ Handler selection MUST use compiler-stable nominal identity, not a forgeable use
 
 Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws, and it includes Promise rejection and a runtime implementation violating its declared signature.
 
-A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `smithers:exceptions` and accepts an optional message or underlying Error.
+A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `vibelang:exceptions` and accepts an optional message or underlying Error.
+
+The current alpha-0 compiler makes `Panic` available as a **type** in `.vibe`,
+so an explicit `Result<A, Panic>` annotation does not need a type import. The
+native compiler preserves this existing public-frontend spelling during the
+Go-only migration. This installs no global constructor or function value:
+import `Panic` or `panic` from `vibelang:exceptions` to use those values. This
+availability note does not force a panic into a function's Result return type.
 
 The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel. These annotations are trust claims and MUST remain visible in declarations and tooling. Exact overload, declaration-merging, generic, and multiple-tag rules remain open.
 
@@ -284,21 +263,21 @@ An author MAY still annotate `Result<A, Panic>` explicitly to materialize a pani
 
 ## Promise Semantics
 
-Authored `.sm` code MUST consume Promise instances only through `await`.
+Authored `.vibe` code MUST consume Promise instances only through `await`.
 
 Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors. Imported TypeScript and JavaScript modules retain ordinary Promise behavior internally. A Flow body therefore MUST NOT depend on the interleaving of work started inside an imported module: any such work MUST be consumed at the boundary through a single awaited value, and the runtime journals only that value.
 
 Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.
 
-Promise rejection at an unannotated Smithers foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.
+Promise rejection at an unannotated VibeLang foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.
 
 ## JavaScript `try/catch`
 
-Ordinary statement-form JavaScript `try/catch` remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for Smithers Results, and its presence MUST NOT change a function's Result contract implicitly.
+Ordinary statement-form JavaScript `try/catch` remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for VibeLang Results, and its presence MUST NOT change a function's Result contract implicitly.
 
 ## Cleanup
 
-Smithers MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39
+VibeLang MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39
 explicit resource management (`using` and `await using`), inherited unchanged
 from TypeScript.
 
@@ -340,16 +319,12 @@ no enclosing Result channel and non-Result provenance — were typing conditions
 rather than lowering conditions and survive verbatim under §Refusal Conditions,
 as does the `catch` condition, whose *reason* is rewritten there.
 
-**Withdrawn here, and withdrawn in the compiler on 2026-08-30.** The
-statement-walk is deleted from the shipped frontend. Five of the six forms
-§Refusal Conditions accepts now compile and run, and the four conformance cases
-that certified their refusals were flipped to `expect: "output"` in that change.
-What remains is not the rule: three positions where the shipped early-`return`
-lowering cannot hoist its guard without moving it — a conditionally evaluated
-operand, a repeated loop header, and a propagation preceded by an unhoisted
-effect in the same statement. They are recorded, with their measurements, under
-the narrowed **(SA-1)** at §Refusal Conditions and in
-[Specification Status](/specification/index) §Specification–Implementation Gaps.
+**Withdrawn here, with implementation completed on 2026-09-05.** The
+statement-walk was deleted on 2026-08-30. The three remaining hoisting limitations
+were retired when both backends adopted expression-position delegated suspension.
+All six forms in §Refusal Conditions now compile and run, and the historical
+refusal cases assert observable output. See the measured **(SA-1)** note above;
+the no-channel, non-Result, caught-`try`, and enclosing-member checks remain.
 
 **Withdrawn — the count of refusals:**
 

@@ -4,15 +4,29 @@ Status: phase evaluation, the compiler-recognized API, type generation, and trac
 
 ## Compiler-Recognized API
 
-Comptime MUST use ordinary TypeScript call syntax rather than a Smithers keyword:
+Comptime MUST use ordinary TypeScript call syntax rather than a VibeLang keyword:
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 ```
 
 The compiler MUST recognize the resolved imported binding, not the local identifier text. Aliasing the import MUST preserve its meaning, and an unrelated function named `comptime` MUST remain an ordinary function.
 
 `comptime(value)` MUST require its argument expression to be evaluated during compilation and MUST replace the call with the resulting value or generated artifact.
+
+For supported data operations, evaluation and replacement MUST preserve
+observable JavaScript property order, including `Object.keys`, `Object.values`,
+`Object.entries`, and `JSON.stringify`. Canonical artifact encoding is not the
+semantics of the program's `JSON.stringify`. A cache hit MUST preserve the same
+property order as a fresh evaluation, and cache identity MUST distinguish values
+whose observable order differs.
+
+Within a supported data value, materialization MUST preserve shared object and
+array references, and MUST NOT merge distinct allocations merely because their
+contents are equal. Argument/result transport and cache reloads MUST preserve
+that sharing too. Cache identity MUST distinguish alias layouts that change
+observable reference equality; a plain JSON tree is not a sufficient encoding
+for such values.
 
 When the argument is a function, `comptime(functionValue)` MUST return a compile-time function; it MUST NOT invoke the function merely because it was passed to `comptime`. Every call of that function MUST be evaluated during compilation. An immediately called compile-time block therefore uses ordinary call syntax:
 
@@ -23,7 +37,7 @@ const routes = comptime(() => {
 })()
 ```
 
-The `smithers:comptime` specifier is a compiler-owned virtual module. The compiler MUST erase or lower recognized imports and calls. Uncompiled JavaScript execution MUST fail during virtual-module loading rather than provide a fallback that could evaluate `comptime(...)` arguments at runtime.
+The `vibelang:comptime` specifier is a compiler-owned virtual module. The compiler MUST erase or lower recognized imports and calls. Uncompiled JavaScript execution MUST fail during virtual-module loading rather than provide a fallback that could evaluate `comptime(...)` arguments at runtime.
 
 ## Evaluation Principle
 
@@ -69,7 +83,7 @@ A target-selected branch resolved at comptime MUST NOT emit unselected runtime c
 
 ## Asset Loaders
 
-Smithers MUST support comptime loaders for non-code assets.
+VibeLang MUST support comptime loaders for non-code assets.
 
 A loader MUST:
 
@@ -85,7 +99,7 @@ A loader MUST NOT use ambient filesystem, network, clock, random, or process acc
 
 The toolchain MUST include loaders for JSON, Markdown, and MDX.
 
-Smithers's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
+VibeLang's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
 
 Non-code inputs MUST select their loader and mode with standard import attributes. Const JSON MUST use the shape:
 

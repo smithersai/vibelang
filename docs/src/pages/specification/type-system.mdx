@@ -4,13 +4,13 @@ Status: the Result failure model and inferred requirements are **locked**. The e
 
 ## Gradual Foundation
 
-Smithers extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
+VibeLang extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
 
 Recoverable errors and requirements add precision without requiring a separate globally strict mode or an Effect interpreter. This is a guarantee about authored functions and their observable behavior. The emitted form of a function with a non-empty effect row MAY be a generator, as defined by [Effects](/specification/effects).
 
 ## Function Type
 
-A Smithers function has:
+A VibeLang function has:
 
 - an ordinary return type, which is `Result<A, E>` when the function can fail
 - an inferred set `R` of nominal capability requirements
@@ -43,7 +43,7 @@ declare function fetchUser(
 ): Promise<Result<User, NotFound | Unavailable>>
 ```
 
-Smithers MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
+VibeLang MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
 
 The `R` set MUST be inferred from compiler-recognized context access and preserved in exported declarations. Its emitted TypeScript representation remains open, and it MUST additionally carry whether the function is effectful, because a cross-module caller cannot lower its call site without that fact.
 
@@ -81,11 +81,11 @@ declare function loadUser(
 
 Awaiting the call removes only the Promise layer. The resulting value remains `Result<User, Unavailable>` until it is matched, transformed, returned, or unwrapped.
 
-Promise instance chaining is unavailable in authored `.sm`; `.then`, `.catch`, and `.finally` MUST be rejected.
+Promise instance chaining is unavailable in authored `.vibe`; `.then`, `.catch`, and `.finally` MUST be rejected.
 
 ## Absence
 
-Smithers has no built-in `Optional<T>`. Absence MUST be modelled with TypeScript's existing `T | undefined` (or `T | null`) unions, narrowing, optional chaining, and nullish coalescing.
+VibeLang has no built-in `Optional<T>`. Absence MUST be modelled with TypeScript's existing `T | undefined` (or `T | null`) unions, narrowing, optional chaining, and nullish coalescing.
 
 ```ts
 declare function findUser(id: string): User | undefined

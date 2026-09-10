@@ -4,16 +4,16 @@ Status: **Locked**, except where marked.
 
 ## Source Relationship
 
-1. `.sm` MUST use a TypeScript-derived grammar with only explicitly documented differences.
-2. `.ts`, `.tsx`, and JavaScript modules MUST retain their own complete syntax and behavior when imported by Smithers.
-3. Shared syntax MUST retain TypeScript behavior unless the Smithers specification explicitly assigns different semantics.
-4. Smithers MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches.
+1. `.vibe` MUST use a TypeScript-derived grammar with only explicitly documented differences.
+2. `.ts`, `.tsx`, and JavaScript modules MUST retain their own complete syntax and behavior when imported by VibeLang.
+3. Shared syntax MUST retain TypeScript behavior unless the VibeLang specification explicitly assigns different semantics.
+4. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches.
 
-Smithers MUST NOT be described or tested as a syntactic superset of TypeScript. Smithers source uses the `.sm` extension. The JSX-capable extension is **open**; `.smx` is a candidate only.
+VibeLang MUST NOT be described or tested as a syntactic superset of TypeScript. VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
 
 ## TypeScript Target
 
-The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. Smithers constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible. Constructs whose lowering depends on a whole-program row MUST be lowered after inference completes.
+The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. VibeLang constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible. Constructs whose lowering depends on a whole-program row MUST be lowered after inference completes.
 
 Requirement metadata SHOULD erase where it does not require runtime machinery. Result values have an intentional runtime representation; infallible functions MUST NOT be wrapped. That last obligation is now the rule that a function whose effect row is empty MUST NOT be emitted in the resumable calling convention defined by [Effects](/specification/effects).
 
@@ -25,31 +25,32 @@ Calling an unannotated foreign runtime value MUST add the checked `panic` case, 
 
 This is a property of JavaScript, not of a second compilation target, and it is retained independently of everything else on this page.
 
-Smithers has no `TypeScript` requirement. TypeScript is the only target, so every program depends on the JavaScript runtime and a requirement recording that fact would carry no information.
+VibeLang has no `TypeScript` requirement. TypeScript is the only target, so every program depends on the JavaScript runtime and a requirement recording that fact would carry no information.
 
 ## Dynamic Features
 
-`.sm` inherits TypeScript's runtime semantics. There is no portable / `TypeScript`-required / forbidden classification, because there is no second target to be portable to.
+`.vibe` inherits TypeScript's runtime semantics. There is no portable / `TypeScript`-required / forbidden classification, because there is no second target to be portable to.
 
-`any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.
+`any` remains usable; a receiver typed `any` in a position where the analysis must decide callability is treated as callable, matching the fail-closed default already applied to a dynamically selected member.
 
-**Open — contested, and shipped behavior already diverges from the sentence above (IA-1).** That sentence is Locked and has not been withdrawn. The `(IA-1)` marker records the *direction* of the divergence — the implementation is ahead of this page, the opposite of the `(SA-n)` gaps elsewhere in this specification — and decides nothing; see [Specification Status](/specification/index) §Specification–Implementation Gaps. It is nevertheless not what the compiler does: dynamic code evaluation is refused today, and the conformance corpus deliberately certifies the refusal ahead of this page. Until the conflict is ratified one way or the other, it is a recorded conflict rather than an unnoticed one, and neither side may be quietly changed to match. The proposal on the table is:
+Dynamic code evaluation is unavailable in `.vibe`. `eval`, the `Function`
+constructor, and any selection of `constructor` on a callable receiver are
+refused (`VIBE1604`): a runtime string lies outside every static analysis, so
+the compiler can neither describe what it requires nor prove that it replays.
+This holds even for an expression that reads nothing from the host, because
+purity of a runtime string is not decidable.
 
-> Dynamic code evaluation is unavailable in `.sm`. `eval`, the `Function`
-> constructor, and any selection of `constructor` on a callable receiver MUST be
-> refused: a runtime string lies outside every static analysis, so the compiler
-> can neither describe what it requires nor prove that it replays. This holds
-> even for an expression that reads nothing from the host, because purity of a
-> runtime string is not decidable. `any` remains usable, but a receiver typed
-> `any` in a position where the analysis must decide callability MUST be treated
-> as callable — matching the fail-closed default already applied to a dynamically
-> selected member.
-
-Both directions cost something. Adopting the proposal converts a locked permission into a prohibition. Declining it leaves a hole that matters more under replay than it did before: an `eval`'d string produces no journal entry, so it produces no divergence to detect. The full evidence is recorded in the decision ledger.
+**Decided 2026-09-06 by the owner, closing (IA-1).** The sentence this section
+carried since 2026-08-23, "`any` and `eval` remain usable … the language does not
+forbid them", is withdrawn; the compiler's refusal, which the conformance corpus
+already certified, is now the rule. The reasoning that settled it: one `eval`
+makes a function's failure row and requirement row unknowable for every caller
+above it, and inside a durable Flow an `eval`'d string produces no journal entry
+and therefore no divergence to detect. The evidence is in the decision ledger.
 
 ## Host Globals
 
-Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `smthrs/context`.
+Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.vibe` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `vibelang/context`.
 
 Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.
 
@@ -66,7 +67,7 @@ That sentence is unchanged and stays Locked. What was *settled* on 2026-08-28 is
 | `WeakRef`, `FinalizationRegistry` | MUST NOT be unconditional globals. `deref()` returning `undefined` is a pure function of garbage-collection timing: no capability can mediate it and no journal entry can describe it. |
 | `SharedArrayBuffer`, `Atomics` | MUST NOT be unconditional globals. Cross-agent shared-memory reads and `Atomics.wait` observe another agent's schedule. That ECMA-262 publishes them is true and irrelevant to replay. |
 | `Promise.race`, `Promise.any` | MUST charge a `Scheduler` requirement, because their value *is* arrival order. Every other `Promise` member stays free. |
-| `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard `Intl.DateTimeFormat` construction is already refused for, as `SMITHERS1602`. |
+| `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard `Intl.DateTimeFormat` construction is already refused for, as `VIBE1602`. |
 | Every ICU-backed operation: `Intl` other than `DateTimeFormat` — `NumberFormat`, `Collator`, `PluralRules`, `ListFormat`, `RelativeTimeFormat`, `Segmenter`, `DisplayNames`, `Locale`, `supportedValuesOf`, `getCanonicalLocales` — together with `String.prototype.localeCompare`, `toLocaleUpperCase`, `toLocaleLowerCase`, and `normalize`, and `toLocaleString` on `Number`, `BigInt`, `Array`, `Object`, and each of the twelve typed arrays | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. The obligation is the criterion, not the list: any later member whose result is a function of the host's locale or Unicode data joins the row without amending it. `normalize` is in the row by that criterion and is the one member whose variance is the host's **Unicode** version rather than its locale. |
 
 **"Charge", in this table, means the site publishes the named capability's
@@ -74,13 +75,13 @@ requirement into the enclosing function's row**, which a caller discharges by
 providing a layer. Where the capability has a source-language surface the author
 can write instead — `Clock.context()`, `Random.context()` — the *ambient*
 spelling is additionally refused, so the row is charged by the capability call
-rather than by the ambient one; that refusal is `SMITHERS1602`/`SMITHERS1603`,
+rather than by the ambient one; that refusal is `VIBE1602`/`VIBE1603`,
 and it is why `Date.now()` reports a diagnostic rather than merely publishing a
 requirement. Where the capability deliberately has **no** source-language
 surface, a refusal would name a remedy that cannot be written, and the
 obligation is the row charge alone. Rows one and two are neither: they say in as
 many words that no capability could mediate them, so they are refused with no
-remedy offered (`SMITHERS1605`).
+remedy offered (`VIBE1605`).
 
 **Amended 2026-08-28 — the fifth row's membership, not its verb.** The row
 previously named four members: `Intl.NumberFormat`, `Intl.Collator`,
@@ -121,21 +122,21 @@ on both backends.** Rows three and five were the last, and they were enforced on
 the reference frontend only until the same day, for a reason recorded below that
 was about the fork's row representation rather than about the rules — and beside
 a second reason, also recorded below, that was simply false. As first measured, none of the
-five was enforced and the first two were actively *contradicted*: in one `.sm`
+five was enforced and the first two were actively *contradicted*: in one `.vibe`
 file, `new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
 `new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produced zero
 diagnostics and an empty requirement row, while the control `Date.now()` in the
-same file correctly reported `SMITHERS1602` — so the analysis ran and these
+same file correctly reported `VIBE1602` — so the analysis ran and these
 simply were not walls. Three distinct causes, and they did not need the same
 fix, which is why they did not move together:
 
 - **Closed 2026-08-28.** `WeakRef`, `FinalizationRegistry`, `SharedArrayBuffer`,
   and `Atomics` were **listed** in the frontend's `UNIVERSAL_GLOBALS` and in the
   Go fork's byte-for-byte copy — permitted unconditionally, the opposite of rows
-  one and two. They are now refused on **both** backends as `SMITHERS1605`, a
-  new code rather than the existing `SMITHERS1601`, because 1601's message ends
+  one and two. They are now refused on **both** backends as `VIBE1605`, a
+  new code rather than the existing `VIBE1601`, because 1601's message ends
   "access it through a Context capability" and these two rows say the opposite in
-  as many words: no capability can mediate them. `SMITHERS1604` is the precedent
+  as many words: no capability can mediate them. `VIBE1604` is the precedent
   for a refusal that names its own reason and offers no capability. The line is
   the **name**, not the operation, because every value use of `WeakRef` is
   construction and every member of `Atomics` is a shared-memory operation; a type
@@ -157,9 +158,9 @@ fix, which is why they did not move together:
   publishes `requirements: ["Locale"]` on the same measurement. The
   `"Clock" | "Random" | "Host"` union in `AmbientAuthorityUse` is not a
   requirement vocabulary at all: it is a *diagnostic-category* discriminator
-  that selects `SMITHERS1602`/`1603`/`1601`, and **nothing needs adding to it**.
+  that selects `VIBE1602`/`1603`/`1601`, and **nothing needs adding to it**.
   In the same measurement `Date.now()` published `requirements: []` **and**
-  `SMITHERS1602`. So no ambient site has ever charged a row — not for `Clock`
+  `VIBE1602`. So no ambient site has ever charged a row — not for `Clock`
   either — and there is no vocabulary for a new kind to be added to.
 
   **The verb was settled by decision on 2026-08-28: row three CHARGES.**
@@ -170,7 +171,7 @@ fix, which is why they did not move together:
   word two ways: this page's §Host Globals ("MUST be reachable only through a
   capability whose answer the runtime journals") and the fourth row's own
   cross-reference to `Intl.DateTimeFormat`, which this implementation answers
-  with a `SMITHERS1602` **refusal**, read as making rows three and five
+  with a `VIBE1602` **refusal**, read as making rows three and five
   refusals; [Durable Execution](/specification/durable-execution)
   §Deterministic Scheduling read the other way — `Promise.all` and friends
   "remain ordinary and charge no `Scheduler` requirement", which makes
@@ -179,7 +180,7 @@ fix, which is why they did not move together:
   `Scheduler.context()` would create. **Durable Execution's sentences won and
   are unchanged.** What changed is on this page: §Host Globals now states how
   its obligation is discharged, the paragraph under the table defines "charge",
-  and the fourth row names `SMITHERS1602` instead of using "charged" in the
+  and the fourth row names `VIBE1602` instead of using "charged" in the
   opposite sense. The decision also supplies the criterion that reconciles the
   two: the ambient spelling is *additionally* refused only where the capability
   has a source-language surface the author could write instead, which is why
@@ -197,7 +198,7 @@ fix, which is why they did not move together:
   contract no page states.
 
   The cost was measured before the shape was chosen and one half of it has since
-  moved. Across 591 authored `.sm` files, **zero** name `Promise.race` or
+  moved. Across 591 authored `.vibe` files, **zero** name `Promise.race` or
   `Promise.any` under any spelling, so row three still moves **no** corpus case
   and **no** test. Row five's cost is larger than previously recorded, because
   its membership was: it moves `20-host-globals/intl-locale-formatting-is-not-a-clock-read`,
@@ -220,10 +221,10 @@ any of them**, which is the constraint that shaped every choice below.
   ["Scheduler"]` and are refused nowhere, exactly as the settled verb requires.
   The mechanism is a new one — an ambient site that injects a nominal key into
   `R` — and it is the mechanism rows three and five share. Cost re-measured
-  across all 604 authored `.sm` files: **zero** name either member, so the row
+  across all 604 authored `.vibe` files: **zero** name either member, so the row
   moved no corpus case and no test, as predicted.
 - **Row four.** A `Date` INSTANCE member that reads the host time zone is
-  refused as `SMITHERS1602` — the same code, and the same sentence, as
+  refused as `VIBE1602` — the same code, and the same sentence, as
   `Date.now()`. That follows from this page's own criterion rather than from a
   new decision: `Clock` has a source-language surface, so the ambient spelling
   is additionally refused and the row is charged by the `Clock.context()` the
@@ -240,14 +241,25 @@ any of them**, which is the constraint that shaped every choice below.
   `getDate`, `getMinutes`, `getSeconds`, `toDateString`, and `toTimeString` read
   the host zone for the identical reason and nothing distinguished them.
   `getMilliseconds` is deliberately absent — every IANA offset in the modern
-  database is a whole number of minutes — and so is every setter, which is a
-  write rather than a read.
+  database is a whole number of minutes. **Correction, 2026-09-05:** the previous
+  setter exemption was incorrect. Local setters read the host zone to compute
+  their writes; this includes `setFullYear`, `setMonth`, `setDate`, `setHours`,
+  `setMinutes`, `setSeconds`, `setMilliseconds`, and legacy `setYear`. They have
+  the same Clock obligation. `setTime` and the `setUTC*` family stay available.
+  Likewise, multi-component Date construction and parsing an offset-less
+  date-time string read the host zone. `Date.parse` and single-argument
+  construction are exempt only when an absolute interpretation is established;
+  supplying any argument is not sufficient. Numeric instants, standardized UTC
+  date-only strings, and standardized date-time strings with explicit offsets
+  remain available. The checkers currently prove strings through literal types
+  and const aliases; unknown or nonstandard strings fail closed. Detached parse
+  aliases must retain that proof at every use.
 - **Row five.** Every ICU-backed member publishes `requirements: ["Locale"]` and
   is refused nowhere. **Row five's verb was settled by this page's own criterion
   rather than by a new decision**: the ambient spelling is additionally refused
   only where the capability has a source-language surface the author could write
   instead, and `Locale` has none, so the obligation is the row charge alone. If
-  `Locale` is later given such a surface, a `SMITHERS16xx` refusal joins the
+  `Locale` is later given such a surface, a `VIBE16xx` refusal joins the
   charge; the charge itself does not change.
 
 **The residual is closed, and the two reasons it stood on did not fare the same
@@ -273,7 +285,7 @@ just been dropped in silence.
 disagreement was invisible to a differential, because the harness compares
 stdout, diagnostics and exit code and cannot observe a row. The premise is true
 and the conclusion does not follow. A row is not observable; an **unsatisfied**
-row is, on both backends, as `SMITHERS2102` at a top-level call, with the
+row is, on both backends, as `VIBE2102` at a top-level call, with the
 capability named in the message. Rows three and five could have been compared
 across backends at any point by any program whose charge reaches module scope.
 They now are, against nine shared vectors in
@@ -283,7 +295,7 @@ They now are, against nine shared vectors in
 asserts the requirement row itself. Four of the nine charge nothing and are
 positive vectors with one token changed, so neither wrong direction — charging
 nothing, or charging the `Promise`/`Intl` root — can pass; two of those four
-assert a `SMITHERS1602` refusal *and* the absence of a charge beside it, so an
+assert a `VIBE1602` refusal *and* the absence of a charge beside it, so an
 over-charge appears as an extra diagnostic rather than as a silence.
 
 **One divergence was created by the fix and caught by it.** A hybrid key —
@@ -291,7 +303,7 @@ symbol for a nominal row, name for an ambient one — keeps nominal identity
 exactly as it was, but it makes an ambient `Locale` charge and a
 `Locale.context()` read two rows where the reference's `Set<string>` makes them
 one. Measured: a function doing both publishes `requirements: ["Locale"]` on the
-reference, and the fork rendered `{Locale, Locale}` into `SMITHERS2102`. **No
+reference, and the fork rendered `{Locale, Locale}` into `VIBE2102`. **No
 conformance case could have caught that**, because the runner compares diagnostic
 codes and positions and never message text — the same blind spot that let two
 backends mint different row names for a full day in August. The row is now
@@ -303,9 +315,9 @@ both are diagnostics.
 
 **Also closed 2026-09-01 — the `any` hole in §Dynamic Features.** A receiver
 typed `any` in a position where the analysis must decide callability is now
-treated as callable, so `(value as any).constructor` is `SMITHERS1604` where it
+treated as callable, so `(value as any).constructor` is `VIBE1604` where it
 compiled with an empty row before. Both implementations had recorded the hole in
-their own comments. No new code: it is the same operation `SMITHERS1604` already
+their own comments. No new code: it is the same operation `VIBE1604` already
 names, reached through a receiver the rule previously declined to judge.
 
 The fifth row's widened membership does not enlarge that gap, and it was
@@ -319,7 +331,7 @@ and `host-global-allowlist.test.ts` pin that uniformity across the whole class,
 so a later rule that over-applies `Clock` to the `Intl` root — the cheapest
 wrong implementation, and one the four-name case could not catch — fails there.
 
-These walls MUST be uniform across all `.sm` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
+These walls MUST be uniform across all `.vibe` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
 
 ECMA-262 permits implementation-approximated results for `Math.sin`, `cos`, `tan`, `exp`, `log`, `pow`, `**`, `hypot`, `fround`, and `atan2`. A deployment SHOULD pin an engine version across the artifacts that can resume a given execution. A runtime MUST NOT treat a last-ulp difference in these operations as a journal-integrity failure.
 
@@ -331,16 +343,16 @@ ECMA-262 permits implementation-approximated results for `Math.sin`, `cos`, `tan
 Module<"node:fs">
 ```
 
-This is preferred over a coarse platform flag because a provider or host may satisfy one host contract without satisfying another. It is a capability concern, not a portability one: `.sm` may be emitted for Node, Bun, Deno, a browser, or an edge runtime, and those hosts differ.
+This is preferred over a coarse platform flag because a provider or host may satisfy one host contract without satisfying another. It is a capability concern, not a portability one: `.vibe` may be emitted for Node, Bun, Deno, a browser, or an edge runtime, and those hosts differ.
 
 ## Configuration
 
-`.sm` is new source, so there is no legacy `.sm` to grandfather. Soundness
+`.vibe` is new source, so there is no legacy `.vibe` to grandfather. Soundness
 settings MUST therefore be mandatory and MUST NOT vary by JavaScript host: a
 file's legality cannot change merely because its emitted code runs on Node,
 Bun, Deno, a browser, or an edge runtime.
 
-Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarantee in this page protects those files, not `.sm`.
+Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarantee in this page protects those files, not `.vibe`.
 
 ### Mandatory
 
@@ -360,26 +372,73 @@ directions that used to check clean now report: `const v: number = arr[2]` is
 `TS2322` and `const o: { a?: number } = { a: undefined }` is `TS2375`, beside
 the unchanged control `const v: number = "str"` at `TS2322`.
 
-*Where the options live.* One table, `MANDATORY_COMPILER_OPTIONS` in
-`poc/src/language/compiler-options.ts`, which every program that decides `.sm`
-legality spreads and which the Go bridge's own option gate mirrors; a test fails
-if the two drift. Before it there was no tsconfig read anywhere in the product —
+*Where the options live.* The native Go `validateVibeLangConfigFile` gate parses
+and checks configuration for both compilation and the host's
+`validateVibeLangTsconfig` adapter. The adapter no longer loads the 5.9 compiler
+or maintains another JSON parser/validator. `MANDATORY_COMPILER_OPTIONS` in
+`poc/src/language/compiler-options.ts` remains the host-facing data table; a test
+requires exact agreement with the Go table. Before this gate there was no
+tsconfig read anywhere in the product —
 no `readConfigFile`, `parseJsonConfigFileContent`, `findConfigFile`, or
 `getParsedCommandLineOfConfigFile` call in `src/` or `poc/src/` — and the
 mandatory set was not "unchecked" so much as *unrepresented*: five hardcoded
 `ts.CompilerOptions` literals of which `strict: true` was the only member of this
-table any of them set. `smithers compile -p` and `smithers check -p` now open the
+table any of them set. `vibe compile -p` and `vibe check -p` now open the
 file the flag names. The flag was never silently discarded, which is worth
 correcting: on a TypeScript input it was re-serialized into a spawned `tsc`, and
-on a `.sm` input it was refused outright as an unsupported option. It was never
+on a `.vibe` input it was refused outright as an unsupported option. It was never
 *read*, which is the defect that mattered.
 
-*Three diagnostics carry the gate.* `SMITHERS6001` for a mandatory option that is
-missing or set to anything but `true`, `SMITHERS6002` for a forbidden option, and
-`SMITHERS6003` for an option nothing classifies — the fail-closed reading of
+*Three diagnostics carry the gate.* `VIBE6001` for a mandatory option that is
+missing or set to anything but `true`, `VIBE6002` for a forbidden option, and
+`VIBE6003` for an option nothing classifies — the fail-closed reading of
 §Forbidden's "MUST be rejected rather than ignored". Each lands on the option the
 author wrote, because the configuration is parsed as JSON with positions rather
 than through a normalized options bag, which has none.
+
+Malformed JSON is refused with the native parser's `TS` diagnostics before
+option checks run. Empty input receives positioned missing-option diagnostics,
+not a compiler panic. These checks read only the supplied configuration text;
+they do not load an `extends` file. Diagnostic paths retain the caller's spelling
+and offsets are authored UTF-16 positions, including non-ASCII text and JSONC
+line endings.
+
+*Generated-code checking.* `checkEmittedProject` and `checkEmittedTypeScript`
+now use the native Go compiler, with the same mandatory options. The checker
+reads the supplied emitted text without modifying it and resolves dependencies
+read-only through upstream's module resolver. Exact runtime-module overrides
+resolve their declared target (including a `.js` entry's sibling declaration);
+they do not replace string literals or literal types in the source. Invalid
+override targets cannot fall back to another installed package. Diagnostics are
+plain data: `TS`-prefixed codes, a path string, UTF-16 `span`, and an optional
+zero-based `position`, not 5.9 `Diagnostic`/`SourceFile` objects. Only supplied
+roots and global findings are reported; imported implementation files retain
+the configuration exemption above. Explicit foreign projections are checked
+with ordinary strict TypeScript options over the same read snapshot; generated
+language roots keep every mandatory option. The host selects upstream's
+`types: ["*"]` policy for installed ambient type declarations. Old sibling
+declaration outputs cannot replace explicit generated roots on a warm build;
+this changes the virtual input view, not files on disk.
+
+Declaration emission and metadata text operations now also use Go. Their
+diagnostics have the same plain-data shape. Checked native types carry nested
+callable/accessor contracts through stock serialization; source-free consumer
+tests remain required. The generated executable-Flow boundary now also uses
+native checking and structural/nominal codec derivation in one Go Program.
+The host validates its schema digests and maps plain diagnostics to authored
+locations. The legacy language frontend and the body's authored semantic
+model/first lowering are still being migrated; this is not a Go-only release
+certificate.
+
+Checked `Schema.derive<T>()` reification also uses the Go checker over an
+explicit virtual source closure. The host sends exact call-site ranges, not
+legacy checker objects. Native module resolution and scope determine `T`;
+unsupported or over-budget types produce no descriptor. The cache identity
+includes the native compiler/bridge and the full supplied source closure.
+Intrinsic recognition and the surrounding comptime evaluator remain on the
+legacy frontend until their separate migration is complete. The public
+checker-object-taking helper is replaced by `deriveSchemaDescriptors` and its
+plain-data native request; this is not a 5.9 API emulation.
 
 *The forbidden half was never uniformly unenforced,* and the register's claim
 that "none of the eleven forbidden options is rejected" was wrong for the Go
@@ -395,15 +454,15 @@ added, and `strict: false` is no longer honored.
 this page.* Turning the five missing options on moved **2 of 515** conformance
 cases, both in `07-must-consume`, both because `noUncheckedIndexedAccess` widens
 `results[i]` to `Result<A, E> | undefined` and the `!` provenance walk refused it
-as `SMITHERS1207`. The refusal was the wrong one of the three things that
+as `VIBE1207`. The refusal was the wrong one of the three things that
 disagreed: the mandated option, the propagation rule, and the worked example
 below, which promised that `arr[i]!` compiles "when `arr` holds Results". The
 value at `results[i]` **is** a Result, widened by the option this section
 mandates. Provenance now sees through that widening on both backends, and the
 lowering asserts it in the emitted TypeScript, where `!` still means the non-null
-assertion this page removes from `.sm` but not from the language `.sm` lowers to.
+assertion this page removes from `.vibe` but not from the language `.vibe` lowers to.
 
-*Enforcing the options is scoped to `.sm`,* which is the second paragraph of this
+*Enforcing the options is scoped to `.vibe`,* which is the second paragraph of this
 section doing real work. Applying them to the whole emitted program without
 scoping moved **150 of 515** cases, and 143 of those were one fact: the
 compiler's own runtime library did not satisfy `exactOptionalPropertyTypes`, so
@@ -423,7 +482,7 @@ prevent. The same Program carries a project's imported `.ts` and `.cts`, and a
 `.cts` module written with `export function` became `TS1287` — this compiler
 charging a foreign file for a rule the paragraph above exempts it from. The
 mandatory set is therefore applied where §Mandatory speaks, to the checking of
-authored `.sm`; the two type-level members travel to the emitted module set as
+authored `.vibe`; the two type-level members travel to the emitted module set as
 well, and the three emit-shaping ones do not.
 
 *One spelling became inexpressible, and that is the option working.* A numeric
@@ -451,7 +510,7 @@ the absence axis.
 
 Options that upstream has deprecated or removed, and options that select superseded behavior, MUST be rejected rather than ignored: `keyofStringsOnly`, `suppressImplicitAnyIndexErrors`, `suppressExcessPropertyErrors`, `noStrictGenericChecks`, `noImplicitUseStrict`, `out`, `charset`, `importsNotUsedAsValues`, `preserveValueImports`, `experimentalDecorators`, and `emitDecoratorMetadata`.
 
-TypeScript 5.8's `erasableSyntaxOnly` names the TS-only syntax that runtime type-stripping refuses. Smithers treats that set as guidance about which forms are dying.
+TypeScript 5.8's `erasableSyntaxOnly` names the TS-only syntax that runtime type-stripping refuses. VibeLang treats that set as guidance about which forms are dying.
 
 ### Emit-Scoped
 
@@ -466,7 +525,19 @@ selected host.
 
 ## Build Tool Integration
 
-Smithers MUST be usable inside an existing JavaScript build without adopting a Smithers-specific build system. A project already using Vite, Rollup, webpack, esbuild, Rspack, Rolldown, Farm, or the Bun bundler MUST be able to add `.sm` support by installing one plugin.
+VibeLang MUST be usable inside an existing JavaScript build without adopting a VibeLang-specific build system. A project already using Vite, Rollup, webpack, esbuild, Rspack, Rolldown, Farm, or the Bun bundler MUST be able to add `.vibe` support by installing one plugin.
+
+:::note[Implementation checkpoint, 2026-09-08]
+`vibelang/unplugin` now exposes the common Go-backed checked pipeline through
+all nine host factories, including Rsbuild. It supports in-memory code/maps,
+assets, dependency tracing, checked invalidation and a deliberately narrow
+transform-only subset. The [bundler guide](/guide/bundlers) records configuration,
+host-specific watch behavior and the measured Farm library-map limitation.
+Node/Bun execution is tested; this is not browser-runtime qualification. Durable
+Plan delivery remains open: the plugin refuses the withdrawn Flow-body profile
+rather than quietly publishing it. The full normative contract below is not
+declared complete by this partial delivery checkpoint.
+:::
 
 ### Plugin Contract
 
@@ -474,10 +545,10 @@ The integration MUST be published as an [unplugin](https://unplugin.unjs.io) fac
 
 The plugin MUST:
 
-- resolve `.sm` specifiers, including extensionless imports that a bundler would otherwise resolve only to `.ts` or `.js`
-- accept a file whose contents are `.sm` source and return TypeScript or JavaScript
-- run **before** any other transform in the host tool's pipeline, so every downstream plugin sees ordinary TypeScript and never sees Smithers source
-- emit a source map for every transformed file, so diagnostics, stack traces, and debugger stepping refer to the authored `.sm` file
+- resolve `.vibe` specifiers, including extensionless imports that a bundler would otherwise resolve only to `.ts` or `.js`
+- accept a file whose contents are `.vibe` source and return TypeScript or JavaScript
+- run **before** any other transform in the host tool's pipeline, so every downstream plugin sees ordinary TypeScript and never sees VibeLang source
+- emit a source map for every transformed file, so diagnostics, stack traces, and debugger stepping refer to the authored `.vibe` file
 - leave `.ts`, `.tsx`, `.js`, and `.jsx` files untouched
 
 The plugin MUST NOT define language semantics. It is a delivery mechanism for the same lowering the compiler performs; a construct MUST NOT behave differently because it was compiled by a bundler rather than by the CLI.
@@ -486,11 +557,11 @@ The five obligations above are unchanged, but the fourth carries more weight tha
 
 ### Checking and Transform Modes
 
-Smithers inference is whole-program: error rows, requirement rows, and must-use analysis cross module boundaries. A per-file bundler transform cannot see that graph.
+VibeLang inference is whole-program: error rows, requirement rows, and must-use analysis cross module boundaries. A per-file bundler transform cannot see that graph.
 
 The plugin MUST therefore support two modes:
 
-1. **Checked** — the plugin drives a Smithers program for the project and reports diagnostics. This is the default.
+1. **Checked** — the plugin drives a VibeLang program for the project and reports diagnostics. This is the default.
 2. **Transform-only** — the plugin lowers without whole-program checking, for fast rebuilds, with checking delegated to the CLI or an editor. A transform-only build MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess.
 
 Transform-only MUST NOT be presented as a conforming implementation of the language.
@@ -503,15 +574,15 @@ The sentence above is a conditional and it is exact: a cross-file call to a call
 
 ### Incrementality
 
-The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.sm` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it. This is more sensitive than it was: a callee's row changing from empty to non-empty changes every caller's emitted shape, not only its diagnostics.
+The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.vibe` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it. This is more sensitive than it was: a callee's row changing from empty to non-empty changes every caller's emitted shape, not only its diagnostics.
 
 ### Declaration Emit
 
-A library published from `.sm` sources MUST be consumable by ordinary TypeScript projects. The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve Result contracts, requirement rows, and each exported function's emitted calling convention. A cross-package caller that cannot read a callee's calling convention MUST fail closed rather than assume the ordinary one.
+A library published from `.vibe` sources MUST be consumable by ordinary TypeScript projects. The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve Result contracts, requirement rows, and each exported function's emitted calling convention. A cross-package caller that cannot read a callee's calling convention MUST fail closed rather than assume the ordinary one.
 
 ## Type Assertions
 
-The TypeScript non-null assertion MUST NOT exist in `.sm`. Postfix `!` is the Result propagation operator ([Failure Semantics](/specification/failures)), and the definite-assignment form `x!: T` MUST also be rejected. Removing the assertion meaning entirely is what makes the operator unambiguous.
+The TypeScript non-null assertion MUST NOT exist in `.vibe`. Postfix `!` is the Result propagation operator ([Failure Semantics](/specification/failures)), and the definite-assignment form `x!: T` MUST also be rejected. Removing the assertion meaning entirely is what makes the operator unambiguous.
 
 `as` assertion semantics are **open**. The current candidate is:
 
@@ -535,12 +606,10 @@ closed at nearly every call site reaching a function with a non-empty effect row
 This is recorded because a reader who last read the page before this revision
 would reasonably have taken transform-only for a general build mode.
 
-**Not amended — §Dynamic Features.** The `any`/`eval` sentence remains Locked and
-in force in this document. The conflict recorded there is open and has not been
-decided; nothing on this page may be read as having decided it. On 2026-08-27 the
-conflict gained an **(IA-1)** direction marker so that a reader can tell which way
-it points relative to the `(SA-n)` gaps on other pages. A direction label is not a
-decision, and no other word of that section changed.
+**Amended 2026-09-06 — §Dynamic Features.** The `any`/`eval` permission was
+withdrawn by the owner and the compiler's refusal became the rule; the (IA-1)
+marker is closed. The previous note recording the conflict as open stood from
+2026-08-27 to 2026-09-06.
 
 ## Amendment Record — the determinism charge verb, 2026-08-28
 
@@ -548,7 +617,7 @@ decision, and no other word of that section changed.
 one word two ways for determinism-hostile globals. This page's §Host Globals
 ("MUST be reachable only through a capability whose answer the runtime
 journals") together with the fourth row's description of the hazard as "already
-charged" at `Intl.DateTimeFormat` — which ships as a `SMITHERS1602` refusal —
+charged" at `Intl.DateTimeFormat` — which ships as a `VIBE1602` refusal —
 read the third and fifth rows as **refusals**.
 [Durable Execution](/specification/durable-execution) §Deterministic Scheduling
 read them as **charges**: `Promise.all` and its variants "remain ordinary and
@@ -570,14 +639,14 @@ publishing a requirement into the enclosing function's row. That paragraph also
 states the criterion that reconciles the two pages — the ambient spelling is
 *additionally* refused only where the capability has a source-language surface
 the author could write instead, which is why `Clock` and `Random` stay
-`SMITHERS1602`/`1603` and `Scheduler`, which by Durable Execution's rule has no
+`VIBE1602`/`1603` and `Scheduler`, which by Durable Execution's rule has no
 such surface, does not.
 
 **Amended — §Determinism-Sensitive Members, fourth row's cross-reference.** The
 clause "This is the hazard already charged at `Intl.DateTimeFormat`
 construction" used "charged" in the refusal sense and was half of what produced
 the conflict. It now names the mechanism instead: `Intl.DateTimeFormat`
-construction is *refused* as `SMITHERS1602`. No obligation in the row changed.
+construction is *refused* as `VIBE1602`. No obligation in the row changed.
 
 **Amended — §Determinism-Sensitive Members, fourth and fifth rows' membership,
 and NOT their verbs.** The fifth row named four ICU members; the hazard it

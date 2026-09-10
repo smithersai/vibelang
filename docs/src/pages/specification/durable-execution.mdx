@@ -1,487 +1,370 @@
-# Durable Execution [Normative model for Actions, Flows, and distributed runtime behavior]
+# Durable Execution [Static Plans, typed Actions, and durable runtime behavior]
 
-Status: the core Action/Flow model, the replay execution model, and the distributed-build requirement are **locked**. Versioning, journal boundedness, policies, wire format, and deployment APIs are partly **direction** or **open**.
+{/* brand-gate: allow-start */}
+The locked September 6 owner decision adopts the Smithers 1.0 Plan model. This
+page describes that current target contract, not ordinary-body replay. The
+[withdrawn replay specification](/specification/history/durable-replay) preserves
+the previous text and its implementation history.
+
+The comparison reference is
+[Smithers revision 6bcbaa2](https://github.com/smithersai/smithers/tree/6bcbaa2d03a10afe8fe59934dabe262f55f012e7).
+Its graph, key, approval and journal contracts apply; VibeLang is stricter about
+construction: the compiler derives Plans from checked syntax and never invokes
+a source Flow, even with symbolic JavaScript proxies.
+{/* brand-gate: allow-end */}
 
 ## Scope
 
-Durable execution MUST be opt-in. Ordinary Smithers functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary. This is a guarantee about authored functions and their observable behavior. The emitted form of a function with a non-empty effect row MAY be a generator, as defined by [Effects](/specification/effects).
+Durability MUST be opt-in. Ordinary functions and Action implementations remain
+eager functions; selecting a Flow boundary does not turn unrelated code into
+scheduler work. General Result, capability and effect rules still apply outside
+the symbolic Flow description.
+
+A Flow describes typed connections between operations. It is not an ordinary
+function re-executed under a different handler. Only behavior represented by the
+checked Plan may execute. Unsupported source constructs MUST be rejected, not
+silently omitted, interpreted as ordinary body replay, or reduced to a sets-only
+Manifest.
 
 ## Compiler-Recognized API
 
-A Flow MUST be declared with ordinary TypeScript call syntax **(SA-2)**:
+`durable` and `Action` come from the compiler-owned `vibelang:flows` virtual
+module. `durable(...)` uses ordinary TypeScript call syntax, not a keyword or a
+new parser production. Recognition MUST follow the resolved imported binding:
+aliases preserve meaning; an unrelated function called `durable` is ordinary.
+
+The compiler MUST statically resolve the selected Flow declaration and its
+source-module closure. An opaque runtime-selected function MUST be rejected.
+The checked source, contracts and compiler-known inputs MUST determine the
+published Plan; authored code MUST NOT run to discover its nodes.
 
 ```ts
-import { durable } from "smithers:flows"
+import { Action, durable } from "vibelang:flows"
 
-const Build = durable(function Build(
-  input: BuildInput,
-): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source })!
-  return Package.run({ code: compiled.code })
+abstract class Double extends Action<
+  (input: number) => Result<number, never>
+> {}
+
+export const Build = durable((input: number) => {
+  const first = Double.run(input + 1)!
+  const second = Double.run(input)!
+  return { first: first * 2, second }
 })
 ```
 
-:::warning[(SA-2) — the specification is partly ahead of the implementation here]
-Re-measured 2026-08-31 against both conformance backends. **Half of this gap is
-closed and the half that remains is smaller and differently shaped**, so the
-whole note is restated rather than amended.
-
-**Closed.** A runtime branch and a runtime loop inside a Flow body compile on
-both backends. The two rules that refused them — `SMITHERS4106` "runtime
-branches require explicit Plan branch lowering" and `SMITHERS4107` "runtime
-loops require parameterized Plan templates" — are **withdrawn**, together with
-the optional-projection, non-boolean-conditional, unsupported-expression and
-unnameable-call refusals that came from the same lowering. Such a body is no
-longer refused; the Plan lowerer *declines* it without a diagnostic and the
-Flow publishes its Effect Manifest instead. Thirteen `17-durable` cases moved
-with them, from `expect: "diagnostics"` to `expect: "output"`, in one commit and
-on both backends.
-
-**Still open, and each one measured on the sample or on a minimal variant of
-it:**
-
-| Written here | Refused today by |
-| --- | --- |
-| the sample's own `Result<Artifact, CompileError \| PackageError>` return annotation | `SMITHERS4100` — `Action.run` is typed `A \| undefined` in the shipped frontend rather than `Result<A, E>`. Removing the annotation compiles, which isolates the failure to the annotation and not to the Flow shape. |
-| a `let` binding inside a Flow body | `SMITHERS4105` — "durable straight-line bindings must use const" |
-| closure capture of a module-scope value | `SMITHERS4110` — "unsupported runtime capture; only input and prior const bindings are available" |
-| recursion, and any call to a project-declared function | `SMITHERS4199` — the Effect Manifest refuses to state a call whose effects it cannot account for |
-
-**The Go durable subset, and the four codes a 2026-08-31 census reported as
-having "silently become reference-only".** Re-derived 2026-09-01 against the
-current tree, they are three different facts and only one of them is a gap.
-
-- **`SMITHERS4107` is implemented in neither backend.** It was withdrawn from
-  both by the same act described above. It measured reference-only because the
-  reference's withdrawal *comment* spells `SMITHERS4107` while the fork's spells
-  a bare `4107` — the "text about a rule is not the rule" artifact, applied to a
-  comment about a rule that no longer exists. No case declares it; the one that
-  used to is now `expect: "output"` and passes on both backends.
-- **`SMITHERS4122` and `SMITHERS4123` are implemented in both.** The fork builds
-  them from a `suffix:` field rather than spelling them, which is why a literal
-  grep misses them. What differs is the rule, not its presence: the reference
-  refuses a malformed or conflicting `waitBroadcast`/`dequeue`, and the fork
-  refuses **every** one, because neither suspension form is in its durable
-  subset. That is a strict superset — fail-closed, not fail-open — and
-  `compiler/fork_withdrawn_and_subset_rules_test.go` now spells both codes so the
-  census question is settled by the backend's own output rather than by a grep.
-- **`SMITHERS4114` is genuinely absent from the fork, and unreachable there.**
-  All four of the reference's report sites sit behind a construct the fork
-  refuses *first*, with a code it does implement: child-Flow embedding
-  (`SMITHERS4120`), `fanOut` (`SMITHERS4117`), `loopWhile` (`SMITHERS4121`). The
-  fourth site, an ordinary `Action.run`, cannot fire on its own, because an
-  Action id maps to exactly one descriptor unless a child Plan's actions are
-  merged into the parent's table — and merging them is the child-Flow embedding
-  already refused. Porting `SMITHERS4114` would therefore mean first implementing
-  the three constructs that reach it, which is the durable subset itself. It is
-  recorded as reference-only-by-subset, and the three earlier refusals are pinned
-  in the same file, so a change that teaches this backend any of the three fails
-  there and forces `SMITHERS4114` to be reconsidered in the same edit.
-
-None of the four carries a corpus `xfail(go)` marker and none needs one: **no
-case declares any of them**, so the corpus never implied parity for them. A
-marker can only be attached to a case, and adding a case here would assert
-agreement that the third bullet says does not exist.
-
-The last row of the table above is **new**, and it is the price of withdrawing
-the walls rather than a regression. `SMITHERS4112` used to refuse every call the Plan could not
-name before the Manifest was consulted; with that gone, the Manifest is the only
-thing standing between a Flow body and a silently narrowed effect set, and
-`docs/DECISIONS.md` (Locked) requires it to reject rather than narrow. Closing
-it needs the transitive call-graph analysis and the **capability requirement
-row** that PR-1 names as Manifest content and neither backend derives yet;
-`Capability.context()` is exempted from the refusal by name so the gap is one
-recognised form rather than every unaccounted call.
-
-So §Flow's "branches, loops, `let` bindings, closure capture, and recursion MUST
-execute unchanged inside a Flow" is now **half satisfied**: branches and loops
-do, `let`, capture and recursion do not.
-
-`17-durable` no longer certifies any of the withdrawn refusals. Four refusals in
-that area are unchanged and MUST stay green — `an-opaque-durable-argument-is-rejected`
-(`SMITHERS4103`) and the three `SMITHERS4110` durable-boundary projections —
-because they are rules about the codec contract rather than about the shape of a
-lowering, and nothing in this revision touches them.
-
-The decisions this page rests on are recorded in the decision ledger under
-**Pending ratification** (`PR-1`, `PR-2`, `PR-3`); see
-[Specification Status](/specification/index) §Specification–Implementation Gaps.
-:::
-
-`durable` is a compiler-recognized function imported from the compiler-owned `smithers:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
-
-The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error. The reason is no longer that the body must be lowered to a plan; it is that the compiler MUST be able to digest, version, and address the Flow's source.
-
-The compiler MUST replace a recognized `durable(...)` call with a Flow descriptor carrying the Flow's pinned source identity, its derived codecs, its Effect Manifest, and a reference to the emitted Flow body. The descriptor's identity, codecs, and Manifest MUST be serializable; the body MUST NOT be reconstructible from them. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `smithers:flows` virtual-module loading.
+This describes two independent Action calls and a result that consumes both.
+It does not call the Double implementation while compiling or inspecting.
 
 ## Action
 
-An Action is an abstract runtime operation with:
+An Action declares a closed typed operation with an open implementation. The
+compiler MUST derive its input, success, failure and capability-requirement
+contracts. Authors MUST NOT repeat those types as separate schema arguments.
+An abstract fallible signature MUST state its Result return type because no
+implementation body exists there from which to infer failures.
 
-- an open, replaceable implementation
-- a closed typed function signature
-- compiler-derived input, success, Error, and requirement information
-- compiler-derived persistence schemas or explicit codecs where derivation is impossible
+Implementations MUST be ordinary VibeLang functions or callbacks. A fallible
+implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; ordinary
+compiler lifting permits plain success returns and Error throws. It MUST NOT
+require an Effect wrapper or a second failure annotation.
 
-An Action implementation MUST be an ordinary Smithers function or callback. A fallible implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; compiler lifting allows its body to use plain success returns and Error throws. It MUST NOT require an Effect wrapper or failure annotation.
-
-An abstract Action signature has no implementation body from which to infer failures, so a fallible signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type.
-
-If an implementation calls `Capability.context()` directly or invokes a function with context requirements, those capabilities MUST enter the Action implementation's compiler-inferred requirement row. They MUST NOT become explicit Action inputs or source-level context parameters.
-
-Source authors MUST NOT repeat Action types as separate schema arguments.
+Implementation requirements belong to its inferred capability row, not extra
+source-level parameters. Provider/deployment configuration MUST satisfy that row
+and bind the selected implementation, recovery tier, declared effects and
+placement. An abstract Action signature alone MUST NOT imply a provider,
+hermeticity, a recovery tier or permission to run.
 
 ## Durable Boundary
 
-Every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract.
+Inputs, persisted outcomes and data crossing an Action/Flow machine boundary
+MUST have a checked durable representation. Plain supported data SHOULD derive
+its codecs from types. Functions, capability instances, process handles and
+other ephemeral values MUST NOT be smuggled through an arbitrary-JSON fallback.
 
-Plain data SHOULD derive the contract automatically. Functions, capabilities, process handles, and other ephemeral values MUST be rejected unless they define an explicit durable representation.
+An explicit codec is required where derivation is impossible, including erased
+`any`/`unknown` boundaries. If an implementation cannot validate such a codec
+or its identity, it MUST refuse that boundary. A codec declaration is not
+permission to trust unchecked data.
 
-`any` and `unknown` MUST require an explicit codec at the boundary.
+Validation MUST occur before using transported or persisted data. Native Error
+values need a nominal contract; typed failures, defects and cancellation MUST
+remain distinct. A failure MUST NOT become a successful cached value.
 
-This contract is also the journaling classifier. An effect request MUST be journaled if and only if its answer satisfies it; see [Effects](/specification/effects) §The Journaling Classifier.
+Canonical metadata ordering MUST NOT change observable program-value ordering.
+When object field order is part of a value's behavior, its wire representation
+MUST preserve that order explicitly. Stored evidence and materialized program
+values MUST NOT share mutable state merely because serialization succeeded.
+
+Codec representability alone does not define the new Plan's work or identity.
+The earlier rule that classified every resumable-body request solely by whether
+its answer had a codec belongs to the withdrawn replay model.
 
 ## Flow
 
-A Flow is an ordinary function whose execution is placed under the durable handler. `durable(...)` MUST NOT change what the function computes; it MUST change only which handler answers the function's effect requests. Ordinary control flow — branches, loops, `let` bindings, closure capture, and recursion — MUST execute unchanged inside a Flow **(SA-2)**.
+The compiler MUST lower the selected checked function into Plan data. An
+`Action.run` expression creates an Action node and a typed planned Result.
+Applying `!` records the Result success/failure boundary; it MUST NOT silently
+erase a possible failure. Projecting a planned success and passing it to another
+node MUST preserve the typed projection and dependency.
 
-The compiler MUST emit the Flow body in the resumable calling convention and MUST publish its Effect Manifest. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph, at any phase, including replay.
+A planned value is not available to ordinary source execution while planning.
+The compiler MAY represent checked pure calculations as data expressions, but
+MUST reject any operation for which it has no sound representation. It MUST NOT
+run a callback, coercion hook or module initializer to obtain an answer.
 
-An `Action.run` expression MUST emit a journaled effect request bearing a stable site identity and the derived codecs for its input and answer. Applying `!` to its Result MUST emit the ordinary failure exit; it MUST NOT be given a durable-specific meaning. Neither compilation nor inspection MUST execute the Action implementation.
+The executable source function MUST NOT be required to drive or resume the
+resulting graph. Source bytes MAY remain as authenticated metadata for identity,
+debugging and native re-derivation; this is not a live function side table or an
+executable Flow body. Action implementation code is separate and must remain
+available in its authenticated worker artifact.
 
-The emitted Flow body MUST be present in every artifact that can create or resume an execution of that Flow, and MUST be reachable by the Flow's pinned source identity. Tree-shaking MUST NOT remove it from such an artifact. Inspection MUST NOT load it. A coordinator MUST NOT require a live function side table, a proxy-recorded graph, or any value that did not arrive from the journal or from the Flow's declared input.
+## Flow Determinism and Captures
 
-## Flow Determinism
+A Flow description MUST NOT perform I/O or inspect clock, randomness, locale,
+environment, process state, services or mutable host state to decide its graph.
+Such operations belong behind declared runtime boundaries. General host-member
+restrictions in [Compatibility](/specification/compatibility) remain in force.
 
-A Flow body MUST NOT observe wall clock, monotonic clock, randomness, environment, mutable host state, services, or I/O except through an effect request its handler answers. This obligation holds on **every execution and every resumption**, not only during compilation. Capture of ordinary runtime values, including mutable local state and closed-over bindings, is unrestricted.
+Ordinary `let`, mutation, loops and recursive body execution are withdrawn
+inside the symbolic Flow description. A bounded graph pattern is not permission
+to execute an ordinary loop during planning.
 
-All of the following MUST hold on every execution and every resumption of a Flow body:
+Compiler-known immutable inputs MAY be captured only when their provenance,
+value and transitive dependencies are represented in the checked identity.
+The compiler MUST NOT retain an object's initializer while dropping later
+mutations that determine its value. A runtime/mutable capture, unresolved module
+initializer or missing dependency MUST be rejected when it cannot be represented.
 
-1. It MUST NOT observe wall clock, monotonic clock, randomness, environment, process state, filesystem, network, or mutable host state except through a request its handler answers.
-2. It MUST NOT evaluate a runtime string as code.
-3. It MUST NOT observe garbage-collection timing or cross-agent shared memory.
-4. It MUST NOT observe host time zone or host locale data except through a capability.
-5. Every started Promise MUST be consumed by `await` or a recognized combinator whose result is itself consumed before scope exit.
-6. Every combinator whose result depends on arrival order MUST be dispatched through the runtime scheduler (§Deterministic Scheduling).
-7. Iteration order over host-provided collections MUST be canonicalized at the capability boundary.
+Local `const` bindings may name planned values; they do not make those future
+answers available to host JavaScript. The source compiler MUST preserve
+connections, ordering constraints, projection paths and failure contracts through
+aliases, child Flows and graph combinators.
 
-A conforming implementation MUST enforce 1–6 statically. Obligation 7 is a property of the platform capabilities and MUST be tested rather than inferred.
+Values from separately specified comptime or loader phases are compiler inputs,
+not permission to evaluate the Flow callback or a runtime module initializer.
 
-The per-member obligations that make 1–4 enforceable are in [Compatibility](/specification/compatibility) §Determinism-Sensitive Members. They are uniform across all `.sm` code and are not scoped to Flow bodies.
+## Plan and Inspection
 
-## Effect Manifest
+A Plan MUST publish the complete bounded graph for the current round: structural
+node addresses, declared material, dependency/control relationships, node keys,
+declared effects, and the digest of its approval projection. A sets-only
+Effect Manifest is not a substitute.
 
-The compiler MUST publish, for every Flow, a static **Effect Manifest**: the set of Action identities the Flow can reach, its capability requirement row, its external-input contracts, its failure row, and its site table.
+Inspection MUST NOT load or invoke the source Flow, an Action implementation or
+a callback to discover work. Invalid, incomplete, cyclic or ambiguously addressed
+graphs MUST refuse before execution; executing only a valid-looking subset is
+not conformance.
 
-Runtime-dependent control flow inside a Flow body MUST use ordinary TypeScript statements and MUST NOT be represented in the Effect Manifest. The Manifest MUST be **sound with respect to reachability** — every Action identity, capability key, and external-input contract a run can reach MUST appear in it — and MAY be imprecise about count and order. A call whose callee the compiler cannot resolve MUST either be rejected inside a Flow body or force the Manifest to include the full effect set of the callee's module; it MUST NOT silently narrow the Manifest.
+A conditional pattern MUST represent the alternatives before execution, and its
+driver MUST settle only the selected arm. Merely publishing both arms does not
+make them both runnable. Dynamic work MUST use explicit bounded rounds or
+handoffs; an unknown collection cannot be silently expanded by running authored
+code or by inventing a bound.
 
-The Manifest MUST NOT carry control-flow edges, branch structure, or execution counts. It is a bound on the request alphabet, not a prediction of a trace. A Manifest that acquires an edge, a branch, or a count has begun growing back into an execution-plan template.
+The shipped command spelling and limits are documented in
+[CLI — Plan](/reference/cli#plan). An inspection provider file contains claims,
+not proof of provider bytes or approval.
 
-## Compilation Phases
+### Key and Approval Identities
 
-A durable implementation MUST distinguish four phases:
+These identities MUST remain distinct:
 
-1. **compilation**, which emits the Flow body and its Effect Manifest
-2. **deployment build**, which resolves providers and emits coordinator, worker, and manifest artifacts
-3. **inspection**, which reads the Effect Manifest and reports the Flow's reachable Actions, requirement row, external-input contracts, and failure row without loading or invoking the Flow body or any Action implementation
-4. **execution**, which creates or resumes a durable run by executing the emitted body under the durable handler
+| Identity | Meaning |
+| --- | --- |
+| Structural node address | Where work is addressed in one graph; not itself a shared-cache key. |
+| Plan node key | A `key1_` commitment to declared material and material-dependency keys. |
+| Plan `baseDigest` / `digest` | The generation-zero graph commitment / current graph approval projection. |
+| Dispatch/content/environment identity | The concrete input and measured environment needed for a dispatch or eligible reuse. |
+| Journal frame | `{ lineageId, seq }`, a position in committed history, not a source occurrence counter. |
 
-Inspection MUST report a bound on what a Flow may request. It MUST NOT be described as, and MUST NOT be relied on as, a prediction of what a run will do.
+Key derivation MUST use the accepted canonical JSON representation, real SHA-256
+and the versioned key format. Stored keys MUST be validated as opaque keys, not
+hashed again. Duplicate JSON fields, malformed Unicode and unrepresentable
+material MUST NOT disappear through a host JSON parser before validation.
+A key cannot account for behavior or inputs absent from its declared material.
 
-The deployment build MUST check the complete provider dependency closure for every emitted worker artifact. Provider layers MUST satisfy the context requirements of each selected Action implementation before deployment.
+The graph digest is NOT the complete invocation approval. The Control target
+binds the Flow identity, exact input, authority envelope, deployment class,
+execution digest when present, and persisted Plan digest. Its digest is plain
+lowercase SHA-256 of that canonical projection, not the `key1_` graph digest.
+An absent optional execution digest is omitted, not replaced with null.
+
+Approval MUST be checked against the exact principal, target and scope in the
+durable admission transaction. A source signature, valid graph, matching digest
+or authenticated caller alone MUST NOT be treated as approval.
+
+## Compilation Phases and Deployment Authentication
+
+A conforming toolchain MUST distinguish:
+
+1. Checked source/contract compilation, without running authored Flow code.
+2. Provider and worker build, binding executable bytes, codecs, requirements,
+   runtime/boundary identity, policy and placement.
+3. Non-executing Plan inspection for the exact input and selected declarations.
+4. Authenticated invocation restoration and explicit Control admission.
+5. Execution or resume through the admitted graph and durable stores.
+
+Compilation and inspection MUST NOT dispatch Actions. All providers needed by
+the complete declared graph, including alternatives, MUST be resolved before
+their execution can be admitted. Public worker artifacts MUST retain the code
+and runtime assets they need independently of a compiler checkout.
+
+Authentication MUST cover the actual source/Plan contract, worker code, codecs,
+runtime and policy identities that execution will consume. Structural copies of
+an authentication proof MUST NOT acquire its authority. Trust roots must come
+from outside the artifact; an envelope MUST NOT appoint its own trusted signer.
+
+Authentication proves the integrity of its signed claims. It does not by itself
+prove approval, sandbox enforcement, freshness, revocation, rollback protection
+or what a remote process actually loaded. Workers MUST receive only declared
+authority; message validation, transport binding and fencing MUST prevent a
+weaker worker or sandbox from being silently substituted.
 
 ## Ordering and Concurrency
 
-Effect ordering inside a Flow body MUST be the program order of the body. Concurrency MUST be started explicitly through a recognized combinator. The durable runtime MUST assign every concurrent request a deterministic submission index before dispatch, MUST journal the completion order it observed, and MUST reproduce that order on resumption. Implicit reordering or auto-parallelization of independent Action calls MUST NOT occur.
-
-This is a capability regression relative to the previous model, and it is recorded as one in §What Replay Trades Away.
-
-### Deterministic Scheduling
-
-Concurrent effect requests inside a Flow body MUST be dispatched through a runtime-owned scheduler. The scheduler MUST assign each request a submission index in a deterministic order derived from program order, MUST journal the order in which requests completed, and on resumption MUST deliver completions in the journaled order. A combinator whose result depends on arrival order — including `Promise.race` and `Promise.any` — MUST NOT be reachable except through the scheduler. The scheduler has no source-language surface.
-
-**Open.** Combinators whose *result* does not depend on arrival order — `Promise.all` and its keyed and settled variants — remain ordinary and charge no `Scheduler` requirement, yet they start concurrent requests that must still acquire submission indices in a deterministic order. How an order-independent combinator reaches the scheduler is unspecified. Two obligations above are in tension until it is: every concurrent request MUST be dispatched through the scheduler, and every `Promise` member other than `race` and `any` stays free.
-
-## Durable Suspension and External Signals
-
-Timers and external-signal waits MUST suspend without occupying a worker lease.
-
-An external-signal wait MUST own a statically bound identity and a
-compiler-derived durable payload schema, both carried in the Flow's Effect
-Manifest and therefore addressable before the execution reaches the wait. A
-delivery client MUST NOT supply or widen that schema. Delivery MUST address an
-exact execution and site identity, carry an explicit idempotency key, validate a
-canonical payload before persistence, and commit delivery evidence atomically.
-Retrying the same key and payload MUST be idempotent; a conflicting key or
-payload for a single-delivery wait MUST fail closed. Consumption and the wait's
-terminal result MUST be one durable state transition, so restart and concurrent
-coordinators converge on the same value.
-
-The source spelling, execution-handle API, sender authentication and
-authorization, transport, wakeup mechanism, queues/broadcast, multi-delivery
-semantics, and migration policy remain **open**.
-
-## Replay
-
-Every completed Action invocation MUST be journaled within its Flow execution, including Error Results and nondeterministic successes.
-
-After restart, the same Flow execution MUST observe the committed outcome instead of repeating the completed invocation.
-
-Replay is mandatory execution history, not an optional cross-execution cache.
-
-Resumption MUST re-execute the Flow body from its entry point. Each request the body issues MUST be answered from the journal entry at its site identity and occurrence index, in order, until the journal is exhausted; the first request with no journal entry MUST be dispatched. The body MUST NOT be invoked with proxy or symbolic values at any phase, including replay.
-
-### Journal Identity
-
-A journal entry's key MUST be `(siteIdentity, occurrenceIndex)`.
-
-The site identity MUST be content-addressed from the compiler's Effect Manifest. The occurrence index MUST be assigned at **submission**, in the scheduler's deterministic order — never at completion, and never as a bare execution ordinal. Two requests at different sites MAY complete in either order and MUST still converge.
-
-### Divergence
-
-If the body issues a request whose site identity does not match the journal entry at that occurrence index, or completes while journal entries remain unconsumed, the runtime MUST report a divergence naming the offending source site, MUST fail the attempt, MUST NOT commit, and MUST abandon the execution rather than record a terminal outcome.
-
-### Versioning
-
-An execution MUST be pinned to the Flow source identity it started under. A coordinator whose Flow source identity differs from an execution's pinned identity MUST **abandon** that execution rather than replay it or record a terminal outcome for it.
-
-A facility permitting a Flow body to change while executions of it are live is **open**. Until it is specified, editing a Flow body with live executions MUST be treated as an operational migration, not a code change.
-
-### Journal Boundedness
-
-A Flow body containing an unbounded loop can journal without bound, and each resumption re-executes the whole prefix of the body, so an execution with *n* requests that is resumed *n* times costs O(n²) body execution. The previous model bounded this by construction, through static ceilings on plan nodes, loop rounds, and fan-out steps. No replacement is specified. A runtime SHOULD impose a journal-size limit and MUST fail closed rather than silently truncate.
-
-This is **open**.
-
-## Recovery
-
-Recovery safety and cross-execution reuse MUST be independent policy dimensions.
-
-The runtime SHOULD distinguish idempotent, compensable, and irreversible recovery behavior. It MUST NOT retry an ambiguously committed irreversible Action automatically.
-
-The runtime provides at-least-once execution only where retry is allowed.
-Exactly-once-like external outcomes require a destination-enforced transaction,
-idempotency key, or fencing protocol. Content sealing does not make an external
-effect exactly once, and compensation repairs consequences rather than erasing
-duplicate execution.
-
-## Reuse
-
-Cross-execution reuse MUST distinguish:
-
-- **memoization**, where one committed acceptable result becomes canonical for an explicit key
-- **content caching**, where the complete content key asserts reproducible equivalence
-
-A memoized result MUST NOT be promoted automatically to a deterministic content-cache entry.
-
-A content key SHOULD include canonical inputs, implementation and policy digests, relevant dependency identities, toolchain and target facts, and explicit invalidation salts.
-
-## Distributed Deployment
-
-A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript worker artifacts and a routing manifest.
-
-The signed artifact MUST be `{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}` and MUST be authenticated before a coordinator creates workers. **(SA-8) — unimplemented, measured 2026-08-28**: the shipped `SignedDeploymentArtifact` is `{artifactVersion, kind, plan, manifest, signer, signature, digest}` and still carries a `PlanTemplate`; `flowSourceDigest`, `journalSchemaVersion`, and `routingManifest` appear in no production source. The authentication half — Ed25519, out-of-band trust roots, verification before worker construction — is implemented. Part of `(SA-2)`. `flowSourceDigest` MUST cover exactly the emitted Flow bodies that can create or resume an execution. Trust roots MUST be supplied out of band; an artifact MUST NOT introduce its own signing authority. A signature over this artifact attests to **what a Flow is and what it may request**. It MUST NOT be described as attesting to what a run will do.
-
-The authenticated manifest MUST pin coordinator, worker artifact, implementation, policy, schema, capability-grant, and Flow source identities.
-
-Coordinator admission MUST NOT silently substitute a weaker transport or
-sandbox than the authenticated pool declares. Any host transport selected for
-a non-local pool MUST be explicitly bound to that exact authenticated sandbox
-identity before worker construction.
-
-Placement MUST belong to provider or deployment configuration rather than the abstract Action signature. Multiple implementations of one Action MAY target different worker pools or machines.
-
-## Security
-
-Workers MUST receive only their declared provider authority. Messages crossing coordinator and worker boundaries MUST be validated against derived codecs.
-
-Secrets, sandboxing, artifact access, worker authentication, fencing, and attestation are runtime concerns but MUST preserve the compiler-derived Action contract.
-
-A valid manifest signature proves provenance and integrity of the signed claims;
-it MUST NOT be treated as proof of bundle possession, live lexical-closure
-identity, sandbox state, freshness, rollback prevention, or revocation. Those
-properties require separate runtime and key-lifecycle mechanisms.
-An exact host transport binding prevents kind downgrade but is not itself proof
-that the host implementation enforces the named sandbox.
-
-## What Replay Trades Away
-
-Executing the Flow body under a journaling handler buys ordinary control flow
-inside a Flow. It is not free, and this section exists so that neither cost is
-discovered later and reported as a regression.
-
-**Cost 1 — static flow-version divergence detection.** The previous model decided
-statically and totally whether an in-flight execution could move to a new Flow
-version, by diffing two execution-plan templates node by node. That answer was
-available before the new coordinator touched a journal. Under replay no such
-total static answer exists; divergence between a live journal and an edited body
-is the hardest unsolved problem in this class of system, and the state of the art
-detects it only at run time and without a source location.
-
-What replaces it is a **partial static answer plus a named dynamic one**:
-
-| Layer | Recovers | Loses |
-| --- | --- | --- |
-| Pinned source digest, fail-closed (§Versioning) | every rejection reason that does not depend on comparing plan nodes | any ability to *permit* a compatible edit |
-| Effect Manifest site-table diff | the site-level reasons, restated as: a site with committed evidence must not change its semantics | reachability changes — a new `if` arm or a changed loop bound is invisible to the Manifest |
-| Replay divergence detection (§Divergence) | the reachability changes the Manifest cannot see, **and it names the source site**, which a node diff never did | catches them *during* an attempt, after it started, rather than before |
-
-Net: strictly better than detecting divergence at run time with no source
-location and no static layer at all. Strictly worse than the total static answer
-this page previously described.
-
-**Cost 2 — the signable pre-execution artifact.** An operator could previously
-read and sign *what a Flow will do* before it ran. The signed artifact now
-attests to what a Flow **is** and what it **may request**. One honest correction
-shrinks the loss: the previous artifact was already a template rather than a
-trace — this page itself conceded that an unresolved branch or fan-out remained
-an explicit conditional in the reported plan — so for any Flow with
-runtime-dependent control flow it already answered *may*, not *will*. What is
-actually lost is **bounded may**: the static ceilings that made the template
-finite.
-
-| Property | Previous plan artifact | Replay artifact |
-| --- | --- | --- |
-| Which Actions can run | exact set | exact set, reachability-sound |
-| Which capabilities are required | yes | yes |
-| Which external inputs can be delivered, and their schemas | yes | yes |
-| Which failures can escape | yes | yes |
-| Bytes of the code that will run | implied by node semantics | exactly, via `flowSourceDigest` |
-| The order Actions will run in | partial | no |
-| A bound on how many times each runs | yes | no |
-| Human-readable pre-execution graph | yes | no |
-
-The Effect Manifest is what buys back cost 2 and roughly half of cost 1. It MUST
-NOT be described as equivalent to the artifact it replaces.
-
-**Cost 3 — implicit fan-out parallelism.** The previous model executed every
-independent Action concurrently with no author annotation. Under program-order
-execution that is gone and concurrency becomes explicit and scheduler-mediated
-(§Ordering and Concurrency). For a workload whose Actions are model calls, a
-20-way independent fan-out that becomes sequential is a wall-clock regression
-measured in minutes.
-
-**Whether that third cost is acceptable is an open product question and is not
-decided here.** It is recorded in the decision ledger with its trade-off: accept
-it, or ship an explicit concurrency combinator in the same release as the first
-Flow that needs one.
-
-## Open Questions
-
-The following remain open: **flow-version divergence with live executions**
-(§Versioning), **journal boundedness and a continue-as-new equivalent**
-(§Journal Boundedness), whether the loss of implicit fan-out parallelism is
-acceptable (§What Replay Trades Away), how an order-independent concurrency
-combinator reaches the scheduler (§Deterministic Scheduling), external-signal
-handle and transport syntax, wire encoding, journal-schema migration, deployment
-syntax, provider selection, and large-artifact reference protocols.
-
-Two further gaps are recorded here rather than filled, because no rule for them
-has been written down and inventing one would be worse than naming the absence.
-
-1. **The Manifest site-table diff has no normative rule.** §What Replay Trades Away describes it as recovering "a site with committed evidence must not change its semantics", but that is a description of a capability, not an obligation on an implementation. What counts as a site's *semantics*, and what an implementation MUST do when a site with committed journal evidence changes, are unspecified.
-2. **Disposal errors during abandonment.** Whether a disposal error raised while unwinding an abandoned computation can be observed by the handler is open; see [Effects](/specification/effects) §Abandonment.
-
-Stable source IDs, plan loop and fan-out semantics, and explicit sequencing are
-**closed**: site identity is normative (§Journal Identity) and program order is
-order.
-
-## Amendment Record — one-shot delimited continuations, 2026-08-27
-
-The Action model, the durable boundary, journaling, recovery, reuse, distributed
-deployment, and security obligations on this page are unchanged. What changed is
-that a Flow is no longer a lowered plan. The sentences withdrawn or inverted are
-recorded here rather than deleted silently.
-
-**Withdrawn — the definition of a Flow:**
-
-> "A Flow is the closed program produced when the compiler lowers a function
-> passed to `durable(...)` into a statically analyzable execution-plan template."
-
-**Withdrawn — the lowering:**
-
-> "The compiler MUST lower the function's checked syntax, control flow, and data
-> flow into Plan IR."
->
-> "An `Action.run` expression inside the lowered function MUST emit a plan node
-> and a typed symbolic Result. Applying `!` to it MUST emit the Result
-> error-propagation edge."
-
-**Withdrawn with no replacement — symbolic projections:**
-
-> "Property access and argument passing on a symbolic result MUST create typed
-> projections and dependency edges when representable in Plan IR."
-
-No symbolic results exist. Property access on a journaled answer is property
-access.
-
-**Inverted — the removability of the source function.** The previous obligation
-was the exact opposite of the current one:
-
-> "The durable source function MUST be removable after the compiler emits its
-> plan, schemas, channel rows, identities, and debug map. A planner or
-> coordinator MUST NOT require the source function or a live function side
-> table."
-
-The emitted Flow body is now the thing that resumes an execution, so it MUST be
-present in any artifact that can resume one. The half of that sentence which
-refused a *live function side table* survives verbatim and is strengthened.
-
-**Withdrawn — the Plan IR representation obligation:**
-
-> "Runtime-dependent control flow MUST be represented explicitly in Plan IR. The
-> compiler MUST reject an operation that would inspect a symbolic value without
-> a corresponding IR representation."
-
-Replaced by the Effect Manifest's reachability-soundness obligation.
-
-**Withdrawn — ordering by edges:**
-
-> "Action ordering MUST be determined by data and control edges, not source
-> position alone. Independent Action calls MAY execute concurrently."
->
-> "Programs requiring order without a data dependency MUST use an explicit
-> sequencing construct. The construct's syntax is **open**."
-
-Program order is order, so the open question closes and the provisional
-sequencing construct goes with it. The permission for implicit concurrency is
-withdrawn as a capability loss, not as a tidy-up; see §What Replay Trades Away.
-
-**Withdrawn — the phase qualifier on Flow purity.** The old obligation applied
-only "while the compiler constructs the template", which is unsatisfiable under
-replay:
-
-> "A durable source function MAY capture compiler-known immutable values,
-> including results produced through `comptime(...)`, only. It MUST NOT observe
-> runtime clock, randomness, environment, mutable state, services, or I/O while
-> the compiler constructs the template."
-
-The determinism obligation now holds on every execution and every resumption,
-and the capture restriction is lifted: closing over mutable local state is
-unrestricted. The section heading changed from "Flow Purity" to "Flow
-Determinism" for that reason.
-
-**Amended — plan/preview:**
-
-> "Plan/preview MUST NOT load or invoke the function originally passed to
-> `durable(...)`. It MUST NOT load or invoke an Action implementation. A branch
-> or fan-out whose value is not known to the planner MUST remain an explicit
-> conditional or parameterized template in the reported plan."
-
-The second sentence survives inside phase 3. The first is withdrawn in that
-spelling because the artifact inspection reads is the Manifest, not a plan. The
-third is withdrawn because the Manifest carries no control flow: an unresolved
-branch is not reported at all.
-
-**Amended — the phase names.** "template compilation" became "compilation" and
-"plan/preview" became "inspection". The obligation that neither phase executes
-an Action implementation is unchanged; only the phase it names changed.
-
-**Amended — signing:**
-
-> "The canonical Plan and routing manifest MUST be authenticated before a
-> coordinator creates workers."
-
-Trust roots out of band and the prohibition on self-introduced signing authority
-are unchanged. What the signature attests to is narrower, and §What Replay Trades
-Away says so plainly.
+Dependencies and explicit sequencing determine order; source position alone
+MUST NOT serialize independent Action calls. The runtime MUST make independent
+ready work available for concurrent execution subject to resource limits,
+declared conflicts and admission policy.
+
+All inputs and ordering constraints MUST be established before dispatch.
+Priorities may order ready work but MUST NOT change a node's material key merely
+because priority changed; the Plan approval projection still covers priority.
+
+A failure MUST block work that requires its successful outcome. Cancellation,
+failure, retry and branch selection MUST retain their distinct meanings.
+A scheduler that only knows dependency readiness MUST NOT eagerly run both
+arms of a branch. Unsupported branch or round drivers MUST fail closed.
+
+## Resume, Replay, and Journal Identity
+
+A committed Action outcome and the lifecycle evidence that explains it MUST be
+stored atomically. Durable notifications follow commit; a missed notification
+MUST NOT lose the recorded state.
+
+Resume continues an existing execution. It MUST reuse its committed outcomes
+instead of repeating completed work, and may execute eligible unfinished work.
+VibeLang resume MUST NOT require replaying the original Flow function from entry.
+
+Time-travel replay is different: it folds a committed journal prefix, performs
+no dispatch and writes no state. Calling ordinary body execution “replay” does
+not satisfy this contract.
+
+Journal coordinates MUST carry lineage and sequence. Attempt, content and
+execution-environment identities have separate purposes. Neither a source
+line/column pair nor `(siteId, occurrence)` replaces the current journal protocol.
+
+Execution ownership, lease renewal, fencing and durable terminal transitions
+MUST prevent stale or competing coordinators from committing conflicting work.
+Typed failures, defects and cancellation must survive restart without being
+reclassified by the attaching process.
+
+## Versioning and Bounded Rounds
+
+Launch and resume MUST validate the pinned graph, source/provider/runtime
+identities and approval. Changed work MUST fail closed; it cannot silently attach
+to an in-flight execution under the old identity.
+
+An elaboration appends bounded work. Existing nodes and edges MUST NOT be edited
+in place; `baseDigest` remains the generation-zero commitment and the current
+`digest` advances. The resulting graph and exact invocation MUST be verified
+and authorized before newly introduced work is dispatched. Approval of an older
+graph MUST NOT authorize a different one.
+
+Resource limits MUST bound graph construction, rounds, fan-out and history
+operations. Exhausting a bound MUST produce a refusal, not a partial graph or
+silent history truncation. Ordinary unbounded Flow loops are not an alternative.
+
+## Recovery and Reuse
+
+The recovery tiers are `sealed`, `compensable` and `irreversible`. Only eligible
+sealed work may reuse results across runs by content key; concrete inputs,
+dependencies, implementation/codec behavior and execution environment must match.
+A Plan key or a copied attempt row is not sufficient evidence of cache eligibility.
+
+Recovery policy and cross-run reuse MUST remain separate. A “sealed” declaration
+does not make arbitrary side effects deterministic, safe to repeat, or exactly
+once. An ambiguously committed irreversible Action MUST NOT be retried
+automatically. External exactly-once-like outcomes require destination-enforced
+idempotency, transactions or fencing.
+
+A recorded failure must remain a recorded failure. Memoizing one acceptable
+answer MUST NOT silently promote nondeterministic work into a hermetic shared
+cache result.
+
+## History Operations
+
+Replay/inspect MUST read a bounded committed prefix without execution.
+Fork MUST preserve the parent, create a child lineage/workspace and copy only
+the prefix justified by the selected frame. Copied parent attempts MUST NOT be
+treated as proof that run-dependent keys apply in the child; compensable and
+irreversible work may execute again under a new run identity.
+
+Rewind MUST validate the frame, own the run, assess affected boundaries, perform
+authorized matching compensation, restore the workspace and atomically archive
+and truncate the suffix with an audit trail. It MUST NOT rewrite a committed
+entry in place or hide an irreversible boundary. Descendant dependencies and
+live ownership must be checked before destructive history operations.
+
+Startup recovery MUST finish or roll back interrupted history transitions
+before admitting conflicting work, without stealing a live owner's run.
+Exact host/API spelling remains a delivery concern, not permission to omit
+these semantics.
+
+## Implementation Checkpoint — (SA-2), (SA-8)
+
+As implemented on September 8, native API 52 derives, verifies and appends keyed
+Plan data. Checked source modules, child composition, static fan-out, captured
+enclosing planned values, closed pure computations, scoped `if` statements,
+early returns, native-checked input and nullable Action-success narrowing,
+conditional expressions and short-circuit Action work through `&&`, `||` and `??`
+reach an authenticated Node/Bun worker. Both branch arms are published; the
+worker's local demand adapter executes only the selected arm. Independent work,
+shared dependencies and explicit sequencing retain their meanings. An eager
+worker sweep refuses branch graphs, and cross-arm effect-conflict edges refuse
+until their conditional effect adapter exists.
+Logical selections preserve the selected operand and evaluate left-side Action
+work once; skipped alternatives do not dispatch. An unconsumed `Result` cannot
+lose its must-use obligation by joining a scalar alternative. Nullish selection
+uses the current value contract's `null`; it does not widen that contract to
+admit `undefined`.
+Statement branches retain TypeScript truthiness and lexical scope. Early
+returns omit continuation work on the returned path; fallthrough-only branches
+leave unrelated continuation Actions independently ready. Consumed Action
+statements remain work even when their success is discarded. Guarded input
+fields are projected only during selected execution. Unsupported statement
+forms and incomplete or over-budget graph construction still refuse.
+Narrowing facts come from the fully checked propagation-success program, not
+TypeScript's non-null assertion approximation. A `null` success remains a value,
+including inside a guarded return. Record-to-null comparisons require no object
+identity; general record equality remains outside the closed value operations.
+`vibe plan` uses this path by default; `manifest-compat` is
+explicit. Installed consumers verify CLI issuance, signed restoration and actual
+worker execution. An isolated composition also demonstrates approved independent
+work and real process-kill/resume with the reviewed runtime.
+
+This does NOT establish a shipped production scheduler/Control/journal host,
+durable branch hosting, bounded-round execution, time-travel administration or
+complete default migration.
+The ordinary `compile`/`run` body path is still historical. The old body's
+crash demo and its conformance expectations are compatibility evidence, not
+proof of the new contract.
+
+Module-level runtime captures, ordinary loops and unsupported graph operations
+refuse in the current keyed source profile. Explicit codec/provider binding
+spellings and capability adapters are not all delivered. The runtime packaging
+choice is pending. General cleanup-completion precedence remains open; the Plan
+pivot does not decide it.
+
+## Amendment Record
+
+The September 6 owner decision reverses PR-1's sets-only Manifest and PR-2's
+source-site occurrence identity. It retains fail-closed versioning, restores
+independent-node parallelism and requires bounded rounds, the named recovery
+tiers and lineage-based history operations.
+
+The archived replay text is retained for its design and test history. Its
+“ordinary control flow executes unchanged,” “program order is order,” body
+retention and lost-parallelism claims are withdrawn, not current open questions.
+Other specification pages and older durable drafts must be reconciled against
+this contract where they still describe that model.

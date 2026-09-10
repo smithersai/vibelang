@@ -1,0 +1,558 @@
+# Durable Replay Guide History [Withdrawn body-execution guide, archived September 8, 2026]
+
+:::warning[Historical compatibility guide]
+This records the ordinary-body model withdrawn by the September 6 owner
+decision. It is not an alpha-0 Plan tutorial. Use the
+[current durable guide](/guide/durable-execution). The complete body example
+below remains checked as explicit `legacy-body` coverage; passing it does not
+establish current Plan support.
+:::
+
+
+Durable execution is opt-in. An **Action** defines a closed persistence
+boundary, and a **Flow** is an ordinary function whose Action calls are answered
+— and journaled — by the durable handler instead of running directly.
+
+`durable(...)` does not change what your function computes. It changes only
+which handler answers the effect requests the function's body issues. That is
+why ordinary control flow works inside a Flow: branches, loops, `let` bindings,
+closure capture, and recursion all execute unchanged. See
+[Durable Execution](/specification/durable-execution) §Flow for the normative
+statement and [Effects](/specification/effects) for the substrate.
+
+:::note Direction
+The Action and Flow model is accepted. Provider spelling, persisted-identity
+encoding, journal boundedness, wire encoding, external-control authorization,
+and deployment APIs remain under design. Names for those directional surfaces
+communicate intent rather than final spelling.
+:::
+
+:::warning Implementation checkpoint — (SA-2), 2026-09-06
+The native-backed SDK and ordinary CLI share a checked durable module stage.
+Executable Flow bodies support locals, loops, same-module helpers, recursion,
+module-initialization captures, async bodies and local Layers. Tests compile,
+sign, authenticate, execute, kill a process after a journal commit, and resume
+without repeating the committed Action.
+Executable timers also persist their wake deadline before suspension and retain
+it across process death; they do not occupy a worker lease while waiting.
+
+This is not the full model below. Imported closure modules, external capability
+providers, and executable-body signal/queue/fan-out/child-Flow drivers
+remain incomplete. Compatibility Plans implement some of those operations but
+are not a replacement for executable Flow support. The standalone delivery
+profile still has a narrower durable subset. Both profiles now use Go; they are
+not independent compiler implementations. An Effect Manifest alone does not
+prove that a body can execute.
+
+For the current executable-body host path, see `poc/examples/alpha0/demo.ts`.
+Authenticated body coordinators support `start`, `resume`, `execute`,
+`cancel` and read-only `inspect`; handles expose per-attempt replay counts.
+These host API spellings remain provisional.
+
+Codec validation does not make your input or an Action's returned data readonly.
+Authored code receives ordinary mutable objects and arrays; replay creates fresh
+values from the committed payload. Public Flow results are likewise independent
+of stored records. Inspection and cache-key callbacks still receive immutable
+evidence. Serialization remains a value boundary, not shared object identity.
+
+For durable cleanup Actions, use an explicit `try/finally` body. Native disposal
+methods, getters, setters, iterators and coercion methods cannot yet suspend a
+Flow; those uses get a source diagnostic instead of silently losing work.
+Ordinary non-suspending `using` and `await using` cleanup still works. The
+precedence of a cleanup failure over a pending failure remains under design.
+:::
+
+## Define an Action
+
+An Action closes over one function signature. `Action` and `durable` are both imported
+from the compiler-owned `vibelang:flows` module:
+
+```ts
+import { durable, Action } from "vibelang:flows"
+
+abstract class Compile extends Action<
+  (input: CompileInput) => Result<CompileOutput, CompileError>
+> {}
+
+abstract class Package extends Action<
+  (input: PackageInput) => Result<Artifact, PackageError>
+> {}
+```
+
+The compiler derives the input, success, and Error codecs from those types. The author does not repeat schemas in an Action constructor.
+
+Action values crossing a persistence or machine boundary must satisfy `Durable<T>`. Plain data derives this automatically. Functions, process handles, and other ephemeral values require an explicit durable representation or are rejected.
+
+That same contract decides what gets journaled: an effect request is journaled if
+and only if its answer satisfies it. `Clock.context()` answers with a service,
+which is not codec-representable, so it is re-answered by the handler stack on
+every resumption rather than replayed; `clock.now()` answers with a number, so it
+is journaled. There is no annotation or partition syntax to learn.
+
+## Build a Flow
+
+Import the compiler-recognized `durable` function and pass it a statically resolvable function:
+
+```ts
+import { durable } from "vibelang:flows"
+
+const Build = durable(function Build(
+  input: BuildInput,
+): Result<Artifact, CompileError | PackageError> {
+  const compiled = Compile.run({ source: input.source })!
+  return Package.run({ code: compiled.code })
+})
+```
+
+`durable` is ordinary call syntax, not a keyword. The compiler recognizes its resolved import identity, so aliases work and an unrelated function named `durable` remains ordinary. An inline function, declaration, or function-valued constant is accepted when the compiler can resolve it statically; a runtime-selected callback is rejected.
+
+The compiler emits the body in a resumable calling convention and never invokes
+it with proxy or symbolic values — not at compile time, and not during replay.
+`Compile.run` becomes a journaled effect request carrying the derived codecs for
+its input and answer. `compiled.code` is ordinary property access on the
+journaled answer: there is no symbolic value and no projection node. No Action
+implementation runs during compilation or inspection.
+
+### A complete alpha-0 source file
+
+This example compiles through `vibe check sum.vibe` and `vibe compile sum.vibe`.
+It declares the worker operation; it does not provide an implementation or run
+the Flow at module initialization. An authenticated host binds the Action to a
+worker before execution, as in the executable-body demo linked above.
+
+```ts [sum.vibe] legacy-body
+import { Action, durable } from "vibelang:flows"
+
+abstract class Double extends Action<
+  (input: { value: number }) => Result<{ value: number }, never>
+> {}
+
+export const Sum = durable((input: { values: number[] }): Result<{ total: number }, never> => {
+  let total = 0
+  for (const value of input.values) {
+    total += Double.run({ value })!.value
+  }
+  return { total }
+})
+```
+
+The durable source function does **not** disappear. The emitted Flow body is the
+thing that resumes an execution, so it must be present in every artifact that
+can create or resume one, reachable by the Flow's pinned source identity, and
+tree-shaking must not remove it. What is still refused is a *live function side
+table*: a coordinator never requires a value that did not arrive from the
+journal or from the Flow's declared input.
+
+Alongside the body the compiler publishes the Flow's **Effect Manifest** — the
+Action identities the Flow can reach, its capability requirement row, its
+external-input contracts, its failure row, and its site table **(PR-1)**. The
+Manifest is sets and tables. It carries no branches, no edges, and no execution
+counts: it bounds what a Flow *may request*, and it never predicts what a run
+will do.
+
+## Compilation Phases
+
+Durable programs have four distinct phases:
+
+1. **Compilation** emits the Flow body and its Effect Manifest without invoking the body.
+2. **Deployment build** resolves providers, checks the dependency closure, and partitions coordinator and worker artifacts.
+3. **Inspection** reads the Effect Manifest and reports the Flow's reachable Actions, requirement row, external-input contracts, and failure row **(PR-1)**. It never loads or invokes the Flow body or an Action implementation.
+4. **Execution** creates or resumes a durable run by executing the emitted body under the durable handler.
+
+Keeping the phases separate allows one Flow to deploy across separate worker
+artifacts. Inspection reports a **bound** on what a Flow may request; it is not
+a prediction of a run, and a branch whose condition is unknown is not reported at
+all, because the Manifest carries no control flow.
+
+Deployment artifacts use a canonical, domain-separated signed envelope over
+`{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}`. The
+coordinator verifies it against out-of-band trust roots before constructing a
+worker transport. Worker pools may use only a transport authorized for their
+declared sandbox and placement.
+
+The signature attests to **what a Flow is and what it may request**. It does not
+attest to what a run will do. See §What This Trades Away.
+
+A signature authenticates artifact provenance; it does not attest a live
+callback, prove what a remote worker loaded, or supply freshness, rollback
+protection, revocation, key custody, or sandbox isolation. Those controls are
+separate deployment responsibilities.
+
+## Provide Implementations
+
+Actions are abstract capabilities. Layers install ordinary function implementations and their policies:
+
+```ts
+import { Provider } from "vibelang/durable/bun"
+
+const CompileLive = Provider.provide(Compile, compileWithEsbuild, {
+  implementationId: "compile-bun",
+  implementationVersion: "1.0.0",
+  recovery: { mode: "repeatable", maxAttempts: 2 },
+  reuse: { kind: "content" },
+  target: "typescript-bun",
+})
+
+const PackageLive = Provider.provide(Package, packageArtifact, {
+  implementationId: "package-bun",
+  implementationVersion: "1.0.0",
+  recovery: { mode: "repeatable", maxAttempts: 2 },
+  reuse: { kind: "execution" },
+  target: "typescript-bun",
+})
+```
+
+The abstract Action owns the durable contract. A deployment layer chooses its implementation, placement, resource limits, and recovery policy.
+
+Two things this snippet used to get wrong, both worth knowing. Providers are
+registered through `Provider.provide` on the durable host entry point, not
+through `Action.provide` on `vibelang/provider` — that name exists but is a stub
+that throws `Action.provide is not part of the prototype runtime; use
+vibelang/durable/bun`. And the policies are plain objects, not constants:
+`Action.idempotent`, `Action.content`, and `Action.execution` do not exist.
+`mode` is one of `repeatable`, `downstream-deduplicated`, `manual`, and `kind`
+is one of `execution`, `memo`, `content` — see
+[Actions & Flows](/reference/actions-and-flows) §Recovery Policy for what each
+one grants.
+
+## Executable-body host handles
+
+The host-side `BodyExecutor` accepts an authenticated signed body deployment
+and a `DurableStore`. Once those are configured, its core control surface is
+ordinary TypeScript:
+
+```ts
+const handle = executor.start(input, { executionId: "build-42" })
+const output = await handle.result()
+const audit = handle.audit()
+const snapshot = executor.inspect("build-42")
+```
+
+`start` begins execution immediately. `status()` reads the stored status and
+`cancel(reason)` requests durable cancellation. After a coordinator restart,
+`executor.resume("build-42")` uses the stored input and the authenticated
+deployment pin; callers do not have to reconstruct or resupply the input.
+Committed Action answers are replayed before any new work is dispatched.
+
+`audit()` reports this attempt's replay/live-dispatch counts. It is undefined
+when attachment only reads an already-terminal execution: no body attempt ran.
+`inspect` reads a consistent body/manifest/execution/journal snapshot and does
+not evaluate executable JavaScript. Neither inspecting nor resuming may attach
+a different body or routing manifest to the same execution identity.
+
+These are the implemented core body-handle methods, not the full durable draft:
+signal, child-Flow and suspension control methods remain unimplemented on this
+path. The source-backed crash/restart example is
+`poc/examples/alpha0/demo.ts`; run it with `bun poc/examples/alpha0/demo.ts`.
+
+## Control Flow in a Flow
+
+Control flow inside a Flow is ordinary TypeScript control flow, executed
+ordinarily. A branch on an Action's answer is just a branch:
+
+```ts
+import { durable } from "vibelang:flows"
+
+const Release = durable(function Release(
+  input: ReleaseInput,
+): Result<Deployment | FailureReport, TestError | DeployError | ReportError> {
+  const tested = Test.run({ source: input.source })!
+  if (tested.passed) {
+    return Deploy.run({ artifact: tested.artifact })
+  }
+  return ReportFailure.run({ report: tested.report })
+})
+```
+
+Loops, recursion, higher-order calls, and closures over mutable local state are
+all permitted, and none of them needs a template, a ceiling, or an annotation:
+
+```ts
+const Crawl = durable(function Crawl(
+  input: CrawlInput,
+): Result<Page[], FetchError> {
+  const collected: Page[] = []
+  for (let page = 0; page < input.pages; page++) {
+    const batch = Fetch.run({ page })!
+    collected.push(...batch.items)
+    if (batch.done) break
+  }
+  return collected
+})
+```
+
+This is a **liberalization**, and it is the whole point of the pivot. The
+previous model refused every one of these forms, because each would have had to
+become a node in a statically finite plan. Under replay the body is just run,
+and the journal — not a template — is what makes the run reproducible.
+
+What is restricted is not control flow but **observation**. A Flow body must not
+observe the wall clock, randomness, the environment, mutable host state,
+services, or I/O except through an effect request its handler answers, and that
+obligation holds on **every execution and every resumption**, not only during
+compilation. Route them through capabilities; see
+[Durable Execution](/specification/durable-execution) §Flow Determinism for the
+seven obligations.
+
+## What This Trades Away
+
+Ordinary control flow inside a Flow is not free, and the costs are stated here so
+neither is discovered later and reported as a regression.
+
+1. **Static flow-version divergence detection.** The previous model could decide
+   statically and totally whether an in-flight execution could move to a new Flow
+   version, by diffing two plan templates node by node, before a coordinator
+   touched a journal. No such total static answer exists under replay. What
+   replaces it is a partial static answer — pinned source digest, fail closed
+   **(PR-3)**, plus a Manifest site-table diff **(PR-1)** — and a dynamic one that
+   **names the offending source site**, which a node diff never did, but only
+   after an attempt has started.
+2. **The signable pre-execution artifact.** An operator could previously read and
+   sign *what a Flow will do*. The signed artifact now attests to what a Flow
+   **is** and what it **may request**. One honest correction shrinks the loss: the
+   old artifact was already a template rather than a trace. What is actually lost
+   is *bounded* may — the static ceilings that made the template finite.
+3. **Implicit fan-out parallelism.** See §Ordering and Concurrency.
+
+The Effect Manifest buys back cost 2 and roughly half of cost 1. **It is not a
+free trade**, and the Manifest must not be described as equivalent to the
+artifact it replaces. The full accounting, with tables, is
+[Durable Execution](/specification/durable-execution) §What Replay Trades Away.
+
+## Ordering and Concurrency
+
+Effect ordering inside a Flow body is the **program order of the body**.
+Concurrency is started explicitly through a recognized combinator; the durable
+runtime assigns every concurrent request a deterministic submission index before
+dispatch, journals the completion order it observed, and reproduces that order on
+resumption.
+
+The previous model executed independent Action calls concurrently with no author
+annotation. That is gone, and it is a capability loss rather than a tidy-up: for
+a workload whose Actions are model calls, a 20-way independent fan-out that
+becomes sequential is a wall-clock regression measured in minutes.
+
+:::note Open — is that loss acceptable?
+This is a **product** decision, not an engineering one, and it is not made here
+or on any page. It is recorded in `DECISIONS.md` §Durable execution and in
+[Durable Execution](/specification/durable-execution) §What Replay Trades Away
+with the constraint that matters: if the loss is *not* acceptable, an explicit
+concurrency combinator has to ship in the same release as the first Flow that
+needs one — it cannot be follow-on work, because a Flow written sequentially and
+later parallelized is a changed body with live executions.
+
+Separately open: `Promise.race` and `Promise.any` must reach the deterministic
+scheduler, but how an *order-independent* combinator such as `Promise.all` does
+is unspecified, and two locked obligations are in tension until it is settled.
+:::
+
+There is also no rule yet for **concurrent-sibling failure**: when one arm of an
+explicit combinator fails, what happens to the requests still in flight —
+cancelled, awaited, or abandoned — and what is journaled for them is stated by no
+page. The old model's "a failed node blocks its dependent cone" spelling went
+with the plan and has no replacement. Recorded here rather than answered.
+
+## Replay and Retry
+
+Every completed Action invocation is journaled for its Flow execution. After a restart, the same execution observes the recorded success or Error Result instead of repeating completed work.
+
+Resumption **re-executes the Flow body from its entry point**. Each request the
+body issues is answered from the journal entry at its site identity and
+occurrence index, in order, until the journal is exhausted; the first request
+with no journal entry is dispatched for real. A journal entry's key is
+`(siteIdentity, occurrenceIndex)`, with the occurrence index minted at
+submission rather than at completion **(PR-2)**, so two requests at different
+sites may complete in either order and still converge.
+
+If the body issues a request whose site identity does not match the journal
+entry at that occurrence index, or completes while journal entries remain
+unconsumed, the runtime reports a **divergence naming the offending source
+site**, fails the attempt, does not commit, and abandons the execution.
+
+An execution is pinned to the Flow source identity it started under. A
+coordinator whose Flow source identity differs abandons that execution rather
+than replaying it **(PR-3)**. Until a versioning facility is specified, editing
+a Flow body with live executions is an operational migration, not a code change.
+
+:::note Open
+A Flow body containing an unbounded loop can journal without bound, and because
+each resumption re-executes the whole prefix, an execution with *n* requests
+resumed *n* times costs O(n²) body execution. The previous model bounded this by
+construction through static ceilings on plan nodes, loop rounds, and fan-out
+steps. **No replacement is specified.** A runtime should impose a journal-size
+limit and fail closed rather than truncate. A continue-as-new equivalent is open.
+:::
+
+Retry safety is a separate decision:
+
+- **idempotent** work may repeat after an ambiguous crash
+- **compensable** work may repeat with an explicit rollback path
+- **irreversible** work does not retry after ambiguity
+
+The safe default is execution-local replay with no ambiguous retry unless the implementation declares how repetition is safe.
+
+## Durable Sleep
+
+The current timer spelling accepts a non-negative safe integer in milliseconds:
+
+```ts
+import { durable, sleep } from "vibelang:flows"
+
+export const Pause = durable((input: { delayMs: number }) => {
+  sleep(input.delayMs)
+  return { done: true }
+})
+```
+
+The coordinator persists an absolute wake time before waiting. Restart keeps
+that time instead of starting the delay again, and a completed timer replays
+its `null` answer. Each visit to a timer inside a loop has its own occurrence
+identity. Cancellation and the execution deadline can end the wait; no worker
+lease is held before the timer is due. The spelling remains provisional.
+
+## Wait for an External Signal
+
+The single-delivery signal form is:
+
+```ts
+import { durable, waitSignal } from "vibelang:flows"
+
+const Approval = durable(function Approval(input: { requestId: string }) {
+  const decision = waitSignal<{ approved: boolean; ticket: string }>(
+    "approval.decided",
+  )
+  return { requestId: input.requestId, decision: decision }
+})
+```
+
+The compiler puts the literal signal identity and derived payload schema in the
+Flow's Effect Manifest **(PR-1)**, so a delivery client can address, validate,
+and authorize a wait *before* the execution reaches it; the sender does not
+provide or widen a schema. Execution initialization pins that contract. A delivery addresses the exact execution and signal, supplies an
+idempotency key, authenticates the sender's authority, and persists one
+canonical schema-checked payload. Repeating the same key and payload is
+harmless; a conflicting reuse is rejected. Waiting holds no worker lease, and
+delivery and consumption survive restart and coordinator races.
+
+Signal delivery, cancellation, failure, and timer scheduling notify waiters
+only after the state transition commits. Notifications are a latency
+optimization; a coordinator must recover from missed or cross-process
+notifications by re-reading persisted state.
+
+:::note Direction
+The `waitSignal` spelling, sender authorization protocol, payload limits,
+queues and broadcast, schema migration, and remote transport remain open.
+:::
+
+## Execution Handles
+
+The long-running control surface provides:
+
+- `executor.start(input, { executionId })` starts or resumes work and returns a
+  `DurableExecutionHandle` immediately;
+- `executor.resume(executionId)` reconstructs a handle from the persisted,
+  digest-verified input, including for an already-terminal execution;
+- `handle.status()` reads committed status, `handle.result()` awaits the typed
+  Flow success or the modeled terminal failure, `handle.cancel(reason?)`
+  durably cancels, and
+  `handle.signal(signalId, { idempotencyKey, payload })` performs authenticated
+  handle-scoped delivery; and
+- `executor.execute(...)` remains the start-and-await convenience.
+
+Every method is bound to the handle's execution id; a handle cannot address a
+sibling run.
+
+:::note Direction
+The exact method names, remote control transport, principal authorization,
+subscriptions, history and fork administration, and migration remain open.
+:::
+
+## Memoization and Content Caching
+
+Cross-execution reuse has two meanings:
+
+- **Memoization** records one acceptable result for an explicit key, even when the operation is nondeterministic.
+- **Content caching** asserts that complete keyed inputs, implementation, dependencies, and execution semantics reproduce an equivalent result.
+
+These policies are never interchangeable. A memoized model response must not be promoted to a hermetic shared cache entry.
+
+## Distributed Builds
+
+A deployment build emits:
+
+- a coordinator artifact, carrying the emitted Flow bodies it can create or resume executions of
+- several tree-shaken TypeScript worker artifacts
+- derived RPC bindings and schemas
+- source maps and the Effect Manifest — a bound on what each Flow may request, not an execution graph **(PR-1)**
+- a signed routing manifest
+
+Tree-shaking must not remove an emitted Flow body from an artifact that can
+resume an execution of it.
+
+Different worker pools can run different implementations of the same Action. Placement belongs to the deployment layer, so the durable signature stays independent of one machine topology.
+
+Worker artifacts are **TypeScript**. A native or Wasm implementation reaches the
+host through the ordinary foreign boundary. Whether a worker pool may be a
+non-JavaScript *process* at all, and what its ABI contract would be, is stated by
+no current page — the near-native and Wasm compilation targets were withdrawn on
+2026-08-23 — so this page does not assert it.
+
+## Security Boundary
+
+The Action signature describes data, not authority. Worker implementations receive only their declared providers, and coordinator-to-worker messages are validated against derived codecs.
+
+OS isolation, secret delivery, fencing, artifact storage, and worker attestation remain runtime responsibilities built around the compiler-derived contract.
+
+A manifest signature is an admission check, not sandbox attestation. Production
+also needs protected signing-key custody, rotation/revocation and rollback
+policy, authenticated transport, and evidence that a worker actually loaded the
+authorized artifact.
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+What this page taught before the pivot is recorded here rather than deleted, so a
+reader who was relying on it can see what happened to it.
+
+**Withdrawn — the plan lowering.** "The compiler lowers the function's checked
+syntax, control flow, and data flow. … `Compile.run` becomes an Action node and a
+typed symbolic value. Accessing `compiled.code` creates a projection, and passing
+that value to `Package.run` creates a data edge." There are no symbolic values,
+no projections, and no edges. Property access on a journaled answer is property
+access. The half that survives — the compiler never invokes the body with proxy
+values — is now stronger, because it holds during replay too.
+
+**Inverted — the disappearing source function.** "The durable source function
+disappears after compilation." It is now the opposite: the emitted body must be
+*present* in any artifact that can resume an execution. The half of that sentence
+which refused a live function side table survives verbatim.
+
+**Withdrawn — "Control Flow in Plans".** "Branches on Flow input or Action output
+emit plan nodes and compile both arms" and "Pure operations on symbolic values
+become portable expression IR. An operation the IR cannot represent is a compile
+error." The whole refusal category is gone: no operation is refused for lacking
+an IR representation. That section's code sample also used **expression-form
+`if`**, a form removed from the language; it was a syntax error, independent of
+the pivot, and is replaced above.
+
+**Amended — the phase names.** "Template compilation" became **compilation** and
+"Plan/preview" became **inspection**. The obligation that neither phase executes
+an Action implementation is unchanged; only the artifact inspection reads changed,
+from a plan to the Effect Manifest. The old sentence "plan mode reports the
+conditional or parameterized template" is withdrawn outright rather than
+reworded: the Manifest carries no control flow, so an unresolved branch is not
+reported at all.
+
+**Withdrawn — implicit concurrency.** Independent Action calls no longer run
+concurrently by default. That is a capability loss, recorded as one in
+§Ordering and Concurrency, not a simplification.
+
+**Amended — what a signature attests.** The envelope is now over
+`{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}`
+rather than over a canonical Plan. Trust roots out of band and the prohibition on
+a self-introduced signing authority are unchanged; what the signature *claims* is
+narrower.
+
+Sentences on this page marked **(PR-1)**, **(PR-2)**, or **(PR-3)** rest on
+decisions in `DECISIONS.md` §Pending ratification that are **provisional** until
+the owner signs off. Grep for the marker to find every claim that depends on one.
+

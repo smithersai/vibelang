@@ -1,11 +1,23 @@
 # Effects [Normative model for effect requests, handlers, and one-shot continuations]
 
-Status: the request/handler model, one-shot resumption, the journaling classifier, and the determinism obligations are **locked**. Versioning under replay and journal boundedness are **open**.
+Status: the general request/handler model, one-shot resumption and determinism
+obligations are **locked**. The ordinary-body durable journaling classifier and
+replay/versioning passages below belong to the withdrawn durable model.
+
+:::warning[Durable model boundary — 2026-09-08]
+The current [durable Plan contract](/specification/durable-execution) supersedes
+this page's ordinary-body execution, codec-only journaling classification and
+source-occurrence journal claims. Those passages are historical where they
+conflict with Plans, content keys and lineage frames. This does not withdraw
+the general delimited effect substrate for ordinary functions and Action
+implementations. The remaining detailed durable passages need reconciliation;
+they must not be used to reintroduce body replay as the product model.
+:::
 
 This page defines the substrate that [Failure Semantics](/specification/failures),
 [Requirements](/specification/requirements), and [Durable
 Execution](/specification/durable-execution) are written against. Nothing on this
-page is spellable in `.sm`. It describes what the compiler emits and what a
+page is spellable in `.vibe`. It describes what the compiler emits and what a
 conforming runtime MUST do; it does not add an authoring surface. Every authored
 form named here — postfix `!`, `Capability.context()`, `Layer.provide`,
 `durable(...)` — keeps exactly the source syntax and observable behavior its own
@@ -28,7 +40,7 @@ A request MUST have exactly one of three kinds:
 | `perform` | run an effect whose answer crosses a persistence boundary | the handler MUST resume with the answer, or MUST NOT resume |
 | `abort` | propagate a failure out of the enclosing computation | the handler MUST NOT resume |
 
-A request MUST NOT be a value in `.sm`. There MUST be no source syntax that
+A request MUST NOT be a value in `.vibe`. There MUST be no source syntax that
 constructs, names, stores, inspects, compares, or forwards one. Requests are
 produced only by compiler lowering of the constructs defined below.
 
@@ -48,7 +60,7 @@ When a computation issues a request, the remainder of that computation up to its
 nearest enclosing handler delimiter is its **continuation**.
 
 - A continuation MUST be resumable **at most once**. A runtime MUST NOT expose multi-shot resumption, and MUST treat a second resumption of the same continuation as an invariant failure.
-- A continuation MUST NOT be reified as a value visible to authored `.sm`. No source construct MUST be able to obtain, name, store, compare, serialize, or resume one.
+- A continuation MUST NOT be reified as a value visible to authored `.vibe`. No source construct MUST be able to obtain, name, store, compare, serialize, or resume one.
 - The emitted representation of a resumable computation and its resumption protocol are a **compiler-owned calling convention**. They MUST NOT appear in an authored type, in the value syntax of a public declaration, or in a diagnostic. A conforming implementation MAY choose any representation that satisfies this section.
 - A computation that has completed, or that a handler has declined to resume, MUST NOT be resumable.
 
@@ -92,19 +104,33 @@ function may request, directly or transitively.
 - A function whose row is empty MUST NOT be emitted in the resumable calling convention. This is the same obligation [Compatibility](/specification/compatibility) states as "infallible functions MUST NOT be wrapped".
 - A call whose callee the compiler cannot resolve, and whose callee type carries no row, MUST be rejected rather than lowered with an assumed convention.
 
-:::danger The lowering in this section is not wired — (SA-3), measured 2026-08-28
-The *substrate* is present but is not certified complete: `poc/src/runtime/effect.ts`
-implements the three request kinds, `Continuation`, `Handler`, `Resumable`,
-`handle`, `resultFrame`, `runHandled`, `capabilityHandler`, and `__vsGet` /
-`__vsPerform` / `__vsPropagate`, and it records seven questions (Q-A…Q-G) this
-page does not answer. Nothing reaches it. That module is not re-exported from the
-runtime index, and the compiler emits no call into it — a grep for those symbols
-across `poc/src/language/compile.ts`, `poc/src/language/semantic.ts`, and `src/`
-returns nothing.
+:::warning Implementation checkpoint — (SA-3), 2026-09-06
+The substrate is now reached by emitted programs. Both backends lower
+expression-position propagation through Result delimiters. The JS emitter also
+installs lexical capability handlers and compiles ordinary Flow bodies into
+journaled executable artifacts. Public calls stay eager; the emitted calling
+convention is compiler-owned.
 
-It was previously described here as "complete", and that claim was false. Three
-defects were measured in it on 2026-08-28, all of them unreachable only because
-nothing is wired to the module.
+An explicitly annotated fallible body with no lowered suspension can omit its
+generator frame. It still checks the final Result's runtime brand after
+`finally` and resource disposal, and preserves the authored lexical receiver.
+Inferred contracts and private durable resumable bodies retain their frames.
+This is a representation optimization, not a change to the effect row or to
+which programs can propagate failures.
+
+This is not a claim that the entire effect model is complete. Callable
+requirement assignment has shared JS/Go regression coverage; versioned
+declaration round-trips have separate source-free JS and Go execution tests.
+The Go tests share one Go prelude; cross-backend runtime linking is not certified.
+Both source checkers refuse authored generators with non-empty failure or
+capability rows; shared execution controls retain ordinary empty-row generators,
+including generators that provide their own capability internally.
+Cleanup that issues journaled Actions is exercised, but
+a `finally` return or second typed failure during active propagation still
+needs an explicit completion-precedence decision and consistent lowering.
+
+The following defects were measured and fixed in the substrate on 2026-08-28,
+before it was wired. They remain useful historical regression rationale:
 
 **A forgeable failure key.** Until 2026-08-28 both `__vsPropagate` and `resultFrame` answered "which declared
 failure is this value?" by reading `error.constructor` — an ordinary property
@@ -134,19 +160,6 @@ inward, so at nesting depth two the body's `catch` clauses were skipped and the
 error escaped as a host exception; at depth one they ran. Forwarding is now
 transparent in both directions, with panics still unwinding past every frame.
 
-Because the module is unwired none of this was a reachable fail-open, but wiring
-it in the state it was in would have made a forgeable failure key and a
-swallowable declared failure reachable across typed failures, dependency
-injection, and durable execution at once.
-
-What ships is the pre-pivot early-return lowering. A fallible function compiles
-to an ordinary function with early `return __vsResultFailure(…)` / trailing
-`return __vsResultSuccess(…)` — not a delegated suspension. So the resumable
-calling convention (§Rows Are Types), `!` as an `abort` request (below), and
-`Layer.provide` installing a handler (below) are all obligations this
-implementation does not yet meet; `Layer.provide` uses an ambient environment
-frame plus a Promise settlement hook instead. This page carries no `(SA-n)`
-marker in [Specification Status](/specification/index) and should.
 :::
 
 ## Propagation Is an Abort Request
@@ -202,7 +215,7 @@ deterministic scheduling, versioning, and journal boundedness are specified in
 The resumable calling convention is a lowering detail, not a language surface.
 Concretely, and normatively:
 
-1. `.sm` MUST have no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()` step. A program is entered by calling a function.
+1. `.vibe` MUST have no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()` step. A program is entered by calling a function.
 2. No source construct MUST be able to obtain, name, store, or resume a continuation.
 3. The convention MUST NOT be named in a diagnostic.
 4. An **authored** `function*` MUST NOT declare or infer a non-empty effect row. The resumable generator form is reserved for compiler emission.
