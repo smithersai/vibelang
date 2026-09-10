@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "format": "git-bundle+file-go-proxy",
   "repository": "https://github.com/smithersai/TypeScript.git",
-  "revision": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c",
+  "revision": "bf7f49d6f5ad3254d03ed83dd07ab510ae4e582a",
   "requestedLedgerStrategy": "git-subtree-squash",
   "sourceBundle": "typescript.bundle",
   "dependencyProxy": "go-proxy",
@@ -18,6 +18,10 @@
     {
       "path": "github.com/google/go-cmp",
       "version": "v0.7.0"
+    },
+    {
+      "path": "github.com/klauspost/compress",
+      "version": "v1.19.0"
     },
     {
       "path": "github.com/klauspost/cpuid/v2",
@@ -106,6 +110,10 @@
     "go-proxy/github.com/google/go-cmp/@v/v0.7.0.info": "635bbe64cceaad0e5bbd897a78cac24ca184ea8c91394443cc30ee35be33f649",
     "go-proxy/github.com/google/go-cmp/@v/v0.7.0.mod": "31c874a1d2a18e62b0550f823ce7a575c8dec7f8fd9d4fa1959bb12d7f7c0f14",
     "go-proxy/github.com/google/go-cmp/@v/v0.7.0.zip": "64a9ce046f2c320e3783fba0d1f4a15f8a18f0b009b67bf27f7630919db3f539",
+    "go-proxy/github.com/klauspost/compress/@v/list": "8e802639ca58586273726df405f6382bb95e7a28af1554860d852eb94ed33717",
+    "go-proxy/github.com/klauspost/compress/@v/v1.19.0.info": "74f73470facca5706c9b74aae337824ec3369251a65f32632d93d4a9429e09e0",
+    "go-proxy/github.com/klauspost/compress/@v/v1.19.0.mod": "0d66d6069d9e2fb875c5b464d15b2c80232cfc8991e6f88336ce461ca810e0cf",
+    "go-proxy/github.com/klauspost/compress/@v/v1.19.0.zip": "2eaca328cea81dd4797b6eeadc0fe56cfe501e43fca5d1512f12b39d47e0d8f6",
     "go-proxy/github.com/klauspost/cpuid/v2/@v/list": "2860a075bb69d2b5d9d10a1c1af7e937c750cec1f993912461ab69dda5a1fadc",
     "go-proxy/github.com/klauspost/cpuid/v2/@v/v2.2.10.info": "8ed11767f58c92182f4738dbdbb13df5196a1e02265e9e2e118e28626f071cb9",
     "go-proxy/github.com/klauspost/cpuid/v2/@v/v2.2.10.mod": "ff61d47f254f2333bf44a8ff4187a2f2e973693807c10025033bb37143577237",
@@ -178,6 +186,6 @@
     "go-proxy/gotest.tools/v3/@v/v3.5.2.info": "529bc32e61dd1a367fabf98e7acd7eef8eb3846b4077ea7be005f5ffdacc00ea",
     "go-proxy/gotest.tools/v3/@v/v3.5.2.mod": "e9353cd880d398afaacb0ba54e12575213b975f3cd7991d7b42aa3bfe5f6f9d6",
     "go-proxy/gotest.tools/v3/@v/v3.5.2.zip": "d7c40ae135e4a34dee9ca4847ad18208f138847721e693647b897259287a1d4b",
-    "typescript.bundle": "3e9fc92ab7d64ff35ffbbc5e71e2ac546b2db17d8ff9d60520313576214e787f"
+    "typescript.bundle": "80266812329e47292812cad5c7b94f7cfb50c4d6e8eb92e6e7b7165a55587d25"
   }
 }

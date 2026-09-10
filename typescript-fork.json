@@ -4,6 +4,6 @@
   "upstreamRepository": "https://github.com/microsoft/TypeScript.git",
   "vendorPath": "vendor/typescript",
   "strategy": "git-subtree-squash",
-  "revision": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c",
-  "upstreamBaseline": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c"
+  "revision": "bf7f49d6f5ad3254d03ed83dd07ab510ae4e582a",
+  "upstreamBaseline": "bf7f49d6f5ad3254d03ed83dd07ab510ae4e582a"
 }
