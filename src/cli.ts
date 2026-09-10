@@ -1,49 +1,50 @@
+import {
+  MAX_CLI_SOURCE_BYTES,
+  MAX_TEST_PROJECT_BYTES,
+  MAX_TEST_PROJECT_FILES,
+  DEFAULT_VIBELANG_PROJECT_BUDGET,
+  rowsNotComputed,
+  compareText,
+  isVibeLangFile,
+  isRecord,
+  readBoundedUtf8File,
+  canonicalFuturePath,
+  commonSourceRoot,
+  loadVibeLangProject,
+  sourceAssetCompilerForProject,
+  compileVibeLangFiles,
+  authoredLineColumn,
+  formatGoDiagnostic,
+  commitProjectFiles,
+  type CliDiagnostic,
+  type VibeLangFileResult,
+} from "./project-build.js";
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
-  closeSync,
   existsSync,
-  fstatSync,
   lstatSync,
-  mkdirSync,
   mkdtempSync,
-  openSync,
   readFileSync,
-  readSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Cli, z } from "incur";
-import ts from "typescript-js";
+import { getNativeCompiler } from "../poc/dist/compiler/native.js";
 
 import {
   analyzeProject,
   analyzeSource,
-  checkEmittedProject,
-  composeSourceMaps,
-  compileProject,
-  DEFAULT_RUNTIME_IMPORT,
-  emitProjectDeclarations,
-  formatSmithersSource,
-  startSmithersLanguageServer,
-  validateSmithersTsconfig,
+  formatVibeLangSource,
+  startVibeLangLanguageServer,
+  validateVibeLangTsconfig,
 } from "../poc/dist/language/index.js";
-import {
-  AssetCompiler,
-  ComptimeCompiler,
-  compileComptimeIntrinsics,
-  compileSourceAssetModules,
-  DEFAULT_SCHEMA_RUNTIME_IMPORT,
-  digest as comptimeDigest,
-  type AssetDependency,
-  type ComptimeLoweringProvenance,
-} from "../poc/dist/build/index.js";
+import { compileSourceAssetModules } from "../poc/dist/build/index.js";
 import {
   compileEffectManifest,
   type DurableSourceActionBinding,
@@ -52,27 +53,16 @@ import { canonicalJson } from "../poc/dist/durable/value.js";
 import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
 import {
   GoBackendFailure,
+  asGoBackendFailure,
   invokeGoBackend,
   resolveGoDiagnosticFile,
-  type GoBackendDiagnostic,
 } from "./go-backend.js";
-import {
-  buildRelativeRuntimeGraph,
-  transpileRelativeRuntimeGraph,
-} from "./relative-runtime-graph.js";
+import { buildRelativeRuntimeGraph } from "./relative-runtime-graph.js";
 
 const version = "0.0.1";
-const MAX_CLI_SOURCE_BYTES = 2 * 1024 * 1024;
-const MAX_TEST_PROJECT_BYTES = 16 * 1024 * 1024;
-const MAX_TEST_PROJECT_FILES = 1_024;
-const DEFAULT_SMITHERS_PROJECT_BUDGET = Object.freeze({
-  maximumFileBytes: MAX_CLI_SOURCE_BYTES,
-  maximumTotalBytes: MAX_TEST_PROJECT_BYTES,
-  maximumFiles: MAX_TEST_PROJECT_FILES,
-});
 
 const files = z.object({
-  files: z.array(z.string()).optional().describe(".sm, TypeScript, or JavaScript source files"),
+  files: z.array(z.string()).optional().describe(".vibe, TypeScript, or JavaScript source files"),
 });
 
 const compileOptions = z.object({
@@ -95,19 +85,11 @@ const compileOptions = z.object({
 });
 
 const backendOption = z.enum(["js", "go"]).default("js")
-  .describe("Compiler backend; Go is experimental");
+  .describe("Go-engine delivery profile: js uses the SDK pipeline; go uses direct native emission");
 const backendCompileOptions = compileOptions.extend({ backend: backendOption });
 
 type CompileOptions = z.infer<typeof compileOptions>;
 
-interface CliDiagnostic {
-  readonly code: string;
-  readonly severity: "error" | "warning";
-  readonly message: string;
-  readonly file?: string;
-  readonly line?: number;
-  readonly column?: number;
-}
 
 /**
  * Why a result carries no `rows` key.
@@ -124,72 +106,11 @@ const GO_BACKEND_ROWS_UNAVAILABLE =
   "diagnostics, artifacts, and emitSkipped only, so this run observed no rows at all. " +
   "Remedy: re-run with --backend js to observe rows.";
 
-function rowsNotComputed(stage: string): string {
-  return `requirement rows were not computed: the ${stage} stage reported errors before the row analysis ran`;
-}
 
-interface SmithersFileResult {
-  readonly input: string;
-  readonly output?: string;
-  readonly diagnostics: readonly CliDiagnostic[];
-  /**
-   * Requirement and checked-failure rows per authored function. Present only
-   * when this run actually computed them; see `rowsUnavailable`.
-   */
-  readonly rows?: Readonly<Record<string, { readonly failures: readonly string[]; readonly requirements: readonly string[] }>>;
-  /** Set exactly when `rows` is absent, naming why the rows are unknown. */
-  readonly rowsUnavailable?: string;
-  readonly declarations?: readonly string[];
-  readonly sourceMap?: string;
-  readonly assets?: {
-    readonly cacheIdentity: string;
-    readonly modules: readonly {
-      readonly sourceFileName: string;
-      readonly outputFileName: string;
-      readonly logicalKey: string;
-      readonly contentKey: string;
-      readonly loader: string;
-      readonly cacheHit: boolean;
-      readonly dependencies: readonly AssetDependency[];
-      /** Logical keys of the generated sibling modules this one imports. */
-      readonly references: readonly string[];
-      /** 0 for an authored asset request; 1..4 for a loader-declared edge. */
-      readonly depth: number;
-    }[];
-  };
-  readonly comptime?: {
-    readonly identity: string;
-    readonly cacheIdentity: string;
-    readonly provenance: ComptimeLoweringProvenance;
-    readonly calls: readonly {
-      readonly start: number;
-      readonly end: number;
-      readonly line: number;
-      readonly column: number;
-      readonly key: string;
-      readonly logicalKey: string;
-      readonly cacheHit: boolean;
-      readonly dependencies: readonly AssetDependency[];
-    }[];
-  };
-}
 
-interface LoadedSmithersProject {
-  readonly rootDir: string;
-  readonly sources: readonly { readonly fileName: string; readonly source: string }[];
-  readonly runtimeSeeds: readonly {
-    readonly fileName: string;
-    readonly source: string;
-    readonly bytes: number;
-  }[];
-  readonly totalBytes: number;
-}
 
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
 
-function unsupportedSmithersOptions(
+function unsupportedVibeLangOptions(
   options: CompileOptions,
   allowed: ReadonlySet<keyof CompileOptions>,
 ): string[] {
@@ -215,9 +136,6 @@ function finishCompiler(status: number): undefined {
   return undefined;
 }
 
-function isSmithersFile(file: string): boolean {
-  return extname(file).toLowerCase() === ".sm";
-}
 
 function requireInputs(inputFiles: readonly string[] | undefined): readonly string[] {
   if (!inputFiles || inputFiles.length === 0) throw new TypeError("at least one input file is required");
@@ -237,69 +155,23 @@ interface DurablePlanConfig {
   readonly actions: readonly DurableSourceActionBinding[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
 
 function isPlainAsciiIdentifier(value: string): boolean {
   if (!/^[$A-Z_a-z][$0-9A-Z_a-z]*$/.test(value)) return false;
-  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, value);
-  return scanner.scan() === ts.SyntaxKind.Identifier && scanner.scan() === ts.SyntaxKind.EndOfFileToken;
+  const token = getNativeCompiler().tokenAt({ text: value, offset: 0 }).token;
+  return token?.kind === "Identifier" && token.start === 0 && token.end === value.length;
 }
 
-function readBoundedUtf8File(fileName: string, maximumBytes: number, description: string): {
-  readonly fileName: string;
-  readonly source: string;
-  readonly bytes: number;
-} {
-  const absolute = realpathSync(resolve(fileName));
-  const descriptor = openSync(absolute, "r");
-  let bytes: Buffer;
-  try {
-    const metadata = fstatSync(descriptor);
-    if (!metadata.isFile()) throw new TypeError(`${description} must be a regular file`);
-    if (metadata.size > maximumBytes) throw new TypeError(`${description} exceeds ${maximumBytes} bytes`);
-    const bounded = Buffer.allocUnsafe(maximumBytes + 1);
-    let offset = 0;
-    while (offset < bounded.byteLength) {
-      const count = readSync(descriptor, bounded, offset, bounded.byteLength - offset, null);
-      if (count === 0) break;
-      offset += count;
-    }
-    if (offset > maximumBytes) throw new TypeError(`${description} exceeds ${maximumBytes} bytes`);
-    bytes = bounded.subarray(0, offset);
-  } finally {
-    closeSync(descriptor);
-  }
-  let source: string;
-  try {
-    source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    throw new TypeError(`${description} is not valid UTF-8`);
-  }
-  return { fileName: absolute, source, bytes: bytes.byteLength };
-}
 
 function assertNoDuplicateJsonKeys(source: string, fileName: string): void {
-  const json = ts.parseJsonText(fileName, source);
-  const visit = (node: ts.Node): void => {
-    if (ts.isObjectLiteralExpression(node)) {
-      const names = new Set<string>();
-      for (const property of node.properties) {
-        if (!ts.isPropertyAssignment(property) || !ts.isStringLiteral(property.name)) continue;
-        if (names.has(property.name.text)) {
-          const position = json.getLineAndCharacterOfPosition(property.name.getStart(json));
-          throw new TypeError(
-            `durable bindings contain duplicate key ${JSON.stringify(property.name.text)} at ` +
-            `${position.line + 1}:${position.character + 1}`,
-          );
-        }
-        names.add(property.name.text);
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(json);
+  const json = getNativeCompiler().inspect([{ path: basename(fileName), text: source, scriptKind: "json" }]).files[0]!;
+  const duplicate = json.jsonDuplicateKeys![0];
+  if (!duplicate) return;
+  // The caller has already required strict JSON. Decode only the native
+  // parser's exact key token, preserving escaped surrogate/code-point identity.
+  const key: unknown = JSON.parse(source.slice(duplicate.start, duplicate.start + duplicate.length));
+  const position = authoredLineColumn(source, duplicate.start);
+  throw new TypeError(`durable bindings contain duplicate key ${JSON.stringify(key)} at ${position.line}:${position.column}`);
 }
 
 function readDurablePlanConfig(fileName: string): DurablePlanConfig {
@@ -328,8 +200,8 @@ function readDurablePlanConfig(fileName: string): DurablePlanConfig {
     if (typeof binding.moduleSpecifier !== "string" || binding.moduleSpecifier.trim() === "") {
       throw new TypeError(`durable action binding ${index} needs moduleSpecifier`);
     }
-    if (binding.moduleSpecifier === "smithers:flows") {
-      throw new TypeError(`durable action binding ${index} cannot replace smithers:flows`);
+    if (binding.moduleSpecifier === "vibelang:flows") {
+      throw new TypeError(`durable action binding ${index} cannot replace vibelang:flows`);
     }
     if (typeof binding.exportName !== "string" || !isPlainAsciiIdentifier(binding.exportName)) {
       throw new TypeError(`durable action binding ${index} needs a non-keyword identifier exportName`);
@@ -344,181 +216,42 @@ function readDurablePlanConfig(fileName: string): DurablePlanConfig {
   };
 }
 
+/** A successful inspection may publish bytes, but never clobber any input that
+ * contributed to the inspected identity. Both profiles share these guards. */
+function writeDurableInspection(
+  outFile: string | undefined,
+  bytes: string,
+  protectedFiles: readonly string[],
+  kind: "Plan" | "Manifest",
+): string | undefined {
+  if (outFile === undefined) return undefined;
+  const requested = resolve(outFile);
+  if (lstatSync(requested, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    throw new TypeError(`durable ${kind} output cannot be a symbolic link`);
+  }
+  const artifact = canonicalFuturePath(requested);
+  if (existsSync(artifact) && !statSync(artifact).isFile()) {
+    throw new TypeError(`durable ${kind} output must be a regular file when it already exists`);
+  }
+  if (protectedFiles.some(file => pathsReferToSameFile(artifact, file))) {
+    throw new TypeError(kind === "Manifest"
+      ? "durable Manifest output cannot overwrite its source or bindings file"
+      : "durable Plan output cannot overwrite a source, dependency, input, or providers file");
+  }
+  commitProjectFiles(dirname(artifact), [{ fileName: artifact, code: `${bytes}\n` }]);
+  return artifact;
+}
+
 function containsMixedInputs(inputFiles: readonly string[]): boolean {
-  return inputFiles.some(isSmithersFile) && inputFiles.some((file) => !isSmithersFile(file));
+  return inputFiles.some(isVibeLangFile) && inputFiles.some((file) => !isVibeLangFile(file));
 }
 
-function formatTsDiagnostic(diagnostic: ts.Diagnostic, fallbackFile: string): CliDiagnostic {
-  const position = diagnostic.file && diagnostic.start !== undefined
-    ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start)
-    : undefined;
-  return {
-    code: `TS${diagnostic.code}`,
-    severity: diagnostic.category === ts.DiagnosticCategory.Warning ? "warning" : "error",
-    message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
-    file: diagnostic.file?.fileName ?? fallbackFile,
-    line: position ? position.line + 1 : undefined,
-    column: position ? position.character + 1 : undefined,
-  };
-}
-
-const CLI_SOURCE_MAP_BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const CLI_SOURCE_MAP_VALUES = new Map([...CLI_SOURCE_MAP_BASE64].map((character, index) => [character, index]));
-
-function decodeSourceMapVlq(segment: string, start: number): readonly [number, number] {
-  let value = 0;
-  let shift = 0;
-  let index = start;
-  for (;;) {
-    if (index >= segment.length || shift > 48) throw new TypeError("invalid CLI source-map VLQ segment");
-    const digit = CLI_SOURCE_MAP_VALUES.get(segment[index++]);
-    if (digit === undefined) throw new TypeError("invalid CLI source-map base64 digit");
-    value += (digit & 31) * 2 ** shift;
-    if (!Number.isSafeInteger(value)) throw new TypeError("CLI source-map VLQ exceeds safe integer range");
-    if ((digit & 32) === 0) break;
-    shift += 5;
-  }
-  const magnitude = Math.floor(value / 2);
-  return [(value & 1) === 1 ? -magnitude : magnitude, index];
-}
-
-/**
- * Map one generated position back onto authored coordinates, or report that the
- * map does not anchor it.
- *
- * `undefined` — not a thrown error — is the answer for a generated position the
- * map does not cover. A diagnostic the compiler has already decided to report is
- * not the place to discover that a lowering emitted an unmapped line: throwing
- * there destroys the whole run, so the program is refused with a bare
- * `SMITHERS_PROJECT_ERROR` envelope and NONE of its diagnostics, which is
- * strictly less than the compiler already knew. The conformance JS backend
- * settled this same question the other way years of habit ago
- * (`conformance/runner/backend-js.mjs`, `authoredPosition`: "anything else ... keep
- * the generated position and say so with `mapped: false`"), and the product now
- * matches it. Measured on
- * `02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted`,
- * where the reference's labeled-statement lowering emits TypeScript the stock
- * checker rejects at a generated line the map does not anchor: before this, the
- * CLI answered `diagnostic source map has no mapping for 22:5` and reported no
- * diagnostic at all.
- *
- * Only the unanchored position is softened. A map that names a file outside the
- * project is still a integrity failure and still throws below, because that one
- * says the map itself is describing a different program.
- */
-function originalSourcePosition(sourceMap: string, line: number, column: number): {
-  readonly source: string;
-  readonly line: number;
-  readonly column: number;
-} | undefined {
-  if (!Number.isSafeInteger(line) || !Number.isSafeInteger(column) || line < 0 || column < 0) {
-    throw new TypeError("diagnostic has an invalid generated source position");
-  }
-  if (Buffer.byteLength(sourceMap, "utf8") > 16 * 1024 * 1024) {
-    throw new TypeError("diagnostic source map exceeds the CLI limit");
-  }
-  const parsed: unknown = JSON.parse(sourceMap);
-  if (!isRecord(parsed) || parsed.version !== 3 || typeof parsed.mappings !== "string" ||
-    !Array.isArray(parsed.sources) || !parsed.sources.every((source) => typeof source === "string") ||
-    !Array.isArray(parsed.names) || !parsed.names.every((name) => typeof name === "string") ||
-    (parsed.sourceRoot !== undefined && parsed.sourceRoot !== "")) {
-    throw new TypeError("diagnostic source map has an unsupported version-3 shape");
-  }
-  let previousSource = 0;
-  let previousOriginalLine = 0;
-  let previousOriginalColumn = 0;
-  let previousName = 0;
-  let selected: {
-    readonly generatedColumn: number;
-    readonly source: number;
-    readonly originalLine: number;
-    readonly originalColumn: number;
-  } | undefined;
-  for (const [generatedLine, encodedLine] of parsed.mappings.split(";").entries()) {
-    if (generatedLine === line) selected = undefined;
-    let previousGeneratedColumn = 0;
-    for (const segment of encodedLine === "" ? [] : encodedLine.split(",")) {
-      const values: number[] = [];
-      for (let offset = 0; offset < segment.length;) {
-        const [value, next] = decodeSourceMapVlq(segment, offset);
-        values.push(value);
-        offset = next;
-      }
-      if (values.length !== 1 && values.length !== 4 && values.length !== 5) {
-        throw new TypeError("diagnostic source map segment must have one, four, or five fields");
-      }
-      previousGeneratedColumn += values[0]!;
-      if (previousGeneratedColumn < 0) throw new TypeError("diagnostic source map has a negative generated column");
-      if (values.length === 1) {
-        if (generatedLine === line && previousGeneratedColumn <= column) selected = undefined;
-        continue;
-      }
-      previousSource += values[1]!;
-      previousOriginalLine += values[2]!;
-      previousOriginalColumn += values[3]!;
-      if (values.length === 5) previousName += values[4]!;
-      if (
-        previousSource < 0 || previousSource >= parsed.sources.length ||
-        previousOriginalLine < 0 || previousOriginalColumn < 0 ||
-        previousName < 0 || (values.length === 5 && previousName >= parsed.names.length)
-      ) throw new TypeError("diagnostic source map contains an out-of-range coordinate");
-      if (generatedLine === line && previousGeneratedColumn <= column) {
-        selected = {
-          generatedColumn: previousGeneratedColumn,
-          source: previousSource,
-          originalLine: previousOriginalLine,
-          originalColumn: previousOriginalColumn,
-        };
-      }
-    }
-    if (generatedLine >= line) break;
-  }
-  if (!selected) return undefined;
-  return {
-    source: parsed.sources[selected.source] as string,
-    line: selected.originalLine,
-    column: selected.originalColumn + column - selected.generatedColumn,
-  };
-}
-
-function remapCliDiagnostic(
-  project: LoadedSmithersProject,
-  sourceMap: string,
-  diagnostic: CliDiagnostic,
-): CliDiagnostic {
-  if (diagnostic.line === undefined || diagnostic.column === undefined) return diagnostic;
-  const mapped = originalSourcePosition(sourceMap, diagnostic.line - 1, diagnostic.column - 1);
-  // The map does not anchor this generated position. Report the diagnostic where
-  // the compiler found it rather than dropping the whole run; see
-  // `originalSourcePosition`.
-  if (!mapped) return diagnostic;
-  const source = project.sources.find((candidate) => candidate.fileName === mapped.source);
-  if (!source) throw new TypeError(`diagnostic source map references unknown project file '${mapped.source}'`);
-  return {
-    ...diagnostic,
-    file: resolve(project.rootDir, source.fileName),
-    line: mapped.line + 1,
-    column: mapped.column + 1,
-  };
-}
 
 function outputPath(input: string, outDir: string | undefined, extension: ".mjs" | ".ts"): string {
   const stem = basename(input, extname(input));
   return resolve(outDir ?? dirname(input), `${stem}${extension}`);
 }
 
-/** Resolve existing ancestors so relative imports survive symlinked temp roots. */
-function canonicalFuturePath(file: string): string {
-  let ancestor = resolve(file);
-  const suffix: string[] = [];
-  while (!existsSync(ancestor)) {
-    const parent = dirname(ancestor);
-    if (parent === ancestor) return resolve(file);
-    suffix.unshift(basename(ancestor));
-    ancestor = parent;
-  }
-  return join(realpathSync(ancestor), ...suffix);
-}
 
 function pathsReferToSameFile(left: string, right: string): boolean {
   const canonicalLeft = canonicalFuturePath(resolve(left));
@@ -530,7 +263,7 @@ function pathsReferToSameFile(left: string, right: string): boolean {
   return leftMetadata.dev === rightMetadata.dev && leftMetadata.ino === rightMetadata.ino;
 }
 
-function duplicateSmithersOutput(
+function duplicateVibeLangOutput(
   inputFiles: readonly string[],
   outDir: string | undefined,
 ): { readonly output: string; readonly inputs: readonly [string, string] } | undefined {
@@ -545,751 +278,20 @@ function duplicateSmithersOutput(
   return undefined;
 }
 
-function isInside(root: string, file: string): boolean {
-  const path = relative(root, file);
-  return path === "" || (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`));
-}
-
-function commonSourceRoot(files: readonly string[]): string {
-  if (files.length === 0) throw new TypeError("at least one .sm source is required");
-  let root = dirname(files[0]);
-  while (!files.every((file) => isInside(root, file))) {
-    const parent = dirname(root);
-    if (parent === root) throw new TypeError(".sm sources do not share a usable source root");
-    root = parent;
-  }
-  return root;
-}
-
-function staticModuleSpecifiers(source: string, fileName: string): readonly string[] {
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const names: string[] = [];
-  for (const statement of file.statements) {
-    if (
-      (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&
-      statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)
-    ) names.push(statement.moduleSpecifier.text);
-  }
-  return names;
-}
-
-function existingFileIdentity(path: string): string | undefined {
-  if (!existsSync(path)) return undefined;
-  const canonical = realpathSync(path);
-  return statSync(canonical).isFile() ? canonical : undefined;
-}
-
-/**
- * Resolve one relative specifier written in a `.sm` source to the authored
- * Smithers module it names, or `undefined` when it names something else (a
- * foreign module, a package, a host module).
- *
- * The resolution must be deterministic: the CLI contract requires failing
- * closed when a source "cannot be resolved deterministically", and requires
- * rejecting "aliases that make one file appear under multiple identities".
- * Taking the first candidate that happens to exist satisfies neither, so both
- * ways one specifier can denote two modules are rejected here:
- *
- *   - two Smithers candidates exist (`./dep` with both `dep.sm` and
- *     `dep/index.sm`); and
- *   - a file literally exists at the written path and is not the Smithers
- *     source the emit-name convention maps it to (`./dep.js` with a real
- *     `dep.js` beside `dep.sm`). Every other extension already lets the literal
- *     file win and be checked as foreign, so silently preferring `dep.sm` here
- *     both shadowed a real module and diverged from its own sibling forms.
- */
-function resolveAuthoredSmithersImport(containingFile: string, specifier: string): string | undefined {
-  if (!specifier.startsWith(".")) return undefined;
-  const exact = resolve(dirname(containingFile), specifier);
-  const candidates: string[] = [];
-  if (exact.endsWith(".sm")) candidates.push(exact);
-  else if (extname(exact) === "") candidates.push(`${exact}.sm`, join(exact, "index.sm"));
-  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
-  const resolved = [...new Set(candidates.map(existingFileIdentity).filter((item) => item !== undefined))];
-  if (resolved.length === 0) return undefined;
-  if (resolved.length > 1) {
-    throw new TypeError(
-      `.sm import ${JSON.stringify(specifier)} in ${containingFile} does not resolve deterministically; ` +
-        `it names more than one source: ${resolved.join(", ")}`,
-    );
-  }
-  const authored = resolved[0]!;
-  const literal = existingFileIdentity(exact);
-  if (literal !== undefined && literal !== authored) {
-    throw new TypeError(
-      `.sm import ${JSON.stringify(specifier)} in ${containingFile} is ambiguous; ` +
-        `it names the existing file ${literal} and also the Smithers source ${authored}`,
-    );
-  }
-  return authored;
-}
-
-function loadSmithersProject(
-  inputNames: readonly string[],
-  requestedRoot?: string,
-  budget: {
-    readonly maximumFileBytes: number;
-    readonly maximumTotalBytes: number;
-    readonly maximumFiles: number;
-  } = DEFAULT_SMITHERS_PROJECT_BUDGET,
-): LoadedSmithersProject {
-  const canonicalInputs = inputNames.map((name) => realpathSync(resolve(name)));
-  const rootDir = requestedRoot
-    ? realpathSync(resolve(requestedRoot))
-    : commonSourceRoot(canonicalInputs);
-  const pending = [...canonicalInputs];
-  const sourceByAbsoluteName = new Map<string, { readonly source: string; readonly bytes: number }>();
-  const identityOwners = new Map<string, string>();
-  let totalBytes = 0;
-  while (pending.length > 0) {
-    const fileName = pending.pop()!;
-    if (sourceByAbsoluteName.has(fileName)) continue;
-    if (!isSmithersFile(fileName)) throw new TypeError(`project source is not .sm: ${fileName}`);
-    if (!isInside(rootDir, fileName) || fileName === rootDir) {
-      throw new TypeError(`.sm source is outside --rootDir: ${fileName}`);
-    }
-    if (sourceByAbsoluteName.size >= budget.maximumFiles) {
-      throw new TypeError(`.sm project exceeds ${budget.maximumFiles} source files`);
-    }
-    const snapshot = readBoundedUtf8File(fileName, budget.maximumFileBytes, ".sm source");
-    const source = snapshot.source;
-    const metadata = statSync(fileName);
-    const identity = `${metadata.dev}:${metadata.ino}`;
-    const priorIdentity = identityOwners.get(identity);
-    if (priorIdentity && priorIdentity !== fileName) {
-      throw new TypeError(`.sm project contains hard-link aliases: ${priorIdentity} and ${fileName}`);
-    }
-    identityOwners.set(identity, fileName);
-    totalBytes += snapshot.bytes;
-    if (totalBytes > budget.maximumTotalBytes) {
-      throw new TypeError(`.sm project exceeds ${budget.maximumTotalBytes} source bytes`);
-    }
-    sourceByAbsoluteName.set(fileName, { source, bytes: snapshot.bytes });
-    for (const specifier of staticModuleSpecifiers(source, fileName)) {
-      const dependency = resolveAuthoredSmithersImport(fileName, specifier);
-      if (dependency) {
-        if (!isInside(rootDir, dependency) || dependency === rootDir) {
-          throw new TypeError(`.sm dependency is outside --rootDir: ${dependency}`);
-        }
-        if (!sourceByAbsoluteName.has(dependency)) pending.push(dependency);
-      }
-    }
-  }
-  const absoluteNames = [...sourceByAbsoluteName.keys()].sort(compareText);
-  return {
-    rootDir,
-    sources: absoluteNames.map((absoluteName) => ({
-      fileName: relative(rootDir, absoluteName).split(sep).join("/"),
-      source: sourceByAbsoluteName.get(absoluteName)!.source,
-    })),
-    runtimeSeeds: absoluteNames.map((absoluteName) => ({
-      fileName: absoluteName,
-      source: sourceByAbsoluteName.get(absoluteName)!.source,
-      bytes: sourceByAbsoluteName.get(absoluteName)!.bytes,
-    })),
-    totalBytes,
-  };
-}
-
-function sourceAssetCompilerForProject(rootDir: string): {
-  readonly cacheIdentity: string;
-  readonly cacheDirectory: string;
-  readonly compiler: AssetCompiler;
-} {
-  const cacheIdentity = comptimeDigest({
-    schema: "smithers.cli-source-assets/v1",
-    projectRoot: rootDir,
-    target: "node-es2022",
-    frontend: "smithers-root-cli@1",
-  });
-  const cacheDirectory = resolve(tmpdir(), "smithers-source-asset-cache-v1", cacheIdentity);
-  return {
-    cacheIdentity,
-    cacheDirectory,
-    compiler: new AssetCompiler({
-      root: rootDir,
-      cacheDirectory,
-      target: "node-es2022",
-      options: { frontend: "smithers-root-cli@1" },
-    }),
-  };
-}
-
-async function compileSmithersFiles(
-  inputNames: readonly string[],
-  options: {
-    readonly outDir?: string;
-    readonly rootDir?: string;
-    readonly emit?: boolean;
-    readonly runtimeImport?: string;
-    /**
-     * Module edge the lowered `comptime(Schema.derive<T>())` call site imports
-     * `__vsSchema` from. Only a project that actually derives a schema gains
-     * the import, and only the compiler ever writes it.
-     */
-    readonly schemaRuntimeImport?: string;
-    /**
-     * The project's tsconfig.json. Accepted so both backend arms take the same
-     * shape and neither silently drops it; the reference has already validated
-     * it in `readSmithersProjectConfig` by the time it gets here, where the
-     * fork validates it itself over the wire.
-     */
-    readonly configFile?: { readonly path: string; readonly text: string };
-    readonly declaration?: boolean;
-    readonly sourceMap?: boolean;
-    readonly sourceBudget?: {
-      readonly maximumFileBytes: number;
-      readonly maximumTotalBytes: number;
-      readonly maximumFiles: number;
-    };
-  },
-): Promise<readonly SmithersFileResult[]> {
-  const project = loadSmithersProject(inputNames, options.rootDir, options.sourceBudget);
-  const outDir = canonicalFuturePath(resolve(options.outDir ?? project.rootDir));
-  const smithersRuntimeOutputs = project.runtimeSeeds.map((source) => ({
-    sourceFileName: source.fileName,
-    outputFileName: resolve(outDir, relative(project.rootDir, source.fileName).replace(/\.sm$/, ".mjs")),
-  }));
-  const assetContext = sourceAssetCompilerForProject(project.rootDir);
-  const assetCacheIdentity = assetContext.cacheIdentity;
-  const assetCacheDirectory = assetContext.cacheDirectory;
-  if (isInside(outDir, assetCacheDirectory) || isInside(assetCacheDirectory, outDir)) {
-    throw new TypeError(".sm --outDir must not overlap the compiler-owned source-asset cache");
-  }
-  const sourceAssets = await compileSourceAssetModules({
-    compiler: assetContext.compiler,
-    sources: project.sources,
-  });
-  if (!sourceAssets.ok) {
-    const diagnostics = new Map(project.sources.map((source) => [source.fileName, [] as CliDiagnostic[]]));
-    for (const assetDiagnostic of sourceAssets.diagnostics) {
-      const logicalName = relative(project.rootDir, resolve(assetDiagnostic.fileName)).split(sep).join("/");
-      const target = diagnostics.get(logicalName);
-      if (!target) throw new TypeError(`source-asset diagnostic references unknown project file '${logicalName}'`);
-      target.push({
-        code: assetDiagnostic.code,
-        severity: assetDiagnostic.severity,
-        message: assetDiagnostic.message,
-        file: resolve(assetDiagnostic.fileName),
-        line: assetDiagnostic.line,
-        column: assetDiagnostic.column,
-      });
-    }
-    return project.sources.map((source) => ({
-      input: resolve(project.rootDir, source.fileName),
-      diagnostics: diagnostics.get(source.fileName)!,
-      rowsUnavailable: rowsNotComputed("source-asset"),
-      declarations: [],
-      assets: { cacheIdentity: assetCacheIdentity, modules: [] },
-    }));
-  }
-  const generatedAssetRuntimeSources = sourceAssets.modules.map((module) => ({
-    sourceFileName: resolve(project.rootDir, module.sourceFileName),
-    source: module.source,
-    outputFileName: resolve(outDir, "__smithers_assets__", `${module.logicalKey}.mjs`),
-    resolutionAliases: module.resolutionAliases.map((alias) => resolve(project.rootDir, alias)),
-  }));
-  const runtimeGraph = buildRelativeRuntimeGraph({
-    rootDir: project.rootDir,
-    outDir,
-    smithersSources: project.runtimeSeeds,
-    smithersOutputs: smithersRuntimeOutputs,
-    generatedRuntimeSources: generatedAssetRuntimeSources,
-    budget: options.sourceBudget ?? DEFAULT_SMITHERS_PROJECT_BUDGET,
-  });
-  if (runtimeGraph.diagnostics.length > 0) {
-    return project.sources.map((source, index) => ({
-      input: resolve(project.rootDir, source.fileName),
-      diagnostics: index === 0
-        ? runtimeGraph.diagnostics.map((diagnostic): CliDiagnostic => ({
-            code: diagnostic.code,
-            severity: diagnostic.severity,
-            message: diagnostic.message,
-            file: diagnostic.fileName,
-            line: diagnostic.line,
-            column: diagnostic.column,
-          }))
-        : [],
-      rowsUnavailable: rowsNotComputed("runtime-graph"),
-      declarations: [],
-    }));
-  }
-  const cacheIdentity = comptimeDigest({
-    schema: "smithers.cli-comptime-cache/v1",
-    projectRoot: project.rootDir,
-    target: "node-es2022",
-    frontend: "smithers-root-cli@1",
-  });
-  const cacheDirectory = resolve(tmpdir(), "smithers-comptime-cache-v1", cacheIdentity);
-  if (isInside(outDir, cacheDirectory) || isInside(cacheDirectory, outDir)) {
-    throw new TypeError(".sm --outDir must not overlap the compiler-owned comptime cache");
-  }
-  // The derived-schema runtime is a package seam exactly like `smthrs/runtime`:
-  // generated code names the bare specifier so an installed consumer resolves it,
-  // and only an internal caller (run/test) redirects it at the packaged file.
-  const emittedSchemaRuntime = options.schemaRuntimeImport ?? DEFAULT_SCHEMA_RUNTIME_IMPORT;
-  const comptime = await compileComptimeIntrinsics({
-    compiler: new ComptimeCompiler({
-      root: project.rootDir,
-      cacheDirectory,
-      target: "node-es2022",
-      options: { frontend: "smithers-root-cli@1" },
-    }),
-    sources: Object.fromEntries(project.sources.map((source) => [source.fileName, source.source])),
-    schemaRuntimeImport: emittedSchemaRuntime,
-  });
-  if (!comptime.ok || !comptime.loweredFiles) {
-    const diagnostics = new Map(project.sources.map((source) => [source.fileName, [] as CliDiagnostic[]]));
-    for (const diagnostic of comptime.diagnostics) {
-      const target = diagnostics.get(diagnostic.file);
-      if (!target) throw new TypeError(`comptime diagnostic references unknown project file '${diagnostic.file}'`);
-      target.push({
-        code: diagnostic.code,
-        severity: diagnostic.severity,
-        message: diagnostic.message,
-        file: resolve(project.rootDir, diagnostic.file),
-        line: diagnostic.line,
-        column: diagnostic.column,
-      });
-    }
-    return project.sources.map((source) => ({
-      input: resolve(project.rootDir, source.fileName),
-      diagnostics: diagnostics.get(source.fileName)!,
-      rowsUnavailable: rowsNotComputed("comptime"),
-      declarations: [],
-    }));
-  }
-  const loweredSources = project.sources.map((source) => {
-    const lowered = comptime.loweredFiles![source.fileName];
-    if (!lowered) throw new TypeError(`comptime lowering omitted project file '${source.fileName}'`);
-    return { fileName: source.fileName, source: lowered.code };
-  });
-  const emittedRuntime = options.runtimeImport ?? DEFAULT_RUNTIME_IMPORT;
-  const compiled = compileProject(loweredSources, {
-    rootDir: project.rootDir,
-    outDir,
-    outputExtension: ".mjs",
-    runtimeImport: emittedRuntime,
-    additionalRuntimeSources: sourceAssets.modules,
-    additionalRuntimeOutputs: runtimeGraph.additionalRuntimeOutputs,
-    // Internal maps are mandatory for authored diagnostic remapping even when
-    // the caller did not request a JavaScript map artifact.
-    sourceMap: true,
-  });
-  const compiledFiles = Object.values(compiled.files).map((file) => ({
-    ...file,
-    code: runtimeGraph.rewriteSmithersRuntimeCalls(file.code, file.absoluteFileName, file.outputFileName),
-  }));
-  const smithersToAuthoredMaps = new Map<string, string>();
-  for (const file of compiledFiles) {
-    const lowered = comptime.loweredFiles[file.fileName];
-    if (!lowered || !file.sourceMap) throw new TypeError(`frontend source map is missing for ${file.fileName}`);
-    smithersToAuthoredMaps.set(file.fileName, composeSourceMaps(
-      file.sourceMap,
-      lowered.sourceMap,
-      `${file.outputFileName}.comptime.mjs`,
-    ));
-  }
-  const results = new Map<string, SmithersFileResult>();
-  const assetOutputs = new Map(generatedAssetRuntimeSources.map((module) => [
-    resolve(module.sourceFileName),
-    resolve(module.outputFileName),
-  ]));
-  for (const file of compiledFiles) {
-    const lowered = comptime.loweredFiles[file.fileName]!;
-    results.set(file.fileName, {
-      input: file.absoluteFileName,
-      output: options.emit === false ? undefined : file.outputFileName,
-      diagnostics: file.analysis.diagnostics.map((diagnostic) => remapCliDiagnostic(
-        project,
-        lowered.sourceMap,
-        {
-          code: diagnostic.code,
-          severity: diagnostic.severity,
-          message: diagnostic.message,
-          file: file.absoluteFileName,
-          line: diagnostic.line,
-          column: diagnostic.column,
-        },
-      )),
-      rows: file.analysis.rows,
-      declarations: [],
-      sourceMap: options.sourceMap && options.emit !== false ? `${file.outputFileName}.map` : undefined,
-      assets: {
-        cacheIdentity: assetCacheIdentity,
-        modules: sourceAssets.modules.map((module) => ({
-          sourceFileName: module.sourceFileName,
-          outputFileName: assetOutputs.get(resolve(project.rootDir, module.sourceFileName))!,
-          logicalKey: module.logicalKey,
-          contentKey: module.contentKey,
-          loader: module.loader,
-          cacheHit: module.cacheHit,
-          dependencies: module.dependencies,
-          // A loader-declared nested module edge is part of what the build
-          // produced, so the audit report names it rather than hiding it behind
-          // a flat module list.
-          references: module.references,
-          depth: module.depth,
-        })),
-      },
-      comptime: {
-        identity: comptime.loweredFiles[file.fileName]!.identity,
-        cacheIdentity,
-        provenance: comptime.loweredFiles[file.fileName]!.provenance,
-        calls: comptime.calls.filter((call) => call.file === file.fileName).map((call) => ({
-          start: call.start,
-          end: call.end,
-          line: call.line,
-          column: call.column,
-          key: call.build.key,
-          logicalKey: call.build.logicalKey,
-          cacheHit: call.build.cacheHit,
-          dependencies: call.build.dependencies,
-        })),
-      },
-    });
-  }
-  for (const assetDiagnostic of sourceAssets.diagnostics) {
-    const logicalName = relative(project.rootDir, resolve(assetDiagnostic.fileName)).split(sep).join("/");
-    const result = results.get(logicalName);
-    if (!result) throw new TypeError(`source-asset diagnostic references unknown project file '${logicalName}'`);
-    (result.diagnostics as CliDiagnostic[]).push({
-      code: assetDiagnostic.code,
-      severity: assetDiagnostic.severity,
-      message: assetDiagnostic.message,
-      file: resolve(assetDiagnostic.fileName),
-      line: assetDiagnostic.line,
-      column: assetDiagnostic.column,
-    });
-  }
-
-  const emittedFiles = compiledFiles;
-  /**
-   * A bare `smthrs/...` specifier only resolves from an installed consumer, so
-   * the checker and the declaration emitter are told where the packaged files
-   * live. They are told it in *resolution*, and the emitted text is handed to
-   * them untouched.
-   *
-   * This used to be a `replaceAll` of the seam over the whole module before
-   * checking, which meant `check` type-checked a program that was never
-   * emitted: the substitution could not tell a compiler-written import
-   * specifier from an authored string literal or literal type spelled
-   * `"smthrs/runtime"`, and `run` — which passes `runtimeImport` and so skipped
-   * the rewrite — reached the opposite verdict. It diverged in both directions:
-   * `check` refused programs `run` accepted, and, because the substituted path
-   * ends in `.js` while the seam does not, a template-literal type over the
-   * seam let `check` *accept* a program `run` refused.
-   *
-   * The map is built the same way on every surface and consumed only by the
-   * resolver, so no surface can be checking different bytes than it emits.
-   */
-  const packagedModules: Readonly<Record<string, string>> = {
-    [DEFAULT_RUNTIME_IMPORT]: fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url)),
-    [DEFAULT_SCHEMA_RUNTIME_IMPORT]: fileURLToPath(new URL("../poc/dist/build/schema-runtime.js", import.meta.url)),
-  };
-  /**
-   * The declaration emitter reads the checker's resolved path, so a `d.mts` can
-   * name a packaged module as a synthesized `import("<absolute>")` type. A
-   * published declaration must name the package seam instead of this machine.
-   *
-   * Scoped to `import(...)` syntax rather than to every occurrence of the path.
-   * A written `import ... from "smthrs/runtime"` keeps its own specifier
-   * through declaration emit and needs nothing done to it, so the only spans
-   * that can carry a resolved path are the synthesized ones — and matching
-   * those exactly is what keeps this from reaching an authored string literal
-   * or literal type that happens to spell the packaged path. That is the same
-   * mistake the checker's seam substitution used to make, one stage later.
-   */
-  const restorePackageSpecifiers = (code: string): string => {
-    let restored = code;
-    for (const [seam, packaged] of Object.entries(packagedModules)) {
-      for (const resolved of [packaged, packaged.replace(/\.js$/, "")]) {
-        restored = restored.replaceAll(
-          `import(${JSON.stringify(resolved)})`,
-          `import(${JSON.stringify(seam)})`,
-        );
-      }
-    }
-    return restored;
-  };
-  const foreign = transpileRelativeRuntimeGraph(runtimeGraph, { sourceMap: options.sourceMap });
-  for (const diagnostic of foreign.diagnostics) {
-    const diagnosticName = diagnostic.file ? resolve(diagnostic.file.fileName) : undefined;
-    const foreignFile = diagnosticName
-      ? foreign.files.find((candidate) => resolve(candidate.fileName) === diagnosticName)
-      : undefined;
-    const result = results.values().next().value as SmithersFileResult | undefined;
-    if (result) {
-      (result.diagnostics as CliDiagnostic[]).push(formatTsDiagnostic(
-        diagnostic,
-        foreignFile?.fileName ?? "<relative runtime graph>",
-      ));
-    }
-  }
-
-  if (![...results.values()].some((result) =>
-    result.diagnostics.some((diagnostic) => diagnostic.severity === "error"))) {
-    const validation = checkEmittedProject([
-      ...emittedFiles.map((file) => ({
-        fileName: file.outputFileName,
-        // The emitted bytes, unmodified. Every surface checks what it emits.
-        code: file.code,
-      })),
-      ...foreign.files.map((file) => ({ fileName: file.outputFileName, code: file.validationCode })),
-    ], { moduleOverrides: packagedModules });
-    for (const diagnostic of validation) {
-      if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
-      const output = diagnostic.file ? resolve(diagnostic.file.fileName) : undefined;
-      const file = output ? emittedFiles.find((candidate) => resolve(candidate.outputFileName) === output) : undefined;
-      const foreignFile = output
-        ? foreign.files.find((candidate) => resolve(candidate.outputFileName) === output)
-        : undefined;
-      const result = file ? results.get(file.fileName) : results.values().next().value as SmithersFileResult | undefined;
-      if (result) {
-        const formatted = formatTsDiagnostic(
-          diagnostic,
-          file?.absoluteFileName ?? foreignFile?.fileName ?? "<project>",
-        );
-        (result.diagnostics as CliDiagnostic[]).push(file
-          ? remapCliDiagnostic(project, smithersToAuthoredMaps.get(file.fileName)!, formatted)
-          : foreignFile ? { ...formatted, file: foreignFile.fileName } : formatted);
-      }
-    }
-  }
-
-  let declarationOutputs: readonly { readonly fileName: string; readonly code: string }[] = [];
-  if (options.declaration && ![...results.values()].some((result) =>
-    result.diagnostics.some((diagnostic) => diagnostic.severity === "error"))) {
-    const declarations = emitProjectDeclarations([
-      ...emittedFiles.map((file) => ({
-        fileName: file.outputFileName,
-        code: file.code,
-        effects: file.analysis.rows,
-      })),
-      ...foreign.files.map((file) => ({
-        fileName: file.outputFileName,
-        code: file.declarationCode,
-      })),
-    ], { moduleOverrides: packagedModules });
-    declarationOutputs = declarations.outputs.map((output) => ({
-      ...output,
-      code: restorePackageSpecifiers(output.code),
-    }));
-    for (const diagnostic of declarations.diagnostics) {
-      if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
-      const generated = diagnostic.file ? resolve(diagnostic.file.fileName) : undefined;
-      const file = generated
-        ? emittedFiles.find((candidate) => resolve(candidate.outputFileName) === generated)
-        : undefined;
-      const foreignFile = generated
-        ? foreign.files.find((candidate) => resolve(candidate.outputFileName) === generated)
-        : undefined;
-      const result = file ? results.get(file.fileName) : results.values().next().value as SmithersFileResult | undefined;
-      if (result) {
-        const formatted = formatTsDiagnostic(
-          diagnostic,
-          file?.absoluteFileName ?? foreignFile?.fileName ?? "<project declaration>",
-        );
-        (result.diagnostics as CliDiagnostic[]).push(file
-          ? remapCliDiagnostic(project, smithersToAuthoredMaps.get(file.fileName)!, formatted)
-          : foreignFile ? { ...formatted, file: foreignFile.fileName } : formatted);
-      }
-    }
-    for (const file of emittedFiles) {
-      const declarationName = file.outputFileName.replace(/\.mjs$/, ".d.mts");
-      const result = results.get(file.fileName)!;
-      if (!declarationOutputs.some((output) => resolve(output.fileName) === resolve(declarationName))) {
-        (result.diagnostics as CliDiagnostic[]).push({
-          code: "SMITHERS_DECLARATION_MISSING",
-          severity: "error",
-          message: `TypeScript emitted no declaration for ${file.absoluteFileName}`,
-          file: file.absoluteFileName,
-        });
-      } else {
-        (result.declarations as string[]).push(declarationName);
-      }
-    }
-    const assetSourceNames = new Set(sourceAssets.modules.map((module) =>
-      resolve(project.rootDir, module.sourceFileName)));
-    for (const file of foreign.files) {
-      const declarationName = file.outputFileName.replace(/\.mjs$/, ".d.mts").replace(/\.cjs$/, ".d.cts");
-      if (!declarationOutputs.some((output) => resolve(output.fileName) === resolve(declarationName))) {
-        const result = results.values().next().value as SmithersFileResult | undefined;
-        if (result) {
-          (result.diagnostics as CliDiagnostic[]).push({
-            code: assetSourceNames.has(resolve(file.fileName))
-              ? "SMITHERS_ASSET_DECLARATION_MISSING"
-              : "SMITHERS_FOREIGN_DECLARATION_MISSING",
-            severity: "error",
-            message: `TypeScript emitted no declaration for ${file.fileName}`,
-            file: file.fileName,
-          });
-        }
-      }
-    }
-  }
-
-  const transpiled = new Map<string, string>();
-  const javascriptMaps = new Map<string, string>();
-  if (![...results.values()].some((result) => result.diagnostics.some((diagnostic) => diagnostic.severity === "error"))) {
-    for (const file of emittedFiles) {
-      const emitted = ts.transpileModule(file.code, {
-        fileName: `${file.outputFileName}.ts`,
-        compilerOptions: {
-          target: ts.ScriptTarget.ES2022,
-          module: ts.ModuleKind.ESNext,
-          sourceMap: options.sourceMap,
-          inlineSources: options.sourceMap,
-        },
-        reportDiagnostics: true,
-      });
-      const result = results.get(file.fileName)!;
-      for (const diagnostic of emitted.diagnostics ?? []) {
-        if (diagnostic.category === ts.DiagnosticCategory.Error) {
-          const formatted = formatTsDiagnostic(diagnostic, file.absoluteFileName);
-          (result.diagnostics as CliDiagnostic[]).push(
-            remapCliDiagnostic(project, smithersToAuthoredMaps.get(file.fileName)!, formatted),
-          );
-        }
-      }
-      let javascript = emitted.outputText;
-      if (options.sourceMap) {
-        if (!emitted.sourceMapText || !file.sourceMap) {
-          (result.diagnostics as CliDiagnostic[]).push({
-            code: "SMITHERS_SOURCE_MAP_MISSING",
-            severity: "error",
-            message: `A source-map stage emitted no map for ${file.absoluteFileName}`,
-            file: file.absoluteFileName,
-          });
-        } else {
-          try {
-            const lowered = comptime.loweredFiles[file.fileName];
-            if (!lowered) throw new TypeError(`comptime source map is missing for ${file.fileName}`);
-            // Composition is deliberately staged: Smithers output -> comptime
-            // output -> authored sources, then JavaScript -> that combined map.
-            // Smithers now preserves exact authored positions where provable and
-            // token anchors across semantic rewrites; compiler-generated text
-            // is explicitly unmapped rather than assigned a false position.
-            const smithersToAuthored = smithersToAuthoredMaps.get(file.fileName);
-            if (!smithersToAuthored) throw new TypeError(`composed frontend source map is missing for ${file.fileName}`);
-            const composed = JSON.parse(composeSourceMaps(
-              emitted.sourceMapText,
-              smithersToAuthored,
-              file.outputFileName,
-            )) as { sources: string[] } & Record<string, unknown>;
-            if (composed.sources.length === 0) throw new TypeError("composed .sm source map has no authored sources");
-            const authoredByName = new Map(project.sources.map((source) => [
-              source.fileName,
-              resolve(project.rootDir, source.fileName),
-            ]));
-            composed.sources = composed.sources.map((source) => {
-              const authored = authoredByName.get(source);
-              if (!authored) throw new TypeError(`composed .sm source map references unknown source '${source}'`);
-              let display = relative(dirname(file.outputFileName), authored).split(sep).join("/");
-              if (!display.startsWith(".")) display = `./${display}`;
-              return display;
-            });
-            javascriptMaps.set(file.fileName, JSON.stringify(composed));
-            javascript = `${javascript.replace(/\n?\/\/# sourceMappingURL=.*(?:\r?\n)?$/, "").trimEnd()}\n` +
-              `//# sourceMappingURL=${basename(file.outputFileName)}.map\n`;
-          } catch (error) {
-            (result.diagnostics as CliDiagnostic[]).push({
-              code: "SMITHERS_SOURCE_MAP_INVALID",
-              severity: "error",
-              message: error instanceof Error ? error.message : String(error),
-              file: file.absoluteFileName,
-            });
-          }
-        }
-      }
-      transpiled.set(file.fileName, javascript);
-    }
-  }
-
-  /**
-   * One verdict decides both whether anything is written and whether the
-   * report is allowed to name a written file.
-   *
-   * `output`, `sourceMap`, and `declarations` are filled in as each stage
-   * produces its artifact, which is long before the last stage that can refuse
-   * the compile has run. A refused compile writes nothing — `commitProjectFiles`
-   * below is guarded — so a report that still carries those paths is naming
-   * files that do not exist. The Go backend already derives all three from its
-   * own final verdict; this is the same guard at the same position.
-   */
-  const emitRefused = [...results.values()].some((result) =>
-    result.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
-  if (options.emit !== false && !emitRefused) {
-    const emissions: Array<{ readonly fileName: string; readonly code: string }> = [];
-    for (const file of Object.values(compiled.files)) {
-      emissions.push({ fileName: file.outputFileName, code: transpiled.get(file.fileName)! });
-      const sourceMap = javascriptMaps.get(file.fileName);
-      if (sourceMap) emissions.push({ fileName: `${file.outputFileName}.map`, code: sourceMap });
-    }
-    for (const file of foreign.files) {
-      emissions.push({ fileName: file.outputFileName, code: file.code });
-      if (file.sourceMap) emissions.push({ fileName: `${file.outputFileName}.map`, code: file.sourceMap });
-    }
-    emissions.push(...declarationOutputs);
-    commitProjectFiles(outDir, emissions);
-  }
-  return [...results.values()]
-    .map((result): SmithersFileResult => emitRefused
-      ? { ...result, output: undefined, sourceMap: undefined, declarations: [] }
-      : result)
-    .sort((left, right) => compareText(left.input, right.input));
-}
-
-function authoredLineColumn(source: string, offset: number): { readonly line: number; readonly column: number } {
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > source.length) {
-    throw new GoBackendFailure(
-      "SMITHERS_GO_PROTOCOL",
-      `The Go compiler returned an out-of-range authored diagnostic offset ${offset}. ` +
-      "Remedy: run `npm run build` to rebuild the CLI and Go request producer together.",
-    );
-  }
-  const before = source.slice(0, offset);
-  const lastNewline = before.lastIndexOf("\n");
-  return {
-    line: before.split("\n").length,
-    column: offset - lastNewline,
-  };
-}
-
-function formatGoDiagnostic(
-  project: LoadedSmithersProject,
-  byLogicalName: ReadonlyMap<string, { readonly fileName: string; readonly source: string }>,
-  diagnostic: GoBackendDiagnostic,
-): CliDiagnostic {
-  const source = diagnostic.file ? byLogicalName.get(diagnostic.file) : undefined;
-  const position = source && diagnostic.span
-    ? authoredLineColumn(source.source, diagnostic.span.start)
-    : undefined;
-  return {
-    code: diagnostic.code,
-    severity: diagnostic.category === "error" ? "error" : "warning",
-    message: diagnostic.message,
-    file: source
-      ? resolve(project.rootDir, source.fileName)
-      : diagnostic.file,
-    line: position?.line,
-    column: position?.column,
-  };
-}
 
 function decodeGoArtifact(path: string, content: string): string {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(content, "base64"));
   } catch (error) {
     throw new GoBackendFailure(
-      "SMITHERS_GO_PROTOCOL",
+      "VIBELANG_GO_PROTOCOL",
       `The Go compiler returned a non-UTF-8 artifact ${path}: ${error instanceof Error ? error.message : String(error)}. ` +
       "Remedy: run `npm run build` to rebuild the CLI and Go request producer together.",
     );
   }
 }
 
-function compileGoSmithersFiles(
+function compileGoVibeLangFiles(
   inputNames: readonly string[],
   options: {
     readonly outDir?: string;
@@ -1300,17 +302,17 @@ function compileGoSmithersFiles(
     /** The project's tsconfig.json, forwarded so the fork can gate on it too. */
     readonly configFile?: { readonly path: string; readonly text: string };
   },
-): readonly SmithersFileResult[] {
-  const project = loadSmithersProject(inputNames, options.rootDir);
+): readonly VibeLangFileResult[] {
+  const project = loadVibeLangProject(inputNames, options.rootDir);
   const outDir = canonicalFuturePath(resolve(options.outDir ?? project.rootDir));
   /**
-   * A Smithers project is not a list of `.sm` files.
+   * A VibeLang project is not a list of `.vibe` files.
    *
-   * `loadSmithersProject` walks `.sm` imports only, so the request used to
-   * consist entirely of `kind: "smithers"` sources and the `"typescript"` kind
+   * `loadVibeLangProject` walks `.vibe` imports only, so the request used to
+   * consist entirely of `kind: "vibelang"` sources and the `"typescript"` kind
    * the protocol has always declared was never produced by anything. Every
-   * `.sm` module that imports a foreign `./x.ts` therefore failed to resolve it
-   * and was refused with SMITHERS1510 — the right code for the wrong reason,
+   * `.vibe` module that imports a foreign `./x.ts` therefore failed to resolve it
+   * and was refused with VIBE1510 — the right code for the wrong reason,
    * since "the module could not be resolved" is not "the module is untrusted".
    *
    * The dependency set was already being computed: `buildRelativeRuntimeGraph`
@@ -1328,18 +330,18 @@ function compileGoSmithersFiles(
   const dependencies = buildRelativeRuntimeGraph({
     rootDir: project.rootDir,
     outDir,
-    smithersSources: project.runtimeSeeds,
-    smithersOutputs: project.runtimeSeeds.map((source) => ({
+    vibelangSources: project.runtimeSeeds,
+    vibelangOutputs: project.runtimeSeeds.map((source) => ({
       sourceFileName: source.fileName,
-      // The Go emit renames `x.sm.js` to `x.js`, so those are the paths whose
+      // The Go emit renames `x.vibe.js` to `x.js`, so those are the paths whose
       // collisions this walk should be checking.
-      outputFileName: resolve(outDir, relative(project.rootDir, source.fileName).replace(/\.sm$/, ".js")),
+      outputFileName: resolve(outDir, relative(project.rootDir, source.fileName).replace(/\.vibe$/, ".js")),
     })),
     // The fork runs its own asset pass over raw bytes, so there are no
     // pre-compiled asset modules to hand in and the asset files themselves are
     // what it needs staged.
     assetSpecifiers: "stage",
-    budget: DEFAULT_SMITHERS_PROJECT_BUDGET,
+    budget: DEFAULT_VIBELANG_PROJECT_BUDGET,
   });
   /**
    * The foreign initialization-trust verdict is a project-loading verdict, and
@@ -1349,21 +351,21 @@ function compileGoSmithersFiles(
    * facade that re-exports an untrusted module is refused at the untrusted
    * module, because importing the facade evaluates it. That closure is a
    * property of the project, not of a backend, and the reference path already
-   * stops here rather than compiling (`compileSmithersFiles`, the identical
+   * stops here rather than compiling (`compileVibeLangFiles`, the identical
    * early return).
    *
    * Mirroring it is what keeps staging from being a fail-open. Before the
    * sources were staged, an untrusted foreign graph was refused on this backend
    * only because nothing resolved — the right code for the wrong reason, and
    * accidentally safe. Staging removes that accident: the fork's own edge check
-   * covers the edges an authored `.sm` spells, so a *directly* untrusted import
+   * covers the edges an authored `.vibe` spells, so a *directly* untrusted import
    * is still refused, but nothing on that side walks foreign-to-foreign edges,
    * so a transitively untrusted graph would have started compiling clean. This
    * return keeps the answer the reference's, at the reference's position, so
    * the two backends agree on the same bytes instead of one of them relaxing.
    */
   if (dependencies.diagnostics.length > 0) {
-    return project.sources.map((source, index): SmithersFileResult => ({
+    return project.sources.map((source, index): VibeLangFileResult => ({
       input: resolve(project.rootDir, source.fileName),
       diagnostics: index === 0
         ? dependencies.diagnostics.map((diagnostic): CliDiagnostic => ({
@@ -1403,7 +405,7 @@ function compileGoSmithersFiles(
     files: [
       ...project.sources.map((source) => ({
         path: source.fileName,
-        kind: "smithers" as const,
+        kind: "vibelang" as const,
         text: source.source,
       })),
       ...stagedSources,
@@ -1430,12 +432,12 @@ function compileGoSmithersFiles(
     //
     // A diagnostic against a staged foreign or asset source is neither: the
     // request did send that file, and `formatGoDiagnostic` names it and locates
-    // it in its own text, but the report is keyed by `.sm` input and a foreign
+    // it in its own text, but the report is keyed by `.vibe` input and a foreign
     // file is not one. It joins the first bucket for the same reason a
     // project-level diagnostic does — so that it is still reported and still
     // gates. Dropping it would let a real error inside a staged `.ts` vanish
     // and the compile read clean, which is exactly what an unbucketed
-    // `diagnostics.get(...)` used to do the moment anything but `.sm` was sent.
+    // `diagnostics.get(...)` used to do the moment anything but `.vibe` was sent.
     const logicalName = resolveGoDiagnosticFile(diagnostic.file, requestSources);
     const formatted = formatGoDiagnostic(project, byLogicalName, diagnostic);
     const target = logicalName !== undefined && diagnostics.has(logicalName)
@@ -1447,7 +449,7 @@ function compileGoSmithersFiles(
     items.some((diagnostic) => diagnostic.severity === "error"));
   if (options.emit !== false && compiled.emitSkipped && !hasError) {
     diagnostics.values().next().value?.push({
-      code: "SMITHERS_GO_EMIT_SKIPPED",
+      code: "VIBELANG_GO_EMIT_SKIPPED",
       severity: "error",
       message: "The Go compiler skipped emit without reporting a compiler diagnostic.",
     });
@@ -1464,9 +466,9 @@ function compileGoSmithersFiles(
     commitProjectFiles(outDir, artifacts);
   }
 
-  return project.sources.map((source): SmithersFileResult => {
-    const runtimeName = source.fileName.replace(/\.sm$/, ".js");
-    const declarationName = source.fileName.replace(/\.sm$/, ".d.sm.ts");
+  return project.sources.map((source): VibeLangFileResult => {
+    const runtimeName = source.fileName.replace(/\.vibe$/, ".js");
+    const declarationName = source.fileName.replace(/\.vibe$/, ".d.vibe.ts");
     const mapName = `${runtimeName}.map`;
     const emitted = artifacts.find((artifact) => artifact.logicalName === runtimeName);
     return {
@@ -1492,98 +494,36 @@ function backendFailure(context: { error(input: {
   readonly message: string;
   readonly retryable?: boolean;
 }): unknown }, error: unknown): unknown {
-  if (error instanceof GoBackendFailure) {
-    return context.error({ code: error.code, exitCode: 2, message: error.message, retryable: false });
+  const native = asGoBackendFailure(error);
+  if (native) {
+    return context.error({ code: native.code, exitCode: 2, message: native.message, retryable: false });
   }
   return context.error({
-    code: "SMITHERS_PROJECT_ERROR",
+    code: "VIBELANG_PROJECT_ERROR",
     exitCode: 2,
     message: error instanceof Error ? error.message : String(error),
   });
 }
 
-function commitProjectFiles(
-  outDir: string,
-  filesToWrite: readonly { readonly fileName: string; readonly code: string }[],
-): void {
-  const root = resolve(outDir);
-  mkdirSync(root, { recursive: true });
-  const rootMetadata = lstatSync(root);
-  if (rootMetadata.isSymbolicLink() || !rootMetadata.isDirectory()) {
-    throw new TypeError(`compiler outDir must be a real directory: ${root}`);
-  }
-  const staging = mkdtempSync(join(dirname(root), ".smithers-emit-"));
-  const staged: Array<{ readonly temporary: string; readonly final: string }> = [];
-  const destinations = new Set<string>();
-  try {
-    for (const file of filesToWrite) {
-      const final = resolve(file.fileName);
-      if (!isInside(root, final) || final === root) {
-        throw new TypeError(`compiler output escapes outDir: ${final}`);
-      }
-      if (destinations.has(final)) throw new TypeError(`duplicate compiler output: ${final}`);
-      destinations.add(final);
-      const path = relative(root, final);
-      const temporary = resolve(staging, path);
-      if (!isInside(staging, temporary)) throw new TypeError(`invalid staged compiler output: ${path}`);
-      mkdirSync(dirname(temporary), { recursive: true });
-      writeFileSync(temporary, file.code, { flag: "wx" });
-      staged.push({ temporary, final });
-    }
-    // A lexical containment check is insufficient: `root/nested` could be a
-    // pre-existing symlink to an ambient filesystem location. Validate and
-    // create every parent before the first rename so an ordinary bad path
-    // cannot produce a partially committed project or escape --outDir.
-    for (const file of staged) {
-      const destinationParent = dirname(file.final);
-      const parentPath = relative(root, destinationParent);
-      let cursor = root;
-      for (const part of parentPath === "" ? [] : parentPath.split(sep)) {
-        if (part === "" || part === "." || part === "..") {
-          throw new TypeError(`invalid compiler output parent: ${destinationParent}`);
-        }
-        cursor = join(cursor, part);
-        if (!existsSync(cursor)) mkdirSync(cursor);
-        const metadata = lstatSync(cursor);
-        if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
-          throw new TypeError(`compiler output parent must be a real directory: ${cursor}`);
-        }
-      }
-      const canonicalParent = realpathSync(destinationParent);
-      const canonicalRoot = realpathSync(root);
-      if (!isInside(canonicalRoot, canonicalParent)) {
-        throw new TypeError(`compiler output parent escapes outDir: ${destinationParent}`);
-      }
-      if (existsSync(file.final) && lstatSync(file.final).isSymbolicLink()) {
-        throw new TypeError(`compiler output may not replace a symbolic link: ${file.final}`);
-      }
-    }
-    for (const file of staged) {
-      renameSync(file.temporary, file.final);
-    }
-  } finally {
-    rmSync(staging, { recursive: true, force: true });
-  }
-}
 
 /**
  * Read and validate the project's `tsconfig.json`, as compatibility.mdx
  * §Configuration requires and as nothing did before.
  *
  * `--project`/`-p` has been declared as "Path to tsconfig.json or its directory"
- * since the flag existed, and no Smithers-owned code ever dereferenced it: on a
+ * since the flag existed, and no VibeLang-owned code ever dereferenced it: on a
  * TypeScript input it was re-serialized straight into a spawned `tsc`, and on a
- * `.sm` input it was refused as an unsupported option, so the file it names was
+ * `.vibe` input it was refused as an unsupported option, so the file it names was
  * never opened by this compiler on either path. §Mandatory and §Forbidden were
  * therefore unrepresented rather than merely unchecked.
  *
- * The findings carry SMITHERS6001/6002/6003 and a real position, because
+ * The findings carry VIBE6001/6002/6003 and a real position, because
  * §Forbidden's obligation is that a deprecated option "MUST be rejected rather
  * than ignored" and a rejection with no span cannot tell the author which line
  * to delete. Both backends run the same table; see
  * poc/src/language/compiler-options.ts.
  */
-function readSmithersProjectConfig(project: string): {
+function readVibeLangProjectConfig(project: string): {
   readonly fileName: string;
   readonly text: string;
   readonly diagnostics: readonly CliDiagnostic[];
@@ -1595,7 +535,7 @@ function readSmithersProjectConfig(project: string): {
   if (!existsSync(fileName)) {
     return {
       failure: {
-        code: "SMITHERS6003",
+        code: "VIBE6003",
         severity: "error",
         message: `no tsconfig.json at ${fileName}`,
         file: fileName,
@@ -1606,7 +546,7 @@ function readSmithersProjectConfig(project: string): {
   return {
     fileName,
     text,
-    diagnostics: validateSmithersTsconfig(fileName, text).map((diagnostic) => ({
+    diagnostics: validateVibeLangTsconfig(fileName, text).map((diagnostic) => ({
       code: diagnostic.code,
       severity: "error" as const,
       message: diagnostic.message,
@@ -1617,24 +557,24 @@ function readSmithersProjectConfig(project: string): {
   };
 }
 
-function reportSmithersResults(results: readonly SmithersFileResult[]): { ok: boolean; files: readonly SmithersFileResult[] } {
+function reportVibeLangResults(results: readonly VibeLangFileResult[]): { ok: boolean; files: readonly VibeLangFileResult[] } {
   const ok = results.every((result) => !result.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
   if (!ok) process.exitCode = 1;
   return { ok, files: results };
 }
 
 /* -------------------------------------------------------------------------- */
-/* smithers format                                                                 */
+/* vibe format                                                                 */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Extensions the whitespace-only formatter accepts. `.sm` additionally goes
- * through Smithers construct masking; the others are ordinary TypeScript or
+ * Extensions the whitespace-only formatter accepts. `.vibe` additionally goes
+ * through VibeLang construct masking; the others are ordinary TypeScript or
  * JavaScript for which the masking pass is a no-op. JSX variants are refused
  * because the formatter scans in the standard language variant.
  */
 const FORMATTABLE_EXTENSIONS: ReadonlySet<string> = new Set([
-  ".sm", ".ts", ".mts", ".cts", ".js", ".mjs", ".cjs",
+  ".vibe", ".ts", ".mts", ".cts", ".js", ".mjs", ".cjs",
 ]);
 
 interface FormatFileResult {
@@ -1648,7 +588,7 @@ interface FormatFileResult {
 function writeFormattedFile(absolute: string, code: string): void {
   const temporary = join(
     dirname(absolute),
-    `.${basename(absolute)}.smithers-format-${randomBytes(8).toString("hex")}`,
+    `.${basename(absolute)}.vibelang-format-${randomBytes(8).toString("hex")}`,
   );
   writeFileSync(temporary, code, { encoding: "utf8", flag: "wx" });
   try {
@@ -1663,11 +603,11 @@ function formatOneFile(input: string, indentSize: number | undefined): FormatFil
   const extension = extname(input).toLowerCase();
   if (!FORMATTABLE_EXTENSIONS.has(extension)) {
     throw new TypeError(
-      `smithers format accepts ${[...FORMATTABLE_EXTENSIONS].join(", ")} files: ${input}`,
+      `vibe format accepts ${[...FORMATTABLE_EXTENSIONS].join(", ")} files: ${input}`,
     );
   }
   const snapshot = readBoundedUtf8File(input, MAX_CLI_SOURCE_BYTES, "source file");
-  const result = formatSmithersSource(snapshot.source, {
+  const result = formatVibeLangSource(snapshot.source, {
     fileName: snapshot.fileName,
     ...(indentSize === undefined ? {} : { indentSize }),
   });
@@ -1687,7 +627,7 @@ function formatOneFile(input: string, indentSize: number | undefined): FormatFil
   };
 }
 
-const TEST_PROTOCOL_PREFIX = "__SMITHERS_TEST_PROTOCOL_V1_";
+const TEST_PROTOCOL_PREFIX = "__VIBELANG_TEST_PROTOCOL_V1_";
 const TEST_OUTPUT_LIMIT = 1024 * 1024;
 const TEST_PROTOCOL_RECORD_LIMIT = 100_000;
 
@@ -1812,13 +752,13 @@ function createTestRunner(
     "    discovered += 1",
     "    const label = `${moduleLabel}#${name}`",
     "    try {",
-    "      if (test.length !== 0) throw new TypeError('exported Smithers test functions must take zero arguments')",
+    "      if (test.length !== 0) throw new TypeError('exported VibeLang test functions must take zero arguments')",
     "      if (GENERATOR_FUNCTION_TAGS.has(Object.prototype.toString.call(test))) {",
-    "        throw new TypeError('exported Smithers test functions must not be generator functions: calling one allocates an iterator and runs none of the body')",
+    "        throw new TypeError('exported VibeLang test functions must not be generator functions: calling one allocates an iterator and runs none of the body')",
     "      }",
     "      const value = await test()",
     "      if (GENERATOR_VALUE_TAGS.has(Object.prototype.toString.call(value))) {",
-    "        throw new TypeError('an exported Smithers test function must not return a generator: its body has not run')",
+    "        throw new TypeError('an exported VibeLang test function must not return a generator: its body has not run')",
     "      }",
     "      if (isResult(value)) {",
     "        const inspected = __vsInspectResult(value)",
@@ -1887,63 +827,66 @@ function probeExecutable(command: string, args: readonly string[] = ["--version"
   return version === "" ? { available: false, reason: "no-version-output" } : { available: true, version };
 }
 
-const cli = Cli.create("smithers", { version, description: "Smithers checked prototype toolchain" })
+// A raw-source command owns stdout, but still lets the event loop and runtime
+// finish normally. Forced exit can interrupt pending runtime shutdown work.
+let rawStdoutWritten = false;
+const cli = Cli.create("vibe", { version, description: "VibeLang: the programming language for agents" })
   .command("compile", {
     args: files,
     options: backendCompileOptions,
     alias: { project: "p", watch: "w" },
-    description: "Compile .sm with the checked frontend, or delegate TS/JS to TypeScript",
-    hint: "Use smithersc when exact raw tsc argument compatibility is required.",
+    description: "Compile .vibe with the checked frontend, or delegate TS/JS to TypeScript",
+    hint: "Use vibec when exact raw tsc argument compatibility is required.",
     async run(context) {
       const inputFiles = context.args.files;
       const { backend, ...options } = context.options;
-      if (backend === "js" && !inputFiles?.some(isSmithersFile)) {
+      if (backend === "js" && !inputFiles?.some(isVibeLangFile)) {
         return finishCompiler(runTypeScriptCompiler(compilerArgs(inputFiles, options)));
       }
-      if (backend === "go" && !inputFiles?.some(isSmithersFile)) {
+      if (backend === "go" && !inputFiles?.some(isVibeLangFile)) {
         return context.error({
-          code: "SMITHERS_GO_INPUT",
+          code: "VIBELANG_GO_INPUT",
           exitCode: 2,
-          message: "--backend go currently accepts .sm inputs only; use --backend js for TypeScript or JavaScript inputs",
+          message: "--backend go currently accepts .vibe inputs only; use --backend js for TypeScript or JavaScript inputs",
         });
       }
-      const smithersInputs = inputFiles!;
-      if (containsMixedInputs(smithersInputs)) {
-        return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "compile .sm and TypeScript inputs in separate invocations" });
+      const vibelangInputs = inputFiles!;
+      if (containsMixedInputs(vibelangInputs)) {
+        return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "compile .vibe and TypeScript inputs in separate invocations" });
       }
-      const unsupported = unsupportedSmithersOptions(options, new Set(["outDir", "rootDir", "noEmit", "declaration", "sourceMap", "project"]));
+      const unsupported = unsupportedVibeLangOptions(options, new Set(["outDir", "rootDir", "noEmit", "declaration", "sourceMap", "project"]));
       if (unsupported.length > 0) {
         return context.error({
-          code: "UNSUPPORTED_SMITHERS_OPTION",
+          code: "UNSUPPORTED_VIBELANG_OPTION",
           exitCode: 2,
-          message: `.sm compile does not support ${unsupported.join(", ")}; supported options are --project, --outDir, --rootDir, --declaration, --sourceMap, and --noEmit`,
+          message: `.vibe compile does not support ${unsupported.join(", ")}; supported options are --project, --outDir, --rootDir, --declaration, --sourceMap, and --noEmit`,
         });
       }
-      const compileConfig = options.project === undefined ? undefined : readSmithersProjectConfig(options.project);
+      const compileConfig = options.project === undefined ? undefined : readVibeLangProjectConfig(options.project);
       if (compileConfig && "failure" in compileConfig) {
         return context.error({ code: compileConfig.failure.code, exitCode: 2, message: compileConfig.failure.message });
       }
       if (compileConfig && compileConfig.diagnostics.length > 0) {
-        return reportSmithersResults([{ input: compileConfig.fileName, diagnostics: compileConfig.diagnostics }]);
+        return reportVibeLangResults([{ input: compileConfig.fileName, diagnostics: compileConfig.diagnostics }]);
       }
-      const collision = duplicateSmithersOutput(smithersInputs, options.outDir);
+      const collision = duplicateVibeLangOutput(vibelangInputs, options.outDir);
       if (collision) {
         return context.error({
-          code: "DUPLICATE_SMITHERS_OUTPUT",
+          code: "DUPLICATE_VIBELANG_OUTPUT",
           exitCode: 2,
           message: `${collision.inputs.join(" and ")} both emit ${collision.output}`,
         });
       }
       if (options.noEmit && (options.declaration || options.sourceMap)) {
         return context.error({
-          code: "CONFLICTING_SMITHERS_OPTIONS",
+          code: "CONFLICTING_VIBELANG_OPTIONS",
           exitCode: 2,
-          message: ".sm compile cannot combine --noEmit with --declaration or --sourceMap",
+          message: ".vibe compile cannot combine --noEmit with --declaration or --sourceMap",
         });
       }
       try {
-        const compile = backend === "go" ? compileGoSmithersFiles : compileSmithersFiles;
-        return reportSmithersResults(await compile(smithersInputs, {
+        const compile = backend === "go" ? compileGoVibeLangFiles : compileVibeLangFiles;
+        return reportVibeLangResults(await compile(vibelangInputs, {
           ...(compileConfig && !("failure" in compileConfig)
             ? { configFile: { path: compileConfig.fileName, text: compileConfig.text } }
             : {}),
@@ -1962,42 +905,42 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     args: files,
     options: backendCompileOptions.omit({ noEmit: true }),
     alias: { project: "p", watch: "w" },
-    description: "Check .sm rows and emitted TS, or type-check TS/JS without emitting",
+    description: "Check .vibe rows and emitted TS, or type-check TS/JS without emitting",
     async run(context) {
       const inputFiles = context.args.files;
       const { backend, ...options } = context.options;
-      if (backend === "js" && !inputFiles?.some(isSmithersFile)) {
+      if (backend === "js" && !inputFiles?.some(isVibeLangFile)) {
         return finishCompiler(runTypeScriptCompiler(["--noEmit", ...compilerArgs(inputFiles, options)]));
       }
-      if (backend === "go" && !inputFiles?.some(isSmithersFile)) {
+      if (backend === "go" && !inputFiles?.some(isVibeLangFile)) {
         return context.error({
-          code: "SMITHERS_GO_INPUT",
+          code: "VIBELANG_GO_INPUT",
           exitCode: 2,
-          message: "--backend go currently accepts .sm inputs only; use --backend js for TypeScript or JavaScript inputs",
+          message: "--backend go currently accepts .vibe inputs only; use --backend js for TypeScript or JavaScript inputs",
         });
       }
-      const smithersInputs = inputFiles!;
-      if (containsMixedInputs(smithersInputs)) {
-        return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "check .sm and TypeScript inputs in separate invocations" });
+      const vibelangInputs = inputFiles!;
+      if (containsMixedInputs(vibelangInputs)) {
+        return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "check .vibe and TypeScript inputs in separate invocations" });
       }
-      const unsupported = unsupportedSmithersOptions(options, new Set<keyof CompileOptions>(["rootDir", "project"]));
+      const unsupported = unsupportedVibeLangOptions(options, new Set<keyof CompileOptions>(["rootDir", "project"]));
       if (unsupported.length > 0) {
         return context.error({
-          code: "UNSUPPORTED_SMITHERS_OPTION",
+          code: "UNSUPPORTED_VIBELANG_OPTION",
           exitCode: 2,
-          message: `.sm check does not support ${unsupported.join(", ")}`,
+          message: `.vibe check does not support ${unsupported.join(", ")}`,
         });
       }
-      const checkConfig = options.project === undefined ? undefined : readSmithersProjectConfig(options.project);
+      const checkConfig = options.project === undefined ? undefined : readVibeLangProjectConfig(options.project);
       if (checkConfig && "failure" in checkConfig) {
         return context.error({ code: checkConfig.failure.code, exitCode: 2, message: checkConfig.failure.message });
       }
       if (checkConfig && checkConfig.diagnostics.length > 0) {
-        return reportSmithersResults([{ input: checkConfig.fileName, diagnostics: checkConfig.diagnostics }]);
+        return reportVibeLangResults([{ input: checkConfig.fileName, diagnostics: checkConfig.diagnostics }]);
       }
       try {
-        const compile = backend === "go" ? compileGoSmithersFiles : compileSmithersFiles;
-        return reportSmithersResults(await compile(smithersInputs, {
+        const compile = backend === "go" ? compileGoVibeLangFiles : compileVibeLangFiles;
+        return reportVibeLangResults(await compile(vibelangInputs, {
           ...(checkConfig && !("failure" in checkConfig)
             ? { configFile: { path: checkConfig.fileName, text: checkConfig.text } }
             : {}),
@@ -2012,26 +955,26 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
   .command("run", {
     args: files,
     options: z.object({ backend: backendOption }),
-    description: "Compile and run one .sm file under Node (prototype subset)",
+    description: "Compile and run one .vibe file under Node (prototype subset)",
     async run(context) {
       const [input, ...programArguments] = requireInputs(context.args.files);
-      if (!isSmithersFile(input)) {
-        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "smithers run requires a .sm input" });
+      if (!isVibeLangFile(input)) {
+        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "vibe run requires a .vibe input" });
       }
       let temporary: string | undefined;
       try {
         const inputPath = realpathSync(resolve(input));
-        temporary = mkdtempSync(join(dirname(inputPath), ".smithers-run-"));
+        temporary = mkdtempSync(join(dirname(inputPath), ".vibelang-run-"));
         writeFileSync(join(temporary, "package.json"), "{\"type\":\"module\"}\n");
         const runtime = fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url));
         // The derived-schema seam deliberately keeps its package specifier here:
         // a resolvable local path would make the frontend read `__vsSchema` as an
-        // untrusted foreign module, and `smthrs/schema-runtime` resolves from
+        // untrusted foreign module, and `vibelang/schema-runtime` resolves from
         // the emitted module for every installed consumer.
         const results = context.options.backend === "go"
-          ? compileGoSmithersFiles([input], { outDir: temporary })
-          : await compileSmithersFiles([input], { outDir: temporary, runtimeImport: runtime });
-        const report = reportSmithersResults(results);
+          ? compileGoVibeLangFiles([input], { outDir: temporary })
+          : await compileVibeLangFiles([input], { outDir: temporary, runtimeImport: runtime });
+        const report = reportVibeLangResults(results);
         const result = results.find((candidate) => candidate.input === inputPath);
         if (!report.ok || !result?.output) return report;
         if (context.formatExplicit) {
@@ -2065,17 +1008,17 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     description: "Print checked failure and Context requirement rows",
     async run(context) {
       const inputs = requireInputs(context.args.files);
-      const nonSmithers = inputs.filter((file) => !isSmithersFile(file));
-      if (nonSmithers.length > 0) {
+      const nonVibeLang = inputs.filter((file) => !isVibeLangFile(file));
+      if (nonVibeLang.length > 0) {
         return context.error({
           code: "INVALID_INPUT",
           exitCode: 2,
-          message: `smithers inspect currently accepts only .sm files: ${nonSmithers.join(", ")}`,
+          message: `vibe inspect currently accepts only .vibe files: ${nonVibeLang.join(", ")}`,
         });
       }
       let inspected: Array<{ file: string; language: ReturnType<typeof analyzeSource> }>;
       try {
-        const project = loadSmithersProject(inputs);
+        const project = loadVibeLangProject(inputs);
         const assetContext = sourceAssetCompilerForProject(project.rootDir);
         const sourceAssets = await compileSourceAssetModules({
           compiler: assetContext.compiler,
@@ -2085,7 +1028,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           process.exitCode = 1;
           return {
             ok: false,
-            code: "SMITHERS_ASSET_IMPORT",
+            code: "VIBELANG_ASSET_IMPORT",
             files: [],
             assets: {
               cacheIdentity: assetContext.cacheIdentity,
@@ -2106,11 +1049,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           };
         });
       } catch (error) {
-        return context.error({
-          code: "SMITHERS_PROJECT_ERROR",
-          exitCode: 2,
-          message: error instanceof Error ? error.message : String(error),
-        });
+        return backendFailure(context, error);
       }
       const ok = inspected.every((item) =>
         !item.language.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
@@ -2118,43 +1057,73 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       return { ok, files: inspected };
     },
   })
-  /**
-   * `smithers plan` — the product's only non-executing inspection path
-   * (`MIGRATION-PLAN.md` Q8: "Yes. Deleting it converts a rewrite into a
-   * capability loss for no saving").
-   *
-   * Step 12 changes exactly one thing about it: where the answer comes from.
-   * `compileDurableSource` answered "what Plan does this lower to?", which for
-   * a body holding ordinary control flow has no answer — step 11 withdrew the
-   * six walls that used to refuse such a body, so the lowerer began DECLINING
-   * it and this command gained a stopgap that exited 2 saying so.
-   * `compileEffectManifest` answers "what is this Flow?", which always has an
-   * answer, so the stopgap is gone rather than reworded.
-   *
-   * Deliberately unchanged: the command name, `--bindings` and its complete
-   * `readDurablePlanConfig` validation, `--outFile` and every one of its five
-   * guards (symbolic link, regular file, source/bindings overwrite, canonical
-   * `.sm` input, bounded read), the `SMITHERS_PLAN_ERROR` code, and the exit
-   * codes — 1 for a program the compiler refuses, 2 for a misuse of the
-   * command. A report for a refused program still names `diagnostics`, and
-   * `--outFile` is still written only after the compile succeeds, which is what
-   * keeps a refused run from truncating the file it names.
-   */
+  // The September 6 owner decision restores the full keyed graph as the
+  // inspection contract. Historical Manifest inspection is explicitly named;
+  // a refused keyed Plan never falls back to it or to executable-body replay.
   .command("plan", {
     args: files,
     options: z.object({
-      bindings: z.string().optional().describe("JSON file mapping imported Actions to pinned descriptors"),
-      outFile: z.string().optional().describe("Write the canonical Effect Manifest to this file"),
+      profile: z.enum(["keyed", "manifest-compat"]).default("keyed")
+        .describe("Keyed graph inspection, or explicitly historical Effect Manifest inspection"),
+      input: z.string().optional().describe("JSON file containing the exact Flow input"),
+      providers: z.string().optional().describe("JSON file containing explicit provider/code/tier/effect declarations (not execution authority)"),
+      planId: z.string().optional().describe("Explicit identity for the inspected Plan"),
+      flowId: z.string().optional().describe("Override the declaration-derived Flow identity"),
+      flowVersion: z.number().int().positive().optional().describe("Positive Flow version (default: 1)"),
+      exportName: z.string().optional().describe("Select the exported source Flow"),
+      rootDir: z.string().optional().describe("Bound source-module discovery and project-relative identities"),
+      bindings: z.string().optional().describe("Historical Action bindings; requires --profile manifest-compat"),
+      outFile: z.string().optional().describe("Write the native canonical inspection artifact after successful checking"),
     }),
-    description: "Report one durable(...) declaration's Effect Manifest without executing authored code",
+    description: "Publish a checked keyed Plan without executing authored code or authorizing providers",
     run(context) {
       try {
-        const input = requireOneInput(context.args.files, "smithers plan");
-        if (!isSmithersFile(input)) throw new TypeError("smithers plan requires a .sm input");
-        if (!context.options.bindings) throw new TypeError("smithers plan requires --bindings <actions.json>");
+        const input = requireOneInput(context.args.files, "vibe plan");
+        if (!isVibeLangFile(input)) throw new TypeError("vibe plan requires a .vibe input");
+        const absolute = realpathSync(resolve(input));
+        if (!isVibeLangFile(absolute)) throw new TypeError("vibe plan requires a canonical .vibe input");
+        if (context.options.profile === "keyed") {
+          if (context.options.bindings !== undefined) {
+            throw new TypeError("--bindings is historical Manifest configuration; use --profile manifest-compat explicitly");
+          }
+          if (!context.options.input || !context.options.providers || !context.options.planId) {
+            throw new TypeError("vibe plan requires --input <input.json>, --providers <providers.json>, and --planId <id>");
+          }
+          const project = loadVibeLangProject([absolute], context.options.rootDir, {
+            maximumFileBytes: MAX_CLI_SOURCE_BYTES,
+            maximumTotalBytes: MAX_CLI_SOURCE_BYTES,
+            maximumFiles: 257,
+            preserveBOM: true,
+          });
+          const fileName = relative(project.rootDir, absolute).split(sep).join("/");
+          const entry = project.sources.find(source => source.fileName === fileName)!;
+          const value = readBoundedUtf8File(context.options.input, 16 * 1024 * 1024, "durable input file", true);
+          const providers = readBoundedUtf8File(context.options.providers, 16 * 1024 * 1024, "durable providers file", true);
+          // Preserve the original JSON text: Go, not JSON.parse in the host,
+          // owns duplicate-key, number, Unicode and provider-policy validation.
+          const result = getNativeCompiler().compileKeyedPlanSource({
+            source: entry.source, fileName,
+            dependencies: project.sources.filter(source => source.fileName !== fileName),
+            ...(context.options.exportName === undefined ? {} : { exportName: context.options.exportName }),
+            flowId: context.options.flowId ?? "", flowVersion: context.options.flowVersion ?? 1,
+            planId: context.options.planId, inputJson: value.source, providersJson: providers.source,
+          });
+          if (!result.ok) {
+            process.exitCode = 1;
+            return { ok: false, profile: "keyed", file: absolute, diagnostics: result.diagnostics };
+          }
+          const plan = JSON.parse(result.planJson) as { readonly planId: string; readonly digest: string };
+          const artifact = writeDurableInspection(context.options.outFile, result.planJson,
+            [...project.runtimeSeeds.map(source => source.fileName), value.fileName, providers.fileName], "Plan");
+          return { ok: true, profile: "keyed", file: absolute, rootDir: project.rootDir,
+            artifact, planId: plan.planId, digest: plan.digest, plan };
+        }
+        if ([context.options.input, context.options.providers, context.options.planId, context.options.flowId,
+          context.options.flowVersion, context.options.exportName, context.options.rootDir].some(value => value !== undefined)) {
+          throw new TypeError("--profile manifest-compat accepts only --bindings and --outFile, not keyed Plan options");
+        }
+        if (!context.options.bindings) throw new TypeError("vibe plan requires --bindings <actions.json>");
         const source = readBoundedUtf8File(input, MAX_CLI_SOURCE_BYTES, "durable source file");
-        const absolute = source.fileName;
-        if (!isSmithersFile(absolute)) throw new TypeError("smithers plan requires a canonical .sm input");
         const config = readDurablePlanConfig(context.options.bindings);
         const result = compileEffectManifest(source.source, {
           fileName: basename(absolute),
@@ -2166,29 +1135,11 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           process.exitCode = 1;
           return { ok: false, file: absolute, diagnostics: result.diagnostics };
         }
-        let artifact: string | undefined;
-        if (context.options.outFile) {
-          const requestedArtifact = resolve(context.options.outFile);
-          if (existsSync(requestedArtifact) && lstatSync(requestedArtifact).isSymbolicLink()) {
-            throw new TypeError("durable Manifest output cannot be a symbolic link");
-          }
-          artifact = canonicalFuturePath(requestedArtifact);
-          if (existsSync(artifact) && !statSync(artifact).isFile()) {
-            throw new TypeError("durable Manifest output must be a regular file when it already exists");
-          }
-          if (pathsReferToSameFile(artifact, absolute) || pathsReferToSameFile(artifact, config.fileName)) {
-            throw new TypeError("durable Manifest output cannot overwrite its source or bindings file");
-          }
-          // The Manifest's OWN canonical bytes, not a second encoding of them:
-          // `manifest.digest` is `digest(...)` over exactly this serialization
-          // minus the digest field, so a reader can re-derive the identity from
-          // the file rather than trusting the field. Writing it any other way
-          // would publish an artifact whose digest cannot be checked against
-          // its own contents.
-          commitProjectFiles(dirname(artifact), [{ fileName: artifact, code: `${canonicalJson(result.manifest)}\n` }]);
-        }
+        const artifact = writeDurableInspection(context.options.outFile, canonicalJson(result.manifest),
+          [absolute, config.fileName], "Manifest");
         return {
           ok: true,
+          profile: "manifest-compat",
           file: absolute,
           artifact,
           digest: result.manifest.digest,
@@ -2196,7 +1147,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         };
       } catch (error) {
         return context.error({
-          code: "SMITHERS_PLAN_ERROR",
+          code: "VIBELANG_PLAN_ERROR",
           exitCode: 2,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -2221,8 +1172,117 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     },
   })
   .command("init", {
-    description: "Create a TypeScript-compatible tsconfig.json",
-    run() { return finishCompiler(runTypeScriptCompiler(["--init"])); },
+    args: z.object({}),
+    options: z.object({
+      force: z.boolean().optional().describe("Overwrite files that already exist"),
+    }),
+    description: "Create a VibeLang project: a compliant tsconfig.json and a main.vibe that prints",
+    hint: "Writes tsconfig.json, main.vibe, and stdout.ts into the current directory, then `vibe check main.vibe` and `vibe run main.vibe` work as written. Existing files are kept unless --force is given.",
+    examples: [
+      { args: {}, description: "Scaffold a project in the current directory" },
+      { args: {}, options: { force: true }, description: "Overwrite the scaffold files" },
+    ],
+    run(context) {
+      // Previously this delegated to `tsc --init`. That produced a tsconfig the
+      // VibeLang checker then refused on two counts (an unclassified option and
+      // a missing mandatory one), which made the first documented command fail.
+      // The scaffold below is the smallest project that prints something:
+      // nothing is ambient in `.vibe`, so output goes through a capability whose
+      // one host touch lives in ordinary TypeScript behind a trust claim.
+      const files: Record<string, string> = {
+        "tsconfig.json": JSON.stringify(
+          {
+            compilerOptions: {
+              target: "esnext",
+              module: "esnext",
+              moduleResolution: "bundler",
+              // The six mandatory soundness options; `vibe check -p` refuses a
+              // project that weakens any of them.
+              strict: true,
+              noUncheckedIndexedAccess: true,
+              exactOptionalPropertyTypes: true,
+              isolatedModules: true,
+              verbatimModuleSyntax: true,
+              useDefineForClassFields: true,
+              allowImportingTsExtensions: true,
+              noEmit: true,
+              skipLibCheck: true,
+            },
+            include: ["**/*.vibe", "**/*.ts"],
+          },
+          null,
+          2,
+        ) + "\n",
+        "main.vibe": [
+          'import { Context } from "vibelang/context"',
+          'import { Layer } from "vibelang/provider"',
+          'import { writeLine } from "./stdout.ts"',
+          "",
+          "// Nothing is ambient in .vibe: console, process, the clock, and the network",
+          "// all arrive as capabilities. This one writes a line of output.",
+          "abstract class Console extends Context {",
+          "  abstract info(message: string): void",
+          "}",
+          "",
+          "class StdoutConsole extends Console {",
+          "  info(message: string): void {",
+          "    writeLine(message)",
+          "  }",
+          "}",
+          "",
+          "class NotFound extends Error {}",
+          "",
+          "// A fallible function returns Result<A, E>. A plain return is the success",
+          "// value; a thrown Error is the failure value. Callers must handle it.",
+          "function greeting(id: number): Result<string, NotFound> {",
+          "  if (id !== 1) throw new NotFound(`no user ${id}`)",
+          '  return "hello, Ada"',
+          "}",
+          "",
+          "const App = Layer.succeed(Console, new StdoutConsole())",
+          "",
+          "Layer.provide(App, () => {",
+          "  const console = Console.context()",
+          "  greeting(1).match({",
+          "    ok: text => console.info(text),",
+          "    error: error => console.info(`failed: ${error.message}`),",
+          "  })",
+          "})",
+          "",
+        ].join("\n"),
+        "stdout.ts": [
+          "/**",
+          " * The one place this program touches the host. Ordinary TypeScript, with a",
+          " * trust claim the compiler honours: importing it adds no panic channel.",
+          " * @module",
+          " * @throws {never}",
+          " */",
+          "",
+          "/** @throws {never} */",
+          "export function writeLine(text: string): void {",
+          "  console.log(text)",
+          "}",
+          "",
+        ].join("\n"),
+      };
+      const written: string[] = [];
+      const skipped: string[] = [];
+      for (const [name, text] of Object.entries(files)) {
+        const target = resolve(name);
+        if (existsSync(target) && !context.options.force) {
+          skipped.push(name);
+          continue;
+        }
+        writeFileSync(target, text);
+        written.push(name);
+      }
+      return {
+        ok: true,
+        written,
+        skipped,
+        next: ["vibe check main.vibe", "vibe run main.vibe"],
+      };
+    },
   })
   .command("format", {
     args: files,
@@ -2231,27 +1291,27 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       stdout: z.boolean().optional().describe("Print the formatted source instead of writing files"),
       indentSize: z.number().int().min(1).max(8).optional().describe("Spaces per indentation level (default 2)"),
     }),
-    description: "Format Smithers and TypeScript sources deterministically",
+    description: "Format VibeLang and TypeScript sources deterministically",
     hint: "Formatting is whitespace-only and idempotent; a file that cannot be formatted soundly is reported, never rewritten.",
     examples: [
-      { args: { files: ["src/app.sm"] }, description: "Format one module in place" },
-      { args: { files: ["src/app.sm"] }, options: { check: true }, description: "Fail if the module is unformatted" },
-      { args: { files: ["src/app.sm"] }, options: { stdout: true }, description: "Print the formatted module" },
+      { args: { files: ["src/app.vibe"] }, description: "Format one module in place" },
+      { args: { files: ["src/app.vibe"] }, options: { check: true }, description: "Fail if the module is unformatted" },
+      { args: { files: ["src/app.vibe"] }, options: { stdout: true }, description: "Print the formatted module" },
     ],
     run(context) {
       const inputs = context.args.files;
       if (!inputs || inputs.length === 0) {
-        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "smithers format requires at least one input file" });
+        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "vibe format requires at least one input file" });
       }
       if (context.options.check && context.options.stdout) {
-        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "smithers format --check and --stdout are mutually exclusive" });
+        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "vibe format --check and --stdout are mutually exclusive" });
       }
       let results: FormatFileResult[];
       try {
         results = inputs.map((input) => formatOneFile(input, context.options.indentSize));
       } catch (error) {
         return context.error({
-          code: "SMITHERS_FORMAT_ERROR",
+          code: "VIBELANG_FORMAT_ERROR",
           exitCode: 2,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -2279,7 +1339,8 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         // writes raw text, and then nothing else may reach stdout.
         if (ok && !context.formatExplicit) {
           writeFileSync(1, results.map((result) => result.formatted ?? "").join(""));
-          process.exit(0);
+          rawStdoutWritten = true;
+          return;
         }
         return { ok, mode: "stdout" as const, files: results };
       }
@@ -2293,7 +1354,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         }
       } catch (error) {
         return context.error({
-          code: "SMITHERS_FORMAT_WRITE_ERROR",
+          code: "VIBELANG_FORMAT_WRITE_ERROR",
           exitCode: 2,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -2319,14 +1380,14 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     async run(context) {
       const inputs = context.args.files;
       if (!inputs || inputs.length === 0) {
-        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "smithers test requires at least one .sm input" });
+        return context.error({ code: "INVALID_INPUT", exitCode: 2, message: "vibe test requires at least one .vibe input" });
       }
-      const nonSmithers = inputs.filter((file) => !isSmithersFile(file));
-      if (nonSmithers.length > 0) {
+      const nonVibeLang = inputs.filter((file) => !isVibeLangFile(file));
+      if (nonVibeLang.length > 0) {
         return context.error({
           code: "INVALID_INPUT",
           exitCode: 2,
-          message: `smithers test currently accepts only .sm files: ${nonSmithers.join(", ")}`,
+          message: `vibe test currently accepts only .vibe files: ${nonVibeLang.join(", ")}`,
         });
       }
       let temporary: string | undefined;
@@ -2337,14 +1398,14 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
             .find((candidate) => pathsReferToSameFile(candidate, canonicalInputs[index]!));
           if (duplicate) {
             throw new TypeError(
-              `smithers test received the same canonical module more than once: ${duplicate} and ${canonicalInputs[index]}`,
+              `vibe test received the same canonical module more than once: ${duplicate} and ${canonicalInputs[index]}`,
             );
           }
         }
-        temporary = mkdtempSync(join(commonSourceRoot(canonicalInputs), ".smithers-test-"));
+        temporary = mkdtempSync(join(commonSourceRoot(canonicalInputs), ".vibelang-test-"));
         writeFileSync(join(temporary, "package.json"), "{\"type\":\"module\"}\n");
         const runtime = fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url));
-        const results = await compileSmithersFiles(inputs, {
+        const results = await compileVibeLangFiles(inputs, {
           outDir: temporary,
           runtimeImport: runtime,
           sourceBudget: {
@@ -2353,7 +1414,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
             maximumFiles: MAX_TEST_PROJECT_FILES,
           },
         });
-        const report = reportSmithersResults(results);
+        const report = reportVibeLangResults(results);
         if (!report.ok) return report;
         const entries = canonicalInputs.map((absolute) => {
           const output = results.find((result) => result.input === absolute)?.output;
@@ -2365,7 +1426,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           };
         });
         const protocolMarker = `${TEST_PROTOCOL_PREFIX}${randomBytes(16).toString("hex")}__`;
-        const runner = join(temporary, "__smithers_test_runner__.mjs");
+        const runner = join(temporary, "__vibelang_test_runner__.mjs");
         writeFileSync(runner, createTestRunner(entries, pathToFileURL(runtime).href, protocolMarker), { flag: "wx" });
         const child = spawnSync(process.execPath, [runner], {
           encoding: "utf8",
@@ -2404,7 +1465,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         };
       } catch (error) {
         return context.error({
-          code: "SMITHERS_TEST_ERROR",
+          code: "VIBELANG_TEST_ERROR",
           exitCode: 2,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -2414,13 +1475,13 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     },
   })
   .command("lsp", {
-    description: "Start the Smithers language server on stdio (LSP over JSON-RPC 2.0)",
+    description: "Start the VibeLang language server on stdio (LSP over JSON-RPC 2.0)",
     hint: "Bounded on purpose: one workspace folder, full-document sync, and diagnostics, hover, definition, and formatting only.",
     async run() {
       // The language server owns stdout for the whole session, so no structured
       // envelope may be printed after it: this command terminates the process
       // itself once the client's `exit` notification arrives, after flushing.
-      const code = await startSmithersLanguageServer().closed;
+      const code = await startVibeLangLanguageServer().closed;
       await new Promise<void>((settle) => { process.stdout.write("", () => { settle(); }); });
       process.exit(code);
     },
@@ -2429,7 +1490,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     description: "Inspect installed backends and implemented prototype surfaces",
     run() {
       const nativeCompiler = resolveTypeScriptCompiler();
-      const nativeTypeScript = probeExecutable(process.execPath, [nativeCompiler, "--version"]);
+      const nativeTypeScript = probeExecutable(nativeCompiler, ["--typescript", "--version"]);
       const packagedRuntime = existsSync(fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url)));
       // `ok` is derived from the checks this command actually performed. It was
       // previously the literal `true`, which certified an environment doctor had
@@ -2450,11 +1511,15 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         // Named so a caller can see which required check failed rather than
         // inferring it. Empty on a healthy environment.
         unsatisfied: failures,
-        smithers: version,
+        vibelang: version,
         node: process.version,
         nativeCompiler,
         nativeTypeScript,
-        javascriptApi: ts.version,
+        compilerPipeline: {
+          generatedChecking: "native-go",
+          declarations: "native-go",
+          languageFrontend: "native-go",
+        },
         tools: {
           deno: probeExecutable("deno"),
           zig: probeExecutable("zig", ["version"]),
@@ -2462,16 +1527,16 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           go: probeExecutable("go", ["version"]),
         },
         surfaces: {
-          smithersCompile: "cross-module prototype with declarations and composed source maps",
-          smithersCheck: "cross-module checked-row prototype",
-          smithersRun: "Node prototype subset",
+          vibelangCompile: "cross-module prototype with declarations and composed source maps",
+          vibelangCheck: "cross-module checked-row prototype",
+          vibelangRun: "Node prototype subset",
           inspectRowsAndTargets: "prototype",
           comptimeAndAssets: "bounded comptime functions, target selection, tracked text embed, and static assets; loaders remain programmatic",
           codingAgent: "programmatic API",
-          durablePlanCompiler: "static smithers plan command and programmatic API",
-          durableExecutor: "Bun-only subpath: smthrs/durable/bun",
+          durablePlanCompiler: "static vibe plan command and programmatic API",
+          durableExecutor: "Bun-only subpath: vibelang/durable/bun",
           languageServer: "stdio LSP: diagnostics, hover rows, definition, formatting; one workspace folder, full-document sync",
-          formatter: "idempotent whitespace-only .sm/TypeScript formatter with Smithers construct masking",
+          formatter: "idempotent whitespace-only .vibe/TypeScript formatter with VibeLang construct masking",
           testRunner: "exported zero-argument test* prototype: every exported function whose name begins with test, generator functions refused",
         },
         packagedRuntime,
@@ -2479,4 +1544,8 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
     },
   });
 
-await cli.serve();
+await cli.serve(undefined, {
+  stdout(text) {
+    if (!rawStdoutWritten) process.stdout.write(text);
+  },
+});

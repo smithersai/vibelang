@@ -9,7 +9,8 @@ import {
   statSync,
 } from "node:fs";
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
-import ts from "typescript-js";
+import { getNativeCompiler } from "../poc/dist/compiler/native.js";
+import type { NativeDiagnostic, NativeRuntimeModuleEdge, NativeRuntimeModuleFile } from "../poc/dist/compiler/protocol.js";
 
 export interface RuntimeSourceBudget {
   readonly maximumFileBytes: number;
@@ -70,8 +71,18 @@ export interface RelativeRuntimeGraph {
    * still be handed them or the type they name resolves to nothing.
    */
   readonly checkerDependencies: readonly StagedProjectSource[];
+  /** Captured declaration companions and their transitive type dependencies.
+   * They describe imported runtime modules; erased JavaScript is not a second
+   * source implementation to type-check against the consumer's strict options.
+   */
+  readonly declarationSources: readonly {
+    readonly fileName: string;
+    readonly outputFileName: string;
+    readonly code: string;
+    readonly runtimeOutputFileName?: string;
+  }[];
   /**
-   * Non-code project files a Smithers source named as an asset, present only
+   * Non-code project files a VibeLang source named as an asset, present only
    * when the caller asked for `assetSpecifiers: "stage"`. See that option.
    */
   readonly stagedAssets: readonly StagedProjectSource[];
@@ -83,8 +94,8 @@ export interface RelativeRuntimeGraph {
     readonly resolutionAliases: readonly string[];
     readonly stripImportAttributes?: boolean;
   }[];
-  /** Rewrite literal dynamic imports which survive Smithers's static-import pass. */
-  readonly rewriteSmithersRuntimeCalls: (
+  /** Rewrite literal dynamic imports which survive VibeLang's static-import pass. */
+  readonly rewriteVibeLangRuntimeCalls: (
     code: string,
     authoredFileName: string,
     outputFileName: string,
@@ -92,7 +103,7 @@ export interface RelativeRuntimeGraph {
 }
 
 export interface RuntimeGraphDiagnostic {
-  readonly code: "SMITHERS1510";
+  readonly code: "VIBE1510";
   readonly severity: "error";
   readonly message: string;
   readonly fileName: string;
@@ -111,25 +122,10 @@ export interface TranspiledRuntimeFile extends RelativeRuntimeFile {
 
 export interface TranspiledRuntimeGraph {
   readonly files: readonly TranspiledRuntimeFile[];
-  readonly diagnostics: readonly ts.Diagnostic[];
+  readonly diagnostics: readonly NativeDiagnostic[];
 }
 
-interface ModuleEdge {
-  readonly kind: "import" | "export" | "import-equals" | "dynamic-import" | "require";
-  readonly specifier: string;
-  readonly start: number;
-  readonly end: number;
-  readonly typeOnly: boolean;
-  /** True when evaluating the importing module immediately evaluates this edge. */
-  readonly moduleInitialization: boolean;
-  /**
-   * True when the edge carries a `with { ... }` attribute bag. An attribute bag
-   * selects a loader, and the loader — not the extension — decides whether the
-   * target is code or an asset, so this is the one spelling that makes
-   * `./thing.ts` an asset.
-   */
-  readonly attributes: boolean;
-}
+type ModuleEdge = NativeRuntimeModuleEdge;
 
 interface LoadedForeignFile {
   readonly fileName: string;
@@ -148,15 +144,6 @@ interface ResolvedEdge extends ModuleEdge {
 
 const FOREIGN_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
 const DECLARATION_PATTERN = /\.d\.(?:ts|mts|cts)$/i;
-const RESOLUTION_OPTIONS: ts.CompilerOptions = {
-  target: ts.ScriptTarget.ES2022,
-  module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  allowJs: true,
-  checkJs: true,
-  allowImportingTsExtensions: true,
-  jsx: ts.JsxEmit.React,
-};
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -181,7 +168,7 @@ function extensionOf(fileName: string): string {
 
 function formatOf(fileName: string): "esm" | "cjs" {
   const extension = extensionOf(fileName);
-  return extension === ".cts" || extension === ".cjs" ? "cjs" : "esm";
+  return extension === ".cts" || extension === ".cjs" || extension === ".d.cts" ? "cjs" : "esm";
 }
 
 function outputExtension(fileName: string): ".mjs" | ".cjs" {
@@ -226,393 +213,37 @@ function readBoundedUtf8(fileName: string, maximumBytes: number): {
   }
 }
 
-function scriptKind(fileName: string): ts.ScriptKind {
-  switch (extensionOf(fileName)) {
-    case ".tsx": return ts.ScriptKind.TSX;
-    case ".jsx": return ts.ScriptKind.JSX;
-    case ".js":
-    case ".mjs":
-    case ".cjs": return ts.ScriptKind.JS;
-    default: return ts.ScriptKind.TS;
-  }
-}
-
-function allNamedImportsAreTypeOnly(clause: ts.ImportClause): boolean {
-  const bindings = clause.namedBindings;
-  return !clause.name && bindings !== undefined && ts.isNamedImports(bindings) &&
-    bindings.elements.length > 0 && bindings.elements.every((element) => element.isTypeOnly);
-}
-
-function allNamedExportsAreTypeOnly(clause: ts.ExportDeclaration): boolean {
-  return Boolean(clause.exportClause && ts.isNamedExports(clause.exportClause) &&
-    clause.exportClause.elements.length > 0 && clause.exportClause.elements.every((element) => element.isTypeOnly));
-}
-
-function literalText(expression: ts.Expression | undefined): string | undefined {
-  return expression && (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression))
-    ? expression.text
-    : undefined;
-}
-
-function location(sourceFile: ts.SourceFile, position: number): string {
-  const point = sourceFile.getLineAndCharacterOfPosition(position);
-  return `${sourceFile.fileName}:${point.line + 1}:${point.character + 1}`;
-}
-
-function hasExportModifier(statement: ts.Statement): boolean {
-  return ts.canHaveModifiers(statement) &&
-    (ts.getModifiers(statement) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
-}
-
-/** The value names one module-scope statement introduces, when they are plain identifiers. */
-function declaredValueNames(statement: ts.Statement): readonly string[] {
-  if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
-    return statement.name ? [statement.name.text] : [];
-  }
-  if (ts.isVariableStatement(statement)) {
-    return statement.declarationList.declarations
-      .flatMap((declaration) => ts.isIdentifier(declaration.name) ? [declaration.name.text] : []);
-  }
-  return [];
-}
-
-/**
- * Decide which edges of one module are evaluated while that module is being
- * evaluated. The answer defaults to *yes*, and "no" has to be proven.
- *
- * This is the flag that decides which reached modules must carry the
- * initialization trust marker, so an edge misclassified as deferred is an
- * untrusted foreign initializer running with no diagnostic. Until 2026-08-27
- * the two questionable arms answered a different question and defaulted the
- * wrong way: every `import()` was declared not to be initialization, and
- * `require` asked only "is this lexically inside some function". Six spellings
- * were measured checking clean and running the untrusted initializer —
- * `const m = await import(…)`, `const p = import(…); void p`,
- * `await (async () => (await import(…)).x)()`, `const l = (() => require(…))()`,
- * a named local function called at module scope, and an object getter read at
- * module scope. "Lexically inside a function" is not the question; "can module
- * evaluation reach this" is.
- *
- * The proof this walk accepts is deliberately narrow, because it has no
- * checker and no cross-module information — a function defers its body only
- * when module-scope code cannot get hold of the function value at all:
- *
- * - the function literal must *be* a module-scope `function`/`class` member
- *   declaration, or the entire initializer of a module-scope `const`/`let`/`var`
- *   binding — anything else (an IIFE, an array element, an object property, an
- *   argument) hands the value to module-scope code, which may call it;
- * - that declaration must be exported, so the module is written to be driven
- *   from outside; and
- * - none of the names it declares may be mentioned by module-scope code, since
- *   a mention is enough to call it.
- *
- * Everything else is an initialization edge. That deliberately refuses some
- * genuinely deferred shapes — a method reached only through a non-exported
- * factory, `module.exports = { load: () => require(…) }`, a lazily read
- * property of an exported object literal — and the escape hatch for each is the
- * one the diagnostic already names: mark the reached module, or load it through
- * a checked async foreign adapter. Refusing a deferred edge asks for a marker;
- * admitting an initialization edge runs untrusted code, so the asymmetry is the
- * whole point.
- *
- * Note also that only a function's BODY and its parameter defaults are
- * evaluated when it is called. Its decorators, computed member name and type
- * annotations are evaluated where the function is written, so an edge sitting
- * in one of those is at module scope even though it is lexically "inside a
- * function", and the climb below keeps walking outward for exactly that case.
- */
-function moduleInitializationClassifier(sourceFile: ts.SourceFile): (node: ts.Node) => boolean {
-  let moduleScopeValueNames: Set<string> | undefined;
-  const exportedByClause = new Set<string>();
-  for (const statement of sourceFile.statements) {
-    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || statement.moduleSpecifier) continue;
-    if (!statement.exportClause || !ts.isNamedExports(statement.exportClause)) continue;
-    for (const element of statement.exportClause.elements) {
-      if (!element.isTypeOnly) exportedByClause.add((element.propertyName ?? element.name).text);
-    }
-  }
-
-  const collectModuleScopeUses = (): Set<string> => {
-    const names = new Set<string>();
-    const visit = (node: ts.Node): void => {
-      // A type position is erased before anything runs, and an import or export
-      // clause names a binding rather than calling it.
-      if (ts.isTypeNode(node) || ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node) ||
-        ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node) || ts.isExportDeclaration(node)) return;
-      if (ts.isIdentifier(node)) {
-        const parent = node.parent as ts.Node & { readonly name?: ts.Node; readonly propertyName?: ts.Node };
-        // `{ load }` is a reference written in name position; every other
-        // `name`/`propertyName` slot is a declaration or a member label.
-        if (ts.isShorthandPropertyAssignment(parent) ||
-          (parent.name !== node && parent.propertyName !== node)) names.add(node.text);
-        return;
-      }
-      const body = (node as ts.Node & { readonly body?: ts.Node }).body;
-      ts.forEachChild(node, (child) => {
-        if (ts.isFunctionLike(node) && child === body) return;
-        visit(child);
-      });
-    };
-    visit(sourceFile);
-    return names;
-  };
-
-  const provablyDeferred = new Map<ts.Node, boolean>();
-  const isProvablyDeferred = (fn: ts.Node): boolean => {
-    const cached = provablyDeferred.get(fn);
-    if (cached !== undefined) return cached;
-    provablyDeferred.set(fn, false);
-    const parent = fn.parent as ts.Node | undefined;
-    let statement: ts.Node | undefined;
-    if (ts.isFunctionDeclaration(fn)) statement = fn;
-    else if (parent && ts.isClassDeclaration(parent)) statement = parent;
-    else if (parent && ts.isVariableDeclaration(parent) && parent.initializer === fn && ts.isIdentifier(parent.name)) {
-      statement = parent.parent.parent;
-    }
-    if (!statement || !statement.parent || !ts.isSourceFile(statement.parent)) return false;
-    const declaration = statement as ts.Statement;
-    const names = declaredValueNames(declaration);
-    if (!hasExportModifier(declaration) && !names.some((name) => exportedByClause.has(name))) return false;
-    moduleScopeValueNames ??= collectModuleScopeUses();
-    const answer = !names.some((name) => moduleScopeValueNames!.has(name));
-    provablyDeferred.set(fn, answer);
-    return answer;
-  };
-
-  return (node: ts.Node): boolean => {
-    let child: ts.Node = node;
-    let current: ts.Node | undefined = node.parent;
-    while (current) {
-      if (ts.isFunctionLike(current)) {
-        const container = current as ts.SignatureDeclaration & { readonly body?: ts.Node };
-        const evaluatedOnCall = child === container.body ||
-          (ts.isParameter(child) && container.parameters.indexOf(child) >= 0);
-        if (evaluatedOnCall && isProvablyDeferred(current)) return false;
-      }
-      child = current;
-      current = current.parent;
-    }
-    return true;
-  };
-}
-
-/**
- * @param deferComputedDynamicSpecifier
- *   Report no edge for `import(expression)` instead of refusing the module.
- *
- *   A computed dynamic specifier is refused by the language on both backends —
- *   `09-foreign-calls/a-computed-dynamic-import-specifier-is-refused` and
- *   `23-asset-imports/a-non-literal-dynamic-asset-import-is-rejected` pin it —
- *   so dropping the edge cannot admit anything. What it changes is *who*
- *   reports it and where. On the reference path the asset pass runs before this
- *   walk and reports it against the import site; a backend that runs its own
- *   asset pass afterwards needs the walk to leave the refusal to it rather than
- *   pre-empt it with a project-level abort that names no location.
- */
-function scanEdges(
+/** Native syntax and conservative trust facts; mandatory frontend checking
+ * still owns parse diagnostics. Source recovery here never certifies a module. */
+function runtimeModuleFacts(
   source: string,
   fileName: string,
   deferComputedDynamicSpecifier = false,
-): readonly ModuleEdge[] {
-  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind(fileName));
-  const edges: ModuleEdge[] = [];
-  const add = (
-    kind: ModuleEdge["kind"],
-    expression: ts.Expression,
-    typeOnly: boolean,
-    moduleInitialization: boolean,
-    attributes = false,
-  ): void => {
-    const specifier = literalText(expression);
-    if (specifier === undefined) {
-      if (kind === "dynamic-import" && deferComputedDynamicSpecifier) return;
-      throw new TypeError(`${location(sourceFile, expression.getStart(sourceFile))}: module specifier must be a string literal`);
-    }
-    edges.push({
-      kind,
-      specifier,
-      start: expression.getStart(sourceFile),
-      end: expression.end,
-      typeOnly,
-      moduleInitialization,
-      attributes,
-    });
-  };
-  const isModuleInitializationEdge = moduleInitializationClassifier(sourceFile);
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node)) {
-      const typeOnly = Boolean(node.importClause?.isTypeOnly ||
-        (node.importClause && allNamedImportsAreTypeOnly(node.importClause)));
-      add("import", node.moduleSpecifier, typeOnly, !typeOnly, node.attributes !== undefined);
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
-      const typeOnly = node.isTypeOnly || allNamedExportsAreTypeOnly(node);
-      add("export", node.moduleSpecifier, typeOnly, !typeOnly, node.attributes !== undefined);
-    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-      const expression = node.moduleReference.expression;
-      if (!expression) throw new TypeError(`${location(sourceFile, node.getStart(sourceFile))}: import=require needs a literal`);
-      add("import-equals", expression, node.isTypeOnly, !node.isTypeOnly);
-    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      // A literal asset import carries its `with { ... }` bag as a second
-      // argument. The bag is never a module edge, so it is validated as an
-      // inert object literal and then left exactly where the author wrote it.
-      if (node.arguments.length < 1 || node.arguments.length > 2) {
-        throw new TypeError(
-          `${location(sourceFile, node.getStart(sourceFile))}: dynamic import must have one string literal and at most one attributes object`,
-        );
-      }
-      const attributes = node.arguments[1];
-      if (attributes !== undefined && !ts.isObjectLiteralExpression(attributes)) {
-        throw new TypeError(
-          `${location(sourceFile, attributes.getStart(sourceFile))}: dynamic import attributes must be an object literal`,
-        );
-      }
-      // A dynamic import is a module-initialization edge whenever module
-      // evaluation reaches it. `buildRelativeRuntimeGraph` used to justify a
-      // blanket `false` here with "a subtree reached solely through import()
-      // rejects its Promise and is therefore handled by the ordinary checked
-      // async foreign-call boundary" — which is true of a `.sm` doing the
-      // import, and false of a FOREIGN module doing `await import(…)` at its
-      // own module scope, where the load is part of module evaluation and there
-      // is no checked call boundary anywhere near it.
-      add("dynamic-import", node.arguments[0]!, false, isModuleInitializationEdge(node), attributes !== undefined);
-    } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
-      if (node.arguments.length !== 1) {
-        throw new TypeError(`${location(sourceFile, node.getStart(sourceFile))}: require must have one string literal`);
-      }
-      add("require", node.arguments[0]!, false, isModuleInitializationEdge(node));
-    } else if (ts.isIdentifier(node) && node.text === "require" &&
-      !(ts.isCallExpression(node.parent) && node.parent.expression === node)) {
-      throw new TypeError(
-        `${location(sourceFile, node.getStart(sourceFile))}: require may not be aliased or accessed indirectly`,
-      );
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return edges.sort((left, right) => left.start - right.start || left.end - right.end);
+  rootDir?: string,
+): NativeRuntimeModuleFile {
+  const path = rootDir === undefined ? `module${extensionOf(fileName)}` : displayPath(rootDir, fileName);
+  const result = getNativeCompiler().runtimeModules({
+    files: [{ path, text: source, deferComputedDynamicSpecifier }],
+    ...(rootDir === undefined ? {} : { resolutionRoot: rootDir }),
+  }).files[0]!;
+  const diagnostic = result.diagnostics[0];
+  if (diagnostic) throw new TypeError(`${fileName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`);
+  return result;
 }
 
-/**
- * The module-initialization trust marker, matched the way every other
- * implementation of this rule matches it.
- *
- * There are four walks over this one marker — `poc/src/language/semantic.ts`
- * (twice), `compiler/forkbridge/lowering.go.txt`, and this file — and this is
- * the only one that reaches a module at depth two or more, because
- * `checkForeignModuleInitializers` iterates the authored `.sm`'s own statements
- * and the fork's `checkForeignModuleTrust` does the same. A form this walk
- * accepts and the other three refuse is therefore not a cosmetic divergence: it
- * is trust granted at a position no other walk inspects. Until 2026-08-27 this
- * site carried `/i` on both patterns while the other three deliberately did
- * not, and eight miscasings — `@MODULE`, `@Module`, `@mOdUlE`, `@THROWS`,
- * `@Throws`, `{Never}`, `{NEVER}`, `{nEvEr}` — were refused directly and
- * accepted transitively, with the untrusted initializer measured running.
- *
- * Three properties are load-bearing, and all three are chosen to agree with
- * `exactModuleMarker`/`exactThrowsNeverMarker` in the fork byte for byte:
- *
- * 1. **Exact case.** specification/failures.mdx, Foreign Exceptions (Locked):
- *    "`@throws {never}` removes the default panic case; `@throws {T}` declares
- *    the stated foreign error channel." Those are two productions of one
- *    syntax, separated only by the spelling inside the braces. `T` is a
- *    TypeScript type name and TypeScript type identity is case-sensitive, so
- *    `Never` is the second production and never the first. Folding case merges
- *    them and converts a channel the compiler could not reify into the trusted
- *    opt-out, which is the fail-open direction. A JSDoc tag name is not
- *    case-folded by the parser either, so `@THROWS` and `@MODULE` are not the
- *    tags the specification names.
- * 2. **JSDoc whitespace is `[ \t\r\n]`, not `\s`.** `\s` also matches U+00A0,
- *    U+000B, U+000C and U+FEFF, and `isJSDocWhitespace` in the fork accepts
- *    exactly four bytes. `{<NBSP>never<NBSP>}` names a type whose spelling is
- *    not `never`, so by the same two-productions argument the accepting side
- *    was the wrong one.
- * 3. **The comment must be a JSDoc comment the scanner produced**, not a `/**`
- *    substring of the leading text. Scanning raw text for a `/**`-to-close-
- *    delimiter span honours a marker the parser attaches to nothing: a `//`
- *    line comment whose text happens to contain the marker is one line comment
- *    and no JSDoc, and a plain `/*` block comment whose text contains the
- *    marker is one block comment and no JSDoc, and both used to confer trust
- *    here. The scanner's comment kind, plus the fork's own test that the
- *    comment opens with two asterisks and is not the empty `/**` form, is what
- *    separates a JSDoc from a block comment — and it is asked of the scanner
- *    rather than of a regular expression over raw bytes. The parser's attached
- *    `jsDoc` array is deliberately NOT the source: TypeScript attaches only the
- *    LAST block before a statement, which loses the header of every module
- *    written as "module header, then the first export's own doc comment", and
- *    its JSDoc parser strips a `*` decoration inside a tag, which would grant
- *    trust to `conformance/support/split-trust-marker.ts`.
- *
- * The boundary after `@module` stays: `@moduleResolution` is a tag people
- * really write and it claims nothing.
- *
- * This is a deliberate mirror of `JSDOC_SPACE`/`MODULE_MARKER`/
- * `THROWS_NEVER_MARKER`/`leadingJSDocComments` in `poc/src/language/semantic.ts`,
- * kept structurally identical so the two diff cleanly. It cannot be an import:
- * the dependency runs root -> `poc/dist`, and the reference does not export
- * this predicate. If one side moves, move the other in the same shape.
- */
-const JSDOC_SPACE = "[ \\t\\r\\n]";
-const MODULE_MARKER = new RegExp(`@module(?:${JSDOC_SPACE}|\\*|$)`);
-const THROWS_NEVER_MARKER = new RegExp(
-  `@throws${JSDOC_SPACE}*\\{${JSDOC_SPACE}*never${JSDOC_SPACE}*\\}`,
-);
-
-function leadingJSDocComments(source: string, fileName: string): readonly string[] {
-  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind(fileName));
-  const anchor = sourceFile.statements[0];
-  const limit = anchor?.getStart(sourceFile) ?? source.length;
-  const comments: string[] = [];
-  for (const range of ts.getLeadingCommentRanges(source, anchor?.getFullStart() ?? 0) ?? []) {
-    if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia || range.end > limit) continue;
-    const comment = source.slice(range.pos, range.end);
-    // `/**/` is an empty block comment, not a JSDoc; this is the same test
-    // TypeScript's own scanner makes.
-    if (!comment.startsWith("/**") || comment.startsWith("/**/")) continue;
-    comments.push(comment);
-  }
-  return comments;
+function scanEmittedEdges(source: string, fileName: string): readonly ModuleEdge[] {
+  return runtimeModuleFacts(source, fileName).edges;
 }
 
-function hasLeadingModuleNoThrowMarker(source: string, fileName: string): boolean {
-  return leadingJSDocComments(source, fileName)
-    .some((comment) => MODULE_MARKER.test(comment) && THROWS_NEVER_MARKER.test(comment));
-}
-
-function resolveSmithersSpecifier(containingFile: string, specifier: string): string | undefined {
+function resolveVibeLangSpecifier(containingFile: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingFile), specifier);
   const candidates: string[] = [];
-  if (exact.endsWith(".sm")) candidates.push(exact);
-  else if (extname(exact) === "") candidates.push(`${exact}.sm`, resolve(exact, "index.sm"));
-  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
+  if (exact.endsWith(".vibe")) candidates.push(exact);
+  else if (extname(exact) === "") candidates.push(`${exact}.vibe`, resolve(exact, "index.vibe"));
+  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
   const match = candidates.find((candidate) => existsSync(candidate));
   return match ? realpathSync(match) : undefined;
-}
-
-function resolveForeignSpecifier(containingFile: string, specifier: string): {
-  readonly canonical: string;
-  readonly alias: string;
-} | undefined {
-  if (!specifier.startsWith(".")) return undefined;
-  const alias = resolve(dirname(containingFile), specifier);
-  const resolvedModule = ts.resolveModuleName(specifier, containingFile, RESOLUTION_OPTIONS, ts.sys).resolvedModule;
-  const explicitExtension = extensionOf(alias);
-  const exactRuntime = FOREIGN_EXTENSIONS.has(explicitExtension) && existsSync(alias) ? alias : undefined;
-  if (exactRuntime && resolvedModule) {
-    const checkerTarget = realpathSync(resolve(resolvedModule.resolvedFileName));
-    if (!DECLARATION_PATTERN.test(checkerTarget) && checkerTarget !== realpathSync(exactRuntime)) {
-      throw new TypeError(
-        `relative runtime import is ambiguous between ${exactRuntime} and checker target ${checkerTarget}`,
-      );
-    }
-  }
-  const logical = exactRuntime ?? (resolvedModule ? resolve(resolvedModule.resolvedFileName) : undefined);
-  if (!logical || !existsSync(logical)) return undefined;
-  const canonical = realpathSync(logical);
-  if (canonical !== logical) {
-    throw new TypeError(`relative runtime dependency resolves through a symbolic-link alias: ${logical} -> ${canonical}`);
-  }
-  return { canonical, alias };
 }
 
 function rewriteLiterals(source: string, replacements: readonly {
@@ -634,7 +265,7 @@ function rewriteLiterals(source: string, replacements: readonly {
 
 function relativeSpecifier(fromOutput: string, toOutput: string): string {
   let specifier = relative(dirname(fromOutput), toOutput).split(sep).join("/");
-  if (!specifier.startsWith(".")) specifier = `./${specifier}`;
+  if (!specifier.startsWith("./") && !specifier.startsWith("../")) specifier = `./${specifier}`;
   return specifier;
 }
 
@@ -649,11 +280,11 @@ function collisionKey(fileName: string): string {
 export function buildRelativeRuntimeGraph(options: {
   readonly rootDir: string;
   readonly outDir: string;
-  readonly smithersSources: readonly RuntimeGraphSeed[];
-  readonly smithersOutputs: readonly RuntimeOutputReservation[];
+  readonly vibelangSources: readonly RuntimeGraphSeed[];
+  readonly vibelangOutputs: readonly RuntimeOutputReservation[];
   readonly generatedRuntimeSources?: readonly GeneratedRuntimeSource[];
   /**
-   * What to do with a relative specifier a Smithers source spells as an asset.
+   * What to do with a relative specifier a VibeLang source spells as an asset.
    *
    * `"reject"` (the default) is the reference path: it compiles assets *before*
    * this walk and hands the results in as `generatedRuntimeSources`, so by the
@@ -674,15 +305,54 @@ export function buildRelativeRuntimeGraph(options: {
 }): RelativeRuntimeGraph {
   const rootDir = realpathSync(resolve(options.rootDir));
   const outDir = resolve(options.outDir);
-  const smithersByName = new Map(options.smithersSources.map((source) => [resolve(source.fileName), source]));
-  let totalBytes = options.smithersSources.reduce((total, source) => total + source.bytes, 0);
-  let fileCount = options.smithersSources.length;
+  const nativeFacts = new Map<string, {
+    readonly source: string;
+    readonly deferred: boolean;
+    readonly file: NativeRuntimeModuleFile;
+    readonly resolutions: ReadonlyMap<string, NativeRuntimeModuleFile["resolutions"][number]>;
+  }>();
+  const factsFor = (source: string, fileName: string, deferred = false): NativeRuntimeModuleFile => {
+    const existing = nativeFacts.get(fileName);
+    if (existing) {
+      if (existing.source !== source || existing.deferred !== deferred) {
+        throw new TypeError(`runtime module changed after its syntax was captured: ${fileName}`);
+      }
+      return existing.file;
+    }
+    const file = runtimeModuleFacts(source, fileName, deferred, rootDir);
+    nativeFacts.set(fileName, { source, deferred, file,
+      resolutions: new Map(file.resolutions.map(item => [item.specifier, item])) });
+    return file;
+  };
+  const scanEdges = (source: string, fileName: string, deferred = false): readonly ModuleEdge[] =>
+    factsFor(source, fileName, deferred).edges;
+  const hasLeadingModuleNoThrowMarker = (source: string, fileName: string): boolean =>
+    factsFor(source, fileName).leadingNoThrow;
+  const resolveForeignSpecifier = (containingFile: string, specifier: string, preferTypes = false): {
+    readonly canonical: string; readonly alias: string;
+  } | undefined => {
+    if (!specifier.startsWith(".")) return undefined;
+    const alias = resolve(dirname(containingFile), specifier);
+    if (!isInside(rootDir, alias)) {
+      throw new TypeError(`relative ${preferTypes ? "checker" : "runtime"} dependency is outside the project root: ${alias}`);
+    }
+    const answer = nativeFacts.get(containingFile)?.resolutions.get(specifier);
+    if (!answer) throw new TypeError(`runtime module resolution was not captured: ${containingFile}: ${specifier}`);
+    if (answer.message !== "") throw new TypeError(`${containingFile}: ${answer.message}`);
+    const target = preferTypes ? answer.typePath : answer.runtimePath;
+    return target === undefined ? undefined : {
+      canonical: resolve(rootDir, target), alias,
+    };
+  };
+  const vibelangByName = new Map(options.vibelangSources.map((source) => [resolve(source.fileName), source]));
+  let totalBytes = options.vibelangSources.reduce((total, source) => total + source.bytes, 0);
+  let fileCount = options.vibelangSources.length;
   if (fileCount > options.budget.maximumFiles || totalBytes > options.budget.maximumTotalBytes) {
     throw new TypeError("relative runtime project exceeds its source budget");
   }
 
   const identityOwners = new Map<string, string>();
-  for (const source of options.smithersSources) {
+  for (const source of options.vibelangSources) {
     const absolute = resolve(source.fileName);
     const metadata = statSync(absolute);
     const identity = `${metadata.dev}:${metadata.ino}`;
@@ -694,7 +364,7 @@ export function buildRelativeRuntimeGraph(options: {
   }
 
   const outputOwners = new Map<string, string>();
-  for (const reservation of options.smithersOutputs) {
+  for (const reservation of options.vibelangOutputs) {
     const output = resolve(reservation.outputFileName);
     const key = collisionKey(output);
     const prior = outputOwners.get(key);
@@ -721,7 +391,7 @@ export function buildRelativeRuntimeGraph(options: {
       throw new TypeError(`compiler-generated runtime source escapes the project root: ${generated.sourceFileName}`);
     }
     if (
-      existsSync(sourceFileName) || smithersByName.has(sourceFileName) ||
+      existsSync(sourceFileName) || vibelangByName.has(sourceFileName) ||
       generatedByName.has(sourceFileName) || generatedByAlias.has(sourceFileName)
     ) {
       throw new TypeError(`compiler-generated runtime source collides with a project path: ${sourceFileName}`);
@@ -760,7 +430,7 @@ export function buildRelativeRuntimeGraph(options: {
       if (!isInside(rootDir, alias) || alias === rootDir || alias === sourceFileName) {
         throw new TypeError(`compiler-generated runtime alias escapes or aliases its generated identity: ${alias}`);
       }
-      if (smithersByName.has(alias) || generatedByName.has(alias) || generatedByAlias.has(alias)) {
+      if (vibelangByName.has(alias) || generatedByName.has(alias) || generatedByAlias.has(alias)) {
         throw new TypeError(`compiler-generated runtime alias conflicts with another project identity: ${alias}`);
       }
     }
@@ -845,6 +515,8 @@ export function buildRelativeRuntimeGraph(options: {
   const targetAliases = new Map<string, Set<string>>();
   const resolvedOutputByAlias = new Map<string, string>();
   const stagedAssetByName = new Map<string, StagedProjectSource>();
+  const pairedDeclarations = new Map<string, string>();
+  const checkerEdges = new Map<string, readonly ResolvedEdge[]>();
 
   /**
    * Read one asset the caller asked to have staged, or decline.
@@ -858,7 +530,7 @@ export function buildRelativeRuntimeGraph(options: {
   const reserveAsset = (canonical: string): void => {
     if (stagedAssetByName.has(canonical)) return;
     if (!isInside(rootDir, canonical) || canonical === rootDir) return;
-    if (smithersByName.has(canonical) || generatedByName.has(canonical) || generatedByAlias.has(canonical)) {
+    if (vibelangByName.has(canonical) || generatedByName.has(canonical) || generatedByAlias.has(canonical)) {
       throw new TypeError(`relative asset dependency conflicts with a project code identity: ${canonical}`);
     }
     if (foreignByName.has(canonical) || pendingRuntime.has(canonical) ||
@@ -887,18 +559,18 @@ export function buildRelativeRuntimeGraph(options: {
   };
 
   /**
-   * True when a Smithers source spelled this edge as an asset rather than as code.
+   * True when a VibeLang source spelled this edge as an asset rather than as code.
    *
-   * Project code is never an asset however it is spelled, so `.sm`, a foreign
+   * Project code is never an asset however it is spelled, so `.vibe`, a foreign
    * source extension, and a declaration file are all excluded before the two
    * asset spellings are considered — an extensionless specifier included, since
-   * that is how a `.sm` sibling is named. Getting that order wrong classified
-   * `./helper.sm` as an asset, because `.sm` is not a *foreign* extension.
+   * that is how a `.vibe` sibling is named. Getting that order wrong classified
+   * `./helper.vibe` as an asset, because `.vibe` is not a *foreign* extension.
    */
   const namesAnAsset = (edge: ModuleEdge, literal: string): boolean => {
     if (options.assetSpecifiers !== "stage") return false;
     const extension = extensionOf(literal);
-    if (extension === "" || extension === ".sm" || DECLARATION_PATTERN.test(literal)) return false;
+    if (extension === "" || extension === ".vibe" || DECLARATION_PATTERN.test(literal)) return false;
     if (FOREIGN_EXTENSIONS.has(extension)) return edge.attributes;
     return true;
   };
@@ -922,7 +594,7 @@ export function buildRelativeRuntimeGraph(options: {
     }
     const relativeName = displayPath(rootDir, canonical);
     const emittedRelative = relativeName.replace(/\.(?:tsx?|mts|cts|jsx?|mjs|cjs)$/i, outputExtension(canonical));
-    const output = resolve(outDir, "__smithers_foreign__", emittedRelative);
+    const output = resolve(outDir, "__vibelang_foreign__", emittedRelative);
     const outputKey = collisionKey(output);
     const priorOwner = outputOwners.get(outputKey);
     if (priorOwner && priorOwner !== canonical) {
@@ -960,10 +632,10 @@ export function buildRelativeRuntimeGraph(options: {
     containingFile: string,
     containingOutput: string,
     edge: ModuleEdge,
-    fromSmithers: boolean,
+    fromVibeLang: boolean,
     checkerOnly = false,
   ): ResolvedEdge => {
-    const importerFormat = fromSmithers ? "esm" : formatOf(containingFile);
+    const importerFormat = fromVibeLang ? "esm" : formatOf(containingFile);
     if (!checkerOnly && !edge.typeOnly && importerFormat === "esm" &&
       (edge.kind === "require" || edge.kind === "import-equals")) {
       throw new TypeError(
@@ -977,10 +649,10 @@ export function buildRelativeRuntimeGraph(options: {
     // An asset specifier is not a module edge, so it is answered before every
     // rule below that describes one — the same position the reference path's
     // `generatedByAlias` hit occupies, and for the same reason: an asset has
-    // already been resolved by an asset pass, and neither the Smithers dynamic
+    // already been resolved by an asset pass, and neither the VibeLang dynamic
     // import deferral nor the foreign-code resolver has anything to say about
     // it. This is reached only under `assetSpecifiers: "stage"`.
-    if (fromSmithers && edge.specifier.startsWith(".")) {
+    if (fromVibeLang && edge.specifier.startsWith(".")) {
       const literal = resolve(dirname(containingFile), edge.specifier);
       if (namesAnAsset(edge, literal)) {
         reserveAsset(literal);
@@ -989,18 +661,18 @@ export function buildRelativeRuntimeGraph(options: {
     }
     // A compiler-generated asset module is content the compiler itself wrote at
     // a path it owns, so its exact rewrite map is already known. That is the one
-    // literal dynamic import a Smithers module may spell; every other Smithers dynamic
+    // literal dynamic import a VibeLang module may spell; every other VibeLang dynamic
     // edge still waits on the frontend.
-    const generated = fromSmithers && edge.specifier.startsWith(".")
+    const generated = fromVibeLang && edge.specifier.startsWith(".")
       ? generatedByAlias.get(resolve(dirname(containingFile), edge.specifier))
       : undefined;
-    if (fromSmithers && !edge.typeOnly && edge.kind === "dynamic-import" && generated === undefined) {
+    if (fromVibeLang && !edge.typeOnly && edge.kind === "dynamic-import" && generated === undefined) {
       throw new TypeError(
-        `${containingFile}: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map`,
+        `${containingFile}: VibeLang dynamic import is deferred until the frontend can preserve its exact rewrite map`,
       );
     }
     if (!edge.specifier.startsWith(".")) return edge;
-    if (fromSmithers) {
+    if (fromVibeLang) {
       if (generated !== undefined) {
         if (edge.typeOnly ||
           (edge.kind !== "import" && edge.kind !== "export" && edge.kind !== "dynamic-import")) {
@@ -1015,27 +687,27 @@ export function buildRelativeRuntimeGraph(options: {
           targetOutputFileName: generated.outputFileName,
         };
       }
-      const smithersTarget = resolveSmithersSpecifier(containingFile, edge.specifier);
-      if (smithersTarget) {
-        if (!smithersByName.has(smithersTarget)) {
-          throw new TypeError(`relative Smithers dependency was not loaded into the project: ${smithersTarget}`);
+      const vibelangTarget = resolveVibeLangSpecifier(containingFile, edge.specifier);
+      if (vibelangTarget) {
+        if (!vibelangByName.has(vibelangTarget)) {
+          throw new TypeError(`relative VibeLang dependency was not loaded into the project: ${vibelangTarget}`);
         }
         if (!edge.typeOnly && (edge.kind === "require" || edge.kind === "import-equals")) {
-          throw new TypeError(`Smithers modules may only load another .sm module through a static import/export: ${containingFile}`);
+          throw new TypeError(`VibeLang modules may only load another .vibe module through a static import/export: ${containingFile}`);
         }
-        return { ...edge, targetFileName: smithersTarget };
+        return { ...edge, targetFileName: vibelangTarget };
       }
       // Preserve the language frontend's source-located missing-module
-      // diagnostic for an explicitly authored Smithers edge.
-      if (edge.specifier.endsWith(".sm")) return edge;
+      // diagnostic for an explicitly authored VibeLang edge.
+      if (edge.specifier.endsWith(".vibe")) return edge;
     }
-    const foreign = resolveForeignSpecifier(containingFile, edge.specifier);
+    const foreign = resolveForeignSpecifier(containingFile, edge.specifier, checkerOnly || edge.typeOnly);
     if (!foreign) {
       const graph = edge.typeOnly || checkerOnly ? "checker dependency" : "runtime import";
       throw new TypeError(`${containingFile}: unresolved relative ${graph} ${JSON.stringify(edge.specifier)}`);
     }
-    if (smithersByName.has(foreign.canonical)) {
-      throw new TypeError(`foreign modules may not import a .sm implementation: ${containingFile}`);
+    if (vibelangByName.has(foreign.canonical)) {
+      throw new TypeError(`foreign modules may not import a .vibe implementation: ${containingFile}`);
     }
     if (edge.typeOnly || checkerOnly) {
       reserveCheckerDependency(foreign.canonical);
@@ -1053,14 +725,14 @@ export function buildRelativeRuntimeGraph(options: {
     };
   };
 
-  for (const source of options.smithersSources) {
+  for (const source of options.vibelangSources) {
     const absolute = resolve(source.fileName);
-    const output = options.smithersOutputs.find((candidate) => resolve(candidate.sourceFileName) === absolute)?.outputFileName;
-    if (!output) throw new TypeError(`Smithers runtime output is missing for ${absolute}`);
+    const output = options.vibelangOutputs.find((candidate) => resolve(candidate.sourceFileName) === absolute)?.outputFileName;
+    if (!output) throw new TypeError(`VibeLang runtime output is missing for ${absolute}`);
     for (const edge of scanEdges(source.source, absolute, options.assetSpecifiers === "stage")) {
       const resolvedEdge = resolveEdge(absolute, resolve(output), edge, true);
       if (resolvedEdge.moduleInitialization && resolvedEdge.targetFileName &&
-        !smithersByName.has(resolvedEdge.targetFileName) && !generatedByName.has(resolvedEdge.targetFileName)) {
+        !vibelangByName.has(resolvedEdge.targetFileName) && !generatedByName.has(resolvedEdge.targetFileName)) {
         staticInitializationRoots.add(resolvedEdge.targetFileName);
       }
     }
@@ -1095,16 +767,22 @@ export function buildRelativeRuntimeGraph(options: {
     selected.delete(fileName);
     if (runtime ? foreignByName.has(fileName) : foreignByName.has(fileName) || checkerOnlyFiles.has(fileName)) continue;
     const snapshot = loadSnapshot(fileName);
+    factsFor(snapshot.source, fileName);
     if (!runtime) {
-      for (const edge of scanEdges(snapshot.source, fileName)) {
-        resolveEdge(fileName, fileName, edge, false, true);
-      }
+      checkerEdges.set(fileName, scanEdges(snapshot.source, fileName).map(edge => resolveEdge(fileName, fileName, edge, false, true)));
       checkerOnlyFiles.add(fileName);
       continue;
     }
     const relativeName = displayPath(rootDir, fileName);
     const output = resolvedOutputByAlias.get(fileName);
     if (!output) throw new TypeError(`relative runtime output is missing for ${fileName}`);
+    if ([".js", ".mjs", ".cjs"].includes(extensionOf(fileName))) {
+      const companion = resolveForeignSpecifier(fileName, `./${basename(fileName)}`, true);
+      if (companion && DECLARATION_PATTERN.test(companion.canonical)) {
+        reserveCheckerDependency(companion.canonical);
+        pairedDeclarations.set(companion.canonical, output);
+      }
+    }
     const edges = scanEdges(snapshot.source, fileName).map((edge) => resolveEdge(fileName, output, edge, false));
     foreignByName.set(fileName, {
       fileName,
@@ -1137,15 +815,15 @@ export function buildRelativeRuntimeGraph(options: {
   // stays idempotent no matter which stage performed it.
   const emittedOutputs = new Set([
     ...files.map((file) => collisionKey(file.outputFileName)),
-    ...options.smithersOutputs.map((reservation) => collisionKey(resolve(reservation.outputFileName))),
+    ...options.vibelangOutputs.map((reservation) => collisionKey(resolve(reservation.outputFileName))),
   ]);
 
   // Only the graph module evaluation actually reaches needs an initialization
   // trust claim, and `moduleInitialization` is what decides that, one edge at a
   // time, in `scanEdges`. Its default is "initialization" and "deferred" is the
-  // case that must be proven — see `moduleInitializationClassifier` for the
-  // proof it accepts. The flag is read here and at the `.sm` seed loop above;
-  // on a `.sm` edge it is inert, because a Smithers dynamic import either
+  // case that must be proven by the native compiler's shared initialization
+  // classifier. The flag is read here and at the `.vibe` seed loop above;
+  // on a `.vibe` edge it is inert, because a VibeLang dynamic import either
   // resolves to a compiler-generated asset (never a trust root) or is refused
   // outright a few lines into `resolveEdge`. It is foreign modules — reached at
   // depth one and beyond, where no other implementation of this rule looks —
@@ -1170,21 +848,50 @@ export function buildRelativeRuntimeGraph(options: {
     .flatMap((fileName) => {
       const file = foreignByName.get(fileName);
       if (!file || hasLeadingModuleNoThrowMarker(file.source, file.fileName)) return [];
-      const parsed = ts.createSourceFile(file.fileName, file.source, ts.ScriptTarget.Latest, true, scriptKind(file.fileName));
-      const position = parsed.getLineAndCharacterOfPosition(parsed.statements[0]?.getStart(parsed) ?? 0);
+      const position = factsFor(file.source, file.fileName).firstStatement;
       return [{
-        code: "SMITHERS1510" as const,
+        code: "VIBE1510" as const,
         severity: "error" as const,
         message: "foreign module initialization can panic before a checked call boundary; add a leading JSDoc containing both @module and @throws {never}, or load it with dynamic import inside a checked async foreign adapter",
         fileName: file.fileName,
-        line: position.line + 1,
-        column: position.character + 1,
+        line: position.line,
+        column: position.column,
       }];
     });
+
+  const declarationOutputs = new Map<string, string>();
+  const visitDeclaration = (fileName: string): void => {
+    if (declarationOutputs.has(fileName) || foreignByName.has(fileName)) return;
+    if (!checkerOnlyFiles.has(fileName)) throw new TypeError(`uncaptured declaration dependency: ${fileName}`);
+    const paired = pairedDeclarations.get(fileName);
+    const extension = extensionOf(fileName);
+    const output = paired ? paired.replace(/\.(mjs|cjs)$/, (_, kind) => kind === "cjs" ? ".d.cts" : ".d.mts")
+      : resolve(outDir, "__vibelang_foreign__", displayPath(rootDir, fileName).slice(0, -extension.length) +
+        (DECLARATION_PATTERN.test(fileName) ? (formatOf(fileName) === "cjs" ? ".d.cts" : ".d.mts") : outputExtension(fileName)));
+    const key = collisionKey(output);
+    const owner = outputOwners.get(key);
+    if (owner && owner !== fileName) throw new TypeError(`declaration outputs collide: ${owner} and ${fileName} -> ${output}`);
+    outputOwners.set(key, fileName);
+    declarationOutputs.set(fileName, output);
+    for (const edge of checkerEdges.get(fileName) ?? []) if (edge.targetFileName) visitDeclaration(edge.targetFileName);
+  };
+  for (const fileName of pairedDeclarations.keys()) visitDeclaration(fileName);
+  const declarationSources = [...declarationOutputs].sort(([a], [b]) => compareText(a, b)).map(([fileName, outputFileName]) => ({
+    fileName, outputFileName,
+    ...(pairedDeclarations.has(fileName) ? { runtimeOutputFileName: pairedDeclarations.get(fileName)! } : {}),
+    code: rewriteLiterals(snapshots.get(fileName)!.source, (checkerEdges.get(fileName) ?? []).flatMap(edge => {
+      if (!edge.targetFileName) return [];
+      const output = declarationOutputs.get(edge.targetFileName) ?? resolvedOutputByAlias.get(edge.targetFileName);
+      if (!output) return [];
+      const module = output.replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs");
+      return [{ start: edge.start, end: edge.end, text: relativeSpecifier(outputFileName, module) }];
+    })),
+  }));
 
   return {
     files,
     diagnostics,
+    declarationSources,
     checkerDependencies: [...checkerOnlyFiles].sort(compareText).map((fileName) => ({
       fileName,
       displayName: displayPath(rootDir, fileName),
@@ -1199,8 +906,8 @@ export function buildRelativeRuntimeGraph(options: {
       resolutionAliases: file.resolutionAliases,
       ...(generatedByName.has(file.fileName) ? { stripImportAttributes: true as const } : {}),
     })),
-    rewriteSmithersRuntimeCalls(code, authoredFileName, outputFileName) {
-      const calls = scanEdges(code, outputFileName).filter((edge) => edge.kind === "dynamic-import");
+    rewriteVibeLangRuntimeCalls(code, authoredFileName, outputFileName) {
+      const calls = scanEmittedEdges(code, outputFileName).filter((edge) => edge.kind === "dynamic-import");
       const replacements = calls.flatMap((edge) => {
         if (!edge.specifier.startsWith(".")) return [];
         const alias = resolve(dirname(authoredFileName), edge.specifier);
@@ -1239,40 +946,34 @@ export function transpileRelativeRuntimeGraph(
   graph: RelativeRuntimeGraph,
   options: { readonly sourceMap?: boolean },
 ): TranspiledRuntimeGraph {
-  const diagnostics: ts.Diagnostic[] = [];
+  const diagnostics: NativeDiagnostic[] = [];
   const files = graph.files.map((file): TranspiledRuntimeFile => {
-    const emitted = ts.transpileModule(file.rewrittenSource, {
-      fileName: file.fileName,
-      compilerOptions: {
-        target: ts.ScriptTarget.ES2022,
-        module: file.format === "cjs" ? ts.ModuleKind.CommonJS : ts.ModuleKind.ESNext,
-        moduleResolution: file.format === "cjs"
-          ? ts.ModuleResolutionKind.Node10
-          : ts.ModuleResolutionKind.Bundler,
-        allowJs: true,
-        checkJs: true,
-        jsx: ts.JsxEmit.React,
-        sourceMap: options.sourceMap,
-        inlineSources: options.sourceMap,
+    // Resolution and trust checks already captured this source. Native erasure
+    // performs no resolution and is not a substitute for subsequent checking.
+    const emitted = getNativeCompiler().transpile({
+      files: [{ path: file.displayName, text: file.rewrittenSource }],
+      options: {
+        target: "es2022",
+        module: file.format === "cjs" ? "commonjs" : "esnext",
+        jsx: "react",
+        sourceMap: options.sourceMap === true,
+        inlineSources: options.sourceMap === true,
       },
-      reportDiagnostics: true,
-    });
-    diagnostics.push(...(emitted.diagnostics ?? []).filter((diagnostic) =>
-      diagnostic.category === ts.DiagnosticCategory.Error));
-    let code = emitted.outputText.replace(/\n?\/\/# sourceMappingURL=.*(?:\r?\n)?$/, "").trimEnd() + "\n";
+    }).files[0]!;
+    diagnostics.push(...emitted.diagnostics.filter(diagnostic => diagnostic.category === "error")
+      .map(diagnostic => ({ ...diagnostic, ...(diagnostic.file === undefined ? {} : { file: file.fileName }) })));
+    let code = emitted.emitSkipped ? "" : emitted.javascript.replace(/\n?\/\/# sourceMappingURL=.*(?:\r?\n)?$/, "").trimEnd() + "\n";
     let sourceMap: string | undefined;
-    if (options.sourceMap) {
-      if (!emitted.sourceMapText) {
+    if (options.sourceMap && !emitted.emitSkipped) {
+      if (!emitted.sourceMap) {
         diagnostics.push({
-          category: ts.DiagnosticCategory.Error,
-          code: 95001,
-          file: undefined,
-          start: undefined,
-          length: undefined,
-          messageText: `TypeScript emitted no source map for ${file.fileName}`,
+          category: "error",
+          code: "TS95001",
+          phase: "emit",
+          message: `TypeScript emitted no source map for ${file.fileName}`,
         });
       } else {
-        const parsed = JSON.parse(emitted.sourceMapText) as Record<string, unknown> & {
+        const parsed = JSON.parse(emitted.sourceMap) as Record<string, unknown> & {
           version: number;
           sources: string[];
         };
