@@ -1,0 +1,231 @@
+package main
+
+// Project discovery belongs to the native compiler. In particular, a host must
+// not guess at JSONC, extends, include/exclude, or TypeScript's extension rules.
+// This operation grants bounded READ access; it never starts a content mapper.
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/cmd/tsc/vibewirejson"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
+)
+
+type projectConfigRequest struct {
+	Path string `json:"path"`
+}
+type projectConfigOptions struct {
+	RootDir     string `json:"rootDir"`
+	OutDir      string `json:"outDir"`
+	Declaration bool   `json:"declaration"`
+	SourceMap   bool   `json:"sourceMap"`
+	NoEmit      bool   `json:"noEmit"`
+}
+type projectConfigResult struct {
+	Files          []string             `json:"files"`
+	Configurations []configFile         `json:"configurations"`
+	Options        projectConfigOptions `json:"options"`
+	Diagnostics    []diagnostic         `json:"diagnostics"`
+}
+
+type projectConfigFS struct {
+	vfs.FS
+	reads   map[string]string
+	missing map[string]bool
+	bytes   int
+	entries int
+	err     error
+}
+
+func (f *projectConfigFS) ReadFile(path string) (string, bool) {
+	if value, found := f.reads[path]; found {
+		return value, true
+	}
+	if f.err != nil || f.missing[path] {
+		return "", false
+	}
+	if len(f.reads)+len(f.missing) >= 1024 {
+		f.err = errors.New("project configuration exceeds its read budget")
+		return "", false
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		f.missing[path] = true
+		return "", false
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		f.missing[path] = true
+		return "", false
+	}
+	data, err := io.ReadAll(io.LimitReader(file, 2*1024*1024+1))
+	if err != nil {
+		f.missing[path] = true
+		return "", false
+	}
+	f.bytes += len(data)
+	if len(data) > 2*1024*1024 || f.bytes > 8*1024*1024 || !utf8.Valid(data) {
+		f.err = errors.New("project configuration exceeds its UTF-8 source budget")
+		return "", false
+	}
+	f.reads[path] = string(data)
+	return string(data), true
+}
+func (f *projectConfigFS) GetAccessibleEntries(path string) vfs.Entries {
+	if f.err != nil {
+		return vfs.Entries{}
+	}
+	// Limit before allocating a potentially unbounded directory listing.
+	directory, err := os.Open(path)
+	if err != nil {
+		return vfs.Entries{}
+	}
+	defer directory.Close()
+	entries, err := directory.ReadDir(65537 - f.entries)
+	if err != nil && err != io.EOF {
+		return vfs.Entries{}
+	}
+	f.entries += len(entries) + 1
+	if f.entries > 65536 {
+		f.err = errors.New("project discovery exceeds its directory-entry budget")
+		return vfs.Entries{}
+	}
+	return f.FS.GetAccessibleEntries(path)
+}
+
+type projectConfigHost struct {
+	filesystem *projectConfigFS
+	directory  string
+}
+
+func (h *projectConfigHost) FS() vfs.FS                  { return h.filesystem }
+func (h *projectConfigHost) GetCurrentDirectory() string { return h.directory }
+
+func discoverProjectConfig(input projectConfigRequest) (projectConfigResult, error) {
+	out := projectConfigResult{Files: []string{}, Configurations: []configFile{}, Diagnostics: []diagnostic{}}
+	if !generatedAbsolutePath(input.Path) {
+		return out, errors.New("project requires an absolute normalized configuration path")
+	}
+	filesystem := &projectConfigFS{FS: osvfs.FS(), reads: map[string]string{}, missing: map[string]bool{}}
+	host := &projectConfigHost{filesystem, tspath.GetDirectoryPath(input.Path)}
+	parsed, issues := tsoptions.GetParsedCommandLineOfConfigFile(input.Path, nil, nil, host, nil)
+	if parsed != nil {
+		// Register only our own inert mapper, through upstream's public seam.
+		// Reload uses precisely the already parsed/inherited file specifications.
+		parsed.ParsedConfig.ContentMappers = []*contentmapper.Mapper{{Definition: contentmapper.Definition{Package: "vibelang", Extensions: []string{".vibe"}}}}
+		parsed = parsed.ReloadFileNamesOfParsedCommandLine(filesystem)
+		out.Files = append(out.Files, parsed.FileNames()...)
+		for _, issue := range parsed.Errors {
+			if issue.Code() == 18003 && len(out.Files) > 0 {
+				continue
+			}
+			issues = append(issues, issue)
+		}
+		options := parsed.CompilerOptions()
+		out.Options = projectConfigOptions{options.RootDir, options.OutDir, options.Declaration.IsTrue(), options.SourceMap.IsTrue(), options.NoEmit.IsTrue()}
+	}
+	if filesystem.err != nil {
+		return out, filesystem.err
+	}
+	if len(out.Files) > 4096 {
+		return out, errors.New("project exceeds 4096 source files")
+	}
+	for _, file := range out.Files {
+		if !generatedAbsolutePath(file) {
+			return out, errors.New("invalid discovered source path")
+		}
+	}
+	sort.Strings(out.Files)
+	for path, source := range filesystem.reads {
+		if !generatedAbsolutePath(path) {
+			return out, errors.New("invalid configuration dependency path")
+		}
+		out.Configurations = append(out.Configurations, configFile{Path: path, Text: source})
+	}
+	sort.Slice(out.Configurations, func(i, j int) bool { return out.Configurations[i].Path < out.Configurations[j].Path })
+	for _, issue := range issues {
+		out.Diagnostics = append(out.Diagnostics, projectConfigDiagnostic(issue))
+	}
+	hasLanguage := false
+	for _, file := range out.Files {
+		hasLanguage = hasLanguage || strings.HasSuffix(file, ".vibe")
+	}
+	if hasLanguage && parsed != nil {
+		// Classify authored options in every inherited config. Missing required
+		// flags are checked on the effective options below, not on each fragment.
+		for _, config := range out.Configurations {
+			// package.json reads resolve package-based extends, but aren't configs.
+			if tspath.GetBaseFileName(config.Path) == "package.json" {
+				continue
+			}
+			for _, issue := range validateVibeLangConfigFile(&config) {
+				if issue.Code != "VIBE6001" {
+					out.Diagnostics = append(out.Diagnostics, issue)
+				}
+			}
+		}
+		options := parsed.CompilerOptions()
+		values := []core.Tristate{options.Strict, options.NoUncheckedIndexedAccess, options.ExactOptionalPropertyTypes, options.IsolatedModules, options.VerbatimModuleSyntax, options.UseDefineForClassFields}
+		for i, name := range []string{"strict", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes", "isolatedModules", "verbatimModuleSyntax", "useDefineForClassFields"} {
+			if !values[i].IsTrue() {
+				issue := requiredOption(name)
+				issue.File, issue.Span = input.Path, &span{}
+				out.Diagnostics = append(out.Diagnostics, issue)
+			}
+		}
+	}
+	if len(out.Diagnostics) > 4096 {
+		return out, errors.New("project exceeds its diagnostic budget")
+	}
+	return out, nil
+}
+
+func projectConfigDiagnostic(issue *ast.Diagnostic) diagnostic {
+	out := diagnostic{Code: fmt.Sprintf("TS%d", issue.Code()), Category: "error", Message: issue.Localize(locale.Default), Phase: "parse"}
+	if source := issue.File(); source != nil {
+		out.File = source.FileName()
+		lines := newLineIndex(source.Text())
+		start := max(0, min(issue.Pos(), len(source.Text())))
+		end := max(start, min(issue.End(), len(source.Text())))
+		out.Span = &span{Start: lines.utf16Offset(start), Length: lines.utf16Offset(end) - lines.utf16Offset(start)}
+	}
+	return out
+}
+
+func serveProjectConfig(apiVersion int) {
+	response := struct {
+		APIVersion       int                 `json:"apiVersion"`
+		CompilerRevision string              `json:"compilerRevision"`
+		Result           projectConfigResult `json:"result"`
+		Error            *wireError          `json:"error,omitempty"`
+	}{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	limited := &io.LimitedReader{R: os.Stdin, N: 64*1024 + 1}
+	var input projectConfigRequest
+	err := wirejson.Decode(limited, &input)
+	if limited.N == 0 {
+		err = errors.New("project discovery exceeds its request budget")
+	}
+	if err == nil {
+		response.Result, err = discoverProjectConfig(input)
+	}
+	if err != nil {
+		response.Error = &wireError{Code: "VIBELANG_GO_PROJECT_CONFIG", Message: err.Error()}
+	}
+	if err := wirejson.Encode(os.Stdout, response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

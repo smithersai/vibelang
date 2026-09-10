@@ -308,19 +308,21 @@ type ConfigValidator interface {
 
 // ProjectDiscoverer resolves JSONC/extends and include/exclude with the native
 // compiler and its compiler-owned .vibe mapper. It never executes plugins.
-type ProjectConfigRequest struct { Path string `json:"path"` }
+type ProjectConfigRequest struct {
+	Path string `json:"path"`
+}
 type ProjectConfigOptions struct {
-	RootDir string `json:"rootDir"`
-	OutDir string `json:"outDir"`
-	Declaration bool `json:"declaration"`
-	SourceMap bool `json:"sourceMap"`
-	NoEmit bool `json:"noEmit"`
+	RootDir     string `json:"rootDir"`
+	OutDir      string `json:"outDir"`
+	Declaration bool   `json:"declaration"`
+	SourceMap   bool   `json:"sourceMap"`
+	NoEmit      bool   `json:"noEmit"`
 }
 type ProjectConfigResult struct {
-	Files []string `json:"files"`
-	Configurations []ConfigFile `json:"configurations"`
-	Options ProjectConfigOptions `json:"options"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
+	Files          []string             `json:"files"`
+	Configurations []ConfigFile         `json:"configurations"`
+	Options        ProjectConfigOptions `json:"options"`
+	Diagnostics    []Diagnostic         `json:"diagnostics"`
 }
 type ProjectDiscoverer interface {
 	DiscoverProject(context.Context, ProjectConfigRequest) (ProjectConfigResult, error)

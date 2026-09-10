@@ -6,6 +6,7 @@ import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { decodeNativeResult, decodeNativeInspection, decodeNativeFormat, decodeNativeToken, decodeNativeLoaderRegistration, decodeNativeAssetOutput, decodeNativeAssetImports, decodeNativeTranspile, decodeNativeBundleModules, decodeNativeCanonicalFunction, decodeNativeRuntimeModules, decodeNativeDurableModule, decodeNativeSyntaxSchema, decodeNativeRuntimeFactory, decodeNativeActionContract, decodeNativeCheckedFunction, decodeNativeConfig, encodeNativeRequest, NATIVE_API_VERSION, NativeCompilerError } from "./protocol.ts"
 import { decodeNativeGeneratedProject, type NativeGeneratedProjectRequest, type NativeGeneratedProjectResult } from "./protocol.ts"
+import { decodeNativeProjectConfig, type NativeProjectConfigRequest, type NativeProjectConfigResult } from "./protocol.ts"
 import { decodeNativeBodyContract, type NativeBodyContractRequest, type NativeBodyContractResult } from "./protocol.ts"
 import { decodeNativeBodyLowering, type NativeBodyLoweringRequest, type NativeBodyLoweringResult } from "./protocol.ts"
 import { decodeNativePlanSource, type NativePlanSourceRequest, type NativePlanSourceResult } from "./protocol.ts"
@@ -337,6 +338,11 @@ export class NativeCompiler {
   validateConfig(request: NativeConfigRequest): NativeConfigResult {
     if (hashFile(this.executable) !== this.identity.sha256) failure("Native compiler changed after its identity was captured")
     return decodeNativeConfig(run(this.executable, ["--validate-config"], this.#timeoutMs, encodeNativeRequest(request)), this.identity.revision, request)
+  }
+
+  discoverProject(request: NativeProjectConfigRequest): NativeProjectConfigResult {
+    if (hashFile(this.executable) !== this.identity.sha256) failure("Native compiler changed after its identity was captured")
+    return decodeNativeProjectConfig(run(this.executable, ["--discover-project"], this.#timeoutMs, encodeNativeRequest(request)), this.identity.revision)
   }
 
   checkedFunction(request: NativeCheckedFunctionRequest): NativeCheckedFunctionResult {

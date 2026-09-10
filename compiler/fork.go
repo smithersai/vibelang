@@ -243,6 +243,9 @@ var forkCheckedFunctionSource []byte
 //go:embed forkbridge/generated_project.go.txt
 var forkGeneratedProjectSource []byte
 
+//go:embed forkbridge/project_config.go.txt
+var forkProjectConfigSource []byte
+
 //go:embed forkbridge/dependency_trace.go.txt
 var forkDependencyTraceSource []byte
 
@@ -367,6 +370,7 @@ var forkBridgeFiles = []struct {
 	{target: "cmd/tsc/vibelangactioncontract.go", source: &forkActionContractSource},
 	{target: "cmd/tsc/vibelangcheckedfunction.go", source: &forkCheckedFunctionSource},
 	{target: "cmd/tsc/vibelanggeneratedproject.go", source: &forkGeneratedProjectSource},
+	{target: "cmd/tsc/vibelangprojectconfig.go", source: &forkProjectConfigSource},
 	{target: "cmd/tsc/vibelangdependencytrace.go", source: &forkDependencyTraceSource},
 	{target: "cmd/tsc/vibelangdeclarationtext.go", source: &forkDeclarationTextSource},
 	{target: "cmd/tsc/vibelanggenerateddeclarations.go", source: &forkGeneratedDeclarationsSource},
@@ -1033,11 +1037,18 @@ func (c *forkCompiler) ValidateConfig(ctx context.Context, request ConfigFile) (
 
 func (c *forkCompiler) DiscoverProject(ctx context.Context, request ProjectConfigRequest) (ProjectConfigResult, error) {
 	result, err := exchangeFork[ProjectConfigResult](ctx, c.executable, []string{"--discover-project"}, request)
-	if result == nil || err != nil { return ProjectConfigResult{}, err }
-	absolute := func(value string) bool { return value != "" && len(value) <= 16*1024 && !strings.ContainsAny(value, "\x00\\") && filepath.IsAbs(value) && filepath.Clean(value) == value }
+	if result == nil || err != nil {
+		return ProjectConfigResult{}, err
+	}
+	absolute := func(value string) bool {
+		return value != "" && len(value) <= 16*1024 && !strings.ContainsAny(value, "\x00\\") && filepath.IsAbs(value) && filepath.Clean(value) == value
+	}
 	valid := result.Files != nil && len(result.Files) <= 4096 && result.Configurations != nil && len(result.Configurations) <= 1024 && result.Diagnostics != nil && len(result.Diagnostics) <= 4096
 	seen := map[string]bool{}
-	for _, file := range result.Files { valid = valid && absolute(file) && !seen[file]; seen[file] = true }
+	for _, file := range result.Files {
+		valid = valid && absolute(file) && !seen[file]
+		seen[file] = true
+	}
 	sources := map[string]string{}
 	bytes := 0
 	for _, source := range result.Configurations {
@@ -1049,12 +1060,19 @@ func (c *forkCompiler) DiscoverProject(ctx context.Context, request ProjectConfi
 	valid = valid && bytes <= 8*1024*1024 && (result.Options.RootDir == "" || absolute(result.Options.RootDir)) && (result.Options.OutDir == "" || absolute(result.Options.OutDir))
 	for _, issue := range result.Diagnostics {
 		valid = valid && issue.Category == DiagnosticError
-		if issue.File == "" { valid = valid && issue.Span == nil; continue }
+		if issue.File == "" {
+			valid = valid && issue.Span == nil
+			continue
+		}
 		source, found := sources[issue.File]
 		valid = valid && found
-		if issue.Span != nil { valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= utf16Extent(source) && issue.Span.Length <= utf16Extent(source)-issue.Span.Start }
+		if issue.Span != nil {
+			valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= utf16Extent(source) && issue.Span.Length <= utf16Extent(source)-issue.Span.Start
+		}
 	}
-	if !valid { return ProjectConfigResult{}, &ForkError{Op: "validate response", Detail: "inconsistent project configuration", Err: ErrForkProtocol} }
+	if !valid {
+		return ProjectConfigResult{}, &ForkError{Op: "validate response", Detail: "inconsistent project configuration", Err: ErrForkProtocol}
+	}
 	return *result, nil
 }
 

@@ -2,7 +2,7 @@
 import { decodeComptimeValue } from "../build/comptime-value.ts"
 import { isAbsolute, relative, resolve, sep } from "node:path"
 
-export const NATIVE_API_VERSION = 53
+export const NATIVE_API_VERSION = 54
 
 /** Native disk reads and file probes, missing directory probes, and directory
  * membership reads. Positive directory-existence checks alone are excluded:
@@ -243,6 +243,22 @@ export interface NativeConfigRequest {
   readonly text: string
 }
 export interface NativeConfigResult {
+  readonly diagnostics: readonly NativeDiagnostic[]
+}
+export interface NativeProjectConfigRequest {
+  /** Explicit bounded read authority: an absolute normalized tsconfig path. */
+  readonly path: string
+}
+export interface NativeProjectConfigResult {
+  readonly files: readonly string[]
+  readonly configurations: readonly NativeConfigRequest[]
+  readonly options: {
+    readonly rootDir: string
+    readonly outDir: string
+    readonly declaration: boolean
+    readonly sourceMap: boolean
+    readonly noEmit: boolean
+  }
   readonly diagnostics: readonly NativeDiagnostic[]
 }
 export interface NativeGeneratedProjectRequest {
@@ -1392,6 +1408,37 @@ export function decodeNativeConfig(text: string, revision: string, request: Nati
       (issue.code.startsWith("VIBE") && issue.phase !== undefined)) reject("invalid native configuration phase")
   }
   return result as unknown as NativeConfigResult
+}
+
+export function decodeNativeProjectConfig(text: string, revision: string): NativeProjectConfigResult {
+  const result = record(decodeEnvelope(text, revision).result, "native project configuration", ["files", "configurations", "options", "diagnostics"])
+  const absolute = (value: unknown): value is string => wireString(value) && value.length > 0 &&
+    Buffer.byteLength(value, "utf8") <= 16*1024 && !value.includes("\0") && !value.includes("\\") &&
+    isAbsolute(value) && resolve(value) === value
+  if (!Array.isArray(result.files) || result.files.length > 4096 || !result.files.every(absolute) || new Set(result.files).size !== result.files.length ||
+    !Array.isArray(result.configurations) || result.configurations.length > 1024) reject("invalid native project inputs")
+  const sources = new Map<string, string>()
+  let bytes = 0
+  for (const raw of result.configurations) {
+    const config = record(raw, "project configuration source", ["path", "text"])
+    if (!absolute(config.path) || !wireString(config.text) || sources.has(config.path) || Buffer.byteLength(config.text, "utf8") > 2*1024*1024) reject("invalid project configuration source")
+    sources.set(config.path, config.text)
+    bytes += Buffer.byteLength(config.text, "utf8")
+  }
+  if (bytes > 8*1024*1024) reject("project configuration exceeds its source budget")
+  const options = record(result.options, "project configuration options", ["rootDir", "outDir", "declaration", "sourceMap", "noEmit"])
+  for (const key of ["rootDir", "outDir"] as const) if (options[key] !== "" && !absolute(options[key])) reject("invalid project layout option")
+  for (const key of ["declaration", "sourceMap", "noEmit"] as const) if (typeof options[key] !== "boolean") reject("invalid project emit option")
+  if (!Array.isArray(result.diagnostics) || result.diagnostics.length > 4096) reject("invalid project configuration diagnostics")
+  validateDiagnostics(result.diagnostics)
+  for (const issue of result.diagnostics as NativeDiagnostic[]) {
+    if (issue.category !== "error" || !/^(TS[0-9]+|VIBE600[1-3])$/.test(issue.code)) reject("invalid project configuration finding")
+    if (issue.file !== undefined) {
+      const source = sources.get(issue.file)
+      if (source === undefined || (issue.span && (issue.span.start > source.length || issue.span.length > source.length-issue.span.start))) reject("project diagnostic exceeds its configuration")
+    } else if (issue.span !== undefined) reject("project diagnostic has a span without a file")
+  }
+  return result as unknown as NativeProjectConfigResult
 }
 
 export function decodeNativeGeneratedProject(text: string, revision: string, request: NativeGeneratedProjectRequest): NativeGeneratedProjectResult {
