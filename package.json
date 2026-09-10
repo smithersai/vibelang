@@ -1,51 +1,23 @@
 {
-  "name": "smthrs",
+  "name": "vibelang",
   "version": "0.0.1",
-  "description": "Smithers checked prototype: typed failures, capability contexts, hermetic comptime, and durable plans.",
+  "description": "VibeLang: the programming language for agents. TypeScript-derived, with typed failures, capability contexts, hermetic comptime, and durable execution compiled in.",
   "type": "module",
-  "main": "./compat/typescript.cjs",
-  "types": "./compat/typescript.d.cts",
+  "main": "./dist/compiler.js",
+  "types": "./dist/compiler.d.ts",
   "exports": {
     ".": {
-      "types": "./compat/typescript.d.cts",
-      "default": "./compat/typescript.cjs"
-    },
-    "./typescript": {
-      "types": "./compat/typescript.d.cts",
-      "default": "./compat/typescript.cjs"
-    },
-    "./typescript.js": {
-      "types": "./compat/typescript.d.cts",
-      "default": "./compat/typescript.cjs"
-    },
-    "./lib/typescript": {
-      "types": "./compat/typescript.d.cts",
-      "default": "./compat/typescript.cjs"
-    },
-    "./lib/typescript.js": {
-      "types": "./compat/typescript.d.cts",
-      "default": "./compat/typescript.cjs"
+      "types": "./dist/compiler.d.ts",
+      "default": "./dist/compiler.js"
     },
     "./package.json": "./package.json",
-    "./plugin": {
-      "types": "./compat/plugin.d.cts",
-      "default": "./compat/plugin.cjs"
+    "./vibe": {
+      "types": "./dist/vibe.d.ts",
+      "default": "./dist/vibe.js"
     },
-    "./tsserverlibrary": {
-      "types": "./compat/tsserverlibrary.d.cts",
-      "default": "./compat/tsserverlibrary.cjs"
-    },
-    "./lib/tsserverlibrary": {
-      "types": "./compat/tsserverlibrary.d.cts",
-      "default": "./compat/tsserverlibrary.cjs"
-    },
-    "./lib/tsserverlibrary.js": {
-      "types": "./compat/tsserverlibrary.d.cts",
-      "default": "./compat/tsserverlibrary.cjs"
-    },
-    "./smithers": {
-      "types": "./dist/smithers.d.ts",
-      "default": "./dist/smithers.js"
+    "./compiler": {
+      "types": "./dist/compiler.d.ts",
+      "default": "./dist/compiler.js"
     },
     "./runtime": {
       "types": "./poc/dist/runtime/index.d.ts",
@@ -54,6 +26,10 @@
     "./schema-runtime": {
       "types": "./poc/dist/build/schema-runtime.d.ts",
       "default": "./poc/dist/build/schema-runtime.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
     },
     "./exceptions": {
       "types": "./dist/exceptions.d.ts",
@@ -66,6 +42,10 @@
     "./build": {
       "types": "./dist/build.d.ts",
       "default": "./dist/build.js"
+    },
+    "./unplugin": {
+      "types": "./dist/unplugin.d.ts",
+      "default": "./dist/unplugin.js"
     },
     "./agent": {
       "types": "./dist/agent.d.ts",
@@ -122,104 +102,59 @@
     "./result": {
       "types": "./dist/result.d.ts",
       "default": "./dist/result.js"
-    },
-    "./language-service": {
-      "types": "./dist/language-service.d.ts",
-      "default": "./dist/language-service.js"
-    },
-    "./unstable/sync": {
-      "types": "./dist/unstable/sync.d.ts",
-      "default": "./dist/unstable/sync.js"
-    },
-    "./unstable/async": {
-      "types": "./dist/unstable/async.d.ts",
-      "default": "./dist/unstable/async.js"
-    },
-    "./unstable/fs": {
-      "types": "./dist/unstable/fs.d.ts",
-      "default": "./dist/unstable/fs.js"
-    },
-    "./unstable/proto": {
-      "types": "./dist/unstable/proto.d.ts",
-      "default": "./dist/unstable/proto.js"
-    },
-    "./unstable/ast": {
-      "types": "./dist/unstable/ast.d.ts",
-      "default": "./dist/unstable/ast.js"
-    },
-    "./unstable/ast/is": {
-      "types": "./dist/unstable/ast-is.d.ts",
-      "default": "./dist/unstable/ast-is.js"
-    },
-    "./unstable/ast/factory": {
-      "types": "./dist/unstable/ast-factory.d.ts",
-      "default": "./dist/unstable/ast-factory.js"
-    },
-    "./unstable/ast/utils": {
-      "types": "./dist/unstable/ast-utils.d.ts",
-      "default": "./dist/unstable/ast-utils.js"
-    },
-    "./unstable/ast/scanner": {
-      "types": "./dist/unstable/ast-scanner.d.ts",
-      "default": "./dist/unstable/ast-scanner.js"
-    },
-    "./unstable/ast/visitor": {
-      "types": "./dist/unstable/ast-visitor.d.ts",
-      "default": "./dist/unstable/ast-visitor.js"
-    },
-    "./unstable/ast/clone": {
-      "types": "./dist/unstable/ast-clone.d.ts",
-      "default": "./dist/unstable/ast-clone.js"
     }
   },
   "bin": {
-    "tsc": "./bin/smithersc.js",
-    "tsserver": "./bin/smithers-tsserver.js",
-    "smithers": "./bin/smithers.js",
-    "smithersc": "./bin/smithersc.js",
-    "smithers-tsserver": "./bin/smithers-tsserver.js"
+    "tsc": "./bin/vibec.js",
+    "vibe": "./bin/vibe.js",
+    "vibec": "./bin/vibec.js",
+    "vtsc": "./bin/vibec.js"
   },
   "scripts": {
     "clean:dist": "node scripts/clean-root-dist.mjs",
     "clean:poc": "node scripts/clean-poc-dist.mjs",
     "build:poc": "npm run clean:poc && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.emit.json && node scripts/copy-poc-assets.mjs",
     "build": "npm run clean:dist && npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
-    "check": "npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/go-test-gate.mjs",
-    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/node-test-gate.mjs && node scripts/poc-test-gate.mjs && node scripts/go-test-gate.mjs",
+    "check": "node scripts/brand-gate.mjs && npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/go-test-gate.mjs",
+    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.json && node scripts/node-test-gate.mjs && node scripts/poc-test-gate.mjs && node scripts/go-test-gate.mjs && node scripts/oracle-differential.mjs",
     "verify:pack": "node scripts/verify-pack.mjs",
     "gate:premerge": "npm run verify:pack",
     "release:verify": "npm run gate:premerge && npm --prefix docs run build",
     "typescript:fork:status": "node scripts/vendor-typescript.mjs status",
     "typescript:fork:verify": "node scripts/vendor-typescript.mjs verify",
     "typescript:vendor": "node scripts/vendor-typescript.mjs sync",
-    "smithersc:build": "node scripts/build-smithersc.mjs build",
-    "smithersc:verify-reproducible": "node scripts/build-smithersc.mjs verify",
-    "prepack": "npm run test"
+    "vibec:build": "node scripts/build-vibec.mjs build",
+    "vibec:verify-reproducible": "node scripts/build-vibec.mjs verify",
+    "prepack": "npm run test",
+    "gate:brand": "node scripts/brand-gate.mjs",
+    "gate:docs": "node scripts/docs-snippets-gate.mjs",
+    "diagnostics:reference": "node scripts/diagnostics-reference.mjs",
+    "diagnostics:check": "node scripts/diagnostics-reference.mjs --check",
+    "rename:vibelang": "node scripts/rename-to-vibelang.mjs"
   },
   "keywords": [
-    "smithers",
+    "vibelang",
     "typescript",
-    "typescript-shaped",
+    "typescript-derived",
     "typed-errors",
     "dependency-injection",
     "comptime",
     "durable-execution",
-    "distributed-computing",
+    "agents",
     "effect",
-    "zig",
     "language"
   ],
-  "homepage": "https://github.com/smithersai/smithers#readme",
+  "homepage": "https://vibelang.sh",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smithersai/smithers.git"
+    "url": "git+https://github.com/smithersai/vibelang.git"
   },
   "license": "MIT",
   "files": [
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
     "bin",
-    "compat",
     "dist",
     "poc/dist",
     "docs/COMPATIBILITY_API.md",
@@ -228,15 +163,23 @@
     "src"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "incur": "^0.5.1",
-    "typescript": "7.0.2",
-    "typescript-js": "npm:typescript@5.9.3"
+    "unplugin": "3.3.0"
   },
   "devDependencies": {
+    "@farmfe/core": "1.7.11",
+    "@rsbuild/core": "2.2.4",
+    "@rspack/core": "2.2.3",
     "@types/bun": "^1.2.20",
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "esbuild": "0.28.2",
+    "rolldown": "1.2.7",
+    "rollup": "4.63.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "webpack": "5.110.3"
   }
 }

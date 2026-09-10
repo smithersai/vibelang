@@ -3,5 +3,5 @@ dist/
 coverage/
 *.log
 *.tsbuildinfo
-/smithersc-go
+/vibec-go
 
