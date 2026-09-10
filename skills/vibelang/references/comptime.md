@@ -2,7 +2,7 @@
 
 Read this only for compile-time evaluation, derived runtime artifacts, or non-code imports.
 
-- Import `comptime` from `smithers:comptime`; it is a compiler-recognized function, not a keyword. `comptime(value)` requires deterministic build-time evaluation and may produce values or types. `comptime(functionValue)` marks and returns a compile-time function without invoking it.
+- Import `comptime` from `vibelang:comptime`; it is a compiler-recognized function, not a keyword. `comptime(value)` requires deterministic build-time evaluation and may produce values or types. `comptime(functionValue)` marks and returns a compile-time function without invoking it.
 - Recognition follows the resolved imported binding, so aliases work and unrelated functions named `comptime` remain ordinary. The compiler-owned virtual module has no uncompiled runtime fallback.
 - Comptime has no ambient filesystem, network, environment, clock, random, mutable globals, or runtime capabilities. Compiler-tracked imports and embedding are allowed and become dependency edges.
 - Ordinary types can derive runtime artifacts: `const UserSchema = comptime(Schema.derive<User>())`. Schema parsing returns `Result<T, ValidationError>`.

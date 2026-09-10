@@ -1,7 +1,7 @@
-// Generated from demo.sm by smithersc.ts — DO NOT EDIT
+// Generated from demo.vibe by vibec.ts — DO NOT EDIT
 import { __VSError, __vsTry, __vsCatch, __vsProvide, __vsUse } from "../runtime";
 
-// Smithers demo — exercises errors, try/catch expressions, uses/provide DI,
+// VibeLang demo — exercises errors, try/catch expressions, uses/provide DI,
 // if-expressions, and the failure-vs-defect distinction.
 
 class NotFound extends __VSError {

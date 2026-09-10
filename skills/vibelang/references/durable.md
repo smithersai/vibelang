@@ -1,11 +1,11 @@
 # Durable and distributed execution
 
-Read this only for opt-in durable work. Ordinary Smithers functions never use the durable scheduler.
+Read this only for opt-in durable work. Ordinary VibeLang functions never use the durable scheduler.
 
 An `Action` has a closed Result-returning signature and an open provider implementation. A Flow is the closed plan produced by lowering a statically resolvable function passed to the imported `durable(...)` compiler intrinsic:
 
 ```ts
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 
 abstract class Compile extends Action<
   (input: CompileInput) => Result<CompileOutput, CompileError>

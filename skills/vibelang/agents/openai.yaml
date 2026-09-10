@@ -1,0 +1,4 @@
+interface:
+  display_name: "VibeLang"
+  short_description: "Write VibeLang as a TypeScript superset"
+  default_prompt: "Use $vibelang to write or review this VibeLang code."

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// smithersc.ts — Smithers (.sm) -> TypeScript (.ts) lowering.
+// vibec.ts — VibeLang (.vibe) -> TypeScript (.ts) lowering.
 // DELIBERATELY HACKY: regex + a tiny brace matcher, no real parser. See NOTES.md.
 //
-// usage: bun smithersc.ts examples/demo.sm   (writes examples/demo.ts)
+// usage: bun vibec.ts examples/demo.vibe   (writes examples/demo.ts)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
@@ -33,7 +33,7 @@ function matchDelim(src: string, openIdx: number, open: string, close: string): 
     if (c === open) depth++;
     else if (c === close) { depth--; if (depth === 0) return i; }
   }
-  throw new Error(`smithersc: unbalanced ${open}${close} starting at index ${openIdx}`);
+  throw new Error(`vibec: unbalanced ${open}${close} starting at index ${openIdx}`);
 }
 
 /** Walk BACKWARDS from `end` to find the start of the expression ending there.
@@ -93,7 +93,7 @@ function lowerErrors(src: string): string {
       .filter((s) => s && !s.startsWith("//"))
       .map((s) => {
         const fm = s.match(/^(?:readonly\s+)?([\w$]+)\s*:\s*(.+)$/);
-        if (!fm) throw new Error(`smithersc: error ${name}: cannot parse field '${s}'`);
+        if (!fm) throw new Error(`vibec: error ${name}: cannot parse field '${s}'`);
         return { name: fm[1], type: fm[2] };
       });
     const fieldsType = `{ ${fields.map((f) => `${f.name}: ${f.type}`).join("; ")} }`;
@@ -124,7 +124,7 @@ function lowerProvide(src: string): string {
     const objClose = matchDelim(src, objOpen, "{", "}");
     const after = src.slice(objClose + 1);
     const rel = after.search(/\S/);
-    if (rel === -1 || after[rel] !== "{") throw new Error("smithersc: provide: expected { block } after frame object");
+    if (rel === -1 || after[rel] !== "{") throw new Error("vibec: provide: expected { block } after frame object");
     const bodyOpen = objClose + 1 + rel;
     const bodyClose = matchDelim(src, bodyOpen, "{", "}");
     const out = `__vsProvide(${src.slice(objOpen, objClose + 1)}, () => {${src.slice(bodyOpen + 1, bodyClose)}})`;
@@ -237,12 +237,12 @@ function lowerIfExpr(src: string): string {
 // main
 // ---------------------------------------------------------------------------
 const inFile = process.argv[2];
-if (!inFile || !inFile.endsWith(".sm")) {
-  console.error("usage: bun smithersc.ts <file.sm>");
+if (!inFile || !inFile.endsWith(".vibe")) {
+  console.error("usage: bun vibec.ts <file.vibe>");
   process.exit(1);
 }
 const abs = path.resolve(inFile);
-const outFile = abs.replace(/\.sm$/, ".ts");
+const outFile = abs.replace(/\.vibe$/, ".ts");
 
 const HERE = (import.meta as any).dirname ?? path.dirname(new URL(import.meta.url).pathname);
 let runtimeImport = path.relative(path.dirname(outFile), path.join(HERE, "runtime")).split(path.sep).join("/");
@@ -257,7 +257,7 @@ src = lowerTry(src);
 src = lowerIfExpr(src);
 
 const header =
-  `// Generated from ${path.basename(abs)} by smithersc.ts — DO NOT EDIT\n` +
+  `// Generated from ${path.basename(abs)} by vibec.ts — DO NOT EDIT\n` +
   `import { __VSError, __vsTry, __vsCatch, __vsProvide, __vsUse } from ${JSON.stringify(runtimeImport)};\n\n`;
 writeFileSync(outFile, header + src);
-console.log(`smithersc: ${path.relative(process.cwd(), abs)} -> ${path.relative(process.cwd(), outFile)}`);
+console.log(`vibec: ${path.relative(process.cwd(), abs)} -> ${path.relative(process.cwd(), outFile)}`);
