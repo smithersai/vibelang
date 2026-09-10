@@ -5,10 +5,10 @@
 // real tree. COVERAGE.md's central claim — "N rules are in both implementations
 // and in no case" — is a subtraction over three code sets, and for eight
 // revisions those sets were extracted by grepping the literal string
-// `SMITHERS[0-9]{4}` over whole directories. That command cannot tell a code an
+// `VIBE[0-9]{4}` over whole directories. That command cannot tell a code an
 // implementation REPORTS from a code a comment MENTIONS, and the page recorded
 // the same defect biting six separate times before this census replaced it
-// (SMITHERS1805, 1708, 4121, 1105, 1807, 4106/4107 — the roll is in
+// (VIBE1805, 1708, 4121, 1105, 1807, 4106/4107 — the roll is in
 // scripts/coverage-codes.mjs).
 //
 // A census that miscounts is worse than no census: it is a fail-open about the
@@ -23,11 +23,11 @@
 // scripts/coverage-codes.mjs and each turned this file red, naming the specimen
 // it regressed on; the file was restored and sha256-compared byte-identical
 // after every one:
-//   1. `stripComments(text)` -> `text`            => SMITHERS9112 counted
-//   2. the `*_test.go` / `*.test.ts` exclusion    => SMITHERS9105, 9106 counted
-//   3. the source-extension filter -> `true`      => SMITHERS9104, 9105, 9106,
+//   1. `stripComments(text)` -> `text`            => VIBE9112 counted
+//   2. the `*_test.go` / `*.test.ts` exclusion    => VIBE9105, 9106 counted
+//   3. the source-extension filter -> `true`      => VIBE9104, 9105, 9106,
 //                                                    9108 counted
-//   4. the comparison/type-union exclusion        => SMITHERS9107, 9109, 9110,
+//   4. the comparison/type-union exclusion        => VIBE9107, 9109, 9110,
 //                                                    9111 counted
 
 import assert from "node:assert/strict";
@@ -68,8 +68,8 @@ test("the census counts no shape that merely MENTIONS a code", async (t) => {
         !reported.has(code),
         `${code} is only MENTIONED in the fixture and was counted. The extractor ` +
           "has regressed to counting mentions, which is the defect that put " +
-          "SMITHERS1105 into the fork's code set from three code comments and kept " +
-          "the retired SMITHERS1807 in the reference's from prose.",
+          "VIBE1105 into the fork's code set from three code comments and kept " +
+          "the retired VIBE1807 in the reference's from prose.",
       );
     });
   }
@@ -84,10 +84,10 @@ test("a dropped code stays auditable rather than vanishing", () => {
   // Anything the census declines to count has to remain visible as a residual,
   // so a reader can check the judgement instead of trusting it. The residual is
   // what caught this extractor's own first bug: a plausible-looking `build`
-  // entry in the directory skip list silently removed the whole SMITHERS52xx
+  // entry in the directory skip list silently removed the whole VIBE52xx
   // asset family from the reference's half.
   const { residual } = fixtureCensus();
-  for (const code of ["SMITHERS9107", "SMITHERS9109", "SMITHERS9110", "SMITHERS9111"]) {
+  for (const code of ["VIBE9107", "VIBE9109", "VIBE9110", "VIBE9111"]) {
     assert.ok(residual.has(code), `${code} was dropped without landing in the audit residual`);
   }
 });
@@ -98,20 +98,20 @@ test("comment stripping does not swallow code that follows a string", () => {
   // shrink a census.
   const source = [
     'const message = "a string with // and /* inside it";',
-    'report(node, "SMITHERS9001", "after the tricky string");',
+    'report(node, "VIBE9001", "after the tricky string");',
   ].join("\n");
   const { reported } = extractFromSource(source);
-  assert.deepEqual([...reported], ["SMITHERS9001"]);
-  assert.match(stripComments(source), /SMITHERS9001/);
+  assert.deepEqual([...reported], ["VIBE9001"]);
+  assert.match(stripComments(source), /VIBE9001/);
 });
 
 test("a comment cannot hide a real report site from the census", () => {
   const source = [
-    "// The rule this replaced used to read: report(node, \"SMITHERS9112\", \"gone\").",
-    'report(node, "SMITHERS9001", "still live");',
+    "// The rule this replaced used to read: report(node, \"VIBE9112\", \"gone\").",
+    'report(node, "VIBE9001", "still live");',
   ].join("\n");
   const { reported } = extractFromSource(source);
-  assert.deepEqual([...reported], ["SMITHERS9001"]);
+  assert.deepEqual([...reported], ["VIBE9001"]);
 });
 
 test("the reference does not construct codes the census cannot see", () => {
@@ -135,6 +135,13 @@ test("the census measures something", () => {
   assert.ok(corpus.size > 50, `the corpus census collapsed to ${corpus.size} codes`);
 });
 
+test("the SDK census includes every shared native report site", () => {
+  const sdk = referenceCensus().reported;
+  for (const code of forkCensus().reported) {
+    assert.ok(sdk.has(code), `the SDK delegates to Go but its census dropped ${code}`);
+  }
+});
+
 test("the codes COVERAGE.md calls phantoms are still reported by neither backend", () => {
   // A TRIPWIRE ON THE REAL TREE, and the only assertion here that a legitimate
   // implementation change can turn red.
@@ -152,7 +159,7 @@ test("the codes COVERAGE.md calls phantoms are still reported by neither backend
   // that name the code, then update this list.
   const reference = referenceCensus().reported;
   const fork = forkCensus().reported;
-  for (const code of ["SMITHERS1708", "SMITHERS1805", "SMITHERS1807", "SMITHERS4106", "SMITHERS4107"]) {
+  for (const code of ["VIBE1708", "VIBE1805", "VIBE1807", "VIBE4106", "VIBE4107"]) {
     assert.ok(!reference.has(code), `${code} is live in the reference again; re-derive COVERAGE.md`);
     assert.ok(!fork.has(code), `${code} is live in the fork again; re-derive COVERAGE.md`);
   }

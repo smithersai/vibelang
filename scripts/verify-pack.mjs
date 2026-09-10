@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { pocRuntimeAssets } from "./poc-runtime-assets.mjs";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
@@ -15,19 +16,18 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
-import ts from "typescript-js";
 
 import { gateCompositionViolations } from "./gate-composition.mjs";
+import { packagedMarkdownLinkViolations } from "./packaged-markdown-links.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const fixtureRoot = resolve(import.meta.dirname, "release-fixtures");
-const temporaryPrefix = "smithers-release-verify-";
+const temporaryPrefix = "vibelang-release-verify-";
 // Canonicalize the workspace base: on macOS os.tmpdir() sits behind the
 // /var -> /private/var symlink, while the installed CLI realpaths inputs and
 // reports /private/var/... paths. Both the workspace and the cleanup guard
 // must use the same canonical spelling for exact path comparisons to hold.
 const temporaryBase = realpathSync(tmpdir());
-const temporary = mkdtempSync(join(temporaryBase, temporaryPrefix));
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const bun = process.platform === "win32" ? "bun.exe" : "bun";
 /**
@@ -49,7 +49,7 @@ const bun = process.platform === "win32" ? "bun.exe" : "bun";
  *
  * So the budget is declared with real headroom rather than trimmed to fit, and
  * it stays a genuine limit — a hung `npm` still fails the gate instead of
- * hanging a release forever. `SMITHERS_VERIFY_TIMEOUT_MS` overrides it for a
+ * hanging a release forever. `VIBELANG_VERIFY_TIMEOUT_MS` overrides it for a
  * slower machine. If a suite is added to `npm test` again, check this number:
  * the suites grew ~4x in one day, and a timeout is only a safety net while it
  * sits above the work it is netting.
@@ -61,7 +61,7 @@ const bun = process.platform === "win32" ? "bun.exe" : "bun";
  * ever executes, and therefore the only place a change to the shipped durable
  * surface is measured. See `scripts/gate-composition.mjs`.
  */
-const commandTimeout = Number(process.env.SMITHERS_VERIFY_TIMEOUT_MS ?? "") || 2_400_000;
+const commandTimeout = Number(process.env.VIBELANG_VERIFY_TIMEOUT_MS ?? "") || 2_400_000;
 const releaseAssetCacheIdentities = new Set();
 
 function execute(command, args, cwd, options = {}) {
@@ -102,11 +102,20 @@ function releaseInputDigest(packagedPaths) {
     "tsconfig.build.json",
     "poc/tsconfig.json",
     "poc/tsconfig.emit.json",
+    "poc/runtime_sources.go",
     "scripts/clean-root-dist.mjs",
     "scripts/clean-poc-dist.mjs",
     "scripts/copy-poc-assets.mjs",
+    "scripts/poc-runtime-assets.mjs",
+    "scripts/build-native-compiler.mjs",
     "scripts/verify-pack.mjs",
+    "scripts/packaged-markdown-links.mjs",
   ]) paths.add(file);
+  // The native executable is now a release artifact. Its complete preparation
+  // inputs belong in the frozen-input check, not just the JS host sources.
+  for (const directory of ["compiler", "cmd/vibec-prepare"]) {
+    for (const file of walkFiles(join(root, directory))) paths.add(`${directory}/${file}`);
+  }
   for (const file of walkFiles(join(root, "scripts/release-fixtures"))) {
     paths.add(`scripts/release-fixtures/${file}`);
   }
@@ -170,6 +179,7 @@ function expectedEmit(
 function assertStaticPackageInventory(paths) {
   const expected = [
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
     "README.md",
     "package.json",
     "typescript-fork.json",
@@ -179,7 +189,6 @@ function assertStaticPackageInventory(paths) {
     "docs/TYPESCRIPT_FORK.md",
     "poc/README.md",
     ...walkFiles(join(root, "bin")).map((file) => `bin/${file}`),
-    ...walkFiles(join(root, "compat")).map((file) => `compat/${file}`),
     ...walkFiles(join(root, "src")).map((file) => `src/${file}`),
   ];
   const actual = paths.filter((file) => !file.startsWith("dist/") && !file.startsWith("poc/dist/"));
@@ -194,7 +203,8 @@ function assertGeneratedInventory() {
     (file) => !file.endsWith(".test.ts") && file !== "demo.ts",
     [".js", ".js.map", ".d.ts"],
   );
-  pocExpected.push("poc/dist/agent/deno-runner.js", "poc/dist/build/loader-runner.js");
+  pocExpected.push(...pocRuntimeAssets.map(([, destination]) => destination));
+  pocExpected.push(...nativeCompilerPaths());
   assertSameInventory(
     "root generated output",
     walkFiles(join(root, "dist")).map((file) => `dist/${file}`),
@@ -206,6 +216,11 @@ function assertGeneratedInventory() {
     pocExpected,
   );
   return [...rootExpected, ...pocExpected].sort();
+}
+
+function nativeCompilerPaths() {
+  const prefix = `poc/dist/compiler/native/${process.platform}-${process.arch}`;
+  return [`${prefix}/manifest.json`, `${prefix}/${process.platform === "win32" ? "vibelang-native.exe" : "vibelang-native"}`];
 }
 
 function pack(directory) {
@@ -261,48 +276,26 @@ function packageDependencyName(specifier) {
   return specifier.split("/")[0];
 }
 
-function runtimeEdges(source, file) {
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-  const edges = [];
-  const visit = (node) => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier !== undefined && ts.isStringLiteralLike(node.moduleSpecifier)
-    ) {
-      edges.push(node.moduleSpecifier.text);
-    }
-    const literalImport = ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments.length >= 1;
-    const literalRequire = ts.isCallExpression(node) && node.arguments.length === 1 &&
-      ts.isIdentifier(node.expression) && node.expression.text === "require";
-    const literalRequireResolve = ts.isCallExpression(node) && node.arguments.length === 1 &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "require" &&
-      node.expression.name.text === "resolve";
-    if ((literalImport || literalRequire || literalRequireResolve) && ts.isStringLiteralLike(node.arguments[0])) {
-      edges.push(node.arguments[0].text);
-    }
-    if (
-      ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "URL" &&
-      node.arguments !== undefined && node.arguments.length === 2 &&
-      ts.isStringLiteralLike(node.arguments[0]) && node.arguments[0].text.startsWith(".")
-    ) {
-      edges.push(node.arguments[0].text);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return edges;
+function runtimeEdges(inspected) {
+  const kinds = new Set(["import-declaration", "module-re-export", "dynamic-import", "require", "require-resolve", "module-url"]);
+  return inspected.moduleSyntax
+    .filter((item) => kinds.has(item.kind) && item.specifier !== undefined &&
+      (item.kind !== "module-url" || item.specifier.startsWith(".")))
+    .map((item) => item.specifier);
 }
 
-function assertPackagedRuntimeClosure(packageJson, paths) {
+function assertPackagedRuntimeClosure(packageJson, paths, native) {
   const pathSet = new Set(paths);
   const declared = new Set(Object.keys(packageJson.dependencies ?? {}));
   const packageExports = new Set(Object.keys(packageJson.exports ?? {}).map((name) =>
     name === "." ? packageJson.name : `${packageJson.name}${name.slice(1)}`));
-  for (const file of paths.filter((path) => /\.(?:c|m)?js$/.test(path))) {
-    const source = readFileSync(join(root, file), "utf8");
-    for (const specifier of runtimeEdges(source, file)) {
+  const inspected = native.inspect(paths.filter((path) => /\.(?:c|m)?js$/.test(path)).map((path) => ({
+    path, text: readFileSync(join(root, path), "utf8"), scriptKind: "javascript",
+  })));
+  for (const source of inspected.files) {
+    const file = source.path;
+    if (source.diagnostics.length !== 0) throw new Error(`packaged JavaScript does not parse: ${file}: ${source.diagnostics.map((d) => d.message).join("; ")}`);
+    for (const specifier of runtimeEdges(source)) {
       if (specifier.startsWith(".")) {
         const target = posix.normalize(posix.join(posix.dirname(file), specifier));
         if (target.startsWith("../") || !pathSet.has(target)) {
@@ -359,31 +352,15 @@ function assertPackagedSourceMaps(paths) {
 }
 
 function assertPackagedMarkdownLinks(paths) {
-  const pathSet = new Set(paths);
+  const violations = [];
   for (const file of paths.filter((path) => path.endsWith(".md"))) {
     const source = readFileSync(join(root, file), "utf8");
-    for (const match of source.matchAll(/\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g)) {
-      const link = match[1];
-      if (/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(link)) continue;
-      const local = link.split(/[?#]/, 1)[0];
-      let decoded;
-      try {
-        decoded = decodeURIComponent(local);
-      } catch {
-        throw new Error(`packaged Markdown has an invalid percent-encoded link: ${file} -> ${link}`);
-      }
-      if (!decoded || decoded.includes("\\") || isAbsolute(decoded)) {
-        throw new Error(`packaged Markdown has an unsafe local link: ${file} -> ${link}`);
-      }
-      const target = posix.normalize(posix.join(posix.dirname(file), decoded));
-      if (target.startsWith("../") || !pathSet.has(target)) {
-        throw new Error(`packaged Markdown links to an unshipped file: ${file} -> ${link}`);
-      }
-    }
+    violations.push(...packagedMarkdownLinkViolations(file, source, paths));
   }
+  if (violations.length > 0) throw new Error(violations.join("\n"));
 }
 
-function assertPackageManifest(report, generatedFiles) {
+function assertPackageManifest(report, generatedFiles, native) {
   const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const entries = manifest(report);
   const paths = entries.map((entry) => entry.path);
@@ -416,6 +393,7 @@ function assertPackageManifest(report, generatedFiles) {
   }
 
   const binTargets = new Set(Object.values(packageJson.bin).map((target) => target.replace(/^\.\//, "")));
+  const nativeExecutable = nativeCompilerPaths()[1];
   const targets = [
     packageJson.main,
     packageJson.types,
@@ -423,6 +401,7 @@ function assertPackageManifest(report, generatedFiles) {
     ...binTargets,
     "poc/dist/agent/deno-runner.js",
     "poc/dist/build/loader-runner.js",
+    ...nativeCompilerPaths(),
   ];
   for (const target of new Set(targets)) {
     if (typeof target !== "string" || !pathSet.has(target.replace(/^\.\//, ""))) {
@@ -431,7 +410,7 @@ function assertPackageManifest(report, generatedFiles) {
   }
   for (const entry of entries) {
     const executable = (entry.mode & 0o111) !== 0;
-    if (binTargets.has(entry.path)) {
+    if (binTargets.has(entry.path) || entry.path === nativeExecutable) {
       if (!executable) throw new Error(`package bin lost executable permission: ${entry.path}`);
     } else if (executable) {
       throw new Error(`unexpected executable file in package: ${entry.path}`);
@@ -455,7 +434,7 @@ function assertPackageManifest(report, generatedFiles) {
   if (testArtifacts.length > 0) {
     throw new Error(`package contains test fixtures or helpers: ${testArtifacts.join(", ")}`);
   }
-  assertPackagedRuntimeClosure(packageJson, paths);
+  assertPackagedRuntimeClosure(packageJson, paths, native);
   assertPackagedSourceMaps(paths);
   assertPackagedMarkdownLinks(paths);
   return { packageJson, paths };
@@ -463,7 +442,7 @@ function assertPackageManifest(report, generatedFiles) {
 
 function installWithNpm(tarball, consumer) {
   mkdirSync(consumer, { recursive: true });
-  writeFileSync(join(consumer, "package.json"), '{"name":"smithers-node-release-consumer","private":true,"type":"module"}\n');
+  writeFileSync(join(consumer, "package.json"), '{"name":"vibelang-node-release-consumer","private":true,"type":"module"}\n');
   const installed = execute(npm, [
     "install",
     "--ignore-scripts",
@@ -501,17 +480,16 @@ function copyReleaseFixtures(consumer) {
 }
 
 function installedPackageRoot(consumer) {
-  return join(consumer, "node_modules/smthrs");
+  return join(consumer, "node_modules/vibelang");
 }
 
 function assertInstalledPackage(consumer, packedPaths) {
   const installedRoot = installedPackageRoot(consumer);
   assertSameInventory("installed tarball", walkFiles(installedRoot), packedPaths);
-  const assetPairs = [
-    ["poc/src/agent/deno-runner.js", "poc/dist/agent/deno-runner.js"],
-    ["poc/src/build/loader-runner.js", "poc/dist/build/loader-runner.js"],
-  ];
-  for (const [source, installed] of assetPairs) {
+  const [nativeManifest, nativeExecutable] = nativeCompilerPaths();
+  const native = JSON.parse(readFileSync(join(installedRoot, nativeManifest), "utf8"));
+  if (sha256(join(installedRoot, nativeExecutable)) !== native.sha256) throw new Error("installed native compiler digest mismatch");
+  for (const [source, installed] of pocRuntimeAssets) {
     if (sha256(join(root, source)) !== sha256(join(installedRoot, installed))) {
       throw new Error(`installed asset differs from build source: ${installed}`);
     }
@@ -525,8 +503,8 @@ function assertInstalledPackage(consumer, packedPaths) {
       const linked = join(consumer, "node_modules/.bin", name);
       if ((statSync(linked).mode & 0o111) === 0) throw new Error(`installed bin link is not executable: ${name}`);
     }
-    execute(join(consumer, "node_modules/.bin/smithersc"), ["--version"], consumer);
-    execute(join(consumer, "node_modules/.bin/smithers"), ["--help"], consumer);
+    execute(join(consumer, "node_modules/.bin/vibec"), ["--version"], consumer);
+    execute(join(consumer, "node_modules/.bin/vibe"), ["--help"], consumer);
   }
 }
 
@@ -535,7 +513,7 @@ function writeTypeConsumer(consumer, exportsMap) {
   const imports = [];
   let index = 0;
   for (const exportName of Object.keys(exportsMap).sort()) {
-    const specifier = exportName === "." ? "smthrs" : `smthrs${exportName.slice(1)}`;
+    const specifier = exportName === "." ? "vibelang" : `vibelang${exportName.slice(1)}`;
     if (exportName === "./package.json") {
       imports.push(`import packageMetadata from ${JSON.stringify(specifier)} with { type: "json" };`);
       namespaces.push("packageMetadata");
@@ -561,23 +539,21 @@ function writeTypeConsumer(consumer, exportsMap) {
       noEmit: true,
       resolveJsonModule: true,
       types: [],
-      // typescript@7's published unstable api.d.ts uses Symbol.dispose, so
-      // consuming smthrs/unstable/* genuinely requires the disposable lib;
-      // everything else stays at ES2022 so the no-skipLibCheck gate remains
-      // as strict as before.
+      // Resource scopes in the public runtime use the disposable symbols;
+      // declaration dependencies are checked without skipLibCheck.
       lib: ["ES2022", "DOM", "ESNext.Disposable"],
     },
     files: ["release-types.mts", "bun-sqlite.d.ts", "node-globals.d.ts"],
   }, null, 2)}\n`);
-  const tsc = join(consumer, "node_modules/typescript-js/lib/tsc.js");
+  const tsc = join(installedPackageRoot(consumer), "bin/vibec.js");
   execute(process.execPath, [tsc, "-p", "tsconfig.json"], consumer);
 }
 
 function verifyCli(consumer) {
-  const cli = join(installedPackageRoot(consumer), "bin/smithers.js");
-  const compilerCli = join(installedPackageRoot(consumer), "bin/smithersc.js");
+  const cli = join(installedPackageRoot(consumer), "bin/vibe.js");
+  const compilerCli = join(installedPackageRoot(consumer), "bin/vibec.js");
   const project = join(consumer, "release-fixtures/project");
-  const main = join(project, "main.sm");
+  const main = join(project, "main.vibe");
   const checked = execute(process.execPath, [cli, "check", main, "--format", "json"], consumer);
   const checkReport = JSON.parse(checked.stdout);
   if (!checkReport.ok || checkReport.files.length !== 2) throw new Error(`installed CLI project check failed: ${checked.stdout}`);
@@ -616,12 +592,12 @@ function verifyCli(consumer) {
     throw new Error("installed CLI reported an invalid source-asset cache identity");
   }
   releaseAssetCacheIdentities.add(assetCacheIdentity);
-  const assetBase = join(output, "__smithers_assets__", logicalKey);
+  const assetBase = join(output, "__vibelang_assets__", logicalKey);
   for (const file of [`${assetBase}.mjs`, `${assetBase}.mjs.map`, `${assetBase}.d.mts`]) {
     if (!statSync(file).isFile()) throw new Error(`installed CLI omitted generated source asset ${file}`);
   }
   const emittedMain = readFileSync(join(output, "main.mjs"), "utf8");
-  if (!emittedMain.includes(`__smithers_assets__/${logicalKey}.mjs`)) {
+  if (!emittedMain.includes(`__vibelang_assets__/${logicalKey}.mjs`)) {
     throw new Error("installed CLI did not rewrite the source-asset import");
   }
   if (/\b(?:with|assert)\s*\{/.test(emittedMain)) {
@@ -630,25 +606,34 @@ function verifyCli(consumer) {
   if (!/releaseAssetAnswer\s*=\s*config\.answer/.test(emittedMain)) {
     throw new Error("installed CLI dropped the runtime source-asset binding");
   }
-  if (!/Result<string, Missing>/.test(readFileSync(join(output, "main.d.mts"), "utf8"))) {
+  const emittedDeclaration = readFileSync(join(output, "main.d.mts"), "utf8");
+  if (!/type ResultType as __vsResultType/.test(emittedDeclaration) ||
+      !/export declare function run\(\): __vsResultType<string, Missing>;/.test(emittedDeclaration)) {
     throw new Error("installed CLI declaration lost its checked Result channel");
   }
-  if (!/releaseAssetAnswer:\s*42/.test(readFileSync(join(output, "main.d.mts"), "utf8"))) {
+  if (!/releaseAssetAnswer:\s*42/.test(emittedDeclaration)) {
     throw new Error("installed CLI declaration lost const source-asset typing");
   }
+  // Check the published declarations as an ordinary TypeScript consumer too.
+  // Text alone cannot prove that the alias resolves or preserves both channels.
+  execute(process.execPath, [compilerCli, "-p", "release-fixtures/project-tsconfig.json"], consumer);
   const sourceMap = JSON.parse(readFileSync(join(output, "main.mjs.map"), "utf8"));
   if (sourceMap.version !== 3 || !sourceMap.sourcesContent?.some((source) => /function run/.test(source))) {
     throw new Error("installed CLI emitted an incomplete source map");
   }
   execute(process.execPath, [join(output, "main.mjs")], consumer);
   execute(process.execPath, [cli, "run", main], consumer);
-  execute(process.execPath, [compilerCli, "--version"], consumer);
+  const compilerVersion = execute(process.execPath, [compilerCli, "--version"], consumer);
+  const pinnedCompiler = JSON.parse(readFileSync(join(installedPackageRoot(consumer), nativeCompilerPaths()[0]), "utf8"));
+  if (compilerVersion.stdout.trim() !== `Version ${pinnedCompiler.compilerVersion}`) {
+    throw new Error("installed TypeScript CLI does not use the pinned language compiler");
+  }
 
   const failedOutput = join(consumer, "failed-project");
   const failed = execute(process.execPath, [
     cli,
     "compile",
-    join(project, "missing.sm"),
+    join(project, "missing.vibe"),
     "--outDir",
     failedOutput,
     "--format",
@@ -672,7 +657,7 @@ function lstatExists(path) {
 
 function installWithBun(tarball, consumer) {
   mkdirSync(consumer, { recursive: true });
-  writeFileSync(join(consumer, "package.json"), '{"name":"smithers-bun-release-consumer","private":true,"type":"module"}\n');
+  writeFileSync(join(consumer, "package.json"), '{"name":"vibelang-bun-release-consumer","private":true,"type":"module"}\n');
   const installed = execute(bun, ["add", "--ignore-scripts", "--no-save", tarball], consumer);
   rejectWarnings("bun add", `${installed.stdout}\n${installed.stderr}`);
 }
@@ -689,7 +674,7 @@ function safeCleanupAssetCache(identity) {
   if (typeof identity !== "string" || !/^[0-9a-f]{64}$/.test(identity)) {
     throw new Error(`Refusing to remove invalid source-asset cache identity: ${String(identity)}`);
   }
-  const cacheRoot = resolve(tmpdir(), "smithers-source-asset-cache-v1");
+  const cacheRoot = resolve(tmpdir(), "vibelang-source-asset-cache-v1");
   const target = resolve(cacheRoot, identity);
   if (dirname(target) !== cacheRoot || basename(target) !== identity) {
     throw new Error(`Refusing to remove unexpected source-asset cache path: ${target}`);
@@ -697,7 +682,7 @@ function safeCleanupAssetCache(identity) {
   rmSync(target, { recursive: true, force: true });
 }
 
-try {
+function verifyPack() {
   const lifecyclePackageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   // This gate is the pre-merge gate (`npm run gate:premerge`), and it reaches
   // every suite exactly once — through the `npm run prepack` it runs below,
@@ -717,81 +702,106 @@ try {
   }
   const lifecycle = execute(npm, ["run", "prepack"], root);
   rejectWarnings("npm prepack", `${lifecycle.stdout}\n${lifecycle.stderr}`);
-  const initialGenerated = assertGeneratedInventory();
-  const first = pack(join(temporary, "pack-a"));
-  const firstManifest = assertPackageManifest(first.report, initialGenerated);
-  const firstInputDigest = releaseInputDigest(firstManifest.paths);
+  // Keep the successful suite census too; an eventual packaging failure must
+  // not erase the evidence for the implementation stages that preceded it.
+  process.stdout.write(lifecycle.stdout);
+  process.stderr.write(lifecycle.stderr);
+  return verifyPackageContents();
+}
 
-  // Rebuild from clean output directories before the second pack. This proves
-  // generated bytes and the archive container are deterministic together.
-  execute(npm, ["run", "build"], root);
-  const rebuiltGenerated = assertGeneratedInventory();
-  const second = pack(join(temporary, "pack-b"));
-  const secondManifest = assertPackageManifest(second.report, rebuiltGenerated);
-  const secondInputDigest = releaseInputDigest(secondManifest.paths);
+/**
+ * Focused packaging diagnostic over an already-built checkout. This does not
+ * run or certify the implementation suites. The normal pre-merge/release entry
+ * point above always runs the complete prepack lifecycle first.
+ */
+export async function verifyPackageContents() {
+  // Loaded after prepack creates the host binding and native executable. The
+  // release driver itself has no dependency on the retired compiler library.
+  const { getNativeCompiler } = await import("../poc/dist/compiler/native.js");
+  const native = getNativeCompiler();
+  const temporary = mkdtempSync(join(temporaryBase, temporaryPrefix));
+  try {
+    const initialGenerated = assertGeneratedInventory();
+    const first = pack(join(temporary, "pack-a"));
+    const firstManifest = assertPackageManifest(first.report, initialGenerated, native);
+    const firstInputDigest = releaseInputDigest(firstManifest.paths);
 
-  if (firstInputDigest !== secondInputDigest) {
-    throw new Error("release inputs changed during verification; retry without concurrent source or package edits");
+    // Rebuild from clean output directories before the second pack. This proves
+    // generated bytes and the archive container are deterministic together.
+    execute(npm, ["run", "build"], root);
+    const rebuiltGenerated = assertGeneratedInventory();
+    const second = pack(join(temporary, "pack-b"));
+    const secondManifest = assertPackageManifest(second.report, rebuiltGenerated, native);
+    const secondInputDigest = releaseInputDigest(secondManifest.paths);
+
+    if (firstInputDigest !== secondInputDigest) {
+      throw new Error("release inputs changed during verification; retry without concurrent source or package edits");
+    }
+
+    const firstDigest = sha256(first.tarball);
+    const secondDigest = sha256(second.tarball);
+    if (firstDigest !== secondDigest) {
+      throw new Error(`package tarball is nondeterministic across clean builds: ${firstDigest} != ${secondDigest}`);
+    }
+    if (JSON.stringify(manifest(first.report)) !== JSON.stringify(manifest(second.report))) {
+      throw new Error("package file content/mode manifest is nondeterministic across clean builds");
+    }
+    if (JSON.stringify(firstManifest.paths) !== JSON.stringify(secondManifest.paths)) {
+      throw new Error("package path manifest is nondeterministic across clean builds");
+    }
+
+    const nodeConsumer = join(temporary, "node-consumer");
+    installWithNpm(second.tarball, nodeConsumer);
+    copyReleaseFixtures(nodeConsumer);
+    assertInstalledPackage(nodeConsumer, secondManifest.paths);
+    execute(process.execPath, ["release-fixtures/runtime-smoke.mjs"], nodeConsumer);
+    writeTypeConsumer(nodeConsumer, secondManifest.packageJson.exports);
+    verifyCli(nodeConsumer);
+
+    const bunConsumer = join(temporary, "bun-consumer");
+    installWithBun(second.tarball, bunConsumer);
+    copyReleaseFixtures(bunConsumer);
+    assertInstalledPackage(bunConsumer, secondManifest.paths);
+    execute(bun, ["release-fixtures/runtime-smoke.mjs"], bunConsumer);
+    const bunChecked = execute(bun, [
+      join(installedPackageRoot(bunConsumer), "bin/vibe.js"),
+      "check",
+      join(bunConsumer, "release-fixtures/project/main.vibe"),
+      "--format",
+      "json",
+    ], bunConsumer);
+    const bunCheckReport = JSON.parse(bunChecked.stdout);
+    const bunCacheIdentity = bunCheckReport.files?.find((file) =>
+      file.input === join(bunConsumer, "release-fixtures/project/main.vibe"))?.assets?.cacheIdentity;
+    if (typeof bunCacheIdentity !== "string" || !/^[0-9a-f]{64}$/.test(bunCacheIdentity)) {
+      throw new Error(`installed Bun CLI did not report a valid source-asset cache identity: ${bunChecked.stdout}`);
+    }
+    releaseAssetCacheIdentities.add(bunCacheIdentity);
+
+    const finalInputDigest = releaseInputDigest(secondManifest.paths);
+    if (finalInputDigest !== secondInputDigest) {
+      throw new Error("release inputs changed during consumer verification; retry from a settled tree");
+    }
+
+    return {
+      ok: true,
+      tarball: basename(second.tarball),
+      sha256: secondDigest,
+      inventorySha256: createHash("sha256")
+        .update(JSON.stringify(manifest(second.report)))
+        .digest("hex"),
+      files: secondManifest.paths.length,
+      generatedFiles: rebuiltGenerated.length,
+      exports: Object.keys(secondManifest.packageJson.exports).length,
+      consumers: ["node", "bun"],
+    };
+  } finally {
+    for (const identity of releaseAssetCacheIdentities) safeCleanupAssetCache(identity);
+    releaseAssetCacheIdentities.clear();
+    safeCleanup(temporary);
   }
+}
 
-  const firstDigest = sha256(first.tarball);
-  const secondDigest = sha256(second.tarball);
-  if (firstDigest !== secondDigest) {
-    throw new Error(`package tarball is nondeterministic across clean builds: ${firstDigest} != ${secondDigest}`);
-  }
-  if (JSON.stringify(manifest(first.report)) !== JSON.stringify(manifest(second.report))) {
-    throw new Error("package file content/mode manifest is nondeterministic across clean builds");
-  }
-  if (JSON.stringify(firstManifest.paths) !== JSON.stringify(secondManifest.paths)) {
-    throw new Error("package path manifest is nondeterministic across clean builds");
-  }
-
-  const nodeConsumer = join(temporary, "node-consumer");
-  installWithNpm(second.tarball, nodeConsumer);
-  copyReleaseFixtures(nodeConsumer);
-  assertInstalledPackage(nodeConsumer, secondManifest.paths);
-  execute(process.execPath, ["release-fixtures/runtime-smoke.mjs"], nodeConsumer);
-  writeTypeConsumer(nodeConsumer, secondManifest.packageJson.exports);
-  verifyCli(nodeConsumer);
-
-  const bunConsumer = join(temporary, "bun-consumer");
-  installWithBun(second.tarball, bunConsumer);
-  copyReleaseFixtures(bunConsumer);
-  assertInstalledPackage(bunConsumer, secondManifest.paths);
-  execute(bun, ["release-fixtures/runtime-smoke.mjs"], bunConsumer);
-  const bunChecked = execute(bun, [
-    join(installedPackageRoot(bunConsumer), "bin/smithers.js"),
-    "check",
-    join(bunConsumer, "release-fixtures/project/main.sm"),
-    "--format",
-    "json",
-  ], bunConsumer);
-  const bunCheckReport = JSON.parse(bunChecked.stdout);
-  const bunCacheIdentity = bunCheckReport.files?.find((file) =>
-    file.input === join(bunConsumer, "release-fixtures/project/main.sm"))?.assets?.cacheIdentity;
-  if (typeof bunCacheIdentity !== "string" || !/^[0-9a-f]{64}$/.test(bunCacheIdentity)) {
-    throw new Error(`installed Bun CLI did not report a valid source-asset cache identity: ${bunChecked.stdout}`);
-  }
-  releaseAssetCacheIdentities.add(bunCacheIdentity);
-
-  const finalInputDigest = releaseInputDigest(secondManifest.paths);
-  if (finalInputDigest !== secondInputDigest) {
-    throw new Error("release inputs changed during consumer verification; retry from a settled tree");
-  }
-
-  console.log(JSON.stringify({
-    ok: true,
-    tarball: basename(second.tarball),
-    sha256: secondDigest,
-    inventorySha256: createHash("sha256")
-      .update(JSON.stringify(manifest(second.report)))
-      .digest("hex"),
-    files: secondManifest.paths.length,
-    generatedFiles: rebuiltGenerated.length,
-    exports: Object.keys(secondManifest.packageJson.exports).length,
-    consumers: ["node", "bun"],
-  }));
-} finally {
-  for (const identity of releaseAssetCacheIdentities) safeCleanupAssetCache(identity);
-  safeCleanup(temporary);
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(import.meta.filename)) {
+  console.log(JSON.stringify(await verifyPack()));
 }

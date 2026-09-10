@@ -1,9 +1,9 @@
 /**
  * Bun-invoked lowering exporter for `scripts/fork-e2e.mjs`.
  *
- * The JS POC frontend lives in TypeScript sources under `poc/src/language`;
- * this process is the only place that imports it, so the Node driver never
- * needs a TypeScript loader and never reaches past the documented public API
+ * The SDK host lives in TypeScript sources under `poc/src/language` and
+ * delegates all checking and lowering to Go. This process imports that host,
+ * so the Node driver never needs a TypeScript loader or reaches past the public API
  * (`compileProject` from `poc/src/language/index.ts`).
  *
  * Protocol: one JSON request object on stdin, one JSON response object on
@@ -14,7 +14,7 @@
  *     rootDir: string,               // virtual project root of the authored files
  *     outDir: string,                // virtual output root used for import rewriting
  *     runtimeImport: string,         // specifier for the generated runtime helper import
- *     sources: [{ fileName, source }],        // authored `.sm` modules
+ *     sources: [{ fileName, source }],        // authored `.vibe` modules
  *     typeScriptSources: [{ fileName, source }] // checker-visible foreign `.ts` modules
  *   }
  *

@@ -78,16 +78,16 @@ const BUN_TEST_TIMEOUT_MS = 60_000;
  * The one skip this gate allows, named — not counted.
  *
  * `examples/agent/anthropic-model.test.ts` gates a real Anthropic API call on
- * `SMITHERS_LIVE_MODEL`, so on a machine without a credential it is a genuine
+ * `VIBELANG_LIVE_MODEL`, so on a machine without a credential it is a genuine
  * exclusion rather than lost coverage. It is allowed, not required: with
- * `SMITHERS_LIVE_MODEL=1` set the test runs and the census reports zero skips,
+ * `VIBELANG_LIVE_MODEL=1` set the test runs and the census reports zero skips,
  * which is also green. Any other skip, anywhere, is a refusal.
  */
 const ALLOWED_SKIPS = [
   {
     file: "examples/agent/anthropic-model.test.ts",
-    name: /SMITHERS_LIVE_MODEL/u,
-    why: "a real network call to the Anthropic API, gated on SMITHERS_LIVE_MODEL",
+    name: /VIBELANG_LIVE_MODEL/u,
+    why: "a real network call to the Anthropic API, gated on VIBELANG_LIVE_MODEL",
   },
 ];
 
@@ -285,7 +285,7 @@ export function coverageRefusals(records, { discoveredFiles = undefined, markers
  * left by an earlier run is itself a way for a gate to pass without working.
  */
 export async function runPocTests({ cwd, bunCommand = "bun", patterns = [], stdio = "inherit" }) {
-  const workspace = await mkdtemp(join(tmpdir(), "smithers-poc-test-gate-"));
+  const workspace = await mkdtemp(join(tmpdir(), "vibelang-poc-test-gate-"));
   const reportPath = join(workspace, "report.xml");
   try {
     const child = spawn(

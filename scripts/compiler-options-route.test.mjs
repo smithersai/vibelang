@@ -1,4 +1,4 @@
-// SMITHERS6001 / SMITHERS6002 / SMITHERS6003 — the tsconfig compiler-options
+// VIBE6001 / VIBE6002 / VIBE6003 — the tsconfig compiler-options
 // gate, pinned on the route a user actually reaches it through.
 //
 // WHY THIS FILE EXISTS, AND WHY IT IS NOT A CORPUS CASE.
@@ -11,23 +11,23 @@
 //      `conformance/runner/corpus.mjs` KNOWN_FIELDS is
 //      {title, expect, stdout, diagnostics, modules, typescript, assets, entry,
 //      xfail, notes} and `validate()` THROWS on any other key. A case's staged
-//      files are only `smithers` / `typescript` / `asset`. There is no way to
+//      files are only `vibe` / `typescript` / `asset`. There is no way to
 //      write "and here is the project's tsconfig".
 //   2. The reference driver never sends one. `conformance/runner/backend-js.mjs`
 //      builds the whole payload (rootDir, comptimeTarget, runtimeImport,
 //      sources, typeScriptSources, assets, expectsOutput) and there is no config
-//      field; `validateSmithersTsconfig` is imported by exactly two files in the
+//      field; `validateVibeLangTsconfig` is imported by exactly two files in the
 //      repository, `poc/src/language/index.ts` and `src/cli.ts`, and the runner
 //      is neither.
 //   3. The fork driver never sends one either, and the fork short-circuits when
 //      it is absent. `conformance/runner/backend-go.mjs` sends
 //      `options: { comptimeTarget }` and no `configFile`, and
 //      `compiler/forkbridge/main.go.txt:1422` opens
-//      `func validateSmithersConfigFile(config *configFile) []diagnostic {
+//      `func validateVibeLangConfigFile(config *configFile) []diagnostic {
 //      if config == nil { return nil }` — so the entire 600x gate returns nil on
 //      every corpus request.
 //
-// So no `.sm` case can declare these codes, and COVERAGE.md counting them among
+// So no `.vibe` case can declare these codes, and COVERAGE.md counting them among
 // "rules both implementations have and no case probes" is true but misleading:
 // no case COULD probe them.
 //
@@ -44,8 +44,8 @@
 // here:
 //
 //   * THE DELIVERED ROUTE. A user reaches this rule through
-//     `smithers check -p <tsconfig> <file>.sm`, via
-//     `readSmithersProjectConfig` (`src/cli.ts:1586`). No test in the repository
+//     `vibe check -p <tsconfig> <file>.vibe`, via
+//     `readVibeLangProjectConfig` (`src/cli.ts:1586`). No test in the repository
 //     exercised that path. A validator that is correct and unreachable refuses
 //     nothing.
 //   * THE DIFFERENTIAL. Nothing checked that the two backends report the SAME
@@ -64,7 +64,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CLI = path.join(ROOT, "bin/smithers.js");
+const CLI = path.join(ROOT, "bin/vibe.js");
 
 // One tsconfig carrying one instance of each rule, so a single run measures all
 // three and their ORDER. `strict: false` is the sharp spelling of the mandatory
@@ -97,22 +97,22 @@ const TSCONFIG = JSON.stringify(
  * of the table is enforced", and only the full list can tell them apart.
  */
 const EXPECTED = [
-  { code: "SMITHERS6002", line: 4, column: 5, contains: "'experimentalDecorators' is a forbidden compiler option in a Smithers project and MUST be removed rather than set to a value" },
-  { code: "SMITHERS6003", line: 5, column: 5, contains: "unsupported compiler option 'notAnOptionAtAll' in a Smithers project" },
-  { code: "SMITHERS6001", line: 3, column: 5, contains: "a Smithers project MUST set 'strict: true'" },
-  { code: "SMITHERS6001", line: 2, column: 22, contains: "a Smithers project MUST set 'noUncheckedIndexedAccess: true'" },
-  { code: "SMITHERS6001", line: 2, column: 22, contains: "a Smithers project MUST set 'exactOptionalPropertyTypes: true'" },
-  { code: "SMITHERS6001", line: 2, column: 22, contains: "a Smithers project MUST set 'isolatedModules: true'" },
-  { code: "SMITHERS6001", line: 2, column: 22, contains: "a Smithers project MUST set 'verbatimModuleSyntax: true'" },
-  { code: "SMITHERS6001", line: 2, column: 22, contains: "a Smithers project MUST set 'useDefineForClassFields: true'" },
+  { code: "VIBE6002", line: 4, column: 5, contains: "'experimentalDecorators' is a forbidden compiler option in a VibeLang project and MUST be removed rather than set to a value" },
+  { code: "VIBE6003", line: 5, column: 5, contains: "unsupported compiler option 'notAnOptionAtAll' in a VibeLang project" },
+  { code: "VIBE6001", line: 3, column: 5, contains: "a VibeLang project MUST set 'strict: true'" },
+  { code: "VIBE6001", line: 2, column: 22, contains: "a VibeLang project MUST set 'noUncheckedIndexedAccess: true'" },
+  { code: "VIBE6001", line: 2, column: 22, contains: "a VibeLang project MUST set 'exactOptionalPropertyTypes: true'" },
+  { code: "VIBE6001", line: 2, column: 22, contains: "a VibeLang project MUST set 'isolatedModules: true'" },
+  { code: "VIBE6001", line: 2, column: 22, contains: "a VibeLang project MUST set 'verbatimModuleSyntax: true'" },
+  { code: "VIBE6001", line: 2, column: 22, contains: "a VibeLang project MUST set 'useDefineForClassFields: true'" },
 ];
 
 function runCheck(backend) {
-  const workspace = mkdtempSync(path.join(tmpdir(), "smithers-options-route-"));
+  const workspace = mkdtempSync(path.join(tmpdir(), "vibelang-options-route-"));
   try {
     writeFileSync(path.join(workspace, "tsconfig.json"), TSCONFIG + "\n");
-    writeFileSync(path.join(workspace, "main.sm"), 'export function main(): string[] {\n  return ["ok"]\n}\n');
-    const args = ["check", "-p", path.join(workspace, "tsconfig.json"), path.join(workspace, "main.sm"), "--format", "json"];
+    writeFileSync(path.join(workspace, "main.vibe"), 'export function main(): string[] {\n  return ["ok"]\n}\n');
+    const args = ["check", "-p", path.join(workspace, "tsconfig.json"), path.join(workspace, "main.vibe"), "--format", "json"];
     if (backend !== undefined) args.push("--backend", backend);
     let stdout;
     try {
@@ -133,7 +133,7 @@ function runCheck(backend) {
 const key = (d) => `${d.code}@${d.line}:${d.column}`;
 
 test("the delivered CLI route reports all three compiler-option rules on the reference", () => {
-  const diagnostics = runCheck(undefined).filter((d) => d.code.startsWith("SMITHERS600"));
+  const diagnostics = runCheck(undefined).filter((d) => d.code.startsWith("VIBE600"));
   assert.deepEqual(diagnostics.map(key), EXPECTED.map(key));
   for (const [index, expected] of EXPECTED.entries()) {
     // The sentence is part of the promise: 6001 must name WHICH option, and 6002
@@ -147,30 +147,30 @@ test("the delivered CLI route reports all three compiler-option rules on the ref
 });
 
 test("the tsconfig is refused BEFORE the program is compiled", () => {
-  // `main.sm` is a valid program. If the config gate ever moved after
+  // `main.vibe` is a valid program. If the config gate ever moved after
   // compilation, a project with a forbidden option would be type-checked under
   // the wrong options first — which is the fail-open the ordering prevents, and
   // it is invisible to any assertion about the diagnostics alone.
   const diagnostics = runCheck(undefined);
   assert.ok(diagnostics.length > 0);
   assert.ok(
-    diagnostics.every((d) => d.code.startsWith("SMITHERS600")),
+    diagnostics.every((d) => d.code.startsWith("VIBE600")),
     `the run reported something other than the config gate: ${JSON.stringify(diagnostics.map((d) => d.code))}`,
   );
 });
 
 test("both backends answer the same tsconfig identically", () => {
-  const reference = runCheck("js").filter((d) => d.code.startsWith("SMITHERS600"));
+  const reference = runCheck("js").filter((d) => d.code.startsWith("VIBE600"));
   let fork;
   try {
-    fork = runCheck("go").filter((d) => d.code.startsWith("SMITHERS600"));
+    fork = runCheck("go").filter((d) => d.code.startsWith("VIBE600"));
   } catch (error) {
     // The fork checkout is an external prerequisite. Not measuring it is
     // reported, never silently passed over, and never a skip — the reference
     // half above still gated.
     assert.fail(
       "the Go backend could not be driven, so this run is NOT a measurement of the fork. " +
-        "Set SMITHERS_TYPESCRIPT_FORK to the pinned checkout (see scripts/prepare-typescript-fork.mjs). " +
+        "Set VIBELANG_TYPESCRIPT_FORK to the pinned checkout (see scripts/prepare-typescript-fork.mjs). " +
         `Underlying error: ${error.message}`,
     );
   }

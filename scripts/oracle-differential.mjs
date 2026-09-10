@@ -7,14 +7,13 @@
  * `conformance/runner/run.mjs` measures two BACKENDS against the corpus. Neither
  * of them is the shipped product. The JS reference backend reaches the frontend
  * through its own driver (`conformance/runner/js-lower.mjs`), which turns the
- * source-asset stage on only for a case that ships assets, skips the comptime
- * frontend for a case with no compiler-owned edge, and runs a durable source
- * pass of its own before compiling. `bin/smithers.js` does none of those three
- * things in that order: it runs an asset preflight and a runtime-graph resolver
- * over every `.sm` before the semantic stage, runs comptime unconditionally, and
- * has no durable stage in `check`/`run` at all.
+ * source-asset stage on only for a case that ships assets and skips the comptime
+ * frontend for a case with no compiler-owned edge. `bin/vibe.js` runs an asset
+ * preflight and a runtime-graph resolver over every `.vibe` before the semantic
+ * stage and runs comptime unconditionally. Both now share the durable module
+ * stage; the historic absence of that CLI stage no longer explains a divergence.
  *
- * So "424 cases, 0 divergent" was never a statement about `smithers`. It was a
+ * So "424 cases, 0 divergent" was never a statement about `vibe`. It was a
  * statement about `compileProject` plus `js-lower.mjs`. The corpus is quoted as
  * the language contract; before this gate, nothing measured how much of that
  * contract the thing users actually run can deliver, and the answer could drift
@@ -23,13 +22,13 @@
  * ## What it measures
  *
  * Every corpus case, staged byte-for-byte the way `conformance/runner/backend-js.mjs`
- * stages it, handed to `node bin/smithers.js check <entry> --format json`, and
+ * stages it, handed to `node bin/vibe.js check <entry> --format json`, and
  * judged against the case's declared expectation using the corpus's OWN equality
  * relation (`conformance/runner/judge.mjs`: diagnostic code plus 1-based authored
  * line and column, as a sorted multiset).
  *
  * A case whose expectation is `output` is required only to be ACCEPTED here.
- * `smithers run` executes an emitted module directly and never calls the
+ * `vibe run` executes an emitted module directly and never calls the
  * `main()` the conformance harness calls, so this gate deliberately does not
  * claim to compare printed output; the harness still owns that half. Acceptance
  * is the half a product-vs-oracle differential can honestly measure, and it is
@@ -38,7 +37,7 @@
  *
  * ## Why a baseline instead of a red gate
  *
- * The divergence is real, it is 47 cases wide, and most of its root causes live
+ * The divergence is real, and most of its remaining root causes live
  * in `poc/src/**` or need a decision from the ledger owner (see the `verdict`
  * and `cause` fields of every row in `conformance/product-divergence.json`).
  * Failing the build on all of it today would mean disabling the gate tomorrow.
@@ -66,9 +65,9 @@
  * A row it cannot match is written with `verdict: "unreviewed"`, which the gate
  * itself refuses, so a regenerated baseline cannot pass unread.
  *
- * The gate spawns one `node` per case and takes a few minutes. It is not part of
- * `npm test`; run it after any change to `src/**`, `conformance/runner/**`, or
- * the frontend stages the CLI drives.
+ * The gate spawns one `node` per case and takes a few minutes. `npm test` runs
+ * it after the Node, Bun and Go gates, so normal integration and package
+ * verification both measure the shipped CLI as well as the corpus backends.
  */
 
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -79,7 +78,7 @@ import { spawn } from "node:child_process";
 
 import { loadCorpus, repositoryRoot } from "../conformance/runner/corpus.mjs";
 
-const CLI = join(repositoryRoot, "bin", "smithers.js");
+export const CLI = join(repositoryRoot, "bin", "vibe.js");
 const BASELINE = join(repositoryRoot, "conformance", "product-divergence.json");
 
 /** The verdicts a baseline row may carry. `unreviewed` never passes the gate. */
@@ -142,7 +141,7 @@ function productAnswer(result, directory, entry) {
   // code and no position, so it can never satisfy a corpus expectation, and the
   // message is the only thing that identifies which refusal it was.
   if (json.files === undefined) {
-    return `${json.code ?? "SMITHERS_PROJECT_ERROR"}: ${normalize(json.message, directory).slice(0, 200)}`;
+    return `${json.code ?? "VIBELANG_PROJECT_ERROR"}: ${normalize(json.message, directory).slice(0, 200)}`;
   }
   const diagnostics = [];
   for (const file of json.files) {
@@ -178,7 +177,7 @@ export function classify(expectation, answer) {
 }
 
 async function measureCase(testCase) {
-  const stageRoot = mkdtempSync(join(tmpdir(), "smithers-oracle-differential-"));
+  const stageRoot = mkdtempSync(join(tmpdir(), "vibelang-oracle-differential-"));
   // The staged root is realpath'd because macOS hands out `/var/...` temporary
   // directories that the CLI canonicalizes to `/private/var/...`; without this
   // every diagnostic looks like it landed in a file outside the project.
@@ -328,7 +327,7 @@ async function main() {
       return;
     }
   }
-  process.stderr.write(`measuring ${cases.length} case(s) through bin/smithers.js check, ${options.jobs} at a time\n`);
+  process.stderr.write(`measuring ${cases.length} case(s) through bin/vibe.js check, ${options.jobs} at a time\n`);
   const rows = await measureAll(cases, options.jobs);
   const measured = rows.filter((row) => !row.agrees);
 
@@ -352,10 +351,10 @@ async function main() {
       };
     });
     writeFileSync(BASELINE, `${JSON.stringify({
-      schema: "smithers.product-divergence/v1",
+      schema: "vibelang.product-divergence/v1",
       measuredBy: "scripts/oracle-differential.mjs",
       purpose:
-        "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. " +
+        "Every corpus case where `node bin/vibe.js check` disagrees with the case's declared expectation. " +
         "The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written " +
         "record of how far the product is from the contract the corpus is quoted as stating. `direction` " +
         "product-accepts is the dangerous one — the corpus requires a refusal and the product compiled it. " +

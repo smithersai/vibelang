@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 /**
- * Smithers flagship compiler pipeline, end to end:
+ * VibeLang flagship compiler pipeline, end to end:
  *
- *   authored `.sm`
- *     -> the JS POC frontend's real lowering (`compileProject`) plus its
+ *   authored `.vibe`
+ *     -> native checked SDK lowering (`compileProject` through a thin host) plus its
  *        version-3 authored -> lowered source map
  *     -> a protocol v2 `CompileRequest` with `lowering: "external"`
- *     -> `cmd/smithersc-go --request` against the pinned Go TypeScript fork
+ *     -> `cmd/vibec-go --request` against the pinned Go TypeScript fork
  *     -> emitted JavaScript, declarations, and source maps composed back to
- *        the authored `.sm` text
+ *        the authored `.vibe` text
  *
- * Everything is hermetic: the frontend runs in a bun subprocess (the POC
- * frontend is TypeScript), the bridge binary is built into a temporary
+ * Everything is hermetic: the SDK host runs in a bun subprocess, both compiler
+ * phases run in Go, the bridge binary is built into a temporary
  * directory, the fork cache lives outside the checkout, and no file inside the
  * repository or the checkout is written.
  *
  * CLI:
- *   node scripts/fork-e2e.mjs [options] <program.sm> [more.sm ...]
+ *   node scripts/fork-e2e.mjs [options] <program.vibe> [more.vibe ...]
  *
  *   --out <dir>             output directory (default: a fresh mkdtemp)
  *   --fork-checkout <dir>   pinned smithersai/TypeScript checkout
- *                           (default: $SMITHERS_TYPESCRIPT_FORK)
+ *                           (default: $VIBELANG_TYPESCRIPT_FORK)
  *   --fork-cache <dir>      bridge binary cache (default: a fresh mkdtemp)
  *   --ts <file.ts>          extra foreign TypeScript module for the project
  *                           (repeatable; also visible to the frontend checker)
- *   --runtime <specifier>   runtime import specifier (default ./smithers-runtime.js,
+ *   --runtime <specifier>   runtime import specifier (default ./vibelang-runtime.js,
  *                           satisfied by the bundled scripts/fork-e2e runtime)
- *   --no-runtime            do not stage scripts/fork-e2e/smithers-runtime.ts
+ *   --no-runtime            do not stage scripts/fork-e2e/vibelang-runtime.ts
  *   --declaration           ask the bridge for declaration output
  *   --run <artifact.js>     run one emitted artifact under Node afterwards
  *   --timeout <duration>    Go-side deadline, e.g. 5m (default 5m)
@@ -44,28 +44,37 @@ import { adjustGeneratedColumn, decodeMappings, encodeMappings } from "./fork-e2
 
 export const repositoryRoot = fileURLToPath(new URL(".", import.meta.url)).replace(/\/scripts\/$/, "");
 const lowerScript = fileURLToPath(new URL("./fork-e2e/lower.mjs", import.meta.url));
-const bundledRuntimeSource = fileURLToPath(new URL("./fork-e2e/smithers-runtime.ts", import.meta.url));
+const bundledRuntimeSource = fileURLToPath(new URL("./fork-e2e/vibelang-runtime.ts", import.meta.url));
 
 /** Virtual roots; the bridge's own project is `/src` -> `/out` as well. */
 const VIRTUAL_ROOT = "/src";
 const VIRTUAL_OUT = "/out";
-export const DEFAULT_RUNTIME_IMPORT = "./smithers-runtime.js";
-export const BUNDLED_RUNTIME_PATH = "smithers-runtime.ts";
+export const DEFAULT_RUNTIME_IMPORT = "./vibelang-runtime.js";
+export const BUNDLED_RUNTIME_PATH = "vibelang-runtime.ts";
+
+/** A real native authored-source refusal, before any external-lowering emit. */
+export class FrontendCompilationRefused extends Error {
+  constructor(diagnostics) {
+    super(diagnostics.map(issue => `${issue.fileName}:${issue.line}:${issue.column}: ${issue.code}: ${issue.message}`).join("\n"));
+    this.name = "FrontendCompilationRefused";
+    this.diagnostics = diagnostics;
+  }
+}
 
 /**
  * Resolve the pinned checkout without throwing, so callers can skip cleanly.
- * `SMITHERS_TYPESCRIPT_FORK` wins; otherwise the revision-named directory that
+ * `VIBELANG_TYPESCRIPT_FORK` wins; otherwise the revision-named directory that
  * `scripts/prepare-typescript-fork.mjs --fetch` creates under a cache root.
  */
 export async function locateForkCheckout() {
-  const configured = process.env.SMITHERS_TYPESCRIPT_FORK;
+  const configured = process.env.VIBELANG_TYPESCRIPT_FORK;
   if (configured) return existsSync(configured) ? configured : undefined;
   const manifestText = await readFile(join(repositoryRoot, "typescript-fork.json"), "utf8");
   const revision = JSON.parse(manifestText).revision;
-  const explicitCache = process.env.SMITHERS_TYPESCRIPT_FORK_CACHE;
+  const explicitCache = process.env.VIBELANG_TYPESCRIPT_FORK_CACHE;
   const caches = explicitCache
     ? [explicitCache]
-    : ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")];
+    : ["/private/tmp/vibelang-ts-fork-cache", join(tmpdir(), "vibelang-ts-fork-cache")];
   for (const cache of caches) {
     const candidate = join(cache, revision);
     if (existsSync(join(candidate, "go.work"))) return candidate;
@@ -88,12 +97,12 @@ function utf16Length(text) {
 }
 
 /**
- * Restore the authored `./x.sm` specifiers the Go bridge expects.
+ * Restore the authored `./x.vibe` specifiers the Go bridge expects.
  *
  * `compileProject` retargets relative project imports at its own output naming
  * (`./x.ts`), while the bridge requires the lowered TypeScript to keep the
- * authored `./x.sm` specifier: it resolves that name to the virtual
- * `x.sm.ts` emit input and performs the `.sm` -> `.js` rewrite itself,
+ * authored `./x.vibe` specifier: it resolves that name to the virtual
+ * `x.vibe.ts` emit input and performs the `.vibe` -> `.js` rewrite itself,
  * shifting composed map columns accordingly. This pass reverses the frontend's
  * rename and applies exactly the same column shift to the supplied map.
  *
@@ -103,7 +112,7 @@ function utf16Length(text) {
  * provenance for text the driver produced. Positions before the edit keep exact
  * authored provenance.
  */
-export function restoreSmithersSpecifiers(loweredText, sourceMapText, renames) {
+export function restoreVibeLangSpecifiers(loweredText, sourceMapText, renames) {
   const editsByLine = new Map();
   let text = loweredText;
   const lines = text.split("\n");
@@ -163,7 +172,7 @@ export function restoreSmithersSpecifiers(loweredText, sourceMapText, renames) {
   };
 }
 
-/** Run the POC frontend under bun and return its lowered TypeScript per file. */
+/** Run the thin SDK host under Bun; native Go returns checked TypeScript. */
 export async function lowerWithFrontend({ sources, typeScriptSources, runtimeImport, bunCommand = "bun" }) {
   const payload = JSON.stringify({
     rootDir: VIRTUAL_ROOT,
@@ -193,16 +202,16 @@ export async function lowerWithFrontend({ sources, typeScriptSources, runtimeImp
   return response;
 }
 
-/** Build `cmd/smithersc-go` into `directory` and return the binary path. */
+/** Build `cmd/vibec-go` into `directory` and return the binary path. */
 export function buildBridgeBinary(directory, { goCommand = "go" } = {}) {
-  const binary = join(directory, "smithersc-go");
-  const build = spawnSync(goCommand, ["build", "-o", binary, "./cmd/smithersc-go"], {
+  const binary = join(directory, "vibec-go");
+  const build = spawnSync(goCommand, ["build", "-o", binary, "./cmd/vibec-go"], {
     cwd: repositoryRoot,
     encoding: "utf8",
   });
   if (build.error) throw new Error(`could not run '${goCommand} build': ${build.error.message}`);
   if (build.status !== 0) {
-    throw new Error(`go build ./cmd/smithersc-go failed (exit ${build.status})\n${build.stdout}${build.stderr}`);
+    throw new Error(`go build ./cmd/vibec-go failed (exit ${build.status})\n${build.stdout}${build.stderr}`);
   }
   return binary;
 }
@@ -226,13 +235,13 @@ export function runBridge({ binary, requestPath, forkCheckout, forkCache, timeou
   });
   if (child.error) throw new Error(`could not run the bridge binary: ${child.error.message}`);
   if (child.status === 64 || child.stdout.trim() === "") {
-    throw new Error(`smithersc-go rejected the request (exit ${child.status})\n${child.stderr}`);
+    throw new Error(`vibec-go rejected the request (exit ${child.status})\n${child.stderr}`);
   }
   let result;
   try {
     result = JSON.parse(child.stdout);
   } catch {
-    throw new Error(`smithersc-go did not return one CompileResult JSON value\nstdout: ${child.stdout}\nstderr: ${child.stderr}`);
+    throw new Error(`vibec-go did not return one CompileResult JSON value\nstdout: ${child.stdout}\nstderr: ${child.stderr}`);
   }
   return { result, exitCode: child.status, stderr: child.stderr, command: [binary, ...invocation] };
 }
@@ -240,7 +249,7 @@ export function runBridge({ binary, requestPath, forkCheckout, forkCache, timeou
 /**
  * Drive the whole pipeline.
  *
- * `sources` are authored `.sm` modules `{ path, text }` with repository-free
+ * `sources` are authored `.vibe` modules `{ path, text }` with repository-free
  * relative POSIX paths. `typeScriptSources` are foreign `.ts` modules that both
  * the frontend checker and the bridge see.
  */
@@ -263,7 +272,7 @@ export async function runPipeline(options) {
 
   if (!forkCheckout) throw new Error("runPipeline requires forkCheckout");
   for (const source of sources) {
-    if (!source.path.endsWith(".sm")) throw new Error(`authored source ${source.path} must end in .sm`);
+    if (!source.path.endsWith(".vibe")) throw new Error(`authored source ${source.path} must end in .vibe`);
     if (source.path.includes("/")) {
       throw new Error(`authored source ${source.path} must sit at the project root in this POC`);
     }
@@ -283,8 +292,14 @@ export async function runPipeline(options) {
     runtimeImport,
     bunCommand,
   });
+  if (lowered.diagnostics.some(issue => issue.severity === "error")) {
+    // Native source checking refuses before emission, so there is no authored
+    // -> lowered map to submit to the external bridge. Never bypass this check
+    // or fabricate lowered code solely to exercise a later diagnostic stage.
+    throw new FrontendCompilationRefused(lowered.diagnostics);
+  }
 
-  // The specifier the frontend produced for every other project `.sm` file,
+  // The specifier the frontend produced for every other project `.vibe` file,
   // paired with the authored specifier the bridge expects.
   const files = [];
   for (const source of sources) {
@@ -296,13 +311,13 @@ export async function runPipeline(options) {
     const renames = sources
       .filter((other) => other.path !== source.path)
       .map((other) => ({
-        from: relativeSpecifier(posix.dirname(`${VIRTUAL_OUT}/${other.path}`), `${VIRTUAL_OUT}/${other.path.replace(/\.sm$/, ".ts")}`),
+        from: relativeSpecifier(posix.dirname(`${VIRTUAL_OUT}/${other.path}`), `${VIRTUAL_OUT}/${other.path.replace(/\.vibe$/, ".ts")}`),
         to: relativeSpecifier(posix.dirname(`${VIRTUAL_ROOT}/${source.path}`), `${VIRTUAL_ROOT}/${other.path}`),
       }));
-    const restored = restoreSmithersSpecifiers(compiled.code, compiled.sourceMap, renames);
+    const restored = restoreVibeLangSpecifiers(compiled.code, compiled.sourceMap, renames);
     files.push({
       path: source.path,
-      kind: "smithers",
+      kind: "vibelang",
       text: source.text,
       lowered: corruptLowered
         ? corruptLowered({ path: source.path, text: restored.text, sourceMap: restored.sourceMap })
@@ -323,7 +338,7 @@ export async function runPipeline(options) {
     lowering: "external",
   };
 
-  const output = outDir ?? (await mkdtemp(join(tmpdir(), "smithers-fork-e2e-")));
+  const output = outDir ?? (await mkdtemp(join(tmpdir(), "vibelang-fork-e2e-")));
   const emitDirectory = join(output, "out");
   await mkdir(emitDirectory, { recursive: true });
   await mkdir(join(output, "lowered"), { recursive: true });
@@ -346,7 +361,7 @@ export async function runPipeline(options) {
   const buildDirectory = join(output, "bin");
   await mkdir(buildDirectory, { recursive: true });
   const binary = buildBridgeBinary(buildDirectory, { goCommand });
-  const cache = forkCache ?? (await mkdtemp(join(tmpdir(), "smithers-fork-cache-")));
+  const cache = forkCache ?? (await mkdtemp(join(tmpdir(), "vibelang-fork-cache-")));
 
   const bridge = runBridge({ binary, requestPath, forkCheckout, forkCache: cache, timeout });
   await writeFile(join(output, "result.json"), `${JSON.stringify(bridge.result, null, 2)}\n`);
@@ -446,14 +461,14 @@ function parseArguments(argv) {
   return options;
 }
 
-const HELP = `usage: node scripts/fork-e2e.mjs [options] <program.sm> [more.sm ...]
+const HELP = `usage: node scripts/fork-e2e.mjs [options] <program.vibe> [more.vibe ...]
 
   --out <dir>            output directory (default: a fresh temporary directory)
   --fork-checkout <dir>  pinned smithersai/TypeScript checkout
   --fork-cache <dir>     bridge binary cache (must be outside the checkout)
   --ts <file.ts>         extra foreign TypeScript module (repeatable)
   --runtime <specifier>  runtime import specifier (default ${DEFAULT_RUNTIME_IMPORT})
-  --no-runtime           do not stage scripts/fork-e2e/smithers-runtime.ts
+  --no-runtime           do not stage scripts/fork-e2e/vibelang-runtime.ts
   --declaration          request declaration output
   --run <artifact.js>    run one emitted artifact under Node afterwards
   --timeout <duration>   Go-side deadline (default 5m)
@@ -469,7 +484,7 @@ async function main(argv) {
   const forkCheckout = options.forkCheckout ?? (await locateForkCheckout());
   if (!forkCheckout) {
     process.stderr.write(
-      "fork-e2e: no pinned checkout; pass --fork-checkout or set SMITHERS_TYPESCRIPT_FORK\n",
+      "fork-e2e: no pinned checkout; pass --fork-checkout or set VIBELANG_TYPESCRIPT_FORK\n",
     );
     return 64;
   }

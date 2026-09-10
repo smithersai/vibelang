@@ -1,0 +1,10 @@
+package forkbridge
+
+func splitLowerer(d *durableFunctionLowerer, node *ast.Node, queue bool) {
+	d.fail(node, "9010", "prefix constant and helper live in the sibling file")
+	code, what := "9011", "broadcast"
+	if queue {
+		code, what = "9012", "queue"
+	}
+	d.fail(node, code, what)
+}

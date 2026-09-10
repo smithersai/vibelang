@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 // Diagnostic-code census for conformance/COVERAGE.md.
+// Current architecture: the SDK profile consists of the native Go compiler
+// plus thin TypeScript hosts. The historical `reference` label remains a CLI
+// key, not a claim that an independent JavaScript compiler still exists.
 //
 // WHY THIS FILE EXISTS. COVERAGE.md's two subtractions are the page's central
 // claims: "rules the reference implements and the fork does not" and "rules both
 // implementations have and no case probes". Both were derived by grepping the
-// literal string `SMITHERS[0-9]{4}` over whole directories. That command cannot
+// literal string `VIBE[0-9]{4}` over whole directories. That command cannot
 // tell a code an implementation *reports* from a code a comment *mentions*, and
 // the page recorded six confirmed miscounts from exactly that defect before this
 // script replaced it:
 //
-//   SMITHERS1805  counted in the reference from poc/src/language/README.md prose
+//   VIBE1805  counted in the reference from poc/src/language/README.md prose
 //                 recording its own RETIREMENT.
-//   SMITHERS1708  counted in the fork from three design-document sentences
+//   VIBE1708  counted in the fork from three design-document sentences
 //                 saying the fork RETIRES it.
-//   SMITHERS4121  counted in the fork from one comment in an UNTRACKED Go test.
-//   SMITHERS1105  counted as fork-implemented from THREE code comments
+//   VIBE4121  counted in the fork from one comment in an UNTRACKED Go test.
+//   VIBE1105  counted as fork-implemented from THREE code comments
 //                 (compiler/fork_panic_test.go:81,177,
 //                 compiler/forkbridge/mustconsume.go.txt:60), every one of them
 //                 describing the REFERENCE's behaviour. The fork implements no
-//                 SMITHERS1105.
-//   SMITHERS1807  counted in the reference after step 13 RETIRED it, from
+//                 VIBE1105.
+//   VIBE1807  counted in the reference after step 13 RETIRED it, from
 //                 comments recording the retirement.
-//   SMITHERS4106/4107  counted in BOTH after step 11 withdrew the branch and
+//   VIBE4106/4107  counted in BOTH after step 11 withdrew the branch and
 //                 loop walls, from `// WALL n (4106), withdrawn.` comments.
 //
 // Every one of those is a fail-OPEN about the codebase itself: a rule nothing
@@ -44,17 +47,17 @@
 // This deliberately does NOT count:
 //   - line and block comments (`// WALL 1 (4106), withdrawn.`) — stripped
 //   - markdown and other prose (`compiler/FORK-SEAM-DESIGN.md`, `**/*.mdx`) —
-//     not read at all; this is where SMITHERS1708 and SMITHERS1702/1707/1709/
+//     not read at all; this is where VIBE1708 and VIBE1702/1707/1709/
 //     1710/1714/1715 live, every one of them in a sentence saying the fork
 //     RETIRES the rule
 //   - test files (`*.test.ts`, `*_test.go`) — a test that MENTIONS a code is
-//     not an implementation that reports it; this is the SMITHERS4117/4121 trap
-//   - a code inside a LONGER string (`"SMITHERS1604 is the precedent"`) — the
-//     report sites in this tree are all exactly `"SMITHERSNNNN"`, so a code
+//     not an implementation that reports it; this is the VIBE4117/4121 trap
+//   - a code inside a LONGER string (`"VIBE1604 is the precedent"`) — the
+//     report sites in this tree are all exactly `"VIBENNNN"`, so a code
 //     embedded in a message or a prose string is a mention
-//   - equality comparisons (`diagnostic.code === "SMITHERS1151"`) — a consumer
+//   - equality comparisons (`diagnostic.code === "VIBE1151"`) — a consumer
 //     filtering on a code is not a producer of it
-//   - type-union members (`code: "SMITHERS6001" | "SMITHERS6002" | ...`) — a
+//   - type-union members (`code: "VIBE6001" | "VIBE6002" | ...`) — a
 //     declaration of the code SPACE, not a report of a code
 //
 // Run `node scripts/coverage-codes.mjs shapes` to see every accepted occurrence
@@ -62,7 +65,7 @@
 //
 // CONSTRUCTED CODES. The fork builds durable codes by concatenating a prefix
 // constant with a bare digit suffix (`compiler/forkbridge/durable.go.txt:28`,
-// `const durableDiagnosticPrefix = "SMITHERS"`), so no literal-code grep can see
+// `const durableDiagnosticPrefix = "VIBE"`), so no literal-code grep can see
 // them. In any file that defines such a prefix constant, a BARE four-digit string
 // literal in a report position (argument, or a `suffix:` field feeding one)
 // counts too. The reference constructs none — asserted, not assumed, by
@@ -86,7 +89,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const CODE_RE = /SMITHERS[0-9]{4}/g;
+const CODE_RE = /VIBE[0-9]{4}/g;
 
 // --------------------------------------------------------------------------
 // Comment stripping
@@ -150,13 +153,13 @@ export function stripComments(text) {
 // --------------------------------------------------------------------------
 
 // A string literal whose ENTIRE content is a diagnostic code.
-const EXACT_CODE_STRING_RE = /(["'])(SMITHERS[0-9]{4})\1/g;
+const EXACT_CODE_STRING_RE = /(["'])(VIBE[0-9]{4})\1/g;
 // The same, for a fork file that constructs a code from a bare digit suffix.
 // Bare digits are ambiguous on their own, so this one IS a positive shape list:
 // an argument position, or the `suffix:` table field that feeds one.
-const BARE_SUFFIX_RE = /(?:\bsuffix\s*:\s*|[(,]\s*)(["'])([0-9]{4})\1/g;
-// `= "SMITHERS"` with no digits: a diagnostic-code prefix constant.
-const PREFIX_CONST_RE = /=\s*"SMITHERS"/;
+const BARE_SUFFIX_RE = /(?:\bsuffix\s*:\s*|\bcode(?:\s*,\s*\w+)*\s*(?::=|=)\s*|[(,]\s*)(["'])([0-9]{4})\1/g;
+// `= "VIBE"` with no digits: a diagnostic-code prefix constant.
+const PREFIX_CONST_RE = /=\s*"VIBE"/;
 // The two positions that NAME a code without reporting one.
 const COMPARISON_BEFORE_RE = /[=!]==?\s*$/;
 const UNION_MEMBER_RE = /\|\s*$/;
@@ -174,8 +177,8 @@ export function extractFromSource(text, { constructsCodes = false } = {}) {
   for (const match of stripped.matchAll(EXACT_CODE_STRING_RE)) {
     const before = stripped.slice(Math.max(0, match.index - 24), match.index);
     const after = stripped.slice(match.index + match[0].length, match.index + match[0].length + 24);
-    // `diagnostic.code === "SMITHERS1151"` filters on a code; it does not report one.
-    // `"SMITHERS6001" | "SMITHERS6002"` declares the code space; it does not report one.
+    // `diagnostic.code === "VIBE1151"` filters on a code; it does not report one.
+    // `"VIBE6001" | "VIBE6002"` declares the code space; it does not report one.
     if (COMPARISON_BEFORE_RE.test(before) || UNION_MEMBER_RE.test(before) || /^\s*\|/.test(after)) {
       namedNotReported.add(match[2]);
       continue;
@@ -185,7 +188,7 @@ export function extractFromSource(text, { constructsCodes = false } = {}) {
 
   if (constructsCodes) {
     for (const match of stripped.matchAll(BARE_SUFFIX_RE)) {
-      reported.add("SMITHERS" + match[2]);
+      reported.add("VIBE" + match[2]);
     }
   }
 
@@ -206,8 +209,8 @@ export function extractFromSource(text, { constructsCodes = false } = {}) {
 // --------------------------------------------------------------------------
 
 // Deliberately short. `poc/src/build/` is real reference source — it reports
-// the whole SMITHERS52xx asset family — so a plausible-looking "build" skip here
-// silently removed SMITHERS5201/5207 from R while this script was being written.
+// the whole VIBE52xx asset family — so a plausible-looking "build" skip here
+// silently removed VIBE5201/5207 from R while this script was being written.
 // The audit residual caught it; a wider skip list would have hidden it.
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
@@ -236,13 +239,16 @@ const isTestFile = (file) =>
   /\.spec\.[cm]?[jt]sx?$/.test(file) ||
   /_test\.go(\.txt)?$/.test(file);
 
-/** Reference implementation sources: the TypeScript the reference compiler is. */
-export function referenceFiles() {
+/** SDK host source, excluding its shared native compiler and all tests. */
+export function hostFiles() {
   return [path.join(ROOT, "poc/src"), path.join(ROOT, "src")]
     .flatMap((dir) => walk(dir))
     .filter((file) => /\.[cm]?tsx?$/.test(file) && !isTestFile(file))
     .sort();
 }
+
+/** SDK profile: native compiler plus the JS/TS host diagnostics. */
+export const referenceFiles = () => [...hostFiles(), ...forkFiles()].sort();
 
 /** Fork implementation sources: the Go, and the `.go.txt` bridge templates. */
 export function forkFiles() {
@@ -258,9 +264,15 @@ export function forkFiles() {
 function censusOver(files) {
   const reported = new Set();
   const residual = new Map(); // code -> [file:line, ...]
-  for (const file of files) {
-    const text = readFileSync(file, "utf8");
-    const constructsCodes = PREFIX_CONST_RE.test(stripComments(text));
+  const sources = files.map(file => ({ file, text: readFileSync(file, "utf8") }));
+  // Go helpers and constants belong to a package, not to the file defining
+  // them. Splitting a lowerer across files must not erase its report sites.
+  const prefixPackages = new Set(sources.filter(({ file, text }) =>
+    /\.go(\.txt)?$/.test(file) && PREFIX_CONST_RE.test(stripComments(text)))
+    .map(({ file }) => path.dirname(file)));
+  for (const { file, text } of sources) {
+    const constructsCodes = PREFIX_CONST_RE.test(stripComments(text)) ||
+      (/\.go(\.txt)?$/.test(file) && prefixPackages.has(path.dirname(file)));
     const result = extractFromSource(text, { constructsCodes });
     for (const code of result.reported) reported.add(code);
     for (const code of result.mentionedOutsideComments) {
@@ -310,7 +322,7 @@ export function mentionCensus(roots, extensions) {
  * Asserted on every run rather than believed.
  */
 export function assertNoUndetectedConstruction() {
-  const offenders = referenceFiles().filter((file) =>
+  const offenders = hostFiles().filter((file) =>
     PREFIX_CONST_RE.test(stripComments(readFileSync(file, "utf8"))),
   );
   if (offenders.length !== 0) {
@@ -331,7 +343,7 @@ export function derive() {
   const reference = referenceCensus();
   const fork = forkCensus();
   const corpusAll = corpusCodes();
-  const corpus = new Set(sorted(corpusAll).filter((c) => c.startsWith("SMITHERS")));
+  const corpus = new Set(sorted(corpusAll).filter((c) => c.startsWith("VIBE")));
   const both = new Set(intersect(reference.reported, fork.reported));
   return {
     reference,
@@ -365,9 +377,9 @@ function main(argv) {
     // The evidence for the report-site rule: every occurrence it accepts, with
     // the 45 characters in front of it, most common first.
     const shapes = new Map();
-    for (const file of [...referenceFiles(), ...forkFiles()]) {
+    for (const file of referenceFiles()) {
       const stripped = stripComments(readFileSync(file, "utf8"));
-      for (const match of stripped.matchAll(REPORT_SITE_RE)) {
+      for (const match of stripped.matchAll(EXACT_CODE_STRING_RE)) {
         const key = stripped.slice(Math.max(0, match.index - 45), match.index).replace(/\s+/g, " ");
         shapes.set(key, (shapes.get(key) ?? 0) + 1);
       }
@@ -383,20 +395,20 @@ function main(argv) {
   const d = derive();
   // The two published commands, replicated exactly: a bare literal-code grep over
   // whole directories with no extension filter, prose and tests included.
-  //   grep -roh 'SMITHERS[0-9]\{4\}' poc/src src | sort -u
-  //   grep -roh 'SMITHERS[0-9]\{4\}' compiler/  | sort -u   (+ two constructed-code greps)
+  //   grep -roh 'VIBE[0-9]\{4\}' poc/src src | sort -u
+  //   grep -roh 'VIBE[0-9]\{4\}' compiler/  | sort -u   (+ two constructed-code greps)
   const oldReference = mentionCensus(["poc/src", "src"]);
   const oldFork = mentionCensus(["compiler"]);
   for (const file of [path.join(ROOT, "compiler/forkbridge/durable.go.txt")]) {
     const text = readFileSync(file, "utf8");
-    for (const m of text.matchAll(/durableCode\("([0-9]{4})"\)/g)) oldFork.add("SMITHERS" + m[1]);
-    for (const m of text.matchAll(/fail\([^,]*, *"([0-9]{4})"/g)) oldFork.add("SMITHERS" + m[1]);
+    for (const m of text.matchAll(/durableCode\("([0-9]{4})"\)/g)) oldFork.add("VIBE" + m[1]);
+    for (const m of text.matchAll(/fail\([^,]*, *"([0-9]{4})"/g)) oldFork.add("VIBE" + m[1]);
   }
 
   console.log("# COVERAGE.md derivation — report sites, not mentions");
-  console.log(`R (reference reports) = ${d.reference.reported.size}`);
-  console.log(`F (fork reports)      = ${d.fork.reported.size}`);
-  console.log(`C (corpus declares)   = ${d.corpus.size}   [SMITHERS family; ${d.corpusAll.size} across all families]`);
+  console.log(`R (SDK + Go reports)  = ${d.reference.reported.size}`);
+  console.log(`F (native reports)    = ${d.fork.reported.size}`);
+  console.log(`C (corpus declares)   = ${d.corpus.size}   [VIBE family; ${d.corpusAll.size} across all families]`);
   console.log(`B (in both)           = ${d.both.size}`);
   console.log(`declared outside B    = ${d.declaredOutsideIntersection.length === 0 ? "NONE" : d.declaredOutsideIntersection.join(" ")}`);
   console.log(`SUBTRACTION (in both, no case) = ${d.inBothNoCase.length}`);
@@ -436,31 +448,26 @@ export function fixtureCensus() {
     (file) => (/\.[cm]?tsx?$/.test(file) || /\.go(\.txt)?$/.test(file)) && !isTestFile(file),
   );
   const skipped = walk(FIXTURE_DIR).filter((file) => !files.includes(file));
-  const reported = new Set();
-  const residual = new Set();
-  for (const file of files) {
-    const text = readFileSync(file, "utf8");
-    const result = extractFromSource(text, {
-      constructsCodes: PREFIX_CONST_RE.test(stripComments(text)),
-    });
-    for (const code of result.reported) reported.add(code);
-    for (const code of result.mentionedOutsideComments) residual.add(code);
-  }
-  for (const code of reported) residual.delete(code);
+  const census = censusOver(files);
+  const reported = census.reported;
+  const residual = new Set(census.residual.keys());
   return { reported, residual, files, skipped };
 }
 
 /** Every code the fixture REPORTS, and must therefore be counted. */
 export const FIXTURE_REPORTED = [
-  "SMITHERS9001", // ts: code: property
-  "SMITHERS9002", // ts: argument to a report helper
-  "SMITHERS9003", // ts: argument to a helper across a line break
-  "SMITHERS9004", // ts: single-quoted argument
-  "SMITHERS9005", // go: Code: struct field
-  "SMITHERS9006", // go: argument to a.report(...)
-  "SMITHERS9007", // go: constructed from a bare suffix via durableCode(...)
-  "SMITHERS9008", // go: constructed from a bare suffix via d.fail(node, "...", ...)
-  "SMITHERS9009", // go: constructed from a `suffix:` table field
+  "VIBE9001", // ts: code: property
+  "VIBE9002", // ts: argument to a report helper
+  "VIBE9003", // ts: argument to a helper across a line break
+  "VIBE9004", // ts: single-quoted argument
+  "VIBE9005", // go: Code: struct field
+  "VIBE9006", // go: argument to a.report(...)
+  "VIBE9007", // go: constructed from a bare suffix via durableCode(...)
+  "VIBE9008", // go: constructed from a bare suffix via d.fail(node, "...", ...)
+  "VIBE9009", // go: constructed from a `suffix:` table field
+  "VIBE9010", // go: helper call using a prefix defined in a sibling file
+  "VIBE9011", // go: code local feeding the reporting helper
+  "VIBE9012", // go: reassigned code local in the same helper
 ];
 
 /**
@@ -469,20 +476,20 @@ export const FIXTURE_REPORTED = [
  * these is ever counted, the extractor has regressed to counting mentions.
  */
 export const FIXTURE_MENTIONED_ONLY = [
-  "SMITHERS9101", // a line comment saying the rule is withdrawn      (was 4106/4107)
-  "SMITHERS9102", // a block/JSDoc comment describing another backend (was 1105)
-  "SMITHERS9103", // a comment recording the rule's retirement, and the same code
+  "VIBE9101", // a line comment saying the rule is withdrawn      (was 4106/4107)
+  "VIBE9102", // a block/JSDoc comment describing another backend (was 1105)
+  "VIBE9103", // a comment recording the rule's retirement, and the same code
   //                 named inside a longer string                     (was 1805/1807)
-  "SMITHERS9104", // a design-document sentence in markdown           (was 1708)
-  "SMITHERS9105", // a Go test file's comment AND its Code: field     (was 4121)
-  "SMITHERS9106", // a Go test file's live assertion string, literal and
+  "VIBE9104", // a design-document sentence in markdown           (was 1708)
+  "VIBE9105", // a Go test file's comment AND its Code: field     (was 4121)
+  "VIBE9106", // a Go test file's live assertion string, literal and
   //                 constructed-from-a-bare-suffix                   (was 4117)
-  "SMITHERS9107", // an equality comparison in a consumer, not a producer
-  "SMITHERS9108", // a TypeScript test file's live assertion string
-  "SMITHERS9109", // a type-union member declaring the code space (union head)
-  "SMITHERS9110", // a type-union member declaring the code space
-  "SMITHERS9111", // a type-union member declaring the code space (union tail)
-  "SMITHERS9112", // a comment QUOTING a code in full report shape — the shape
+  "VIBE9107", // an equality comparison in a consumer, not a producer
+  "VIBE9108", // a TypeScript test file's live assertion string
+  "VIBE9109", // a type-union member declaring the code space (union head)
+  "VIBE9110", // a type-union member declaring the code space
+  "VIBE9111", // a type-union member declaring the code space (union tail)
+  "VIBE9112", // a comment QUOTING a code in full report shape — the shape
   //                 that makes comment-stripping load-bearing on its own
 ];
 
@@ -504,8 +511,8 @@ function selftest() {
 
   // The mention shapes that live in files the census reads must show up in the
   // residual, not vanish: anything dropped has to stay auditable.
-  for (const code of ["SMITHERS9101", "SMITHERS9102", "SMITHERS9103", "SMITHERS9107", "SMITHERS9109"]) {
-    if (code === "SMITHERS9107" || code === "SMITHERS9109") {
+  for (const code of ["VIBE9101", "VIBE9102", "VIBE9103", "VIBE9107", "VIBE9109"]) {
+    if (code === "VIBE9107" || code === "VIBE9109") {
       if (!residual.has(code)) problems.push(`${code} was dropped without landing in the audit residual`);
     }
   }

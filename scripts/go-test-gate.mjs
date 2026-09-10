@@ -9,7 +9,7 @@ import { createInterface } from "node:readline";
 
 import { locateForkCheckout, repositoryRoot } from "./fork-e2e.mjs";
 
-const goPackages = ["./compiler", "./cmd/smithersc-go"];
+const goPackages = ["./compiler", "./compiler/wirejson", "./cmd/vibec-go", "./cmd/vibec-prepare"];
 
 function shellQuote(value) {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
@@ -19,17 +19,17 @@ async function preparationRemedy({ ignoreConfiguredFork = false } = {}) {
   const manifest = JSON.parse(
     await readFile(join(repositoryRoot, "typescript-fork.json"), "utf8"),
   );
-  const requestedFork = process.env.SMITHERS_TYPESCRIPT_FORK;
+  const requestedFork = process.env.VIBELANG_TYPESCRIPT_FORK;
   const configuredFork = ignoreConfiguredFork ? undefined : requestedFork;
   if (configuredFork && basename(resolve(configuredFork)) === manifest.revision) {
     return `node scripts/prepare-typescript-fork.mjs --fetch --cache ${shellQuote(dirname(resolve(configuredFork)))}`;
   }
 
-  const cache = process.env.SMITHERS_TYPESCRIPT_FORK_CACHE
-    ? resolve(process.env.SMITHERS_TYPESCRIPT_FORK_CACHE)
-    : join(tmpdir(), "smithers-ts-fork-cache");
+  const cache = process.env.VIBELANG_TYPESCRIPT_FORK_CACHE
+    ? resolve(process.env.VIBELANG_TYPESCRIPT_FORK_CACHE)
+    : join(tmpdir(), "vibelang-ts-fork-cache");
   const prepare = `node scripts/prepare-typescript-fork.mjs --fetch --cache ${shellQuote(cache)}`;
-  return requestedFork ? `unset SMITHERS_TYPESCRIPT_FORK; ${prepare}` : prepare;
+  return requestedFork ? `unset VIBELANG_TYPESCRIPT_FORK; ${prepare}` : prepare;
 }
 
 /**
@@ -119,10 +119,10 @@ async function main() {
     return 1;
   }
 
-  process.stdout.write(`Go fork test preflight: SMITHERS_TYPESCRIPT_FORK=${checkout}\n`);
+  process.stdout.write(`Go fork test preflight: VIBELANG_TYPESCRIPT_FORK=${checkout}\n`);
   const child = spawn("go", ["test", "-count=1", "-json", `-timeout=${GO_TEST_TIMEOUT}`, ...goPackages], {
     cwd: repositoryRoot,
-    env: { ...process.env, SMITHERS_TYPESCRIPT_FORK: checkout },
+    env: { ...process.env, VIBELANG_TYPESCRIPT_FORK: checkout },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const completion = new Promise((resolveCompletion) => {
@@ -183,7 +183,7 @@ async function main() {
     return 1;
   }
   const checkoutSkips = census.skipped.filter(({ reason }) =>
-    /SMITHERS_TYPESCRIPT_FORK|pinned checkout|executable fork|executable CLI/iu.test(reason),
+    /VIBELANG_TYPESCRIPT_FORK|pinned checkout|executable fork|executable CLI/iu.test(reason),
   );
   if (checkoutSkips.length > 0) {
     process.stderr.write("Go fork test gate failed: checkout-backed tests were skipped.\n");

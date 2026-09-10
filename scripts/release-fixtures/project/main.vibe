@@ -1,4 +1,4 @@
-import { load, type Missing } from "./service.sm"
+import { load, type Missing } from "./service.vibe"
 import config from "./config.json" with { type: "json", mode: "const" }
 
 export const releaseAssetAnswer: 42 = config.answer

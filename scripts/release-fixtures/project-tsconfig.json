@@ -1,0 +1,4 @@
+{
+  "extends": "../tsconfig.json",
+  "files": ["project-types.mts", "../bun-sqlite.d.ts", "../node-globals.d.ts"]
+}

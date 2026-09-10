@@ -58,11 +58,11 @@ function commandVersion(command) {
 }
 
 function resolveGo() {
-  const requested = process.env.SMITHERS_GO;
+  const requested = process.env.VIBELANG_GO;
   if (requested) {
     const version = commandVersion(requested);
     if (!version?.includes(` ${pinnedGoVersion} `)) {
-      fail(`SMITHERS_GO must name ${pinnedGoVersion}; got ${version ?? "an unusable command"}`);
+      fail(`VIBELANG_GO must name ${pinnedGoVersion}; got ${version ?? "an unusable command"}`);
     }
     return requested;
   }
@@ -196,7 +196,7 @@ function populateProxy(staging, source, goCommand) {
   mkdirSync(downloadDirectory);
   writeFileSync(
     resolve(downloadDirectory, "go.mod"),
-    "module smithers.local/typescript-vendor\n\ngo 1.26\n",
+    "module vibelang.local/typescript-vendor\n\ngo 1.26\n",
   );
   for (const module of modules) {
     const specifier = `${module.path}@${module.version}`;
@@ -225,7 +225,7 @@ function createCapsule(source) {
   validateSource(source);
   const goCommand = resolveGo();
   mkdirSync(dirname(vendorDirectory), { recursive: true });
-  const staging = mkdtempSync(resolve(tmpdir(), "smithers-typescript-vendor-"));
+  const staging = mkdtempSync(resolve(tmpdir(), "vibelang-typescript-vendor-"));
   const nextVendor = resolve(staging, "typescript");
   mkdirSync(nextVendor);
   try {

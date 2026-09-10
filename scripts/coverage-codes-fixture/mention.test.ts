@@ -8,8 +8,8 @@
 
 import { expect, test } from "bun:test";
 
-test("an unclassified option is SMITHERS9108 at the option name", () => {
+test("an unclassified option is VIBE9108 at the option name", () => {
   // A live assertion string, in report-argument shape, in a test.
-  expect(found.map((item) => item.code)).toEqual(["SMITHERS9108"]);
-  expect(diagnostics).toContainEqual({ code: "SMITHERS9108", line: 1, column: 1 });
+  expect(found.map((item) => item.code)).toEqual(["VIBE9108"]);
+  expect(diagnostics).toContainEqual({ code: "VIBE9108", line: 1, column: 1 });
 });

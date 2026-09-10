@@ -8,7 +8,7 @@
  * `scripts/release-fixtures/api-types.mts` and
  * `scripts/release-fixtures/runtime-smoke.mjs` are the ONLY things in the tree
  * that assert several properties of the shipped durable surface — that
- * `smthrs/durable` does not export `waitSignal`, that `MAX_DURABLE_JSON_NODES`
+ * `vibelang/durable` does not export `waitSignal`, that `MAX_DURABLE_JSON_NODES`
  * is 100_000, that the barrel and the `./durable/source-compiler` subpath are
  * the same function object, that `decodePlanArtifact(artifact).digest` equals
  * the compiler's own `plan.digest`. Nothing under `test/` asserts any of them,
@@ -61,9 +61,11 @@
  */
 export const REQUIRED_TEST_STAGES = [
   "tsconfig.compat.json",
+  "poc/tsconfig.json",
   "scripts/node-test-gate.mjs",
   "scripts/poc-test-gate.mjs",
   "scripts/go-test-gate.mjs",
+  "scripts/oracle-differential.mjs",
 ];
 
 /** Does `script` reach the packaging gate, under any of its names? */
@@ -118,6 +120,11 @@ export function gateCompositionViolations(scripts = {}) {
         "suites, it inherits them from `npm test` through `prepack`, so a stage that leaves `npm test` " +
         "leaves the pre-merge gate without leaving a trace. Put it back, or change this list on purpose.",
     );
+  }
+
+  const oracleStage = test.split("&&").find(stage => stage.includes("scripts/oracle-differential.mjs"));
+  if (oracleStage && /--(?:filter|update|help)\b/.test(oracleStage)) {
+    violations.push("`npm test` must run the complete read-only oracle differential, not a filtered, updating, or help-only invocation.");
   }
 
   if (premerge === "") {

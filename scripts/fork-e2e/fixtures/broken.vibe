@@ -1,4 +1,4 @@
-import { reserve, OutOfStock } from "./stock.sm"
+import { reserve, OutOfStock } from "./stock.vibe"
 
 export function place(sku: string, wanted: number): Result<string, OutOfStock> {
   const remaining = reserve(sku, wanted, "plenty").unwrap()

@@ -1,6 +1,6 @@
 // Fork-side (Go bridge template) specimens for scripts/coverage-codes.mjs.
 //
-// The five REPORT sites here (SMITHERS9005-9009) must be counted, including the
+// The five REPORT sites here (VIBE9005-9009) must be counted, including the
 // three the fork never spells literally. The mentions must not be. Nothing here
 // is compiled; it is read as text, exactly as compiler/forkbridge/*.go.txt is.
 
@@ -8,30 +8,30 @@ package forkbridge
 
 // SPECIMEN — a design sentence saying the fork RETIRES a rule. In the real tree
 // this shape lives in compiler/FORK-SEAM-DESIGN.md and compiler/GRAMMAR-SPIKE.md
-// and it is why SMITHERS1708 and SMITHERS1702/1707/1709/1710/1714/1715 were
+// and it is why VIBE1708 and VIBE1702/1707/1709/1710/1714/1715 were
 // counted as fork-implemented for three revisions:
-// SMITHERS9104 does not arise at all: there is no hoisting.
+// VIBE9104 does not arise at all: there is no hoisting.
 
 // WALL 3 (9101), withdrawn. Both spellings of it.
 
 // This is the prefix constant that makes the codes below invisible to a literal
 // grep. Its real counterpart is compiler/forkbridge/durable.go.txt:28. The
 // census keys off the assignment shape, not off this file's name.
-const durableDiagnosticPrefix = "SMITHERS"
+const durableDiagnosticPrefix = "VIBE"
 
 func durableCode(suffix string) string { return durableDiagnosticPrefix + suffix }
 
 // REPORT — a `Code:` struct field.
 func literalReports(node *ast.Node) Diagnostic {
-	a.report(node, "SMITHERS9006", "an argument is a report site in Go too")
-	return Diagnostic{Code: "SMITHERS9005", Message: "a Code field is a report site"}
+	a.report(node, "VIBE9006", "an argument is a report site in Go too")
+	return Diagnostic{Code: "VIBE9005", Message: "a Code field is a report site"}
 }
 
 // REPORT — three codes the fork CONSTRUCTS from a bare four-digit suffix, none
 // of which any literal-code grep can see. These three shapes are the real ones:
 // durableCode("4103"), d.fail(node, "4115", ...), and the `suffix:` table at
-// compiler/forkbridge/durable.go.txt:1216-1220 that produced SMITHERS4122 and
-// SMITHERS4123 — two codes the published commands undercounted for good.
+// compiler/forkbridge/durable.go.txt:1216-1220 that produced VIBE4122 and
+// VIBE4123 — two codes the published commands undercounted for good.
 func constructedReports(d *durableFunctionLowerer, node *ast.Node) {
 	d.owner.report(node, durableCode("9007"), "constructed by durableCode")
 	d.fail(node, "9008", "constructed by the fail helper's bare suffix")
@@ -50,7 +50,7 @@ func constructedReports(d *durableFunctionLowerer, node *ast.Node) {
 }
 
 // NOT A REPORT — a code named inside a longer message string.
-const precedentNote = "SMITHERS9104 is the precedent — same shape, retired"
+const precedentNote = "VIBE9104 is the precedent — same shape, retired"
 
 // NOT A REPORT — an equality comparison in a consumer.
-func isRetired(d Diagnostic) bool { return d.Code == "SMITHERS9107" }
+func isRetired(d Diagnostic) bool { return d.Code == "VIBE9107" }

@@ -1,4 +1,4 @@
-import { reserve, OutOfStock } from "./stock.sm"
+import { reserve, OutOfStock } from "./stock.vibe"
 import { print } from "./host.ts"
 
 export function place(sku: string, wanted: number, available: number): Result<string, OutOfStock> {

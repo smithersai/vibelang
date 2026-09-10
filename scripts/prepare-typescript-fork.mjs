@@ -80,18 +80,18 @@ function sha256(path) {
 
 /**
  * The cache directory name every consumer searches when
- * `SMITHERS_TYPESCRIPT_FORK` is unset.
+ * `VIBELANG_TYPESCRIPT_FORK` is unset.
  *
  * This script is the *producer*; `src/go-backend.ts`, `scripts/go-test-gate.mjs`,
  * `scripts/fork-e2e.mjs` and `test/cli-go-backend.test.mjs` are the *consumers*,
- * and all of them look in `<root>/smithers-ts-fork-cache/<revision>`. The default
- * here was `smithers-typescript-fork-cache`, so running the documented bare
+ * and all of them look in `<root>/vibelang-ts-fork-cache/<revision>`. The default
+ * here was `vibelang-typescript-fork-cache`, so running the documented bare
  * command — `node scripts/prepare-typescript-fork.mjs --fetch` — produced a
  * perfectly good checkout in a directory nothing reads, and every consumer then
  * reported the checkout as absent. `test/cli-go-backend.test.mjs` now refuses
  * any re-divergence between this literal and the consumers'.
  */
-const DEFAULT_FORK_CACHE_DIRECTORY_NAME = "smithers-ts-fork-cache";
+const DEFAULT_FORK_CACHE_DIRECTORY_NAME = "vibelang-ts-fork-cache";
 
 function parseArguments(argv) {
   const result = {
@@ -179,7 +179,7 @@ function materializeFromCapsule(target, fullTsc) {
   const vendored = readCapsule();
   if (!vendored) return false;
   mkdirSync(dirname(target), { recursive: true });
-  const stagingRoot = mkdtempSync(resolve(tmpdir(), "smithers-typescript-checkout-"));
+  const stagingRoot = mkdtempSync(resolve(tmpdir(), "vibelang-typescript-checkout-"));
   const staging = resolve(stagingRoot, "typescript");
   try {
     run("git", [
@@ -220,7 +220,7 @@ function materializeFromCapsule(target, fullTsc) {
 
 function fetchCheckout(target, fullTsc) {
   mkdirSync(dirname(target), { recursive: true });
-  const stagingRoot = mkdtempSync(resolve(tmpdir(), "smithers-typescript-fetch-"));
+  const stagingRoot = mkdtempSync(resolve(tmpdir(), "vibelang-typescript-fetch-"));
   const staging = resolve(stagingRoot, "typescript");
   try {
     run("git", ["init", "--quiet", staging]);
@@ -282,7 +282,7 @@ process.stdout.write(
       revision: manifest.revision,
       tscModule: resolve(checkout, "tsc"),
       fullTsc: args.fullTsc,
-      build: "npm run smithersc:build",
+      build: "npm run vibec:build",
     },
     null,
     2,

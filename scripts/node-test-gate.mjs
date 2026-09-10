@@ -137,7 +137,7 @@ function parseCensus(text) {
  * stdout exactly as before and taking the census on a second reporter channel.
  */
 export async function runNodeTestFiles({ testFiles, cwd = repositoryRoot, stdio = "inherit" }) {
-  const workspace = await mkdtemp(join(tmpdir(), "smithers-node-test-census-"));
+  const workspace = await mkdtemp(join(tmpdir(), "vibelang-node-test-census-"));
   const censusPath = join(workspace, "census.jsonl");
   try {
     const child = spawn(
@@ -189,7 +189,7 @@ export async function runNodeTestFiles({ testFiles, cwd = repositoryRoot, stdio 
  * `conformance/runner/selftest.mjs` holds the assertions about the conformance
  * *harness* rather than about the language — the class of defect a differential
  * oracle over authored programs is structurally blind to, such as the request
- * shape that let `smithersc-go` report clean compiles on programs it must
+ * shape that let `vibec-go` report clean compiles on programs it must
  * refuse. It sits beside the runner it tests, which is the right place for it,
  * but until 2026-08-26 that also meant **no gate ran it at all**: it appeared
  * only as a command in `conformance/README.md`, so nineteen green assertions
@@ -210,13 +210,13 @@ const EXTERNAL_TEST_FILES = [
   // comment mentions, and it had been wrong in both directions for eight
   // revisions while the totals it printed looked stable.
   "scripts/coverage-codes.test.mjs",
-  // `scripts/compiler-options-route.test.mjs` pins SMITHERS6001/6002/6003 on the
-  // route a user reaches them through (`smithers check -p`), and cross-checks the
+  // `scripts/compiler-options-route.test.mjs` pins VIBE6001/6002/6003 on the
+  // route a user reaches them through (`vibe check -p`), and cross-checks the
   // two backends against one tsconfig. It is here because the conformance corpus
   // cannot express a tsconfig at all — the expectation schema has no field for
   // one and neither backend driver sends one — so these three rules are outside
-  // what any `.sm` case can reach, and were pinned on the validator but on no
-  // delivered route and by no differential. It drives `bin/smithers.js`, so it
+  // what any `.vibe` case can reach, and were pinned on the validator but on no
+  // delivered route and by no differential. It drives `bin/vibe.js`, so it
   // needs the build this gate already runs after, and it drives the fork, so it
   // FAILS rather than skips when the pinned checkout is absent: a run that did
   // not measure the fork must not be reported as one.

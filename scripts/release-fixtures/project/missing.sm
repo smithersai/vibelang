@@ -1,3 +1,0 @@
-import { missing } from "./does-not-exist.sm"
-
-export const value = missing
