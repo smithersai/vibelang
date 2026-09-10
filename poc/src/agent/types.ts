@@ -70,17 +70,18 @@ export interface ModelAdapter {
 
 /**
  * The compiler-derived wire contract of a durable Flow, projected from one
- * validated Plan artifact. It is the Flow-shaped peer of `ActionDescriptor`:
- * the Plan carries the Flow input/success/error schemas the durable executor
- * itself validates against, and `planDigest` pins the exact deployed Plan, so
- * a redeployed Flow is a different contract rather than a silent substitution.
+ * validated executable body or compatibility Plan. Its schemas are the ones
+ * the durable executor validates. A deployed binding also pins the routing
+ * manifest: changing providers must not replay a completed old turn's answer.
  */
 export interface FlowContract {
   readonly flowId: string
   readonly flowVersion: number
-  /** Digest of the exact Plan template this binding starts or joins. */
+  /** Historical wire name: digest of the exact executable body or Plan. */
   readonly planDigest: string
-  /** Digest of identity, version, Plan digest, and the complete Flow schemas. */
+  /** Validated routing/provider/policy identity when backed by a deployment. */
+  readonly deploymentDigest?: string
+  /** Digest of executable/deployment identity and the complete Flow schemas. */
   readonly contractDigest: string
   readonly inputSchema: StructuralDurableSchema
   readonly successSchema: StructuralDurableSchema
@@ -331,7 +332,7 @@ export interface AgentRunResult<Result extends JsonValue = JsonValue> {
 }
 
 export interface TurnProvenance {
-  readonly schema: "smithers.agent.turn/v3"
+  readonly schema: "vibelang.agent.turn/v3"
   readonly promptDigest: string
   readonly callableDigest: string
   readonly functionTableDigest: string

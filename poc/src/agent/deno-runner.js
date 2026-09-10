@@ -1,6 +1,10 @@
-// This file is the only module loaded by the sandbox process. It deliberately
-// has no imports: generated JavaScript arrives as a data URL and host calls use
-// a JSON-lines RPC bridge over stdin/stdout.
+// This is the only filesystem module loaded by the sandbox process. Its sole
+// import is a builtin covered by the pinned Deno binary, not a mutable file or
+// downloaded package. Generated JavaScript arrives as a data URL and host calls
+// use a JSON-lines RPC bridge over stdin/stdout.
+import { types as nativeTypes } from "node:util"
+
+const nativeValueInspection = Object.freeze({ isProxy: nativeTypes.isProxy })
 
 const runtime = globalThis.Deno
 const stdout = runtime.stdout
@@ -27,7 +31,18 @@ const createObject = Object.create.bind(Object)
 let writeTail = Promise.resolve()
 function send(message) {
   const bytes = encode(`${safeStringify(message)}\n`)
-  writeTail = writeTail.then(() => stdoutWrite(bytes))
+  writeTail = writeTail.then(async () => {
+    // A successful Deno write may consume only a prefix. Keep the entire
+    // frame in the queue until its UTF-8 bytes and newline have been sent.
+    let offset = 0
+    while (offset < bytes.length) {
+      const written = await stdoutWrite(bytes.subarray(offset))
+      if (!Number.isSafeInteger(written) || written <= 0 || written > bytes.length - offset) {
+        throw new Error("Invalid sandbox stdout write progress")
+      }
+      offset += written
+    }
+  })
   return writeTail
 }
 
@@ -275,7 +290,8 @@ try {
   if (
     initial?.type !== "init" || initial.protocol !== 1 ||
     typeof initial.sourceBase64 !== "string" || !isArray(initial.functionNames) ||
-    initial.functionNames.some((name) => typeof name !== "string")
+    initial.functionNames.some((name) => typeof name !== "string") ||
+    (initial.runtimeValueInspection !== undefined && initial.runtimeValueInspection !== "native-proxy/v1")
   ) throw new TypeError("Host sent invalid sandbox initialization")
   startResponseReader()
 
@@ -291,7 +307,9 @@ try {
   if (typeof generated.default !== "function") {
     throw new TypeError("Generated module must default-export a turn function")
   }
-  const result = await generated.default(Object.freeze(functions))
+  const result = initial.runtimeValueInspection === "native-proxy/v1"
+    ? await generated.default(Object.freeze(functions), nativeValueInspection)
+    : await generated.default(Object.freeze(functions))
   if (pending.size > 0) {
     const error = new Error(
       `Generated turn returned with ${pending.size} unawaited host call${pending.size === 1 ? "" : "s"}`,

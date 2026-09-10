@@ -22,9 +22,9 @@ import { DurableFlowInterrupted, isDurableAgentFunction } from "./tools.ts"
 // Identity only, from the leaf module that defines it. `../durable/engine.ts`
 // re-exports the same class, but reaching it that way pulls `./store.ts` and
 // its `bun:sqlite` import onto this graph — and this module ships on the
-// Node-loadable `smthrs/agent`, which must not name a Bun-only specifier.
-import { CoordinatorCrash } from "../durable/errors.ts"
-import { validateDurableValue } from "../durable/schema.ts"
+// Node-loadable `vibelang/agent`, which must not name a Bun-only specifier.
+import { CoordinatorCrash, CoordinatorUnavailable } from "../durable/errors.ts"
+import { validateDurableValue } from "../durable/schema-runtime.ts"
 import {
   componentIdentityJson,
   defineComponentIdentity,
@@ -107,7 +107,7 @@ class AgentReplayIntegrityError extends Error {
 }
 
 /**
- * The only failures still recognized by spelling. Both are raised by a durable
+ * The only failures still recognized by spelling. These are raised by a durable
  * coordinator that may live in another process, so they can reach this catch
  * as a deserialized payload with no class to match. Everything raised inside
  * this process is matched by identity instead — see `isNonReplayableFailure`.
@@ -118,6 +118,7 @@ const CROSS_PROCESS_NON_REPLAYABLE = new Set([
   // answered from a recording of the interruption.
   "DurableFlowInterrupted",
   "CoordinatorCrash",
+  "CoordinatorUnavailable",
 ])
 
 /**
@@ -139,7 +140,7 @@ function isNonReplayableFailure(error: unknown, signal: AbortSignal): boolean {
   if (signal.aborted) return true
   if (error instanceof SandboxControlPlaneError) return true
   if (error instanceof AgentReplayIntegrityError) return true
-  if (error instanceof DurableFlowInterrupted || error instanceof CoordinatorCrash) return true
+  if (error instanceof DurableFlowInterrupted || error instanceof CoordinatorCrash || error instanceof CoordinatorUnavailable) return true
   const object = error !== null && (typeof error === "object" || typeof error === "function")
     ? error as object
     : undefined
@@ -552,6 +553,9 @@ export interface DenoSubprocessSandboxOptions {
   maxOutputBytes?: number
   maxCalls?: number
   maxConcurrentCalls?: number
+  /** Opt-in pure native value inspection for compiler-owned worker codecs.
+   * Adds a second entry argument; the default one-argument ABI is unchanged. */
+  runtimeValueInspection?: boolean
 }
 
 /**
@@ -581,6 +585,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
   readonly #maxOutputBytes: number
   readonly #maxCalls: number
   readonly #maxConcurrentCalls: number
+  readonly #runtimeValueInspection: boolean
 
   constructor(options: DenoSubprocessSandboxOptions = {}) {
     this.#runtimePin = pinDenoRuntime(options.denoPath ?? "deno")
@@ -593,6 +598,10 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
     this.#maxOutputBytes = options.maxOutputBytes ?? 1024 * 1024
     this.#maxCalls = options.maxCalls ?? 1_000
     this.#maxConcurrentCalls = options.maxConcurrentCalls ?? 32
+    if (options.runtimeValueInspection !== undefined && typeof options.runtimeValueInspection !== "boolean") {
+      throw new TypeError("Sandbox runtimeValueInspection must be a boolean")
+    }
+    this.#runtimeValueInspection = options.runtimeValueInspection ?? false
     if (!Number.isSafeInteger(this.#timeoutMs) || this.#timeoutMs < 1 || this.#timeoutMs > 300_000) {
       throw new RangeError("Sandbox timeoutMs must be between 1 and 300000")
     }
@@ -621,7 +630,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         runnerDigest: this.#runnerPin.digest,
       }),
       configDigest: sha256Json({
-        schema: "smithers.agent.deno-sandbox/v1",
+        schema: "vibelang.agent.deno-sandbox/v1",
         protocol: SANDBOX_PROTOCOL,
         arguments: denoRunArguments(this.#memoryMb, "<pinned-runner>"),
         timeoutMs: this.#timeoutMs,
@@ -630,6 +639,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         maxOutputBytes: this.#maxOutputBytes,
         maxCalls: this.#maxCalls,
         maxConcurrentCalls: this.#maxConcurrentCalls,
+        ...(this.#runtimeValueInspection ? { runtimeValueInspection: "native-proxy/v1" } : {}),
       }),
     })
   }
@@ -814,6 +824,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         protocol: SANDBOX_PROTOCOL,
         sourceBase64: encodedSource,
         functionNames,
+        ...(this.#runtimeValueInspection ? { runtimeValueInspection: "native-proxy/v1" } : {}),
       }).catch((error: unknown) => {
         policyFailure = serializeError(error)
         abortHostCalls("SandboxInitializationError", "Sandbox initialization failed")

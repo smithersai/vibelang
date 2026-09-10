@@ -103,7 +103,7 @@ function provenanceDetails(provenance: TurnProvenance): Record<string, JsonValue
 
 function diagnosticsDigest(diagnostics: readonly AgentDiagnostic[]): string {
   return sha256Json({
-    schema: "smithers.agent.diagnostics/v1",
+    schema: "vibelang.agent.diagnostics/v1",
     diagnostics: jsonSnapshot(diagnostics, "Compiler diagnostics"),
   })
 }
@@ -257,7 +257,7 @@ export class CodingAgent<Input, Result extends JsonValue = JsonValue> {
     this.#functionTableDigest = functionIdentity.digest
     this.#functionIdentities = functionIdentity.identities
     this.#agentConfigDigest = sha256Json({
-      schema: "smithers.agent.run-policy/v1",
+      schema: "vibelang.agent.run-policy/v1",
       maxRepairs: this.#maxRepairs,
       maxSourceBytes: this.#maxSourceBytes,
       repairInstruction: "complete corrected TypeScript module only",
@@ -275,7 +275,7 @@ export class CodingAgent<Input, Result extends JsonValue = JsonValue> {
     const callableDigest = digest(this.#callableSurface)
     const promptDigest = digest(canonicalIdentityJson(baseMessages))
     const provenance: TurnProvenance = Object.freeze({
-      schema: "smithers.agent.turn/v3",
+      schema: "vibelang.agent.turn/v3",
       promptDigest,
       callableDigest,
       functionTableDigest: this.#functionTableDigest,

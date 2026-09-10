@@ -4,14 +4,18 @@ import {
   DurableExecutionAlreadyFailed,
   DurableExecutionCancelled,
 } from "../durable/engine.ts"
-import type { PlanTemplate } from "../durable/plan-ir.ts"
-import { defineFlowFunction } from "./bindings.ts"
+import { defineFlowFunction, flowContractDigest } from "./bindings.ts"
+import { validateDeploymentManifest } from "../durable/artifact.ts"
+import { validateBodyDeploymentManifest } from "../durable/body-deployment.ts"
 import {
   DurableFlowInterrupted,
+  FlowToolContractError,
+  flowContractFromBody,
   flowContractFromPlan,
   flowExecutionId,
   type DeployedFlowExecutor,
   type DurableFlowBinding,
+  type ExecutableFlowBinding,
   type FlowToolOptions,
   type FlowToolTarget,
 } from "./tools.ts"
@@ -51,16 +55,37 @@ function flowIdentityName(contract: FlowContract): string {
 
 function flowTargetOf(
   target: FlowToolTarget,
-): { readonly plan: PlanTemplate; readonly execute: DurableFlowBinding["execute"] } {
+): { readonly contract: FlowContract; readonly execute: DurableFlowBinding["execute"] } {
   if (target === null || typeof target !== "object") {
-    throw new TypeError("A Flow tool needs a compiled Plan and its executor wiring")
+    throw new TypeError("A Flow tool needs a compiled Flow and its executor wiring")
   }
-  const candidate = target as Partial<DurableFlowBinding> & Partial<DeployedFlowExecutor>
-  const plan = candidate.plan ?? candidate.deployment?.flow?.plan
-  if (plan === undefined || typeof candidate.execute !== "function") {
-    throw new TypeError("A Flow tool needs a compiled Plan and an execute(input, { executionId }) entry point")
+  const candidate = target as Partial<DurableFlowBinding> & Partial<ExecutableFlowBinding> & Partial<DeployedFlowExecutor>
+  if (typeof candidate.execute !== "function") {
+    throw new TypeError("A Flow tool needs a compiled Flow and an execute(input, { executionId }) entry point")
   }
-  return { plan, execute: candidate.execute.bind(target) }
+  const deployed = candidate.deployment?.flow
+  const artifact = deployed && "body" in deployed ? deployed : "body" in candidate ? candidate : deployed ?? candidate
+  // A body is authoritative even if an optional compatibility Plan is also
+  // present. Invalid body evidence must not be repaired by selecting that Plan.
+  let contract = "body" in artifact ? flowContractFromBody(artifact.body!)
+    : "plan" in artifact && artifact.plan !== undefined ? flowContractFromPlan(artifact.plan) : undefined
+  if (!contract) throw new TypeError("A Flow tool needs a compiled Flow artifact and an execute(input, { executionId }) entry point")
+  if (candidate.deployment !== undefined) {
+    try {
+      // The body alone says what runs, not which providers/policies/routes run
+      // it. Pin the validated deployment even with a caller-supplied function
+      // identity: completed turn replay bypasses the coordinator entirely.
+      const manifest = "body" in artifact
+        ? validateBodyDeploymentManifest(candidate.deployment.manifest, artifact.body)
+        : validateDeploymentManifest(candidate.deployment.manifest, artifact.plan!)
+      const { contractDigest: _previous, ...shape } = contract
+      const deployed = { ...shape, deploymentDigest: manifest.digest }
+      contract = Object.freeze({ ...deployed, contractDigest: flowContractDigest(deployed) })
+    } catch (error) {
+      throw new FlowToolContractError(`Flow deployment is not valid for its artifact: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  return { contract, execute: candidate.execute.bind(target) }
 }
 
 /**
@@ -77,7 +102,7 @@ function isTerminalFlowOutcome(error: unknown): boolean {
 /**
  * Expose a compiled durable Flow as an agent function.
  *
- * The generated-code signature comes from the Plan's compiler-derived Flow
+ * The generated-code signature comes from the artifact's compiler-derived Flow
  * schemas, so the sandbox validates the input against the same schema the
  * executor would — invalid input never reaches the durable store. A call then
  * starts or joins the execution named by `flowExecutionId` and awaits its
@@ -99,8 +124,7 @@ export function flowTool<Input = JsonValue, Success = JsonValue>(
       "An explicit FlowTool identity cannot be combined with name/config/implementation identity",
     )
   }
-  const { plan, execute } = flowTargetOf(target)
-  const contract = flowContractFromPlan(plan)
+  const { contract, execute } = flowTargetOf(target)
 
   const invoke = async (input: Input, context: AgentFunctionContext): Promise<Success> => {
     const identity: FlowCallIdentity = Object.freeze({
@@ -170,7 +194,7 @@ export function flowTool<Input = JsonValue, Success = JsonValue>(
           ? {}
           : { implementationVersion: options.implementationVersion }),
         config: {
-          schema: "smithers.agent.flow-tool/v1",
+          schema: "vibelang.agent.flow-tool/v1",
           flowId: contract.flowId,
           flowVersion: contract.flowVersion,
           planDigest: contract.planDigest,

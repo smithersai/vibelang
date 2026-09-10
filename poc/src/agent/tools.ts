@@ -1,6 +1,7 @@
 import { validatePlanTemplate } from "../durable/artifact.ts"
+import { validateDurableBodyArtifact, type DurableBodyArtifact } from "../durable/body-artifact.ts"
 import type { PlanTemplate } from "../durable/plan-ir.ts"
-import type { ActionDescriptor } from "../durable/value.ts"
+import type { ActionDescriptor, DeploymentManifest } from "../durable/value.ts"
 import { compileActionContract } from "../durable/schema.ts"
 import {
   agentFunctionContractIdentity,
@@ -187,7 +188,7 @@ export function actionTool<Input, Output>(
           ? {}
           : { implementationVersion: options.implementationVersion }),
         config: {
-          schema: "smithers.agent.action-tool/v1",
+          schema: "vibelang.agent.action-tool/v1",
           actionId: action.id,
           actionVersion: action.version,
           config: options.config ?? null,
@@ -197,7 +198,7 @@ export function actionTool<Input, Output>(
 }
 
 /**
- * Compile a tool's Action contract from Smithers Action source and bind it in
+ * Compile a tool's Action contract from VibeLang Action source and bind it in
  * one step. This is the whole tool adapter: nothing about the sandbox, the
  * journal, or the prompt is tool-protocol specific.
  */
@@ -268,6 +269,26 @@ export function flowContractFromPlan(plan: PlanTemplate): FlowContract {
   return Object.freeze({ ...contract, contractDigest: flowContractDigest(contract) })
 }
 
+/** Inspect an executable Flow's codecs and identity without loading its code. */
+export function flowContractFromBody(value: DurableBodyArtifact): FlowContract {
+  let body: DurableBodyArtifact
+  try {
+    body = validateDurableBodyArtifact(value)
+  } catch (error) {
+    throw new FlowToolContractError(
+      `Flow body is not a valid executable artifact: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  const contract = {
+    flowId: body.manifest.flowId, flowVersion: body.manifest.flowVersion,
+    // This persisted field predates executable bodies. Keep its wire spelling;
+    // its value pins the complete deployed executable, never a substitute Plan.
+    planDigest: body.digest, inputSchema: body.inputSchema,
+    successSchema: body.successSchema, errorSchema: body.failureSchema,
+  }
+  return Object.freeze({ ...contract, contractDigest: flowContractDigest(contract) })
+}
+
 /**
  * Deterministic durable execution id for one Flow call site.
  *
@@ -278,7 +299,7 @@ export function flowContractFromPlan(plan: PlanTemplate): FlowContract {
  */
 export function flowExecutionId(identity: Omit<FlowCallIdentity, "executionId">): string {
   return `turnflow_${sha256Json({
-    schema: "smithers.agent.flow-execution-id/v1",
+    schema: "vibelang.agent.flow-execution-id/v1",
     turnId: identity.turnId,
     sourceDigest: identity.sourceDigest,
     functionName: identity.functionName,
@@ -296,12 +317,23 @@ export interface DurableFlowBinding {
   execute(input: unknown, options: { readonly executionId: string }): Awaitable<unknown>
 }
 
-export interface DeployedFlowExecutor {
-  readonly deployment: { readonly flow: { readonly plan: PlanTemplate } }
+export interface ExecutableFlowBinding {
+  readonly body: DurableBodyArtifact
+  // A custom adapter without deployment metadata must include its complete
+  // external wiring in FlowToolOptions' declared implementation/config identity.
   execute(input: unknown, options: { readonly executionId: string }): Awaitable<unknown>
 }
 
-export type FlowToolTarget = DurableFlowBinding | DeployedFlowExecutor
+export interface DeployedFlowExecutor {
+  readonly deployment: {
+    readonly flow: { readonly plan: PlanTemplate } | { readonly body: DurableBodyArtifact }
+    /** Routing, provider and policy identity, validated against the Flow. */
+    readonly manifest: DeploymentManifest
+  }
+  execute(input: unknown, options: { readonly executionId: string }): Awaitable<unknown>
+}
+
+export type FlowToolTarget = DurableFlowBinding | ExecutableFlowBinding | DeployedFlowExecutor
 
 export interface FlowToolOptions {
   readonly description?: string
@@ -358,7 +390,7 @@ export function callableSurfaceManifest(functions: AgentFunctionTable): Callable
   })
   return Object.freeze({
     digest: sha256Json({
-      schema: "smithers.agent.callable-manifest/v2",
+      schema: "vibelang.agent.callable-manifest/v2",
       entries: entries.map((entry) => ({
         exposedAs: entry.exposedAs,
         kind: entry.kind,

@@ -128,9 +128,9 @@ turn re-attaches to the same execution id.
 
 ## Runtime boundary
 
-This directory straddles two published subpaths. `index.ts` is `smthrs/agent`,
+This directory straddles two published subpaths. `index.ts` is `vibelang/agent`,
 which a consumer must be able to `import` under **Node**; `bun.ts` adds
-`journal.ts` and `flow-tools.ts` and is `smthrs/agent/bun`, which may reach
+`journal.ts` and `flow-tools.ts` and is `vibelang/agent/bun`, which may reach
 `bun:sqlite`. Nothing in the `index.ts` closure may name a Bun-only specifier,
 directly or transitively, or the subpath fails to load under Node with
 `ERR_UNSUPPORTED_ESM_URL_SCHEME`.
@@ -193,7 +193,7 @@ Replay semantics:
   `AbortError` still records an ordinary replayable failure. Every teardown is
   raised through the one function that owns the abort controller, which is what
   keeps the rule closed by construction instead of resting on a list of names;
-  `DurableFlowInterrupted` and `CoordinatorCrash` are the only two still matched
+  `DurableFlowInterrupted`, `CoordinatorCrash`, and `CoordinatorUnavailable` are still matched
   by name, because a remote coordinator can deliver them with no class attached;
 - a host result is committed before the generated program can observe it, so a
   crash between the effect and its record cannot repeat the side effect.
@@ -257,7 +257,7 @@ path, emitted from `run()`'s single exit point rather than from each `return`.
   interface exists so that a real client is a drop-in;
 - the sandbox is process-level (a no-permission Deno subprocess), not a VM or
   container boundary;
-- attachment is explicit; the Smithers compiler does not yet wire Action
+- attachment is explicit; the VibeLang compiler does not yet wire Action
   descriptors into agent bindings automatically;
 - descriptors are canonical and digest-checked, not signed or branded runtime
   objects; provenance depends on the trusted compiler/build pipeline supplying

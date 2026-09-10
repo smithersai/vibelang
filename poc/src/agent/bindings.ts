@@ -13,7 +13,7 @@ import type {
   DurableTypeDescriptor,
   StructuralDurableSchema,
 } from "../durable/value.ts"
-import { validateActionContractDescriptor, validateDurableSchema } from "../durable/schema.ts"
+import { validateActionContractDescriptor, validateDurableSchema } from "../durable/schema-runtime.ts"
 import {
   defineComponentIdentity,
   functionArtifactDigest,
@@ -104,10 +104,11 @@ function structuralSchemaOf(
  */
 export function flowContractDigest(contract: Omit<FlowContract, "contractDigest">): string {
   return sha256Json({
-    schema: "smithers.agent.flow-contract/v1",
+    schema: "vibelang.agent.flow-contract/v1",
     flowId: contract.flowId,
     flowVersion: contract.flowVersion,
     planDigest: contract.planDigest,
+    ...(contract.deploymentDigest === undefined ? {} : { deploymentDigest: contract.deploymentDigest }),
     inputSchema: contract.inputSchema as unknown as JsonValue,
     successSchema: contract.successSchema as unknown as JsonValue,
     errorSchema: (contract.errorSchema ?? null) as unknown as JsonValue,
@@ -122,14 +123,15 @@ function snapshotFlowContract(value: unknown, path: string): FlowContract {
   const keys = Reflect.ownKeys(record)
   if (keys.some((key) => typeof key !== "string") || !keys.every((key) =>
     typeof key === "string" && [
-      "flowId", "flowVersion", "planDigest", "contractDigest", "inputSchema", "successSchema", "errorSchema",
+      "flowId", "flowVersion", "planDigest", "deploymentDigest", "contractDigest", "inputSchema", "successSchema", "errorSchema",
     ].includes(key))) {
     throw new TypeError(`${path} has unsupported fields`)
   }
   for (const required of ["flowId", "flowVersion", "planDigest", "contractDigest", "inputSchema", "successSchema"]) {
     if (!keys.includes(required)) throw new TypeError(`${path} is missing ${required}`)
   }
-  const { flowId, flowVersion, planDigest, contractDigest } = record
+  for (const key of keys) dataValue(record, key, path)
+  const { flowId, flowVersion, planDigest, deploymentDigest, contractDigest } = record
   if (typeof flowId !== "string" || flowId.trim() === "" || flowId.length > 256) {
     throw new TypeError(`${path} flowId must be a bounded non-empty string`)
   }
@@ -139,6 +141,9 @@ function snapshotFlowContract(value: unknown, path: string): FlowContract {
   if (typeof planDigest !== "string" || !SHA256.test(planDigest)) {
     throw new TypeError(`${path} planDigest must be a lowercase SHA-256 digest`)
   }
+  if (keys.includes("deploymentDigest") && (typeof deploymentDigest !== "string" || !SHA256.test(deploymentDigest))) {
+    throw new TypeError(`${path} deploymentDigest must be a lowercase SHA-256 digest`)
+  }
   const errorSchema = record.errorSchema === undefined || record.errorSchema === null
     ? undefined
     : validateDurableSchema(record.errorSchema, "error", `${path} error schema`)
@@ -146,6 +151,7 @@ function snapshotFlowContract(value: unknown, path: string): FlowContract {
     flowId,
     flowVersion: flowVersion as number,
     planDigest,
+    ...(deploymentDigest === undefined ? {} : { deploymentDigest: deploymentDigest as string }),
     inputSchema: structuralSchemaOf(record.inputSchema, "input", path),
     successSchema: structuralSchemaOf(record.successSchema, "success", path),
     ...(errorSchema === undefined ? {} : { errorSchema }),
@@ -159,6 +165,7 @@ function snapshotFlowContract(value: unknown, path: string): FlowContract {
 
 function descriptorTypeScript(descriptor: DurableTypeDescriptor): string {
   switch (descriptor.kind) {
+    case "never": return "never"
     case "null": return "null"
     case "boolean": return "boolean"
     case "number": return "number"
@@ -318,7 +325,7 @@ export function defineFunction<Input, Output>(
         name: options.name ?? declared!.implementationId,
         artifactDigest: functionArtifactDigest(invoke),
         configDigest: sha256Json({
-          schema: "smithers.agent.binding-identity/v2",
+          schema: "vibelang.agent.binding-identity/v2",
           implementationId: declared!.implementationId,
           implementationVersion: declared!.implementationVersion,
           signature: stableSignature,
@@ -518,7 +525,7 @@ export function declareCallableSurface(functions: AgentFunctionTable): string {
         ? `compiler-derived-flow plan=${flow.planDigest} contract=${flow.contractDigest} input=${flow.inputSchema.digest} output=${flow.successSchema.digest} error=${flow.errorSchema?.digest ?? "none"}`
         : "legacy-json-only"
     return [
-      `  /** @smithersAgentContract ${marker} */`,
+      `  /** @vibelangAgentContract ${marker} */`,
       `  readonly ${name}: ${fn.signature};`,
     ]
   })
