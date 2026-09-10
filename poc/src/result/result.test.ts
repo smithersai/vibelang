@@ -5,27 +5,27 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  compileAndCheckSmithers,
+  compileAndCheckVibeLang,
   emitProjectDeclarations,
   readDeclarationEffects,
 } from "../language/index.ts";
 import { __vsResultFailure, __vsResultSuccess, type Result } from "../runtime/index.ts";
 
-const SOURCE_FILE = resolve(import.meta.dir, "result.sm");
+const SOURCE_FILE = resolve(import.meta.dir, "result.vibe");
 const RUNTIME_IMPORT = resolve(import.meta.dir, "../runtime/index.ts");
 
 function compile() {
-  return compileAndCheckSmithers(readFileSync(SOURCE_FILE, "utf8"), {
+  return compileAndCheckVibeLang(readFileSync(SOURCE_FILE, "utf8"), {
     fileName: SOURCE_FILE,
     outputFileName: resolve(import.meta.dir, "result.generated.ts"),
     runtimeImport: RUNTIME_IMPORT,
-    sourceName: "result.sm",
+    sourceName: "result.vibe",
   });
 }
 
 class Missing extends Error {}
 
-/** The `.sm` combinator surface, as the emitted module exposes it. */
+/** The `.vibe` combinator surface, as the emitted module exposes it. */
 type Combinators = {
   map<A, B, E extends Error>(result: Result<A, E>, mapper: (value: A) => B): Result<B, E>;
   andThen<A, B, E extends Error, F extends Error>(
@@ -55,16 +55,16 @@ type Combinators = {
 
 async function load(): Promise<{ module: Combinators; dispose: () => Promise<void> }> {
   const checked = compile();
-  if (!checked.ok) throw new TypeError("result.sm did not compile");
-  const root = await mkdtemp(join(tmpdir(), "smithers-result-sm-"));
+  if (!checked.ok) throw new TypeError("result.vibe did not compile");
+  const root = await mkdtemp(join(tmpdir(), "vibelang-result-sm-"));
   const entry = join(root, "result.ts");
   await writeFile(entry, checked.result.code);
   const module = await import(pathToFileURL(entry).href) as Combinators;
   return { module, dispose: () => rm(root, { recursive: true, force: true }) };
 }
 
-describe("smthrs/result authored in Smithers", () => {
-  test("the .sm source satisfies the acceptance rule with no diagnostics", () => {
+describe("vibelang/result authored in VibeLang", () => {
+  test("the .vibe source satisfies the acceptance rule with no diagnostics", () => {
     const checked = compile();
     expect(checked.result.analysis.diagnostics).toEqual([]);
     expect(checked.emitDiagnostics).toEqual([]);
@@ -88,12 +88,12 @@ describe("smthrs/result authored in Smithers", () => {
 
   test("lowering uses only compiler-owned Result hooks", () => {
     const code = compile().result.code;
-    expect(code).toContain("__vsInspectResult");
+    expect(code).toContain("yield* __vsPropagate");
     expect(code).toContain("__vsResultSuccess");
-    expect(code).toContain("__vsResultFailure");
+    expect(code).toContain("__vsRunResult");
     // Nothing in the authored source names a lowering hook.
     const authored = readFileSync(SOURCE_FILE, "utf8");
-    for (const hook of ["__vsInspectResult", "__vsResultSuccess", "__vsResultFailure"]) {
+    for (const hook of ["__vsPropagate", "__vsResultSuccess", "__vsRunResult"]) {
       expect(authored).not.toContain(hook);
     }
   });
@@ -108,7 +108,7 @@ describe("smthrs/result authored in Smithers", () => {
     expect(declarations.diagnostics).toEqual([]);
     expect(declarations.ok).toBe(true);
     const output = declarations.outputs[0]!;
-    expect(output.code).toContain("@smithersEffects");
+    expect(output.code).toContain("@vibelangEffects");
     const effects = readDeclarationEffects(output.code, output.fileName);
     expect(effects.map).toEqual({ failures: ["E"], requirements: [] });
     expect(effects.all).toEqual({ failures: ["E"], requirements: [] });

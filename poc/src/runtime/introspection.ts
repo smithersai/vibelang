@@ -1,10 +1,10 @@
 /**
  * @module
- * The compiler-owned brand-introspection seam for authored `.sm`.
+ * The compiler-owned brand-introspection seam for authored `.vibe`.
  *
- * `specification/failures.mdx`, "Compiler-Owned Modules": "`smthrs/result` and
- * the Smithers runtime are **compiler-owned** and MUST NOT be required to be
- * authored in Smithers." A `.sm` standard-library module may therefore *call*
+ * `specification/failures.mdx`, "Compiler-Owned Modules": "`vibelang/result` and
+ * the VibeLang runtime are **compiler-owned** and MUST NOT be required to be
+ * authored in VibeLang." A `.vibe` standard-library module may therefore *call*
  * the runtime, and `specification/compatibility.mdx`, "Foreign Boundary", says
  * how: "Trusted `@throws {never}` metadata opts out" of the default panic case.
  * This module is that trust claim, made once, in the compiler's own tree.
@@ -14,9 +14,9 @@
  * `__vsResultFailure`, the lowering hooks, and `values.ts` exports
  * `RuntimeValues.success` / `.failure`. `specification/failures.mdx`: "Authors
  * MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those
- * constructors MUST NOT be part of the ordinary Smithers authoring API."
+ * constructors MUST NOT be part of the ordinary VibeLang authoring API."
  * Trusting a whole runtime module would put a Result *constructor* one import
- * away from authored `.sm`. Every export here is a predicate or an assertion:
+ * away from authored `.vibe`. Every export here is a predicate or an assertion:
  * nothing can construct a Result, a Panic, or an Error, and nothing hands an
  * object back, so trusting it cannot widen the authoring API and cannot launder
  * foreign provenance either.
@@ -25,7 +25,7 @@
  * A structural look-alike — `{ isOk: () => true }`, `Object.create(
  * ResultValue.prototype)`, a Proxy — is not in the set and is refused, exactly
  * as it is refused inside the runtime. A shape test would answer differently,
- * which is why authored `.sm` is given this seam instead of one.
+ * which is why authored `.vibe` is given this seam instead of one.
  *
  * Module initialization defines no host binding and evaluates no host global,
  * so the module-level claim below is truthful on its own terms.
@@ -35,7 +35,7 @@ import { isPanic as isPanicBrand, type Panic } from "./panic.ts";
 import { isResult as isResultBrand, rethrowPanics, type Result } from "./result.ts";
 
 /**
- * True only for a Result the Smithers runtime itself constructed.
+ * True only for a Result the VibeLang runtime itself constructed.
  *
  * @throws {never}
  */
@@ -44,7 +44,7 @@ export function isResult(value: unknown): value is Result<unknown, Error> {
 }
 
 /**
- * True only for a Panic the Smithers runtime itself constructed.
+ * True only for a Panic the VibeLang runtime itself constructed.
  *
  * `specification/failures.mdx`, "Foreign Exceptions": panic is the
  * distinguished channel, and recognizing it MUST NOT depend on a forgeable
@@ -60,12 +60,12 @@ export function isPanic(value: unknown): value is Panic {
  * Lets a *materialized* panic resume unwinding, and narrows the Result that
  * carried it back to its recoverable channel.
  *
- * This is the `.sm` seam for the runtime's `rethrowPanics`, and it is
+ * This is the `.vibe` seam for the runtime's `rethrowPanics`, and it is
  * deliberately NOT a re-export of it. `rethrowPanics` hands its Result back,
- * and a Result is an object: every `.sm` that received one would then hit
- * `SMITHERS1508` ("returning an executable foreign value would lose its panic
- * provenance") on the very next `return`, plus `SMITHERS1507` on a method read
- * and `SMITHERS1301` because the value it returned was never consumed. A
+ * and a Result is an object: every `.vibe` that received one would then hit
+ * `VIBE1508` ("returning an executable foreign value would lose its panic
+ * provenance") on the very next `return`, plus `VIBE1507` on a method read
+ * and `VIBE1301` because the value it returned was never consumed. A
  * per-function `@throws {never}` marker cannot help: the marker answers the
  * call's panic channel, and the wall is about the *object* crossing back. So
  * the seam performs the effect and returns nothing — the caller keeps the
@@ -75,7 +75,7 @@ export function isPanic(value: unknown): value is Panic {
  *
  * The assertion signature is what makes it usable rather than merely safe. A
  * `void` function plus a caller-written `as Result<A, E>` was measured to leave
- * `SMITHERS1104` standing even for a Result the caller received as a parameter;
+ * `VIBE1104` standing even for a Result the caller received as a parameter;
  * `asserts result is Result<A, E>` narrows at the checker, so the parameter and
  * generic-driver shapes the platform actually needs report zero diagnostics.
  *

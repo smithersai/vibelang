@@ -1,5 +1,6 @@
-import { isLocalError } from "./errors.ts";
+import { isLocalError, type ErrorConstructor } from "./errors.ts";
 import { Panic, isPanic, panic } from "./panic.ts";
+import { decodeResult, encodeResult, type ValueCodec } from "./wire.ts";
 
 type ResultState<A, E extends Error> =
   | { readonly ok: true; readonly value: A }
@@ -48,6 +49,16 @@ export abstract class ResultValue<A, E extends Error> {
     return next;
   }
 
+  async andThenAsync<B, F extends Error>(
+    mapper: (value: A) => Result<B, F> | PromiseLike<Result<B, F>>,
+  ): Promise<Result<B, E | F>> {
+    const state = stateOf(this);
+    if (!state.ok) return this as unknown as Result<B, E>;
+    const next = await mapper(state.value);
+    if (!isResult(next)) panic("Result.andThenAsync callback did not return a Result");
+    return next;
+  }
+
   /**
    * Collapses one level of nesting. This is `andThen(identity)` with the
    * callback's "did the callback really return a Result?" check kept: a forged
@@ -74,15 +85,51 @@ export abstract class ResultValue<A, E extends Error> {
       : __vsResultSuccess(recovered);
   }
 
+  tryRecover<B, F extends Error>(
+    mapper: (error: RecoverableFailure<E>) => Result<B, F>,
+  ): Result<A | B, F | PanicFailure<E>> {
+    const state = stateOf(this);
+    if (state.ok || isPanic(state.error)) {
+      return this as unknown as Result<A | B, F | PanicFailure<E>>;
+    }
+    const recovered = mapper(state.error as RecoverableFailure<E>);
+    if (!isResult(recovered)) panic("Result.tryRecover callback did not return a Result");
+    return recovered;
+  }
+
+  async tryRecoverAsync<B, F extends Error>(
+    mapper: (error: RecoverableFailure<E>) => Result<B, F> | PromiseLike<Result<B, F>>,
+  ): Promise<Result<A | B, F | PanicFailure<E>>> {
+    const state = stateOf(this);
+    if (state.ok || isPanic(state.error)) {
+      return this as unknown as Result<A | B, F | PanicFailure<E>>;
+    }
+    const recovered = await mapper(state.error as RecoverableFailure<E>);
+    if (!isResult(recovered)) panic("Result.tryRecoverAsync callback did not return a Result");
+    return recovered;
+  }
+
   tap(observer: (value: A) => unknown): Result<A, E> {
     const state = stateOf(this);
     if (state.ok) observer(state.value);
     return this;
   }
 
+  async tapAsync(observer: (value: A) => unknown): Promise<Result<A, E>> {
+    const state = stateOf(this);
+    if (state.ok) await observer(state.value);
+    return this;
+  }
+
   tapError(observer: (error: E) => unknown): Result<A, E> {
     const state = stateOf(this);
     if (!state.ok) observer(state.error);
+    return this;
+  }
+
+  async tapErrorAsync(observer: (error: E) => unknown): Promise<Result<A, E>> {
+    const state = stateOf(this);
+    if (!state.ok) await observer(state.error);
     return this;
   }
 
@@ -101,6 +148,19 @@ export abstract class ResultValue<A, E extends Error> {
     const state = stateOf(this);
     if (state.ok) handlers.ok(state.value);
     else handlers.error(state.error);
+    return this;
+  }
+
+  async tapBothAsync(handlers: {
+    readonly ok: (value: A) => unknown;
+    readonly error: (error: E) => unknown;
+  }): Promise<Result<A, E>> {
+    if (typeof handlers?.ok !== "function" || typeof handlers.error !== "function") {
+      panic("Result.tapBothAsync requires ok and error handlers");
+    }
+    const state = stateOf(this);
+    if (state.ok) await handlers.ok(state.value);
+    else await handlers.error(state.error);
     return this;
   }
 
@@ -142,6 +202,12 @@ export function isResult(value: unknown): value is Result<unknown, Error> {
   return typeof value === "object" && value !== null && localResults.has(value);
 }
 
+/** Validate a non-suspending fallible body's final completion, after cleanup. */
+export function __vsCompleteResult<R extends Result<unknown, Error>>(value: R): R {
+  if (!isResult(value)) panic("a function with a non-empty failure row completed without a Result");
+  return value;
+}
+
 /** Compiler lowering hook; intentionally absent from the author-facing Result namespace. */
 export function __vsResultSuccess<A>(value: A): Result<A, never> {
   return new LocalResult({ ok: true, value });
@@ -176,12 +242,19 @@ export type InspectedResult<A, E extends Error> =
   | { readonly ok: true; readonly value: A }
   | { readonly ok: false; readonly error: E };
 
-/** Compiler hook used to lower `.unwrap()` to an explicit early return. */
+/** Compiler-only, brand-checked inspection of a Result. */
 export function __vsInspectResult<A, E extends Error>(result: Result<A, E>): InspectedResult<A, E> {
   const state = stateOf(result);
   return state.ok
     ? Object.freeze({ ok: true, value: state.value })
     : Object.freeze({ ok: false, error: state.error });
+}
+
+/** An empty failure row needs no continuation, but still checks the runtime invariant. */
+export function __vsUnwrapKnownSuccess<A>(result: Result<A, never>): A {
+  const state = stateOf(result);
+  if (!state.ok) throw new Panic("An empty failure row carried a failure", { cause: state.error });
+  return state.value;
 }
 
 function foreignPanic(cause: unknown): Panic {
@@ -216,6 +289,78 @@ function all(values: Iterable<Result<unknown, Error>>): Result<unknown[], Error>
   return __vsResultSuccess(output);
 }
 
+/** Join every input before exposing an outcome, and choose failures by input order. */
+async function settledResults<A, E extends Error>(
+  values: Iterable<Result<A, E> | PromiseLike<Result<A, E>>>,
+): Promise<Result<A, E>[]> {
+  // Promise.allSettled(iterable) rejects immediately if iteration throws. Own
+  // the submitted prefix separately so even that failure joins started work.
+  const submitted: Promise<Result<A, E>>[] = [];
+  let iterationFailure: { cause: unknown } | undefined;
+  try {
+    for (const value of values) submitted.push(Promise.resolve(value));
+  } catch (cause) {
+    iterationFailure = { cause };
+  }
+  const settled = await Promise.allSettled(submitted);
+  if (iterationFailure) throw foreignPanic(iterationFailure.cause);
+  const output: Result<A, E>[] = [];
+  for (const entry of settled) {
+    if (entry.status === "rejected") throw foreignPanic(entry.reason);
+    if (!isResult(entry.value)) panic("Result collection received a forged Result value");
+    output.push(entry.value);
+  }
+  return output;
+}
+
+function allAsync<const Values extends readonly (Result<unknown, Error> | PromiseLike<Result<unknown, Error>>)[]>(
+  values: Values,
+): Promise<Result<{ -readonly [Index in keyof Values]: ResultSuccess<Awaited<Values[Index]>> }, ResultFailure<Awaited<Values[number]>>>>;
+function allAsync<A, E extends Error>(values: Iterable<Result<A, E> | PromiseLike<Result<A, E>>>): Promise<Result<A[], E>>;
+async function allAsync(values: Iterable<Result<unknown, Error> | PromiseLike<Result<unknown, Error>>>): Promise<Result<unknown[], Error>> {
+  return all(await settledResults(values));
+}
+
+function partition<A, E extends Error>(
+  values: Iterable<Result<A, E>>,
+): [successes: A[], errors: RecoverableFailure<E>[]] {
+  const successes: A[] = [];
+  const errors: RecoverableFailure<E>[] = [];
+  for (const value of values) {
+    const state = stateOf(value);
+    if (state.ok) successes.push(state.value);
+    else {
+      // Partition is ordinary recovery: a defect must not become a domain error array.
+      if (isPanic(state.error)) throw state.error;
+      errors.push(state.error as RecoverableFailure<E>);
+    }
+  }
+  return [successes, errors];
+}
+
+async function partitionAsync<A, E extends Error>(
+  values: Iterable<Result<A, E> | PromiseLike<Result<A, E>>>,
+): Promise<[successes: A[], errors: RecoverableFailure<E>[]]> {
+  return partition(await settledResults(values));
+}
+
+export interface ResultCodec<A, E extends Error> {
+  readonly encode: (result: Result<A, E>) => string;
+  readonly decode: (wire: string) => Result<A, E>;
+}
+
+/** Reuse the canonical Result wire format and pin the decoder's nominal error row. */
+function codec<A>(value: ValueCodec<A>): ResultCodec<A, Error>;
+function codec<A, E extends Error>(value: ValueCodec<A>, allowedErrors: readonly ErrorConstructor<E>[]): ResultCodec<A, E>;
+function codec<A, E extends Error>(value: ValueCodec<A>, allowedErrors?: readonly ErrorConstructor<E>[]): ResultCodec<A, E | Error> {
+  const payload = Object.freeze({ encode: value.encode, decode: value.decode });
+  const errors = allowedErrors === undefined ? undefined : Object.freeze([...allowedErrors]);
+  return Object.freeze({
+    encode: (result: Result<A, E | Error>) => encodeResult(result, payload),
+    decode: (wire: string) => errors === undefined ? decodeResult(wire, payload) : decodeResult(wire, payload, errors),
+  });
+}
+
 function tryResult<A>(body: () => A): Result<A, Panic>;
 function tryResult<A, E extends Error>(body: () => A, mapper: (cause: unknown) => E): Result<A, E | Panic>;
 function tryResult<A, E extends Error>(body: () => A, mapper?: (cause: unknown) => E): Result<A, E | Panic> {
@@ -244,6 +389,10 @@ async function tryPromise<A, E extends Error>(
 
 export const Result = Object.freeze({
   all,
+  allAsync,
+  partition,
+  partitionAsync,
+  codec,
   try: tryResult,
   tryPromise,
 });

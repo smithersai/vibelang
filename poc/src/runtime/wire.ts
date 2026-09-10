@@ -1,5 +1,6 @@
 import {
   decodeError,
+  __vsDecodeErrorForTypes,
   encodeError,
   errorIs,
   type ErrorConstructor,
@@ -28,7 +29,7 @@ export class ValueCodecError extends Error {
     this.name = "ValueCodecError";
   }
 }
-export interface ValueCodecError extends NominalError<"smithers:ValueCodecError@1"> {}
+export interface ValueCodecError extends NominalError<"vibelang:ValueCodecError@1"> {}
 
 function assertJson(
   value: unknown,
@@ -219,7 +220,7 @@ export function decodeResult<A, E extends Error>(
   if (typeof envelope.error !== "string") throw new ValueCodecError("encoded Result error must be a string");
   const canonical = `{"version":1,"kind":"error","error":${JSON.stringify(envelope.error)}}`;
   assertCanonical(wire, canonical);
-  const error = decodeError(envelope.error);
+  const error = allowedErrors === undefined ? decodeError(envelope.error) : __vsDecodeErrorForTypes(envelope.error, allowedErrors);
   if (allowedErrors !== undefined) {
     if (allowedErrors.length === 0 || !allowedErrors.some((type) => errorIs(error, type))) {
       throw new ValueCodecError("decoded Result contained an Error outside its declared channel");

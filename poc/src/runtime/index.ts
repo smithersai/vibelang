@@ -1,10 +1,10 @@
 export {
-  SMITHERS_FAILURE,
-  SmithersFailure,
+  VIBELANG_FAILURE,
+  VibeLangFailure,
   __VSError,
   __vsCatch,
   catchFailure,
-  isSmithersFailure,
+  isVibeLangFailure,
   throwExpression,
   __vsThrow,
 } from "./failure.ts";
@@ -22,6 +22,7 @@ export {
   ErrorCodecError,
   UnhandledException,
   __vsErrorCases,
+  __vsMatchFailed,
   __vsRegisterError,
   __vsValidateForeignError,
   decodeError,
@@ -48,9 +49,11 @@ export type {
 export {
   Result,
   ResultValue,
+  __vsCompleteResult,
   __vsInspectResult,
   __vsResultFailure,
   __vsResultSuccess,
+  __vsUnwrapKnownSuccess,
   foreignBoundary,
   foreignBoundaryPromise,
   isResult,
@@ -73,20 +76,14 @@ export {
 } from "./layer.ts";
 export type { CapabilityKey, CapabilityService, Layer as LayerType } from "./layer.ts";
 /**
- * The three hooks the resumable-lowering emitter writes into a lowered
- * module, and nothing else from `effect.ts`.
- *
- * That file's header records why the module is otherwise unreachable — a
- * request, a continuation and a handler MUST NOT be reifiable as values an
- * authored `.sm` can name — and these three do not weaken it. `__vsGet` and
- * `__vsProvide*` are spelled with the `__vs` prefix the frontend reserves, so
- * no authored program can bind them, and none of them hands back a request, a
- * continuation, or a handler: `__vsGet` answers with the capability instance,
- * `__vsProvideRoot` answers with the delimited computation's value, and
- * `__vsProvide` answers with a generator the emitter only ever `yield*`s.
+ * Generated-code ABI, not the author-facing language surface. The emitter
+ * delegates into the request-producing hooks and drives ordinary function
+ * entries with the Result delimiters. Handlers and continuations are not
+ * exported here; the frontend rejects direct authored access to these hooks.
  */
-export { __vsGet, __vsProvide, __vsProvideRoot } from "./effect.ts";
-export type { AnyRequest, Resumable } from "./effect.ts";
+export { __vsExpect, __vsGet, __vsPerform, __vsProvide, __vsProvideAsync, __vsProvideRoot, __vsProvideRootAsync, __vsPropagate, __vsResultScope, __vsResultScopeAsync, __vsRunEager, __vsRunResult, __vsRunResultAsync } from "./effect.ts";
+export type { AnyRequest, AsyncResumable, Resumable } from "./effect.ts";
+export { __vsBindSuper, __vsSuperReference } from "./lexical.ts";
 
 /** Runtime identity for the compiler-checked native pin assertion. */
 export const native = <F>(pinned: F): F => pinned;

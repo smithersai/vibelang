@@ -6,6 +6,11 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | { [key:
 /** The instance type a constructor produces, distributed over a union of constructors. */
 export type ErrorInstance<T> = T extends ErrorConstructor<infer E> ? E : never;
 
+/** Native emitter's exhaustive-match assertion; its parameter is checked never. */
+export function __vsMatchFailed(_error: never): never {
+  throw new TypeError("non-exhaustive Error match");
+}
+
 declare const nominalErrorBrand: unique symbol;
 
 /**
@@ -22,8 +27,8 @@ declare const nominalErrorBrand: unique symbol;
  *
  * ```ts
  * export class FileNotFound extends FileError {}
- * export interface FileNotFound extends NominalError<"smithers:FileNotFound@1"> {}
- * registerErrorType(FileNotFound, "smithers:FileNotFound@1");
+ * export interface FileNotFound extends NominalError<"vibelang:FileNotFound@1"> {}
+ * registerErrorType(FileNotFound, "vibelang:FileNotFound@1");
  * ```
  *
  * Rules:
@@ -67,7 +72,7 @@ export class ErrorCodecError extends Error {
     this.name = "ErrorCodecError";
   }
 }
-export interface ErrorCodecError extends NominalError<"smithers:ErrorCodecError@1"> {}
+export interface ErrorCodecError extends NominalError<"vibelang:ErrorCodecError@1"> {}
 
 export class UnhandledException extends Error {
   constructor(readonly thrown: unknown) {
@@ -75,7 +80,7 @@ export class UnhandledException extends Error {
     this.name = "UnhandledException";
   }
 }
-export interface UnhandledException extends NominalError<"smithers:UnhandledException@1"> {}
+export interface UnhandledException extends NominalError<"vibelang:UnhandledException@1"> {}
 
 /**
  * A stable Error identity: an ECMAScript identifier alphabet plus the module
@@ -121,23 +126,31 @@ export function isLocalError(value: unknown): value is Error {
 }
 
 export function registerErrorType<E extends Error>(type: ErrorConstructor<E>, id: string): ErrorConstructor<E> {
+  return registerTypeIn(type, id, registrationsById);
+}
+
+function registerTypeIn<E extends Error>(type: ErrorConstructor<E>, id: string,
+  identities: Map<string, ErrorRegistration<any>>): ErrorConstructor<E> {
   if (!isErrorConstructor(type)) {
     throw new TypeError("Error identity requires a class extending Error");
   }
   validateIdentity(id);
   const priorType = registrationsByType.get(type);
-  const priorId = registrationsById.get(id);
+  const priorId = identities.get(id);
   if (priorType && priorType.id !== id) {
     throw new TypeError(`Error constructor is already registered as ${priorType.id}`);
   }
   if (priorId && priorId.type !== type) {
     throw new TypeError(`stable Error identity ${id} is already registered`);
   }
-  if (priorType) return type;
+  if (priorType) {
+    identities.set(id, priorType);
+    return type;
+  }
   const registration: ErrorRegistration<E> = { id, type };
   registrationsByType.set(type, registration);
   registrationsByPrototype.set(type.prototype, registration);
-  registrationsById.set(id, registration);
+  identities.set(id, registration);
   return type;
 }
 
@@ -166,6 +179,10 @@ export function registerErrorType<E extends Error>(type: ErrorConstructor<E>, id
  */
 export function __vsRegisterError<E extends Error>(type: ErrorConstructor<E>, id: string): ErrorConstructor<E> {
   registerErrorType(type, id);
+  return deriveRegisteredCodec(type);
+}
+
+function deriveRegisteredCodec<E extends Error>(type: ErrorConstructor<E>): ErrorConstructor<E> {
   const registration = registrationsByType.get(type) as ErrorRegistration<E> | undefined;
   if (registration && !registration.codec) {
     registration.codec = Object.freeze({
@@ -175,6 +192,21 @@ export function __vsRegisterError<E extends Error>(type: ErrorConstructor<E>, id
     registration.derivedCodec = true;
   }
   return type;
+}
+
+/** @internal An executable module instance owns its codecs, not the process. */
+export function __vsCreateErrorRegistry(): {
+  readonly register: typeof __vsRegisterError;
+  readonly decode: typeof decodeError;
+} {
+  const identities = new Map<string, ErrorRegistration<any>>();
+  return Object.freeze({
+    register: <E extends Error>(type: ErrorConstructor<E>, id: string): ErrorConstructor<E> => {
+      registerTypeIn(type, id, identities);
+      return deriveRegisteredCodec(type);
+    },
+    decode: (wire: string): Error => decodeErrorWith(wire, id => identities.get(id) ?? registrationsById.get(id)),
+  });
 }
 
 /**
@@ -279,7 +311,7 @@ export function errorIdentity(error: unknown): string | undefined {
 export function errorIs<E extends Error>(error: unknown, type: ErrorConstructor<E>): error is E {
   // The constructor is a compiler-resolved nominal key. It need not be in the
   // transport registry: imported TypeScript @throws classes are valid local
-  // identities even when they have no Smithers wire codec.
+  // identities even when they have no VibeLang wire codec.
   if (!isLocalError(error) || !isErrorConstructor(type)) return false;
   return nativeInstanceOf(error, type);
 }
@@ -578,6 +610,21 @@ export function encodeError(error: Error): string {
 }
 
 export function decodeError(wire: string): Error {
+  return decodeErrorWith(wire, id => registrationsById.get(id));
+}
+
+/** @internal An explicit Result codec row also identifies the target realm's constructors. */
+export function __vsDecodeErrorForTypes(wire: string, types: readonly ErrorConstructor[]): Error {
+  return decodeErrorWith(wire, id => {
+    for (const type of types) {
+      const registration = registrationsByType.get(type);
+      if (registration?.id === id) return registration;
+    }
+    return registrationsById.get(id);
+  });
+}
+
+function decodeErrorWith(wire: string, lookup: (id: string) => ErrorRegistration<any> | undefined): Error {
   if (typeof wire !== "string") throw new ErrorCodecError("encoded Error must be a string");
   if (Buffer.byteLength(wire, "utf8") > MAX_WIRE_BYTES) throw new ErrorCodecError("encoded Error exceeds the wire limit");
   let parsed: unknown;
@@ -594,7 +641,7 @@ export function decodeError(wire: string): Error {
   }
   const canonicalWire = `{"version":1,"identity":${JSON.stringify(envelope.identity)},"payload":${stringifyJson(requiredField(envelope, "payload", "$"))}}`;
   if (wire !== canonicalWire) throw new ErrorCodecError("encoded Error is not canonical JSON");
-  const registration = registrationsById.get(envelope.identity);
+  const registration = lookup(envelope.identity);
   if (!registration?.codec) throw new ErrorCodecError(`unknown Error identity ${envelope.identity}`);
   let decoded: Error;
   try {
@@ -639,15 +686,15 @@ for (const [type, id] of builtins) {
   });
 }
 
-registerErrorCodec(Panic, "smithers:Panic@1", {
+registerErrorCodec(Panic, "vibelang:Panic@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => new Panic(decodeMessage(payload)),
 });
-registerErrorCodec(ErrorCodecError, "smithers:ErrorCodecError@1", {
+registerErrorCodec(ErrorCodecError, "vibelang:ErrorCodecError@1", {
   encode: messagePayload,
   decode: (payload) => new ErrorCodecError(decodeMessage(payload)),
 });
-registerErrorCodec(UnhandledException, "smithers:UnhandledException@1", {
+registerErrorCodec(UnhandledException, "vibelang:UnhandledException@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => new UnhandledException(decodeMessage(payload)),
 });

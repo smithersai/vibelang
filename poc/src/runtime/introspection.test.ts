@@ -16,7 +16,7 @@ import { ResultValue, __vsResultFailure, __vsResultSuccess } from "./result.ts";
 /**
  * The brand-introspection seam and the compiler-derived transport codec.
  *
- * Both exist so a `.sm` standard-library module can do something it previously
+ * Both exist so a `.vibe` standard-library module can do something it previously
  * could not, and both are only worth having if the guarantee they re-expose is
  * the *same* guarantee the runtime enforces internally. That is what this file
  * measures: not that the seam answers, but that it answers `false` to every
@@ -76,7 +76,7 @@ describe("assertNoPanic is the rethrowPanics seam, and it is narrow on purpose",
     expect(success.isOk()).toBe(true);
     // The seam returns nothing, so the caller's own reference is what survives
     // — still the runtime's own branded object, not a copy. That is the whole
-    // reason SMITHERS1508 has nothing to fire on afterwards.
+    // reason VIBE1508 has nothing to fire on afterwards.
     expect(isResult(success)).toBe(true);
 
     const failure = __vsResultFailure(new Sample("recoverable")) as unknown as ResultValue<number, Sample | Panic>;
@@ -117,7 +117,7 @@ describe("assertNoPanic is the rethrowPanics seam, and it is narrow on purpose",
 
   test("the seam exposes nothing that can CONSTRUCT a Result, a Panic, or an Error", () => {
     // Trusting result.ts wholesale would put __vsResultSuccess/__vsResultFailure
-    // one import away from authored .sm and let a hand-forged Result compile
+    // one import away from authored .vibe and let a hand-forged Result compile
     // with zero errors. This module is the narrow alternative, and the claim is
     // only worth making if the export list is pinned.
     expect(Object.keys(introspection).sort()).toEqual(["assertNoPanic", "isPanic", "isResult"]);
@@ -185,7 +185,7 @@ describe("the compiler hook derives transport metadata", () => {
   });
 
   test("a declared field named __proto__ crosses the wire as ordinary data", () => {
-    // The `.sm` front end accepts `__proto__` as a declared Error payload field
+    // The `.vibe` front end accepts `__proto__` as a declared Error payload field
     // name. Building the payload as `{}` and writing `payload[key] = value`
     // would route that name through the accessor `Object.prototype` defines for
     // it: a primitive would vanish from the wire with no diagnostic, and an

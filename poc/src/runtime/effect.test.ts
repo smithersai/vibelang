@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import * as ts from "typescript-js";
 import { checkEmittedTypeScript } from "../language/validate.ts";
+import type { EmittedDiagnostic } from "../language/generated-check.ts";
 import {
   __vsGet,
   __vsPerform,
@@ -160,10 +160,10 @@ describe("handler nesting", () => {
     expect(outer.offered.map((r) => r.site)).toEqual(["src-fwd-1"]);
     // "unchanged" is literal: same object, same dispatch index.
     expect(Object.is(outer.offered[0], inner.offered[1])).toBe(true);
-    expect(outer.offered[0]?.occurrence).toBe(1);
+    expect(outer.offered[0]?.occurrence).toBe(0);
   });
 
-  test("the occurrence index is assigned at dispatch, in program order, once", () => {
+  test("occurrences are assigned per site at dispatch and preserved by forwarding", () => {
     const seen: number[] = [];
     const handler = recording<never>(
       () => true,
@@ -176,12 +176,12 @@ describe("handler nesting", () => {
     function* body(): Resumable<number> {
       const a = yield* __vsGet(Clock, "src-occ-0");
       const b = yield* __vsGet(Clock, "src-occ-1");
-      const c = yield* __vsGet(Clock, "src-occ-2");
+      const c = yield* __vsGet(Clock, "src-occ-0");
       return a.now() + b.now() + c.now();
     }
 
     runHandled(() => handle(handler, body), { row: CAPS_ONLY });
-    expect(seen).toEqual([0, 1, 2]);
+    expect(seen).toEqual([0, 0, 1]);
   });
 
   test("a request no handler accepts panics at the top of the program", () => {
@@ -197,6 +197,29 @@ describe("handler nesting", () => {
 
     const failure = expectPanic(() => runHandled(() => handle(handler, body), { row: CAPS_ONLY }));
     expect(failure.message).toContain("no handler accepted a get request at src-unhandled-0");
+  });
+
+  test("an unhandled request closes the whole computation before the panic escapes", () => {
+    for (const driver of [
+      (body: () => Resumable<number>) => runHandled(body, { row: CAPS_ONLY }),
+      (body: () => Resumable<number>) => __vsProvideRoot(Layer.merge(), body),
+    ]) {
+      const log: string[] = [];
+      const failure = expectPanic(() => driver(function* () {
+        using outer = new Tracked(log, "outer");
+        try {
+          using inner = new Tracked(log, "inner");
+          return (yield* __vsGet(Clock, "src-unhandled-cleanup")).now();
+        } catch {
+          log.push("caught");
+          return 0;
+        } finally {
+          log.push("finally");
+        }
+      }));
+      expect(isPanic(failure)).toBe(true);
+      expect(log).toEqual(["acquire outer", "acquire inner", "dispose inner", "finally", "dispose outer"]);
+    }
   });
 
   test("Layer.provide's lowering shape: a capability handler answers its own keys and forwards the rest", () => {
@@ -956,7 +979,7 @@ class RegisteredError extends Error {
     this.name = "RegisteredError";
   }
 }
-__vsRegisterError(RegisteredError, "smithers:effect.test.sm:RegisteredError@1");
+__vsRegisterError(RegisteredError, "vibelang:effect.test.vibe:RegisteredError@1");
 
 /** Shadow the prototype's `constructor` with payload data, then transport it. */
 function forgeKey<E extends Error>(error: E, key: unknown): E {
@@ -1056,18 +1079,18 @@ describe("a declared failure row is keyed on nominal identity, not on payload da
 // ---------------------------------------------------------------------------
 // The gate the emitted code will actually face: stock tsc under `strict`.
 // This is question Q9 — emitted `.ts` is checked by stock tsc, never by the
-// `.sm` frontend, so the request union must be a type stock TypeScript can
+// `.vibe` frontend, so the request union must be a type stock TypeScript can
 // infer through `yield*` delegation chains.
 // ---------------------------------------------------------------------------
 
 const FIXTURE_PATH = fileURLToPath(new URL("./__emitted-fixture.ts", import.meta.url));
 
-function diagnose(code: string): readonly ts.Diagnostic[] {
+function diagnose(code: string): readonly EmittedDiagnostic[] {
   return checkEmittedTypeScript(code, FIXTURE_PATH);
 }
 
-function messages(diagnostics: readonly ts.Diagnostic[]): string[] {
-  return diagnostics.map((d) => `TS${d.code} ${ts.flattenDiagnosticMessageText(d.messageText, " ")}`);
+function messages(diagnostics: readonly EmittedDiagnostic[]): string[] {
+  return diagnostics.map((d) => `${d.code} ${d.message.replaceAll("\n", " ")}`);
 }
 
 const EMITTED_PRELUDE = `
@@ -1229,6 +1252,37 @@ describe("Layer provision installs a handler", () => {
     expect(lines).toEqual(["Ada", "Ada@7"]);
   });
 
+  test("a non-delegating provider inside an async scope inherits its live keys", async () => {
+    const value = await Layer.provide(Layer.succeed(Directory, directory), async () => {
+      await Promise.resolve();
+      return __vsProvideRoot(Layer.succeed(Clock, clock), function* () {
+        const name = (yield* __vsGet(Directory, "nested-eager-outer")).lookup("ada");
+        const at = (yield* __vsGet(Clock, "nested-eager-inner")).now();
+        return `${name}@${at}`;
+      });
+    });
+    expect(value).toBe("Ada@7");
+    expect(() => useCapability(Directory)).toThrow("was not provided");
+    expect(() => useCapability(Clock)).toThrow("was not provided");
+  });
+
+  test("an eager nested provider unwinds cleanup in both live environments", async () => {
+    const cleanup: string[] = [];
+    await Layer.provide(Layer.succeed(Directory, directory), async () => {
+      await Promise.resolve();
+      expect(() => __vsProvideRoot(Layer.succeed(Clock, clock), function* () {
+        try {
+          yield* __vsPerform("unhandled", undefined, "nested-eager-unhandled");
+        } finally {
+          cleanup.push((yield* __vsGet(Directory, "nested-eager-cleanup-outer")).lookup("ada"));
+          cleanup.push(String((yield* __vsGet(Clock, "nested-eager-cleanup-inner")).now()));
+        }
+      })).toThrow("no handler accepted a perform request");
+    });
+    expect(cleanup).toEqual(["Ada", "7"]);
+    expect(() => useCapability(Clock)).toThrow("was not provided");
+  });
+
   /**
    * The compatibility shim, which is the half of this seam that has no
    * generator under it. `useCapability` is what an un-lowered read compiles to,
@@ -1311,7 +1365,7 @@ describe("Layer provision installs a handler", () => {
  * This test used to assert that `index.ts` did not mention `effect.ts` at all,
  * and until the resumable-lowering emitter existed that was the cheapest
  * possible guarantee of §One-Shot Delimited Continuations' "MUST NOT be reified
- * as a value visible to authored `.sm`". It is no longer available: emitted
+ * as a value visible to authored `.vibe`". It is no longer available: emitted
  * modules import their helpers from `runtime/index.ts`, so a lowering hook has
  * to be re-exported from there to be reachable at all.
  *
@@ -1320,7 +1374,7 @@ describe("Layer provision installs a handler", () => {
  * this module is enumerated here, and each one is checked to answer with a
  * value that is not a request, a continuation, or a handler. `handle`,
  * `capabilityHandler`, `resultFrame` and `runHandled` — the four that DO traffic
- * in those — must stay unreachable, and the `__vs` prefix on the three that are
+ * in those — must stay unreachable, and the `__vs` prefix on the hooks that are
  * exported is the frontend's reserved namespace, so no authored program can
  * bind them either.
  */
@@ -1330,7 +1384,7 @@ test("only the emitter's lowering hooks are re-exported, and none of them reifie
     .flatMap((match) => match[1]!.split(",").map((name) => name.trim()))
     .filter((name) => name.length > 0)
     .sort();
-  expect(exported).toEqual(["AnyRequest", "Resumable", "__vsGet", "__vsProvide", "__vsProvideRoot"]);
+  expect(exported).toEqual(["AnyRequest", "AsyncResumable", "Resumable", "__vsExpect", "__vsGet", "__vsPerform", "__vsPropagate", "__vsProvide", "__vsProvideAsync", "__vsProvideRoot", "__vsProvideRootAsync", "__vsResultScope", "__vsResultScopeAsync", "__vsRunEager", "__vsRunResult", "__vsRunResultAsync"]);
   for (const name of ["handle", "capabilityHandler", "resultFrame", "runHandled", "Continuation", "Handler"]) {
     expect(exported).not.toContain(name);
   }

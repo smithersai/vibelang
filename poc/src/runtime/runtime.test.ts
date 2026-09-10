@@ -68,12 +68,13 @@ describe("hardened Result runtime", () => {
     expect("ok" in Result).toBe(false);
     expect("err" in Result).toBe(false);
     expect(Object.isFrozen(Result)).toBe(true);
-    expect(Object.keys(Result).sort()).toEqual(["all", "try", "tryPromise"]);
+    expect(Object.keys(Result).sort()).toEqual(["all", "allAsync", "codec", "partition", "partitionAsync", "try", "tryPromise"]);
     const success: ResultType<number, never> = __vsResultSuccess(2);
     const failure = __vsResultFailure(new NotFound("a"));
     for (const method of [
       "isOk", "isError", "match", "map", "mapError", "andThen", "flatten", "recover",
-      "tap", "tapError", "tapBoth", "unwrap", "unwrapOr", "expect",
+      "andThenAsync", "tryRecover", "tryRecoverAsync", "tap", "tapAsync",
+      "tapError", "tapErrorAsync", "tapBoth", "tapBothAsync", "unwrap", "unwrapOr", "expect",
     ] as const) {
       expect(typeof success[method]).toBe("function");
     }
@@ -371,7 +372,7 @@ describe("RuntimeValues library construction surface", () => {
     }
     // The authoring namespace stays free of variant constructors (DECISIONS.md),
     // and absence needs no constructor at all — it is `undefined`.
-    expect(Object.keys(Result).sort()).toEqual(["all", "try", "tryPromise"]);
+    expect(Object.keys(Result).sort()).toEqual(["all", "allAsync", "codec", "partition", "partitionAsync", "try", "tryPromise"]);
     expect(RuntimeValues.success).toBe(__vsResultSuccess);
     expect(RuntimeValues.failure).toBe(__vsResultFailure);
   });
@@ -487,7 +488,7 @@ describe("nominal Error identity and transport", () => {
 
     const fake = Object.assign(new Error("fake"), {
       _tag: "NotFound",
-      [Symbol.for("smithers.failure")]: true,
+      [Symbol.for("vibelang.failure")]: true,
     });
     expect(fake.is(NotFound)).toBe(false);
     const crossRealm = runInNewContext(`new (class NotFound extends Error { constructor() { super("same name") } })()` ) as Error;
@@ -535,12 +536,12 @@ describe("nominal Error identity and transport", () => {
     // made the compiler accept `class Café extends Error {}` and then throw
     // while the emitted module was still loading.
     class Café extends Error {}
-    expect(__vsRegisterError(Café, "smithers:runtime/identity.sm:Café")).toBe(Café);
+    expect(__vsRegisterError(Café, "vibelang:runtime/identity.vibe:Café")).toBe(Café);
     const refused = new Café("no table");
-    expect(errorIdentity(refused)).toBe("smithers:runtime/identity.sm:Café");
+    expect(errorIdentity(refused)).toBe("vibelang:runtime/identity.vibe:Café");
     expect(refused.is(Café)).toBe(true);
     class Χρόνος extends Error {}
-    expect(__vsRegisterError(Χρόνος, "smithers:runtime/identity.sm:Χρόνος")).toBe(Χρόνος);
+    expect(__vsRegisterError(Χρόνος, "vibelang:runtime/identity.vibe:Χρόνος")).toBe(Χρόνος);
 
     // Widening the letters must not widen the shape: an identity is still a
     // single wire key with no whitespace, quoting, control characters, or
@@ -548,12 +549,12 @@ describe("nominal Error identity and transport", () => {
     class Ordinary extends Error {}
     for (const invalid of [
       "",
-      "smithers:runtime identity.sm:Ordinary",
-      'smithers:"quoted"',
-      "smithers:new\nline",
-      "smithers:{brace}",
+      "vibelang:runtime identity.vibe:Ordinary",
+      'vibelang:"quoted"',
+      "vibelang:new\nline",
+      "vibelang:{brace}",
       "-leading-dash",
-      `smithers:${"x".repeat(256)}`,
+      `vibelang:${"x".repeat(256)}`,
     ]) {
       expect(() => __vsRegisterError(Ordinary, invalid)).toThrow("invalid stable Error identity");
     }

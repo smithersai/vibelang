@@ -142,7 +142,7 @@ export const Layer = Object.freeze({
 /* ------------------------------------------------------------------------- *
  * The lowering seam.
  *
- * A lowered `.sm` module does not call `Layer.provide` at all: the emitter
+ * A lowered `.vibe` module does not call `Layer.provide` at all: the emitter
  * lowers it into a handler install (`runtime/effect.ts`'s `__vsProvide`), and
  * the three functions below are the only part of THIS module that install
  * still runs. They exist rather than a second `Layer.provide` overload because
@@ -163,7 +163,7 @@ export const Layer = Object.freeze({
  * across all 515 corpus programs before it was removed.
  *
  * The AsyncLocalStorage frame is still established, and that is not an
- * oversight. A `.sm` capability read that the emitter did not lower — inside a
+ * oversight. A `.vibe` capability read that the emitter did not lower — inside a
  * property accessor, inside a host callback like `Array.prototype.map`'s, or in
  * any `.ts` module that was never compiled by this frontend — still reaches
  * `useCapability`, and there is no generator frame under it to carry a request.

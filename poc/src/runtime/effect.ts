@@ -4,107 +4,40 @@ import {
   __vsInScope,
   __vsLayerEntries,
   __vsOpenScope,
+  useCapability,
   type CapabilityKey,
   type CapabilityService,
   type EnvironmentScope,
 } from "./layer.ts";
-import { isPanic, panic } from "./panic.ts";
+import { isPanic, makePanic, panic, type Panic } from "./panic.ts";
 import { __vsInspectResult, __vsResultFailure, isResult, type Result } from "./result.ts";
 
 /**
- * The handler / one-shot-continuation runtime.
+ * Compiler-owned, one-shot delimited continuations.
  *
- * `specification/effects.mdx` is normative for everything in this file. It is
- * cited by section throughout; where it is silent the code fails closed and the
- * gap is written down as a question rather than settled here.
+ * Synchronous effect bodies use structural handler frames. Async Result bodies
+ * preserve native await and await-using; cross-function async effect delegation
+ * and the durable body calling convention are still being integrated.
  *
- * Nothing in this module is spellable in `.sm`, and nothing re-exports it yet:
- * `runtime/index.ts` does not name it, so no authored program can reach a
- * request, a continuation, or a handler. §One-Shot Delimited Continuations
- * requires exactly that ("MUST NOT be reified as a value visible to authored
- * `.sm`"), and §What This Page Does Not Add requires that the convention never
- * be named in a diagnostic — so every message below names the *program's*
- * mistake, never the generator that carries it.
+ * An abort abandons its nearest Result frame: catches are skipped, finally and
+ * resource disposal run before the failed Result is returned. Capability reads
+ * during cleanup use the still-live provision scope. Other cleanup requests
+ * currently fail closed after remaining scopes have been drained.
  *
- * ## Scope of this module
+ * A raw generator can conceal a pending panic while its finally yields. The
+ * compiler therefore protects that pending panic across finalizer abandonment;
+ * it cannot be inferred from an IteratorResult by a runtime driver alone.
  *
- * Synchronous generators only. `yield*` cannot cross the sync/async generator
- * boundary, so the emitted calling convention has to pick one globally; that
- * choice is not made here and is recorded as question Q-A below. Consequently
- * `await using` and asynchronous disposal are out of scope: `using` and
- * `finally` are covered, `await using` is not.
+ * Dispatch occurrences are per source site, assigned at submission and retained
+ * through forwarding. Drivers own the execution scope; suspension does not
+ * leave a synchronous scope installed in another computation.
  *
- * ## Questions recorded, not answered
+ * The generated-code ABI is exported selectively by runtime/index.ts. Requests,
+ * handlers and resumptions are implementation details, not authored language
+ * constructs. The source checker guards direct access to those hooks.
  *
- * Where `specification/effects.mdx` is silent this module fails closed and the
- * gap is written down. Each of these needs a sentence of specification that
- * does not exist today.
- *
- * **Q-A — sync or async generators, globally.** `yield*` cannot delegate from a
- * sync generator to an async one, so the emitted convention must be one or the
- * other everywhere. §Abandonment names `await using`, which implies async
- * disposal, but nothing on the page says how an emitted body performs an
- * `await`. Three shapes are available and the page does not choose: async
- * generators throughout; sync generators with `await` lowered into a `perform`
- * request answered by an async driver; or sync only.
- *
- * **Q-B — asynchronous disposal on abandonment.** §Abandonment requires "every
- * live `using` and `await using` scope in the abandoned computation MUST be
- * disposed". A synchronous unwind cannot await a `[Symbol.asyncDispose]`, so on
- * a sync convention an abandoned `await using` is either unsatisfiable or makes
- * the handler's own result a promise. Follows from Q-A.
- *
- * **Q-C — a disposal error raised during abandonment.** Already marked open on
- * the page. This implementation gives that open item a concrete consequence:
- * because the unwind runs inside `Continuation.abandon`, a disposal error is
- * thrown out of the handler's own `answer` call and *is* observable to a
- * handler that wraps it in `try`. Whether that is the intended answer is not
- * decided here.
- *
- * **Q-D — an abort whose failure identity is outside the frame's declared row.**
- * §Effect Rows defines `E` as the failure identities a function may fail with;
- * the page does not say what a runtime must do when an abort's identity is not
- * one of them. {@link resultFrame} panics. Fails closed, not settled.
- *
- * **Q-E — the third resumption arm.** §Handlers names two outcomes, resume and
- * decline. A generator has three resumptions and `gen.throw` is observably
- * distinct from both — it runs the body's `catch` clauses — so a conforming
- * runtime must either use it or forbid it. {@link Continuation.raise} exists
- * for the host exception channel and refuses panic values.
- *
- * This paragraph used to end "and is unreachable from any specified kind."
- * **That was false, and it was load-bearing.** `raise` is offered on every
- * request a handler accepts, and until 2026-08-28 nothing refused it: a handler
- * accepting an `abort` could answer with `raise`, re-enter the aborted
- * computation through its `catch` clause, and complete it successfully — a
- * declared failure swallowed and the computation resumed, which §Effect
- * Requests forbids outright ("the handler MUST NOT resume"). The `abort` and
- * `get` rows are now closed to `raise` by {@link RESUMPTION_MATRIX}, which
- * states all nine cells. What is genuinely open is the one cell that table
- * marks unsanctioned: `perform` + `raise`, neither of the page's two outcomes.
- * It is admitted, and the reason is written beside the cell rather than
- * asserted as an impossibility here.
- *
- * **Q-F — a request issued while a computation is unwinding.** A `yield` inside
- * a `finally` block suspends `gen.return()` and `gen.throw()` alike. Two
- * consequences, one closed here and one that cannot be:
- *
- * - On abandonment the runtime can see it, and {@link unwind} refuses.
- * - **On a panic it cannot.** A panic raised inside a `try` whose `finally`
- *   issues a request surfaces at the driver as an ordinary request, with the
- *   panic held by the engine; a handler that then declines discards it. So on a
- *   generator lowering, §Panic Is Not a Request — "A handler MUST NOT be able
- *   to convert a panic into a resumption" — is **not enforceable at runtime**.
- *   It needs a static rule about what a `finally` may contain, and the page
- *   states none. `SMITHERS1205` refuses `!` inside a `try` with a `catch`
- *   clause, which is a different and narrower condition. `effect.test.ts` pins
- *   the hole as measured behaviour rather than papering over it.
- *
- * **Q-G — concurrent submission.** The occurrence index here is assigned in
- * program order by a single-threaded driver. Ordering *concurrent* siblings is
- * the deterministic-submission-index question `concurrency/scheduler.ts` holds,
- * and this module deliberately does not import it; wiring the two together is
- * not part of proving the primitive.
+ * Open policy: disposal-error precedence, perform/raise, and deterministic
+ * concurrent sibling scheduling. These are not settled by the primitive.
  */
 
 /** §Effect Requests: "A request MUST have exactly one of three kinds". */
@@ -125,7 +58,7 @@ declare const requestAnswer: unique symbol;
  * position and nowhere else.
  *
  * That is not decoration. Emitted `.ts` is checked by stock tsc
- * (`language/validate.ts` `checkEmittedTypeScript`), never by the `.sm`
+ * (`language/validate.ts` `checkEmittedTypeScript`), never by the `.vibe`
  * frontend, so the union has to be a type stock TypeScript can infer through
  * `yield*` delegation chains. A generator's yield type is checked covariantly
  * against the delegate's, so `A` may only appear covariantly — the moment a
@@ -156,6 +89,17 @@ export interface EffectRequest<out A = unknown> {
 
 /** The whole request union, as an outer generator's yield type. */
 export type AnyRequest = EffectRequest<unknown>;
+
+/** The declared failure survives yield inference as well as return inference. */
+interface AbortRequest<E extends Error> extends EffectRequest<never> {
+  readonly kind: "abort";
+  readonly input: E;
+}
+
+type CompletionSuccess<R> = R extends Result<infer A, Error> ? A : never;
+type CompletionFailure<R> = R extends Result<unknown, infer E> ? E : never;
+type RequestedFailure<Y> = Y extends AbortRequest<infer E> ? E : never;
+type ResultCompletion<R, Y> = Result<CompletionSuccess<R>, CompletionFailure<R> | RequestedFailure<Y>>;
 
 /** A request that has been dispatched, and therefore carries its index. */
 export type DispatchedRequest<A = unknown> = EffectRequest<A> & { readonly occurrence: number };
@@ -237,10 +181,13 @@ export interface Handler<B> {
 /** The emitted calling convention: a body is a generator over the union. */
 export type Resumable<A> = Generator<AnyRequest, A, unknown>;
 
+/** Async bodies keep native await and await-using semantics inside their frame. */
+export type AsyncResumable<A> = AsyncGenerator<AnyRequest, A, unknown>;
+
 const localRequests = new WeakSet<object>();
 
 interface Execution {
-  occurrence: number;
+  readonly occurrences: Map<string, number>;
 }
 
 /**
@@ -251,6 +198,16 @@ interface Execution {
  * exactly as `layer.ts` does with `currentPromiseOrigin`.
  */
 let currentExecution: Execution | undefined;
+
+/** A driver-owned dispatch scope; suspension never leaves it installed. */
+export function __vsExecutionScope(): StepGuard {
+  const execution: Execution = { occurrences: new Map() };
+  return step => {
+    const previous = currentExecution;
+    currentExecution = execution;
+    try { return step(); } finally { currentExecution = previous; }
+  };
+}
 
 /**
  * The answer type is phantom, so a fresh request is legitimately a request for
@@ -280,15 +237,26 @@ function dispatch(request: AnyRequest): DispatchedRequest {
   if (request.occurrence !== undefined) return request as DispatchedRequest;
   const execution = currentExecution;
   if (execution === undefined) panic("an effect request was dispatched outside a running program");
+  const occurrence = execution.occurrences.get(request.site) ?? 0;
   Object.defineProperty(request, "occurrence", {
-    value: execution.occurrence,
+    value: occurrence,
     enumerable: true,
     writable: false,
     configurable: false,
   });
-  execution.occurrence += 1;
+  execution.occurrences.set(request.site, occurrence + 1);
   Object.freeze(request);
   return request as DispatchedRequest;
+}
+
+/** Runtime-to-driver seam; only requests minted by this runtime may cross it. */
+export function __vsDispatchRequest(request: AnyRequest): DispatchedRequest {
+  return dispatch(request);
+}
+
+/** Preassigned indices are trusted only on genuine runtime-issued requests. */
+export function __vsIsDispatchedRequest(request: AnyRequest): request is DispatchedRequest {
+  return localRequests.has(request) && request.occurrence !== undefined;
 }
 
 /**
@@ -304,8 +272,28 @@ function dispatch(request: AnyRequest): DispatchedRequest {
  * choosing an answer for it.
  */
 function unwind<A>(gen: Generator<AnyRequest, A, unknown>): void {
-  const step = gen.return(undefined as never);
-  if (!step.done) panic("an effect request was issued while its computation was being abandoned");
+  let suspended = false;
+  // Refusing a cleanup request must not strand the remaining outer scopes.
+  // Re-enter the return path until all of them have unwound, then report the
+  // invalid request. No answer is delivered and no catch clause is entered.
+  let step = gen.return(undefined as never);
+  while (!step.done) {
+    // A capability read in finally belongs to the still-live provision scope.
+    // Answering it continues cleanup with the pending return completion; it
+    // cannot re-enter the abandoned try body or any catch clause.
+    assertLocalRequest(step.value);
+    if (step.value.kind === "get") {
+      try {
+        step = gen.next(useCapability(step.value.key as CapabilityKey));
+        continue;
+      } catch (error) {
+        try { unwind(gen); } finally { throw error; }
+      }
+    }
+    suspended = true;
+    step = gen.return(undefined as never);
+  }
+  if (suspended) panic("an effect request was issued while its computation was being abandoned");
 }
 
 type DecisionMode = "resume" | "raise" | "abandon";
@@ -435,7 +423,7 @@ class OneShotContinuation<B> implements Continuation<B> {
  *
  * The default runs the step directly, and every existing caller gets exactly
  * that. `__vsProvide` supplies one that enters its AsyncLocalStorage frame,
- * because an un-lowered `.sm` capability read — a property accessor, a host
+ * because an un-lowered `.vibe` capability read — a property accessor, a host
  * callback — has no generator frame to carry a request and still has to find
  * its layer. It wraps the four places a step happens (creation, `next`,
  * `throw`, and the unwind) rather than the whole run: between them the frame is
@@ -470,7 +458,7 @@ export function* handle<A, B>(
       // offered to `handler`. That is §Panic Is Not a Request, and it is
       // structural: only `step.value` below ever reaches a handler.
       if (step.done) return step.value;
-      const request = dispatch(step.value);
+      const request = around(() => dispatch(step.value));
       if (!handler.accepts(request)) {
         // §Handlers: "A handler that does not accept a key MUST forward the
         // request outward unchanged." Same object, same occurrence index.
@@ -586,10 +574,11 @@ export function runHandled<A>(body: () => Resumable<A>, options: { readonly row:
     panic("a function with an empty effect row was run in the resumable calling convention");
   }
   const previous = currentExecution;
-  currentExecution = { occurrence: 0 };
+  currentExecution = { occurrences: new Map() };
+  let gen: Generator<AnyRequest, A, unknown> | undefined;
   try {
     const fallible = row.failures.length > 0;
-    const gen: Generator<AnyRequest, A, unknown> = fallible
+    gen = fallible
       ? (handle(resultFrame<A>(row), body) as Generator<AnyRequest, A, unknown>)
       : body();
     let step = gen.next();
@@ -609,7 +598,11 @@ export function runHandled<A>(body: () => Resumable<A>, options: { readonly row:
     }
     return value;
   } finally {
-    currentExecution = previous;
+    try {
+      if (gen) unwind(gen);
+    } finally {
+      currentExecution = previous;
+    }
   }
 }
 
@@ -663,6 +656,7 @@ export function* __vsGet<C extends CapabilityKey>(
 export function* __vsProvide<A>(
   layer: unknown,
   body: () => Resumable<A>,
+  execution: StepGuard = stepDirectly,
 ): Generator<AnyRequest, A, unknown> {
   const entries = __vsLayerEntries(layer);
   // Opened on first entry rather than here, so the scope inherits the
@@ -672,13 +666,71 @@ export function* __vsProvide<A>(
   let scope: EnvironmentScope | undefined;
   const around: StepGuard = (step) => {
     scope ??= __vsOpenScope(entries);
-    return __vsInScope(scope, step);
+    return execution(() => __vsInScope(scope!, step));
   };
   try {
     return (yield* handle<A, never>(capabilityHandler<never>(entries), body, around)) as A;
   } finally {
     if (scope) __vsCloseScope(scope);
   }
+}
+
+/** The async Layer frame owns its entries across suspension, not the Promise. */
+export async function* __vsProvideAsync<A>(
+  layer: unknown,
+  body: () => AsyncResumable<A>,
+  execution: StepGuard = __vsExecutionScope(),
+): AsyncResumable<A> {
+  const entries = __vsLayerEntries(layer);
+  const provided: ReadonlyMap<RequestKey, unknown> = entries;
+  const scope = __vsOpenScope(entries);
+  const around: StepGuard = step => execution(() => __vsInScope(scope, step));
+  const gen = around(body);
+  let mode: "next" | "throw" = "next";
+  let carried: unknown;
+  try {
+    for (;;) {
+      const step = await around(() => mode === "next" ? gen.next(carried) : gen.throw(carried));
+      if (step.done) return await step.value;
+      const request = around(() => dispatch(step.value));
+      if (request.kind === "get" && provided.has(request.key)) {
+        carried = provided.get(request.key);
+        mode = "next";
+      } else {
+        try { carried = yield request; mode = "next"; }
+        catch (raised) { if (isPanic(raised)) throw raised; carried = raised; mode = "throw"; }
+      }
+    }
+  } finally {
+    try {
+      let step = await around(() => gen.return(undefined as never));
+      while (!step.done) {
+        const pending = step.value;
+        const request = around(() => dispatch(pending));
+        const answer = request.kind === "get" && provided.has(request.key) ? provided.get(request.key) : yield request;
+        step = await around(() => gen.next(answer));
+      }
+    } finally {
+      try { await unwindAsync(gen, around); }
+      finally { __vsCloseScope(scope); }
+    }
+  }
+}
+
+/** An eager Promise-returning entry for a locally satisfied async Layer. */
+export async function __vsProvideRootAsync<A>(layer: unknown, body: () => AsyncResumable<A>): Promise<A> {
+  const around = __vsExecutionScope();
+  const gen = __vsProvideAsync(layer, body, around);
+  try {
+    let carried: unknown;
+    for (;;) {
+      const step = await around(() => gen.next(carried));
+      if (step.done) return await step.value;
+      const request = step.value;
+      if (request.kind !== "get") panic(`no handler accepted a ${request.kind} request at ${request.site}`);
+      carried = useCapability(request.key as CapabilityKey);
+    }
+  } finally { await unwindAsync(gen, around); }
 }
 
 /**
@@ -699,31 +751,18 @@ export function* __vsProvide<A>(
  * which is the path least likely to have a corpus case pinning it.
  */
 export function __vsProvideRoot<A>(layer: unknown, body: () => Resumable<A>): A {
-  const previous = currentExecution;
-  currentExecution = { occurrence: 0 };
-  try {
-    const gen = __vsProvide(layer, body);
-    const step = gen.next();
-    if (!step.done) {
-      assertLocalRequest(step.value);
-      const request = step.value;
-      if (request.kind === "get") {
-        const key = request.key as { name?: unknown };
-        const name = typeof key?.name === "string" && key.name.length > 0 ? key.name : "<anonymous capability>";
-        panic(`capability '${name}' was not provided`);
-      }
-      panic(`no handler accepted a ${request.kind} request at ${request.site}`);
-    }
-    return step.value;
-  } finally {
-    currentExecution = previous;
-  }
+  // "Root" describes the calling convention, not an empty environment. A
+  // synchronous provider in an ordinary async callback cannot delegate to its
+  // caller's generator, but it still inherits that caller's live capabilities.
+  // Use the same eager bridge as other non-delegating calls; a genuinely
+  // unprovided get still panics in useCapability, and other effects stay closed.
+  return __vsRunEager(__vsProvide(layer, body));
 }
 
 /** Compiler lowering hook for an effect whose answer crosses a persistence boundary. */
-export function* __vsPerform<A>(
+export function* __vsPerform<A, Input = unknown>(
   key: RequestKey,
-  input: unknown,
+  input: Input,
   site: string,
 ): Generator<EffectRequest<A>, A, unknown> {
   const answer = yield makeRequest("perform", key, input, site);
@@ -739,7 +778,7 @@ export function* __vsPerform<A>(
 export function* __vsPropagate<A, E extends Error>(
   value: Result<A, E>,
   site: string,
-): Generator<EffectRequest<never>, A, unknown> {
+): Generator<AbortRequest<E>, A, unknown> {
   const inspected = __vsInspectResult(value);
   if (inspected.ok) return inspected.value;
   // §Effect Requests: the key is "a nominal identity the compiler derives from
@@ -747,6 +786,231 @@ export function* __vsPropagate<A, E extends Error>(
   // the prototype chain — and never from an own field of the value, which a
   // payload controls. See `errorNominalKey` for what reading `.constructor`
   // here used to let a forged payload do to a declared failure row.
-  yield makeRequest("abort", errorNominalKey(inspected.error) as RequestKey, inspected.error, site);
+  yield makeRequest("abort", errorNominalKey(inspected.error) as RequestKey, inspected.error, site) as AbortRequest<E>;
   panic("a failure propagation was resumed");
+}
+
+/** The explicit checked-Panic extraction boundary, at its expression site. */
+export function* __vsExpect<A, E extends Error>(
+  value: Result<A, E>, message: string, site: string,
+): Generator<AbortRequest<Panic>, A, unknown> {
+  const state = __vsInspectResult(value);
+  if (state.ok) return state.value;
+  return yield* __vsPropagate(__vsResultFailure(makePanic(new Error(message, { cause: state.error }))), site);
+}
+
+// The checker proves each generated function's particular E. At this erased
+// boundary (including generic E), the runtime additionally checks the common
+// invariant: failures are genuine local Errors, never arbitrary thrown values.
+const checkedResultRow: EffectRow = { failures: [Error], capabilities: [] };
+
+/** Close by return(), so catches are skipped; cleanup requests stay in scope. */
+function* closeResultBody<A>(gen: Resumable<A>, around: StepGuard): Resumable<Error | undefined> {
+  let replacement: Error | undefined;
+  try {
+    let step = around(() => gen.return(undefined as never));
+    while (!step.done) {
+      const pending = step.value;
+      const request = around(() => dispatch(pending));
+      if (request.kind === "abort") {
+        if (!isLocalError(request.input)) panic("a failure propagation carried a non-Error value");
+        replacement = request.input;
+        step = around(() => gen.return(undefined as never));
+      } else {
+        let mode: "next" | "throw" = "next";
+        let answer: unknown;
+        try { answer = yield request; }
+        catch (raised) { if (isPanic(raised)) throw raised; mode = "throw"; answer = raised; }
+        step = around(() => mode === "next" ? gen.next(answer) : gen.throw(answer));
+      }
+    }
+  } finally { around(() => unwind(gen)); }
+  return replacement;
+}
+
+async function* closeResultBodyAsync<A>(gen: AsyncResumable<A>, around: StepGuard): AsyncResumable<Error | undefined> {
+  let replacement: Error | undefined;
+  try {
+    let step = await around(() => gen.return(undefined as never));
+    while (!step.done) {
+      const pending = step.value;
+      const request = around(() => dispatch(pending));
+      if (request.kind === "abort") {
+        if (!isLocalError(request.input)) panic("a failure propagation carried a non-Error value");
+        replacement = request.input;
+        step = await around(() => gen.return(undefined as never));
+      } else {
+        let mode: "next" | "throw" = "next";
+        let answer: unknown;
+        try { answer = yield request; }
+        catch (raised) { if (isPanic(raised)) throw raised; mode = "throw"; answer = raised; }
+        step = await around(() => mode === "next" ? gen.next(answer) : gen.throw(answer));
+      }
+    }
+  } finally { await unwindAsync(gen, around); }
+  return replacement;
+}
+
+/** A Result delimiter that can itself be delegated into by a Layer handler. */
+export function* __vsResultScope<Y extends AnyRequest, R extends Result<unknown, Error>>(
+  body: () => Generator<Y, R, unknown>,
+  around: StepGuard = stepDirectly,
+): Resumable<Result<CompletionSuccess<R>, CompletionFailure<R> | RequestedFailure<Y>>> {
+  const gen = around(body);
+  let mode: "next" | "throw" = "next";
+  let carried: unknown;
+  try {
+    for (;;) {
+      const step = around(() => mode === "next" ? gen.next(carried) : gen.throw(carried));
+      if (step.done) {
+        if (!isResult(step.value)) panic("a function with a non-empty failure row completed without a Result");
+        return step.value as unknown as ResultCompletion<R, Y>;
+      }
+      const request = around(() => dispatch(step.value));
+      if (request.kind === "abort") {
+        if (!isLocalError(request.input)) panic("a failure propagation carried a non-Error value");
+        const replacement = yield* closeResultBody(gen, around);
+        return __vsResultFailure(replacement ?? request.input) as unknown as ResultCompletion<R, Y>;
+      }
+      try { carried = yield request; mode = "next"; }
+      catch (raised) { if (isPanic(raised)) throw raised; carried = raised; mode = "throw"; }
+    }
+  } finally { yield* closeResultBody(gen, around); }
+}
+
+/** Async counterpart of the same delimiter; the dispatch scope is explicit. */
+export async function* __vsResultScopeAsync<Y extends AnyRequest, R extends Result<unknown, Error>>(
+  body: () => AsyncGenerator<Y, R, unknown>,
+  around: StepGuard = __vsExecutionScope(),
+): AsyncResumable<Result<CompletionSuccess<R>, CompletionFailure<R> | RequestedFailure<Y>>> {
+  const gen = around(body);
+  let mode: "next" | "throw" = "next";
+  let carried: unknown;
+  try {
+    for (;;) {
+      const step = await around(() => mode === "next" ? gen.next(carried) : gen.throw(carried));
+      if (step.done) {
+        const value = await step.value;
+        if (!isResult(value)) panic("a function with a non-empty failure row completed without a Result");
+        return value as unknown as ResultCompletion<R, Y>;
+      }
+      const request = around(() => dispatch(step.value));
+      if (request.kind === "abort") {
+        if (!isLocalError(request.input)) panic("a failure propagation carried a non-Error value");
+        const replacement = yield* closeResultBodyAsync(gen, around);
+        return __vsResultFailure(replacement ?? request.input) as unknown as ResultCompletion<R, Y>;
+      }
+      try {
+        carried = yield request;
+        mode = "next";
+      } catch (raised) {
+        if (isPanic(raised)) throw raised;
+        carried = raised;
+        mode = "throw";
+      }
+    }
+  } finally {
+    yield* closeResultBodyAsync(gen, around);
+  }
+}
+
+const inheritedCapabilities: Handler<never> = {
+  accepts: request => request.kind === "get",
+  answer(request, continuation) {
+    continuation.resume(useCapability(request.key as CapabilityKey));
+  },
+};
+
+/**
+ * Ordinary-call bridge for a checked, dependency-only resumable callee. A
+ * method, native callback, or async caller may keep its eager convention, but
+ * it must still drive a generator-returning callee even when it discards the
+ * answer. Arguments are evaluated before this entry, in the authored scope.
+ */
+export function __vsRunEager<A>(gen: Resumable<A>): A {
+  const around = __vsExecutionScope();
+  try {
+    let step = around(() => gen.next());
+    while (!step.done) {
+      const pending = step.value;
+      const request = around(() => dispatch(pending));
+      if (request.kind !== "get") panic(`no handler accepted a ${request.kind} request at ${request.site}`);
+      const answer = useCapability(request.key as CapabilityKey);
+      step = around(() => gen.next(answer));
+    }
+    return step.value;
+  } finally { around(() => unwind(gen)); }
+}
+
+/** Eager ordinary-call entry for a compiler-owned synchronous Result body. */
+export function __vsRunResult<Y extends AnyRequest, R extends Result<unknown, Error>>(
+  body: () => Generator<Y, R, unknown>,
+): Result<CompletionSuccess<R>, CompletionFailure<R> | RequestedFailure<Y>> {
+  return runHandled(() => handle(inheritedCapabilities, body), { row: checkedResultRow }) as unknown as ResultCompletion<R, Y>;
+}
+
+async function unwindAsync<A>(gen: AsyncResumable<A>, around: StepGuard = stepDirectly): Promise<void> {
+  let suspended = false;
+  let step = await around(() => gen.return(undefined as never));
+  while (!step.done) {
+    assertLocalRequest(step.value);
+    if (step.value.kind === "get") {
+      try {
+        const request = step.value;
+        step = await around(() => gen.next(useCapability(request.key as CapabilityKey)));
+        continue;
+      } catch (error) {
+        try { await unwindAsync(gen, around); } finally { throw error; }
+      }
+    }
+    suspended = true;
+    step = await around(() => gen.return(undefined as never));
+  }
+  if (suspended) panic("an effect request was issued while its computation was being abandoned");
+}
+
+/**
+ * Async ordinary-call entry. Each yielded request has exactly one next/return
+ * transition. Awaited cleanup finishes before a failed Result is delivered;
+ * no failure is injected via throw(), and unrelated async executions share no
+ * dispatch counter.
+ */
+export async function __vsRunResultAsync<Y extends AnyRequest, R extends Result<unknown, Error>>(
+  body: () => AsyncGenerator<Y, R, unknown>,
+): Promise<Result<CompletionSuccess<R>, CompletionFailure<R> | RequestedFailure<Y>>> {
+  const gen = body();
+  const execution: Execution = { occurrences: new Map() };
+  try {
+    let answer: unknown;
+    for (;;) {
+      const step = await gen.next(answer);
+      if (step.done) {
+        // Some supported hosts expose a returned Promise in the completion
+        // record of an async generator. Normalize it just as an async function
+        // return does before checking the Result boundary.
+        const value = await step.value;
+        if (!isResult(value)) panic("a function with a non-empty failure row completed without a Result");
+        return value as unknown as ResultCompletion<R, Y>;
+      }
+      const previous = currentExecution;
+      currentExecution = execution;
+      let request: DispatchedRequest;
+      try {
+        request = dispatch(step.value);
+      } finally {
+        currentExecution = previous;
+      }
+      if (request.kind === "get") {
+        answer = useCapability(request.key as CapabilityKey);
+      } else if (request.kind === "abort") {
+        if (!isLocalError(request.input)) panic("a failure propagation carried a non-Error value");
+        await unwindAsync(gen);
+        return __vsResultFailure(request.input) as unknown as ResultCompletion<R, Y>;
+      } else {
+        panic(`no handler accepted a ${request.kind} request at ${request.site}`);
+      }
+    }
+  } finally {
+    await unwindAsync(gen);
+  }
 }
