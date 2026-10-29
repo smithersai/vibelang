@@ -17,10 +17,12 @@ A function's kind is decided by a keyword on the function, never by its body or 
 ```text
 EffectFunction    = "effect" "function" Name? TypeParameters? Params ReturnType? Block
 EffectArrow       = "effect" TypeParameters? ArrowParams ReturnType? "=>" ConciseBody
-EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params ReturnType? Block   (in a class or object literal)
+EffectMethod      = Modifiers? "effect" PropertyName TypeParameters? Params ReturnType? Block   (in a class or object literal)
 ```
 
-- `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1). `Name` is optional where it is optional for `async function`: required in a declaration, optional in an expression.
+`ArrowParams` and `Modifiers` are TypeScript's, as for `async`: `effect x => …` is allowed, and `Modifiers` covers `static`, `public`, `private`, `protected` and `override`.
+
+- `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1). `Name` is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
 - There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. Diagnostic: code pending.
 - As for `async`: `static effect m()` is allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
 - `effect` and the function, name or parameters it modifies are on one line, as with `async`.
@@ -33,7 +35,7 @@ EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params Retur
 
 | Rule | Diagnostic |
 | --- | --- |
-| `await` used inside an `effect` function | code pending |
+| `await`, `for await` or `await using` inside an `effect` function | code pending |
 | `await` applied to an Effect inside an `async` function | code pending |
 
 "Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it. That is the one rule "`try` outside effect code" of [Running Effects](002-running.md#static-rules).
@@ -46,6 +48,7 @@ Calling an `effect` function returns its Effect unrun, as calling an `async` fun
 // compiler-gap: pending VIP-1
 effect function load(id: string) { return try fetchUser(id) }
 const loadArrow = effect (id: string) => try fetchUser(id)
+const loadBare = (ids: string[]) => ids.map(effect id => try fetchUser(id))
 const loadAll = (ids: string[]) => ids.map(effect function (id) { return try fetchUser(id) })
 
 class Users {
@@ -58,6 +61,7 @@ class Users {
 // fragment
 function load(id: string) { return Effect.gen(function* () { return yield* fetchUser(id) }) }
 const loadArrow = (id: string) => Effect.gen(function* () { return yield* fetchUser(id) })
+const loadBare = (ids: string[]) => ids.map((id) => Effect.gen(function* () { return yield* fetchUser(id) }))
 const loadAll = (ids: string[]) => ids.map(function (id) { return Effect.gen(function* () { return yield* fetchUser(id) }) })
 
 class Users {
@@ -72,8 +76,9 @@ Each form keeps the form it is written in, as `async` does. A declaration stays 
 | --- | --- |
 | `effect function f(p) { B }` | `function f(p) { return Effect.gen(function* () { B }) }` |
 | `effect function (p) { B }` | `function (p) { return Effect.gen(function* () { B }) }` |
-| `effect (p) => B` | `(p) => Effect.gen(function* () { B })` |
+| `effect (p) => B` | `(p) => Effect.gen(function* () { B })`; `Effect.gen({ self: this }, function* () { B })` when `B` reads `this` |
 | `effect m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }` |
+| `export default effect function (p) { B }` | `export default function (p) { return Effect.gen(function* () { B }) }` |
 
 Parameters, defaults included, are bound when the function is called. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
 
@@ -82,10 +87,12 @@ Parameters, defaults included, are bound when the function is called. The body r
 | In the body | Effect TypeScript |
 | --- | --- |
 | `this` | `Effect.gen({ self: this }, function* () { … })`; the generator's `this` is `self` |
-| `arguments`, `new.target` | read once into a temporary before `Effect.gen`: `const $arguments = arguments` |
-| `super.m` | read through an arrow made in the method, `const $super_m = () => super.m`; `super.m(a)` is `$super_m().call(this, a)` |
+| `arguments`, `new.target` | a temporary, `const $arguments = arguments` |
+| `super[k]`, `super.m` | `$super_get(k)`, with `const $super_get = (k) => super[k]` |
+| `super[k] = v` | `$super_set(k, v)`, with `const $super_set = (k, v) => (super[k] = v)`; `super.x += v` reads with `$super_get` and writes with `$super_set`, evaluating `k` once |
+| `super.m(a)` | `$apply($super_get("m"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read |
 
-In an `effect` arrow and an `effect` block these are the enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript.
+The temporaries and helpers are declared at the top of the innermost enclosing non-arrow function, or the module, once per call, as TypeScript's own `async` downleveling does with `_arguments` and `_superIndex`. In an `effect` arrow and an `effect` block these bindings are that enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript.
 
 ```vibe es
 // compiler-gap: pending VIP-1
@@ -98,11 +105,12 @@ effect function count(x: number) { return arguments.length }
 
 ```ts effect
 // fragment
+const $apply = Reflect.apply
 class Counter extends Base {
   n = 7
   value() {
-    const $super_offset = () => super.offset
-    return Effect.gen({ self: this }, function* () { return this.n + $super_offset().call(this) })
+    const $super_get = (k: PropertyKey) => super[k as keyof Base]
+    return Effect.gen({ self: this }, function* () { return this.n + $apply($super_get("offset"), this, []) })
   }
 }
 function count(x: number) {
@@ -110,6 +118,8 @@ function count(x: number) {
   return Effect.gen(function* () { return $arguments.length })
 }
 ```
+
+With `Base.prototype.offset` returning 30, `value()` succeeds with 37 even if `offset` has an own `call` property; `count(1, 2, 3)` succeeds with 3.
 
 ### Return types
 
@@ -140,11 +150,14 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 ### Syntax
 
 ```text
-EffectType = Type "!" Type "!" Type      (A!E!R)
-           | Type "!" Type               (A!E)
-           | Type "!" "!" Type           (A!!R)
-           | Type "!" "!"                (A!!)
+EffectType    = EffectOperand "!" EffectOperand "!" EffectOperand   (A!E!R)
+              | EffectOperand "!" EffectOperand                     (A!E)
+              | EffectOperand "!" "!" EffectOperand                 (A!!R)
+              | EffectOperand "!" "!"                               (A!!)
+EffectOperand = a Type that is not itself an EffectType unless parenthesized
 ```
+
+`A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. `A!!B!C` is a syntax error.
 
 ### Meaning
 
@@ -201,30 +214,46 @@ await runPromise(main())
 
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc`, TypeDoc and `bun check` understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
-- **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare.
-- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw. An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](003-failures.md#calls-that-may-throw)).
+- **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`.
+- **Effectful functions carry no `@throws`.** A function that returns an `Effect`, a `Stream` or a `Layer` can't throw, so it carries none (VIP-4).
+- **Every other exported callable carries `@throws`:** a function, a method, a constructor (`new X()` is throw-tracked) and a function-typed `const`. The tag is its inferred thrown type, or `@throws {never}` when it can't throw. Getters and setters carry none: they are not throw-tracked.
+- **`async`.** An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](003-failures.md#calls-that-may-throw)).
+- **Function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. A function that calls a parameter it was given, and throws what that parameter throws, says so with `@rethrows <param>`.
 
-**Undecided (pending VIP):** the tag of an exported function that returns a `Stream` or a `Layer` ([Failures](003-failures.md#calls-that-may-throw)).
+**Undecided (pending VIP):** a plain, non-`async` `.vibe` function whose return type is an Effect and whose body may `throw` before returning it. It returns an Effect, so it carries no `@throws`, yet calling it can throw.
 
 ```vibe es
 // compiler-gap: pending VIP-27
 // load.vibe
 export effect function load(id: string) { return try fetchUser(id) }
+export function users(ids: string[]) { return Stream.fromIterable(ids) }
 export function parse(s: string) { if (!s) throw new BadInput(); return s }
-export function add(a: number, b: number) { return a + b }
+export const add = (a: number, b: number) => a + b
 export async function get(q: string) { if (!q) throw new BadInput(); return await queryDb(q) }
+export class Id {
+  constructor(readonly s: string) { if (!s) throw new BadInput() }
+  get size() { return this.s.length }
+}
+export function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
 ```
 
 ```ts effect
 // fragment
 // load.d.vibe.ts
-export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // returns an Effect: no @throws
+export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // effectful: no @throws
+export declare function users(ids: string[]): Stream.Stream<string>              // effectful: no @throws
 /** @throws {BadInput} */
 export declare function parse(s: string): string
 /** @throws {never} */
-export declare function add(a: number, b: number): number
+export declare const add: (a: number, b: number) => number
 /** @throws {never} */
 export declare function get(q: string): Promise<Row[]>
+export declare class Id {
+  readonly s: string
+  /** @throws {BadInput} */
+  constructor(s: string)
+  get size(): number
+}
+/** @throws {never} @rethrows f */
+export declare function each(xs: string[], f: (s: string) => void): void
 ```
-
-**Undecided (pending VIP):** whether exported methods, constructors and function-typed constants also carry `@throws`, and how a function's thrown type is written in a function type that has no JSDoc position (a parameter of type `(s: string) => string`, for example).

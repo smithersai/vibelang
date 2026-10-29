@@ -87,7 +87,7 @@ Method            = a non-static MethodDeclaration
 Getter            = a non-static get accessor
 Field             = PropertyName "?"? ":" Type ";"?
 SchemaDecl        = "export"? "schema" Name ("{" SchemaFields "}" | "=" Type)
-SchemaFields      = Field*
+SchemaFields      = ("readonly"? Field)*
 DataDecl          = "export"? "data" Name TypeParameters? "{" Variant ((";" | LineTerminator) Variant)* ";"? "}"
 Variant           = Name ("{" Field* "}")?
 ```
@@ -135,7 +135,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `catch` outside effect code; `try x catch y`; `e catch y` where `e` is not an Effect; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
-| `break` or `return` in `for concurrent`; `return` in `for try` | [Running Effects](002-running.md) |
+| `break`, `return` or a labeled `continue` leaving `for concurrent`; `return` in `for try` | [Running Effects](002-running.md) |
 | `return value` in a producer | [Running Effects](002-running.md) |
 | an unwrapped call that may throw, or an unwrapped Promise, in effect code | [Failures](003-failures.md#calls-that-may-throw) |
 | a service member with a body, `private` or `protected`, or a `static` other than `key` and `defaultValue` | [Services](005-services.md#static-rules) |
@@ -203,7 +203,7 @@ When the compiler implements VIP-N:
 `setTimeout` does not rethrow, because it stores the callback. A library declares rethrowing with `@rethrows <param>`:
 
 ```ts
-/** @rethrows f */
+/** @throws {never} @rethrows f */
 export declare function each<T>(xs: readonly T[], f: (x: T) => void): void
 ```
 
