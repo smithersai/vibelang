@@ -1,7 +1,7 @@
 // Chapter 13. Which functions compile to plain JavaScript.
 
-abstract class Settings {
-  abstract scale(): Effect<number, never, never>
+service Settings {
+  scale(): Effect<number, never, never>
 }
 
 const order: string[] = []

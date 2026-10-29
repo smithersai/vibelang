@@ -10,12 +10,12 @@ interface User {
   subscribed: boolean
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
-abstract class Mailer {
-  abstract send(to: string, body: string): Effect<void, MailError, never>
+service Mailer {
+  send(to: string, body: string): Effect<void, MailError, never>
 }
 
 // welcome from Chapter 1, used by notifyAll and welcomeTraced.

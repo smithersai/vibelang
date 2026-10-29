@@ -24,7 +24,7 @@ export const half = effect (n: number): number!RangeError => {
   return n / 2
 }
 
-export effect function within(): number!never {
+export effect function within(): number!never!Scope {
   try Effect.addFinalizer(() => Effect.void)
   return 1
 }

@@ -165,12 +165,12 @@ func renderExec(e edit) (text string, keep bool) {
 			return serviceShapeBaseOpen(base, name), true
 		case partClose:
 			if base == "reference" {
-				return ">(" + strconv.Quote(key) + ", () => " + name + ".default)", true
+				return ">(" + strconv.Quote(key) + ", () => " + name + ".defaultValue())", true
 			}
 			return ">(" + strconv.Quote(key) + ")", true
 		}
 		if base == "reference" {
-			return helperRef("$reference") + "<" + name + ">(" + strconv.Quote(key) + ", () => " + name + ".default)", true
+			return helperRef("$reference") + "<" + name + ">(" + strconv.Quote(key) + ", () => " + name + ".defaultValue())", true
 		}
 		return helperRef("$service") + "<" + name + ">(" + strconv.Quote(key) + ")", true
 	case editControl:

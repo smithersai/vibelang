@@ -47,3 +47,11 @@ A call runs where it stands; only a function literal defers it. Write `retry(() 
 - A rewrite you make by hand that a mechanical rule could make is a codemod gap: record it with its pattern, before and after, so `vibelang --fix` can learn it. The flow's README lists the known gaps; do not record those again.
 - A VibeLang bug or missing feature is an issue: record it with the smallest source that shows it. Never work around it with a cast, `any`, a hatch or a `module` block; leave the file `.ts`.
 - A lesson about idiomatic VibeLang that this context did not teach is an idiom entry; it becomes a line of this file.
+
+## VIP-3: Effect type aliases
+
+`A!E!R` is exactly `Effect<A, E, R>`. Every omitted slot means `never`, including on a function with a body. Preserve inferred requirements by writing them explicitly, or leave out the entire annotation when its inferred type is identical. Run `vibelang --fix` to migrate old omitted requirements.
+
+## VIP-9: Service declarations
+
+Use only `service Name { … }` for services; abstract classes remain ordinary classes. Preserve existing runtime identities with `static readonly key = "…"`. A reference default is `static readonly defaultValue = () => shape`, typed `() => Name.Shape`; migrate `default` by wrapping its value in a thunk and changing reads to `Name.defaultValue()`. Implementations have type `Name.Shape`, while `Name` is the identifier in `R`.

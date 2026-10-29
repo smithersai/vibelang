@@ -75,7 +75,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 ## Idioms
 
 - Errors: an `error` per failure, `throw` to fail, `x catch fallback` for a default, `match` to choose: `error-management/014-expected-errors`, `error-management/016-fallback`, `error-management/017-matching`.
-- Services: `service` declarations, `Layer.effect(S, effect { … })`, `provide` once around `main`: `requirements-management/025-services`, `requirements-management/027-layers`.
+- Services: only `service` declarations (abstract classes are ordinary); `static readonly key = "app/Users"` overrides the derived key, and `static readonly defaultValue = () => shape` supplies a `Context.Reference` default checked as `() => Users.Shape`; `Layer.effect(S, effect { … })`, `provide` once around `main`: `requirements-management/025-services`, `requirements-management/027-layers`.
 - Retries and timeouts: pass the Effect to `retry` and `timeout`, or pipe it: `error-management/018-retrying`, `error-management/019-timing-out`.
 - Concurrency: `try.all` and its siblings take arrays; for an object use `try all({ user: load() }, { concurrency: "unbounded" })`; the `fork` forms and `join`, `for concurrent`: `concurrency/007-basic-concurrency`, `concurrency/047-fibers`.
 - Resources: `scoped` and `acquireRelease`: `resource-management/029-introduction`.

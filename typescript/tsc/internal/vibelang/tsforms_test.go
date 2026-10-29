@@ -45,13 +45,12 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		{"local struct", 4832, "export function decode(value: unknown) {\n  const Local = Schema.Struct({ value: Schema.String })\n  return Schema.decodeUnknownEffect(Local)(value)\n}", "export function decode(value: unknown) {\n  schema Local { value: string }\n  return Schema.decodeUnknownEffect(Local)(value)\n}"},
 		// EK4833 (D287)
 		{"full contract", 4833, `export function load(): Effect.Effect<number, never, never> { return 1 }`, `export function load(): number!! { return 1 }`},
-		{"never dependencies in a body's return", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone, never> { return 1 }", "error Gone\nexport function load(): number!Gone! { return 1 }"},
-		{"inferred dependencies", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone, infer R> { return 1 }", "error Gone\nexport function load(): number!Gone { return 1 }"},
+		{"never dependencies in a body's return", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone, never> { return 1 }", "error Gone\nexport function load(): number!Gone { return 1 }"},
 		{"parameter", 4833, `export function run(program: Effect.Effect<number>): number!! { return program() }`, `export function run(program: number!!): number!! { return program() }`},
 		{"union member", 4833, `export type Maybe = Effect.Effect<number> | undefined`, `export type Maybe = (number!!) | undefined`},
 		{"function slot", 4833, `export type Make = Effect.Effect<() => number>`, `export type Make = (() => number)!!`},
 		{"partial contract on a body", 4833, `export function load(): Effect.Effect<number> { return 1 }`, `export function load(): number!! { return 1 }`},
-		{"partial contract with errors on a body", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone> { return 1 }", "error Gone\nexport function load(): number!Gone! { return 1 }"},
+		{"partial contract with errors on a body", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone> { return 1 }", "error Gone\nexport function load(): number!Gone { return 1 }"},
 		// EK4834 (D288)
 		{"succeed in a return", 4834, "export function find(id: number) {\n  if (id === 0) throw new Error(\"no\")\n  return Effect.succeed(\"Ada\")\n}", "export function find(id: number) {\n  if (id === 0) throw new Error(\"no\")\n  return \"Ada\"\n}"},
 		{"fail in a return", 4834, "error Gone\nexport function find(id: number) {\n  if (id === 0) return Effect.fail(new Gone())\n  return 1\n}", "error Gone\nexport function find(id: number) {\n  if (id === 0) throw new Gone()\n  return 1\n}"},
@@ -181,6 +180,7 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 		{"struct with an annotation", `export const Named = Schema.Struct({ id: Schema.String }).annotate({ identifier: "Named" })`, 4832, ""},
 		{"struct whose name is another type", "type Point = { x: number }\nexport const Point = Schema.Struct({ x: Schema.Number })", 4832, ""},
 		{"prelude spelling", `export type Load = (id: string) => Effect<string, never, never>`, 4833, ""},
+		{"inferred requirements", `export function load(): Effect.Effect<number, never, infer R> { return 1 }`, 4833, ""},
 		{"inferred errors", `export function load(): Effect.Effect<number, infer E, never> { return 1 }`, 4833, ""},
 		{"succeed passed by name", `export function patient() { return retry(Effect.succeed(1), Schedule.recurs(1)) }`, 4834, ""},
 		{"succeed of an Effect", "const inner: Effect.Effect<number> = Effect.sync(() => 1)\nexport function outer() { return Effect.succeed(inner) }", 4834, ""},

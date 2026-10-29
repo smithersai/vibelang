@@ -107,7 +107,7 @@ var projectionCases = []struct {
 
 	{
 		name:    "a service keeps multiline empty channels around interleaved statics",
-		source:  "export abstract class Counter {\n abstract increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n abstract read(): number!!\n}",
+		source:  "export service Counter {\n increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n read(): number!!\n}",
 		virtual: "export interface Counter {\n increment(): Effect.Effect<void, never, never>\n read(): Effect.Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Counter\" } export abstract class Counter extends $service<Counter>(\"app/src/main#Counter\") { static readonly layer = Layer.succeed(Counter, { increment: () => { return $gen(function* () {})}, read: () => $gen(function* () { return 2 }) })\n \n}",
 	},
 
@@ -410,9 +410,9 @@ var projectionCases = []struct {
 	},
 
 	{
-		name:    "omitted dependencies of a contract are inferred (D57)",
+		name:    "omitted dependencies of a contract are never (VIP-3)",
 		source:  "function find(id: string): string!NotFound {\n  return id\n}\n",
-		virtual: "function find(id: string) { return $contract<string, NotFound, $Infer>()($gen(function* () {\n  return id\n}))}\n",
+		virtual: "function find(id: string): Effect.Effect<string, NotFound, never> { return $gen(function* () {\n  return id\n})}\n",
 	},
 	{
 		name:    "a plain return annotation keeps a plain function (L2)",
@@ -456,14 +456,14 @@ var projectionCases = []struct {
 		virtual: "interface Clock {\n  now(): Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Clock\" } abstract class Clock extends $service<Clock>(\"app/src/main#Clock\") {\n  static readonly zero = 0\n}\n",
 	},
 	{
-		name:    "a service without members is an abstract class",
+		name:    "a service without members is still a key (VIP-9)",
 		source:  "service Empty {}\n",
-		virtual: "abstract class Empty {}\n",
+		virtual: "interface Empty { readonly \"~vibelang/service\"?: \"app/src/main#Empty\" } abstract class Empty extends $service<Empty>(\"app/src/main#Empty\") {}\n",
 	},
 	{
 		name:    "a service with a static default is a reference (D40)",
-		source:  "abstract class Flags {\n  abstract readonly beta: boolean\n  static readonly default: Flags = { beta: true }\n}\n",
-		virtual: "interface Flags {\n  readonly beta: boolean; readonly \"~vibelang/service\"?: \"app/src/main#Flags\" } abstract class Flags extends $reference<Flags>(\"app/src/main#Flags\") {\n  static readonly default: Flags = { beta: true }\n}\n",
+		source:  "service Flags {\n  readonly beta: boolean\n  static readonly defaultValue = () => ({ beta: true })\n}\n",
+		virtual: "interface Flags {\n  readonly beta: boolean; readonly \"~vibelang/service\"?: \"app/src/main#Flags\" } abstract class Flags extends $reference<Flags>(\"app/src/main#Flags\") {\n  static readonly defaultValue = () => ({ beta: true })\n}\n",
 	},
 	{
 		name:    "a service of any shape is a brand and a key for its shape (D281)",
@@ -472,8 +472,8 @@ var projectionCases = []struct {
 	},
 	{
 		name:    "a service of any shape with a static default is a reference to its shape (D281, D40)",
-		source:  "service Version: number { static readonly default: number = 4 }\n",
-		virtual: "interface Version { readonly \"~vibelang/service\"?: \"app/src/main#Version\" } abstract class Version extends $reference<number>(\"app/src/main#Version\") { static readonly default: number = 4 }\n",
+		source:  "service Version: number { static readonly defaultValue = () => 4 }\n",
+		virtual: "interface Version { readonly \"~vibelang/service\"?: \"app/src/main#Version\" } abstract class Version extends $reference<number>(\"app/src/main#Version\") { static readonly defaultValue = () => 4 }\n",
 	},
 	{
 		name:    "methods of a class that implements a service are Effect functions (D92)",
@@ -936,7 +936,7 @@ func TestCorpusPlans(t *testing.T) {
 // executable rendering writes, and a block that is a Scope region of its own.
 func TestExecutableEdits(t *testing.T) {
 	t.Parallel()
-	source := "control Approval { approve(request: string, ...notes: string[]): boolean!! }\nabstract class Flags { abstract readonly beta: boolean; static readonly default: Flags = { beta: true } }\nfunction f() {\n  g(1)\n  {\n    using r = acquire()\n  }\n}\n"
+	source := "control Approval { approve(request: string, ...notes: string[]): boolean!! }\nservice Flags { readonly beta: boolean; static readonly defaultValue = () => ({ beta: true }) }\nfunction f() {\n  g(1)\n  {\n    using r = acquire()\n  }\n}\n"
 	p := lower(source, testContext)
 	var bases, controls [][]string
 	scopes := 0
@@ -965,7 +965,7 @@ func TestExecutableEdits(t *testing.T) {
 // static default as a reference's.
 func TestExecutableServiceShape(t *testing.T) {
 	t.Parallel()
-	source := "service Prefix: string\nservice Version: number { static readonly default: number = 4 }\n"
+	source := "service Prefix: string\nservice Version: number { static readonly defaultValue = () => 4 }\n"
 	p := lower(source, testContext)
 	var texts []string
 	for _, e := range p.plan.edits {
@@ -977,7 +977,7 @@ func TestExecutableServiceShape(t *testing.T) {
 	}
 	assert.DeepEqual(t, texts, []string{
 		helperRef("$service") + "<Prefix, ", `>("app/src/main#Prefix")`,
-		helperRef("$reference") + "<", `>("app/src/main#Version", () => Version.default)`,
+		helperRef("$reference") + "<", `>("app/src/main#Version", () => Version.defaultValue())`,
 	})
 }
 

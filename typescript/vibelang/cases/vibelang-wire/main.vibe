@@ -12,20 +12,20 @@ interface User {
   name: string
 }
 
-abstract class Config {
-  abstract readonly url: string
+service Config {
+  readonly url: string
 }
 
-abstract class Database {
-  abstract query(table: string, key: string): Effect.Effect<ReadonlyArray<string>, never, never>
+service Database {
+  query(table: string, key: string): Effect.Effect<ReadonlyArray<string>, never, never>
 }
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
 }
 
-abstract class Orders {
-  abstract count(userId: string): Effect.Effect<number, never, never>
+service Orders {
+  count(userId: string): Effect.Effect<number, never, never>
 }
 
 const events: string[] = []

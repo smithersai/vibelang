@@ -1,16 +1,17 @@
 // expect: EK2102
 // A function that passes a call of itself by name reads its own E and R
 // while its callees are being found. Where its contract leaves R to
-// inference, that read cannot be exact, so the contract must write it.
+// inference with infer R, that read cannot be exact, so the contract must
+// write it.
 declare const guarded: (body: number!unknown) => number!unknown
 
-export effect function healthy(index: number): number!unknown {
+export effect function healthy(index: number): Effect<number, unknown, infer R> {
   if (index < 0) return 1
   return try guarded(healthy(index - 1))
 }
 
 export effect function wrap(body: number!unknown): number!unknown {
-  const layer = effect (index: number): number!unknown => {
+  const layer = effect (index: number): Effect<number, unknown, infer R> => {
     if (index < 0) return try body()
     return try guarded(layer(index - 1))
   }

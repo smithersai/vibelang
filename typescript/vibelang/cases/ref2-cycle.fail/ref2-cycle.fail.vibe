@@ -1,12 +1,12 @@
 // expect: EK3203
 // Reference program 2: providers form a cycle, CacheLive -> Database -> DatabaseLive -> Cache -> CacheLive.
 
-abstract class Cache {
-  abstract get(key: string): Effect<string, never, never>
+service Cache {
+  get(key: string): Effect<string, never, never>
 }
 
-abstract class Database {
-  abstract query(sql: string): Effect<string, never, never>
+service Database {
+  query(sql: string): Effect<string, never, never>
 }
 
 const CacheLive = Layer.effect(Cache, effect {

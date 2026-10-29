@@ -13,7 +13,7 @@ import (
 func TestStockProjectionGoldens(t *testing.T) {
 	cases := map[string]string{
 		"imports": `import { name } from "./names.ts"; export { name } from "./names.ts"; export function value() { return name }`,
-		"service": `import { Effect } from "effect"; abstract class Names { abstract lookup(id: number): Effect<string, never, never> } export const live = Layer.succeed(Names, { lookup(id) { return String(id) } })`,
+		"service": `import { Effect } from "effect"; service Names { lookup(id: number): Effect<string, never, never> } export const live = Layer.succeed(Names, { lookup(id) { return String(id) } })`,
 		"handler": `control Log { write(message: string, level?: string): void!! } export function scenario() { try { Log.write("x"); return 42 } handle Log.write(message) { resume() } }`,
 	}
 	for name, source := range cases {

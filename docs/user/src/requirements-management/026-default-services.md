@@ -75,7 +75,7 @@ effect function defaultLabel(id: number) {
 // Output: Order 17
 ```
 
-A service with `static readonly defaultValue = () => implementation` compiles to a `Context.Reference`, so using it adds nothing to `R`; override it with `Effect.provideService` as above. Effect's own `Context.Reference(key, { defaultValue })` works unchanged and returns a key as data.
+A service with `static readonly defaultValue = () => implementation` compiles to a `Context.Reference`, so using it adds nothing to `R`; override it with `Effect.provideService` as above. Effect's own `Context.Reference(key, { defaultValue })` works unchanged and returns a key as data. A service that declares `static readonly default` draws `EK4855`; its fix, which `vibelang --fix` applies, renames it to `defaultValue` and wraps its value in a thunk.
 
 ## Reproducible random computations
 

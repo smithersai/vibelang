@@ -4,8 +4,8 @@
 // the alias. The internal name of a type literal never reaches a message.
 error Gone { path: string }
 
-abstract class Audit {
-  abstract record(entry: string): Effect.Effect<void, never, never>
+service Audit {
+  record(entry: string): Effect.Effect<void, never, never>
 }
 
 export const literal: { exists: (path: string) => boolean!! } = {

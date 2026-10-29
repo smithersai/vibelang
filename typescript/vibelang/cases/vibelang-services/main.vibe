@@ -9,17 +9,17 @@ interface User {
   name: string
 }
 
-abstract class Directory {
-  abstract lookup(id: string): Effect.Effect<User | undefined, never, never>
+service Directory {
+  lookup(id: string): Effect.Effect<User | undefined, never, never>
 }
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
 }
 
-abstract class Settings {
-  abstract readonly greeting: string
-  abstract shout(text: string): Effect.Effect<string, never, never>
+service Settings {
+  readonly greeting: string
+  shout(text: string): Effect.Effect<string, never, never>
 
   static readonly layer = Layer.succeed(Settings, {
     greeting: "Welcome",

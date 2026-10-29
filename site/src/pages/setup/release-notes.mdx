@@ -80,6 +80,9 @@ The fixes keep a rewrite only when it adds no compiler error.
 | `await.all [fiber]` or `await.race [ready]`, an element that is a `Fiber` or a `Deferred` | EK4609 or EK4610: an element's result is its value, never waited for again. Write `join fiber` or `ready.await()` as the element. The operation no longer interrupts a fiber you hand it when another element fails or wins; the fiber's region interrupts it when the region ends. |
 | `await.all exits`, an operand that is not a literal whose element type is an `Exit`, a `Config`, or a union with a member that is not a program | EK4603: such an operand runs each element by its static type, and an `Exit` is data. It previously ran each `Exit` as an Effect. Give the elements a program type, or write an array literal, whose elements are programs by syntax. |
 | A `schema` field typed `unknown`, `any`, `never`, `object` or `void`, such as `schema Event { payload: unknown }` | EK2109 (VIP-15): among keyword types only primitives map to a schema. Name the schema instead, `payload: Schema.Unknown`; `--fix` writes it. |
+| An abstract class used as a service | EK4854 (VIP-9): write a `service` declaration. `--fix` removes the class spelling and preserves its members and key. Abstract classes now have ordinary TypeScript semantics. |
+| `static readonly default = shape` on a service | EK4855 (VIP-9): write `static readonly defaultValue = () => shape`. `--fix` renames the member, wraps its type and value in a thunk, and updates value reads. |
+| `A!E` on a function with a body inferred its requirements | EK4853 (VIP-3): every omitted slot is `never`, exactly as in `Effect<A, E, R>`. `--fix` writes the requirements previously inferred from the body. Leave out the annotation to infer the whole contract. |
 
 Direct platform calls such as `console.log` and `process.env.NAME` were
 already EK4402 in 0.0.10; holding their values and importing Node values
@@ -460,6 +463,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiling a project of several `.vibe` files with declarations on could stop with "fatal error: concurrent map read and map write", because the declaration files of different files were written in parallel over shared state. Each file now works from its own copy, and the compiler finishes.
 - An unfinished top-level `await` statement in a module, such as `export {}; await + f(const 0 await !x`, parsed its last tokens twice, into two overlapping statements. The parser now keeps one.
 - Formatting a file twice could indent a line again when the first format moved a statement onto a line of its own and the statement continued on the next line: a call's arguments, as in `{{0!\n("")}}`, a binary operator, as in `{{x\n+ y}}`, or a `%` operand. The first format now gives the final indentation.
+- Abstract classes could silently become services, and service defaults used a different contract from Effect; services now use `service` declarations and `defaultValue` thunks checked as `() => Shape`.
+- The same `A!E` annotation meant different types on a function and a service member; omitted slots now mean `never` everywhere.
 
 ### Known bugs
 
@@ -610,7 +615,7 @@ These bugs were found and confirmed and are being fixed; please don't re-report 
 
 #### Services and layers
 
-- A service's `static readonly default` is not checked against its declared
+- A service's `static readonly defaultValue` is not checked against its declared
   shape or method contracts. Wrong value types, hidden failures or plain
   methods where Effect methods are required can compile and then fail or
   return the wrong type. Use an explicitly checked provider such as
@@ -815,19 +820,10 @@ listed with an upgrade step.
   function computational(n) { sleep("1 millis"); return foreignRisky(n) }
   ```
 
-- **Omitted contract channels do not have one meaning everywhere.**
-  `A!E` on a function with a body infers R, while `Effect<A, E>` uses
-  TypeScript's default of `never`; an omitted R in a callback type also
-  means `never`. Completing an error contract can also change whether callers
-  see a broad declared error family or narrower inferred errors. Today,
-  spell all three channels, using `infer` where inference is intentional,
-  and check emitted declarations after extracting a signature.
-
-  ```vibe
-  // fragment
-  function inferred(): number!Bad { return Store.read() } // R inferred
-  function closed(): Effect<number, Bad> { return Store.read() } // R = never
-  ```
+- **Completing an error contract can change what callers see.** Callers
+  of a function with a written E see its declared error family, while
+  callers of one without a contract see the narrower inferred errors. Check
+  emitted declarations after extracting a signature.
 
 
 - **Timeouts and races can discard cleanup failures.** The promise that

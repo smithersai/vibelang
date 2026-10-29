@@ -5,15 +5,15 @@
 import { Effect } from "effect"
 
 export function first() {
-  abstract class Local {
-    abstract value(): Effect.Effect<number, never, never>
+  service Local {
+    value(): Effect.Effect<number, never, never>
   }
   return Local
 }
 
 export function second() {
-  abstract class Local {
-    abstract value(): Effect.Effect<string, never, never>
+  service Local {
+    value(): Effect.Effect<string, never, never>
   }
   return Local
 }

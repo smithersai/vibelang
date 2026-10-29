@@ -5,8 +5,8 @@
 import { Effect, Layer } from "effect"
 import { wire } from "vibelang-runtime"
 
-abstract class Mailer {
-  abstract send(to: string): Effect.Effect<void, never, never>
+service Mailer {
+  send(to: string): Effect.Effect<void, never, never>
 }
 
 class Offline extends TaggedError("Offline")<{}> {}

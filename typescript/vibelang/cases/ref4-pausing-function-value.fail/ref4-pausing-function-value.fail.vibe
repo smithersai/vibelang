@@ -9,8 +9,8 @@ interface User {
   name: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
 effect function findName(id: string) {

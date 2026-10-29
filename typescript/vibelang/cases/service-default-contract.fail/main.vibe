@@ -5,24 +5,24 @@
 // service's type; with one, the annotation must fit the service.
 export service Flags {
   enabled: boolean
-  static readonly default = { enabled: "not a boolean" }
+  static readonly defaultValue = () => ({ enabled: "not a boolean" })
 }
 
 export service Prefix: string {
-  static readonly default = 42
+  static readonly defaultValue = () => 42
 }
 
 export service Version: number {
-  static readonly default: string = "4"
+  static readonly defaultValue: () => string = () => "4"
 }
 
 export service Reader {
   read(): string!!
-  static readonly default = {
+  static readonly defaultValue = () => ({
     effect read() {
       throw "hidden"
     }
-  }
+  })
 }
 
 export effect function flag(): boolean!! {

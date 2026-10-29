@@ -62,7 +62,7 @@ func (p *projector) serviceShapeDeclaration(node *ast.Node) {
 			return
 		}
 	}
-	key := p.ctx.ModuleKey + "#" + name.Text()
+	key := p.serviceKey(node)
 	headStart := p.tokenStart(node)
 	var kept []string
 	if modifiers := node.Modifiers(); modifiers != nil {
@@ -76,7 +76,7 @@ func (p *projector) serviceShapeDeclaration(node *ast.Node) {
 	}
 	p.plan.replace(scanner.SkipTrivia(p.text, headStart), name.Pos(), "interface")
 	base := "service"
-	if hasStaticDefault(node) {
+	if hasDefaultValue(node) {
 		base = "reference"
 	}
 	shapeStart := p.tokenStart(shape)

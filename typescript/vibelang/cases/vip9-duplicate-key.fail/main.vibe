@@ -1,0 +1,3 @@
+// expect: EK3001 EK3001
+service First { static readonly key = "app/shared"; value: number }
+service Second { static readonly key = "app/shared"; value: number }

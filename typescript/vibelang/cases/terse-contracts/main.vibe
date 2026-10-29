@@ -31,7 +31,7 @@ effect function noDependencies(n: number): number!Timeout! {
   return n
 }
 
-effect function inferred(id: string): string!NotFound {
+effect function inferred(id: string): string!NotFound!Users {
   return try Users.find(id)
 }
 

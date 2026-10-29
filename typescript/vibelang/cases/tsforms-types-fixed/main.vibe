@@ -1,17 +1,17 @@
 // expect-result: {"loaded":3,"checked":"ok","held":"held","callback":4,"maybe":5,"nested":6,"kept":7}
 // An Effect type written with its type arguments draws EK4833 (D287); its
 // fix writes the ! form, which the parser expands to the same type. In a
-// return annotation with a body, a ! form without dependencies infers them,
-// so never is written as an empty slot there. The directive keeps one.
+// return annotation too, an omitted slot is never. Explicit infer channels
+// keep their long form. The directive keeps one qualified spelling.
 // tsforms-types-fixed is what vibelang --fix writes.
 error Missing { id: string }
 
-function load(id: string): number!Missing! {
+function load(id: string): number!Missing {
   if (id === "") throw new Missing({ id })
   return id.length
 }
 
-function checked(program: number!Missing): string!never {
+function checked(program: number!Missing): Effect.Effect<string, never, infer R> {
   const n = program() catch -1
   return n >= 0 ? "ok" : "missing"
 }

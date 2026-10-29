@@ -14,20 +14,20 @@ interface User {
   email: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
-abstract class Mailer {
-  abstract send(to: string, body: string): Effect<void, MailError, never>
+service Mailer {
+  send(to: string, body: string): Effect<void, MailError, never>
 }
 
-abstract class Database {
-  abstract query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<User>, DbError, never>
+service Database {
+  query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<User>, DbError, never>
 }
 
-abstract class Config {
-  abstract readonly url: string
+service Config {
+  readonly url: string
 }
 
 const events: string[] = []

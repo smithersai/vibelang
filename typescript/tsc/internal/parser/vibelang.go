@@ -237,9 +237,7 @@ func (p *Parser) vibelangReadonly(modifiers *ast.ModifierList, anchor core.TextR
 //	User!!             Effect.Effect<User, never, never>
 //
 // A slot without a type is never. Dependencies left out entirely, as in
-// User!NotFound, are never too, except in the return annotation of a function
-// with a body, where the slot is `infer R` and the body supplies it (D57;
-// parseReturnType calls vibelangInferOmitted). Unions bind inside a slot:
+// User!NotFound, are never too, everywhere (VIP-3). Unions bind inside a slot:
 // User!NotFound | Timeout!Db fails with NotFound | Timeout. A slot that starts
 // with { is empty, because in a declaration the { starts the body; put an
 // object type in a slot in parentheses. A slot's type starts on the line of
@@ -274,12 +272,6 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	name := p.vibelangSynthesized(p.factory.NewQualifiedName(module, member), bang)
 	arguments := p.newNodeList(span, []*ast.Node{result, errors, dependencies})
 	reference := p.vibelangSpanning(p.factory.NewTypeReferenceNode(name, arguments), span)
-	if omitted {
-		if p.vibelangOmittedDependencies == nil {
-			p.vibelangOmittedDependencies = map[*ast.Node]bool{}
-		}
-		p.vibelangOmittedDependencies[reference] = true
-	}
 	return reference
 }
 
@@ -316,25 +308,6 @@ func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 	}
 	p.contextFlags = saveContextFlags
 	return typeNode
-}
-
-// vibelangInferOmitted turns dependencies left out of returnType into `infer R`
-// when returnType is the whole return annotation of a function whose body
-// follows, so the body supplies them.
-func (p *Parser) vibelangInferOmitted(returnType *ast.TypeNode) {
-	if returnType == nil || !p.vibelangOmittedDependencies[returnType] {
-		return
-	}
-	if p.token != ast.KindOpenBraceToken && p.token != ast.KindEqualsGreaterThanToken {
-		return
-	}
-	arguments := returnType.TypeArgumentList()
-	slot := arguments.Nodes[2]
-	name := p.vibelangSynthesized(p.factory.NewIdentifier("R"), slot.Loc)
-	parameter := p.vibelangSynthesized(p.factory.NewTypeParameterDeclaration(nil, name, nil, nil, nil), slot.Loc)
-	infer := p.vibelangSynthesized(p.factory.NewInferTypeNode(parameter), slot.Loc)
-	infer.Parent = returnType
-	arguments.Nodes[2] = infer
 }
 
 // parseServiceDeclaration parses

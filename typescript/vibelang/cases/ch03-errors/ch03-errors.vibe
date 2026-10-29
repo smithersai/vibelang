@@ -11,16 +11,16 @@ interface User {
 
 const guest: User = { id: "0", name: "Guest" }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
-abstract class Reports {
-  abstract build(id: string): Effect<string, ReportError, never>
+service Reports {
+  build(id: string): Effect<string, ReportError, never>
 }
 
-abstract class Metrics {
-  abstract increment(name: string): Effect<void, never, never>
+service Metrics {
+  increment(name: string): Effect<void, never, never>
 }
 
 // Throwing a typed error

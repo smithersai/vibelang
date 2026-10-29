@@ -5,9 +5,9 @@
 // (D232), named after the callee's parameter. The other fix is trusted (D249).
 import { type Shelf, sortTitles } from "./legacy.ts"
 
-abstract class Todos {
-  abstract list(): Effect<ReadonlyArray<{ title: string }>, never, never>
-  abstract shelf(): Effect<Shelf, never, never>
+service Todos {
+  list(): Effect<ReadonlyArray<{ title: string }>, never, never>
+  shelf(): Effect<Shelf, never, never>
 }
 
 export effect function sorted() {

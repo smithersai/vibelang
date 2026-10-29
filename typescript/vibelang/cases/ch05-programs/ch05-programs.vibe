@@ -19,12 +19,12 @@ interface SyncReport {
   items: number
 }
 
-abstract class Inventory {
-  abstract sync(store: Store): Effect<SyncReport, SyncError, never>
+service Inventory {
+  sync(store: Store): Effect<SyncReport, SyncError, never>
 }
 
-abstract class Http {
-  abstract listen(port: number): Effect<string, never, never>
+service Http {
+  listen(port: number): Effect<string, never, never>
 }
 
 let fetchCalls = 0

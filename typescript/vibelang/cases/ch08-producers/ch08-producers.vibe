@@ -7,8 +7,8 @@ interface LineFile {
   readLine(): Effect<string | undefined, IOError, never>
 }
 
-abstract class Files {
-  abstract open(path: string): Effect<LineFile, IOError, Scope.Scope>
+service Files {
+  open(path: string): Effect<LineFile, IOError, Scope.Scope>
 }
 
 const events: string[] = []

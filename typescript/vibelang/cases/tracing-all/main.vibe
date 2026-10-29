@@ -4,8 +4,8 @@
 // a callback, runs in its caller's span.
 import { Cause } from "effect"
 
-abstract class Greeter {
-  abstract greet(): Effect<string, Cause.NoSuchElementError, never>
+service Greeter {
+  greet(): Effect<string, Cause.NoSuchElementError, never>
 }
 
 class Hello implements Greeter {

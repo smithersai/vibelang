@@ -48,7 +48,7 @@ export function find(id: string): Effect.Effect<string, NotFound, never> {
 const fixed = `
 export error NotFound { id: string }
 
-export function find(id: string): string!NotFound! {
+export function find(id: string): string!NotFound {
   if (id === "") throw new NotFound({ id })
   return id
 }

@@ -11,12 +11,12 @@ export interface User {
   name: string
 }
 
-export abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
+export service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
 }
 
-export abstract class Settings {
-  abstract readonly greeting: string
+export service Settings {
+  readonly greeting: string
 
   static readonly layer = Layer.succeed(Settings, { greeting: "Welcome" })
 }
@@ -36,12 +36,12 @@ export const UsersTest = Layer.succeed(Users, new UsersInMemory())
 
 // Two services with the same members are different types, so providing one
 // never satisfies the other.
-abstract class Primary {
-  abstract query(sql: string): Effect.Effect<string, never, never>
+service Primary {
+  query(sql: string): Effect.Effect<string, never, never>
 }
 
-abstract class Replica {
-  abstract query(sql: string): Effect.Effect<string, never, never>
+service Replica {
+  query(sql: string): Effect.Effect<string, never, never>
 }
 
 type Collapsed = [Primary] extends [Replica] ? true : [Replica] extends [Primary] ? true : false

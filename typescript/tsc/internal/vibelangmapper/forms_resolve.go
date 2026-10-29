@@ -2456,10 +2456,11 @@ func (r *Resolver) serviceClassOf(id *ast.Node) *ast.Node {
 	return nil
 }
 
-// formsIsServiceClass reports whether node declares a service or control: an
-// abstract class with no type parameters, no implements clause, no extends
-// clause other than Control, and only abstract instance members (D1, D128).
-// The parser writes service and control declarations in this shape.
+// formsIsServiceClass reports whether node declares a service or control: a
+// service declaration (VIP-9), or a D1 abstract class that extends Control,
+// with no type parameters, no implements clause, and only abstract instance
+// members (D128). The parser writes service and control declarations in this
+// shape; another abstract class is an ordinary class.
 func formsIsServiceClass(node *ast.Node) bool {
 	if node == nil || node.Kind != ast.KindClassDeclaration || node.Name() == nil || node.TypeParameters() != nil {
 		return false
@@ -2471,6 +2472,8 @@ func formsIsServiceClass(node *ast.Node) bool {
 		if e := extends.Expression(); !ast.IsIdentifier(e) || e.Text() != "Control" {
 			return false
 		}
+	} else if !isServiceKeywordClass(node) {
+		return false
 	}
 	members := 0
 	for _, m := range node.Members() {
@@ -2482,7 +2485,7 @@ func formsIsServiceClass(node *ast.Node) bool {
 		}
 		members++
 	}
-	return members > 0
+	return members > 0 || isServiceKeywordClass(node)
 }
 
 // formsServiceShape returns the written shape of a service class declared

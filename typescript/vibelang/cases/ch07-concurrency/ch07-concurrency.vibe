@@ -17,8 +17,8 @@ interface Server {
   awaitShutdown(): Effect<string, never, never>
 }
 
-abstract class Http {
-  abstract listen(port: number): Effect<Server, never, Scope.Scope>
+service Http {
+  listen(port: number): Effect<Server, never, Scope.Scope>
 }
 
 const events: string[] = []

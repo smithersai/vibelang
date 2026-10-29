@@ -3,8 +3,8 @@
 // with using cannot be the plain function that Array.prototype.map or
 // Effect.sync calls, whether its using holds a TypeScript Disposable or
 // acquires an Effect resource.
-abstract class Pool {
-  abstract acquire(): Effect<{ id: number }, never, Scope>
+service Pool {
+  acquire(): Effect<{ id: number }, never, Scope>
 }
 
 function timer(name: string) {

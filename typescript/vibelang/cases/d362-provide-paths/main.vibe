@@ -8,7 +8,7 @@ const RightLive = Layer.succeed(Right, { right: 3 })
 
 service Default {
   next(value: number): number!!
-  static readonly default = { effect next(value) { return value + 1 } }
+  static readonly defaultValue = () => ({ effect next(value) { return value + 1 } })
 }
 
 effect function common(flag: boolean): number!! {

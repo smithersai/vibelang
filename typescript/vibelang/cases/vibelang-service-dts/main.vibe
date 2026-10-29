@@ -12,9 +12,9 @@ export interface User {
   name: string
 }
 
-export abstract class Users {
-  abstract find(id: string): Effect.Effect<User, never, never>
-  abstract readonly source: string
+export service Users {
+  find(id: string): Effect.Effect<User, never, never>
+  readonly source: string
 
   static readonly layer = Layer.succeed(Users, {
     find: effect (id: string) => try Effect.succeed({ id, name: "Ada" }),
@@ -22,9 +22,9 @@ export abstract class Users {
   })
 }
 
-export abstract class Flags {
-  abstract readonly beta: boolean
-  static readonly default: Flags.Shape = { beta: true }
+export service Flags {
+  readonly beta: boolean
+  static readonly defaultValue: () => Flags.Shape = () => ({ beta: true })
 }
 
 export effect function greet(id: string) {

@@ -7,12 +7,12 @@ export interface Conn {
 
 export class Down extends TaggedError("Down")<{}> {}
 
-export abstract class Pool {
-  abstract acquire(): Effect<Conn, Down, Scope>
+export service Pool {
+  acquire(): Effect<Conn, Down, Scope>
 }
 
-export abstract class Audit {
-  abstract record(event: string): Effect<void, never, never>
+export service Audit {
+  record(event: string): Effect<void, never, never>
 }
 
 // using: the block's Scope; Pool and Down remain.

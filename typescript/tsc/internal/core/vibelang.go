@@ -33,7 +33,7 @@ var VibeLangAdjustableCodes = []string{
 	"EK4801", "EK4802", "EK4803", "EK4804", "EK4805", "EK4806", "EK4807", "EK4808", "EK4809", "EK4810",
 	"EK4811", "EK4812", "EK4814", "EK4815", "EK4816", "EK4817", "EK4818", "EK4819", "EK4820",
 	"EK4821", "EK4822", "EK4823", "EK4824", "EK4825",
-	"EK4830", "EK4831", "EK4832", "EK4833", "EK4834", "EK4835", "EK4836", "EK4837", "EK4839", "EK4840", "EK4841", "EK4842", "EK4843",
+	"EK4830", "EK4831", "EK4832", "EK4833", "EK4834", "EK4835", "EK4836", "EK4837", "EK4839", "EK4840", "EK4841", "EK4842", "EK4843", "EK4853", "EK4854", "EK4855",
 }
 
 // Equals reports whether o and other hold the same settings.

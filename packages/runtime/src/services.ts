@@ -71,7 +71,7 @@ export type ServiceKey<I, S = I> = (abstract new () => {}) & Context.Service<I, 
 
 /**
  * D40: the static side of a compiled service class that declares
- * `static readonly default` beside other static members: a
+ * `static readonly defaultValue = () => shape` beside other static members: a
  * `Context.Reference` of the service's shape, which needs no provider. One
  * with no other static member declares Effect's own `Context.Reference`
  * (D501).
@@ -87,10 +87,10 @@ export const $service = <I, S = I>(key: string): ServiceKey<I, S> =>
 
 /**
  * D40: the base of a generated service class that declares
- * `static readonly default`. Its static side is an Effect 4
+ * `static readonly defaultValue = () => shape`. Its static side is an Effect 4
  * `Context.Reference`, so a program that uses the service needs no provider:
  * the first lookup without one reads `defaultValue`, which returns the
- * class's `default`.
+ * class's `defaultValue()` result.
  */
 export const $reference = <I>(key: string, defaultValue: () => I): ReferenceKey<I> =>
   Context.Reference<I>(key, { defaultValue }) as any

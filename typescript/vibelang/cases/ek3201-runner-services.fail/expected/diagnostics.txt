@@ -1,5 +1,5 @@
-main.vibe(11,20): warning EK4833
-main.vibe(15,19): warning EK4833
+main.vibe(11,11): warning EK4833
+main.vibe(15,10): warning EK4833
 main.vibe(28,21): error EK3201
 main.vibe(32,19): error EK3201
 main.vibe(34,21): error EK3201

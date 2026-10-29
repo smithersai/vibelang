@@ -8,12 +8,12 @@ interface User {
   name: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
-abstract class Metrics {
-  abstract increment(name: string): Effect<void, never, never>
+service Metrics {
+  increment(name: string): Effect<void, never, never>
 }
 
 const guest: User = { id: "0", name: "guest" }

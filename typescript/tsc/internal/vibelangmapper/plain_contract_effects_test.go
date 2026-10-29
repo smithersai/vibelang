@@ -48,7 +48,7 @@ func TestPlainContractEffectInferred(t *testing.T) {
 func TestPlainContractEffectOperations(t *testing.T) {
 	for _, source := range []string{
 		`export function invalid(): number { log("hello"); return 1 }`,
-		`abstract class Names { abstract lookup(): Effect<string, never, never> }; export function invalid(): number { Names.lookup(); return 1 }`,
+		`service Names { lookup(): Effect<string, never, never> }; export function invalid(): number { Names.lookup(); return 1 }`,
 		`export function invalid(): number { if (true) throw "negative"; Effect.succeed(1); return 1 }`,
 		`export class Example { invalid(): number { Effect.succeed(1); return 1 } }`,
 	} {

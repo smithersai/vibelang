@@ -2,8 +2,8 @@
 // Reference program 2 / D27: wire reads each argument's Layer<Out, E, In> type. An argument whose
 // type does not name its outputs cannot be placed in the graph; compose it with Layer.provide.
 
-abstract class Users {
-  abstract find(id: string): Effect<string, never, never>
+service Users {
+  find(id: string): Effect<string, never, never>
 }
 
 const UsersOpaque: Layer.Any = Layer.succeed(Users, {

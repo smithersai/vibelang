@@ -49,6 +49,14 @@ A call runs where it stands; only a function literal defers it. Write `retry(() 
 - A VibeLang bug or missing feature is an issue: record it with the smallest source that shows it. Never work around it with a cast, `any`, a hatch or a `module` block; leave the file `.ts`.
 - A lesson about idiomatic VibeLang that this context did not teach is an idiom entry; it becomes a line of this file.
 
+## VIP-3: Effect type aliases
+
+`A!E!R` is exactly `Effect<A, E, R>`. Every omitted slot means `never`, including on a function with a body. Preserve inferred requirements by writing them explicitly, or leave out the entire annotation when its inferred type is identical. Run `vibelang --fix` to migrate old omitted requirements.
+
+## VIP-9: Service declarations
+
+Use only `service Name { … }` for services; abstract classes remain ordinary classes. Preserve existing runtime identities with `static readonly key = "…"`. A reference default is `static readonly defaultValue = () => shape`, typed `() => Name.Shape`; migrate `default` by wrapping its value in a thunk and changing reads to `Name.defaultValue()`. Implementations have type `Name.Shape`, while `Name` is the identifier in `R`.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Where it passes a call by name, the call rule above wins.
@@ -125,7 +133,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 ### Idioms
 
 - Errors: an `error` per failure, `throw` to fail, `x catch fallback` for a default, `match` to choose: `error-management/014-expected-errors`, `error-management/016-fallback`, `error-management/017-matching`.
-- Services: `service` declarations, `Layer.effect(S, effect { … })`, `provide` once around `main`: `requirements-management/025-services`, `requirements-management/027-layers`.
+- Services: only `service` declarations (abstract classes are ordinary); `static readonly key = "app/Users"` overrides the derived key, and `static readonly defaultValue = () => shape` supplies a `Context.Reference` default checked as `() => Users.Shape`; `Layer.effect(S, effect { … })`, `provide` once around `main`: `requirements-management/025-services`, `requirements-management/027-layers`.
 - Retries and timeouts: pass the Effect to `retry` and `timeout`, or pipe it: `error-management/018-retrying`, `error-management/019-timing-out`.
 - Concurrency: `try.all` and its siblings take arrays; for an object use `try all({ user: load() }, { concurrency: "unbounded" })`; the `fork` forms and `join`, `for concurrent`: `concurrency/007-basic-concurrency`, `concurrency/047-fibers`.
 - Resources: `scoped` and `acquireRelease`: `resource-management/029-introduction`.

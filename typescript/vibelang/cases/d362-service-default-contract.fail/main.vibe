@@ -4,16 +4,16 @@ service Audit { record(): void!! }
 
 service Flaky {
   read(): number!!
-  static readonly default = {
+  static readonly defaultValue = () => ({
     effect read() { throw new Failed() }
-  }
+  })
 }
 
 service Leaky {
   read(): number!!
-  static readonly default = {
+  static readonly defaultValue = () => ({
     effect read() { try Audit.record(); return 1 }
-  }
+  })
 }
 
 export effect function example() { return try Flaky.read() + try Leaky.read() }

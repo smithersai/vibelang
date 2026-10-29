@@ -19,16 +19,16 @@ interface Row {
 
 // Declaring a service
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
-  abstract rename(id: string, name: string): Effect<void, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
+  rename(id: string, name: string): Effect<void, UserNotFound, never>
 }
 
 const outbox: string[] = []
 
 // D1's static layer idiom: the provider lives on the service class.
-abstract class Mailer {
-  abstract send(to: string, body: string): Effect<void, MailError, never>
+service Mailer {
+  send(to: string, body: string): Effect<void, MailError, never>
 
   static readonly layer = Layer.succeed(Mailer, {
     send: effect (to, body) => {
@@ -37,20 +37,20 @@ abstract class Mailer {
   })
 }
 
-abstract class Database {
-  abstract query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<Row>, DbError, never>
-  abstract execute(sql: string, params: ReadonlyArray<string>): Effect<void, DbError, never>
+service Database {
+  query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<Row>, DbError, never>
+  execute(sql: string, params: ReadonlyArray<string>): Effect<void, DbError, never>
 }
 
-abstract class Config {
-  abstract readonly url: string
+service Config {
+  readonly url: string
 }
 
 // Using a service: Settings() gives the implementation, for value members
 
-abstract class Settings {
-  abstract readonly baseUrl: string
-  abstract scale(): Effect<number, never, never>
+service Settings {
+  readonly baseUrl: string
+  scale(): Effect<number, never, never>
 }
 
 effect function apiUrl(path: string) {

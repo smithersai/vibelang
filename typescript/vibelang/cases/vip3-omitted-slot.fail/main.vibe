@@ -1,0 +1,5 @@
+// expect: EK2002 EK2002 EK2002
+service Input { value: number }
+export function shorthand(): number!never { return Input().value }
+export function empty(): number!! { return Input().value }
+export function longhand(): Effect<number> { return Input().value }

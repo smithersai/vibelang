@@ -33,25 +33,25 @@ interface Entry {
   size: number
 }
 
-abstract class Carts {
-  abstract load(cartId: string): Effect<Cart, CartNotFound, never>
+service Carts {
+  load(cartId: string): Effect<Cart, CartNotFound, never>
 }
 
-abstract class Pricing {
-  abstract quote(cart: Cart): Effect<Quote, PricingDown, never>
+service Pricing {
+  quote(cart: Cart): Effect<Quote, PricingDown, never>
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
-abstract class Mailer {
-  abstract send(to: string, body: string): Effect<void, MailError, never>
+service Mailer {
+  send(to: string, body: string): Effect<void, MailError, never>
 }
 
-abstract class Files {
-  abstract stat(path: string): Effect<Entry, IOError, never>
-  abstract list(path: string): Effect<ReadonlyArray<string>, IOError, never>
+service Files {
+  stat(path: string): Effect<Entry, IOError, never>
+  list(path: string): Effect<ReadonlyArray<string>, IOError, never>
 }
 
 // What the compiler infers

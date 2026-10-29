@@ -75,12 +75,12 @@ func (p *projector) interleavedServiceDeclaration(node *ast.Node) {
 	}
 	at := p.tokenStart(members[first])
 	p.plan.witness(at, moved.String())
-	p.plan.insert(at, "readonly \"~vibelang/service\"?: "+strconv.Quote(p.ctx.ModuleKey+"#"+name)+" } "+exported+"abstract class "+name+" extends ")
+	p.plan.insert(at, "readonly \"~vibelang/service\"?: "+strconv.Quote(p.serviceKey(node))+" } "+exported+"abstract class "+name+" extends ")
 	base := "service"
-	if hasStaticDefault(node) {
+	if hasDefaultValue(node) {
 		base = "reference"
 	}
-	p.plan.markFields(editServiceBase, partWhole, at, at, base, p.ctx.ModuleKey+"#"+name, name)
+	p.plan.markFields(editServiceBase, partWhole, at, at, base, p.serviceKey(node), name)
 	p.plan.insert(at, " { ")
 	for _, member := range members[first : last+1] {
 		if ast.IsStatic(member) {

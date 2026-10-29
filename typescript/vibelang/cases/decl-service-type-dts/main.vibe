@@ -15,7 +15,7 @@ export service Search: SearchApi {
 export service Prefix: string
 
 export service Version: number {
-  static readonly default: number = 4
+  static readonly defaultValue: () => number = () => 4
 }
 
 export effect function greet(query: string) {

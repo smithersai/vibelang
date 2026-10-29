@@ -2,8 +2,8 @@
 // comment after it outside the block, and the file keeps its last comment.
 import { Effect } from "effect"
 
-abstract class Settings {
-  abstract readonly greeting: string
+service Settings {
+  readonly greeting: string
 }
 
 effect function findName(id: number) {

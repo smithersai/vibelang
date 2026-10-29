@@ -4,12 +4,12 @@
 // identities collapsed structurally, this file would compile and then die at run time with
 // "Service not found" (experiments/tests/service-identity/probe.ts).
 
-abstract class Primary {
-  abstract query(sql: string): Effect<string, never, never>
+service Primary {
+  query(sql: string): Effect<string, never, never>
 }
 
-abstract class Replica {
-  abstract query(sql: string): Effect<string, never, never>
+service Replica {
+  query(sql: string): Effect<string, never, never>
 }
 
 effect function both() {

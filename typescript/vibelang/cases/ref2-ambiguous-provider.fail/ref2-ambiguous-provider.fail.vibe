@@ -1,8 +1,8 @@
 // expect: EK3202
 // Reference program 2: two providers for Users. wire must reject the ambiguity instead of picking one.
 
-abstract class Users {
-  abstract find(id: string): Effect<string, never, never>
+service Users {
+  find(id: string): Effect<string, never, never>
 }
 
 const UsersLive = Layer.succeed(Users, {

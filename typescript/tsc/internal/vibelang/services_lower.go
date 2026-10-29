@@ -136,8 +136,8 @@ func (tx *lowering) visitEffectValueCall(node *ast.Node) *ast.Node {
 //	class Users extends runtime.$service("app/users#Users") {}
 //
 // The type-only abstract members are erased later by the TypeScript
-// transform. A service with `static readonly default` extends
-// runtime.$reference(key, () => Flags.default) instead, a Context.Reference
+// transform. A service with `static readonly defaultValue` extends
+// runtime.$reference(key, () => Flags.defaultValue()) instead, a Context.Reference
 // that needs no provider (D40). A control operation also registers one
 // kernel operation per abstract method, after the class, with each
 // operation's declared parameter count:
@@ -165,11 +165,11 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 	}
 
 	helper, arguments := "$service", []*ast.Node{f.NewStringLiteral(key, ast.TokenFlagsNone)}
-	if hasStaticDefault(node) {
-		// runtime.$reference(key, () => Flags.default)
+	if hasDefaultValue(node) {
+		// runtime.$reference(key, () => Flags.defaultValue())
 		helper = "$reference"
-		read := f.NewPropertyAccessExpression(f.NewIdentifier(node.Name().Text()), nil /*questionDotToken*/, f.NewIdentifier("default"), ast.NodeFlagsNone)
-		arguments = append(arguments, tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), tx.generated(read))))
+		read := f.NewPropertyAccessExpression(f.NewIdentifier(node.Name().Text()), nil /*questionDotToken*/, f.NewIdentifier("defaultValue"), ast.NodeFlagsNone)
+		arguments = append(arguments, tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), tx.generated(f.NewCallExpression(read, nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone)))))
 	}
 	base := f.NewCallExpression(tx.runtimeMember(helper), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	extends := f.NewHeritageClause(ast.KindExtendsKeyword, f.NewNodeList([]*ast.Node{f.NewExpressionWithTypeArguments(base, nil /*typeArguments*/)}))

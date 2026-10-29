@@ -89,8 +89,8 @@ export function main() {
 // a value, and a function in value position.
 func TestPurityCh13Plain(t *testing.T) {
 	t.Parallel()
-	source := `abstract class Settings {
-  abstract scale(): Effect<number, never, never>
+	source := `service Settings {
+  scale(): Effect<number, never, never>
 }
 const order: string[] = []
 function double(n: number) {

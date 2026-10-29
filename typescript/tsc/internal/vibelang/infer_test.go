@@ -42,7 +42,7 @@ func TestEffectInfoOrderedSets(t *testing.T) {
 	}
 }
 
-// The same channels pass through function calls, partially inferred contracts,
+// The same channels pass through function calls, written contracts,
 // methods, and try/finally joins. Cached callees must stay bounded, even when
 // every caller runs them twice.
 func TestInferredChannelsMemoized(t *testing.T) {
@@ -59,7 +59,7 @@ func TestInferredChannelsMemoized(t *testing.T) {
 					prefix, receiver = "", "this."
 				}
 				if form == "contract" {
-					annotation = ": number!Missing"
+					annotation = ": number!Missing!Need"
 				}
 				fmt.Fprintf(&source, "%sf%d(x: number)%s { ", prefix, i, annotation)
 				if i == 0 {

@@ -21,8 +21,8 @@ interface Config {
   port: number
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
 // Using TypeScript Effect code from VibeLang

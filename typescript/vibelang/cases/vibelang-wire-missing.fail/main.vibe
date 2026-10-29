@@ -5,12 +5,12 @@
 import { Effect, Layer } from "effect"
 import { wire } from "vibelang-runtime"
 
-abstract class Smtp {
-  abstract deliver(to: string): Effect.Effect<void, never, never>
+service Smtp {
+  deliver(to: string): Effect.Effect<void, never, never>
 }
 
-abstract class Mailer {
-  abstract send(to: string): Effect.Effect<void, never, never>
+service Mailer {
+  send(to: string): Effect.Effect<void, never, never>
 }
 
 const MailerLive = Layer.effect(Mailer, effect {

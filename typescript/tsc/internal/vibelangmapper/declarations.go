@@ -103,6 +103,9 @@ func isServiceClass(node *ast.Node) bool {
 		!ast.HasSyntacticModifier(node, ast.ModifierFlagsAbstract) || len(ast.GetImplementsHeritageClauseElements(node)) != 0 {
 		return false
 	}
+	if !isServiceKeywordClass(node) && ast.GetClassExtendsHeritageElement(node) == nil {
+		return false
+	}
 	if extends := ast.GetClassExtendsHeritageElement(node); extends != nil {
 		expression := extends.Expression()
 		if !ast.IsIdentifier(expression) || expression.Text() != "Control" || extends.TypeArguments() != nil {
@@ -119,7 +122,7 @@ func isServiceClass(node *ast.Node) bool {
 		}
 		instance++
 	}
-	return instance > 0
+	return instance > 0 || isServiceKeywordClass(node)
 }
 
 // serviceDeclaration lowers a service, a control, or a D1 abstract class to
@@ -138,7 +141,7 @@ func isServiceClass(node *ast.Node) bool {
 func (p *projector) serviceDeclaration(node *ast.Node) {
 	class := node.AsClassDeclaration()
 	name := class.Name()
-	key := p.ctx.ModuleKey + "#" + name.Text()
+	key := p.serviceKey(node)
 
 	// The head: everything from the declaration keyword to the name becomes
 	// `interface`, keeping written modifiers other than abstract.
@@ -187,16 +190,21 @@ func (p *projector) serviceDeclaration(node *ast.Node) {
 		return
 	}
 	separator := "; "
-	if lastInstance != nil && strings.ContainsAny(p.text[lastInstance.End()-1:lastInstance.End()], ";,") {
+	if lastInstance == nil || strings.ContainsAny(p.text[lastInstance.End()-1:lastInstance.End()], ";,") {
 		separator = " "
 	}
 	brand := separator + `readonly "~vibelang/service"?: ` + strconv.Quote(key) + " }"
 	base := "service"
-	if hasStaticDefault(node) {
+	if hasDefaultValue(node) {
 		base = "reference"
 	}
 	classHead := " " + strings.Join(append(kept, "abstract class "+name.Text()+" extends "), " ")
-	at := lastInstance.End()
+	at := closing
+	if lastInstance != nil {
+		at = lastInstance.End()
+	} else if len(static) > 0 {
+		at = p.tokenStart(static[0])
+	}
 	p.plan.insert(at, brand+classHead)
 	// The key: $service<X>(key), or for a static default $reference, whose
 	// executable form passes () => X.default.
@@ -268,12 +276,12 @@ func (p *projector) serviceKeywordClass(node *ast.Node) {
 	p.visitList(node.Members(), env{})
 }
 
-// hasStaticDefault reports whether class declares `static readonly default`,
+// hasDefaultValue reports whether class declares `static readonly defaultValue`,
 // which makes its key a Context.Reference that needs no provider (D40).
-func hasStaticDefault(class *ast.Node) bool {
+func hasDefaultValue(class *ast.Node) bool {
 	for _, member := range class.Members() {
 		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) {
-			if name := member.Name(); name != nil && ast.IsIdentifier(name) && name.Text() == "default" {
+			if name := member.Name(); name != nil && ast.IsIdentifier(name) && name.Text() == "defaultValue" {
 				return true
 			}
 		}
@@ -475,8 +483,8 @@ func isEffectType(node *ast.Node) bool {
 }
 
 // effectType lowers `A!E!R` to `Effect.Effect<A, E, R>`. Each ! becomes a
-// comma, an empty slot becomes never, and an infer channel, written or the
-// dependencies a function's contract leaves out (D57), becomes $Infer. With
+// comma, an empty or omitted slot becomes never, and an explicitly written
+// infer channel becomes $Infer. With
 // slotsOnly it writes only the three slots, for $contract's type arguments;
 // a written Effect<A> or Effect<A, E> gets never for each slot it leaves out,
 // as TypeScript's defaults give it (D308, D309).
@@ -519,9 +527,6 @@ func (p *projector) effectType(node *ast.Node, slotsOnly bool) {
 		case synthesized && hasBang && slot.Pos() == bang:
 			// An empty slot stands on its own !: User!!Db.
 			p.plan.replace(bang, bang+1, ", never")
-		case synthesized && slot.Kind == ast.KindInferType:
-			// Dependencies omitted from a function's contract: inferred (D57).
-			p.plan.insert(previous.End(), ", "+helperRef("$Infer"))
 		case synthesized:
 			// Omitted dependencies stand on the errors' last character: User!NotFound.
 			p.plan.insert(previous.End(), ", never")
@@ -533,4 +538,14 @@ func (p *projector) effectType(node *ast.Node, slotsOnly bool) {
 	if !slotsOnly {
 		p.plan.insert(node.End(), ">")
 	}
+}
+
+// serviceKey mirrors the native compiler literal key override (VIP-9).
+func (p *projector) serviceKey(class *ast.Node) string {
+	for _, member := range class.Members() {
+		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && member.Name() != nil && member.Name().Text() == "key" && member.Initializer() != nil && ast.IsStringLiteralLike(member.Initializer()) {
+			return member.Initializer().Text()
+		}
+	}
+	return p.ctx.ModuleKey + "#" + class.Name().Text()
 }

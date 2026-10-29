@@ -14,7 +14,7 @@ service Users {
 
 service Flags {
   readonly beta: boolean
-  static readonly default: Flags.Shape = { beta: true }
+  static readonly defaultValue: () => Flags.Shape = () => ({ beta: true })
 }
 
 export interface SearchApi {

@@ -60,13 +60,8 @@ const (
 	controlClass            // an abstract class that extends Control (D2)
 )
 
-// classKindOf reports what class declares. A class declaration in a .vibe
-// file is a service when it is abstract, has no type parameters, no
-// implements clause, and no extends clause, and has at least one instance
-// member, every one of them an abstract method or property. With
-// `extends Control` instead of no extends clause, it is a control operation.
-// Static members are allowed. An explicit service or control declaration may
-// have no instance members. Every other class is ordinary.
+// classKindOf recognizes explicit services and control operations. Abstract
+// classes otherwise keep TypeScript semantics (VIP-9).
 func classKindOf(class *ast.Node) classKind {
 	if class == nil || !ast.IsClassDeclaration(class) || class.TypeParameters() != nil {
 		return ordinaryClass
@@ -81,6 +76,9 @@ func shapeKindOf(class *ast.Node) classKind {
 		!ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract) ||
 		len(ast.GetImplementsHeritageClauseElements(class)) != 0 ||
 		!isVibeLangFile(ast.GetSourceFileOfNode(class)) {
+		return ordinaryClass
+	}
+	if declarationWord(class) == "" && ast.GetClassExtendsHeritageElement(class) == nil {
 		return ordinaryClass
 	}
 	kind := serviceClass
@@ -209,12 +207,12 @@ func writtenKey(class *ast.Node) (string, *ast.Node) {
 	return "", nil
 }
 
-// hasStaticDefault reports whether class declares `static readonly default`,
+// hasDefaultValue reports whether class declares `static readonly defaultValue`,
 // which makes its key a Context.Reference that needs no provider (D40).
-func hasStaticDefault(class *ast.Node) bool {
+func hasDefaultValue(class *ast.Node) bool {
 	for _, member := range class.Members() {
 		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) {
-			if name := member.Name(); name != nil && ast.IsIdentifier(name) && name.Text() == "default" {
+			if name := member.Name(); name != nil && ast.IsIdentifier(name) && name.Text() == "defaultValue" {
 				return true
 			}
 		}
@@ -344,7 +342,7 @@ func classBases(c *checker.Checker, class *checker.Type) (*checker.Type, *checke
 		return key, c.NewOptionalReadonlyPropertyType(serviceBrandProperty, c.GetStringLiteralType(s.key(declaration)))
 	}
 	identifier, shape := class, s.shapeOf(declaration)
-	if hasStaticDefault(declaration) {
+	if hasDefaultValue(declaration) {
 		identifier = c.GetNeverType()
 	}
 	key := c.NewTypeReference(c.GetDeclaredTypeOfSymbol(service), []*checker.Type{identifier, shape})

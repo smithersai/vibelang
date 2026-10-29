@@ -13,26 +13,26 @@ interface Account {
   id: string
 }
 
-abstract class TempFiles {
-  abstract create(): Effect<TempFile, never, Scope.Scope>
+service TempFiles {
+  create(): Effect<TempFile, never, Scope.Scope>
 }
 
-abstract class Reports {
-  abstract rows(id: string): Effect<ReadonlyArray<string>, never, never>
+service Reports {
+  rows(id: string): Effect<ReadonlyArray<string>, never, never>
 }
 
-abstract class Storage {
-  abstract upload(file: TempFile): Effect<string, UploadError, never>
-  abstract queueRetry(id: string): Effect<string, never, never>
+service Storage {
+  upload(file: TempFile): Effect<string, UploadError, never>
+  queueRetry(id: string): Effect<string, never, never>
 }
 
-abstract class Metrics {
-  abstract increment(name: string): Effect<void, never, never>
+service Metrics {
+  increment(name: string): Effect<void, never, never>
 }
 
-abstract class Ledger {
-  abstract debit(account: Account, amount: number): Effect<void, never, never>
-  abstract credit(account: Account, amount: number): Effect<void, never, never>
+service Ledger {
+  debit(account: Account, amount: number): Effect<void, never, never>
+  credit(account: Account, amount: number): Effect<void, never, never>
 }
 
 const events: string[] = []

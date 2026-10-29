@@ -8,8 +8,8 @@ interface Conn {
   id: number
 }
 
-abstract class Pool {
-  abstract acquire(): Effect<Conn, never, Scope.Scope>
+service Pool {
+  acquire(): Effect<Conn, never, Scope.Scope>
 }
 
 const events: string[] = []

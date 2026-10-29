@@ -5,8 +5,8 @@
 // name (EK3006).
 import { Effect } from "effect"
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<string, never, never>
+service Users {
+  find(id: string): Effect.Effect<string, never, never>
 
   static effect find(id: string) {
     return id
@@ -15,8 +15,8 @@ abstract class Users {
 
 class UsersInMemory extends Users {}
 
-abstract class Repository<T> {
-  abstract get(id: string): Effect.Effect<T, never, never>
+service Repository<T> {
+  get(id: string): Effect.Effect<T, never, never>
 }
 
 export function misuse(value: unknown) {

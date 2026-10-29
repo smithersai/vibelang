@@ -2,8 +2,8 @@
 // body against it must fail on the mapper side, as it does in the fork.
 export class Boom extends Error {}
 
-abstract class Needed {
-  abstract lookup(): number!never!never
+service Needed {
+  lookup(): number!never!never
 }
 
 function fails(n: number): number!Boom!never {

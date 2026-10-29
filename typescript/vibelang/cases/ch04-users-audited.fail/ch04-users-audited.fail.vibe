@@ -13,18 +13,18 @@ interface User {
   email: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
-  abstract rename(id: string, name: string): Effect<void, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
+  rename(id: string, name: string): Effect<void, UserNotFound, never>
 }
 
-abstract class Database {
-  abstract query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<User>, DbError, never>
-  abstract execute(sql: string, params: ReadonlyArray<string>): Effect<void, DbError, never>
+service Database {
+  query(sql: string, params: ReadonlyArray<string>): Effect<ReadonlyArray<User>, DbError, never>
+  execute(sql: string, params: ReadonlyArray<string>): Effect<void, DbError, never>
 }
 
-abstract class Audit {
-  abstract record(entry: string): Effect<void, never, never>
+service Audit {
+  record(entry: string): Effect<void, never, never>
 }
 
 effect function findIn(db: Database.Shape, id: string) {

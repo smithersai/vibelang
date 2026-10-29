@@ -5,8 +5,8 @@
 
 import { formatName, loadAvatar, UserNotFound, type User } from "./ch10-helpers.ts"
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
 effect function profileCard(id: string) {

@@ -1,1 +1,1 @@
-main.vibe(3,29): error TS2322
+main.vibe(3,40): error TS2322

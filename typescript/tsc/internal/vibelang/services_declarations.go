@@ -289,7 +289,7 @@ func declareModifiers(f *printer.NodeFactory, ambient, exported bool) []*ast.Nod
 // declares for Context.Service<Name, Shape>()(key), a `<Name>_base` constant
 // typed Context.ServiceClass<Name, key, Shape> and a class that extends it
 // with the static members other than the key (D501), or, for a service with
-// a static default, Effect's reference. It also returns the declarations
+// a defaultValue, Effect's reference. It also returns the declarations
 // among them that stay unexported, the base constant. exported says whether
 // the service is exported, and ambient that it is in a namespace's body,
 // where nothing says declare.
@@ -306,8 +306,8 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 	}
 
 	var result, hidden []*ast.Node
-	if hasStaticDefault(class) {
-		if others := withoutStatic(statics, "default"); len(others) == 0 {
+	if hasDefaultValue(class) {
+		if others := withoutStatic(statics, "defaultValue"); len(others) == 0 {
 			// export declare const Flags: Context.Reference<Shape>
 			reference := f.NewTypeReferenceNode(f.NewQualifiedName(e.context(), f.NewIdentifier("Reference")), f.NewNodeList([]*ast.Node{shape}))
 			declaration := f.NewVariableDeclaration(f.NewIdentifier(name), nil /*exclamationToken*/, reference, nil /*initializer*/)

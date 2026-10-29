@@ -1,7 +1,7 @@
 // A probe: main needs the Mailer service and nothing provides it, so the
 // runner must reject the program on the mapper side, as the fork does (EK3201).
-abstract class Mailer {
-  abstract send(to: string): Effect<void, never, never>
+service Mailer {
+  send(to: string): Effect<void, never, never>
 }
 
 function welcome() {

@@ -12,8 +12,8 @@ interface User {
 
 const guest: User = { id: "0", name: "Guest" }
 
-abstract class Users {
-  abstract find(id: string): Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect<User, UserNotFound, never>
 }
 
 effect function parseId(raw: string) {

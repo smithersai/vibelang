@@ -104,6 +104,13 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		cover(c, reference)
 		return
 	}
+	for _, member := range class.Members() {
+		if ast.IsStatic(member) && member.Name() != nil && member.Name().Text() == "key" {
+			if _, written := writtenKey(class); written == nil {
+				report(c, member, EK3008)
+			}
+		}
+	}
 	name := class.Name().Text()
 	if class.TypeParameters() != nil {
 		note(report(c, class.Name(), EK3005), "Use an interface for the generic type.")
@@ -116,7 +123,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 	if others := s.sharingKey(class); len(others) > 0 {
 		d := report(c, class.Name(), EK3001, s.key(class))
 		for _, other := range others {
-			note(d, "{0} at {1} has the same key. Rename one.", other.Name().Text(), position(other.Name()))
+			note(d, "{0} at {1} has the same key. Change one key.", other.Name().Text(), position(other.Name()))
 		}
 	}
 	instance := map[string]bool{}
@@ -212,7 +219,7 @@ func checkExtendsService(c *checker.Checker, class *ast.Node) {
 	if class.Name() != nil {
 		name = class.Name().Text()
 	}
-	note(d, "Implement it instead: class {0} implements {1} { … }", name, service.Name().Text())
+	note(d, "Implement it instead: class {0} implements {1}.Shape { … }", name, service.Name().Text())
 	// TypeScript's complaints about inherited abstract members restate this.
 	cover(c, extends.Parent)
 	if class.Name() != nil {

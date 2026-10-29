@@ -11,13 +11,13 @@ interface User {
   name: string
 }
 
-abstract class Database {
-  abstract lookup(id: string): Effect.Effect<User | undefined, never, never>
+service Database {
+  lookup(id: string): Effect.Effect<User | undefined, never, never>
 }
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
-  abstract count(): Effect.Effect<number, never, never>
+service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
+  count(): Effect.Effect<number, never, never>
 }
 
 const DatabaseLive = Layer.succeed(Database, {

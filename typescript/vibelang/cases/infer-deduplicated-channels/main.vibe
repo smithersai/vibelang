@@ -12,7 +12,7 @@ export effect function twice(x: number) {
   return a > 0 ? a : try base(x + 1)
 }
 
-export effect function contracted(x: number): number!Missing {
+export effect function contracted(x: number): number!Missing!Need {
   try { return try twice(x) } finally { try twice(x) }
 }
 

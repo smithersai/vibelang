@@ -80,7 +80,7 @@ var emitCases = []struct {
 
 	{
 		name:     "interleaved static service retains its key and erased instance shape",
-		source:   "export abstract class Counter { abstract increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n abstract read(): number!!\n}",
+		source:   "export service Counter { increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n read(): number!!\n}",
 		contains: []string{`class Counter extends $service("app/src/main#Counter")`, `static layer = Layer.succeed(Counter`},
 		absent:   []string{"abstract read", "interface Counter", "number!!"},
 	},
@@ -324,8 +324,8 @@ var emitCases = []struct {
 	},
 	{
 		name:     "a service with a static default passes it to $reference (D40)",
-		source:   "abstract class Flags {\n  abstract readonly on: boolean\n  static readonly default: Flags = { on: false }\n}\n",
-		contains: []string{`class Flags extends $reference("app/src/main#Flags", () => Flags.default) {`},
+		source:   "service Flags {\n  readonly on: boolean\n  static readonly defaultValue = () => ({ on: false })\n}\n",
+		contains: []string{`class Flags extends $reference("app/src/main#Flags", () => Flags.defaultValue()) {`},
 	},
 	{
 		name:   "regions keep the checking rendering's completions, defined at run time",
@@ -455,7 +455,7 @@ func TestEmitCorpusDeclarations(t *testing.T) {
 				}
 			}
 			if name := c.reference; name != "" {
-				args := `("app/src/main#` + name + `", () => ` + name + `.default)`
+				args := `("app/src/main#` + name + `", () => ` + name + `.defaultValue())`
 				assert.Assert(t, strings.Contains(executable.Text, "$reference<"+name+">"+args), "%s", executable.Text)
 				assert.Assert(t, strings.Contains(js, "$reference"+args), "%s", js)
 			}

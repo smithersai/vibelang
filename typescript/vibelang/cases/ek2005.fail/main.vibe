@@ -12,8 +12,8 @@ abstract class Approval extends Control {
   abstract approve(request: string): Effect.Effect<boolean, Busy, never>
 }
 
-abstract class Secret {
-  abstract read(): Effect.Effect<boolean, never, never>
+service Secret {
+  read(): Effect.Effect<boolean, never, never>
 }
 
 export effect function needsService() {

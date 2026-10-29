@@ -243,8 +243,8 @@ test("services: service keys and dependent-first wire provide implementations", 
 })
 
 interface Flags { readonly beta: boolean }
-class Flags extends $reference<Flags>("runtime-test/Flags", () => Flags.default) {
-  static readonly default: Flags = { beta: false }
+class Flags extends $reference<Flags>("runtime-test/Flags", () => Flags.defaultValue()) {
+  static readonly defaultValue = (): Flags => ({ beta: false })
 }
 
 test("services: a reference key reads its class's default until a provider overrides it", async () => {

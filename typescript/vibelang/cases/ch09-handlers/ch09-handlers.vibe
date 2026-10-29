@@ -35,17 +35,17 @@ abstract class Approval extends Control {
   abstract approve(request: string): Effect<boolean, ReviewBusy, never>
 }
 
-abstract class Inventory {
-  abstract reserve(cartId: string): Effect<Hold, never, Scope.Scope>
+service Inventory {
+  reserve(cartId: string): Effect<Hold, never, Scope.Scope>
 }
 
-abstract class Payments {
-  abstract charge(cartId: string): Effect<Receipt, PaymentError, never>
+service Payments {
+  charge(cartId: string): Effect<Receipt, PaymentError, never>
 }
 
-abstract class Reviewers {
-  abstract decide(request: string): Effect<boolean, never, never>
-  abstract busy(): Effect<boolean, never, never>
+service Reviewers {
+  decide(request: string): Effect<boolean, never, never>
+  busy(): Effect<boolean, never, never>
 }
 
 const events: string[] = []

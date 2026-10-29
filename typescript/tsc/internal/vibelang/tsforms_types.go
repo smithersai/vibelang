@@ -11,21 +11,8 @@ import (
 //	Effect.Effect<User, NotFound, Db>   User!NotFound!Db
 //	Effect.Effect<User>                 User!!
 //
-// The prelude's Effect<A, E, R> is the other accepted spelling and draws
-// nothing. The parser expands the ! form into Effect.Effect<A, E, R>, so the
-// rewrite is exact, with one rule about the dependencies: in the return
-// annotation of a function with a body, a ! form that leaves them out infers
-// them (D127), while a type argument left out of Effect.Effect is never
-// (D308), so there Effect<A, E> and Effect<A, E, never> become A!E!,
-// Effect<A> becomes A!!, and Effect<A, E, infer R> becomes A!E; elsewhere a
-// left-out slot is never, so Effect<A, E> becomes A!E. In a project that
-// emits declarations, a never written in an exported statement stays
-// written, Effect.Effect<void, never, never> becoming void!never!never, so
-// the declaration file keeps Effect.Effect<void, never, never> as the
-// TypeScript's did (D501). EK4831's fix uses the
-// same rewrite for a service member written with either spelling. Refused:
-// infer in another slot or outside such an annotation, and a reference the !
-// form cannot spell, such as one in JSDoc.
+// An omitted slot is never everywhere (VIP-3). Explicit infer types have
+// no shorthand rewrite: the ! form is exactly an alias of Effect<A, E, R>.
 
 func init() {
 	tsFormRules[EK4833.Code] = &tsFormRule{
@@ -68,7 +55,7 @@ func findEffectTypes(c *checker.Checker, file *ast.SourceFile, report func(at *a
 }
 
 // isBodyReturnAnnotation reports whether node is the return annotation of a
-// function with a body, where a ! form without dependencies infers them.
+// function with a body.
 func isBodyReturnAnnotation(node *ast.Node) bool {
 	fn := node.Parent
 	return fn != nil && ast.IsFunctionLike(fn) && fn.Type() == node && fn.Body() != nil
@@ -83,12 +70,11 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	if len(arguments) == 0 || len(arguments) > 3 {
 		return nil
 	}
-	bodyReturn := isBodyReturnAnnotation(reference)
-	for i, argument := range arguments {
+	for _, argument := range arguments {
 		if ast.NodeIsMissing(argument) {
 			return nil // a type argument left out, as in Effect.Effect<A, , R>: a syntax error the parser reported
 		}
-		if ast.IsInferTypeNode(argument) && !(bodyReturn && i == 2) {
+		if ast.IsInferTypeNode(argument) {
 			return nil
 		}
 	}
@@ -105,13 +91,7 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	}
 	var text string
 	switch {
-	case bodyReturn && len(arguments) == 3 && ast.IsInferTypeNode(arguments[2]):
-		text = success + "!" + errors
-		if errors == "" {
-			// A!! would promise no dependencies; write never for the errors.
-			text = success + "!never"
-		}
-	case bodyReturn || dependencies != "":
+	case dependencies != "":
 		text = success + "!" + errors + "!" + dependencies
 	default:
 		text = success + "!" + errors

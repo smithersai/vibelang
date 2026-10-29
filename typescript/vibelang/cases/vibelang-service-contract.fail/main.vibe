@@ -5,10 +5,10 @@
 // type.
 import { Effect } from "effect"
 
-abstract class Rates {
-  abstract lookup(currency: string): number
-  abstract convert(amount: number): Effect.Effect<number>
-  abstract latest()
-  abstract readonly base: string
-  abstract refresh(): Effect.Effect<void, never, never>
+service Rates {
+  lookup(currency: string): number
+  convert(amount: number): Effect.Effect<number>
+  latest()
+  readonly base: string
+  refresh(): Effect.Effect<void, never, never>
 }

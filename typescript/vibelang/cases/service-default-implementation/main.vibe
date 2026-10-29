@@ -4,20 +4,20 @@
 // included, as an implementation in Layer.succeed does.
 export service Mode {
   speed: "fast" | "slow"
-  static readonly default = { speed: "fast" }
+  static readonly defaultValue = () => ({ speed: "fast" })
 }
 
 export service Greeter {
   greet(name: string): string!!
-  static readonly default = {
+  static readonly defaultValue = () => ({
     effect greet(name) {
       return `hello ${name}`
     }
-  }
+  })
 }
 
 export service Prefix: string {
-  static readonly default = "> "
+  static readonly defaultValue = () => "> "
 }
 
 // expect-result: ["fast","hello ada","> "]

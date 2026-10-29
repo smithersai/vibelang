@@ -1,6 +1,6 @@
-// A recursive function whose contract writes A and leaves E or R to
-// inference (D52, D57): a call of itself in its body that stands for its
-// value, such as an operand or an initializer, is typed by A while E and R
+// A recursive function, with a written contract or one that leaves E or R
+// to inference with infer (D52, D57): a call of itself in its body that
+// stands for its value, such as an operand or an initializer, is typed by A while E and R
 // come from the cycle's fixpoint. These were TS2577, "Return type annotation
 // circularly references itself".
 error Neg { n: number }
@@ -19,7 +19,7 @@ effect function factVia(n: number): number!Neg {
   return n * rest
 }
 
-effect function audited(n: number): number!Neg {
+effect function audited(n: number): number!Neg!Audit {
   try Audit.note(n)
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
@@ -40,11 +40,11 @@ effect function label(n: number): string!Neg {
 }
 
 // R reaches isEven through isOdd.
-effect function isEven(n: number): boolean!never {
+effect function isEven(n: number): boolean!never!Audit {
   return n === 0 ? true : !try isOdd(n - 1)
 }
 
-effect function isOdd(n: number): boolean!never {
+effect function isOdd(n: number): boolean!never!Audit {
   try Audit.note(n)
   return n === 0 ? false : !try isEven(n - 1)
 }

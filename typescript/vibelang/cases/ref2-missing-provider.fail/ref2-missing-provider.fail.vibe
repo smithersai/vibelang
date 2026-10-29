@@ -3,12 +3,12 @@
 // inputs, as Layer.provide would, and the compiler reports it with its dependency path where the
 // program's R must be empty: here, at the runner.
 
-abstract class Smtp {
-  abstract deliver(to: string): Effect<void, never, never>
+service Smtp {
+  deliver(to: string): Effect<void, never, never>
 }
 
-abstract class Mailer {
-  abstract send(to: string): Effect<void, never, never>
+service Mailer {
+  send(to: string): Effect<void, never, never>
 }
 
 const MailerLive = Layer.effect(Mailer, effect {

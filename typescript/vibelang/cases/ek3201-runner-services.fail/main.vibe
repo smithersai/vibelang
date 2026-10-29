@@ -7,12 +7,12 @@ import { Effect } from "effect"
 import { NodeRuntime } from "@effect/platform-node"
 import { it, layer } from "@effect/vitest"
 
-abstract class Todos {
-  abstract list(): Effect.Effect<ReadonlyArray<string>, never, never>
+service Todos {
+  list(): Effect.Effect<ReadonlyArray<string>, never, never>
 }
 
-abstract class Clock2 {
-  abstract now(): Effect.Effect<number, never, never>
+service Clock2 {
+  now(): Effect.Effect<number, never, never>
 }
 
 const TodosTest = Layer.succeed(Todos, { list: effect () => ["a"] })

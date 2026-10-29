@@ -27,21 +27,21 @@ interface Connection {
 }
 
 // Files.open returns a scoped resource: Effect<FileHandle, IOError, Scope>.
-abstract class Files {
-  abstract open(path: string): Effect<FileHandle, IOError, Scope.Scope>
+service Files {
+  open(path: string): Effect<FileHandle, IOError, Scope.Scope>
 }
 
 // FileSystem.open returns an unscoped handle; openFile below makes it a resource.
-abstract class FileSystem {
-  abstract open(path: string): Effect<FileHandle, IOError, never>
+service FileSystem {
+  open(path: string): Effect<FileHandle, IOError, never>
 }
 
-abstract class Database {
-  abstract connect(): Effect<Connection, never, Scope.Scope>
+service Database {
+  connect(): Effect<Connection, never, Scope.Scope>
 }
 
-abstract class Logs {
-  abstract open(): Effect<FileHandle, IOError, Scope.Scope>
+service Logs {
+  open(): Effect<FileHandle, IOError, Scope.Scope>
 }
 
 const events: string[] = []

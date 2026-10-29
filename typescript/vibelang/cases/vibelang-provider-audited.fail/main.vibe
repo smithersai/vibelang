@@ -12,16 +12,16 @@ interface User {
   name: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
 }
 
-abstract class Database {
-  abstract query(sql: string): Effect.Effect<User | undefined, never, never>
+service Database {
+  query(sql: string): Effect.Effect<User | undefined, never, never>
 }
 
-abstract class Audit {
-  abstract record(entry: string): Effect.Effect<void, never, never>
+service Audit {
+  record(entry: string): Effect.Effect<void, never, never>
 }
 
 export const UsersAudited = Layer.effect(Users, effect {

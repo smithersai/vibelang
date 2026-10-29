@@ -14,8 +14,8 @@ Effect.runPromise(loadConfig()) // by name (D147): runPromise receives the progr
 export const nested = [Effect.map(Effect.succeed(1), (n) => n + 1)]
 
 // A service lookup and a call of an Effect value run programs too.
-abstract class Users {
-  abstract find(id: string): Effect.Effect<string, never, never>
+service Users {
+  find(id: string): Effect.Effect<string, never, never>
 }
 
 export const ada = Users.find("1")

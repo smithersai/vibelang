@@ -8,8 +8,8 @@ import { hooks } from "vibelang-runtime/kernel"
 
 class Missing extends Data.TaggedError("Missing")<{ readonly key: string }> {}
 
-abstract class Store {
-  abstract get(key: string): Effect<number, Missing, never>
+service Store {
+  get(key: string): Effect<number, Missing, never>
 }
 
 function* numbers(limit: number, log: string[]) {

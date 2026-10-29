@@ -6,8 +6,8 @@ import { Effect } from "effect"
 
 export class Missing extends TaggedError("Missing")<{ readonly id: number }> {}
 
-export abstract class Names {
-  abstract lookup(id: number): Effect<string, Missing, never>
+export service Names {
+  lookup(id: number): Effect<string, Missing, never>
 }
 
 export const NamesLive = Layer.succeed(Names, {

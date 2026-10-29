@@ -12,12 +12,12 @@ interface User {
   name: string
 }
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<User, UserNotFound, never>
+service Users {
+  find(id: string): Effect.Effect<User, UserNotFound, never>
 }
 
-abstract class Database {
-  abstract query(sql: string): Effect.Effect<ReadonlyArray<User>, DbError, never>
+service Database {
+  query(sql: string): Effect.Effect<ReadonlyArray<User>, DbError, never>
 }
 
 export const UsersLive = Layer.effect(Users, effect {

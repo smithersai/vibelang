@@ -8,9 +8,9 @@ interface Session {
   user: string
 }
 
-abstract class Sessions {
-  abstract get(token: string): Effect.Effect<Session | undefined, never, never>
-  abstract set(token: string, session: Session): Effect.Effect<void, never, never>
+service Sessions {
+  get(token: string): Effect.Effect<Session | undefined, never, never>
+  set(token: string, session: Session): Effect.Effect<void, never, never>
 
   static make(): Sessions.Shape {
     const entries = new Map<string, Session>()
@@ -24,9 +24,9 @@ abstract class Sessions {
   static readonly layer = Layer.sync(Sessions, () => Sessions.make())
 }
 
-abstract class FeatureFlags {
-  abstract readonly newCheckout: boolean
-  static readonly default: FeatureFlags.Shape = { newCheckout: false }
+service FeatureFlags {
+  readonly newCheckout: boolean
+  static readonly defaultValue: () => FeatureFlags.Shape = () => ({ newCheckout: false })
 }
 
 export effect function checkoutPage(cartId: string) {

@@ -5,16 +5,16 @@
 import { Effect, Layer } from "effect"
 import { wire } from "vibelang-runtime"
 
-abstract class Users {
-  abstract find(id: string): Effect.Effect<string, never, never>
+service Users {
+  find(id: string): Effect.Effect<string, never, never>
 }
 
-abstract class Cache {
-  abstract get(key: string): Effect.Effect<string, never, never>
+service Cache {
+  get(key: string): Effect.Effect<string, never, never>
 }
 
-abstract class Database {
-  abstract query(sql: string): Effect.Effect<string, never, never>
+service Database {
+  query(sql: string): Effect.Effect<string, never, never>
 }
 
 const UsersLive = Layer.succeed(Users, { find: effect (id: string) => try Effect.succeed(`live-${id}`) })

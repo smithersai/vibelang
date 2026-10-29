@@ -1,5 +1,5 @@
 // expect: TS2322
 service Prefix: string {
-  static readonly default = 42
+  static readonly defaultValue = () => 42
 }
 export effect function example() { return try Prefix() }

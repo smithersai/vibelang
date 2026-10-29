@@ -1,0 +1,18 @@
+service Flags {
+  static readonly key = "vip-types/Flags"
+  static readonly defaultValue = () => ({ enabled: true })
+  enabled: boolean
+}
+
+abstract class Value { abstract value: string }
+class Concrete extends Value { value = "ordinary" }
+
+export function read(): boolean!! { return Flags().enabled }
+
+// expect-result: {"defaultValue":true,"override":false,"key":"vip-types/Flags","ordinary":"ordinary"}
+export function main() {
+  const defaultValue = read()
+  let override = true
+  provide Layer.succeed(Flags, { enabled: false }) { override = read() }
+  return { defaultValue, override, key: Flags.key, ordinary: new Concrete().value }
+}
