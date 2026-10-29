@@ -252,7 +252,7 @@ function readConfig(path: string) {
 }
 ```
 
-A module is a namespace, not a service key. `try FileSystem` runs the namespace, which is not an Effect, so it is the error for `try` on a value that is not an Effect; in effect 4.1.0, `yield*` of the namespace is a defect. There is no `Path.join(…)` shorthand for a service member; write `(try Path.Path).join(…)`. The entry point provides nothing automatically ([Functions](001-functions.md#modules-and-the-top-level)).
+A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem` runs the namespace, which is not an Effect, so it is the error for `try` on a value that is not an Effect, as `yield* FileSystem` is wrong in Effect TypeScript. There is no `Path.join(…)` shorthand for a service member; write `(try Path.Path).join(…)`. The entry point provides nothing automatically ([Functions](001-functions.md#modules-and-the-top-level)).
 
 | Rule | Diagnostic |
 | --- | --- |
@@ -260,4 +260,4 @@ A module is a namespace, not a service key. `try FileSystem` runs the namespace,
 | a Node global (`process`, `Buffer`) in a `.vibe` file | EK4402 |
 | a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
 
-**Undecided (pending VIP):** whether a bare module name at a `try` site, `try FileSystem`, means the module's service key, as VIP-33's first example wrote it; the full list of Node globals and web platform globals the rule covers; and whether `import type` from `node:*` is allowed.
+**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers; and whether `import type` from `node:*` is allowed.

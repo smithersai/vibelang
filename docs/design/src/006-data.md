@@ -90,13 +90,13 @@ type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejec
 const Delivery = Data.taggedEnum<Delivery>()
 const tracking = "outer"
 const d: Delivery = Delivery.Sent({ tracking: "1Z" })
-const label = (() => {
-  if (d._tag === "Sent" && "tracking" in d) {
-    const tracking = d.tracking
-    return tracking
-  }
-  return "none"
-})()
+let label: string
+if (d._tag === "Sent" && "tracking" in d) {
+  const tracking = d.tracking
+  label = tracking
+} else {
+  label = "none"
+}
 ```
 
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.

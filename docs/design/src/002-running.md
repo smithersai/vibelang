@@ -276,6 +276,16 @@ effect function page(id: string) {
 }
 ```
 
+```ts effect
+// fragment
+function page(id: string) {
+  return Effect.gen(function* () {
+    const [u, o] = yield* Effect.all([fetchUser(id), fetchOrders(id)], { concurrency: "unbounded" })
+    const both = yield* Effect.all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })
+    return [u, o, both]
+  })
+}
+```
 
 ## `for concurrent`
 

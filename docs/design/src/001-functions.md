@@ -33,11 +33,10 @@ EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params Retur
 
 | Rule | Diagnostic |
 | --- | --- |
-| `try` outside effect code, including in a plain or `async` function ([Running Effects](002-running.md#static-rules)) | code pending |
 | `await` used inside an `effect` function | code pending |
 | `await` applied to an Effect inside an `async` function | code pending |
 
-"Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it.
+"Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it. That is the one rule "`try` outside effect code" of [Running Effects](002-running.md#static-rules).
 
 ### Meaning
 
@@ -203,9 +202,9 @@ await runPromise(main())
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc`, TypeDoc and `bun check` understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare.
-- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw ([Failures](003-failures.md#calls-that-may-throw)).
+- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw. An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](003-failures.md#calls-that-may-throw)).
 
-**Undecided (pending VIP):** the tag of an exported `async` function, and of one that returns a `Stream` or `Layer` (NEEDS-WILL #1 and #3; [Failures](003-failures.md#calls-that-may-throw)).
+**Undecided (pending VIP):** the tag of an exported function that returns a `Stream` or a `Layer` ([Failures](003-failures.md#calls-that-may-throw)).
 
 ```vibe es
 // compiler-gap: pending VIP-27
@@ -213,6 +212,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 export effect function load(id: string) { return try fetchUser(id) }
 export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export function add(a: number, b: number) { return a + b }
+export async function get(q: string) { if (!q) throw new BadInput(); return await queryDb(q) }
 ```
 
 ```ts effect
@@ -223,6 +223,8 @@ export declare function load(id: string): Effect.Effect<User, NotFound, Users>  
 export declare function parse(s: string): string
 /** @throws {never} */
 export declare function add(a: number, b: number): number
+/** @throws {never} */
+export declare function get(q: string): Promise<Row[]>
 ```
 
 **Undecided (pending VIP):** whether exported methods, constructors and function-typed constants also carry `@throws`, and how a function's thrown type is written in a function type that has no JSDoc position (a parameter of type `(s: string) => string`, for example).

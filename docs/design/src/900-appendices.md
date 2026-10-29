@@ -65,7 +65,9 @@ Interruptible     = "interruptible" Block
 ProvideStatement  = "provide" Provider ("," Provider)* Block
 Provider          = LeftHandSideExpression "=" AssignmentExpression | ConditionalExpression
 
-ServiceDecl       = "export"? "service" Name "{" ServiceMember* "}"
+ServiceDecl       = "export"? "service" Name "{" (Member | KeyMember | DefaultMember)* "}"
+KeyMember         = "static" "readonly" "key" "=" StringLiteral
+DefaultMember     = "static" "readonly" "defaultValue" "=" Expression
 ErrorDecl         = "export"? "error" Name ("{" (Field | Method | Getter)* "}")?
 SchemaErrorDecl   = "export"? "schema" "error" Name ("{" (SchemaField | Method | Getter)* "}")?
 SchemaField       = PropertyName "?"? ":" Type ";"?
@@ -105,14 +107,15 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 
 | Rule | Chapter |
 | --- | --- |
-| `try` outside effect code, the top level included; `try` on a value that is not an Effect; `try x catch y`; a `try` statement in effect code | [Running Effects](002-running.md#try) |
+| `try` outside effect code, the top level included; `try` on a value that is not an Effect; a `try` statement in effect code | [Running Effects](002-running.md#try) |
 | `effect f() { }` or `async f() { }` outside a class or object literal; `await` in effect code; `await` on an Effect in an `async` function | [Functions](001-functions.md#static-rules) |
-| `catch` outside effect code; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
+| `catch` outside effect code; `try x catch y`; `e catch y` where `e` is not an Effect; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
 | `break` or `return` in `for concurrent`; `return` in `for try` | [Running Effects](002-running.md) |
 | `return value` in a producer | [Running Effects](002-running.md) |
 | an unwrapped call that may throw, or an unwrapped Promise, in effect code | [Failures](003-failures.md#calls-that-may-throw) |
+| a service member with a body, `private` or `protected`, or a `static` other than `key` and `defaultValue` | [Services](005-services.md#static-rules) |
 | a constructor, `_tag` or `extends` in an `error` or `schema error` declaration | [Failures](003-failures.md#error-declarations) |
 | a `match` that is not exhaustive | [Pattern matching](004-match.md#exhaustiveness) |
 | a `data` declaration with more than 4 type parameters | [Data](006-data.md) |
@@ -147,7 +150,7 @@ The proposals page lists further ideas, each to get its own VIP: durable executi
 
 ## Appendix D. Flipping pending examples
 
-Every VibeLang example in this specification starts with `// compiler-gap: pending VIP-N`, and every Effect TypeScript example with `// fragment`. The snippet checker reports a `compiler-gap` block as a known gap, not a failure.
+Every VibeLang example in this specification starts with `// compiler-gap: pending VIP-N`, and every Effect TypeScript example that names functions it doesn't declare starts with `// fragment`. The snippet checker reports a `compiler-gap` block as a known gap, not a failure.
 
 To check the specification's examples:
 
