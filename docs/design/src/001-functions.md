@@ -148,16 +148,16 @@ EffectType = Type "!" Type "!" Type      (A!E!R)
 
 ### Meaning
 
-`A!E!R` is a type alias for `Effect<A, E, R>`, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written. In a `.vibe` file the type `Effect<A, E, R>`, as VIP-1 and VIP-3 write it, is Effect's `Effect.Effect<A, E, R>`; Effect TypeScript writes `Effect.Effect`.
+`A!E!R` is a type alias for Effect's Effect type, nothing more. It means exactly what that type means wherever a type can be written. VIP-3 writes the type `Effect<A, E, R>`; Effect TypeScript, and a `.vibe` file, write it `Effect.Effect<A, E, R>`, because `Effect` is the module.
 
 | Written | Means exactly |
 | --- | --- |
-| `User!NotFound!Users` | `Effect<User, NotFound, Users>` |
-| `User!NotFound` | `Effect<User, NotFound, never>` |
-| `User!!Users` | `Effect<User, never, Users>` |
-| `User!!` | `Effect<User, never, never>` |
+| `User!NotFound!Users` | `Effect.Effect<User, NotFound, Users>` |
+| `User!NotFound` | `Effect.Effect<User, NotFound, never>` |
+| `User!!Users` | `Effect.Effect<User, never, Users>` |
+| `User!!` | `Effect.Effect<User, never, never>` |
 
-- An omitted slot is `never`, as Effect's own defaults make it. It is never inferred, so `User!NotFound` on a function with a body still means `Effect<User, NotFound, never>`. To have the type inferred, leave the annotation out.
+- An omitted slot is `never`, as Effect's own defaults make it. It is never inferred, so `User!NotFound` on a function with a body still means `Effect.Effect<User, NotFound, never>`. To have the type inferred, leave the annotation out.
 
 ```vibe es
 // compiler-gap: pending VIP-3
