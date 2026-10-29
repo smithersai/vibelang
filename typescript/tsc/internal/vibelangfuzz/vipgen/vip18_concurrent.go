@@ -208,3 +208,117 @@ func (f *ForOf) print(w *Writer) {
 	w.Write("for (const " + f.Name + " of " + f.Of + ") ")
 	w.Block(f.Body)
 }
+
+func init() {
+	for _, op := range concurrentOps {
+		Register(&Construct{
+			Key: op.key + "-array", VIP: 18,
+			Requires: []string{"vip01.effect-function", "vip05.try"},
+			Citations: []Citation{{
+				VIP: 18, Template: "Effect." + map[string]string{"all": "all", "race": "raceAllFirst", "any": "raceAll", "allSettled": "all"}[op.name] + "(‹args›)",
+				Quote:   "Each is exact sugar for an Effect function.",
+				Reading: "Run the VIP-18 function on a named readonly tuple, rather than requiring an array literal at the call site.",
+			}},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				g.UseEffect()
+				g.UseModule("Exit", true)
+				elems := "[Effect.andThen(Effect.sleep(2), Effect.succeed(10)), Effect.andThen(Effect.sleep(1), Effect.succeed(20))]"
+				if op.name == "any" {
+					elems = "[Effect.andThen(Effect.sleep(2), Effect.fail(10)), Effect.andThen(Effect.sleep(1), Effect.fail(20))]"
+				}
+				if op.name == "allSettled" {
+					elems = "[Effect.succeed(1), Effect.fail(2), Effect.die(3), Effect.interrupt]"
+				}
+				call := "Effect." + op.name + "(xs)"
+				switch op.name {
+				case "all":
+					call = "Effect.all(xs, { concurrency: \"unbounded\" })"
+				case "race":
+					call = "Effect.raceAllFirst(xs)"
+				case "any":
+					call = "Effect.raceAll(xs)"
+				case "allSettled":
+					call = "Effect.all(xs.map(Effect.exit), { concurrency: \"unbounded\" })"
+				}
+				suffix := "return result"
+				if op.name == "allSettled" {
+					suffix = "return result.map(x => Exit.isSuccess(x) ? { tag: x._tag, value: x.value } : { tag: x._tag, reasons: x.cause.reasons.map(r => r._tag === \"Fail\" ? { tag: r._tag, error: r.error } : r._tag === \"Die\" ? { tag: r._tag, defect: r.defect } : { tag: r._tag, interrupted: true }) })"
+				}
+				return []Stmt{&catchEdge{
+					vibe: "const xs = " + elems + " as const; const result = try." + op.name + " xs; " + suffix,
+					ref:  "const xs = " + elems + "; const result = yield* " + call + "; " + suffix,
+				}}
+			},
+		})
+	}
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.race-empty", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.race", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.raceAllFirst(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return try Effect.raceAllFirst([effect { return try.race [] }, Effect.andThen(Effect.sleep(2), Effect.succeed(42))])", ref: "return yield* Effect.raceAllFirst([Effect.gen(function* () { return yield* Effect.raceAllFirst([]) }), Effect.andThen(Effect.sleep(2), Effect.succeed(42))])"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.any-empty", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.any", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.raceAll(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return try Effect.raceAllFirst([effect { return try.any [] }, Effect.andThen(Effect.sleep(2), Effect.succeed(42))])", ref: "return yield* Effect.raceAllFirst([Effect.gen(function* () { return yield* Effect.raceAll([]) }), Effect.andThen(Effect.sleep(2), Effect.succeed(42))])"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.any-catch-first", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.any"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.raceAll(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "const xs = [Effect.andThen(Effect.sleep(2), Effect.fail(10)), Effect.andThen(Effect.sleep(1), Effect.fail(20))]; return (effect { return try.any xs }) catch (e) => e", ref: "const xs = [Effect.andThen(Effect.sleep(2), Effect.fail(10)), Effect.andThen(Effect.sleep(1), Effect.fail(20))]; return yield* Effect.catch(Effect.raceAll(xs), (e) => Effect.succeed(e))"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.mapped-array", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return try.all [1, 2, 3].map(x => (ev(String(x)), Effect.succeed(x * 2)))", ref: "return yield* Effect.all([1, 2, 3].map(x => (ev(String(x)), Effect.succeed(x * 2))), { concurrency: \"unbounded\" })"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.settled-external-interrupt", VIP: 18, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block", "vip18.all-settled"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Deferred", true)
+			g.UseModule("Fiber", true)
+			return []Stmt{&catchEdge{vibe: "const ready = try Deferred.make<void>(); const f = try Effect.forkChild(Effect.ensuring(effect { return try.allSettled [Effect.andThen(Deferred.succeed(ready, undefined), Effect.never)] }, Effect.sync(() => ev(\"finalized\")))); try Deferred.await(ready); const out = try Fiber.interrupt(f); return out", ref: "const ready = yield* Deferred.make(); const f = yield* Effect.forkChild(Effect.ensuring(Effect.gen(function* () { return yield* Effect.all([Effect.andThen(Deferred.succeed(ready, undefined), Effect.never)].map(Effect.exit), { concurrency: \"unbounded\" }) }), Effect.sync(() => ev(\"finalized\")))); yield* Deferred.await(ready); const out = yield* Fiber.interrupt(f); return out"}}
+		},
+	})
+}

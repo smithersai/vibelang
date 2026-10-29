@@ -15,7 +15,7 @@ import (
 // A producer is a module-level declaration, never a Func: main must return
 // an Effect, and a producer's call gives a Stream. A producer yields at most
 // maxYields elements and contains no loop, so every Stream is finite. It
-// runs on the fiber Stream.callback starts and may run one element ahead of
+// runs on the fiber Stream.callback starts and may run up to two elements ahead of
 // its consumer, as VIP-21 says; that interleaving is part of the Effect TS
 // the VIP shows, so both prints' event logs must agree on it.
 
@@ -31,7 +31,7 @@ func init() {
 			{
 				VIP:      21,
 				Template: `const ‹p› = (‹params›) => Stream.callback((queue) => Effect.gen(function* () { yield* Queue.offer(queue, ‹x›) yield* Effect.sleep(‹d›) yield* Queue.offer(queue, ‹y›) }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })`,
-				Quote:    "It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run one element ahead of the consumer.",
+				Quote:    "It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.",
 			},
 			{
 				VIP:      21,
@@ -171,3 +171,94 @@ func (y *Yield) Effect(w *Writer) {
 }
 
 func (y *Yield) Ends() bool { return false }
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.yield-value", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer"},
+		Citations: []Citation{{VIP: 21, Template: "Stream.callback((queue) => Effect.gen(function* () { ‹body› }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" })",
+			Quote:   "A bare `return` ends the stream.",
+			Reading: "Chapter 2 specifies yield as (yield* Queue.offer(queue, x), undefined); bare return still executes the Queue.end chained after the producer body."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", false)
+			return []Stmt{&catchEdge{
+				vibe: "effect function* p() { const a = yield 1; ev(a === undefined ? \"undefined\" : \"wrong\"); yield 2; return; yield 99 }; const xs = try Stream.runCollect(p()); return xs",
+				ref:  "const p = () => Stream.callback((queue) => Effect.gen(function* () { const a = (yield* Queue.offer(queue, 1), undefined); ev(a === undefined ? \"undefined\" : \"wrong\"); yield* Queue.offer(queue, 2); return; yield* Queue.offer(queue, 99) }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" }); const xs = yield* Stream.runCollect(p()); return xs",
+			}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.two-ahead", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer", "vip20.for-try"},
+		Citations: []Citation{{VIP: 21, Template: "Stream.callback((queue) => Effect.gen(function* () { ‹body› }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" })",
+			Quote:   "the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.",
+			Reading: "Four offers and a consumer that sleeps at its first element expose buffered and suspended offers in the event log; break cancels the producer rather than undoing events already logged."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", false)
+			return []Stmt{&catchEdge{
+				vibe: "effect function* p() { for (const n of [1, 2, 3, 4]) { ev(\"offer\" + n); yield n; ev(\"offered\" + n) } }; for try (const x of p()) { ev(\"take\" + x); try Effect.sleep(2); break }; return 1",
+				ref:  "const p = () => Stream.callback((queue) => Effect.gen(function* () { for (const n of [1, 2, 3, 4]) { ev(\"offer\" + n); yield* Queue.offer(queue, n); ev(\"offered\" + n) } }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" }); yield* Stream.runForEachWhile(p(), (x) => Effect.gen(function* () { ev(\"take\" + x); yield* Effect.sleep(2); return false })); return 1",
+			}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.failure", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer"},
+		Citations: []Citation{{VIP: 21, Template: "Effect.‹operation›(‹args›)", Quote: "`effect function*` returns a Stream, as `async function*` returns an AsyncIterable.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", true)
+			return []Stmt{&catchEdge{vibe: "effect function* p() { yield 1; try Effect.fail(7); yield 99 }; return try Stream.runCollect(p())", ref: "const p = () => Stream.callback((queue) => Effect.gen(function* () { yield* Queue.offer(queue, 1); yield* Effect.fail(7); yield* Queue.offer(queue, 99) }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" }); return yield* Stream.runCollect(p())"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.method", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer"},
+		Citations: []Citation{{VIP: 21, Template: "Stream.callback(‹args›)",
+			Quote:   "The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript.",
+			Reading: "A generic static producer method has the same Stream.callback body as VIP-21's function; ordinary member modifiers and type parameters erase."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", false)
+			return []Stmt{&catchEdge{
+				vibe: "class C { public static effect *values<T>(value: T): Stream.Stream<T> { yield value; return } }; return try Stream.runCollect(C.values<number>(7))",
+				ref:  "class C { static values(value) { return Stream.callback((queue) => Effect.gen(function* () { yield* Queue.offer(queue, value); return }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: \"suspend\" }) } }; return yield* Stream.runCollect(C.values(7))",
+			}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.member-modifiers", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer"},
+		Citations: []Citation{{VIP: 21, Template: "Stream.callback(‹args›)",
+			Quote:   "The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript.",
+			Reading: "Each method keeps TypeScript's access and override rules; its producer body is the same Stream.callback as the VIP's function."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", false)
+			return []Stmt{&catchEdge{
+				vibe: "class Base { protected effect *values<T>(v: T) { yield v } }; class C extends Base { protected override effect *values<T>(v: T) { yield v }; private effect *hidden() { yield 2 }; run() { return Stream.concat(this.values(1), this.hidden()) } }; return try Stream.runCollect(new C().run())",
+				ref:  "class Base { values(v) { return Stream.callback(q => Effect.gen(function* () { yield* Queue.offer(q, v) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) } }; class C extends Base { values(v) { return Stream.callback(q => Effect.gen(function* () { yield* Queue.offer(q, v) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) }; hidden() { return Stream.callback(q => Effect.gen(function* () { yield* Queue.offer(q, 2) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) }; run() { return Stream.concat(this.values(1), this.hidden()) } }; return yield* Stream.runCollect(new C().run())",
+			}}
+		},
+	})
+}

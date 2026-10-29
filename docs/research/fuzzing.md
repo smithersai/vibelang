@@ -344,3 +344,25 @@ when these exceed the sample size. Disk corpus files and probes are unchanged.
 Campaign caps remain unchanged; full-seed nightly runs retain every seed.
 `campaign.sh` also runs the ordinary short selection, saves `short-budget.log`,
 and lists every target above `120` in `summary.txt`, even for a full-seed nightly.
+
+## Running-Effect boundary coverage
+
+Chapter 2 has a dedicated static target, `FuzzRunningRules`, with rule-key corpus inputs. Each rule quotes
+`docs/design/src/002-running.md` or VIP-5 at test time, compiles a valid control, and
+then requires rejection of the forbidden form and the diagnostic code assigned
+in its spec table row. A missing valid construct is
+`control:<rule>`; an accepted forbidden form is `reject:<rule>`. Precise pending
+lines and minimized byte corpus inputs remain active until the compiler lands
+the rule. The target checks nested plain functions, Effect-only operands, catch
+precedence, concurrent-array operands, forbidden loop exits and producer returns.
+
+Runtime coverage stays in `FuzzVIPDifferential`. The running-Effect VIP files add
+probes for parenthesized catch handlers and handlers returning fallback values, suspension and
+lexical mutation, `do` evaluation order, named tuples
+and mapped arrays, empty races, complete settled `Exit` payloads, producer
+failure and two-ahead buffering, and nested interruption-block completions.
+The references use each VIP's Effect operation with ordinary JavaScript
+statements or the chapter's completion-record expansion. Pending dependencies
+are recorded as compiler gaps, never treated as proof that a construct works.
+
+`TestRunningRulesQuoted` also checks the citations in the spec gate, so a chapter edit updates its affected oracle before landing. The target reads chapters through `SpecPath`.

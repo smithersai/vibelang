@@ -141,3 +141,17 @@ func (c *StreamContinue) Ends() bool       { return true }
 func (b *StreamBreak) Vibe(w *Writer)   { w.Write("break") }
 func (b *StreamBreak) Effect(w *Writer) { w.Write("return false") }
 func (b *StreamBreak) Ends() bool       { return true }
+
+func init() {
+	Register(&Construct{
+		Key: "vip20.body-failure", VIP: 20,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip20.for-try"},
+		Citations: []Citation{{VIP: 20, Template: "yield* Stream.runForEachWhile(‹stream›, ‹body›)", Quote: "A failure in the body fails the loop.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			return []Stmt{&catchEdge{vibe: "for try (const x of Stream.fromIterable([1, 2, 3])) { ev(String(x)); try Effect.fail(x) }; return 99", ref: "yield* Stream.runForEachWhile(Stream.fromIterable([1, 2, 3]), (x) => Effect.gen(function* () { ev(String(x)); yield* Effect.fail(x); return true })); return 99"}}
+		},
+	})
+}

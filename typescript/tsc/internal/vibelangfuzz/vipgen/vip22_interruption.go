@@ -929,3 +929,104 @@ func registerCallbackJumps(vip int, stream, ownLabel bool) {
 		},
 	})
 }
+
+// Completion records preserve the target and the evaluation site of a jump.
+func init() {
+	for _, form := range []string{"uninterruptible", "interruptible", "restore"} {
+		Register(&Construct{
+			Key: "vip22.jump-" + form, VIP: 22,
+			Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
+			Citations: []Citation{{VIP: 22, Template: "Effect.gen(function* () { ‹body› })",
+				Quote:   "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
+				Reading: "The reference uses the completion records specified in chapter 2: a nested generator returns the target and value, and the enclosing generator dispatches the jump after the mask completes."}},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				g.UseEffect()
+				open, close := form+" {", "}"
+				call := "Effect." + form
+				if form == "uninterruptible" {
+					call = "Effect.uninterruptible"
+				}
+				if form == "restore" {
+					open = "uninterruptible { restore {"
+					close = "} }"
+					call = "restore"
+				}
+				body := "seen = x; if (x === 1) return { tag: 1 }; if (x === 3) return { tag: 2 }; return { tag: 0 }"
+				inner := call + "(Effect.gen(function* () { " + body + " }))"
+				if form == "uninterruptible" {
+					inner = "Effect.uninterruptibleMask(() => Effect.gen(function* () { " + body + " }))"
+				}
+				if form == "restore" {
+					inner = "Effect.uninterruptibleMask((restore) => " + inner + ")"
+				}
+				return []Stmt{&catchEdge{
+					vibe: "let sum = 0, seen = 0; outer: for (const x of [1, 2, 3, 4]) { " + open + " seen = x; if (x === 1) continue outer; if (x === 3) break outer; " + close + " sum += x }; " + open + " return (ev(\"return\"), sum + seen) " + close + "; return 999",
+					ref:  "let sum = 0, seen = 0; outer: for (const x of [1, 2, 3, 4]) { const c = yield* " + inner + "; if (c.tag === 1) continue outer; if (c.tag === 2) break outer; sum += x }; return (ev(\"return\"), sum + seen)",
+				}}
+			},
+		})
+	}
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip22.nested-completions", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
+		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
+			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "let n = 0; outer: { uninterruptible { interruptible { n += 2; break outer }; n = 99 }; n = 999 }; switch (n) { case 2: uninterruptible { n += 3; break }; default: n = 99 }; uninterruptible { for (const x of [1,2]) { if (x === 1) continue; n += x; break } }; return n", ref: "let n = 0; outer: { const c = yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () { const inner = yield* Effect.interruptible(Effect.gen(function* () { n += 2; return { tag: \"BreakOuter\" } })); if (inner.tag === \"BreakOuter\") return inner; n = 99; return { tag: \"Normal\" } })); if (c.tag === \"BreakOuter\") break outer; n = 999 }; target: switch (n) { case 2: { const c = yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { n += 3; return { tag: \"BreakSwitch\" } })); if (c.tag === \"BreakSwitch\") break target }; default: n = 99 }; yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { for (const x of [1,2]) { if (x === 1) continue; n += x; break } })); return n"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip22.return-evaluation", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
+		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
+			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "let n = 0; uninterruptible { return (ev(\"return-site\"), ++n) }; return 99", ref: "let n = 0; const c = yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { return { tag: \"Return\", value: (ev(\"return-site\"), ++n) } })); if (c.tag === \"Return\") return c.value; return 99"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip22.failure-not-completion", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
+		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
+			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "uninterruptible { interruptible { try Effect.fail(7) }; ev(\"wrong-inner\") }; ev(\"wrong-outer\"); return 99", ref: "yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { yield* Effect.interruptible(Effect.gen(function* () { yield* Effect.fail(7) })); ev(\"wrong-inner\") })); ev(\"wrong-outer\"); return 99"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip22.finalizer-return", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible"},
+		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
+			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "uninterruptible { return try Effect.ensuring(Effect.sync(() => { ev(\"value\"); return 7 }), Effect.sync(() => ev(\"finalizer\"))) }; ev(\"wrong\"); return 99", ref: "const c = yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { return { tag: \"Return\", value: yield* Effect.ensuring(Effect.sync(() => { ev(\"value\"); return 7 }), Effect.sync(() => ev(\"finalizer\"))) } })); if (c.tag === \"Return\") return c.value; ev(\"wrong\"); return 99"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip22.inherited-restore", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block", "vip22.uninterruptible"},
+		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "Each is exact sugar for Effect's function.",
+			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Deferred", true)
+			g.UseModule("Fiber", true)
+			return []Stmt{&catchEdge{vibe: "const ready = try Deferred.make<void>(); const f = try Effect.forkChild(Effect.ensuring(Effect.uninterruptible(effect { uninterruptible { restore { try Deferred.succeed(ready, undefined); try Effect.sleep(2); ev(\"protected\") } } }), Effect.sync(() => ev(\"finalized\")))); try Deferred.await(ready); try Fiber.interrupt(f); return 1", ref: "const ready = yield* Deferred.make(); const f = yield* Effect.forkChild(Effect.ensuring(Effect.uninterruptible(Effect.gen(function* () { yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () { yield* restore(Effect.gen(function* () { yield* Deferred.succeed(ready, undefined); yield* Effect.sleep(2); ev(\"protected\") })) })) })), Effect.sync(() => ev(\"finalized\")))); yield* Deferred.await(ready); yield* Fiber.interrupt(f); return 1"}}
+		},
+	})
+}

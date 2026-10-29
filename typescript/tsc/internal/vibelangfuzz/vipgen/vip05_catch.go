@@ -1,6 +1,9 @@
 package vipgen
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // VIP-5: "`e catch y` runs `e`, and on a failure evaluates `y`". Its
 // amendment of 2026-10-29 decides by the handler's syntax whether the
@@ -268,4 +271,116 @@ func (t *PlainThrow) Ends() bool       { return true }
 func (t *PlainThrow) print(w *Writer) {
 	w.Write("throw ")
 	w.Node(t.Value)
+}
+
+// A catchEdge is a scoped block of fixed probe code. It prints a leading `;`
+// because the statement before it may end in a call, and EK1022 rejects a
+// block statement whose `{` begins the line after such a statement.
+type catchEdge struct {
+	vibe, ref string
+	n         int
+}
+
+func (p *catchEdge) Vibe(w *Writer) { w.Write(fmt.Sprintf(";{ ev(%q); %s }", fmt.Sprint(p.n), p.vibe)) }
+func (p *catchEdge) Effect(w *Writer) {
+	w.Write(fmt.Sprintf(";{ ev(%q); %s }", fmt.Sprint(p.n), p.ref))
+}
+func (p *catchEdge) Ends() bool { return true }
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-literal-block-value", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "const v = Effect.fail(0) catch () => (effect { ev(\"ran\"); return 9 }); return try v", ref: "const v = yield* Effect.catch(Effect.fail(0), () => Effect.succeed(Effect.gen(function* () { ev(\"ran\"); return 9 }))); return yield* v"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-nested-effect-arrow", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return Effect.fail(3) catch (((effect (e: number) => { return try Effect.succeed(e + 4) })))", ref: "return yield* Effect.catch(Effect.fail(3), (e) => Effect.gen(function* () { return yield* Effect.succeed(e + 4) }))"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-comma", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let v = 0; const out = (Effect.fail(1) catch (() => (v = 7)), (ev(String(v)), 9)); return out + v", ref: "let v = 0; const out = ((yield* Effect.catch(Effect.fail(1), () => Effect.succeed(v = 7))), (ev(String(v)), 9)); return out + v"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-suspended-lexical", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let v = 1; const out = Effect.fail(0) catch effect () => { try Effect.sleep(1); v += 3; ev(String(v)); return v }; return out + v", ref: "let v = 1; const out = yield* Effect.catch(Effect.fail(0), () => Effect.gen(function* () { yield* Effect.sleep(1); v += 3; ev(String(v)); return v })); return out + v"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-arrow-extent", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return Effect.fail(1) catch effect (e) => Effect.fail(e + 2) catch () => 9", ref: "return yield* Effect.catch(Effect.fail(1), (e) => Effect.gen(function* () { return yield* Effect.catch(Effect.fail(e + 2), () => Effect.succeed(9)) }))"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-parenthesized-arrow", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "Its syntax decides its kind: `x catch (e) => v` (also function expressions) is plain, and its result is the fallback value; `x catch effect (e) => …` runs an Effect and may fail again.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return Effect.fail(3) catch (((e: number) => e + 4))", ref: "return yield* Effect.catch(Effect.fail(3), (e) => Effect.succeed(e + 4))"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-left-associative", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹x›, ‹handler›)", Quote: "It has the same precedence and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "return Effect.fail(0) catch (() => Effect.fail(1)) catch () => 7", ref: "return yield* Effect.catch(yield* Effect.catch(Effect.fail(0), () => Effect.succeed(Effect.fail(1))), () => Effect.succeed(7))"}}
+		},
+	})
 }

@@ -46,7 +46,6 @@ FuzzVIPDifferential  exit:called/vip13.error-plain  compiler  VIP-1: a function 
 FuzzVIPDifferential  exit:called/vip16.data-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
 FuzzVIPDifferential  exit:called/vip23.pipe-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
 FuzzVIPDifferential  exit:called/vip28.generic-data-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
-FuzzVIPDifferential  corpus:plain-main-cold  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
