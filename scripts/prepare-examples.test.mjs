@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { tmpdir } from "node:os"
 import { test } from "node:test"
 import { prepareExample } from "./prepare-examples.mjs"
@@ -42,5 +43,28 @@ test("the examples README states the exact Effect version used by every example"
     if (!existsSync(path)) continue
     const manifest = JSON.parse(readFileSync(path, "utf8"))
     assert.equal(manifest.dependencies.effect, version, entry.name)
+  }
+})
+
+// An example installs the VibeLang packages from this checkout, and with them
+// each package's exact dependency pins. A pin younger than the example's
+// minimumReleaseAge fails `bun install`, so each example excludes them all.
+test("every example's release-age exclusions cover the exact pins of the VibeLang packages it installs", () => {
+  const repository = fileURLToPath(new URL("..", import.meta.url))
+  const json = path => JSON.parse(readFileSync(join(repository, path), "utf8"))
+  const packages = { vibelang: "compiler", "vibelang-vite": "vite", "vibelang-unplugin": "unplugin", "vibelang-runtime": "runtime" }
+  const examples = readdirSync(join(repository, "examples")).filter(name => existsSync(join(repository, "examples", name, "bunfig.toml")))
+  assert.ok(examples.length > 0)
+  for (const example of examples) {
+    const bunfig = readFileSync(join(repository, "examples", example, "bunfig.toml"), "utf8")
+    if (!/^minimumReleaseAge\s*=/m.test(bunfig)) continue
+    const excludes = JSON.parse(/^minimumReleaseAgeExcludes\s*=\s*(\[.*\])/m.exec(bunfig)?.[1] ?? "[]")
+    const manifest = json(`examples/${example}/package.json`)
+    const installed = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }).filter(name => name in packages)
+    const pins = installed.flatMap(name => {
+      const { dependencies, optionalDependencies } = json(`packages/${packages[name]}/package.json`)
+      return Object.keys({ ...dependencies, ...optionalDependencies })
+    })
+    assert.deepEqual(pins.filter(name => !excludes.includes(name)), [], `examples/${example}/bunfig.toml minimumReleaseAgeExcludes`)
   }
 })
