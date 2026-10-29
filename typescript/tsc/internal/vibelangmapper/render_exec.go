@@ -287,7 +287,6 @@ var execHelpers = map[string]execSource{
 
 	"$gen":          {"effect/Effect", "gen"},
 	"$fail":         {"effect/Effect", "fail"},
-	"$adapt":        {"vibelang-runtime", "$plainOf"},
 	"$plain":        {"vibelang-runtime", "$plainOf"},
 	"$hatchTry":     {"vibelang-runtime", "try"},
 	"$promise":      {"effect/Effect", "promise"},
@@ -315,7 +314,7 @@ var execHelpers = map[string]execSource{
 var prologueHelpers = map[string]bool{
 	"$end": true, "$Jump": true, "$jump": true, "$returned": true, "$jumped": true, "$value": true, "$acquire": true,
 	"$returnRun": true, "$member": true, "$dual": true, "$asProgram": true, "$programs": true, "$each": true,
-	"$t": true, "$s": true, "$scope": true, "$iterate": true, "$producerGen": true,
+	"$t": true, "$s": true, "$scope": true, "$iterate": true, "$producerGen": true, "$adapt": true,
 }
 
 // d151Names are the Effect functions a .vibe file calls without the
@@ -480,6 +479,14 @@ func (r *execRendering) prologue() string {
 		// region never installs it in the surrounding Context.
 		parts = append(parts, "const "+r.local("$acquire")+" = (scope, v) => "+r.local("$using")+
 			"(scope, "+r.local("$isEffect")+"(v) ? v : "+r.local("$succeed")+"(v));")
+	}
+	if r.used["$adapt"] {
+		// D268: the runtime marker alone selects the call. A value without
+		// one, a written plain function (D500) or an Effect function, is
+		// called as it is; the runtime's $plainOf defects there instead (D495).
+		direct := r.local("$direct")
+		parts = append(parts, "const "+r.local("$adapt")+" = (f) => typeof f !== \"function\" ? f : (f["+direct+"] ?? function (...args) { const d = f["+direct+"]; "+
+			"if (d !== undefined) return Reflect.apply(d, this, args); const result = Reflect.apply(f, this, args); const plain = result?.[Symbol.for(\"vibelang/plainForm\")]; return plain === undefined ? result : plain() });")
 	}
 	if r.used["$dual"] {
 		// research/typedirected.md stock/perf/dual.mjs: the function takes the

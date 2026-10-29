@@ -120,6 +120,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The experimental TypeScript mapper reported `EK9001` for imports from inline modules. It now reports `EK9100` for inline modules and their imports, explaining that they require building with `vibelang`.
 
 - The experimental TypeScript mapper required a `$plain` member on exported functions with an Effect return contract, rejecting valid assignments to `typeof f`. Their projected types now keep only the Effect contract.
+- In JavaScript that the experimental TypeScript mapper emits, passing an imported plain function with a written return type as a callback, as in `[1, 2].map(square)`, failed with `Plain call of square found no plain form`. The callback now receives the function as written.
 
 - The specification assigned the exported `const main` warning to `EK1016`; it now uses `EK4843`, matching the compiler warning and quick fix.
 
