@@ -53,6 +53,7 @@ dependencies. Point `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` at y
 | `npx vibelang` | Check and compile the project in `tsconfig.json`, like `tsc` |
 | `npx vibelang --watch` | Recompile on every save |
 | `npx vibelang --lsp --stdio` | Run the language server for an editor |
+| `npx vibelang agents init` | Set up Claude Code, Codex, opencode, Cursor and VS Code for `.vibe` files ([coding agents](https://vibelang.sh/setup/coding-agents)) |
 | `npx vibelang --version` | Print the VibeLang and TypeScript versions |
 
 For tests with Vitest, add [`vibelang-vite`](https://www.npmjs.com/package/vibelang-vite).
@@ -192,7 +193,7 @@ The extension starts the project's own `vibelang` as the language server.
 
 ## Agent skill
 
-The package ships an agent skill for writing VibeLang, `node_modules/vibelang/skills/vibelang/SKILL.md`: every form, rule and idiom of this version, with [measured token counts](https://vibelang.sh/vibelang-features/117-token-counts). Point an agent's instructions at it (D292).
+The package ships an agent skill for writing VibeLang, `node_modules/vibelang/skills/vibelang/SKILL.md`: every form, rule and idiom of this version, with [measured token counts](https://vibelang.sh/vibelang-features/117-token-counts). Point an agent's instructions at it (D292). `npx vibelang agents init` copies it into a repository for Claude Code, Codex, opencode, Cursor and VS Code, with the language server and a check after each edit.
 
 ## Format .vibe files with dprint
 

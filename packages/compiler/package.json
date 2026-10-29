@@ -41,6 +41,7 @@
   "files": [
     "bin",
     "editor",
+    "agents.mjs",
     "cache.mjs",
     "diagnostics.mjs",
     "dprint-plugin.json",

@@ -1,0 +1,62 @@
+# Coding agents
+
+`npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that applies `vibelang --fix` and returns the errors left to the agent. Each part uses the agent's own configuration files.
+
+## 1. Set up the repository
+
+Install `vibelang` ([Add VibeLang to an existing project](existing-project.md)), then run this from the repository root:
+
+```sh
+npx vibelang agents init
+```
+
+It prints each file it writes. Commit them, so everyone who clones the repository gets the same setup. After you update `vibelang`, run it again: it rewrites its own files and its section of `AGENTS.md`, and keeps everything else in the files it shares, such as your own hooks and settings.
+
+## 2. Trust the repository
+
+Claude Code and Codex run a repository's code only after you trust it.
+
+- **Claude Code** loads the language server plugin once you trust the folder. `claude -p` doesn't trust a folder; pass the plugin instead: `claude -p --plugin-dir .claude/skills/vibelang-lsp "…"`.
+- **Codex** runs the hook once the project is trusted and you trust the hook in `/hooks`. Automation that vets the repository itself can run `codex exec --dangerously-bypass-hook-trust`.
+
+## What each agent gets
+
+| Agent | Skill | Instructions | Language server | After each edit |
+| --- | --- | --- | --- | --- |
+| Claude Code | `.claude/skills/vibelang/` | `AGENTS.md`, or `CLAUDE.md` when the repository has one | The plugin in `.claude/skills/vibelang-lsp/` | A `PostToolUse` hook in `.claude/settings.json` |
+| Codex | `.agents/skills/vibelang/` | `AGENTS.md` | None: Codex has no LSP client | A `PostToolUse` hook on `apply_patch` in `.codex/hooks.json` |
+| opencode | `.agents/skills/vibelang/` | `AGENTS.md` | `lsp.vibelang` in `opencode.json` | The plugin `.opencode/plugins/vibelang.js` |
+| Cursor | `.agents/skills/vibelang/` | `AGENTS.md` | The [VibeLang extension](vscode.md) | Cursor loads Claude Code's hooks from `.claude/settings.json` |
+| VS Code with Copilot | `.agents/skills/vibelang/` | `AGENTS.md` | The [VibeLang extension](vscode.md) | Copilot loads Claude Code's hooks from `.claude/settings.json` |
+
+`init` doesn't install the editor extension; install it as [VS Code and Cursor](vscode.md) describes.
+
+## The check after each edit
+
+The hooks and the opencode plugin run `npx vibelang agents check` on the `.vibe` files the agent edited. You can run it too:
+
+```sh
+npx vibelang agents check src/profile.vibe
+```
+
+It applies `vibelang --fix` to the project in the nearest `tsconfig.json` above each file, then prints what is left in those files:
+
+```out
+vibelang --fix rewrote src/profile.vibe: 1 fix (EK4834 ×1). Read it again before you edit it.
+src/profile.vibe(6,10): error TS2322: Type 'string' is not assignable to type 'number'.
+vibelang: 1 error left in the files you edited. Fix it before you finish.
+```
+
+It exits with status 1 when an error is left in a file you named. Errors in the project's other files are counted on one line. In a directory with several `tsconfig*.json` files, such as `tsconfig.json` and `tsconfig.test.json`, it checks a file with the first project that includes it.
+
+A hook returns an error to the agent with exit status 2, and a rewrite or a warning as context the agent reads with the tool's result.
+
+## In a workspace
+
+When `vibelang` is installed in a workspace package rather than at the root, run `init` from that package's directory, with the root as its argument:
+
+```sh
+cd packages/core && npx vibelang agents init ../..
+```
+
+The commands it writes then name the package, as `npx --no --prefix packages/core -- vibelang agents hook`.

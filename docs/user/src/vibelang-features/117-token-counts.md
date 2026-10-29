@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,218 |
-| The skill and the user guide (137 pages) | 285,737 |
-| The user guide alone | 279,851 |
+| The skill and the user guide (138 pages) | 286,883 |
+| The user guide alone | 280,997 |
 | The specification (10 chapters) | 17,803 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -108,11 +108,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Set up VibeLang](../setup.md) | 1,826 |
+| [Set up VibeLang](../setup.md) | 1,857 |
 | [Known limitations](../setup/known-limitations.md) | 448 |
-| **Start a project** | **2,114** |
+| **Start a project** | **2,159** |
 | [New project](../setup/new-project.md) | 543 |
-| [Existing project](../setup/existing-project.md) | 1,571 |
+| [Existing project](../setup/existing-project.md) | 1,616 |
 | **Build and test** | **4,721** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 3,119 |
 | [Vite and Vitest](../setup/vite.md) | 1,602 |
@@ -124,14 +124,15 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vue](../setup/vue.md) | 3,000 |
 | [Svelte](../setup/svelte.md) | 2,630 |
 | [Foldkit](../setup/foldkit.md) | 1,743 |
-| **Editors** | **2,839** |
+| **Editors** | **3,829** |
 | [VS Code and Cursor](../setup/vscode.md) | 936 |
 | [Neovim](../setup/neovim.md) | 1,023 |
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 401 |
-| **Upgrade** | **36,023** |
-| [Release notes](../setup/release-notes.md) | 36,023 |
-| **All 17 pages** | **59,566** |
+| [Coding agents](../setup/coding-agents.md) | 990 |
+| **Upgrade** | **36,103** |
+| [Release notes](../setup/release-notes.md) | 36,103 |
+| **All 18 pages** | **60,712** |
 
 ### Guides
 

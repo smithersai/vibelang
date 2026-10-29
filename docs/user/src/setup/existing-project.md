@@ -98,4 +98,6 @@ Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with th
 
 ## Next
 
+If you use a coding agent, run `npx vibelang agents init` to give it the VibeLang skill, the language server and a check after each edit ([Coding agents](coding-agents.md)).
+
 Set up the build: [React](react.md), [Vue](vue.md), or [Svelte](svelte.md) with Vite; [Vite and Vitest](vite.md) for other Vite or Vitest projects; [Build with the vibelang CLI](vibelang-cli.md) without a bundler. For another bundler, see step 3 of [Set up VibeLang](../setup.md).

@@ -31,6 +31,13 @@ function findBinary() {
   }
 }
 
+// `vibelang agents` runs in Node: it writes coding agents' configuration
+// and the check their hooks call (agents.mjs).
+if (process.argv[2] === "agents") {
+  const { main } = await import("../agents.mjs")
+  process.exit(await main(process.argv.slice(3), findBinary))
+}
+
 const binary = findBinary()
 const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" })
 const signals = ["SIGINT", "SIGTERM", "SIGHUP"]

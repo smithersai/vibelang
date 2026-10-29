@@ -168,6 +168,10 @@ export const sidebar = [
           {
             "text": "Other editors",
             "link": "/setup/other-editors"
+          },
+          {
+            "text": "Coding agents",
+            "link": "/setup/coding-agents"
           }
         ]
       },
