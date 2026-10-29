@@ -60,6 +60,9 @@ func TestGeneratedCompilerOptionParsingAndClone(t *testing.T) {
 		if !field.IsExported() {
 			continue
 		}
+		if field.Name == "Effect" {
+			continue // derived from the @effect/language-service plugin, not an option of its own (effect-tsgo, VIP-38)
+		}
 		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -193,6 +196,9 @@ func TestCompilerOptionsEquality(t *testing.T) {
 	for field := range reflect.TypeFor[core.CompilerOptions]().Fields() {
 		if !field.IsExported() {
 			continue
+		}
+		if field.Name == "Effect" {
+			continue // derived from the @effect/language-service plugin, not an option of its own (effect-tsgo, VIP-38)
 		}
 		values := compilerOptionTestValues(t, field)
 		switch field.Type {

@@ -1,0 +1,88 @@
+package rules
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/core"
+	tsdiag "github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+// SyncToSucceed suggests using Effect.succeed when an Effect.sync thunk returns
+// a value that is already constant at Effect construction time.
+var SyncToSucceed = rule.Rule{
+	Name:            "syncToSucceed",
+	Group:           "style",
+	Description:     "Suggests using Effect.succeed instead of Effect.sync when the thunk returns a constant value",
+	DefaultSeverity: etscore.SeveritySuggestion,
+	SupportedEffect: []string{"v3", "v4"},
+	Codes: []int32{
+		tsdiag.Effect_succeed_expresses_this_constant_value_more_directly_than_Effect_sync_effect_syncToSucceed.Code(),
+	},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		matches := AnalyzeSyncToSucceed(ctx.TypeParser, ctx.Checker, ctx.SourceFile)
+		diags := make([]*ast.Diagnostic, len(matches))
+		for i, match := range matches {
+			diags[i] = ctx.NewDiagnostic(
+				match.SourceFile,
+				match.Location,
+				tsdiag.Effect_succeed_expresses_this_constant_value_more_directly_than_Effect_sync_effect_syncToSucceed,
+				nil,
+			)
+		}
+		return diags
+	},
+}
+
+// SyncToSucceedMatch holds the nodes needed by the diagnostic and quick fix.
+type SyncToSucceedMatch struct {
+	SourceFile    *ast.SourceFile
+	Location      core.TextRange
+	Callee        *ast.Node
+	CalleeName    *ast.Node // Replaceable property name; nil for named imports and local aliases.
+	Thunk         *ast.Node
+	ConstantValue *ast.Node
+}
+
+// AnalyzeSyncToSucceed finds Effect.sync thunks whose result is already stable
+// when the Effect is constructed.
+func AnalyzeSyncToSucceed(tp *typeparser.TypeParser, _ *checker.Checker, sf *ast.SourceFile) []SyncToSucceedMatch {
+	var matches []SyncToSucceedMatch
+	var walk ast.Visitor
+	walk = func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+
+		if node.Kind == ast.KindCallExpression {
+			call := node.AsCallExpression()
+			if call != nil && call.Expression != nil &&
+				call.Arguments != nil && len(call.Arguments.Nodes) == 1 && tp.IsNodeReferenceToEffectModuleApi(call.Expression, "sync") {
+				lazy := typeparser.ParseLazyExpression(call.Arguments.Nodes[0], typeparser.LazyExpressionThunk)
+				if lazy != nil && tp.IsExpressionValueStableAtLocation(lazy.Expression(), node) {
+					var calleeName *ast.Node
+					if call.Expression.Kind == ast.KindPropertyAccessExpression {
+						calleeName = call.Expression.AsPropertyAccessExpression().Name()
+					}
+					matches = append(matches, SyncToSucceedMatch{
+						SourceFile:    sf,
+						Location:      scanner.GetErrorRangeForNode(sf, call.Expression),
+						Callee:        call.Expression,
+						CalleeName:    calleeName,
+						Thunk:         lazy.Node(),
+						ConstantValue: lazy.Expression(),
+					})
+				}
+			}
+		}
+
+		node.ForEachChild(walk)
+		return false
+	}
+
+	walk(sf.AsNode())
+	return matches
+}

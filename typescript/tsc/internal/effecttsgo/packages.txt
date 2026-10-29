@@ -1,0 +1,8 @@
+# Effect-TS/tsgo packages VibeLang calls; sync.sh copies them and every package they import.
+etscore
+etsexecutehooks
+internal/effectconfigcheck
+internal/effectconfigraw
+internal/rulerunner
+internal/rules
+internal/typeparser

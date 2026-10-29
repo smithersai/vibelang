@@ -368,6 +368,22 @@ func (c *Checker) IsContextSensitive(node *ast.Node) bool {
 	return c.isContextSensitive(node)
 }
 
+// GetTypeArgumentsForResolvedSignature returns the instantiated type arguments
+// for a resolved (non-generic) signature. Returns nil if the signature has no mapper.
+func (c *Checker) GetTypeArgumentsForResolvedSignature(sig *Signature) []*Type {
+	if sig == nil || sig.mapper == nil {
+		return nil
+	}
+	typeParams := sig.TypeParameters()
+	if sig.target != nil {
+		typeParams = sig.target.TypeParameters()
+	}
+	if len(typeParams) == 0 {
+		return nil
+	}
+	return c.instantiateTypes(typeParams, sig.mapper)
+}
+
 func (c *Checker) FillMissingTypeArguments(typeArguments []*Type, typeParameters []*Type, minTypeArgumentCount int, isJavaScriptImplicitAny bool) []*Type {
 	return c.fillMissingTypeArguments(typeArguments, typeParameters, minTypeArgumentCount, isJavaScriptImplicitAny)
 }

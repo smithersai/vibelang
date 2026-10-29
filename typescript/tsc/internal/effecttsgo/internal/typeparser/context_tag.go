@@ -1,0 +1,72 @@
+package typeparser
+
+import (
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+)
+
+// ContextTag parses a v3 Context.Tag type and extracts Identifier, Shape parameters.
+// Returns nil if the type is not a v3 Context.Tag.
+func (tp *TypeParser) ContextTag(t *checker.Type) *Service {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	return Cached(&tp.links.ContextTag, t, func() *Service {
+		if tp.DetectEffectVersion() != EffectMajorV3 {
+			return nil
+		}
+		if !tp.IsPipeableType(t) {
+			return nil
+		}
+
+		props := tp.checker.GetPropertiesOfType(t)
+
+		// Filter to required, non-optional properties with a value declaration
+		var candidates []*ast.Symbol
+		for _, prop := range props {
+			if prop == nil {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsProperty == 0 {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsOptional != 0 {
+				continue
+			}
+			if ast.TSGetSymbolValueDeclaration(prop) == nil {
+				continue
+			}
+			candidates = append(candidates, prop)
+		}
+
+		if len(candidates) == 0 {
+			return nil
+		}
+
+		sort.SliceStable(candidates, func(i, j int) bool {
+			iHas := strings.Contains(ast.TSGetSymbolName(candidates[i]), "TypeId")
+			jHas := strings.Contains(ast.TSGetSymbolName(candidates[j]), "TypeId")
+			if iHas && !jHas {
+				return true
+			}
+			return false
+		})
+
+		for _, prop := range candidates {
+			propType := tp.checker.GetTypeOfSymbolAtLocation(prop, nil)
+			if result := tp.parseServiceVarianceStruct(propType); result != nil {
+				return result
+			}
+		}
+
+		return nil
+	})
+}
+
+// IsContextTag returns true if the type has the Context.Tag variance struct.
+func (tp *TypeParser) IsContextTag(t *checker.Type) bool {
+	return tp.ContextTag(t) != nil
+}

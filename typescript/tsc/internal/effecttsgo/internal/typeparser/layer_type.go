@@ -1,0 +1,148 @@
+package typeparser
+
+import (
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+)
+
+var effectLayerModuleDescriptor = newPackageSourceFileDescriptor(moduleDescriptorLayer, "effect", isLayerTypeSourceFile)
+
+// LayerTypeId is the property key for Layer's variance struct.
+const LayerTypeId = "~effect/Layer"
+
+// Layer represents parsed Layer<ROut, E, RIn> type parameters.
+type Layer struct {
+	rOut *checker.Type // Provided services (contravariant)
+	e    *checker.Type // Error type (covariant)
+	rIn  *checker.Type // Required services (covariant)
+}
+
+func (r Layer) ROut() *checker.Type { return r.rOut }
+
+func (r Layer) E() *checker.Type { return r.e }
+
+func (r Layer) RIn() *checker.Type { return r.rIn }
+
+// parseLayerVarianceStruct extracts ROut, E, RIn from a Layer variance struct type.
+func (tp *TypeParser) parseLayerVarianceStruct(t *checker.Type) *Layer {
+	rOut := tp.extractContravariantType(t, "_ROut")
+	if rOut == nil {
+		return nil
+	}
+
+	e := tp.extractCovariantType(t, "_E")
+	if e == nil {
+		return nil
+	}
+
+	rIn := tp.extractCovariantType(t, "_RIn")
+	if rIn == nil {
+		return nil
+	}
+
+	return &Layer{rOut: rOut, e: e, rIn: rIn}
+}
+
+// LayerType parses a Layer type and extracts ROut, E, RIn parameters.
+// Returns nil if the type is not a Layer.
+// The detection strategy is chosen based on the detected Effect version:
+// v4 uses direct symbol lookup, v3/unknown uses property iteration.
+func (tp *TypeParser) LayerType(t *checker.Type) *Layer {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	c := tp.checker
+	return Cached(&tp.links.LayerType, t, func() *Layer {
+		version := tp.DetectEffectVersion()
+		if version == EffectMajorV4 {
+			varianceStructType := tp.GetTypeOfPropertyByName(t, LayerTypeId)
+			if varianceStructType == nil {
+				return nil
+			}
+
+			return tp.parseLayerVarianceStruct(varianceStructType)
+		}
+
+		// v3 / unknown: iterate properties looking for a layer variance struct
+		props := c.GetPropertiesOfType(t)
+
+		// Filter to required, non-optional properties with a value declaration
+		var candidates []*ast.Symbol
+		for _, prop := range props {
+			if prop == nil {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsProperty == 0 {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsOptional != 0 {
+				continue
+			}
+			if ast.TSGetSymbolValueDeclaration(prop) == nil {
+				continue
+			}
+			candidates = append(candidates, prop)
+		}
+
+		if len(candidates) == 0 {
+			return nil
+		}
+
+		// Sort so properties containing "LayerTypeId" come first (optimization heuristic)
+		sort.SliceStable(candidates, func(i, j int) bool {
+			iHas := strings.Contains(ast.TSGetSymbolName(candidates[i]), "LayerTypeId")
+			jHas := strings.Contains(ast.TSGetSymbolName(candidates[j]), "LayerTypeId")
+			if iHas && !jHas {
+				return true
+			}
+			return false
+		})
+
+		// Try each candidate as a layer variance struct
+		for _, prop := range candidates {
+			propType := c.GetTypeOfSymbolAtLocation(prop, nil)
+			if result := tp.parseLayerVarianceStruct(propType); result != nil {
+				return result
+			}
+		}
+
+		return nil
+	})
+}
+
+// IsLayerType returns true if the type has the Layer variance struct.
+func (tp *TypeParser) IsLayerType(t *checker.Type) bool {
+	return tp.LayerType(t) != nil
+}
+
+func isLayerTypeSourceFile(tp *TypeParser, c *checker.Checker, sf *ast.SourceFile) bool {
+	if c == nil || sf == nil {
+		return false
+	}
+
+	moduleSym := checker.Checker_getSymbolOfDeclaration(c, sf.AsNode())
+	if moduleSym == nil {
+		return false
+	}
+
+	layerSym := c.TryGetMemberInModuleExportsAndProperties("Layer", moduleSym)
+	if layerSym == nil {
+		return false
+	}
+
+	layerType := c.GetDeclaredTypeOfSymbol(layerSym)
+	if layerType == nil {
+		return false
+	}
+
+	return tp.LayerType(layerType) != nil
+}
+
+// IsNodeReferenceToEffectLayerModuleApi reports whether node resolves to a member
+// exported by the "effect" package from a module that exports the Layer type.
+func (tp *TypeParser) IsNodeReferenceToEffectLayerModuleApi(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectLayerModuleDescriptor, memberName)
+}

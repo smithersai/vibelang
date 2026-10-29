@@ -1,0 +1,409 @@
+package rules
+
+import (
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/core"
+	tsdiag "github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+var CatchTagToCatchReason = rule.Rule{
+	Name:            "catchTagToCatchReason",
+	Group:           "style",
+	Description:     "Suggests Effect.catchReason or Effect.catchReasons for handlers that re-fail unmatched reason._tag branches",
+	DefaultSeverity: etscore.SeveritySuggestion,
+	SupportedEffect: []string{"v4"},
+	Codes: []int32{
+		tsdiag.Branching_on_0_reason_tag_inside_Effect_1_hand_rolls_reason_dispatch_use_Effect_catchReason_or_Effect_catchReasons_which_re_fail_unmatched_reasons_automatically_effect_catchTagToCatchReason.Code(),
+	},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		matches := AnalyzeCatchTagToCatchReason(ctx.TypeParser, ctx.Checker, ctx.SourceFile)
+		diagnostics := make([]*ast.Diagnostic, len(matches))
+		for i, match := range matches {
+			diagnostics[i] = ctx.NewDiagnostic(match.SourceFile, match.Location, tsdiag.Branching_on_0_reason_tag_inside_Effect_1_hand_rolls_reason_dispatch_use_Effect_catchReason_or_Effect_catchReasons_which_re_fail_unmatched_reasons_automatically_effect_catchTagToCatchReason, nil, match.ParameterName, match.CatchMethodName)
+		}
+		return diagnostics
+	},
+}
+
+type CatchTagToCatchReasonBranch struct {
+	ReasonTag           string
+	Result              *ast.Node
+	UsesParameter       bool
+	ReasonParameterName string
+}
+
+type CatchTagToCatchReasonMatch struct {
+	SourceFile      *ast.SourceFile
+	Location        core.TextRange
+	Transformation  *typeparser.PipingFlowTransformation
+	Callee          *ast.Node
+	OuterTag        *ast.Node
+	ParameterName   string
+	CatchMethodName string
+	Branches        []CatchTagToCatchReasonBranch
+	CanFix          bool
+}
+
+type catchTagToCatchReasonHandler struct {
+	parameterName string
+	branches      []CatchTagToCatchReasonBranch
+	canFix        bool
+}
+
+// AnalyzeCatchTagToCatchReason finds canonical reason-tag dispatch inside exact
+// Effect.catchTag and Effect.catchTags transformations.
+func AnalyzeCatchTagToCatchReason(tp *typeparser.TypeParser, c *checker.Checker, sf *ast.SourceFile) []CatchTagToCatchReasonMatch {
+	if tp == nil || c == nil || sf == nil {
+		return nil
+	}
+
+	var matches []CatchTagToCatchReasonMatch
+	for _, flow := range tp.PipingFlows(sf, true).All() {
+		for i := range flow.Transformations().All() {
+			transformation := flow.Transformations().At(i)
+			if transformation.Callee() == nil {
+				continue
+			}
+			switch {
+			case tp.IsNodeReferenceToEffectModuleApi(transformation.Callee(), "catchTag"):
+				match, ok := analyzeCatchTagTransformation(tp, c, sf, &transformation)
+				if ok {
+					matches = append(matches, match)
+				}
+			case tp.IsNodeReferenceToEffectModuleApi(transformation.Callee(), "catchTags"):
+				match, ok := analyzeCatchTagsTransformation(tp, c, sf, &transformation)
+				if ok {
+					matches = append(matches, match)
+				}
+			}
+		}
+	}
+
+	return matches
+}
+
+func analyzeCatchTagTransformation(
+	tp *typeparser.TypeParser,
+	c *checker.Checker,
+	sf *ast.SourceFile,
+	transformation *typeparser.PipingFlowTransformation,
+) (CatchTagToCatchReasonMatch, bool) {
+	if transformation == nil || transformation.Args().Len() != 2 {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	outerTag := unwrapTransparentExpression(transformation.Args().At(0))
+	if outerTag == nil || !ast.IsStringLiteral(outerTag) {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	handler, ok := analyzeCatchTagToCatchReasonHandler(tp, c, transformation.Args().At(1))
+	if !ok {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	return CatchTagToCatchReasonMatch{
+		SourceFile:      sf,
+		Location:        scanner.GetErrorRangeForNode(sf, transformation.Callee()),
+		Transformation:  transformation,
+		Callee:          transformation.Callee(),
+		OuterTag:        outerTag,
+		ParameterName:   handler.parameterName,
+		CatchMethodName: "catchTag",
+		Branches:        handler.branches,
+		CanFix:          handler.canFix,
+	}, true
+}
+
+func analyzeCatchTagsTransformation(
+	tp *typeparser.TypeParser,
+	c *checker.Checker,
+	sf *ast.SourceFile,
+	transformation *typeparser.PipingFlowTransformation,
+) (CatchTagToCatchReasonMatch, bool) {
+	if transformation == nil || transformation.Args().Len() != 1 {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	casesNode := unwrapTransparentExpression(transformation.Args().At(0))
+	if casesNode == nil || casesNode.Kind != ast.KindObjectLiteralExpression {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+	cases := casesNode.AsObjectLiteralExpression()
+	if cases == nil || cases.Properties == nil {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	var candidate *catchTagToCatchReasonHandler
+	for _, propertyNode := range cases.Properties.Nodes {
+		if propertyNode == nil || propertyNode.Kind != ast.KindPropertyAssignment {
+			continue
+		}
+		property := propertyNode.AsPropertyAssignment()
+		if property == nil || property.Name() == nil || property.Initializer == nil {
+			continue
+		}
+		if _, ok := catchTagsPropertyName(property.Name()); !ok {
+			continue
+		}
+
+		handler, ok := analyzeCatchTagToCatchReasonHandler(tp, c, property.Initializer)
+		if !ok {
+			continue
+		}
+		candidate = &handler
+		break
+	}
+	if candidate == nil {
+		return CatchTagToCatchReasonMatch{}, false
+	}
+
+	return CatchTagToCatchReasonMatch{
+		SourceFile:      sf,
+		Location:        scanner.GetErrorRangeForNode(sf, transformation.Callee()),
+		Transformation:  transformation,
+		Callee:          transformation.Callee(),
+		ParameterName:   candidate.parameterName,
+		CatchMethodName: "catchTags",
+		Branches:        candidate.branches,
+		CanFix:          false,
+	}, true
+}
+
+func analyzeCatchTagToCatchReasonHandler(tp *typeparser.TypeParser, c *checker.Checker, handlerNode *ast.Node) (catchTagToCatchReasonHandler, bool) {
+	returning := tp.ParseReturningDispatch(handlerNode)
+	if returning == nil || returning.Params().Len() != 1 {
+		return catchTagToCatchReasonHandler{}, false
+	}
+	handlerNode = returning.Node()
+	body := returning.Body()
+	parameter := returning.Params().At(0)
+	if parameter == nil || parameter.Name() == nil || parameter.Name().Kind != ast.KindIdentifier {
+		return catchTagToCatchReasonHandler{}, false
+	}
+	dispatch := returning.Dispatch()
+	if dispatch == nil || dispatch.Branches().Len() == 0 || dispatch.Fallback() == nil {
+		return catchTagToCatchReasonHandler{}, false
+	}
+	parameterSymbol := tp.GetSymbolAtLocation(parameter.Name())
+	if parameterSymbol == nil {
+		return catchTagToCatchReasonHandler{}, false
+	}
+	reasonTags, ok := catchReasonLiteralTags(tp, c, parameter.Name())
+	if !ok {
+		return catchTagToCatchReasonHandler{}, false
+	}
+
+	dispatchRefs := make(map[*ast.Node]struct{})
+	tagSubject := dispatch.CommonTagSubject(tp)
+	if tagSubject == nil || !isResultDispatchTagReference(tp, c, tagSubject, parameterSymbol) {
+		return catchTagToCatchReasonHandler{}, false
+	}
+
+	branches := make([]CatchTagToCatchReasonBranch, dispatch.Branches().Len())
+	seenTags := make(map[string]struct{}, dispatch.Branches().Len())
+	for index, branch := range dispatch.Branches().All() {
+		tag, tagged := resultDispatchTagValue(branch.Condition())
+		root, exactReasonChain := catchReasonTagReference(tp, c, branch.Condition().TagSubject(), parameterSymbol)
+		_, validReasonTag := reasonTags[tag]
+		_, duplicateTag := seenTags[tag]
+		if !tagged || !exactReasonChain || !validReasonTag || duplicateTag || !isEffectExpression(tp, branch.Result()) {
+			return catchTagToCatchReasonHandler{}, false
+		}
+		seenTags[tag] = struct{}{}
+		dispatchRefs[root] = struct{}{}
+		branches[index] = CatchTagToCatchReasonBranch{ReasonTag: tag, Result: branch.Result()}
+	}
+
+	fallbackParam, ok := catchTagReFailParameter(tp, c, dispatch.Fallback(), parameterSymbol)
+	if !ok {
+		return catchTagToCatchReasonHandler{}, false
+	}
+
+	branchParameterUses, validUses := validateCatchTagParameterUses(tp, c, body, parameterSymbol, branches, fallbackParam, dispatchRefs)
+	if !validUses {
+		return catchTagToCatchReasonHandler{}, false
+	}
+	for i := range branches {
+		branches[i].UsesParameter = branchParameterUses[i]
+		if branches[i].UsesParameter {
+			branches[i].ReasonParameterName = uniqueCatchReasonParameterName(c, branches[i].Result)
+		}
+	}
+
+	return catchTagToCatchReasonHandler{
+		parameterName: parameter.Name().AsIdentifier().Text,
+		branches:      branches,
+		canFix:        handlerNode.Kind == ast.KindArrowFunction && !checker.Checker_isSymbolAssigned(c, parameterSymbol),
+	}, true
+}
+
+func catchReasonLiteralTags(tp *typeparser.TypeParser, c *checker.Checker, parameterName *ast.Node) (map[string]struct{}, bool) {
+	parameterType := tp.GetTypeAtLocation(parameterName)
+	if parameterType == nil {
+		return nil, false
+	}
+	reasonType := c.GetTypeOfPropertyOfType(parameterType, "reason")
+	if reasonType == nil {
+		reasonType = tp.GetTypeOfPropertyByName(parameterType, "reason")
+	}
+	if reasonType == nil {
+		return nil, false
+	}
+	if reasonType.Flags()&checker.TypeFlagsUnion == 0 {
+		return nil, false
+	}
+
+	tags := make(map[string]struct{})
+	for _, member := range tp.UnrollUnionMembers(reasonType) {
+		if member == nil {
+			return nil, false
+		}
+		tagType := c.GetTypeOfPropertyOfType(member, "_tag")
+		if tagType == nil {
+			tagType = tp.GetTypeOfPropertyByName(member, "_tag")
+		}
+		if tagType == nil || tagType.Flags()&checker.TypeFlagsStringLiteral == 0 {
+			return nil, false
+		}
+		tag, ok := tagType.AsLiteralType().Value().(string)
+		if !ok {
+			return nil, false
+		}
+		tags[tag] = struct{}{}
+	}
+	return tags, len(tags) > 0
+}
+
+func catchReasonTagReference(tp *typeparser.TypeParser, c *checker.Checker, node *ast.Node, parameterSymbol *ast.Symbol) (*ast.Node, bool) {
+	node = unwrapTransparentExpression(node)
+	if node == nil || node.Kind != ast.KindPropertyAccessExpression {
+		return nil, false
+	}
+	reasonAccess := node.AsPropertyAccessExpression()
+	if reasonAccess == nil || reasonAccess.Expression == nil || reasonAccess.Name() == nil || reasonAccess.Name().Text() != "reason" {
+		return nil, false
+	}
+	root := unwrapTransparentExpression(reasonAccess.Expression)
+	if root == nil || root.Kind != ast.KindIdentifier || !sameCatchReasonSymbol(tp, c, root, parameterSymbol) {
+		return nil, false
+	}
+	return root, true
+}
+
+func catchTagReFailParameter(tp *typeparser.TypeParser, c *checker.Checker, expression *ast.Node, parameterSymbol *ast.Symbol) (*ast.Node, bool) {
+	expression = unwrapTransparentExpression(expression)
+	if expression == nil {
+		return nil, false
+	}
+	if expression.Kind == ast.KindCallExpression {
+		call := expression.AsCallExpression()
+		if call != nil && call.Expression != nil && call.Arguments != nil && len(call.Arguments.Nodes) == 1 &&
+			tp.IsNodeReferenceToEffectModuleApi(call.Expression, "fail") {
+			argument := unwrapTransparentExpression(call.Arguments.Nodes[0])
+			if argument != nil && argument.Kind == ast.KindIdentifier && sameCatchReasonSymbol(tp, c, argument, parameterSymbol) {
+				return argument, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func validateCatchTagParameterUses(
+	tp *typeparser.TypeParser,
+	c *checker.Checker,
+	body *ast.Node,
+	parameterSymbol *ast.Symbol,
+	branches []CatchTagToCatchReasonBranch,
+	fallbackParam *ast.Node,
+	dispatchRefs map[*ast.Node]struct{},
+) ([]bool, bool) {
+	allowed := make(map[*ast.Node]struct{}, len(dispatchRefs)+1)
+	for node := range dispatchRefs {
+		allowed[node] = struct{}{}
+	}
+	if fallbackParam != nil {
+		allowed[fallbackParam] = struct{}{}
+	}
+
+	branchUses := make([]bool, len(branches))
+	valid := true
+	var walkBody ast.Visitor
+	walkBody = func(node *ast.Node) bool {
+		if node == nil || !valid {
+			return true
+		}
+		if node.Kind == ast.KindIdentifier && sameCatchReasonSymbol(tp, c, node, parameterSymbol) {
+			if _, ok := allowed[node]; ok {
+				return false
+			}
+			if branchIndex := catchReasonRecoveryBranchIndex(node, branches); branchIndex >= 0 {
+				branchUses[branchIndex] = true
+				return false
+			}
+			valid = false
+			return true
+		}
+		node.ForEachChild(walkBody)
+		return false
+	}
+	walkBody(body)
+	return branchUses, valid
+}
+
+func catchReasonRecoveryBranchIndex(node *ast.Node, branches []CatchTagToCatchReasonBranch) int {
+	for i, branch := range branches {
+		expression := branch.Result
+		if expression != nil && node.Pos() >= expression.Pos() && node.End() <= expression.End() {
+			return i
+		}
+	}
+	return -1
+}
+
+func uniqueCatchReasonParameterName(c *checker.Checker, location *ast.Node) string {
+	used := make(map[string]struct{})
+	for _, symbol := range c.GetSymbolsInScope(location, ast.SymbolFlagsValue) {
+		used[c.SymbolToString(symbol)] = struct{}{}
+	}
+	for i := -1; ; i++ {
+		name := "_"
+		if i >= 0 {
+			name = "_" + strconv.Itoa(i)
+		}
+		if _, exists := used[name]; !exists {
+			return name
+		}
+	}
+}
+
+func isEffectExpression(tp *typeparser.TypeParser, expression *ast.Node) bool {
+	return expression != nil && !tp.NodeCannotBeEffectLibraryType(expression) &&
+		tp.EffectType(tp.GetTypeAtLocation(expression)) != nil
+}
+
+func catchTagsPropertyName(name *ast.Node) (string, bool) {
+	if name == nil {
+		return "", false
+	}
+	switch name.Kind {
+	case ast.KindIdentifier:
+		return name.AsIdentifier().Text, true
+	case ast.KindStringLiteral:
+		return name.AsStringLiteral().Text, true
+	default:
+		return "", false
+	}
+}
+
+func sameCatchReasonSymbol(tp *typeparser.TypeParser, c *checker.Checker, node *ast.Node, expected *ast.Symbol) bool {
+	actual := tp.GetSymbolAtLocation(node)
+	return actual != nil && expected != nil && checker.Checker_getSymbolIfSameReference(c, actual, expected) != nil
+}

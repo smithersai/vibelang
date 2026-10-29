@@ -34,6 +34,16 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
+// FilterDiagnosticsForNoEmitOnErrorCallback is invoked before diagnostics
+// suppress emit when noEmitOnError is enabled.
+var FilterDiagnosticsForNoEmitOnErrorCallback func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic
+
+// RegisterFilterDiagnosticsForNoEmitOnErrorCallback registers a callback to
+// filter diagnostics used by noEmitOnError.
+func RegisterFilterDiagnosticsForNoEmitOnErrorCallback(cb func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic) {
+	FilterDiagnosticsForNoEmitOnErrorCallback = cb
+}
+
 type ProgramOptions struct {
 	ProgramConfig
 	ProgramHosts
@@ -1652,6 +1662,11 @@ func (p *Program) getDiagnosticsWithPrecedingDirectives(sourceFile *ast.SourceFi
 				break
 			}
 		}
+		// EFFECT: Never suppress Effect diagnostics (377xxx range) with @ts-expect-error/@ts-ignore.
+		// Effect has its own directive system (@effect-diagnostics) for suppression.
+		if ignoreDiagnostic && diagnostic.Code() >= 377000 && diagnostic.Code() < 378000 {
+			ignoreDiagnostic = false
+		}
 		if !ignoreDiagnostic {
 			filtered = append(filtered, diagnostic)
 		}
@@ -2114,6 +2129,9 @@ func GetDiagnosticsOfAnyProgram(
 				allDiagnostics = appendDiagnosticsForAllFiles(allDiagnostics, program.GetDeclarationDiagnostics)
 			}
 		}
+	}
+	if skipNoEmitCheckForDtsDiagnostics && FilterDiagnosticsForNoEmitOnErrorCallback != nil {
+		allDiagnostics = FilterDiagnosticsForNoEmitOnErrorCallback(program.Options(), allDiagnostics)
 	}
 	return allDiagnostics
 }

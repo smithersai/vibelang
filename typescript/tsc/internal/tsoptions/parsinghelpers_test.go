@@ -12,17 +12,20 @@ import (
 func TestMergeCompilerOptions(t *testing.T) {
 	t.Parallel()
 
-	if mergeCompilerOptions(nil, nil, nil) != nil {
+	if mergeCompilerOptions(nil, nil, nil, "", "") != nil {
 		t.Fatal("Merging nil options must return nil")
 	}
 	unchanged := &core.CompilerOptions{Strict: core.TSTrue}
-	if mergeCompilerOptions(unchanged, nil, nil) != unchanged || unchanged.Strict != core.TSTrue {
+	if mergeCompilerOptions(unchanged, nil, nil, "", "") != unchanged || unchanged.Strict != core.TSTrue {
 		t.Fatal("A nil source must leave the target unchanged")
 	}
 
 	for field := range reflect.TypeFor[core.CompilerOptions]().Fields() {
 		if !field.IsExported() {
 			continue
+		}
+		if field.Name == "Effect" {
+			continue // derived from the @effect/language-service plugin, not an option of its own (effect-tsgo, VIP-38)
 		}
 		t.Run(field.Name, func(t *testing.T) {
 			t.Parallel()
@@ -48,7 +51,7 @@ func TestMergeCompilerOptions(t *testing.T) {
 						} else if !sourceValue.IsZero() {
 							expectedField.Set(sourceValue)
 						}
-						if got := mergeCompilerOptions(target, source, rawSource); got != target || !reflect.DeepEqual(got, expected) {
+						if got := mergeCompilerOptions(target, source, rawSource, "", ""); got != target || !reflect.DeepEqual(got, expected) {
 							t.Fatalf("Merge differs for target=%v, source=%v, explicitNull=%v", targetValue, sourceValue, explicitNull)
 						}
 						actualField := reflect.ValueOf(target).Elem().FieldByIndex(field.Index)
@@ -77,7 +80,7 @@ func TestMergeCompilerOptionsRawNulls(t *testing.T) {
 			raw.Set("compilerOptions", rawOptions)
 			target := &core.CompilerOptions{ModuleDetection: core.ModuleDetectionKindForce}
 			source := &core.CompilerOptions{ModuleDetection: core.ModuleDetectionKindAuto}
-			mergeCompilerOptions(target, source, raw)
+			mergeCompilerOptions(target, source, raw, "", "")
 			expected := core.ModuleDetectionKindAuto
 			if name == "moduleDetection" {
 				expected = core.ModuleDetectionKindNone
@@ -85,7 +88,7 @@ func TestMergeCompilerOptionsRawNulls(t *testing.T) {
 			if target.ModuleDetection != expected {
 				t.Fatalf("Got %v, want %v", target.ModuleDetection, expected)
 			}
-			mergeCompilerOptions(source, source, raw)
+			mergeCompilerOptions(source, source, raw, "", "")
 			if source.ModuleDetection != expected {
 				t.Fatal("Merging an object with itself must still apply explicit nulls")
 			}
@@ -99,6 +102,9 @@ func TestParseCompilerOptionNoMissingFields(t *testing.T) {
 	for _, field := range reflect.VisibleFields(reflect.TypeFor[core.CompilerOptions]()) {
 		if !field.IsExported() {
 			continue
+		}
+		if field.Name == "Effect" {
+			continue // derived from the @effect/language-service plugin, not an option of its own (effect-tsgo, VIP-38)
 		}
 
 		keyName := field.Name

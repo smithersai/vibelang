@@ -23,6 +23,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfsmatch"
 )
 
+// ValidateCompilerOptionsCallback validates the final options after configuration
+// inheritance and existing options have been merged.
+var ValidateCompilerOptionsCallback func(*core.CompilerOptions, *ast.SourceFile) []*ast.Diagnostic
+
+func RegisterValidateCompilerOptionsCallback(cb func(*core.CompilerOptions, *ast.SourceFile) []*ast.Diagnostic) {
+	ValidateCompilerOptionsCallback = cb
+}
+
 type extendsResult struct {
 	options             *parsedCompilerOptions
 	include             []any
@@ -1067,7 +1075,7 @@ func parseConfig(
 					result.compileOnSave = compileOnSave
 				}
 			}
-			mergeParsedCompilerOptions(result.options, extendedConfig.options, extendsRaw)
+			mergeParsedCompilerOptions(result.options, extendedConfig.options, extendsRaw, extendedConfigPath.AsString(), basePath.AsString())
 		}
 	}
 
@@ -1105,7 +1113,7 @@ func parseConfig(
 				}
 			}
 		}
-		ownConfig.options = mergeParsedCompilerOptions(result.options, ownConfig.options, ownConfig.raw)
+		ownConfig.options = mergeParsedCompilerOptions(result.options, ownConfig.options, ownConfig.raw, configFileName.AsString(), basePath.AsString())
 	}
 	return ownConfig, errors
 }
@@ -1151,7 +1159,7 @@ func parseJsonConfigFileContentWorker(
 
 	var errors []*ast.Diagnostic
 	parsedConfig, errors := parseConfig(json, sourceFile, fs, baseDirectory, configFileName, resolutionStack, extendedConfigCache)
-	mergeParsedCompilerOptions(parsedConfig.options, &parsedCompilerOptions{CompilerOptions: existingOptions}, existingOptionsRaw)
+	mergeParsedCompilerOptions(parsedConfig.options, &parsedCompilerOptions{CompilerOptions: existingOptions}, existingOptionsRaw, configFileName.AsString(), baseDirectory.AsString())
 	handleOptionConfigDirTemplateSubstitution(parsedConfig.options, basePathForFileNames)
 	rawConfig := parseJsonToStringKey(parsedConfig.raw)
 	if configFileName != "" && parsedConfig.options != nil {
@@ -1449,6 +1457,10 @@ func parseJsonConfigFileContentWorker(
 			}
 		}
 		return projectReferences
+	}
+
+	if ValidateCompilerOptionsCallback != nil {
+		errors = append(errors, ValidateCompilerOptionsCallback(parsedConfig.options.CompilerOptions, tsconfigToSourceFile(sourceFile))...)
 	}
 
 	fileNames, literalFileNamesLen := getFileNames(basePathForFileNames)

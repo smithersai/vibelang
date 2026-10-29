@@ -3,7 +3,10 @@
 package core
 
 import (
+	"reflect"
 	"slices"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -18,6 +21,8 @@ type PluginImport struct {
 // CompilerOptions contains the compiler options exposed by the API.
 type CompilerOptions struct {
 	_ noCopy
+	// Effect holds the parsed @effect/language-service plugin configuration.
+	Effect *etscore.EffectPluginOptions
 	// VibeLang is compilerOptions.vibelang. It is added by hand, not generated.
 	VibeLang                                  *VibeLangOptions                          `json:"vibelang,omitzero"`
 	AllowJs                                   Tristate                                  `json:"allowJs,omitzero"`
@@ -167,6 +172,7 @@ type CompilerOptions struct {
 // Clone creates a shallow copy of the CompilerOptions.
 func (options *CompilerOptions) Clone() *CompilerOptions {
 	return &CompilerOptions{
+		Effect:                     options.Effect,
 		VibeLang:                   options.VibeLang,
 		AllowJs:                    options.AllowJs,
 		AllowArbitraryExtensions:   options.AllowArbitraryExtensions,
@@ -313,6 +319,9 @@ func (options *CompilerOptions) Equals(other *CompilerOptions) bool {
 		return false
 	}
 	if !options.VibeLang.Equals(other.VibeLang) {
+		return false
+	}
+	if !reflect.DeepEqual(options.Effect, other.Effect) {
 		return false
 	}
 	if options.AllowJs != other.AllowJs {

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext", "dom"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out",
+    "vibelang": {},
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "effectSleepZeroToYieldNow": "error",
+          "schemaLiteralNonFinite": "error",
+          "tryCatchInEffectGen": "error",
+          "extendsNativeError": "error"
+        }
+      }
+    ]
+  },
+  "include": ["*.vibe"]
+}

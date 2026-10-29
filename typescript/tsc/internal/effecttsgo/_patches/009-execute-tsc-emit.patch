@@ -1,0 +1,86 @@
+diff --git a/tsc/internal/execute/tsc.go b/tsc/internal/execute/tsc.go
+--- a/tsc/internal/execute/tsc.go
++++ b/tsc/internal/execute/tsc.go
+@@ -5,6 +5,7 @@
+ 	"fmt"
+ 	"strings"
+ 
++	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+ 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+ 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+ 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+@@ -51,6 +52,9 @@
+ }
+ 
+ func CommandLine(ctx context.Context, sys tsc.System, commandLineArgs []string, testing tsc.CommandLineTesting) tsc.CommandLineResult {
++	restore := etscore.EnterCommandLineMode()
++	defer restore()
++
+ 	if len(commandLineArgs) > 0 {
+ 		switch strings.ToLower(commandLineArgs[0]) {
+ 		case "-b", "--b", "-build", "--build":
+diff --git a/tsc/internal/execute/tsc/emit.go b/tsc/internal/execute/tsc/emit.go
+--- a/tsc/internal/execute/tsc/emit.go
++++ b/tsc/internal/execute/tsc/emit.go
+@@ -11,6 +11,7 @@
+ 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+ 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+ 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
++	"github.com/microsoft/TypeScript/tsc/internal/core"
+ 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+ 	"github.com/microsoft/TypeScript/tsc/internal/execute/incremental"
+ 	"github.com/microsoft/TypeScript/tsc/internal/locale"
+@@ -19,6 +20,17 @@
+ 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+ )
+ 
++// FilterDiagnosticsForExitCodeCallback is invoked to filter diagnostics before
++// exit-code determination. It allows external packages to exclude certain
++// diagnostics from affecting the exit code while still reporting them.
++var FilterDiagnosticsForExitCodeCallback func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic
++
++// RegisterFilterDiagnosticsForExitCodeCallback registers a callback to filter
++// diagnostics for exit-code determination.
++func RegisterFilterDiagnosticsForExitCodeCallback(cb func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic) {
++	FilterDiagnosticsForExitCodeCallback = cb
++}
++
+ func GetTraceWithWriterFromSys(w io.Writer, locale locale.Locale, testing CommandLineTesting) func(msg *diagnostics.Message, args ...any) {
+ 	if testing == nil {
+ 		return func(msg *diagnostics.Message, args ...any) {
+@@ -66,7 +78,11 @@
+ 
+ 	// VibeLang: only errors make the exit status non-zero; warnings, such as
+ 	// EK2004 and the EK48xx lint rules (D241), do not fail a build.
+-	hasErrors := slices.ContainsFunc(result.Diagnostics, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
++	diagnosticsForExitCode := result.Diagnostics
++	if FilterDiagnosticsForExitCodeCallback != nil {
++		diagnosticsForExitCode = FilterDiagnosticsForExitCodeCallback(input.Config.CompilerOptions(), result.Diagnostics)
++	}
++	hasErrors := slices.ContainsFunc(diagnosticsForExitCode, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
+ 	if result.EmitResult.EmitSkipped && hasErrors {
+ 		result.Status = ExitStatusDiagnosticsPresent_OutputsSkipped
+ 	} else if hasErrors {
+diff --git a/tsc/internal/compiler/program.go b/tsc/internal/compiler/program.go
+--- a/tsc/internal/compiler/program.go
++++ b/tsc/internal/compiler/program.go
+@@ -35,1 +35,11 @@ import (
++// FilterDiagnosticsForNoEmitOnErrorCallback is invoked before diagnostics
++// suppress emit when noEmitOnError is enabled.
++var FilterDiagnosticsForNoEmitOnErrorCallback func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic
++
++// RegisterFilterDiagnosticsForNoEmitOnErrorCallback registers a callback to
++// filter diagnostics used by noEmitOnError.
++func RegisterFilterDiagnosticsForNoEmitOnErrorCallback(cb func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic) {
++	FilterDiagnosticsForNoEmitOnErrorCallback = cb
++}
++
+ type ProgramOptions struct {
+@@ -1787,4 +1797,7 @@ func GetDiagnosticsOfAnyProgram(
+ 		}
+ 	}
++	if skipNoEmitCheckForDtsDiagnostics && FilterDiagnosticsForNoEmitOnErrorCallback != nil {
++		allDiagnostics = FilterDiagnosticsForNoEmitOnErrorCallback(program.Options(), allDiagnostics)
++	}
+ 	return allDiagnostics
+ }

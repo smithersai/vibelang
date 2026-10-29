@@ -1,0 +1,71 @@
+diff --git a/tsc/internal/core/options_generated.go b/tsc/internal/core/options_generated.go
+--- a/tsc/internal/core/options_generated.go
++++ b/tsc/internal/core/options_generated.go
+@@ -3,8 +3,11 @@
+ package core
+ 
+ import (
++	"reflect"
+ 	"slices"
+ 
++	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
++
+ 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+ 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+ )
+@@ -18,6 +21,8 @@
+ // CompilerOptions contains the compiler options exposed by the API.
+ type CompilerOptions struct {
+ 	_ noCopy
++	// Effect holds the parsed @effect/language-service plugin configuration.
++	Effect *etscore.EffectPluginOptions
+ 	// VibeLang is compilerOptions.vibelang. It is added by hand, not generated.
+ 	VibeLang                                  *VibeLangOptions                          `json:"vibelang,omitzero"`
+ 	AllowJs                                   Tristate                                  `json:"allowJs,omitzero"`
+@@ -167,6 +172,7 @@
+ // Clone creates a shallow copy of the CompilerOptions.
+ func (options *CompilerOptions) Clone() *CompilerOptions {
+ 	return &CompilerOptions{
++		Effect:                     options.Effect,
+ 		VibeLang:                   options.VibeLang,
+ 		AllowJs:                    options.AllowJs,
+ 		AllowArbitraryExtensions:   options.AllowArbitraryExtensions,
+@@ -315,6 +321,9 @@
+ 	if !options.VibeLang.Equals(other.VibeLang) {
+ 		return false
+ 	}
++	if !reflect.DeepEqual(options.Effect, other.Effect) {
++		return false
++	}
+ 	if options.AllowJs != other.AllowJs {
+ 		return false
+ 	}
+diff --git a/tsc/internal/core/effect_options_test.go b/tsc/internal/core/effect_options_test.go
+--- /dev/null
++++ b/tsc/internal/core/effect_options_test.go
+@@ -0,0 +1,25 @@
++package core
++
++import (
++	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
++	"testing"
++)
++
++func TestEffectCompilerOptionCloningAndEquality(t *testing.T) {
++	options := &CompilerOptions{Effect: &etscore.EffectPluginOptions{Diagnostics: true}}
++	cloned := options.Clone()
++	if cloned == options || cloned.Effect != options.Effect {
++		t.Fatal("shallow clone must retain Effect options")
++	}
++	if !options.Equals(cloned) {
++		t.Fatal("cloned options must be equal")
++	}
++	equivalent := &CompilerOptions{Effect: &etscore.EffectPluginOptions{Diagnostics: true}}
++	if !options.Equals(equivalent) {
++		t.Fatal("Effect options must compare by value")
++	}
++	equivalent.Effect.Diagnostics = false
++	if options.Equals(equivalent) {
++		t.Fatal("changed Effect options must invalidate equality")
++	}
++}

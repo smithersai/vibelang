@@ -1,0 +1,900 @@
+// Package typeparser provides Effect type detection and parsing utilities.
+package typeparser
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/readonly"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+// EffectFnOpportunityResult represents a function that can be converted to Effect.fn.
+type EffectFnOpportunityResult struct {
+	targetNode              *ast.Node               // The function node being reported
+	nameIdentifier          *ast.Node               // The discovered name node for the function
+	generatorFunction       *ast.FunctionExpression // Non-nil for gen opportunity, nil for regular
+	pipeArguments           []*ast.Node             // Pipe args from piped Effect.gen (may be empty)
+	explicitTraceExpression *ast.Node               // Span name from Effect.withSpan if last pipe arg, or nil
+	suggestedTraceName      string                  // The local function/variable name for suggested span
+	inferredTraceName       string                  // Context-aware name (e.g., "ServiceTag.member" or exported name)
+	effectModule            *ast.Expression         // The Effect module identifier
+	hasGenBody              bool                    // True for gen opportunity, false for regular
+	isLayerMember           bool                    // True when the target is a property value inside a Layer service definition
+}
+
+func (r EffectFnOpportunityResult) TargetNode() *ast.Node { return r.targetNode }
+
+func (r EffectFnOpportunityResult) NameIdentifier() *ast.Node { return r.nameIdentifier }
+
+func (r EffectFnOpportunityResult) GeneratorFunction() *ast.FunctionExpression {
+	return r.generatorFunction
+}
+
+func (r EffectFnOpportunityResult) PipeArguments() readonly.Slice[*ast.Node] {
+	return readonly.New(r.pipeArguments)
+}
+
+func (r EffectFnOpportunityResult) ExplicitTraceExpression() *ast.Node {
+	return r.explicitTraceExpression
+}
+
+func (r EffectFnOpportunityResult) SuggestedTraceName() string { return r.suggestedTraceName }
+
+func (r EffectFnOpportunityResult) InferredTraceName() string { return r.inferredTraceName }
+
+func (r EffectFnOpportunityResult) EffectModule() *ast.Expression { return r.effectModule }
+
+func (r EffectFnOpportunityResult) HasGenBody() bool { return r.hasGenBody }
+
+func (r EffectFnOpportunityResult) IsLayerMember() bool { return r.isLayerMember }
+
+// IsInsideEffectFn checks if a function node is already the first argument
+// of an Effect.fn, Effect.fnGen, or Effect.fnUntraced call.
+func (tp *TypeParser) IsInsideEffectFn(fnNode *ast.Node) bool {
+	if tp == nil || tp.checker == nil || fnNode == nil {
+		return false
+	}
+
+	parent := fnNode.Parent
+	if parent == nil || parent.Kind != ast.KindCallExpression {
+		return false
+	}
+
+	parentCall := parent.AsCallExpression()
+	if parentCall == nil || parentCall.Arguments == nil || len(parentCall.Arguments.Nodes) == 0 {
+		return false
+	}
+
+	// The function must be the first argument
+	if parentCall.Arguments.Nodes[0] != fnNode {
+		return false
+	}
+
+	if tp.EffectFnCall(parent) != nil {
+		return true
+	}
+
+	return false
+}
+
+// ParseEffectFnOpportunity detects whether a function node can be converted to Effect.fn.
+// Returns nil if the node is not an eligible candidate.
+func (tp *TypeParser) ParseEffectFnOpportunity(node *ast.Node) *EffectFnOpportunityResult {
+	if tp == nil || tp.checker == nil || node == nil || !isEffectFnOpportunityCandidate(node) {
+		return nil
+	}
+
+	return Cached(&tp.links.ParseEffectFnOpportunity, node, func() *EffectFnOpportunityResult {
+		return tp.parseEffectFnOpportunityInner(node)
+	})
+}
+
+func isEffectFnOpportunityCandidate(node *ast.Node) bool {
+	switch node.Kind {
+	case ast.KindFunctionExpression:
+		fn := node.AsFunctionExpression()
+		if fn != nil && (fn.AsteriskToken != nil || fn.Name() != nil) {
+			return false
+		}
+	case ast.KindFunctionDeclaration:
+		fn := node.AsFunctionDeclaration()
+		if fn != nil && fn.AsteriskToken != nil {
+			return false
+		}
+	case ast.KindArrowFunction:
+	default:
+		return false
+	}
+	return !hasReturnTypeAnnotation(node)
+}
+
+func (tp *TypeParser) parseEffectFnOpportunityInner(node *ast.Node) *EffectFnOpportunityResult {
+	c := tp.checker
+	nameIdentifier := ast.GetNameOfDeclaration(node)
+	// GetNameOfDeclaration doesn't cover property declaration parents for arrow/function expressions
+	if nameIdentifier == nil && node.Parent != nil && node.Parent.Kind == ast.KindPropertyDeclaration {
+		pd := node.Parent.AsPropertyDeclaration()
+		if pd != nil {
+			nameIdentifier = pd.Name()
+		}
+	}
+	// Also check PropertyAssignment parents (e.g., object literal members like { query: (...) => Effect... })
+	if nameIdentifier == nil && node.Parent != nil && node.Parent.Kind == ast.KindPropertyAssignment {
+		pa := node.Parent.AsPropertyAssignment()
+		if pa != nil && pa.Initializer == node {
+			nameIdentifier = pa.Name()
+		}
+	}
+	if nameIdentifier != nil && nameIdentifier.Kind != ast.KindIdentifier && nameIdentifier.Kind != ast.KindStringLiteral {
+		nameIdentifier = nil
+	}
+	if nameIdentifier == nil {
+		return nil
+	}
+	traceName := scanner.GetTextOfNode(nameIdentifier)
+	if traceName == "" {
+		return nil
+	}
+
+	// Step 5: Reject if already inside Effect.fn
+	if tp.IsInsideEffectFn(node) {
+		return nil
+	}
+
+	// Step 6: Get function type, require exactly 1 call signature
+	functionType := tp.GetTypeAtLocation(node)
+	if functionType == nil {
+		return nil
+	}
+	callSignatures := c.GetSignaturesOfType(functionType, checker.SignatureKindCall)
+	if len(callSignatures) != 1 {
+		return nil
+	}
+
+	// Step 7: Get return type, unroll union members, require all are strict Effect types
+	returnType := c.GetReturnTypeOfSignature(callSignatures[0])
+	if returnType == nil {
+		return nil
+	}
+	unionMembers := tp.UnrollUnionMembers(returnType)
+	if len(unionMembers) == 0 {
+		return nil
+	}
+	for _, member := range unionMembers {
+		if tp.StrictEffectType(member) == nil {
+			return nil
+		}
+	}
+
+	// Step 8b: Compute suggestedTraceName (local name) and inferredTraceName (context-aware name)
+	suggestedTraceName := traceName
+	inferredTraceName := tp.getInferredTraceName(node, suggestedTraceName)
+
+	// Detect whether the target function is a property value inside a Layer service definition
+	isLayerMember := inferredTraceName != "" && inferredTraceName != suggestedTraceName
+
+	// Converting a hoisted declaration to a const must not invalidate earlier uses.
+	// Keep this in the shared parser so neither the diagnostic nor the fix is offered.
+	if node.Kind == ast.KindFunctionDeclaration && tp.isFunctionReferencedBeforeDeclaration(node) {
+		return nil
+	}
+
+	// Step 9: Try gen opportunity first
+	if result := tp.tryParseGenOpportunity(node); result != nil {
+		// Safety check: reject if function parameters are referenced in pipe arguments
+		if len(result.pipeArguments) > 0 && tp.areParametersReferencedIn(node, result.pipeArguments) {
+			return nil
+		}
+		return &EffectFnOpportunityResult{
+			targetNode:              node,
+			nameIdentifier:          nameIdentifier,
+			generatorFunction:       result.generatorFunction,
+			pipeArguments:           result.pipeArguments,
+			explicitTraceExpression: result.explicitTraceExpression,
+			suggestedTraceName:      suggestedTraceName,
+			inferredTraceName:       inferredTraceName,
+			effectModule:            result.effectModule,
+			hasGenBody:              true,
+			isLayerMember:           isLayerMember,
+		}
+	}
+
+	// Step 10: Try regular opportunity (block body with >5 statements, relaxed in Layer context)
+	if result := tryParseRegularOpportunity(node, isLayerMember); result {
+		return &EffectFnOpportunityResult{
+			targetNode:         node,
+			nameIdentifier:     nameIdentifier,
+			suggestedTraceName: suggestedTraceName,
+			inferredTraceName:  inferredTraceName,
+			hasGenBody:         false,
+			isLayerMember:      isLayerMember,
+		}
+	}
+
+	return nil
+}
+
+// isFunctionReferencedBeforeDeclaration checks the preceding syntax in the
+// declaration's scope. Earlier closures are conservatively included: they may
+// be invoked before the replacement const is initialized.
+func (tp *TypeParser) isFunctionReferencedBeforeDeclaration(node *ast.Node) bool {
+	name := node.Name()
+	if name == nil || node.Parent == nil {
+		return false
+	}
+	scope := node.Parent
+	// Switch clauses share the enclosing case block's lexical scope.
+	if scope.Kind == ast.KindCaseClause || scope.Kind == ast.KindDefaultClause {
+		scope = scope.Parent
+	}
+	if scope == nil {
+		return false
+	}
+	symbol := tp.GetSymbolAtLocation(name)
+	if symbol == nil {
+		return false
+	}
+
+	var visit ast.Visitor
+	visit = func(current *ast.Node) bool {
+		if current.Pos() >= node.Pos() || ast.IsTypeNode(current) || current.Kind == ast.KindExportDeclaration {
+			return false
+		}
+		if current.Kind == ast.KindShorthandPropertyAssignment && current.Name().Text() == name.Text() {
+			if sameSymbolReference(tp.checker, tp.checker.GetShorthandAssignmentValueSymbol(current), symbol) {
+				return true
+			}
+		}
+		if current.Kind == ast.KindIdentifier && current.Text() == name.Text() &&
+			sameSymbolReference(tp.checker, tp.GetSymbolAtLocation(current), symbol) {
+			return true
+		}
+		return current.ForEachChild(visit)
+	}
+	return scope.ForEachChild(visit)
+}
+
+// hasReturnTypeAnnotation checks if a function node has an explicit return type annotation.
+func hasReturnTypeAnnotation(node *ast.Node) bool {
+	switch node.Kind {
+	case ast.KindArrowFunction:
+		fn := node.AsArrowFunction()
+		if fn != nil && fn.Type != nil {
+			return true
+		}
+	case ast.KindFunctionExpression:
+		fn := node.AsFunctionExpression()
+		if fn != nil && fn.Type != nil {
+			return true
+		}
+	case ast.KindFunctionDeclaration:
+		fn := node.AsFunctionDeclaration()
+		if fn != nil && fn.Type != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// genOpportunityResult holds the parsed gen opportunity data.
+type genOpportunityResult struct {
+	effectModule            *ast.Expression
+	generatorFunction       *ast.FunctionExpression
+	pipeArguments           []*ast.Node
+	explicitTraceExpression *ast.Node
+}
+
+// tryParseGenOpportunity attempts to parse a function as a gen opportunity.
+// The function body must contain a single return statement (or expression body for arrows)
+// that is an Effect.gen call (possibly piped).
+func (tp *TypeParser) tryParseGenOpportunity(fnNode *ast.Node) *genOpportunityResult {
+	bodyExpr := getBodyExpression(fnNode)
+	if bodyExpr == nil {
+		return nil
+	}
+
+	// Try to parse as a pipe call first to get subject and pipe args
+	var subject *ast.Node
+	var outerPipeArgs []*ast.Node
+
+	if pipeResult := tp.ParsePipeCall(bodyExpr); pipeResult != nil {
+		subject = pipeResult.subject
+		outerPipeArgs = pipeResult.args
+	} else {
+		subject = bodyExpr
+	}
+
+	// The subject must be an Effect.gen call
+	genResult := tp.EffectGenCall(subject)
+	if genResult == nil {
+		return nil
+	}
+
+	// with no this binding
+	if genResult.optionsNode != nil {
+		return nil
+	}
+	pipeArgs := append([]*ast.Node{}, genResult.pipeArguments...)
+	pipeArgs = append(pipeArgs, outerPipeArgs...)
+	for _, arg := range pipeArgs {
+		// A spread can contain bare pipeables, but cannot itself be wrapped as
+		// a unary callback. Keep the original pipe call in this case.
+		if arg.Kind == ast.KindSpreadElement {
+			return nil
+		}
+	}
+
+	// Check if the last pipe argument is Effect.withSpan
+	var explicitTraceExpression *ast.Node
+	if len(pipeArgs) > 0 {
+		lastArg := pipeArgs[len(pipeArgs)-1]
+		if withSpanExpr := tp.tryExtractWithSpanExpression(lastArg); withSpanExpr != nil {
+			explicitTraceExpression = withSpanExpr
+		}
+	}
+
+	return &genOpportunityResult{
+		effectModule:            genResult.effectModule,
+		generatorFunction:       genResult.generatorFunction,
+		pipeArguments:           pipeArgs,
+		explicitTraceExpression: explicitTraceExpression,
+	}
+}
+
+// getBodyExpression gets the single return expression from a function body.
+// For arrow functions with expression bodies, returns the expression directly.
+// For block bodies, requires exactly one return statement.
+func getBodyExpression(fnNode *ast.Node) *ast.Node {
+	switch fnNode.Kind {
+	case ast.KindArrowFunction:
+		fn := fnNode.AsArrowFunction()
+		if fn == nil || fn.Body == nil {
+			return nil
+		}
+		if fn.Body.Kind == ast.KindBlock {
+			return findSingleReturnExpression(fn.Body)
+		}
+		return fn.Body
+
+	case ast.KindFunctionExpression:
+		fn := fnNode.AsFunctionExpression()
+		if fn == nil || fn.Body == nil {
+			return nil
+		}
+		return findSingleReturnExpression(fn.Body)
+
+	case ast.KindFunctionDeclaration:
+		fn := fnNode.AsFunctionDeclaration()
+		if fn == nil || fn.Body == nil {
+			return nil
+		}
+		return findSingleReturnExpression(fn.Body)
+	}
+	return nil
+}
+
+// findSingleReturnExpression finds the expression from a single return statement in a block.
+func findSingleReturnExpression(body *ast.Node) *ast.Node {
+	if body == nil || body.Kind != ast.KindBlock {
+		return nil
+	}
+	block := body.AsBlock()
+	if block == nil || block.Statements == nil || len(block.Statements.Nodes) != 1 {
+		return nil
+	}
+	stmt := block.Statements.Nodes[0]
+	if stmt == nil || stmt.Kind != ast.KindReturnStatement {
+		return nil
+	}
+	return stmt.AsReturnStatement().Expression
+}
+
+// tryParseRegularOpportunity checks if a function has a block body with more than 5 statements.
+// When hasStrictLayerInferredName is true, the >5 statement requirement and the block body
+// requirement for arrow functions are relaxed (any Effect-returning function in Layer context qualifies).
+func tryParseRegularOpportunity(fnNode *ast.Node, hasStrictLayerInferredName bool) bool {
+	switch fnNode.Kind {
+	case ast.KindArrowFunction:
+		fn := fnNode.AsArrowFunction()
+		if fn == nil || fn.Body == nil {
+			return false
+		}
+		// Arrow with concise body (expression, no block): only allowed in Layer context
+		if fn.Body.Kind != ast.KindBlock {
+			return hasStrictLayerInferredName
+		}
+		if hasStrictLayerInferredName {
+			return true
+		}
+		block := fn.Body.AsBlock()
+		return block != nil && block.Statements != nil && len(block.Statements.Nodes) > 5
+
+	case ast.KindFunctionExpression:
+		fn := fnNode.AsFunctionExpression()
+		if fn == nil || fn.Body == nil || fn.Body.Kind != ast.KindBlock {
+			return false
+		}
+		if hasStrictLayerInferredName {
+			return true
+		}
+		block := fn.Body.AsBlock()
+		return block != nil && block.Statements != nil && len(block.Statements.Nodes) > 5
+
+	case ast.KindFunctionDeclaration:
+		fn := fnNode.AsFunctionDeclaration()
+		if fn == nil || fn.Body == nil || fn.Body.Kind != ast.KindBlock {
+			return false
+		}
+		if hasStrictLayerInferredName {
+			return true
+		}
+		block := fn.Body.AsBlock()
+		return block != nil && block.Statements != nil && len(block.Statements.Nodes) > 5
+	}
+	return false
+}
+
+// tryExtractWithSpanExpression checks if an expression is a call to Effect.withSpan
+// and extracts the span name expression (the first argument).
+func (tp *TypeParser) tryExtractWithSpanExpression(expr *ast.Node) *ast.Node {
+	if expr == nil || expr.Kind != ast.KindCallExpression {
+		return nil
+	}
+
+	call := expr.AsCallExpression()
+	if call == nil || call.Expression == nil {
+		return nil
+	}
+
+	// withSpan has at least one argument (the span name)
+	if call.Arguments == nil || len(call.Arguments.Nodes) == 0 {
+		return nil
+	}
+
+	if !tp.IsNodeReferenceToEffectModuleApi(call.Expression, "withSpan") {
+		return nil
+	}
+
+	return call.Arguments.Nodes[0]
+}
+
+// areParametersReferencedIn checks if any of the function's parameter symbols
+// are referenced within the given nodes. Uses declaration position range checking.
+func (tp *TypeParser) areParametersReferencedIn(fnNode *ast.Node, nodes []*ast.Node) bool {
+	c := tp.checker
+	if len(nodes) == 0 {
+		return false
+	}
+
+	params := getFunctionParameters(fnNode)
+	if len(params) == 0 {
+		return false
+	}
+
+	// Get the position range of all parameters
+	firstParam := params[0]
+	lastParam := params[len(params)-1]
+	paramsStart := firstParam.Pos()
+	paramsEnd := lastParam.End()
+
+	// Walk all nodes looking for symbols declared in the function parameters
+	queue := make([]*ast.Node, 0, len(nodes))
+	queue = append(queue, nodes...)
+	enqueueChild := func(child *ast.Node) bool {
+		queue = append(queue, child)
+		return false
+	}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if current == nil {
+			continue
+		}
+
+		// Check identifiers
+		if current.Kind == ast.KindIdentifier {
+			sym := tp.GetSymbolAtLocation(current)
+			if sym != nil && isSymbolDeclaredInRange(sym, paramsStart, paramsEnd) {
+				return true
+			}
+		}
+
+		// Check shorthand property assignments like { a, b }
+		if current.Kind == ast.KindShorthandPropertyAssignment {
+			spa := current.AsShorthandPropertyAssignment()
+			if spa != nil {
+				valueSym := c.GetShorthandAssignmentValueSymbol(current)
+				if valueSym != nil && isSymbolDeclaredInRange(valueSym, paramsStart, paramsEnd) {
+					return true
+				}
+			}
+		}
+
+		current.ForEachChild(enqueueChild)
+	}
+
+	return false
+}
+
+// isSymbolDeclaredInRange checks if any of the symbol's declarations fall within the given range.
+func isSymbolDeclaredInRange(sym *ast.Symbol, start, end int) bool {
+	for _, decl := range ast.TSGetSymbolDeclarations(sym) {
+		if decl != nil && decl.Pos() >= start && decl.End() <= end {
+			return true
+		}
+	}
+	return false
+}
+
+// getFunctionParameters returns the parameter nodes of a function.
+func getFunctionParameters(fnNode *ast.Node) []*ast.Node {
+	switch fnNode.Kind {
+	case ast.KindArrowFunction:
+		fn := fnNode.AsArrowFunction()
+		if fn != nil && fn.Parameters != nil {
+			return fn.Parameters.Nodes
+		}
+	case ast.KindFunctionExpression:
+		fn := fnNode.AsFunctionExpression()
+		if fn != nil && fn.Parameters != nil {
+			return fn.Parameters.Nodes
+		}
+	case ast.KindFunctionDeclaration:
+		fn := fnNode.AsFunctionDeclaration()
+		if fn != nil && fn.Parameters != nil {
+			return fn.Parameters.Nodes
+		}
+	}
+	return nil
+}
+
+// tryGetLayerApiMethod checks if a node references Layer.effect, Layer.succeed, or Layer.sync.
+// Returns the method name ("effect", "succeed", "sync") or empty string.
+func (tp *TypeParser) tryGetLayerApiMethod(node *ast.Node) string {
+	if tp == nil || tp.checker == nil || node == nil {
+		return ""
+	}
+	if tp.IsNodeReferenceToEffectLayerModuleApi(node, "effect") {
+		return "effect"
+	}
+	if tp.IsNodeReferenceToEffectLayerModuleApi(node, "succeed") {
+		return "succeed"
+	}
+	if tp.IsNodeReferenceToEffectLayerModuleApi(node, "sync") {
+		return "sync"
+	}
+	return ""
+}
+
+// layerServiceNameFromExpression resolves an expression to a service name string.
+// When the expression is the `this` keyword, it walks up the AST to find the enclosing
+// class declaration and returns the class name instead of literal "this".
+func layerServiceNameFromExpression(expr *ast.Node) string {
+	if expr == nil {
+		return ""
+	}
+	if expr.Kind == ast.KindThisKeyword {
+		classDecl := ast.FindAncestorKind(expr, ast.KindClassDeclaration)
+		if classDecl != nil && classDecl.Name() != nil {
+			return scanner.GetTextOfNode(classDecl.Name())
+		}
+	}
+	return scanner.GetTextOfNode(expr)
+}
+
+// verifyLayerMethodAtCall checks if a call expression is a Layer method call (direct or curried)
+// and returns the tag text (e.g., "MyService") or empty string.
+// Direct form: Layer.method(tag, impl) where impl === implementationExpr
+// Curried form: Layer.method(tag)(impl) where impl === implementationExpr
+func (tp *TypeParser) verifyLayerMethodAtCall(callExpr *ast.CallExpression, method string, implementationExpr *ast.Node) string {
+	if callExpr == nil || callExpr.Expression == nil {
+		return ""
+	}
+
+	// Check direct form: Layer.method(tag, impl)
+	if callExpr.Arguments != nil && len(callExpr.Arguments.Nodes) >= 2 &&
+		callExpr.Arguments.Nodes[1] == implementationExpr && tp.tryGetLayerApiMethod(callExpr.Expression) == method {
+		return layerServiceNameFromExpression(callExpr.Arguments.Nodes[0])
+	}
+
+	// Check curried form: Layer.method(tag)(impl)
+	if callExpr.Expression.Kind == ast.KindCallExpression {
+		innerCall := callExpr.Expression.AsCallExpression()
+		if innerCall != nil && innerCall.Expression != nil {
+			if innerCall.Arguments != nil && len(innerCall.Arguments.Nodes) >= 1 &&
+				callExpr.Arguments != nil && len(callExpr.Arguments.Nodes) >= 1 &&
+				callExpr.Arguments.Nodes[0] == implementationExpr && tp.tryGetLayerApiMethod(innerCall.Expression) == method {
+				return layerServiceNameFromExpression(innerCall.Arguments.Nodes[0])
+			}
+		}
+	}
+
+	return ""
+}
+
+// tryMatchLayerSucceedInference checks if an object literal is a direct argument to Layer.succeed.
+// Returns the service tag text or empty string.
+func (tp *TypeParser) tryMatchLayerSucceedInference(objectLiteral *ast.Node) string {
+	if objectLiteral == nil || objectLiteral.Parent == nil || objectLiteral.Parent.Kind != ast.KindCallExpression {
+		return ""
+	}
+	callExpr := objectLiteral.Parent.AsCallExpression()
+	if callExpr == nil {
+		return ""
+	}
+	return tp.verifyLayerMethodAtCall(callExpr, "succeed", objectLiteral)
+}
+
+// tryMatchLayerSyncInference checks if an object literal is returned from a lazy function
+// that is passed to Layer.sync.
+// Pattern: Layer.sync(tag)(() => { return { ... } }) or Layer.sync(tag, () => { return { ... } })
+func (tp *TypeParser) tryMatchLayerSyncInference(objectLiteral *ast.Node) string {
+	if objectLiteral == nil || objectLiteral.Parent == nil {
+		return ""
+	}
+	// objectLiteral -> ReturnStatement
+	returnStmt := objectLiteral.Parent
+	if returnStmt.Kind != ast.KindReturnStatement {
+		return ""
+	}
+	// ReturnStatement -> Block
+	block := returnStmt.Parent
+	if block == nil || block.Kind != ast.KindBlock {
+		return ""
+	}
+	// Block -> ArrowFunction or FunctionExpression (the lazy function)
+	lazyFn := block.Parent
+	if lazyFn == nil || (lazyFn.Kind != ast.KindArrowFunction && lazyFn.Kind != ast.KindFunctionExpression) {
+		return ""
+	}
+	// LazyFunction -> CallExpression
+	callNode := lazyFn.Parent
+	if callNode == nil || callNode.Kind != ast.KindCallExpression {
+		return ""
+	}
+	callExpr := callNode.AsCallExpression()
+	if callExpr == nil {
+		return ""
+	}
+	return tp.verifyLayerMethodAtCall(callExpr, "sync", lazyFn)
+}
+
+// tryMatchLayerEffectInference checks if an object literal is returned from a generator
+// inside Effect.gen that is passed to Layer.effect.
+// Pattern: Layer.effect(tag)(Effect.gen(function*() { return { ... } }))
+func (tp *TypeParser) tryMatchLayerEffectInference(objectLiteral *ast.Node) string {
+	if objectLiteral == nil || objectLiteral.Parent == nil {
+		return ""
+	}
+	// objectLiteral -> ReturnStatement
+	returnStmt := objectLiteral.Parent
+	if returnStmt.Kind != ast.KindReturnStatement {
+		return ""
+	}
+	// ReturnStatement -> Block (generator body)
+	genBody := returnStmt.Parent
+	if genBody == nil || genBody.Kind != ast.KindBlock {
+		return ""
+	}
+	// Block -> FunctionExpression (generator function, must have asteriskToken)
+	genFnNode := genBody.Parent
+	if genFnNode == nil || genFnNode.Kind != ast.KindFunctionExpression {
+		return ""
+	}
+	genFn := genFnNode.AsFunctionExpression()
+	if genFn == nil || genFn.AsteriskToken == nil {
+		return ""
+	}
+	// GeneratorFunction -> CallExpression (Effect.gen call)
+	genCallNode := genFnNode.Parent
+	if genCallNode == nil || genCallNode.Kind != ast.KindCallExpression {
+		return ""
+	}
+	// Effect.gen(...) -> CallExpression (Layer.effect call)
+	layerCallNode := genCallNode.Parent
+	if layerCallNode == nil || layerCallNode.Kind != ast.KindCallExpression {
+		return ""
+	}
+	layerCall := layerCallNode.AsCallExpression()
+	if layerCall == nil {
+		return ""
+	}
+	// Verify this is actually an Effect.gen call with our generator
+	parsedGen := tp.EffectGenCall(genCallNode)
+	if parsedGen == nil || parsedGen.generatorFunction != genFn {
+		return ""
+	}
+	return tp.verifyLayerMethodAtCall(layerCall, "effect", genCallNode)
+}
+
+// tryGetLayerInferredTraceName checks if a function is inside a property assignment within
+// an object literal that is a Layer service definition, returning "ServiceTag.memberName" format.
+func (tp *TypeParser) tryGetLayerInferredTraceName(node *ast.Node, suggestedTraceName string) string {
+	if suggestedTraceName == "" || node == nil || node.Parent == nil {
+		return ""
+	}
+	// The function must be the initializer of a PropertyAssignment
+	if node.Parent.Kind != ast.KindPropertyAssignment {
+		return ""
+	}
+	pa := node.Parent.AsPropertyAssignment()
+	if pa == nil || pa.Initializer != node {
+		return ""
+	}
+	// The PropertyAssignment must be inside an ObjectLiteralExpression
+	if node.Parent.Parent == nil || node.Parent.Parent.Kind != ast.KindObjectLiteralExpression {
+		return ""
+	}
+	objectLiteral := node.Parent.Parent
+
+	// Try each Layer pattern in order
+	if serviceName := tp.tryMatchLayerSucceedInference(objectLiteral); serviceName != "" {
+		return serviceName + "." + suggestedTraceName
+	}
+	if serviceName := tp.tryMatchLayerSyncInference(objectLiteral); serviceName != "" {
+		return serviceName + "." + suggestedTraceName
+	}
+	if serviceName := tp.tryMatchLayerEffectInference(objectLiteral); serviceName != "" {
+		return serviceName + "." + suggestedTraceName
+	}
+	if serviceName := tp.tryMatchOfInference(objectLiteral); serviceName != "" {
+		return serviceName + "." + suggestedTraceName
+	}
+	if serviceName := tp.tryMatchServiceMapMakeInference(objectLiteral); serviceName != "" {
+		return serviceName + "." + suggestedTraceName
+	}
+	return ""
+}
+
+// tryMatchOfInference checks if an object literal is the first argument to a Service.of({ ... }) call,
+// where the service expression is a ContextTag or ServiceType.
+// Returns the service tag text or empty string.
+func (tp *TypeParser) tryMatchOfInference(objectLiteral *ast.Node) string {
+	if objectLiteral == nil || objectLiteral.Parent == nil || objectLiteral.Parent.Kind != ast.KindCallExpression {
+		return ""
+	}
+	callExpr := objectLiteral.Parent.AsCallExpression()
+	if callExpr == nil || callExpr.Arguments == nil || len(callExpr.Arguments.Nodes) < 1 {
+		return ""
+	}
+	// objectLiteral must be the first argument
+	if callExpr.Arguments.Nodes[0] != objectLiteral {
+		return ""
+	}
+	// The call expression must be a PropertyAccessExpression with name "of"
+	if callExpr.Expression == nil || callExpr.Expression.Kind != ast.KindPropertyAccessExpression {
+		return ""
+	}
+	propAccess := callExpr.Expression.AsPropertyAccessExpression()
+	if propAccess == nil || propAccess.Name() == nil {
+		return ""
+	}
+	if scanner.GetTextOfNode(propAccess.Name()) != "of" {
+		return ""
+	}
+	// Get the service tag expression (the object before .of)
+	serviceTagExpression := propAccess.Expression
+	if serviceTagExpression == nil || tp.NodeCannotBeEffectLibraryType(serviceTagExpression) {
+		return ""
+	}
+	serviceTagType := tp.GetTypeAtLocation(serviceTagExpression)
+	if serviceTagType == nil {
+		return ""
+	}
+	if !tp.IsContextTag(serviceTagType) && !tp.IsServiceType(serviceTagType) {
+		return ""
+	}
+	return layerServiceNameFromExpression(serviceTagExpression)
+}
+
+// tryMatchServiceMapMakeInference checks if an object literal is returned from a generator
+// inside Effect.gen that is the "make" property of a class extending Context.Service.
+// Returns the class name or empty string.
+func (tp *TypeParser) tryMatchServiceMapMakeInference(objectLiteral *ast.Node) string {
+	if objectLiteral == nil || objectLiteral.Parent == nil {
+		return ""
+	}
+	// objectLiteral -> ReturnStatement
+	returnStmt := objectLiteral.Parent
+	if returnStmt.Kind != ast.KindReturnStatement {
+		return ""
+	}
+	// ReturnStatement -> Block (generator body)
+	genBody := returnStmt.Parent
+	if genBody == nil || genBody.Kind != ast.KindBlock {
+		return ""
+	}
+	// Block -> FunctionExpression (generator function, must have asteriskToken)
+	genFnNode := genBody.Parent
+	if genFnNode == nil || genFnNode.Kind != ast.KindFunctionExpression {
+		return ""
+	}
+	genFn := genFnNode.AsFunctionExpression()
+	if genFn == nil || genFn.AsteriskToken == nil {
+		return ""
+	}
+	// GeneratorFunction -> CallExpression (Effect.gen call)
+	genCallNode := genFnNode.Parent
+	if genCallNode == nil || genCallNode.Kind != ast.KindCallExpression {
+		return ""
+	}
+	// Effect.gen(...) -> PropertyAssignment with name "make" and initializer == genCall
+	makeProperty := genCallNode.Parent
+	if makeProperty == nil || makeProperty.Kind != ast.KindPropertyAssignment {
+		return ""
+	}
+	pa := makeProperty.AsPropertyAssignment()
+	if pa == nil || pa.Initializer != genCallNode {
+		return ""
+	}
+	if pa.Name() == nil || pa.Name().Kind != ast.KindIdentifier || scanner.GetTextOfNode(pa.Name()) != "make" {
+		return ""
+	}
+	// Walk ancestors from PropertyAssignment.Parent to find a ClassDeclaration
+	currentNode := makeProperty.Parent
+	for currentNode != nil {
+		if currentNode.Kind == ast.KindClassDeclaration {
+			break
+		}
+		currentNode = currentNode.Parent
+	}
+	if currentNode == nil || currentNode.Name() == nil {
+		return ""
+	}
+	// Verify this is actually an Effect.gen call with our generator
+	parsedGen := tp.EffectGenCall(genCallNode)
+	if parsedGen == nil || parsedGen.generatorFunction != genFn {
+		return ""
+	}
+	// Verify the class extends Context.Service
+	if tp.ExtendsContextService(currentNode) == nil {
+		return ""
+	}
+	return scanner.GetTextOfNode(currentNode.Name())
+}
+
+// getInferredTraceName computes a context-aware inferred trace name for a function.
+// It checks (in priority order):
+// 1. Layer service context (ServiceTag.memberName)
+// 2. Exported function declarations — returns the function name
+// 3. Exported const variable initializers — returns the variable name
+// Returns "" if no context-aware name can be inferred.
+func (tp *TypeParser) getInferredTraceName(node *ast.Node, suggestedTraceName string) string {
+	if suggestedTraceName == "" {
+		return ""
+	}
+
+	// Layer-based inferred trace name takes priority
+	if inferredFromLayer := tp.tryGetLayerInferredTraceName(node, suggestedTraceName); inferredFromLayer != "" {
+		return inferredFromLayer
+	}
+
+	// Check exported function declaration
+	if node.Kind == ast.KindFunctionDeclaration {
+		if ast.HasSyntacticModifier(node, ast.ModifierFlagsExport) {
+			return suggestedTraceName
+		}
+	}
+
+	// Check exported const variable initializer
+	if node.Parent != nil && node.Parent.Kind == ast.KindVariableDeclaration {
+		vd := node.Parent.AsVariableDeclaration()
+		if vd != nil && vd.Initializer == node && vd.Name() != nil && vd.Name().Kind == ast.KindIdentifier {
+			// Walk up: VariableDeclaration -> VariableDeclarationList -> VariableStatement
+			declList := node.Parent.Parent
+			if declList != nil && declList.Kind == ast.KindVariableDeclarationList {
+				varStmt := declList.Parent
+				if varStmt != nil && varStmt.Kind == ast.KindVariableStatement {
+					if ast.HasSyntacticModifier(varStmt, ast.ModifierFlagsExport) &&
+						declList.Flags&ast.NodeFlagsConst != 0 {
+						return suggestedTraceName
+					}
+				}
+			}
+		}
+	}
+
+	return ""
+}

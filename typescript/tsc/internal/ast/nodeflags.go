@@ -47,6 +47,7 @@ const (
 	NodeFlagsReparserTransformedLiteral    NodeFlags = 1 << 28 // If node was transformed during parsing, making its' naive text source not match the AST
 	NodeFlagsVibeLang                      NodeFlags = 1 << 29 // If node stands for a VibeLang form that the checker reads as ordinary code, such as the block of a with statement
 	NodeFlagsVibeLangIntrinsic             NodeFlags = 1 << 30 // If node is an identifier the VibeLang parser writes for a prelude export, such as $is: it names that export whatever the scopes around it declare
+	NodeFlagsPossiblyContainsStabilityTag  NodeFlags = 1 << 31 // Set during parse if comment text contains '@stability'; must confirm via JSDoc lookup (effect-tsgo)
 
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing

@@ -32,6 +32,32 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
+// AfterCheckSourceFileCallback is invoked after type checking each source file.
+// It allows external packages to run additional diagnostics with full type information.
+// Use Checker.AddDiagnostic to add diagnostics from within the callback.
+var AfterCheckSourceFileCallback func(context.Context, Program, *Checker, *ast.SourceFile)
+
+// RegisterAfterCheckSourceFileCallback registers a callback to be called after
+// each source file is type checked. The callback receives the program, checker
+// with full type information, and the source file that was checked.
+// Note: Only one callback can be registered. Subsequent calls will replace the previous callback.
+func RegisterAfterCheckSourceFileCallback(cb func(context.Context, Program, *Checker, *ast.SourceFile)) {
+	AfterCheckSourceFileCallback = cb
+}
+
+// AddDiagnostic and Program are VibeLang's, in extensions.go and extensions_classes.go.
+
+// GetRelationErrors returns the collected relation errors for a source file.
+// These are collected during type checking and persist until the file is re-checked.
+func (c *Checker) GetRelationErrors(sf *ast.SourceFile) []*RelationError {
+	links := c.sourceFileLinks.Get(sf)
+	if !links.typeChecked {
+		c.GetDiagnostics(c.ctx, sf)
+		links = c.sourceFileLinks.Get(sf)
+	}
+	return links.relationErrors
+}
+
 // CheckMode
 
 type CheckMode uint32
@@ -572,6 +598,7 @@ type Program interface {
 	GetImportHelpersImportSpecifier(path tspath.PathKey) *ast.Node
 	SourceFileMayBeEmitted(sourceFile *ast.SourceFile, forceDtsEmit bool) bool
 	IsSourceFileDefaultLibrary(path tspath.PathKey) bool
+	IsSourceFileFromExternalLibrary(file *ast.SourceFile) bool
 	GetProjectReferenceFromOutputDts(path tspath.PathKey) *tsoptions.SourceOutputAndProjectReference
 	GetRedirectForResolution(file ast.HasFileName) *tsoptions.ParsedCommandLine
 	CommonSourceDirectory() tspath.RootedDirectoryPath
@@ -589,6 +616,7 @@ type Checker struct {
 	id                                          uint32
 	program                                     Program
 	compilerOptions                             *core.CompilerOptions
+	EffectLinks                                 any
 	files                                       []*ast.SourceFile
 	fileIndexMap                                map[*ast.SourceFile]int
 	compareSymbols                              func(*ast.Symbol, *ast.Symbol) int
@@ -2270,10 +2298,13 @@ func (c *Checker) getSymbol(symbols ast.SymbolTable, name string, meaning ast.Sy
 func (c *Checker) checkSourceFile(ctx context.Context, sourceFile *ast.SourceFile, checkUnused bool) {
 	c.ctx = ctx
 	links := c.sourceFileLinks.Get(sourceFile)
+	callAfterSourceFileHook := false
 	if !links.typeChecked {
 		if tr := c.tracer; tr != nil {
 			defer tr.Push(tracing.PhaseCheck, "checkSourceFile", map[string]any{"path": sourceFile.FileName()}, true)()
 		}
+		// Clear any stale relation errors before type checking.
+		links.relationErrors = nil
 		// Grammar checking
 		c.checkGrammarSourceFile(sourceFile)
 		c.renamedBindingElementsInTypes = nil
@@ -2290,6 +2321,8 @@ func (c *Checker) checkSourceFile(ctx context.Context, sourceFile *ast.SourceFil
 		c.produceDeferredDiagnostics()
 		c.reportedUnreachableNodes.Clear()
 		links.typeChecked = true
+
+		callAfterSourceFileHook = true
 	}
 	if checkUnused && !links.unusedChecked {
 		// The unused identifiers check relies on a full type check having first been performed
@@ -2297,6 +2330,9 @@ func (c *Checker) checkSourceFile(ctx context.Context, sourceFile *ast.SourceFil
 			c.checkUnusedIdentifiers(links.identifierCheckNodes)
 		}
 		links.unusedChecked = true
+	}
+	if callAfterSourceFileHook && AfterCheckSourceFileCallback != nil {
+		AfterCheckSourceFileCallback(ctx, c.program, c, sourceFile)
 	}
 	if c.isCanceled() {
 		c.wasCanceled = true
@@ -7763,6 +7799,16 @@ func (c *Checker) getContextFreeTypeOfExpression(node *ast.Node) *Type {
 	return t
 }
 
+// ExpressionCheckedCallback is invoked with the result of every checkExpressionEx
+// evaluation, including intermediate inference passes; checkMode tells them apart.
+var ExpressionCheckedCallback func(*Checker, *ast.Node, CheckMode, *Type)
+
+// RegisterExpressionCheckedCallback registers the callback invoked after each
+// expression is checked. Only one callback can be registered.
+func RegisterExpressionCheckedCallback(cb func(*Checker, *ast.Node, CheckMode, *Type)) {
+	ExpressionCheckedCallback = cb
+}
+
 func (c *Checker) checkExpression(node *ast.Node) *Type {
 	return c.checkExpressionEx(node, CheckModeNormal)
 }
@@ -7781,6 +7827,9 @@ func (c *Checker) checkExpressionEx(node *ast.Node, checkMode CheckMode) *Type {
 	}
 	t = c.applyExpressionTypeHooks(node, t)
 	c.currentNode = saveCurrentNode
+	if ExpressionCheckedCallback != nil {
+		ExpressionCheckedCallback(c, node, checkMode, t)
+	}
 	return t
 }
 

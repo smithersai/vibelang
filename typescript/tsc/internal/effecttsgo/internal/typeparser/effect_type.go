@@ -1,0 +1,251 @@
+package typeparser
+
+import (
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+)
+
+var effectModuleDescriptor = newPackageSourceFileDescriptor(moduleDescriptorEffect, "effect", isEffectTypeSourceFile)
+
+var effectPackageExportDescriptor = newPackageSourceFileDescriptor(moduleDescriptorEffectPackage, "effect", nil)
+
+// EffectTypeId is the property key for Effect's variance struct.
+// Effect v4 (effect-smol) uses this pattern to encode type parameters.
+const EffectTypeId = "~effect/Effect"
+
+// Effect represents parsed Effect<A, E, R> type parameters.
+type Effect struct {
+	a *checker.Type // Success type
+	e *checker.Type // Error type
+	r *checker.Type // Requirements type
+}
+
+func (r Effect) A() *checker.Type { return r.a }
+
+func (r Effect) E() *checker.Type { return r.e }
+
+func (r Effect) R() *checker.Type { return r.r }
+
+// EffectType parses an Effect type and extracts A, E, R parameters.
+// Returns nil if the type is not an Effect.
+// The detection strategy is chosen based on the detected Effect version:
+// v4 uses direct symbol lookup, v3/unknown uses property iteration.
+func (tp *TypeParser) EffectType(t *checker.Type) *Effect {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	return Cached(&tp.links.EffectType, t, func() *Effect {
+		version := tp.DetectEffectVersion()
+		if version == EffectMajorV4 {
+			varianceStructType := tp.GetTypeOfPropertyByName(t, EffectTypeId)
+			if varianceStructType == nil {
+				return nil
+			}
+
+			// Parse the variance struct to extract A, E, R
+			return tp.parseVarianceStruct(varianceStructType)
+		}
+
+		// v3 / unknown: iterate properties looking for a variance struct
+		props := tp.checker.GetPropertiesOfType(t)
+
+		// Filter to required, non-optional properties with a value declaration
+		var candidates []*ast.Symbol
+		for _, prop := range props {
+			if prop == nil {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsProperty == 0 {
+				continue
+			}
+			if ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsOptional != 0 {
+				continue
+			}
+			if ast.TSGetSymbolValueDeclaration(prop) == nil {
+				continue
+			}
+			candidates = append(candidates, prop)
+		}
+
+		if len(candidates) == 0 {
+			return nil
+		}
+
+		// Sort so properties containing "EffectTypeId" come first (optimization heuristic)
+		sort.SliceStable(candidates, func(i, j int) bool {
+			iHas := strings.Contains(ast.TSGetSymbolName(candidates[i]), "EffectTypeId")
+			jHas := strings.Contains(ast.TSGetSymbolName(candidates[j]), "EffectTypeId")
+			if iHas && !jHas {
+				return true
+			}
+			return false
+		})
+
+		// Try each candidate as a variance struct
+		for _, prop := range candidates {
+			propType := tp.checker.GetTypeOfSymbolAtLocation(prop, nil)
+			if result := tp.parseVarianceStruct(propType); result != nil {
+				return result
+			}
+		}
+
+		return nil
+	})
+}
+
+// parseVarianceStruct extracts A, E, R from a variance struct type.
+func (tp *TypeParser) parseVarianceStruct(t *checker.Type) *Effect {
+	a := tp.extractCovariantType(t, "_A")
+	if a == nil {
+		return nil
+	}
+
+	e := tp.extractCovariantType(t, "_E")
+	if e == nil {
+		return nil
+	}
+
+	r := tp.extractCovariantType(t, "_R")
+	if r == nil {
+		return nil
+	}
+
+	return &Effect{a: a, e: e, r: r}
+}
+
+// IsEffectType returns true if the type has the Effect variance struct.
+func (tp *TypeParser) IsEffectType(t *checker.Type) bool {
+	return tp.EffectType(t) != nil
+}
+
+// StrictEffectType returns the parsed Effect type only if the type's symbol name
+// is "Effect". This filters out types like Stream, Layer, HttpApp.Default that
+// carry the variance struct but are not Effect itself.
+func (tp *TypeParser) StrictEffectType(t *checker.Type) *Effect {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	// Checked before the cache so types of other names leave no entry.
+	if sym := t.Symbol(); sym == nil || ast.TSGetSymbolName(sym) != "Effect" {
+		return nil
+	}
+	return Cached(&tp.links.StrictEffectType, t, func() *Effect {
+		return tp.EffectType(t)
+	})
+}
+
+// StrictIsEffectType returns true if the type has the Effect variance struct
+// AND the type's symbol name is "Effect". This filters out types like Stream,
+// Layer, HttpApp.Default that carry the variance struct but are not Effect itself.
+func (tp *TypeParser) StrictIsEffectType(t *checker.Type) bool {
+	return tp.StrictEffectType(t) != nil
+}
+
+// EffectSubtype detects types that have the Effect variance struct AND a "_tag" or "get"
+// marker property (e.g., Exit, Option, Either, Pool). Returns nil if not an Effect subtype.
+func (tp *TypeParser) EffectSubtype(t *checker.Type) *Effect {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	return Cached(&tp.links.EffectSubtype, t, func() *Effect {
+		// Check for "_tag" or "get" property first (quick rejection)
+		tagSymbol := tp.checker.GetPropertyOfType(t, "_tag")
+		getSymbol := tp.checker.GetPropertyOfType(t, "get")
+		if tagSymbol == nil && getSymbol == nil {
+			return nil
+		}
+		// Must also be an Effect type
+		return tp.EffectType(t)
+	})
+}
+
+// IsEffectSubtype returns true if the type is an Effect subtype (has variance struct + "_tag" or "get").
+func (tp *TypeParser) IsEffectSubtype(t *checker.Type) bool {
+	return tp.EffectSubtype(t) != nil
+}
+
+// FiberType detects types that have the Effect variance struct AND both "await" and "poll"
+// properties. Returns nil if the type is not a Fiber.
+func (tp *TypeParser) FiberType(t *checker.Type) *Effect {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	return Cached(&tp.links.FiberType, t, func() *Effect {
+		// Check for both "await" and "poll" properties (quick rejection)
+		awaitSymbol := tp.checker.GetPropertyOfType(t, "await")
+		pollSymbol := tp.checker.GetPropertyOfType(t, "poll")
+		if awaitSymbol == nil || pollSymbol == nil {
+			return nil
+		}
+		// Must also be an Effect type
+		return tp.EffectType(t)
+	})
+}
+
+// IsFiberType returns true if the type is a Fiber type (has variance struct + "await" and "poll").
+func (tp *TypeParser) IsFiberType(t *checker.Type) bool {
+	return tp.FiberType(t) != nil
+}
+
+// HasEffectTypeId returns true if the type has the Effect type identifier.
+// For v4, this is a quick check for the "~effect/Effect" property.
+// For v3/unknown, this defers to IsEffectType since there is no single property shortcut.
+func (tp *TypeParser) HasEffectTypeId(t *checker.Type) bool {
+	if tp == nil || tp.checker == nil || t == nil {
+		return false
+	}
+	return Cached(&tp.links.HasEffectTypeId, t, func() bool {
+		version := tp.DetectEffectVersion()
+		if version == EffectMajorV4 {
+			return tp.GetTypeOfPropertyByName(t, EffectTypeId) != nil
+		}
+		// For v3/unknown, the quick check is not available; defer to full detection.
+		return tp.IsEffectType(t)
+	})
+}
+
+func isEffectTypeSourceFile(tp *TypeParser, c *checker.Checker, sf *ast.SourceFile) bool {
+	if c == nil || sf == nil {
+		return false
+	}
+
+	moduleSym := checker.Checker_getSymbolOfDeclaration(c, sf.AsNode())
+	if moduleSym == nil {
+		return false
+	}
+
+	effectSym := c.TryGetMemberInModuleExportsAndProperties("Effect", moduleSym)
+	if effectSym == nil {
+		return false
+	}
+
+	effectType := c.GetDeclaredTypeOfSymbol(effectSym)
+	if effectType == nil {
+		return false
+	}
+
+	return tp.EffectType(effectType) != nil
+}
+
+// IsExpressionEffectModule reports whether node resolves to the Effect module namespace
+// (e.g., the `Effect` in `import { Effect } from "effect"`).
+func (tp *TypeParser) IsExpressionEffectModule(node *ast.Node) bool {
+	return tp.IsNodeReferenceToModule(node, effectModuleDescriptor)
+}
+
+// IsNodeReferenceToEffectModuleApi reports whether node resolves to a member exported by the "effect" package.
+func (tp *TypeParser) IsNodeReferenceToEffectModuleApi(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectModuleDescriptor, memberName)
+}
+
+// IsNodeReferenceToEffectPackageExport reports whether node resolves to a member
+// exported by any module in the "effect" npm package. Unlike IsNodeReferenceToEffectModuleApi,
+// this does not require the source file to export the Effect type — it only checks
+// that the declaration lives inside the "effect" package and matches the named export.
+// This is needed for functions like `pipe` which are exported from `effect/Function`.
+func (tp *TypeParser) IsNodeReferenceToEffectPackageExport(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectPackageExportDescriptor, memberName)
+}

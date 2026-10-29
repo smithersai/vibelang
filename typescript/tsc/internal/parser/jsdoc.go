@@ -67,6 +67,9 @@ func (p *Parser) withJSDoc(node *ast.Node, info jsdocScannerInfo) []*ast.Node {
 		if info&jsdocScannerInfoHasDeprecated != 0 {
 			node.Flags |= ast.NodeFlagsPossiblyContainsDeprecatedTag
 		}
+		if info&jsdocScannerInfoHasStability != 0 {
+			node.Flags |= ast.NodeFlagsPossiblyContainsStabilityTag
+		}
 		if info&jsdocScannerInfoHasSeeOrLink == 0 {
 			return nil
 		}
@@ -88,6 +91,9 @@ func (p *Parser) withJSDoc(node *ast.Node, info jsdocScannerInfo) []*ast.Node {
 		}
 	}
 	if len(jsdoc) != 0 {
+		if info&jsdocScannerInfoHasStability != 0 {
+			node.Flags |= ast.NodeFlagsPossiblyContainsStabilityTag
+		}
 		if node.Flags&ast.NodeFlagsHasJSDoc == 0 {
 			node.Flags |= ast.NodeFlagsHasJSDoc
 		}

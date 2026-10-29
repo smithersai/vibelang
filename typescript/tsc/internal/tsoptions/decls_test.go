@@ -39,6 +39,9 @@ func TestCompilerOptionsDeclaration(t *testing.T) {
 		if !field.IsExported() {
 			continue
 		}
+		if field.Name == "Effect" {
+			continue // derived from the @effect/language-service plugin, not an option of its own (effect-tsgo, VIP-38)
+		}
 
 		lowerName := strings.ToLower(field.Name)
 

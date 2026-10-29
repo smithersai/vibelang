@@ -2,6 +2,9 @@ package tsoptions
 
 import (
 	"maps"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
@@ -11,6 +14,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/json"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
+
+// MergeCompilerOptionsCallback is invoked after the standard compiler option
+// merge, allowing external integrations to customize merging for custom fields.
+var MergeCompilerOptionsCallback func(targetOptions, sourceOptions *core.CompilerOptions, rawSource any, sourceConfigPath string, basePath string)
+
+func RegisterMergeCompilerOptionsCallback(cb func(targetOptions, sourceOptions *core.CompilerOptions, rawSource any, sourceConfigPath string, basePath string)) {
+	MergeCompilerOptionsCallback = cb
+}
 
 func ParseTristate(value any) core.Tristate {
 	if value == nil {
@@ -342,6 +353,9 @@ func ParseCompilerOptions(key string, value any, allOptions *core.CompilerOption
 	if allOptions == nil {
 		return
 	}
+	if strings.EqualFold(key, "plugins") {
+		allOptions.Effect = etscore.ParseFromPlugins(value)
+	}
 	parseCompilerOptions(key, value, allOptions)
 }
 
@@ -356,7 +370,7 @@ func floatOrInt32ToFlag[T ~int32](value any) T {
 // with optional awareness of explicitly set null values in the raw JSON.
 // Fields in the source options will overwrite the corresponding fields in the target options,
 // including when they are explicitly set to null in the raw configuration (if rawSource is provided).
-func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, rawSource any) *core.CompilerOptions {
+func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, rawSource any, sourceConfigPath string, basePath string) *core.CompilerOptions {
 	if sourceOptions == nil {
 		return targetOptions
 	}
@@ -379,10 +393,13 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 	}
 
 	mergeCompilerOptionFields(targetOptions, sourceOptions, explicitNullFields)
+	if MergeCompilerOptionsCallback != nil {
+		MergeCompilerOptionsCallback(targetOptions, sourceOptions, rawSource, sourceConfigPath, basePath)
+	}
 	return targetOptions
 }
 
-func mergeParsedCompilerOptions(targetOptions, sourceOptions *parsedCompilerOptions, rawSource any) *parsedCompilerOptions {
+func mergeParsedCompilerOptions(targetOptions, sourceOptions *parsedCompilerOptions, rawSource any, sourceConfigPath string, basePath string) *parsedCompilerOptions {
 	if sourceOptions == nil {
 		return targetOptions
 	}
@@ -392,7 +409,7 @@ func mergeParsedCompilerOptions(targetOptions, sourceOptions *parsedCompilerOpti
 			unresolvedPaths: make(unresolvedCompilerOptionPaths),
 		}
 	}
-	mergeCompilerOptions(targetOptions.CompilerOptions, sourceOptions.CompilerOptions, rawSource)
+	mergeCompilerOptions(targetOptions.CompilerOptions, sourceOptions.CompilerOptions, rawSource, sourceConfigPath, basePath)
 	if rawMap, ok := rawSource.(*collections.OrderedMap[string, any]); ok && rawMap != nil {
 		if compilerOptionsRaw, ok := rawMap.Get("compilerOptions"); ok {
 			if compilerOptionsMap, ok := compilerOptionsRaw.(*collections.OrderedMap[string, any]); ok {

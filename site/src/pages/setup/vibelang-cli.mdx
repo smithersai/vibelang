@@ -62,6 +62,26 @@ For a monorepo, use `vibelang -b -w <solution-or-consuming-project>` to watch an
 vibelang -b -w packages/app
 ```
 
+### Lint Effect code
+
+`vibelang` runs Effect's type-aware lint rules, the `effecttsgo/*` rules of [`@effect/tsgo`](https://github.com/Effect-TS/tsgo), on `.vibe` files. The compiler carries a copy of them, so no patched binary is needed. Two configurations select them, the same two `@effect/tsgo` reads:
+
+- The `@effect/language-service` plugin in `tsconfig.json` reports the rules in every `vibelang` build and in the editor, for `.ts` and `.vibe` files.
+- An Oxlint configuration drives `vibelang lint`, the command for CI. Where a script runs `oxlint` with `effecttsgo/*` rules on the `.ts` files, add `vibelang lint` with the same configuration and paths:
+
+```json
+{
+  "scripts": {
+    "lint": "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
+    "lint:effect": "oxlint -c .oxlintrc.effect.json --deny-warnings packages && vibelang lint -c .oxlintrc.effect.json --deny-warnings packages"
+  }
+}
+```
+
+`vibelang lint [-c <config>] [-p <tsconfig.json>] [--deny-warnings] [<path>...]` checks the `.vibe` files under each path (default: the current directory) in the nearest `tsconfig.json` that includes them. It reads `.oxlintrc.json` or `oxlint.config.ts` when `-c` is left out, with their `extends` presets, `overrides` and `ignorePatterns`; a `.ts` configuration is loaded with `node`. It exits with status 1 on an error, or on a warning with `--deny-warnings`.
+
+In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity: `effecttsgo/floating-effect` reports EK4801. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
+
 ## 3. Compile a first module
 
 Create `src/hello.vibe`, in a directory that `include` selects:

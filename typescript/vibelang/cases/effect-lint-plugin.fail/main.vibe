@@ -1,0 +1,27 @@
+// expect: TS377142 TS377106
+// Effect's lint rules run on .vibe files (VIP-38), selected by the
+// @effect/language-service plugin as in Effect's own tsgo. A rule VibeLang
+// does not answer runs as Effect wrote it, on the checker's view of the code:
+// effectSleepZeroToYieldNow and schemaLiteralNonFinite. A rule VibeLang's
+// syntax rules out does not run: this try is Effect's catch, so
+// tryCatchInEffectGen stays quiet, and extendsNativeError leaves Legacy to
+// VibeLang's own EK4805.
+export function pause() {
+  Effect.sleep(0)
+  return 1
+}
+
+error Negative
+
+export function guarded(n: number) {
+  try {
+    if (n < 0) throw new Negative()
+    return n
+  } catch (e) {
+    return 0
+  }
+}
+
+export class Legacy extends Error {}
+
+export const Big = Schema.Literal(Infinity)

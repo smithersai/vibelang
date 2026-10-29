@@ -4458,6 +4458,304 @@ var Sort_Imports = &Message{code: 95208, category: CategoryMessage, key: "Sort_I
 
 var JSDoc_comment = &Message{code: 95209, category: CategoryMessage, key: "JSDoc_comment_95209", text: "JSDoc comment"}
 
+var X_effect_diagnostics_directive_has_no_effect = &Message{code: 377000, category: CategoryWarning, key: "effect_diagnostics_directive_has_no_effect_377000", text: "@effect-diagnostics directive has no effect."}
+
+var This_Effect_value_is_neither_yielded_nor_used_in_an_assignment_effect_floatingEffect = &Message{code: 377001, category: CategoryError, key: "This_Effect_value_is_neither_yielded_nor_used_in_an_assignment_effect_floatingEffect_377001", text: "This Effect value is neither yielded nor used in an assignment. effect(floatingEffect)"}
+
+var Missing_errors_0_in_the_expected_Effect_type_effect_missingEffectError = &Message{code: 377003, category: CategoryError, key: "Missing_errors_0_in_the_expected_Effect_type_effect_missingEffectError_377003", text: "Missing errors {0} in the expected Effect type. effect(missingEffectError)"}
+
+var This_Effect_requires_a_service_that_is_missing_from_the_expected_Effect_context_Colon_0_effect_missingEffectContext = &Message{code: 377004, category: CategoryError, key: "This_Effect_requires_a_service_that_is_missing_from_the_expected_Effect_context_Colon_0_effect_missi_377004", text: "This Effect requires a service that is missing from the expected Effect context: `{0}`. effect(missingEffectContext)"}
+
+var This_Effect_never_succeeds_using_return_yield_Asterisk_preserves_a_definitive_generator_exit_point_for_type_narrowing_and_tooling_support_effect_missingReturnYieldStar = &Message{code: 377006, category: CategoryError, key: "This_Effect_never_succeeds_using_return_yield_Asterisk_preserves_a_definitive_generator_exit_point_f_377006", text: "This Effect never succeeds; using `return yield*` preserves a definitive generator exit point for type narrowing and tooling support. effect(missingReturnYieldStar)"}
+
+var Inside_this_Effect_generator_effect_missingStarInYieldEffectGen = &Message{code: 377007, category: CategoryError, key: "Inside_this_Effect_generator_effect_missingStarInYieldEffectGen_377007", text: "Inside this Effect generator. effect(missingStarInYieldEffectGen)"}
+
+var This_uses_yield_for_an_Effect_value_yield_Asterisk_is_the_Effect_aware_form_in_this_context_effect_missingStarInYieldEffectGen = &Message{code: 377008, category: CategoryError, key: "This_uses_yield_for_an_Effect_value_yield_Asterisk_is_the_Effect_aware_form_in_this_context_effect_m_377008", text: "This uses `yield` for an `Effect` value. `yield*` is the Effect-aware form in this context. effect(missingStarInYieldEffectGen)"}
+
+var The_previous_Effect_does_not_fail_so_this_error_handling_branch_will_never_run_effect_catchUnfailableEffect = &Message{code: 377009, category: CategorySuggestion, key: "The_previous_Effect_does_not_fail_so_this_error_handling_branch_will_never_run_effect_catchUnfailabl_377009", text: "The previous Effect does not fail, so this error-handling branch will never run. effect(catchUnfailableEffect)"}
+
+var Effect_mapError_expresses_the_same_error_type_transformation_more_directly_than_Effect_0_followed_by_Effect_fail_effect_catchAllToMapError = &Message{code: 377010, category: CategorySuggestion, key: "Effect_mapError_expresses_the_same_error_type_transformation_more_directly_than_Effect_0_followed_by_377010", text: "`Effect.mapError` expresses the same error-type transformation more directly than `Effect.{0}` followed by `Effect.fail`. effect(catchAllToMapError)"}
+
+var X_0_1_returns_a_reusable_function_that_can_take_arguments_but_it_is_invoked_immediately_here_Effect_gen_represents_the_immediate_use_form_for_this_pattern_2_effect_effectFnIife = &Message{code: 377011, category: CategoryWarning, key: "_0_1_returns_a_reusable_function_that_can_take_arguments_but_it_is_invoked_immediately_here_Effect_g_377011", text: "`{0}.{1}` returns a reusable function that can take arguments, but it is invoked immediately here. `Effect.gen` represents the immediate-use form for this pattern{2}. effect(effectFnIife)"}
+
+var This_Effect_generator_contains_try_Slashcatch_in_this_context_error_handling_is_expressed_with_Effect_APIs_such_as_Effect_try_Effect_tryPromise_Effect_catch_Effect_catchTag_effect_tryCatchInEffectGen = &Message{code: 377012, category: CategorySuggestion, key: "This_Effect_generator_contains_try_Slashcatch_in_this_context_error_handling_is_expressed_with_Effec_377012", text: "This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)"}
+
+var This_pipe_call_contains_no_arguments_effect_unnecessaryPipe = &Message{code: 377013, category: CategorySuggestion, key: "This_pipe_call_contains_no_arguments_effect_unnecessaryPipe_377013", text: "This pipe call contains no arguments. effect(unnecessaryPipe)"}
+
+var This_generator_returns_an_Effect_able_value_directly_which_produces_a_nested_Effect_Effect_If_the_intended_result_is_the_inner_Effect_value_return_yield_Asterisk_represents_that_form_effect_returnEffectInGen = &Message{code: 377014, category: CategorySuggestion, key: "This_generator_returns_an_Effect_able_value_directly_which_produces_a_nested_Effect_Effect_If_the_in_377014", text: "This generator returns an Effect-able value directly, which produces a nested `Effect<Effect<...>>`. If the intended result is the inner Effect value, `return yield*` represents that form. effect(returnEffectInGen)"}
+
+var This_expression_contains_chained_pipe_calls_that_can_be_simplified_to_a_single_pipe_call_effect_unnecessaryPipeChain = &Message{code: 377015, category: CategorySuggestion, key: "This_expression_contains_chained_pipe_calls_that_can_be_simplified_to_a_single_pipe_call_effect_unne_377015", text: "This expression contains chained `pipe` calls that can be simplified to a single `pipe` call. effect(unnecessaryPipeChain)"}
+
+var Effect_void_represents_the_same_outcome_as_Effect_succeed_undefined_or_Effect_succeed_void_0_effect_effectSucceedWithVoid = &Message{code: 377016, category: CategorySuggestion, key: "Effect_void_represents_the_same_outcome_as_Effect_succeed_undefined_or_Effect_succeed_void_0_effect__377016", text: "`Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)"}
+
+var This_Effect_gen_contains_a_single_return_statement_effect_unnecessaryEffectGen = &Message{code: 377017, category: CategorySuggestion, key: "This_Effect_gen_contains_a_single_return_statement_effect_unnecessaryEffectGen_377017", text: "This Effect.gen contains a single return statement. effect(unnecessaryEffectGen)"}
+
+var This_expression_discards_the_success_value_through_mapping_Effect_asVoid_represents_that_form_directly_effect_effectMapVoid = &Message{code: 377018, category: CategorySuggestion, key: "This_expression_discards_the_success_value_through_mapping_Effect_asVoid_represents_that_form_direct_377018", text: "This expression discards the success value through mapping. `Effect.asVoid` represents that form directly. effect(effectMapVoid)"}
+
+var This_yield_Asterisk_Effect_fail_passes_a_yieldable_error_value_yield_Asterisk_represents_that_value_directly_without_wrapping_it_in_Effect_fail_effect_unnecessaryFailYieldableError = &Message{code: 377019, category: CategorySuggestion, key: "This_yield_Asterisk_Effect_fail_passes_a_yieldable_error_value_yield_Asterisk_represents_that_value__377019", text: "This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)"}
+
+var There_is_a_nested_0_in_the_void_success_channel_beware_that_this_could_lead_to_nested_Effect_Effect_that_won_t_be_executed_effect_effectInVoidSuccess = &Message{code: 377020, category: CategoryWarning, key: "There_is_a_nested_0_in_the_void_success_channel_beware_that_this_could_lead_to_nested_Effect_Effect__377020", text: "There is a nested '{0}' in the 'void' success channel, beware that this could lead to nested Effect<Effect<...>> that won't be executed. effect(effectInVoidSuccess)"}
+
+var The_catch_callback_in_0_returns_unknown_so_the_Effect_error_type_stays_untyped_A_specific_typed_error_preserves_error_channel_information_for_example_by_narrowing_the_value_or_wrapping_it_in_Data_TaggedError_effect_unknownInEffectCatch = &Message{code: 377021, category: CategoryWarning, key: "The_catch_callback_in_0_returns_unknown_so_the_Effect_error_type_stays_untyped_A_specific_typed_erro_377021", text: "The `catch` callback in `{0}` returns `unknown`, so the Effect error type stays untyped. A specific typed error preserves error-channel information, for example by narrowing the value or wrapping it in `Data.TaggedError`. effect(unknownInEffectCatch)"}
+
+var The_catch_callback_in_0_returns_the_global_Error_type_Untagged_errors_merge_together_in_the_Effect_error_channel_and_lose_type_level_distinction_a_tagged_error_preserves_that_distinction_and_can_wrap_the_original_error_in_a_cause_property_effect_globalErrorInEffectCatch = &Message{code: 377022, category: CategoryWarning, key: "The_catch_callback_in_0_returns_the_global_Error_type_Untagged_errors_merge_together_in_the_Effect_e_377022", text: "The `catch` callback in `{0}` returns the global `Error` type. Untagged errors merge together in the Effect error channel and lose type-level distinction; a tagged error preserves that distinction and can wrap the original error in a `cause` property. effect(globalErrorInEffectCatch)"}
+
+var Global_Error_loses_type_safety_as_untagged_errors_merge_together_in_the_Effect_failure_channel_Consider_using_a_tagged_error_and_optionally_wrapping_the_original_in_a_cause_property_effect_globalErrorInEffectFailure = &Message{code: 377023, category: CategoryWarning, key: "Global_Error_loses_type_safety_as_untagged_errors_merge_together_in_the_Effect_failure_channel_Consi_377023", text: "Global 'Error' loses type safety as untagged errors merge together in the Effect failure channel. Consider using a tagged error and optionally wrapping the original in a 'cause' property. effect(globalErrorInEffectFailure)"}
+
+var X_0_is_called_inside_an_existing_Effect_context_Here_the_inner_Effect_can_be_used_directly_effect_runEffectInsideEffect = &Message{code: 377024, category: CategorySuggestion, key: "_0_is_called_inside_an_existing_Effect_context_Here_the_inner_Effect_can_be_used_directly_effect_run_377024", text: "`{0}` is called inside an existing Effect context. Here, the inner Effect can be used directly. effect(runEffectInsideEffect)"}
+
+var X_0_is_called_inside_an_Effect_with_a_separate_runtime_invocation_In_this_context_run_child_Effects_with_the_surrounding_runtime_which_can_be_accessed_through_Effect_runtime_and_Runtime_1_effect_runEffectInsideEffect = &Message{code: 377025, category: CategorySuggestion, key: "_0_is_called_inside_an_Effect_with_a_separate_runtime_invocation_In_this_context_run_child_Effects_w_377025", text: "`{0}` is called inside an Effect with a separate runtime invocation. In this context, run child Effects with the surrounding runtime, which can be accessed through `Effect.runtime` and `Runtime.{1}`. effect(runEffectInsideEffect)"}
+
+var This_code_uses_JSON_parse_or_JSON_stringify_0_effect_preferSchemaOverJson = &Message{code: 377026, category: CategorySuggestion, key: "This_code_uses_JSON_parse_or_JSON_stringify_0_effect_preferSchemaOverJson_377026", text: "This code uses `JSON.parse` or `JSON.stringify`. {0} effect(preferSchemaOverJson)"}
+
+var The_adapter_of_Effect_gen_is_not_required_anymore_it_is_now_just_an_alias_of_pipe_effect_effectGenUsesAdapter = &Message{code: 377027, category: CategoryWarning, key: "The_adapter_of_Effect_gen_is_not_required_anymore_it_is_now_just_an_alias_of_pipe_effect_effectGenUs_377027", text: "The adapter of Effect.gen is not required anymore, it is now just an alias of pipe. effect(effectGenUsesAdapter)"}
+
+var Importing_from_barrel_module_0_is_not_allowed_effect_importFromBarrel = &Message{code: 377028, category: CategoryWarning, key: "Importing_from_barrel_module_0_is_not_allowed_effect_importFromBarrel_377028", text: "Importing from barrel module {0} is not allowed. effect(importFromBarrel)"}
+
+var Unexpected_0_type_in_condition_expected_strictly_a_boolean_instead_effect_strictBooleanExpressions = &Message{code: 377029, category: CategoryWarning, key: "Unexpected_0_type_in_condition_expected_strictly_a_boolean_instead_effect_strictBooleanExpressions_377029", text: "Unexpected `{0}` type in condition, expected strictly a boolean instead. effect(strictBooleanExpressions)"}
+
+var X_0_effect_anyUnknownInErrorContext = &Message{code: 377030, category: CategoryWarning, key: "_0_effect_anyUnknownInErrorContext_377030", text: "{0} effect(anyUnknownInErrorContext)"}
+
+var This_layer_construction_leaves_Scope_in_the_requirement_set_The_scoped_API_removes_Scope_from_the_resulting_requirements_effect_scopeInLayerEffect = &Message{code: 377031, category: CategoryWarning, key: "This_layer_construction_leaves_Scope_in_the_requirement_set_The_scoped_API_removes_Scope_from_the_re_377031", text: "This layer construction leaves `Scope` in the requirement set. The scoped API removes `Scope` from the resulting requirements. effect(scopeInLayerEffect)"}
+
+var Effect_provide_with_a_Layer_should_only_be_used_at_application_entry_points_If_this_is_an_entry_point_you_can_safely_disable_this_diagnostic_Otherwise_using_Effect_provide_may_break_scope_lifetimes_Compose_all_layers_at_your_entry_point_and_provide_them_at_once_effect_strictEffectProvide = &Message{code: 377032, category: CategoryWarning, key: "Effect_provide_with_a_Layer_should_only_be_used_at_application_entry_points_If_this_is_an_entry_poin_377032", text: "Effect.provide with a Layer should only be used at application entry points. If this is an entry point, you can safely disable this diagnostic. Otherwise, using Effect.provide may break scope lifetimes. Compose all layers at your entry point and provide them at once. effect(strictEffectProvide)"}
+
+var This_expression_chains_multiple_Effect_provide_calls_Providing_Layers_in_multiple_calls_in_a_chain_can_break_service_lifecycle_behavior_compared_with_a_single_combined_provide_with_merged_layers_effect_multipleEffectProvide = &Message{code: 377033, category: CategoryWarning, key: "This_expression_chains_multiple_Effect_provide_calls_Providing_Layers_in_multiple_calls_in_a_chain_c_377033", text: "This expression chains multiple `Effect.provide` calls. Providing Layers in multiple calls in a chain can break service lifecycle behavior compared with a single combined provide with merged layers. effect(multipleEffectProvide)"}
+
+var Missing_0_in_the_expected_Layer_context_effect_missingLayerContext = &Message{code: 377034, category: CategoryError, key: "Missing_0_in_the_expected_Layer_context_effect_missingLayerContext_377034", text: "Missing '{0}' in the expected Layer context. effect(missingLayerContext)"}
+
+var This_layer_provides_0_which_is_required_by_another_layer_in_the_same_Layer_mergeAll_call_Layer_mergeAll_creates_layers_in_parallel_so_dependencies_between_layers_will_not_be_satisfied_Consider_moving_this_layer_into_a_Layer_provideMerge_after_the_Layer_mergeAll_effect_layerMergeAllWithDependencies = &Message{code: 377035, category: CategoryWarning, key: "This_layer_provides_0_which_is_required_by_another_layer_in_the_same_Layer_mergeAll_call_Layer_merge_377035", text: "This layer provides {0} which is required by another layer in the same Layer.mergeAll call. Layer.mergeAll creates layers in parallel, so dependencies between layers will not be satisfied. Consider moving this layer into a Layer.provideMerge after the Layer.mergeAll. effect(layerMergeAllWithDependencies)"}
+
+var This_Schema_Struct_includes_a_tag_field_Schema_TaggedStruct_is_the_tagged_struct_form_for_this_pattern_and_makes_the_tag_optional_in_the_constructor_effect_schemaStructWithTag = &Message{code: 377036, category: CategorySuggestion, key: "This_Schema_Struct_includes_a_tag_field_Schema_TaggedStruct_is_the_tagged_struct_form_for_this_patte_377036", text: "This `Schema.Struct` includes a `_tag` field. `Schema.TaggedStruct` is the tagged-struct form for this pattern and makes the tag optional in the constructor. effect(schemaStructWithTag)"}
+
+var X_0_is_used_inside_an_Effect_generator_Schema_1_preserves_the_typed_Effect_error_channel_for_this_operation_without_throwing_effect_schemaSyncInEffect = &Message{code: 377037, category: CategorySuggestion, key: "_0_is_used_inside_an_Effect_generator_Schema_1_preserves_the_typed_Effect_error_channel_for_this_ope_377037", text: "`{0}` is used inside an Effect generator. `Schema.{1}` preserves the typed Effect error channel for this operation without throwing. effect(schemaSyncInEffect)"}
+
+var This_Schema_Union_contains_multiple_Schema_Literal_members_and_can_be_simplified_to_a_single_Schema_Literal_call_effect_schemaUnionOfLiterals = &Message{code: 377038, category: CategorySuggestion, key: "This_Schema_Union_contains_multiple_Schema_Literal_members_and_can_be_simplified_to_a_single_Schema__377038", text: "This `Schema.Union` contains multiple `Schema.Literal` members and can be simplified to a single `Schema.Literal` call. effect(schemaUnionOfLiterals)"}
+
+var Service_0_is_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency = &Message{code: 377039, category: CategorySuggestion, key: "Service_0_is_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency_377039", text: "Service '{0}' is required but not provided by dependencies. effect(missingEffectServiceDependency)"}
+
+var Services_0_are_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency = &Message{code: 377040, category: CategorySuggestion, key: "Services_0_are_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency_377040", text: "Services {0} are required but not provided by dependencies. effect(missingEffectServiceDependency)"}
+
+var Methods_of_this_Service_require_0_from_every_caller_The_requirement_becomes_part_of_the_public_service_surface_instead_of_remaining_internal_to_Layer_implementation_Resolve_these_dependencies_at_Layer_creation_and_provide_them_to_each_method_so_the_service_s_type_reflects_its_purpose_not_its_implementation_To_suppress_this_diagnostic_for_specific_dependency_types_that_are_intentionally_passed_through_e_g_HttpServerRequest_add_effect_leakable_service_JSDoc_to_their_interface_declarations_or_to_this_service_by_adding_a_effect_expect_leaking_0_JSDoc_More_info_and_examples_at_https_Colon_Slash_Slasheffect_website_Slashdocs_Slashrequirements_management_Slashlayers_Slash_avoiding_requirement_leakage_effect_leakingRequirements = &Message{code: 377041, category: CategorySuggestion, key: "Methods_of_this_Service_require_0_from_every_caller_The_requirement_becomes_part_of_the_public_servi_377041", text: "Methods of this Service require `{0}` from every caller.\n\nThe requirement becomes part of the public service surface instead of remaining internal to Layer implementation.\n\nResolve these dependencies at Layer creation and provide them to each method, so the service's type reflects its purpose, not its implementation.\n\nTo suppress this diagnostic for specific dependency types that are intentionally passed through (e.g., HttpServerRequest), add `@effect-leakable-service` JSDoc to their interface declarations, or to this service by adding a `@effect-expect-leaking {0}` JSDoc.\n\nMore info and examples at https://effect.website/docs/requirements-management/layers/#avoiding-requirement-leakage effect(leakingRequirements)"}
+
+var This_code_uses_instanceof_with_an_Effect_Schema_type_Schema_is_is_the_schema_aware_runtime_check_for_this_case_effect_instanceOfSchema = &Message{code: 377042, category: CategoryWarning, key: "This_code_uses_instanceof_with_an_Effect_Schema_type_Schema_is_is_the_schema_aware_runtime_check_for_377042", text: "This code uses `instanceof` with an Effect Schema type. `Schema.is` is the schema-aware runtime check for this case. effect(instanceOfSchema)"}
+
+var Effect_Services_with_type_parameters_are_not_supported_because_they_cannot_be_properly_discriminated_at_runtime_which_may_cause_unexpected_behavior_effect_genericEffectServices = &Message{code: 377043, category: CategoryWarning, key: "Effect_Services_with_type_parameters_are_not_supported_because_they_cannot_be_properly_discriminated_377043", text: "Effect Services with type parameters are not supported because they cannot be properly discriminated at runtime, which may cause unexpected behavior. effect(genericEffectServices)"}
+
+var This_Schema_subclass_defines_its_own_constructor_For_Schema_classes_constructor_overrides_break_decoding_behavior_for_the_class_shape_Custom_construction_can_be_expressed_through_a_static_new_method_instead_effect_overriddenSchemaConstructor = &Message{code: 377044, category: CategoryError, key: "This_Schema_subclass_defines_its_own_constructor_For_Schema_classes_constructor_overrides_break_deco_377044", text: "This Schema subclass defines its own constructor. For Schema classes, constructor overrides break decoding behavior for the class shape. Custom construction can be expressed through a static `new` method instead. effect(overriddenSchemaConstructor)"}
+
+var Identifier_0_is_redundant_since_it_equals_the_tag_value_effect_redundantSchemaTagIdentifier = &Message{code: 377045, category: CategorySuggestion, key: "Identifier_0_is_redundant_since_it_equals_the_tag_value_effect_redundantSchemaTagIdentifier_377045", text: "Identifier '{0}' is redundant since it equals the _tag value. effect(redundantSchemaTagIdentifier)"}
+
+var The_Self_type_parameter_for_this_class_should_be_0_effect_classSelfMismatch = &Message{code: 377046, category: CategoryError, key: "The_Self_type_parameter_for_this_class_should_be_0_effect_classSelfMismatch_377046", text: "The `Self` type parameter for this class should be `{0}`. effect(classSelfMismatch)"}
+
+var This_expression_can_be_rewritten_in_the_reusable_function_form_0_effect_effectFnOpportunity = &Message{code: 377047, category: CategorySuggestion, key: "This_expression_can_be_rewritten_in_the_reusable_function_form_0_effect_effectFnOpportunity_377047", text: "This expression can be rewritten in the reusable function form `{0}`. effect(effectFnOpportunity)"}
+
+var Effect_Service_is_declared_with_a_primitive_service_type_Effect_Service_models_object_shaped_services_primitive_values_use_Context_Tag_or_Effect_Tag_directly_effect_nonObjectEffectServiceType = &Message{code: 377048, category: CategoryError, key: "Effect_Service_is_declared_with_a_primitive_service_type_Effect_Service_models_object_shaped_service_377048", text: "`Effect.Service` is declared with a primitive service type. `Effect.Service` models object-shaped services; primitive values use `Context.Tag` or `Effect.Tag` directly. effect(nonObjectEffectServiceType)"}
+
+var This_key_does_not_match_the_deterministic_key_for_this_declaration_The_expected_key_is_0_effect_deterministicKeys = &Message{code: 377049, category: CategoryError, key: "This_key_does_not_match_the_deterministic_key_for_this_declaration_The_expected_key_is_0_effect_dete_377049", text: "This key does not match the deterministic key for this declaration. The expected key is `{0}`. effect(deterministicKeys)"}
+
+var This_nested_call_structure_has_a_pipeable_form_0_pipe_represents_the_same_call_sequence_in_pipe_style_and_may_be_easier_to_read_effect_missedPipeableOpportunity = &Message{code: 377050, category: CategorySuggestion, key: "This_nested_call_structure_has_a_pipeable_form_0_pipe_represents_the_same_call_sequence_in_pipe_styl_377050", text: "This nested call structure has a pipeable form. `{0}.pipe(...)` represents the same call sequence in pipe style and may be easier to read. effect(missedPipeableOpportunity)"}
+
+var Multiple_versions_of_package_0_were_detected_Colon_1_Package_duplication_can_change_runtime_identity_and_type_equality_across_Effect_modules_If_this_is_intentional_set_the_LSP_config_allowedDuplicatedPackages_to_2_effect_duplicatePackage = &Message{code: 377051, category: CategoryWarning, key: "Multiple_versions_of_package_0_were_detected_Colon_1_Package_duplication_can_change_runtime_identity_377051", text: "Multiple versions of package `{0}` were detected: {1}. Package duplication can change runtime identity and type equality across Effect modules.\nIf this is intentional, set the LSP config `allowedDuplicatedPackages` to {2}. effect(duplicatePackage)"}
+
+var This_project_targets_Effect_v4_but_this_code_uses_the_Effect_v3_API_0_The_referenced_API_belongs_to_the_v3_surface_rather_than_the_configured_v4_surface_1_effect_outdatedApi = &Message{code: 377052, category: CategoryWarning, key: "This_project_targets_Effect_v4_but_this_code_uses_the_Effect_v3_API_0_The_referenced_API_belongs_to__377052", text: "This project targets Effect v4, but this code uses the Effect v3 API `{0}`. The referenced API belongs to the v3 surface rather than the configured v4 surface. {1} effect(outdatedApi)"}
+
+var This_project_targets_Effect_v4_but_this_code_uses_Effect_v3_APIs_The_referenced_API_belongs_to_the_v3_surface_rather_than_the_configured_v4_surface_effect_outdatedApi = &Message{code: 377053, category: CategoryWarning, key: "This_project_targets_Effect_v4_but_this_code_uses_Effect_v3_APIs_The_referenced_API_belongs_to_the_v_377053", text: "This project targets Effect v4, but this code uses Effect v3 APIs. The referenced API belongs to the v3 surface rather than the configured v4 surface. effect(outdatedApi)"}
+
+var The_error_channel_contains_an_Effect_0_Putting_Effect_computations_in_the_failure_channel_is_not_intended_keep_only_failure_types_there_effect_effectInFailure = &Message{code: 377054, category: CategoryWarning, key: "The_error_channel_contains_an_Effect_0_Putting_Effect_computations_in_the_failure_channel_is_not_int_377054", text: "The error channel contains an Effect ({0}). Putting Effect computations in the failure channel is not intended; keep only failure types there. effect(effectInFailure)"}
+
+var This_class_extends_the_native_Error_type_directly_Untagged_native_errors_lose_distinction_in_the_Effect_failure_channel_effect_extendsNativeError = &Message{code: 377055, category: CategoryWarning, key: "This_class_extends_the_native_Error_type_directly_Untagged_native_errors_lose_distinction_in_the_Eff_377055", text: "This class extends the native `Error` type directly. Untagged native errors lose distinction in the Effect failure channel. effect(extendsNativeError)"}
+
+var Context_Service_is_assigned_to_a_variable_here_but_this_API_is_intended_for_a_class_declaration_shape_such_as_0_effect_serviceNotAsClass = &Message{code: 377056, category: CategoryWarning, key: "Context_Service_is_assigned_to_a_variable_here_but_this_API_is_intended_for_a_class_declaration_shap_377056", text: "`Context.Service` is assigned to a variable here, but this API is intended for a class declaration shape such as `{0}`. effect(serviceNotAsClass)"}
+
+var This_module_reference_uses_the_2_module_the_corresponding_Effect_API_is_0_from_1_effect_nodeBuiltinImport = &Message{code: 377057, category: CategoryWarning, key: "This_module_reference_uses_the_2_module_the_corresponding_Effect_API_is_0_from_1_effect_nodeBuiltinI_377057", text: "This module reference uses the `{2}` module, the corresponding Effect API is `{0}` from `{1}`. effect(nodeBuiltinImport)"}
+
+var This_Effect_able_0_value_is_neither_yielded_nor_assigned_to_a_variable_effect_floatingEffect = &Message{code: 377058, category: CategoryError, key: "This_Effect_able_0_value_is_neither_yielded_nor_assigned_to_a_variable_effect_floatingEffect_377058", text: "This Effect-able `{0}` value is neither yielded nor assigned to a variable. effect(floatingEffect)"}
+
+var Adjusting_this_layer_composition_could_provide_the_missing_service_effect_missingEffectContext = &Message{code: 377059, category: CategoryError, key: "Adjusting_this_layer_composition_could_provide_the_missing_service_effect_missingEffectContext_377059", text: "Adjusting this layer composition could provide the missing service. effect(missingEffectContext)"}
+
+var This_layer_provides_the_missing_service_0_effect_missingEffectContext = &Message{code: 377060, category: CategoryError, key: "This_layer_provides_the_missing_service_0_effect_missingEffectContext_377060", text: "This layer provides the missing service {0}. effect(missingEffectContext)"}
+
+var This_code_uses_the_global_fetch_function_HTTP_requests_are_represented_through_HttpClient_from_0_effect_globalFetch = &Message{code: 377061, category: CategoryWarning, key: "This_code_uses_the_global_fetch_function_HTTP_requests_are_represented_through_HttpClient_from_0_eff_377061", text: "This code uses the global `fetch` function, HTTP requests are represented through `HttpClient` from `{0}`. effect(globalFetch)"}
+
+var Parameter_0_implicitly_has_type_any_in_Effect_fn_Effect_fnUntraced_or_Effect_fnUntracedEager_No_parameter_type_is_available_from_an_explicit_annotation_or_contextual_function_type_effect_effectFnImplicitAny = &Message{code: 377062, category: CategoryError, key: "Parameter_0_implicitly_has_type_any_in_Effect_fn_Effect_fnUntraced_or_Effect_fnUntracedEager_No_para_377062", text: "Parameter `{0}` implicitly has type `any` in `Effect.fn`, `Effect.fnUntraced`, or `Effect.fnUntracedEager`. No parameter type is available from an explicit annotation or contextual function type. effect(effectFnImplicitAny)"}
+
+var This_Effect_code_calls_the_global_fetch_function_HTTP_requests_in_Effect_code_are_represented_through_HttpClient_from_0_effect_globalFetchInEffect = &Message{code: 377063, category: CategoryWarning, key: "This_Effect_code_calls_the_global_fetch_function_HTTP_requests_in_Effect_code_are_represented_throug_377063", text: "This Effect code calls the global `fetch` function, HTTP requests in Effect code are represented through `HttpClient` from `{0}`. effect(globalFetchInEffect)"}
+
+var This_code_uses_console_1_the_corresponding_Effect_logging_API_is_0_effect_globalConsole = &Message{code: 377064, category: CategoryWarning, key: "This_code_uses_console_1_the_corresponding_Effect_logging_API_is_0_effect_globalConsole_377064", text: "This code uses `console.{1}`, the corresponding Effect logging API is `{0}`. effect(globalConsole)"}
+
+var This_Effect_code_uses_console_1_logging_in_Effect_code_is_represented_through_0_effect_globalConsoleInEffect = &Message{code: 377065, category: CategoryWarning, key: "This_Effect_code_uses_console_1_logging_in_Effect_code_is_represented_through_0_effect_globalConsole_377065", text: "This Effect code uses `console.{1}`, logging in Effect code is represented through `{0}`. effect(globalConsoleInEffect)"}
+
+var This_code_uses_Date_now_time_access_is_represented_through_Clock_from_Effect_effect_globalDate = &Message{code: 377066, category: CategoryWarning, key: "This_code_uses_Date_now_time_access_is_represented_through_Clock_from_Effect_effect_globalDate_377066", text: "This code uses `Date.now()`, time access is represented through `Clock` from Effect. effect(globalDate)"}
+
+var This_Effect_code_uses_Date_now_time_access_in_Effect_code_is_represented_through_Clock_from_Effect_effect_globalDateInEffect = &Message{code: 377067, category: CategoryWarning, key: "This_Effect_code_uses_Date_now_time_access_in_Effect_code_is_represented_through_Clock_from_Effect_e_377067", text: "This Effect code uses `Date.now()`, time access in Effect code is represented through `Clock` from Effect. effect(globalDateInEffect)"}
+
+var This_code_constructs_new_Date_date_values_are_represented_through_DateTime_from_Effect_effect_globalDate = &Message{code: 377068, category: CategoryWarning, key: "This_code_constructs_new_Date_date_values_are_represented_through_DateTime_from_Effect_effect_global_377068", text: "This code constructs `new Date()`, date values are represented through `DateTime` from Effect. effect(globalDate)"}
+
+var This_Effect_code_constructs_new_Date_date_values_in_Effect_code_are_represented_through_DateTime_from_Effect_effect_globalDateInEffect = &Message{code: 377069, category: CategoryWarning, key: "This_Effect_code_constructs_new_Date_date_values_in_Effect_code_are_represented_through_DateTime_fro_377069", text: "This Effect code constructs `new Date()`, date values in Effect code are represented through `DateTime` from Effect. effect(globalDateInEffect)"}
+
+var This_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandom = &Message{code: 377070, category: CategoryWarning, key: "This_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_global_377070", text: "This code uses `Math.random()`, randomness is represented through the Effect `Random` service. effect(globalRandom)"}
+
+var This_Effect_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandomInEffect = &Message{code: 377071, category: CategoryWarning, key: "This_Effect_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_377071", text: "This Effect code uses `Math.random()`, randomness is represented through the Effect `Random` service. effect(globalRandomInEffect)"}
+
+var This_code_uses_1_the_corresponding_Effect_timer_API_is_0_from_Effect_effect_globalTimers = &Message{code: 377072, category: CategoryWarning, key: "This_code_uses_1_the_corresponding_Effect_timer_API_is_0_from_Effect_effect_globalTimers_377072", text: "This code uses `{1}`, the corresponding Effect timer API is `{0}` from Effect. effect(globalTimers)"}
+
+var This_Effect_code_uses_1_the_corresponding_timer_API_in_this_context_is_0_from_Effect_effect_globalTimersInEffect = &Message{code: 377073, category: CategoryWarning, key: "This_Effect_code_uses_1_the_corresponding_timer_API_in_this_context_is_0_from_Effect_effect_globalTi_377073", text: "This Effect code uses `{1}`, the corresponding timer API in this context is `{0}` from Effect. effect(globalTimersInEffect)"}
+
+var X_0_is_called_inside_an_Effect_with_a_separate_services_invocation_In_this_context_child_Effects_run_with_the_surrounding_services_which_can_be_accessed_through_Effect_context_and_Effect_1_With_effect_runEffectInsideEffect = &Message{code: 377074, category: CategorySuggestion, key: "_0_is_called_inside_an_Effect_with_a_separate_services_invocation_In_this_context_child_Effects_run__377074", text: "`{0}` is called inside an Effect with a separate services invocation. In this context, child Effects run with the surrounding services, which can be accessed through `Effect.context` and `Effect.{1}With`. effect(runEffectInsideEffect)"}
+
+var This_type_assertion_unsafely_narrows_the_error_or_requirements_channels_effect_unsafeEffectTypeAssertion = &Message{code: 377075, category: CategoryWarning, key: "This_type_assertion_unsafely_narrows_the_error_or_requirements_channels_effect_unsafeEffectTypeAsser_377075", text: "This type assertion unsafely narrows the error or requirements channels. effect(unsafeEffectTypeAssertion)"}
+
+var This_code_reads_from_process_env_environment_configuration_is_represented_through_Config_from_Effect_effect_processEnv = &Message{code: 377076, category: CategoryWarning, key: "This_code_reads_from_process_env_environment_configuration_is_represented_through_Config_from_Effect_377076", text: "This code reads from `process.env`, environment configuration is represented through `Config` from Effect. effect(processEnv)"}
+
+var This_Effect_code_reads_from_process_env_environment_configuration_in_Effect_code_is_represented_through_Config_from_Effect_effect_processEnvInEffect = &Message{code: 377077, category: CategoryWarning, key: "This_Effect_code_reads_from_process_env_environment_configuration_in_Effect_code_is_represented_thro_377077", text: "This Effect code reads from `process.env`, environment configuration in Effect code is represented through `Config` from Effect. effect(processEnvInEffect)"}
+
+var This_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomUUID = &Message{code: 377078, category: CategoryWarning, key: "This_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomUUID_377078", text: "This code uses `crypto.randomUUID()`, prefer the Effect `Crypto` module instead. effect(cryptoRandomUUID)"}
+
+var This_Effect_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomUUIDInEffect = &Message{code: 377079, category: CategoryWarning, key: "This_Effect_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomU_377079", text: "This Effect code uses `crypto.randomUUID()`, prefer the Effect `Crypto` module instead. effect(cryptoRandomUUIDInEffect)"}
+
+var This_code_constructs_new_Promise_prefer_Effect_APIs_such_as_Effect_async_Effect_promise_or_Effect_tryPromise_instead_of_manual_Promise_construction_effect_newPromise = &Message{code: 377080, category: CategoryWarning, key: "This_code_constructs_new_Promise_prefer_Effect_APIs_such_as_Effect_async_Effect_promise_or_Effect_tr_377080", text: "This code constructs `new Promise(...)`, prefer Effect APIs such as `Effect.async`, `Effect.promise`, or `Effect.tryPromise` instead of manual Promise construction. effect(newPromise)"}
+
+var This_code_declares_an_async_function_consider_representing_this_async_control_flow_with_Effect_values_and_Effect_gen_effect_asyncFunction = &Message{code: 377081, category: CategoryWarning, key: "This_code_declares_an_async_function_consider_representing_this_async_control_flow_with_Effect_value_377081", text: "This code declares an async function, consider representing this async control flow with Effect values and `Effect.gen`. effect(asyncFunction)"}
+
+var This_Effect_sync_thunk_returns_a_Promise_Use_Effect_promise_or_Effect_tryPromise_to_represent_async_work_effect_lazyPromiseInEffectSync = &Message{code: 377082, category: CategoryWarning, key: "This_Effect_sync_thunk_returns_a_Promise_Use_Effect_promise_or_Effect_tryPromise_to_represent_async__377082", text: "This `Effect.sync` thunk returns a Promise. Use `Effect.promise` or `Effect.tryPromise` to represent async work. effect(lazyPromiseInEffectSync)"}
+
+var This_yield_Asterisk_is_applied_to_a_nested_Effect_gen_that_can_be_inlined_in_the_parent_Effect_generator_context_effect_nestedEffectGenYield = &Message{code: 377083, category: CategoryWarning, key: "This_yield_Asterisk_is_applied_to_a_nested_Effect_gen_that_can_be_inlined_in_the_parent_Effect_gener_377083", text: "This `yield*` is applied to a nested `Effect.gen(...)` that can be inlined in the parent Effect generator context. effect(nestedEffectGenYield)"}
+
+var This_arrow_function_block_only_returns_an_expression_and_can_use_a_concise_body_effect_unnecessaryArrowBlock = &Message{code: 377084, category: CategoryWarning, key: "This_arrow_function_block_only_returns_an_expression_and_can_use_a_concise_body_effect_unnecessaryAr_377084", text: "This arrow function block only returns an expression and can use a concise body. effect(unnecessaryArrowBlock)"}
+
+var This_uses_the_Effect_do_emulation_Effect_gen_or_Effect_fn_achieve_the_same_result_with_native_JS_scopes_effect_effectDoNotation = &Message{code: 377085, category: CategoryWarning, key: "This_uses_the_Effect_do_emulation_Effect_gen_or_Effect_fn_achieve_the_same_result_with_native_JS_sco_377085", text: "This uses the Effect do emulation. `Effect.gen` or `Effect.fn` achieve the same result with native JS scopes. effect(effectDoNotation)"}
+
+var Effect_map_Effect_flatten_is_the_same_as_Effect_flatMap_that_expresses_the_same_steps_more_directly_effect_effectMapFlatten = &Message{code: 377086, category: CategoryWarning, key: "Effect_map_Effect_flatten_is_the_same_as_Effect_flatMap_that_expresses_the_same_steps_more_directly__377086", text: "`Effect.map` + `Effect.flatten` is the same as `Effect.flatMap` that expresses the same steps more directly. effect(effectMapFlatten)"}
+
+var The_0_channel_is_narrowed_from_1_to_2_effect_unsafeEffectTypeAssertion = &Message{code: 377087, category: CategoryWarning, key: "The_0_channel_is_narrowed_from_1_to_2_effect_unsafeEffectTypeAssertion_377087", text: "The {0} channel is narrowed from `{1}` to `{2}`. effect(unsafeEffectTypeAssertion)"}
+
+var This_generator_applies_the_same_inline_Effect_mapError_to_every_yielded_effect_Keep_that_Effect_mapError_inline_and_hoist_it_once_to_the_generator_result_Colon_Effect_gen_pipe_Effect_mapError_or_Effect_fn_function_Asterisk_Effect_mapError_effect_redundantMapError = &Message{code: 377088, category: CategorySuggestion, key: "This_generator_applies_the_same_inline_Effect_mapError_to_every_yielded_effect_Keep_that_Effect_mapE_377088", text: "This generator applies the same inline `Effect.mapError(...)` to every yielded effect. Keep that `Effect.mapError(...)` inline and hoist it once to the generator result: `Effect.gen(...).pipe(Effect.mapError(...))`, or `Effect.fn(function*(){ ... }, Effect.mapError(...))`. effect(redundantMapError)"}
+
+var This_repeated_Effect_mapError_site_participates_in_the_hoistable_generator_wide_mapping_effect_redundantMapError = &Message{code: 377089, category: CategorySuggestion, key: "This_repeated_Effect_mapError_site_participates_in_the_hoistable_generator_wide_mapping_effect_redun_377089", text: "This repeated `Effect.mapError(...)` site participates in the hoistable generator-wide mapping. effect(redundantMapError)"}
+
+var This_typeof_Type_query_can_be_replaced_with_0_effect_unnecessaryTypeofType = &Message{code: 377090, category: CategorySuggestion, key: "This_typeof_Type_query_can_be_replaced_with_0_effect_unnecessaryTypeofType_377090", text: "This `typeof ... .Type` query can be replaced with `{0}`. effect(unnecessaryTypeofType)"}
+
+var X_0_returns_a_lazy_1_1_is_already_lazy_so_wrapping_it_in_a_zero_argument_function_adds_unnecessary_indirection_effect_lazyEffect = &Message{code: 377091, category: CategorySuggestion, key: "_0_returns_a_lazy_1_1_is_already_lazy_so_wrapping_it_in_a_zero_argument_function_adds_unnecessary_in_377091", text: "{0} returns a lazy {1}. {1} is already lazy, so wrapping it in a zero-argument function adds unnecessary indirection. effect(lazyEffect)"}
+
+var These_0_consecutive_catchTag_transformations_can_be_collapsed_into_a_single_catchTags_call_effect_multipleCatchTag = &Message{code: 377092, category: CategorySuggestion, key: "These_0_consecutive_catchTag_transformations_can_be_collapsed_into_a_single_catchTags_call_effect_mu_377092", text: "These {0} consecutive `catchTag` transformations can be collapsed into a single `catchTags` call. effect(multipleCatchTag)"}
+
+var This_catchTag_transformation_is_part_of_a_consecutive_chain_that_can_be_collapsed_into_catchTags_effect_multipleCatchTag = &Message{code: 377093, category: CategorySuggestion, key: "This_catchTag_transformation_is_part_of_a_consecutive_chain_that_can_be_collapsed_into_catchTags_eff_377093", text: "This `catchTag` transformation is part of a consecutive chain that can be collapsed into `catchTags`. effect(multipleCatchTag)"}
+
+var This_Schema_class_is_constructed_with_new_0_make_can_be_used_to_construct_the_Schema_class_instance_effect_newSchemaClass = &Message{code: 377094, category: CategorySuggestion, key: "This_Schema_class_is_constructed_with_new_0_make_can_be_used_to_construct_the_Schema_class_instance__377094", text: "This Schema class is constructed with `new`. `{0}.make(...)` can be used to construct the Schema class instance. effect(newSchemaClass)"}
+
+var Effect_orElseSucceed_expresses_the_same_recovery_more_directly_than_Effect_0_followed_by_Effect_succeed_effect_catchToOrElseSucceed = &Message{code: 377095, category: CategorySuggestion, key: "Effect_orElseSucceed_expresses_the_same_recovery_more_directly_than_Effect_0_followed_by_Effect_succ_377095", text: "`Effect.orElseSucceed` expresses the same recovery more directly than `Effect.{0}` followed by `Effect.succeed`. effect(catchToOrElseSucceed)"}
+
+var This_generator_applies_Effect_orDie_to_every_yielded_effect_Hoist_it_once_to_the_generator_result_Colon_Effect_gen_pipe_Effect_orDie_or_Effect_fn_function_Asterisk_Effect_orDie_effect_redundantOrDie = &Message{code: 377096, category: CategorySuggestion, key: "This_generator_applies_Effect_orDie_to_every_yielded_effect_Hoist_it_once_to_the_generator_result_Co_377096", text: "This generator applies `Effect.orDie` to every yielded effect. Hoist it once to the generator result: `Effect.gen(...).pipe(Effect.orDie)`, or `Effect.fn(function*(){ ... }, Effect.orDie)`. effect(redundantOrDie)"}
+
+var This_repeated_Effect_orDie_site_participates_in_the_hoistable_generator_wide_orDie_effect_redundantOrDie = &Message{code: 377097, category: CategorySuggestion, key: "This_repeated_Effect_orDie_site_participates_in_the_hoistable_generator_wide_orDie_effect_redundantO_377097", text: "This repeated `Effect.orDie` site participates in the hoistable generator-wide `orDie`. effect(redundantOrDie)"}
+
+var This_Schema_number_API_accepts_NaN_Infinity_and_Infinity_Use_0_for_finite_domain_numbers_If_non_finite_values_are_intentional_disable_this_diagnostic_for_that_line_effect_schemaNumber = &Message{code: 377098, category: CategorySuggestion, key: "This_Schema_number_API_accepts_NaN_Infinity_and_Infinity_Use_0_for_finite_domain_numbers_If_non_fini_377098", text: "This Schema number API accepts `NaN`, `Infinity`, and `-Infinity`. Use `{0}` for finite domain numbers. If non-finite values are intentional, disable this diagnostic for that line. effect(schemaNumber)"}
+
+var Effect_1_expresses_ignored_failure_more_directly_than_Effect_0_returning_Effect_void_effect_catchToIgnore = &Message{code: 377099, category: CategorySuggestion, key: "Effect_1_expresses_ignored_failure_more_directly_than_Effect_0_returning_Effect_void_effect_catchToI_377099", text: "`Effect.{1}` expresses ignored failure more directly than `Effect.{0}` returning `Effect.void`. effect(catchToIgnore)"}
+
+var Effect_map_expresses_this_success_value_transformation_more_directly_than_Effect_flatMap_followed_by_Effect_succeed_effect_flatMapToMap = &Message{code: 377100, category: CategorySuggestion, key: "Effect_map_expresses_this_success_value_transformation_more_directly_than_Effect_flatMap_followed_by_377100", text: "`Effect.map` expresses this success-value transformation more directly than `Effect.flatMap` followed by `Effect.succeed`. effect(flatMapToMap)"}
+
+var Exported_function_0_has_no_pipeable_overload_corresponding_to_its_signature_1_effect_missingPipeableSignature = &Message{code: 377101, category: CategoryWarning, key: "Exported_function_0_has_no_pipeable_overload_corresponding_to_its_signature_1_effect_missingPipeable_377101", text: "Exported function `{0}` has no pipeable overload corresponding to its signature `{1}`. effect(missingPipeableSignature)"}
+
+var Classes_extending_Schema_Opaque_must_not_declare_instance_members_effect_schemaOpaqueInstanceMember = &Message{code: 377102, category: CategoryError, key: "Classes_extending_Schema_Opaque_must_not_declare_instance_members_effect_schemaOpaqueInstanceMember_377102", text: "Classes extending `Schema.Opaque` must not declare instance members. effect(schemaOpaqueInstanceMember)"}
+
+var Effect_succeed_expresses_this_constant_value_more_directly_than_Effect_sync_effect_syncToSucceed = &Message{code: 377103, category: CategorySuggestion, key: "Effect_succeed_expresses_this_constant_value_more_directly_than_Effect_sync_effect_syncToSucceed_377103", text: "`Effect.succeed` expresses this constant value more directly than `Effect.sync`. effect(syncToSucceed)"}
+
+var Do_not_use_Schema_Schema_Type_typeof_X_to_extract_a_schema_s_type_Use_typeof_X_Type_instead_effect_preferSchemaTypeProperty = &Message{code: 377104, category: CategoryError, key: "Do_not_use_Schema_Schema_Type_typeof_X_to_extract_a_schema_s_type_Use_typeof_X_Type_instead_effect_p_377104", text: "Do not use `Schema.Schema.Type<typeof X>` to extract a schema's type. Use `typeof X.Type` instead. effect(preferSchemaTypeProperty)"}
+
+var This_Vitest_callback_returns_an_Effect_that_Vitest_does_not_run_Use_an_Effect_aware_test_API_or_run_the_Effect_with_Effect_runPromise_effect_floatingEffectInVitest = &Message{code: 377105, category: CategoryError, key: "This_Vitest_callback_returns_an_Effect_that_Vitest_does_not_run_Use_an_Effect_aware_test_API_or_run__377105", text: "This Vitest callback returns an Effect that Vitest does not run. Use an Effect-aware test API or run the Effect with Effect.runPromise. effect(floatingEffectInVitest)"}
+
+var Schema_literal_values_must_be_finite_numbers_0_throws_during_schema_construction_Use_a_finite_literal_or_model_non_finite_values_with_a_refined_Schema_Number_effect_schemaLiteralNonFinite = &Message{code: 377106, category: CategoryError, key: "Schema_literal_values_must_be_finite_numbers_0_throws_during_schema_construction_Use_a_finite_litera_377106", text: "Schema literal values must be finite numbers; `{0}` throws during schema construction. Use a finite literal or model non-finite values with a refined Schema.Number. effect(schemaLiteralNonFinite)"}
+
+var Chained_Effect_catch_fallbacks_that_ignore_the_error_can_be_written_with_Effect_firstSuccessOf_Wrap_each_lazy_fallback_with_Effect_suspend_to_preserve_when_it_is_constructed_effect_catchChainToFirstSuccessOf = &Message{code: 377107, category: CategorySuggestion, key: "Chained_Effect_catch_fallbacks_that_ignore_the_error_can_be_written_with_Effect_firstSuccessOf_Wrap__377107", text: "Chained Effect.catch fallbacks that ignore the error can be written with Effect.firstSuccessOf. Wrap each lazy fallback with Effect.suspend to preserve when it is constructed. effect(catchChainToFirstSuccessOf)"}
+
+var The_Effect_success_channel_contains_a_Promise_that_is_not_awaited_Use_Effect_promise_or_Effect_tryPromise_to_represent_async_work_effect_promiseInEffectSuccess = &Message{code: 377108, category: CategoryWarning, key: "The_Effect_success_channel_contains_a_Promise_that_is_not_awaited_Use_Effect_promise_or_Effect_tryPr_377108", text: "The Effect success channel contains a Promise that is not awaited. Use Effect.promise or Effect.tryPromise to represent async work. effect(promiseInEffectSuccess)"}
+
+var X_0_starts_a_fiber_to_run_a_pure_constructor_Use_the_synchronous_variant_1_instead_effect_preferUnsafeConstructor = &Message{code: 377109, category: CategorySuggestion, key: "_0_starts_a_fiber_to_run_a_pure_constructor_Use_the_synchronous_variant_1_instead_effect_preferUnsaf_377109", text: "`{0}` starts a fiber to run a pure constructor. Use the synchronous variant `{1}` instead. effect(preferUnsafeConstructor)"}
+
+var Branching_on_0_reason_tag_inside_Effect_1_hand_rolls_reason_dispatch_use_Effect_catchReason_or_Effect_catchReasons_which_re_fail_unmatched_reasons_automatically_effect_catchTagToCatchReason = &Message{code: 377110, category: CategorySuggestion, key: "Branching_on_0_reason_tag_inside_Effect_1_hand_rolls_reason_dispatch_use_Effect_catchReason_or_Effec_377110", text: "Branching on `{0}.reason._tag` inside `Effect.{1}` hand-rolls reason dispatch; use `Effect.catchReason` or `Effect.catchReasons`, which re-fail unmatched reasons automatically. effect(catchTagToCatchReason)"}
+
+var AbortController_is_manually_constructed_inside_Effect_code_Use_Effect_abortSignal_for_Effect_managed_cancellation_effect_abortControllerInEffect = &Message{code: 377111, category: CategorySuggestion, key: "AbortController_is_manually_constructed_inside_Effect_code_Use_Effect_abortSignal_for_Effect_managed_377111", text: "`AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)"}
+
+var This_input_is_already_assignable_to_the_schema_s_Encoded_type_Use_0_to_preserve_compile_time_type_checking_instead_of_discarding_the_input_type_through_1_effect_preferTypedSchemaDecoder = &Message{code: 377112, category: CategorySuggestion, key: "This_input_is_already_assignable_to_the_schema_s_Encoded_type_Use_0_to_preserve_compile_time_type_ch_377112", text: "This input is already assignable to the schema's Encoded type. Use `{0}` to preserve compile-time type checking instead of discarding the input type through `{1}`. effect(preferTypedSchemaDecoder)"}
+
+var Effect_forEach_expresses_this_effectful_array_mapping_more_directly_than_Effect_all_over_Array_map_effect_allOfMapToForEach = &Message{code: 377113, category: CategorySuggestion, key: "Effect_forEach_expresses_this_effectful_array_mapping_more_directly_than_Effect_all_over_Array_map_e_377113", text: "`Effect.forEach` expresses this effectful array mapping more directly than `Effect.all` over `Array#map`. effect(allOfMapToForEach)"}
+
+var Effect_asSome_expresses_wrapping_the_success_value_in_Option_some_directly_effect_mapSomeToAsSome = &Message{code: 377114, category: CategorySuggestion, key: "Effect_asSome_expresses_wrapping_the_success_value_in_Option_some_directly_effect_mapSomeToAsSome_377114", text: "`Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)"}
+
+var Effect_orDie_expresses_escalating_every_typed_failure_into_a_defect_more_directly_than_Effect_0_with_an_identity_forwarding_Effect_die_handler_effect_catchDieToOrDie = &Message{code: 377115, category: CategorySuggestion, key: "Effect_orDie_expresses_escalating_every_typed_failure_into_a_defect_more_directly_than_Effect_0_with_377115", text: "`Effect.orDie` expresses escalating every typed failure into a defect more directly than `Effect.{0}` with an identity-forwarding `Effect.die` handler. effect(catchDieToOrDie)"}
+
+var Effect_2_expresses_selective_recovery_more_directly_than_Effect_0_with_a_conditional_Effect_1_passthrough_effect_catchConditionalRefailToCatchIf = &Message{code: 377116, category: CategorySuggestion, key: "Effect_2_expresses_selective_recovery_more_directly_than_Effect_0_with_a_conditional_Effect_1_passth_377116", text: "`Effect.{2}` expresses selective recovery more directly than `Effect.{0}` with a conditional `Effect.{1}` passthrough. effect(catchConditionalRefailToCatchIf)"}
+
+var Effect_0_expresses_this_Option_success_value_directly_effect_preferSucceedSomeOrNone = &Message{code: 377117, category: CategorySuggestion, key: "Effect_0_expresses_this_Option_success_value_directly_effect_preferSucceedSomeOrNone_377117", text: "`Effect.{0}` expresses this Option success value directly. effect(preferSucceedSomeOrNone)"}
+
+var Effect_fromOption_expresses_this_Option_to_Effect_conversion_more_directly_than_Option_match_or_an_Option_tag_conditional_effect_optionMatchToFromOption = &Message{code: 377118, category: CategorySuggestion, key: "Effect_fromOption_expresses_this_Option_to_Effect_conversion_more_directly_than_Option_match_or_an_O_377118", text: "`Effect.fromOption` expresses this Option-to-Effect conversion more directly than `Option.match` or an Option tag conditional. effect(optionMatchToFromOption)"}
+
+var Effect_acquireDisposable_expresses_this_disposable_resource_acquisition_more_directly_than_Effect_acquireRelease_with_a_manual_disposal_finalizer_effect_acquireReleaseDisposable = &Message{code: 377119, category: CategorySuggestion, key: "Effect_acquireDisposable_expresses_this_disposable_resource_acquisition_more_directly_than_Effect_ac_377119", text: "`Effect.acquireDisposable` expresses this disposable resource acquisition more directly than `Effect.acquireRelease` with a manual disposal finalizer. effect(acquireReleaseDisposable)"}
+
+var Effect_0_expresses_this_conditional_validation_more_directly_than_Effect_flatMap_with_an_identity_Effect_succeed_branch_effect_flatMapConditionalToFilterOrFail = &Message{code: 377120, category: CategorySuggestion, key: "Effect_0_expresses_this_conditional_validation_more_directly_than_Effect_flatMap_with_an_identity_Ef_377120", text: "`Effect.{0}` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)"}
+
+var This_Effect_first_completion_race_has_exactly_one_sleep_or_delay_based_timer_arm_Effect_timeoutOrElse_expresses_the_timeout_and_fallback_directly_effect_raceFirstWithSleepToTimeout = &Message{code: 377121, category: CategorySuggestion, key: "This_Effect_first_completion_race_has_exactly_one_sleep_or_delay_based_timer_arm_Effect_timeoutOrEls_377121", text: "This Effect first-completion race has exactly one sleep- or delay-based timer arm. `Effect.timeoutOrElse` expresses the timeout and fallback directly. effect(raceFirstWithSleepToTimeout)"}
+
+var Branching_on_0_tag_inside_Effect_1_hand_rolls_tagged_error_dispatch_use_Effect_catchTag_or_Effect_catchTags_which_re_fail_unmatched_errors_automatically_effect_catchAllTagDispatchToCatchTag = &Message{code: 377122, category: CategorySuggestion, key: "Branching_on_0_tag_inside_Effect_1_hand_rolls_tagged_error_dispatch_use_Effect_catchTag_or_Effect_ca_377122", text: "Branching on `{0}._tag` inside `Effect.{1}` hand-rolls tagged error dispatch; use `Effect.catchTag` or `Effect.catchTags`, which re-fail unmatched errors automatically. effect(catchAllTagDispatchToCatchTag)"}
+
+var Effect_0_of_Effect_exit_re_implements_Effect_1_Use_the_dedicated_Exit_runner_directly_effect_runOfExitToRunExit = &Message{code: 377123, category: CategorySuggestion, key: "Effect_0_of_Effect_exit_re_implements_Effect_1_Use_the_dedicated_Exit_runner_directly_effect_runOfEx_377123", text: "`Effect.{0}` of `Effect.exit` re-implements `Effect.{1}`. Use the dedicated Exit runner directly. effect(runOfExitToRunExit)"}
+
+var Effect_0_provides_this_inline_single_service_layer_directly_effect_provideLayerSucceedToProvideService = &Message{code: 377124, category: CategorySuggestion, key: "Effect_0_provides_this_inline_single_service_layer_directly_effect_provideLayerSucceedToProvideServi_377124", text: "`Effect.{0}` provides this inline single-service layer directly. effect(provideLayerSucceedToProvideService)"}
+
+var Effect_0_expresses_this_non_effectful_fold_more_directly_than_Effect_1_with_Effect_succeed_handlers_effect_matchEffectToMatch = &Message{code: 377125, category: CategorySuggestion, key: "Effect_0_expresses_this_non_effectful_fold_more_directly_than_Effect_1_with_Effect_succeed_handlers__377125", text: "`Effect.{0}` expresses this non-effectful fold more directly than `Effect.{1}` with `Effect.succeed` handlers. effect(matchEffectToMatch)"}
+
+var Effect_mapBoth_expresses_these_failure_and_success_transformations_more_directly_than_Effect_matchEffect_effect_matchEffectToMapBoth = &Message{code: 377126, category: CategorySuggestion, key: "Effect_mapBoth_expresses_these_failure_and_success_transformations_more_directly_than_Effect_matchEf_377126", text: "`Effect.mapBoth` expresses these failure and success transformations more directly than `Effect.matchEffect`. effect(matchEffectToMapBoth)"}
+
+var Use_Effect_0_to_handle_this_timeout_directly_effect_timeoutCatchTagToTimeoutOrElse = &Message{code: 377127, category: CategorySuggestion, key: "Use_Effect_0_to_handle_this_timeout_directly_effect_timeoutCatchTagToTimeoutOrElse_377127", text: "Use `Effect.{0}` to handle this timeout directly. effect(timeoutCatchTagToTimeoutOrElse)"}
+
+var This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_Schema_is_provided_directly_by_Schema_from_effect_or_effect_SlashSchema_effect_obsoleteSchemaImport = &Message{code: 377128, category: CategoryWarning, key: "This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_Schema_is_provided_direc_377128", text: "This module reference imports `{0}`, which is obsolete in Effect v4. In Effect v4, Schema is provided directly by `Schema` from `effect` (or `effect/Schema`). effect(obsoleteSchemaImport)"}
+
+var This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_pattern_matching_is_provided_directly_by_Match_from_effect_or_effect_SlashMatch_effect_obsoleteMatchImport = &Message{code: 377129, category: CategoryWarning, key: "This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_pattern_matching_is_prov_377129", text: "This module reference imports `{0}`, which is obsolete in Effect v4. In Effect v4, pattern matching is provided directly by `Match` from `effect` (or `effect/Match`). effect(obsoleteMatchImport)"}
+
+var X_0_executes_synchronously_Use_Schema_1_to_compose_this_operation_through_Effect_without_throwing_effect_schemaSync = &Message{code: 377130, category: CategorySuggestion, key: "_0_executes_synchronously_Use_Schema_1_to_compose_this_operation_through_Effect_without_throwing_eff_377130", text: "`{0}` executes synchronously. Use `Schema.{1}` to compose this operation through Effect without throwing. effect(schemaSync)"}
+
+var Effect_catchTag_expresses_tagged_error_recovery_more_directly_than_Effect_catchIf_with_a_tag_equality_predicate_effect_catchIfTagToCatchTag = &Message{code: 377131, category: CategorySuggestion, key: "Effect_catchTag_expresses_tagged_error_recovery_more_directly_than_Effect_catchIf_with_a_tag_equalit_377131", text: "Effect.catchTag expresses tagged error recovery more directly than Effect.catchIf with a `_tag` equality predicate. effect(catchIfTagToCatchTag)"}
+
+var Effect_andThen_expresses_this_sequencing_more_directly_than_Effect_flatMap_with_a_zero_parameter_callback_effect_flatMapIgnoredParamToAndThen = &Message{code: 377132, category: CategorySuggestion, key: "Effect_andThen_expresses_this_sequencing_more_directly_than_Effect_flatMap_with_a_zero_parameter_cal_377132", text: "`Effect.andThen` expresses this sequencing more directly than `Effect.flatMap` with a zero-parameter callback. effect(flatMapIgnoredParamToAndThen)"}
+
+var Use_Effect_tapError_to_observe_the_error_and_preserve_the_original_failure_without_having_to_re_fail_it_effect_catchRefailToTapError = &Message{code: 377133, category: CategorySuggestion, key: "Use_Effect_tapError_to_observe_the_error_and_preserve_the_original_failure_without_having_to_re_fail_377133", text: "Use Effect.tapError to observe the error and preserve the original failure without having to re-fail it. effect(catchRefailToTapError)"}
+
+var Unknown_Effect_diagnostic_rule_0_in_diagnosticSeverity_effect_unknownRuleName = &Message{code: 377134, category: CategoryWarning, key: "Unknown_Effect_diagnostic_rule_0_in_diagnosticSeverity_effect_unknownRuleName_377134", text: "Unknown Effect diagnostic rule `{0}` in `diagnosticSeverity`. effect(unknownRuleName)"}
+
+var X_0_is_an_experimental_API_effect_experimentalApiUsage = &Message{code: 377135, category: CategoryWarning, key: "_0_is_an_experimental_API_effect_experimentalApiUsage_377135", text: "`{0}` is an experimental API. effect(experimentalApiUsage)"}
+
+var X_0_is_an_unstable_API_Breaking_changes_may_happen_between_versions_effect_unstableApiUsage = &Message{code: 377136, category: CategoryWarning, key: "_0_is_an_unstable_API_Breaking_changes_may_happen_between_versions_effect_unstableApiUsage_377136", text: "`{0}` is an unstable API. Breaking changes may happen between versions. effect(unstableApiUsage)"}
+
+var X_0_exposes_1_an_2_API_effect_apiStabilityLeak = &Message{code: 377137, category: CategoryWarning, key: "_0_exposes_1_an_2_API_effect_apiStabilityLeak_377137", text: "`{0}` exposes `{1}`, an {2} API. effect(apiStabilityLeak)"}
+
+var X_0_is_declared_1_here_effect_apiStabilityLeak = &Message{code: 377138, category: CategoryMessage, key: "_0_is_declared_1_here_effect_apiStabilityLeak_377138", text: "`{0}` is declared {1} here. effect(apiStabilityLeak)"}
+
+var Prefer_Schema_TaggedError_over_Data_TaggedError_for_an_explicit_schema_contract_effect_preferSchemaTaggedError = &Message{code: 377139, category: CategorySuggestion, key: "Prefer_Schema_TaggedError_over_Data_TaggedError_for_an_explicit_schema_contract_effect_preferSchemaT_377139", text: "Prefer `Schema.TaggedError` over `Data.TaggedError` for an explicit schema contract. effect(preferSchemaTaggedError)"}
+
+var Consider_effect_SlashArray_0_instead_of_native_Array_1_2_effect_preferEffectArray = &Message{code: 377140, category: CategoryWarning, key: "Consider_effect_SlashArray_0_instead_of_native_Array_1_2_effect_preferEffectArray_377140", text: "Consider effect/Array.{0} instead of native Array.{1}. {2} effect(preferEffectArray)"}
+
+var Add_readonly_brand_Colon_unique_symbol_as_the_second_type_argument_Without_a_brand_TypeScript_may_accept_structurally_compatible_values_where_this_class_instance_type_is_expected_effect_schemaClassMissingBrand = &Message{code: 377141, category: CategorySuggestion, key: "Add_readonly_brand_Colon_unique_symbol_as_the_second_type_argument_Without_a_brand_TypeScript_may_ac_377141", text: "Add `{ readonly brand: unique symbol }` as the second type argument. Without a brand, TypeScript may accept structurally compatible values where this class instance type is expected. effect(schemaClassMissingBrand)"}
+
+var Consider_Effect_yieldNow_for_cooperative_yielding_instead_of_sleeping_for_zero_duration_effect_effectSleepZeroToYieldNow = &Message{code: 377142, category: CategorySuggestion, key: "Consider_Effect_yieldNow_for_cooperative_yielding_instead_of_sleeping_for_zero_duration_effect_effec_377142", text: "Consider `Effect.yieldNow` for cooperative yielding instead of sleeping for zero duration. effect(effectSleepZeroToYieldNow)"}
+
+var Consider_effect_SlashRecord_0_instead_of_native_1_2_effect_preferEffectRecord = &Message{code: 377143, category: CategoryWarning, key: "Consider_effect_SlashRecord_0_instead_of_native_1_2_effect_preferEffectRecord_377143", text: "Consider effect/Record.{0} instead of native {1}. {2} effect(preferEffectRecord)"}
+
+var Effect_tap_expresses_this_observation_more_directly_than_Effect_0_with_a_manual_re_yield_effect_flatMapToTap = &Message{code: 377144, category: CategorySuggestion, key: "Effect_tap_expresses_this_observation_more_directly_than_Effect_0_with_a_manual_re_yield_effect_flat_377144", text: "`Effect.tap` expresses this observation more directly than `Effect.{0}` with a manual re-yield. effect(flatMapToTap)"}
+
+var The_payload_field_name_shadows_this_error_s_own_name_so_logs_and_String_error_show_the_field_value_instead_of_the_error_type_Consider_renaming_it_effect_errorPayloadShadowsName = &Message{code: 377145, category: CategorySuggestion, key: "The_payload_field_name_shadows_this_error_s_own_name_so_logs_and_String_error_show_the_field_value_i_377145", text: "The payload field `name` shadows this error's own `name`, so logs and `String(error)` show the field value instead of the error type. Consider renaming it. effect(errorPayloadShadowsName)"}
+
+var X_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_Use_2_instead_effect_preferNamespaceImport = &Message{code: 377146, category: CategorySuggestion, key: "_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_Use_2_instead_e_377146", text: "'{0}' is imported by name from '{1}', but namespaceImportPackages expects a namespace import. Use '{2}' instead. effect(preferNamespaceImport)"}
+
+var X_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_of_the_module_that_declares_0_effect_preferNamespaceImport = &Message{code: 377147, category: CategorySuggestion, key: "_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_of_the_module_t_377147", text: "'{0}' is imported by name from '{1}', but namespaceImportPackages expects a namespace import of the module that declares '{0}'. effect(preferNamespaceImport)"}
+
+var X_0_is_imported_directly_but_barrelImportPackages_expects_named_imports_from_the_barrel_1_Use_2_instead_effect_preferBarrelImport = &Message{code: 377148, category: CategorySuggestion, key: "_0_is_imported_directly_but_barrelImportPackages_expects_named_imports_from_the_barrel_1_Use_2_inste_377148", text: "'{0}' is imported directly, but barrelImportPackages expects named imports from the barrel '{1}'. Use '{2}' instead. effect(preferBarrelImport)"}
+
+var This_object_literal_is_checked_as_an_instance_of_Schema_class_0_but_has_no_class_prototype_instanceof_checks_methods_and_Schema_encoding_can_fail_Use_0_make_or_new_0_instead_effect_schemaClassObjectLiteral = &Message{code: 377149, category: CategoryWarning, key: "This_object_literal_is_checked_as_an_instance_of_Schema_class_0_but_has_no_class_prototype_instanceo_377149", text: "This object literal is checked as an instance of Schema class '{0}' but has no class prototype. instanceof checks, methods, and Schema encoding can fail. Use '{0}.make(...)' or 'new {0}(...)' instead. effect(schemaClassObjectLiteral)"}
+
+var Consider_effect_SlashString_0_instead_of_native_String_1_2_effect_preferEffectString = &Message{code: 377150, category: CategoryWarning, key: "Consider_effect_SlashString_0_instead_of_native_String_1_2_effect_preferEffectString_377150", text: "Consider effect/String.{0} instead of native String.{1}. {2} effect(preferEffectString)"}
+
 var allMessages = [...]**Message{
 	&Unterminated_string_literal,
 	&Identifier_expected,
@@ -6687,4 +6985,153 @@ var allMessages = [...]**Message{
 	&Remove_Unused_Imports,
 	&Sort_Imports,
 	&JSDoc_comment,
+	&X_effect_diagnostics_directive_has_no_effect,
+	&This_Effect_value_is_neither_yielded_nor_used_in_an_assignment_effect_floatingEffect,
+	&Missing_errors_0_in_the_expected_Effect_type_effect_missingEffectError,
+	&This_Effect_requires_a_service_that_is_missing_from_the_expected_Effect_context_Colon_0_effect_missingEffectContext,
+	&This_Effect_never_succeeds_using_return_yield_Asterisk_preserves_a_definitive_generator_exit_point_for_type_narrowing_and_tooling_support_effect_missingReturnYieldStar,
+	&Inside_this_Effect_generator_effect_missingStarInYieldEffectGen,
+	&This_uses_yield_for_an_Effect_value_yield_Asterisk_is_the_Effect_aware_form_in_this_context_effect_missingStarInYieldEffectGen,
+	&The_previous_Effect_does_not_fail_so_this_error_handling_branch_will_never_run_effect_catchUnfailableEffect,
+	&Effect_mapError_expresses_the_same_error_type_transformation_more_directly_than_Effect_0_followed_by_Effect_fail_effect_catchAllToMapError,
+	&X_0_1_returns_a_reusable_function_that_can_take_arguments_but_it_is_invoked_immediately_here_Effect_gen_represents_the_immediate_use_form_for_this_pattern_2_effect_effectFnIife,
+	&This_Effect_generator_contains_try_Slashcatch_in_this_context_error_handling_is_expressed_with_Effect_APIs_such_as_Effect_try_Effect_tryPromise_Effect_catch_Effect_catchTag_effect_tryCatchInEffectGen,
+	&This_pipe_call_contains_no_arguments_effect_unnecessaryPipe,
+	&This_generator_returns_an_Effect_able_value_directly_which_produces_a_nested_Effect_Effect_If_the_intended_result_is_the_inner_Effect_value_return_yield_Asterisk_represents_that_form_effect_returnEffectInGen,
+	&This_expression_contains_chained_pipe_calls_that_can_be_simplified_to_a_single_pipe_call_effect_unnecessaryPipeChain,
+	&Effect_void_represents_the_same_outcome_as_Effect_succeed_undefined_or_Effect_succeed_void_0_effect_effectSucceedWithVoid,
+	&This_Effect_gen_contains_a_single_return_statement_effect_unnecessaryEffectGen,
+	&This_expression_discards_the_success_value_through_mapping_Effect_asVoid_represents_that_form_directly_effect_effectMapVoid,
+	&This_yield_Asterisk_Effect_fail_passes_a_yieldable_error_value_yield_Asterisk_represents_that_value_directly_without_wrapping_it_in_Effect_fail_effect_unnecessaryFailYieldableError,
+	&There_is_a_nested_0_in_the_void_success_channel_beware_that_this_could_lead_to_nested_Effect_Effect_that_won_t_be_executed_effect_effectInVoidSuccess,
+	&The_catch_callback_in_0_returns_unknown_so_the_Effect_error_type_stays_untyped_A_specific_typed_error_preserves_error_channel_information_for_example_by_narrowing_the_value_or_wrapping_it_in_Data_TaggedError_effect_unknownInEffectCatch,
+	&The_catch_callback_in_0_returns_the_global_Error_type_Untagged_errors_merge_together_in_the_Effect_error_channel_and_lose_type_level_distinction_a_tagged_error_preserves_that_distinction_and_can_wrap_the_original_error_in_a_cause_property_effect_globalErrorInEffectCatch,
+	&Global_Error_loses_type_safety_as_untagged_errors_merge_together_in_the_Effect_failure_channel_Consider_using_a_tagged_error_and_optionally_wrapping_the_original_in_a_cause_property_effect_globalErrorInEffectFailure,
+	&X_0_is_called_inside_an_existing_Effect_context_Here_the_inner_Effect_can_be_used_directly_effect_runEffectInsideEffect,
+	&X_0_is_called_inside_an_Effect_with_a_separate_runtime_invocation_In_this_context_run_child_Effects_with_the_surrounding_runtime_which_can_be_accessed_through_Effect_runtime_and_Runtime_1_effect_runEffectInsideEffect,
+	&This_code_uses_JSON_parse_or_JSON_stringify_0_effect_preferSchemaOverJson,
+	&The_adapter_of_Effect_gen_is_not_required_anymore_it_is_now_just_an_alias_of_pipe_effect_effectGenUsesAdapter,
+	&Importing_from_barrel_module_0_is_not_allowed_effect_importFromBarrel,
+	&Unexpected_0_type_in_condition_expected_strictly_a_boolean_instead_effect_strictBooleanExpressions,
+	&X_0_effect_anyUnknownInErrorContext,
+	&This_layer_construction_leaves_Scope_in_the_requirement_set_The_scoped_API_removes_Scope_from_the_resulting_requirements_effect_scopeInLayerEffect,
+	&Effect_provide_with_a_Layer_should_only_be_used_at_application_entry_points_If_this_is_an_entry_point_you_can_safely_disable_this_diagnostic_Otherwise_using_Effect_provide_may_break_scope_lifetimes_Compose_all_layers_at_your_entry_point_and_provide_them_at_once_effect_strictEffectProvide,
+	&This_expression_chains_multiple_Effect_provide_calls_Providing_Layers_in_multiple_calls_in_a_chain_can_break_service_lifecycle_behavior_compared_with_a_single_combined_provide_with_merged_layers_effect_multipleEffectProvide,
+	&Missing_0_in_the_expected_Layer_context_effect_missingLayerContext,
+	&This_layer_provides_0_which_is_required_by_another_layer_in_the_same_Layer_mergeAll_call_Layer_mergeAll_creates_layers_in_parallel_so_dependencies_between_layers_will_not_be_satisfied_Consider_moving_this_layer_into_a_Layer_provideMerge_after_the_Layer_mergeAll_effect_layerMergeAllWithDependencies,
+	&This_Schema_Struct_includes_a_tag_field_Schema_TaggedStruct_is_the_tagged_struct_form_for_this_pattern_and_makes_the_tag_optional_in_the_constructor_effect_schemaStructWithTag,
+	&X_0_is_used_inside_an_Effect_generator_Schema_1_preserves_the_typed_Effect_error_channel_for_this_operation_without_throwing_effect_schemaSyncInEffect,
+	&This_Schema_Union_contains_multiple_Schema_Literal_members_and_can_be_simplified_to_a_single_Schema_Literal_call_effect_schemaUnionOfLiterals,
+	&Service_0_is_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency,
+	&Services_0_are_required_but_not_provided_by_dependencies_effect_missingEffectServiceDependency,
+	&Methods_of_this_Service_require_0_from_every_caller_The_requirement_becomes_part_of_the_public_service_surface_instead_of_remaining_internal_to_Layer_implementation_Resolve_these_dependencies_at_Layer_creation_and_provide_them_to_each_method_so_the_service_s_type_reflects_its_purpose_not_its_implementation_To_suppress_this_diagnostic_for_specific_dependency_types_that_are_intentionally_passed_through_e_g_HttpServerRequest_add_effect_leakable_service_JSDoc_to_their_interface_declarations_or_to_this_service_by_adding_a_effect_expect_leaking_0_JSDoc_More_info_and_examples_at_https_Colon_Slash_Slasheffect_website_Slashdocs_Slashrequirements_management_Slashlayers_Slash_avoiding_requirement_leakage_effect_leakingRequirements,
+	&This_code_uses_instanceof_with_an_Effect_Schema_type_Schema_is_is_the_schema_aware_runtime_check_for_this_case_effect_instanceOfSchema,
+	&Effect_Services_with_type_parameters_are_not_supported_because_they_cannot_be_properly_discriminated_at_runtime_which_may_cause_unexpected_behavior_effect_genericEffectServices,
+	&This_Schema_subclass_defines_its_own_constructor_For_Schema_classes_constructor_overrides_break_decoding_behavior_for_the_class_shape_Custom_construction_can_be_expressed_through_a_static_new_method_instead_effect_overriddenSchemaConstructor,
+	&Identifier_0_is_redundant_since_it_equals_the_tag_value_effect_redundantSchemaTagIdentifier,
+	&The_Self_type_parameter_for_this_class_should_be_0_effect_classSelfMismatch,
+	&This_expression_can_be_rewritten_in_the_reusable_function_form_0_effect_effectFnOpportunity,
+	&Effect_Service_is_declared_with_a_primitive_service_type_Effect_Service_models_object_shaped_services_primitive_values_use_Context_Tag_or_Effect_Tag_directly_effect_nonObjectEffectServiceType,
+	&This_key_does_not_match_the_deterministic_key_for_this_declaration_The_expected_key_is_0_effect_deterministicKeys,
+	&This_nested_call_structure_has_a_pipeable_form_0_pipe_represents_the_same_call_sequence_in_pipe_style_and_may_be_easier_to_read_effect_missedPipeableOpportunity,
+	&Multiple_versions_of_package_0_were_detected_Colon_1_Package_duplication_can_change_runtime_identity_and_type_equality_across_Effect_modules_If_this_is_intentional_set_the_LSP_config_allowedDuplicatedPackages_to_2_effect_duplicatePackage,
+	&This_project_targets_Effect_v4_but_this_code_uses_the_Effect_v3_API_0_The_referenced_API_belongs_to_the_v3_surface_rather_than_the_configured_v4_surface_1_effect_outdatedApi,
+	&This_project_targets_Effect_v4_but_this_code_uses_Effect_v3_APIs_The_referenced_API_belongs_to_the_v3_surface_rather_than_the_configured_v4_surface_effect_outdatedApi,
+	&The_error_channel_contains_an_Effect_0_Putting_Effect_computations_in_the_failure_channel_is_not_intended_keep_only_failure_types_there_effect_effectInFailure,
+	&This_class_extends_the_native_Error_type_directly_Untagged_native_errors_lose_distinction_in_the_Effect_failure_channel_effect_extendsNativeError,
+	&Context_Service_is_assigned_to_a_variable_here_but_this_API_is_intended_for_a_class_declaration_shape_such_as_0_effect_serviceNotAsClass,
+	&This_module_reference_uses_the_2_module_the_corresponding_Effect_API_is_0_from_1_effect_nodeBuiltinImport,
+	&This_Effect_able_0_value_is_neither_yielded_nor_assigned_to_a_variable_effect_floatingEffect,
+	&Adjusting_this_layer_composition_could_provide_the_missing_service_effect_missingEffectContext,
+	&This_layer_provides_the_missing_service_0_effect_missingEffectContext,
+	&This_code_uses_the_global_fetch_function_HTTP_requests_are_represented_through_HttpClient_from_0_effect_globalFetch,
+	&Parameter_0_implicitly_has_type_any_in_Effect_fn_Effect_fnUntraced_or_Effect_fnUntracedEager_No_parameter_type_is_available_from_an_explicit_annotation_or_contextual_function_type_effect_effectFnImplicitAny,
+	&This_Effect_code_calls_the_global_fetch_function_HTTP_requests_in_Effect_code_are_represented_through_HttpClient_from_0_effect_globalFetchInEffect,
+	&This_code_uses_console_1_the_corresponding_Effect_logging_API_is_0_effect_globalConsole,
+	&This_Effect_code_uses_console_1_logging_in_Effect_code_is_represented_through_0_effect_globalConsoleInEffect,
+	&This_code_uses_Date_now_time_access_is_represented_through_Clock_from_Effect_effect_globalDate,
+	&This_Effect_code_uses_Date_now_time_access_in_Effect_code_is_represented_through_Clock_from_Effect_effect_globalDateInEffect,
+	&This_code_constructs_new_Date_date_values_are_represented_through_DateTime_from_Effect_effect_globalDate,
+	&This_Effect_code_constructs_new_Date_date_values_in_Effect_code_are_represented_through_DateTime_from_Effect_effect_globalDateInEffect,
+	&This_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandom,
+	&This_Effect_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandomInEffect,
+	&This_code_uses_1_the_corresponding_Effect_timer_API_is_0_from_Effect_effect_globalTimers,
+	&This_Effect_code_uses_1_the_corresponding_timer_API_in_this_context_is_0_from_Effect_effect_globalTimersInEffect,
+	&X_0_is_called_inside_an_Effect_with_a_separate_services_invocation_In_this_context_child_Effects_run_with_the_surrounding_services_which_can_be_accessed_through_Effect_context_and_Effect_1_With_effect_runEffectInsideEffect,
+	&This_type_assertion_unsafely_narrows_the_error_or_requirements_channels_effect_unsafeEffectTypeAssertion,
+	&This_code_reads_from_process_env_environment_configuration_is_represented_through_Config_from_Effect_effect_processEnv,
+	&This_Effect_code_reads_from_process_env_environment_configuration_in_Effect_code_is_represented_through_Config_from_Effect_effect_processEnvInEffect,
+	&This_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomUUID,
+	&This_Effect_code_uses_crypto_randomUUID_prefer_the_Effect_Crypto_module_instead_effect_cryptoRandomUUIDInEffect,
+	&This_code_constructs_new_Promise_prefer_Effect_APIs_such_as_Effect_async_Effect_promise_or_Effect_tryPromise_instead_of_manual_Promise_construction_effect_newPromise,
+	&This_code_declares_an_async_function_consider_representing_this_async_control_flow_with_Effect_values_and_Effect_gen_effect_asyncFunction,
+	&This_Effect_sync_thunk_returns_a_Promise_Use_Effect_promise_or_Effect_tryPromise_to_represent_async_work_effect_lazyPromiseInEffectSync,
+	&This_yield_Asterisk_is_applied_to_a_nested_Effect_gen_that_can_be_inlined_in_the_parent_Effect_generator_context_effect_nestedEffectGenYield,
+	&This_arrow_function_block_only_returns_an_expression_and_can_use_a_concise_body_effect_unnecessaryArrowBlock,
+	&This_uses_the_Effect_do_emulation_Effect_gen_or_Effect_fn_achieve_the_same_result_with_native_JS_scopes_effect_effectDoNotation,
+	&Effect_map_Effect_flatten_is_the_same_as_Effect_flatMap_that_expresses_the_same_steps_more_directly_effect_effectMapFlatten,
+	&The_0_channel_is_narrowed_from_1_to_2_effect_unsafeEffectTypeAssertion,
+	&This_generator_applies_the_same_inline_Effect_mapError_to_every_yielded_effect_Keep_that_Effect_mapError_inline_and_hoist_it_once_to_the_generator_result_Colon_Effect_gen_pipe_Effect_mapError_or_Effect_fn_function_Asterisk_Effect_mapError_effect_redundantMapError,
+	&This_repeated_Effect_mapError_site_participates_in_the_hoistable_generator_wide_mapping_effect_redundantMapError,
+	&This_typeof_Type_query_can_be_replaced_with_0_effect_unnecessaryTypeofType,
+	&X_0_returns_a_lazy_1_1_is_already_lazy_so_wrapping_it_in_a_zero_argument_function_adds_unnecessary_indirection_effect_lazyEffect,
+	&These_0_consecutive_catchTag_transformations_can_be_collapsed_into_a_single_catchTags_call_effect_multipleCatchTag,
+	&This_catchTag_transformation_is_part_of_a_consecutive_chain_that_can_be_collapsed_into_catchTags_effect_multipleCatchTag,
+	&This_Schema_class_is_constructed_with_new_0_make_can_be_used_to_construct_the_Schema_class_instance_effect_newSchemaClass,
+	&Effect_orElseSucceed_expresses_the_same_recovery_more_directly_than_Effect_0_followed_by_Effect_succeed_effect_catchToOrElseSucceed,
+	&This_generator_applies_Effect_orDie_to_every_yielded_effect_Hoist_it_once_to_the_generator_result_Colon_Effect_gen_pipe_Effect_orDie_or_Effect_fn_function_Asterisk_Effect_orDie_effect_redundantOrDie,
+	&This_repeated_Effect_orDie_site_participates_in_the_hoistable_generator_wide_orDie_effect_redundantOrDie,
+	&This_Schema_number_API_accepts_NaN_Infinity_and_Infinity_Use_0_for_finite_domain_numbers_If_non_finite_values_are_intentional_disable_this_diagnostic_for_that_line_effect_schemaNumber,
+	&Effect_1_expresses_ignored_failure_more_directly_than_Effect_0_returning_Effect_void_effect_catchToIgnore,
+	&Effect_map_expresses_this_success_value_transformation_more_directly_than_Effect_flatMap_followed_by_Effect_succeed_effect_flatMapToMap,
+	&Exported_function_0_has_no_pipeable_overload_corresponding_to_its_signature_1_effect_missingPipeableSignature,
+	&Classes_extending_Schema_Opaque_must_not_declare_instance_members_effect_schemaOpaqueInstanceMember,
+	&Effect_succeed_expresses_this_constant_value_more_directly_than_Effect_sync_effect_syncToSucceed,
+	&Do_not_use_Schema_Schema_Type_typeof_X_to_extract_a_schema_s_type_Use_typeof_X_Type_instead_effect_preferSchemaTypeProperty,
+	&This_Vitest_callback_returns_an_Effect_that_Vitest_does_not_run_Use_an_Effect_aware_test_API_or_run_the_Effect_with_Effect_runPromise_effect_floatingEffectInVitest,
+	&Schema_literal_values_must_be_finite_numbers_0_throws_during_schema_construction_Use_a_finite_literal_or_model_non_finite_values_with_a_refined_Schema_Number_effect_schemaLiteralNonFinite,
+	&Chained_Effect_catch_fallbacks_that_ignore_the_error_can_be_written_with_Effect_firstSuccessOf_Wrap_each_lazy_fallback_with_Effect_suspend_to_preserve_when_it_is_constructed_effect_catchChainToFirstSuccessOf,
+	&The_Effect_success_channel_contains_a_Promise_that_is_not_awaited_Use_Effect_promise_or_Effect_tryPromise_to_represent_async_work_effect_promiseInEffectSuccess,
+	&X_0_starts_a_fiber_to_run_a_pure_constructor_Use_the_synchronous_variant_1_instead_effect_preferUnsafeConstructor,
+	&Branching_on_0_reason_tag_inside_Effect_1_hand_rolls_reason_dispatch_use_Effect_catchReason_or_Effect_catchReasons_which_re_fail_unmatched_reasons_automatically_effect_catchTagToCatchReason,
+	&AbortController_is_manually_constructed_inside_Effect_code_Use_Effect_abortSignal_for_Effect_managed_cancellation_effect_abortControllerInEffect,
+	&This_input_is_already_assignable_to_the_schema_s_Encoded_type_Use_0_to_preserve_compile_time_type_checking_instead_of_discarding_the_input_type_through_1_effect_preferTypedSchemaDecoder,
+	&Effect_forEach_expresses_this_effectful_array_mapping_more_directly_than_Effect_all_over_Array_map_effect_allOfMapToForEach,
+	&Effect_asSome_expresses_wrapping_the_success_value_in_Option_some_directly_effect_mapSomeToAsSome,
+	&Effect_orDie_expresses_escalating_every_typed_failure_into_a_defect_more_directly_than_Effect_0_with_an_identity_forwarding_Effect_die_handler_effect_catchDieToOrDie,
+	&Effect_2_expresses_selective_recovery_more_directly_than_Effect_0_with_a_conditional_Effect_1_passthrough_effect_catchConditionalRefailToCatchIf,
+	&Effect_0_expresses_this_Option_success_value_directly_effect_preferSucceedSomeOrNone,
+	&Effect_fromOption_expresses_this_Option_to_Effect_conversion_more_directly_than_Option_match_or_an_Option_tag_conditional_effect_optionMatchToFromOption,
+	&Effect_acquireDisposable_expresses_this_disposable_resource_acquisition_more_directly_than_Effect_acquireRelease_with_a_manual_disposal_finalizer_effect_acquireReleaseDisposable,
+	&Effect_0_expresses_this_conditional_validation_more_directly_than_Effect_flatMap_with_an_identity_Effect_succeed_branch_effect_flatMapConditionalToFilterOrFail,
+	&This_Effect_first_completion_race_has_exactly_one_sleep_or_delay_based_timer_arm_Effect_timeoutOrElse_expresses_the_timeout_and_fallback_directly_effect_raceFirstWithSleepToTimeout,
+	&Branching_on_0_tag_inside_Effect_1_hand_rolls_tagged_error_dispatch_use_Effect_catchTag_or_Effect_catchTags_which_re_fail_unmatched_errors_automatically_effect_catchAllTagDispatchToCatchTag,
+	&Effect_0_of_Effect_exit_re_implements_Effect_1_Use_the_dedicated_Exit_runner_directly_effect_runOfExitToRunExit,
+	&Effect_0_provides_this_inline_single_service_layer_directly_effect_provideLayerSucceedToProvideService,
+	&Effect_0_expresses_this_non_effectful_fold_more_directly_than_Effect_1_with_Effect_succeed_handlers_effect_matchEffectToMatch,
+	&Effect_mapBoth_expresses_these_failure_and_success_transformations_more_directly_than_Effect_matchEffect_effect_matchEffectToMapBoth,
+	&Use_Effect_0_to_handle_this_timeout_directly_effect_timeoutCatchTagToTimeoutOrElse,
+	&This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_Schema_is_provided_directly_by_Schema_from_effect_or_effect_SlashSchema_effect_obsoleteSchemaImport,
+	&This_module_reference_imports_0_which_is_obsolete_in_Effect_v4_In_Effect_v4_pattern_matching_is_provided_directly_by_Match_from_effect_or_effect_SlashMatch_effect_obsoleteMatchImport,
+	&X_0_executes_synchronously_Use_Schema_1_to_compose_this_operation_through_Effect_without_throwing_effect_schemaSync,
+	&Effect_catchTag_expresses_tagged_error_recovery_more_directly_than_Effect_catchIf_with_a_tag_equality_predicate_effect_catchIfTagToCatchTag,
+	&Effect_andThen_expresses_this_sequencing_more_directly_than_Effect_flatMap_with_a_zero_parameter_callback_effect_flatMapIgnoredParamToAndThen,
+	&Use_Effect_tapError_to_observe_the_error_and_preserve_the_original_failure_without_having_to_re_fail_it_effect_catchRefailToTapError,
+	&Unknown_Effect_diagnostic_rule_0_in_diagnosticSeverity_effect_unknownRuleName,
+	&X_0_is_an_experimental_API_effect_experimentalApiUsage,
+	&X_0_is_an_unstable_API_Breaking_changes_may_happen_between_versions_effect_unstableApiUsage,
+	&X_0_exposes_1_an_2_API_effect_apiStabilityLeak,
+	&X_0_is_declared_1_here_effect_apiStabilityLeak,
+	&Prefer_Schema_TaggedError_over_Data_TaggedError_for_an_explicit_schema_contract_effect_preferSchemaTaggedError,
+	&Consider_effect_SlashArray_0_instead_of_native_Array_1_2_effect_preferEffectArray,
+	&Add_readonly_brand_Colon_unique_symbol_as_the_second_type_argument_Without_a_brand_TypeScript_may_accept_structurally_compatible_values_where_this_class_instance_type_is_expected_effect_schemaClassMissingBrand,
+	&Consider_Effect_yieldNow_for_cooperative_yielding_instead_of_sleeping_for_zero_duration_effect_effectSleepZeroToYieldNow,
+	&Consider_effect_SlashRecord_0_instead_of_native_1_2_effect_preferEffectRecord,
+	&Effect_tap_expresses_this_observation_more_directly_than_Effect_0_with_a_manual_re_yield_effect_flatMapToTap,
+	&The_payload_field_name_shadows_this_error_s_own_name_so_logs_and_String_error_show_the_field_value_instead_of_the_error_type_Consider_renaming_it_effect_errorPayloadShadowsName,
+	&X_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_Use_2_instead_effect_preferNamespaceImport,
+	&X_0_is_imported_by_name_from_1_but_namespaceImportPackages_expects_a_namespace_import_of_the_module_that_declares_0_effect_preferNamespaceImport,
+	&X_0_is_imported_directly_but_barrelImportPackages_expects_named_imports_from_the_barrel_1_Use_2_instead_effect_preferBarrelImport,
+	&This_object_literal_is_checked_as_an_instance_of_Schema_class_0_but_has_no_class_prototype_instanceof_checks_methods_and_Schema_encoding_can_fail_Use_0_make_or_new_0_instead_effect_schemaClassObjectLiteral,
+	&Consider_effect_SlashString_0_instead_of_native_String_1_2_effect_preferEffectString,
 }

@@ -1,0 +1,158 @@
+package typeparser
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+)
+
+// extractCovariantType gets the type argument from a covariant property.
+// Covariant<A> is encoded as () => A, so we get the return type.
+func (tp *TypeParser) extractCovariantType(t *checker.Type, propName string) *checker.Type {
+	c := tp.checker
+	propType := tp.GetTypeOfPropertyByName(t, propName)
+	if propType == nil {
+		return nil
+	}
+	signatures := c.GetSignaturesOfType(propType, checker.SignatureKindCall)
+
+	if len(signatures) != 1 {
+		return nil
+	}
+
+	if len(signatures[0].TypeParameters()) > 0 {
+		return nil
+	}
+
+	return c.GetReturnTypeOfSignature(signatures[0])
+}
+
+// extractContravariantType gets the type argument from a contravariant property.
+// Contravariant<A> is encoded as (_: A) => void, so we get the first parameter type.
+func (tp *TypeParser) extractContravariantType(t *checker.Type, propName string) *checker.Type {
+	c := tp.checker
+	propType := tp.GetTypeOfPropertyByName(t, propName)
+	if propType == nil {
+		return nil
+	}
+	signatures := c.GetSignaturesOfType(propType, checker.SignatureKindCall)
+
+	if len(signatures) != 1 {
+		return nil
+	}
+
+	if len(signatures[0].TypeParameters()) > 0 {
+		return nil
+	}
+
+	params := signatures[0].Parameters()
+	if len(params) == 0 {
+		return nil
+	}
+
+	return c.GetTypeOfSymbol(params[0])
+}
+
+// extractInvariantType gets the type argument from an invariant property.
+// Invariant<A> is encoded as (_: A) => A, so we extract the return type (same as covariant).
+func (tp *TypeParser) extractInvariantType(t *checker.Type, propName string) *checker.Type {
+	return tp.extractCovariantType(t, propName)
+}
+
+// GetTypeOfPropertyByName returns the type of a property by name.
+// Prefer this when only the property type is needed.
+func (tp *TypeParser) GetTypeOfPropertyByName(t *checker.Type, name string) *checker.Type {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	return tp.checker.GetTypeOfPropertyOfType(t, name)
+}
+
+// GetSymbolAtLocation guards meta properties and delete targets.
+// Meta properties (import.meta, import.defer, new.target) never
+// reference a symbol rules care about, and the checker debug-asserts (panics)
+// when asked for `import.defer` used as an import-call callee. Always use
+// this instead of the raw checker call.
+func (tp *TypeParser) GetSymbolAtLocation(node *ast.Node) *ast.Symbol {
+	if tp == nil || tp.checker == nil || node == nil {
+		return nil
+	}
+	if node.Kind == ast.KindMetaProperty {
+		return nil
+	}
+	// Symbol lookup can cache an index symbol that makes a later delete check
+	// incorrectly require an optional property.
+	target := node
+	if parent := target.Parent; parent != nil && ast.IsPropertyAccessExpression(parent) && parent.Name() == target {
+		target = parent
+	}
+	if ast.IsAccessExpression(target) {
+		parent := ast.WalkUpParenthesizedExpressions(target.Parent)
+		if parent != nil && parent.Kind == ast.KindDeleteExpression {
+			return nil
+		}
+	}
+	return tp.checker.GetSymbolAtLocation(node)
+}
+
+func (tp *TypeParser) resolveAliasedSymbol(sym *ast.Symbol) *ast.Symbol {
+	if tp == nil || tp.checker == nil {
+		return sym
+	}
+	c := tp.checker
+	for sym != nil && ast.TSGetSymbolFlags(sym)&ast.SymbolFlagsAlias != 0 {
+		sym = c.GetAliasedSymbol(sym)
+	}
+	return sym
+}
+
+// ResolveToGlobalSymbol follows aliases and up to two simple variable indirections
+// so rules can recognize references to the original global symbol.
+func (tp *TypeParser) ResolveToGlobalSymbol(sym *ast.Symbol) *ast.Symbol {
+	if tp == nil || tp.checker == nil || sym == nil {
+		return nil
+	}
+
+	sym = tp.resolveAliasedSymbol(sym)
+	depth := 0
+	for depth < 2 && sym != nil && ast.TSGetSymbolValueDeclaration(sym) != nil && ast.TSGetSymbolValueDeclaration(sym).Kind == ast.KindVariableDeclaration {
+		decl := ast.TSGetSymbolValueDeclaration(sym).AsVariableDeclaration()
+		if decl == nil || decl.Initializer == nil {
+			break
+		}
+
+		next := tp.GetSymbolAtLocation(decl.Initializer)
+		if next == nil {
+			break
+		}
+		next = tp.resolveAliasedSymbol(next)
+		if next == sym {
+			break
+		}
+
+		sym = next
+		depth++
+	}
+
+	return sym
+}
+
+// IsNodeReferenceToGlobalMember reports whether node resolves to a property of
+// a global value. ReferenceSymbolAtNode follows import and const aliases, so
+// callers do not need to constrain the source expression to property-access
+// syntax merely to recognize the global API.
+func (tp *TypeParser) IsNodeReferenceToGlobalMember(node *ast.Node, globalName string, memberName string) bool {
+	if tp == nil || tp.checker == nil || node == nil {
+		return false
+	}
+	global := tp.checker.ResolveName(globalName, nil, ast.SymbolFlagsValue, false)
+	if global == nil {
+		return false
+	}
+	globalType := tp.checker.GetTypeOfSymbolAtLocation(global, node)
+	if globalType == nil {
+		return false
+	}
+	member := tp.checker.GetPropertyOfType(globalType, memberName)
+	actual := tp.ReferenceSymbolAtNode(node)
+	return member != nil && actual != nil && checker.Checker_getSymbolIfSameReference(tp.checker, member, actual) != nil
+}

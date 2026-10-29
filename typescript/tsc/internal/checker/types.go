@@ -479,6 +479,13 @@ type AssertionLinks struct {
 
 // SourceFile links
 
+// RelationError captures a type relation error for Effect diagnostics processing.
+type RelationError struct {
+	Source    *Type
+	Target    *Type
+	ErrorNode *ast.Node
+}
+
 type SourceFileLinks struct {
 	typeChecked                  bool
 	unusedChecked                bool
@@ -491,6 +498,7 @@ type SourceFileLinks struct {
 	localJsxFactory              *ast.EntityName
 	localJsxFragmentFactory      *ast.EntityName
 	jsxFragmentType              *Type
+	relationErrors               []*RelationError // Collected during type checking for Effect diagnostics
 }
 
 // Signature specific links

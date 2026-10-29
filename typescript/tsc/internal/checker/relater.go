@@ -4782,6 +4782,18 @@ func (r *Relater) reportErrorResults(originalSource *Type, originalTarget *Type,
 }
 
 func (r *Relater) reportRelationError(message *diagnostics.Message, source *Type, target *Type) {
+	// Collect relation error for Effect diagnostics processing
+	if r.errorNode != nil {
+		if sf := ast.GetSourceFileOfNode(r.errorNode); sf != nil {
+			links := r.c.sourceFileLinks.Get(sf)
+			links.relationErrors = append(links.relationErrors, &RelationError{
+				Source:    source,
+				Target:    target,
+				ErrorNode: r.errorNode,
+			})
+		}
+	}
+
 	sourceType, targetType := r.c.getTypeNamesForErrorDisplay(source, target)
 	generalizedSource := source
 	generalizedSourceType := sourceType

@@ -59,6 +59,7 @@ type jsdocScannerInfo uint8
 const (
 	jsdocScannerInfoHasJSDoc jsdocScannerInfo = 1 << iota
 	jsdocScannerInfoHasDeprecated
+	jsdocScannerInfoHasStability
 	jsdocScannerInfoHasSeeOrLink
 )
 
@@ -437,6 +438,9 @@ func (p *Parser) jsdocScannerInfo() jsdocScannerInfo {
 	info := jsdocScannerInfoHasJSDoc
 	if p.scanner.HasPrecedingJSDocWithDeprecatedTag() {
 		info |= jsdocScannerInfoHasDeprecated
+	}
+	if p.scanner.HasPrecedingJSDocWithStabilityTag() {
+		info |= jsdocScannerInfoHasStability
 	}
 	if p.scanner.HasPrecedingJSDocWithSeeOrLink() {
 		info |= jsdocScannerInfoHasSeeOrLink

@@ -62,6 +62,15 @@ func main() {
 	}
 
 	rawDiagnosticMessages := readRawMessages("diagnosticMessages.json")
+
+	// EFFECT: Read Effect diagnostic messages from the @effect/tsgo project
+	// This allows Effect to define its own diagnostics without patching diagnosticMessages.json
+	effectMessagesPath := filepath.Join("..", "effecttsgo", "internal", "diagnostics", "effectDiagnosticMessages.json")
+	if _, err := os.Stat(effectMessagesPath); err == nil {
+		rawEffectMessages := readRawMessages(effectMessagesPath)
+		maps.Copy(rawDiagnosticMessages, rawEffectMessages)
+	}
+
 	diagnosticMessages := slices.Collect(maps.Values(rawDiagnosticMessages))
 
 	slices.SortFunc(diagnosticMessages, func(a *diagnosticMessage, b *diagnosticMessage) int {

@@ -1,0 +1,67 @@
+package rules
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	tsdiag "github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+var GlobalRandom = rule.Rule{
+	Name:            "globalRandom",
+	Group:           "effectNative",
+	Description:     "Warns when using Math.random() outside Effect generators instead of the Random service",
+	DefaultSeverity: etscore.SeverityOff,
+	SupportedEffect: []string{"v3", "v4"},
+	Codes:           []int32{tsdiag.This_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandom.Code()},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		return runGlobalRandom(ctx, false)
+	},
+}
+
+var GlobalRandomInEffect = rule.Rule{
+	Name:            "globalRandomInEffect",
+	Group:           "effectNative",
+	Description:     "Warns when using Math.random() inside Effect generators instead of the Random service",
+	DefaultSeverity: etscore.SeverityOff,
+	SupportedEffect: []string{"v3", "v4"},
+	Codes:           []int32{tsdiag.This_Effect_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandomInEffect.Code()},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		return runGlobalRandom(ctx, true)
+	},
+}
+
+func runGlobalRandom(ctx *rule.Context, checkInEffect bool) []*ast.Diagnostic {
+	message := tsdiag.This_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandom
+	if checkInEffect {
+		message = tsdiag.This_Effect_code_uses_Math_random_randomness_is_represented_through_the_Effect_Random_service_effect_globalRandomInEffect
+	}
+
+	var diags []*ast.Diagnostic
+	var walk ast.Visitor
+	walk = func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+		if node.Kind == ast.KindCallExpression {
+			inEffect := ctx.TypeParser.GetEffectContextFlags(node)&typeparser.EffectContextFlagInEffect != 0
+			if inEffect == checkInEffect && ctx.TypeParser.IsNodeReferenceToGlobalMember(node.AsCallExpression().Expression, "Math", "random") {
+				diags = append(diags, ctx.NewDiagnostic(
+					ctx.SourceFile,
+					scanner.GetErrorRangeForNode(ctx.SourceFile, node),
+					message,
+					nil,
+				))
+			}
+		}
+
+		node.ForEachChild(walk)
+		return false
+	}
+
+	walk(ctx.SourceFile.AsNode())
+
+	return diags
+}

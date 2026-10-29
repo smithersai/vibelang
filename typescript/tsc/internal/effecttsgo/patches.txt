@@ -1,0 +1,20 @@
+# Effect-TS/tsgo _patches/typescript/ files that tsc/ carries: the checker hooks, the
+# @effect/language-service plugin options, the rules' messages and the exit-code filter.
+# Left out: 001 (cmd main; VibeLang registers in tsc/internal/vibelang/effectlint.go),
+# 021 (version suffix), and the language-service patches 010-012, 015, 017, 018, 022, 024, 027.
+002-checker-checker.patch
+003-checker-exports.patch
+004-checker-relater.patch
+005-checker-types.patch
+006-compiler-program.patch
+007-core-compileroptions.patch
+008-diagnostics-generate.patch
+009-execute-tsc-emit.patch
+013-tsoptions-parsinghelpers.patch
+014-ast-utilities-nil-check.patch
+023-checker-effect-links.patch
+025-tsoptions-tsconfigparsing.patch
+028-incremental-effect-options.patch
+031-stability-tag-fast-path.patch
+032-vfsmatch-root-include.patch
+033-checker-expression-checked-callback.patch

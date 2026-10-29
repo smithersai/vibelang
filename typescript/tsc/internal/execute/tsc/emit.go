@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/incremental"
 	"github.com/microsoft/TypeScript/tsc/internal/locale"
@@ -18,6 +19,17 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
+
+// FilterDiagnosticsForExitCodeCallback is invoked to filter diagnostics before
+// exit-code determination. It allows external packages to exclude certain
+// diagnostics from affecting the exit code while still reporting them.
+var FilterDiagnosticsForExitCodeCallback func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic
+
+// RegisterFilterDiagnosticsForExitCodeCallback registers a callback to filter
+// diagnostics for exit-code determination.
+func RegisterFilterDiagnosticsForExitCodeCallback(cb func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic) {
+	FilterDiagnosticsForExitCodeCallback = cb
+}
 
 func GetTraceWithWriterFromSys(w io.Writer, locale locale.Locale, testing CommandLineTesting) func(msg *diagnostics.Message, args ...any) {
 	if testing == nil {
@@ -66,7 +78,11 @@ func EmitAndReportStatistics(input EmitInput) (CompileAndEmitResult, *Statistics
 
 	// VibeLang: only errors make the exit status non-zero; warnings, such as
 	// EK2004 and the EK48xx lint rules (D241), do not fail a build.
-	hasErrors := slices.ContainsFunc(result.Diagnostics, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
+	diagnosticsForExitCode := result.Diagnostics
+	if FilterDiagnosticsForExitCodeCallback != nil {
+		diagnosticsForExitCode = FilterDiagnosticsForExitCodeCallback(input.Config.CompilerOptions(), result.Diagnostics)
+	}
+	hasErrors := slices.ContainsFunc(diagnosticsForExitCode, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
 	if result.EmitResult.EmitSkipped && hasErrors {
 		result.Status = ExitStatusDiagnosticsPresent_OutputsSkipped
 	} else if hasErrors {

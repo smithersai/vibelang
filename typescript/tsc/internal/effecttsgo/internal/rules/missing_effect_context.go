@@ -1,0 +1,270 @@
+// Package rules contains all Effect diagnostic rule implementations.
+package rules
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/layergraph"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/readonly"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/core"
+	tsdiag "github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+// MissingEffectContext detects when an Effect has context requirements that are not
+// handled by the expected type. This happens when assigning an Effect with requirements
+// to a variable/parameter expecting an Effect with fewer or no requirements.
+var MissingEffectContext = rule.Rule{
+	Name:            "missingEffectContext",
+	Group:           "correctness",
+	Description:     "Detects Effect values with unhandled context requirements",
+	DefaultSeverity: etscore.SeverityError,
+	SupportedEffect: []string{"v3", "v4"},
+	Codes:           []int32{tsdiag.This_Effect_requires_a_service_that_is_missing_from_the_expected_Effect_context_Colon_0_effect_missingEffectContext.Code()},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		var diags []*ast.Diagnostic
+
+		for _, re := range ctx.Checker.GetRelationErrors(ctx.SourceFile) {
+			// Parse both types as Effects
+			srcEffect := ctx.TypeParser.EffectType(re.Source)
+			tgtEffect := ctx.TypeParser.EffectType(re.Target)
+
+			// Both must be Effect types
+			if srcEffect == nil || tgtEffect == nil {
+				continue
+			}
+
+			// Find unhandled context types by checking each source requirement member
+			// against the target requirement type
+			unhandledContexts := findUnhandledContexts(ctx.TypeParser, ctx.Checker, srcEffect.R(), tgtEffect.R())
+			if len(unhandledContexts) > 0 {
+				contextTypeStr := formatContextTypes(ctx.Checker, unhandledContexts)
+				diag := ctx.NewDiagnostic(
+					ctx.SourceFile,
+					ctx.GetErrorRange(re.ErrorNode),
+					tsdiag.This_Effect_requires_a_service_that_is_missing_from_the_expected_Effect_context_Colon_0_effect_missingEffectContext,
+					missingEffectContextRelatedInformation(ctx.Checker, ctx, re.ErrorNode, unhandledContexts),
+					contextTypeStr,
+				)
+				diags = append(diags, diag)
+			}
+		}
+
+		return diags
+	},
+}
+
+// findUnhandledContexts returns the source context types that are not assignable to the target context type.
+func findUnhandledContexts(tp *typeparser.TypeParser, c *checker.Checker, srcR, tgtR *checker.Type) []*checker.Type {
+	// Unroll source context union into individual members
+	srcMembers := tp.UnrollUnionMembers(srcR)
+
+	var unhandled []*checker.Type
+	for _, member := range srcMembers {
+		// Check if this specific member is assignable to target
+		if !checker.Checker_isTypeAssignableTo(c, member, tgtR) {
+			unhandled = append(unhandled, member)
+		}
+	}
+	return unhandled
+}
+
+// formatContextTypes formats a slice of context types as a union string (e.g., "EnvA | EnvB").
+func formatContextTypes(c *checker.Checker, types []*checker.Type) string {
+	if len(types) == 0 {
+		return ""
+	}
+	if len(types) == 1 {
+		return c.TypeToString(types[0])
+	}
+	var result strings.Builder
+	result.WriteString(c.TypeToString(types[0]))
+	for i := 1; i < len(types); i++ {
+		result.WriteString(" | ")
+		result.WriteString(c.TypeToString(types[i]))
+	}
+	return result.String()
+}
+
+func missingEffectContextRelatedInformation(c *checker.Checker, ctx *rule.Context, errorNode *ast.Node, missingTypes []*checker.Type) []*ast.Diagnostic {
+	provideLocation := findRelatedProvideLocation(ctx.TypeParser, c, ctx.SourceFile, errorNode)
+	if provideLocation.LayerNode == nil {
+		return nil
+	}
+	layerDiagnostics := findRelatedLayerProviderDiagnostics(c, ctx, provideLocation.LayerNode, missingTypes)
+	if len(layerDiagnostics) == 0 {
+		return nil
+	}
+	provideDiagnostic := ctx.NewDiagnostic(
+		ctx.SourceFile,
+		provideLocation.Location,
+		tsdiag.Adjusting_this_layer_composition_could_provide_the_missing_service_effect_missingEffectContext,
+		nil,
+	)
+	relatedInformation := make([]*ast.Diagnostic, 0, 1+len(layerDiagnostics))
+	relatedInformation = append(relatedInformation, provideDiagnostic)
+	relatedInformation = append(relatedInformation, layerDiagnostics...)
+	return relatedInformation
+}
+
+type provideLocation struct {
+	LayerNode *ast.Node
+	Location  core.TextRange
+}
+
+func findRelatedProvideLocation(tp *typeparser.TypeParser, c *checker.Checker, sf *ast.SourceFile, errorNode *ast.Node) provideLocation {
+	if c == nil || sf == nil || errorNode == nil {
+		return provideLocation{}
+	}
+	flows := tp.PipingFlows(sf, true)
+	for _, flow := range flows.All() {
+		if flow == nil || flow.Node() == nil {
+			continue
+		}
+		if !nodeContains(flow.Node(), errorNode) {
+			continue
+		}
+		errorTransformationIndex := findTransformationIndexContainingNode(flow, errorNode)
+		if errorTransformationIndex < 0 {
+			continue
+		}
+		for i := errorTransformationIndex - 1; i >= 0; i-- {
+			transformation := flow.Transformations().At(i)
+			if !tp.IsNodeReferenceToEffectModuleApi(transformation.Callee(), "provide") {
+				continue
+			}
+			return provideLocation{
+				LayerNode: firstNode(transformation.Args()),
+				Location:  scanner.GetErrorRangeForNode(sf, transformation.Callee()),
+			}
+		}
+	}
+	return provideLocation{}
+}
+
+func findRelatedLayerProviderDiagnostics(
+	c *checker.Checker,
+	ctx *rule.Context,
+	layerNode *ast.Node,
+	missingTypes []*checker.Type,
+) []*ast.Diagnostic {
+	if c == nil || ctx == nil || layerNode == nil || len(missingTypes) == 0 {
+		return nil
+	}
+	rootLayerProvides := rootLayerProvidesTypes(ctx.TypeParser, c, layerNode)
+	fullGraph := layergraph.ExtractLayerGraph(ctx.TypeParser, c, []*ast.Node{layerNode}, ctx.SourceFile, layergraph.ExtractLayerGraphOptions{
+		FollowSymbolsDepth: 2,
+	})
+	outlineGraph := layergraph.ExtractOutlineGraph(ctx.TypeParser, c, fullGraph)
+	if outlineGraph == nil {
+		return nil
+	}
+	var related []*ast.Diagnostic
+	seen := make(map[string]struct{})
+	for _, missingType := range missingTypes {
+		if missingType == nil {
+			continue
+		}
+		if rootProvidesType(c, rootLayerProvides, missingType) {
+			continue
+		}
+		missingTypeText := c.TypeToString(missingType)
+		for _, nodeInfo := range outlineGraph.Nodes() {
+			displayNode := nodeInfo.DisplayNode
+			if displayNode == nil {
+				displayNode = nodeInfo.Node
+			}
+			if displayNode == nil || !outlineNodeProvidesType(c, nodeInfo, missingType) {
+				continue
+			}
+			key := missingTypeText
+			if displayNode.Pos() >= 0 {
+				key += fmt.Sprintf(":%d", displayNode.Pos())
+			}
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			related = append(related, ctx.NewDiagnostic(
+				ast.GetSourceFileOfNode(displayNode),
+				scanner.GetErrorRangeForNode(ast.GetSourceFileOfNode(displayNode), displayNode),
+				tsdiag.This_layer_provides_the_missing_service_0_effect_missingEffectContext,
+				nil,
+				missingTypeText,
+			))
+		}
+	}
+	return related
+}
+
+func rootLayerProvidesTypes(tp *typeparser.TypeParser, c *checker.Checker, layerNode *ast.Node) []*checker.Type {
+	if c == nil || layerNode == nil {
+		return nil
+	}
+	layerType := tp.LayerType(tp.GetTypeAtLocation(layerNode))
+	if layerType == nil {
+		return nil
+	}
+	return tp.UnrollUnionMembers(layerType.ROut())
+}
+
+func rootProvidesType(c *checker.Checker, providedTypes []*checker.Type, target *checker.Type) bool {
+	for _, providedType := range providedTypes {
+		if providedType == target {
+			return true
+		}
+		if checker.Checker_isTypeAssignableTo(c, providedType, target) &&
+			checker.Checker_isTypeAssignableTo(c, target, providedType) {
+			return true
+		}
+	}
+	return false
+}
+
+func outlineNodeProvidesType(c *checker.Checker, node layergraph.LayerOutlineGraphNodeInfo, target *checker.Type) bool {
+	for _, providedType := range node.ActualProvides {
+		if providedType == target {
+			return true
+		}
+		if checker.Checker_isTypeAssignableTo(c, providedType, target) &&
+			checker.Checker_isTypeAssignableTo(c, target, providedType) {
+			return true
+		}
+	}
+	return false
+}
+
+func firstNode(nodes readonly.Slice[*ast.Node]) *ast.Node {
+	if nodes.Len() == 0 {
+		return nil
+	}
+	return nodes.At(0)
+}
+
+func findTransformationIndexContainingNode(flow *typeparser.PipingFlow, target *ast.Node) int {
+	if flow == nil || target == nil {
+		return -1
+	}
+	target = ast.SkipParentheses(target)
+	for i := range flow.Transformations().All() {
+		transformation := flow.Transformations().At(i)
+		callee := ast.SkipParentheses(transformation.Callee())
+		if callee == target || callee != nil && callee.Pos() == target.Pos() && target.End() >= callee.End() {
+			return i
+		}
+	}
+	return -1
+}
+
+func nodeContains(ancestor *ast.Node, target *ast.Node) bool {
+	if ancestor == nil || target == nil {
+		return false
+	}
+	return ancestor.Pos() <= target.Pos() && target.End() <= ancestor.End()
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"reflect"
 )
 
 func parseCompilerOptions(key string, value any, allOptions *core.CompilerOptions) (foundKey bool) {
@@ -374,7 +375,8 @@ func CompilerOptionsAffectSemanticDiagnostics(oldOptions *core.CompilerOptions, 
 	if oldOptions == nil || newOptions == nil {
 		return true
 	}
-	return !oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
+	return !reflect.DeepEqual(oldOptions.Effect, newOptions.Effect) ||
+		!oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
 		oldOptions.AllowImportingTsExtensions != newOptions.AllowImportingTsExtensions ||
 		oldOptions.AllowUmdGlobalAccess != newOptions.AllowUmdGlobalAccess ||
 		oldOptions.AllowUnreachableCode != newOptions.AllowUnreachableCode ||

@@ -1,0 +1,88 @@
+diff --git a/tsc/internal/execute/incremental/buildInfo.go b/tsc/internal/execute/incremental/buildInfo.go
+--- a/tsc/internal/execute/incremental/buildInfo.go
++++ b/tsc/internal/execute/incremental/buildInfo.go
+@@ -5,6 +5,7 @@
+ 	"iter"
+ 	"slices"
+ 
++	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+ 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+ 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+ 	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
+@@ -486,6 +487,7 @@
+ 	FileInfos                  []*BuildInfoFileInfo                 `json:"fileInfos,omitzero"`
+ 	FileIdsList                [][]BuildInfoFileId                  `json:"fileIdsList,omitzero"`
+ 	Options                    *collections.OrderedMap[string, any] `json:"options,omitzero"`
++	Effect                     *etscore.EffectPluginOptions         `json:"effect,omitzero"`
+ 	ReferencedMap              []*BuildInfoReferenceMapEntry        `json:"referencedMap,omitzero"`
+ 	SemanticDiagnosticsPerFile []*BuildInfoSemanticDiagnostic       `json:"semanticDiagnosticsPerFile,omitzero"`
+ 	EmitDiagnosticsPerFile     []*BuildInfoDiagnosticsOfFile        `json:"emitDiagnosticsPerFile,omitzero"`
+@@ -572,6 +574,7 @@
+ 		tsoptions.ParseCompilerOptions(option, value, options)
+ 
+ 	}
++	options.Effect = b.Effect
+ 	return options
+ }
+ 
+diff --git a/tsc/internal/execute/incremental/snapshottobuildinfo.go b/tsc/internal/execute/incremental/snapshottobuildinfo.go
+--- a/tsc/internal/execute/incremental/snapshottobuildinfo.go
++++ b/tsc/internal/execute/incremental/snapshottobuildinfo.go
+@@ -22,6 +22,7 @@
+ 	buildInfo := &BuildInfo{
+ 		Version:                 core.Version(),
+ 		ContentMapperIdentities: contentMapperIdentities,
++		Effect:                  snapshot.options.Effect,
+ 	}
+ 	to := &toBuildInfo{
+ 		snapshot:                snapshot,
+diff --git a/tsc/internal/tsoptions/options_generated.go b/tsc/internal/tsoptions/options_generated.go
+--- a/tsc/internal/tsoptions/options_generated.go
++++ b/tsc/internal/tsoptions/options_generated.go
+@@ -6,6 +6,7 @@
+ 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+ 	"github.com/microsoft/TypeScript/tsc/internal/core"
+ 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
++	"reflect"
+ )
+ 
+ func parseCompilerOptions(key string, value any, allOptions *core.CompilerOptions) (foundKey bool) {
+@@ -374,7 +375,8 @@
+ 	if oldOptions == nil || newOptions == nil {
+ 		return true
+ 	}
+-	return !oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
++	return !reflect.DeepEqual(oldOptions.Effect, newOptions.Effect) ||
++		!oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
+ 		oldOptions.AllowImportingTsExtensions != newOptions.AllowImportingTsExtensions ||
+ 		oldOptions.AllowUmdGlobalAccess != newOptions.AllowUmdGlobalAccess ||
+ 		oldOptions.AllowUnreachableCode != newOptions.AllowUnreachableCode ||
+diff --git a/tsc/internal/tsoptions/effect_options_test.go b/tsc/internal/tsoptions/effect_options_test.go
+--- /dev/null
++++ b/tsc/internal/tsoptions/effect_options_test.go
+@@ -0,0 +1,25 @@
++package tsoptions
++
++import (
++	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
++	"github.com/microsoft/TypeScript/tsc/internal/core"
++	"testing"
++)
++
++func TestEffectOptionsInvalidateSemanticDiagnostics(t *testing.T) {
++	oldOptions := &core.CompilerOptions{Effect: &etscore.EffectPluginOptions{Diagnostics: true}}
++	newOptions := &core.CompilerOptions{Effect: &etscore.EffectPluginOptions{Diagnostics: true}}
++	if CompilerOptionsAffectSemanticDiagnostics(oldOptions, newOptions) {
++		t.Fatal("equal Effect options must retain semantic diagnostics")
++	}
++	newOptions.Effect.Diagnostics = false
++	if !CompilerOptionsAffectSemanticDiagnostics(oldOptions, newOptions) {
++		t.Fatal("changed Effect options must invalidate semantic diagnostics")
++	}
++	if CompilerOptionsAffectSemanticDiagnostics(nil, nil) {
++		t.Fatal("nil options must compare safely")
++	}
++	if !CompilerOptionsAffectSemanticDiagnostics(oldOptions, nil) {
++		t.Fatal("removing options must invalidate semantic diagnostics")
++	}
++}

@@ -14,6 +14,9 @@ import (
 
 	// VibeLang registers its compiler hooks from init.
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
+
+	// Effect's type-aware lint rules (VIP-38) register their checker hooks from init.
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/lint"
 )
 
 func main() {
@@ -35,6 +38,10 @@ func runMain() int {
 			return runWriteDprintPlugin(args[1:])
 		case "--estree":
 			return runESTree(args[1:]) // VibeLang ESLint parser (estree.go)
+		case "lint":
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+			return lint.Command(ctx, newSystem(), args[1:]) // Effect's lint rules on .vibe files (VIP-38)
 		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

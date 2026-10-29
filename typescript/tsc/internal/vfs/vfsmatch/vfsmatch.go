@@ -51,7 +51,7 @@ func getIncludeBasePath(absolute string) string {
 		if !tspath.HasExtension(absolute) {
 			return absolute
 		} else {
-			return tspath.RemoveTrailingDirectorySeparator(tspath.GetDirectoryPath(absolute))
+			return tspath.GetDirectoryPath(absolute)
 		}
 	}
 	return absolute[:max(strings.LastIndex(absolute[:wildcardOffset], string(tspath.DirectorySeparator)), tspath.GetRootLength(absolute))]

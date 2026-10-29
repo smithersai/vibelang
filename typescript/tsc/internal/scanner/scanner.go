@@ -350,11 +350,15 @@ func (s *Scanner) HasPrecedingJSDocWithDeprecatedTag() bool {
 	return s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithDeprecated != 0
 }
 
+func (s *Scanner) HasPrecedingJSDocWithStabilityTag() bool {
+	return s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithStability != 0
+}
+
 func (s *Scanner) HasPrecedingJSDocWithSeeOrLink() bool {
 	return s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithSeeOrLink != 0
 }
 
-// scanJSDocCommentForTags scans a JSDoc comment for @deprecated, @see, and @link tags,
+// scanJSDocCommentForTags scans a JSDoc comment for @deprecated, @stability, @see, and @link tags,
 // setting the appropriate token flags. Called during scanning when a JSDoc comment is detected.
 func (s *Scanner) scanJSDocCommentForTags(commentText string) {
 	for {
@@ -366,11 +370,14 @@ func (s *Scanner) scanJSDocCommentForTags(commentText string) {
 		if s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithDeprecated == 0 && hasJSDocTag(commentText, "deprecated") {
 			s.tokenFlags |= ast.TokenFlagsPrecedingJSDocWithDeprecated
 		}
+		if s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithStability == 0 && hasJSDocTag(commentText, "stability") {
+			s.tokenFlags |= ast.TokenFlagsPrecedingJSDocWithStability
+		}
 		if s.tokenFlags&ast.TokenFlagsPrecedingJSDocWithSeeOrLink == 0 && hasJSDocTag(commentText, "see", "link", "linkcode", "linkplain") {
 			s.tokenFlags |= ast.TokenFlagsPrecedingJSDocWithSeeOrLink
 		}
-		if s.tokenFlags&(ast.TokenFlagsPrecedingJSDocWithDeprecated|ast.TokenFlagsPrecedingJSDocWithSeeOrLink) ==
-			(ast.TokenFlagsPrecedingJSDocWithDeprecated | ast.TokenFlagsPrecedingJSDocWithSeeOrLink) {
+		if s.tokenFlags&(ast.TokenFlagsPrecedingJSDocWithDeprecated|ast.TokenFlagsPrecedingJSDocWithSeeOrLink|ast.TokenFlagsPrecedingJSDocWithStability) ==
+			(ast.TokenFlagsPrecedingJSDocWithDeprecated | ast.TokenFlagsPrecedingJSDocWithSeeOrLink | ast.TokenFlagsPrecedingJSDocWithStability) {
 			return
 		}
 	}

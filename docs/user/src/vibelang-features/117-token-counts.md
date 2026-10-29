@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,184 |
-| The skill and the user guide (136 pages) | 283,386 |
-| The user guide alone | 277,500 |
+| The skill and the user guide (136 pages) | 284,121 |
+| The user guide alone | 278,235 |
 | The specification (33 chapters) | 200,801 |
 | The decision log, `docs/design/DECISIONS.md` | 141,477 |
 
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 2,940 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 696 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 1,723 |
-| **Core Concepts** | **17,321** |
+| **Core Concepts** | **17,433** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,435 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,717 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,346 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,978 |
-| [Devtools](../getting-started/012-devtools.md) | 9,845 |
-| **All 12 pages** | **29,669** |
+| [Devtools](../getting-started/012-devtools.md) | 9,957 |
+| **All 12 pages** | **29,781** |
 
 ### Setup
 
@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,112** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,569 |
-| **Build and test** | **4,209** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 2,608 |
+| **Build and test** | **4,718** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 3,117 |
 | [Vite and Vitest](../setup/vite.md) | 1,601 |
 | **Format and lint** | **1,203** |
 | [Format with dprint](../setup/formatting.md) | 1,203 |
@@ -128,9 +128,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Neovim](../setup/neovim.md) | 1,023 |
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 401 |
-| **Upgrade** | **35,737** |
-| [Release notes](../setup/release-notes.md) | 35,737 |
-| **All 16 pages** | **57,868** |
+| **Upgrade** | **35,851** |
+| [Release notes](../setup/release-notes.md) | 35,851 |
+| **All 16 pages** | **58,491** |
 
 ### Guides
 

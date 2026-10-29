@@ -5,6 +5,7 @@ import (
 	"iter"
 	"slices"
 
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
@@ -486,6 +487,7 @@ type BuildInfo struct {
 	FileInfos                  []*BuildInfoFileInfo                 `json:"fileInfos,omitzero"`
 	FileIdsList                [][]BuildInfoFileId                  `json:"fileIdsList,omitzero"`
 	Options                    *collections.OrderedMap[string, any] `json:"options,omitzero"`
+	Effect                     *etscore.EffectPluginOptions         `json:"effect,omitzero"`
 	ReferencedMap              []*BuildInfoReferenceMapEntry        `json:"referencedMap,omitzero"`
 	SemanticDiagnosticsPerFile []*BuildInfoSemanticDiagnostic       `json:"semanticDiagnosticsPerFile,omitzero"`
 	EmitDiagnosticsPerFile     []*BuildInfoDiagnosticsOfFile        `json:"emitDiagnosticsPerFile,omitzero"`
@@ -572,6 +574,7 @@ func (b *BuildInfo) GetCompilerOptions(buildInfoDirectory tspath.RootedDirectory
 		tsoptions.ParseCompilerOptions(option, value, options)
 
 	}
+	options.Effect = b.Effect
 	return options
 }
 

@@ -1,0 +1,121 @@
+package rules
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/core"
+	tsdiag "github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/scanner"
+)
+
+// EffectMapVoid suggests using Effect.asVoid instead of Effect.map(() => void 0),
+// Effect.map(() => undefined), or Effect.map(() => {}).
+var EffectMapVoid = rule.Rule{
+	Name:            "effectMapVoid",
+	Group:           "style",
+	Description:     "Suggests using Effect.asVoid instead of Effect.map(() => void 0), Effect.map(() => undefined), or Effect.map(() => {})",
+	DefaultSeverity: etscore.SeveritySuggestion,
+	SupportedEffect: []string{"v3", "v4"},
+	Codes:           []int32{tsdiag.This_expression_discards_the_success_value_through_mapping_Effect_asVoid_represents_that_form_directly_effect_effectMapVoid.Code()},
+	Run: func(ctx *rule.Context) []*ast.Diagnostic {
+		matches := AnalyzeEffectMapVoid(ctx.TypeParser, ctx.Checker, ctx.SourceFile)
+		diags := make([]*ast.Diagnostic, len(matches))
+		for i, m := range matches {
+			diags[i] = ctx.NewDiagnostic(m.SourceFile, m.Location, tsdiag.This_expression_discards_the_success_value_through_mapping_Effect_asVoid_represents_that_form_directly_effect_effectMapVoid, nil)
+		}
+		return diags
+	},
+}
+
+// EffectMapVoidMatch holds the AST nodes needed by both the diagnostic rule
+// and the quick-fix for the effectMapVoid pattern.
+type EffectMapVoidMatch struct {
+	SourceFile       *ast.SourceFile // The source file where the diagnostic should be reported
+	Location         core.TextRange  // The pre-computed error range for this match
+	Transformation   *typeparser.PipingFlowTransformation
+	EffectModuleNode *ast.Node // The Effect module identifier (e.g., "Effect" in Effect.map)
+}
+
+// isVoidCallback checks if a callback argument is a "void callback":
+// either an empty function (block body with zero statements) or a lazy void expression
+// (zero-param function returning void 0, undefined, or parenthesized versions).
+func isVoidCallback(node *ast.Node) bool {
+	// First try parsing as a lazy expression (thunk=true, requiring zero params)
+	lazy := typeparser.ParseLazyExpression(node, typeparser.LazyExpressionThunk)
+	if lazy != nil {
+		// ParseLazyExpression succeeded — check if the expression is a void expression
+		return isVoidExpression(lazy.Expression())
+	}
+
+	// ParseLazyExpression returns nil for empty block bodies (0 statements).
+	// Handle that case explicitly: arrow function or function expression with
+	// zero parameters, no type parameters, and a block body with zero statements.
+	switch node.Kind {
+	case ast.KindArrowFunction:
+		fn := node.AsArrowFunction()
+		if fn.TypeParameters != nil && len(fn.TypeParameters.Nodes) > 0 {
+			return false
+		}
+		if fn.Parameters != nil && len(fn.Parameters.Nodes) > 0 {
+			return false
+		}
+		if fn.Body != nil && fn.Body.Kind == ast.KindBlock {
+			block := fn.Body.AsBlock()
+			return block.Statements == nil || len(block.Statements.Nodes) == 0
+		}
+	case ast.KindFunctionExpression:
+		fn := node.AsFunctionExpression()
+		if fn.TypeParameters != nil && len(fn.TypeParameters.Nodes) > 0 {
+			return false
+		}
+		if fn.Parameters != nil && len(fn.Parameters.Nodes) > 0 {
+			return false
+		}
+		if fn.Body != nil && fn.Body.Kind == ast.KindBlock {
+			block := fn.Body.AsBlock()
+			return block.Statements == nil || len(block.Statements.Nodes) == 0
+		}
+	}
+
+	return false
+}
+
+// AnalyzeEffectMapVoid finds data-last and data-first Effect.map calls with void
+// callbacks that can be replaced with Effect.asVoid. Driving detection off the
+// piping-flow transformations (rather than a raw AST walk) normalizes the subject
+// away, so both pipe(self, Effect.map(cb)) / self.pipe(Effect.map(cb)) and the
+// data-first Effect.map(self, cb) are matched uniformly.
+func AnalyzeEffectMapVoid(tp *typeparser.TypeParser, _ *checker.Checker, sf *ast.SourceFile) []EffectMapVoidMatch {
+	var matches []EffectMapVoidMatch
+
+	for _, flow := range tp.PipingFlows(sf, true).All() {
+		for index := range flow.Transformations().All() {
+			transformation := flow.Transformations().At(index)
+			if transformation.Args().Len() != 1 ||
+				transformation.Callee() == nil {
+				continue
+			}
+			if !isVoidCallback(transformation.Args().At(0)) {
+				continue
+			}
+			if !tp.IsNodeReferenceToEffectModuleApi(transformation.Callee(), "map") {
+				continue
+			}
+			var effectModule *ast.Node
+			if transformation.Callee().Kind == ast.KindPropertyAccessExpression {
+				effectModule = transformation.Callee().AsPropertyAccessExpression().Expression
+			}
+			matches = append(matches, EffectMapVoidMatch{
+				SourceFile:       sf,
+				Location:         scanner.GetErrorRangeForNode(sf, transformation.Callee()),
+				Transformation:   &transformation,
+				EffectModuleNode: effectModule,
+			})
+		}
+	}
+
+	return matches
+}

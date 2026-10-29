@@ -1,0 +1,77 @@
+diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
+--- a/tsc/internal/checker/checker.go
++++ b/tsc/internal/checker/checker.go
+@@ -32,6 +32,32 @@
+ 	"github.com/zeebo/xxh3"
+ )
+ 
++// AfterCheckSourceFileCallback is invoked after type checking each source file.
++// It allows external packages to run additional diagnostics with full type information.
++// Use Checker.AddDiagnostic to add diagnostics from within the callback.
++var AfterCheckSourceFileCallback func(context.Context, Program, *Checker, *ast.SourceFile)
++
++// RegisterAfterCheckSourceFileCallback registers a callback to be called after
++// each source file is type checked. The callback receives the program, checker
++// with full type information, and the source file that was checked.
++// Note: Only one callback can be registered. Subsequent calls will replace the previous callback.
++func RegisterAfterCheckSourceFileCallback(cb func(context.Context, Program, *Checker, *ast.SourceFile)) {
++	AfterCheckSourceFileCallback = cb
++}
++
++// AddDiagnostic and Program are VibeLang's, in extensions.go and extensions_classes.go.
++
++// GetRelationErrors returns the collected relation errors for a source file.
++// These are collected during type checking and persist until the file is re-checked.
++func (c *Checker) GetRelationErrors(sf *ast.SourceFile) []*RelationError {
++	links := c.sourceFileLinks.Get(sf)
++	if !links.typeChecked {
++		c.GetDiagnostics(c.ctx, sf)
++		links = c.sourceFileLinks.Get(sf)
++	}
++	return links.relationErrors
++}
++
+ // CheckMode
+ 
+ type CheckMode uint32
+@@ -572,6 +598,7 @@
+ 	GetImportHelpersImportSpecifier(path tspath.PathKey) *ast.Node
+ 	SourceFileMayBeEmitted(sourceFile *ast.SourceFile, forceDtsEmit bool) bool
+ 	IsSourceFileDefaultLibrary(path tspath.PathKey) bool
++	IsSourceFileFromExternalLibrary(file *ast.SourceFile) bool
+ 	GetProjectReferenceFromOutputDts(path tspath.PathKey) *tsoptions.SourceOutputAndProjectReference
+ 	GetRedirectForResolution(file ast.HasFileName) *tsoptions.ParsedCommandLine
+ 	CommonSourceDirectory() tspath.RootedDirectoryPath
+@@ -2270,10 +2297,13 @@
+ func (c *Checker) checkSourceFile(ctx context.Context, sourceFile *ast.SourceFile, checkUnused bool) {
+ 	c.ctx = ctx
+ 	links := c.sourceFileLinks.Get(sourceFile)
++	callAfterSourceFileHook := false
+ 	if !links.typeChecked {
+ 		if tr := c.tracer; tr != nil {
+ 			defer tr.Push(tracing.PhaseCheck, "checkSourceFile", map[string]any{"path": sourceFile.FileName()}, true)()
+ 		}
++		// Clear any stale relation errors before type checking.
++		links.relationErrors = nil
+ 		// Grammar checking
+ 		c.checkGrammarSourceFile(sourceFile)
+ 		c.renamedBindingElementsInTypes = nil
+@@ -2290,6 +2320,8 @@
+ 		c.produceDeferredDiagnostics()
+ 		c.reportedUnreachableNodes.Clear()
+ 		links.typeChecked = true
++
++		callAfterSourceFileHook = true
+ 	}
+ 	if checkUnused && !links.unusedChecked {
+ 		// The unused identifiers check relies on a full type check having first been performed
+@@ -2298,6 +2330,9 @@
+ 		}
+ 		links.unusedChecked = true
+ 	}
++	if callAfterSourceFileHook && AfterCheckSourceFileCallback != nil {
++		AfterCheckSourceFileCallback(ctx, c.program, c, sourceFile)
++	}
+ 	if c.isCanceled() {
+ 		c.wasCanceled = true
+ 	}

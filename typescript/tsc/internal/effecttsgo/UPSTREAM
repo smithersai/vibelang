@@ -1,0 +1,7 @@
+repository: https://github.com/Effect-TS/tsgo
+tag: @effect/tsgo@0.57.0
+commit: 999942fa41462eb46dfcb2d718e7671db8e14156
+license: MIT (LICENSE in this directory)
+
+This directory is a vendored, generated copy of Effect's type-aware lint rules (VIP-38).
+Update it only with `sh tsc/internal/effecttsgo/sync.sh <tag>` from typescript/.

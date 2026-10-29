@@ -474,6 +474,9 @@ VibeLang code lives in `tsc/internal/vibelang/`, which may import any internal p
 | `tsc/internal/printer/printer.go` | `emitIdentifierText` accepts an identifier from a module declaration's body, which has its file's positions | +4 / -1 |
 | `tsc/internal/transformers/declarations/supplementalreferences.go` | No `/// <reference>` to a module declaration's declaration file, which the file imports | +3 |
 | `tsc/internal/tsoptions/vibelang.go` (new) | Parse, validate, and serialize `compilerOptions.vibelang` | +149 |
+| `tsc/internal/effecttsgo/` (new, vendored) | Effect's type-aware lint rules from Effect-TS/tsgo (MIT, VIP-38): `etscore`, the rules, their type parser and runner, and `shim/`, which upstream's `gen_shims` generates over this `tsc/`. `sync.sh <tag>` replaces the copy and records the release in `UPSTREAM`; `lint/` is VibeLang's own glue, the checker hooks and `vibelang lint` | generated |
+| Effect-TS/tsgo `_patches/typescript/` 002-009, 013, 014, 023, 025, 028, 031-033 | The patches `patches.txt` names: the after-check, expression-checked and relation-error hooks, `CompilerOptions.Effect` from the `@effect/language-service` plugin, the rules' messages in `diagnostics/generate.go`, and the exit-code filter. `effecttsgo/_patches/` holds each as applied here: 002 drops Effect's `AddDiagnostic` and `Program`, which VibeLang has; 007, 028 add `Effect` beside `VibeLang` in the option tables; 009 filters before VibeLang's error-only exit status; 031's flag is bit 31, since VibeLang uses 29 and 30 | about +400 |
+| `tsc/internal/ls/autoimport/effectlint.go` (new) | `aliasResolver.IsSourceFileFromExternalLibrary`, which patch 002's `checker.Program` needs (from Effect's patch 018) | +10 |
 
 A rebase onto a newer nightly can conflict only in the existing files above. If upstream regenerates the option tables, add the `vibelang` lines again; `tsoptions/vibelang.go` lists where they go.
 

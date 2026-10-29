@@ -1,0 +1,178 @@
+package typeparser
+
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker"
+)
+
+var effectSchemaModuleDescriptor = newPackageSourceFileDescriptor(moduleDescriptorSchema, "effect", isSchemaTypeSourceFile)
+
+var effectParseResultModuleDescriptor = newPackageSourceFileDescriptor(moduleDescriptorParseResult, "effect", isParseResultSourceFile)
+
+var effectSchemaParserModuleDescriptor = newPackageSourceFileDescriptor(moduleDescriptorSchemaParser, "effect", isSchemaParserSourceFile)
+
+// SchemaTypeId is the property key for Schema's variance struct.
+const SchemaTypeId = "~effect/Schema/Schema"
+
+// IsSchemaType returns true if the type is a Schema type (v4 or v3).
+func (tp *TypeParser) IsSchemaType(t *checker.Type) bool {
+	if tp == nil {
+		return false
+	}
+	return tp.EffectSchemaTypes(t) != nil
+}
+
+// SchemaTypes holds the A (Type) and E (Encoded) types extracted from a Schema type.
+type SchemaTypes struct {
+	a *checker.Type
+	e *checker.Type
+}
+
+func (r SchemaTypes) A() *checker.Type { return r.a }
+
+func (r SchemaTypes) E() *checker.Type { return r.e }
+
+// EffectSchemaTypes extracts the A (Type) and E (Encoded) types from a Schema type.
+// Returns nil if the type is not a recognized Schema type or types cannot be extracted.
+func (tp *TypeParser) EffectSchemaTypes(t *checker.Type) *SchemaTypes {
+	if tp == nil || tp.checker == nil || t == nil {
+		return nil
+	}
+	c := tp.checker
+	return Cached(&tp.links.EffectSchemaTypes, t, func() *SchemaTypes {
+		version := tp.DetectEffectVersion()
+		if version == EffectMajorV4 {
+			if tp.GetTypeOfPropertyByName(t, SchemaTypeId) == nil {
+				return nil
+			}
+			// V4: get Type and Encoded properties directly
+			aType := tp.GetTypeOfPropertyByName(t, "Type")
+			eType := tp.GetTypeOfPropertyByName(t, "Encoded")
+			if aType == nil || eType == nil {
+				return nil
+			}
+			return &SchemaTypes{a: aType, e: eType}
+		}
+
+		// V3: check for 'ast' property first
+		if c.GetPropertyOfType(t, "ast") == nil {
+			return nil
+		}
+
+		// Find the variance struct property and extract A/I types
+		props := c.GetPropertiesOfType(t)
+		for _, prop := range props {
+			if prop == nil || ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsProperty == 0 || ast.TSGetSymbolFlags(prop)&ast.SymbolFlagsOptional != 0 || ast.TSGetSymbolValueDeclaration(prop) == nil {
+				continue
+			}
+			propType := c.GetTypeOfSymbolAtLocation(prop, nil)
+			a := tp.extractInvariantType(propType, "_A")
+			if a == nil {
+				continue
+			}
+			i := tp.extractInvariantType(propType, "_I")
+			if i == nil {
+				continue
+			}
+			r := tp.extractCovariantType(propType, "_R")
+			if r == nil {
+				continue
+			}
+			return &SchemaTypes{a: a, e: i}
+		}
+
+		return nil
+	})
+}
+
+func isSchemaTypeSourceFile(tp *TypeParser, c *checker.Checker, sf *ast.SourceFile) bool {
+	if c == nil || sf == nil {
+		return false
+	}
+
+	moduleSym := checker.Checker_getSymbolOfDeclaration(c, sf.AsNode())
+	if moduleSym == nil {
+		return false
+	}
+
+	schemaSym := c.TryGetMemberInModuleExportsAndProperties("Schema", moduleSym)
+	if schemaSym == nil {
+		return false
+	}
+
+	schemaType := c.GetDeclaredTypeOfSymbol(schemaSym)
+	if schemaType == nil {
+		return false
+	}
+
+	return tp.IsSchemaType(schemaType)
+}
+
+// IsNodeReferenceToEffectSchemaModuleApi reports whether node resolves to a member
+// exported by the "effect" package from a module that exports the Schema type.
+func (tp *TypeParser) IsNodeReferenceToEffectSchemaModuleApi(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectSchemaModuleDescriptor, memberName)
+}
+
+func isParseResultSourceFile(_ *TypeParser, c *checker.Checker, sf *ast.SourceFile) bool {
+	if c == nil || sf == nil {
+		return false
+	}
+
+	moduleSym := checker.Checker_getSymbolOfDeclaration(c, sf.AsNode())
+	if moduleSym == nil {
+		return false
+	}
+
+	// Check for ParseIssue type
+	if c.TryGetMemberInModuleExportsAndProperties("ParseIssue", moduleSym) == nil {
+		return false
+	}
+
+	// Check for decodeSync export
+	if c.TryGetMemberInModuleExportsAndProperties("decodeSync", moduleSym) == nil {
+		return false
+	}
+
+	// Check for encodeSync export
+	if c.TryGetMemberInModuleExportsAndProperties("encodeSync", moduleSym) == nil {
+		return false
+	}
+
+	return true
+}
+
+// IsNodeReferenceToEffectParseResultModuleApi reports whether node resolves to a member
+// exported by the "effect" package from a module that exports the ParseResult type (V3).
+func (tp *TypeParser) IsNodeReferenceToEffectParseResultModuleApi(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectParseResultModuleDescriptor, memberName)
+}
+
+func isSchemaParserSourceFile(_ *TypeParser, c *checker.Checker, sf *ast.SourceFile) bool {
+	if c == nil || sf == nil {
+		return false
+	}
+
+	moduleSym := checker.Checker_getSymbolOfDeclaration(c, sf.AsNode())
+	if moduleSym == nil {
+		return false
+	}
+
+	// Check for decodeEffect export
+	if c.TryGetMemberInModuleExportsAndProperties("decodeEffect", moduleSym) == nil {
+		return false
+	}
+
+	// Check for encodeEffect export
+	if c.TryGetMemberInModuleExportsAndProperties("encodeEffect", moduleSym) == nil {
+		return false
+	}
+
+	return true
+}
+
+// IsNodeReferenceToEffectSchemaParserModuleApi reports whether node resolves to a member
+// exported by the "effect" package from a module that exports the SchemaParser type (V4).
+func (tp *TypeParser) IsNodeReferenceToEffectSchemaParserModuleApi(node *ast.Node, memberName string) bool {
+	return tp.IsNodeReferenceToModuleExport(node, effectSchemaParserModuleDescriptor, memberName)
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
@@ -51,6 +52,9 @@ func stopTracing(sys tsc.System, tr *tracing.Tracing) {
 }
 
 func CommandLine(ctx context.Context, sys tsc.System, commandLineArgs []string, testing tsc.CommandLineTesting) tsc.CommandLineResult {
+	restore := etscore.EnterCommandLineMode()
+	defer restore()
+
 	if len(commandLineArgs) > 0 {
 		switch strings.ToLower(commandLineArgs[0]) {
 		case "-b", "--b", "-build", "--build":

@@ -3243,7 +3243,7 @@ func IsJSDocSingleCommentNodeComment(node *Node) bool {
 // In Strada, if a JSDoc node has a single comment, that comment is represented as a string property
 // as a simplification, and therefore that comment is not visited by `forEachChild`.
 func IsJSDocSingleCommentNode(node *Node) bool {
-	return hasComment(node.Kind) && node.CommentList() != nil && len(node.CommentList().Nodes) == 1
+	return node != nil && hasComment(node.Kind) && node.CommentList() != nil && len(node.CommentList().Nodes) == 1
 }
 
 func IsValidTypeOnlyAliasUseSite(useSite *Node) bool {
