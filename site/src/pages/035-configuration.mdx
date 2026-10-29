@@ -1,11 +1,11 @@
 ---
 title: "Configuration"
-description: "Config loads typed settings with Effect's validation and error types; ConfigProvider chooses their source. A call returning Config<T> builds a descriptor; calling the descriptor loads its value."
+description: "Config loads typed settings with Effect's validation and error types; ConfigProvider chooses their source. A call returning Config.Config<T> builds a descriptor; try descriptor loads its value."
 ---
 
 # Configuration
 
-`Config` loads typed settings with Effect's validation and error types; `ConfigProvider` chooses their source. A call returning `Config<T>` builds a descriptor; calling the descriptor loads its value.
+`Config` loads typed settings with Effect's validation and error types; `ConfigProvider` chooses their source. A call returning `Config.Config<T>` builds a descriptor; `try descriptor` loads its value.
 
 ## Declare typed configuration
 
@@ -13,16 +13,16 @@ description: "Config loads typed settings with Effect's validation and error typ
 const Host = Config.NonEmptyString("HOST")
 const Port = Config.Port("PORT")
 
-function serverSettings() {
-  const host = Host()
-  const port = Port()
+effect serverSettings() {
+  const host = try Host
+  const port = try Port
   return { host, port }
 }
 // { host: string; port: number }!ConfigError!
 // Output: {"host":"localhost","port":9091}
 ```
 
-`Host()` and `Port()` load from the active provider, by default the environment; constructing the descriptors reads nothing. Missing or invalid input fails with `ConfigError`. `.vibe` files need no direct environment access.
+`try Host` and `try Port` load from the active provider, by default the environment; constructing the descriptors reads nothing. Missing or invalid input fails with `ConfigError`. `.vibe` files need no direct environment access.
 
 | Constructor | Decoded value |
 | --- | --- |
@@ -36,23 +36,23 @@ function serverSettings() {
 
 Prefer `Finite` to `Number` for ordinary numeric settings: `Number` also accepts non-finite values. Boolean text is case sensitive: `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`, and `y`/`n`.
 
-`Config.all`, `Config.nested`, and `Config.withDefault` compose descriptors as data in `.vibe`. A call runs its result automatically only when the result type is `Effect` itself; a type that extends `Effect` with its own structure stays data.
+`Config.all`, `Config.nested`, and `Config.withDefault` compose descriptors as data in `.vibe`. Descriptors are Effect values; `try` runs them and returns their decoded settings.
 
 ## Parse with schemas
 
 ```vibe
-function teamName() {
-  return Config.schema(
+effect teamName() {
+  return try Config.schema(
     Schema.String.check(Schema.isMinLength(3)),
     "TEAM_NAME"
-  )()
+  )
 }
 // string!ConfigError!
 // Output: search
 // Output: ConfigError
 ```
 
-`Config.schema` builds a descriptor that decodes the provider's representation with the schema; calling it returns the decoded value. Put constraints in the schema so invalid input reports a configuration failure. A structured schema can describe a whole object, its field paths mapping to environment keys or object properties.
+`Config.schema` builds a descriptor that decodes the provider's representation with the schema; `try` runs it and returns the decoded value. Put constraints in the schema so invalid input reports a configuration failure. A structured schema can describe a whole object, its field paths mapping to environment keys or object properties.
 
 ```vibe
 // descriptors.vibe
@@ -66,22 +66,22 @@ export const server = Config.schema(Schema.Struct({
 ```vibe
 import { server } from "./descriptors.vibe"
 
-function localServer() {
-  return server.parse(ConfigProvider.fromUnknown({
+effect localServer() {
+  return try server.parse(ConfigProvider.fromUnknown({
     server: { host: "127.0.0.1", port: 9091 }
   }))
 }
 // Output: {"host":"127.0.0.1","port":9091}
 ```
 
-Use `descriptor.parse(provider)` for an explicit source, especially in tests; it returns an `Effect`, so the call runs it. Calling `server()` instead uses the active provider.
+Use `descriptor.parse(provider)` for an explicit source, especially in tests; it returns an `Effect`, so run it with `try`. `try server` instead uses the active provider.
 
 ## Read arrays and records
 
 ```vibe
-function routingSettings() {
-  const regions = Config.Array(Schema.String, "REGIONS")()
-  const labels = Config.Record(Schema.String, Schema.String, "LABELS")()
+effect routingSettings() {
+  const regions = try Config.Array(Schema.String, "REGIONS")
+  const labels = try Config.Record(Schema.String, Schema.String, "LABELS")
   return { regions, labels }
 }
 // Output: {"regions":["north","south"],"labels":{"team":"search","tier":"internal"}}
@@ -103,8 +103,8 @@ export const database = Config.nested(Config.all({
 ```vibe
 import { database } from "./database-config.vibe"
 
-function testDatabaseSettings() {
-  return database.parse(ConfigProvider.fromEnv({
+effect testDatabaseSettings() {
+  return try database.parse(ConfigProvider.fromEnv({
     env: { DATABASE_HOST: "db.internal", DATABASE_PORT: "5433" }
   }))
 }
@@ -130,12 +130,12 @@ export const host = Config.orElse(
 ```vibe
 import { port, apiKey, host } from "./optional-config.vibe"
 
-function defaultsExample() {
+effect defaultsExample() {
   const provider = ConfigProvider.fromUnknown({ BACKUP_HOST: "standby.internal" })
   return {
-    port: port.parse(provider),
-    apiKey: apiKey.parse(provider),
-    host: host.parse(provider)
+    port: try port.parse(provider),
+    apiKey: try apiKey.parse(provider),
+    host: try host.parse(provider)
   }
 }
 // Output: 9091 true standby.internal
@@ -159,9 +159,9 @@ export const origin = Config.map(Config.all({
 ```vibe
 import { origin } from "./origin-config.vibe"
 
-function reportOrigin() {
-  const value = origin()
-  Console.log(value)
+effect reportOrigin() {
+  const value = try origin
+  try Console.log(value)
   return value
 }
 // Output: https://example.test:9091
@@ -172,16 +172,16 @@ Use `Config.map` for a transformation that can't fail, a schema for validation, 
 ## Protect secrets
 
 ```vibe
-function secretSetting() {
-  const token = Config.Redacted("ACCESS_TOKEN")()
-  Console.log(String(token))
+effect secretSetting() {
+  const token = try Config.Redacted("ACCESS_TOKEN")
+  try Console.log(String(token))
   return token
 }
 // Output: <redacted>
 // Output: <redacted>
 ```
 
-`Redacted` hides its contents in ordinary string representations. Import `Redacted` from `effect` and call `Redacted.value(token)` only where the raw secret is needed. For a decoded secret, combine `Config.schema` with `Schema.RedactedFromValue`, as in a protected number decoded with `Schema.FiniteFromString`.
+`Redacted` hides its contents in ordinary string representations. Call `Redacted.value(token)` only where the raw secret is needed. For a decoded secret, combine `Config.schema` with `Schema.RedactedFromValue`, as in a protected number decoded with `Schema.FiniteFromString`.
 
 ## Load providers
 
@@ -190,12 +190,12 @@ const TestProvider = ConfigProvider.fromUnknown({ PORT: 9091 })
 const EnvProvider = ConfigProvider.fromEnv({ env: { PORT: "9092" } })
 const DotEnvProvider = ConfigProvider.fromDotEnvContents("PORT=9093")
 
-function testPort() {
-  provide ConfigProvider.layer(TestProvider) { return Config.Port("PORT")() }
+effect testPort() {
+  provide ConfigProvider.layer(TestProvider) { return try Config.Port("PORT") }
 }
 
-function fileProvider() {
-  return ConfigProvider.fromDotEnv({ path: ".env.local" })
+effect fileProvider() {
+  return try ConfigProvider.fromDotEnv({ path: ".env.local" })
 }
 // Output: 9091 9092 9093
 // Output: .env.local
@@ -213,8 +213,8 @@ const DeploymentProvider = ConfigProvider.constantCase(
   ConfigProvider.fromEnv({ env: { SERVICE_PORT: "9094" } })
 )
 
-function deploymentPort() {
-  provide ConfigProvider.layer(DeploymentProvider) { return Config.Port("servicePort")() }
+effect deploymentPort() {
+  provide ConfigProvider.layer(DeploymentProvider) { return try Config.Port("servicePort") }
 }
 // Output: 9094
 ```
@@ -229,9 +229,9 @@ const Combined = ConfigProvider.orElse(
   ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })
 )
 
-function configuredServer() {
+effect configuredServer() {
   provide ConfigProvider.layer(Combined) {
-    return { host: Config.String("HOST")(), port: Config.Port("PORT")() }
+    return { host: try Config.String("HOST"), port: try Config.Port("PORT") }
   }
 }
 // Output: {"host":"edge.internal","port":9091}
@@ -241,7 +241,7 @@ Provider fallback fills absent paths; it doesn't recover from source or validati
 
 ## Coming from Effect
 
-Compose Config descriptors directly in `.vibe`; call a descriptor to load it, or call its `parse` method with an explicit provider. Returning a descriptor doesn't read it, just as returning an `Exit`, a Context key, or an error instance doesn't run it. `new` constructs an instance and never runs it.
+Compose Config descriptors directly in `.vibe`; run a descriptor with `try` to load it, or run its `parse` Effect with an explicit provider. Returning a descriptor doesn't read it, just as returning an `Exit`, a Context key, or an error instance doesn't run it. `new` constructs an instance and never runs it.
 
 ---
 

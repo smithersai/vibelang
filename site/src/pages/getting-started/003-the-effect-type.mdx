@@ -1,11 +1,11 @@
 ---
 title: "The Effect Type"
-description: "Effect<A, E, R> is the contract of a computation: its success value, expected errors, and required services. VibeLang infers it for every function, even one that only calculates a value."
+description: "Effect<A, E, R> is the contract of a computation: its success value, expected errors, and required services. VibeLang infers it for every effect function, even one that only calculates a value."
 ---
 
 # The Effect Type
 
-`Effect<A, E, R>` is the contract of a computation: its success value, expected errors, and required services. VibeLang infers it for every function, even one that only calculates a value.
+`Effect<A, E, R>` is the contract of a computation: its success value, expected errors, and required services. VibeLang infers it for every effect function, even one that only calculates a value.
 
 ## Success, failure, and services
 
@@ -18,103 +18,110 @@ service Rates {
   lookup(currency: string): number!MissingRate
 }
 
-function convert(amount: number, currency: string) {
-  return amount * Rates.lookup(currency)
+effect convert(amount: number, currency: string) {
+  const rates = try Rates
+  return amount * (try rates.lookup(currency))
 }
 // number!MissingRate!Rates
 // Output: 60
 ```
 
-`A` is `number`, `E` is `MissingRate`, and `R` is `Rates`. A service method states its complete contract because it has no body to infer from; using it also adds the service itself to the caller's requirements.
+`A` is `number`, `E` is `MissingRate`, and `R` is `Rates`. A service method states its complete contract because it has no body to infer from; running its Effect also adds the service itself to the caller's requirements.
 
 | Channel | Meaning of special types |
 | --- | --- |
 | `A` | `void` returns no useful value; `never` never succeeds. |
 | `E` | `never` has no expected failure; defects and interruption remain possible. |
-| `R` | `never` needs no additional services or control operations. |
+| `R` | `never` needs no additional services. |
 
-Errors and services from several calls accumulate as unions. Catching a failure removes it from `E`; providing a service removes it from `R`. Write a full annotation, such as `number!!Rates`, to have the compiler check a promise. `Effect<number, never, Rates>` is accepted too, and means the same.
+Errors and services from several Effects run with `try` accumulate as unions. Catching a failure removes it from `E`; providing a service removes it from `R`. Write a full annotation, such as `number!!Rates`, to have the compiler check a promise. `Effect<number, never, Rates>` is accepted too, and means the same.
 
-Inferred errors and services are unions: calling the same function more than once does not add another copy of its error or service types. Chains of repeated calls do not need written contracts to keep inference bounded.
+Inferred errors and services are unions: running the same Effect more than once does not add another copy of its error or service types. Chains of repeated calls do not need written contracts to keep inference bounded.
 
 ## Write a contract
 
 ```vibe
-function rateOf(currency: string): number!MissingRate!Rates {
-  return Rates.lookup(currency)
+effect rateOf(currency: string): number!MissingRate!Rates {
+  const rates = try Rates
+  return try rates.lookup(currency)
 }
 
-function safeRate(currency: string): number!!Rates {
-  return Effect.orDie(() => Rates.lookup(currency))
+effect safeRate(currency: string): number!!Rates {
+  const rates = try Rates
+  return try orDie(rates.lookup(currency))
 }
 
-function anyRate(currency: string): number!MissingRate {
-  return Rates.lookup(currency)
+effect anyRate(currency: string) {
+  const rates = try Rates
+  return try rates.lookup(currency)
 }
-// Dependencies inferred: number!MissingRate!Rates
+// Inferred: number!MissingRate!Rates
 // Output: 2
 ```
 
-`.vibe` code writes `Effect<A, E, R>` as `Result!Error!Dependencies`. An empty slot is `never`: `number!MissingRate!` cannot need a service, and `number!!` neither fails nor needs one. Dependencies left out entirely, as in `anyRate`, are inferred from the body on a function with a body, and are `never` on a declaration without one, such as a service member. A union belongs to its slot: `string!MissingRate | Offline!Rates` fails with either error. Parenthesize a function type, a conditional type, or an object type after a `!`; an object type's `{` would start the function's body.
+`.vibe` code writes `Effect<A, E, R>` as `Result!Error!Dependencies`. An empty slot is `never`: `number!MissingRate!` cannot need a service, and `number!!` neither fails nor needs one. An omitted dependencies slot is `never` everywhere. `anyRate` omits the whole return annotation, so all three channels are inferred. A union belongs to its slot: `string!MissingRate | Offline!Rates` fails with either error. Parenthesize a function type, a conditional type, or an object type after a `!`; an object type's `{` would start the function's body.
 
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels
 
 ```vibe
-function rate(currency: string): Effect<number, infer E, Rates> {
-  return Rates.lookup(currency)
+effect rate(currency: string): Effect<number, MissingRate, Rates> {
+  const rates = try Rates
+  return try rates.lookup(currency)
 }
-// Checks number and Rates; infers MissingRate.
+// Checks number, MissingRate, and Rates.
 
-function rateOrDie(currency: string): Effect<number, never, infer R> {
-  return Effect.orDie(() => Rates.lookup(currency))
+effect rateOrDie(currency: string): Effect<number, never, Rates> {
+  const rates = try Rates
+  return try orDie(rates.lookup(currency))
 }
-// Checks number and never; infers Rates.
+// Checks number, never, and Rates.
 
-function label(currency: string): Effect<infer A, MissingRate, Rates> {
-  return Rates.lookup(currency).toFixed(2)
+effect label(currency: string): Effect<string, MissingRate, Rates> {
+  const rates = try Rates
+  return (try rates.lookup(currency)).toFixed(2)
 }
-// Infers string; checks MissingRate and Rates.
+// Checks string, MissingRate, and Rates.
 
-function checkedConversion(amount: number, currency: string): Effect<number, infer E, infer R> {
-  return convert(amount, currency)
+effect checkedConversion(amount: number, currency: string) {
+  return try convert(amount, currency)
 }
-// Checks number; infers MissingRate and Rates.
+// Infers number, MissingRate, and Rates.
 // Output: 60
 ```
 
-In a return annotation on a function with a body, `infer` followed by any name infers that channel from the body; the other slots are promises the compiler checks. The name is documentation only, not in scope in the body or other slots. `infer _` is allowed, as in `Effect<infer _, infer _, infer _>`, which infers all three channels.
+A return annotation checks the complete Effect type. Leave it out to infer all three channels from the body. A type argument left out of `Effect<…>` is `never`, as in TypeScript: `Effect<number>` is `number!!`, a promise that the function cannot fail and needs nothing. `number!MissingRate` also needs no services.
 
-A type argument left out of `Effect<…>` is `never`, as in TypeScript, and the compiler checks it: `Effect<number>` is `number!!`, a promise that the function cannot fail and needs nothing. The `!` form leaves only the dependencies to the body: `number!MissingRate` checks the error and infers `R`. A plain return annotation such as `: number`, or `: infer _`, makes a plain JavaScript function; it is EK2003 on a function whose body runs an Effect or throws past its own `catch`. A function without a return annotation is an Effect function, whatever its body does, so plain code such as `xs.map(f)` or a module's top level calls only annotated helpers. As a value, a function has the form its type gives: `function pick(p: number!!): infer _ { return p }` is plain, and a call of it runs the program it returns, but its type returns an Effect, so `xs.map(pick)` is EK4301, as it is for an Effect function. So is a function whose return type may be an Effect, such as `() => number | Effect<void>`. The rule holds wherever a declared type makes a function plain: `const cb: (n: number) => void = logged`, an array of Effect functions passed as `ReadonlyArray<() => unknown>`, and a class instance whose unannotated method implements a plain interface member are EK4301; annotate the function, or write `implements` on the class. A literal takes its destination's form, and a destination typed `Function`, or by a type parameter constrained to a plain function type, as `useCallback` and lodash's `once` declare, gives the plain form, as TypeScript types the literal there: `const init = once(() => { n++ })` adds one however often `init` is called.
+The `effect` keyword decides the function's kind. Plain functions and `async` functions keep TypeScript's meaning, regardless of their return annotations. A plain callback can return an Effect without running it, so `xs.map((x) => work(x))` builds an array of Effects. A callback that must run Effects uses `effect`, as in `forEach(xs, effect (x) => { return try work(x) })`.
 
-Recursion is as stack-safe as it is with `Effect.gen`. `function sumTo(n: number): number!! { return n === 0 ? 0 : n + sumTo(n - 1) }` runs no Effect operation, but because it calls itself, it starts with fast JavaScript recursion and switches to Effect's heap frames at the eager depth limit: `sumTo(100000)` succeeds. Functions that call each other in a cycle do the same, and so does a function with a plain return type, such as `function fact(n: number): number`, which stays an ordinary JavaScript function to its callers, or a `const` that holds an arrow with one, `const fact = (n: number): number => …`. Recursion through a synchronous callback recurses as JavaScript does: past roughly 10,000 calls on Node it fails with a `RangeError` defect.
+Recursion is as stack-safe as it is with `Effect.gen`. `effect sumTo(n: number): number!! { return n === 0 ? 0 : n + (try sumTo(n - 1)) }` runs each recursive Effect with `try`; `try sumTo(100000)` succeeds. Plain JavaScript recursion retains JavaScript's stack limit. Recursion through a synchronous callback recurses as JavaScript does: past roughly 10,000 calls on Node it fails with a `RangeError` defect.
 
-Inference applies only to return annotations of `.vibe` functions with bodies. In parameter types, aliases, abstract members, and `.ts` files, `number!MissingRate` and `Effect<number, MissingRate>` both need nothing, and `infer` is unsupported. A callback parameter type means what TypeScript means: `(n: number) => string` is a plain callback, and one that may run Effects is `(n: number) => string!E!R`, with `E` and `R` declared as the function's type parameters.
+The shorthand has the same meaning in parameter types, aliases, service members, and return annotations. A callback parameter type means what TypeScript means: `(n: number) => string` is a plain callback, and one returning an Effect is `(n: number) => string!E!R`, with `E` and `R` declared as the function's type parameters.
 
 ## Description and execution
 
 ```vibe
-const conversion = () => convert(30, "EUR")
+const conversion = convert(30, "EUR")
 
-function displayedPrice() {
-  const amount = conversion()
+effect displayedPrice() {
+  const amount = try conversion
   return amount.toFixed(2)
 }
 // Output: 60.00
 ```
 
-Creating `conversion` does no work. Calling it runs the computation within the current program and returns its success value. A call starts no new fiber; runners start execution at the application edge.
+Creating `conversion` does no work. `try conversion` runs the computation within the current effect function and returns its success value. `try` starts no new fiber; runners start execution at the application edge.
 
-An imported Effect value is callable too: `Clock.currentTimeMillis` from `effect` is a description, and `Clock.currentTimeMillis()` reads the clock inside a function. Effect-returning library functions run by the same call rule.
+An Effect value such as `Clock.currentTimeMillis` is a description; `try Clock.currentTimeMillis` reads the clock inside an effect function. Effect-returning library functions build Effects that run with `try`.
 
-A call runs its result automatically only when the result type is `Effect` itself. `Config`, `Exit`, Context keys, and yieldable error instances carry additional structure and stay data when returned. Call such a value to run it; `new` only constructs it.
+`Config` descriptors and Context keys are Effect values that run with `try`. Returning an Effect leaves it unrun; `new` only constructs an instance. Use `throw error` to fail with an error instance.
 
 ## Extract inferred channel types
 
 ```vibe
 // convert.vibe
-export function double(amount: number) {
+export effect double(amount: number) {
   return amount * 2
 }
 // number!!
@@ -137,7 +144,7 @@ TypeScript consumers see exported VibeLang functions as returning ordinary Effec
 
 ## Coming from Effect
 
-`Effect<A, E, R>` is global in `.vibe` files. Written with its type arguments, as `Effect.Effect<A, E, R>`, it draws EK4833, whose quick fix writes `A!E!R` ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). A local call gives `A`; keep a program as a function value to compose or store it.
+`Effect<A, E, R>` is global in `.vibe` files. Written with its type arguments, as `Effect.Effect<A, E, R>`, it draws EK4833, whose quick fix writes `A!E!R` ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). A call returns an Effect; `try` gives `A`. Keep the Effect value to compose or store it.
 
 ---
 

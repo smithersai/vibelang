@@ -1,24 +1,29 @@
 # Basic Concurrency
 
-Calls run in sequence. Effect's concurrency combinators overlap work, limit concurrency, and control cancellation; pass the work as functions so the combinator starts each operation at the right time.
+Effect functions return Effect values without running them. Inside an effect function, use `try` to run an Effect. Effect's concurrency combinators overlap work, limit concurrency, and control cancellation; pass the work as Effect values so the combinator starts each operation at the right time.
 
 ## Sequential, bounded, and unbounded work
 
 ```vibe
-// run: Console.log(JSON.stringify(runTasks()))
-function task(id: number) {
-  Console.log("starting", id)
-  sleep("40 millis")
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(try stringify(try runTasks()))
+effect task(id: number) {
+  try Console.log("starting", id)
+  try sleep("40 millis")
   return id * 2
 }
 
-function runTasks() {
-  const sequential = all([() => task(1), () => task(2)])
-  const bounded = forEach([1, 2, 3, 4], (id) => task(id), {
+effect runTasks() {
+  const sequential = try all([task(1), task(2)])
+  const bounded = try forEach([1, 2, 3, 4], (id) => task(id), {
     concurrency: 2
   })
-  const unbounded = await.all [task(5), task(6), task(7)]
+  const unbounded = try.all [task(5), task(6), task(7)]
   return { sequential, bounded, unbounded }
+}
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
 }
 // Output: starting 1
 // Output: starting 2
@@ -32,62 +37,60 @@ function runTasks() {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
-Sequential is the default; a positive numeric limit bounds active operations. `await.all [...]` is `Effect.all` with unbounded concurrency: like `Promise.all`, it starts every element in its own fiber at once. Results keep the written order however the work finishes. With parentheses the operation is a call in shape, so what follows the `)` applies to its value: `await.all([task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
+`all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency: like `Promise.all`, it starts every element in its own fiber at once. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
 
 ## Interrupting computations
 
 ```vibe
-// run: const stopped = cancelWork(); Console.log(stopped.isFailure() && Cause.hasInterrupts(stopped.cause))
-function cancelWork() {
-  const worker = fork {
-    sleep("1 minute")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
+// run: const stopped = try cancelWork(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
+effect cancelWork() {
+  const worker = fork effect {
+    try sleep("1 minute")
     return "finished"
   }
-  worker.interrupt()
-  return Fiber.await(worker)
+  try Fiber.interrupt(worker)
+  return try Fiber.await(worker)
 }
 // Output: true
 ```
 
-`Fiber.interrupt` requests cancellation and waits for termination, finalizers included; `Fiber.await` then returns an `Exit` describing the interruption instead of propagating it. `Effect.interrupt()` interrupts the current fiber. Interruption is outside the expected error channel, so ordinary `catch` doesn't handle it.
+`Fiber.interrupt` requests cancellation and waits for termination, finalizers included; `Fiber.await` then returns an `Exit` describing the interruption instead of propagating it. `try interrupt()` interrupts the current fiber. Interruption is outside the expected error channel, so ordinary `catch` doesn't handle it.
 
 ## Attaching interruption cleanup
 
 ```vibe
-// run: cancelWithCleanup(); Console.log("interrupt returned")
-function cancelWithCleanup() {
-  const worker = fork Effect.onInterrupt(() => {
-    try {
-      sleep("1 minute")
-    } finally {
-      Console.log("released worker resources")
-    }
-  }, () => Console.log("worker cancelled"))
-  sleep("10 millis")
-  worker.interrupt()
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
+// run: try cancelWithCleanup(); try Console.log("interrupt returned")
+effect cancelWithCleanup() {
+  const worker = fork onInterrupt(
+    ensuring(sleep("1 minute"), Console.log("released worker resources")),
+    () => Console.log("worker cancelled")
+  )
+  try sleep("10 millis")
+  try Fiber.interrupt(worker)
 }
 // Output: released worker resources
 // Output: worker cancelled
 // Output: interrupt returned
 ```
 
-`finally` runs on every exit; `onInterrupt` adds work only for cancellation. Cleanup runs before the interrupting caller resumes. For acquired resources, `using` registers release as part of acquisition, not in a later statement.
+`ensuring` runs cleanup on every exit; `onInterrupt` adds work only for cancellation. Cleanup runs before the interrupting caller resumes. For acquired resources, `acquireRelease` inside `scoped(effect { ... })` registers release as part of acquisition, not in a later statement.
 
 ## Propagating cancellation across concurrent work
 
 ```vibe
-// run: const stopped = Effect.exit(() => cancelBatch()); Console.log(stopped.isFailure() && Cause.hasInterrupts(stopped.cause))
-function cancelBatch() {
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-19
+// run: const stopped = try exit(cancelBatch()); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
+effect cancelBatch() {
   for concurrent (const id of [1, 2, 3]) {
-    try {
+    try ensuring(effect {
       if (id === 2) {
-        sleep("10 millis")
-        Effect.interrupt()
+        try sleep("10 millis")
+        try interrupt()
       }
-      sleep("1 second")
-    } finally {
-      Console.log("branch finished")
-    }
+      try sleep("1 second")
+    }, Console.log("branch finished"))
   }
 }
 // Output: branch finished
@@ -101,23 +104,24 @@ function cancelBatch() {
 ## Racing under different winner rules
 
 ```vibe
-// run: Console.log(JSON.stringify(raceExamples()))
-function answer(label: string, delay: Duration.Input) {
-  sleep(delay)
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(try stringify(try raceExamples()))
+effect answer(label: string, delay: Duration.Input) {
+  try sleep(delay)
   return label
 }
 
-function raceExamples() {
-  const firstSuccess = race(
-    () => { throw "unavailable" },
-    () => answer("replica", "20 millis")
+effect raceExamples() {
+  const firstSuccess = try race(
+    effect { throw "unavailable" },
+    answer("replica", "20 millis")
   )
-  const anySuccess = await.any [
+  const anySuccess = try.any [
     answer("west", "40 millis"),
     answer("east", "10 millis"),
     answer("central", "30 millis")
   ]
-  const firstCompletion = await.race [
+  const firstCompletion = try.race [
     answer("primary", "10 millis"),
     answer("backup", "50 millis")
   ]
@@ -126,24 +130,25 @@ function raceExamples() {
 // Output: {"firstSuccess":"replica","anySuccess":"east","firstCompletion":"primary"}
 ```
 
-The await operations (TC39 await operations proposal) behave as the same-named `Promise` methods. `await.any` (`Effect.raceAll`) waits for a success, so an early failure doesn't defeat a branch that can still succeed; if none succeeds, it fails with the collected failure reasons. `await.race` (`Effect.raceFirst`) takes the earliest completion, failure included. Both interrupt and clean up the losers before returning. A named Effect function keeps Effect's meaning: `race`, like `Effect.race`, waits for a success.
+The `try` operations (TC39 await operations proposal) behave as the same-named `Promise` methods. `try.any` (`Effect.raceAll`) waits for a success, so an early failure doesn't defeat a branch that can still succeed; if none succeeds, it fails with the collected failure reasons. `try.race` (`Effect.raceAllFirst`) takes the earliest completion, failure included. Both interrupt and clean up the losers before returning. A named Effect function keeps Effect's meaning: `race`, like `Effect.race`, waits for a success.
 
 ## Inspecting the winner
 
 ```vibe
-// run: const result = inspectRace(); Console.log(result.outcome.isFailure()); Console.log(JSON.stringify(result.winners))
-function inspectRace() {
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: const result = try inspectRace(); try Console.log(Result.isFailure(result.outcome)); try Console.log(try stringify(result.winners))
+effect inspectRace() {
   const winners: number[] = []
-  const outcome = Effect.result(() => Effect.raceFirst(
-    () => { throw "primary offline" },
-    () => {
-      sleep("1 second")
+  const outcome = try result(raceFirst(
+    effect { throw "primary offline" },
+    effect {
+      try sleep("1 second")
       return "backup response"
     },
     { onWinner: ({ index }) => { winners.push(index) } }
   ))
-  if (outcome.isFailure()) {
-    Console.log("first completion failed", outcome.failure)
+  if (Result.isFailure(outcome)) {
+    try Console.log("first completion failed", outcome.failure)
   }
   return { outcome, winners }
 }
@@ -152,8 +157,8 @@ function inspectRace() {
 // Output: [0]
 ```
 
-The synchronous `onWinner` callback observes the winning fiber and its index: zero for the first branch, one for the second. It doesn't replace the winning result and can't run a pausing VibeLang operation. `Effect.result` captures expected failures as data; `Effect.exit` also captures defects and interruption.
+The synchronous `onWinner` callback observes the winning fiber and its index: zero for the first branch, one for the second. It doesn't replace the winning result and can't run an Effect. `Effect.result` captures expected failures as data; `Effect.exit` also captures defects and interruption.
 
 ## Coming from Effect
 
-`Effect.all([task(1), task(2)], { concurrency: "unbounded" })` becomes `await.all [task(1), task(2)]`, and `Effect.raceFirst(a, b)` becomes `await.race [a(), b()]`. An await operation's element is a program because of where it stands, so `task(1)` starts in its own fiber instead of running before the operation.
+`Effect.all([task(1), task(2)], { concurrency: "unbounded" })` becomes `try.all [task(1), task(2)]`, and `Effect.raceFirst(a, b)` becomes `try.race [a, b]`. Each element is an Effect value, so `task(1)` returns its Effect unrun and `try.all` starts it in its own fiber. Use `effect { ... }` for a branch that needs several statements.

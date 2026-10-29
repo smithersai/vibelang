@@ -5,11 +5,12 @@
 ## Choosing immutable or mutable sets
 
 ```vibe
-// run: Console.log(snapshot.has("red"), revised.has("red")); Console.log(JSON.stringify(Array.from(buildLocal()).sort()))
+// pending: VIP-5, VIP-14
+// run: try Console.log(HashSet.has(snapshot, "red"), HashSet.has(revised, "red")); try Console.log(JSON.stringify(Array.from(buildLocal()).sort()))
 const snapshot = HashSet.make("green", "blue")
-const revised = snapshot.add("red")
-snapshot.has("red") // false
-revised.has("red") // true
+const revised = HashSet.add(snapshot, "red")
+HashSet.has(snapshot, "red") // false
+HashSet.has(revised, "red") // true
 
 function buildLocal() {
   const working = MutableHashSet.empty<string>()
@@ -29,11 +30,12 @@ Immutable updates keep earlier versions, so snapshots suit sharing between fiber
 ## Equality and uniqueness
 
 ```vibe
-// run: Console.log(Equal.equals(a, b), HashSet.make(a, b).size(), new Set([a, b]).size)
+// pending: VIP-5, VIP-14
+// run: try Console.log(Equal.equals(a, b), HashSet.size(HashSet.make(a, b)), new Set([a, b]).size)
 const a = { region: "west", active: true }
 const b = { region: "west", active: true }
 Equal.equals(a, b) // true
-HashSet.make(a, b).size() // 1
+HashSet.size(HashSet.make(a, b)) // 1
 new Set([a, b]).size // 2
 ```
 
@@ -46,35 +48,37 @@ Plain objects compare structurally in Effect 4.0.6, so separately allocated reco
 ## Constructing and changing immutable sets
 
 ```vibe
-// run: Console.log(JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, empty.size()]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, HashSet.size(empty)]))
 const empty = HashSet.empty<number>()
 const initial = HashSet.fromIterable([2, 4, 4, 6])
-const changed = initial.add(8).remove(2)
+const changed = HashSet.remove(HashSet.add(initial, 8), 2)
 const other = HashSet.make(6, 10)
-const together = changed.union(other)
-const common = changed.intersection(other)
-const exclusive = changed.difference(other)
-const large = together.filter((n) => n > 5)
-const labels = large.map((n) => `item-${n}`)
-const sum = initial.reduce(0, (total, n) => total + n)
+const together = HashSet.union(changed, other)
+const common = HashSet.intersection(changed, other)
+const exclusive = HashSet.difference(changed, other)
+const large = HashSet.filter(together, (n) => n > 5)
+const labels = HashSet.map(large, (n) => `item-${n}`)
+const sum = HashSet.reduce(initial, 0, (total, n) => total + n)
 ```
 
 ```output
 [[2,4,6],[4,6,8],[4,6,8,10],[6],[4,8],[6,8,10],["item-10","item-6","item-8"],12,0]
 ```
 
-`empty`, `make`, and `fromIterable` construct sets. `add`, `remove`, union, intersection, and difference return new sets, so method chains never change the original.
+`empty`, `make`, and `fromIterable` construct sets. `add`, `remove`, union, intersection, and difference return new sets, so composing those operations never changes the original.
 
 ## Querying membership and size
 
 ```vibe
-// run: Console.log(allowed.has("write"), allowed.size(), allowed.some((name) => name.startsWith("a")), allowed.every((name) => name.length > 0), HashSet.make("read").isSubset(allowed))
+// pending: VIP-5, VIP-14
+// run: try Console.log(HashSet.has(allowed, "write"), HashSet.size(allowed), HashSet.some(allowed, (name) => name.startsWith("a")), HashSet.every(allowed, (name) => name.length > 0), HashSet.isSubset(HashSet.make("read"), allowed))
 const allowed = HashSet.make("read", "write", "audit")
-allowed.has("write") // true
-allowed.size() // 3
-allowed.some((name) => name.startsWith("a")) // true
-allowed.every((name) => name.length > 0) // true
-HashSet.make("read").isSubset(allowed) // true
+HashSet.has(allowed, "write") // true
+HashSet.size(allowed) // 3
+HashSet.some(allowed, (name) => name.startsWith("a")) // true
+HashSet.every(allowed, (name) => name.length > 0) // true
+HashSet.isSubset(HashSet.make("read"), allowed) // true
 ```
 
 ```output
@@ -86,7 +90,8 @@ true 3 true true true
 ## Updating mutable sets
 
 ```vibe
-// run: const result = uniqueRegions(["west", "west", ""]); Console.log(result.count, result.containsUnknown, JSON.stringify(result.values.sort()))
+// pending: VIP-5, VIP-14
+// run: const result = uniqueRegions(["west", "west", ""]); try Console.log(result.count, result.containsUnknown, JSON.stringify(result.values.sort()))
 function uniqueRegions(regions: ReadonlyArray<string>) {
   const seen = MutableHashSet.fromIterable(regions)
   MutableHashSet.add(seen, "unknown")
@@ -108,12 +113,13 @@ function uniqueRegions(regions: ReadonlyArray<string>) {
 ## Balancing performance and persistence
 
 ```vibe
-// run: Console.log(JSON.stringify(snapshots([2, 2, 4]).map((set) => set.size())))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(snapshots([2, 2, 4]).map((set) => HashSet.size(set))))
 function snapshots(values: ReadonlyArray<number>) {
   let current = HashSet.empty<number>()
   const history = [current]
   for (const value of values) {
-    current = current.add(value)
+    current = HashSet.add(current, value)
     history.push(current)
   }
   return history
@@ -129,14 +135,15 @@ Persistent sets share storage between versions; mutable sets skip that allocatio
 ## Converting to JavaScript collections
 
 ```vibe
-// run: Console.log(JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()])); report()
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()])); try report()
 const regions = HashSet.make("west", "east")
 const array = Array.from(regions)
 const copy = [...regions]
 const native = new Set(regions)
 
-function report() {
-  for (const region of Array.from(regions).sort()) Console.log(region)
+effect report() {
+  for (const region of Array.from(regions).sort()) try Console.log(region)
 }
 ```
 

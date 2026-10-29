@@ -1,11 +1,11 @@
 ---
 title: "Expected Errors"
-description: "Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in E and narrows them inside catch."
+description: "Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in E and narrows them inside a catch expression."
 ---
 
 # Expected Errors
 
-Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in `E` and narrows them inside `catch`.
+Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in `E` and narrows them inside a catch expression.
 
 
 ## Constructing typed failures
@@ -18,7 +18,7 @@ error ItemMissing {
   code: string
 }
 
-function normalizeCode(input: string) {
+effect normalizeCode(input: string) {
   const code = input.trim()
   if (code.length === 0) throw new InvalidCode({ input })
   return code.toUpperCase()
@@ -31,11 +31,11 @@ PEN
 InvalidCode
 ```
 
-`error InvalidCode { input: string }` declares an expected failure class, short for `class InvalidCode extends TaggedError("InvalidCode")<{ readonly input: string }> {}`, which also compiles; the global `TaggedError` is Effect's `Data.TaggedError`. The constructor takes the fields, all readonly, and each instance has a readonly `_tag` equal to the class name. `error Timeout` has no fields. In an Effect function, `throw` adds the class to `E`. `Effect.fail(error)` also works; `Effect.failSync(() => error)` defers construction to execution, as a function body already does.
+`error InvalidCode { input: string }` declares an expected failure class, short for `class InvalidCode extends Data.TaggedError("InvalidCode")<{ readonly input: string }> {}`, which also compiles. The constructor takes the fields, all readonly, and each instance has a readonly `_tag` equal to the class name. `error Timeout` has no fields. In an effect function, `throw` adds the class to `E`. `try fail(error)` also works; `try failSync(() => error)` defers construction to execution, as a function body already does.
 
-In Effect functions, trusted built-ins can add expected failures too: `JSON.parse` adds `SyntaxError`. A plain TypeScript function needs the `try` hatch or a wrapper made with `trusted(implementation, [ErrorClass])` in a `.ts` or `.vibe` module, importing `trusted` from `vibelang-runtime`: instances of listed classes join `E`; unlisted exceptions are defects. The older `/** @vibelang trusted */` and `@throws` declaration tags are deprecated: calls that rely on tagged expected failures get warning EK4406 now and become errors when the per-file emitter replaces the current lowering. Effect's own packages are trusted, so calls such as `Option.isNone` need no boundary.
+VibeLang annotates `JSON.parse` as throwing `SyntaxError`. An effect function must wrap a synchronous call that may throw with `Effect.try` before running it with `try`. Library declarations describe thrown types with `@throws {ErrorType}`; a function without that annotation may throw `unknown`. Exported VibeLang functions receive inferred `@throws` annotations in their declarations, including `@throws {never}` for functions that cannot throw. Wrap every Promise with `tryPromise`, including one that cannot reject. Synchronous functions known not to throw, such as `Option.isNone`, need no wrapper.
 
-`throw` is a typed failure everywhere outside a hatch, and `catch` receives typed failures only. A function with a plain return annotation is plain JavaScript because it never fails and needs nothing. It may throw what its own `catch` handles, and it still returns a value:
+In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function keeps TypeScript's behavior: its return annotation checks its result, and its `try`/`catch` statement can handle JavaScript exceptions while returning a value:
 
 ```vibe
 error InvalidQuantity { text: string }
@@ -53,10 +53,9 @@ function quantityOr(text: string, fallback: number): number {
 // Output: 0
 ```
 
-A failure that can escape a plain function is EK2003. The message names the function and what it throws, then lists the ways out, and the quick fix writes the first, the Effect contract:
+A plain function may throw, and its thrown type is inferred. A plain return annotation does not make a function effectful:
 
 ```vibe
-// expect-error: EK2003
 function quantity(text: string): number {
   const value = Number(text)
   if (!Number.isInteger(value)) throw new InvalidQuantity({ text })
@@ -64,20 +63,13 @@ function quantity(text: string): number {
 }
 ```
 
-```text
-error EK2003: quantity can't throw InvalidQuantity: its return annotation, number, makes it a plain function, which never fails.
-  Make it an Effect function: number!InvalidQuantity!
-  Or fail with a defect instead: die(new InvalidQuantity({ text })), annotated number!!
-  Or escape to TypeScript: move quantity to a .ts file or a module block, or wrap the throw in sync(() => { … }), annotated number!!
-```
+Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In a plain or async function, `throw` is JavaScript's, and `sync` turns that exception into a defect.
 
-An Effect function's callers run it, so they become Effect functions too. A defect is for a failure no caller should handle: `catch` never receives one. In a `.ts` file or a `module` block, `throw` is JavaScript's, and a `sync` hatch turns that exception into a defect.
+An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior. A plain function calls TypeScript code directly and handles JavaScript exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
 
-The same holds for a throw expression and for a `match` arm or `do` block that throws. A method's plain return annotation is checked the same way: it is the method's type in the declaration file, so a body that runs an Effect is EK2003 too; write the contract, or leave the method unannotated. A method that implements a plain-function member of a JavaScript protocol, such as `[Equal.symbol]`, is checked against that member instead (EK4301). A plain function calls TypeScript code directly. A call whose contract lists a failure, such as `JSON.parse`, is a typed failure only inside a `try` whose `catch` belongs to the function, which receives it with its type; elsewhere its exception propagates unchanged. Other TypeScript code's exceptions pass through the `catch` unchanged and become defects where they reach an effectful caller; to catch one, use the `try` hatch in an Effect function. Running an Effect inside a plain-annotated function is EK2003 too.
+An effect function can stand for a function type returning an Effect. Calling it returns that Effect unrun; a plain caller that ignores the return value does not run its work. Declare a function returning an Effect at a destination that needs one, or provide a plain function for a plain result. This applies to initializers, assignments, returns, property writes, typed literal elements, and members of objects and class instances.
 
-An Effect function cannot stand for a plain function type, even one returning `void`: that is EK4301 at an initializer, assignment, return, property write or typed literal element. This also checks members of objects and class instances. Declare an Effect function type at the destination, or provide a plain function; otherwise a plain caller would receive a program whose work never runs.
-
-## Trusting a TypeScript function
+## Wrapping a TypeScript function
 
 ```ts
 // TypeScript (.ts)
@@ -94,11 +86,17 @@ export function parseQuantity(text: string): number {
 ```
 
 ```vibe
-import { trusted } from "vibelang-runtime"
 import { InvalidQuantity, parseQuantity } from "./quantity.ts"
 
-const quantity = trusted(parseQuantity, [InvalidQuantity])
-// Trusted<(text: string) => number, readonly [typeof InvalidQuantity]>
+effect quantity(text: string) {
+  return Effect.try({
+    try: () => parseQuantity(text),
+    catch: (cause) => cause
+  }) catch effect (cause) => {
+    if (cause instanceof InvalidQuantity) throw cause
+    return try die(cause)
+  }
+}
 ```
 
 ```text
@@ -106,15 +104,19 @@ const quantity = trusted(parseQuantity, [InvalidQuantity])
 InvalidQuantity
 ```
 
-`trusted` works in a `.vibe` file as it does in TypeScript. `quantity` calls the TypeScript `parseQuantity`: an `InvalidQuantity` it throws is an expected failure in `E`, and any other exception is a defect.
+`quantity` calls the TypeScript `parseQuantity` through `Effect.try`: an `InvalidQuantity` it throws is an expected failure in `E`, and any other exception is promoted to a defect with `die`. The callbacks are plain TypeScript functions and capture local variables normally; the effect handler fails with the selected error or runs `die` with `try`.
 
 ## Failing in an expression
 
 ```vibe
 error MissingPort
 
-function port(env: Map<string, string>) {
-  return env.get("PORT") ?? throw new MissingPort()
+effect port(env: Map<string, string>) {
+  return try effect {
+    const value = env.get("PORT")
+    if (value === undefined) throw new MissingPort()
+    return value
+  }
 }
 // string!MissingPort!
 ```
@@ -124,13 +126,13 @@ function port(env: Map<string, string>) {
 MissingPort
 ```
 
-`throw` also works as an expression, per the TC39 [throw expressions](https://github.com/tc39/proposal-throw-expressions) proposal, and fails as the statement does. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. A throw expression takes only a unary operand: EK1010 refuses an unparenthesized throw that is, or ends, an operator's left operand, a conditional's condition, or the operand of `as` or `satisfies`, so write `throw (cond ? a : b)` to throw a whole conditional. The statement `throw cond ? a : b;` still throws the selected value.
+An `effect { … }` expression builds an Effect from statements. Here it validates the optional value and fails with `MissingPort` when the key is absent. `try` runs the block and returns its successful string. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. The statement `throw cond ? a : b;` still throws the selected value.
 
 ## Tracking several error cases
 
 ```vibe
-function findItem(input: string) {
-  const code = normalizeCode(input)
+effect findItem(input: string) {
+  const code = try normalizeCode(input)
   if (code !== "PEN") throw new ItemMissing({ code })
   return { code, label: "Fountain pen" }
 }
@@ -143,22 +145,22 @@ ItemMissing
 InvalidCode
 ```
 
-A function collects the failures it throws and those its calls can produce. Sequential statements stop at the first failure: no lookup follows a failed normalization. An explicit full contract checks this inferred union; it doesn't replace it.
+An effect function collects the failures it throws and those of the Effects it runs. Sequential statements stop at the first failure: no lookup follows a failed normalization. An explicit full contract checks this inferred union; it doesn't replace it.
 
 ## Turning failures into values
 
 ```vibe
-function inspectItem(input: string) {
-  const result = Effect.result(() => findItem(input))
-  return result.match({
+effect inspectItem(input: string) {
+  const outcome = try result(findItem(input))
+  return Result.match(outcome, {
     onFailure: (error) => `unavailable: ${error._tag}`,
     onSuccess: (item) => item.label
   })
 }
 
-function optionalItem(input: string) {
-  const item = Effect.option(() => findItem(input))
-  return item.isNone() ? "No item" : item.value.label
+effect optionalItem(input: string) {
+  const item = try option(findItem(input))
+  return Option.isNone(item) ? "No item" : item.value.label
 }
 ```
 
@@ -170,17 +172,15 @@ Fountain pen
 No item
 ```
 
-`Effect.result` moves `E` into the success channel as `Result<A, E>`. `Effect.option` gives `Some` on success and discards a typed error as `None`; use it only when every domain failure means absence. Causes with no expected failure still propagate, and so do causes with a defect, their expected failures as defects; both consume an expected failure beside an interruption, as ordinary catch does. Match on `exit(...)` when interruption must always propagate intact.
+`result` moves `E` into the success channel as `Result<A, E>`. `option` gives `Some` on success and discards a typed error as `None`; use it only when every domain failure means absence. Causes with no expected failure still propagate, and so do causes with a defect, their expected failures as defects; both consume an expected failure beside an interruption, as ordinary catch does. Match on `exit(...)` when interruption must always propagate intact.
 
 ## Recovering all failures
 
 ```vibe
-function itemLabel(input: string) {
-  try {
-    return findItem(input).label
-  } catch (error) {
-    return `Unavailable (${error._tag})`
-  }
+effect itemLabel(input: string) {
+  return effect {
+    return (try findItem(input)).label
+  } catch (error) => `Unavailable (${error._tag})`
 }
 // string!!
 ```
@@ -191,11 +191,15 @@ Unavailable (InvalidCode)
 Unavailable (ItemMissing)
 ```
 
-The catch receives `InvalidCode | ItemMissing` and handles both, but only in causes with no defect or interruption; given several expected failures together, it receives the first and handles their whole cause.
+The catch expression receives `InvalidCode | ItemMissing` and handles both, but only in causes with no defect; given several expected failures together, it receives the first and handles their whole cause.
 
 ```vibe
-function itemLabelInline(input: string) {
-  return findItem(input).label catch (error) => `Unavailable (${error._tag})`
+effect itemLabelInline(input: string) {
+  const item = findItem(input) catch (error) => ({
+    code: "",
+    label: `Unavailable (${error._tag})`
+  })
+  return item.label
 }
 // string!!
 ```
@@ -206,30 +210,28 @@ Unavailable (InvalidCode)
 Unavailable (ItemMissing)
 ```
 
-After an expression, `x catch (error) => handler` runs `x` and passes an expected failure to the handler, as `Effect.catch` does, with the statement's guard: defects and interruption pass through. `x catch fallback` evaluates the fallback instead, as `Effect.orElseSucceed` does; see [Fallback](/error-management/016-fallback).
+After an Effect, `x catch (error) => handler` runs `x` and passes an expected failure to the handler, as `Effect.catch` does. Causes with a defect or only interruption pass through; an expected failure beside an interruption is recovered. `x catch fallback` evaluates the fallback instead; see [Fallback](/error-management/016-fallback).
 
-`Effect.catch(() => findItem(input), handler)` also recovers expected failures, with the same rule as source catch. `Effect.catchEager` has the same policy and can recover immediately when given an already computed `Exit`.
+`try Effect.catch(findItem(input), handler)` also recovers expected failures, with the same rule as source catch. `Effect.catchEager` has the same policy and can recover immediately when given an already computed `Exit`.
 
 ## Recovering selected failures
 
 ```vibe
-function labelOrMissing(input: string) {
-  try {
-    return findItem(input).label
-  } catch (error) {
-    return match (error) {
-      when ItemMissing: "Out of catalog";
-      default: throw error;
-    }
+effect labelOrMissing(input: string) {
+  return effect {
+    return (try findItem(input)).label
+  } catch effect (error) => match (error) {
+    when ItemMissing: "Out of catalog"
+    default: throw error
   }
 }
 // string!InvalidCode!
 
-function labelByTag(input: string) {
-  return Effect.catchTag(
-    () => findItem(input),
+effect labelByTag(input: string) {
+  return try catchTag(
+    findItem(input),
     "ItemMissing",
-    (error) => ({ code: error.code, label: "Out of catalog" })
+    (error) => succeed({ code: error.code, label: "Out of catalog" })
   )
 }
 ```
@@ -241,29 +243,29 @@ Out of catalog
 InvalidCode
 ```
 
-Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles that error class, and `default: throw error` passes the others on with their types (`string!InvalidCode!`). The expression form takes the same `match`: `findItem(input).label catch (error) => match (error) { when ItemMissing: "Out of catalog"; default: throw error; }`. A `match` without `default` must handle every failure the `try` block can raise (compile error EK4701), so a complete match needs no rethrow. `error is ItemMissing` tests one class in an `if`. `Effect.catchTag` removes the selected tagged case, and accepts a nonempty array of tags for one handler; `Effect.catchTags` takes a table of separate handlers.
+Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles that error class, and `default: throw error` passes the others on with their types (`string!InvalidCode!`). The expression form takes the same `match`: `effect { return (try findItem(input)).label } catch effect (error) => match (error) { when ItemMissing: "Out of catalog"; default: throw error; }`. A `match` without `default` must handle every failure the Effect can raise (compile error EK4701), so a complete match needs no rethrow. `error is ItemMissing` tests one class in an `if`. `catchTag` removes the selected tagged case, and accepts a nonempty array of tags for one handler; `catchTags` takes a table of separate handlers.
 
 ```vibe
-function withTagTable(input: string) {
-  return Effect.catchTags(() => findItem(input), {
-    InvalidCode: () => ({ code: "", label: "Enter a code" }),
-    ItemMissing: (error) => ({ code: error.code, label: "Out of catalog" })
+effect withTagTable(input: string) {
+  return try catchTags(findItem(input), {
+    InvalidCode: () => succeed({ code: "", label: "Enter a code" }),
+    ItemMissing: (error) => succeed({ code: error.code, label: "Out of catalog" })
   })
 }
 
-function withFilter(input: string) {
-  return Effect.catchFilter(
-    () => findItem(input),
+effect withFilter(input: string) {
+  return try catchFilter(
+    findItem(input),
     Filter.tagged("ItemMissing"),
-    (error) => ({ code: error.code, label: "Out of catalog" })
+    (error) => succeed({ code: error.code, label: "Out of catalog" })
   )
 }
 
-function withPredicate(input: string) {
-  return Effect.catchIf(
-    () => findItem(input),
-    (error) => error is ItemMissing,
-    () => ({ code: "", label: "Out of catalog" })
+effect withPredicate(input: string) {
+  return try catchIf(
+    findItem(input),
+    (error): error is ItemMissing => error._tag === "ItemMissing",
+    () => succeed({ code: "", label: "Out of catalog" })
   )
 }
 ```
@@ -287,26 +289,26 @@ error CatalogError {
   reason: Busy | Rejected
 }
 
-function remoteLabel(): string!CatalogError! {
+effect remoteLabel(): string!CatalogError! {
   throw new CatalogError({ reason: new Busy({ seconds: 4 }) })
 }
 
-function explainBusy() {
-  return Effect.catchReason(
-    () => remoteLabel(), "CatalogError", "Busy",
-    (reason) => `Try again in ${reason.seconds} seconds`
+effect explainBusy() {
+  return try catchReason(
+    remoteLabel(), "CatalogError", "Busy",
+    (reason) => succeed(`Try again in ${reason.seconds} seconds`)
   )
 }
 
-function explainReasons() {
-  return Effect.catchReasons(() => remoteLabel(), "CatalogError", {
-    Busy: (reason) => `Wait ${reason.seconds} seconds`,
-    Rejected: () => "Request rejected"
+effect explainReasons() {
+  return try catchReasons(remoteLabel(), "CatalogError", {
+    Busy: (reason) => succeed(`Wait ${reason.seconds} seconds`),
+    Rejected: () => succeed("Request rejected")
   })
 }
 
-function exposeReasons() {
-  return Effect.unwrapReason(() => remoteLabel(), "CatalogError")
+effect exposeReasons() {
+  return try unwrapReason(remoteLabel(), "CatalogError")
 }
 // string!Busy | Rejected!
 ```
@@ -322,37 +324,31 @@ These operators inspect the tagged error's readonly `reason` field. `catchReason
 ## Errors are classes
 
 ```vibe
-/** The base of a family: each subclass carries its own tag. */
-error AppError {
-  _tag: string
-  code: string
-}
-error Missing extends AppError { path: string }
-error Expired extends AppError
+error Missing { code: string; path: string }
+error Expired { code: string }
 
-function raise(error: Missing | Expired): never!(Missing | Expired) {
+effect raise(error: Missing | Expired) {
   throw error
 }
 
-function describeFailure(error: Missing | Expired) {
-  return Effect.catchTags(() => raise(error), {
-    Missing: (missing) => `missing ${missing.path}`,
-    Expired: (expired) => `expired ${expired.code}`
-  })
+effect describeFailure(error: Missing | Expired) {
+  return raise(error) catch (failure) => match (failure) {
+    when Missing and { let path }: `missing ${path}`
+    when Expired and { let code }: `expired ${code}`
+  }
 }
 // string!!
 
 error Normalized {
   code: string
-  static readonly docs = "https://example.com/codes"
-
-  constructor(input: string) {
-    super({ code: input.trim().toUpperCase() })
-  }
 
   get label(): string {
     return `${this._tag} ${this.code}`
   }
+}
+
+function normalizedError(input: string) {
+  return new Normalized({ code: input.trim().toUpperCase() })
 }
 ```
 
@@ -363,18 +359,58 @@ true
 Normalized PEN
 ```
 
-An `error` declaration is a named class. The keyword supplies its base and its tag; every other class feature keeps its TypeScript meaning: `abstract`, `extends` another error, `implements`, a constructor that calls `super`, methods, accessors, `override`, and static and private members. A field is a property written with a type and no initializer, and as in a class body, `;` or a new line ends it: a comma between fields is EK1013, whose quick fix writes `;`. A field is readonly, and the constructor takes it: a declaration without a constructor takes its fields as one object, and a constructor passes them to `super`.
+An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. A field is a property written with a type and no initializer, and as in a class body, `;` or a new line ends it: a comma between fields is EK1013, whose quick fix writes `;`. A field is readonly, and the constructor takes the fields as one object.
 
-Every error class is tagged with its own bare name, a subclass included, so `catchTag("Missing")` and `catchTags` route each subclass, while `is AppError` and a `when AppError:` arm match the whole family by class. Because a value of the base's type may be a subclass, the base of a family declares its tag type with a `_tag` field, `_tag: string`, and `catchTag("AppError")` then matches only instances of the base itself. An `abstract error` has that tag type without the field. A subclass whose base keeps the literal tag `"AppError"`, a `_tag` field whose type leaves out its error's own name, or an error that extends a class that is not an error, is EK2117. A subclass that declares fields and no constructor takes its base's fields and its own, as `new Missing({ code, path })` does; when the base's constructor takes other arguments, the subclass writes a constructor that calls `super` and sets its fields (EK2118).
+Use a union of error classes to describe several cases. Each class has its own bare name as its tag, so `catchTag("Missing")` and `catchTags` route the corresponding case. The generated matcher tests `_tag`, so `is` and `match` also match instances from another copy of the package.
+
+### Error families
+
+```vibe
+/** The base of a family: each subclass carries its own tag. */
+error FileError {
+  _tag: string
+  code: string
+}
+error MissingFile extends FileError { path: string }
+error ExpiredFile extends FileError
+
+effect raiseFile(error: MissingFile | ExpiredFile) {
+  throw error
+}
+
+effect describeFamily(error: MissingFile | ExpiredFile) {
+  return raiseFile(error) catch (failure) => match (failure) {
+    when MissingFile and { let path }: `missing ${path}`;
+    when ExpiredFile and { let code }: `expired ${code}`;
+  }
+}
+```
+
+```text
+missing /a
+expired E2
+true
+```
+
+An error that extends another error is not decided yet. VIP-13 settles an `error` declaration's fields, methods and getters, and rules out a constructor and a `_tag` override. Whether an `error` may extend another error, be `abstract`, `implements` an interface, or hold static and private members is open. The example shows the form under discussion: each subclass is tagged with its own bare name, so `catchTag("MissingFile")` routes it, while `is FileError` and a `when FileError:` arm match the whole family by class.
 
 ## Errors that encode
 
 ```vibe
-schema error StoreError {
-  _tag: string
-  key: string
+schema error NotStored { key: string; attempts: number }
+
+effect encodeStoreError() {
+  const encoded = try Schema.encodeEffect(NotStored)(new NotStored({ key: "a", attempts: 2 }))
+  return JSON.stringify(encoded)
 }
-schema error NotStored extends StoreError { attempts: number }
+
+effect decodeStoreError() {
+  const decoded = try Schema.decodeUnknownEffect(NotStored)({ _tag: "NotStored", key: "b", attempts: 1 })
+  return match (decoded) {
+    when NotStored: true
+    default: false
+  }
+}
 ```
 
 ```text
@@ -382,11 +418,11 @@ schema error NotStored extends StoreError { attempts: number }
 true
 ```
 
-`schema error` declares an error whose fields are schemas, so it encodes and decodes. It is short for `class StoreError extends Schema.TaggedError<StoreError>()("StoreError", { key: Schema.String })`: each field's type maps to a schema as a `schema` declaration's fields do, and a field whose type has no schema, such as a function, is EK2109, which names the field. The class rules above apply. A subclass extends another schema error with `Base.extend`, so its schema holds the base's fields and its own, and its own tag. A family's base schema accepts its subclasses: it encodes each instance with its class's schema and decodes by tag. Use `error` for a failure nothing encodes.
+`schema error` declares an error whose fields are schemas, so it encodes and decodes. It is short for `class NotStored extends Schema.TaggedError<NotStored>()("NotStored", { key: Schema.String, attempts: Schema.Number }) {}`: each field's type maps to a schema as a `schema` declaration's fields do, and a field whose type has no schema, such as a function, is EK2109, which names the field. Methods and getters are allowed, but a constructor or `_tag` override is not. Use `error` for a failure nothing encodes.
 
 ## Coming from Effect
 
-Functions replace `Effect.gen`; calls run the callee. Where it runs, `Effect.fail(error)` draws EK4834, whose quick fix writes `throw error`, and `Effect.catchTag(program, "Tag", handler)` draws EK4835, whose quick fix writes `program catch (e) => match (e) { … }` ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). Pass a program such as `() => findItem(input)` when a recovery operator needs work it can control.
+Effect functions replace `Effect.gen`; calls return Effects that the caller runs with `try` or a catch expression. `Effect.fail(error)` draws EK4834, whose quick fix writes `throw error`, and `Effect.catchTag(program, "Tag", handler)` draws EK4835 with a quick fix for catch-and-match recovery ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). Pass an Effect such as `findItem(input)` when a recovery operator needs work it can control. Support for the new forms arrives with the compiler's VIP implementation.
 
 ---
 

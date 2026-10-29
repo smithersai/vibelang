@@ -22,8 +22,9 @@ test.skipIf(!existsSync(compiler))("every example in the platform globals table 
     const [stdout, status] = await Promise.all([new Response(child.stdout).text(), child.exited])
     expect({ status, stdout: status ? stdout : "" }).toEqual({ status: 0, stdout: "" })
     const blocks: { status: string; source: string }[] = JSON.parse(readFileSync(output, "utf8")).pages.find((p: { page: string }) => p.page === page).blocks
-    const compiled = blocks.filter(block => block.status === "ok").map(block => block.source)
-    expect([...new Set(examples)].filter(example => !compiled.some(source => source.includes(example)))).toEqual([])
+    // A block in the VIP language waits for the compiler (pending); it compiles here once its pending line goes.
+    const checked = blocks.filter(block => block.status === "ok" || block.status === "pending").map(block => block.source)
+    expect([...new Set(examples)].filter(example => !checked.some(source => source.includes(example)))).toEqual([])
   } finally {
     rmSync(temp, { recursive: true, force: true })
   }

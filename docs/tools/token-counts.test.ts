@@ -79,6 +79,7 @@ test("corpus claims count longer pairs, weight combined tokens and ignore direct
   const measured = measurePairs(markdown)
   expect(measured).toMatchObject({ longer: 1, saving: "0.0" })
   expect(measurePairs(markdown.replace("const answer = 1", "// fragment\nconst answer = 1"))).toEqual(measured)
+  expect(measurePairs(markdown.replace(fence("vibe", "1"), fence("vibe", "// pending: VIP-1, VIP-5\n1")))).toEqual(measured)
   const claims = measuredClaims()
   expect(readFileSync(resolve(import.meta.dir, "../../README.md"), "utf8")).toContain(claims["README.md"])
 })

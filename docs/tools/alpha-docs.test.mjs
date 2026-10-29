@@ -11,11 +11,12 @@ const supportedEffect = JSON.parse(readFileSync(new URL("../../packages/runtime/
 test("1: onboarding explains calls into local TypeScript and npm at the boundary", () => {
   for (const path of ["README.md", "docs/user/src/setup/existing-project.md"]) {
     const text = read(path)
-    assert.match(text, /your own.*\.ts.*npm/)
-    for (const term of ["try", "trusted", "trustedPackages", "EK4401", "EK4402", "EK4403"]) assert.ok(text.includes(term), path + ": " + term)
+    assert.match(text, /your (?:own )?`\.ts` (?:code|functions) and npm packages/)
+    assert.ok(text.includes("Effect.try"), path + ": Effect.try")
     assert.match(text, /114-vibelang-for-effect-users/)
     assert.match(text, /012-devtools/)
-    assert.match(text, /import \{ parseSettings \} from "\.\/settings\.ts"\nerror BadSettings \{ cause: unknown \}\n\nfunction settings\(text: string\) \{\n  \/\/ try's first argument is plain TypeScript, not VibeLang\.\n  return try\(\(text\) => parseSettings\(text\), \(cause\) => new BadSettings\(\{ cause \}\), text\)\n\}/)
+    // A function that may throw is wrapped with Effect's own Effect.try and run with try (VIP-4, VIP-5).
+    assert.match(text, /import \{ parseSettings \} from "\.\/settings\.ts"\nerror BadSettings \{ cause: unknown \}\n\neffect settings\(text: string\) \{\n  return try Effect\.try\(/)
   }
 })
 

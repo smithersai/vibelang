@@ -34,3 +34,4 @@ FuzzEditor editor:quickfix-error:EK2113:TS2345 compiler the quick fix "Match on 
 FuzzEditor corpus:cause-fix-plain-value compiler the minimal reproduction of editor:quickfix-error:EK2113:TS2345
 FuzzFix fix:unapplied:EK2113:no-fix compiler Chapter 28 says EK2113 marks a retired spelling "with a quick fix", and the registry's fix rewrites only `try { return X } catch (c: Cause) { return Y }`: a Cause clause after a try block that throws, or followed by another clause, draws EK2113 with no quick fix and no explanation, and --fix leaves it; a fix or a note saying what a rewrite would change is missing (Chapter 28, Diagnostics and Rewrites keep meaning, D217, D372)
 FuzzFix corpus:cause-catch-throw-body compiler the minimal reproduction of fix:unapplied:EK2113:no-fix
+FuzzEditor  editor:quickfix-error:EK9100*  superseded  VIP-1: a keyword, effect or async, decides a function's form, so EK9100's annotation quick fix for an inferred form is obsolete

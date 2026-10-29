@@ -5,32 +5,34 @@ A latch is a reusable gate for fibers: closed, it makes callers wait; open, it l
 ## Waiting at a reusable gate
 
 ```vibe
-// run: Console.log(initializeThenWork())
-function initializeThenWork() {
-  const ready = Latch.make()
-  const worker = fork {
-    Latch.await(ready)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
+// run: try Console.log(try initializeThenWork())
+effect initializeThenWork() {
+  const ready = try Latch.make()
+  const worker = fork effect {
+    try Latch.await(ready)
     return "processing enabled"
   }
-  sleep("20 millis")
-  Latch.open(ready)
+  try sleep("20 millis")
+  try Latch.open(ready)
   return join worker
 }
 // Output: processing enabled
 ```
 
-`Latch.await` waits until the latch lets the fiber proceed, without blocking other fibers; on an open latch it returns at once. `Latch.whenOpen` wraps a program when the wait and action read better as one expression.
+`try Latch.await(ready)` waits until the latch lets the fiber proceed, without blocking other fibers; on an open latch it returns at once. `Latch.whenOpen` wraps an Effect value when the wait and action read better as one expression.
 
 ## Opening and closing
 
 ```vibe
-// run: Console.log(reopenGate())
-function reopenGate() {
-  const gate = Latch.make(true)
-  Latch.await(gate) // Passes immediately.
-  Latch.close(gate)
-  const waiting = fork Latch.whenOpen(gate, () => "allowed again")
-  Latch.open(gate)
+// pending: VIP-1, VIP-2, VIP-5, VIP-14, VIP-17
+// run: try Console.log(try reopenGate())
+effect reopenGate() {
+  const gate = try Latch.make(true)
+  try Latch.await(gate) // Passes immediately.
+  try Latch.close(gate)
+  const waiting = fork Latch.whenOpen(gate, effect { return "allowed again" })
+  try Latch.open(gate)
   return join waiting
 }
 // Output: allowed again
@@ -41,11 +43,12 @@ Opening releases current waiters and lets future callers through. Closing makes 
 ## Choosing the initial state
 
 ```vibe
-// run: const gates = createGates(); Console.log(gates.starting.isOpen(), gates.paused.isOpen(), gates.active.isOpen())
-function createGates() {
-  const starting = Latch.make()      // Closed by default.
-  const paused = Latch.make(false)   // Explicitly closed.
-  const active = Latch.make(true)    // Open from the start.
+// pending: VIP-1, VIP-5, VIP-14
+// run: const gates = try createGates(); try Console.log(Latch.isOpen(gates.starting), Latch.isOpen(gates.paused), Latch.isOpen(gates.active))
+effect createGates() {
+  const starting = try Latch.make()      // Closed by default.
+  const paused = try Latch.make(false)   // Explicitly closed.
+  const active = try Latch.make(true)    // Open from the start.
   return { starting, paused, active }
 }
 // Output: false false true
@@ -56,12 +59,13 @@ Create the latch once and share it with every operation the condition controls. 
 ## Choosing a latch or a permit pool
 
 ```vibe
-// run: gatedExclusiveWork()
-function gatedExclusiveWork() {
-  const initialized = Latch.make(true)
-  const exclusive = Semaphore.make(1)
-  Latch.await(initialized)
-  return Semaphore.withPermits(exclusive, 1, () => Console.log("updating shared device"))
+// pending: VIP-1, VIP-5, VIP-14
+// run: try gatedExclusiveWork()
+effect gatedExclusiveWork() {
+  const initialized = try Latch.make(true)
+  const exclusive = try Semaphore.make(1)
+  try Latch.await(initialized)
+  return try Semaphore.withPermits(exclusive, 1, Console.log("updating shared device"))
 }
 // Output: updating shared device
 ```

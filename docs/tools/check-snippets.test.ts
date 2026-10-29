@@ -351,3 +351,39 @@ test("Node ambient types are opt-in through a snippet header", () => {
     expect(JSON.parse(readFileSync(join(node, "tsconfig.json"), "utf8")).compilerOptions.types).toEqual(["node"])
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+test("a pending-decision line holds a block out with its topic beside its VIPs", () => {
+  const [both, decision] = extract([
+    "```vibe", "// pending: VIP-13", "// pending-decision: error-extends", "error A { code: string }", "```",
+    "```vibe", "// pending-decision: catch-precedence", "const x = 1", "```"
+  ].join("\n"))
+  expect(both.pending).toEqual(["VIP-13", "decision:error-extends"])
+  expect(decision.pending).toEqual(["decision:catch-precedence"])
+  expect(decision.fragment).toBe(true)
+})
+
+test("a block importing a pending block's module waits for the same VIPs", () => {
+  const blocks = extract([
+    "```vibe", "// src/notifications.vibe", "// pending: VIP-1, VIP-5", "export effect notify() { return 1 }", "```",
+    "```ts", "// src/host.ts", 'import { notify } from "./notifications.js"', "export const run = notify", "```",
+    "```ts", "// src/other.ts", "export const two = 2", "```",
+    "```ts", "// src/build.ts", 'export const load = () => import("./notifications.js")', "```"
+  ].join("\n"))
+  expect(blocks[1].pending).toEqual(["VIP-1", "VIP-5"])
+  expect(blocks[1].fragment).toBe(true)
+  expect(blocks[2].pending).toBeUndefined()
+  expect(blocks[3].pending).toEqual(["VIP-1", "VIP-5"])
+})
+
+test("a block marked pending names its VIPs, stays out of the program and reports pending", () => {
+  const [pending, ready] = extract(["```vibe", "// main.vibe", "// pending: VIP-1, VIP-5", "effect load(id: string) { return try fetchUser(id) }", "// Output: Ada", "```", "```vibe", "const x = 1", "```"].join("\n"))
+  expect(pending.pending).toEqual(["VIP-1", "VIP-5"])
+  expect(pending.filename).toBe("main.vibe")
+  expect(ready.pending).toBeUndefined()
+  expect(classify(pending, [diagnostic("TS1005")]).status).toBe("pending")
+  const dir = join(mkdtempSync(join(tmpdir(), "pending-")), "project")
+  writeProject(dir, [pending, ready], { omitFragments: true })
+  const files: string[] = JSON.parse(readFileSync(join(dir, "tsconfig.json"), "utf8")).files
+  expect(files.includes("main.vibe")).toBe(false)
+  expect(files.length).toBe(1)
+})

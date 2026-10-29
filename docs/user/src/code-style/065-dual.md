@@ -1,18 +1,19 @@
 # Dual APIs
 
-Many Effect APIs are dual: they take the data then the options (data-first), or the options then the data (data-last). VibeLang keeps both. With the pipe operator, `|>`, and method syntax on Effect's data types, data-first usually reads best.
+Many Effect APIs are dual: they take the data then the options (data-first), or the options then the data (data-last). VibeLang keeps both. With the pipe operator, `|>`, data-first usually reads best.
 
 ## Data first or data last
 
 ```vibe
-// run: Console.log(JSON.stringify(compare()))
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try compare()))
 const source = Stream.make(5, 10, 15)
-const direct = source.map((n) => n / 5)
+const direct = Stream.map(source, (n) => n / 5)
 const stage = Stream.map((n: number) => n / 5)
 const piped = pipe(source, stage)
 
-function compare() {
-  return [direct.runCollect(), piped.runCollect()]
+effect compare() {
+  return [try Stream.runCollect(direct), try Stream.runCollect(piped)]
 }
 // Both arrays are [1, 2, 3].
 ```
@@ -21,19 +22,21 @@ function compare() {
 [[1,2,3],[1,2,3]]
 ```
 
-The direct form supplies `source` in the first call; the data-last form builds a stage, then `pipe` supplies `source`. Both build the same kind of Stream value and process nothing until consumed. The builders and their stages are trusted Effect library functions.
+The direct form supplies `source` in the first call; the data-last form builds a stage, then `pipe` supplies `source`. Both build the same kind of Stream value and process nothing until consumed.
 
 ## Methods
 
 ```vibe
-// run: Console.log(JSON.stringify(methods()))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try methods()))
 const missing = Cause.fail("missing port")
 
-function methods() {
+effect methods() {
+  const amount = try Effect.try(() => BigDecimal.fromNumberUnsafe(-2.5))
   return {
-    error: missing.findErrorOption().getOrElse(() => "none"),
-    amount: BigDecimal.fromNumberUnsafe(-2.5).abs().format(),
-    pairs: Stream.make(1, 2).zipLeft(Stream.make(3, 4)).runCollect()
+    error: Option.getOrElse(Cause.findErrorOption(missing), () => "none"),
+    amount: BigDecimal.format(BigDecimal.abs(amount)),
+    pairs: try Stream.runCollect(Stream.zipLeft(Stream.make(1, 2), Stream.make(3, 4)))
   }
 }
 ```
@@ -42,7 +45,7 @@ function methods() {
 {"error":"missing port","amount":"2.5","pairs":[1,2]}
 ```
 
-A value of one of Effect's data types takes its module's data-first functions as methods: `missing.findErrorOption()` is `Cause.findErrorOption(missing)`. A data-first function is an overload that takes the value first. Effect names that parameter `self`, or ends its name in `OrOptions`. These functions name it otherwise and are methods too:
+Use Effect's module functions to transform its data types. A data-first function is an overload that takes the value first. For example, `Cause.findErrorOption(missing)` returns an Option, which `Option.getOrElse` unwraps. A value's own methods, such as an Effect's `.pipe`, keep their library meaning.
 
 | Module | Functions |
 | --- | --- |
@@ -54,23 +57,24 @@ A value of one of Effect's data types takes its module's data-first functions as
 | `Schedule` | `toStep`, `toStepWithMetadata`, `toStepWithSleep` |
 | `Stream` | `cross`, `crossWith`, `mergeLeft`, `mergeRight`, `race`, `toChannel`, `zipLatest`, `zipLatestWith`, `zipLeft`, `zipRight`, `zipWith`, `zipWithArray` |
 
-Only the data-first overloads are methods: `stream.zipLeft(other)` calls `Stream.zipLeft(stream, other)`, and `Stream.zipLeft(other)`, the data-last form, stays a function. Runners such as `Effect.runPromise` and constructors such as `Effect.acquireRelease` take an Effect first but do not operate on it, so they are not methods.
+A data-last overload such as `Stream.zipLeft(other)` returns a function for `pipe`. A data-first call such as `Stream.zipLeft(source, other)` returns the transformed Stream. Neither consumes the Stream.
 
 ## Direct calls and nested programs
 
 ```vibe
-// run: Console.log(directLookup(), nestedLookup())
-function lookup() {
-  sleep("10 millis")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try directLookup(), try nestedLookup())
+effect lookup() {
+  try sleep("10 millis")
   return "found"
 }
 
-function directLookup() {
-  return timeout(() => lookup(), "1 second")
+effect directLookup() {
+  return try timeout(lookup(), "1 second")
 }
 
-function nestedLookup() {
-  return timeout(() => retry(() => lookup(), { times: 2 }), "1 second")
+effect nestedLookup() {
+  return try timeout(retry(lookup(), { times: 2 }), "1 second")
 }
 ```
 
@@ -78,21 +82,24 @@ function nestedLookup() {
 found found
 ```
 
-`retry` and `timeout` take a program first, so nest them, each around an arrow: `retry` reruns `lookup()` on each attempt, and `timeout` limits the whole retried computation. A pipe's `%` is the value of the expression before its `|>`, so use `|>` to transform a result. Passing `%` to `retry` or `timeout`, as in `lookup() |> retry(%, policy)`, still compiles but is being retired.
+`retry` and `timeout` take Effect values. `retry` reruns its Effect on each attempt, and the outer `timeout` limits the whole retried computation. A pipe's `%` is the value before its `|>`, so `lookup() |> retry(%, policy)` passes the Effect to `retry`.
 
 ## Choosing a form
 
 ```vibe
-// run: Console.log(boundedLookup(), reusableLookup())
-function boundedLookup() {
-  return retry(() => lookup(), { times: 2 })
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-23
+// run: try Console.log(try boundedLookup(), try reusableLookup)
+effect boundedLookup() {
+  return try retry(lookup(), { times: 2 })
 }
 
-const reusableLookup = () => timeout(() => retry(() => lookup(), { times: 2 }), "1 second")
+const reusableLookup = lookup()
+  |> retry(%, { times: 2 })
+  |> timeout(%, "1 second")
 ```
 
 ```output
 found found
 ```
 
-A direct call suits one operator; nest calls for several. Bind the program to a function, as `reusableLookup` does, to reuse it instead of its result. To transform a completed value, ordinary statements are usually clearer than `Effect.map` or `Effect.flatMap`.
+A direct call suits one operator. Nest calls or use a pipe for several. Bind an Effect value to reuse it. Each `try reusableLookup` runs the computation again. To transform a completed value, ordinary statements are usually clearer than `Effect.map` or `Effect.flatMap`.

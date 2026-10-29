@@ -1,6 +1,6 @@
 # Other editors
 
-Any editor with an LSP client can run VibeLang's language server, `vibelang --lsp --stdio`: the compiler the project installs as `node_modules/.bin/vibelang`. It serves the `.vibe` and `.ts` files of the program `tsconfig.json` describes. It reports diagnostics on request, through LSP 3.17 pull diagnostics (`textDocument/diagnostic`), so the client must support pull diagnostics.
+Any editor with an LSP client can run VibeLang's language server, `vibelang --lsp --stdio`: the compiler the project installs as `node_modules/.bin/vibelang`. It serves the `.vibe` and `.ts` files selected by the project configuration. VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`. It reports diagnostics on request, through LSP 3.17 pull diagnostics (`textDocument/diagnostic`), so the client must support pull diagnostics.
 
 ## 1. Check the server
 
@@ -18,7 +18,7 @@ It prints `VibeLang 0.0.11 (TypeScript 7.1.0-dev)`.
 | --- | --- |
 | Command | `node_modules/.bin/vibelang --lsp --stdio`, or its absolute path if the client needs one |
 | Files | `*.vibe`; add `*.ts` to serve TypeScript files too |
-| Root marker | `tsconfig.json` |
+| Root marker | `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` |
 | Language id | `vibe` or `typescript` |
 
 If the server answers for `.ts` files, turn off the editor's other TypeScript server for the project, or both report every `.ts` file. JetBrains IDEs run the server through the LSP4IJ plugin.
@@ -30,3 +30,5 @@ Add this line to the project's `.gitattributes`:
 ```text
 *.vibe linguist-language=TypeScript
 ```
+
+Support for the new forms arrives with the compiler's VIP implementation.

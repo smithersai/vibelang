@@ -17,8 +17,9 @@ function mapLines(markdown, transform) {
   }).join('\n')
 }
 
+// A pending line names the VIPs a block waits for; only the snippet checker reads it.
 export function stripRunDirectives(markdown) {
-  return mapLines(markdown, (line, code) => code && /^\s*\/\/\s*run:/.test(line) ? undefined : line)
+  return mapLines(markdown, (line, code) => code && /^\s*\/\/\s*(?:run|pending|pending-decision):/.test(line) ? undefined : line)
 }
 
 // Decision IDs belong to the spec. Remove only comma-separated annotations;

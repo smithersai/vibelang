@@ -1,20 +1,21 @@
 # Retrying
 
-Retry transient domain failures when a new attempt has a useful chance of succeeding. A retry reruns the supplied program from the start, side effects included.
+Retry transient domain failures when a new attempt has a useful chance of succeeding. A retry reruns the supplied Effect from the start, side effects included.
 
 [Upstream page](https://effect.website/docs/v4/error-management/retrying)
 
 ## Retrying failed computations
 
 ```vibe
-// run: Console.log(loadWithRetries())
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try loadWithRetries())
 error Busy { attempt: number }
 
-function loadWithRetries() {
+effect loadWithRetries() {
   let attempts = 0
-  return retry(() => {
+  return try retry(effect {
     attempts += 1
-    Console.log(`Attempt ${attempts}`)
+    try Console.log(`Attempt ${attempts}`)
     if (attempts < 3) throw new Busy({ attempt: attempts })
     return "Snapshot ready"
   }, { times: 3 })
@@ -28,24 +29,25 @@ Attempt 3
 Snapshot ready
 ```
 
-The first attempt always runs; `{ times: 3 }` allows three more, at most four executions. State declared outside the retry callback, such as `attempts`, persists across attempts; locals inside it start fresh.
+The first attempt always runs; `{ times: 3 }` allows three more, at most four executions. State declared outside the Effect block, such as `attempts`, persists across attempts; locals inside it start fresh.
 
 A failure ends the current attempt before the retry begins. Defects and interruption don't trigger a retry. Retried writes need an application policy that makes repeated execution safe.
 
 ## Selecting retryable domain errors
 
 ```vibe
-// run: Console.log(Effect.flip(() => sendTransient()).transient)
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log((try flip(sendTransient())).transient)
 error RequestRejected {
   transient: boolean
 }
 
-function sendRequest(): string!RequestRejected! {
+effect sendRequest(): string!RequestRejected! {
   throw new RequestRejected({ transient: false })
 }
 
-function sendTransient() {
-  return retry(() => sendRequest(), {
+effect sendTransient() {
+  return try retry(sendRequest(), {
     times: 4,
     while: (error) => error.transient
   })
@@ -61,17 +63,18 @@ false
 ## Controlling timing and limits
 
 ```vibe
-// run: Console.log(Effect.flip(() => sendWithBackoff())._tag); Console.log(Effect.flip(() => sendThreeMoreTimes())._tag)
-function sendWithBackoff() {
-  return retry(() => sendRequest(), {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log((try flip(sendWithBackoff()))._tag); try Console.log((try flip(sendThreeMoreTimes()))._tag)
+effect sendWithBackoff() {
+  return try retry(sendRequest(), {
     times: 4,
     while: (error) => error.transient,
     schedule: Schedule.exponential("150 millis")
   })
 }
 
-function sendThreeMoreTimes() {
-  return retry(() => sendRequest(), Schedule.recurs(3))
+effect sendThreeMoreTimes() {
+  return try retry(sendRequest(), Schedule.recurs(3))
 }
 ```
 
@@ -80,18 +83,19 @@ RequestRejected
 RequestRejected
 ```
 
-A schedule controls delay and can add its own stopping condition; with `times`, predicates, and a schedule combined, retrying stops when the applicable policy says to. `Schedule.recurs(3)` permits three retries. `Effect.repeat` repeats after success.
+A schedule controls delay and can add its own stopping condition; with `times`, predicates, and a schedule combined, retrying stops when the applicable policy says to. `Schedule.recurs(3)` permits three retries. `repeat` repeats after success.
 
 ## Recovering after retries end
 
 ```vibe
-// run: Console.log(sendOrQueue())
-function sendOrQueue() {
-  return Effect.retryOrElse(
-    () => sendRequest(),
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try sendOrQueue())
+effect sendOrQueue() {
+  return try retryOrElse(
+    sendRequest(),
     Schedule.recurs(2),
-    (error, retries) => {
-      Console.log(`Queued after ${retries} retries; transient=${error.transient}`)
+    effect (error, retries) => {
+      try Console.log(`Queued after ${retries} retries; transient=${error.transient}`)
       return "Queued for later"
     }
   )
@@ -107,4 +111,4 @@ Queued for later
 
 ## Coming from Effect
 
-`retry(() => sendRequest(), policy)` and `Effect.retry(() => sendRequest(), policy)` both pass the request as a program, so each attempt reruns the call. Passing the call itself, `retry(sendRequest(), policy)`, still compiles but is being retired. When an attempt needs several statements, use a callback or block.
+Pass the Effect directly: `try retry(sendRequest(), policy)`. Calling `sendRequest()` constructs the Effect without running its body. Every retry runs it again. Use `effect { … }` for an attempt containing several statements.

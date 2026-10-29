@@ -2,15 +2,18 @@
 
 Install VibeLang's packages in a project with a `package.json` and check that the compiler runs; then set up the build.
 
-Call your own `.ts` functions and npm packages through `try`, `trusted`, or `"trustedPackages"` ([TypeScript boundaries](../vibelang-features/114-vibelang-for-effect-users.md#keep-platform-work-in-effect)). For example, import your parser and pass its input through a hatch:
+Call your own `.ts` functions and npm packages through `Effect.try` when they may throw, or `tryPromise` for Promises ([TypeScript boundaries](../vibelang-features/114-vibelang-for-effect-users.md#keep-platform-work-in-effect)). For example, import your parser and capture its input in the callback:
 
 ```vibe
+// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 
-function settings(text: string) {
-  // try's first argument is plain TypeScript, not VibeLang.
-  return try((text) => parseSettings(text), (cause) => new BadSettings({ cause }), text)
+effect settings(text: string) {
+  return try Effect.try({
+    try: () => parseSettings(text),
+    catch: (cause) => new BadSettings({ cause })
+  })
 }
 ```
 
@@ -19,13 +22,13 @@ wraps. For example, `settings.vibe` beside `settings.ts` both emit
 `settings.js`, causing TS5056 in the CLI, Vite and Vitest. Name the wrapper
 `load-settings.vibe` instead.
 
-Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped foreign calls as `EK4401`, platform calls as `EK4402`, and uncontrolled time or randomness reads as `EK4403` ([diagnostics](../getting-started/012-devtools.md#diagnostics-completions-and-refactors)).
+Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped foreign calls as `EK4401`, platform calls as `EK4402`, and the web's clock and randomness reads, such as `crypto.randomUUID()`, as `EK4403` ([diagnostics](../getting-started/012-devtools.md#diagnostics-completions-and-refactors)). A function that cannot throw can be called directly. Library declarations describe thrown types with `@throws {E}`. A missing annotation means the call may throw `unknown`.
 
 ## 1. Check package.json
 
 `package.json` must have `"type": "module"`. Before adding it, check how this changes Node's loading of your project's `.js` files.
 
-The VibeLang runtime requires `effect` 4.0.6 exactly. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. If your project depends on another `effect` version, review the migration before changing it.
+The VibeLang runtime requires `effect` 4.0.6 exactly. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. If your project depends on another `effect` version, review the migration before changing it. Upgrade an existing project to the pinned Effect version first, fix any failures, and verify its tests. Convert files to `.vibe` only after the Effect upgrade passes.
 
 ## 2. Install the packages
 
@@ -57,7 +60,7 @@ npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@
 
 | Package | Install as | Purpose |
 | --- | --- | --- |
-| `vibelang-runtime` | Dependency | The continuation kernel and helpers that compiled code imports |
+| `vibelang-runtime` | Dependency | Small helpers used by compiled code |
 | `effect`, `@effect/platform-node` | Dependency | Effect 4.0.6 and its Node platform |
 | `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
@@ -89,7 +92,9 @@ Rename a `.ts` file that uses Effect to `.vibe`, then let the compiler rewrite i
 npx vibelang -p tsconfig.json --fix --noEmit
 ```
 
-`--fix` applies each rewrite that keeps the program's meaning: Effect error and service classes become `error` and `service` declarations, `Effect.succeed` and `Effect.fail` become values and `throw`, catch combinators become `catch`, `Match` chains become `match`, Option pipes become Option's methods, prelude imports go, and an `Effect.gen` that is a function's whole body is written in direct style ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). It refuses a rewrite that would change what other code receives, and prints why. An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, stays EK1002 for now: write its body by hand inside `export function main() { provide AppLive { ... } }`, without `Effect.gen`, `function*` or `yield*`, reading a service as `Users()`.
+`--fix` applies each rewrite that keeps the program's meaning: Effect error and service classes become `error` and `service` declarations, `Effect.succeed` and `Effect.fail` become returned values and `throw`, catch combinators become `catch`, `Match` chains become `match`, Option pipes become module calls, prelude imports go, and an `Effect.gen` that is a function's whole body becomes an effect function with `try` replacing `yield*` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). It refuses a rewrite that would change what other code receives, and prints why. An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, stays EK1002 for now: write its body by hand inside `export effect main() { provide AppLive { ... } }`, reading a service as `try Users`.
+
+Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
 
 ## Next
 

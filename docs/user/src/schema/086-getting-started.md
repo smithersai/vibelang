@@ -1,18 +1,19 @@
 # Getting Started
 
-`Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [trusted call rules](085-introduction.md#configuring-compiler-prerequisites) apply to the plain builders below.
+`Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [call rules](085-introduction.md#configuring-compiler-prerequisites) apply to the plain builders below.
 
 ## Declaring schemas
 
 ```vibe
-// run: Console.log(JSON.stringify(receive({ tracking: "box-76", pieces: "2" })))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try receive({ tracking: "box-76", pieces: "2" }))) })
 const Shipment = Schema.Struct({
   tracking: Schema.NonEmptyString,
   pieces: Schema.FiniteFromString
 })
 
-function receive(input: unknown) {
-  return Schema.decodeUnknownEffect(Shipment)(input)
+effect receive(input: unknown) {
+  return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 ```
 
@@ -25,6 +26,7 @@ Each field describes its own representation and checks; the struct combines them
 ## Extracting decoded, encoded, and service types
 
 ```vibe
+// pending: VIP-14
 type Shipment = typeof Shipment.Type
 type ShipmentWire = typeof Shipment.Encoded
 type ReadServices = typeof Shipment.DecodingServices
@@ -41,7 +43,8 @@ The decoded `pieces` is a number, the encoded one a string, and both service typ
 ## Understanding default immutability
 
 ```vibe
-// run: Console.log(JSON.stringify(Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] })))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }))) })
 schema Batch {
   shipments: ReadonlyArray<Shipment>
 }
@@ -57,7 +60,8 @@ schema Batch {
 ## Declaring a schema for any type
 
 ```vibe
-// run: Console.log(JSON.stringify(Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }))); Console.log(Schema.is(Status)("lost"))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }))); try Console.log(Schema.is(Status)("lost")) })
 schema Status = "pending" | "delivered" | "returned"
 schema Delivery = { status: Status; shipments: ReadonlyArray<Shipment> }
 // Status: "pending" | "delivered" | "returned"
@@ -73,9 +77,10 @@ false
 ## Choosing synchronous, result, or effect decoding
 
 ```vibe
-// run: Console.log(decodeWithEffects({ tracking: "box-76", pieces: "2" }).pieces); Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); Console.log(decodeWithDomainError({ tracking: "box-76", pieces: "2" }).pieces); try { decodeWithDomainError({}) } catch (error) { Console.log(error._tag) }; Console.log(decodeAsData({}))
-function decodeWithEffects(input: unknown) {
-  return Schema.decodeUnknownEffect(Shipment)(input)
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try decodeWithEffects({ tracking: "box-76", pieces: "2" })).pieces); try Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); try Console.log((try decodeWithDomainError({ tracking: "box-76", pieces: "2" })).pieces); try Effect.catch(decodeWithDomainError({}), (error) => Console.log(error._tag)); try Console.log(decodeAsData({})) })
+effect decodeWithEffects(input: unknown) {
+  return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 
 function decodeAsData(input: unknown) {
@@ -84,8 +89,8 @@ function decodeAsData(input: unknown) {
   return `received ${result.success.tracking}`
 }
 
-function decodeWithDomainError(input: unknown) {
-  return Schema.decodeUnknownEffect(Shipment)(input) catch (cause) => throw new InvalidShipment({ cause })
+effect decodeWithDomainError(input: unknown) {
+  return Schema.decodeUnknownEffect(Shipment)(input) catch effect (cause) => { throw new InvalidShipment({ cause }) }
 }
 
 error InvalidShipment {
@@ -102,21 +107,22 @@ Missing key
   at ["tracking"]
 ```
 
-Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding services, and fails with `Schema.SchemaError`. `decodeUnknownResult` returns success or failure as data and needs a synchronous, service-free decoding path. An unexpected exception from a synchronous callback is a defect, which ordinary `catch` does not handle.
+Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding services, and fails with `Schema.SchemaError`. `decodeUnknownResult` returns success or failure as data and needs a synchronous, service-free decoding path. An unexpected exception from a synchronous callback is a defect, which `catch` does not handle.
 
-`decodeUnknownSync` throws on invalid input. Called directly, that exception is a defect; the example instead maps `decodeUnknownEffect`’s expected failure to `InvalidShipment` with ordinary `catch`. A plain function's catch also ignores defects; EK2004 warns at a catch whose try block has E = `never`, and says defects pass through it. The `Exit` and `Option` variants give other synchronous result shapes; an `Exit` stays data until called. The `Promise` variant decodes asynchronously without services and is consumed through the `try` hatch. The synchronous variants cannot complete asynchronous conversions, even with no services.
+`decodeUnknownSync` throws on invalid input. Wrap that call with `Effect.try` before calling it from effect code; the example instead maps `decodeUnknownEffect`’s expected failure to `InvalidShipment` with `catch effect`. The `Exit` and `Option` variants give other synchronous result shapes; an `Exit` stays data until run with `try`. The `Promise` variant decodes asynchronously without services and is wrapped with `tryPromise` in effect code. The synchronous variants cannot complete asynchronous conversions, even with no services.
 
 ## Encoding values
 
 ```vibe
-// run: Console.log(JSON.stringify(send({ tracking: "box-76", pieces: 2 }))); try { sendUntrusted({ tracking: "box-76", pieces: "2" }) } catch (error) { Console.log(error._tag) }
-function send(shipment: Shipment) {
-  return Schema.encodeEffect(Shipment)(shipment)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try send({ tracking: "box-76", pieces: 2 }))); try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag)) })
+effect send(shipment: Shipment) {
+  return try Schema.encodeEffect(Shipment)(shipment)
 }
 // ShipmentWire!Schema.SchemaError!
 
-function sendUntrusted(input: unknown) {
-  return Schema.encodeUnknownEffect(Shipment)(input)
+effect sendUntrusted(input: unknown) {
+  return try Schema.encodeUnknownEffect(Shipment)(input)
 }
 ```
 
@@ -130,14 +136,13 @@ Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` acce
 ## Handling schema failures
 
 ```vibe
-// run: Console.log(receiveOrExplain({ tracking: "box-76", pieces: "2" })); Console.log(receiveOrExplain({}))
-function receiveOrExplain(input: unknown) {
-  try {
-    const shipment = receive(input)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({})) })
+effect receiveOrExplain(input: unknown) {
+  return effect {
+    const shipment = try receive(input)
     return `accepted ${shipment.tracking}`
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 // string!!
 ```
@@ -153,9 +158,10 @@ The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its
 ## Configuring excess properties and error collection
 
 ```vibe
-// run: try { receiveStrict({ tracking: "box-76", pieces: "2", extra: true }) } catch (error) { Console.log(error._tag) }; Console.log(JSON.stringify(Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true })))
-function receiveStrict(input: unknown) {
-  return Schema.decodeUnknownEffect(Shipment)(input, {
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }))) })
+effect receiveStrict(input: unknown) {
+  return try Schema.decodeUnknownEffect(Shipment)(input, {
     onExcessProperty: "error",
     errors: "all"
   })
@@ -178,7 +184,8 @@ Pass options when creating the parser or when calling it; call options take prec
 ## Deriving guards and assertions
 
 ```vibe
-// run: Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); Console.log(assertShipment({ tracking: "box-76", pieces: 2 }))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); try Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); try Console.log(try Effect.try(() => assertShipment({ tracking: "box-76", pieces: 2 }))) })
 const isShipment = Schema.is(Shipment)
 
 function shipmentTracking(input: unknown) {
@@ -198,10 +205,10 @@ undefined
 box-76
 ```
 
-Guards and assertions check the decoded type: a numeric `pieces` is valid, a string `pieces` is not. `Schema.is` returns a type predicate; `Schema.asserts(schema, input)` throws a generic validation error whose `cause` holds the issue. These trusted calls keep TypeScript's narrowing in the current function without a boundary. An assertion exception is a defect that ordinary `catch` does not handle; for a typed validation failure on invalid data, use `decodeUnknownEffect`.
+Guards and assertions check the decoded type: a numeric `pieces` is valid, a string `pieces` is not. `Schema.is` returns a type predicate; `Schema.asserts(schema, input)` throws a generic validation error whose `cause` holds the issue. Both calls keep TypeScript's narrowing in the current plain function. Wrap a throwing assertion with `Effect.try` before calling it from effect code. For typed validation failures, use `decodeUnknownEffect`.
 
 ## Coming from Effect
 
-Inside a function, `Schema.decodeUnknownEffect(Shipment)(input)` returns the shipment directly; wrap it in ordinary `try`/`catch` instead of generator-based error handling. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and its quick fix writes the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
+`Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and its quick fix writes the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
 [Upstream page](https://effect.website/docs/v4/schema/getting-started)

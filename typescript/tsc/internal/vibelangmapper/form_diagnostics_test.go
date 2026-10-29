@@ -101,8 +101,10 @@ for (const page of markdownPages(join(root,"docs/user"))) {
  if (!blocks.length) continue;
  const dir = join(temp, "page-" + pageNumber++);
  const {filenames} = writeProject(dir,blocks);
+ // A block in the VIP language waits for the compiler (its pending line); the census skips it, as check-snippets does.
+ const pending = new Set(blocks.filter(block => block.pending).map(block => block.number));
  for (const [number,name] of filenames) {
-  if (name.endsWith(".vibe")) cases.push({name:relative(root,page)+"#block-"+number,source:readFileSync(join(dir,name),"utf8")});
+  if (name.endsWith(".vibe") && !pending.has(number)) cases.push({name:relative(root,page)+"#block-"+number,source:readFileSync(join(dir,name),"utf8")});
  }
 }
 process.stdout.write(JSON.stringify(cases));`

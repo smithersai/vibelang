@@ -5,7 +5,8 @@
 ## Checking structural equality
 
 ```vibe
-// run: Console.log(JSON.stringify([Object.is(left, right), Equal.equals(left, right), Equal.equals([1, { n: 2 }], [1, { n: 3 }]), Equal.equals(new Set([2, 5]), new Set([5, 2]))]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Object.is(left, right), Equal.equals(left, right), Equal.equals([1, { n: 2 }], [1, { n: 3 }]), Equal.equals(new Set([2, 5]), new Set([5, 2]))]))
 const left = { folder: "inbox", flags: ["unread", "starred"] }
 const right = { folder: "inbox", flags: ["unread", "starred"] }
 Object.is(left, right) // false
@@ -20,7 +21,8 @@ Effect 4 compares plain objects, arrays, maps, sets, dates, and regular expressi
 ## Implementing the equality protocol
 
 ```vibe
-// run: Console.log(Equal.equals(new DocumentRevision("doc-8", 2, "reader-a"), new DocumentRevision("doc-8", 2, "reader-b")))
+// pending: VIP-5, VIP-14
+// run: try Console.log(Equal.equals(new DocumentRevision("doc-8", 2, "reader-a"), new DocumentRevision("doc-8", 2, "reader-b")))
 class DocumentRevision implements Equal.Equal {
   constructor(
     readonly documentId: string,
@@ -48,12 +50,13 @@ Equal.equals(
 
 `Equal.Equal` extends `Hash.Hash`, so implement both computed methods. The equality method defines which fields matter, and equal values must hash the same. Both methods leave out `observedBy`: it describes an observation, not revision identity.
 
-Both compile to plain JavaScript methods, which callers call as ordinary methods, because they implement members typed as plain functions. A protocol method that runs an Effect operation or fails with an expected error is error EK4301; compute the value before building the object.
+Both compile to plain JavaScript methods, which callers call as ordinary methods. An effect method returns an Effect, which does not satisfy the protocol's boolean or number return type; compute the value before building the object.
 
 ## Opting into reference identity
 
 ```vibe
-// run: Console.log(JSON.stringify([Equal.equals(reference, { state: "ready" }), Equal.equals(reference, reference), Equal.equals(record, { state: "ready" }), Equal.equals(owned, { state: "ready" })]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Equal.equals(reference, { state: "ready" }), Equal.equals(reference, reference), Equal.equals(record, { state: "ready" }), Equal.equals(owned, { state: "ready" })]))
 const record = { state: "ready" }
 const reference = Equal.byReference(record)
 Equal.equals(reference, { state: "ready" }) // false
@@ -71,19 +74,20 @@ Equal.equals(owned, { state: "ready" }) // false
 ## Using custom equality in hash-based collections
 
 ```vibe
-// run: Console.log(JSON.stringify([seen.size(), byFolder.size(), byFolder.get({ folder: "inbox" }).getOrElse(() => 0)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([HashSet.size(seen), HashMap.size(byFolder), Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0)]))
 const seen = HashSet.make(
   new DocumentRevision("doc-8", 2, "reader-a"),
   new DocumentRevision("doc-8", 2, "reader-b")
 )
-seen.size() // 1
+HashSet.size(seen) // 1
 
 const byFolder = HashMap.set(
   HashMap.set(HashMap.empty<{ folder: string }, number>(), { folder: "inbox" }, 4),
   { folder: "inbox" }, 9
 )
-byFolder.size() // 1
-byFolder.get({ folder: "inbox" }).getOrElse(() => 0) // 9
+HashMap.size(byFolder) // 1
+Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0) // 9
 // Output: [1,1,9]
 ```
 

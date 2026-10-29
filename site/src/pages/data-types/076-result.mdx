@@ -1,11 +1,11 @@
 ---
 title: "Result"
-description: "Result works in VibeLang exactly as in Effect. A Result<A, E> stores a synchronous success or an expected failure as data, so validation can return an outcome without raising it in the caller."
+description: "Result works in VibeLang exactly as in Effect. A Result.Result<A, E> stores a synchronous success or an expected failure as data, so validation can return an outcome without raising it in the caller."
 ---
 
 # Result
 
-`Result` works in VibeLang exactly as in Effect. A `Result<A, E>` stores a synchronous success or an expected failure as data, so validation can return an outcome without raising it in the caller.
+`Result` works in VibeLang exactly as in Effect. A `Result.Result<A, E>` stores a synchronous success or an expected failure as data, so validation can return an outcome without raising it in the caller.
 
 ## Results and execution exits
 
@@ -16,14 +16,14 @@ function parseCount(text: string) {
     ? Result.succeed(count)
     : Result.fail("Expected a nonnegative integer")
 }
-// Result.Result<number, string>!!
+// Result.Result<number, string>
 ```
 
 ```text
 true true true
 ```
 
-Returning a failed `Result` does not fail `parseCount`: the result object is its success value. `Result` is a choice between A and E and records no defects or interruption; for a computation's complete outcome, use `Exit`.
+Returning a failed `Result` does not throw: `parseCount` is a plain function that returns the result object. `Result` is a choice between A and E and records no defects or interruption; for a computation's complete outcome, use `Exit`.
 
 ## Constructing and identifying variants
 
@@ -31,11 +31,11 @@ Returning a failed `Result` does not fail `parseCount`: the result object is its
 const accepted = Result.succeed(8)
 const rejected = Result.fail("limit exceeded")
 Result.isResult(accepted) // true
-accepted.isSuccess() // true
-rejected.isFailure() // true
+Result.isSuccess(accepted) // true
+Result.isFailure(rejected) // true
 
 function label(result: Result.Result<number, string>) {
-  if (result.isSuccess()) return `Count: ${result.success}`
+  if (Result.isSuccess(result)) return `Count: ${result.success}`
   return `Rejected: ${result.failure}`
 }
 ```
@@ -52,13 +52,13 @@ A success holds its payload in `.success`, a failure in `.failure`; guards narro
 
 ```vibe
 function summarize(result: Result.Result<number, string>) {
-  const increased = result.map((count) => count + 2)
-  const contextual = increased.mapError((error) => `count: ${error}`)
-  const both = contextual.mapBoth({
+  const increased = Result.map(result, (count) => count + 2)
+  const contextual = Result.mapError(increased, (error) => `count: ${error}`)
+  const both = Result.mapBoth(contextual, {
     onSuccess: (count) => String(count),
     onFailure: (error) => error.toUpperCase()
   })
-  return both.match({
+  return Result.match(both, {
     onSuccess: (count) => `Accepted ${count}`,
     onFailure: (error) => `Rejected ${error}`
   })
@@ -70,7 +70,7 @@ Accepted 8
 Rejected COUNT: INVALID
 ```
 
-`map` transforms only success and `mapError` only failure; `mapBoth` applies the transformation for the current variant, and `match` handles both and removes the wrapper. Keep these callbacks synchronous; for service work, narrow the result in an ordinary function first.
+`map` transforms only success and `mapError` only failure; `mapBoth` applies the transformation for the current variant, and `match` handles both and removes the wrapper. Keep these callbacks synchronous; for service work, narrow the result in an effect function and run Effects with `try`.
 
 ## Converting results into effects
 
@@ -79,19 +79,19 @@ error InvalidCount {
   input: string
 }
 
-function requireCount(input: string) {
+effect requireCount(input: string) {
   const count = Number(input)
   const result = input.trim() !== "" && Number.isInteger(count) && count >= 0
     ? Result.succeed(count)
     : Result.fail(new InvalidCount({ input }))
-  return Effect.fromResult(result)
+  return try fromResult(result)
 }
 // number!InvalidCount!
 
-function validatePair() {
-  return all([
-    () => requireCount("6"),
-    () => Effect.fromResult(Result.succeed("ready"))
+effect validatePair() {
+  return try all([
+    requireCount("6"),
+    fromResult(Result.succeed("ready"))
   ])
 }
 ```
@@ -101,7 +101,7 @@ function validatePair() {
 InvalidCount -1
 ```
 
-`Effect.fromResult` runs as a call: success gives A, failure enters E. Convert explicitly when passing a result to an Effect combinator. Conversely, `Effect.result(() => work())` collects expected failures into a result: a cause with none still propagates, and so does one with a defect, its expected failures as defects; for an expected failure beside an interruption, Effect returns the first expected failure and discards the interruption. To keep every reason, use `Effect.exit`.
+`try fromResult(result)` runs the Effect: success gives A, failure enters E. Convert explicitly when passing a result to an Effect combinator. Conversely, `try result(work())` collects expected failures into a result: a cause with none still propagates, and so does one with a defect, its expected failures as defects; for an expected failure beside an interruption, Effect returns the first expected failure and discards the interruption. To keep every reason, use `try exit(work())`.
 
 ## Sequencing and combining results
 
@@ -110,8 +110,8 @@ function combine(
   name: Result.Result<string, string>,
   count: Result.Result<number, string>
 ) {
-  const chained = name.flatMap((name) =>
-    count.map((count) => ({ name: name.trim(), count })))
+  const chained = Result.flatMap(name, (name) =>
+    Result.map(count, (count) => ({ name: name.trim(), count })))
   const tuple = Result.all([name, count])
   const record = Result.all({ name, count })
   return { chained, tuple, record }
@@ -149,7 +149,7 @@ missing
 
 ```vibe
 function combinedData() {
-  return Result.all([Result.succeed(" Weekly "), Result.succeed(6)]).map(([title, count]) => ({
+  return Result.map(Result.all([Result.succeed(" Weekly "), Result.succeed(6)]), ([title, count]) => ({
     title: title.trim(), count
   }))
 }
@@ -159,7 +159,7 @@ function combinedData() {
 {"title":"Weekly","count":6}
 ```
 
-`Result.gen` sequences with JavaScript generators: the first yielded failure skips the rest. An unannotated `function*` in VibeLang declares a producer, so `Result.gen` in `.vibe` is EK1002 and generator-based APIs stay in `.ts` files. In VibeLang, use `flatMap` and `all` for the same computation, as above.
+`Result.gen` sequences with JavaScript generators: the first yielded failure skips the rest. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there. In VibeLang, use `flatMap` and `all` for the same computation, as above.
 
 ---
 

@@ -1,11 +1,12 @@
 # Schema Transformations
 
-Transformations work as in Effect: a codec validates one representation, converts it, and validates the result. `decodeTo` connects schemas; supply pure conversions or effectful getters as needed. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Transformations work as in Effect: a codec validates one representation, converts it, and validates the result. `decodeTo` connects schemas; supply pure conversions or effectful getters as needed. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Defining reversible infallible conversions
 
 ```vibe
-// run: Console.log(readAvailability("ready"), readAvailability("held")); Console.log(Schema.encodeEffect(Availability)(true))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readAvailability("ready"), try readAvailability("held")); try Console.log(try Schema.encodeEffect(Availability)(true)) })
 const Availability = Schema.Literals(["ready", "held"]).pipe(
   Schema.decodeTo(Schema.Boolean, SchemaTransformation.transform({
     decode: (status) => status === "ready",
@@ -13,8 +14,8 @@ const Availability = Schema.Literals(["ready", "held"]).pipe(
   }))
 )
 
-function readAvailability(input: unknown) {
-  return Schema.decodeUnknownEffect(Availability)(input)
+effect readAvailability(input: unknown) {
+  return try Schema.decodeUnknownEffect(Availability)(input)
 }
 ```
 
@@ -28,7 +29,8 @@ ready
 ## Understanding transformation inputs and outputs
 
 ```vibe
-// run: Console.log(readNumericAvailability()); Console.log(Schema.encodeEffect(NumericAvailability)(true))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readNumericAvailability()); try Console.log(try Schema.encodeEffect(NumericAvailability)(true)) })
 const NumericAvailability = Schema.FiniteFromString.pipe(
   Schema.decodeTo(Availability, SchemaTransformation.transform({
     decode: (quantity) => quantity > 0 ? "ready" : "held",
@@ -36,8 +38,8 @@ const NumericAvailability = Schema.FiniteFromString.pipe(
   }))
 )
 
-function readNumericAvailability() {
-  return Schema.decodeEffect(NumericAvailability)("12") // true
+effect readNumericAvailability() {
+  return try Schema.decodeEffect(NumericAvailability)("12") // true
 }
 ```
 
@@ -53,10 +55,11 @@ The middle functions above handle a number and a status string, though the compl
 ## Defining fallible conversions
 
 ```vibe
-// run: Console.log(Schema.decodeUnknownEffect(DeliveryMode)(" RAIL ")); try { Schema.decodeUnknownEffect(DeliveryMode)("air") } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try Schema.decodeUnknownEffect(DeliveryMode)(" RAIL ")); try Effect.catch(Schema.decodeUnknownEffect(DeliveryMode)("air"), (error) => Console.log(error.message)) })
 const DeliveryMode = Schema.String.pipe(
   Schema.decodeTo(Schema.Literals(["road", "rail"]), {
-    decode: SchemaGetter.transformEffect<"road" | "rail", string>((text) => {
+    decode: SchemaGetter.transformEffect<"road" | "rail", string>(effect (text) => {
       const mode = text.trim().toLowerCase()
       if (mode === "road" || mode === "rail") return mode
       throw new SchemaIssue.InvalidValue({ message: "Choose road or rail" })
@@ -71,12 +74,13 @@ rail
 Choose road or rail
 ```
 
-`transformEffect` receives the converted input and active parse options. Its callback returns a value directly and throws a `SchemaIssue.Issue` for an expected conversion failure, which the outer Schema parser wraps in `SchemaError`. Translate a service's domain error to an issue before it escapes the getter.
+`transformEffect` receives the converted input and active parse options. Its `effect` callback returns an Effect that produces the converted value and fails with a `SchemaIssue.Issue` for an expected conversion failure, which the outer Schema parser wraps in `SchemaError`. Translate a service's domain error to an issue before it escapes the getter.
 
 ## Running asynchronous conversions with dependencies
 
 ```vibe
-// run: Console.log(previewRoute()); provide Routes = { check(code) { throw new UnknownRoute({ code }) } } { try { readRoute("missing") } catch (error) { Console.log(error.message) } }
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try previewRoute()); provide Routes = { effect check(code) { throw new UnknownRoute({ code }) } } { try Effect.catch(readRoute("missing"), (error) => Console.log(error.message)) } })
 error UnknownRoute {
   code: string
 }
@@ -87,11 +91,12 @@ service Routes {
 
 const RouteCode = Schema.String.pipe(
   Schema.decodeTo(Schema.NonEmptyString, {
-    decode: SchemaGetter.transformEffect((code) => {
-      try {
-        Routes.check(code)
+    decode: SchemaGetter.transformEffect(effect (code) => {
+      const routes = try Routes
+      return effect {
+        try routes.check(code)
         return code
-      } catch (error) {
+      } catch effect (_error) => {
         throw new SchemaIssue.InvalidValue({ message: "Route is unavailable" })
       }
     }),
@@ -99,17 +104,17 @@ const RouteCode = Schema.String.pipe(
   })
 )
 
-function readRoute(input: unknown) {
-  return Schema.decodeUnknownEffect(RouteCode)(input)
+effect readRoute(input: unknown) {
+  return try Schema.decodeUnknownEffect(RouteCode)(input)
 }
 // string!Schema.SchemaError!Routes
 
 const TestRoutes = Layer.succeed(Routes, {
-  check(_code) {}
+  effect check(_code) {}
 })
 
-function previewRoute() {
-  provide TestRoutes { return readRoute("coastal") }
+effect previewRoute() {
+  provide TestRoutes { return try readRoute("coastal") }
 }
 ```
 
@@ -123,7 +128,8 @@ The getter can pause while its service runs. Decoding requires `Routes`; encodin
 ## Forbidding an encoding direction
 
 ```vibe
-// run: Console.log(readInitial("Ada")); try { Schema.encodeEffect(Initial)("A") } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readInitial("Ada")); try Effect.catch(Schema.encodeEffect(Initial)("A"), (error) => Console.log(error.message)) })
 const Initial = Schema.NonEmptyString.pipe(
   Schema.decodeTo(Schema.String, {
     decode: SchemaGetter.transform((name) => name[0]),
@@ -131,8 +137,8 @@ const Initial = Schema.NonEmptyString.pipe(
   })
 )
 
-function readInitial(input: unknown) {
-  return Schema.decodeUnknownEffect(Initial)(input)
+effect readInitial(input: unknown) {
+  return try Schema.decodeUnknownEffect(Initial)(input)
 }
 ```
 
@@ -146,7 +152,8 @@ A lossy conversion has no meaningful inverse. `forbidden` reports a schema issue
 ## Composing transformations and effectful checks
 
 ```vibe
-// run: Console.log(JSON.stringify(readNumbers())); Console.log(Schema.decodeEffect(DeferredLabel)("crate")); try { Schema.decodeEffect(DeferredLabel)("x") } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try readNumbers())); try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message)) })
 const SemicolonNumbers = Schema.String.pipe(
   Schema.decodeTo(Schema.Array(Schema.String), SchemaTransformation.transform({
     decode: (text): ReadonlyArray<string> => text.split(";"),
@@ -157,16 +164,16 @@ const SemicolonNumbers = Schema.String.pipe(
 
 const DeferredLabel = Schema.String.pipe(
   Schema.decode({
-    decode: SchemaGetter.checkEffect((label) => {
-      sleep("5 millis")
+    decode: SchemaGetter.checkEffect(effect (label) => {
+      try sleep("5 millis")
       return label.length > 2 || "Label is too short"
     }),
     encode: SchemaGetter.passthrough()
   })
 )
 
-function readNumbers() {
-  return Schema.decodeEffect(SemicolonNumbers)("2;5;8")
+effect readNumbers() {
+  return try Schema.decodeEffect(SemicolonNumbers)("2;5;8")
 }
 ```
 
@@ -183,7 +190,8 @@ When converting a collection whose elements are already decoded, use `Schema.toT
 ## Converting string case, JSON, and binary encodings
 
 ```vibe
-// run: Console.log(JSON.stringify(decodeTextFormats()))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try decodeTextFormats())) })
 const LowerLabel = Schema.String.pipe(
   Schema.decodeTo(
     Schema.String.check(Schema.isLowercased()),
@@ -192,12 +200,12 @@ const LowerLabel = Schema.String.pipe(
 )
 const JsonLabel = Schema.fromJsonString(Schema.Struct({ label: Schema.String }))
 
-function decodeTextFormats() {
-  const trimmed = Schema.decodeEffect(Schema.Trim)("  crate  ")
-  const lower = Schema.decodeEffect(LowerLabel)("CRATE")
-  const data = Schema.decodeEffect(JsonLabel)('{"label":"crate"}')
-  const base64 = Schema.decodeEffect(Schema.StringFromBase64)("Y3JhdGU=")
-  const hex = Schema.decodeEffect(Schema.StringFromHex)("6372617465")
+effect decodeTextFormats() {
+  const trimmed = try Schema.decodeEffect(Schema.Trim)("  crate  ")
+  const lower = try Schema.decodeEffect(LowerLabel)("CRATE")
+  const data = try Schema.decodeEffect(JsonLabel)('{"label":"crate"}')
+  const base64 = try Schema.decodeEffect(Schema.StringFromBase64)("Y3JhdGU=")
+  const hex = try Schema.decodeEffect(Schema.StringFromHex)("6372617465")
   return { trimmed, lower, data, base64, hex }
 }
 ```
@@ -213,7 +221,8 @@ function decodeTextFormats() {
 ## Parsing numeric, date, and decimal values
 
 ```vibe
-// run: const value = readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" }); Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price)); try { readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" }); try Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price)); try Effect.catch(readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }), (error) => Console.log(error._tag)) })
 const Manifest = Schema.Struct({
   units: Schema.FiniteFromString,
   sequence: Schema.BigIntFromString,
@@ -221,8 +230,8 @@ const Manifest = Schema.Struct({
   price: Schema.BigDecimalFromString
 })
 
-function readManifest(input: unknown) {
-  return Schema.decodeUnknownEffect(Manifest)(input)
+effect readManifest(input: unknown) {
+  return try Schema.decodeUnknownEffect(Manifest)(input)
 }
 ```
 
@@ -235,6 +244,6 @@ SchemaError
 
 ## Coming from Effect
 
-Inside `SchemaGetter.transformEffect`, write ordinary statements and `throw` schema issues; VibeLang turns the callback into the Effect the getter expects, with its directional service requirements.
+Pass an `effect` function to `SchemaGetter.transformEffect`. Use `try` to run service methods, and throw a schema issue for an expected conversion failure. The resulting codec carries the service requirement for that direction.
 
 [Upstream page](https://effect.website/docs/v4/schema/transformations)

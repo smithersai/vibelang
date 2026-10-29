@@ -1,17 +1,18 @@
 # Default Constructors
 
-Schema constructors work as in Effect, on decoded values: they apply constructor defaults and type-side checks without running the codec's encoded-to-decoded conversion. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schema constructors work as in Effect, on decoded values: they apply constructor defaults and type-side checks without running the codec's encoded-to-decoded conversion. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Constructing structs and records
 
 ```vibe
-// run: Console.log(JSON.stringify(makeLabels()))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try makeLabels())) })
 const Label = Schema.Struct({ text: Schema.NonEmptyString })
 const LabelsById = Schema.Record(Schema.String, Schema.NonEmptyString)
 
-function makeLabels() {
-  const label = Label.makeEffect({ text: "Keep upright" })
-  const byId = LabelsById.makeEffect({ handling: label.text })
+effect makeLabels() {
+  const label = try Label.makeEffect({ text: "Keep upright" })
+  const byId = try LabelsById.makeEffect({ handling: label.text })
   return { label, byId }
 }
 ```
@@ -20,18 +21,19 @@ function makeLabels() {
 {"label":{"text":"Keep upright"},"byId":{"handling":"Keep upright"}}
 ```
 
-Every schema has `make`, `makeOption`, and `makeEffect`. Each takes the schema's constructor input and returns its decoded type: `FiniteFromString.makeEffect(6)` constructs a number, while its decoder accepts text. Struct and record constructors validate fields and entries.
+Every schema has `make`, `makeOption`, and `makeEffect`. Each takes the schema's constructor input. `make` returns the decoded value, `makeOption` returns an Option, and `makeEffect` returns an Effect. For example, `FiniteFromString.makeEffect(6)` constructs a number when run, while its decoder accepts text. Struct and record constructors validate fields and entries.
 
 ## Applying filters and brands during construction
 
 ```vibe
-// run: Console.log(makeCaseCount(6)); try { makeCaseCount(0) } catch (issue) { Console.log(issue._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try makeCaseCount(6)); try Effect.catch(makeCaseCount(0), (issue) => Console.log(issue._tag)) })
 const CaseCount = Schema.FiniteFromString.check(
   Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 48 })
 ).pipe(Schema.brand("CaseCount"))
 
-function makeCaseCount(value: number) {
-  return CaseCount.makeEffect(value)
+effect makeCaseCount(value: number) {
+  return try CaseCount.makeEffect(value)
 }
 ```
 
@@ -45,21 +47,20 @@ Filters run during construction as well as parsing. A filter leaves the static t
 ## Handling constructor failures
 
 ```vibe
-// run: Console.log(constructOrExplain(6)); Console.log(constructAsOption(0).isNone()); try { constructWithExpectedFailure(0) } catch (error) { Console.log("Construction rejected") }
-function constructOrExplain(value: number) {
-  try {
-    return String(CaseCount.makeEffect(value))
-  } catch (issue) {
-    return SchemaIssue.makeFormatterDefault()(issue)
-  }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try constructOrExplain(6)); try Console.log(constructAsOption(0).isNone()); try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected")) })
+effect constructOrExplain(value: number) {
+  return effect {
+    return String(try CaseCount.makeEffect(value))
+  } catch (issue) => SchemaIssue.makeFormatterDefault()(issue)
 }
 
 function constructAsOption(value: number) {
   return CaseCount.makeOption(value)
 }
 
-function constructWithExpectedFailure(value: number) {
-  return CaseCount.makeEffect(value)
+effect constructWithExpectedFailure(value: number) {
+  return try CaseCount.makeEffect(value)
 }
 ```
 
@@ -74,18 +75,19 @@ In local Effect 4.0.6, `makeEffect` fails with a raw `SchemaIssue.Issue`, not th
 ## Setting nested and lazy defaults
 
 ```vibe
-// run: const first = makePacking(); const second = makePacking(); Console.log(JSON.stringify(first)); Console.log(first.labels === second.labels)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const first = try makePacking(); const second = try makePacking(); try Console.log(JSON.stringify(first)); try Console.log(first.labels === second.labels) })
 const Packing = Schema.Struct({
-  handling: Schema.String.pipe(Schema.withConstructorDefault(() => "standard")),
+  handling: Schema.String.pipe(Schema.withConstructorDefault(effect { return "standard" })),
   dimensions: Schema.Struct({
-    unit: Schema.String.pipe(Schema.withConstructorDefault(() => "cm")),
+    unit: Schema.String.pipe(Schema.withConstructorDefault(effect { return "cm" })),
     width: Schema.Finite
-  }).pipe(Schema.withConstructorDefault(() => ({ width: 10 }))),
-  labels: Schema.Array(Schema.String).pipe(Schema.withConstructorDefault(() => []))
+  }).pipe(Schema.withConstructorDefault(effect { return { width: 10 } })),
+  labels: Schema.Array(Schema.String).pipe(Schema.withConstructorDefault(effect { return [] }))
 })
 
-function makePacking() {
-  return Packing.makeEffect({})
+effect makePacking() {
+  return try Packing.makeEffect({})
 }
 // { handling: "standard", dimensions: { unit: "cm", width: 10 }, labels: [] }
 ```
@@ -95,22 +97,23 @@ function makePacking() {
 false
 ```
 
-Pass a program to `withConstructorDefault`; the constructor runs it only when the field needs a default. An outer default supplies nested constructor input, then inner defaults fill their own fields. Each run of the labels default creates a fresh `[]`, so no mutable array is shared.
+Pass an Effect to `withConstructorDefault`; the constructor runs it only when the field needs a default. An outer default supplies nested constructor input, then inner defaults fill their own fields. Each run of the labels default creates a fresh `[]`, so no mutable array is shared.
 
-A default program may fail with schema issues but cannot require services; read service-dependent values in the enclosing program and pass them as explicit fields. `make` and `makeOption` need defaults that complete synchronously; use `makeEffect` if a default pauses.
+A default Effect may fail with schema issues but cannot require services; read service-dependent values in the enclosing effect function and pass them as explicit fields. `make` and `makeOption` need defaults that complete synchronously; use `makeEffect` if a default pauses.
 
 ## Reusing defaults
 
 ```vibe
-// run: Console.log(JSON.stringify(makeReturnPacking()))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try makeReturnPacking())) })
 const ReturnPacking = Schema.Struct({
   reason: Schema.String,
   handling: Packing.fields.handling,
   labels: Packing.fields.labels
 })
 
-function makeReturnPacking() {
-  return ReturnPacking.makeEffect({ reason: "inspection" })
+effect makeReturnPacking() {
+  return try ReturnPacking.makeEffect({ reason: "inspection" })
 }
 ```
 
@@ -123,15 +126,16 @@ Defaults belong to field descriptions, so reusing a field carries its constructo
 ## Initializing schema-backed classes
 
 ```vibe
-// run: const value = createPackingRequest("pkg-94"); Console.log(value instanceof PackingRequest); Console.log(JSON.stringify(value))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(JSON.stringify(value)) })
 class PackingRequest extends Schema.Class<PackingRequest>("PackingRequest")({
   reference: Schema.String,
   handling: Packing.fields.handling,
   labels: Packing.fields.labels
 }) {}
 
-function createPackingRequest(reference: string) {
-  return PackingRequest.makeEffect({ reference })
+effect createPackingRequest(reference: string) {
+  return try PackingRequest.makeEffect({ reference })
 }
 ```
 
@@ -140,6 +144,6 @@ true
 {"reference":"pkg-94","handling":"standard","labels":[]}
 ```
 
-Classes use the same default-bearing field descriptions as structs and give a validated instance with its class behavior. `new PackingRequest(...)` also applies defaults. An exception escaping into Effect code is a defect unless an explicit `try` hatch gives it an expected error type. A plain function's catch doesn't see it either; `new` itself never runs a program.
+Classes use the same default-bearing field descriptions as structs and give a validated instance with its class behavior. `new PackingRequest(...)` also applies defaults. An exception escaping into Effect code is a defect unless an explicit `Effect.try` wrapper gives it an expected error type. In effect code, wrap a constructor that may throw with `Effect.try`; `new` itself never runs an Effect.
 
 [Upstream page](https://effect.website/docs/v4/schema/default-constructors)

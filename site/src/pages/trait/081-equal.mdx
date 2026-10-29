@@ -51,7 +51,7 @@ Equal.equals(
 
 `Equal.Equal` extends `Hash.Hash`, so implement both computed methods. The equality method defines which fields matter, and equal values must hash the same. Both methods leave out `observedBy`: it describes an observation, not revision identity.
 
-Both compile to plain JavaScript methods, which callers call as ordinary methods, because they implement members typed as plain functions. A protocol method that runs an Effect operation or fails with an expected error is error EK4301; compute the value before building the object.
+Both compile to plain JavaScript methods, which callers call as ordinary methods. An effect method returns an Effect, which does not satisfy the protocol's boolean or number return type; compute the value before building the object.
 
 ## Opting into reference identity
 
@@ -77,14 +77,14 @@ const seen = HashSet.make(
   new DocumentRevision("doc-8", 2, "reader-a"),
   new DocumentRevision("doc-8", 2, "reader-b")
 )
-seen.size() // 1
+HashSet.size(seen) // 1
 
 const byFolder = HashMap.set(
   HashMap.set(HashMap.empty<{ folder: string }, number>(), { folder: "inbox" }, 4),
   { folder: "inbox" }, 9
 )
-byFolder.size() // 1
-byFolder.get({ folder: "inbox" }).getOrElse(() => 0) // 9
+HashMap.size(byFolder) // 1
+Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0) // 9
 // Output: [1,1,9]
 ```
 

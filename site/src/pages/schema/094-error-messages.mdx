@@ -5,7 +5,7 @@ description: "Schema error messages work as in Effect. A SchemaError combines a 
 
 # Error Messages
 
-Schema error messages work as in Effect. A `SchemaError` combines a readable message with a structured issue, including paths into nested values. Customize a message at the node that fails, so users get an explanation that fits that field. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schema error messages work as in Effect. A `SchemaError` combines a readable message with a structured issue, including paths into nested values. Customize a message at the node that fails, so users get an explanation that fits that field. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Understanding default validation messages
 
@@ -15,13 +15,11 @@ const Package = Schema.Struct({
   pieces: Schema.Finite
 })
 
-function explainPackage(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Package)(input, { errors: "all" })
+effect explainPackage(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Package)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 // { label: 7, pieces: "several" } reports both expected types and their paths.
 ```
@@ -68,7 +66,7 @@ const WholeCount = Schema.String.annotate({
   Schema.decodeTo(
     Schema.Int.annotate({ message: "Use a whole package count" }),
     {
-      decode: SchemaGetter.transformEffect((text) => {
+      decode: SchemaGetter.transformEffect(effect (text) => {
         if (text.trim() === "" || !Number.isFinite(Number(text))) {
           throw new SchemaIssue.InvalidValue({ message: "Count is not numeric" })
         }
@@ -107,13 +105,11 @@ const Orders = Schema.Struct({
   delivery: Delivery
 })
 
-function explainOrders(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Orders)(input, { errors: "all" })
+effect explainOrders(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Orders)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 ```
 
@@ -141,8 +137,8 @@ const Coordinates = Schema.Tuple([
   Schema.Finite.annotateKey({ messageMissingKey: "Supply latitude" })
 ])
 
-function readCoordinates(input: unknown) {
-  return Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
+effect readCoordinates(input: unknown) {
+  return try Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
 }
 ```
 

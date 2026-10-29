@@ -75,15 +75,16 @@ service Greeter {
 }
 
 const GreeterLive = Layer.succeed(Greeter, {
-  greet(name) {
+  effect greet(name) {
     if (name.length === 0) throw new EmptyName()
     return `Hello, ${name}!`
   }
 })
 
-export function greeting(name: string) {
+export effect greeting(name: string) {
   provide GreeterLive {
-    return Greeter.greet(name) catch "Hello, stranger!"
+    const greeter = try Greeter
+    return greeter.greet(name) catch "Hello, stranger!"
   }
 }
 ```
@@ -101,7 +102,7 @@ export default {
 }
 ```
 
-A Worker has no `main`, so the entry's platform import, `import "vibelang/platform/node"`, has nothing to run. Provide each program's layers where it runs, as `greeting` does; `HttpClient` takes `FetchHttpClient.layer`, which calls the Worker's own `fetch`.
+A Worker has no `main`; its TypeScript `fetch` callback runs each request Effect with `Effect.runPromise`. Provide each program's layers where it runs, as `greeting` does; `HttpClient` takes `FetchHttpClient.layer`, which calls the Worker's own `fetch`.
 
 ## Run it locally
 

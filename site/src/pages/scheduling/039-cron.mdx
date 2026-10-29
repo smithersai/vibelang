@@ -12,8 +12,8 @@ description: "Cron and Schedule.cron work in VibeLang exactly as in Effect. Use 
 ```vibe
 const weekdayReport = Schedule.cron("45 7 * * 1-5", "UTC")
 
-function reportJob() {
-  Effect.schedule(() => Console.log("generating daily report"), weekdayReport)
+effect reportJob() {
+  try schedule(Console.log("generating daily report"), weekdayReport)
 }
 // Output: waiting for Monday morning
 // Output: generating daily report
@@ -23,7 +23,7 @@ function reportJob() {
 
 The five fields are minute, hour, day of month, month, and weekday. This rule runs at 07:45 Monday through Friday; with the optional leading seconds field, `0 45 7 * * 1-5` is equivalent. Fields accept `*`, ranges, comma separated lists, and steps such as `*/10`.
 
-When day of month and weekday both restrict dates, either field can match, so leave day of month as `*` in a weekday rule. `Effect.schedule` waits for the first match, so the report doesn't run immediately at startup.
+When day of month and weekday both restrict dates, either field can match, so leave day of month as `*` in a weekday rule. `try schedule(action, rule)` waits for the first match, so the report doesn't run immediately at startup.
 
 ## Selecting a time zone
 
@@ -39,8 +39,8 @@ A named zone follows its local calendar, daylight saving changes included; `UTC`
 ## Validating expressions
 
 ```vibe
-function validateRule(expression: string, timeZone: string) {
-  return Effect.fromResult(Cron.parse(expression, timeZone))
+effect validateRule(expression: string, timeZone: string) {
+  return try fromResult(Cron.parse(expression, timeZone))
 }
 // Cron.Cron!Cron.CronParseError!
 // Output: true
@@ -48,44 +48,44 @@ function validateRule(expression: string, timeZone: string) {
 // Output: CronParseError
 ```
 
-`Cron.parse` returns a `Result`, so parsing alone throws no typed failure; `Effect.fromResult` puts invalid expressions and invalid zones in the error channel. Validate configuration before starting any work, and report the configuration error at the application boundary.
+`Cron.parse` returns a `Result`, so parsing alone throws no typed failure; `try fromResult(Cron.parse(...))` puts invalid expressions and invalid zones in the error channel. Validate configuration before starting any work, and report the configuration error at the application boundary.
 
 ## Previewing future runs
 
 ```vibe
-function preview() {
-  const rule = Effect.fromResult(Cron.parse("45 7 * * 1-5", "UTC"))
+effect preview() {
+  const rule = try fromResult(Cron.parse("45 7 * * 1-5", "UTC"))
   let after = new Date("2026-11-02T00:00:00Z")
   const dates: string[] = []
   for (let i = 0; i < 3; i++) {
-    after = Cron.next(rule, after)
-    dates.push(after.toISOString())
+    after = try Effect.try(() => Cron.next(rule, after))
+    dates.push(try Effect.try(() => after.toISOString()))
   }
   return dates
 }
 // Output: ["2026-11-02T07:45:00.000Z","2026-11-03T07:45:00.000Z","2026-11-04T07:45:00.000Z"]
 ```
 
-`Cron.next` finds the next matching instant after the given date; explicit dates make a preview reproducible. `Cron.sequence` iterates over future matches, and `Cron.match` tests an existing date against a rule.
+`Cron.next` finds the next matching instant after the given date; explicit dates make a preview reproducible. Wrap calls that can throw with `Effect.try`, then run them with `try`. `Cron.sequence` iterates over future matches, and `Cron.match` tests an existing date against a rule.
 
 ## Starting and stopping a job
 
 ```vibe
-function runApplication() {
-  const rule = Effect.fromResult(Cron.parse("*/10 * * * *", "UTC"))
-  const reports = fork Effect.schedule(
-    () => Console.log("report tick"),
+effect runApplication() {
+  const rule = try fromResult(Cron.parse("*/10 * * * *", "UTC"))
+  const reports = fork schedule(
+    Console.log("report tick"),
     Schedule.cron(rule)
   )
 
-  sleep("30 seconds") // Stand-in for the application's active lifetime.
-  reports.interrupt()
+  try sleep("30 seconds") // Stand-in for the application's active lifetime.
+  try Fiber.interrupt(reports)
 }
 // Output: report tick
 // Output: application stopped
 ```
 
-Keep the job's fiber alive for the part of the application that needs it. `Fiber.interrupt` waits for cleanup, and block ownership also stops this child when `runApplication` exits. A failure stops the schedule unless the action handles it or retries internally.
+Keep the job's fiber alive for the part of the application that needs it. `try Fiber.interrupt(reports)` waits for cleanup, and parent-fiber ownership also interrupts this child when its parent ends. A failure stops the schedule unless the action handles it or retries internally.
 
 These cron jobs exist only in memory. For a job that must survive restarts or recover missed dates, use an external scheduler or durable pending-work records.
 

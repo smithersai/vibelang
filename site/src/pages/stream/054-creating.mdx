@@ -1,11 +1,11 @@
 ---
 title: "Creating Streams"
-description: "Build a Stream from values, effectful work, or an existing source. Construction is lazy: callbacks that do Effect work run at consumption. The introduction covers trusted Stream builders and..."
+description: "Build a Stream from values, effectful work, or an existing source. Construction is lazy: callbacks that do Effect work run at consumption. The introduction covers Stream builders and effect..."
 ---
 
 # Creating Streams
 
-Build a Stream from values, effectful work, or an existing source. Construction is lazy: callbacks that do Effect work run at consumption. The [introduction](/stream/053-introduction) covers trusted Stream builders and producers as Streams.
+Build a Stream from values, effectful work, or an existing source. Construction is lazy: callbacks that do Effect work run at consumption. The [introduction](/stream/053-introduction) covers Stream builders and `effect function*` producers as Streams.
 
 ## Finite and empty streams
 
@@ -14,10 +14,10 @@ const labels = Stream.make("queued", "running", "complete")
 const absent = Stream.empty
 const signal = Stream.succeed(void 0)
 const pages = Stream.range(4, 7)
-const powers = Stream.iterate(2, (n) => n * 2).take(4)
+const powers = Stream.take(Stream.iterate(2, (n) => n * 2), 4)
 
-function readPowers() {
-  return powers.runCollect() // [2, 4, 8, 16]
+effect readPowers() {
+  return try Stream.runCollect(powers) // [2, 4, 8, 16]
 }
 // Output: [["queued","running","complete"],[],1,[4,5,6,7],[2,4,8,16]]
 ```
@@ -32,17 +32,15 @@ error SourceClosed
 const ready = Stream.succeed("ready")
 const closed = Stream.fail(new SourceClosed())
 
-function readClosed() {
-  try {
-    return closed.runCollect()
-  } catch (error) {
-    return ["source unavailable"]
+effect readClosed() {
+  return Stream.runCollect(closed) catch (error) => match (error) {
+    when SourceClosed: ["source unavailable"]
   }
 }
 // Output: [["ready"],["source unavailable"]]
 ```
 
-`succeed` emits once and completes. `fail` builds a failing source without throwing at construction; a `try` around consumption handles its typed failure.
+`succeed` emits once and completes. `fail` builds a failing source without throwing at construction; a `catch` expression on the consuming Effect handles its typed failure.
 
 ## Arrays and iterables
 
@@ -55,21 +53,22 @@ service Catalog {
   codes(): ReadonlyArray<string>!!
 }
 
-const codes = Stream.fromIterableEffect(() => Catalog.codes())
+const codes = Stream.fromIterableEffect(effect {
+  const catalog = try Catalog
+  return try catalog.codes()
+})
 // Output: [[11,22],[11,22,33],["east","west"],["A","B"]]
 ```
 
-`fromArray` and `fromIterable` emit collection members; `fromArrays` keeps the supplied batch boundaries internally. `fromIterableEffect` runs the program to get an iterable, then emits its members; service requirements belong to consumption.
+`fromArray` and `fromIterable` emit collection members; `fromArrays` keeps the supplied batch boundaries internally. `fromIterableEffect` runs the Effect to get an iterable, then emits its members; service requirements belong to consumption.
 
 ## Async iterables
 
 ```ts
 // TypeScript (.ts)
 // rows.ts
-import { Effect } from "effect"
-import { trusted } from "vibelang-runtime"
-
-export const rows = trusted((fail = false): AsyncIterable<string> => {
+/** @throws {never} */
+export function rows(fail = false): AsyncIterable<string> {
   return {
     async *[Symbol.asyncIterator]() {
       if (fail) throw new Error("iterator failed")
@@ -77,7 +76,7 @@ export const rows = trusted((fail = false): AsyncIterable<string> => {
       yield "row-b"
     }
   }
-}, [])
+}
 // Output: ["row-a","row-b"]
 // Output: iterator failed
 ```
@@ -96,41 +95,44 @@ function adaptRows(rows: AsyncIterable<string>) {
 // Output: IteratorFailed
 ```
 
-The trusted wrapper is a plain function: TypeScript callers get the async iterable from `rows()`, as VibeLang calls do. Pass an async iterable from a TypeScript adapter or a service; the error mapper turns iteration exceptions and rejections into the stream's failure type. VibeLang has no `async` generator syntax or `for await`; use Stream consumers after adaptation.
+`rows` is a plain function: TypeScript callers get the async iterable from `rows()`, as VibeLang calls do. Its `@throws {never}` annotation describes the call. The iterator can still reject while reading. Pass an async iterable from a TypeScript adapter or a service; the error mapper turns iteration exceptions and rejections into the stream's failure type. Async generators and `for await` keep their JavaScript meaning in async code; use Stream consumers after adaptation to run the source inside Effect code.
 
 ## Effects and callbacks
 
 ```vibe
 const timestamp = Stream.fromEffect(Clock.currentTimeMillis)
 
-const notices = Stream.callback<string>((queue) => {
-  queue.offer("connected")
-  queue.offer("ready")
-  queue.end()
+const notices = Stream.callback<string>(effect (queue) => {
+  try Queue.offer(queue, "connected")
+  try Queue.offer(queue, "ready")
+  try Queue.end(queue)
 })
 
-function readNotices() {
-  return notices.runCollect() // ["connected", "ready"]
+effect readNotices() {
+  return try Stream.runCollect(notices) // ["connected", "ready"]
 }
 // Output: [[123],["connected","ready"]]
 ```
 
-`fromEffect` emits one success value. `callback` hands its registration program a queue: `Queue.offer` emits, `Queue.end` completes normally, and `Queue.fail` fails with a typed error. The optional second argument takes `bufferSize` and a `strategy`: `"suspend"`, `"dropping"`, or `"sliding"`.
+`fromEffect` emits one success value. `callback` hands its Effect callback a queue: `Queue.offer` emits, `Queue.end` completes normally, and `Queue.fail` fails with a typed error. The optional second argument takes `bufferSize` and a `strategy`: `"suspend"`, `"dropping"`, or `"sliding"`.
 
-For a foreign event API, register the raw callback in a TypeScript adapter and register unsubscription with `Effect.acquireRelease`; the registration callback's Scope stays open for the stream's lifetime. Platform callbacks cannot call VibeLang programs as synchronous JavaScript callbacks.
+For a foreign event API, register the raw callback in a TypeScript adapter and register unsubscription with `Effect.acquireRelease`; the registration callback's Scope stays open for the stream's lifetime. A synchronous platform callback can return an Effect value, but it cannot run it with `try`. Use an Effect runner at that boundary when the adapter needs to start work.
 
 ## Scoped sources
 
 ```vibe
-function openSession() {
-  Console.log("open session")
-  return Effect.acquireRelease(
-    () => ({ name: "metrics" }),
+effect openSession() {
+  try Console.log("open session")
+  return try acquireRelease(
+    succeed({ name: "metrics" }),
     () => Console.log("close session")
   )
 }
 
-const sessionNames = Stream.fromEffect(openSession()).map((session) => session.name).scoped()
+const sessionNames = Stream.fromEffect(openSession()).pipe(
+  Stream.map((session) => session.name),
+  Stream.scoped
+)
 // Output: open session
 // Output: close session
 // Output: ["metrics"]
@@ -141,32 +143,32 @@ const sessionNames = Stream.fromEffect(openSession()).map((session) => session.n
 ## Repeating values, streams, and effects
 
 ```vibe
-const pings = Stream.succeed("ping").forever()
-const rounds = Stream.make("start", "finish").repeat(Schedule.recurs(2))
-const times = Stream.fromEffectRepeat(() => Clock.currentTimeMillis())
+const pings = Stream.forever(Stream.succeed("ping"))
+const rounds = Stream.repeat(Stream.make("start", "finish"), Schedule.recurs(2))
+const times = Stream.fromEffectRepeat(Clock.currentTimeMillis)
 
-function countdown() {
+effect countdown() {
   let remaining = 3
-  const source = Stream.fromEffectRepeat {
-    if (remaining === 0) Cause.done()
+  const source = Stream.fromEffectRepeat(effect {
+    if (remaining === 0) try Cause.done()
     return remaining--
-  }
-  return source.runCollect() // [3, 2, 1]
+  })
+  return try Stream.runCollect(source) // [3, 2, 1]
 }
 // Output: [["ping","ping","ping"],["start","finish","start","finish","start","finish"],2,[3,2,1]]
 ```
 
-`forever` restarts its stream indefinitely. `repeat` runs the stream once, then again as its schedule allows; `rounds` emits three rounds. `fromEffectRepeat` reruns its program per element and treats `Cause.Done` as normal completion; `Cause.done()` runs an Effect that signals it.
+`forever` restarts its stream indefinitely. `repeat` runs the stream once, then again as its schedule allows; `rounds` emits three rounds. `fromEffectRepeat` reruns its Effect per element and treats `Cause.Done` as normal completion; `try Cause.done()` runs an Effect that signals it.
 
 Keep mutable per-run state inside a function, as in `countdown`, so consumptions don't share it. `Stream.take` also bounds repetition.
 
 ## Periodic elements
 
 ```vibe
-const samples = Stream.tick("250 millis").mapEffect(() => Clock.currentTimeMillis())
+const samples = Stream.mapEffect(Stream.tick("250 millis"), () => Clock.currentTimeMillis)
 
-function collectSamples() {
-  return samples.take(4).runCollect()
+effect collectSamples() {
+  return try Stream.runCollect(Stream.take(samples, 4))
 }
 // Output: [123,123,123,123]
 ```
@@ -176,7 +178,7 @@ function collectSamples() {
 ## Unfolding state and paginating responses
 
 ```vibe
-const halving = Stream.unfold(32, (n) => {
+const halving = Stream.unfold(32, effect (n) => {
   if (n < 2) return undefined
   return [n, n / 2] as const
 })
@@ -188,24 +190,25 @@ service Directory {
   }, never, never>
 }
 
-const names = Stream.paginate(0, (cursor) => {
-  const page = Directory.page(cursor)
+const names = Stream.paginate(0, effect (cursor) => {
+  const directory = try Directory
+  const page = try directory.page(cursor)
   return [page.names, Option.fromUndefinedOr(page.next)] as const
 })
 // Output: [[32,16,8,4,2],["0","1","2"]]
 ```
 
-`unfold`'s callback returns `[element, nextState]`, or `undefined` to stop without emitting; it expects an Effect, so ordinary statements can do work between steps. `paginate`'s callback returns `[batch, nextStateOption]`, and it emits each whole batch, including the final page, whose next state is `None`.
+`unfold`'s callback returns an Effect that succeeds with `[element, nextState]`, or `undefined` to stop without emitting; write an `effect` callback to run work between steps. `paginate`'s callback returns an Effect that succeeds with `[batch, nextStateOption]`, and it emits each whole batch, including the final page, whose next state is `None`.
 
 ## Queues and broadcasts
 
 ```vibe
-function queuedNumbers() {
-  const queue = Queue.unbounded<number, Cause.Done>()
-  queue.offer(8)
-  queue.offer(13)
-  queue.end()
-  return Stream.fromQueue(queue).runCollect() // [8, 13]
+effect queuedNumbers() {
+  const queue = try Queue.unbounded<number, Cause.Done>()
+  try Queue.offer(queue, 8)
+  try Queue.offer(queue, 13)
+  try Queue.end(queue)
+  return try Stream.runCollect(Stream.fromQueue(queue)) // [8, 13]
 }
 
 function fromBroadcast(bus: PubSub.PubSub<string>) {
@@ -220,16 +223,16 @@ function fromBroadcast(bus: PubSub.PubSub<string>) {
 ## Schedules as sources
 
 ```vibe
-const policy = Schedule.spaced("400 millis").upTo({ times: 3 })
+const policy = Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 3 }))
 const pulses = Stream.fromSchedule(policy)
 
-function readPulses() {
-  return pulses.runCollect() // [0, 1, 2]
+effect readPulses() {
+  return try Stream.runCollect(pulses) // [0, 1, 2]
 }
 // Output: [0,1,2]
 ```
 
-`fromSchedule` emits schedule outputs until the schedule stops; `Stream.fromEffectSchedule(() => work(), policy)` emits a program's results, repeated on the schedule. Both keep the schedule's timing and service requirements.
+`fromSchedule` emits schedule outputs until the schedule stops; `Stream.fromEffectSchedule(work(), policy)` emits the Effect's results, repeated on the schedule. Both keep the schedule's timing and service requirements.
 
 ---
 

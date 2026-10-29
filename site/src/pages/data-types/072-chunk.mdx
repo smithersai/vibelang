@@ -13,7 +13,7 @@ description: "Chunk works in VibeLang exactly as in Effect. It is an immutable s
 function collectBatches(batches: ReadonlyArray<ReadonlyArray<string>>) {
   let result = Chunk.empty<string>()
   for (const batch of batches) {
-    result = result.appendAll(Chunk.fromIterable(batch))
+    result = Chunk.appendAll(result, Chunk.fromIterable(batch))
   }
   return result
 }
@@ -60,10 +60,10 @@ function ownedBatch() {
 
 ```vibe
 const original = Chunk.make("draft", "review")
-const extended = original.appendAll(Chunk.make("published"))
-const remaining = extended.drop(1)
-original.toReadonlyArray() // ["draft", "review"]
-remaining.toReadonlyArray() // ["review", "published"]
+const extended = Chunk.appendAll(original, Chunk.make("published"))
+const remaining = Chunk.drop(extended, 1)
+Chunk.toReadonlyArray(original) // ["draft", "review"]
+Chunk.toReadonlyArray(remaining) // ["review", "published"]
 ```
 
 ```text
@@ -91,7 +91,7 @@ Equality compares lengths and corresponding elements by Effect's equality rules,
 ## Converting to arrays
 
 ```vibe
-const nonempty = Chunk.make(7, 8).toReadonlyArray()
+const nonempty = Chunk.toReadonlyArray(Chunk.make(7, 8))
 const none = Chunk.toReadonlyArray(Chunk.empty<number>())
 const mutableCopy = [...nonempty]
 mutableCopy.push(9)

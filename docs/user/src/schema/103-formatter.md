@@ -1,18 +1,19 @@
 # Schema to Formatter
 
-Value formatters work exactly as in Effect. A schema-derived formatter renders decoded values as readable strings for diagnostics or display. It neither validates input nor serializes for transport; use a codec for serialization and an issue formatter for failures. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Value formatters work exactly as in Effect. A schema-derived formatter renders decoded values as readable strings for diagnostics or display. It neither validates input nor serializes for transport; use a codec for serialization and an issue formatter for failures. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Deriving value formatters from schemas
 
 ```vibe
-// run: Console.log(displayDispatch({ depot: "east", counts: [2, 4] }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try displayDispatch({ depot: "east", counts: [2, 4] })) })
 const Dispatch = Schema.Struct({
   depot: Schema.String,
   counts: Schema.Array(Schema.Int)
 })
 
-function displayDispatch(input: unknown) {
-  const dispatch = Schema.decodeUnknownEffect(Dispatch)(input)
+effect displayDispatch(input: unknown) {
+  const dispatch = try Schema.decodeUnknownEffect(Dispatch)(input)
   return Schema.toFormatter(Dispatch)(dispatch)
 }
 // For { depot: "east", counts: [2, 4] }, produces a readable object representation.
@@ -27,14 +28,15 @@ function displayDispatch(input: unknown) {
 ## Customizing formatting at selected syntax-tree nodes
 
 ```vibe
-// run: Console.log(displayManifest({ label: "crate", weight: 2 }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
+// run: await runPromise(effect { try Console.log(try displayManifest({ label: "crate", weight: 2 })) })
 const Weight = Schema.Finite.pipe(Schema.overrideToFormatter(
   () => (value) => `${value} kg`
 ))
 schema Manifest { label: string; weight: Weight }
 
-function displayManifest(input: unknown) {
-  const manifest = Schema.decodeUnknownEffect(Manifest)(input)
+effect displayManifest(input: unknown) {
+  const manifest = try Schema.decodeUnknownEffect(Manifest)(input)
   return Schema.toFormatter(Manifest, {
     onBefore: (ast) => ast._tag === "String"
       ? (value: string) => `[${value}]`

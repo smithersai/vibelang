@@ -1,18 +1,19 @@
 # Class APIs
 
-Schema classes work as in Effect. A class validates its fields, acts as a codec, and gives its instances domain behavior. Use one when methods or class identity help the model; use `Struct` for plain records. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schema classes work as in Effect. A class validates its fields, acts as a codec, and gives its instances domain behavior. Use one when methods or class identity help the model; use `Struct` for plain records. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Declaring validated classes
 
 ```vibe
-// run: const value = readPackage({ reference: "pkg-94", pieces: "2" }); Console.log(value instanceof Package, value.pieces)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try readPackage({ reference: "pkg-94", pieces: "2" }); try Console.log(value instanceof Package, value.pieces) })
 class Package extends Schema.Class<Package>("Package")({
   reference: Schema.NonEmptyString,
   pieces: Schema.FiniteFromString
 }) {}
 
-function readPackage(input: unknown) {
-  return Schema.decodeUnknownEffect(Package)(input)
+effect readPackage(input: unknown) {
+  return try Schema.decodeUnknownEffect(Package)(input)
 }
 // Package!Schema.SchemaError!
 ```
@@ -26,9 +27,10 @@ Pass the class itself as the `Self` type, a stable identifier, and its fields. T
 ## Constructing and checking instances
 
 ```vibe
-// run: Console.log(constructPackage("pkg-94", 2).pieces, constructWithNew("pkg-94").pieces); try { constructPackage("", 2) } catch (issue) { Console.log(issue._tag) }
-function constructPackage(reference: string, pieces: number) {
-  return Package.makeEffect({ reference, pieces })
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try constructPackage("pkg-94", 2)).pieces, (try Effect.try(() => constructWithNew("pkg-94"))).pieces); try Effect.catch(constructPackage("", 2), (issue) => Console.log(issue._tag)) })
+effect constructPackage(reference: string, pieces: number) {
+  return try Package.makeEffect({ reference, pieces })
 }
 
 function constructWithNew(reference: string) {
@@ -48,7 +50,8 @@ For a cross-field invariant, pass a checked `Schema.Struct` instead of a fields 
 ## Bypassing checks deliberately
 
 ```vibe
-// run: Console.log(fromVerifiedFields("", 2).reference === "")
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try sync(() => fromVerifiedFields("", 2))).reference === "") })
 function fromVerifiedFields(reference: string, pieces: number) {
   return new Package({ reference, pieces }, { disableChecks: true })
 }
@@ -63,14 +66,15 @@ true
 ## Defining structural equality
 
 ```vibe
-// run: Console.log(sameContainer())
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try sameContainer()) })
 class Container extends Schema.Class<Container>("Container")({
   labels: Schema.Array(Schema.String)
 }) {}
 
-function sameContainer() {
-  const first = Container.makeEffect({ labels: ["cold", "sealed"] })
-  const second = Container.makeEffect({ labels: ["cold", "sealed"] })
+effect sameContainer() {
+  const first = try Container.makeEffect({ labels: ["cold", "sealed"] })
+  const second = try Container.makeEffect({ labels: ["cold", "sealed"] })
   return Equal.equals(first, second) // true
 }
 ```
@@ -84,7 +88,8 @@ Instances support Effect's structural equality, nested arrays and objects includ
 ## Adding getters and methods
 
 ```vibe
-// run: Console.log(announcePackage())
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try announcePackage()) })
 class LabeledPackage extends Schema.Class<LabeledPackage>("LabeledPackage")({
   reference: Schema.NonEmptyString
 }) {
@@ -96,14 +101,14 @@ class LabeledPackage extends Schema.Class<LabeledPackage>("LabeledPackage")({
     return `Package ${this.reference}`
   }
 
-  announce() {
-    Console.log(this.describe())
+  effect announce() {
+    try Console.log(this.describe())
   }
 }
 
-function announcePackage() {
-  const item = LabeledPackage.makeEffect({ reference: "pkg-94" })
-  item.announce()
+effect announcePackage() {
+  const item = try LabeledPackage.makeEffect({ reference: "pkg-94" })
+  try item.announce()
   return item.displayReference
 }
 ```
@@ -113,17 +118,18 @@ Package pkg-94
 PKG-94
 ```
 
-Getters derive synchronous values from fields; keep them pure so formatting, checks, and compiled validators can read properties safely. Methods follow ordinary VibeLang call rules and can run effects, as `announce` does.
+Getters derive synchronous values from fields; keep them pure so formatting, checks, and compiled validators can read properties safely. Mark a method `effect` when it runs Effects, as `announce` does. Calling it returns an Effect; `try` runs it.
 
 ## Using classes as codecs
 
 ```vibe
-// run: Console.log(JSON.stringify(packageWireRoundTrip([{ reference: "pkg-94", pieces: "2" }])))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try packageWireRoundTrip([{ reference: "pkg-94", pieces: "2" }]))) })
 const Packages = Schema.Array(Package)
 
-function packageWireRoundTrip(input: unknown) {
-  const packages = Schema.decodeUnknownEffect(Packages)(input)
-  return Schema.encodeEffect(Packages)(packages)
+effect packageWireRoundTrip(input: unknown) {
+  const packages = try Schema.decodeUnknownEffect(Packages)(input)
+  return try Schema.encodeEffect(Packages)(packages)
 }
 ```
 
@@ -136,7 +142,8 @@ A class schema is a transformation: decoding a plain object creates an instance,
 ## Annotating classes
 
 ```vibe
-// run: Console.log(Dock.identifier); Console.log(Schema.resolveAnnotations(Dock)?.title); Console.log(Dock.makeEffect({ number: 2 }).number)
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(Dock.identifier); try Console.log(Schema.resolveAnnotations(Dock)?.title); try Console.log((try Dock.makeEffect({ number: 2 })).number) })
 class Dock extends Schema.Class<Dock>("Dock")(
   { number: Schema.Int },
   { title: "Loading dock", description: "A numbered dispatch location" }
@@ -154,7 +161,8 @@ Pass annotations after the fields or struct. The class identifier is also its de
 ## Modeling recursive classes
 
 ```vibe
-// run: const value = readCrate({ count: "2", children: [{ count: "1", children: [] }] }); Console.log(value instanceof Crate, value.children[0] instanceof Crate); Console.log(JSON.stringify(Schema.encodeEffect(Crate)(value)))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(value instanceof Crate, value.children[0] instanceof Crate); try Console.log(JSON.stringify(try Schema.encodeEffect(Crate)(value))) })
 interface CrateWire {
   count: string
   children: ReadonlyArray<CrateWire>
@@ -167,8 +175,8 @@ class Crate extends Schema.Class<Crate>("Crate")({
   )
 }) {}
 
-function readCrate(input: unknown) {
-  return Schema.decodeUnknownEffect(Crate)(input)
+effect readCrate(input: unknown) {
+  return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```
 
@@ -182,7 +190,8 @@ Suspend the recursive edge and annotate the callback's return type to break the 
 ## Creating tagged variants and extending classes
 
 ```vibe
-// run: Console.log(Packed.makeEffect({ reference: "pkg-94" })._tag); Console.log(InsuredPackage.makeEffect({ reference: "pkg-94", pieces: 2, insuredValue: 100 }).summary()); try { reportMissing("pkg-94") } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try Packed.makeEffect({ reference: "pkg-94" }))._tag); try Console.log((try InsuredPackage.makeEffect({ reference: "pkg-94", pieces: 2, insuredValue: 100 })).summary()); try Effect.catch(reportMissing("pkg-94"), (error) => Console.log(error._tag)) })
 class Packed extends Schema.TaggedClass<Packed>()("Packed", {
   reference: Schema.String
 }) {}
@@ -199,8 +208,8 @@ class InsuredPackage extends Package.extend<InsuredPackage>("InsuredPackage")({
   }
 }
 
-function reportMissing(reference: string) {
-  throw MissingPackage.makeEffect({ reference })
+effect reportMissing(reference: string) {
+  throw (try MissingPackage.makeEffect({ reference }))
 }
 // void!MissingPackage | SchemaIssue.Issue!
 ```
@@ -211,7 +220,7 @@ pkg-94: 100
 MissingPackage
 ```
 
-`TaggedClass` adds `_tag` with a constructor default. `Schema.TaggedError` also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or called; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel. For errors that need no serialization, use the global `TaggedError`.
+`TaggedClass` adds `_tag` with a constructor default. `Schema.TaggedError` also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or run with `try`; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel: `try MissingPackage.makeEffect({ reference })` constructs the error, then `throw` fails with it. For errors that need no serialization, use an `error` declaration.
 
 `extend` adds fields and keeps inherited behavior; give each extension its own identifier. Schema data-class inheritance is separate from service declarations, whose implementations use object literals or `implements`.
 

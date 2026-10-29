@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { diagnosticCodes, undocumentedCodes } from "./check-diagnostic-docs"
+import { diagnosticCodes, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
 
 const repo = resolve(import.meta.dir, "../..")
 const docsRepo = process.env.DOCS_REVIEW_ROOT || repo
@@ -18,8 +18,17 @@ test("extracts message declarations across files without counting references or 
   ])).toEqual(["EK1004", "EK4610", "EK9100"])
 })
 
-test("coverage requires a whole code and exempts only the deferred name-resolution code", () => {
-  expect(undocumentedCodes(["EK1004", "EK4407", "EK4610", "EK9100"], ["EK10040; EK4610: wait with d.await()"])).toEqual(["EK1004", "EK9100"])
+test("coverage requires a whole code and exempts the deferred name-resolution code and codes the VIPs retire", () => {
+  expect(undocumentedCodes(["EK1006", "EK4407", "EK4610", "EK9100"], ["EK10060; EK4610: wait with d.await()"])).toEqual(["EK1006", "EK9100"])
+  expect(undocumentedCodes(["EK2005"], [])).toEqual([])
+  for (const reason of Object.values(retiredByVips)) expect(reason).toMatch(/VIP-\d+|no VIP/)
+})
+
+test("a retired code is still one the compiler registers", () => {
+  const sources = walk(join(repo, "typescript/tsc/internal/vibelang"))
+    .filter(path => path.endsWith(".go") && !path.endsWith("_test.go")).map(path => readFileSync(path, "utf8"))
+  const registered = new Set(diagnosticCodes(sources))
+  expect(Object.keys(retiredByVips).filter(code => !registered.has(code))).toEqual([])
 })
 
 test("every registered diagnostic has a user-doc reference", () => {

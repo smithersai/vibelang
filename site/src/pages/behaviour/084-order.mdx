@@ -17,14 +17,13 @@ Order.Date(new Date("2026-01-01"), new Date("2026-02-01")) // -1
 // Output: [-1,0,1,-1]
 ```
 
-An `Order<A>` compares two A values synchronously. Built-in orders cover strings, numbers, booleans, bigints, and dates. A total order needs valid dates and numbers: `NaN` has no ordinary numeric ordering.
+An `Order.Order<A>` compares two A values synchronously. Built-in orders cover strings, numbers, booleans, bigints, and dates. A total order needs valid dates and numbers: `NaN` has no ordinary numeric ordering.
 
 ## Sorting values
 
 ```vibe
-import { Array as Arr } from "effect"
 const input = [9, 2, 6]
-const sorted = Arr.sort(input, Order.Number)
+const sorted = Effect.Array.sort(input, Order.Number)
 // sorted: [2, 6, 9]; input: [9, 2, 6]
 
 const mutableCopy = [...input]
@@ -58,7 +57,6 @@ byPriority(
 ## Combining comparison rules
 
 ```vibe
-import { Array as Arr } from "effect"
 interface Task {
   priority: number
   title: string
@@ -67,7 +65,7 @@ interface Task {
 const byPriority = Order.mapInput(Order.Number, (task: Task) => task.priority)
 const byTitle = Order.mapInput(Order.String, (task: Task) => task.title)
 const taskOrder = Order.combine(byPriority, byTitle)
-const tasks = Arr.sort([
+const tasks = Effect.Array.sort([
   { priority: 2, title: "Review" },
   { priority: 1, title: "Publish" },
   { priority: 2, title: "Archive" }
@@ -81,9 +79,8 @@ const tasks = Arr.sort([
 ## Reversing an ordering
 
 ```vibe
-import { Array as Arr } from "effect"
 const descending = Order.flip(Order.Number)
-Arr.sort([5, 12, 3], descending) // [12, 5, 3]
+Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
 // Output: [12,5,3]
 ```
 

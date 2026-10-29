@@ -18,6 +18,8 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/svelte@5.
 
 ## 2. Configure tsconfig.json
 
+Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
+
 Find the configuration that includes `src`. In an app from Vite's `svelte-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Make two changes there:
 
 1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits, so `vite build` works without this setting. For the separate `vibelang -b` check in step 7, set `"rewriteRelativeImportExtensions": true` in `compilerOptions`; without it, a `.ts` file importing a `.vibe` module reports TS5097. It also rewrites source-extension imports during CLI emission; `allowImportingTsExtensions` alone produces TS5096 when emitting JavaScript.
@@ -51,11 +53,12 @@ export default defineConfig({
 
 ## 4. Add a VibeLang module
 
-Create `src/cart.vibe`. `quote` reserves a product and recovers from `OutOfStock`, and `quoteCart` runs two quotes concurrently with `await.all`:
+Create `src/cart.vibe`. `quote` reserves a product and recovers from `OutOfStock`, and `quoteCart` runs two quotes concurrently with `try.all`:
 
 ```vibe
 // src/cart.vibe
-// run: provide InventoryLive { Console.log(quoteCart().join("\n")); Console.log(quote("missing", 1)); try { Inventory.reserve("coffee", 3) } catch (error) { Console.log(error._tag, error.sku, error.available) } }
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15, VIP-18
+// run: provide InventoryLive { try Console.log((try quoteCart()).join("\n")); try Console.log(try quote("missing", 1)); const inventory = try Inventory; try Console.log(inventory.reserve("coffee", 3) catch (error) => `${error._tag} ${error.sku} ${error.available}`) }
 export schema Product { sku: string; name: string; cents: number; stock: number }
 
 export error OutOfStock { sku: string; available: number }
@@ -70,7 +73,7 @@ const catalog: ReadonlyArray<Product> = [
 ]
 
 export const InventoryLive = Layer.succeed(Inventory, {
-  reserve(sku, quantity) {
+  effect reserve(sku, quantity) {
     const product = catalog.find((entry) => entry.sku === sku)
     const available = product?.stock ?? 0
     if (product === undefined || available < quantity) throw new OutOfStock({ sku, available })
@@ -78,18 +81,19 @@ export const InventoryLive = Layer.succeed(Inventory, {
   }
 })
 
-export function quote(sku: string, quantity: number) {
-  try {
-    const product = Inventory.reserve(sku, quantity)
+export effect quote(sku: string, quantity: number) {
+  const inventory = try Inventory
+  return effect {
+    const product = try inventory.reserve(sku, quantity)
     const total = (product.cents * quantity / 100).toFixed(2)
     return `${quantity} x ${product.name}: $${total}`
-  } catch (error) {
-    return `Only ${error.available} ${error.sku} left`
+  } catch (error) => match (error) {
+    when OutOfStock: `Only ${error.available} ${error.sku} left`
   }
 }
 
-export function quoteCart() {
-  return await.all [quote("tea", 2), quote("coffee", 3)]
+export effect quoteCart() {
+  return try.all [quote("tea", 2), quote("coffee", 3)]
 }
 ```
 
@@ -149,35 +153,38 @@ Create `src/cart.test.vibe`:
 
 ```vibe
 // src/cart.test.vibe
+// pending: VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 import { assert, it } from "@effect/vitest"
 import { InventoryLive, Inventory, OutOfStock, quote, quoteCart } from "./cart.vibe"
 
-it.effect("quotes a product in stock") {
-  const line = Effect.provide(() => quote("tea", 2), InventoryLive)
-  assert.strictEqual(line, "2 x Green tea: $8.00")
-}
+it.effect("quotes a product in stock", () => effect {
+  const line = try Effect.provide(quote("tea", 2), InventoryLive)
+  try sync(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
+})
 
-it.effect("fails a reservation with OutOfStock") {
+it.effect("fails a reservation with OutOfStock", () => effect {
   provide InventoryLive {
-    try {
-      Inventory.reserve("coffee", 3)
-      assert.fail("expected OutOfStock")
-    } catch (error) {
-      assert.instanceOf(error, OutOfStock)
-      assert.strictEqual(error.available, 1)
-    }
+    const inventory = try Inventory
+    const outcome = try result(inventory.reserve("coffee", 3))
+    try sync(() => {
+      assert(Result.isFailure(outcome))
+      if (Result.isFailure(outcome)) {
+        assert.instanceOf(outcome.failure, OutOfStock)
+        assert.strictEqual(outcome.failure.available, 1)
+      }
+    })
   }
-}
+})
 
-it.effect("recovers OutOfStock in quote") {
-  const line = Effect.provide(() => quote("coffee", 3), InventoryLive)
-  assert.strictEqual(line, "Only 1 coffee left")
-}
+it.effect("recovers OutOfStock in quote", () => effect {
+  const line = try Effect.provide(quote("coffee", 3), InventoryLive)
+  try sync(() => assert.strictEqual(line, "Only 1 coffee left"))
+})
 
-it.effect("quotes the cart concurrently") {
-  const lines = Effect.provide(() => quoteCart(), InventoryLive)
-  assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"])
-}
+it.effect("quotes the cart concurrently", () => effect {
+  const lines = try Effect.provide(quoteCart(), InventoryLive)
+  try sync(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
+})
 ```
 
 Create `src/CartQuote.test.ts`:
@@ -216,6 +223,7 @@ Error: Cannot find module './cart.vibe' or its corresponding type declarations. 
 ```
 
 Use `vibelang -b` instead: it builds the same project references and checks `.vibe` and `.ts` files as one program, but not the script blocks of `.svelte` files. Keep those blocks thin: import a program, run it, and render its result, as `CartQuote.svelte` does. The `.vibe` tests and the component test cover the rest. In `package.json`, change the `check` script:
+
 
 ```json
 {

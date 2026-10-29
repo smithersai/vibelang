@@ -1,11 +1,12 @@
 # Schema Annotations
 
-Annotations work exactly as in Effect: they attach metadata or interpreter hooks without changing the value's static type. Use them for documentation, error messages, representation choices, and custom tooling. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Annotations work exactly as in Effect: they attach metadata or interpreter hooks without changing the value's static type. Use them for documentation, error messages, representation choices, and custom tooling. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Attaching built-in metadata
 
 ```vibe
-// run: for (const input of [{}, { destination: 1 }, { destination: "" }]) { try { Schema.decodeUnknownEffect(Request)(input) } catch (error) { Console.log(error.message) } }
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { for (const input of [{}, { destination: 1 }, { destination: "" }]) { try Effect.catch(Schema.decodeUnknownEffect(Request)(input), (error) => Console.log(error.message)) } })
 const Destination = Schema.String.annotate({
   message: "Destination must be text"
 }).check(Schema.isNonEmpty({ message: "Choose a destination" })).annotate({
@@ -40,18 +41,19 @@ Representation hooks include `toCodec`, `toCodecJson`, `toCodecStringTree`, `toC
 ## Controlling decoding concurrency
 
 ```vibe
-// run: Console.log(JSON.stringify(reviewLabels(["north", "south"]))); try { reviewLabels([""]) } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try reviewLabels(["north", "south"]))); try Effect.catch(reviewLabels([""]), (error) => Console.log(error.message)) })
 const ReviewedLabel = Schema.String.pipe(Schema.decode({
-  decode: SchemaGetter.checkEffect((label) => {
-    sleep("10 millis")
+  decode: SchemaGetter.checkEffect(effect (label) => {
+    try sleep("10 millis")
     return label.length > 0 || "Empty label"
   }),
   encode: SchemaGetter.passthrough()
 }))
 const Labels = Schema.Array(ReviewedLabel)
 
-function reviewLabels(input: unknown) {
-  return Schema.decodeUnknownEffect(Labels)(input, { concurrency: 3 })
+effect reviewLabels(input: unknown) {
+  return try Schema.decodeUnknownEffect(Labels)(input, { concurrency: 3 })
 }
 ```
 
@@ -66,16 +68,17 @@ Product schemas such as arrays, structs, and tuples can run effectful child pars
 ## Recovering decoding failures with fallback values
 
 ```vibe
-// run: Console.log(readLabel("crate")); Console.log(readLabel(42)); try { Schema.encodeUnknownEffect(OptionalLabel)(42) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readLabel("crate")); try Console.log(try readLabel(42)); try Effect.catch(Schema.encodeUnknownEffect(OptionalLabel)(42), (error) => Console.log(error._tag)) })
 const OptionalLabel = Schema.String.pipe(
-  Schema.catchDecoding((issue) => {
-    Console.log(`label fallback: ${issue._tag}`)
+  Schema.catchDecoding(effect (issue) => {
+    try Console.log(`label fallback: ${issue._tag}`)
     return Option.some("unlabeled")
   })
 )
 
-function readLabel(input: unknown) {
-  return Schema.decodeUnknownEffect(OptionalLabel)(input)
+effect readLabel(input: unknown) {
+  return try Schema.decodeUnknownEffect(OptionalLabel)(input)
 }
 ```
 
@@ -93,7 +96,8 @@ Log the issue tag or stage when diagnostics help; don't record a rejected payloa
 ## Defining custom schema annotations
 
 ```vibe
-// run: Console.log(isInternal(DepotCode), isInternal(Schema.String))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(isInternal(DepotCode), isInternal(Schema.String)) })
 const InternalOnly = Symbol.for("warehouse/schema/internal-only")
 
 declare module "effect/Schema" {

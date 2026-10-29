@@ -1,11 +1,11 @@
 ---
 title: "Managing Services"
-description: "A service is a named capability a program uses without passing an implementation through every function. service declares it as an abstract class whose members state contracts; its uses are..."
+description: "A service is a named capability a program uses without passing an implementation through every function. service declares its key and members' contracts; looking up its implementation with try..."
 ---
 
 # Managing Services
 
-A service is a named capability a program uses without passing an implementation through every function. `service` declares it as an abstract class whose members state contracts; its uses are inferred in the `R` channel.
+A service is a named capability a program uses without passing an implementation through every function. `service` declares its key and members' contracts; looking up its implementation with `try` adds the identifier to the `R` channel.
 
 
 ## Declaring typed service keys
@@ -18,12 +18,16 @@ service Sequence {
 service Reporter {
   write(message: string): void!!
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
 // Output: ticket-17
 ```
 
-A service has no superclass or type parameters, and every instance member is abstract. Methods state full contracts, having no body to infer from; `abstract readonly` value members are allowed. Static fields can hold layers or other helpers.
+A service has no superclass or type parameters, and every instance member is abstract. Methods state full contracts, having no body to infer from; `readonly` value members are allowed. Static fields can hold layers or other helpers.
 
-Services are nominal: the compiler derives the key from package, module path, and class name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. Implement one with an object literal or a class that `implements` it; don't construct, extend, or use `instanceof` on it.
+Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
 ## Declaring a service of any shape
 
@@ -32,60 +36,62 @@ interface SearchApi {
   find(query: string): string!!
 }
 
-service Search: SearchApi
-service Prefix: string
+class Search extends Context.Service<Search, SearchApi>()("app/Search") {}
+class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 
-function lookup(query: string) {
-  return `${Prefix()}${Search.find(query)}`
+effect lookup(query: string) {
+  const prefix = try Prefix
+  const search = try Search
+  return `${prefix}${try search.find(query)}`
 }
 // Output: > hit:vibe
 ```
 
-`service Name: Type` declares a service whose implementation has any type: an interface declared elsewhere, a primitive such as `string`, or a function type. Like Effect's `class Search extends Context.Service<Search, SearchApi>()(key) {}`, it is a service key, with the key derived as for every service. The body is optional and holds only static members, such as a layer: `service Search: SearchApi { static readonly layer = Layer.succeed(Search, impl) }`. An instance member there is error EK2103; declare it in the shape. Reading is the same as for any service: `Search.find(q)` calls a member and `Prefix()` returns the implementation. As for every service, the type `Search` is the service's identifier and `Search.Shape` is `SearchApi`, so type an implementation `SearchApi`.
+Use Effect's `Context.Service` class for a service whose implementation has any type: an interface declared elsewhere, a primitive such as `string`, or a function type. `class Search extends Context.Service<Search, SearchApi>()("app/Search") {}` declares a key with an explicit identity. Its body can hold static members, such as `static readonly layer = Layer.succeed(Search, impl)`; declare implementation members in `SearchApi`. Read the implementation with `const search = try Search`, then run an Effect-returning member with `try search.find(q)`; `try Prefix` returns the string implementation. The type `Search` is the service's identifier, so type an implementation `SearchApi` or `Context.Service.Shape<typeof Search>`.
 
 ## Requesting and supplying implementations
 
 ```vibe
-function nextLabel() {
-  return `ticket-${Sequence.next()}`
+effect nextLabel() {
+  const sequence = try Sequence
+  return `ticket-${try sequence.next()}`
 }
 // string!!Sequence
 
-function fixedLabel() {
-  return Effect.provideService(() => nextLabel(), Sequence, {
-    next: () => 17
+effect fixedLabel() {
+  return try provideService(nextLabel(), Sequence, {
+    next: effect () => 17
   })
 }
 // string!!
 
-function readImplementation() {
-  const sequence = Sequence()
-  return sequence.next()
+effect readImplementation() {
+  const sequence = try Sequence
+  return try sequence.next()
 }
 // number!!Sequence
 // Output: ticket-17
 // Output: ticket-23 23
 ```
 
-A service can declare `static readonly default` to supply an implementation without a provider. The initializer is checked against the service shape, with the same member failure and call-time requirement checks as `Layer.succeed`: a shape mismatch is a TypeScript error, an excess failure is EK2001, and an undeclared call-time requirement is EK3101.
+A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as EK2001, and an undeclared call-time requirement as EK3101. Support for the new `defaultValue` form arrives with the compiler's VIP implementation.
 
-`Sequence.next()` looks up the service and runs the method; `Sequence()` returns the implementation, to capture it or read value members. Supply every requirement before running the program. A missing provide at an entry `main` produces warning EK3205 by default; the starter sets EK3205 to `"error"`, so the build stops.
+`try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 
 ```vibe
 service Settings {
   baseUrl: string
 }
 
-function endpoint(path: string) {
-  return `${Settings().baseUrl}/${path}`
+effect endpoint(path: string) {
+  const settings = try Settings
+  return `${settings.baseUrl}/${path}`
 }
 // string!!Settings
 // Output: https://example.test/tickets
 ```
 
-Read value members from the implementation, as `Settings().baseUrl`. A member call through the service adds the service to `R` whatever the member returns: `Path.join(a, b)` returns a plain string and still requires Effect's `Path` service. Members from Effect's packages, or from packages matching the `vibelang` setting `trustedPackages`, are trusted; any other plain TypeScript member needs a boundary or `trusted(impl, [Errors])`, else the call is EK4401. A member that is itself an Effect value runs when called: `Terminal.readLine()`.
-
-Declared members win over the key's own, including `pipe`, `use`, `key`, and `call`. A static member named like a service member is error EK3006.
+Read value members from the implementation, as `settings.baseUrl` after `const settings = try Settings`. Looking up a service adds it to `R` whatever its members return: `const path = try Path; path.join(a, b)` returns a plain string and still requires Effect's `Path` service. Wrap a synchronous member call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A member that is itself an Effect value runs with `try`, as in `try terminal.readLine`.
 
 `provideService` removes the dependency only within its program. Nested overrides are local, a captured implementation stays the same object across later overrides or pauses, and forked fibers inherit the context present when they start.
 
@@ -96,46 +102,47 @@ type SequenceImplementation = Sequence.Shape
 type SameImplementation = Context.Service.Shape<typeof Sequence>
 ```
 
-A service has two types, as an Effect `Context.Key` has, because it is Effect's own `Context.Service` class. As a type, `Sequence` is the service's identifier, which carries its key, so neither another service with the same members nor a structural type such as `{ next(): number!! }` can stand for it in `R`. `Sequence.Shape`, which Effect spells `Context.Service.Shape<typeof Sequence>`, is the members alone, the type of an implementation. `Layer.succeed`, `Layer.effect`, `provideService`, `provide Sequence = …`, and a default check an implementation against the shape, and `implements Sequence` in a `.vibe` file checks a class against it.
+A service has two types, as an Effect `Context.Key` has, because it is Effect's own `Context.Service` class. As a type, `Sequence` is the service's identifier, which carries its key, so neither another service with the same members nor a structural type such as `{ next(): number!! }` can stand for it in `R`. `Sequence.Shape`, which Effect spells `Context.Service.Shape<typeof Sequence>`, is the members alone, the type of an implementation. `Layer.succeed`, `Layer.effect`, `provideService`, `provide Sequence = …`, and a `defaultValue` factory check an implementation against the shape, and `implements Sequence.Shape` in a `.vibe` file checks a class against it.
 
-`Sequence()` returns the implementation typed as the shape, as `yield* Sequence` does. Type a parameter or a default that takes an implementation `Sequence.Shape`; a parameter typed `Sequence` takes the identifier, as in Effect TypeScript. A TypeScript class implements the emitted service with `implements Context.Service.Shape<typeof Sequence>`.
+`try Sequence` returns the implementation typed as the shape, as `yield* Sequence` does. Type a parameter or a default implementation `Sequence.Shape`; a parameter typed `Sequence` takes the identifier, as in Effect TypeScript. A TypeScript class implements the emitted service with `implements Context.Service.Shape<typeof Sequence>`.
 
 Providers infer and check the implementation from the key argument, so most layers don't need either name. At a TypeScript boundary, the shape describes the emitted implementation's Effect-returning methods.
 
 ## Combining multiple dependencies
 
 ```vibe
-function announceTicket() {
-  const label = nextLabel()
-  Reporter.write(`Created ${label}`)
+effect announceTicket() {
+  const label = try nextLabel()
+  const reporter = try Reporter
+  try reporter.write(`Created ${label}`)
   return label
 }
 // string!!Sequence | Reporter
 
 const SequenceTest = Layer.succeed(Sequence, {
-  next() { return 17 }
+  effect next() { return 17 }
 })
 const ReporterTest = Layer.succeed(Reporter, {
-  write(_message) {}
+  effect write(_message) {}
 })
 
-function testAnnouncement() {
-  provide wire(SequenceTest, ReporterTest) { return announceTicket() }
+effect testAnnouncement() {
+  provide Layer.merge(SequenceTest, ReporterTest) { return try announceTicket() }
 }
 // Output: "ticket-17"
 ```
 
-A union in `R` needs both capabilities. Layers supply the group together; `wire` composes their graph, rejecting duplicate providers and cycles. Inputs no argument provides stay requirements of the resulting layer, reported as missing where a runner or contract needs them satisfied. For a small local override, nest direct service provision.
+A union in `R` needs both capabilities. Layers supply the group together; `Layer.merge` combines independent layers, and `Layer.provide` feeds one layer's outputs into another's construction requirements. Inputs no argument provides stay requirements of the resulting layer, reported as missing where a runner or contract needs them satisfied. For a small local override, nest direct service provision.
 
 ```vibe
 const testContext = Context.add(
-  Context.make(Sequence, { next: () => 17 }),
+  Context.make(Sequence, { next: effect () => 17 }),
   Reporter,
-  { write: (_message) => {} }
+  { write: effect (_message) => {} }
 )
 
-function testWithContext() {
-  provide testContext { return announceTicket() }
+effect testWithContext() {
+  provide testContext { return try announceTicket() }
 }
 // Output: ticket-17
 ```
@@ -145,10 +152,10 @@ A `Context` holds existing implementations; a `Layer` describes how to build the
 ## Requesting optional services
 
 ```vibe
-function optionalAnnouncement(message: string) {
-  const reporter = Effect.serviceOption(Reporter)
-  if (reporter.isNone()) return false
-  reporter.value.write(message)
+effect optionalAnnouncement(message: string) {
+  const reporter = try serviceOption(Reporter)
+  if (Option.isNone(reporter)) return false
+  try reporter.value.write(message)
   return true
 }
 // boolean!!
@@ -166,23 +173,23 @@ service ReportSettings {
   prefix: string
 }
 
-const ReporterLive = Layer.effect(Reporter) {
-  const settings = ReportSettings()
+const ReporterLive = Layer.effect(Reporter, effect {
+  const settings = try ReportSettings
   return {
-    write(message) {
-      Console.log(`${settings.prefix}: ${message}`)
+    effect write(message) {
+      try Console.log(`${settings.prefix}: ${message}`)
     }
   }
-}
+})
 // Layer<Reporter, never, ReportSettings>
 // Output: audit: ready
 ```
 
-Capture construction dependencies in the layer factory: `Reporter.write` then requires only `Reporter`, because the implementation retains `settings`. Looking up `ReportSettings()` inside `write` would add a call-time requirement, which its declared `R = never` rejects.
+Capture construction dependencies in the layer factory: `try reporter.write(...)` then requires only `Reporter`, because the implementation retains `settings`. Looking up `try ReportSettings` inside `write` would add a call-time requirement, which its declared `R = never` rejects.
 
 ## Coming from Effect
 
-Abstract classes replace hand-written `Context.Service` declarations in `.vibe` files. A `Context.Service` class there draws EK4831, whose quick fix writes the `service` declaration, keeping the class's key as `static readonly key`, when its members are written in the class's type argument ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). Call service methods directly; `ServiceName()` replaces yielding the key in a TypeScript generator to get its implementation.
+`service` declarations replace hand-written `Context.Service` declarations in `.vibe` files. A `Context.Service` class there draws EK4831, whose quick fix writes the `service` declaration, keeping the class's key as `static readonly key`, when its members are written in the class's type argument ([TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code)). Support for the new forms arrives with the compiler's VIP implementation. `try ServiceName` replaces yielding the key in a TypeScript generator to get its implementation; `try implementation.method()` runs an Effect-returning method.
 
 ---
 

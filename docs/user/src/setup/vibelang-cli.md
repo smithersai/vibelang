@@ -6,7 +6,7 @@ VibeLang uses TypeScript 7, which rejects removed options such as `moduleResolut
 
 ## 1. Configure tsconfig.json
 
-If the project has no `tsconfig.json`, create this one. It selects `.vibe` files under `src/` and emits Node ESM to `dist/`:
+VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`, in that order. `vibe.config.json` accepts every tsconfig field and a top-level `"vibe"` section for language options. If the project has no configuration, create this `tsconfig.json`. It selects `.vibe` files under `src/` and emits Node ESM to `dist/`:
 
 ```json
 {
@@ -63,14 +63,15 @@ Create `src/hello.vibe`, in a directory that `include` selects:
 
 ```vibe
 // src/hello.vibe
-// run: Console.log(hello("VibeLang"))
-export function hello(name: string) {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try hello("VibeLang"))
+export effect hello(name: string) {
   return `Hello, ${name}!`
 }
 // Output: Hello, VibeLang!
 ```
 
-Run `npx vibelang`: it prints nothing, exits with status 0, and writes `hello.js` to the `outDir` (`dist/` above).
+Run `npx vibelang`: it prints nothing, exits with status 0, and writes `hello.js` to the `outDir` (`dist/` above). Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
 
 In `.vibe` files, import local modules by their source name: `import { hello } from "./hello.vibe"`. For this CLI build, a `.ts` importer can use `./hello.js`: VibeLang resolves it to `hello.vibe` while checking, and Node loads the emitted `hello.js`. With Vite or Vitest, use `./hello.vibe` from `.ts` too, so the plugin loads the source ([Vite setup](vite.md#3-add-a-first-module)); `rewriteRelativeImportExtensions` permits that source extension and rewrites it when emitting JavaScript.
 
@@ -80,11 +81,14 @@ The `start` script runs `dist/main.js`, so create `src/main.vibe`:
 
 ```vibe
 // src/main.vibe
+// pending: VIP-1, VIP-5, VIP-14, VIP-26
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { hello } from "./hello.vibe"
 
-export function main() {
-  Console.log(hello("VibeLang"))
+export effect main() {
+  try Console.log(try hello("VibeLang"))
 }
+NodeRuntime.runMain(main())
 // Output: Hello, VibeLang!
 ```
 
@@ -94,7 +98,7 @@ Run `npm run start`, or `bun run start`. The output ends with:
 Hello, VibeLang!
 ```
 
-The compiler runs the exported `main` when Node executes the file directly, not when another module imports it.
+The explicit `NodeRuntime.runMain(main())` call starts the application when the entry module loads. Keep reusable functions in separate modules so imports do not start the process.
 
 ## 5. Test with Vitest
 
@@ -116,12 +120,14 @@ Create `src/hello.test.vibe`:
 
 ```vibe
 // src/hello.test.vibe
+// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 import { hello } from "./hello.vibe"
 
-it.effect("says hello") {
-  assert.strictEqual(hello("VibeLang"), "Hello, VibeLang!")
-}
+it.effect("says hello", () => effect {
+  const message = try hello("VibeLang")
+  try sync(() => assert.strictEqual(message, "Hello, VibeLang!"))
+})
 ```
 
 Run `npx vitest run`. The output includes:

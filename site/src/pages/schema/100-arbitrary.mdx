@@ -5,7 +5,7 @@ description: "Effect's native Arbitrary module derives generators and shrinkers 
 
 # Schema to Arbitrary
 
-Effect's native `Arbitrary` module derives generators and shrinkers from schemas exactly as in Effect. Use it to explore valid inputs and check properties across many examples. The module and replay format are unstable in Effect 4.0.6. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Effect's native `Arbitrary` module derives generators and shrinkers from schemas exactly as in Effect. Use it to explore valid inputs and check properties across many examples. The module and replay format are unstable in Effect 4.0.6. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Generating schema-conforming random values
 
@@ -15,9 +15,9 @@ const Parcel = Schema.Struct({
   count: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 24 }))
 })
 
-function sampleParcels() {
-  const generator = Arbitrary.schema(Parcel)
-  return Arbitrary.sampleEffect(generator, { count: 12, seed: "parcel-samples" })
+effect sampleParcels() {
+  const generator = try sync(() => Arbitrary.schema(Parcel))
+  return try Arbitrary.sampleEffect(generator, { count: 12, seed: "parcel-samples" })
 }
 ```
 
@@ -53,11 +53,11 @@ Built-in bounds, lengths, patterns, property counts, and uniqueness checks give 
 ## Handling opaque checks and transformed values
 
 ```vibe
-function sampleRepresentations() {
-  const decoded = Arbitrary.schema(Schema.FiniteFromString)
-  const encoded = Arbitrary.schema(Schema.toEncoded(Schema.FiniteFromString))
-  const numbers = Arbitrary.sampleEffect(decoded, { count: 4, seed: 17 })
-  const strings = Arbitrary.sampleEffect(encoded, { count: 4, seed: 17 })
+effect sampleRepresentations() {
+  const decoded = try sync(() => Arbitrary.schema(Schema.FiniteFromString))
+  const encoded = try sync(() => Arbitrary.schema(Schema.toEncoded(Schema.FiniteFromString)))
+  const numbers = try Arbitrary.sampleEffect(decoded, { count: 4, seed: 17 })
+  const strings = try Arbitrary.sampleEffect(encoded, { count: 4, seed: 17 })
   return { numbers, strings }
 }
 ```
@@ -73,12 +73,12 @@ Generation targets the decoded type, so a string-to-number codec generates numbe
 ## Checking properties
 
 ```vibe
-function checkCountRoundTrip() {
+effect checkCountRoundTrip() {
   const Count = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
   const generator = Arbitrary.schema(Count)
-  const result = Arbitrary.checkEffect(generator, (count): boolean!Schema.SchemaError!never => {
-    const wire = Schema.encodeEffect(Schema.FiniteFromString)(count)
-    return Schema.decodeEffect(Schema.FiniteFromString)(wire) === count
+  const result = try Arbitrary.checkEffect(generator, effect (count): boolean!Schema.SchemaError!never => {
+    const wire = try Schema.encodeEffect(Schema.FiniteFromString)(count)
+    return (try Schema.decodeEffect(Schema.FiniteFromString)(wire)) === count
   }, { runs: 200, seed: "count-round-trip" })
   return result
 }
@@ -95,17 +95,17 @@ A falsification includes `shrunkInput` and a `replay` token. To reproduce it, ca
 ## Composing generators and customizing shrinking
 
 ```vibe
-function sampleDispatchPlans() {
-  const counts = Arbitrary.schema(Schema.Int.check(
+effect sampleDispatchPlans() {
+  const counts = try sync(() => Arbitrary.schema(Schema.Int.check(
     Schema.isBetween({ minimum: 0, maximum: 32 })
   ), {
     shrink: (value) => value === 0 ? [] : [Math.floor(value / 2)]
-  })
+  }))
   const plans = Arbitrary.all({
     count: counts,
     label: Arbitrary.Constant("test-dispatch")
   })
-  return Arbitrary.sampleEffect(plans, { count: 6, seed: 91 })
+  return try Arbitrary.sampleEffect(plans, { count: 6, seed: 91 })
 }
 ```
 
@@ -133,9 +133,9 @@ const ShelfRefSchema = Schema.instanceOf(ShelfRef, {
   )
 })
 
-function sampleShelves() {
-  const generator = Arbitrary.schema(ShelfRefSchema)
-  return Arbitrary.sampleEffect(generator, { count: 5, seed: 23 })
+effect sampleShelves() {
+  const generator = try sync(() => Arbitrary.schema(ShelfRefSchema))
+  return try Arbitrary.sampleEffect(generator, { count: 5, seed: 23 })
 }
 ```
 
@@ -148,10 +148,10 @@ An opaque declaration needs a generatable representation through `toCodecArbitra
 ## Diagnosing derivation failures
 
 ```vibe
-function reportImpossibleGenerator() {
-  const outcome = exit(() => Arbitrary.schema(Schema.Never))
+effect reportImpossibleGenerator() {
+  const outcome = try exit(sync(() => Arbitrary.schema(Schema.Never)))
   if (outcome is Exit.Failure) {
-    Console.log("Arbitrary derivation failed for the empty domain")
+    try Console.log("Arbitrary derivation failed for the empty domain")
   }
 }
 ```

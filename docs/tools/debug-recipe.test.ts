@@ -19,7 +19,9 @@ test.skipIf(!existsSync(defaultCompiler()))("the documented debugging entry work
     linkModules(dir)
     writeFileSync(join(dir, "package.json"), '{"type":"module"}')
     writeFileSync(join(dir, "debug.ts"), entry!.source)
-    writeFileSync(join(dir, "main.vibe"), 'export function main() {\n  sleep("1 millis")\n  sync(() => { throw new Error("DEBUG_RECIPE_MARKER") })\n}\n')
+    // The page imports the application from app.vibe. This fixture is written for the
+    // compiler that is shipped; give it the VIP form when the compiler implements VIP-1.
+    writeFileSync(join(dir, "app.vibe"), 'export function main() {\n  sleep("1 millis")\n  sync(() => { throw new Error("DEBUG_RECIPE_MARKER") })\n}\n')
     writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true,
         types: [], skipLibCheck: true, sourceMap: true, outDir: "dist", rewriteRelativeImportExtensions: true },
@@ -30,6 +32,6 @@ test.skipIf(!existsSync(defaultCompiler()))("the documented debugging entry work
     const executed = await run(["node", "--enable-source-maps", "dist/debug.js"])
     expect(executed.code).toBe(1)
     expect(executed.stderr).toContain("DEBUG_RECIPE_MARKER")
-    expect(executed.stderr).toContain("main.vibe:3")
+    expect(executed.stderr).toContain("app.vibe:3")
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })

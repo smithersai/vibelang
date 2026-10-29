@@ -5,7 +5,7 @@ description: "Canonical codec derivation works as in Effect: it preserves a sche
 
 # Canonical Codecs
 
-Canonical codec derivation works as in Effect: it preserves a schema's decoded type and chooses a standard external representation for JSON, string trees, or structural updates. Derivation only builds a codec; parsing and encoding are separate calls. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Canonical codec derivation works as in Effect: it preserves a schema's decoded type and chooses a standard external representation for JSON, string trees, or structural updates. Derivation only builds a codec; parsing and encoding are separate calls. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Deriving JSON, string-tree, and isomorphism codecs
 
@@ -16,10 +16,10 @@ const AuditRecord = Schema.Struct({
   labels: Schema.Array(Schema.String)
 })
 
-function encodeAudit(input: unknown) {
-  const value = Schema.decodeUnknownEffect(AuditRecord)(input)
+effect encodeAudit(input: unknown) {
+  const value = try Schema.decodeUnknownEffect(AuditRecord)(input)
   const jsonCodec = Schema.toCodecJson(AuditRecord)
-  return Schema.encodeEffect(jsonCodec)(value)
+  return try Schema.encodeEffect(jsonCodec)(value)
 }
 // The JSON representation contains date and bigint strings.
 ```
@@ -37,9 +37,9 @@ const Search = Schema.Struct({
   labels: Schema.Array(Schema.String)
 })
 
-function encodeSearch() {
-  const codec = Schema.toCodecStringTree(Search)
-  return Schema.encodeEffect(codec)({ offset: 20, archived: false, labels: ["large"] })
+effect encodeSearch() {
+  const codec = try sync(() => Schema.toCodecStringTree(Search))
+  return try Schema.encodeEffect(codec)({ offset: 20, archived: false, labels: ["large"] })
 }
 // { offset: "20", archived: "false", labels: ["large"] }
 ```
@@ -56,11 +56,11 @@ class Slot extends Schema.Class<Slot>("Slot")({
   column: Schema.Int
 }) {}
 
-function slotRepresentation(input: unknown) {
-  const slot = Schema.decodeUnknownEffect(Slot)(input)
+effect slotRepresentation(input: unknown) {
+  const slot = try Schema.decodeUnknownEffect(Slot)(input)
   const codec = Schema.toCodecIso(Slot)
-  const structural = Schema.encodeEffect(codec)(slot)
-  return Schema.decodeUnknownEffect(codec)(structural)
+  const structural = try Schema.encodeEffect(codec)(slot)
+  return try Schema.decodeUnknownEffect(codec)(structural)
 }
 ```
 
@@ -87,9 +87,9 @@ const DepotRefSchema = Schema.instanceOf(DepotRef, {
   )
 })
 
-function encodeDepot() {
-  const codec = Schema.toCodecStringTree(DepotRefSchema)
-  return Schema.encodeEffect(codec)(new DepotRef("nw", 14))
+effect encodeDepot() {
+  const codec = try sync(() => Schema.toCodecStringTree(DepotRefSchema))
+  return try Schema.encodeEffect(codec)(new DepotRef("nw", 14))
 }
 // { region: "nw", number: "14" }
 ```

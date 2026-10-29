@@ -5,22 +5,23 @@ File logging uses Effect's `Logger` module. Combine a string formatter with `Log
 ## Writing formatted logs to a file
 
 ```vibe
-// run: provide NodeFileSystem.layer { provide FileLogger { application() }; const text = FileSystem.readFileString("./application.log"); Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed")) }
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: provide NodeFileSystem.layer { provide FileLogger { try application() }; const fs = try FileSystem; const text = try fs.readFileString("./application.log"); try Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed")) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 const FileLogger = Logger.layer([
-  () => Logger.toFile(Logger.formatLogFmt, "./application.log", {
+  Logger.toFile(Logger.formatLogFmt, "./application.log", {
     batchWindow: "250 millis"
   })
 ])
 
-function application() {
-  log("Index build started")
-  log("Index build completed")
+effect application() {
+  try log("Index build started")
+  try log("Index build completed")
 }
 // Output: true
 ```
 
-`formatLogFmt` produces string records; `toFile` creates a scoped logger that appends them to the path. The array holds a program, so the file opens when `Logger.layer` builds, not at module initialization. The layer replaces the installed loggers with its list.
+`formatLogFmt` produces string records; `toFile` creates a scoped logger that appends them to the path. The array holds an Effect value, so the file opens when `Logger.layer` builds, not at module initialization. The layer replaces the installed loggers with its list.
 
 In Effect 4.0.6, `toFile` batches with a one-second window by default; `batchWindow` changes it. Pending entries flush when the logger's scope closes. Opening the file can fail with `PlatformError`; later flush write failures are ignored, so no log call gets a durable-write acknowledgment.
 
@@ -28,27 +29,28 @@ In Effect 4.0.6, `toFile` batches with a one-second window by default; `batchWin
 
 ```vibe
 // main.vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const LoggerLive = Layer.provide(
   Logger.layer([
-    () => Logger.toFile(Logger.formatLogFmt, "./application.log")
+    Logger.toFile(Logger.formatLogFmt, "./application.log")
   ]),
   NodeFileSystem.layer
 )
 
-function main() {
+effect main() {
   provide LoggerLive {
-    log("Report generated")
+    try log("Report generated")
   }
   // LoggerLive's scope has closed and its final batch has flushed.
-  const fs = FileSystem()
-  const text = fs.readFileString("./application.log")
-  Console.log(text.includes("Report generated"))
+  const fs = try FileSystem
+  const text = try fs.readFileString("./application.log")
+  try Console.log(text.includes("Report generated"))
   return text
 }
 
-NodeRuntime.runMain(() => Effect.provide(() => main(), NodeFileSystem.layer))
+NodeRuntime.runMain(Effect.provide(main(), NodeFileSystem.layer))
 // Output: true
 ```
 
@@ -58,23 +60,24 @@ NodeRuntime.runMain(() => Effect.provide(() => main(), NodeFileSystem.layer))
 
 ```vibe
 // main.vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const LoggerLive = Layer.provide(
   Logger.layer([
     Logger.withConsoleLog(Logger.make(({ message }) => String(message))),
-    () => Logger.toFile(Logger.formatLogFmt, "./application.log", {
+    Logger.toFile(Logger.formatLogFmt, "./application.log", {
       batchWindow: "500 millis"
     })
   ]),
   NodeFileSystem.layer
 )
 
-function main() {
-  log("Worker ready")
+effect main() {
+  try log("Worker ready")
 }
 
-NodeRuntime.runMain(() => Effect.provide(() => main(), LoggerLive))
+NodeRuntime.runMain(Effect.provide(main(), LoggerLive))
 // Output: Worker ready
 ```
 
@@ -82,4 +85,4 @@ Install both loggers in one list: the console gets message text, the file gets l
 
 ## Coming from Effect
 
-Pass `Logger.toFile` to `Logger.layer` inside a no-argument function. Calling it earlier acquires the scoped logger at once instead of letting the layer build it.
+Pass the Effect returned by `Logger.toFile` directly to `Logger.layer`. Calling `toFile` builds that Effect without acquiring the logger.

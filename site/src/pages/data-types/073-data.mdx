@@ -20,9 +20,9 @@ const sent = Delivery.Sent({ tracking: "parcel-8" })
 
 function describe(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Waiting: "Waiting for dispatch";
-    when Delivery.Sent { let tracking }: `Tracking: ${tracking}`;
-    when Delivery.Rejected { let reason }: `Rejected: ${reason}`;
+    when { _tag: "Waiting" }: "Waiting for dispatch";
+    when { _tag: "Sent", let tracking }: `Tracking: ${tracking}`;
+    when { _tag: "Rejected", let reason }: `Rejected: ${reason}`;
   }
 }
 ```
@@ -36,7 +36,9 @@ true
 
 A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line or `;` separates variants and fields; a comma is EK1013. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
 
-`when Delivery.Sent { let tracking }` tests the variant and binds the fields its braces list, and `delivery is Delivery.Sent` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error, `This match does not handle every case of Delivery: Delivery.Rejected is left.` (EK4701). See [Pattern matching with match and is](/vibelang-features/116-match-and-is#data-variants).
+`when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (EK4701). See [Pattern matching with match and is](/vibelang-features/116-match-and-is#data-variants).
+
+Support for the new object patterns arrives with the compiler's VIP implementation.
 
 ## Generic data types
 
@@ -53,7 +55,7 @@ const idle = LoadState.Idle()
 
 function count(state: LoadState<ReadonlyArray<string>, string>) {
   return match (state) {
-    when LoadState.Loaded { let value }: value.length;
+    when { _tag: "Loaded", let value }: value.length;
     default: 0;
   }
 }
@@ -106,7 +108,7 @@ Equal.equals(first, second) // true
 Equal.equals(["inbox", 5] as const, ["inbox", 5] as const) // true
 Equal.equals([2, 4, 6], [2, 4, 6]) // true
 
-function makeRoute(name: string): infer _ {
+function makeRoute(name: string) {
   return { _tag: "Route" as const, name }
 }
 Equal.equals(makeRoute("inbox"), makeRoute("inbox")) // true
@@ -139,7 +141,7 @@ new Archived({ documentId: "doc-3" })._tag // "Archived"
 PENDING true Archived
 ```
 
-`Class` supplies a constructor taking a field object, plus equality and hashing; `TaggedClass` adds a fixed `_tag` for narrowing union members. These concrete data classes are not the abstract classes that declare services.
+`Class` supplies a constructor taking a field object, plus equality and hashing; `TaggedClass` adds a fixed `_tag` for narrowing union members. These concrete data classes are separate from services declared with `service`.
 
 ## Writing a tagged union out with Data.TaggedEnum
 
@@ -174,7 +176,7 @@ Tracking: parcel-8
 Rejected: address missing
 ```
 
-`TaggedEnum` describes the union as a map from tags to payloads. `taggedEnum` creates constructors that insert `_tag`, a `$is` guard factory, and a `$match` helper requiring a case per variant. Match callbacks compute values synchronously; for service work, use `match`, whose arms can call Effect functions.
+`TaggedEnum` describes the union as a map from tags to payloads. `taggedEnum` creates constructors that insert `_tag`, a `$is` guard factory, and a `$match` helper requiring a case per variant. Match callbacks compute values synchronously; for service work, use `match` inside an effect function, whose arms can run Effects with `try`.
 
 ## Writing generic union cases out
 
@@ -224,17 +226,15 @@ error DocumentMissing {
   id: string
 }
 
-function requireDocument(id: string) {
+effect requireDocument(id: string) {
   if (id === "") throw new DocumentMissing({ id })
   return { id }
 }
 // { id: string }!DocumentMissing!
 
-function documentOrDraft(id: string) {
-  try {
-    return requireDocument(id)
-  } catch (error) {
-    return { id: "draft" }
+effect documentOrDraft(id: string) {
+  return requireDocument(id) catch (error) => match (error) {
+    when DocumentMissing: ({ id: "draft" });
   }
 }
 ```
@@ -245,7 +245,7 @@ function documentOrDraft(id: string) {
 DocumentMissing
 ```
 
-`Data.Error` creates a native error with extra fields. The global `TaggedError` is Effect's `Data.TaggedError`, which fills in `_tag`; `throw` raises it as an expected failure. Use `Schema.TaggedError` when the error needs a schema for serialization.
+`Data.Error` creates a native error with extra fields. An `error` declaration creates Effect's `Data.TaggedError` class, which fills in `_tag`; `throw` inside an effect function raises it as an expected failure. Use `Schema.TaggedError` when the error needs a schema for serialization.
 
 ## Preserving native error causes
 
@@ -254,8 +254,11 @@ error DocumentDecodeError {
   cause: unknown
 }
 
-function decodeDocument(text: string) {
-  return JSON.parse(text) catch (cause) => throw new DocumentDecodeError({ cause })
+effect decodeDocument(text: string) {
+  return try Effect.try({
+    try: () => JSON.parse(text),
+    catch: (cause) => new DocumentDecodeError({ cause })
+  })
 }
 // any!DocumentDecodeError!
 ```

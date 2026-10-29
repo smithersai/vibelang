@@ -49,6 +49,7 @@ Code example count: one example per fenced code block in the source body, includ
   - [React](src/setup/react.md)
   - [Vue](src/setup/vue.md)
   - [Svelte](src/setup/svelte.md)
+  - [Foldkit](src/setup/foldkit.md)
 - **Editors**
   - [VS Code and Cursor](src/setup/vscode.md)
   - [Neovim](src/setup/neovim.md)
@@ -176,6 +177,7 @@ Code example count: one example per fenced code block in the source body, includ
   - [Terminal](src/platform/110-terminal.md): `v4/platform/terminal.mdx`
   - [Platform globals in VibeLang](src/platform/platform-globals.md)
   - [Cloudflare Workers](src/platform/cloudflare-workers.md)
+  - [Alchemy](src/platform/alchemy.md)
 
 ### VibeLang features
 

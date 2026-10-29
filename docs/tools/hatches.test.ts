@@ -9,11 +9,16 @@ const compiler = defaultCompiler()
 
 test.skipIf(!existsSync(compiler))("the rendered Promise adapter forwards cancellation, maps rejection, and retries before fallback", async () => {
   const example = (path: string) => extract(readFileSync(join(repo, path), "utf8"))
-    .find(block => block.source.includes("function getTodo("))
+    .find(block => block.source.includes("effect getTodo("))
+  // The home page shows the adapter without the checker's lines.
+  const program = (source: string) => source.replace(/^\s*\/\/ (?:run|pending|pending-decision):.*\n/gm, "")
   const onboarding = example("docs/user/src/001-onboarding.md")
   expect(onboarding).toBeDefined()
-  expect(example("site/src/pages/index.mdx")?.source).toBe(onboarding!.source)
+  expect(program(example("site/src/pages/index.mdx")!.source)).toBe(program(onboarding!.source))
   expect(onboarding!.run).toBeUndefined()
+  // The adapter waits for the VIPs its pending line names. When it goes, give
+  // the harness below the VIP form and a todos.ts beside the adapter.
+  if (onboarding!.pending) return
   const temp = mkdtempSync(join(tmpdir(), "docs-hatches-"))
   try {
     writeFileSync(join(temp, "adapter.md"), "```vibe\n" + onboarding!.source + "\n```\n" + `

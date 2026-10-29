@@ -5,7 +5,7 @@ description: "VibeLang adds the few platform APIs that Effect does not have yet.
 
 # Experimental platform APIs
 
-VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style.
+VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream.
 
 | Service | Adds | Layers |
 | --- | --- | --- |
@@ -18,11 +18,11 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 
 ## How they work
 
-Each experimental service has its own key, such as `Experimental.FileSystem.FileSystem`. Call a service through its module's name, as you call Effect's: `Experimental.FileSystem.access(path, { executable: true })` calls the experimental `FileSystem` service, `Experimental.FileSystem()` is its implementation, and the type `Experimental.FileSystem` is the service, which a contract's requirements name: `boolean!PlatformError!Experimental.FileSystem`.
+Each experimental service has its own key, such as `Experimental.FileSystem.FileSystem`. Look up its implementation with `const fs = try Experimental.FileSystem.FileSystem`, then run a member with `try fs.access(path, { executable: true })`. A contract names the key type in its requirements: `boolean!PlatformError.PlatformError!Experimental.FileSystem.FileSystem`.
 
-The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them: their implementations, `Experimental.FileSystem.Service` and `Experimental.Crypto.Service`, are Effect's interfaces plus the new members, and the services themselves are not Effect's. A layer of Effect's `FileSystem` or `Crypto` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process` and `Locks` extend nothing, so their type is both the service and its implementation, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
+The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them: their implementations, `Experimental.FileSystem.Service` and `Experimental.Crypto.Service`, are Effect's interfaces plus the new members, and the services themselves are not Effect's. A layer of Effect's `FileSystem` or `Crypto` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process` and `Locks` extend nothing, so `Experimental.Process.Process` and `Experimental.Locks.Locks` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
 
-Provide a platform layer in `main`. The layers live beside Effect's platform packages. A layer of a service that extends Effect's provides the experimental service and Effect's service of the same name from one implementation, so code that uses Effect's `FileSystem` and code that uses the additions share it:
+Provide a platform layer at the application boundary. The layers live beside Effect's platform packages. A layer of a service that extends Effect's provides the experimental service and Effect's service of the same name from one implementation, so code that uses Effect's `FileSystem` and code that uses the additions share it:
 
 | Module | Layers |
 | --- | --- |
@@ -43,17 +43,21 @@ Provide a platform layer in `main`. The layers live beside Effect's platform pac
 ```vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-function canRun(path: string) {
-  Experimental.FileSystem.access(path, { executable: true })
+effect canRun(path: string) {
+  const fs = try Experimental.FileSystem.FileSystem
+  try fs.access(path, { executable: true })
   return true
 }
 
-function runnable() {
-  using dir = FileSystem.makeTempDirectoryScoped()
-  FileSystem.writeFileString(`${dir}/build.sh`, "#!/bin/sh")
-  FileSystem.chmod(`${dir}/build.sh`, 0o755)
-  FileSystem.writeFileString(`${dir}/notes.txt`, "")
-  return { script: canRun(`${dir}/build.sh`) catch false, notes: canRun(`${dir}/notes.txt`) catch false }
+effect runnable() {
+  return try scoped(effect {
+    const fs = try FileSystem
+    const dir = try fs.makeTempDirectoryScoped()
+    try fs.writeFileString(`${dir}/build.sh`, "#!/bin/sh")
+    try fs.chmod(`${dir}/build.sh`, 0o755)
+    try fs.writeFileString(`${dir}/notes.txt`, "")
+    return { script: canRun(`${dir}/build.sh`) catch false, notes: canRun(`${dir}/notes.txt`) catch false }
+  })
 }
 // Output: {"script":true,"notes":false}
 ```
@@ -63,9 +67,12 @@ function runnable() {
 `noFollow` with `nonBlocking` opens a path that another process may replace: the open fails on a symbolic link and returns at once on a FIFO, and `file.chmod` then changes the file that was opened, not whatever the path names later.
 
 ```vibe
-function restrict(path: string) {
-  using file = Experimental.FileSystem.open(path, { flag: "r+", noFollow: true, nonBlocking: true })
-  file.chmod(0o600)
+effect restrict(path: string) {
+  try scoped(effect {
+    const fs = try Experimental.FileSystem.FileSystem
+    const file = try fs.open(path, { flag: "r+", noFollow: true, nonBlocking: true })
+    try file.chmod(0o600)
+  })
 }
 ```
 
@@ -75,8 +82,8 @@ In tests, `Experimental.FileSystem.layerNoop({ ... })` provides a stub for both 
 
 | Member | What it does |
 | --- | --- |
-| `hmac(algorithm, key, data)` | The HMAC of `data` with a `"SHA-1"`, `"SHA-256"`, `"SHA-384"` or `"SHA-512"` digest; `key` is the raw secret, `Redacted<Uint8Array>` |
-| `sign(algorithm, privateKey, data)` | Signs `data`; `privateKey` is a PKCS#8 DER key, `Redacted<Uint8Array>` |
+| `hmac(algorithm, key, data)` | The HMAC of `data` with a `"SHA-1"`, `"SHA-256"`, `"SHA-384"` or `"SHA-512"` digest; `key` is the raw secret, `Redacted.Redacted<Uint8Array>` |
+| `sign(algorithm, privateKey, data)` | Signs `data`; `privateKey` is a PKCS#8 DER key, `Redacted.Redacted<Uint8Array>` |
 | `verify(algorithm, publicKey, signature, data)` | `true` when `signature` signs `data`; `publicKey` is an SPKI DER key |
 
 The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 bytes, r then s, as WebCrypto writes them, and `"Ed25519"`. A key of the wrong kind fails with `BadArgument`, whose message names no key bytes. Secret keys are `Redacted`, so logs and errors print `<redacted>`. One WebCrypto implementation serves every platform.
@@ -84,8 +91,9 @@ The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 byte
 ```vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-function signature(secret: Redacted<Uint8Array>, body: string) {
-  return Hex.encode(Experimental.Crypto.hmac("SHA-256", secret, new TextEncoder().encode(body)))
+effect signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
+  const crypto = try Experimental.Crypto.Crypto
+  return Hex.encode(try crypto.hmac("SHA-256", secret, new TextEncoder().encode(body)))
 }
 // Output: 5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
 ```
@@ -98,30 +106,32 @@ function signature(secret: Redacted<Uint8Array>, body: string) {
 // alive.vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-export function main() {
+export effect main() {
   provide ExperimentalNodeServices.layer {
-    const pid = Experimental.Process.pid()
-    Console.log(Experimental.Process.isRunning(pid))
+    const process = try Experimental.Process.Process
+    const pid = try process.pid
+    try Console.log(try process.isRunning(pid))
   }
 }
+await runPromise(main())
 // Output: true
 ```
 
-Each fact is an Effect that cannot fail, read with a call, as `Stdio.args()` is:
+Look up `const process = try Experimental.Process.Process`. Each fact is an Effect that cannot fail, run with `try`, as `try (try Stdio.Stdio).args` is:
 
-| Call | Gives | Replaces |
+| Expression | Gives | Replaces |
 | --- | --- | --- |
-| `Experimental.Process.pid()` | `ProcessId`, Effect's child process id type | `process.pid` |
-| `Experimental.Process.platform()` | `"darwin"`, `"linux"`, `"win32"`, ... | `process.platform` |
-| `Experimental.Process.arch()` | `"x64"`, `"arm64"`, ... | `process.arch` |
-| `Experimental.Process.execPath()` | the runtime's executable | `process.execPath` |
-| `Experimental.Process.versions()` | `{ node: "26.5.0", ... }` | `process.versions` |
-| `Experimental.Process.hostname()` | the host's name | `os.hostname()` |
-| `Experimental.Process.availableParallelism()` | at least 1 | `os.availableParallelism()` |
-| `Experimental.Process.timeOrigin()` | when the process started, in epoch milliseconds | `performance.timeOrigin` |
-| `Experimental.Process.memoryUsage()` | `{ rss, heapTotal, heapUsed, external, arrayBuffers }` in bytes | `process.memoryUsage()` |
+| `try process.pid` | `ProcessId`, Effect's child process id type | `process.pid` |
+| `try process.platform` | `"darwin"`, `"linux"`, `"win32"`, ... | `process.platform` |
+| `try process.arch` | `"x64"`, `"arm64"`, ... | `process.arch` |
+| `try process.execPath` | the runtime's executable | `process.execPath` |
+| `try process.versions` | `{ node: "26.5.0", ... }` | `process.versions` |
+| `try process.hostname` | the host's name | `os.hostname()` |
+| `try process.availableParallelism` | at least 1 | `os.availableParallelism()` |
+| `try process.timeOrigin` | when the process started, in epoch milliseconds | `performance.timeOrigin` |
+| `try process.memoryUsage` | `{ rss, heapTotal, heapUsed, external, arrayBuffers }` in bytes | `process.memoryUsage()` |
 
-The user's home directory is Effect's own, `UserDirectories.home()`, which needs no import, provided by `UserDirectories.layer`. A browser has no process to read, so `Process` has no browser layer.
+The user's home directory is Effect's own, `try (try UserDirectories.UserDirectories).home`, which needs no import, provided by `UserDirectories.layer`. A browser has no process to read, so `Process` has no browser layer.
 
 ### Signalling processes
 
@@ -129,24 +139,31 @@ The user's home directory is Effect's own, `UserDirectories.home()`, which needs
 // stop.vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-function stop(pid: number) {
-  if (!Experimental.Process.isRunning(pid)) return "already stopped"
-  Experimental.Process.kill(pid, { killSignal: "SIGTERM" })
+effect stop(pid: number) {
+  const process = try Experimental.Process.Process
+  if (!(try process.isRunning(pid))) return "already stopped"
+  try process.kill(pid, { killSignal: "SIGTERM" })
   return "stopped"
 }
 
-export function main() {
+export effect main() {
   provide ExperimentalNodeServices.layer {
-    using child = ChildProcessSpawner.spawn(ChildProcess.make("sleep", ["30"]))
-    Console.log(stop(child.pid))
-    Console.log(Experimental.Process.kill(4194000) catch (e) => e.reason._tag)
+    try scoped(effect {
+      const spawner = try ChildProcessSpawner.ChildProcessSpawner
+      const process = try Experimental.Process.Process
+      const child = try spawner.spawn(ChildProcess.make("sleep", ["30"]))
+      try Console.log(try stop(child.pid))
+      const reason = process.kill(4194000) catch (e) => e.reason._tag
+      try Console.log(reason)
+    })
   }
 }
+await runPromise(main())
 // Output: stopped
 // Output: NotFound
 ```
 
-`Experimental.Process.kill(pid, { killSignal, group })` sends `killSignal`, `"SIGTERM"` by default, one of Effect's `ChildProcess.Signal` names. `Experimental.Process.isRunning(pid, { group })` sends signal 0: a process that belongs to another user still runs, and so does a child that exited before its parent reaped it. `group: true` signals the process group whose id is `pid`, as `ChildProcessSpawner` starts each child in one. A child the program spawned also stops with its handle's `kill()`; `Experimental.Process.kill` reaches any process, such as one named in a pid file. One `ExperimentalNodeServices.layer` provides both `ChildProcessSpawner` and `Process`.
+`try process.kill(pid, { killSignal, group })` sends `killSignal`, `"SIGTERM"` by default, one of Effect's `ChildProcess.Signal` names. `try process.isRunning(pid, { group })` sends signal 0: a process that belongs to another user still runs, and so does a child that exited before its parent reaped it. `group: true` signals the process group whose id is `pid`, as `ChildProcessSpawner` starts each child in one. A child the program spawned also stops with its handle's `try child.kill()`; `process.kill` reaches any process, such as one named in a pid file. One `ExperimentalNodeServices.layer` provides both `ChildProcessSpawner` and `Process`.
 
 Both fail with a `PlatformError` whose reason says why:
 
@@ -160,8 +177,9 @@ Both fail with a `PlatformError` whose reason says why:
 
 ```vibe
 // platform-name.vibe
-export function platformName() {
-  return Experimental.Process.platform() === "win32" ? "Windows" : "POSIX"
+export effect platformName() {
+  const process = try Experimental.Process.Process
+  return (try process.platform) === "win32" ? "Windows" : "POSIX"
 }
 // Output: Windows
 ```
@@ -172,11 +190,14 @@ export function platformName() {
 
 ```vibe
 // leader.vibe
-export function lead(name: string) {
-  using held = Experimental.Locks.hold(name, { steal: true })
-  Console.log(`leading ${name}`)
-  held.lost()
-  Console.log("another tab took the lock")
+export effect lead(name: string) {
+  try scoped(effect {
+    const locks = try Experimental.Locks.Locks
+    const held = try locks.hold(name, { steal: true })
+    try Console.log(`leading ${name}`)
+    try held.lost
+    try Console.log("another tab took the lock")
+  })
 }
 // Output: leading engine
 // Output: another tab took the lock
@@ -184,14 +205,14 @@ export function lead(name: string) {
 
 `Locks` holds exclusive [Web Locks](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API), shared by the tabs and workers of one origin:
 
-| Call | Gives | Replaces |
+| Expression | Gives | Replaces |
 | --- | --- | --- |
-| `Experimental.Locks.hold(name)` | `Held`, once this context holds the lock | `navigator.locks.request(name, callback)` |
-| `Experimental.Locks.hold(name, { steal: true })` | `Held`, at once, taken from its holder | `request(name, { steal: true }, callback)` |
-| `Experimental.Locks.tryHold(name)` | `Option<Held>`, at once: none when another context holds the lock or waits for it | `request(name, { ifAvailable: true }, callback)` |
-| `Experimental.Locks.query()` | `{ held, pending }`, each lock's `name`, `mode`, and `clientId` | `navigator.locks.query()` |
+| `try locks.hold(name)` | `Held`, once this context holds the lock | `navigator.locks.request(name, callback)` |
+| `try locks.hold(name, { steal: true })` | `Held`, at once, taken from its holder | `request(name, { steal: true }, callback)` |
+| `try locks.tryHold(name)` | `Option.Option<Held>`, at once: none when another context holds the lock or waits for it | `request(name, { ifAvailable: true }, callback)` |
+| `try locks.query` | `{ held, pending }`, each lock's `name`, `mode`, and `clientId` | `navigator.locks.query()` |
 
-A held lock belongs to the block's scope: `using` releases it when the block ends, and a closed or crashed tab releases its locks, which hands each to the next tab waiting. Interrupting a wait withdraws the request. `held.lost()` completes when another context steals the lock. A lock manager that refuses a request fails it with a `PlatformError`: `BadArgument` for a name that starts with `-`, `PermissionDenied` where the page is not a secure context.
+A held lock belongs to the current Effect Scope: `scoped(effect { ... })` releases it when the Effect ends, and a closed or crashed tab releases its locks, which hands each to the next tab waiting. Interrupting a wait withdraws the request. `try held.lost` completes when another context steals the lock. A lock manager that refuses a request fails it with a `PlatformError`: `BadArgument` for a name that starts with `-`, `PermissionDenied` where the page is not a secure context.
 
 `ExperimentalBrowserLocks.layer`, also in `ExperimentalBrowserServices.layer`, uses `navigator.locks`. Node.js has Web Locks too, but they coordinate the main thread and the worker threads of one process, never two processes, so `ExperimentalNodeLocks.layer` is not in the Node.js bundle: provide it only for locks within one process. Bun has no Web Locks and no layer. `Experimental.Locks.layerTest()` grants every request at once and never loses a lock; pass the members a test needs, as above.
 

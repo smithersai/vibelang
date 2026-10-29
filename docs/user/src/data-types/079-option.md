@@ -5,7 +5,8 @@
 ## Representing optional values and properties
 
 ```vibe
-// run: Console.log(named.nickname.getOrNull(), unnamed.nickname.isNone())
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.getOrNull(named.nickname), Option.isNone(unnamed.nickname))
 interface Contact {
   name: string
   nickname: Option.Option<string>
@@ -24,16 +25,17 @@ The `nickname` property always exists and its value records presence; an optiona
 ## Constructing and identifying variants
 
 ```vibe
-// run: Console.log(positive(-2).isNone(), present.isSome(), absent.isNone()); Console.log(label(present)); Console.log(label(absent))
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.isNone(positive(-2)), Option.isSome(present), Option.isNone(absent)); try Console.log(label(present)); try Console.log(label(absent))
 const present = Option.some(24)
 const absent = Option.none<number>()
 const positive = Option.liftPredicate((n: number) => n > 0)
 positive(-2) // None
-present.isSome() // true
-absent.isNone() // true
+Option.isSome(present) // true
+Option.isNone(absent) // true
 
 function label(value: Option.Option<number>) {
-  if (value.isSome()) return `Limit: ${value.value}`
+  if (Option.isSome(value)) return `Limit: ${value.value}`
   return "No limit"
 }
 ```
@@ -47,9 +49,10 @@ No limit
 `some` wraps a value; `none` carries no payload. `liftPredicate` makes a function that returns `Some` only for values that pass its predicate. Guards narrow the union; only `Some` has `.value`.
 
 ```vibe
-// run: Console.log(describe(Option.some("Mina"))); Console.log(describe(Option.none()))
+// pending: VIP-5, VIP-14
+// run: try Console.log(describe(Option.some("Mina"))); try Console.log(describe(Option.none()))
 function describe(value: Option.Option<string>) {
-  return value.match({
+  return Option.match(value, {
     onNone: () => "Anonymous",
     onSome: (name) => `Signed in as ${name}`
   })
@@ -61,20 +64,21 @@ Signed in as Mina
 Anonymous
 ```
 
-`match` handles both cases and removes the wrapper. Its callbacks only compute values; when handling presence needs services or other Effects, use an ordinary branch.
+`Option.match` handles both cases and removes the wrapper. Its callbacks only compute values; when handling presence needs services or other Effects, use a branch inside an effect function and run Effects with `try`.
 
 ## Mapping, sequencing, and filtering present values
 
 ```vibe
-// run: Console.log(streetLabel(Option.some({ street: Option.some(" Main St ") })).getOrNull()); Console.log(streetLabel(Option.some({ street: Option.some(" ") })).isNone(), streetLabel(Option.none()).isNone())
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.getOrNull(streetLabel(Option.some({ street: Option.some(" Main St ") })))); try Console.log(Option.isNone(streetLabel(Option.some({ street: Option.some(" ") }))), Option.isNone(streetLabel(Option.none())))
 interface Address {
   street: Option.Option<string>
 }
 
 function streetLabel(address: Option.Option<Address>) {
-  const street = address.flatMap((value) => value.street)
-  const trimmed = street.map((value) => value.trim())
-  return trimmed.filter((value) => value.length > 0)
+  const street = Option.flatMap(address, (value) => value.street)
+  const trimmed = Option.map(street, (value) => value.trim())
+  return Option.filter(trimmed, (value) => value.length > 0)
 }
 ```
 
@@ -88,16 +92,17 @@ true true
 ## Extracting values with defaults or exceptions
 
 ```vibe
-// run: Console.log(JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])); Console.log(certain); const failed = Effect.exit(() => Option.none().getOrThrow()); if (failed.isFailure()) Console.log(failed.cause.hasDies(), failed.cause.hasFails())
+// pending: VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])); try Console.log(certain); const failed = try exit(sync(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
 function extract(value: Option.Option<string>) {
   return {
-    defaulted: value.getOrElse(() => "Guest"),
-    nullable: value.getOrNull(),
-    optional: value.getOrUndefined()
+    defaulted: Option.getOrElse(value, () => "Guest"),
+    nullable: Option.getOrNull(value),
+    optional: Option.getOrUndefined(value)
   }
 }
 
-const certain = Option.some("known").getOrThrow()
+const certain = Option.getOrThrow(Option.some("known"))
 ```
 
 ```output
@@ -106,17 +111,18 @@ known
 true false
 ```
 
-`getOrElse` computes its fallback only for `None`; `getOrNull` and `getOrUndefined` suit APIs that expect nullish values. `getOrThrow` throws a defect on `None` that no catch handles, in a plain function either; when absence is expected rather than a programming error, prefer a guard, a default, or `Effect.fromOption`. EK2004 warns at a catch whose try block has E = `never`, and says defects pass through it.
+`getOrElse` computes its fallback only for `None`; `getOrNull` and `getOrUndefined` suit APIs that expect nullish values. `getOrThrow` throws a JavaScript exception on `None`. In Effect code, `sync(() => Option.getOrThrow(value))` treats that exception as a defect; `Effect.try` captures it as a typed failure. When absence is expected rather than a programming error, prefer a guard, a default, or `fromOption`.
 
 ## Choosing fallback options
 
 ```vibe
-// run: Console.log(choose(Option.some("preferred"), Option.some("backup")).getOrNull(), choose(Option.none(), Option.some("backup")).getOrNull(), first.getOrNull())
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.getOrNull(choose(Option.some("preferred"), Option.some("backup"))), Option.getOrNull(choose(Option.none(), Option.some("backup"))), Option.getOrNull(first))
 function choose(
   preferred: Option.Option<string>,
   backup: Option.Option<string>
 ) {
-  return preferred.orElse(() => backup)
+  return Option.orElse(preferred, () => backup)
 }
 
 const first = Option.firstSomeOf([
@@ -133,7 +139,8 @@ preferred backup regional
 ## Adapting nullable values
 
 ```vibe
-// run: Console.log(Option.fromNullishOr(null).isNone(), Option.fromNullishOr(undefined).isNone(), Option.fromNullishOr(0).getOrNull(), JSON.stringify(Option.fromNullishOr("").getOrNull()))
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.isNone(Option.fromNullishOr(null)), Option.isNone(Option.fromNullishOr(undefined)), Option.getOrNull(Option.fromNullishOr(0)), JSON.stringify(Option.getOrNull(Option.fromNullishOr(""))))
 Option.fromNullishOr(null) // None
 Option.fromNullishOr(undefined) // None
 Option.fromNullishOr(0) // Some containing 0
@@ -149,16 +156,17 @@ true true 0 ""
 ## Converting options into effects
 
 ```vibe
-// run: Console.log(JSON.stringify(requiredPair())); try { requiredName(Option.none()) } catch (error) { Console.log(error._tag) }
-function requiredName(name: Option.Option<string>) {
-  return Effect.fromOption(name)
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try requiredPair())); try Console.log(requiredName(Option.none()) catch (error) => error._tag)
+effect requiredName(name: Option.Option<string>) {
+  return try fromOption(name)
 }
 // string!Cause.NoSuchElementError!
 
-function requiredPair() {
-  return all([
-    () => Effect.fromOption(Option.some("east")),
-    () => Effect.fromOption(Option.some(3))
+effect requiredPair() {
+  return try all([
+    fromOption(Option.some("east")),
+    fromOption(Option.some(3))
   ])
 }
 ```
@@ -168,17 +176,18 @@ function requiredPair() {
 NoSuchElementError
 ```
 
-`Effect.fromOption` gives the present value or fails with `NoSuchElementError` for `None`; import that error from `Cause` for its type or guard. Option is not an Effect subtype, so conversion is explicit: calling a function that returns an option gives the option object.
+`try fromOption(name)` gives the present value or fails with `NoSuchElementError` for `None`; import that error from `Cause` for its type or guard. Option is not an Effect subtype, so conversion is explicit: calling a function that returns an option gives the option object.
 
 ## Combining options
 
 ```vibe
-// run: const result = combine(Option.some("Mina"), Option.some(3)); Console.log(JSON.stringify([result.record.getOrNull(), result.tuple.getOrNull(), result.fields.getOrNull()])); const absent = combine(Option.none(), Option.some(3)); Console.log(absent.record.isNone(), absent.tuple.isNone(), absent.fields.isNone())
+// pending: VIP-5, VIP-14
+// run: const result = combine(Option.some("Mina"), Option.some(3)); try Console.log(JSON.stringify([Option.getOrNull(result.record), Option.getOrNull(result.tuple), Option.getOrNull(result.fields)])); const absent = combine(Option.none(), Option.some(3)); try Console.log(Option.isNone(absent.record), Option.isNone(absent.tuple), Option.isNone(absent.fields))
 function combine(
   name: Option.Option<string>,
   count: Option.Option<number>
 ) {
-  const record = name.zipWith(count, (name, count) => ({ name, count }))
+  const record = Option.zipWith(name, count, (name, count) => ({ name, count }))
   const tuple = Option.all([name, count])
   const fields = Option.all({ name, count })
   return { record, tuple, fields }
@@ -218,9 +227,10 @@ true
 ```
 
 ```vibe
-// run: Console.log(JSON.stringify(combinedData().getOrNull()))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(Option.getOrNull(combinedData())))
 function combinedData() {
-  return Option.all([Option.some(" Daily "), Option.some(3)]).map(([title, total]) => ({
+  return Option.map(Option.all([Option.some(" Daily "), Option.some(3)]), ([title, total]) => ({
     title: title.trim(), total
   }))
 }
@@ -230,22 +240,22 @@ function combinedData() {
 {"title":"Daily","total":3}
 ```
 
-`Option.gen` sequences JavaScript generator yields and stops at the first `None`. In `.vibe`, an unannotated `function*` creates a producer instead, so `Option.gen` there is EK1002 and generator-based APIs stay in `.ts` files. In VibeLang, use `flatMap`, `zipWith`, and `all` for the same computation, as above.
+`Option.gen` sequences JavaScript generator yields and stops at the first `None`. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there. In VibeLang, use `flatMap`, `zipWith`, and `all` for the same computation, as above.
 
 ## Deriving equality and ordering
 
 ```vibe
-// run: Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4))); Console.log(JSON.stringify([sorted.map((item) => item.getOrNull()), descending.map((item) => item.getOrNull())]))
-import { Array as Arr } from "effect"
+// pending: VIP-5, VIP-14
+// run: try Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4))); try Console.log(JSON.stringify([sorted.map((item) => Option.getOrNull(item)), descending.map((item) => Option.getOrNull(item))]))
 const same = Option.makeEquivalence(Equivalence.Number)
 same(Option.some(4), Option.some(4)) // true
 same(Option.none(), Option.some(4)) // false
 
 const ascending = Option.makeOrder(Order.Number)
 const items = [Option.some(8), Option.none(), Option.some(2)]
-const sorted = Arr.sort(items, ascending)
+const sorted = Effect.Array.sort(items, ascending)
 // [None, Some(2), Some(8)]
-const descending = Arr.sort(items, Order.flip(ascending))
+const descending = Effect.Array.sort(items, Order.flip(ascending))
 // [Some(8), Some(2), None]
 ```
 

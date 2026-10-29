@@ -1,36 +1,35 @@
 # Cheat sheet
 
-Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. The VibeLang examples share these declarations:
+Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. Converted VibeLang blocks name the VIPs they need with `// pending:`. Support for the new forms arrives with the compiler's VIP implementation. The VibeLang examples share these declarations:
 
 ```vibe es
-// run: Console.log(JSON.stringify([getUser("1"), getOrders("1"), handle(() => release("v1"), Approval, { approve: (_request, k) => resume(k, true) })]))
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
+// run: provide Approval = { approve: (_request) => succeed(true) } { try Console.log(JSON.stringify([try getUser("1"), try getOrders("1"), try release("v1")])) }
 error NotFound { id: string }
-
 interface User { id: string; name: string }
 
-function getUser(id: string): User!NotFound {
-  sleep("5 millis")
+effect getUser(id: string): User!NotFound!never {
+  try sleep("5 millis")
   if (id === "missing") throw new NotFound({ id })
   return { id, name: "Ada" }
 }
 
-function getOrders(id: string): number!! {
+effect getOrders(id: string): number!! {
   return id.length
 }
 
-control Approval {
-  approve(request: string): boolean!!
-}
+service Approval { approve(request: string): boolean!! }
 
-function release(version: string) {
-  return Approval.approve(`deploy ${version}`) ? `released ${version}` : "declined"
+effect release(version: string) {
+  const approval = try Approval
+  return (try approval.approve(`deploy ${version}`)) ? `released ${version}` : "declined"
 }
 // Output: [{"id":"1","name":"Ada"},1,"released v1"]
 ```
 
 ## Types
 
-**Effect types**. An empty slot is `never`. Omitted dependencies are inferred from a function's body, and are `never` elsewhere. `Effect<A, E, R>` is accepted too.
+**Effect types**. `A!E!R` means exactly `Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type.
 
 ```ts effect
 // fragment
@@ -42,12 +41,13 @@ const hello = (id: string): Effect.Effect<string, NotFound> =>
 ```
 
 ```vibe es
-// run: Console.log(hello("1"))
+// pending: VIP-1, VIP-3, VIP-5, VIP-14
+// run: try Console.log(try hello("1"))
 type Find = (id: string) => User!NotFound
 type Release = (version: string) => string!!Approval
 type Load = () => string!!
-function hello(id: string): string!NotFound {
-  return `Hello, ${getUser(id).name}`
+effect hello(id: string): string!NotFound!never {
+  return `Hello, ${(try getUser(id)).name}`
 }
 // Output: Hello, Ada
 ```
@@ -64,11 +64,12 @@ class Timeout extends Data.TaggedError("Timeout") {}
 ```
 
 ```vibe es
+// pending: VIP-13
 error Missing { id: string }
 error Timeout
 ```
 
-**Errors are classes**. Constructors, methods, accessors, statics, `abstract`, `implements` and `extends` keep their TypeScript meaning, and each subclass is tagged with its own name. A family's base declares `_tag: string` so its subclasses' tags fit. Effect has no subclass with its own tag, so the Effect tab writes the tag by hand.
+**Errors are classes**. An `error` declaration supports fields, methods, and getters. Use an ordinary `Data.TaggedError` class when you need a constructor, inheritance, or a custom tag.
 
 ```ts effect
 import { Data } from "effect"
@@ -88,9 +89,9 @@ class Refused extends Failure {
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag]))
-error Invalid {
-  code: string
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag]))
+class Invalid extends Data.TaggedError("Invalid")<{ readonly code: string }> {
   constructor(input: string) {
     super({ code: input.trim() })
   }
@@ -98,8 +99,10 @@ error Invalid {
     return `invalid ${this.code}`
   }
 }
-error Failure { _tag: string; code: string }
-error Refused extends Failure
+class Failure extends Data.TaggedError("Failure" as string)<{ readonly code: string }> {}
+class Refused extends Failure {
+  override readonly _tag = "Refused"
+}
 // Output: ["invalid x","Refused"]
 ```
 
@@ -112,10 +115,11 @@ class Stored extends Schema.TaggedError<Stored>()("Stored", { key: Schema.String
 ```
 
 ```vibe es
+// pending: VIP-29
 schema error Stored { key: string; attempts?: number }
 ```
 
-**Services**. Members have no bodies; value members are readonly.
+**Services**. Members have no bodies. Write their contracts explicitly. `readonly` has its TypeScript meaning.
 
 ```ts effect
 // fragment
@@ -126,13 +130,15 @@ class Users extends Context.Service<Users, {
 ```
 
 ```vibe es
+// pending: VIP-3, VIP-9
 service Users {
+  static readonly key = "app/Users"
   find(id: string): User!NotFound
-  region: string
+  readonly region: string
 }
 ```
 
-**Services of any shape**. The shape is any type: an interface, a primitive, a function type. A body is optional and holds only static members.
+**Services of any shape**. Use Effect's `Context.Service` directly for a primitive or an existing interface. A `service` declaration writes its members out.
 
 ```ts effect
 import { Context, Effect } from "effect"
@@ -145,28 +151,15 @@ class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 ```
 
 ```vibe es
+// pending: VIP-3, VIP-14
 interface SearchApi {
   find(query: string): string!!
 }
-service Search: SearchApi
-service Prefix: string
+class Search extends Context.Service<Search, SearchApi>()("app/Search") {}
+class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 ```
 
-**Control operations**. Effect has none; the VibeLang long form tab shows the expanded spelling.
-
-```vibe long
-abstract class Review extends Control {
-  abstract approve(request: string): Effect<boolean, never, never>
-}
-```
-
-```vibe es
-control Review {
-  approve(request: string): boolean!!
-}
-```
-
-**Layers**. A layer is Effect's own call: the block after `Layer.effect(Users)` is its effect (block params), runs once when the layer builds, and returns members typed by the service. Without setup, write `Layer.succeed(Users, { ... })`.
+**Layers**. A layer is Effect's own call: `effect { ... }` is the second argument to `Layer.effect(Users, effect { ... })` and is its Effect, runs once when the layer builds, and returns members typed by the service. Without setup, write `Layer.succeed(Users, { ... })`.
 
 ```ts effect
 // fragment
@@ -177,14 +170,15 @@ const UsersLive = Layer.effect(Users, Effect.gen(function* () {
 ```
 
 ```vibe es
-// run: provide UsersLive { Console.log(JSON.stringify(Users.find("1"))); Console.log(Users().region) }
-const UsersLive = Layer.effect(Users) {
+// pending: VIP-2, VIP-5, VIP-12, VIP-14
+// run: provide UsersLive { const users = try Users; try Console.log(JSON.stringify(try users.find("1"))); try Console.log(users.region) }
+const UsersLive = Layer.effect(Users, effect {
   const seen = new Set<string>()
-  return {
-    find(id) { return getUser(id) },
+  return Users.of({
+    find: (id) => getUser(id),
     region: "eu"
-  }
-}
+  })
+})
 // Output: {"id":"1","name":"Ada"}
 // Output: eu
 ```
@@ -203,7 +197,8 @@ type Account = typeof Account.Type
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" })))
+// pending: VIP-5, VIP-14, VIP-15
+// run: try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" })))
 schema Account {
   id: string
   nickname?: string
@@ -222,7 +217,8 @@ type Role = typeof Role.Type
 ```
 
 ```vibe es
-// run: Console.log(Schema.is(Role)("admin")); Console.log(Schema.is(Role)("owner"))
+// pending: VIP-5, VIP-14, VIP-15
+// run: try Console.log(Schema.is(Role)("admin")); try Console.log(Schema.is(Role)("owner"))
 schema Role = "admin" | "member"
 // Output: true
 // Output: false
@@ -241,7 +237,8 @@ const Delivery = Data.taggedEnum<Delivery>()
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })]))
+// pending: VIP-5, VIP-14, VIP-16
+// run: try Console.log(JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })]))
 data Delivery {
   Waiting
   Sent { tracking: string }
@@ -249,19 +246,19 @@ data Delivery {
 // Output: [{"_tag":"Waiting"},{"tracking":"parcel-8","_tag":"Sent"}]
 ```
 
-**Readonly by default**. Write `mutable` for a member you assign.
+**Readonly members**. Use TypeScript's `readonly` modifier for a member that cannot be assigned.
 
 ```ts effect
 interface Cart { readonly id: string; items: Array<string> }
 ```
 
 ```vibe es
-interface Cart { id: string; mutable items: Array<string> }
+interface Cart { readonly id: string; items: Array<string> }
 ```
 
 ## Programs
 
-**Statements instead of generators.** Calls run; there is no `yield*`.
+**Statements instead of generators.** Declare an effect function. Run each Effect with `try`.
 
 ```ts effect
 // fragment
@@ -273,11 +270,12 @@ const greetUser = Effect.fn("greetUser")(function* (id: string) {
 ```
 
 ```vibe es
-// run: Console.log(Effect.provide(() => greetUser("1"), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))])))
-function greetUser(id: string) {
-  return withSpan(() => {
-    const user = getUser(id)
-    Console.log(`Hello, ${user.name}`)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try Effect.provide(greetUser("1"), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])))
+effect greetUser(id: string) {
+  return try withSpan(effect {
+    const user = try getUser(id)
+    try Console.log(`Hello, ${user.name}`)
     return user.name
   }, "greetUser")
 }
@@ -285,9 +283,9 @@ function greetUser(id: string) {
 // Output: Ada
 ```
 
-`Effect.fn("name")(body)` adds a named tracing span; a bare function declaration uses `Effect.fnUntraced` by default and loses it. Keep the span with `function f(...) { return withSpan(() => { ... }, "name") }`, or `const f = (...) => withSpan(() => { ... }, "name")` for an object field or arrow. Put the function's work inside the arrow `withSpan` takes; its return value, failures, and requirements flow through.
+`Effect.fn("name")(body)` adds a named tracing span. Preserve it with `try withSpan(effect { ... }, "name")` inside an effect function. The block's result, failures, and requirements flow through.
 
-**Programs as function literals**. A call runs where it stands; `() =>` makes a program to pass. Passing a call by name, `race(getUser("1"), getUser("2"))`, still compiles but is being retired.
+**Programs as Effect values**. Calling an effect function returns an Effect. Pass it directly to combinators, then use `try` to run the combined Effect.
 
 ```ts effect
 // fragment
@@ -296,10 +294,11 @@ const first = yield* Effect.race(getUser("1"), getUser("2"))
 ```
 
 ```vibe es
-// run: Console.log(fastest().name)
-function fastest() {
-  const user = getUser("1")
-  return race(() => getUser("1"), () => getUser("2"))
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log((try fastest()).name)
+effect fastest() {
+  const user = try getUser("1")
+  return try race(getUser("1"), getUser("2"))
 }
 // Output: Ada
 ```
@@ -315,16 +314,18 @@ const program = Effect.gen(function* () {
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(program()))
-function program() {
+// pending: VIP-1, VIP-5, VIP-12
+// run: try Console.log(JSON.stringify(try program()))
+effect program() {
   provide UsersLive {
-    return Users.find("1")
+    const users = try Users
+    return try users.find("1")
   }
 }
 // Output: {"id":"1","name":"Ada"}
 ```
 
-**Providing one service**. `provide Key = value` provides one implementation without a layer; layers and services mix in one list, and an effect module such as `Random` stands for its key, `Random.Random`.
+**Providing one service**. `provide Key = value` supplies an implementation. Mix layers and service bindings in one list. Use the service key, such as `Random.Random`.
 
 ```ts effect
 import { Effect, Logger, Random } from "effect"
@@ -337,12 +338,13 @@ const roll = Random.nextInt.pipe(
 ```
 
 ```vibe es
-// run: Console.log(roll())
+// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
+// run: try Console.log(try roll())
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
-function roll(): number!! {
-  provide Logger.layer([]), Random = seeded {
-    return Random.nextInt()
+effect roll(): number!! {
+  provide Logger.layer([]), Random.Random = seeded {
+    return try Random.nextInt
   }
 }
 // Output: 4
@@ -359,20 +361,19 @@ const describe = (id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([describe("1"), describe("missing")]))
-function describe(id: string) {
-  try {
-    return getUser(id).name
-  } catch (e) {
-    return match (e) {
-      when NotFound: `no user ${e.id}`;
-    }
+// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([try describe("1"), try describe("missing")]))
+effect describe(id: string) {
+  return effect {
+    return (try getUser(id)).name
+  } catch (e) => match (e) {
+    when NotFound: `no user ${e.id}`;
   }
 }
 // Output: ["Ada","no user missing"]
 ```
 
-**Falling back in an expression**. `x catch fallback` runs the fallback only after an expected failure; defects and interrupts pass through. Both sides take the expression's contextual type, as a conditional's branches do.
+**Falling back in an expression**. `x catch fallback` runs the Effect and gives the fallback after a typed failure. Defects and interruption propagate.
 
 ```ts effect
 // fragment
@@ -383,9 +384,10 @@ const nameOrGuest = (id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([nameOrGuest("1"), nameOrGuest("missing")]))
-function nameOrGuest(id: string) {
-  return getUser(id).name catch "guest"
+// pending: VIP-1, VIP-2, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([try nameOrGuest("1"), try nameOrGuest("missing")]))
+effect nameOrGuest(id: string) {
+  return effect { return (try getUser(id)).name } catch "guest"
 }
 // Output: ["Ada","guest"]
 ```
@@ -401,42 +403,17 @@ const nameOrReason = (id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([nameOrReason("1"), nameOrReason("missing")]))
-function nameOrReason(id: string) {
-  return getUser(id).name catch (e) => match (e) {
+// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([try nameOrReason("1"), try nameOrReason("missing")]))
+effect nameOrReason(id: string) {
+  return effect { return (try getUser(id)).name } catch (e) => match (e) {
     when NotFound: `no user ${e.id}`;
   }
 }
 // Output: ["Ada","no user missing"]
 ```
 
-**Handling control operations**. Effect has none; the VibeLang long form tab shows the expanded spelling.
-
-```vibe long
-// run: Console.log(auto("v1"))
-function auto(version: string) {
-  return handle(() => release(version), Approval, {
-    approve(_request, continuation) {
-      return resume(continuation, true)
-    }
-  })
-}
-// Output: released v1
-```
-
-```vibe es
-// run: Console.log(auto("v1"))
-function auto(version: string) {
-  try {
-    return release(version)
-  } handle Approval.approve(request) {
-    resume(true)
-  }
-}
-// Output: released v1
-```
-
-**Entry point**. An exported `main` runs when Node starts its module, not when a test imports it; `import "vibelang/platform/node"` in its file gives it the platform layer it needs.
+**Entry point**. Call a runner explicitly at the module top level. `await runPromise(main())` waits for the returned Promise. A Node application can use `NodeRuntime.runMain(main())`.
 
 ```ts effect
 // fragment
@@ -447,11 +424,21 @@ NodeRuntime.runMain(main)
 ```
 
 ```vibe es
-// run: Effect.provide(() => main(), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]))
-export function main() {
-  log("Hello")
+// main.vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
+export effect main() {
+  try log("Hello")
 }
 // Output: Hello
+```
+
+```vibe
+// run.vibe
+// pending: VIP-6, VIP-26
+import { main } from "./main.vibe"
+
+await runPromise(main())
 ```
 
 ## Causes, exits, and interruption
@@ -467,9 +454,10 @@ const safe = (id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(safe("1")); Console.log(safe("missing").includes("NotFound"))
-function safe(id: string) {
-  return match (exit(() => getUser(id))) {
+// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(try safe("1")); try Console.log((try safe("missing")).includes("NotFound"))
+effect safe(id: string) {
+  return match (try exit(getUser(id))) {
     when Exit.Success(let user): user.name;
     when Exit.Failure(let cause): `failed: ${Cause.pretty(cause)}`;
   }
@@ -478,7 +466,7 @@ function safe(id: string) {
 // Output: true
 ```
 
-**Rethrow a cause**. `throw` with a `Cause` fails with every reason it holds.
+**Rethrow a cause**. Use `try failCause(cause)` to fail with the whole cause. `throw cause` would make the Cause object a typed failure.
 
 ```ts effect
 // fragment
@@ -488,19 +476,20 @@ const logged = getUser("1").pipe(
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(logged()))
-function logged() {
-  const outcome = exit(() => getUser("1"))
+// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify(try logged()))
+effect logged() {
+  const outcome = try exit(getUser("1"))
   if (outcome is Exit.Failure(let cause)) {
-    logError(cause)
-    return Effect.failCause(cause)
+    try logError(cause)
+    return try failCause(cause)
   }
   return outcome.value
 }
 // Output: {"id":"1","name":"Ada"}
 ```
 
-**Run on every exit**. The block runs without interruption; a success carries no value.
+**Run on every exit**. `onExit` runs its callback without interruption and passes the complete `Exit`, including the success value.
 
 ```ts effect
 // fragment
@@ -510,19 +499,16 @@ const tracked = getUser("1").pipe(
 ```
 
 ```vibe es
-// run: Console.log(Effect.provide(() => tracked().name, Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))])))
-function tracked() {
-  try {
-    return getUser("1")
-  } finally (exit) {
-    log(`lookup ${exit._tag}`)
-  }
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: const user = try Effect.provide(tracked(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])); try Console.log(user.name)
+effect tracked() {
+  return try onExit(getUser("1"), (outcome) => log(`lookup ${outcome._tag}`))
 }
 // Output: lookup Success
 // Output: Ada
 ```
 
-**Exit, yield, and interrupt**. `exit` takes a program: `exit(() => getUser("1"))`.
+**Exit, yield, and interrupt**. Pass the Effect directly to `exit`. `yieldNow` and `interrupt` are Effect values. Run them with `try`.
 
 ```ts effect
 // fragment
@@ -532,17 +518,18 @@ if (result._tag === "Failure") yield* Effect.interrupt
 ```
 
 ```vibe es
-// run: Console.log(outcome()._tag)
-function outcome() {
-  const result = exit(() => getUser("1"))
-  yieldNow()
-  if (result is Exit.Failure) interrupt()
+// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log((try outcome())._tag)
+effect outcome() {
+  const result = try exit(getUser("1"))
+  try yieldNow
+  if (result is Exit.Failure) try interrupt
   return result
 }
 // Output: Success
 ```
 
-**Interruption**. In the blocks, `return` and `break` keep their meaning in the function; `uninterruptible(program)` also works.
+**Interruption**. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it allows interruption again. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function.
 
 ```ts effect
 // fragment
@@ -557,19 +544,21 @@ const cancellable = Effect.interruptible(getOrders("1"))
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([guarded(), cancellable()]))
-function guarded() {
+// pending: VIP-1, VIP-5, VIP-22
+// run: try Console.log(JSON.stringify([try guarded(), try cancellable()]))
+effect guarded() {
   uninterruptible {
-    const user = getUser("1")
+    const user = try getUser("1")
     restore {
-      return { user, orders: getOrders(user.id) }
+      const orders = try getOrders(user.id)
+      return { user, orders }
     }
   }
 }
 
-function cancellable() {
+effect cancellable() {
   interruptible {
-    return getOrders("1")
+    return try getOrders("1")
   }
 }
 // Output: [{"user":{"id":"1","name":"Ada"},"orders":1},1]
@@ -577,7 +566,7 @@ function cancellable() {
 
 ## Calls
 
-A tagged template is a call of its tag. If `sql` returns an Effect, the statement ``sql`CREATE TABLE example (id TEXT)` `` runs it, and ``const rows = sql`SELECT * FROM example` `` gets its success value. Plain tags keep JavaScript behavior. Discarding a structured Effect subtype, such as SQL Statement, is EK4301: call the result explicitly, or annotate the tag as returning `Effect<A, E, R>`. To pass one as a program, write ``() => sql`...` ``, as for a call.
+A tagged template is a call of its tag. If `sql` returns an Effect, the statement ``try sql`CREATE TABLE example (id TEXT)` `` runs it, and ``const rows = try sql`SELECT * FROM example` `` gets its success value. Plain tags keep JavaScript behavior. To pass one as a program, write ``sql`...` ``, as for an Effect-returning call.
 
 **No imports from `effect` or its subpath packages**.
 
@@ -589,14 +578,15 @@ const ready = Console.log(Hex.encode("ready"))
 ```
 
 ```vibe es
-// run: ready()
-function ready() {
-  Console.log(Hex.encode("ready"))
+// pending: VIP-1, VIP-5, VIP-14, VIP-33
+// run: try ready()
+effect ready() {
+  try Console.log(Hex.encode("ready"))
 }
 // Output: 7265616479
 ```
 
-**A module's name names its export of that name**: its service, or its type.
+**Look up platform services**. Get the implementation with `try FileSystem`, then run its Effect members with `try`.
 
 ```ts effect
 import { Effect } from "effect"
@@ -611,9 +601,11 @@ const size = (path: string) =>
 ```
 
 ```vibe es
-// run: provide FileSystem.layerNoop({ readFileString: () => "hello" }) { Console.log(size("notes.txt")) }
-function size(path: string) {
-  return FileSystem.readFileString(path).length
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: provide FileSystem.layerNoop({ readFileString: () => succeed("hello") }) { try Console.log(try size("notes.txt")) }
+effect size(path: string) {
+  const fs = try FileSystem
+  return (try fs.readFileString(path)).length
 }
 // Output: 5
 ```
@@ -629,15 +621,16 @@ const patient = Effect.gen(function* () {
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(patient()))
-function patient() {
-  sleep("10 millis")
-  return timeout(() => retry(() => getUser("1"), Schedule.recurs(2)), "1 second")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try patient()))
+effect patient() {
+  try sleep("10 millis")
+  return try timeout(retry(getUser("1"), Schedule.recurs(2)), "1 second")
 }
 // Output: {"id":"1","name":"Ada"}
 ```
 
-**Methods on Effect's data types**.
+**Operators on Effect's data types**. Use the module's functions, directly or through `.pipe`.
 
 ```ts effect
 import { Stream } from "effect"
@@ -649,16 +642,21 @@ const hot = Stream.take(
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(Stream.runCollect(hot())))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try Stream.runCollect(hot())))
 function hot() {
-  return Stream.make(18, 25, 30).filter((c) => c >= 25).map((c) => `${c} C`).take(2)
+  return Stream.make(18, 25, 30).pipe(
+    Stream.filter((c) => c >= 25),
+    Stream.map((c) => `${c} C`),
+    Stream.take(2)
+  )
 }
 // Output: ["25 C","30 C"]
 ```
 
-A method is a data-first overload: its first parameter is named `self`, ends in `OrOptions`, or is another supported receiver parameter, such as the one in `Cause.findErrorOption(input)`.
+Stream transformations construct a Stream. Run it with a Stream consumer such as `Stream.runCollect`, or iterate it with `for try`.
 
-**The pipe operator**. `%` is the value on the left. To retry or time out a program, pass it as `() =>`, as in `timeout(() => retry(() => getUser("1"), Schedule.recurs(2)), "1 second")`; passing a topic to `retry` is being retired.
+**The pipe operator**. `%` is the value on the left, evaluated once. Effects remain values in a pipe: `try (getUser("1") |> retry(%, policy) |> timeout(%, "1 second"))`.
 
 ```ts effect
 // fragment
@@ -667,16 +665,17 @@ const shout = pipe(user.name, (name) => name.toUpperCase(), (name) => `${name}!`
 ```
 
 ```vibe es
-// run: Console.log(shout())
-function shout() {
-  return getUser("1").name |> %.toUpperCase() |> `${%}!`
+// pending: VIP-1, VIP-5, VIP-14, VIP-23
+// run: try Console.log(try shout())
+effect shout() {
+  return (try getUser("1")).name |> %.toUpperCase() |> `${%}!`
 }
 // Output: ADA!
 ```
 
 ## TC39 forms
 
-**Throw in an expression** ([throw expressions](https://github.com/tc39/proposal-throw-expressions)).
+**Fail on a missing value.**
 
 ```ts effect
 // fragment
@@ -685,15 +684,18 @@ const findUser = (users: Map<string, User>, id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(findUser(new Map([["1", { id: "1", name: "Ada" }]]), "1").name); Console.log(Effect.result(findUser(new Map<string, User>(), "missing"))._tag)
-function findUser(users: Map<string, User>, id: string) {
-  return users.get(id) ?? throw new NotFound({ id })
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log((try findUser(new Map([["1", { id: "1", name: "Ada" }]]), "1")).name); try Console.log((try result(findUser(new Map<string, User>(), "missing")))._tag)
+effect findUser(users: Map<string, User>, id: string) {
+  const user = users.get(id)
+  if (user === undefined) throw new NotFound({ id })
+  return user
 }
 // Output: Ada
 // Output: Failure
 ```
 
-In expression position, `throw` takes a unary operand, so it binds more tightly than `===`, `??`, and `?:`: `throw failure.code === "unknown" ? a : b` would throw only `failure.code`. EK1010 refuses an unparenthesized throw expression on the left of a binary operator (except comma), as the condition of `?:`, or before `as` or `satisfies`. To throw the selected value, write `throw (failure.code === "unknown" ? a : b)`, or in a catch handler `load() catch (failure) => throw (cond ? a : b)`. Right-hand forms such as `value ?? throw e` and `ok ? value : throw e` stay legal, unless an operator follows: `value ?? throw e ? a : b` is `(value ?? throw e) ? a : b`, also EK1010. A **throw statement** still takes the whole expression: `throw cond ? a : b;` at the start of a statement throws the selected value, as in TypeScript.
+`throw` is a statement. In an effect function, it fails the Effect with a typed error.
 
 **Blocks as values** ([do expressions](https://github.com/tc39/proposal-do-expressions)). The value is the last statement's.
 
@@ -704,10 +706,11 @@ const label = (id: string) =>
 ```
 
 ```vibe es
-// run: Console.log(label("1"))
-function label(id: string) {
+// pending: VIP-1, VIP-2, VIP-5, VIP-14
+// run: try Console.log(try label("1"))
+effect label(id: string) {
   const name = do {
-    const user = getUser(id)
+    const user = try getUser(id)
     if (user.name.length > 3) user.name
     else "short"
   }
@@ -718,7 +721,7 @@ function label(id: string) {
 
 A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `break` and `continue` stay inside that expression (`EK1019`); `return` is `TS1108`.
 
-**Blocks after calls** ([block params](https://github.com/samuelgoto/proposal-block-params)). The block is the call's program; it needs `return` for a value. The block starts on the call's line: a `{` that starts a line after a statement ending in a name, a member access or a call is EK1022. Join the lines to pass the block, or end the statement with `;` to start a block statement.
+**Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.
 
 ```ts effect
 // fragment
@@ -738,24 +741,25 @@ it.live("finds a user", () =>
 ```
 
 ```vibe es
-// run: Console.log(loaded())
-function loaded() {
-  return withSpan(() => {
-    const user = getUser("1")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try loaded())
+effect loaded() {
+  return try withSpan(effect {
+    const user = try getUser("1")
     return user.name
   }, "load")
 }
-
 // Output: Ada
 ```
 
 ```vibe
+// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 
-it.live("finds a user") {
-  const user = getUser("1")
-  assert.strictEqual(user.name, "Ada")
-}
+it.live("finds a user", () => effect {
+  const user = try getUser("1")
+  try sync(() => assert.strictEqual(user.name, "Ada"))
+})
 // Output:
 ```
 
@@ -779,7 +783,8 @@ const phaseLabel = (phase: "draft" | "published") =>
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([phaseLabel("draft"), phaseLabel("published")]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([phaseLabel("draft"), phaseLabel("published")]))
 function phaseLabel(phase: "draft" | "published") {
   return match (phase) {
     when "draft": "Draft";
@@ -789,7 +794,7 @@ function phaseLabel(phase: "draft" | "published") {
 // Output: ["Draft","Published"]
 ```
 
-**Match errors by class**. An `error` class is a pattern; `and { let id }` binds a property.
+**Match errors by class**. An `error` class matches its `_tag`. `and { let id }` binds a property.
 
 ```ts effect
 // fragment
@@ -802,7 +807,8 @@ const describeFailure = (failure: NotFound | Timeout) =>
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())]))
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
     when NotFound and { let id }: `no user ${id}`;
@@ -812,7 +818,7 @@ function describeFailure(failure: NotFound | Timeout) {
 // Output: ["no user 7","retry"]
 ```
 
-**Match a data type's variants**. A variant tests the tag; braces bind the fields they list.
+**Match a data type's variants**. Use an object pattern on `_tag` and bind the fields you need.
 
 ```ts effect
 // fragment
@@ -823,11 +829,12 @@ const deliveryLabel = Delivery.$match({
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))]))
 function deliveryLabel(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Waiting: "waiting";
-    when Delivery.Sent { let tracking }: `sent ${tracking}`;
+    when { _tag: "Waiting" }: "waiting";
+    when { _tag: "Sent", let tracking }: `sent ${tracking}`;
   }
 }
 // Output: ["waiting","sent parcel-8"]
@@ -843,7 +850,8 @@ const failed = (outcome: Exit.Exit<User, NotFound>) => Exit.isFailure(outcome)
 ```
 
 ```vibe es
-// run: Console.log(greet(Option.some("Ada"))); Console.log(greet(Option.none())); Console.log(failed(Exit.fail(new NotFound({ id: "7" })))); Console.log(failed(Exit.succeed({ id: "1", name: "Ada" })))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(greet(Option.some("Ada"))); try Console.log(greet(Option.none())); try Console.log(failed(Exit.fail(new NotFound({ id: "7" })))); try Console.log(failed(Exit.succeed({ id: "1", name: "Ada" })))
 function greet(name: Option.Option<string>) {
   return match (name) {
     when Option.Some(let n): `Hello, ${n}`;
@@ -869,7 +877,8 @@ const firstFailure = (outcome: Exit.Exit<User, NotFound>) =>
 ```
 
 ```vibe es
-// run: Console.log(firstFailure(Exit.succeed({ id: "1", name: "Ada" }))); Console.log(firstFailure(Exit.fail(new NotFound({ id: "7" }))).includes("NotFound"))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(firstFailure(Exit.succeed({ id: "1", name: "Ada" }))); try Console.log(firstFailure(Exit.fail(new NotFound({ id: "7" }))).includes("NotFound"))
 function firstFailure(outcome: Exit.Exit<User, NotFound>) {
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) return Cause.pretty(cause)
   return "ok"
@@ -878,13 +887,34 @@ function firstFailure(outcome: Exit.Exit<User, NotFound>) {
 // Output: true
 ```
 
-## Escape hatches
+## Wrap TypeScript calls
 
-**Plain, self-contained TypeScript inside `sync`, `try`, and `callback`**. A throw in `sync` is a defect; in `try` it is an expected failure. Async bodies are `Effect.promise` and `Effect.tryPromise`. A hatch's function reads `.vibe` values only as inputs, the arguments after it, which fill its first parameters; `try`'s error mapper stays second (EK4405). `runPromise` leads back in from a hatch's body or a `.ts` file.
+**Wrap TypeScript calls**. Call a known nonthrowing function directly. Wrap a potentially throwing function with `Effect.try`. Use `sync` when an exception should be a defect. Always wrap Promises with `promise` or `tryPromise`. Callback arrows capture locals normally.
 
-**Built-in exceptions.** In an Effect function, `JSON.parse(text)` has a shipped contract: its `SyntaxError` is an expected failure that joins E and reaches `catch`. `decodeURI` and `decodeURIComponent` list `URIError`. Other built-ins' exceptions are defects. In a plain function `JSON.parse` is a JavaScript call, unless a `try` of that function whose `catch` handles the `SyntaxError` encloses it; an exception that escapes into an Effect caller becomes a defect. Inside TypeScript's `Effect.gen`, by contrast, a plain `JSON.parse` throw is a defect.
+**Built-in exceptions.** VibeLang ships `@throws` annotations for JavaScript's globals: `JSON.parse` throws `SyntaxError`, and `decodeURI` and `decodeURIComponent` throw `URIError`. Wrap these calls with `Effect.try` before running them with `try` in an effect function. Use its `catch` option to map the error. Inside TypeScript's `Effect.gen`, a plain `JSON.parse` throw is a defect.
 
-Use ordinary `catch` to map a built-in’s expected failure; reserve hatches for foreign libraries and for platform operations that Effect has no service for. A platform API that Effect covers is a service call, not a hatch: EK4402 names the service and its layer. A `.vibe` file imports no Node.js value directly, so a `module` block imports what a hatch runs.
+Use injected services for platform APIs that Effect covers. Keep `node:*` value imports and Node.js globals in a `.ts` companion file. The following companions supply the foreign APIs for this comparison:
+
+```ts
+// node-apis.ts
+// types: node
+export { uptime } from "node:os"
+export { statfs } from "node:fs/promises"
+import { EventEmitter } from "node:events"
+
+export function makeTicker() {
+  const ticker = new EventEmitter()
+  ticker.on("newListener", () => queueMicrotask(() => ticker.emit("tick", 7)))
+  return ticker
+}
+```
+
+```ts
+// web-apis.ts
+export function generateKey() {
+  return crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, false, ["sign"])
+}
+```
 
 ```ts effect
 // fragment
@@ -903,41 +933,50 @@ const name = await Effect.runPromise(greetUser("1"))
 ```
 
 ```vibe es
-// run: provide Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]) { const ticker = sync(() => { const ticker = new EventEmitter(); ticker.on("newListener", () => queueMicrotask(() => ticker.emit("tick", 7))); return ticker }); const value = hatches('{"ok":true}', ".", ticker); Console.log(JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free })) }
-module node {
-  // Plain TypeScript inside this module, not VibeLang.
-  export { uptime } from "node:os"
-  export { statfs } from "node:fs/promises"
-  export { EventEmitter } from "node:events"
-}
-import { EventEmitter, statfs, uptime } from node
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-33
+// run: provide Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free })) }
+import { makeTicker, statfs, uptime } from "./node-apis.ts"
+import type { EventEmitter } from "node:events"
+import { generateKey } from "./web-apis.ts"
 
 error BadJson { error: unknown }
 error NoDisk { error: unknown }
 
-function hatches(text: string, path: string, ticker: EventEmitter) {
-  // sync's first argument is plain TypeScript, not VibeLang.
-  const up = sync(uptime())
-  const parsed = JSON.parse(text) catch (error) => throw new BadJson({ error })
-  // sync's first argument is plain TypeScript, not VibeLang.
-  const key = sync(async () => crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, false, ["sign"]))
-  // try's first argument is plain TypeScript, not VibeLang.
-  const free = try(async (path) => (await statfs(path)).bavail, (error) => new NoDisk({ error }), path)
-  const tick = callback((ticker, resume: Resume<number, never>) => {
-    // Plain TypeScript inside this hatch, not VibeLang.
-    const listener = (n: number) => resume(n)
+effect wrappedCalls(text: string, path: string, ticker: EventEmitter) {
+  const up = try sync(() => uptime())
+  const parsed = try Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
+  const key = try promise(() => generateKey())
+  const free = try tryPromise({ try: async () => (await statfs(path)).bavail, catch: (error) => new NoDisk({ error }) })
+  const tick = try callback<number>((resume) => {
+    const listener = (n: number) => resume(succeed(n))
     ticker.once("tick", listener)
-    return () => ticker.off("tick", listener)
-  }, ticker)
-  // sync's first argument is plain TypeScript, not VibeLang.
-  const name = sync(async (greet) => runPromise(greet("1")), greetUser)
+    return sync(() => ticker.off("tick", listener))
+  })
+  const name = try promise(() => greetFromTypeScript())
   return { up, parsed, key, free, tick, name }
+}
+
+async function greetFromTypeScript() {
+  return await runPromise(greetUser("1"))
 }
 // Output: Hello, Ada
 // Output: {"up":"number","parsed":{"ok":true},"key":"secret","free":"number","tick":7,"name":"Ada"}
 ```
 
-**TypeScript modules inline** ([module declarations](https://github.com/tc39/proposal-module-declarations)). A module's body is TypeScript, compiled as a `.ts` file would be, so JavaScript's `throw` and `catch` and `async` keep their meaning there. It is self-contained: it imports what it needs, and the file reaches it only through imports.
+**TypeScript companion files**. Import a `.ts` file normally. Plain functions and `async` functions keep their TypeScript behavior. This helper matches the Effect comparison:
+
+```ts
+// links.ts
+// types: node
+import { lstatSync } from "node:fs"
+export function isSymbolicLink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+```
 
 ```ts effect
 // fragment
@@ -956,29 +995,17 @@ const linked = (path: string) => Effect.sync(() => isSymbolicLink(path))
 ```
 
 ```vibe es
-// run: Console.log(linked("."))
-module links {
-  // Plain TypeScript inside this module, not VibeLang.
-  import { lstatSync } from "node:fs"
-  export function isSymbolicLink(path: string): boolean {
-    try {
-      return lstatSync(path).isSymbolicLink()
-    } catch {
-      return false
-    }
-  }
-}
+// pending: VIP-5, VIP-6, VIP-14
+// run: try Console.log(try linked("."))
+import { isSymbolicLink } from "./links.ts"
 
-import { isSymbolicLink } from links
-
-// sync's first argument is plain TypeScript, not VibeLang.
-const linked = (path: string) => sync((p) => isSymbolicLink(p), path)
+const linked = (path: string) => sync(() => isSymbolicLink(path))
 // Output: false
 ```
 
 ## Fibers
 
-**Fork and join**. A fiber belongs to the block that forks it. `join [a, b]` joins several and interrupts the rest on a failure.
+**Fork and join**. `fork` creates a child owned by the current fiber. The child is interrupted when its parent ends. Join each fiber with `join`.
 
 ```ts effect
 // fragment
@@ -988,8 +1015,9 @@ return [yield* Fiber.join(user), yield* Fiber.join(orders)]
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(both()))
-function both() {
+// pending: VIP-1, VIP-5, VIP-14, VIP-17
+// run: try Console.log(JSON.stringify(try both()))
+effect both() {
   const user = fork getUser("1")
   const orders = fork getOrders("1")
   return [join user, join orders]
@@ -997,7 +1025,7 @@ function both() {
 // Output: [{"id":"1","name":"Ada"},1]
 ```
 
-**Wait for several**. `await.all` behaves like `Promise.all`: it starts each element in its own fiber, keeps the shape, and a failure interrupts the rest.
+**Wait for several**. `try.all` behaves like `Promise.all`: it starts each element in its own fiber, keeps the array's shape, and a failure interrupts the rest. Use `try all(record, { concurrency: "unbounded" })` to keep object keys.
 
 ```ts effect
 // fragment
@@ -1006,28 +1034,30 @@ const pair = yield* Effect.all({ user: getUser("1"), orders: getOrders("1") }, {
 ```
 
 ```vibe es
-// run: Console.log(JSON.stringify(many()))
-function many() {
-  const [user, orders] = await.all [getUser("1"), getOrders("1")]
-  const pair = await.all { user: getUser("1"), orders: getOrders("1") }
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(JSON.stringify(try many()))
+effect many() {
+  const [user, orders] = try.all [getUser("1"), getOrders("1")]
+  const pair = try all({ user: getUser("1"), orders: getOrders("1") }, { concurrency: "unbounded" })
   return { user, orders, pair }
 }
 // Output: {"user":{"id":"1","name":"Ada"},"orders":1,"pair":{"user":{"id":"1","name":"Ada"},"orders":1}}
 ```
 
-**First success, expected outcomes**. `await.any` waits for the first success. `await.allSettled` returns successes and typed failures as `Result` values, not JavaScript's settlement objects, and never fails with a typed error. Defects and interruption propagate exactly as in `Effect.all` with `mode: "result"`; a cause with no typed failure still propagates. To make every cause data, give each element to `exit`: `await.all [exit(() => a()), exit(() => b())]`.
+**First success, all outcomes**. `try.any` waits for the first success. `try.allSettled` returns each element's full outcome as an `Exit`: success, typed failure, defect, or interruption. The whole never fails, as `Promise.allSettled` never rejects. The explicit equivalent is `try.all [exit(a()), exit(b())]`.
 
 ```ts effect
 // fragment
 const fastest = yield* Effect.raceAll([getUser("1"), getUser("2")])
-const outcomes = yield* Effect.all([getUser("1"), getOrders("1")], { concurrency: "unbounded", mode: "result" })
+const outcomes = yield* Effect.all([getUser("1"), getOrders("1")].map(Effect.exit), { concurrency: "unbounded" })
 ```
 
 ```vibe es
-// run: const value = outcomes(); Console.log(value.fastest.name); Console.log(JSON.stringify(value.results.map((result) => result._tag))); Console.log(JSON.stringify((await.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag))); Console.log(JSON.stringify((await.all [exit(() => die("defect")), exit(() => getOrders("1"))]).map((e) => e._tag)))
-function outcomes() {
-  const fastest = await.any [getUser("1"), getUser("2")]
-  const results = await.allSettled [getUser("1"), getOrders("1")]
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
+// run: const value = try outcomes(); try Console.log(value.fastest.name); try Console.log(JSON.stringify(value.results.map((result) => result._tag))); try Console.log(JSON.stringify((try.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag))); try Console.log(JSON.stringify((try.all [exit(die("defect")), exit(getOrders("1"))]).map((e) => e._tag)))
+effect outcomes() {
+  const fastest = try.any [getUser("1"), getUser("2")]
+  const results = try.allSettled [getUser("1"), getOrders("1")]
   return { fastest, results }
 }
 // Output: Ada
@@ -1036,7 +1066,7 @@ function outcomes() {
 // Output: ["Failure","Success"]
 ```
 
-**Fork a block**. The loop stops when the function body that owns it exits.
+**Fork scoped work**. `fork.scoped` attaches a fiber to the current Scope. `scoped` closes that scope and interrupts the worker when the operation ends.
 
 ```ts effect
 // fragment
@@ -1047,15 +1077,13 @@ const withHeartbeat = Effect.scoped(Effect.gen(function* () {
 ```
 
 ```vibe es
-// run: provide Logger.layer([]) { Console.log(withHeartbeat().name) }
-function withHeartbeat() {
-  fork {
-    while (true) {
-      log("tick")
-      sleep("1 second")
-    }
-  }
-  return getUser("1")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
+// run: provide Logger.layer([]) { try Console.log((try withHeartbeat()).name) }
+effect withHeartbeat() {
+  return try scoped(effect {
+    fork.scoped forever(andThen(log("tick"), sleep("1 second")))
+    return try getUser("1")
+  })
 }
 // Output: Ada
 ```
@@ -1070,18 +1098,19 @@ const fiber = yield* Effect.forkIn(getUser("2"), scope)
 ```
 
 ```vibe es
-// run: Console.log(Exit.isFailure(Fiber.await(background())))
-function background() {
-  detach(() => getUser("1"))
-  const scope = Scope.make()
-  const fiber = forkIn(scope, () => getUser("2"))
-  Scope.close(scope, Exit.void)
+// pending: VIP-1, VIP-5, VIP-14, VIP-17
+// run: try Console.log(Exit.isFailure(try Fiber.await(try background())))
+effect background() {
+  fork.detached getUser("1")
+  const scope = try Scope.make()
+  const fiber = fork.in(scope) getUser("2")
+  try Scope.close(scope, Exit.void)
   return fiber
 }
 // Output: true
 ```
 
-**Wait for a Deferred**. `await` waits for promises in JavaScript, so a Deferred uses its method.
+**Wait for a Deferred**. Run the Effect returned by `Deferred.await` with `try`.
 
 ```ts effect
 // fragment
@@ -1091,16 +1120,17 @@ const value = yield* Deferred.await(ready)
 ```
 
 ```vibe es
-// run: Console.log(signal())
-function signal() {
-  const ready = Deferred.make<string>()
-  Deferred.succeed(ready, "go")
-  return ready.await()
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try signal())
+effect signal() {
+  const ready = try Deferred.make<string>()
+  try Deferred.succeed(ready, "go")
+  return try Deferred.await(ready)
 }
 // Output: go
 ```
 
-**Race**. `await.race` behaves like `Promise.race`: the first to finish wins, success or failure, and the rest are interrupted. It replaced `select` (EK4607); poll with `Queue.poll` and an `if`.
+**Race**. `try.race` behaves like `Promise.race`: the first to finish wins, success or failure, and the rest are interrupted. Use Effect blocks when a branch needs several statements; poll with `Queue.poll` and an `if`.
 
 ```ts effect
 // fragment
@@ -1111,15 +1141,16 @@ const next = yield* Effect.raceFirst(
 ```
 
 ```vibe es
-// run: Console.log(next())
-function next() {
-  const jobs = Queue.unbounded<string>()
-  Queue.offer(jobs, "build")
-  return await.race [
-    `ran ${Queue.take(jobs)}`,
-    do {
-      sleep("1 second")
-      "timeout"
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(try next())
+effect next() {
+  const jobs = try Queue.unbounded<string>()
+  try Queue.offer(jobs, "build")
+  return try.race [
+    effect { return `ran ${try Queue.take(jobs)}` },
+    effect {
+      try sleep("1 second")
+      return "timeout"
     }
   ]
 }
@@ -1137,9 +1168,12 @@ yield* Effect.forEach(ids, (id) => Effect.flatMap(getUser(id), (user) => Effect.
 ```
 
 ```vibe es
-// run: Effect.provide(() => logAll(["1", "2"]), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]))
-function logAll(ids: string[]) {
-  for concurrent(8) (const id of ids) log(getUser(id).name)
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
+// run: try Effect.provide(logAll(["1", "2"]), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
+effect logAll(ids: string[]) {
+  for concurrent(8) (const id of ids) {
+    try log((try getUser(id)).name)
+  }
 }
 // Output: Ada
 // Output: Ada

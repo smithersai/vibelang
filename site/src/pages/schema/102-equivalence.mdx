@@ -5,7 +5,7 @@ description: "Schema-derived equivalence works exactly as in Effect. It compares
 
 # Schema to Equivalence
 
-Schema-derived equivalence works exactly as in Effect. It compares decoded values by a schema's structure, for domain comparisons and round-trip checks, and neither decodes nor validates them. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schema-derived equivalence works exactly as in Effect. It compares decoded values by a schema's structure, for domain comparisons and round-trip checks, and neither decodes nor validates them. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Deriving equality from schemas
 
@@ -15,9 +15,9 @@ schema Shipment {
   stops: ReadonlyArray<string>
 }
 
-function sameShipment(left: unknown, right: unknown) {
-  const a = Schema.decodeUnknownEffect(Shipment)(left)
-  const b = Schema.decodeUnknownEffect(Shipment)(right)
+effect sameShipment(left: unknown, right: unknown) {
+  const a = try Schema.decodeUnknownEffect(Shipment)(left)
+  const b = try Schema.decodeUnknownEffect(Shipment)(right)
   return Schema.toEquivalence(Shipment)(a, b)
 }
 ```

@@ -10,15 +10,15 @@ A `SynchronizedRef` serializes updates that run Effects. Use it when the next va
 ## Serializing effectful updates
 
 ```vibe
-function recordRevisions() {
-  const revisions = SynchronizedRef.make<ReadonlyArray<number>>([])
-  forEach([1, 2, 3], (id) => {
-    SynchronizedRef.updateEffect(revisions, (current) => {
-      sleep("10 millis")
+effect recordRevisions() {
+  const revisions = try SynchronizedRef.make<ReadonlyArray<number>>([])
+  for concurrent(3) (const id of [1, 2, 3]) {
+    try SynchronizedRef.updateEffect(revisions, effect (current) => {
+      try sleep("10 millis")
       return [...current, id]
     })
-  }, { concurrency: 3 })
-  return SynchronizedRef.get(revisions)
+  }
+  return try SynchronizedRef.get(revisions)
 }
 // Output: [1,2,3]
 ```
@@ -28,11 +28,11 @@ Three fibers call the callbacks concurrently, but they acquire the reference's u
 ## Reading synchronized references
 
 ```vibe
-function inspect() {
-  const state = SynchronizedRef.make({ version: 0, ready: false })
-  const before = SynchronizedRef.get(state)
-  SynchronizedRef.set(state, { version: 1, ready: true })
-  const after = SynchronizedRef.get(state)
+effect inspect() {
+  const state = try SynchronizedRef.make({ version: 0, ready: false })
+  const before = try SynchronizedRef.get(state)
+  try SynchronizedRef.set(state, { version: 1, ready: true })
+  const after = try SynchronizedRef.get(state)
   return { before, after }
 }
 // Output: {"before":{"version":0,"ready":false},"after":{"version":1,"ready":true}}
@@ -49,13 +49,14 @@ service Versions {
   loadAfter(version: number): number!RefreshFailed
 }
 
-function refreshTwice() {
-  const version = SynchronizedRef.make(0)
-  function refresh() {
-    return SynchronizedRef.updateAndGetEffect(version, (current) =>
-      Versions.loadAfter(current))
+effect refreshTwice() {
+  const version = try SynchronizedRef.make(0)
+  const versions = try Versions
+  effect refresh() {
+    return try SynchronizedRef.updateAndGetEffect(version, (current) =>
+      versions.loadAfter(current))
   }
-  return all([() => refresh(), () => refresh()], { concurrency: 2 })
+  return try.all [refresh(), refresh()]
 }
 // [number, number]!RefreshFailed!Versions
 // Output: [1,2]
@@ -67,7 +68,7 @@ The second update reads the first update's committed version before calling `loa
 
 ## Coming from Effect
 
-Call `updateEffect(ref, (current) => nextValue(current))` with an ordinary callback. Unlike the callback to `Ref.update`, it may pause and use services.
+Pass a callback returning an Effect to `updateEffect`. A plain arrow can return an existing Effect, such as `versions.loadAfter(current)`. An effect arrow can run several operations with `try` before returning the next value. `try.all` runs the two refresh Effects concurrently and keeps their results.
 
 ---
 

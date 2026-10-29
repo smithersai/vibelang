@@ -1,11 +1,12 @@
 # Control Flow Operators
 
-VibeLang uses ordinary branches and loops for sequential work. Effect's operators serve concurrent execution, collected results, and policies over whole programs. Pass them functions, so they decide when each computation starts.
+VibeLang uses ordinary branches and loops for sequential work. Effect's operators serve concurrent execution, collected results, and policies over whole programs. Pass them Effect values. The operator controls when each Effect runs.
 
 ## Branching and conditional computations
 
 ```vibe
-// run: Console.log(optionalSize(-1).isNone(), optionalSize(3).getOrNull(), requiredSize(3)); try { requiredSize(-1) } catch (error) { Console.log(error._tag, error.size) }; Console.log(announceIfEnabled(false).isNone()); Console.log(announceIfEnabled(true).getOrNull())
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(Option.isNone(optionalSize(-1)), Option.getOrNull(optionalSize(3)), try requiredSize(3)); try Console.log(requiredSize(-1) catch (error) => `${error._tag} ${error.size}`); try Console.log(Option.isNone(try announceIfEnabled(false))); try Console.log(Option.getOrNull(try announceIfEnabled(true)))
 error InvalidSize {
   size: number
 }
@@ -15,17 +16,17 @@ function optionalSize(size: number) {
   return Option.some(size)
 }
 
-function requiredSize(size: number) {
+effect requiredSize(size: number) {
   if (size < 0) throw new InvalidSize({ size })
   return size
 }
 // number!InvalidSize!
 
-function announceIfEnabled(enabled: boolean) {
-  return Effect.when(() => {
-    Console.log("notifications enabled")
+effect announceIfEnabled(enabled: boolean) {
+  return try Effect.when(effect {
+    try Console.log("notifications enabled")
     return "announced"
-  }, () => enabled)
+  }, succeed(enabled))
 }
 ```
 
@@ -37,36 +38,37 @@ notifications enabled
 announced
 ```
 
-`if`, early `return`, and `throw` work in a VibeLang function, after a service call too. `Effect.when` runs its condition program first, runs its source only on `true`, and returns an `Option` saying whether it ran: `false` gives `None`, and a condition failure propagates instead of skipping work.
+`if`, early `return`, and `throw` work in an effect function, after a service call too. `Effect.when` runs its condition Effect first, runs its source only on `true`, and returns an `Option` saying whether it ran: `false` gives `None`, and a condition failure propagates instead of skipping work. Run it with `try` to get that Option.
 
 ## Combining two results
 
 ```vibe
-// run: Console.log(JSON.stringify([sequentialPair(), concurrentPair(), formattedPair()]))
-function amount() {
-  sleep("30 millis")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(JSON.stringify([try sequentialPair(), try concurrentPair(), try formattedPair()]))
+effect amount() {
+  try sleep("30 millis")
   return 18
 }
 
-function currency() {
-  sleep("10 millis")
+effect currency() {
+  try sleep("10 millis")
   return "USD"
 }
 
-function sequentialPair() {
-  const value = amount()
-  const unit = currency()
+effect sequentialPair() {
+  const value = try amount()
+  const unit = try currency()
   return [value, unit] as const
 }
 
-function concurrentPair() {
-  return Effect.zip(() => amount(), () => currency(), { concurrent: true })
+effect concurrentPair() {
+  return try Effect.zip(amount(), currency(), { concurrent: true })
 }
 
-function formattedPair() {
-  return Effect.zipWith(
-    () => amount(),
-    () => currency(),
+effect formattedPair() {
+  return try Effect.zipWith(
+    amount(),
+    currency(),
     (value, unit) => `${value} ${unit}`
   )
 }
@@ -81,21 +83,22 @@ function formattedPair() {
 ## Repeating work in loops
 
 ```vibe
-// run: Console.log(JSON.stringify(inspectPages())); logAttempts()
-function inspectPages() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try inspectPages())); try logAttempts()
+effect inspectPages() {
   const inspected: number[] = []
   let page = 1
   while (page <= 3) {
-    sleep("10 millis")
+    try sleep("10 millis")
     inspected.push(page)
     page++
   }
   return inspected // [1, 2, 3]
 }
 
-function logAttempts() {
+effect logAttempts() {
   for (let attempt = 1; attempt <= 3; attempt++) {
-    Console.log(`attempt ${attempt}`)
+    try Console.log(`attempt ${attempt}`)
   }
 }
 // Output: [1,2,3]
@@ -107,10 +110,11 @@ function logAttempts() {
 A loop can call services, pause, fail, and use `break` or `continue`. Accumulate results only when the caller needs them; a loop without an explicit return completes with `void`. Each run of the function recreates its local state.
 
 ```vibe
-// run: operatorLoop()
-function operatorLoop() {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try operatorLoop()
+effect operatorLoop() {
   let index = 0
-  Effect.whileLoop({
+  try Effect.whileLoop({
     while: () => index < 3,
     body: () => Console.log(`iteration ${index}`),
     step: () => { index++ }
@@ -124,26 +128,27 @@ iteration 1
 iteration 2
 ```
 
-In Effect 4.0.6, `whileLoop` takes one options object and returns `void`. `body` lazily supplies an Effect; `step` updates state synchronously after each successful iteration. It has no initial-state argument or result-collection option; collect results in local state and an array.
+In Effect 4.0.6, `whileLoop` takes one options object and returns an Effect with success type `void`. `body` lazily supplies an Effect; `step` updates state synchronously after each successful iteration. It has no initial-state argument or result-collection option; collect results in local state and an array.
 
 ## Traversing collections and discarding values
 
 ```vibe
-// run: Console.log(JSON.stringify(prepareAll())); logAll()
-function prepare(id: number) {
-  sleep("10 millis")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try prepareAll())); try logAll()
+effect prepare(id: number) {
+  try sleep("10 millis")
   return `prepared-${id}`
 }
 
-function prepareAll() {
-  return forEach([3, 5, 8], (id, index) => {
-    Console.log(`preparing position ${index}`)
-    return prepare(id)
+effect prepareAll() {
+  return try forEach([3, 5, 8], effect (id, index) => {
+    try Console.log(`preparing position ${index}`)
+    return try prepare(id)
   }, { concurrency: 2 })
 }
 
-function logAll() {
-  forEach([3, 5, 8], (id) => Console.log(`id ${id}`), { discard: true })
+effect logAll() {
+  try forEach([3, 5, 8], (id) => Console.log(`id ${id}`), { discard: true })
 }
 ```
 
@@ -162,12 +167,13 @@ id 8
 ## Collecting programs
 
 ```vibe
-// run: Console.log(JSON.stringify(collected()))
-function collected() {
-  const tuple = all([() => 12, () => "ready"] as const)
-  const object = all({ count: () => 12, status: () => "ready" })
-  const iterable = new Set([() => prepare(3), () => prepare(5)])
-  const array = all(iterable, { concurrency: 2 })
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try collected()))
+effect collected() {
+  const tuple = try all([succeed(12), succeed("ready")] as const)
+  const object = try all({ count: succeed(12), status: succeed("ready") })
+  const iterable = new Set([prepare(3), prepare(5)])
+  const array = try all(iterable, { concurrency: 2 })
   return { tuple, object, array }
 }
 // tuple: [12, "ready"]
@@ -176,29 +182,30 @@ function collected() {
 // Output: {"tuple":[12,"ready"],"object":{"count":12,"status":"ready"},"array":["prepared-3","prepared-5"]}
 ```
 
-`all` takes tuples, iterables, objects, and records and returns the matching shape. Each entry is a program, so building the collection does no work. It runs sequentially unless you pass `concurrency`. `discard: true` drops the combined result when only completion matters.
+`all` takes tuples, iterables, objects, and records and returns the matching shape. Each entry is an Effect value. Building the collection does not run its Effects. It runs sequentially unless you pass `concurrency`. `discard: true` drops the combined result when only completion matters.
 
 ## Early termination and alternate collection modes
 
 ```vibe
-// run: try { stopAtFailure() } catch (error) { Console.log(error._tag) }; Console.log(JSON.stringify(collectOutcomes().map((result) => result.isSuccess() ? result.success : result.failure._tag)))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(stopAtFailure() catch (error) => error._tag); try Console.log(JSON.stringify((try collectOutcomes()).map((result) => Result.isSuccess(result) ? result.success : result.failure._tag)))
 error Unavailable {
   id: number
 }
 
-function load(id: number) {
+effect load(id: number) {
   if (id === 5) throw new Unavailable({ id })
-  Console.log(`loaded ${id}`)
+  try Console.log(`loaded ${id}`)
   return `item-${id}`
 }
 
-function stopAtFailure() {
-  return all([() => load(3), () => load(5), () => load(8)])
+effect stopAtFailure() {
+  return try all([load(3), load(5), load(8)])
 }
 // Sequentially loads 3, then fails with Unavailable; 8 is not started.
 
-function collectOutcomes() {
-  return all([() => load(3), () => load(5), () => load(8)], { mode: "result" })
+effect collectOutcomes() {
+  return try all([load(3), load(5), load(8)], { mode: "result" })
 }
 // [Result.succeed("item-3"), Result.fail(Unavailable), Result.succeed("item-8")]
 // Output: loaded 3
@@ -212,4 +219,4 @@ The default mode stops at a typed failure and keeps it in the consuming function
 
 ## Coming from Effect
 
-Ordinary statements replace sequential mapping and binding. Keep program combinators for concurrency and collection policies, and always pass `() => work()` when an operator expects a program.
+Use `try` with ordinary statements for sequential work. Pass `work()` directly when a combinator expects an Effect. Use `effect { ... }` for several statements, or an effect arrow when a callback must build an Effect.

@@ -75,10 +75,11 @@ test("existing-project migration explains same-stem output collisions", () => {
 })
 
 test("first-run readers can enable source-located development traces", () => {
-  for (const path of ["templates/app/README.md", "docs/user/src/013-getting-started.md"]) {
+  // The docs use VIP-30's top-level "vibe" key; the starter's README changes with the compiler.
+  for (const [path, key] of [["templates/app/README.md", "vibelang"], ["docs/user/src/013-getting-started.md", "vibe"]]) {
     const page = read(path)
-    assert.match(page, /vibelang\.tracing/)
-    assert.match(page, /"vibelang":\s*\{\s*"tracing":\s*"all"/)
+    assert.match(page, new RegExp(`\\b${key}\\.tracing`))
+    assert.match(page, new RegExp(`"${key}":\\s*\\{\\s*"tracing":\\s*"all"`))
     assert.match(page, /012-devtools(?:\.md)?#debug-stack-traces/)
     assert.match(page, /rebuild or restart/)
   }

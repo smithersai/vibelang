@@ -5,7 +5,8 @@
 ## Constructing finite and infinite durations
 
 ```vibe
-// run: Console.log(JSON.stringify([String(Duration.toNanosUnsafe(small)), String(Duration.toNanosUnsafe(micro)), polling.toMillis(), budget.toSeconds(), session.toMinutes(), shift.toHours(), retention.toDays(), fortnight.toWeeks(), String(unbounded), negative.toSeconds()]))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify([String(try Effect.try(() => Duration.toNanosUnsafe(small))), String(try Effect.try(() => Duration.toNanosUnsafe(micro))), Duration.toMillis(polling), Duration.toSeconds(budget), Duration.toMinutes(session), Duration.toHours(shift), Duration.toDays(retention), Duration.toWeeks(fortnight), String(unbounded), Duration.toSeconds(negative)]))
 const small = Duration.nanos(750n)
 const micro = Duration.micros(20n)
 const polling = Duration.millis(250)
@@ -25,7 +26,8 @@ const negative = Duration.seconds(-2)
 Constructors name the unit at the call site. `infinity` is an unbounded positive span and `negativeInfinity` its negative counterpart. A day is a fixed 24 hours, not a calendar day across daylight saving changes.
 
 ```vibe
-// run: Console.log(milliseconds.toMillis(), String(Duration.toNanosUnsafe(nanoseconds)), text.toSeconds(), checked.isSome(), Duration.fromInput("invalid" as Duration.Input).isNone())
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(Duration.toMillis(milliseconds), String(try Effect.try(() => Duration.toNanosUnsafe(nanoseconds))), Duration.toSeconds(text), Option.isSome(checked), Option.isNone(Duration.fromInput("invalid" as Duration.Input)))
 const milliseconds = Duration.fromInputUnsafe(240)
 const nanoseconds = Duration.fromInputUnsafe(240n)
 const text = Duration.fromInputUnsafe("3 seconds")
@@ -41,35 +43,37 @@ const checked = Duration.fromInput("3 seconds")
 ## Extracting values in chosen units
 
 ```vibe
-// run: Console.log(JSON.stringify([delay.toMillis(), delay.toSeconds(), delay.toMinutes(), delay.toHours(), Duration.weeks(1).toDays(), Duration.days(14).toWeeks(), String(Duration.millis(3).toNanos().getOrThrow()), Duration.infinity.toNanos().isNone()]))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify([Duration.toMillis(delay), Duration.toSeconds(delay), Duration.toMinutes(delay), Duration.toHours(delay), Duration.toDays(Duration.weeks(1)), Duration.toWeeks(Duration.days(14)), String(try Effect.try(() => Option.getOrThrow(Duration.toNanos(Duration.millis(3))))), Option.isNone(Duration.toNanos(Duration.infinity))]))
 const delay = Duration.minutes(2)
-delay.toMillis() // 120000
-delay.toSeconds() // 120
-delay.toMinutes() // 2
-delay.toHours() // 1 / 30
-Duration.weeks(1).toDays() // 7
-Duration.days(14).toWeeks() // 2
-Duration.millis(3).toNanos() // Some containing 3000000n
-Duration.infinity.toNanos() // None
+Duration.toMillis(delay) // 120000
+Duration.toSeconds(delay) // 120
+Duration.toMinutes(delay) // 2
+Duration.toHours(delay) // 1 / 30
+Duration.toDays(Duration.weeks(1)) // 7
+Duration.toWeeks(Duration.days(14)) // 2
+Duration.toNanos(Duration.millis(3)) // Some containing 3000000n
+Duration.toNanos(Duration.infinity) // None
 ```
 
 ```output
 [120000,120,2,0.03333333333333333,7,2,"3000000",true]
 ```
 
-Numeric conversions return a number in the requested unit. `toNanos` returns an `Option<bigint>`, since infinity has no bigint form; `toNanosUnsafe` returns the bigint for finite input and throws for infinite input.
+Numeric conversions return a number in the requested unit. `toNanos` returns an `Option.Option<bigint>`, since infinity has no bigint form; `toNanosUnsafe` returns the bigint for finite input and throws for infinite input.
 
 ## Comparing durations
 
 ```vibe
-// run: Console.log(elapsed.isLessThan(budget), elapsed.isLessThanOrEqualTo(elapsed), budget.isGreaterThan(elapsed), budget.isGreaterThanOrEqualTo(budget), Duration.seconds(1).equals(Duration.millis(1000)))
+// pending: VIP-5, VIP-14
+// run: try Console.log(Duration.isLessThan(elapsed, budget), Duration.isLessThanOrEqualTo(elapsed, elapsed), Duration.isGreaterThan(budget, elapsed), Duration.isGreaterThanOrEqualTo(budget, budget), Duration.equals(Duration.seconds(1), Duration.millis(1000)))
 const elapsed = Duration.seconds(9)
 const budget = Duration.seconds(12)
-elapsed.isLessThan(budget) // true
-elapsed.isLessThanOrEqualTo(elapsed) // true
-budget.isGreaterThan(elapsed) // true
-budget.isGreaterThanOrEqualTo(budget) // true
-Duration.seconds(1).equals(Duration.millis(1000)) // true
+Duration.isLessThan(elapsed, budget) // true
+Duration.isLessThanOrEqualTo(elapsed, elapsed) // true
+Duration.isGreaterThan(budget, elapsed) // true
+Duration.isGreaterThanOrEqualTo(budget, budget) // true
+Duration.equals(Duration.seconds(1), Duration.millis(1000)) // true
 ```
 
 ```output
@@ -81,15 +85,16 @@ Comparison uses the elapsed span, whatever the constructor. Compare durations di
 ## Adding and scaling durations
 
 ```vibe
-// run: provide TestClock.layer() { TestClock.setTime(0); const waiting = fork waitBeforeRetry(); TestClock.adjust("9 seconds"); join waiting; Console.log(doubled.toMillis(), Clock.currentTimeMillis()) }
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-33
+// run: provide TestClock.layer() { try TestClock.setTime(0); const waiting = fork waitBeforeRetry(); try TestClock.adjust("9 seconds"); join waiting; try Console.log(Duration.toMillis(doubled), try Clock.currentTimeMillis) }
 const attempt = Duration.seconds(4)
 const overhead = Duration.millis(500)
-const total = attempt.sum(overhead)
-const doubled = total.times(2)
-doubled.toMillis() // 9000
+const total = Duration.sum(attempt, overhead)
+const doubled = Duration.times(total, 2)
+Duration.toMillis(doubled) // 9000
 
-function waitBeforeRetry() {
-  sleep(doubled)
+effect waitBeforeRetry() {
+  try sleep(doubled)
 }
 ```
 
@@ -97,13 +102,14 @@ function waitBeforeRetry() {
 9000 9000
 ```
 
-`sum` adds spans and `times` scales by a number; both return new values. `Effect.sleep` accepts the result and waits when called inside a program.
+`sum` adds spans and `times` scales by a number; both return new values. `sleep` accepts the result and waits when run with `try` inside an effect function or block.
 
 ## Converting and formatting
 
 ```vibe
-// run: Console.log(Duration.millis(6250).format(), String(Duration.infinity), String(Duration.toNanosUnsafe(Duration.millis(2))))
-Duration.millis(6250).format() // "6s 250ms"
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(Duration.format(Duration.millis(6250)), String(Duration.infinity), String(try Effect.try(() => Duration.toNanosUnsafe(Duration.millis(2)))))
+Duration.format(Duration.millis(6250)) // "6s 250ms"
 String(Duration.infinity) // "Infinity"
 Duration.toNanosUnsafe(Duration.millis(2)) // 2000000n
 ```

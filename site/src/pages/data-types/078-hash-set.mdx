@@ -11,9 +11,9 @@ description: "HashSet and MutableHashSet work in VibeLang exactly as in Effect. 
 
 ```vibe
 const snapshot = HashSet.make("green", "blue")
-const revised = snapshot.add("red")
-snapshot.has("red") // false
-revised.has("red") // true
+const revised = HashSet.add(snapshot, "red")
+HashSet.has(snapshot, "red") // false
+HashSet.has(revised, "red") // true
 
 function buildLocal() {
   const working = MutableHashSet.empty<string>()
@@ -36,7 +36,7 @@ Immutable updates keep earlier versions, so snapshots suit sharing between fiber
 const a = { region: "west", active: true }
 const b = { region: "west", active: true }
 Equal.equals(a, b) // true
-HashSet.make(a, b).size() // 1
+HashSet.size(HashSet.make(a, b)) // 1
 new Set([a, b]).size // 2
 ```
 
@@ -51,31 +51,31 @@ Plain objects compare structurally in Effect 4.0.6, so separately allocated reco
 ```vibe
 const empty = HashSet.empty<number>()
 const initial = HashSet.fromIterable([2, 4, 4, 6])
-const changed = initial.add(8).remove(2)
+const changed = HashSet.remove(HashSet.add(initial, 8), 2)
 const other = HashSet.make(6, 10)
-const together = changed.union(other)
-const common = changed.intersection(other)
-const exclusive = changed.difference(other)
-const large = together.filter((n) => n > 5)
-const labels = large.map((n) => `item-${n}`)
-const sum = initial.reduce(0, (total, n) => total + n)
+const together = HashSet.union(changed, other)
+const common = HashSet.intersection(changed, other)
+const exclusive = HashSet.difference(changed, other)
+const large = HashSet.filter(together, (n) => n > 5)
+const labels = HashSet.map(large, (n) => `item-${n}`)
+const sum = HashSet.reduce(initial, 0, (total, n) => total + n)
 ```
 
 ```text
 [[2,4,6],[4,6,8],[4,6,8,10],[6],[4,8],[6,8,10],["item-10","item-6","item-8"],12,0]
 ```
 
-`empty`, `make`, and `fromIterable` construct sets. `add`, `remove`, union, intersection, and difference return new sets, so method chains never change the original.
+`empty`, `make`, and `fromIterable` construct sets. `add`, `remove`, union, intersection, and difference return new sets, so composing those operations never changes the original.
 
 ## Querying membership and size
 
 ```vibe
 const allowed = HashSet.make("read", "write", "audit")
-allowed.has("write") // true
-allowed.size() // 3
-allowed.some((name) => name.startsWith("a")) // true
-allowed.every((name) => name.length > 0) // true
-HashSet.make("read").isSubset(allowed) // true
+HashSet.has(allowed, "write") // true
+HashSet.size(allowed) // 3
+HashSet.some(allowed, (name) => name.startsWith("a")) // true
+HashSet.every(allowed, (name) => name.length > 0) // true
+HashSet.isSubset(HashSet.make("read"), allowed) // true
 ```
 
 ```text
@@ -112,7 +112,7 @@ function snapshots(values: ReadonlyArray<number>) {
   let current = HashSet.empty<number>()
   const history = [current]
   for (const value of values) {
-    current = current.add(value)
+    current = HashSet.add(current, value)
     history.push(current)
   }
   return history
@@ -133,8 +133,8 @@ const array = Array.from(regions)
 const copy = [...regions]
 const native = new Set(regions)
 
-function report() {
-  for (const region of Array.from(regions).sort()) Console.log(region)
+effect report() {
+  for (const region of Array.from(regions).sort()) try Console.log(region)
 }
 ```
 

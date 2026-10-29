@@ -5,21 +5,22 @@ Run a VibeLang application through its platform runtime, keep its lifetime in `m
 ## Running application entry points
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork main(); TestClock.adjust("2 seconds"); worker.interrupt() }
 // main.vibe
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-26
+// run: provide TestClock.layer() { const worker = fork main(); try TestClock.adjust("2 seconds"); try Fiber.interrupt(worker) }
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-export function main() {
-  try {
-    Console.log("worker started")
+export effect main() {
+  try ensuring(effect {
+    try Console.log("worker started")
     while (true) {
-      sleep("2 seconds")
-      Console.log("checking work")
+      try sleep("2 seconds")
+      try Console.log("checking work")
     }
-  } finally {
-    Console.log("worker stopped")
-  }
+  }, Console.log("worker stopped"))
 }
-// node main.js runs main with NodeRuntime.runMain
+
+NodeRuntime.runMain(main())
 ```
 
 ```output
@@ -28,23 +29,24 @@ checking work
 worker stopped
 ```
 
-Export `main` from the entry module. When node starts the module, the compiled JavaScript passes `main()` to `NodeRuntime.runMain`, which starts it and coordinates interruption and shutdown; importing the module starts nothing. `finally` runs when the worker stops, interruption included. Acquire application resources with `using` inside `main`, and provide the application layer once around the main program so its services share one lifetime.
+Call `NodeRuntime.runMain(main())` from the entry module. Calling `main()` builds an Effect. The runner starts it and coordinates interruption and shutdown. `ensuring` runs cleanup when the worker stops, including on interruption. Use `scoped(effect { ... })` for application resources, and provide the application layer once around the Effect passed to the runner so its services share one lifetime.
 
-Use `Effect.runPromise` when another host owns execution and needs a Promise; for a standalone process, prefer the platform runner, which handles signals and shutdown. Module-level calls build values or register an entry point; application work belongs inside functions.
+Use `runPromise` when another host owns execution and needs a Promise; for a standalone process, prefer the platform runner, which handles signals and shutdown. Module-level calls build values or call a runner; application work belongs inside effect functions.
 
-Call runners only where no fiber runs the code: at the module's top level or in a plain framework callback registered from there. A runner in code a fiber runs is EK1005; call the program or use `fork` there. Tests in `.vibe` use `it.effect`; Promise-style tests stay in `.ts`.
+A runner also works in a plain framework callback registered from the module's top level. Inside an effect function, use `try` to run another Effect or `fork` to start a child fiber. Tests in `.vibe` use `it.effect("name", () => effect { ... })`.
 
 ## Selecting a platform runtime
 
 ```vibe
 // main.vibe
+// pending: VIP-1, VIP-5, VIP-14, VIP-26
 import { BunRuntime } from "@effect/platform-bun"
 
-function main() {
-  Console.log("running on Bun")
+effect main() {
+  try Console.log("running on Bun")
 }
 
-BunRuntime.runMain(() => main())
+BunRuntime.runMain(main())
 ```
 
 ```output
@@ -62,14 +64,15 @@ Choose the runtime that matches the host and install its platform package. The a
 ## Making argument forwarding explicit
 
 ```vibe
-// run: Console.log(JSON.stringify(parseDecimalTokens(["10", "10", "10"]))); printValues([10, 20])
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(parseDecimalTokens(["10", "10", "10"]))); try printValues([10, 20])
 function parseDecimalTokens(tokens: ReadonlyArray<string>) {
   return tokens.map((text) => Number.parseInt(text, 10))
 }
 // parseDecimalTokens(["10", "10", "10"]) returns [10, 10, 10].
 
-function printValues(values: ReadonlyArray<number>) {
-  forEach(values, (value) => Console.log(value), { discard: true })
+effect printValues(values: ReadonlyArray<number>) {
+  try forEach(values, (value) => Console.log(value), { discard: true })
 }
 // Output: [10,10,10]
 // Output: 10
@@ -78,8 +81,8 @@ function printValues(values: ReadonlyArray<number>) {
 
 Write a lambda that names the arguments you pass: `Number.parseInt` passed straight to array `map` would receive the array index as its radix. Explicit lambdas also keep overload selection and make generic inference easier to inspect.
 
-When the callback does Effect work, use `Effect.forEach` or an ordinary loop. Array `map` accepts only callbacks that compile to plain JavaScript: no Effect operations and no expected failures. A composition helper doesn't change that boundary.
+When the callback does Effect work, use `forEach` or an ordinary loop. Array `map` accepts plain JavaScript callbacks: they can build Effects but cannot run them with `try`. A composition helper doesn't change that boundary.
 
 ## Coming from Effect
 
-Application code uses ordinary calls, `try`/`finally`, and `using`. Keep `runMain` at the outer boundary and pass it a program, `() => main()`, so the entry program hasn't run yet.
+An effect function builds the application Effect. `try` sequences its operations, and `ensuring` and `scoped` manage cleanup. Keep `runMain` at the outer boundary and pass it the Effect value, `main()`.

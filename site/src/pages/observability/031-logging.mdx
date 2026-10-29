@@ -1,19 +1,24 @@
 ---
 title: "Logging"
-description: "Effect's structured logging records progress, failures, and diagnostic context. Log calls run where they appear; the current logging configuration decides which records are emitted and where."
+description: "Effect's structured logging records progress, failures, and diagnostic context. Log functions return Effects; run them with try inside an effect function or block. The current logging..."
 ---
 
 # Logging
 
-Effect's structured logging records progress, failures, and diagnostic context. Log calls run where they appear; the current logging configuration decides which records are emitted and where.
+Effect's structured logging records progress, failures, and diagnostic context. Log functions return Effects; run them with `try` inside an effect function or block. The current logging configuration decides which records are emitted and where.
 
 ## Emitting structured records
 
 ```vibe
-function reportProgress() {
-  log("export started", { format: "csv", stage: "prepare" })
-  logInfo("export completed", { rows: 240 })
+effect reportProgress() {
+  try log("export started", { format: "csv", stage: "prepare" })
+  try logInfo("export completed", { rows: 240 })
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```text
@@ -25,14 +30,14 @@ function reportProgress() {
 ## Selecting severity thresholds
 
 ```vibe
-function diagnostics() {
+effect diagnostics() {
   provide References.MinimumLogLevel = "Debug" {
-    Effect.logTrace("entered parser")
-    logDebug("parsed header")
-    logInfo("input accepted")
-    logWarning("using fallback settings")
-    logError("destination unavailable")
-    Effect.logFatal("application cannot start")
+    try logTrace("entered parser")
+    try logDebug("parsed header")
+    try logInfo("input accepted")
+    try logWarning("using fallback settings")
+    try logError("destination unavailable")
+    try logFatal("application cannot start")
   }
 }
 ```
@@ -46,21 +51,21 @@ The default threshold, Info, filters Debug and Trace. Providing Debug enables De
 ## Annotating logs and scoped regions
 
 ```vibe
-function annotatedExport() {
-  Effect.annotateLogs(() => {
-    logInfo("preparing")
-    Effect.annotateLogs(() => logInfo("writing"), "stage", "write")
+effect annotatedExport() {
+  try annotateLogs(effect {
+    try logInfo("preparing")
+    try annotateLogs(logInfo("writing"), "stage", "write")
   }, { operation: "weekly-export", format: "csv" })
-  logInfo("outside annotated operation")
+  try logInfo("outside annotated operation")
 }
 
-function scopedAnnotations() {
-  Effect.scoped {
-    Effect.annotateLogsScoped({ component: "importer" })
-    logInfo("reading input")
-    logInfo("validating rows")
-  }
-  logInfo("outside importer scope")
+effect scopedAnnotations() {
+  try scoped(effect {
+    try annotateLogsScoped({ component: "importer" })
+    try logInfo("reading input")
+    try logInfo("validating rows")
+  })
+  try logInfo("outside importer scope")
 }
 ```
 
@@ -68,16 +73,16 @@ function scopedAnnotations() {
 [[["preparing"],{"operation":"weekly-export","format":"csv"}],[["writing"],{"operation":"weekly-export","format":"csv","stage":"write"}],[["outside annotated operation"],{}],[["reading input"],{"component":"importer"}],[["validating rows"],{"component":"importer"}],[["outside importer scope"],{}]]
 ```
 
-`annotateLogs` adds key/value metadata to every record in its program, nested calls and inherited child context included. `annotateLogsScoped` annotates until the supplied runtime scope closes; plain braces supply no scope, so use `Effect.scoped`.
+`annotateLogs` adds key/value metadata to every record in its program, nested calls and inherited child context included. `annotateLogsScoped` annotates until the supplied runtime scope closes; plain braces supply no scope, so use `try scoped(effect { ... })`.
 
 ## Measuring log spans
 
 ```vibe
-function timedExport() {
-  Effect.withLogSpan(() => {
-    logInfo("opening output")
-    sleep("30 millis")
-    logInfo("output written")
+effect timedExport() {
+  try withLogSpan(effect {
+    try logInfo("opening output")
+    try sleep("30 millis")
+    try logInfo("output written")
   }, "write-output")
 }
 ```
@@ -91,22 +96,20 @@ Each record inside the log span carries the time elapsed since the span began, s
 ## Disabling and configuring logging
 
 ```vibe
-import { ConfigProvider } from "effect"
-
 const Silent = Layer.succeed(References.MinimumLogLevel, "None")
 const LogLevel = Config.LogLevel("LOG_LEVEL")
 
-const ConfiguredLevel = Layer.unwrap {
-  const minimum = LogLevel()
+const ConfiguredLevel = Layer.unwrap(effect {
+  const minimum = try LogLevel
   return Layer.succeed(References.MinimumLogLevel, minimum)
+})
+
+effect quiet() {
+  provide Silent { try logInfo("suppressed") }
 }
 
-function quiet() {
-  provide Silent { logInfo("suppressed") }
-}
-
-function configured() {
-  provide ConfiguredLevel { logDebug("configuration loaded") }
+effect configured() {
+  provide ConfiguredLevel { try logDebug("configuration loaded") }
 }
 ```
 
@@ -114,19 +117,19 @@ function configured() {
 [["Debug",["configuration loaded"]]]
 ```
 
-The None threshold silences the provided region. `Config.LogLevel` builds a configuration value; `LogLevel()` reads and validates it when the layer builds, and reports configuration errors then. Supply the configuration layer once at the application boundary, or in a shared `ManagedRuntime` for several entry points.
+The None threshold silences the provided region. `Config.LogLevel` builds a configuration value; `try LogLevel` reads and validates it when the layer builds, and reports configuration errors then. Supply the configuration layer once at the application boundary, or in a shared `ManagedRuntime` for several entry points.
 
 ## Defining a custom output handler
 
 ```vibe
-function captureLogs() {
+effect captureLogs() {
   const records: Array<{ level: string; message: unknown }> = []
   const capture = Logger.make(({ logLevel, message }) => {
     records.push({ level: logLevel, message })
   })
   provide Logger.layer([capture, Logger.tracerLogger]) {
-    logInfo("batch accepted", { count: 3 })
-    logWarning("one retry required")
+    try logInfo("batch accepted", { count: 3 })
+    try logWarning("one retry required")
   }
   return records
 }
@@ -146,8 +149,8 @@ const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])
 const JsonLogs = Logger.layer([Logger.consoleJson, Logger.tracerLogger])
 
-function jsonExample() {
-  provide JsonLogs { logInfo("started", { workers: 4 }) }
+effect jsonExample() {
+  provide JsonLogs { try logInfo("started", { workers: 4 }) }
 }
 ```
 
@@ -160,7 +163,7 @@ The default logger emits readable text, LogFmt compact key/value pairs, and Pret
 ## Sending records to multiple destinations
 
 ```vibe
-function consoleAndCapture() {
+effect consoleAndCapture() {
   const auditMessages: unknown[] = []
   const audit = Logger.make(({ message }) => { auditMessages.push(message) })
   const destinations = Logger.layer([
@@ -168,7 +171,7 @@ function consoleAndCapture() {
     audit,
     Logger.tracerLogger
   ])
-  provide destinations { logInfo("job finished") }
+  provide destinations { try logInfo("job finished") }
   return auditMessages
 }
 ```

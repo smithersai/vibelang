@@ -1,11 +1,12 @@
 # Schema to JSON Schema
 
-JSON Schema export works as in Effect. It describes the encoded side of a schema's canonical JSON codec, so the exported shape matches the selected JSON representation. Export is best-effort and does not replace runtime decoding. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+JSON Schema export works as in Effect. It describes the encoded side of a schema's canonical JSON codec, so the exported shape matches the selected JSON representation. Export is best-effort and does not replace runtime decoding. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Exporting JSON Schema documents
 
 ```vibe
-// run: const document = depotDocument(); Console.log(document.dialect); Console.log(JSON.stringify(document.schema))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const document = depotDocument(); try Console.log(document.dialect); try Console.log(JSON.stringify(document.schema)) })
 const Depot = Schema.Struct({
   name: Schema.String,
   capacity: Schema.Finite
@@ -26,7 +27,8 @@ The document holds `dialect` (default `"draft-2020-12"`), the root `schema`, and
 ## Selecting canonical representations and specification drafts
 
 ```vibe
-// run: Console.log(JSON.stringify(alternateDrafts()))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(alternateDrafts())) })
 function alternateDrafts() {
   const document = Schema.toJsonSchemaDocument(
     Schema.Tuple([Schema.String, Schema.FiniteFromString])
@@ -46,7 +48,8 @@ Export derives `toCodecJson`, then describes its encoded side: `FiniteFromString
 ## Carrying annotations and encoded-side metadata
 
 ```vibe
-// run: Console.log(JSON.stringify(nameDocument().schema))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(nameDocument().schema)) })
 const DepotName = Schema.Trim.pipe(Schema.annotateEncoded({
   title: "Depot input",
   description: "Text entered before surrounding whitespace is removed",
@@ -71,7 +74,8 @@ function nameDocument() {
 ## Exporting constraints and optional fields
 
 ```vibe
-// run: Console.log(JSON.stringify(requestDocument().schema))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(requestDocument().schema)) })
 const DepotRequest = Schema.Struct({
   code: Schema.String.check(Schema.isPattern(/^[A-Z]{2}[0-9]{3}$/u)),
   note: Schema.optionalKey(Schema.String),
@@ -95,7 +99,8 @@ JavaScript counts string length in UTF-16 code units; JSON Schema counts Unicode
 ## Emitting references for recursive definitions
 
 ```vibe
-// run: Console.log(JSON.stringify(treeDocument()))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(treeDocument())) })
 interface DepotTree {
   name: string
   branches: ReadonlyArray<DepotTree>
@@ -119,7 +124,8 @@ An identifier creates a named definition referenced through `$ref`. Without one,
 ## Adjusting document generation
 
 ```vibe
-// run: Console.log(JSON.stringify(strictDocument().schema))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(strictDocument().schema)) })
 function strictDocument() {
   return Schema.toJsonSchemaDocument(DepotRequest, {
     onExcessProperty: "error",
@@ -138,7 +144,8 @@ function strictDocument() {
 ## Describing JSON string codecs
 
 ```vibe
-// run: Console.log(JSON.stringify(jsonTextDocument().schema))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(jsonTextDocument().schema)) })
 const DepotText = Schema.fromJsonString(Depot)
 
 function jsonTextDocument() {

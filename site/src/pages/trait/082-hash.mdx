@@ -42,7 +42,7 @@ Equal.equals(new GridCell(3, 7), new GridCell(3, 8)) // false
 
 A `[Hash.symbol]` method must return a number synchronously. `Hash.hash` handles primitive and structural inputs, so hashing a tuple of identity fields is an easy implementation. `Equal.Equal` includes hashing in its interface.
 
-It compiles to a plain JavaScript method because `[Hash.symbol]` is typed as a plain function. A body that runs an Effect operation or fails with an expected error is error EK4301.
+It compiles to a plain JavaScript method. An effect method returns an Effect, which does not satisfy the protocol's number return type.
 
 ## Keeping equal values hash-consistent
 
@@ -50,7 +50,7 @@ It compiles to a plain JavaScript method because `[Hash.symbol]` is typed as a p
 const first = new GridCell(3, 7)
 const equivalent = new GridCell(3, 7)
 const cells = HashSet.make(first, equivalent)
-cells.size() // 1
+HashSet.size(cells) // 1
 Hash.hash(first) === Hash.hash(equivalent) // true
 // Output: [1,true]
 ```

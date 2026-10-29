@@ -1,17 +1,18 @@
 # Creating Sinks
 
-Choose a Sink for the result you need and run it with `Stream.run`. Sinks are reusable: initializer state is fresh on each run, so runs share no mutable state. This page uses [trusted Sink builders](059-introduction.md) and writes effectful callbacks as ordinary VibeLang functions.
+Choose a Sink for the result you need and run it with `try Stream.run(source, sink)`. Sinks are reusable: initializer state is fresh on each run, so runs share no mutable state. This page uses [Sink builders](059-introduction.md) and writes effectful callbacks as `effect` functions.
 
 ## Basic consumers and endpoint values
 
 ```vibe
-// run: Console.log(JSON.stringify([endpoints().first.getOrElse(() => ""), endpoints().last.getOrElse(() => ""), endpoints().prefix]))
-function endpoints() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [Option.getOrElse((try endpoints()).first, () => ""), Option.getOrElse((try endpoints()).last, () => ""), (try endpoints()).prefix]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect endpoints() {
   const source = Stream.make("opening", "middle", "closing")
   return {
-    first: source.run(Sink.head<string>()),
-    last: source.run(Sink.last<string>()),
-    prefix: source.run(Sink.take<string>(2))
+    first: try Stream.run(source, Sink.head<string>()),
+    last: try Stream.run(source, Sink.last<string>()),
+    prefix: try Stream.run(source, Sink.take<string>(2))
   }
 }
 // first: Some("opening"), last: Some("closing")
@@ -24,19 +25,20 @@ function endpoints() {
 ## Counting, summing, draining, and timing
 
 ```vibe
-// run: (() => { const result = summarize(); Console.log(JSON.stringify([result.count, result.sum, Duration.isDuration(result.duration)])); drainObserved() })()
-function summarize() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: const summary = try summarize(); { const jsonValue = [summary.count, summary.sum, Duration.isDuration(summary.duration)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try drainObserved()
+effect summarize() {
   const source = Stream.make(6, 10, 14)
   return {
-    count: source.run(Sink.count), // 3
-    sum: source.run(Sink.sum),     // 30
-    duration: source.run(Sink.timed)
+    count: try Stream.run(source, Sink.count), // 3
+    sum: try Stream.run(source, Sink.sum),     // 30
+    duration: try Stream.run(source, Sink.timed)
   }
 }
 
-function drainObserved() {
-  const source = Stream.make("ready", "done").tap((s) => Console.log(s))
-  source.run(Sink.drain)
+effect drainObserved() {
+  const source = Stream.tap(Stream.make("ready", "done"), (s) => Console.log(s))
+  try Stream.run(source, Sink.drain)
 }
 // Output: [3,30,true]
 // Output: ready
@@ -48,51 +50,54 @@ These sinks consume the whole source. `drain` discards elements but still runs s
 ## Per-element work
 
 ```vibe
-// run: writeRecords()
-const print = Sink.forEach((line: string) => {
-  Console.log(`record: ${line}`)
-  sleep("10 millis")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try writeRecords()
+const print = Sink.forEach(effect (line: string) => {
+  try Console.log(`record: ${line}`)
+  try sleep("10 millis")
 })
 
-function writeRecords() {
-  Stream.make("created", "approved").run(print)
+effect writeRecords() {
+  try Stream.run(Stream.make("created", "approved"), print)
 }
 // Output: record: created
 // Output: record: approved
 ```
 
-`forEach` runs work in sequence and returns `void`; its callback's expected failures and services become the sink's `E` and `R`. `forEachWhile` stops when its effectful callback returns `false`; `forEachArray` works on internal batches.
+`forEach` builds a sink that runs work in sequence and succeeds with `void`; its callback's expected failures and services become the sink's `E` and `R`. `forEachWhile` stops when its callback's Effect succeeds with `false`; `forEachArray` works on internal batches.
 
 ## Successful and failed sinks
 
 ```vibe
-// run: (() => { Console.log(immediateResult()); try { rejectInput() } catch (error) { Console.log(error._tag) } })()
+// pending: VIP-1, VIP-5, VIP-7, VIP-13, VIP-14
+// run: try Console.log(try immediateResult()); const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag }; try Console.log(tag)
 error Rejected
 
-function immediateResult() {
-  return Stream.make(40, 50).run(Sink.succeed("already complete"))
+effect immediateResult() {
+  return try Stream.run(Stream.make(40, 50), Sink.succeed("already complete"))
 }
 
-function rejectInput() {
-  return Stream.make(40, 50).run(Sink.fail(new Rejected()))
+effect rejectInput() {
+  return try Stream.run(Stream.make(40, 50), Sink.fail(new Rejected()))
 }
 // never!Rejected!
 // Output: already complete
 // Output: Rejected
 ```
 
-`succeed` and `fail` finish without requesting source elements. They succeed or fail when the sink runs, not at construction. `Sink.fromEffect(() => work())` makes the same kind of immediate sink from a VibeLang program.
+`succeed` and `fail` finish without requesting source elements. They succeed or fail when the sink runs, not at construction. `Sink.fromEffect(work())` makes the same kind of immediate sink from an Effect value.
 
 ## Collecting by size or condition
 
 ```vibe
-// run: Console.log(JSON.stringify(collectSamples()))
-function collectSamples() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try collectSamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect collectSamples() {
   const source = Stream.make(8, 5, -1, 13)
   return {
-    all: source.run(Sink.collect<number>()),
-    firstTwo: source.run(Sink.take<number>(2)),
-    positivePrefix: source.run(Sink.takeWhile((n: number) => n > 0))
+    all: try Stream.run(source, Sink.collect<number>()),
+    firstTwo: try Stream.run(source, Sink.take<number>(2)),
+    positivePrefix: try Stream.run(source, Sink.takeWhile((n: number) => n > 0))
   }
 }
 // all: [8, 5, -1, 13], firstTwo: [8, 5], positivePrefix: [8, 5]
@@ -104,7 +109,8 @@ function collectSamples() {
 ## Uniqueness and key limits
 
 ```vibe
-// run: Console.log(JSON.stringify(Array.from(collectUnique())))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = Array.from(try collectUnique()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const unique = Sink.reduce(() => new Set<string>(), (set, value: string) => set.add(value))
 const threeUnique = Sink.reduceWhile(
   () => new Set<string>(),
@@ -112,8 +118,8 @@ const threeUnique = Sink.reduceWhile(
   (set, value: string) => set.add(value)
 )
 
-function collectUnique() {
-  return Stream.make("oak", "oak", "ash", "elm", "pine").run(threeUnique)
+effect collectUnique() {
+  return try Stream.run(Stream.make("oak", "oak", "ash", "elm", "pine"), threeUnique)
 }
 // Set containing "oak", "ash", "elm".
 // Output: ["oak","ash","elm"]
@@ -122,7 +128,8 @@ function collectUnique() {
 Use a native Set when JavaScript value equality fits. A size limit counts unique values, so duplicates take no extra slot.
 
 ```vibe
-// run: Console.log(JSON.stringify(Array.from(summarizeStations())))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = Array.from(try summarizeStations()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Reading = { station: string; count: number }
 
 function addReading(totals: Map<string, number>, reading: Reading): Map<string, number> {
@@ -137,13 +144,13 @@ const twoStations = Sink.reduceWhile(
   (map, reading: Reading) => addReading(map, reading)
 )
 
-function summarizeStations() {
-  return Stream.make(
+effect summarizeStations() {
+  return try Stream.run(Stream.make(
     { station: "hill", count: 4 },
     { station: "hill", count: 3 },
     { station: "lake", count: 8 },
     { station: "hill", count: 9 }
-  ).run(twoStations)
+  ), twoStations)
 }
 // Map with "hill" -> 7 and "lake" -> 8.
 // Output: [["hill",7],["lake",8]]
@@ -154,24 +161,25 @@ The reducer defines both the grouping key and the merge rule. The limited sink s
 ## Folding with termination and count limits
 
 ```vibe
-// run: Console.log(JSON.stringify(Effect.provide(() => foldSamples(), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]))))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try Effect.provide(foldSamples(), Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))])); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const total = Sink.reduce(() => 0, (sum, n: number) => sum + n)
 const budget = Sink.fold(
   () => 0,
   (sum) => sum < 20,
-  (sum, n: number) => {
-    log(`adding ${n}`)
+  effect (sum, n: number) => {
+    try log(`adding ${n}`)
     return sum + n
   }
 )
-const firstThree = Sink.foldUntil(() => 0, 3, (sum, n: number) => sum + n)
+const firstThree = Sink.foldUntil(() => 0, 3, effect (sum, n: number) => sum + n)
 
-function foldSamples() {
+effect foldSamples() {
   const source = Stream.make(7, 9, 12, 15)
   return {
-    all: source.run(total),       // 43
-    budget: source.run(budget),   // 28
-    first: source.run(firstThree) // 28
+    all: try Stream.run(source, total),       // 43
+    budget: try Stream.run(source, budget),   // 28
+    first: try Stream.run(source, firstThree) // 28
   }
 }
 // Output: adding 7
@@ -185,22 +193,23 @@ function foldSamples() {
 ## Folding by weight
 
 ```vibe
-// run: Console.log(JSON.stringify(firstBatch()))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try firstBatch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Packet = { bytes: number }
 type Batch = { packets: ReadonlyArray<Packet>; bytes: number }
 
 const weighted = Sink.fold<Batch, Packet>(
   () => ({ packets: [], bytes: 0 }),
   (batch) => batch.bytes < 100,
-  (batch, packet) => ({
+  effect (batch, packet) => ({
     packets: [...batch.packets, packet],
     bytes: batch.bytes + packet.bytes
   })
 )
-const packets = weighted.map((batch) => batch.packets)
+const packets = Sink.map(weighted, (batch) => batch.packets)
 
-function firstBatch() {
-  return Stream.make({ bytes: 60 }, { bytes: 55 }, { bytes: 10 }).run(packets)
+effect firstBatch() {
+  return try Stream.run(Stream.make({ bytes: 60 }, { bytes: 55 }, { bytes: 10 }), packets)
 }
 // Returns the 60-byte and 55-byte packets.
 // Output: [{"bytes":60},{"bytes":55}]

@@ -7,15 +7,16 @@ A timeout limits how long a caller waits for work. Effect interrupts the timed c
 ## Limiting execution duration
 
 ```vibe
-// run: Console.log(buildPreview()); Console.log(Effect.flip(() => previewWithDeadline())._tag)
-function buildPreview() {
-  sleep("3 seconds")
-  Console.log("Preview rendered")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try buildPreview()); try Console.log((try flip(previewWithDeadline()))._tag)
+effect buildPreview() {
+  try sleep("3 seconds")
+  try Console.log("Preview rendered")
   return "Rendered preview"
 }
 
-function previewWithDeadline() {
-  return timeout(() => buildPreview(), "500 millis")
+effect previewWithDeadline() {
+  return try timeout(buildPreview(), "500 millis")
 }
 // string!Cause.TimeoutError!
 ```
@@ -26,14 +27,13 @@ Rendered preview
 TimeoutError
 ```
 
-`Effect.timeout` adds `Cause.TimeoutError` to `E`. A timely success keeps its value, and a domain failure before the deadline keeps its error. Pass the work as a program, `() => buildPreview()`, so the timer surrounds the work itself; passing the call itself still compiles but is being retired.
+`timeout` adds `Cause.TimeoutError` to `E`. A timely success keeps its value, and a domain failure before the deadline keeps its error. Pass the Effect value, `buildPreview()`, so the timer surrounds its execution.
 
 ```vibe
-// run: Console.log(previewLabel())
-function previewLabel() {
-  try {
-    return previewWithDeadline()
-  } catch (error) {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try previewLabel())
+effect previewLabel() {
+  return previewWithDeadline() catch (error) => {
     // error._tag is "TimeoutError"
     return "Preview still unavailable"
   }
@@ -44,17 +44,18 @@ function previewLabel() {
 Preview still unavailable
 ```
 
-The internal interruption that stops the source is separate from the typed timeout error the caller receives; ordinary catch inside `buildPreview` can't consume it.
+The internal interruption that stops the source is separate from the typed timeout error the caller receives; a catch expression inside `buildPreview` can't consume it.
 
-> **Current limitation.** Timeout waits for the interrupted source's cleanup, but Effect 4.0.6 drops that cleanup's failures at the timeout boundary. This affects `timeout`, `timeoutOption`, and `timeoutOrElse`, including `finally` and `using` cleanup. VibeLang preserves failures from cleanup it runs itself; Effect operators keep Effect's semantics, including dropping a loser's cleanup failure.
+> **Current limitation.** Timeout waits for the interrupted source's cleanup, but Effect 4.0.6 drops that cleanup's failures at the timeout boundary. This affects `timeout`, `timeoutOption`, and `timeoutOrElse`, including `ensuring` and scoped resource cleanup. VibeLang keeps Effect's semantics, including dropping a loser's cleanup failure.
 
 ## Representing timeout as absence
 
 ```vibe
-// run: Console.log(optionalPreview())
-function optionalPreview() {
-  const preview = Effect.timeoutOption(() => buildPreview(), "500 millis")
-  return preview.isNone() ? "No preview yet" : preview.value
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try optionalPreview())
+effect optionalPreview() {
+  const preview = try timeoutOption(buildPreview(), "500 millis")
+  return Option.isNone(preview) ? "No preview yet" : preview.value
 }
 ```
 
@@ -67,11 +68,12 @@ No preview yet
 ## Choosing an alternative or custom failure
 
 ```vibe
-// run: Console.log(previewOrPlaceholder()); Console.log(Effect.flip(() => requiredPreview("doc-1")).documentId)
-function previewOrPlaceholder() {
-  return Effect.timeoutOrElse(() => buildPreview(), {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try previewOrPlaceholder()); try Console.log((try flip(requiredPreview("doc-1"))).documentId)
+effect previewOrPlaceholder() {
+  return try timeoutOrElse(buildPreview(), {
     duration: "500 millis",
-    orElse: () => "Static placeholder"
+    orElse: () => succeed("Static placeholder")
   })
 }
 
@@ -79,10 +81,10 @@ error PreviewDeadline {
   documentId: string
 }
 
-function requiredPreview(documentId: string) {
-  return Effect.timeoutOrElse(() => buildPreview(), {
+effect requiredPreview(documentId: string) {
+  return try timeoutOrElse(buildPreview(), {
     duration: "500 millis",
-    orElse: () => { throw new PreviewDeadline({ documentId }) }
+    orElse: effect () => { throw new PreviewDeadline({ documentId }) }
   })
 }
 // string!PreviewDeadline!
@@ -93,15 +95,16 @@ Static placeholder
 doc-1
 ```
 
-The alternative runs lazily, after the timer wins, and can use services, fail, or return another success type; those channels join the overall contract. Use a typed failure for an expected deadline, and a defect only when timing out breaks an invariant.
+The alternative Effect runs lazily, after the timer wins, and can use services, fail, or return another success type; those channels join the overall contract. Use a typed failure for an expected deadline, and a defect only when timing out breaks an invariant.
 
 ## Interruption of protected work
 
 ```vibe
-// run: Console.log(Effect.flip(() => protectedPreview())._tag)
-function protectedPreview() {
-  return timeout(
-    () => Effect.uninterruptible(() => buildPreview()),
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-22
+// run: try Console.log((try flip(protectedPreview()))._tag)
+effect protectedPreview() {
+  return try timeout(
+    Effect.uninterruptible(buildPreview()),
     "500 millis"
   )
 }
@@ -112,4 +115,4 @@ Preview rendered
 TimeoutError
 ```
 
-The `Preview rendered` log precedes the timeout failure because the protected work finishes before interruption takes effect: uninterruptible work defers cancellation, so this call can take longer than 500 milliseconds. `finally` and resource releases, even slow ones, complete before timeout returns. Give work that must outlive a request an explicit fiber lifetime; don't assume a timeout stops it instantly.
+The `Preview rendered` log precedes the timeout failure because the protected work finishes before interruption takes effect: uninterruptible work defers cancellation, so this call can take longer than 500 milliseconds. `ensuring` cleanup and resource releases, even slow ones, complete before timeout returns. Give work that must outlive a request an explicit fiber lifetime; don't assume a timeout stops it instantly.

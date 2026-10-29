@@ -138,6 +138,10 @@ export const sidebar = [
           {
             "text": "Svelte",
             "link": "/setup/svelte"
+          },
+          {
+            "text": "Foldkit",
+            "link": "/setup/foldkit"
           }
         ]
       },
@@ -678,6 +682,10 @@ export const sidebar = [
           {
             "text": "Cloudflare Workers",
             "link": "/platform/cloudflare-workers"
+          },
+          {
+            "text": "Alchemy",
+            "link": "/platform/alchemy"
           }
         ]
       }

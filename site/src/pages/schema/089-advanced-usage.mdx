@@ -5,7 +5,7 @@ description: "The advanced Schema APIs work as in Effect: declarations for opaqu
 
 # Advanced Usage
 
-The advanced Schema APIs work as in Effect: declarations for opaque runtime values, brands for static distinctions, field combinators for presence rules, and suspension for recursive descriptions. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+The advanced Schema APIs work as in Effect: declarations for opaque runtime values, brands for static distinctions, field combinators for presence rules, and suspension for recursive descriptions. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Declaring custom scalar and parameterized schemas
 
@@ -19,8 +19,8 @@ const ShelfSchema = Schema.declare(
   { identifier: "Shelf", description: "A warehouse shelf handle" }
 )
 
-function readShelf(input: unknown) {
-  return Schema.decodeUnknownEffect(ShelfSchema)(input)
+effect readShelf(input: unknown) {
+  return try Schema.decodeUnknownEffect(ShelfSchema)(input)
 }
 ```
 
@@ -36,12 +36,12 @@ class Box<A> {
   constructor(readonly value: A) {}
 }
 
-function BoxSchema<S extends Schema.Constraint>(value: S): infer _ {
+function BoxSchema<S extends Schema.Constraint>(value: S) {
   return Schema.declareConstructor<Box<S["Type"]>, Box<S["Encoded"]>>()(
     [value],
-    ([element]) => (input, ast, options) => {
+    ([element]) => effect (input, ast, options) => {
       if (!(input instanceof Box)) throw new SchemaIssue.InvalidType(ast)
-      const decoded = SchemaParser.decodeUnknownEffect(element)(input.value, options)
+      const decoded = try SchemaParser.decodeUnknownEffect(element)(input.value, options)
       return new Box(decoded)
     },
     { expected: "Box" }
@@ -116,12 +116,12 @@ A brand distinguishes values statically without changing their runtime represent
 ```vibe
 const Parcel = Schema.Struct({
   shelf: ShelfId,
-  priority: Schema.Int.pipe(Schema.withConstructorDefault(() => 1))
+  priority: Schema.Int.pipe(Schema.withConstructorDefault(effect { return 1 }))
 })
 
-function createParcel() {
-  const shelf = ShelfId.makeEffect("rack-18")
-  return Parcel.makeEffect({ shelf })
+effect createParcel() {
+  const shelf = try ShelfId.makeEffect("rack-18")
+  return try Parcel.makeEffect({ shelf })
 }
 ```
 
@@ -130,7 +130,7 @@ function createParcel() {
 false
 ```
 
-`withConstructorDefault` makes a field optional for construction, not decoding, and evaluates its program when needed. Constructor failures are raw schema issues in local Effect 4.0.6.
+`withConstructorDefault` makes a field optional for construction, not decoding, and runs its default Effect when needed. Constructor failures are raw schema issues in local Effect 4.0.6.
 
 ## Distinguishing optional keys, optional values, null, and absence
 
@@ -174,8 +174,8 @@ const Preferences = Schema.Struct({
   alias: Schema.OptionFromOptionalNullOr(Schema.String)
 })
 
-function readPreferences() {
-  return Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
+effect readPreferences() {
+  return try Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
 }
 // All three fields contain Option.none().
 ```
@@ -271,8 +271,8 @@ const Branch = Schema.Struct({
 })
 const Leaf = Schema.Struct({ owner: Schema.NullOr(Branch) })
 
-function readCrate(input: unknown) {
-  return Schema.decodeUnknownEffect(Crate)(input)
+effect readCrate(input: unknown) {
+  return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```
 

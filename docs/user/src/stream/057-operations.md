@@ -5,15 +5,16 @@ Operators build a new description of how to process a source. Keep pure transfor
 ## Observing and taking elements
 
 ```vibe
-// run: Effect.provide(() => { Console.log(JSON.stringify(readFirst())); provide Logger.layer([]) { Console.log(JSON.stringify([below.runCollect(), through.runCollect(), last.runCollect()])) } }, Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]))
-const observed = Stream.range(10, 18).tap((n) => log(`reading ${n}`))
-const first = observed.take(3)
-const below = observed.takeWhile((n) => n < 13)
-const through = observed.takeUntil((n) => n === 13)
-const last = observed.takeRight(2)
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
+// run: try Effect.provide(effect { { const jsonValue = try readFirst(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; provide Logger.layer([]) { { const jsonValue = [try Stream.runCollect(below), try Stream.runCollect(through), try Stream.runCollect(last)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } } }, Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
+const observed = Stream.tap(Stream.range(10, 18), (n) => log(`reading ${n}`))
+const first = Stream.take(observed, 3)
+const below = Stream.takeWhile(observed, (n) => n < 13)
+const through = Stream.takeUntil(observed, (n) => n === 13)
+const last = Stream.takeRight(observed, 2)
 
-function readFirst() {
-  return first.runCollect() // [10, 11, 12]
+effect readFirst() {
+  return try Stream.runCollect(first) // [10, 11, 12]
 }
 // Output: reading 10
 // Output: reading 11
@@ -34,6 +35,7 @@ function readFirst() {
 // run: return Effect.runPromise(countRows({ async *[Symbol.asyncIterator]() { yield "a"; yield "b" } })).then((count) => console.log(count))
 import { Effect } from "effect"
 
+/** @throws {never} */
 export function countRows(rows: AsyncIterable<string>): Effect.Effect<number, Error> {
   return Effect.tryPromise({
     try: async () => {
@@ -48,77 +50,87 @@ export function countRows(rows: AsyncIterable<string>): Effect.Effect<number, Er
 ```
 
 ```vibe
-// run: provide Exporter = { write: (rows) => countRows(rows) } { Console.log(exportRows(Stream.make("a", "b"))) }
+// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-12, VIP-14
+// run: provide Exporter = { write: (rows) => countRows(rows) } { try Console.log(try exportRows(Stream.make("a", "b"))) }
 import { countRows } from "./exporter.js"
 
 service Exporter {
   write(rows: AsyncIterable<string>): number!Error
 }
 
-function exportRows(source: Stream.Stream<string>) {
-  const rows = source.toAsyncIterableEffect()
-  return Exporter.write(rows)
+effect exportRows(source: Stream.Stream<string>) {
+  const rows = try Stream.toAsyncIterableEffect(source)
+  const exporter = try Exporter
+  return try exporter.write(rows)
 }
 // Output: 2
 ```
 
-`toAsyncIterableEffect` captures the current services and returns an async iterable for a TypeScript consumer; `toAsyncIterable` is the direct variant for a source with no service requirements. Conversion consumes nothing. Iteration failures cross as JavaScript errors, so the foreign consumer must map them back into its declared failure channel.
+`try Stream.toAsyncIterableEffect(source)` captures the current services and returns an async iterable for a TypeScript consumer; `toAsyncIterable` is the direct variant for a source with no service requirements. Conversion consumes nothing. Iteration failures cross as JavaScript errors, so the foreign consumer must map them back into its declared failure channel.
 
 ```vibe
-// run: printBatches()
-function printBatches() {
-  using pull = Stream.range(30, 34).rechunk(2).toPull()
-  while (true) {
-    const batch = Pull.catchDone(() => pull(), () => undefined)
-    if (batch === undefined) break
-    Console.log(JSON.stringify(batch))
-  }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: try printBatches()
+effect printBatches() {
+  try scoped(effect {
+    const pull = try Stream.toPull(Stream.rechunk(Stream.range(30, 34), 2))
+    while (true) {
+      const batch = try Pull.catchDone(pull, () => succeed(undefined))
+      if (batch === undefined) break
+      { const jsonValue = batch; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+    }
+  })
 }
 // Output: [30,31]
 // Output: [32,33]
 // Output: [34]
 ```
 
-`toPull` returns an Effect value that yields a non-empty array per call. Normal completion is `Cause.Done`, handled here with `Pull.catchDone`; other failures propagate. Keep the pull within its Scope. For ordinary processing, use Stream's consumers or `for (const element of source) { … }`, which pulls the Stream and closes it when the loop exits; `for...of` also consumes VibeLang producers. Async iterables need Stream adaptation or a TypeScript consumer.
+`try Stream.toPull(source)` returns a pull Effect that yields a non-empty array per `try pull`. Normal completion is `Cause.Done`, handled here with `Pull.catchDone`; other failures propagate. Keep the pull within its Scope. For ordinary processing, use Stream's consumers or `for try (const element of source) { … }`, which pulls the Stream and closes it when the loop exits; `for try` also consumes Streams returned by `effect function*` producers. Async iterables need Stream adaptation or an async consumer using `for await`.
 
 ## Mapping, flattening, and state
 
 ```vibe
-// run: Console.log(JSON.stringify([labels.runCollect(), upper.runCollect(), signals.runCollect(), words.runCollect(), totals.runCollect()]))
-function loadLabel(id: number) {
-  sleep("10 millis")
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(upper), try Stream.runCollect(signals), try Stream.runCollect(words), try Stream.runCollect(totals)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect loadLabel(id: number) {
+  try sleep("10 millis")
   return `item-${id}`
 }
 
-const labels = Stream.make(4, 7, 9).mapEffect((id) => loadLabel(id), { concurrency: 2 })
-const upper = labels.map((label) => label.toUpperCase())
-const signals = labels.map(() => null)
-const words = Stream.make("red green", "blue").map((line) => line.split(" ")).flattenIterable()
-const totals = Stream.make(4, 7, 9).mapAccum(() => 0, (total, n) => {
+const labels = Stream.mapEffect(Stream.make(4, 7, 9), (id) => loadLabel(id), { concurrency: 2 })
+const upper = Stream.map(labels, (label) => label.toUpperCase())
+const signals = Stream.map(labels, () => null)
+const words = Stream.make("red green", "blue").pipe(
+  Stream.map((line) => line.split(" ")),
+  Stream.flattenIterable
+)
+const totals = Stream.mapAccum(Stream.make(4, 7, 9), () => 0, (total, n) => {
   const next = total + n
   return [next, [next]] as const
 })
 // Output: [["item-4","item-7","item-9"],["ITEM-4","ITEM-7","ITEM-9"],[null,null,null],["red","green","blue"],[4,11,20]]
 ```
 
-`map` is synchronous; `mapEffect` accepts VibeLang calls. With concurrency above one, `mapEffect` runs callbacks concurrently yet keeps input order unless `{ unordered: true }` allows completion order. `flattenIterable` emits each member of each iterable.
+`map` is synchronous; `mapEffect` takes a callback that returns an Effect. With concurrency above one, `mapEffect` runs callbacks concurrently yet keeps input order unless `{ unordered: true }` allows completion order. `flattenIterable` emits each member of each iterable.
 
 `mapAccum` starts fresh state per run and returns `[nextState, emittedValues]` per input, emitting zero or more values. `mapAccumEffect` allows Effect work in the transition; `Stream.drain(source)` runs the work and suppresses emitted values.
 
 ## Filtering, scanning, and changes
 
 ```vibe
-// run: Console.log(JSON.stringify(inspect()))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const readings = Stream.make(2, 2, 5, 5, 2)
-const large = readings.filter((n) => n >= 5)
-const changes = readings.changes()
-const running = readings.scan(() => 0, (total, n) => total + n)
+const large = Stream.filter(readings, (n) => n >= 5)
+const changes = Stream.changes(readings)
+const running = Stream.scan(readings, () => 0, (total, n) => total + n)
 
-function inspect() {
+effect inspect() {
   return {
-    large: large.runCollect(),     // [5, 5]
-    changes: changes.runCollect(), // [2, 5, 2]
-    running: running.runCollect()  // [0, 2, 4, 9, 14, 16]
+    large: try Stream.runCollect(large),     // [5, 5]
+    changes: try Stream.runCollect(changes), // [2, 5, 2]
+    running: try Stream.runCollect(running)  // [0, 2, 4, 9, 14, 16]
   }
 }
 // Output: {"large":[5,5],"changes":[2,5,2],"running":[0,2,4,9,14,16]}
@@ -129,16 +141,17 @@ function inspect() {
 ## Zipping and indexing
 
 ```vibe
-// run: Console.log(JSON.stringify([readPairs(), descriptions.runCollect(), indexed.runCollect(), neighbors.runCollect().map(([previous, value, next]) => [Option.getOrNull(previous), value, Option.getOrNull(next)])]))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try readPairs(), try Stream.runCollect(descriptions), try Stream.runCollect(indexed), (try Stream.runCollect(neighbors)).map(([previous, value, next]) => [Option.getOrNull(previous), value, Option.getOrNull(next)])]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const sizes = Stream.make(5, 8, 13)
 const names = Stream.make("small", "large")
-const pairs = sizes.zip(names)
+const pairs = Stream.zip(sizes, names)
 const descriptions = Stream.zipWith(sizes, names, (size, name) => `${name}: ${size}`)
-const indexed = names.zipWithIndex()
-const neighbors = sizes.zipWithPreviousAndNext()
+const indexed = Stream.zipWithIndex(names)
+const neighbors = Stream.zipWithPreviousAndNext(sizes)
 
-function readPairs() {
-  return pairs.runCollect() // [[5, "small"], [8, "large"]]
+effect readPairs() {
+  return try Stream.runCollect(pairs) // [[5, "small"], [8, "large"]]
 }
 // Output: [[[5,"small"],[8,"large"]],["small: 5","large: 8"],[["small",0],["large",1]],[[null,5,8],[5,8,13],[8,13,null]]]
 ```
@@ -150,7 +163,8 @@ For sources with different rates, `zipLatest` waits until both sides produce, th
 ## Cartesian products
 
 ```vibe
-// run: Console.log(JSON.stringify([variants.runCollect(), names.runCollect()]))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try Stream.runCollect(variants), try Stream.runCollect(names)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const variants = Stream.cross(Stream.make("linen", "wool"), Stream.make("blue", "gray"))
 const names = Stream.crossWith(
   Stream.make("linen", "wool"),
@@ -165,35 +179,39 @@ const names = Stream.crossWith(
 ## Partitioning and grouping
 
 ```vibe
-// run: Console.log(JSON.stringify(partitionReadings()))
-function partitionReadings() {
-  using branches = Stream.range(10, 19).partition(Filter.fromPredicate((n: number) => n % 2 === 0), { capacity: 2 })
-  const [even, odd] = branches
-  return all([
-    () => even.runCollect(),
-    () => odd.runCollect()
-  ], { concurrency: 2 })
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
+// run: { const jsonValue = try partitionReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect partitionReadings() {
+  return try scoped(effect {
+    const [even, odd] = try Stream.partition(
+      Stream.range(10, 19),
+      Filter.fromPredicate((n: number) => n % 2 === 0),
+      { capacity: 2 }
+    )
+    return try.all [Stream.runCollect(even), Stream.runCollect(odd)]
+  })
 }
 // Output: [[10,12,14,16,18],[11,13,15,17,19]]
 ```
 
-`partition` runs one source and returns the passing and failing streams, in that order. It is an Effect that requires Scope: keep both consumers within the `using` lifetime and run them concurrently, since a full, unconsumed branch can backpressure the other. `partitionEffect` takes a `Filter.FilterEffect`; its Result's successes go to the passing branch, failures to the other.
+`try Stream.partition(source, filter, options)` runs one source and returns the passing and failing streams, in that order. It is an Effect that requires Scope: keep both consumers within `scoped(effect { … })` and run them concurrently, since a full, unconsumed branch can backpressure the other. `partitionEffect` takes a `Filter.FilterEffect`; its Result's successes go to the passing branch, failures to the other.
 
 ```vibe
-// run: Console.log(JSON.stringify([summaries.runCollect().sort((a, b) => a.region.localeCompare(b.region)), batches.runCollect(), timedBatches.runCollect()]))
+// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [(try Stream.runCollect(summaries)).sort((a, b) => a.region.localeCompare(b.region)), try Stream.runCollect(batches), try Stream.runCollect(timedBatches)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const requests = Stream.make(
   { region: "west", bytes: 10 },
   { region: "east", bytes: 20 },
   { region: "west", bytes: 15 }
 )
-const groups = requests.groupByKey((request) => request.region)
-const summaries = groups.flatMap(([region, group]) =>
-  Stream.fromEffect {
-    const bytes = group.runFold(() => 0, (total, request) => total + request.bytes)
+const groups = Stream.groupByKey(requests, (request) => request.region)
+const summaries = Stream.flatMap(groups, ([region, group]) =>
+  Stream.fromEffect(effect {
+    const bytes = try Stream.runFold(group, () => 0, (total, request) => total + request.bytes)
     return { region, bytes }
-  }, { concurrency: "unbounded" })
-const batches = requests.grouped(2)
-const timedBatches = requests.groupedWithin(20, "1 second")
+  }), { concurrency: "unbounded" })
+const batches = Stream.grouped(requests, 2)
+const timedBatches = Stream.groupedWithin(requests, 20, "1 second")
 // Output: [[{"region":"east","bytes":20},{"region":"west","bytes":25}],[[{"region":"west","bytes":10},{"region":"east","bytes":20}],[{"region":"west","bytes":15}]],[[{"region":"west","bytes":10},{"region":"east","bytes":20},{"region":"west","bytes":15}]]]
 ```
 
@@ -202,15 +220,16 @@ const timedBatches = requests.groupedWithin(20, "1 second")
 ## Concatenating, merging, and interleaving
 
 ```vibe
-// run: Console.log(JSON.stringify([sequential.runCollect(), flattened.runCollect(), expanded.runCollect(), merged.runCollect().sort(), alternating.runCollect(), selected.runCollect()]))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try Stream.runCollect(sequential), try Stream.runCollect(flattened), try Stream.runCollect(expanded), (try Stream.runCollect(merged)).sort(), try Stream.runCollect(alternating), try Stream.runCollect(selected)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const primary = Stream.make("a1", "a2")
 const secondary = Stream.make("b1", "b2", "b3")
-const sequential = primary.concat(secondary)
-const flattened = Stream.make(primary, secondary).flatten()
-const expanded = primary.flatMap((label) => Stream.make(label, label.toUpperCase()))
-const merged = primary.merge(secondary, { haltStrategy: "both" })
-const alternating = primary.interleave(secondary)
-const selected = primary.interleaveWith(secondary, Stream.make(true, false, false, true, false))
+const sequential = Stream.concat(primary, secondary)
+const flattened = Stream.flatten(Stream.make(primary, secondary))
+const expanded = Stream.flatMap(primary, (label) => Stream.make(label, label.toUpperCase()))
+const merged = Stream.merge(primary, secondary, { haltStrategy: "both" })
+const alternating = Stream.interleave(primary, secondary)
+const selected = Stream.interleaveWith(primary, secondary, Stream.make(true, false, false, true, false))
 // Output: [["a1","a2","b1","b2","b3"],["a1","a2","b1","b2","b3"],["a1","A1","a2","A2"],["a1","a2","b1","b2","b3"],["a1","b1","a2","b2","b3"],["a1","b1","b2","a2","b3"]]
 ```
 
@@ -223,13 +242,14 @@ const selected = primary.interleaveWith(secondary, Stream.make(true, false, fals
 ## Separators and affixes
 
 ```vibe
-// run: Console.log(separated.mkString()); Console.log(formatFields())
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try Stream.mkString(separated)); try Console.log(try formatFields())
 const fields = Stream.make("name", "email", "role")
-const separated = fields.intersperse(",")
-const bracketed = fields.intersperseAffixes({ start: "[", middle: ",", end: "]" })
+const separated = Stream.intersperse(fields, ",")
+const bracketed = Stream.intersperseAffixes(fields, { start: "[", middle: ",", end: "]" })
 
-function formatFields() {
-  return bracketed.mkString() // "[name,email,role]"
+effect formatFields() {
+  return try Stream.mkString(bracketed) // "[name,email,role]"
 }
 // Output: name,email,role
 // Output: [name,email,role]
@@ -240,20 +260,22 @@ function formatFields() {
 ## Broadcasting and buffering
 
 ```vibe
-// run: Console.log(JSON.stringify(shareReadings())); Console.log(JSON.stringify(buffered.runCollect()))
-function shareReadings() {
-  using copies = Stream.range(1, 12).broadcastN({ n: 2, capacity: 3 })
-  const [totals, audit] = copies
-  return all([
-    () => totals.runSum(),
-    () => audit.runForEach((n) => {
-      sleep("10 millis")
-      Console.log(`audit ${n}`)
-    })
-  ], { concurrency: 2 })
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
+// run: { const jsonValue = try shareReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try Stream.runCollect(buffered); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect shareReadings() {
+  return try scoped(effect {
+    const [totals, audit] = try Stream.broadcastN(Stream.range(1, 12), { n: 2, capacity: 3 })
+    return try.all [
+      Stream.runSum(totals),
+      Stream.runForEach(audit, effect (n) => {
+        try sleep("10 millis")
+        try Console.log(`audit ${n}`)
+      })
+    ]
+  })
 }
 
-const buffered = Stream.range(1, 12).buffer({ capacity: 3 })
+const buffered = Stream.buffer(Stream.range(1, 12), { capacity: 3 })
 // Output: audit 1
 // Output: audit 2
 // Output: audit 3
@@ -270,26 +292,30 @@ const buffered = Stream.range(1, 12).buffer({ capacity: 3 })
 // Output: [1,2,3,4,5,6,7,8,9,10,11,12]
 ```
 
-`broadcastN` runs one source and gives each subscriber the same elements; with bounded suspending buffers, the slowest subscriber limits progress. Keep the subscribers inside the acquired Scope and run their consumers concurrently.
+`try Stream.broadcastN(source, options)` runs one source and gives each subscriber the same elements; with bounded suspending buffers, the slowest subscriber limits progress. Keep the subscribers inside the acquired Scope and run their consumers concurrently.
 
 `buffer` lets upstream run ahead of one consumer. `{ capacity: n }` backpressures when full; `"unbounded"` removes the limit. With a numeric capacity, `strategy: "sliding"` drops old queued values and `strategy: "dropping"` rejects new ones, trading completeness for throughput.
 
 ## Debouncing and throttling
 
 ```vibe
-// run: Console.log(JSON.stringify([settled.runCollect(), paced.runCollect()]))
-const bursts = Stream.make("c", "ca", "cat").concat(Stream.fromEffect {
-    sleep("300 millis")
-    return "cats"
+// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try Stream.runCollect(settled), try Stream.runCollect(paced)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+const bursts = Stream.concat(Stream.make("c", "ca", "cat"), Stream.fromEffect(effect {
+  try sleep("300 millis")
+  return "cats"
+}))
+const settled = Stream.debounce(bursts, "100 millis")
+const paced = Stream.range(1, 10).pipe(
+  Stream.rechunk(1),
+  Stream.throttle({
+    cost: (batch) => batch.length,
+    units: 2,
+    duration: "1 second",
+    strategy: "shape",
+    burst: 1
   })
-const settled = bursts.debounce("100 millis")
-const paced = Stream.range(1, 10).rechunk(1).throttle({
-  cost: (batch) => batch.length,
-  units: 2,
-  duration: "1 second",
-  strategy: "shape",
-  burst: 1
-})
+)
 // Output: [["cat","cats"],[1,2,3,4,5,6,7,8,9,10]]
 ```
 
@@ -298,11 +324,15 @@ const paced = Stream.range(1, 10).rechunk(1).throttle({
 ## Scheduling delivery
 
 ```vibe
-// run: announce()
-const announcements = Stream.make("prepare", "deploy", "verify").schedule(Schedule.spaced("500 millis"))
+// pending: VIP-1, VIP-5, VIP-14
+// run: try announce()
+const announcements = Stream.schedule(
+  Stream.make("prepare", "deploy", "verify"),
+  Schedule.spaced("500 millis")
+)
 
-function announce() {
-  announcements.runForEach((message) => Console.log(message))
+effect announce() {
+  try Stream.runForEach(announcements, (message) => Console.log(message))
 }
 // Output: prepare
 // Output: deploy

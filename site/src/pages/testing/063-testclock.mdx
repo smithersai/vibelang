@@ -23,41 +23,43 @@ export default defineConfig({
 })
 ```
 
-Register `it.effect` at the top level or inside `describe`; its callback is a program, so VibeLang calls inside it run. `assert` and `expect` from `@effect/vitest` are Effect package exports: call them directly, as in `assert.strictEqual(actual, expected)` or `expect(actual).toBe(expected)`. A failed assertion is a defect that fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`: from `vitest` they are plain TypeScript, which is EK4401 inside a test. The examples below use a local `check` helper that works the same way.
+Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`. `assert` and `expect` from `@effect/vitest` are Effect package exports: wrap assertions that may throw with `sync`, as in `try sync(() => assert.strictEqual(actual, expected))` or `try sync(() => expect(actual).toBe(expected))`. A failed assertion is a defect that fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`. The examples below use a local `check` helper that works the same way.
+
+Support for the new forms arrives with the compiler's VIP implementation.
 
 ## Controlling virtual time
 
 ```vibe
 import { assert, it } from "@effect/vitest"
 
-function check(condition: boolean, message: string) {
-  assert.isTrue(condition, message)
+effect check(condition: boolean, message: string) {
+  try sync(() => assert.isTrue(condition, message))
 }
 
 // Output:
-it.effect("a deadline returns the fallback") {
-  const pending = fork Effect.timeoutOrElse(() => {
-    sleep("10 minutes")
+it.effect("a deadline returns the fallback", () => effect {
+  const pending = fork timeoutOrElse(effect {
+    try sleep("10 minutes")
     return Option.some("finished")
   }, {
     duration: "30 seconds",
-    orElse: () => Option.none<string>()
+    orElse: () => succeed(Option.none<string>())
   })
 
-  TestClock.adjust("30 seconds")
+  try TestClock.adjust("30 seconds")
   const result = join pending
-  check(result.isNone(), "expected the timeout fallback")
-}
+  try check(Option.isNone(result), "expected the timeout fallback")
+})
 ```
 
-`it.effect` provides the test services, virtual time included. `adjust` advances by a duration and runs sleepers whose deadlines fall within it; `setTime` sets an absolute timestamp in milliseconds. Fork the timed work first so the test's own fiber stays free to adjust the clock. The block owns `pending` and interrupts it if the test exits early.
+`it.effect` provides the test services, virtual time included. `adjust` advances by a duration and runs sleepers whose deadlines fall within it; `setTime` sets an absolute timestamp in milliseconds. Fork the timed work first so the test's own fiber stays free to adjust the clock. The test fiber owns `pending` and interrupts it if the test exits early.
 
 ```vibe
-function standaloneClockExample() {
+effect standaloneClockExample() {
   provide TestClock.layer() {
-    TestClock.setTime(5_000)
-    TestClock.adjust("2 seconds")
-    return Clock.currentTimeMillis() // 7000
+    try TestClock.setTime(5_000)
+    try TestClock.adjust("2 seconds")
+    return try Clock.currentTimeMillis // 7000
   }
 }
 ```
@@ -74,50 +76,50 @@ Outside the test harness, provide `TestClock.layer()` yourself. Real time passin
 import { it } from "@effect/vitest"
 
 // Output:
-it.effect("emits once per interval") {
-  const queue = Queue.unbounded<string>()
-  fork {
+it.effect("emits once per interval", () => scoped(effect {
+  const queue = try Queue.unbounded<string>()
+  const worker = fork.scoped effect {
     while (true) {
-      sleep("15 minutes")
-      queue.offer("refresh")
+      try sleep("15 minutes")
+      try Queue.offer(queue, "refresh")
     }
   }
 
-  TestClock.adjust("14 minutes")
-  check(queue.poll().isNone(), "refresh arrived early")
+  try TestClock.adjust("14 minutes")
+  try check(Option.isNone(try Queue.poll(queue)), "refresh arrived early")
 
-  TestClock.adjust("1 minute")
-  check(queue.take() === "refresh", "missing first refresh")
-  check(queue.poll().isNone(), "duplicate refresh")
+  try TestClock.adjust("1 minute")
+  try check((try Queue.take(queue)) === "refresh", "missing first refresh")
+  try check(Option.isNone(try Queue.poll(queue)), "duplicate refresh")
 
-  TestClock.adjust("15 minutes")
-  check(queue.take() === "refresh", "missing second refresh")
-  check(queue.poll().isNone(), "duplicate second refresh")
-}
+  try TestClock.adjust("15 minutes")
+  try check((try Queue.take(queue)) === "refresh", "missing second refresh")
+  try check(Option.isNone(try Queue.poll(queue)), "duplicate second refresh")
+}))
 ```
 
-Use the `check` helper from the first example. Advancing to each boundary lets the loop schedule its next sleep before the next adjustment. The queue makes each recurrence observable without real-time delays, and the background loop stops when the test block exits.
+Use the `check` helper from the first example. Advancing to each boundary lets the loop schedule its next sleep before the next adjustment. The queue makes each recurrence observable without real-time delays, and the explicit scope interrupts the background loop when the test's Effect ends.
 
 ## Checking clock-dependent behavior
 
 ```vibe
 import { it } from "@effect/vitest"
 
-function isExpired(createdAt: number, lifetimeMillis: number) {
-  return Clock.currentTimeMillis() - createdAt >= lifetimeMillis
+effect isExpired(createdAt: number, lifetimeMillis: number) {
+  return (try Clock.currentTimeMillis) - createdAt >= lifetimeMillis
 }
 
 // Output:
-it.effect("expires at the boundary") {
-  const createdAt = Clock.currentTimeMillis()
-  TestClock.adjust("9 seconds")
-  check(!isExpired(createdAt, 10_000), "expired too soon")
-  TestClock.adjust("1 second")
-  check(isExpired(createdAt, 10_000), "should expire at ten seconds")
-}
+it.effect("expires at the boundary", () => effect {
+  const createdAt = try Clock.currentTimeMillis
+  try TestClock.adjust("9 seconds")
+  try check(!(try isExpired(createdAt, 10_000)), "expired too soon")
+  try TestClock.adjust("1 second")
+  try check(try isExpired(createdAt, 10_000), "should expire at ten seconds")
+})
 ```
 
-Application code reads time with `Clock`: `Clock.currentTimeMillis()` reads the supplied clock, so it stays deterministic under the test layer. `Date.now()`, zero-argument `new Date()`, and platform timers are not application time sources in VibeLang. Testing just before and at a boundary catches comparison mistakes that a later timestamp alone misses.
+Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads the supplied clock, so it stays deterministic under the test layer. `Date.now()`, zero-argument `new Date()`, and platform timers are not application time sources in VibeLang. Testing just before and at a boundary catches comparison mistakes that a later timestamp alone misses.
 
 ## Timed waits and deferred results
 
@@ -125,21 +127,21 @@ Application code reads time with `Clock`: `Clock.currentTimeMillis()` reads the 
 import { it } from "@effect/vitest"
 
 // Output:
-it.effect("completes a deferred after a delay") {
-  const ready = Deferred.make<number>()
-  const worker = fork {
-    sleep("6 seconds")
-    ready.succeed(42)
+it.effect("completes a deferred after a delay", () => scoped(effect {
+  const ready = try Deferred.make<number>()
+  const worker = fork.scoped effect {
+    try sleep("6 seconds")
+    try Deferred.succeed(ready, 42)
   }
 
-  TestClock.adjust("6 seconds")
-  const value = ready.await()
+  try TestClock.adjust("6 seconds")
+  const value = try Deferred.await(ready)
   join worker
-  check(value === 42, "unexpected deferred value")
-}
+  try check(value === 42, "unexpected deferred value")
+}))
 ```
 
-The worker sleeps before completing, so the test checks delayed completion. After advancing time, wait for the Deferred with `ready.await()` or join the worker to synchronize with the observable outcome. A fork alone says work started, not that its result is ready.
+The worker sleeps before completing, so the test checks delayed completion. After advancing time, wait for the Deferred with `try Deferred.await(ready)` or join the worker to synchronize with the observable outcome. A fork alone says work started, not that its result is ready.
 
 ---
 

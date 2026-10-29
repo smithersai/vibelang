@@ -11,9 +11,9 @@ description: "DateTime works in VibeLang exactly as in Effect. It represents imm
 
 ```vibe
 const instant = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
-const paris = instant.setZone(DateTime.zoneMakeNamedUnsafe("Europe/Paris"))
+const paris = DateTime.setZone(instant, DateTime.zoneMakeNamedUnsafe("Europe/Paris"))
 instant.epochMilliseconds === paris.epochMilliseconds // true
-paris.formatIsoZoned() // "2026-04-12T12:00:00.000+02:00[Europe/Paris]"
+DateTime.formatIsoZoned(paris) // "2026-04-12T12:00:00.000+02:00[Europe/Paris]"
 ```
 
 ```text
@@ -52,9 +52,9 @@ const serialized = DateTime.makeZonedFromString(
 ## Reading current time
 
 ```vibe
-function timestamp() {
-  const now = DateTime.now()
-  return now.formatIso()
+effect timestamp() {
+  const now = try DateTime.now
+  return DateTime.formatIso(now)
 }
 // string!!
 ```
@@ -63,15 +63,15 @@ function timestamp() {
 1970-01-01T00:00:00.000Z
 ```
 
-`now` is an Effect value: calling it reads UTC time through Effect's Clock, which tests can control. Effect's `nowUnsafe` bypasses Clock. Read application time with `now()`, not `Date.now()` or `new Date()`.
+`DateTime.now` is an Effect value: `try DateTime.now` reads UTC time through Effect's Clock, which tests can control. Effect's `nowUnsafe` bypasses Clock. Read application time with `try DateTime.now`, not `Date.now()` or `new Date()`.
 
 ## Identifying timestamp variants
 
 ```vibe
 function describe(value: unknown) {
   if (!DateTime.isDateTime(value)) return "not a timestamp"
-  if (value.isUtc()) return "UTC"
-  if (value.isZoned()) {
+  if (DateTime.isUtc(value)) return "UTC"
+  if (DateTime.isZoned(value)) {
     if (DateTime.isTimeZoneNamed(value.zone)) return value.zone.id
     if (DateTime.isTimeZoneOffset(value.zone)) return String(value.zone.offset)
   }
@@ -91,18 +91,18 @@ not a timestamp UTC Europe/Paris 3600000
 const named = DateTime.zoneMakeNamed("Asia/Tokyo")
 const parsed = DateTime.zoneFromString("+09:00")
 const fixed = DateTime.zoneMakeOffset(9 * 60 * 60 * 1000)
-fixed.zoneToString() // "+09:00"
+DateTime.zoneToString(fixed) // "+09:00"
 
-function inTokyo() {
-  const zone = DateTime.zoneMakeNamedEffect("Asia/Tokyo")
-  const now = DateTime.now()
-  return now.setZone(zone)
+effect inTokyo() {
+  const zone = try DateTime.zoneMakeNamedEffect("Asia/Tokyo")
+  const now = try DateTime.now
+  return DateTime.setZone(now, zone)
 }
 
 const base = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
-const optional = base.setZoneNamed("Asia/Tokyo")
-const known = base.setZoneNamedUnsafe("Asia/Tokyo")
-const shiftedView = base.setZoneOffset(9 * 60 * 60 * 1000)
+const optional = DateTime.setZoneNamed(base, "Asia/Tokyo")
+const known = DateTime.setZoneNamedUnsafe(base, "Asia/Tokyo")
+const shiftedView = DateTime.setZoneOffset(base, 9 * 60 * 60 * 1000)
 ```
 
 ```text
@@ -118,14 +118,14 @@ For an invalid identifier, `zoneMakeNamed` and `zoneFromString` return `None`, `
 
 ```vibe
 const start = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
-const end = start.add({ hours: 3 })
-start.isLessThan(end) // true
-start.min(end) // start
-start.max(end) // end
-start.distance(end).toHours() // 3
-start.toEpochMillis() // numeric Unix timestamp
-const native = start.toDateUtc()
-const calendarDate = start.removeTime()
+const end = DateTime.add(start, { hours: 3 })
+DateTime.isLessThan(start, end) // true
+DateTime.min(start, end) // start
+DateTime.max(start, end) // end
+Duration.toHours(DateTime.distance(start, end)) // 3
+DateTime.toEpochMillis(start) // numeric Unix timestamp
+const native = DateTime.toDateUtc(start)
+const calendarDate = DateTime.removeTime(start)
 ```
 
 ```text
@@ -143,12 +143,12 @@ Ordering compares instants, ignoring zones. `distance(start, end)` is signed: re
 const evening = DateTime.makeZonedUnsafe("2026-04-12T22:30:00Z", {
   timeZone: "Asia/Tokyo"
 })
-evening.getPart("day") // 13
-evening.getPartUtc("day") // 12
-const localParts = evening.toParts()
-const utcParts = evening.toPartsUtc()
-const rescheduled = evening.setParts({ hour: 9, minute: 0 })
-const utcEdited = evening.setPartsUtc({ hour: 9 })
+DateTime.getPart(evening, "day") // 13
+DateTime.getPartUtc(evening, "day") // 12
+const localParts = DateTime.toParts(evening)
+const utcParts = DateTime.toPartsUtc(evening)
+const rescheduled = DateTime.setParts(evening, { hour: 9, minute: 0 })
+const utcEdited = DateTime.setPartsUtc(evening, { hour: 9 })
 ```
 
 ```text
@@ -165,18 +165,18 @@ const utcEdited = evening.setPartsUtc({ hour: 9 })
 const appointment = DateTime.makeZonedUnsafe("2026-04-12T10:00:00Z", {
   timeZone: "Europe/Paris"
 })
-const tomorrow = appointment.add({ days: 1 })
-const previous = appointment.subtract({ months: 1 })
-const elapsedHour = appointment.addDuration(Duration.hours(1))
-const earlier = appointment.subtractDuration(Duration.minutes(15))
-const dayStart = appointment.startOf("day")
-const dayEnd = appointment.endOf("day")
-const rounded = appointment.nearest("hour")
-tomorrow.formatIso() // "2026-04-13T10:00:00.000Z"
-appointment.formatIsoDate() // "2026-04-12"
-appointment.formatIsoDateUtc() // "2026-04-12"
-appointment.formatIsoOffset() // "2026-04-12T12:00:00.000+02:00"
-appointment.format({ locale: "en-GB", dateStyle: "long" })
+const tomorrow = DateTime.add(appointment, { days: 1 })
+const previous = DateTime.subtract(appointment, { months: 1 })
+const elapsedHour = DateTime.addDuration(appointment, Duration.hours(1))
+const earlier = DateTime.subtractDuration(appointment, Duration.minutes(15))
+const dayStart = DateTime.startOf(appointment, "day")
+const dayEnd = DateTime.endOf(appointment, "day")
+const rounded = DateTime.nearest(appointment, "hour")
+DateTime.formatIso(tomorrow) // "2026-04-13T10:00:00.000Z"
+DateTime.formatIsoDate(appointment) // "2026-04-12"
+DateTime.formatIsoDateUtc(appointment) // "2026-04-12"
+DateTime.formatIsoOffset(appointment) // "2026-04-12T12:00:00.000+02:00"
+DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })
 ```
 
 ```text
@@ -188,13 +188,13 @@ Calendar `add` and `subtract` change parts in the value's zone; duration arithme
 ## Providing a default time zone
 
 ```vibe
-function localDate() {
-  return DateTime.nowInCurrentZone().formatIsoDate()
+effect localDate() {
+  return DateTime.formatIsoDate(try DateTime.nowInCurrentZone)
 }
 // string!!DateTime.CurrentTimeZone
 
-function main() {
-  provide DateTime.layerCurrentZoneNamed("Asia/Tokyo") { return localDate() }
+effect main() {
+  provide DateTime.layerCurrentZoneNamed("Asia/Tokyo") { return try localDate() }
 }
 ```
 
@@ -202,7 +202,7 @@ function main() {
 1970-01-01
 ```
 
-`CurrentTimeZone` supplies the zone for `nowInCurrentZone` and `setZoneCurrent`. Provide it with `layerCurrentZone`, `layerCurrentZoneNamed` (which fails for an invalid identifier), `layerCurrentZoneOffset`, or `layerCurrentZoneLocal`. `withCurrentZone`, `withCurrentZoneNamed`, `withCurrentZoneOffset`, and `withCurrentZoneLocal` provide it around one program, passed as `() => work()`.
+`CurrentTimeZone` supplies the zone for `nowInCurrentZone` and `setZoneCurrent`. Provide it with `layerCurrentZone`, `layerCurrentZoneNamed` (which fails for an invalid identifier), `layerCurrentZoneOffset`, or `layerCurrentZoneLocal`. `withCurrentZone`, `withCurrentZoneNamed`, `withCurrentZoneOffset`, and `withCurrentZoneLocal` provide it around one Effect, passed as `work()`.
 
 ---
 

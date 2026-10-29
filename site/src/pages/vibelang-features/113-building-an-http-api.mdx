@@ -1,11 +1,11 @@
 ---
 title: "Building an HTTP API"
-description: "Build routes with Effect's HTTP modules and write each handler as a VibeLang function. This example creates users, validates JSON bodies, and maps expected failures to HTTP status codes."
+description: "Build routes with Effect's HTTP modules and write each request handler as an effect function. This example creates users, validates JSON bodies, and maps expected failures to HTTP status codes."
 ---
 
 # Building an HTTP API
 
-Build routes with Effect's HTTP modules and write each handler as a VibeLang function. This example creates users, validates JSON bodies, and maps expected failures to HTTP status codes.
+Build routes with Effect's HTTP modules and write each request handler as an effect function. This example creates users, validates JSON bodies, and maps expected failures to HTTP status codes.
 
 ## Define the body and the service
 
@@ -18,23 +18,23 @@ export service Users {
   create(name: string): { id: string; name: string }!NameTaken
 }
 
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const names = new Set<string>()
   let nextId = 0
   return {
-    create(name) {
+    effect create(name) {
       if (names.has(name)) throw new NameTaken({ name })
       names.add(name)
       nextId++
       return { id: String(nextId), name }
     }
   }
-}
+})
 // Output: {"id":"1","name":"Ada"}
 // Output: Ada
 ```
 
-`schema CreateUser { name: string }` declares a struct schema and its type: it accepts a JSON object with a string `name`. `Users.create` declares the expected failure `NameTaken`. The layer owns the name set and the ID counter, so each layer build starts with isolated state.
+`schema CreateUser { name: string }` declares a struct schema and its type: it accepts a JSON object with a string `name`. The `create` member declares the expected failure `NameTaken`. The layer owns the name set and the ID counter, so each layer build starts with isolated state.
 
 ## Decode the request and map failures
 
@@ -42,60 +42,72 @@ export const UsersLive = Layer.effect(Users) {
 // routes.vibe
 import { CreateUser, NameTaken, Users, UsersLive } from "./users.vibe"
 
-export function createUser() {
-  try {
-    const input = HttpServerRequest.schemaBodyJson(CreateUser)
-    const user = Users.create(input.name)
-    return HttpServerResponse.json(user, { status: 201 })
-  } catch (error) {
-    return match (error) {
-      when NameTaken: HttpServerResponse.text(`Name already registered: ${error.name}`, { status: 409 });
-      when Schema.SchemaError: HttpServerResponse.text("Expected a JSON object with a string name", { status: 400 });
-      default: throw error;
-    }
+export effect createUser() {
+  return effect {
+    const input = try HttpServerRequest.schemaBodyJson(CreateUser)
+    const users = try Users
+    const user = try users.create(input.name)
+    return try HttpServerResponse.json(user, { status: 201 })
+  } catch effect (error) => match (error) {
+    when NameTaken: HttpServerResponse.text(`Name already registered: ${error.name}`, { status: 409 });
+    when Schema.SchemaError: HttpServerResponse.text("Expected a JSON object with a string name", { status: 400 });
+    default: throw error;
   }
 }
 
-export const Routes = HttpRouter.add("POST", "/users", () => createUser())
+export const Routes = HttpRouter.add("POST", "/users", createUser())
 export const App = HttpRouter.provideRequest(UsersLive)(Routes)
 // Output: [201,409,400]
 ```
 
-The JSON decoder runs at the call and returns the validated body. A repeated name becomes 409, and a body that fails the schema 400. `default: throw error` passes any failure the `match` does not name on to the HTTP boundary.
+`try HttpServerRequest.schemaBodyJson(CreateUser)` runs the JSON decoder and returns the validated body. A repeated name becomes 409, and a body that fails the schema 400. `default: throw error` passes any failure the `match` does not name on to the HTTP boundary.
 
 `catch` sees expected failures only, not defects or interruption. Keep error-to-status mapping explicit so a programming defect cannot become a successful response.
 
-`HttpRouter.add` receives `() => createUser()`, a program that runs on each request. `HttpRouter.provideRequest` supplies `Users` to route execution, so `HttpRouter.toHttpEffect` in a test uses the same service implementation as the server.
+`HttpRouter.add` receives `createUser()`, an Effect value that runs on each request. `HttpRouter.provideRequest` supplies `Users` to route execution, so `HttpRouter.toHttpEffect` in a test uses the same service implementation as the server.
 
 ## Start the Node server
+
+Keep the Node.js import in a TypeScript companion file:
+
+```ts
+// node-server.ts
+// types: node
+export { createServer } from "node:http"
+```
 
 ```vibe
 // server.vibe
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+import { createServer } from "./node-server.ts"
 import { App } from "./routes.vibe"
 
-module node {
-  // Plain TypeScript inside this module, not VibeLang.
-  export { createServer } from "node:http"
-}
-import { createServer } from node
-
-function server(port: number): infer _ {
+function server(port: number) {
   const Server = NodeHttpServer.layer(createServer, { port })
   return Layer.provide(HttpRouter.serve(App), Server)
 }
 const Live = server(3000)
 
-export function main() {
-  Layer.launch(Live)
+export effect main() {
+  try Layer.launch(Live)
 }
 // Output: server acquired
 // Output: server released
 ```
 
-A `.vibe` file imports no Node.js value directly, so the `module` block, whose body is TypeScript, brings in Node's `createServer`. `NodeHttpServer.layer` runs it and owns its lifetime. `HttpRouter.serve` builds the serving layer, and `Layer.launch` keeps it alive until shutdown.
+A `.vibe` file imports no Node.js value directly, so the TypeScript companion file brings in Node's `createServer`. `NodeHttpServer.layer` runs it and owns its lifetime. `HttpRouter.serve` builds the serving layer, and `Layer.launch` keeps it alive until shutdown.
 
-The module top level constructs schemas, routes, and layers. `node server.js` starts the application: a module that exports a parameterless `function main` runs it with `NodeRuntime.runMain` when the host starts that module, or a bundle whose entry module it is, so importing it from a test or another module starts nothing.
+The module top level constructs schemas, routes, and layers. Start the application from a separate entry module:
+
+```vibe
+// start.vibe
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { main } from "./server.vibe"
+
+NodeRuntime.runMain(main())
+```
+
+`node start.js` starts the application by calling `NodeRuntime.runMain(main())`. Importing `server.js` from a test or another module starts nothing.
 
 ## Test a route without a socket
 
@@ -104,23 +116,21 @@ The module top level constructs schemas, routes, and layers. `node server.js` st
 import { assert, it } from "@effect/vitest"
 import { App } from "./routes.vibe"
 
-function request(body: unknown) {
-  const client = HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body)
+effect request(body: unknown) {
+  const client = try HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body)
   return HttpServerRequest.fromClientRequest(client)
 }
 
-it.effect("validates bodies and rejects duplicate names") {
-  Effect.scoped {
-    const app = HttpRouter.toHttpEffect(App)
-    const created = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
-    const conflict = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
-    const bad = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: 123 }))
-    assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400])
-  }
-}
+it.effect("validates bodies and rejects duplicate names", () => scoped(effect {
+  const app = try HttpRouter.toHttpEffect(App)
+  const created = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
+  const conflict = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
+  const bad = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: 123 }))
+  try sync(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
+}))
 // Output:
 ```
 
-`HttpRouter.toHttpEffect` builds a request program without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
+`try HttpRouter.toHttpEffect(App)` builds a request Effect without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
 
-Import assertions from `@effect/vitest`; the compiler trusts its re-exports. The [installation guide](/getting-started/004-installation) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.
+Import assertions from `@effect/vitest`; wrap assertions with `sync` so assertion exceptions become defects. The [installation guide](/getting-started/004-installation) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.

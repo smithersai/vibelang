@@ -1,11 +1,11 @@
 ---
 title: "Basic Usage"
-description: "Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the trusted call rules."
+description: "Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the call rules."
 ---
 
 # Basic Usage
 
-Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Modeling primitives, symbols, literals, enums, and template strings
 
@@ -40,8 +40,8 @@ const BinPosition = Schema.TemplateLiteralParser([
   "bin:", Schema.FiniteFromString, "/", Schema.NonEmptyString
 ])
 
-function locateBin(input: unknown) {
-  return Schema.decodeUnknownEffect(BinPosition)(input)
+effect locateBin(input: unknown) {
+  return try Schema.decodeUnknownEffect(BinPosition)(input)
 }
 // "bin:12/upper" becomes ["bin:", 12, "/", "upper"]
 ```
@@ -63,8 +63,8 @@ const NullableText = Schema.NullOr(Schema.String)
 const MaybeText = Schema.UndefinedOr(Schema.String)
 const NullishText = Schema.NullishOr(Schema.String)
 
-function describeLocation(input: unknown) {
-  const location = Schema.decodeUnknownEffect(Location)(input)
+effect describeLocation(input: unknown) {
+  const location = try Schema.decodeUnknownEffect(Location)(input)
   return location._tag === "Warehouse" ? location.aisle : String(location.route)
 }
 ```
@@ -114,8 +114,8 @@ const Labels = Schema.Array(Schema.String)
 const EditableLabels = Schema.mutable(Labels)
 const RequiredLabels = Schema.NonEmptyArray(Schema.NonEmptyString)
 
-function addLabel(input: unknown) {
-  const labels = Schema.decodeUnknownEffect(EditableLabels)(input)
+effect addLabel(input: unknown) {
+  const labels = try Schema.decodeUnknownEffect(EditableLabels)(input)
   labels.push("inspected")
   return labels
 }
@@ -175,8 +175,8 @@ const Marked = Schema.Struct({
   reference: Schema.String
 })
 
-function createPacked() {
-  return Packed.makeEffect({ reference: "box-76", weight: 2 })
+effect createPacked() {
+  return try Packed.makeEffect({ reference: "box-76", weight: 2 })
 }
 ```
 
@@ -200,8 +200,8 @@ const PalletSchema = Schema.instanceOf(Pallet).check(
   Schema.makeFilter((pallet) => pallet.code.length > 0 || "Pallet code is empty")
 )
 
-function readPallet(input: unknown) {
-  return Schema.decodeUnknownEffect(PalletSchema)(input)
+effect readPallet(input: unknown) {
+  return try Schema.decodeUnknownEffect(PalletSchema)(input)
 }
 ```
 

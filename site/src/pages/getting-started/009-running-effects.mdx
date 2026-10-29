@@ -1,34 +1,34 @@
 ---
 title: "Running Effects"
-description: "Runners start a program at an application boundary. Inside a running VibeLang function, calls already run on the current fiber, so reserve runners for entry points and framework adapters."
+description: "Runners start a program at an application boundary. Inside an effect function, try runs an Effect on the current fiber, so reserve runners for entry points and framework adapters."
 ---
 
 # Running Effects
 
-Runners start a program at an application boundary. Inside a running VibeLang function, calls already run on the current fiber, so reserve runners for entry points and framework adapters.
+Runners start a program at an application boundary. Inside an effect function, `try` runs an Effect on the current fiber, so reserve runners for entry points and framework adapters.
 
-Call a runner at module top level, or in a plain callback registered there with a TypeScript function, such as a `describe` body or framework route handler. A runner inside code a fiber runs is EK1005; call the program or use `fork` instead. Tests in `.vibe` use `it.effect` from `@effect/vitest`; Promise-style tests stay in `.ts`.
+Call a runner at module top level, or in a plain callback registered there with a TypeScript function, such as a `describe` body or framework route handler. A runner inside code a fiber runs is EK1005; run the Effect with `try` or use `fork` instead. Tests in `.vibe` use `it.effect` from `@effect/vitest`; Promise-style tests stay in `.ts`.
 
-A function at the top level holds a program without running it:
+An effect function at the top level builds an Effect without running it:
 
 ```vibe
-export const migrate = () => {
-  Console.log("migrating")
+export const migrate = effect () => {
+  try Console.log("migrating")
 }
 ```
 
-Importing this module prints nothing. To execute it, call `migrate()` inside a running function, or pass `() => migrate()` to a runner. A program call at the top level is EK1001. The older form, a `const` with a declared Effect type that holds its initializer, still compiles but is being retired.
+Importing this module prints nothing. Calling `migrate()` builds an Effect; run it with `try migrate()` inside an effect function, or pass `migrate()` directly to a runner at module top level.
 
-An object-literal field holds a program the same way, as a function:
+An object-literal field can hold an effect function:
 
 ```vibe
 interface Journal { read(): number!! }
-const makeNoop = (): Journal => ({ read: () => 0 })
+const makeNoop = (): Journal => ({ read: effect () => 0 })
 ```
 
-Constructing the object runs nothing; calling `journal.read()` inside a running function runs the program. Write a `Layer.sync` service literal's members the same way, `{ read: () => work() }`. A field typed `number` runs `work()` during construction and stores its result.
+Constructing the object runs nothing; `journal.read()` returns an Effect, and `try journal.read()` runs it. Write a `Layer.sync` service literal's members the same way, `{ read: effect () => { return try work() } }`. A plain field stores the value its initializer returns, including an unrun Effect when the initializer calls an effect function.
 
-Running the same function's Effect again starts a fresh execution, including a fresh rest-parameter array. Assigning to a parameter, such as `++n` or `n += 1`, affects only that execution. Methods bind defaults and destructured parameters on each execution too. Program lambdas also bind their optional or rest parameters when they run. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns a program keeps the outer state it captured when called.
+Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
 
 ## Build and run a local project
 
@@ -43,16 +43,16 @@ bun run test
 
 `build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, then runs `vibelang --watch` beside `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
 
-The starter's `main.vibe` exports `main`, so `node dist/main.js` runs it with `NodeRuntime.runMain`, the application boundary. Its greeting and recovery messages quickly confirm that the service layer and typed failure both run.
+The starter's `main.vibe` exports an effect function named `main` and calls `NodeRuntime.runMain(main())` at module top level, the application boundary reached by `node dist/main.js`. Its greeting and recovery messages quickly confirm that the service layer and typed failure both run.
 
 ## Execute synchronous computations
 
 ```vibe
-function subtotal() {
+effect subtotal() {
   return 7 * 8
 }
 
-const total = Effect.runSync(() => subtotal())
+const total = Effect.runSync(subtotal())
 // total: number, 56
 // Output: 56
 ```
@@ -62,30 +62,29 @@ const total = Effect.runSync(() => subtotal())
 ## Run promise-based computations
 
 ```vibe
-function preparedMessage() {
-  sleep("15 millis")
+effect preparedMessage() {
+  try sleep("15 millis")
   return "prepared"
 }
 
-const pending = Effect.runPromise(() => preparedMessage())
-// pending: Promise<string>
+const pending = Effect.runPromise(preparedMessage())
 // Output: prepared
 ```
 
-`Effect.runPromise` starts execution and returns a promise for the success value, which rejects when the program fails. A foreign TypeScript caller can await that promise; a VibeLang caller calls `preparedMessage()` directly inside its own program.
+`Effect.runPromise` starts execution and returns a promise for the success value, which rejects when the program fails. A foreign TypeScript caller can await that promise; a VibeLang caller runs `try preparedMessage()` inside its own effect function.
 
 ## Collect complete execution results
 
 ```vibe
 error BadInput
 
-function validate(input: string) {
+effect validate(input: string) {
   if (input === "") throw new BadInput()
   return input.length
 }
 
-const immediate = Effect.runSyncExit(() => validate(""))
-const eventual = Effect.runPromiseExit(() => preparedMessage())
+const immediate = Effect.runSyncExit(validate(""))
+const eventual = Effect.runPromiseExit(preparedMessage())
 // immediate: Exit<number, BadInput>
 // eventual: Promise<Exit<string, never>>
 // Output: Failure
@@ -96,33 +95,36 @@ An `Exit` is a success with a value or a failure with a `Cause`, which keeps exp
 ## Start and interrupt a fiber
 
 ```vibe
-function heartbeat() {
-  repeat(() => log("alive"), Schedule.spaced("200 millis"))
+effect heartbeat() {
+  try repeat(log("alive"), Schedule.spaced("200 millis"))
 }
 
-const running = Effect.runFork(() => Effect.provide(() => heartbeat(), Logger.layer([])))
+const running = Effect.runFork(Effect.provide(heartbeat(), Logger.layer([])))
 
-Effect.runPromise {
-  sleep("650 millis")
-  running.interrupt()
-}
+Effect.runPromise(effect {
+  try sleep("650 millis")
+  try Fiber.interrupt(running)
+})
 // Output: true
 ```
 
-The empty logger layer keeps this heartbeat quiet. `Effect.runFork` returns a running `Fiber` to join, observe, or interrupt; `Fiber.interrupt` waits for its cleanup. Here a second runner acts as an external owner; in application logic, use block-owned `fork heartbeat()` and let the enclosing block bound its lifetime.
+The empty logger layer keeps this heartbeat quiet. `Effect.runFork` returns a running `Fiber` to join, observe, or interrupt; `Fiber.interrupt` waits for its cleanup. Here a second runner acts as an external owner; in application logic, use `fork heartbeat()` and let the current fiber bound its lifetime.
 
 ## Select an application boundary
 
 ```vibe
 // main.vibe
-export function main() {
-  Console.log("application started")
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
+export effect main() {
+  try Console.log("application started")
 }
-// node main.js runs main with NodeRuntime.runMain
+NodeRuntime.runMain(main())
+// node main.js loads the module and calls NodeRuntime.runMain
 // Output: application started
 ```
 
-Only a function declaration is an entry: `export const main = () => { … }` runs nothing when node starts its module, and draws `EK4843`, a warning whose quick fix writes `export function main() { … }`. When node starts a module that exports a `main` without parameters, the platform runner runs it, so shutdown follows platform conventions; without `@effect/platform-node` installed, the compiler uses the runtime's copy of that runner. When the file names its platform, `import "vibelang/platform/node"`, and `main` needs that platform's services, such as `FileSystem`, the runner gets the platform's bundle too: `Effect.provide(main(), NodeServices.layer)`. With `import "vibelang/platform/browser"` the runner is `BrowserRuntime.runMain`, but a page never says which module it started, so a browser runs no `main` by itself: the page's script calls `BrowserRuntime.runMain(Effect.provide(main(), layer))` at its top level, as [Starting main in a browser](/platform/105-introduction#starting-main-in-a-browser) shows. To pass options or layers, call a runner at the top level yourself; the module then runs only that. A runner is the function the call resolves to, such as `Effect.runPromise`, `NodeRuntime.runMain` or one that `Runtime.makeRunMain` made; a method of your own named `runSync` is not one, and `main` still runs. Supply the application layer once around `main`: a runner needs all application requirements satisfied. For several framework entry points sharing services, use [ManagedRuntime](/036-runtime).
+A module calls its runner explicitly. `main()` returns an Effect whether `main` is a function declaration or an effect arrow. `NodeRuntime.runMain(main())` follows Node's shutdown conventions. Import `NodeRuntime` from `@effect/platform-node/NodeRuntime`; the runner can receive a provided Effect, `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`, with `NodeServices` imported from `@effect/platform-node/NodeServices`. A browser entry calls `BrowserRuntime.runMain(Effect.provide(main(), layer))` at its top level, as [Starting main in a browser](/platform/105-introduction#starting-main-in-a-browser) shows. Top-level `await runPromise(main())` is another explicit boundary. Supply the application layer once around `main`: a runner needs all application requirements satisfied. For several framework entry points sharing services, use [ManagedRuntime](/036-runtime).
 
 | Runner | Result |
 | --- | --- |
@@ -136,7 +138,7 @@ The three contract channels do not say whether work runs synchronously. Prefer a
 
 ## Coming from Effect
 
-In `.vibe` files, pass the runner a program, `() => main()`; passing `main()` itself still compiles but is being retired. A TypeScript caller gets a cold Effect from an exported VibeLang function and passes `main()` to the runner the same way.
+In `.vibe` and TypeScript files, pass the runner an Effect directly, as in `runPromise(main())`. Calling an exported effect function returns that Effect without running it.
 
 ---
 

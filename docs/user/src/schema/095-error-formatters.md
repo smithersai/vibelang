@@ -1,23 +1,22 @@
 # Error Formatters
 
-Schema issue formatters work as in Effect. They render failures as readable strings for diagnostics or as structured issue paths for forms and other validation clients; [value formatters](103-formatter.md) render successful values. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schema issue formatters work as in Effect. They render failures as readable strings for diagnostics or as structured issue paths for forms and other validation clients; [value formatters](103-formatter.md) render successful values. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Rendering schema issues as readable strings
 
 ```vibe
-// run: Console.log(readableFailure({})); Console.log(readableFailure({ destination: "north", packages: 2 }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readableFailure({})); try Console.log(try readableFailure({ destination: "north", packages: 2 })) })
 const Dispatch = Schema.Struct({
   destination: Schema.String,
   packages: Schema.Int
 })
 
-function readableFailure(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input)
+effect readableFailure(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input)
     return "Accepted"
-  } catch (error) {
-    return SchemaIssue.makeFormatterDefault()(error.issue)
-  }
+  } catch (error) => SchemaIssue.makeFormatterDefault()(error.issue)
 }
 ```
 
@@ -32,14 +31,13 @@ Accepted
 ## Reporting several issues
 
 ```vibe
-// run: Console.log(allFailures({}))
-function allFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try allFailures({})) })
+effect allFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 // {} reports missing destination and packages fields.
 ```
@@ -56,14 +54,13 @@ Formatting shows only the issues parsing collected; set `errors: "all"` on the p
 ## Formatting Standard Schema validation errors
 
 ```vibe
-// run: Console.log(JSON.stringify(formFailures({})))
-function formFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try formFailures({}))) })
+effect formFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
-  } catch (error) {
-    return SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
-  }
+  } catch (error) => SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 }
 // An issue has a message and a path such as ["destination"].
 ```
@@ -77,20 +74,19 @@ The Standard Schema formatter returns a failure object with an `issues` array. E
 ## Customizing leaf messages
 
 ```vibe
-// run: Console.log(JSON.stringify(localizedFailures({}))); Console.log(JSON.stringify(localizedFailures({ destination: 2, packages: 1 })))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try localizedFailures({}))); try Console.log(JSON.stringify(try localizedFailures({ destination: 2, packages: 1 }))) })
 const formFormatter = SchemaIssue.makeFormatterStandardSchemaV1({
   leafHook: (issue) => issue._tag === "MissingKey"
     ? "Complete this field"
     : SchemaIssue.defaultLeafHook(issue)
 })
 
-function localizedFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+effect localizedFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
-  } catch (error) {
-    return formFormatter(error.issue).issues
-  }
+  } catch (error) => formFormatter(error.issue).issues
 }
 ```
 
@@ -104,7 +100,8 @@ function localizedFailures(input: unknown) {
 ## Connecting validation to form libraries
 
 ```vibe
-// run: Console.log(JSON.stringify(formSchema()["~standard"].validate({})))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try tryPromise(() => Promise.resolve(formSchema()["~standard"].validate({}))))) })
 const DispatchForm = Schema.toStandardSchemaV1(Dispatch, {
   parseOptions: { errors: "all" },
   leafHook: (issue) => issue._tag === "MissingKey"

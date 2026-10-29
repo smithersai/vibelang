@@ -7,19 +7,20 @@ Independent checks often must report every problem in one response. Validation c
 ## Validating every computation
 
 ```vibe
-// run: Console.log(validateHandle(" RIVER ")); Console.log(JSON.stringify(Effect.flip(() => validateTeam()).map((error) => error.input)))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try validateHandle(" RIVER ")); try Console.log(JSON.stringify((try flip(validateTeam())).map((error) => error.input)))
 error InvalidHandle {
   input: string
 }
 
-function validateHandle(input: string) {
+effect validateHandle(input: string) {
   const handle = input.trim()
   if (handle.length < 3) throw new InvalidHandle({ input })
   return handle.toLowerCase()
 }
 
-function validateTeam() {
-  return Effect.validate(
+effect validateTeam() {
+  return try validate(
     ["Jo", "RIVER", ""],
     (input) => validateHandle(input),
     { concurrency: 2 }
@@ -33,12 +34,13 @@ river
 ["Jo",""]
 ```
 
-`Effect.validate` runs each input's computation even when others fail with typed errors. If any fail, the error channel holds a nonempty array of every domain error and the successes are discarded; otherwise it returns an array of successes.
+`validate` runs each input's Effect even when others fail with typed errors. If any fail, the error channel holds a nonempty array of every domain error and the successes are discarded; otherwise it returns an array of successes.
 
 ```vibe
-// run: checkTeamOnly(); Console.log("All handles valid")
-function checkTeamOnly() {
-  Effect.validate(["RIVER", "SKY"], (input) => validateHandle(input), {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try checkTeamOnly(); try Console.log("All handles valid")
+effect checkTeamOnly() {
+  try validate(["RIVER", "SKY"], (input) => validateHandle(input), {
     discard: true,
     concurrency: 2
   })
@@ -54,9 +56,10 @@ All handles valid
 ## Partitioning successes and failures
 
 ```vibe
-// run: Console.log(JSON.stringify(inspectTeam()))
-function inspectTeam() {
-  const [handles, errors] = Effect.partition(
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try inspectTeam()))
+effect inspectTeam() {
+  const [handles, errors] = try partition(
     ["Jo", "RIVER", ""],
     (input) => validateHandle(input),
     { concurrency: 2 }
@@ -74,4 +77,4 @@ The tuple order is `[successes, failures]`. `partition` keeps both arrays and re
 
 ## Coming from Effect
 
-Pass `validate` or `partition` an ordinary VibeLang callback; a plain array `map` can't run one that needs services, pauses, or has a typed failure.
+Pass `validate` or `partition` a callback returning an Effect. A plain arrow can return an existing Effect; an effect arrow can run Effects that need services, pause, or have typed failures. A plain array `map` only collects the returned Effects; it does not run them.

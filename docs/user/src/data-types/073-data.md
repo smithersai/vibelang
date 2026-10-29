@@ -5,7 +5,8 @@ A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` typ
 ## Declaring tagged unions with data
 
 ```vibe
-// run: Console.log(describe(Delivery.Waiting())); Console.log(describe(sent)); Console.log(describe(Delivery.Rejected({ reason: "address missing" }))); Console.log(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })))
+// pending: VIP-5, VIP-7, VIP-14, VIP-16
+// run: try Console.log(describe(Delivery.Waiting())); try Console.log(describe(sent)); try Console.log(describe(Delivery.Rejected({ reason: "address missing" }))); try Console.log(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })))
 data Delivery {
   Waiting
   Sent { tracking: string }
@@ -16,9 +17,9 @@ const sent = Delivery.Sent({ tracking: "parcel-8" })
 
 function describe(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Waiting: "Waiting for dispatch";
-    when Delivery.Sent { let tracking }: `Tracking: ${tracking}`;
-    when Delivery.Rejected { let reason }: `Rejected: ${reason}`;
+    when { _tag: "Waiting" }: "Waiting for dispatch";
+    when { _tag: "Sent", let tracking }: `Tracking: ${tracking}`;
+    when { _tag: "Rejected", let reason }: `Rejected: ${reason}`;
   }
 }
 ```
@@ -32,12 +33,15 @@ true
 
 A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line or `;` separates variants and fields; a comma is EK1013. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
 
-`when Delivery.Sent { let tracking }` tests the variant and binds the fields its braces list, and `delivery is Delivery.Sent` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error, `This match does not handle every case of Delivery: Delivery.Rejected is left.` (EK4701). See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md#data-variants).
+`when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (EK4701). See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md#data-variants).
+
+Support for the new object patterns arrives with the compiler's VIP implementation.
 
 ## Generic data types
 
 ```vibe
-// run: Console.log(JSON.stringify([loaded, failed, idle])); Console.log(count(loaded), count(idle))
+// pending: VIP-5, VIP-7, VIP-14, VIP-16, VIP-28
+// run: try Console.log(JSON.stringify([loaded, failed, idle])); try Console.log(count(loaded), count(idle))
 data LoadState<A, E> {
   Idle
   Loaded { value: A }
@@ -50,7 +54,7 @@ const idle = LoadState.Idle()
 
 function count(state: LoadState<ReadonlyArray<string>, string>) {
   return match (state) {
-    when LoadState.Loaded { let value }: value.length;
+    when { _tag: "Loaded", let value }: value.length;
     default: 0;
   }
 }
@@ -97,14 +101,15 @@ const LoadState = Data.taggedEnum<LoadStateDefinition>()
 ## Creating values with structural equality
 
 ```vibe
-// run: Console.log(Equal.equals(first, second), Equal.equals(["inbox", 5] as const, ["inbox", 5] as const), Equal.equals([2, 4, 6], [2, 4, 6]), Equal.equals(makeRoute("inbox"), makeRoute("inbox")))
+// pending: VIP-5, VIP-14
+// run: try Console.log(Equal.equals(first, second), Equal.equals(["inbox", 5] as const, ["inbox", 5] as const), Equal.equals([2, 4, 6], [2, 4, 6]), Equal.equals(makeRoute("inbox"), makeRoute("inbox")))
 const first = { route: "inbox", filters: { unread: true } }
 const second = { route: "inbox", filters: { unread: true } }
 Equal.equals(first, second) // true
 Equal.equals(["inbox", 5] as const, ["inbox", 5] as const) // true
 Equal.equals([2, 4, 6], [2, 4, 6]) // true
 
-function makeRoute(name: string): infer _ {
+function makeRoute(name: string) {
   return { _tag: "Route" as const, name }
 }
 Equal.equals(makeRoute("inbox"), makeRoute("inbox")) // true
@@ -119,7 +124,8 @@ In Effect 4, plain records, tuples, arrays, maps, and sets already compare struc
 ## Building ordinary and tagged classes
 
 ```vibe
-// run: Console.log(label.upper, Equal.equals(label, new Label({ text: "pending" })), new Archived({ documentId: "doc-3" })._tag)
+// pending: VIP-5, VIP-14
+// run: try Console.log(label.upper, Equal.equals(label, new Label({ text: "pending" })), new Archived({ documentId: "doc-3" })._tag)
 class Label extends Data.Class<{ text: string }> {
   get upper() { return this.text.toUpperCase() }
 }
@@ -138,14 +144,15 @@ new Archived({ documentId: "doc-3" })._tag // "Archived"
 PENDING true Archived
 ```
 
-`Class` supplies a constructor taking a field object, plus equality and hashing; `TaggedClass` adds a fixed `_tag` for narrowing union members. These concrete data classes are not the abstract classes that declare services.
+`Class` supplies a constructor taking a field object, plus equality and hashing; `TaggedClass` adds a fixed `_tag` for narrowing union members. These concrete data classes are separate from services declared with `service`.
 
 ## Writing a tagged union out with Data.TaggedEnum
 
 Effect's long form works in a `.vibe` file too, with the same `$is` and `$match`:
 
 ```vibe
-// run: Console.log(isSent(sent)); Console.log(describe(waiting)); Console.log(describe(sent)); Console.log(describe(rejected))
+// pending: VIP-5, VIP-14
+// run: try Console.log(isSent(sent)); try Console.log(describe(waiting)); try Console.log(describe(sent)); try Console.log(describe(rejected))
 type Delivery = Data.TaggedEnum<{
   Waiting: {}
   Sent: { tracking: string }
@@ -174,12 +181,13 @@ Tracking: parcel-8
 Rejected: address missing
 ```
 
-`TaggedEnum` describes the union as a map from tags to payloads. `taggedEnum` creates constructors that insert `_tag`, a `$is` guard factory, and a `$match` helper requiring a case per variant. Match callbacks compute values synchronously; for service work, use `match`, whose arms can call Effect functions.
+`TaggedEnum` describes the union as a map from tags to payloads. `taggedEnum` creates constructors that insert `_tag`, a `$is` guard factory, and a `$match` helper requiring a case per variant. Match callbacks compute values synchronously; for service work, use `match` inside an effect function, whose arms can run Effects with `try`.
 
 ## Writing generic union cases out
 
 ```vibe
-// run: Console.log(JSON.stringify([loaded, failed, idle]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([loaded, failed, idle]))
 type LoadState<A, E> = Data.TaggedEnum<{
   Idle: {}
   Ready: { value: A }
@@ -216,7 +224,8 @@ const idle = LoadState.Idle()
 ## Defining ordinary and tagged errors
 
 ```vibe
-// run: Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); Console.log(JSON.stringify([documentOrDraft("doc-3"), documentOrDraft("")])); try { requireDocument("") } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
+// run: try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); try Console.log(JSON.stringify([try documentOrDraft("doc-3"), try documentOrDraft("")])); try Console.log(requireDocument("") catch (error) => error._tag)
 class InvalidDocument extends Data.Error<{
   message: string
   line: number
@@ -226,17 +235,15 @@ error DocumentMissing {
   id: string
 }
 
-function requireDocument(id: string) {
+effect requireDocument(id: string) {
   if (id === "") throw new DocumentMissing({ id })
   return { id }
 }
 // { id: string }!DocumentMissing!
 
-function documentOrDraft(id: string) {
-  try {
-    return requireDocument(id)
-  } catch (error) {
-    return { id: "draft" }
+effect documentOrDraft(id: string) {
+  return requireDocument(id) catch (error) => match (error) {
+    when DocumentMissing: ({ id: "draft" });
   }
 }
 ```
@@ -247,18 +254,22 @@ function documentOrDraft(id: string) {
 DocumentMissing
 ```
 
-`Data.Error` creates a native error with extra fields. The global `TaggedError` is Effect's `Data.TaggedError`, which fills in `_tag`; `throw` raises it as an expected failure. Use `Schema.TaggedError` when the error needs a schema for serialization.
+`Data.Error` creates a native error with extra fields. An `error` declaration creates Effect's `Data.TaggedError` class, which fills in `_tag`; `throw` inside an effect function raises it as an expected failure. Use `Schema.TaggedError` when the error needs a schema for serialization.
 
 ## Preserving native error causes
 
 ```vibe
-// run: Console.log(JSON.stringify(decodeDocument("{\"id\":3}"))); try { decodeDocument("{") } catch (error) { Console.log(error._tag, error.cause instanceof SyntaxError) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(JSON.stringify(try decodeDocument("{\"id\":3}"))); try Console.log(decodeDocument("{") catch (error) => `${error._tag} ${error.cause instanceof SyntaxError}`)
 error DocumentDecodeError {
   cause: unknown
 }
 
-function decodeDocument(text: string) {
-  return JSON.parse(text) catch (cause) => throw new DocumentDecodeError({ cause })
+effect decodeDocument(text: string) {
+  return try Effect.try({
+    try: () => JSON.parse(text),
+    catch: (cause) => new DocumentDecodeError({ cause })
+  })
 }
 // any!DocumentDecodeError!
 ```

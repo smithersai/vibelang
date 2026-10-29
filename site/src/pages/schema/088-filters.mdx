@@ -5,7 +5,7 @@ description: "Filters work as in Effect: they add validation without changing th
 
 # Filters
 
-Filters work as in Effect: they add validation without changing the decoded type, and run after the underlying schema accepts the value. Use synchronous predicates for local checks and effectful getters for checks that need services. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Filters work as in Effect: they add validation without changing the decoded type, and run after the underlying schema accepts the value. Use synchronous predicates for local checks and effectful getters for checks that need services. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Defining predicate-based checks
 
@@ -14,8 +14,8 @@ const ShelfCode = Schema.String.check(
   Schema.makeFilter((code) => code.startsWith("S-") || "Use an S- shelf code")
 )
 
-function readShelf(input: unknown) {
-  return Schema.decodeUnknownEffect(ShelfCode)(input)
+effect readShelf(input: unknown) {
+  return try Schema.decodeUnknownEffect(ShelfCode)(input)
 }
 ```
 
@@ -67,8 +67,8 @@ const DispatchWindow = Schema.Struct({
   })
 )
 
-function validateWindow(input: unknown) {
-  return Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
+effect validateWindow(input: unknown) {
+  return try Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
 }
 ```
 

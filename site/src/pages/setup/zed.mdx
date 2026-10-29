@@ -43,4 +43,6 @@ Put these settings in the project's `.zed/settings.json`, so other TypeScript pr
 }
 ```
 
-The path must be absolute. The `language_servers` list selects only this server, so no other TypeScript server reports the same files. Open the project in Zed to use the server.
+The path must be absolute. The `language_servers` list selects only this server, so no other TypeScript server reports the same files. Open the project in Zed to use the server. Keep the project configuration in `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`. VibeLang selects the first file that exists in that order.
+
+Support for the new forms arrives with the compiler's VIP implementation.

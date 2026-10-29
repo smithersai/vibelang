@@ -5,7 +5,7 @@ description: "Transformations work as in Effect: a codec validates one represent
 
 # Schema Transformations
 
-Transformations work as in Effect: a codec validates one representation, converts it, and validates the result. `decodeTo` connects schemas; supply pure conversions or effectful getters as needed. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Transformations work as in Effect: a codec validates one representation, converts it, and validates the result. `decodeTo` connects schemas; supply pure conversions or effectful getters as needed. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Defining reversible infallible conversions
 
@@ -17,8 +17,8 @@ const Availability = Schema.Literals(["ready", "held"]).pipe(
   }))
 )
 
-function readAvailability(input: unknown) {
-  return Schema.decodeUnknownEffect(Availability)(input)
+effect readAvailability(input: unknown) {
+  return try Schema.decodeUnknownEffect(Availability)(input)
 }
 ```
 
@@ -39,8 +39,8 @@ const NumericAvailability = Schema.FiniteFromString.pipe(
   }))
 )
 
-function readNumericAvailability() {
-  return Schema.decodeEffect(NumericAvailability)("12") // true
+effect readNumericAvailability() {
+  return try Schema.decodeEffect(NumericAvailability)("12") // true
 }
 ```
 
@@ -58,7 +58,7 @@ The middle functions above handle a number and a status string, though the compl
 ```vibe
 const DeliveryMode = Schema.String.pipe(
   Schema.decodeTo(Schema.Literals(["road", "rail"]), {
-    decode: SchemaGetter.transformEffect<"road" | "rail", string>((text) => {
+    decode: SchemaGetter.transformEffect<"road" | "rail", string>(effect (text) => {
       const mode = text.trim().toLowerCase()
       if (mode === "road" || mode === "rail") return mode
       throw new SchemaIssue.InvalidValue({ message: "Choose road or rail" })
@@ -73,7 +73,7 @@ rail
 Choose road or rail
 ```
 
-`transformEffect` receives the converted input and active parse options. Its callback returns a value directly and throws a `SchemaIssue.Issue` for an expected conversion failure, which the outer Schema parser wraps in `SchemaError`. Translate a service's domain error to an issue before it escapes the getter.
+`transformEffect` receives the converted input and active parse options. Its `effect` callback returns an Effect that produces the converted value and fails with a `SchemaIssue.Issue` for an expected conversion failure, which the outer Schema parser wraps in `SchemaError`. Translate a service's domain error to an issue before it escapes the getter.
 
 ## Running asynchronous conversions with dependencies
 
@@ -88,11 +88,12 @@ service Routes {
 
 const RouteCode = Schema.String.pipe(
   Schema.decodeTo(Schema.NonEmptyString, {
-    decode: SchemaGetter.transformEffect((code) => {
-      try {
-        Routes.check(code)
+    decode: SchemaGetter.transformEffect(effect (code) => {
+      const routes = try Routes
+      return effect {
+        try routes.check(code)
         return code
-      } catch (error) {
+      } catch effect (_error) => {
         throw new SchemaIssue.InvalidValue({ message: "Route is unavailable" })
       }
     }),
@@ -100,17 +101,17 @@ const RouteCode = Schema.String.pipe(
   })
 )
 
-function readRoute(input: unknown) {
-  return Schema.decodeUnknownEffect(RouteCode)(input)
+effect readRoute(input: unknown) {
+  return try Schema.decodeUnknownEffect(RouteCode)(input)
 }
 // string!Schema.SchemaError!Routes
 
 const TestRoutes = Layer.succeed(Routes, {
-  check(_code) {}
+  effect check(_code) {}
 })
 
-function previewRoute() {
-  provide TestRoutes { return readRoute("coastal") }
+effect previewRoute() {
+  provide TestRoutes { return try readRoute("coastal") }
 }
 ```
 
@@ -131,8 +132,8 @@ const Initial = Schema.NonEmptyString.pipe(
   })
 )
 
-function readInitial(input: unknown) {
-  return Schema.decodeUnknownEffect(Initial)(input)
+effect readInitial(input: unknown) {
+  return try Schema.decodeUnknownEffect(Initial)(input)
 }
 ```
 
@@ -156,16 +157,16 @@ const SemicolonNumbers = Schema.String.pipe(
 
 const DeferredLabel = Schema.String.pipe(
   Schema.decode({
-    decode: SchemaGetter.checkEffect((label) => {
-      sleep("5 millis")
+    decode: SchemaGetter.checkEffect(effect (label) => {
+      try sleep("5 millis")
       return label.length > 2 || "Label is too short"
     }),
     encode: SchemaGetter.passthrough()
   })
 )
 
-function readNumbers() {
-  return Schema.decodeEffect(SemicolonNumbers)("2;5;8")
+effect readNumbers() {
+  return try Schema.decodeEffect(SemicolonNumbers)("2;5;8")
 }
 ```
 
@@ -190,12 +191,12 @@ const LowerLabel = Schema.String.pipe(
 )
 const JsonLabel = Schema.fromJsonString(Schema.Struct({ label: Schema.String }))
 
-function decodeTextFormats() {
-  const trimmed = Schema.decodeEffect(Schema.Trim)("  crate  ")
-  const lower = Schema.decodeEffect(LowerLabel)("CRATE")
-  const data = Schema.decodeEffect(JsonLabel)('{"label":"crate"}')
-  const base64 = Schema.decodeEffect(Schema.StringFromBase64)("Y3JhdGU=")
-  const hex = Schema.decodeEffect(Schema.StringFromHex)("6372617465")
+effect decodeTextFormats() {
+  const trimmed = try Schema.decodeEffect(Schema.Trim)("  crate  ")
+  const lower = try Schema.decodeEffect(LowerLabel)("CRATE")
+  const data = try Schema.decodeEffect(JsonLabel)('{"label":"crate"}')
+  const base64 = try Schema.decodeEffect(Schema.StringFromBase64)("Y3JhdGU=")
+  const hex = try Schema.decodeEffect(Schema.StringFromHex)("6372617465")
   return { trimmed, lower, data, base64, hex }
 }
 ```
@@ -218,8 +219,8 @@ const Manifest = Schema.Struct({
   price: Schema.BigDecimalFromString
 })
 
-function readManifest(input: unknown) {
-  return Schema.decodeUnknownEffect(Manifest)(input)
+effect readManifest(input: unknown) {
+  return try Schema.decodeUnknownEffect(Manifest)(input)
 }
 ```
 
@@ -232,7 +233,7 @@ SchemaError
 
 ## Coming from Effect
 
-Inside `SchemaGetter.transformEffect`, write ordinary statements and `throw` schema issues; VibeLang turns the callback into the Effect the getter expects, with its directional service requirements.
+Pass an `effect` function to `SchemaGetter.transformEffect`. Use `try` to run service methods, and throw a schema issue for an expected conversion failure. The resulting codec carries the service requirement for that direction.
 
 ---
 

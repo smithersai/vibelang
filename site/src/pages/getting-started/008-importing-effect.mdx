@@ -18,9 +18,9 @@ The core package supplies Effect's data types, schedules, concurrency tools, and
 ## Module and namespace imports
 
 ```vibe
-function pauseBeforeRetry() {
-  const started = Clock.currentTimeMillis()
-  sleep(Duration.millis(25))
+effect pauseBeforeRetry() {
+  const started = try Clock.currentTimeMillis
+  try sleep(Duration.millis(25))
   return started
 }
 
@@ -28,7 +28,7 @@ const backoff = Schedule.exponential("50 millis")
 // Output: true
 ```
 
-`Effect`, the `Effect<A, E, R>` type, `Schema`, `Layer`, `Scope`, `TaggedError`, and `Control` need no import; in a contract, `Scope` means Effect's `Scope.Scope`, as in `File!IOError!Scope`. The prelude also includes `pipe`, `wire`, `fork`, `handle`, `resume`, `resumeWith`, and `abandon`; the boundary hatches `sync`, `try`, and `callback`; the runners `runPromise`, `runFork`, `runSync`, and `runCallback`; and the Effect module's most used functions without the `Effect.` prefix: `sleep`, `log`, `logDebug`, `logInfo`, `logWarning`, `logError`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, and `die`. Other Effect functions keep the prefix, as in `Effect.result(work())`. `flow` and `identity` need no import either.
+`Effect`, the `Effect<A, E, R>` type, and every root module of `effect` need no import. Every export of the `Effect` module is global unless its name clashes with a keyword or JavaScript global. This includes `sleep`, `log`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, `die`, `sync`, `tryPromise`, `callback`, `result`, and the runners. Names that clash stay qualified, such as `Effect.try`, `Effect.catch`, `Effect.match`, and `Effect.provide`. `pipe`, `flow`, and `identity` need no import either. `fork` and `join` use their language forms.
 
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 
@@ -43,7 +43,7 @@ function firstTwo(values: ReadonlyArray<number>) {
 
 `vibelang --fix` writes this form where code imports one of these modules under its own name (EK4842).
 
-Shared web-standard globals also keep their names: `Request`, `Response`, `Headers`, `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `AbortController`, `AbortSignal`, `Blob`, `FormData`, `structuredClone`, `fetch`, and `Event`. So `new Request("https://x.test")` is the web Request; write `import { Request } from "effect"` for Effect's module. DOM-only globals do not shadow Effect's modules: with the DOM in your `lib`, `Option` is still Effect's. An import or local declaration named like a module shadows it, as `import * as Duration from "effect/Duration"` would. Value constructors such as `Duration.millis` build data; `Clock.currentTimeMillis()` and `Effect.sleep(...)` run computations. Effect's own packages are trusted: their data functions need no foreign-call boundary, and their exceptions are defects.
+JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. Platform-specific names use Effect's module: `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. An import or local declaration named like a module shadows it, as `import * as Duration from "effect/Duration"` would. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
 
 ## Modules of subpath packages
 
@@ -73,45 +73,48 @@ Four rules settle a name that two globals share, in order: a JavaScript or share
 
 ## A module's own export
 
-Many of Effect's modules export something of their own name: the module `Option` exports the type `Option.Option`, and the module `FileSystem` the service `FileSystem.FileSystem`. In a `.vibe` file the module's name also stands for that export, wherever the module has no meaning of its own. This differs from TypeScript on purpose:
+Many of Effect's modules export something of their own name: the module `Option` exports the type `Option.Option`, and the module `FileSystem` the service `FileSystem.FileSystem`. Name the export explicitly when writing a type or passing a service key:
 
 | You write | It means |
 | --- | --- |
-| `Option<number>`, a type | `Option.Option<number>` |
-| `FileSystem.readFileString(path)` in a function body | `FileSystem.FileSystem.readFileString(path)`, a service call |
-| `FileSystem()` in a function body | `FileSystem.FileSystem()`, the service's implementation |
-| `Path().sep` in a function body | `Path.Path().sep`, a value of the implementation; `Path.sep` is EK4503, as on the key |
-| `Terminal.columns()` in a function body | runs the service's `columns`, which Effect declares as a program |
-| `FileSystem.of(implementation)`, a member the module does not export | `FileSystem.FileSystem.of(implementation)` |
+| `Option.Option<number>` | Effect's optional number type |
+| `const fs = try FileSystem` | Reads the provided file-system implementation |
+| `try fs.readFileString(path)` | Runs a method of that implementation |
+| `(try Path).sep` | Reads the provided path implementation's separator |
+| `const terminal = try Terminal; try terminal.columns` | Runs the implementation's `columns` Effect |
+| `FileSystem.FileSystem.of(implementation)` | Checks a file-system implementation's shape |
 
-The module's own exports win: `Option.some`, `FileSystem.layerNoop`, and `Path.layer` are the module's, and `Option.Option<number>` still works. A service key as a value stays explicit: `Layer.succeed(FileSystem.FileSystem, implementation)`.
+The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoop`, and `Path.layer`. A service key as an argument stays explicit: `Layer.succeed(FileSystem.FileSystem, implementation)`.
 
-Assigning a module stores its namespace: `const fs = FileSystem`. If you then call `fs.writeFileString(path, text)`, TS2339 explains how to read the implementation. In an Effect function, write `const fs = FileSystem()`, or call `FileSystem.writeFileString(path, text)` directly. The same rule applies to `Experimental.Process` and the other modules that name a service. The hint keeps TS2339's code and location; it does not make a namespace value into a service implementation.
+Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
 
 ```vibe
-function readConfig(dir: string) {
-  return FileSystem.readFileString(Path.join(dir, "config.json"))
+effect readConfig(dir: string) {
+  const fs = try FileSystem
+  const path = try Path
+  return try fs.readFileString(path.join(dir, "config.json"))
 }
 
-function hasConfig(fs: FileSystem, dir: string) {
-  return fs.exists(Path.join(dir, "config.json"))
+effect hasConfig(fs: FileSystem.FileSystem, dir: string) {
+  const path = try Path
+  return try fs.exists(path.join(dir, "config.json"))
 }
 
-function firstOr(values: Chunk<number>, fallback: number): number {
-  const first: Option<number> = Chunk.head(values)
+function firstOr(values: Chunk.Chunk<number>, fallback: number): number {
+  const first: Option.Option<number> = Chunk.head(values)
   return Option.getOrElse(first, () => fallback)
 }
 // Output: read /srv/config.json
 // Output: 7
 ```
 
-The rule holds for every Effect module you reach by its name: through the prelude, as a module of a namespace the prelude supplies, or through an import, such as `import { Prompt } from "effect/ai"`, after which the type `Prompt` is `Prompt.Prompt`. A service call reads the service's member; these modules name a service:
+Read a service before calling its implementation methods. These modules name a service:
 
 
 `AddressResolver`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `Crypto`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `K8sHttpClient`, `KeyValueStore`, `LanguageModel`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `Sharding`, `ShardingConfig`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
 
 
-In a type, a module's name is Effect's, so these DOM types lose their bare names:
+These platform-specific names refer to Effect modules:
 
 
 `Cache`, `Console`, `Crypto`, `FileSystem`, `Scheduler`, `Transferable`, `Worker`.
@@ -126,13 +129,13 @@ To name one of those DOM types, alias it in a `.ts` file, as in `export type Dom
 ```vibe
 function expirationWindow() {
   const short = Duration.seconds(15)
-  return short.toMillis()
+  return Duration.toMillis(short)
 }
-// number!!
+// number
 // Output: 15000
 ```
 
-Effect exposes operations as module functions: call them with their data argument, or use their curried form in `pipe` where one exists. `pipe(x, f)` passes `x` as the value it is, so a function literal first stays a function: call the operation with the program instead, as in `Effect.timeout(() => work(), "1 second")`. `pipe` suits data-last functions with no data-first form, such as `Match.when`.
+Effect exposes operations as module functions: call them with their data argument, or use their curried form in `pipe` where one exists. `pipe(x, f)` passes `x` as the value it is, so a function literal first stays a function: call the operation with the Effect instead, as in `timeout(work(), "1 second")`. `pipe` suits data-last functions with no data-first form, such as `Match.when`.
 
 ## Bundling unused code
 
@@ -143,20 +146,20 @@ VibeLang's global names are source conveniences: they refer to Effect and langua
 ## Reusable operators
 
 ```vibe
-function withinSecond<A, E, R>(program: () => A!E!R) {
-  return timeout(program, "1 second")
+effect withinSecond<A, E, R>(program: A!E!R) {
+  return try timeout(program, "1 second")
 }
 
-function example() {
-  return withinSecond {
-    sleep("10 millis")
+effect example() {
+  return try withinSecond(effect {
+    try sleep("10 millis")
     return "ready"
-  }
+  })
 }
 // Output: ready
 ```
 
-A helper can take a program and apply library operators to it. Its contract keeps the program's errors and services and here adds `TimeoutError`. This extends your application without changing Effect's prototypes.
+A helper can take an Effect value and apply library operators to it. Its contract keeps the program's errors and services and here adds `TimeoutError`. This extends your application without changing Effect's prototypes.
 
 ## Coming from Effect
 

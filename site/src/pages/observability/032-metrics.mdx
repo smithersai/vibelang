@@ -5,7 +5,7 @@ description: "Effect's Metric module counts events, records current values, and 
 
 # Metrics in VibeLang
 
-Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs run when called.
+Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs return Effects that run with `try`.
 
 ## Recording counters and gauges
 
@@ -14,17 +14,22 @@ const requests = Metric.counter("guide_requests", { incremental: true })
 const queued = Metric.gauge("guide_queued")
 const bytes = Metric.counter("guide_bytes", { bigint: true })
 
-function recordBatch() {
-  Metric.update(requests, 1)
-  Metric.update(requests, 3)
-  Metric.update(queued, 12)
-  Metric.update(queued, 5)
-  Metric.update(bytes, 4096n)
+effect recordBatch() {
+  try Metric.update(requests, 1)
+  try Metric.update(requests, 3)
+  try Metric.update(queued, 12)
+  try Metric.update(queued, 5)
+  try Metric.update(bytes, 4096n)
   return {
-    requests: Metric.value(requests).count,
-    queued: Metric.value(queued).value
+    requests: (try Metric.value(requests)).count,
+    queued: (try Metric.value(queued)).value
   }
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```text
@@ -41,8 +46,8 @@ const completions = Metric.withConstantInput(
   1
 )
 
-function instrumentedValue() {
-  return Effect.trackSuccesses(() => "processed", completions)
+effect instrumentedValue() {
+  return try trackSuccesses(effect { return "processed" }, completions)
 }
 ```
 
@@ -64,14 +69,14 @@ const recentSizes = Metric.summary("guide_recent_batch_size", {
   quantiles: [0.5, 0.9, 0.99]
 })
 
-function recordSizes() {
+effect recordSizes() {
   for (const size of [12, 36, 8, 91]) {
-    Metric.update(batchSizes, size)
-    Metric.update(recentSizes, size)
+    try Metric.update(batchSizes, size)
+    try Metric.update(recentSizes, size)
   }
   return {
-    histogram: Metric.value(batchSizes),
-    summary: Metric.value(recentSizes)
+    histogram: try Metric.value(batchSizes),
+    summary: try Metric.value(recentSizes)
   }
 }
 ```
@@ -90,9 +95,9 @@ const renderTime = Metric.timer("guide_render_duration", {
   boundaries: [5, 20, 50, 100, 500]
 })
 
-function render() {
-  return Effect.trackDuration(() => {
-    sleep("30 millis")
+effect render() {
+  return try trackDuration(effect {
+    try sleep("30 millis")
     return "rendered"
   }, renderTime)
 }
@@ -110,11 +115,11 @@ rendered
 ```vibe
 const outcomes = Metric.frequency("guide_validation_outcomes")
 
-function recordOutcomes() {
-  Metric.update(outcomes, "accepted")
-  Metric.update(outcomes, "rejected")
-  Metric.update(outcomes, "accepted")
-  return Metric.value(outcomes).occurrences
+effect recordOutcomes() {
+  try Metric.update(outcomes, "accepted")
+  try Metric.update(outcomes, "rejected")
+  try Metric.update(outcomes, "accepted")
+  return (try Metric.value(outcomes)).occurrences
 }
 ```
 
@@ -133,13 +138,13 @@ const apiRequests = Metric.withAttributes(
 )
 const failures = Metric.counter("guide_api_failures", { incremental: true })
 
-function attributed() {
+effect attributed() {
   provide Metric.CurrentMetricAttributes = { environment: "staging" } {
-    Metric.update(apiRequests, 1)
-    Metric.update(failures, 1)
+    try Metric.update(apiRequests, 1)
+    try Metric.update(failures, 1)
     return {
-      requests: Metric.value(apiRequests),
-      failures: Metric.value(failures)
+      requests: try Metric.value(apiRequests),
+      failures: try Metric.value(failures)
     }
   }
 }

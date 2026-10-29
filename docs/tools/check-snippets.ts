@@ -1,13 +1,13 @@
 // Run from the repository root: bun docs/tools/check-snippets.ts
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, join, posix, relative, resolve } from "node:path"
 import { createRequire } from "node:module"
 
 const repo = resolve(import.meta.dir, "../..")
 export type Diagnostic = { code: string; message: string; line?: number; column?: number }
-export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; gap?: string; output?: string; run?: string }
-export type Result = Block & { status: "ok" | "fragment" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
+export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; gap?: string; output?: string; run?: string; pending?: string[] }
+export type Result = Block & { status: "ok" | "fragment" | "pending" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
 export type Execution = { phase: "compile" | "run"; status: "passed" | "failed"; expectedStdout: string; stdout: string; stderr: string; exitCode: number; timedOut: boolean }
 
 export function extract(markdown: string, options: { hatchExamples?: boolean } = {}): Block[] {
@@ -55,13 +55,20 @@ export function extract(markdown: string, options: { hatchExamples?: boolean } =
       output = expected.join("\n")
     }
     const run = header.match(/\/\/ run:\s*([^\n]+)/)?.[1]
+    // A case the VIPs leave open names its topic in a pending-decision line.
+    const decisions = header.match(/\/\/ pending-decision:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean).map(topic => `decision:${topic}`)
+    const vips = header.match(/\/\/ pending:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean)
+    const pending = vips || decisions ? [...vips ?? [], ...decisions ?? []] : undefined
     if (run && output === undefined) throw new Error(`Block ${number} has a run marker without expected output`)
     blocks.push({ number, line: start + 1, endLine: i + 1, language, source: body.join("\n"), filename, output, run,
       types: header.match(/\/\/ types:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean),
       firstLine: body.find(l => l.trim() && !/^\s*\/\//.test(l)) ?? body[0] ?? "",
       expected: [...(header.match(/\/\/ expect-error:\s*([^\n]+)/)?.[1] ?? "").matchAll(/(?:EK|TS)\d+/g)].map(m => m[0]),
       comparison: lang === "ts" && role === "effect",
-      fragment: /\/\/ fragment\s*(?:$|\n)/.test(header),
+      // A block written in a form the compiler doesn't implement yet names the
+      // VIPs it waits for; it stays out of the program, as a fragment does.
+      fragment: /\/\/ fragment\s*(?:$|\n)/.test(header) || pending !== undefined,
+      pending,
       gap: header.match(/\/\/ compiler-gap:\s*([^\n]+)/)?.[1] })
   }
 
@@ -78,6 +85,22 @@ export function extract(markdown: string, options: { hatchExamples?: boolean } =
     for (const [, expression] of examples) add(
       'import { f } from "./hatch-input.ts"; error E; function hatchExample() { const x = 1; return ' + expression + ' }',
       expression)
+  }
+  // A block that imports a pending block's module can't compile or run without
+  // it, so it waits for the same VIPs.
+  const stem = (file: string) => file.replace(/\.(?:vibe|ts)$/, "")
+  const waiting = new Map(blocks.filter(b => b.pending && b.filename).map(b => [stem(b.filename!), b.pending!]))
+  for (let changed = waiting.size > 0; changed;) {
+    changed = false
+    for (const block of blocks.filter(b => !b.pending)) {
+      const from = posix.dirname(block.filename ?? "block")
+      const vips = [...block.source.matchAll(/(?:\bfrom\s+|\bimport\s*\(\s*)["']\.\/([\w./-]+)\.(?:js|vibe|ts)["']/g)]
+        .flatMap(m => waiting.get(posix.join(from, m[1])) ?? [])
+      if (!vips.length) continue
+      Object.assign(block, { pending: [...new Set(vips)], fragment: true })
+      if (block.filename) waiting.set(stem(block.filename), block.pending!)
+      changed = true
+    }
   }
   return blocks
 }
@@ -111,6 +134,7 @@ export function classify(block: Block, diagnostics: Diagnostic[]): Result {
   const codes = new Set(diagnostics.map(d => d.code))
   const absent = block.expected.filter(c => !codes.has(c))
   const unexpected = diagnostics.filter(d => !block.expected.includes(d.code))
+  if (block.pending) return { ...block, diagnostics, status: "pending", reason: `Waits for ${block.pending.join(", ")}` }
   if (block.fragment) return { ...block, diagnostics, status: "fragment", reason: "Explicit fragment" }
   if (block.gap) {
     if (!absent.length && !unexpected.some(d => !missing(d))) return { ...block, diagnostics, status: "fail", reason: "Stale compiler-gap marker; remove it" }
@@ -424,7 +448,7 @@ async function main() {
     return value
   }
   if (args.includes("--help")) {
-    console.log("bun docs/tools/check-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--json path] [--keep] [--run] [--timeout milliseconds]")
+    console.log("bun docs/tools/check-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--json path] [--pending-list path] [--keep] [--run] [--timeout milliseconds]")
     return
   }
   const selectedCompiler = option("--compiler", defaultCompiler())!
@@ -432,6 +456,7 @@ async function main() {
   const root = resolve(option("--root", join(repo, "docs/user"))!)
   const filter = option("--filter", "")!
   const json = option("--json")
+  const pendingList = option("--pending-list")
   const keep = args.includes("--keep")
   const run = args.includes("--run")
   const timeout = Number(option("--timeout", "10000"))
@@ -470,7 +495,7 @@ async function main() {
       // import their missing fixtures into otherwise independent run examples.
       const runnableBlocks = results.filter(block => block.status === "ok" && !block.expected.length)
       if (run) for (let i = 0; i < results.length; i++) {
-        if (results[i].output !== undefined) results[i] = await runBlock(join(dir, `run-${results[i].number}`), runnableBlocks, results[i], compiler, timeout)
+        if (results[i].output !== undefined && results[i].status !== "pending") results[i] = await runBlock(join(dir, `run-${results[i].number}`), runnableBlocks, results[i], compiler, timeout)
       }
       pages.push({ page: relative(repo, page), blocks: results })
       console.log(`\n${relative(repo, page)}\n| Block | Line | Status | Diagnostics | Execution |\n| --- | --- | --- | --- | --- |`)
@@ -487,15 +512,17 @@ async function main() {
         }
       }
     }
-    const totals = { pages: pages.length, blocks: 0, ok: 0, fragment: 0, "compiler-gap": 0, fail: 0 }
+    const totals = { pages: pages.length, blocks: 0, ok: 0, fragment: 0, pending: 0, "compiler-gap": 0, fail: 0 }
     for (const page of pages) for (const block of page.blocks) { totals.blocks++; totals[block.status]++ }
     const execution = { marked: 0, passed: 0, failed: 0 }
-    if (run) for (const page of pages) for (const block of page.blocks) if (block.output !== undefined) {
+    if (run) for (const page of pages) for (const block of page.blocks) if (block.output !== undefined && block.status !== "pending") {
       execution.marked++
       execution[block.execution?.status === "passed" ? "passed" : "failed"]++
     }
     console.log(`\nTotals: ${JSON.stringify(totals)}`)
     if (run) console.log(`Execution: ${JSON.stringify(execution)}`)
+    if (pendingList) writeFileSync(resolve(pendingList), pages.flatMap(({ page, blocks }) => blocks.filter(block => block.status === "pending")
+      .map(block => `${page}:${block.line}\t${block.pending!.join(", ")}\t${block.firstLine.trim()}`)).join("\n") + "\n")
     if (json) writeFileSync(resolve(json), JSON.stringify({ compiler, totals, ...(run ? { execution } : {}), pages }, null, 2) + "\n")
     if (totals.fail) process.exitCode = 1
   } finally {

@@ -5,20 +5,28 @@
 ## Managing groups of running fibers
 
 ```vibe
-// run: Console.log(JSON.stringify(runGroup()))
-function runGroup() {
-  using workers = FiberSet.make<number>()
-  const first = FiberSet.run(workers) {
-    sleep("30 millis")
-    return 1
-  }
-  const second = FiberSet.run(workers) {
-    sleep("50 millis")
-    return 2
-  }
-  Console.log("tracked workers", FiberSet.size(workers))
-  return [first.join(), second.join()]
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-17
+// run: try Console.log(try stringify(try runGroup()))
+effect runGroup() {
+  return try scoped(effect {
+    const workers = try FiberSet.make<number>()
+    const first = try FiberSet.run(workers, effect {
+      try sleep("30 millis")
+      return 1
+    })
+    const second = try FiberSet.run(workers, effect {
+      try sleep("50 millis")
+      return 2
+    })
+    try Console.log("tracked workers", try FiberSet.size(workers))
+    return [join first, join second]
+  })
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```output
@@ -26,23 +34,26 @@ tracked workers 2
 [1,2]
 ```
 
-`FiberSet.run` forks a program and registers its fiber; `FiberSet.add` registers an existing fiber; `size` counts the fibers tracked now. Join individual handles to collect results; tracking produces no ordered result list.
+`FiberSet.run` forks an Effect value and registers its fiber; `FiberSet.add` registers an existing fiber; `try FiberSet.size(workers)` counts the fibers tracked now. Join individual handles to collect results; tracking produces no ordered result list.
 
 ## Tracking fibers by key
 
 ```vibe
-// run: Console.log(replacePreview())
-function replacePreview() {
-  using previews = FiberMap.make<string, string>()
-  FiberMap.run(previews, "editor-1") {
-    sleep("1 second")
-    return "old preview"
-  }
-  const current = FiberMap.run(previews, "editor-1") {
-    sleep("20 millis")
-    return "new preview"
-  }
-  return current.join()
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
+// run: try Console.log(try replacePreview())
+effect replacePreview() {
+  return try scoped(effect {
+    const previews = try FiberMap.make<string, string>()
+    try FiberMap.run(previews, "editor-1", effect {
+      try sleep("1 second")
+      return "old preview"
+    })
+    const current = try FiberMap.run(previews, "editor-1", effect {
+      try sleep("20 millis")
+      return "new preview"
+    })
+    return join current
+  })
 }
 ```
 
@@ -55,13 +66,16 @@ Running a fiber under an existing key interrupts that key's previous fiber: late
 ## Removing completed work
 
 ```vibe
-// run: Console.log(waitForAllTracked())
-function waitForAllTracked() {
-  using workers = FiberSet.make<void>()
-  FiberSet.run(workers, () => sleep("10 millis"))
-  FiberSet.run(workers, () => sleep("20 millis"))
-  FiberSet.awaitEmpty(workers)
-  return FiberSet.size(workers) // 0
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try waitForAllTracked())
+effect waitForAllTracked() {
+  return try scoped(effect {
+    const workers = try FiberSet.make<void>()
+    try FiberSet.run(workers, sleep("10 millis"))
+    try FiberSet.run(workers, sleep("20 millis"))
+    try FiberSet.awaitEmpty(workers)
+    return try FiberSet.size(workers) // 0
+  })
 }
 ```
 
@@ -74,20 +88,18 @@ Sets and maps remove completed fibers automatically, so a long-lived owner doesn
 ## Interrupting tracked work on scope closure
 
 ```vibe
-// run: serveBriefly()
-function serveBriefly() {
-  {
-    using workers = FiberSet.make<void>()
-    FiberSet.run(workers) {
-      try {
-        sleep("1 minute")
-      } finally {
-        Console.log("tracked worker cleaned up")
-      }
-    }
-    sleep("20 millis")
-  }
-  Console.log("worker scope has closed")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try serveBriefly()
+effect serveBriefly() {
+  try scoped(effect {
+    const workers = try FiberSet.make<void>()
+    try FiberSet.run(workers, ensuring(
+      sleep("1 minute"),
+      Console.log("tracked worker cleaned up")
+    ))
+    try sleep("20 millis")
+  })
+  try Console.log("worker scope has closed")
 }
 ```
 
@@ -96,4 +108,4 @@ tracked worker cleaned up
 worker scope has closed
 ```
 
-`make` acquires a scope-owned collection. Here `using` ties that scope to the block, whose exit interrupts remaining work and waits for cleanup. Without `using`, the collection belongs to the caller's runtime scope and `Scope` stays in the function's requirements; use that form when a service layer owns the group.
+`make` acquires a scope-owned collection. Here `scoped(effect { ... })` ties that scope to the block, whose exit interrupts remaining work and waits for cleanup. Without `scoped`, the collection belongs to the caller's runtime scope and `Scope` stays in the function's requirements; use that form when a service layer owns the group.

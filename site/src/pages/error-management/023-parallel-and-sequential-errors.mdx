@@ -12,7 +12,7 @@ An operation can stop for several reasons: concurrent work can fail together, or
 
 ```vibe
 function failureKinds() {
-  const cause = Cause.fail("delivery rejected").combine(Cause.die(new Error("release invariant failed")))
+  const cause = Cause.combine(Cause.fail("delivery rejected"), Cause.die(new Error("release invariant failed")))
   return cause.reasons.map((reason) => reason._tag)
 }
 // ["Fail", "Die"]
@@ -27,21 +27,20 @@ A `Cause.Cause<E>` holds a readonly array of `Cause.Reason<E>`, each `Fail` with
 ## Combining concurrent or sequential reasons
 
 ```vibe
-function operationWithBrokenCleanup() {
-  try {
-    throw "delivery rejected"
-  } finally {
+effect operationWithBrokenCleanup() {
+  return try ensuring(
+    effect { throw "delivery rejected" },
     die(new Error("release invariant failed"))
-  }
+  )
 }
 
-function inspectDelivery() {
-  const exit = Effect.exit(() => operationWithBrokenCleanup())
-  if (exit.isFailure()) {
+effect inspectDelivery() {
+  const outcome = try exit(operationWithBrokenCleanup())
+  if (Exit.isFailure(outcome)) {
     return {
-      expected: exit.cause.hasFails(),
-      defective: exit.cause.hasDies(),
-      interrupted: exit.cause.hasInterrupts()
+      expected: Cause.hasFails(outcome.cause),
+      defective: Cause.hasDies(outcome.cause),
+      interrupted: Cause.hasInterrupts(outcome.cause)
     }
   }
   return { expected: false, defective: false, interrupted: false }
@@ -54,17 +53,17 @@ function inspectDelivery() {
 
 A cleanup failure is kept beside the original failure; when either is a defect, each expected failure becomes a defect of the same error. Concurrent combinators normally stop after a failure and interrupt siblings, but overlapping failures can still add several reasons. The flat representation keeps no causal tree and doesn't prove which task completed first.
 
-Ordinary `catch`, like `Effect.catch`, doesn't recover a cause containing a defect, whose typed failures are defects by then, and recovers a typed failure beside an interruption, dropping the interruption; `Effect.exit` or `Effect.catchCause` examines the whole outcome. `Cause.findError` and `Cause.findDefect` return a `Result` holding one matching value; inspect `reasons` when all values matter.
+A catch expression, like `Effect.catch`, doesn't recover a cause containing a defect, whose typed failures are defects by then, and recovers a typed failure beside an interruption, dropping the interruption; `exit` or `catchCause` examines the whole outcome. `Cause.findError` and `Cause.findDefect` return a `Result` holding one matching value; inspect `reasons` when all values matter.
 
-When every reason is an expected failure, ordinary catch receives the first and handles the whole cause: if both programs passed to `Effect.race` fail, catch receives one error, not an array. Use `Effect.catchCause` when recovery needs them all.
+When every reason is an expected failure, ordinary catch receives the first and handles the whole cause: if both Effects passed to `Effect.race` fail, catch receives one error, not an array. Use `catchCause` when recovery needs them all.
 
 ## Runtime causes and domain error collections
 
 ```vibe
 error InvalidPort { port: number }
 
-function validatePorts() {
-  return Effect.validate([8080, -1, 70000], (port) => {
+effect validatePorts() {
+  return try validate([8080, -1, 70000], effect (port) => {
     if (port < 1 || port > 65535) throw new InvalidPort({ port })
     return port
   })
@@ -76,11 +75,11 @@ function validatePorts() {
 [-1,70000]
 ```
 
-Validation produces one typed failure holding a collection of domain errors, not several runtime cause reasons. Use `Effect.partition` to keep successful values alongside the collected errors.
+Validation produces one typed failure holding a collection of domain errors, not several runtime cause reasons. Use `partition` to keep successful values alongside the collected errors.
 
 ## Coming from Effect
 
-Effect 4's flat cause applies unchanged. Use `finally` for cleanup: its failure joins the operation's original cause, as `inspectDelivery` shows. A timeout boundary currently drops failures from the interrupted source's cleanup; see [Timing Out](/error-management/019-timing-out).
+Effect 4's flat cause applies unchanged. Use `ensuring` for cleanup: its failure joins the operation's original cause, as `inspectDelivery` shows. A timeout boundary currently drops failures from the interrupted source's cleanup; see [Timing Out](/error-management/019-timing-out).
 
 ---
 

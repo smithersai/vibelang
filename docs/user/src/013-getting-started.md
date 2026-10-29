@@ -27,7 +27,7 @@ Hello, VibeLang!
 Recovered from EmptyName
 ```
 
-`src/greeting.vibe` defines a greeting function and an `EmptyName` tagged error. `src/main.vibe` declares the `Greeter` service, supplies its `Layer.succeed` layer, recovers a typed failure with `try`/`catch`, and exports `main`, which `node dist/main.js` runs with `NodeRuntime.runMain`. `src/greeting.test.vibe` tests success and recovery with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so tests need no prior build.
+`src/greeting.vibe` defines a greeting function and an `EmptyName` tagged error. `src/main.vibe` declares the `Greeter` service, supplies its `Layer.succeed` layer, recovers a typed failure with a `catch` expression, and calls `NodeRuntime.runMain(main())` at module top level when `node dist/main.js` loads it. `src/greeting.test.vibe` tests success and recovery with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so tests need no prior build.
 
 `npm run dev` (or `bun run dev`) compiles on changes and restarts Node when output changes; Ctrl+C stops both watchers. For diagnostics and hovers in VS Code or Cursor, install the extension that ships in `vibelang`, then open the project:
 
@@ -39,11 +39,11 @@ code --install-extension node_modules/vibelang/editor/vibelang.vsix
 
 ## Debug your first program
 
-For source-located caller traces during development, set `vibelang.tracing`
+For source-located caller traces during development, set `vibe.tracing`
 to `"all"` at the top level of `tsconfig.json`:
 
 ```json
-{ "vibelang": { "tracing": "all" } }
+{ "vibe": { "tracing": "all" } }
 ```
 
 Merge this into your existing config, then rebuild or restart `npm run dev`
@@ -55,10 +55,11 @@ for source maps, named spans and a debugging entry.
 ## Guides and reference material
 
 ```vibe
-// run: Console.log(Effect.provide(() => main(), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))])))
-function main() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])))
+effect main() {
   const label = "first program"
-  log(label)
+  try log(label)
   return label.length
 }
 // number!!
@@ -66,7 +67,7 @@ function main() {
 // Output: 13
 ```
 
-Read [The Effect Type](getting-started/003-the-effect-type.md) for this function's contract, [Creating Effects](getting-started/005-creating-effects.md) to add failures, and [Running Effects](getting-started/009-running-effects.md) to run it at an application boundary. Each guide explains a use case. The [Effect 4 API reference](https://effect.website/docs/v4/api) lists library signatures; in VibeLang, their program arguments become zero-argument functions.
+Read [The Effect Type](getting-started/003-the-effect-type.md) for this function's contract, [Creating Effects](getting-started/005-creating-effects.md) to add failures, and [Running Effects](getting-started/009-running-effects.md) to run it at an application boundary. Each guide explains a use case. The [Effect 4 API reference](https://effect.website/docs/v4/api) lists library signatures; in VibeLang, pass Effect values directly and run them with `try`.
 
 ## Documentation versions
 
@@ -90,7 +91,7 @@ Find a specific operation by each page's headings; in a Markdown reader, follow 
 
 ## Using documentation with language models
 
-Give the model the relevant VibeLang guide with the Effect API signature. State that every function is an Effect, that a call runs where it stands, and that a program passed to an operator is written as an arrow, as in `retry(() => fetchReport(), policy)`, while `fork fetchReport()` forks the call. Include your error and service declarations so generated code can preserve the contract.
+Give the model the relevant VibeLang guide with the Effect API signature. State that an `effect` function returns an unrun Effect, that `try` runs it, and that an operator takes the Effect value directly, as in `try retry(fetchReport(), policy)`, while `fork fetchReport()` starts it in a child fiber. Include your error and service declarations so generated code can preserve the contract.
 
 Check the result with compiler feedback and focused tests. Effect's TypeScript tooling applies to `.ts` integration code; the [Devtools](getting-started/012-devtools.md) page covers VibeLang's compiler, language server, linting, and debugging setup.
 

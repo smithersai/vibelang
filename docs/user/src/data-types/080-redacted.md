@@ -5,12 +5,13 @@
 ## Wrapping sensitive values
 
 ```vibe
-// run: Console.log(String(exampleKey)); reportConfiguration(); Console.log(JSON.stringify(exampleKey))
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(String(exampleKey)); try reportConfiguration(); try Console.log(JSON.stringify(exampleKey))
 const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
 
-function reportConfiguration() {
-  Console.log(JSON.stringify({ apiKey: exampleKey }))
+effect reportConfiguration() {
+  try Console.log(JSON.stringify({ apiKey: exampleKey }))
 }
 ```
 
@@ -25,15 +26,18 @@ function reportConfiguration() {
 ## Revealing values deliberately
 
 ```vibe
-// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => token === "example-token" }) { Console.log(authenticate(Redacted.make("example-token")), authenticate(Redacted.make("wrong-token"))) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
+// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate(Redacted.make("example-token")), try authenticate(Redacted.make("wrong-token"))) }
 service CredentialsClient {
   authenticate(token: string): boolean!!
 }
 
-function authenticate(token: Redacted.Redacted<string>) {
-  return CredentialsClient.authenticate(Redacted.value(token))
+effect authenticate(token: Redacted.Redacted<string>) {
+  const client = try CredentialsClient
+  const raw = try Effect.try(() => Redacted.value(token))
+  return try client.authenticate(raw)
 }
-// boolean!!CredentialsClient
+// boolean!Cause.UnknownError!CredentialsClient
 ```
 
 ```output
@@ -45,14 +49,11 @@ true false
 ## Wiping stored secrets
 
 ```vibe
-// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => token === "example-token" }) { Console.log(useOnce("example-token")) }; const wiped = Redacted.make("example-token"); Redacted.wipeUnsafe(wiped); const failed = Effect.exit(() => Redacted.value(wiped)); Console.log(failed.isFailure(), String(wiped))
-function useOnce(raw: string) {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
+// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }; const wiped = Redacted.make("example-token"); Redacted.wipeUnsafe(wiped); const failed = try exit(Effect.try(() => Redacted.value(wiped))); try Console.log(Exit.isFailure(failed), String(wiped))
+effect useOnce(raw: string) {
   const token = Redacted.make(raw)
-  try {
-    return authenticate(token)
-  } finally {
-    Redacted.wipeUnsafe(token)
-  }
+  return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
 }
 ```
 
@@ -61,12 +62,13 @@ true
 true <redacted>
 ```
 
-`wipeUnsafe` removes the wrapper's stored value; later `Redacted.value` calls throw. `finally` runs on success, failure, and interruption, so the wrapper drops its reference at the operation boundary. Wiping does not erase the original `raw` string, other aliases, or bytes already copied elsewhere in memory.
+`wipeUnsafe` removes the wrapper's stored value; later `Redacted.value` calls throw. `ensuring` runs its cleanup Effect on success, failure, and interruption, so the wrapper drops its reference at the operation boundary. Wiping does not erase the original `raw` string, other aliases, or bytes already copied elsewhere in memory.
 
 ## Comparing protected values
 
 ```vibe
-// run: Console.log(same(first, second), same(first, third))
+// pending: VIP-5, VIP-14
+// run: try Console.log(same(first, second), same(first, third))
 const same = Redacted.makeEquivalence(Equivalence.String)
 const first = Redacted.make("example-a")
 const second = Redacted.make("example-a")

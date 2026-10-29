@@ -5,18 +5,22 @@ A `Stream` produces values on demand. Use it for large inputs, ongoing events, a
 ## Element, error, and service types
 
 ```vibe
-// run: provide Feed = { next: () => "message" } { Console.log(JSON.stringify(preview())) }
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
+// run: provide Feed = { next: effect () => "message" } { { const jsonValue = try preview(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 error FeedUnavailable
 
 service Feed {
   next(): string!FeedUnavailable
 }
 
-const messages = Stream.fromEffectRepeat(() => Feed.next())
+const messages = Stream.fromEffectRepeat(effect {
+  const feed = try Feed
+  return try feed.next()
+})
 // Stream.Stream<string, FeedUnavailable, Feed>
 
-function preview() {
-  return messages.take(4).runCollect()
+effect preview() {
+  return try Stream.runCollect(Stream.take(messages, 4))
 }
 // Array<string>!FeedUnavailable!Feed
 // Output: ["message","message","message","message"]
@@ -24,15 +28,16 @@ function preview() {
 
 `Stream.Stream<A, E, R>` emits `A`, can fail with `E`, and needs services `R` while consumed. A failure ends that run of the source unless an operator recovers. Defining `messages` neither looks up `Feed` nor requests a message.
 
-Effect's Stream, Filter, and Cause value builders are trusted library calls: call them directly; their exceptions are defects. Synchronously invoked callbacks must perform no Effect operations and have no expected failures.
+Wrap calls that may throw with `Effect.try` and run them with `try`. Synchronously invoked callbacks must perform no Effect operations and have no expected failures.
 
 ## Choosing a streaming use case
 
 ```vibe
-// run: Console.log(JSON.stringify(firstFiveTickets()))
-function firstFiveTickets() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try firstFiveTickets(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect firstFiveTickets() {
   const tickets = Stream.iterate(100, (n) => n + 1)
-  return tickets.take(5).runCollect()
+  return try Stream.runCollect(Stream.take(tickets, 5))
 }
 // Returns [100, 101, 102, 103, 104].
 // Output: [100,101,102,103,104]
@@ -43,8 +48,9 @@ The source never ends; the consumer takes only five elements. Log tails, paginat
 ## Streams and individual effects
 
 ```vibe
-// run: Console.log(JSON.stringify([oneResult(), noReadings.runCollect(), oneReading.runCollect(), ...compare()]))
-function oneResult() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = [try oneResult(), try Stream.runCollect(noReadings), try Stream.runCollect(oneReading), ...(try compare())]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect oneResult() {
   return [12, 24, 36]
 }
 // Array<number>!!
@@ -54,29 +60,30 @@ const oneReading = Stream.succeed(12)
 const readings = Stream.fromArray([12, 24, 36])
 const oneBatch = Stream.succeed([12, 24, 36])
 
-function compare() {
+effect compare() {
   return [
-    readings.runCollect(), // [12, 24, 36]
-    oneBatch.runCollect()  // [[12, 24, 36]]
+    try Stream.runCollect(readings), // [12, 24, 36]
+    try Stream.runCollect(oneBatch)  // [[12, 24, 36]]
   ]
 }
 // Output: [[12,24,36],[],[12],[12,24,36],[[12,24,36]]]
 ```
 
-A successful call returns one result, even an array. A stream emits zero or more elements and can be empty, finite, or infinite; an array can be one element or the source of many.
+A successful Effect run returns one result, even an array. A stream emits zero or more elements and can be empty, finite, or infinite; an array can be one element or the source of many.
 
 ## Incremental production and backpressure
 
 ```vibe
-// run: printReadings()
-function printReadings() {
-  const source = Stream.range(20, 25).mapEffect((n) => {
-    Console.log(`prepare ${n}`)
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try printReadings()
+effect printReadings() {
+  const source = Stream.mapEffect(Stream.range(20, 25), effect (n) => {
+    try Console.log(`prepare ${n}`)
     return n
   })
-  source.runForEach((n) => {
-    sleep("50 millis")
-    Console.log(`received ${n}`)
+  try Stream.runForEach(source, effect (n) => {
+    try sleep("50 millis")
+    try Console.log(`received ${n}`)
   })
 }
 // Output: prepare 20
@@ -96,27 +103,28 @@ function printReadings() {
 The consumer controls demand, so production slows when consumption does. Streams exchange internal batches, so a source can prepare several elements per pull, and buffering and concurrency add explicit read-ahead: backpressure does not mean one element at a time in memory.
 
 ```vibe
-// run: Effect.provide(() => printFirstReading(), Logger.layer([sync(() => Logger.make(({ message }) => console.log(...(message as unknown[]))))]))
-function* readings() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-20, VIP-21
+// run: try Effect.provide(printFirstReading(), Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
+effect function* readings() {
   for (let n = 1; n <= 3; n++) {
-    sleep("50 millis")
+    try sleep("50 millis")
     yield n
   }
 }
 
-function printFirstReading() {
-  const source = readings().map((n) => n * 10)
-  for (const n of source) {
-    log(n) // 10
+effect printFirstReading() {
+  const source = Stream.map(readings(), (n) => n * 10)
+  for try (const n of source) {
+    try log(n) // 10
     break
   }
 }
 // Output: 10
 ```
 
-A `function*` producer is a Stream wherever one is expected, so Stream operators accept it. The adapter runs it on its own fiber with an unbuffered handoff, passing each element only when pulled. `for...of` also consumes an Effect Stream, pulling batches and closing it when the loop exits. Here `break` closes the source and interrupts the producer fiber, running its cleanup.
+An `effect function*` producer returns a Stream, so Stream operators accept it. The producer runs on its own fiber with a one-element buffer, so it may run one element ahead of the consumer. `for try` also consumes an Effect Stream, pulling batches and closing it when the loop exits. Here `break` closes the source and interrupts the producer fiber, running its cleanup.
 
 ## Coming from Effect
 
-- Keep Stream constructors and pipelines; pass `() => work()` where a constructor expects an Effect.
-- In a function, `Stream.runCollect(source)` runs at the call and returns an array.
+- Keep Stream constructors and pipelines; pass `work()` where a constructor expects an Effect.
+- In an effect function or block, `try Stream.runCollect(source)` runs consumption and returns an array.

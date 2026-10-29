@@ -1,78 +1,93 @@
 # Producers
 
-A producer yields values one at a time and can run Effects between yields. Use `function*` to declare one and `for...of` to consume it.
+A producer emits values and can run Effects between yields. Declare one with `effect function*` and consume its Stream with `for try`.
 
 ## Yield values on demand
 
 ```vibe
-// run: Console.log(firstAlert())
-function* readings() {
-  try {
-    for (const celsius of [18, 21, 25, 19, 28, 30]) {
-      yield celsius
-    }
-  } finally {
-    Console.log("sensor closed")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-20, VIP-21
+// run: try Console.log(try firstAlert())
+effect function* readings() {
+  try addFinalizer(() => Console.log("sensor closed"))
+  for (const celsius of [18, 21, 25, 19, 28, 30]) {
+    yield celsius
   }
 }
 
-function firstAlert() {
-  for (const celsius of readings()) {
-    if (celsius >= 25) return celsius
+effect firstAlert() {
+  let alert: number | undefined
+  for try (const celsius of readings()) {
+    if (celsius >= 25) {
+      alert = celsius
+      break
+    }
   }
-  return undefined
+  return alert
 }
 // number | undefined!!
 // Output: sensor closed
 // Output: 25
 ```
 
-`readings()` constructs a lazy source; its body starts when a consumer asks for a value. Each `yield` hands one value to the loop, and the producer waits until the consumer continues.
+`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run one element ahead of the consumer.
 
-The consumer returns at 25; before `firstAlert` returns, the producer's `finally` logs `sensor closed`. `break`, a return, or a failure in the loop body closes the source and runs its cleanup. Iterating the source again starts a new run.
+The consumer stops at 25; before `firstAlert` returns, the producer's finalizer logs `sensor closed`. `break` or a failure in the loop body closes the Stream and runs its cleanup. Iterating the Stream again starts a new run.
 
-In `.vibe`, an unannotated `function*` declares a producer; don't use it for `Effect.gen` or other generator-based APIs. A `function*` annotated with a JavaScript iterator type is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators.
+In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`.
+
+A bare `return` ends a producer. `return value` is an error because a Stream has no return value. A `return` inside a `for try` body is also an error. Save the result and use `break` instead.
 
 ## Call services between yields
 
 ```vibe
-// run: provide NodeServices.layer { const fs = FileSystem(); using dir = fs.makeTempDirectoryScoped(); fs.writeFileString(`${dir}/a.txt`, "short"); fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); Console.log(firstLargeFile(dir) === `${dir}/b.txt`) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-20, VIP-21, VIP-33
+// run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
-function* fileTexts(directory: string) {
-  const names = FileSystem.readDirectory(directory).sort()
+effect function* fileTexts(directory: string) {
+  const fs = try FileSystem
+  const path = try Path
+  const names = (try fs.readDirectory(directory)).sort()
   for (const name of names) {
-    const path = Path.join(directory, name)
-    const info = FileSystem.stat(path)
+    const filename = path.join(directory, name)
+    const info = try fs.stat(filename)
     if (info.type === "File") {
-      yield { path, text: FileSystem.readFileString(path) }
+      yield { path: filename, text: try fs.readFileString(filename) }
     }
   }
 }
 
-function firstLargeFile(directory: string) {
-  for (const file of fileTexts(directory)) {
-    if (file.text.length > 1000) return file.path
+effect firstLargeFile(directory: string) {
+  let found: string | undefined
+  for try (const file of fileTexts(directory)) {
+    if (file.text.length > 1000) {
+      found = file.path
+      break
+    }
   }
-  return undefined
+  return found
 }
 // Output: true
 ```
 
-Service calls run as in an ordinary function, and the producer's failures and requirements join the consuming function's contract. At the application boundary, `import "vibelang/platform/node"` makes the entry supply `FileSystem` and `Path` to `main` from `NodeServices.layer`, as in `examples/file-tree`.
+Look up each service with `try`, then call its members. Run each returned Effect with `try`, and the producer's failures and requirements join the consuming function's contract. At the application boundary, provide `FileSystem` and `Path` from `NodeServices.layer`, as in `examples/file-tree`.
 
-Resources a producer acquires with `using` stay open between yields and close when consumption finishes or stops early. This example reads one whole file at a time; stopping skips the remaining files.
+Resources a producer acquires in its Effect Scope stay open between yields and close when consumption finishes or stops early. Use `scoped(effect { ... })` to own Effect resources. This example reads one whole file at a time; with the one-element buffer, a read after the selected file may already have started when consumption stops.
 
 ## Use a producer as a Stream
 
 ```vibe
-// run: Console.log(JSON.stringify(alerts()))
-function alerts() {
-  const selected = readings().filter((value) => value >= 25).map((value) => `${value} C`).take(2)
+// pending: VIP-1, VIP-5, VIP-14, VIP-20
+// run: try Console.log(JSON.stringify(try alerts()))
+effect alerts() {
+  const selected = readings().pipe(
+    Stream.filter((value) => value >= 25),
+    Stream.map((value) => `${value} C`),
+    Stream.take(2)
+  )
   const result: string[] = []
-  for (const alert of selected) result.push(alert)
+  for try (const alert of selected) result.push(alert)
   return result
-  // ["25 C", "28 C"]; sensor closed
 }
 // Output: sensor closed
 // Output: ["25 C","28 C"]
@@ -80,15 +95,16 @@ function alerts() {
 
 A producer has type `Stream.Stream<Value, Error, Requirements>`: Stream operators accept it directly, and TypeScript consumers see a Stream in its declaration file. `examples/pipeline` uses this filter, map, and take pattern.
 
-When Stream operators consume a producer, the runtime starts it on its own fiber with an unbuffered handoff: the producer yields only when the Stream pulls, and closing the Stream interrupts it and runs cleanup. Handle control operations inside the producer before passing it to Stream operators.
+When Stream operators consume a producer, `Stream.callback` runs it on its own fiber with a one-element buffer, and closing the Stream interrupts it and runs cleanup.
 
 ## Iterate any Stream
 
 ```vibe
-// run: Console.log(sumStream())
-function sumStream() {
+// pending: VIP-1, VIP-5, VIP-14, VIP-20
+// run: try Console.log(try sumStream())
+effect sumStream() {
   let total = 0
-  for (const value of Stream.fromIterable([1, 2, 3])) {
+  for try (const value of Stream.fromIterable([1, 2, 3])) {
     total += value
   }
   return total
@@ -96,24 +112,27 @@ function sumStream() {
 // Output: 6
 ```
 
-`for...of` pulls an Effect Stream and closes it when the loop exits, including on `break`. Arrays, maps, sets, and strings iterate as in JavaScript. As in JavaScript, a loop that exits early calls its iterator's `return()`, also when a binding default or the body fails, or the fiber is interrupted, and also for an array with its own iterator: a type annotation does not change cleanup.
+`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the loop body is a compile error.
+
+Arrays, maps, sets, and strings iterate as in JavaScript with ordinary `for...of`. As in JavaScript, a loop that exits early calls its iterator's `return()`, also when a binding default or the body fails, or the fiber is interrupted, and also for an array with its own iterator: a type annotation does not change cleanup.
 
 Array destructuring follows the same protocol: a default that fails or is interrupted closes every live iterator, innermost pattern first, before recovery. An exhausted iterator is not closed again. A `return()` that throws is a defect beside the original failure, as any cleanup failure is.
 
-Use `for (const value of source)` for producers, or `for (using value of source)` when each element needs disposal at the end of its iteration. On early exit the element is disposed before the producer closes. `Array.from(source)` is not a Stream consumer; `Stream.runCollect(source)` collects all the elements into an array.
+For JavaScript iterables, use `for (using value of source)` when each element needs disposal at the end of its iteration. On early exit the element is disposed before the iterator closes. `using` keeps TypeScript's meaning, so an element of a Stream that needs an Effect resource opens it in its own scope: `for try (const path of paths) { try scoped(effect { const file = try acquireRelease(open(path), close); try process(file) }) }` releases each file before the next element. `Array.from(source)` is not a Stream consumer; `try Stream.runCollect(source)` collects all the elements into an array.
 
 ## JavaScript generators
 
 ```vibe
-// run: Console.log([...countdown(3)].join(","))
+// pending: VIP-5, VIP-14
+// run: try Console.log([...countdown(3)].join(","))
 function* countdown(from: number): Generator<number> {
   for (let n = from; n > 0; n--) yield n
 }
 // Output: 3,2,1
 ```
 
-A `function*` annotated with a JavaScript iterator type, such as `Generator`, `Iterator`, `Iterable`, or their async forms, compiles to the generator TypeScript would write, for APIs that call `.next()`. It is plain JavaScript, so it never fails: a `throw` that can escape it is EK2003, and its `catch` receives typed failures only, so an exception a caller passes in with `generator.throw()` passes through. A generator method, `*[Symbol.iterator]() { … }` in a class or an object literal, is a JavaScript generator too, and its body is plain code: a call that runs an Effect there is EK2003, so yield a program, `() => load()`, to hand one out. Remove the annotation to make it a producer, whose throws fail the Stream. Write a generator that speaks a JavaScript protocol by throwing in a `module` block or a `.ts` file.
+A plain `function*` is a JavaScript generator, with or without a return annotation such as `Generator`, `Iterator`, `Iterable`, or their async forms, for APIs that call `.next()`. Its `throw`, `try`/`catch`, and iterator protocol keep their JavaScript meaning. A generator method, `*[Symbol.iterator]() { … }` in a class or an object literal, is a JavaScript generator too. Yield an Effect value, `load()`, to hand one out without running it. An `async function*` is an AsyncIterable. Use `effect function*` for a Stream, or `effect *name()` for a producer method.
 
 ## Coming from Effect
 
-A generator wrapped in `Stream.unwrap` becomes a `function*`. Write calls between `yield` statements, and reserve `yield` for emitted values. Use Stream's existing operators when they express the transformation you need.
+Declare a generator-based Stream source with `effect function*`. Write `try` for Effects between `yield` statements, and reserve `yield` for emitted values. Use Stream's existing operators when they express the transformation you need.

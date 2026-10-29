@@ -5,7 +5,8 @@
 ## Choosing a starting rule
 
 ```vibe
-// run: const rules: ReadonlyArray<Schedule.Schedule<unknown, unknown, Cron.CronParseError>> = [immediate, afterCompletion, cadence, backoff, calendar]; for (const rule of rules) { const step = Schedule.toStep(rule); const result = Effect.result(step(Date.parse("2026-11-02T00:00:00Z"), undefined)); if (result.isSuccess()) Console.log(result.success[1].toMillis()) }
+// pending: VIP-5, VIP-6, VIP-14
+// run: const rules: ReadonlyArray<Schedule.Schedule<unknown, unknown, Cron.CronParseError>> = [immediate, afterCompletion, cadence, backoff, calendar]; for (const rule of rules) { const step = try Schedule.toStep(rule); const outcome = try result(step(Date.parse("2026-11-02T00:00:00Z"), undefined)); if (Result.isSuccess(outcome)) try Console.log(Duration.toMillis(outcome.success[1])) }
 const immediate = Schedule.recurs(4)
 const afterCompletion = Schedule.spaced("20 seconds")
 const cadence = Schedule.fixed("20 seconds")
@@ -33,12 +34,13 @@ These declarations build reusable values and run no work. Choose a rule by requi
 ## Understanding schedule steps
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork runChecks(); TestClock.adjust("18 seconds"); join worker }
-function runChecks() {
-  repeat(() => {
-    Console.log("checking", Clock.currentTimeMillis())
-    sleep("2 seconds")
-  }, Schedule.spaced("6 seconds").upTo({ times: 2 }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork runChecks(); try TestClock.adjust("18 seconds"); join worker }
+effect runChecks() {
+  try repeat(effect {
+    try Console.log("checking", try Clock.currentTimeMillis)
+    try sleep("2 seconds")
+  }, Schedule.spaced("6 seconds").pipe(Schedule.upTo({ times: 2 })))
 }
 // Output: checking 0
 // Output: checking 8000
@@ -52,13 +54,13 @@ A schedule step takes input and produces output plus timing metadata. The input 
 ## Limiting duration and adjusting delays
 
 ```vibe
-// run: Random.withSeed(() => { const rules: ReadonlyArray<Schedule.Schedule<unknown>> = [bounded, firstThree]; for (const rule of rules) { const step = Schedule.toStep(rule); let now = 0; const waits: number[] = []; for (let i = 0; i < 10; i++) { const result = Effect.result(step(now, undefined)); if (result.isFailure()) break; const ms = result.success[1].toMillis(); waits.push(ms); now += ms }; Console.log(waits.length, waits.every((ms) => ms >= 0 && ms <= 9600)) } }, "docs-schedule")
-import { Random } from "effect"
-
-const bounded = Schedule.exponential("300 millis")
-  .modifyDelay(({ duration }) => duration.min(Duration.seconds(8)))
-  .jittered()
-  .upTo({ times: 6, duration: "40 seconds" })
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try Random.withSeed(effect { const rules: ReadonlyArray<Schedule.Schedule<unknown>> = [bounded, firstThree]; for (const rule of rules) { const step = try Schedule.toStep(rule); let now = 0; const waits: number[] = []; for (let i = 0; i < 10; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; try Console.log(waits.length, waits.every((ms) => ms >= 0 && ms <= 9600)) } }, "docs-schedule")
+const bounded = Schedule.exponential("300 millis").pipe(
+  Schedule.modifyDelay(effect ({ duration }) => Duration.min(duration, Duration.seconds(8))),
+  Schedule.jittered,
+  Schedule.upTo({ times: 6, duration: "40 seconds" })
+)
 
 const firstThree = Schedule.while(
   Schedule.spaced("1 second"),
@@ -68,16 +70,17 @@ const firstThree = Schedule.while(
 // Output: 3 true
 ```
 
-`upTo` stops at whichever configured limit comes first. It checks the duration limit only at schedule steps and never interrupts a running attempt or wait; for a deadline, wrap the whole operation in `Effect.timeout`. `modifyDelay` replaces the selected wait, and `while` can stop on metadata. `jittered` multiplies each delay by a factor between 0.8 and 1.2. Here it follows the eight second cap, so the final wait can reach 9.6 seconds; to bound the final wait, cap after `jittered`.
+`upTo` stops at whichever configured limit comes first. It checks the duration limit only at schedule steps and never interrupts a running attempt or wait; for a deadline, wrap the whole Effect in `timeout` and run the result with `try`. `modifyDelay` replaces the selected wait, and `while` can stop on metadata. `jittered` multiplies each delay by a factor between 0.8 and 1.2. Here it follows the eight second cap, so the final wait can reach 9.6 seconds; to bound the final wait, cap after `jittered`.
 
 ## Requiring every timing rule
 
 ```vibe
-// run: const step = Schedule.toStep(policy); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const result = Effect.result(step(now, undefined)); if (result.isFailure()) break; const ms = result.success[1].toMillis(); waits.push(ms); now += ms }; Console.log(JSON.stringify(waits))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: const step = try Schedule.toStep(policy); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const policy = Schedule.max([
-    Schedule.exponential("400 millis"),
-    Schedule.spaced("2 seconds")
-  ]).upTo({ times: 4 })
+  Schedule.exponential("400 millis"),
+  Schedule.spaced("2 seconds")
+]).pipe(Schedule.upTo({ times: 4 }))
 // Output: [2000,2000,2000,3200]
 ```
 
@@ -86,9 +89,10 @@ const policy = Schedule.max([
 ## Accepting any timing rule
 
 ```vibe
-// run: const step = Schedule.toStep(startupAndSteady); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const result = Effect.result(step(now, undefined)); if (result.isFailure()) break; const ms = result.success[1].toMillis(); waits.push(ms); now += ms }; Console.log(JSON.stringify(waits))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: const step = try Schedule.toStep(startupAndSteady); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const startupAndSteady = Schedule.min([
-  Schedule.spaced("500 millis").upTo({ times: 2 }),
+  Schedule.spaced("500 millis").pipe(Schedule.upTo({ times: 2 })),
   Schedule.fixed("12 seconds")
 ])
 // Output: [500,500,11000,12000,12000]
@@ -99,8 +103,12 @@ const startupAndSteady = Schedule.min([
 ## Switching rules in phases
 
 ```vibe
-// run: const step = Schedule.toStep(reconnect); let now = 0; const waits: number[] = []; for (let i = 0; i < 8; i++) { const result = Effect.result(step(now, undefined)); if (result.isFailure()) break; const ms = result.success[1].toMillis(); waits.push(ms); now += ms }; Console.log(JSON.stringify(waits))
-const reconnect = Schedule.spaced("150 millis").upTo({ times: 2 }).concat(Schedule.spaced("3 seconds").upTo({ times: 5 }))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: const step = try Schedule.toStep(reconnect); let now = 0; const waits: number[] = []; for (let i = 0; i < 8; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+const reconnect = Schedule.spaced("150 millis").pipe(
+  Schedule.upTo({ times: 2 }),
+  Schedule.concat(Schedule.spaced("3 seconds").pipe(Schedule.upTo({ times: 5 })))
+)
 // Output: [150,150,3000,3000,3000,3000,3000]
 ```
 

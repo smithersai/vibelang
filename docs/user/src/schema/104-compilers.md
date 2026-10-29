@@ -1,19 +1,20 @@
 # Schema Compilers
 
-Effect's experimental Schema compilers work behind the ordinary Schema APIs. They generate JavaScript for supported parsing operations and leave unsupported work to the interpreter. Measure the change on your schemas before relying on a speedup. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Effect's experimental Schema compilers work behind the ordinary Schema APIs. They generate JavaScript for supported parsing operations and leave unsupported work to the interpreter. Measure the change on your schemas before relying on a speedup. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Understanding optimized validation paths
 
 ```vibe
 // schemas/Parcel.vibe
-// run: Console.log(JSON.stringify(readParcel({ reference: "pkg-94", count: 2 }))); try { readParcel({ reference: "pkg-94", count: "2" }) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try readParcel({ reference: "pkg-94", count: 2 }))); try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag)) })
 export const Parcel = Schema.Struct({
   reference: Schema.String,
   count: Schema.Int
 })
 
-function readParcel(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input)
+effect readParcel(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
 
@@ -30,7 +31,8 @@ Compilation must be active for the AST and operation before a consumer captures 
 
 ```vibe
 // main.vibe
-// run: Console.log(JSON.stringify(receiveCompiled({ reference: "pkg-94", count: 2 }))); try { receiveCompiled({}) } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try receiveCompiled({ reference: "pkg-94", count: 2 }))); try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message)) })
 import "effect/schema/SchemaJITCompiler/enable"
 
 const CompiledParcel = Schema.Struct({
@@ -38,8 +40,8 @@ const CompiledParcel = Schema.Struct({
   count: Schema.Int
 })
 
-function receiveCompiled(input: unknown) {
-  return Schema.decodeUnknownEffect(CompiledParcel)(input)
+effect receiveCompiled(input: unknown) {
+  return try Schema.decodeUnknownEffect(CompiledParcel)(input)
 }
 ```
 
@@ -52,7 +54,8 @@ Missing key
 Put the enabling import before code that creates or runs parsers; importing the compiler namespace alone does not enable it. Operations compile lazily on first use, without eagerly running every check or default.
 
 ```vibe
-// run: enableSelectedDirections(); Console.log(Schema.decodeEffect(Schema.FiniteFromString)("2")); Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2)); Console.log(Schema.encodeEffect(Schema.FiniteFromString)(2))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { enableSelectedDirections(); try Console.log(try Schema.decodeEffect(Schema.FiniteFromString)("2")); try Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2)); try Console.log(try Schema.encodeEffect(Schema.FiniteFromString)(2)) })
 function enableSelectedDirections() {
   SchemaJITCompiler.enable(Schema.FiniteFromString.ast)
   SchemaJITCompiler.enable(SchemaAST.toType(Schema.FiniteFromString.ast))
@@ -102,13 +105,17 @@ Prepared 1 schema exports
 
 ```vibe
 // build.vibe
-// run: main()
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
+// run: void 0
 import { buildSchemas } from "./build-schema-aot.ts"
 
-export function main() {
-  const result = buildSchemas()
-  Console.log(`Prepared ${result.schemas} schema exports`)
+export effect main() {
+  const build = try sync(() => buildSchemas())
+  const result = try build
+  try Console.log(`Prepared ${result.schemas} schema exports`)
 }
+
+await runPromise(main())
 ```
 
 ```output
@@ -127,18 +134,19 @@ With these sources under `src/` and JavaScript output in `dist/`, compile the bu
 }
 ```
 
-Save this as `tsconfig.aot.json`, then run `vibelang -p tsconfig.aot.json` and `node dist/build.js`. The compiler follows the build entry's imports to the helper and schema module; exporting `main` makes the entry executable. For the application compilation, set `compilerOptions.rootDirs` to `["src", "dist"]` so its generated-module import resolves in `dist/`, then compile and run the application.
+Save this as `tsconfig.aot.json`, then run `vibelang -p tsconfig.aot.json` and `node dist/build.js`. The compiler follows the build entry's imports to the helper and schema module. The entry calls `runPromise(main())` explicitly, so running `dist/build.js` executes the build Effect. For the application compilation, set `compilerOptions.rootDirs` to `["src", "dist"]` so its generated-module import resolves in `dist/`, then compile and run the application.
 
 Decoding is the default operation; add encoding, guards, and construction only when needed. Nested dependencies need no direct export unless an otherwise undiscovered graph requires a separate target.
 
 ```vibe
 // fragment
 // application.vibe
+// pending: VIP-1, VIP-5, VIP-14
 import "./generated/parcel-validators.js"
 import { Parcel } from "./schemas/Parcel.vibe"
 
-function receive(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input)
+effect receive(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
 
@@ -147,7 +155,8 @@ Load the generated module before using the schemas, and ensure the bundler prese
 ## Using lower-level compiler APIs
 
 ```vibe
-// run: Console.log(generateSource().includes("export function install"))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(generateSource().includes("export function install")) })
 import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 
 function generateSource() {
@@ -177,9 +186,10 @@ The low-level API calls directional parsing `decode`, the flipped encoding path 
 ## Specialized operations, registries, startup behavior, and limits
 
 ```vibe
-// run: Console.log(JSON.stringify(parseNormally({ reference: "pkg-94", count: 2 }))); try { parseNormally({ reference: "pkg-94", count: 2, extra: true }) } catch (error) { Console.log(error.message) }
-function parseNormally(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input, {
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try parseNormally({ reference: "pkg-94", count: 2 }))); try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message)) })
+effect parseNormally(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input, {
     errors: "all", onExcessProperty: "error"
   })
 }

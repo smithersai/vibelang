@@ -5,7 +5,7 @@ description: "Effect's experimental Schema compilers work behind the ordinary Sc
 
 # Schema Compilers
 
-Effect's experimental Schema compilers work behind the ordinary Schema APIs. They generate JavaScript for supported parsing operations and leave unsupported work to the interpreter. Measure the change on your schemas before relying on a speedup. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Effect's experimental Schema compilers work behind the ordinary Schema APIs. They generate JavaScript for supported parsing operations and leave unsupported work to the interpreter. Measure the change on your schemas before relying on a speedup. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Understanding optimized validation paths
 
@@ -16,8 +16,8 @@ export const Parcel = Schema.Struct({
   count: Schema.Int
 })
 
-function readParcel(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input)
+effect readParcel(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
 
@@ -41,8 +41,8 @@ const CompiledParcel = Schema.Struct({
   count: Schema.Int
 })
 
-function receiveCompiled(input: unknown) {
-  return Schema.decodeUnknownEffect(CompiledParcel)(input)
+effect receiveCompiled(input: unknown) {
+  return try Schema.decodeUnknownEffect(CompiledParcel)(input)
 }
 ```
 
@@ -105,10 +105,13 @@ Prepared 1 schema exports
 // build.vibe
 import { buildSchemas } from "./build-schema-aot.ts"
 
-export function main() {
-  const result = buildSchemas()
-  Console.log(`Prepared ${result.schemas} schema exports`)
+export effect main() {
+  const build = try sync(() => buildSchemas())
+  const result = try build
+  try Console.log(`Prepared ${result.schemas} schema exports`)
 }
+
+await runPromise(main())
 ```
 
 ```text
@@ -127,7 +130,7 @@ With these sources under `src/` and JavaScript output in `dist/`, compile the bu
 }
 ```
 
-Save this as `tsconfig.aot.json`, then run `vibelang -p tsconfig.aot.json` and `node dist/build.js`. The compiler follows the build entry's imports to the helper and schema module; exporting `main` makes the entry executable. For the application compilation, set `compilerOptions.rootDirs` to `["src", "dist"]` so its generated-module import resolves in `dist/`, then compile and run the application.
+Save this as `tsconfig.aot.json`, then run `vibelang -p tsconfig.aot.json` and `node dist/build.js`. The compiler follows the build entry's imports to the helper and schema module. The entry calls `runPromise(main())` explicitly, so running `dist/build.js` executes the build Effect. For the application compilation, set `compilerOptions.rootDirs` to `["src", "dist"]` so its generated-module import resolves in `dist/`, then compile and run the application.
 
 Decoding is the default operation; add encoding, guards, and construction only when needed. Nested dependencies need no direct export unless an otherwise undiscovered graph requires a separate target.
 
@@ -137,8 +140,8 @@ Decoding is the default operation; add encoding, guards, and construction only w
 import "./generated/parcel-validators.js"
 import { Parcel } from "./schemas/Parcel.vibe"
 
-function receive(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input)
+effect receive(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
 
@@ -176,8 +179,8 @@ The low-level API calls directional parsing `decode`, the flipped encoding path 
 ## Specialized operations, registries, startup behavior, and limits
 
 ```vibe
-function parseNormally(input: unknown) {
-  return Schema.decodeUnknownEffect(Parcel)(input, {
+effect parseNormally(input: unknown) {
+  return try Schema.decodeUnknownEffect(Parcel)(input, {
     errors: "all", onExcessProperty: "error"
   })
 }

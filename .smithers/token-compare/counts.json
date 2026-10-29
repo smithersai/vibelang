@@ -1,6 +1,6 @@
 {
   "tokenizer": "js-tiktoken@1.0.21 / o200k_base",
-  "users.vibe": 116,
+  "users.vibe": 133,
   "users.ts": 202,
-  "fewerPercent": 42.6
+  "fewerPercent": 34.2
 }

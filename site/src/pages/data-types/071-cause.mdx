@@ -26,9 +26,9 @@ Fail Die Interrupt 0
 ## Combining reasons
 
 ```vibe
-const combined = Cause.fail("export failed").combine(Cause.die(new Error("cleanup failed")))
+const combined = Cause.combine(Cause.fail("export failed"), Cause.die(new Error("cleanup failed")))
 combined.reasons.map((reason) => reason._tag) // ["Fail", "Die"]
-Cause.fail("same error").combine(Cause.fail("same error")).reasons.length // 1
+Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length // 1
 ```
 
 ```text
@@ -45,11 +45,11 @@ error MissingRecord {
   id: string
 }
 
-function diagnose() {
-  const outcome = exit {
+effect diagnose() {
+  const outcome = try exit(effect {
     throw new MissingRecord({ id: "r-9" })
-  }
-  if (outcome.isFailure()) {
+  })
+  if (Exit.isFailure(outcome)) {
     return Cause.pretty(outcome.cause)
   }
   return "completed"
@@ -60,23 +60,23 @@ function diagnose() {
 MissingRecord:
 ```
 
-`exit`, like `Effect.exit`, runs the program and returns its full outcome as data. A failure exit's `.cause` includes defects and interruption, which ordinary `catch` does not handle. `Effect.failCause(cause)` propagates the entire cause again, while `throw cause` would fail with the cause object itself and is EK2140; to branch on the whole outcome, `match` the exit with `Exit.Success(let value)` and `Exit.Failure(let cause)` arms.
+`try exit(program)` runs the Effect and returns its full outcome as data. A failure exit's `.cause` includes defects and interruption, which ordinary `catch` does not handle. `try failCause(cause)` propagates the entire cause again, while `throw cause` fails with the cause object itself as a typed error; to branch on the whole outcome, `match` the exit with `Exit.Success(let value)` and `Exit.Failure(let cause)` arms.
 
 ## Identifying reason variants
 
 ```vibe
-function classify<E>(cause: Cause.Cause<E>) {
+effect classify<E>(cause: Cause.Cause<E>) {
   const summary = {
-    failed: cause.hasFails(),
-    defective: cause.hasDies(),
-    interrupted: cause.hasInterrupts(),
-    interruptionOnly: cause.hasInterruptsOnly()
+    failed: Cause.hasFails(cause),
+    defective: Cause.hasDies(cause),
+    interrupted: Cause.hasInterrupts(cause),
+    interruptionOnly: Cause.hasInterruptsOnly(cause)
   }
   for (const reason of cause.reasons) {
-    if (reason.isFailReason()) Console.log("expected failure")
-    else if (reason.isDieReason()) Console.log("defect")
-    else if (reason.isInterruptReason()) {
-      Console.log(`interruption: ${reason.fiberId}`)
+    if (Cause.isFailReason(reason)) try Console.log("expected failure")
+    else if (Cause.isDieReason(reason)) try Console.log("defect")
+    else if (Cause.isInterruptReason(reason)) {
+      try Console.log(`interruption: ${reason.fiberId}`)
     }
   }
   return summary
@@ -116,7 +116,7 @@ function inspect<E>(cause: Cause.Cause<E>) {
 
 ## Coming from Effect
 
-A VibeLang `catch` handles a cause only when it has no defect and no interruption. To inspect the full outcome, use `Effect.exit(() => work())`, which keeps the complete cause.
+A VibeLang `catch` uses Effect's `catch`: a defect or a cause with no typed failure propagates; a typed failure can be recovered even beside an interruption. To inspect the full outcome, use `try exit(work())`, which keeps the complete cause.
 
 ---
 

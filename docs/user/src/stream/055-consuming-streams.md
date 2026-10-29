@@ -1,28 +1,30 @@
 # Consuming Streams
 
-A consumer runs a Stream and returns one result; in a VibeLang function, calls such as `Stream.runCollect` wait for consumption and return the result directly. Bound an unbounded source before a consumer that waits for its end.
+A consumer such as `Stream.runCollect` returns an Effect that consumes a Stream; in an effect function or block, run it with `try` to get its result. Bound an unbounded source before a consumer that waits for its end.
 
 ## Collecting elements
 
 ```vibe
-// run: Console.log(JSON.stringify(collectLabels()))
-function collectLabels() {
-  return Stream.make("north", "south", "west").runCollect()
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try collectLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect collectLabels() {
+  return try Stream.runCollect(Stream.make("north", "south", "west"))
 }
 // Array<"north" | "south" | "west">!!
 // Output: ["north","south","west"]
 ```
 
-`runCollect` returns an array in emission order. It keeps every element, so use it for finite results that fit in memory. If the source fails, it fails, never returning a partial array.
+`try Stream.runCollect(source)` returns an array in emission order. It keeps every element, so use it for finite results that fit in memory. If the source fails, it fails, never returning a partial array.
 
 ## Executing per-element effects
 
 ```vibe
-// run: announce()
-function announce() {
-  Stream.make("build", "test", "package").runForEach((stage) => {
-    Console.log(`starting ${stage}`)
-    sleep("20 millis")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try announce()
+effect announce() {
+  try Stream.runForEach(Stream.make("build", "test", "package"), effect (stage) => {
+    try Console.log(`starting ${stage}`)
+    try sleep("20 millis")
   })
 }
 // void!!
@@ -36,10 +38,11 @@ function announce() {
 ## Stopping conditionally
 
 ```vibe
-// run: Console.log(reachBudget())
-function reachBudget() {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try reachBudget())
+effect reachBudget() {
   let total = 0
-  Stream.make(3, 5, 8, 13).runForEachWhile((amount) => {
+  try Stream.runForEachWhile(Stream.make(3, 5, 8, 13), effect (amount) => {
     total += amount
     return total < 10
   })
@@ -48,21 +51,22 @@ function reachBudget() {
 // Output: 16
 ```
 
-The callback returns `true` to continue or `false` to stop; the element that returned `false` is already consumed and its callback has run. Stopping closes the source and runs its finalizers. State declared in the function is fresh per call.
+The callback's Effect succeeds with `true` to continue or `false` to stop; the element whose callback succeeds with `false` is already consumed and its callback has run. Stopping closes the source and runs its finalizers. State declared in the function is fresh per call.
 
 ## Folding into an accumulator
 
 ```vibe
-// run: Console.log(totalBytes()); Console.log(totalWithProgress())
-function totalBytes() {
-  return Stream.make(256, 512, 128).runFold(() => 0, (total, n) => total + n)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try totalBytes()); try Console.log(try totalWithProgress())
+effect totalBytes() {
+  return try Stream.runFold(Stream.make(256, 512, 128), () => 0, (total, n) => total + n)
 }
 // Returns 896.
 
-function totalWithProgress() {
-  return Stream.make(256, 512, 128).runFoldEffect(() => 0, (total, n) => {
+effect totalWithProgress() {
+  return try Stream.runFoldEffect(Stream.make(256, 512, 128), () => 0, effect (total, n) => {
     const next = total + n
-    Console.log(`processed ${next} bytes`)
+    try Console.log(`processed ${next} bytes`)
     return next
   })
 }
@@ -73,18 +77,19 @@ function totalWithProgress() {
 // Output: 896
 ```
 
-The initial-state callback runs per consumption, so a mutable accumulator starts fresh. `runFold` needs a synchronous, non-failing reducer; `runFoldEffect` accepts VibeLang work. Both wait for the source to end; to stop early based on the accumulator, use `runForEachWhile`.
+The initial-state callback runs per consumption, so a mutable accumulator starts fresh. `runFold` needs a synchronous, non-failing reducer; `runFoldEffect` takes a callback that returns an Effect. Both wait for the source to end; to stop early based on the accumulator, use `runForEachWhile`.
 
 ## Running a sink
 
 ```vibe
-// run: Console.log(JSON.stringify(readHeader()))
-function readHeader() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect readHeader() {
   const source = Stream.make("version", "length", "body")
-  return source.run(Sink.take<string>(2))
+  return try Stream.run(source, Sink.take<string>(2))
 }
 // Returns ["version", "length"].
 // Output: ["version","length"]
 ```
 
-A Sink packages a reusable consumption policy. `Stream.run` combines the source's and sink's failures and requirements and returns the sink's result. A sink can finish before the source ends; see [Leftovers](../sink/062-leftovers.md) for elements it pulled but did not use.
+A Sink packages a reusable consumption policy. `Stream.run` combines the source's and sink's failures and requirements in an Effect; run it with `try` to get the sink's result. A sink can finish before the source ends; see [Leftovers](../sink/062-leftovers.md) for elements it pulled but did not use.

@@ -61,7 +61,7 @@ function M.setup(opts)
         -- No tree-sitter parser for TypeScript: use Vim's TypeScript syntax.
         vim.bo[args.buf].syntax = "typescript"
       end
-      local root = vim.fs.root(args.buf, { "tsconfig.json", "package.json", ".git" })
+      local root = vim.fs.root(args.buf, { "vibe.config.json", "tsconfig.json", "jsconfig.json", "package.json", ".git" })
       vim.lsp.start({
         name = "vibelang",
         cmd = { opts.cmd or esc_command(root), "--lsp", "--stdio" },
@@ -95,3 +95,5 @@ nvim --headless src/main.vibe "+lua vim.wait(5000, function() return #vim.lsp.ge
 ```
 
 It prints `1 vibelang client`. A language server spawn error means Neovim found no `vibelang`: install the project's dependencies.
+
+Support for the new forms arrives with the compiler's VIP implementation.

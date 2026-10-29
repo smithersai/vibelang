@@ -5,7 +5,8 @@
 ## Connecting hashing to equality
 
 ```vibe
-// run: Console.log(JSON.stringify([Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)]))
 const first = { section: "billing", page: 2 }
 const same = { section: "billing", page: 2 }
 Equal.equals(first, same) // true
@@ -18,7 +19,8 @@ Equal values must have equal hashes, but equal hashes do not prove equality: dif
 ## Implementing the hashing protocol
 
 ```vibe
-// run: Console.log(JSON.stringify([Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)), Equal.equals(new GridCell(3, 7), new GridCell(3, 8))]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)), Equal.equals(new GridCell(3, 7), new GridCell(3, 8))]))
 class GridCell implements Equal.Equal {
   constructor(readonly row: number, readonly column: number) {}
 
@@ -39,16 +41,17 @@ Equal.equals(new GridCell(3, 7), new GridCell(3, 8)) // false
 
 A `[Hash.symbol]` method must return a number synchronously. `Hash.hash` handles primitive and structural inputs, so hashing a tuple of identity fields is an easy implementation. `Equal.Equal` includes hashing in its interface.
 
-It compiles to a plain JavaScript method because `[Hash.symbol]` is typed as a plain function. A body that runs an Effect operation or fails with an expected error is error EK4301.
+It compiles to a plain JavaScript method. An effect method returns an Effect, which does not satisfy the protocol's number return type.
 
 ## Keeping equal values hash-consistent
 
 ```vibe
-// run: Console.log(JSON.stringify([cells.size(), Hash.hash(first) === Hash.hash(equivalent)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([HashSet.size(cells), Hash.hash(first) === Hash.hash(equivalent)]))
 const first = new GridCell(3, 7)
 const equivalent = new GridCell(3, 7)
 const cells = HashSet.make(first, equivalent)
-cells.size() // 1
+HashSet.size(cells) // 1
 Hash.hash(first) === Hash.hash(equivalent) // true
 // Output: [1,true]
 ```

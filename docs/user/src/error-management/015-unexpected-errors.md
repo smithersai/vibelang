@@ -7,9 +7,10 @@ Defects report bugs and broken invariants, outside the typed error contract. Dom
 ## Creating defects
 
 ```vibe
-// run: Console.log(decodeOpcode(1)); Console.log(Effect.matchCause(() => decodeOpcode(2), { onFailure: (cause) => cause.hasDies(), onSuccess: () => false }))
-function decodeOpcode(opcode: number) {
-  if (opcode !== 1) die(new Error("unknown internal opcode"))
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try decodeOpcode(1)); try Console.log(try matchCause(decodeOpcode(2), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
+effect decodeOpcode(opcode: number) {
+  if (opcode !== 1) try die(new Error("unknown internal opcode"))
   return "start"
 }
 // string!!
@@ -20,16 +21,15 @@ start
 true
 ```
 
-`Effect.die` terminates the computation with a defect, preferably an `Error` with a useful message so diagnostics include its stack. A JavaScript exception no contract lists is also a defect. An explicit `throw` in an Effect function, even `throw new Error(...)`, is a typed failure; it is a typed failure in a plain-annotated function too, where it may not escape: a plain function never fails. Only a hatch's TypeScript keeps JavaScript's `throw`.
+`die` terminates the computation with a defect, preferably an `Error` with a useful message so diagnostics include its stack. An implicit JavaScript exception, such as an invalid property access, is also a defect.
+
+An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. In a plain or async function, `throw` is JavaScript's. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure, or with `sync` to make it a defect.
 
 ```vibe
-// run: Console.log(firstLabel(["one"])); Console.log(firstLabel([]))
-function firstLabel(labels: ReadonlyArray<string>) {
-  try {
-    return Effect.fromOption(Option.fromNullishOr(labels[0]))
-  } catch (error) {
-    return "No label"
-  }
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
+effect firstLabel(labels: ReadonlyArray<string>) {
+  return fromOption(Option.fromNullishOr(labels[0])) catch "No label"
 }
 ```
 
@@ -38,28 +38,29 @@ one
 No label
 ```
 
-`Option.getOrThrow` and `Schema.decodeUnknownSync` are trusted calls whose exceptions are defects, which ordinary catch doesn't see. A catch whose try block has E = `never` gets warning EK2004 by default; defects pass through it. When callers need recovery, use a typed form: `Effect.fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; an Effect catch in `.vibe` follows the expected-failure contract. A plain function's catch follows the same contract.
+`Option.getOrThrow` and `Schema.decodeUnknownSync` may throw. An effect function must wrap those calls: `sync` turns their exceptions into defects, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
 
 ## Promoting typed failures to defects
 
 ```vibe
-// run: Console.log(Effect.matchCause(() => startup(), { onFailure: (cause) => cause.hasDies(), onSuccess: () => false })); Console.log(Effect.matchCause(() => startupWithMessage(), { onFailure: (cause) => cause.hasDies(), onSuccess: () => false }))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try matchCause(startup(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false })); try Console.log(try matchCause(startupWithMessage(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 error MissingSetting {
   name: string
 }
 
-function requireSetting(name: string) {
+effect requireSetting(name: string) {
   throw new MissingSetting({ name })
 }
 
-function startup() {
-  return Effect.orDie(() => requireSetting("region"))
+effect startup() {
+  return try orDie(requireSetting("region"))
 }
-// void!!
+// never!!
 
-function startupWithMessage() {
-  return Effect.orDie(() =>
-    Effect.mapError(() => requireSetting("region"), (error) => new Error(`Startup needs ${error.name}`))
+effect startupWithMessage() {
+  return try orDie(
+    mapError(requireSetting("region"), (error) => new Error(`Startup needs ${error.name}`))
   )
 }
 ```
@@ -74,11 +75,12 @@ true
 ## Examining complete execution results
 
 ```vibe
-// run: Console.log(inspectStartup())
-function inspectStartup() {
-  const outcome = Effect.exit(() => startup())
-  if (outcome.isFailure()) {
-    return outcome.cause.hasDies() ? "startup defect" : "startup stopped"
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try inspectStartup())
+effect inspectStartup() {
+  const outcome = try exit(startup())
+  if (Exit.isFailure(outcome)) {
+    return Cause.hasDies(outcome.cause) ? "startup defect" : "startup stopped"
   }
   return "started"
 }
@@ -88,21 +90,22 @@ function inspectStartup() {
 startup defect
 ```
 
-`Effect.exit` succeeds with an `Exit<A, E>`. A failure exit keeps the full cause: defects, interruption reasons, and combinations of reasons. `Effect.result` exposes domain failures only. Capturing an exit doesn't make an externally cancelled fiber immune to cancellation.
+`exit` succeeds with an `Exit<A, E>`. A failure exit keeps the full cause: defects, interruption reasons, and combinations of reasons. `result` exposes domain failures only. Capturing an exit doesn't make an externally cancelled fiber immune to cancellation.
 
-An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs one without running it; calling a held exit runs that outcome.
+An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs one without running it; `try outcome` runs a held exit.
 
 ## Recovering defects at a boundary
 
 ```vibe
-// run: Console.log(isolateDecoder(1)); Console.log(isolateDecoder(2))
-function isolateDecoder(opcode: number) {
-  return Effect.catchDefect(() => decodeOpcode(opcode), (defect) => {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try isolateDecoder(1)); try Console.log(try isolateDecoder(2))
+effect isolateDecoder(opcode: number) {
+  return try catchDefect(decodeOpcode(opcode), effect (defect) => {
     if (defect instanceof Error && defect.message === "unknown internal opcode") {
-      Console.log("Decoder disabled after an invariant failure")
+      try Console.log("Decoder disabled after an invariant failure")
       return "disabled"
     }
-    return die(defect)
+    return try die(defect)
   })
 }
 ```
@@ -113,22 +116,23 @@ Decoder disabled after an invariant failure
 disabled
 ```
 
-`catchDefect` selects the first defect and runs recovery; a cause with no defect propagates. A typed failure beside a defect is a defect by then, so the handler receives that failure's error, and recovery consumes the other reasons too; use `catchCause` when every reason must inform the decision. Reraise defects you don't recognize. Effect `try`/`catch` never intercepts a defect, even one that is an instance of a domain error class.
+`catchDefect` selects the first defect and runs recovery; a cause with no defect propagates. A typed failure beside a defect is a defect by then, so the handler receives that failure's error, and recovery consumes the other reasons too; use `catchCause` when every reason must inform the decision. Reraise defects you don't recognize. A catch expression never intercepts a defect, even one that is an instance of a domain error class.
 
 ## Recovering a complete cause
 
 ```vibe
-// run: Console.log(decoderBoundary(1)); Console.log(decoderBoundary(2))
-function decoderBoundary(opcode: number) {
-  const outcome = exit(() => decodeOpcode(opcode))
+// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(try decoderBoundary(1)); try Console.log(try decoderBoundary(2))
+effect decoderBoundary(opcode: number) {
+  const outcome = try exit(decodeOpcode(opcode))
   if (outcome is Exit.Success(let value)) return value
   const cause = outcome.cause
-  if (cause.hasInterrupts()) return Effect.failCause(cause)
-  if (cause.hasDies()) {
-    Console.log("Decoder failed", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+  if (Cause.hasInterrupts(cause)) return try failCause(cause)
+  if (Cause.hasDies(cause)) {
+    try Console.log("Decoder failed", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
     return "disabled"
   }
-  return Effect.failCause(cause)
+  return try failCause(cause)
 }
 ```
 
@@ -138,4 +142,4 @@ Decoder failed ["Die"]
 disabled
 ```
 
-`exit(program)` returns the whole outcome, as `Effect.exit` does: a `Failure` exit's cause holds every reason, including the defects and interruption that ordinary catch leaves alone or drops. Test it with `is` or `match` on `Exit.Success` and `Exit.Failure`. `Effect.failCause(cause)` restores the original failure with every reason. `throw` fails with the value it is given, so `throw cause` would make the cause object a typed error; the compiler rejects it with EK2140. Inspect every reason before recovering from a mixed cause, and preserve cancellation unless the boundary has a reason to consume it.
+`try exit(program)` returns the whole outcome, as Effect's `exit` does: a `Failure` exit's cause holds every reason, including the defects and interruption that ordinary catch leaves alone or drops. Test it with `is` or `match` on `Exit.Success` and `Exit.Failure`. `failCause(cause)` restores the original failure with every reason. `throw` fails with the value it is given, so `throw cause` would make the cause object a typed error; the compiler rejects it with EK2140. Inspect every reason before recovering from a mixed cause, and preserve cancellation unless the boundary has a reason to consume it.

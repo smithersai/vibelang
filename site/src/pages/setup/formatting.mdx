@@ -49,20 +49,19 @@ npx dprint check
 
 ## What the formatter changes
 
-Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, including in module bodies, so formatting preserves module initialization order. Names within one import or export may be sorted. VibeLang's own forms keep their shape:
+Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. Names within one import or export may be sorted. VibeLang's own forms keep their shape:
 
 | Form | Formatted as |
 | --- | --- |
-| `A!E!R`, `mutable`, patterns after `when` and `is` | As written; line breaks around them follow the surrounding code |
-| `f(args) { ... }`, `do { ... }`, `fork { ... }` | The block as a function body, as TypeScript formats `f(args)(() => { ... })` |
+| `A!E!R`, patterns after `when` and `is` | As written; line breaks around them follow the surrounding code |
 | `match (x) { when P: v; ... }` | Arms as object-literal properties: one line when written on one line and they fit, else one per line, each ending in `;` |
 | `provide X { ... }`, `uninterruptible { ... }` | The block as a block statement |
 | `x catch y`, `x \|> f(%)` | Like a method call and the `\|\|` operator: a line break before `catch` or `\|>` stays |
-| `fork x`, `join x`, `throw x`, `await.all x` | Like a prefix operator such as `void` |
+| `fork x`, `join x`, `throw x` | Like a prefix operator such as `void` |
 | `error`, `schema` | The body as an object type: one line when written on one line and it fits |
-| `service`, `control` | The body as a class body, one member per line |
-| `try { } handle A.b(x) { } catch (e) { } finally { }` | Each clause as `} catch (e) {`, after the block before it |
-| `module text { ... }`, `from text`, `import text` | The body exactly as the same statements in a `.ts` file, imports kept in their original order, indented inside the braces; the module's name stays a name after `from` and `import` |
+| `service` | The body as a class body, one member per line |
+
+Support for the new forms arrives with the compiler's VIP implementation.
 
 A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`.
 
@@ -72,13 +71,11 @@ Comments and JSDoc stay in place. Formatting is idempotent: a formatted file doe
 
 The plugin reports the file and leaves it unchanged when:
 
-- the file has a syntax error, reported as `vibelang format: line:column: message`, or `vibelang format: line:column: module text: message` in a module body;
-- a comment sits inside a VibeLang form's own tokens, such as between a block-parameter call’s `f(args)` and its block or between clauses in a rewritten VibeLang clause chain containing `handle` or `finally (exit)`; move it into the block or before the statement;
+- the file has a syntax error, reported as `vibelang format: line:column: message`;
 - formatting would change the program, a plugin bug: report it with the file.
 
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 
-It keeps the superseded `layer` declaration and the retired `select` statement exactly as written; rewrite them as `Layer.effect(...) { ... }` and `await.race`.
 
 ## From a VibeLang checkout
 

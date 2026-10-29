@@ -1,13 +1,14 @@
 # Pattern matching with match and is
 
-`match` picks the first arm whose pattern fits a value; `is` tests a value against one pattern. Both come from the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal (stage 1) and compile to plain conditionals, so TypeScript narrows the value in each arm, and an arm can call Effect functions.
+`match` picks the first arm whose pattern fits a value; `is` tests a value against one pattern. Both come from the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal (stage 1) and compile to plain conditionals, so TypeScript narrows the value in each arm, and an arm can run Effects with `try` inside an effect function or block.
 
 **`match` is exhaustive.** A match without a `default` arm over a finite union, such as a data type's variants, `error` classes or literals, must handle every case, or the compiler reports EK4701: `This match does not handle every case of Delivery: Delivery.Rejected is left.` See [Exhaustiveness](#exhaustiveness).
 
 ## match
 
 ```vibe
-// run: Console.log(JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))]))
+// pending: VIP-5, VIP-7, VIP-13, VIP-14
+// run: try Console.log(JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))]))
 error NotFound { id: string }
 error Timeout
 error Denied { user: string; reason: string }
@@ -30,11 +31,12 @@ Each arm, `when pattern: expression;`, is tried in order; the first match gives 
 An arm is one expression. Use `do { }` for several statements; its value is its last statement's. Inside `do`, declare variables with `const` or `let`: `var` is `EK1019`, with a quick fix to `let`. A `break` or `continue` must target a loop or label inside the same `do` expression (`EK1019` otherwise); `return` is `TS1108`. These rules also apply in nested blocks; a nested function keeps its own declarations and control flow. For example:
 
 ```vibe
-// run: Console.log(retryDelay(new Timeout())); Console.log(retryDelay(new NotFound({ id: "7" })))
-function retryDelay(failure: Failure) {
+// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
+// run: try Console.log(try retryDelay(new Timeout())); try Console.log(try retryDelay(new NotFound({ id: "7" })))
+effect retryDelay(failure: Failure) {
   return match (failure) {
     when Timeout: do {
-      Console.log("timed out")
+      try Console.log("timed out")
       "1 second"
     };
     default: "0 millis";
@@ -55,14 +57,15 @@ A function named `match` still works. Only `match (value) {` followed by `when`,
 | Binding | Anything, and names it with `let`, `const`, or `var` | `when let other:` |
 | Array | An array of that length; `...` allows more | `when [let first, ...let rest]:` |
 | Object | A value with those properties; `{ let id }` binds `id` | `when { status: 200, let body }:` |
-| Matcher | An instance of a class, or what a custom matcher accepts | `when NotFound:` |
-| Variant | A data type's variant, and the fields its braces list | `when Delivery.Sent { let tracking }:` |
+| Matcher | What a class's `Symbol.customMatcher` or another custom matcher accepts | `when NotFound:` |
+| Variant | A data type's tag and the fields the object pattern lists | `when { _tag: "Sent", let tracking }:` |
 | Extractor | A matcher's values, matched by the list in parentheses | `when Option.Some(let user):` |
 | `and`, `or`, `not` | Conjunction, alternative, or negation | `when "a" or "e":` |
 | Guard | A condition that is true | `when [let n] and if (n > 0):` |
 
 ```vibe
-// run: Console.log(JSON.stringify([shape([]), shape([2]), shape([2, 3, 4]), shape({ kind: "box", size: 5 }), shape({ kind: "point", size: 1 }), shape({ kind: "other" })]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([shape([]), shape([2]), shape([2, 3, 4]), shape({ kind: "box", size: 5 }), shape({ kind: "point", size: 1 }), shape({ kind: "other" })]))
 function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
   return match (value) {
     when []: "empty";
@@ -76,11 +79,11 @@ function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
 // Output: ["empty","one: 2","2 then 2 more","box of 5","point with 1 more keys","other"]
 ```
 
-An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key must be a name or a literal, `{ [key]: let value }`.
+An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be a name, `{ [key]: let value }`.
 
 ## Option, Exit, Result, and primitives
 
-These matchers compile to the module's own test, so the bindings have exact types. A name means what it resolves to: a binding or data type that you name `String` or `Option` is matched as itself, not as the built-in.
+These matchers compile to the module's own test, so the bindings have exact types. A name means what it resolves to: a binding or data type that you name `String` or `Option` is matched as itself, not as the built-in. Until Effect ships custom matchers for Option, Exit, Result, and its tagged errors, VIP-7 keeps these fixed checks without patching Effect at runtime.
 
 | Matcher | Test | Extracts |
 | --- | --- | --- |
@@ -90,7 +93,8 @@ These matchers compile to the module's own test, so the bindings have exact type
 | `String`, `Number`, `Boolean`, `BigInt`, `Symbol` | `typeof` | the value |
 
 ```vibe
-// run: Console.log(greeting(Option.some("Ada"))); Console.log(greeting(Option.none())); Console.log(report("ada")); Console.log(report("").includes("NotFound"))
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(greeting(Option.some("Ada"))); try Console.log(greeting(Option.none())); try Console.log(try report("ada")); try Console.log((try report("")).includes("NotFound"))
 function greeting(name: Option.Option<string>) {
   return match (name) {
     when Option.Some(let n): `Hello, ${n}`;
@@ -98,15 +102,15 @@ function greeting(name: Option.Option<string>) {
   }
 }
 
-function report(id: string) {
-  const outcome = exit(() => getUser(id))
+effect report(id: string) {
+  const outcome = try exit(getUser(id))
   return match (outcome) {
     when Exit.Success(let user): user.name;
     when Exit.Failure(let cause): Cause.pretty(cause);
   }
 }
 
-function getUser(id: string): { name: string }!NotFound {
+effect getUser(id: string): { name: string }!NotFound!never {
   if (id === "") throw new NotFound({ id })
   return { name: "Ada" }
 }
@@ -118,10 +122,11 @@ function getUser(id: string): { name: string }!NotFound {
 
 ## Data variants
 
-A [`data` declaration](../data-types/073-data.md)'s variant is a pattern. `when Delivery.Sent:` tests the variant's tag, as `when { _tag: "Sent" }` does, and braces after it bind the fields they list:
+A [`data` declaration](../data-types/073-data.md) creates tagged values. Match their `_tag` with an object pattern. Variant constructors have no custom matchers:
 
 ```vibe
-// run: Console.log(JSON.stringify([track(Delivery.Sent({ tracking: "parcel-8" })), track(Delivery.Sent({ tracking: "parcel-9", carrier: "rail" })), track(Delivery.Waiting())])); Console.log(carrierOf(Delivery.Sent({ tracking: "p", carrier: "rail" })))
+// pending: VIP-5, VIP-7, VIP-14, VIP-16
+// run: try Console.log(JSON.stringify([track(Delivery.Sent({ tracking: "parcel-8" })), track(Delivery.Sent({ tracking: "parcel-9", carrier: "rail" })), track(Delivery.Waiting())])); try Console.log(carrierOf(Delivery.Sent({ tracking: "p", carrier: "rail" })))
 data Delivery {
   Waiting
   Sent { tracking: string; carrier?: string }
@@ -130,34 +135,33 @@ data Delivery {
 
 function track(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Sent { let tracking, carrier: "rail" }: `${tracking} by rail`;
-    when Delivery.Sent { let tracking, let carrier }: `${tracking} by ${carrier ?? "post"}`;
-    when Delivery.Waiting or Delivery.Rejected: "not sent";
+    when { _tag: "Sent", let tracking, carrier: "rail" }: `${tracking} by rail`;
+    when { _tag: "Sent", let tracking }: `${tracking} by ${delivery.carrier ?? "post"}`;
+    when { _tag: "Waiting" } or { _tag: "Rejected" }: "not sent";
   }
 }
 
 function carrierOf(delivery: Delivery) {
-  if (delivery is Delivery.Sent { let carrier }) return carrier ?? "post"
+  if (delivery is { _tag: "Sent" }) return delivery.carrier ?? "post"
   return "none"
 }
 // Output: ["parcel-8 by post","parcel-9 by rail","not sent"]
 // Output: rail
 ```
 
-A field in braces takes a pattern, `carrier: "rail"`, or binds its value, `let tracking`. The variant decides which fields a value has, so a field binds without a presence test: an optional field the value leaves out binds `undefined`. `is` narrows too: after `delivery is Delivery.Sent`, `delivery.tracking` is a `string`. A data type a `.ts` file declares with `Data.taggedEnum` matches the same way.
-
-A variant's fields go in braces: `Delivery.Sent(let sent)` is EK4706, and so are braces after a matcher that is not a variant, `when NotFound { let id }`; write `when NotFound and { let id }`. A variant the subject's type has no case of is EK4707.
+A field in an object pattern takes a pattern, `carrier: "rail"`, or binds its value, `let tracking`. A bare `tracking` only tests that the property exists. A tag pattern narrows the value so the arm can read the variant's other fields: after `delivery is { _tag: "Sent" }`, `delivery.tracking` is a `string`. A data type a `.ts` file declares with `Data.taggedEnum` matches the same way.
 
 ## Errors and custom matchers
 
-An `error` class matches its own instances by `instanceof`, so two classes with the same tag stay distinct; as an extractor it gives the instance: `when NotFound(let error):`. Any other class also matches by `instanceof`.
+An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type.
 
-A value with a `[customMatcher]` method decides for itself. `customMatcher` is the proposal's `Symbol.customMatcher`:
+A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
 ```vibe
-// run: Console.log([parity(2), parity(3)].join(", "))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log([parity(2), parity(3)].join(", "))
 const Even = {
-  [customMatcher](subject: unknown) {
+  [Symbol.customMatcher](subject: unknown) {
     return typeof subject === "number" && subject % 2 === 0
   }
 }
@@ -178,7 +182,8 @@ For an extractor, the method receives `{ matchType: "extractor" }` as its second
 `and` requires both patterns, `or` accepts either, and `not` rejects its pattern. A guard, `if (condition)`, tests any expression and sees the bindings before it:
 
 ```vibe
-// run: Console.log(JSON.stringify([classify({ status: "failed", attempts: 3 }), classify({ status: "failed", attempts: 1 }), classify({ status: "queued", attempts: 0 }), classify({ status: "done", attempts: 0 }), classify({ status: "cancelled", attempts: 0 })]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([classify({ status: "failed", attempts: 3 }), classify({ status: "failed", attempts: 1 }), classify({ status: "queued", attempts: 0 }), classify({ status: "done", attempts: 0 }), classify({ status: "cancelled", attempts: 0 })]))
 function classify(job: { status: string; attempts: number }) {
   return match (job) {
     when { status: "failed", attempts: let n } and if (n >= 3): "escalate";
@@ -197,7 +202,8 @@ function classify(job: { status: string; attempts: number }) {
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
 
 ```vibe
-// run: Console.log(JSON.stringify([isRetryable(new Timeout()), isRetryable(new Denied({ user: "Ada", reason: "root" })), isRetryable(new NotFound({ id: "7" }))]))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(JSON.stringify([isRetryable(new Timeout()), isRetryable(new Denied({ user: "Ada", reason: "root" })), isRetryable(new NotFound({ id: "7" }))]))
 function isRetryable(failure: Failure) {
   return failure is Timeout or Denied
 }
@@ -207,9 +213,10 @@ function isRetryable(failure: Failure) {
 In an `if` or `while` condition, joined by `&&`, the pattern can bind names, scoped to the rest of the condition and the `if`'s first branch or the loop's body:
 
 ```vibe
-// run: Console.log(firstFailure("ada")); Console.log(firstFailure("").includes("NotFound"))
-function firstFailure(id: string) {
-  const outcome = exit(() => getUser(id))
+// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(try firstFailure("ada")); try Console.log((try firstFailure("")).includes("NotFound"))
+effect firstFailure(id: string) {
+  const outcome = try exit(getUser(id))
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) {
     return Cause.pretty(cause)
   }
@@ -223,15 +230,14 @@ Elsewhere, an `is` with bindings is EK4703.
 
 ## Exhaustiveness
 
-`match` is exhaustive. A match without a `default` arm whose value is a finite union must handle every case: literals, `null`, `undefined`, a data type's variants, `error` classes, `Option`, `Exit`, `Result`, and other objects with a literal `_tag`. For nested data-variant patterns, the diagnostic names the missing nested pattern, such as `Wrap.Of { s: Shape.Tri }`. Guards and patterns whose finite product cannot be described keep the remaining type.
+`match` is exhaustive. A match without a `default` arm whose value is a finite union must handle every case: literals, `null`, `undefined`, a data type's variants, `error` classes, `Option`, `Exit`, `Result`, and other objects with a literal `_tag`. Guards and patterns whose finite product cannot be described keep the remaining type.
 
-Any other subject is open: a `string` or `number` without a literal type, `unknown`, `any`, `object`, an array, a type parameter, or a class that is not closed. Arms over its cases cannot cover it, so a match over it needs a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`, which matches whatever is left. Without one it is EK4701.
-
-A class arm removes its class only when the class is closed: an error class, one that extends `effect`'s `YieldableError`, that declares no `[Symbol.hasInstance]` or `[customMatcher]` of its own and whose package is installed once. Every `error` declaration is one, and so are `Data.TaggedError`, `Data.Error` and Schema error classes and `effect`'s own, such as `Cause.NoSuchElementError`, whether a `.vibe` file, a `.ts` file or a declaration file declares them. As in Effect TypeScript, an error class's type is structural, so another class with the same tag and fields is assignable to it; its value still fails the arm's `instanceof` test and reaches the end of the match as a defect, never another arm. An arm over `Error`, over a class that is not an error class, or over a class with its own membership test removes nothing, as a guarded arm does, so a match that relies on one needs a `default` arm; EK4701's notes name each arm that did not count.
+Any other subject is open: a `string` or `number` without a literal type, `unknown`, `any`, `object`, an array, a type parameter, or a class that is not closed. Use a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`, which matches whatever is left.
 
 A missing case is a compile error, EK4701, `This match does not handle every case of {type}: {cases} is left.`:
 
 ```vibe
+// pending: VIP-7
 // expect-error: EK4701
 type Phase = "draft" | "review" | "published"
 
@@ -250,6 +256,7 @@ error EK4701: This match does not handle every case of Phase: "review" is left.
 For a data type, the message names the variants left:
 
 ```vibe
+// pending: VIP-7, VIP-16
 // expect-error: EK4701
 data Shipment {
   Packed
@@ -259,7 +266,7 @@ data Shipment {
 
 function shipmentLabel(shipment: Shipment) {
   return match (shipment) {
-    when Shipment.Packed: "packed";
+    when { _tag: "Packed" }: "packed";
   }
 }
 ```
@@ -268,17 +275,17 @@ function shipmentLabel(shipment: Shipment) {
 error EK4701: This match does not handle every case of Shipment: Shipment.Shipped | Shipment.Delivered is left.
 ```
 
-A class pattern covers its class and its subclasses, never another class with the same fields: each package's `error NotFound` needs its own arm, and so does an error that has a family base's fields without extending it:
+Each error tag in a finite union needs coverage:
 
 ```vibe
+// pending: VIP-7, VIP-13
 // expect-error: EK4701
-error AppError { _tag: string; code: string }
-error Missing extends AppError { path: string }
+error Missing { path: string }
 error Other { code: string }
 
-function describe(failure: Missing | Other) {
+function describeError(failure: Missing | Other) {
   return match (failure) {
-    when AppError: failure.code;
+    when Missing: failure.path;
   }
 }
 ```
@@ -287,7 +294,7 @@ function describe(failure: Missing | Other) {
 error EK4701: This match does not handle every case of Missing | Other: Other is left.
 ```
 
-An arm that only binds the value, `when let other:`, matches every value, as `default` does, so a match that ends in one handles every case. A match that handles every case needs no `default`, and tests that reach every arm cover every branch. Its last arm is still tested like every other arm, with the same reads, without adding a branch: a value outside the declared type, which only an unsound cast or `any` can produce, or a structural object of a class type, which is no instance, fails the test and throws a `TypeError`.
+An arm that only binds the value, `when let other:`, matches every value, as `default` does, so a match that ends in one handles every case. A match that handles every case needs no `default`, and tests that reach every arm cover every branch. Its last arm is still tested like every other arm, with the same reads, without adding a branch. If a value from an unsound cast or `any` matches no arm, the match throws a `TypeError`.
 
 ## Errors
 
@@ -298,8 +305,6 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 | EK4703 | An `is` with bindings outside an `if` or `while` condition | Move the test into the condition, or use `match` |
 | EK4704 | A regular expression pattern, a relational pattern such as `< 10`, or a computed key other than a name or a literal | Use a guard: `and if (n < 10)` |
 | EK4705 | `and`, `or`, and `not` at one level without parentheses | Add parentheses |
-| EK4706 | Braces after a matcher that is not a data variant, or an argument list after a variant | `when NotFound and { let id }`; `when Delivery.Sent { let tracking }` |
-| EK4707 | A data variant that the subject's type has no case of | Match one of the subject type's variants |
 
 ## Not yet supported
 
@@ -308,5 +313,7 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 - `is` bindings are not in scope in an `else` branch or after the statement.
 - A match inside a larger expression runs its arms in their own function, so an arm there cannot `yield`. A match after `return` or as a statement can.
 - `async match` and the proposal's regular expression and relational patterns.
+
+Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.

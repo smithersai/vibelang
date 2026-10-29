@@ -7,16 +7,17 @@ Matching turns an outcome into one value or selects the next computation. Use ty
 ## Folding success and failure into values
 
 ```vibe
-// run: Console.log(countLabel(3)); Console.log(countLabel(-1))
+// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
+// run: try Console.log(try countLabel(3)); try Console.log(try countLabel(-1))
 error InvalidCount
 
-function itemCount(raw: number) {
+effect itemCount(raw: number) {
   if (raw < 0) throw new InvalidCount()
   return raw
 }
 
-function countLabel(raw: number) {
-  return Effect.match(() => itemCount(raw), {
+effect countLabel(raw: number) {
+  return try Effect.match(itemCount(raw), {
     onFailure: () => "Count unavailable",
     onSuccess: (count) => `${count} items`
   })
@@ -34,15 +35,16 @@ Count unavailable
 ## Choosing effectful branches
 
 ```vibe
-// run: Console.log(reportCount(3)); Console.log(reportCount(-1))
-function reportCount(raw: number) {
-  return Effect.matchEffect(() => itemCount(raw), {
-    onFailure: () => {
-      Console.log("Invalid count received")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try reportCount(3)); try Console.log(try reportCount(-1))
+effect reportCount(raw: number) {
+  return try matchEffect(itemCount(raw), {
+    onFailure: effect () => {
+      try Console.log("Invalid count received")
       return "Count unavailable"
     },
-    onSuccess: (count) => {
-      Console.log("Count accepted")
+    onSuccess: effect (count) => {
+      try Console.log("Count accepted")
       return `${count} items`
     }
   })
@@ -56,26 +58,27 @@ Invalid count received
 Count unavailable
 ```
 
-`matchEffect` accepts VibeLang functions that can pause, fail, or use services. Only the selected branch runs; its errors and requirements join the result's contract. Use `try`/`catch` when the branches read better as statements.
+`matchEffect` accepts callbacks returning Effects that can pause, fail, or use services. Only the selected branch runs; its errors and requirements join the result's contract. Use a catch expression with an effect handler when recovery needs several statements.
 
 ## Matching complete failure causes
 
 ```vibe
-// run: Console.log(outcomeLabel()); Console.log(reportOutcome())
-function outcomeLabel() {
-  return Effect.matchCause(() => die(new Error("index invariant")), {
-    onFailure: (cause) => cause.hasDies() ? "Index defect" : "Index stopped",
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try outcomeLabel()); try Console.log(try reportOutcome())
+effect outcomeLabel() {
+  return try matchCause(die(new Error("index invariant")), {
+    onFailure: (cause) => Cause.hasDies(cause) ? "Index defect" : "Index stopped",
     onSuccess: () => "Index ready"
   })
 }
 
-function reportOutcome() {
-  return Effect.matchCauseEffect(() => die(new Error("index invariant")), {
-    onFailure: (cause) => {
-      Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+effect reportOutcome() {
+  return try matchCauseEffect(die(new Error("index invariant")), {
+    onFailure: effect (cause) => {
+      try Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
       return "Unavailable"
     },
-    onSuccess: () => "Ready"
+    onSuccess: () => succeed("Ready")
   })
 }
 ```
@@ -91,14 +94,15 @@ Unavailable
 ## Discarding failures or all causes
 
 ```vibe
-// run: ignoreRejectedCount(); discardBoundaryOutcome()
-function ignoreRejectedCount() {
-  Effect.ignore(() => itemCount(-2))
+// pending: VIP-1, VIP-5, VIP-6
+// run: try ignoreRejectedCount(); try discardBoundaryOutcome()
+effect ignoreRejectedCount() {
+  try ignore(itemCount(-2))
 }
 // void!!
 
-function discardBoundaryOutcome() {
-  Effect.ignoreCause(() => die(new Error("isolated task failed")))
+effect discardBoundaryOutcome() {
+  try ignoreCause(die(new Error("isolated task failed")))
 }
 // Output:
 ```

@@ -23,6 +23,8 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/react@16.
 
 ## 2. Configure tsconfig.json
 
+Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
+
 Find the configuration that includes `src`. In an app from Vite's `react-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Check that `include` selects the `.vibe` files. The template's `"include": ["src"]` does.
 
 The VibeLang plugin's compile backend automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits. `vite build` therefore works with the template's `allowImportingTsExtensions` setting.
@@ -68,19 +70,20 @@ const directory: ReadonlyArray<User> = [
 ]
 
 export const UsersLive = Layer.succeed(Users, {
-  find(id) {
+  effect find(id) {
     const user = directory.find((entry) => entry.id === id)
     if (user === undefined) throw new UserNotFound({ id })
     return user
   }
 })
 
-export function greet(id: string) {
-  try {
-    const user = Users.find(id)
+export effect greet(id: string) {
+  const users = try Users
+  return effect {
+    const user = try users.find(id)
     return `Welcome, ${user.name}`
-  } catch (error) {
-    return `No user ${error.id}`
+  } catch (error) => match (error) {
+    when UserNotFound: `No user ${error.id}`
   }
 }
 ```
@@ -140,27 +143,29 @@ Create `src/users.test.vibe`:
 import { assert, it } from "@effect/vitest"
 import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 
-it.effect("greets a known user") {
-  const message = Effect.provide(() => greet("42"), UsersLive)
-  assert.strictEqual(message, "Welcome, Ada Lovelace")
-}
+it.effect("greets a known user", () => effect {
+  const message = try Effect.provide(greet("42"), UsersLive)
+  try sync(() => assert.strictEqual(message, "Welcome, Ada Lovelace"))
+})
 
-it.effect("fails a lookup with UserNotFound") {
+it.effect("fails a lookup with UserNotFound", () => effect {
   provide UsersLive {
-    try {
-      Users.find("404")
-      assert.fail("expected UserNotFound")
-    } catch (error) {
-      assert.instanceOf(error, UserNotFound)
-      assert.strictEqual(error.id, "404")
-    }
+    const users = try Users
+    const outcome = try result(users.find("404"))
+    try sync(() => {
+      assert(Result.isFailure(outcome))
+      if (Result.isFailure(outcome)) {
+        assert.instanceOf(outcome.failure, UserNotFound)
+        assert.strictEqual(outcome.failure.id, "404")
+      }
+    })
   }
-}
+})
 
-it.effect("recovers UserNotFound in greet") {
-  const message = Effect.provide(() => greet("404"), UsersLive)
-  assert.strictEqual(message, "No user 404")
-}
+it.effect("recovers UserNotFound in greet", () => effect {
+  const message = try Effect.provide(greet("404"), UsersLive)
+  try sync(() => assert.strictEqual(message, "No user 404"))
+})
 ```
 
 Create `src/Greeting.test.tsx`:

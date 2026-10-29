@@ -18,6 +18,8 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @vue/test-utils@2.5.1
 
 ## 2. Configure tsconfig.json
 
+Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
+
 Find the configuration that includes `src`. In an app from Vite's `vue-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Make two changes there:
 
 1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits, so `vite build` works with Vue's `allowImportingTsExtensions` setting. For direct CLI emission with `vibelang -b` in step 8, set `"rewriteRelativeImportExtensions": true` in `compilerOptions`; it permits source-extension imports and rewrites them to JavaScript paths. `allowImportingTsExtensions` alone produces TS5096 during CLI emission.
@@ -67,7 +69,8 @@ Create `src/todos.vibe`. The `TodosLive` layer keeps the list in a `Map` that it
 
 ```vibe
 // src/todos.vibe
-// run: provide TodosLive { Console.log(JSON.stringify(loadBoard())); try { Todos.complete(99) } catch (error) { Console.log(error._tag, error.id) } }
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15
+// run: provide TodosLive { try Console.log(JSON.stringify(try loadBoard())); const todos = try Todos; try Console.log(todos.complete(99) catch (error) => `${error._tag} ${error.id}`) }
 export schema Todo { id: number; title: string; done: boolean }
 
 export error TodoNotFound { id: number }
@@ -77,15 +80,15 @@ export service Todos {
   complete(id: number): Todo!TodoNotFound
 }
 
-export const TodosLive = Layer.effect(Todos) {
+export const TodosLive = Layer.effect(Todos, effect {
   const items = new Map<number, Todo>([
     [1, { id: 1, title: "Declare the schema", done: true }],
     [2, { id: 2, title: "Write the service", done: false }],
     [3, { id: 3, title: "Render the board", done: false }]
   ])
   return {
-    list() { return [...items.values()] },
-    complete(id) {
+    effect list() { return [...items.values()] },
+    effect complete(id) {
       const todo = items.get(id)
       if (todo === undefined) throw new TodoNotFound({ id })
       const done = { ...todo, done: true }
@@ -93,14 +96,15 @@ export const TodosLive = Layer.effect(Todos) {
       return done
     }
   }
-}
+})
 
-export function completeTodo(id: number) {
-  try {
-    const todo = Todos.complete(id)
+export effect completeTodo(id: number) {
+  const todos = try Todos
+  return effect {
+    const todo = try todos.complete(id)
     return `Completed: ${todo.title}`
-  } catch (error) {
-    return `No todo #${error.id}`
+  } catch (error) => match (error) {
+    when TodoNotFound: `No todo #${error.id}`
   }
 }
 
@@ -109,9 +113,10 @@ export interface Board {
   messages: ReadonlyArray<string>
 }
 
-export function loadBoard(): Board!!Todos {
-  const messages = [completeTodo(2), completeTodo(99)]
-  return { todos: Todos.list(), messages }
+export effect loadBoard(): Board!!Todos {
+  const messages = [try completeTodo(2), try completeTodo(99)]
+  const todos = try Todos
+  return { todos: try todos.list(), messages }
 }
 ```
 
@@ -176,36 +181,41 @@ Create `src/todos.test.vibe`:
 
 ```vibe
 // src/todos.test.vibe
+// pending: VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 import { assert, it } from "@effect/vitest"
 import { completeTodo, loadBoard, TodoNotFound, Todos, TodosLive } from "./todos.vibe"
 
-it.effect("completes a todo") {
-  const message = Effect.provide(() => completeTodo(2), TodosLive)
-  assert.strictEqual(message, "Completed: Write the service")
-}
+it.effect("completes a todo", () => effect {
+  const message = try Effect.provide(completeTodo(2), TodosLive)
+  try sync(() => assert.strictEqual(message, "Completed: Write the service"))
+})
 
-it.effect("fails with TodoNotFound for an unknown id") {
+it.effect("fails with TodoNotFound for an unknown id", () => effect {
   provide TodosLive {
-    try {
-      Todos.complete(99)
-      assert.fail("expected TodoNotFound")
-    } catch (error) {
-      assert.instanceOf(error, TodoNotFound)
-      assert.strictEqual(error.id, 99)
-    }
+    const todos = try Todos
+    const outcome = try result(todos.complete(99))
+    try sync(() => {
+      assert(Result.isFailure(outcome))
+      if (Result.isFailure(outcome)) {
+        assert.instanceOf(outcome.failure, TodoNotFound)
+        assert.strictEqual(outcome.failure.id, 99)
+      }
+    })
   }
-}
+})
 
-it.effect("recovers TodoNotFound in completeTodo") {
-  const message = Effect.provide(() => completeTodo(99), TodosLive)
-  assert.strictEqual(message, "No todo #99")
-}
+it.effect("recovers TodoNotFound in completeTodo", () => effect {
+  const message = try Effect.provide(completeTodo(99), TodosLive)
+  try sync(() => assert.strictEqual(message, "No todo #99"))
+})
 
-it.effect("loads the board after both completions") {
-  const board = Effect.provide(() => loadBoard(), TodosLive)
-  assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
-  assert.deepStrictEqual(board.todos.map((todo) => todo.done), [true, true, false])
-}
+it.effect("loads the board after both completions", () => effect {
+  const board = try Effect.provide(loadBoard(), TodosLive)
+  try sync(() => {
+    assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
+    assert.deepStrictEqual(board.todos.map((todo) => todo.done), [true, true, false])
+  })
+})
 ```
 
 Create `src/TodoBoard.test.ts`:
@@ -248,6 +258,7 @@ src/TodoBoard.vue: error TS2307: Cannot find module './todos.vibe' or its corres
 ```
 
 Without `rewriteRelativeImportExtensions`, the TS2876 rewrite errors disappear, but `.vibe` imports still fail with TS2307. Use `vibelang -b` instead: it builds the same project references and checks `.vibe` and `.ts` files as one program, but not the script blocks of `.vue` files. Keep those blocks thin: import a program, run it, and render its result, as `TodoBoard.vue` does. The `.vibe` tests and the component test cover the rest. In `package.json`, change the `build` script:
+
 
 ```json
 {

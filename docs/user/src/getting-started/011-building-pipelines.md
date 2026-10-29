@@ -5,11 +5,12 @@ Use statements for dependent steps and the pipe operator, `|>`, for a series of 
 ## Compose reusable functions
 
 ```vibe
-// run: Console.log(priceLabel())
+// pending: VIP-1, VIP-3, VIP-5, VIP-14, VIP-23
+// run: try Console.log(try priceLabel())
 function addMargin(n: number) { return n + 3 }
 function double(n: number) { return n * 2 }
 
-function priceLabel() {
+effect priceLabel() {
   return 9 |> addMargin(%) |> double(%) |> `Price: ${%}`
 }
 // string!!; "Price: 24"
@@ -18,31 +19,33 @@ function priceLabel() {
 
 Each body reads the previous stage's result through `%`. Here `%` stands for a value, so the expression before `|>` runs once and the body receives its result. Standalone functions stay reusable without adding methods to a value's prototype, and bundlers can remove the Effect functions a program never calls.
 
-Program operators take the work to run as an arrow, so nest them:
+Effect operators take Effect values directly, so nest them:
 
 ```vibe
-// run: Console.log(preparedPrice())
-function preparedPrice() {
-  return withSpan(() => timeout(() => priceLabel(), "1 second"), "price-label")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try preparedPrice())
+effect preparedPrice() {
+  return try withSpan(timeout(priceLabel(), "1 second"), "price-label")
 }
 // Output: Price: 24
 ```
 
-`timeout` runs `priceLabel()` under its deadline, and the span covers the timed work; the call returns the final success value. To keep the work as a reusable program, bind it to a function: `const prepared = () => timeout(() => priceLabel(), "1 second")`.
+`timeout` runs `priceLabel()` under its deadline, and the span covers the timed work; `try` returns the final success value. To keep the work as a reusable Effect, bind it directly: `const prepared = timeout(priceLabel(), "1 second")`.
 
-A pipe's `%` is always the value of the expression before its `|>`, and its body must use `%`. Passing `%` to a program operator, as in `priceLabel() |> timeout(%, "1 second")`, still compiles but is being retired.
+A pipe's `%` is always the value of the expression before its `|>`, and its body must use `%`. Passing `%` to an Effect operator composes that Effect: `try (priceLabel() |> timeout(%, "1 second"))` runs it under the deadline.
 
 ## Map or replace a success
 
 ```vibe
-// run: Console.log(adjustedPrice())
-function adjustedPrice() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try adjustedPrice())
+effect adjustedPrice() {
   const price = 24
   return price + 5
 }
 
-function recordPrice() {
-  log(`price=${adjustedPrice()}`)
+effect recordPrice() {
+  try log(`price=${try adjustedPrice()}`)
   return "recorded"
 }
 // Output: 29
@@ -53,73 +56,79 @@ Using the returned value replaces `Effect.map` for local transformations. A late
 ## Sequence dependent computations
 
 ```vibe
-// run: Console.log(total())
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
+// run: try Console.log(try total())
 error InvalidRate
 
-function discounted(price: number, percent: number) {
+effect discounted(price: number, percent: number) {
   if (percent < 0 || percent > 100) throw new InvalidRate()
   return price * (1 - percent / 100)
 }
 
-function total() {
-  const price = adjustedPrice()
-  const reduced = discounted(price, 12)
+effect total() {
+  const price = try adjustedPrice()
+  const reduced = try discounted(price, 12)
   return reduced + 2
 }
 // number!InvalidRate!
 // Output: 27.52
 ```
 
-One call after another expresses the dependency that `flatMap` or `andThen` handles in TypeScript Effect. Each call runs once, in order; an unhandled failure stops later statements.
+One `try` after another expresses the dependency that `flatMap` or `andThen` handles in TypeScript Effect. Each `try` runs once, in order; an unhandled failure stops later statements.
 
 ## Integrate Option and Result
 
 ```vibe
-// run: Console.log([positive(2), validated(0)].join(", "))
-function positive(value: number) {
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
+// run: try Console.log([try positive(2), try validated(0)].join(", "))
+effect positive(value: number) {
   const optional = value > 0 ? Option.some(value) : Option.none()
-  return Effect.fromOption(optional)
+  return try fromOption(optional)
 }
 // number!NoSuchElementError!
 
-function validated(value: number) {
+effect validated(value: number) {
   const checked = value >= 0
     ? Result.succeed(value)
     : Result.fail("negative value")
-  return Effect.fromResult(checked)
+  return try fromResult(checked)
 }
 // number!string!
 // Output: 2, 0
 ```
 
-`Option` and `Result` are data values; keep them intact to inspect them. Explicit conversion runs them as computations: a missing option adds `NoSuchElementError`, and a failed result adds its error type. Calling a constructor such as `Option.some` builds the container.
+`Option` and `Result` are data values; keep them intact to inspect them. Explicit conversion builds Effects that run with `try`: a missing option adds `NoSuchElementError`, and a failed result adds its error type. Calling a constructor such as `Option.some` builds the container.
 
-## Call a data type's functions as methods
+## Call a data type's module functions
 
 ```vibe
-// run: Console.log(JSON.stringify([nickname(-1), Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]))
 function nickname(id: number) {
-  return Option.some(id)
-    .filter((n) => n > 0)
-    .map((n) => `user-${n}`)
-    .getOrElse(() => "anonymous")
+  return Option.some(id).pipe(
+    Option.filter((n) => n > 0),
+    Option.map((n) => `user-${n}`),
+    Option.getOrElse(() => "anonymous")
+  )
 }
 
 function warnings(readings: Stream.Stream<number>) {
-  return readings
-    .filter((celsius) => celsius > 25)
-    .map((celsius) => `${celsius} C`)
-    .take(3)
+  return readings.pipe(
+    Stream.filter((celsius) => celsius > 25),
+    Stream.map((celsius) => `${celsius} C`),
+    Stream.take(3)
+  )
 }
 // Output: ["anonymous",["26 C","30 C","28 C"]]
 ```
 
-A value of an Effect data type, such as `Option`, `Stream`, `Chunk`, `Duration`, `Fiber`, or `Ref`, takes its module's functions as methods: `value.map(f)` calls `Option.map(value, f)` when `value` is an `Option`, and `Stream.map(value, f)` for a `Stream`. The type's own members come first, so arrays, strings, and Effect's `pipe` keep their meaning. A method that returns an Effect runs where it stands, like any call: `fiber.join()` waits for the fiber. Hover over a method to see the function it calls.
+Effect data types, such as `Option`, `Stream`, `Chunk`, `Duration`, `Fiber`, and `Ref`, expose operations through their modules. `Option.map(value, f)` transforms an Option, and `Stream.map(value, f)` transforms a Stream. Use their curried forms in `.pipe(...)` to compose several operations. Arrays and strings keep JavaScript's own methods. A module function that returns an Effect builds it without running it: `try Fiber.join(fiber)` waits for the fiber.
 
-A method exists only in a call. To pass the function itself, name its module:
+To pass a function as a callback, use its module name:
 
 ```vibe
-// run: Console.log(JSON.stringify(totals([Option.some(2), Option.none()])))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(totals([Option.some(2), Option.none()])))
 function totals(values: ReadonlyArray<Option.Option<number>>) {
   return values.map(Option.getOrElse(() => 0))
 }
@@ -129,53 +138,56 @@ function totals(values: ReadonlyArray<Option.Option<number>>) {
 ## Observe intermediate results
 
 ```vibe
-// run: Console.log(quotedTotal())
-function quotedTotal() {
-  const amount = total()
-  Console.log(`quoted amount=${amount}`)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try quotedTotal())
+effect quotedTotal() {
+  const amount = try total()
+  try Console.log(`quoted amount=${amount}`)
   return amount
 }
 // Output: quoted amount=27.52
 // Output: 27.52
 ```
 
-The local variable stays available after logging, as with `Effect.tap`. An observation that fails also fails the enclosing function; wrap it in `try`/`catch` only to ignore that failure on purpose.
+The local variable stays available after logging, as with `Effect.tap`. An observation that fails also fails the enclosing function; use a `catch` expression only to ignore that failure on purpose.
 
 ## Collect multiple computations
 
 ```vibe
-// run: Console.log(summary())
-function summary() {
-  const details = all({
-    price: () => total(),
-    label: () => priceLabel()
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try summary())
+effect summary() {
+  const details = try all({
+    price: total(),
+    label: priceLabel()
   }, { concurrency: 2 })
   return `${details.label}, total=${details.price}`
 }
 // Output: Price: 24, total=27.52
 ```
 
-`Effect.all` takes each computation as a program and preserves the input's tuple or object shape. It runs sequentially by default; this example explicitly starts up to two computations at once. If a branch fails, the combined computation fails and concurrent siblings are interrupted and cleaned up.
+`all` takes each computation as an Effect value and preserves the input's tuple or object shape. It runs sequentially by default; this example explicitly starts up to two computations at once. If a branch fails, the combined computation fails and concurrent siblings are interrupted and cleaned up.
 
-For a dynamic collection, use `Effect.forEach(values, (value) => work(value), { concurrency: 4 })`, or build a collection of programs first, `const jobs = values.map((value) => () => work(value))`, then call `Effect.all(jobs, { concurrency: 4 })`. Iterables and records of zero-argument programs convert to Effects where the combinator expects them. A synchronous array callback cannot call work that pauses or has expected failures; returning a program delays that work.
+For a dynamic collection, use `try forEach(values, (value) => work(value), { concurrency: 4 })`, or build a collection of Effects first, `const jobs = values.map((value) => work(value))`, then run `try all(jobs, { concurrency: 4 })`. `all` accepts iterables and records of Effects. A synchronous array callback can build an Effect; its work runs when the combinator runs it.
 
 ## Avoid discarded programs
 
 ```vibe
-// run: saveNotice()
-function saveNotice() {
-  const notice = () => Console.log("saved")
-  notice()
-  Console.log("finished")
+// pending: VIP-1, VIP-5, VIP-14
+// run: try saveNotice()
+effect saveNotice() {
+  const notice = Console.log("saved")
+  try notice
+  try Console.log("finished")
 }
 // Output: saved
 // Output: finished
 ```
 
-A call statement runs even when its success value is ignored. A function value such as `notice` describes work and runs only when called; writing `() => Effect.log("saved")` alone creates a value no runner or caller uses.
+An Effect value such as `notice` describes work and runs only with `try`, `catch`, a concurrency form, or a runner. `try notice` runs the log even when its success value is ignored. A bare call such as `log("saved")` builds an Effect that no runner uses.
 
 ## Coming from Effect
 
-Statements replace `map`, `flatMap`, `andThen`, and `tap` in most functions. Retry, timeout and tracing take the program as an arrow: `timeout(() => retry(() => work(), policy), "1 second")` replaces `work().pipe(Effect.retry(policy), Effect.timeout("1 second"))`. Call a data type's functions as methods, `maybe.map(f).getOrElse(() => 0)`, instead of `pipe(maybe, Option.map(f), Option.getOrElse(() => 0))`. The global `pipe` still works and suits data-last functions with no data-first form, such as `Match.when`.
+`try` and statements replace `map`, `flatMap`, `andThen`, and `tap` in most effect functions. Retry, timeout and tracing take Effects directly: `try timeout(retry(work(), policy), "1 second")` runs `work().pipe(Effect.retry(policy), Effect.timeout("1 second"))`. Use module functions such as `Option.map(maybe, f)` or compose them with `pipe(maybe, Option.map(f), Option.getOrElse(() => 0))`. The global `pipe` still works and suits data-last functions with no data-first form, such as `Match.when`.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/building-pipelines)

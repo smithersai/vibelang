@@ -108,10 +108,11 @@ Add a `tsconfig.json` that selects `.vibe` sources and emits Node ESM to `dist/`
     "types": []
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.vibe"],
-  "vibelang": { "diagnostics": { "EK3205": "error" } }
+  "exclude": ["src/**/*.test.vibe"]
 }
 ```
+
+VibeLang reads `vibe.config.json` first, then `tsconfig.json`, then `jsconfig.json`. `vibe.config.json` accepts every tsconfig field. VibeLang's own options go in a top-level `"vibe"` section of whichever file it reads, which plain `tsc` ignores.
 
 Add scripts to `package.json`, which must have `"type": "module"`:
 
@@ -126,11 +127,13 @@ Add scripts to `package.json`, which must have `"type": "module"`:
 }
 ```
 
+`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function.
+
 `node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain. Function tracing defaults to `"none"`, so a defect can show only one frame. To add function spans, set this top-level option in `tsconfig.json` and rebuild:
 
 ```json
 {
-  "vibelang": { "tracing": "exported" }
+  "vibe": { "tracing": "exported" }
 }
 ```
 
@@ -195,7 +198,7 @@ bun run test
 bun x --no-install vibelang --noEmit
 ```
 
-Set `"declaration": true` in `compilerOptions` to emit `.d.ts` files. The starter leaves this option off. The starter's `tsconfig.json` selects `.vibe` and TypeScript files under `src/`, excludes `*.test.vibe` from the build, treats a missing entry provider (EK3205) as an error, emits Node ESM to `dist/`, enables strict checking and source maps, and prevents emit on errors. Local source imports use `.vibe`; generated JavaScript and declaration files import `.js`, so a TypeScript project that installs your package resolves each module's declarations. `vibelang` accepts TypeScript compiler flags such as `--noEmit`, `--watch`, and `-b`.
+The compiler writes `x.d.vibe.ts` beside each `x.vibe`, so stock `tsc`, TypeDoc and `bun check` resolve `.vibe` imports through `allowArbitraryExtensions`. Each exported function's declaration carries `@throws`: what it may throw, or `@throws {never}`. Set `"declaration": true` in `compilerOptions` to also emit `.d.ts` files to `dist/`. The starter leaves this option off. The starter's `tsconfig.json` selects `.vibe` and TypeScript files under `src/`, excludes `*.test.vibe` from the build, emits Node ESM to `dist/`, enables strict checking and source maps, and prevents emit on errors. Local source imports use `.vibe`; generated JavaScript and declaration files import `.js`, so a TypeScript project that installs your package resolves each module's declarations. `vibelang` accepts TypeScript compiler flags such as `--noEmit`, `--watch`, and `-b`.
 
 ### TypeScript declaration consumers
 

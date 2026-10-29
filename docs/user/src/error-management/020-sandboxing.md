@@ -7,19 +7,20 @@ Sandboxing puts the complete runtime failure cause in the typed error channel, f
 ## Moving causes into the error channel
 
 ```vibe
-// run: Console.log(Effect.flip(() => readRow()).line); Console.log(JSON.stringify(Effect.flip(() => sandboxedRow()).reasons.map((reason) => reason._tag)))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log((try flip(readRow())).line); try Console.log(JSON.stringify((try flip(sandboxedRow())).reasons.map((reason) => reason._tag)))
 error InvalidRow {
   line: number
 }
 
-function readRow() {
+effect readRow() {
   throw new InvalidRow({ line: 8 })
 }
 
-function sandboxedRow() {
-  return Effect.sandbox(() => readRow())
+effect sandboxedRow() {
+  return try sandbox(readRow())
 }
-// void!Cause.Cause<InvalidRow>!
+// never!Cause.Cause<InvalidRow>!
 ```
 
 ```output
@@ -32,17 +33,14 @@ function sandboxedRow() {
 ## Inspecting individual reasons
 
 ```vibe
-// run: Console.log(JSON.stringify(rowFailureKinds()))
-function rowFailureKinds() {
-  try {
-    return sandboxedRow()
-  } catch (cause) {
-    return cause.reasons.map((reason) => {
-      if (reason.isFailReason()) return `row ${reason.error.line}`
-      if (reason.isDieReason()) return "defect"
-      return "interruption"
-    })
-  }
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try rowFailureKinds()))
+effect rowFailureKinds() {
+  return sandboxedRow() catch (cause) => cause.reasons.map((reason) => {
+    if (Cause.isFailReason(reason)) return `row ${reason.error.line}`
+    if (Cause.isDieReason(reason)) return "defect"
+    return "interruption"
+  })
 }
 ```
 
@@ -50,21 +48,20 @@ function rowFailureKinds() {
 ["row 8"]
 ```
 
-Effect 4 stores reasons in a flat readonly array; one outcome can hold several, so inspect them all. `isFailReason` exposes `error`, `isDieReason` exposes `defect`, and `isInterruptReason` identifies cancellation.
+Effect 4 stores reasons in a flat readonly array; one outcome can hold several, so inspect them all. `Cause.isFailReason` exposes `error`, `Cause.isDieReason` exposes `defect`, and `Cause.isInterruptReason` identifies cancellation.
 
 ## Recovering selected variants
 
 ```vibe
-// run: Console.log(rowOrPlaceholder())
-function rowOrPlaceholder() {
-  try {
-    return sandboxedRow()
-  } catch (cause) {
-    if (!cause.hasDies() && !cause.hasInterrupts()) {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try rowOrPlaceholder())
+effect rowOrPlaceholder() {
+  return try Effect.catch(sandboxedRow(), effect (cause) => {
+    if (!Cause.hasDies(cause) && !Cause.hasInterrupts(cause)) {
       return "Malformed row omitted"
     }
-    return Effect.failCause(cause)
-  }
+    return try failCause(cause)
+  })
 }
 ```
 
@@ -77,16 +74,15 @@ This boundary recovers only causes made entirely of domain failures; checking on
 ## Restoring causes after inspection
 
 ```vibe
-// run: Console.log(Effect.flip(() => readWithInspection()).line)
-function readWithInspection() {
-  try {
-    return sandboxedRow()
-  } catch (cause) {
-    Console.log("Row computation stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
-    return Effect.failCause(cause)
-  }
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log((try flip(readWithInspection())).line)
+effect readWithInspection() {
+  return try Effect.catch(sandboxedRow(), effect (cause) => {
+    try Console.log("Row computation stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+    return try failCause(cause)
+  })
 }
-// void!InvalidRow!
+// never!InvalidRow!
 ```
 
 ```output
@@ -94,4 +90,4 @@ Row computation stopped ["Fail"]
 8
 ```
 
-`Effect.failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `Effect.fail(cause)` instead keeps the cause as typed error data, which is why `throw cause` is EK2140. For a single inspection or recovery step, `Effect.catchCause(() => readRow(), handler)` avoids changing the error channel first.
+`failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `fail(cause)` instead keeps the cause as typed error data, which is why `throw cause` is EK2140. For a single inspection or recovery step, `catchCause(readRow(), handler)` avoids changing the error channel first.

@@ -591,7 +591,7 @@ export function encoded(text: string) {
 
 ### Platform globals and their replacements
 
-Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table.
+Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members.
 
 | Global | Use instead |
 | --- | --- |
@@ -602,110 +602,110 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Buffer.from` | `new TextEncoder().encode(text)` |
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
-| `EventSource` | `HttpClient.get(url)` |
+| `EventSource` | `try HttpClient.get(url)` |
 | `SharedWorker` | Worker and WorkerRunner |
-| `WebSocket` | `Socket.makeWebSocket(url)` |
+| `WebSocket` | `try Socket.makeWebSocket(url)` |
 | `Worker` | Worker and WorkerRunner |
-| `XMLHttpRequest` | `HttpClient.get(url)` |
-| `__dirname` | `Path.dirname(Path.fromFileUrl(new URL(import.meta.url)))` |
-| `__filename` | `Path.fromFileUrl(new URL(import.meta.url))` |
+| `XMLHttpRequest` | `try HttpClient.get(url)` |
+| `__dirname` | `(try Path).dirname(try (try Path).fromFileUrl(new URL(import.meta.url)))` |
+| `__filename` | `try (try Path).fromFileUrl(new URL(import.meta.url))` |
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
-| `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine(). |
+| `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
 | `cancelAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
-| `clearImmediate` | `fiber.interrupt()` |
-| `clearInterval` | `fiber.interrupt()` |
-| `clearTimeout` | `fiber.interrupt()` |
-| `confirm` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine(). |
-| `console` | `Console.log(message)` |
-| `console.debug` | `Console.debug(message)` |
-| `console.error` | `Console.error(message)` |
-| `console.info` | `Console.info(message)` |
-| `console.log` | `Console.log(message)` |
-| `console.table` | `Console.table(rows)` |
-| `console.trace` | `Console.trace(message)` |
-| `console.warn` | `Console.warn(message)` |
-| `crypto` | `Crypto.randomBytes(size)` |
+| `clearImmediate` | `try Fiber.interrupt(fiber)` |
+| `clearInterval` | `try Fiber.interrupt(fiber)` |
+| `clearTimeout` | `try Fiber.interrupt(fiber)` |
+| `confirm` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
+| `console` | `try Console.log(message)` |
+| `console.debug` | `try Console.debug(message)` |
+| `console.error` | `try Console.error(message)` |
+| `console.info` | `try Console.info(message)` |
+| `console.log` | `try Console.log(message)` |
+| `console.table` | `try Console.table(rows)` |
+| `console.trace` | `try Console.trace(message)` |
+| `console.warn` | `try Console.warn(message)` |
+| `crypto` | `try (try Crypto).randomBytes(size)` |
 | `crypto.createCipheriv` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
 | `crypto.createDecipheriv` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
-| `crypto.createHash` | `Crypto.digest("SHA-256", bytes)` |
-| `crypto.createHmac` | `Experimental.Crypto.hmac("SHA-256", key, data)` |
-| `crypto.createSign` | `Experimental.Crypto.sign("Ed25519", privateKey, data)` |
-| `crypto.createVerify` | `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)` |
+| `crypto.createHash` | `try (try Crypto).digest("SHA-256", bytes)` |
+| `crypto.createHmac` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
+| `crypto.createSign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
+| `crypto.createVerify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
 | `crypto.generateKeyPair` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
-| `crypto.getRandomValues` | `Crypto.randomBytes(size)` |
-| `crypto.hash` | `Crypto.digest("SHA-256", bytes)` |
-| `crypto.randomBytes` | `Crypto.randomBytes(size)` |
-| `crypto.randomInt` | `Crypto.randomIntBetween(min, max)` |
-| `crypto.randomUUID` | `Crypto.randomUUIDv4()` |
-| `crypto.sign` | `Experimental.Crypto.sign("Ed25519", privateKey, data)` |
-| `crypto.subtle` | `Experimental.Crypto.hmac("SHA-256", key, data)` |
-| `crypto.subtle.digest` | `Crypto.digest("SHA-256", bytes)` |
-| `crypto.subtle.sign` | `Experimental.Crypto.sign("Ed25519", privateKey, data)` |
-| `crypto.subtle.verify` | `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)` |
-| `crypto.verify` | `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)` |
-| `crypto.webcrypto` | `Experimental.Crypto.hmac("SHA-256", key, data)` |
+| `crypto.getRandomValues` | `try (try Crypto).randomBytes(size)` |
+| `crypto.hash` | `try (try Crypto).digest("SHA-256", bytes)` |
+| `crypto.randomBytes` | `try (try Crypto).randomBytes(size)` |
+| `crypto.randomInt` | `try (try Crypto).randomIntBetween(min, max)` |
+| `crypto.randomUUID` | `try (try Crypto).randomUUIDv4()` |
+| `crypto.sign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
+| `crypto.subtle` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
+| `crypto.subtle.digest` | `try (try Crypto).digest("SHA-256", bytes)` |
+| `crypto.subtle.sign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
+| `crypto.subtle.verify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
+| `crypto.verify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
+| `crypto.webcrypto` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
 | `document` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
-| `fetch` | `HttpClient.get(url)` |
+| `fetch` | `try HttpClient.get(url)` |
 | `global` | `globalThis` |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | Worker and WorkerRunner |
-| `indexedDB` | `KeyValueStore.get(key)` |
-| `localStorage` | `KeyValueStore.get(key)` |
+| `indexedDB` | `try (try KeyValueStore).get(key)` |
+| `localStorage` | `try (try KeyValueStore).get(key)` |
 | `location` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `module` | `export const name = value` |
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
-| `navigator.clipboard` | `Clipboard.readString()` |
-| `navigator.geolocation` | `Geolocation.getCurrentPosition()` |
-| `navigator.hardwareConcurrency` | `Experimental.Process.availableParallelism()` |
-| `navigator.locks` | `Experimental.Locks.hold(name)` |
-| `navigator.permissions` | `Permissions.query("geolocation")` |
-| `performance` | `Clock.currentTimeMillis()` |
-| `performance.now` | `Clock.monotonicTimeNanos()` |
-| `performance.timeOrigin` | `Experimental.Process.timeOrigin()` |
-| `process` | `Config.String("NAME")()` |
-| `process.arch` | `Experimental.Process.arch()` |
-| `process.argv` | `Stdio.args()` |
-| `process.cwd` | `Path.resolve()` |
-| `process.env` | `Config.String("NAME")()` |
-| `process.execPath` | `Experimental.Process.execPath()` |
+| `navigator.clipboard` | `try (try Clipboard.Clipboard).readString` |
+| `navigator.geolocation` | `try (try Geolocation.Geolocation).getCurrentPosition()` |
+| `navigator.hardwareConcurrency` | `try (try Experimental.Process).availableParallelism` |
+| `navigator.locks` | `try (try Experimental.Locks).hold(name)` |
+| `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
+| `performance` | `try Clock.currentTimeMillis` |
+| `performance.now` | `try Clock.monotonicTimeNanos` |
+| `performance.timeOrigin` | `try (try Experimental.Process).timeOrigin` |
+| `process` | `try Config.String("NAME")` |
+| `process.arch` | `try (try Experimental.Process).arch` |
+| `process.argv` | `try (try Stdio).args` |
+| `process.cwd` | `(try Path).resolve()` |
+| `process.env` | `try Config.String("NAME")` |
+| `process.execPath` | `try (try Experimental.Process).execPath` |
 | `process.exit` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.exitCode` | return from main for exit 0; fail for exit 1; interruption exits 130 |
-| `process.hrtime` | `Clock.monotonicTimeNanos()` |
-| `process.kill` | `Experimental.Process.kill(pid, { killSignal })` |
-| `process.memoryUsage` | `Experimental.Process.memoryUsage()` |
-| `process.nextTick` | `yieldNow()` |
+| `process.hrtime` | `try Clock.monotonicTimeNanos` |
+| `process.kill` | `try (try Experimental.Process).kill(pid, { killSignal })` |
+| `process.memoryUsage` | `try (try Experimental.Process).memoryUsage` |
+| `process.nextTick` | `try yieldNow` |
 | `process.off` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.on` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.once` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
-| `process.pid` | `Experimental.Process.pid()` |
-| `process.platform` | `Experimental.Process.platform()` |
+| `process.pid` | `try (try Experimental.Process).pid` |
+| `process.platform` | `try (try Experimental.Process).platform` |
 | `process.removeListener` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
-| `process.stderr` | `Console.error(text)` |
-| `process.stdin` | `Terminal.readLine()` |
-| `process.stdout` | `Console.log(text)` |
-| `process.uptime` | escape to TypeScript for now: Clock reads the time, not the process's age: keep a Clock.monotonicTimeNanos() reading from the start. |
-| `process.version` | `Experimental.Process.versions()` |
-| `process.versions` | `Experimental.Process.versions()` |
-| `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine(). |
-| `queueMicrotask` | `yieldNow()` |
+| `process.stderr` | `try Console.error(text)` |
+| `process.stdin` | `try (try Terminal).readLine` |
+| `process.stdout` | `try Console.log(text)` |
+| `process.uptime` | escape to TypeScript for now: Clock reads the time, not the process's age: keep a `try Clock.monotonicTimeNanos` reading from the start. |
+| `process.version` | `try (try Experimental.Process).versions` |
+| `process.versions` | `try (try Experimental.Process).versions` |
+| `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
+| `queueMicrotask` | `try yieldNow` |
 | `removeEventListener` | `Stream.fromEventListener(target, "message")` |
 | `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
-| `require.resolve` | `import.meta.resolve(specifier)` |
+| `require.resolve` | `try Effect.try(() => import.meta.resolve(specifier))` |
 | `self` | `globalThis` |
-| `sessionStorage` | `KeyValueStore.get(key)` |
-| `setImmediate` | `yieldNow()` |
-| `setInterval` | `repeat(program, Schedule.spaced("1 second"))` |
-| `setTimeout` | `sleep("1 second")` |
+| `sessionStorage` | `try (try KeyValueStore).get(key)` |
+| `setImmediate` | `try yieldNow` |
+| `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
+| `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 
 A numeric return value from `main` does not set the exit status:
-`main(): number!! { return 3 }` still exits 0. Return normally for exit 0,
+`effect main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

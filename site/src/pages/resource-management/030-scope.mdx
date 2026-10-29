@@ -1,48 +1,47 @@
 ---
 title: "Scope"
-description: "A scope owns registered finalizers and runs them when its lifetime ends. Use using for lexical ownership, or an explicit scope when several operations must share a lifetime independent of one..."
+description: "A scope owns registered finalizers and runs them when its lifetime ends. Use scoped for local resource ownership, or an explicit scope when several operations must share a lifetime independent of..."
 ---
 
 # Scope
 
-A scope owns registered finalizers and runs them when its lifetime ends. Use `using` for lexical ownership, or an explicit scope when several operations must share a lifetime independent of one function call.
+A scope owns registered finalizers and runs them when its lifetime ends. Use `scoped` for local resource ownership, or an explicit scope when several operations must share a lifetime independent of one function call.
 
 
 ## Registering finalizers
 
 ```vibe
-function registeredWork() {
-  Effect.addFinalizer((exit) => {
-    Console.log(`Work scope closed with ${exit._tag}`)
-  })
+effect registeredWork() {
+  try addFinalizer((outcome) =>
+    Console.log(`Work scope closed with ${outcome._tag}`))
   return "Prepared"
 }
-// string!!Scope
+// string!!Scope.Scope
 
-function runRegisteredWork() {
-  return Effect.scoped(() => registeredWork())
+effect runRegisteredWork() {
+  return try scoped(registeredWork())
 }
 // string!!
 // Output: Work scope closed with Success
 // Output: Prepared
 ```
 
-`Effect.addFinalizer` attaches cleanup to the current scope, not the function's return. `Scope` is in the prelude: it names the module, and in a contract it means `Scope.Scope`, so no import is needed. `Effect.scoped` creates a scope, runs the program, and closes the scope with its outcome: the finalizer receives a success exit on success, and a failure exit on typed failure, a defect, or interruption.
+`addFinalizer` attaches cleanup to the current scope, not the function's return. `Scope` is in scope as a module, and `Scope.Scope` is its scope type, so no import is needed. `scoped` creates a scope, runs the Effect, and closes the scope with its outcome: the finalizer receives a success exit on success, and a failure exit on typed failure, a defect, or interruption.
 
 Finalizers run in reverse registration order by default, with interruption deferred during release. Their typed error channel must be `never`, so handle expected cleanup failures inside the callback. A defect during release stays in the resulting cause, and an expected failure beside it becomes a defect.
 
 ## Opening and closing scopes explicitly
 
 ```vibe
-function manuallyManagedWork() {
-  return Effect.acquireUseRelease(
-    () => Scope.make(),
-    (scope) => {
-      Scope.addFinalizer(scope, () => Console.log("First finalizer"))
-      Scope.addFinalizer(scope, () => Console.log("Second finalizer"))
-      return Scope.provide(() => registeredWork(), scope)
+effect manuallyManagedWork() {
+  return try acquireUseRelease(
+    Scope.make(),
+    effect (scope) => {
+      try Scope.addFinalizer(scope, Console.log("First finalizer"))
+      try Scope.addFinalizer(scope, Console.log("Second finalizer"))
+      return try Scope.provide(registeredWork(), scope)
     },
-    (scope, exit) => Scope.close(scope, exit)
+    (scope, outcome) => Scope.close(scope, outcome)
   )
 }
 // Output: Work scope closed with Success
@@ -58,21 +57,23 @@ function manuallyManagedWork() {
 ## Acquiring resources with automatic release
 
 ```vibe
-function openBuffer(label: string) {
-  return Effect.acquireRelease(
-    () => {
-      Console.log(`Opened ${label}`)
+effect openBuffer(label: string) {
+  return try acquireRelease(
+    effect {
+      try Console.log(`Opened ${label}`)
       return { label }
     },
     (buffer) => Console.log(`Closed ${buffer.label}`)
   )
 }
-// { label: string }!!Scope
+// { label: string }!!Scope.Scope
 
-function copyLabels() {
-  using source = openBuffer("source")
-  using destination = openBuffer("destination")
-  return `${source.label} -> ${destination.label}`
+effect copyLabels() {
+  return try scoped(effect {
+    const source = try openBuffer("source")
+    const destination = try openBuffer("destination")
+    return `${source.label} -> ${destination.label}`
+  })
 }
 // string!!
 // Output: Opened source
@@ -82,47 +83,40 @@ function copyLabels() {
 // Output: source -> destination
 ```
 
-`acquireRelease` makes acquisition uninterruptible by default and registers release before exposing the resource. Its third argument `{ interruptible: true }` permits cancellation during acquisition, and `using` keeps that choice. A successful acquisition gets exactly one release when its scope closes; a failed one registers none.
+`acquireRelease` makes acquisition uninterruptible by default and registers release before exposing the resource. Its third argument `{ interruptible: true }` permits cancellation during acquisition. A successful acquisition gets exactly one release when its scope closes; a failed one registers none.
 
-`using` gives each declared acquisition a lifetime ending with the enclosing block. Don't return a resource to use after the block closes; return derived data, or let the caller own the acquisition. `using` works the same with Effect's existing scoped APIs.
+`scoped(effect { … })` gives each acquisition inside it a lifetime ending when that Effect ends. Don't return a resource to use after the scope closes; return derived data, or let the caller own the acquisition. Existing scoped APIs register in that same scope.
 
 \<a id="known-limitation-pending-interruption-and-javascript-disposables">\</a>
 
 ## Releasing JavaScript Disposables
 
-`using` releases each resource exactly once, on success, typed failure, defect, or interruption, including an interruption that is pending when the initializer gives its value: receiving the value and registering its release can't be separated. A value acquired with `Effect.acquireRelease` or `Effect.acquireDisposable` is released only by its release, so a JavaScript Disposable that `acquireRelease` returns and its release disposes is closed once. Any other value with a disposal method is disposed once at block exit, `[Symbol.asyncDispose]` first, so `using` also accepts an AsyncDisposable; `using` reads that method once, when it acquires the value. A value with neither method is TS2850, unless its initializer requires `Scope`.
+`acquireDisposable` acquires a JavaScript Disposable or AsyncDisposable and registers disposal in the current Effect scope. Inside `scoped`, each resource is released exactly once on success, typed failure, defect, or interruption, including interruption pending when acquisition gives its value: receiving the value and registering its release cannot be separated. Disposal uses `[Symbol.asyncDispose]` if present, otherwise `[Symbol.dispose]`. TypeScript's `using` keeps its JavaScript disposal behavior. A value with neither method is TS2850.
 
-Cancellation follows Effect. `using` adds no mask: every initializer runs with the interruptibility in force where the `using` stands, as `yield*` runs it, whatever its type. A `timeout` around `using db = openDb()` cuts a wait in `openDb`, and `using` registers nothing. An acquisition inside the initializer keeps its own policy: `acquireRelease` and `acquireDisposable` protect acquisition unless you pass `{ interruptible: true }`, so `using db = Effect.acquireDisposable(() => openDb())` waits `openDb` out and releases its value once. An interruption that arrives inside a mask of the initializer's own, such as `Effect.uninterruptible(() => open())`, is delivered as that mask ends, before `using` receives the value, so register such a value inside the mask with `acquireDisposable`.
+A value acquired with `acquireRelease` is released only by its release, so a JavaScript Disposable whose release disposes it is closed once. Do not register a second disposal for it.
+
+Cancellation follows Effect. An interruptible acquisition can be cancelled before it returns a value, in which case it registers no release. `acquireRelease` and `acquireDisposable` protect acquisition by default, so a pending interruption waits for acquisition and its registered release. To permit cancellation during acquisition, use `acquireRelease` with `{ interruptible: true }` as its third argument. If an acquisition creates its own uninterruptible mask, register the resource with `acquireDisposable` inside that mask before interruption can be delivered.
 
 This example checks success, typed failure, defect, and interruption requested
 while acquisition is waiting. Each path closes the handle exactly once:
 
 ```vibe
-module files {
-  // Plain TypeScript inside this module, not VibeLang.
-  export function open(events: string[]) {
-    let closed = false
-    events.push("open")
-    return {
-      [Symbol.dispose](): void {
-        if (closed) throw new Error("closed twice")
-        closed = true
-        events.push("closed")
-      }
+function open(events: string[]) {
+  let closed = false
+  events.push("open")
+  return {
+    [Symbol.dispose](): void {
+      if (closed) throw new Error("closed twice")
+      closed = true
+      events.push("closed")
     }
   }
 }
-import { open } from files
 
-error Bad {}
+error Bad
 
-function acquire(events: string[]) {
-  return Effect.acquireRelease(
-    // sync's first argument is plain TypeScript, not VibeLang.
-    () => sync((log: string[]) => open(log), events),
-    // sync's first argument is plain TypeScript, not VibeLang.
-    (file) => sync((f) => f[Symbol.dispose](), file)
-  )
+effect acquire(events: string[]) {
+  return try acquireDisposable(sync(() => open(events)))
 }
 
 function describe(outcome: Exit.Exit<void, Bad>) {
@@ -132,39 +126,36 @@ function describe(outcome: Exit.Exit<void, Bad>) {
   return Exit.hasInterrupts(outcome) ? "interrupted" : "other"
 }
 
-function run(ending: string) {
+effect run(ending: string) {
   const events: string[] = []
-  const outcome = exit(() => {
-    using file = acquire(events)
+  const outcome = try exit(scoped(effect {
+    const file = try acquire(events)
     events.push("body")
     if (ending === "fail") throw new Bad()
-    if (ending === "die") Effect.die("boom")
-  })
+    if (ending === "die") try die("boom")
+  }))
   return [describe(outcome), events]
 }
 
-function pending() {
+effect pending() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
-  function work() {
-    using file = Effect.acquireRelease(
-      () => {
-        Deferred.succeed(entered, undefined)
-        Deferred.await(gate)
-        // sync's first argument is plain TypeScript, not VibeLang.
-        return sync((log: string[]) => open(log), events)
-      },
-      // sync's first argument is plain TypeScript, not VibeLang.
-      (file) => sync((f) => f[Symbol.dispose](), file)
-    )
-    events.push("never runs")
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
+  effect work() {
+    try scoped(effect {
+      const file = try acquireDisposable(effect {
+        try Deferred.succeed(entered, undefined)
+        try Deferred.await(gate)
+        return try sync(() => open(events))
+      })
+      events.push("never runs")
+    })
   }
-  const child = Effect.forkChild(() => work())
-  Deferred.await(entered)
+  const child = fork work()
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  const outcome = Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  const outcome = try Fiber.await(child)
   return [describe(outcome), events]
 }
 // Output: {"succeeds":["success",["open","body","closed"]],"fails":["failure",["open","body","closed"]],"dies":["defect",["open","body","closed"]],"pending":["interrupted",["open","closed"]]}
@@ -173,27 +164,31 @@ function pending() {
 ## Arranging nested resource lifetimes
 
 ```vibe
-function nestedLifetimes() {
-  using outer = openBuffer("session");
-  {
-    using inner = openBuffer("request")
-    Console.log(`${outer.label}/${inner.label}`)
-  }
-  Console.log("Request buffer closed; session still open")
+effect nestedLifetimes() {
+  try scoped(effect {
+    const outer = try openBuffer("session")
+    try scoped(effect {
+      const inner = try openBuffer("request")
+      try Console.log(`${outer.label}/${inner.label}`)
+    })
+    try Console.log("Request buffer closed; session still open")
+  })
 }
 
-function mixedOwnership() {
-  const callerOwned = openBuffer("caller")
-  using local = openBuffer("local")
-  Console.log(`${callerOwned.label}/${local.label}`)
+effect mixedOwnership() {
+  const callerOwned = try openBuffer("caller")
+  try scoped(effect {
+    const local = try openBuffer("local")
+    try Console.log(`${callerOwned.label}/${local.label}`)
+  })
 }
-// void!!Scope
+// void!!Scope.Scope
 
-function observeOwnership() {
-  Effect.scoped {
-    mixedOwnership()
-    Console.log("Local closed; caller buffer still open")
-  }
+effect observeOwnership() {
+  try scoped(effect {
+    try mixedOwnership()
+    try Console.log("Local closed; caller buffer still open")
+  })
 }
 // Output: Opened session
 // Output: Opened request
@@ -209,11 +204,11 @@ function observeOwnership() {
 // Output: Closed caller
 ```
 
-The inner `using` resource closes before the outer block continues. In `mixedOwnership`, the acquisition without `using` belongs to the caller's scope though the function also owns a local resource, so the caller's buffer closes only when `Effect.scoped` exits.
+The inner scope closes before the outer block continues. In `mixedOwnership`, the acquisition outside the inner `scoped` belongs to the caller's scope though the function also owns a local resource, so the caller's buffer closes only when `scoped` exits.
 
-Operations that only register finalizers in one scope share its lifetime. Use separate `Effect.scoped` calls when one operation's resources must close before the next begins, and one outer scope when later operations depend on earlier resources.
+Operations that only register finalizers in one scope share its lifetime. Use separate `scoped` calls when one operation's resources must close before the next begins, and one outer scope when later operations depend on earlier resources.
 
-A region that calls `fork` also owns a scope, even without `using`: a function body, one loop iteration, a `try`, `catch`, or `finally` block, a block that declares `using`, or a `provide` or mask block. Its child is interrupted when the region exits, and the region waits for cleanup; an `if` branch or a bare block owns nothing. `Effect.forkScoped` uses the caller's scope instead and adds `Scope` to `R`; `Effect.forkDetach` gives a detached lifetime.
+A plain `fork` creates a child owned by the current fiber. It is interrupted when that parent ends. `fork.scoped` ties a child to the current Scope, `fork.in(scope)` selects a scope, and `fork.detached` starts a child with no owner. Join a child explicitly when its result must finish before continuing.
 
 ## Sequencing scoped operations with rollback
 
@@ -228,23 +223,24 @@ service ProjectSteps {
   finish(storage: string, index: string): string!SetupFailed
 }
 
-function reserveStep(stage: string) {
-  const steps = ProjectSteps()
-  return Effect.acquireRelease(
-    () => steps.create(stage),
-    (id, exit) => {
-      if (exit.isFailure()) steps.remove(id)
+effect reserveStep(stage: string) {
+  const steps = try ProjectSteps
+  return try acquireRelease(
+    steps.create(stage),
+    effect (id, outcome) => {
+      if (Exit.isFailure(outcome)) try steps.remove(id)
     }
   )
 }
-// string!SetupFailed!ProjectSteps | Scope
+// string!SetupFailed!ProjectSteps | Scope.Scope
 
-function setupProject() {
-  return Effect.scoped {
-    const storage = reserveStep("storage")
-    const index = reserveStep("index")
-    return ProjectSteps.finish(storage, index)
-  }
+effect setupProject() {
+  return try scoped(effect {
+    const storage = try reserveStep("storage")
+    const index = try reserveStep("index")
+    const steps = try ProjectSteps
+    return try steps.finish(storage, index)
+  })
 }
 // string!SetupFailed!ProjectSteps
 // Output: create storage
@@ -256,19 +252,19 @@ function setupProject() {
 // Output: index
 ```
 
-Neither reservation uses lexical `using`, so both register in the same scope. A successful exit keeps the created artifacts. If index creation fails, storage is removed; if `finish` fails, index is removed before storage.
+Both reservations register in the same scope. A successful exit keeps the created artifacts. If index creation fails, storage is removed; if `finish` fails, index is removed before storage.
 
-The finalizers see the whole setup's exit, so defects and interruption trigger the same rollback. Nested `using` blocks would end those lifetimes earlier and withhold the overall outcome from the finalizers. This compensates for successful steps; it is not an atomic transaction with an external system.
+The finalizers see the whole setup's exit, so defects and interruption trigger the same rollback. Nested `scoped` calls would end those lifetimes earlier and withhold the overall outcome from the finalizers. This compensates for successful steps; it is not an atomic transaction with an external system.
 
 ```vibe
-function exerciseRollback() {
+effect exerciseRollback() {
   const removed: string[] = []
   const testLayer = Layer.succeed(ProjectSteps, {
-    create(stage) { return stage },
-    remove(id) { removed.push(id) },
-    finish(_storage, _index) { throw new SetupFailed({ stage: "finish" }) }
+    create: (stage) => succeed(stage),
+    remove: (id) => sync(() => { removed.push(id) }),
+    finish: effect (_storage, _index) => { throw new SetupFailed({ stage: "finish" }) }
   })
-  const outcome = Effect.result(() => Effect.provide(() => setupProject(), testLayer))
+  const outcome = try result(Effect.provide(setupProject(), testLayer))
   return { outcome, removed } // removed: ["index", "storage"]
 }
 // Output: {"outcome":"Failure","removed":["index","storage"]}
@@ -278,7 +274,7 @@ Test failure at each stage to confirm which steps were acquired and which compen
 
 ## Coming from Effect
 
-Use `using` for a resource that belongs to its block, and `Effect.scoped`, `Effect.addFinalizer`, and the `Scope` module for shared or manually controlled lifetimes; calls run them directly, without generator syntax.
+Use `scoped` to own a group of acquisitions, `addFinalizer` to register cleanup, and the Scope module to manage a lifetime explicitly. Pass Effect values directly and use `try` to run them.
 
 ---
 

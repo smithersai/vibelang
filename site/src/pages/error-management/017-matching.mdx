@@ -13,13 +13,13 @@ Matching turns an outcome into one value or selects the next computation. Use ty
 ```vibe
 error InvalidCount
 
-function itemCount(raw: number) {
+effect itemCount(raw: number) {
   if (raw < 0) throw new InvalidCount()
   return raw
 }
 
-function countLabel(raw: number) {
-  return Effect.match(() => itemCount(raw), {
+effect countLabel(raw: number) {
+  return try Effect.match(itemCount(raw), {
     onFailure: () => "Count unavailable",
     onSuccess: (count) => `${count} items`
   })
@@ -37,14 +37,14 @@ Count unavailable
 ## Choosing effectful branches
 
 ```vibe
-function reportCount(raw: number) {
-  return Effect.matchEffect(() => itemCount(raw), {
-    onFailure: () => {
-      Console.log("Invalid count received")
+effect reportCount(raw: number) {
+  return try matchEffect(itemCount(raw), {
+    onFailure: effect () => {
+      try Console.log("Invalid count received")
       return "Count unavailable"
     },
-    onSuccess: (count) => {
-      Console.log("Count accepted")
+    onSuccess: effect (count) => {
+      try Console.log("Count accepted")
       return `${count} items`
     }
   })
@@ -58,25 +58,25 @@ Invalid count received
 Count unavailable
 ```
 
-`matchEffect` accepts VibeLang functions that can pause, fail, or use services. Only the selected branch runs; its errors and requirements join the result's contract. Use `try`/`catch` when the branches read better as statements.
+`matchEffect` accepts callbacks returning Effects that can pause, fail, or use services. Only the selected branch runs; its errors and requirements join the result's contract. Use a catch expression with an effect handler when recovery needs several statements.
 
 ## Matching complete failure causes
 
 ```vibe
-function outcomeLabel() {
-  return Effect.matchCause(() => die(new Error("index invariant")), {
-    onFailure: (cause) => cause.hasDies() ? "Index defect" : "Index stopped",
+effect outcomeLabel() {
+  return try matchCause(die(new Error("index invariant")), {
+    onFailure: (cause) => Cause.hasDies(cause) ? "Index defect" : "Index stopped",
     onSuccess: () => "Index ready"
   })
 }
 
-function reportOutcome() {
-  return Effect.matchCauseEffect(() => die(new Error("index invariant")), {
-    onFailure: (cause) => {
-      Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+effect reportOutcome() {
+  return try matchCauseEffect(die(new Error("index invariant")), {
+    onFailure: effect (cause) => {
+      try Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
       return "Unavailable"
     },
-    onSuccess: () => "Ready"
+    onSuccess: () => succeed("Ready")
   })
 }
 ```
@@ -92,13 +92,13 @@ Unavailable
 ## Discarding failures or all causes
 
 ```vibe
-function ignoreRejectedCount() {
-  Effect.ignore(() => itemCount(-2))
+effect ignoreRejectedCount() {
+  try ignore(itemCount(-2))
 }
 // void!!
 
-function discardBoundaryOutcome() {
-  Effect.ignoreCause(() => die(new Error("isolated task failed")))
+effect discardBoundaryOutcome() {
+  try ignoreCause(die(new Error("isolated task failed")))
 }
 // Output:
 ```

@@ -1,11 +1,12 @@
 # Advanced Usage
 
-The advanced Schema APIs work as in Effect: declarations for opaque runtime values, brands for static distinctions, field combinators for presence rules, and suspension for recursive descriptions. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+The advanced Schema APIs work as in Effect: declarations for opaque runtime values, brands for static distinctions, field combinators for presence rules, and suspension for recursive descriptions. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Declaring custom scalar and parameterized schemas
 
 ```vibe
-// run: Console.log(readShelf(new Shelf("S-12")).code); try { readShelf({ code: "S-12" }) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try readShelf(new Shelf("S-12"))).code); try Effect.catch(readShelf({ code: "S-12" }), (error) => Console.log(error._tag)) })
 class Shelf {
   constructor(readonly code: string) {}
 }
@@ -15,8 +16,8 @@ const ShelfSchema = Schema.declare(
   { identifier: "Shelf", description: "A warehouse shelf handle" }
 )
 
-function readShelf(input: unknown) {
-  return Schema.decodeUnknownEffect(ShelfSchema)(input)
+effect readShelf(input: unknown) {
+  return try Schema.decodeUnknownEffect(ShelfSchema)(input)
 }
 ```
 
@@ -28,17 +29,18 @@ SchemaError
 A declaration's guard establishes identity, with its type predicate inferred from `instanceof`; it does not validate members automatically, so add checks when fields need validation. Unlike a struct, an opaque declaration gives interpreters no structural description to traverse.
 
 ```vibe
-// run: Console.log(Schema.decodeUnknownEffect(BoxedCount)(new Box("12")).value); Console.log(Schema.encodeEffect(BoxedCount)(new Box(12)).value)
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log((try Schema.decodeUnknownEffect(BoxedCount)(new Box("12"))).value); try Console.log((try Schema.encodeEffect(BoxedCount)(new Box(12))).value) })
 class Box<A> {
   constructor(readonly value: A) {}
 }
 
-function BoxSchema<S extends Schema.Constraint>(value: S): infer _ {
+function BoxSchema<S extends Schema.Constraint>(value: S) {
   return Schema.declareConstructor<Box<S["Type"]>, Box<S["Encoded"]>>()(
     [value],
-    ([element]) => (input, ast, options) => {
+    ([element]) => effect (input, ast, options) => {
       if (!(input instanceof Box)) throw new SchemaIssue.InvalidType(ast)
-      const decoded = SchemaParser.decodeUnknownEffect(element)(input.value, options)
+      const decoded = try SchemaParser.decodeUnknownEffect(element)(input.value, options)
       return new Box(decoded)
     },
     { expected: "Box" }
@@ -58,7 +60,8 @@ const BoxedCount = BoxSchema(Schema.FiniteFromString)
 ## Adding interpreter support
 
 ```vibe
-// run: const codec = Schema.toCodecJson(PortableShelf); Console.log(Schema.encodeEffect(codec)(new Shelf("S-12"))); Console.log(Schema.decodeUnknownEffect(codec)("S-12") instanceof Shelf)
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const codec = Schema.toCodecJson(PortableShelf); try Console.log(try Schema.encodeEffect(codec)(new Shelf("S-12"))); try Console.log((try Schema.decodeUnknownEffect(codec)("S-12")) instanceof Shelf) })
 const PortableShelf = Schema.declare(
   (input: unknown) => input instanceof Shelf,
   {
@@ -93,7 +96,8 @@ true
 ## Creating branded schemas
 
 ```vibe
-// run: Console.log(ShelfId.makeEffect("rack-18")); Console.log(TrackingIdSchema.makeEffect("pkg-76")); Console.log(Schema.is(ShelfId)(""))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try ShelfId.makeEffect("rack-18")); try Console.log(try TrackingIdSchema.makeEffect("pkg-76")); try Console.log(Schema.is(ShelfId)("")) })
 const ShelfId = Schema.NonEmptyString.pipe(Schema.brand("ShelfId"))
 type ShelfId = typeof ShelfId.Type
 
@@ -113,15 +117,16 @@ A brand distinguishes values statically without changing their runtime represent
 ## Applying constructor defaults
 
 ```vibe
-// run: Console.log(JSON.stringify(createParcel())); Console.log(Schema.is(Parcel)({ shelf: "rack-18" }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try createParcel())); try Console.log(Schema.is(Parcel)({ shelf: "rack-18" })) })
 const Parcel = Schema.Struct({
   shelf: ShelfId,
-  priority: Schema.Int.pipe(Schema.withConstructorDefault(() => 1))
+  priority: Schema.Int.pipe(Schema.withConstructorDefault(effect { return 1 }))
 })
 
-function createParcel() {
-  const shelf = ShelfId.makeEffect("rack-18")
-  return Parcel.makeEffect({ shelf })
+effect createParcel() {
+  const shelf = try ShelfId.makeEffect("rack-18")
+  return try Parcel.makeEffect({ shelf })
 }
 ```
 
@@ -130,12 +135,13 @@ function createParcel() {
 false
 ```
 
-`withConstructorDefault` makes a field optional for construction, not decoding, and evaluates its program when needed. Constructor failures are raw schema issues in local Effect 4.0.6.
+`withConstructorDefault` makes a field optional for construction, not decoding, and runs its default Effect when needed. Constructor failures are raw schema issues in local Effect 4.0.6.
 
 ## Distinguishing optional keys, optional values, null, and absence
 
 ```vibe
-// run: Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null })); Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null })); Console.log(JSON.stringify(Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined }))); try { Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }) } catch (error) { Console.log(error._tag) }
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null })); try Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null })); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined }))); try Effect.catch(Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }), (error) => Console.log(error._tag)) })
 const Presence = Schema.Struct({
   exact: Schema.optionalKey(Schema.String),
   loose: Schema.optional(Schema.String),
@@ -169,15 +175,16 @@ SchemaError
 ## Mapping optional fields to options
 
 ```vibe
-// run: const value = readPreferences(); Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone()); Console.log(JSON.stringify(Schema.encodeEffect(Preferences)(value)))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try readPreferences(); try Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone()); try Console.log(JSON.stringify(try Schema.encodeEffect(Preferences)(value))) })
 const Preferences = Schema.Struct({
   note: Schema.OptionFromOptionalKey(Schema.String),
   weight: Schema.OptionFromOptional(Schema.FiniteFromString),
   alias: Schema.OptionFromOptionalNullOr(Schema.String)
 })
 
-function readPreferences() {
-  return Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
+effect readPreferences() {
+  return try Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
 }
 // All three fields contain Option.none().
 ```
@@ -192,7 +199,8 @@ The decoded keys are required and hold `Option` values. The exact-key variant re
 ## Transforming field presence
 
 ```vibe
-// run: const value = Schema.decodeUnknownEffect(Form)({ note: "", memo: "" }); Console.log(JSON.stringify(value)); Console.log(JSON.stringify(Schema.encodeEffect(Form)(value)))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try Schema.decodeUnknownEffect(Form)({ note: "", memo: "" }); try Console.log(JSON.stringify(value)); try Console.log(JSON.stringify(try Schema.encodeEffect(Form)(value))) })
 const Form = Schema.Struct({
   note: Schema.optionalKey(Schema.String).pipe(
     Schema.decodeTo(Schema.optionalKey(Schema.String), {
@@ -235,7 +243,8 @@ Optional getters receive an `Option`: `None` means the key is absent, `Some(unde
 ## Extending and renaming fields
 
 ```vibe
-// run: Console.log(JSON.stringify(Schema.encodeEffect(WireDestination)({ city: "Oslo", dock: 2, route: "north" })))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.encodeEffect(WireDestination)({ city: "Oslo", dock: 2, route: "north" }))) })
 const Address = Schema.Struct({ city: Schema.String })
 const Destination = Schema.Struct({ ...Address.fields, dock: Schema.Int })
 const Routed = Destination.pipe(Schema.fieldsAssign({ route: Schema.String }))
@@ -251,7 +260,8 @@ Add fields by spreading `.fields` or with `fieldsAssign`. `encodeKeys` maps deco
 ## Modeling recursive and mutually recursive codecs
 
 ```vibe
-// run: Console.log(JSON.stringify(readCrate({ count: "2", children: [{ count: "1", children: [] }] }))); Console.log(JSON.stringify(Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] })))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try readCrate({ count: "2", children: [{ count: "1", children: [] }] }))); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] }))) })
 interface Crate {
   count: number
   children: ReadonlyArray<Crate>
@@ -276,8 +286,8 @@ const Branch = Schema.Struct({
 })
 const Leaf = Schema.Struct({ owner: Schema.NullOr(Branch) })
 
-function readCrate(input: unknown) {
-  return Schema.decodeUnknownEffect(Crate)(input)
+effect readCrate(input: unknown) {
+  return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```
 

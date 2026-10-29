@@ -5,16 +5,17 @@ A `SubscriptionRef` combines shared state with a stream of changes. Use it for o
 ## Combining state with subscriptions
 
 ```vibe
-// run: const progress = makeProgress(); advance(progress); Console.log(JSON.stringify(SubscriptionRef.get(progress)))
-function makeProgress() {
-  return SubscriptionRef.make({ completed: 0, total: 12 })
+// pending: VIP-1, VIP-5, VIP-14
+// run: const progress = try makeProgress(); try advance(progress); try Console.log(JSON.stringify(try SubscriptionRef.get(progress)))
+effect makeProgress() {
+  return try SubscriptionRef.make({ completed: 0, total: 12 })
 }
 
-function advance(progress: SubscriptionRef.SubscriptionRef<{
+effect advance(progress: SubscriptionRef.SubscriptionRef<{
   completed: number
   total: number
 }>) {
-  SubscriptionRef.update(progress, (state) => ({
+  try SubscriptionRef.update(progress, (state) => ({
     ...state,
     completed: state.completed + 1
   }))
@@ -22,17 +23,18 @@ function advance(progress: SubscriptionRef.SubscriptionRef<{
 // Output: {"completed":1,"total":12}
 ```
 
-Creating the reference sets its initial state. An update through `SubscriptionRef` commits the value and publishes the change to subscribers. Keep values immutable so observers receive meaningful snapshots.
+Running the creation Effect sets the reference's initial state. An update through `SubscriptionRef` commits the value and publishes the change to subscribers. Keep values immutable so observers receive meaningful snapshots.
 
 ## Reading and updating observable state
 
 ```vibe
-// run: Console.log(JSON.stringify(renameStatus()))
-function renameStatus() {
-  const status = SubscriptionRef.make("starting")
-  const before = SubscriptionRef.get(status)
-  SubscriptionRef.set(status, "running")
-  const after = SubscriptionRef.updateAndGet(status, (s) => s.toUpperCase())
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try renameStatus()))
+effect renameStatus() {
+  const status = try SubscriptionRef.make("starting")
+  const before = try SubscriptionRef.get(status)
+  try SubscriptionRef.set(status, "running")
+  const after = try SubscriptionRef.updateAndGet(status, (s) => s.toUpperCase())
   return { before, after }
 }
 // Returns { before: "starting", after: "RUNNING" }.
@@ -44,38 +46,40 @@ function renameStatus() {
 ## Consuming current and future values
 
 ```vibe
-// run: Console.log(JSON.stringify(currentSnapshot()))
-function currentSnapshot() {
-  const count = SubscriptionRef.make(7)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try currentSnapshot()))
+effect currentSnapshot() {
+  const count = try SubscriptionRef.make(7)
   const changes = SubscriptionRef.changes(count)
-  return changes.take(1).runCollect() // [7]
+  return try Stream.runCollect(Stream.take(changes, 1)) // [7]
 }
 // Output: [7]
 ```
 
-`changes` builds a Stream that starts listening only when it runs. Each run first emits the value current at subscription time, then future updates. Consume it with Stream operators such as `take` and `runForEach`, or iterate it directly with `for...of`; leaving the loop closes the stream and its subscription.
+`changes` builds a Stream that starts listening only when it runs. Each run first emits the value current at subscription time, then future updates. Consume it with Stream operators such as `take` and `runForEach`, or iterate it with `for try (const value of changes) { … }`; leaving the loop closes the stream and its subscription.
 
 ## Coordinating concurrent subscribers
 
 ```vibe
-// run: observeTwoClients()
-function observeTwoClients() {
-  const count = SubscriptionRef.make(0)
-  const firstReady = Deferred.make<void>()
-  const secondReady = Deferred.make<void>()
+// pending: VIP-1, VIP-5, VIP-14, VIP-17, VIP-20
+// run: try observeTwoClients()
+effect observeTwoClients() {
+  const count = try SubscriptionRef.make(0)
+  const firstReady = try Deferred.make<void>()
+  const secondReady = try Deferred.make<void>()
 
-  function client(ready: Deferred.Deferred<void>) {
-    return SubscriptionRef.changes(count).take(2).runForEach((value) => {
-        Console.log("observed", value)
-        ready.succeed(undefined)
-      })
+  effect client(ready: Deferred.Deferred<void>) {
+    for try (const value of Stream.take(SubscriptionRef.changes(count), 2)) {
+      try Console.log("observed", value)
+      try Deferred.succeed(ready, undefined)
+    }
   }
 
   const first = fork client(firstReady)
   const second = fork client(secondReady)
-  firstReady.await()
-  secondReady.await()
-  SubscriptionRef.set(count, 1)
+  try Deferred.await(firstReady)
+  try Deferred.await(secondReady)
+  try SubscriptionRef.set(count, 1)
   join first
   join second
 }
@@ -85,4 +89,4 @@ function observeTwoClients() {
 // Output: observed 1
 ```
 
-Each subscriber signals readiness from its first stream element, so both subscriptions exist before the update. Each client observes zero, then one, and its `take(2)` ends its subscription. A sleep or one scheduler yield doesn't establish that ordering; when every observer must see a particular change, signal readiness explicitly.
+Each subscriber signals readiness from its first stream element, so both subscriptions exist before the update. Each client observes zero, then one, and `Stream.take(…, 2)` ends its subscription. A sleep or one scheduler yield doesn't establish that ordering; when every observer must see a particular change, signal readiness explicitly.

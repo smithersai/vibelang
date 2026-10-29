@@ -15,14 +15,15 @@ import { extract } from "./check-snippets"
 
 test("the HTTP client guide checks a request, JSON body read, and client layer together", () => {
   const blocks = extract(read("docs/user/src/platform/105-introduction.md"))
-  expect(blocks.some(block => !block.fragment && !block.gap && !block.expected.length &&
-    /HttpClient\.get\(/.test(block.source) && /response\.json\(\)/.test(block.source) &&
+  // A block waiting for the compiler's VIP forms counts; it compiles once its pending line goes.
+  expect(blocks.some(block => (!block.fragment || block.pending) && !block.gap && !block.expected.length &&
+    /HttpClient\.get\(/.test(block.source) && /try response\.json\b/.test(block.source) &&
     /provide FetchHttpClient\.layer/.test(block.source))).toBe(true)
 })
 
-test("module-block onboarding enables Node declarations explicitly", () => {
+test("TypeScript-file onboarding enables Node declarations explicitly", () => {
   const page = read("docs/user/src/getting-started/005-creating-effects.md")
-  const moduleSection = page.split("## Write TypeScript in a module declaration")[1].split("## Suspend work")[0]
+  const moduleSection = page.split("## Write TypeScript in a separate file")[1].split("## Suspend work")[0]
   expect(moduleSection).toContain("@types/node")
   expect(moduleSection).toMatch(/"types": \["node"\]/)
   expect(extract(moduleSection).find(block => block.source.includes('from "node:fs"'))?.source).toContain("// types: node")
@@ -48,8 +49,8 @@ test("Bun starter instructions distinguish package manager and Node runtime", ()
   }
 })
 
-test("platform imports in non-entry files are documented as removed without providers", () => {
+test("the entry module selects the platform by providing its layer (VIP-26, VIP-33)", () => {
   const page = read("docs/user/src/platform/105-introduction.md")
-  expect(page).toMatch(/non-entry file[^\n]*platform import[^\n]*silently removed/)
-  expect(page).toMatch(/supplies no services[^\n]*no runtime side effect/)
+  expect(page).toContain("NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))")
+  expect(page).toMatch(/leave platform selection to the entry module/)
 })

@@ -5,7 +5,8 @@
 ## Using built-in orderings
 
 ```vibe
-// run: Console.log(JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))]))
 Order.String("amber", "violet") // -1
 Order.Number(7, 7) // 0
 Order.BigInt(11n, 3n) // 1
@@ -13,15 +14,15 @@ Order.Date(new Date("2026-01-01"), new Date("2026-02-01")) // -1
 // Output: [-1,0,1,-1]
 ```
 
-An `Order<A>` compares two A values synchronously. Built-in orders cover strings, numbers, booleans, bigints, and dates. A total order needs valid dates and numbers: `NaN` has no ordinary numeric ordering.
+An `Order.Order<A>` compares two A values synchronously. Built-in orders cover strings, numbers, booleans, bigints, and dates. A total order needs valid dates and numbers: `NaN` has no ordinary numeric ordering.
 
 ## Sorting values
 
 ```vibe
-// run: Console.log(JSON.stringify([sorted, input, mutableCopy]))
-import { Array as Arr } from "effect"
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([sorted, input, mutableCopy]))
 const input = [9, 2, 6]
-const sorted = Arr.sort(input, Order.Number)
+const sorted = Effect.Array.sort(input, Order.Number)
 // sorted: [2, 6, 9]; input: [9, 2, 6]
 
 const mutableCopy = [...input]
@@ -35,7 +36,8 @@ Effect's array `sort` returns a sorted copy; JavaScript's sorts its receiver in 
 ## Deriving comparison rules
 
 ```vibe
-// run: Console.log(byPriority({ priority: 1, title: "Publish" }, { priority: 3, title: "Review" }))
+// pending: VIP-5, VIP-14
+// run: try Console.log(byPriority({ priority: 1, title: "Publish" }, { priority: 3, title: "Review" }))
 interface Task {
   priority: number
   title: string
@@ -56,8 +58,8 @@ byPriority(
 ## Combining comparison rules
 
 ```vibe
-// run: Console.log(tasks.map((task) => task.title).join(", "))
-import { Array as Arr } from "effect"
+// pending: VIP-5, VIP-14
+// run: try Console.log(tasks.map((task) => task.title).join(", "))
 interface Task {
   priority: number
   title: string
@@ -66,7 +68,7 @@ interface Task {
 const byPriority = Order.mapInput(Order.Number, (task: Task) => task.priority)
 const byTitle = Order.mapInput(Order.String, (task: Task) => task.title)
 const taskOrder = Order.combine(byPriority, byTitle)
-const tasks = Arr.sort([
+const tasks = Effect.Array.sort([
   { priority: 2, title: "Review" },
   { priority: 1, title: "Publish" },
   { priority: 2, title: "Archive" }
@@ -80,10 +82,10 @@ const tasks = Arr.sort([
 ## Reversing an ordering
 
 ```vibe
-// run: Console.log(JSON.stringify(Arr.sort([5, 12, 3], descending)))
-import { Array as Arr } from "effect"
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(Effect.Array.sort([5, 12, 3], descending)))
 const descending = Order.flip(Order.Number)
-Arr.sort([5, 12, 3], descending) // [12, 5, 3]
+Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
 // Output: [12,5,3]
 ```
 
@@ -92,7 +94,8 @@ Arr.sort([5, 12, 3], descending) // [12, 5, 3]
 ## Checking comparisons
 
 ```vibe
-// run: Console.log(JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)]))
 const less = Order.isLessThan(Order.Number)
 const greater = Order.isGreaterThan(Order.Number)
 const atMost = Order.isLessThanOrEqualTo(Order.Number)
@@ -109,7 +112,8 @@ These helpers turn an order, primitive or derived, into boolean tests. Equality 
 ## Selecting extrema
 
 ```vibe
-// run: Console.log(JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)]))
 Order.min(Order.Number)(13, 8) // 8
 Order.max(Order.Number)(13, 8) // 13
 Order.min(Order.flip(Order.Number))(13, 8) // 13
@@ -121,7 +125,8 @@ Order.min(Order.flip(Order.Number))(13, 8) // 13
 ## Clamping values and testing ranges
 
 ```vibe
-// run: Console.log(JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)]))
 const bounds = { minimum: 10, maximum: 50 }
 const clamp = Order.clamp(Order.Number)(bounds)
 const inside = Order.isBetween(Order.Number)(bounds)

@@ -133,7 +133,7 @@ export function buildMarkdown(site: string, facts: Record<string, string>) {
   // without reading pages first (check-snippets compiles its blocks). An agent
   // harness may show only the first 2,000 bytes of a large file, so the title,
   // summary and essentials come first and must fit in that.
-  const essentials = readFileSync(join(root, "llms-essentials.md"), "utf8").trim()
+  const essentials = stripRunDirectives(readFileSync(join(root, "llms-essentials.md"), "utf8")).trim()
     .replace(/\]\((?!https?:)([^)]+\.md)\)/g, (_, page: string) => `](${origin}/${page})`)
   const llms = [
     "# VibeLang",

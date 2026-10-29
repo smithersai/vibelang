@@ -15,18 +15,16 @@ error UnknownProduct {
   sku: string
 }
 
-function price(sku: string) {
+effect price(sku: string) {
   if (sku !== "notebook") throw new UnknownProduct({ sku })
   return 12
 }
 // number!UnknownProduct!
 
-function displayPrice(sku: string) {
-  try {
-    return `$${price(sku)}`
-  } catch (error) {
-    return `No price for ${error.sku}`
-  }
+effect displayPrice(sku: string) {
+  return effect {
+    return `$${try price(sku)}`
+  } catch (error) => `No price for ${error.sku}`
 }
 ```
 
@@ -35,18 +33,18 @@ $12
 No price for pen
 ```
 
-`throw` declares an expected failure. `try`/`catch` recovers it, and the caught value's type is inferred from the protected code. A defect, such as an invalid property access or `Effect.die(new Error("broken invariant"))`, bypasses `catch`.
+`throw` in an effect function declares an expected failure. A catch expression recovers it, and the caught value's type is inferred from the Effect it runs. A defect, such as an invalid property access or `die(new Error("broken invariant"))`, bypasses `catch`.
 
-Expected failures also come from a callee's `E` and from exceptions a trusted contract lists; an unlisted exception is a defect. When a cause holds several expected failures and nothing else, `catch` receives the first and handles the whole cause; `Effect.catchCause` inspects every reason.
+Expected failures also come from a callee's `E` and from synchronous exceptions wrapped with `Effect.try`. When a cause holds several expected failures and nothing else, `catch` receives the first and handles the whole cause; `catchCause` inspects every reason.
 
-Interruption, a third kind of termination, also bypasses `catch`. Defects and interruption still run `finally` and release `using` resources. A cause that mixes a failure with a defect or interruption passes through ordinary `catch` whole.
+Interruption, a third kind of termination, bypasses `catch` when the cause has no expected failure. Defects and interruption still run `ensuring` cleanup and release scoped resources. A cause that mixes a failure with a defect passes through ordinary `catch` whole.
 
 ## Choosing the error type
 
 ```vibe
-function percentage(part: number, total: number) {
+effect percentage(part: number, total: number) {
   if (total <= 0) {
-    die(new Error("validated total must be positive"))
+    try die(new Error("validated total must be positive"))
   }
   return part / total * 100
 }
@@ -60,14 +58,14 @@ true
 
 Use this contract only when validation already established the invariant; if users can submit an invalid total, throw a typed error. Put a failure in `E` when callers have a useful response, such as asking for corrected input or choosing another source.
 
-`E = never` promises that no expected failure escapes, not that bugs or cancellation can't occur. A boundary that must examine those uses `Effect.exit`, `Effect.catchDefect`, or `Effect.catchCause`.
+`E = never` promises that no expected failure escapes, not that bugs or cancellation can't occur. A boundary that must examine those uses `exit`, `catchDefect`, or `catchCause`.
 
 Precisely, `E` describes every expected failure a cause holds: a defect turns the expected failures beside it into defects, and catch recovers a failure beside an interruption.
 
 ## Coming from Effect
 
-- Write `throw error` where a generator would yield a failure.
-- Use ordinary `try`/`catch` for domain recovery and `finally` for cleanup.
+- Write `throw error` in an effect function where a generator would yield a failure.
+- Use a catch expression for domain recovery and `ensuring` or `onExit` for cleanup.
 
 ---
 

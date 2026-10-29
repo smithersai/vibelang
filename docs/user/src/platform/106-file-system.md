@@ -1,35 +1,39 @@
 # FileSystem
 
-`FileSystem` exposes Effect's portable file operations, in place of `node:fs`. Call its operations through the module's name, with no import, and provide a runtime implementation or test layer around the application.
+`FileSystem` exposes Effect's portable file operations, in place of `node:fs`. Get the service with `try FileSystem`, then run its operations with `try`. Provide a runtime implementation or test layer around the application.
 
 ## Requesting the file-system service
 
 ```vibe
-// run: provide FileSystem.layerNoop({ readFileString: () => '{"theme":"dark"}' }) { Console.log(readSettings()) }
-function readSettings() {
-  return FileSystem.readFileString("./settings.json")
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: provide FileSystem.layerNoop({ readFileString: () => succeed('{"theme":"dark"}') }) { try Console.log(try readSettings()) }
+effect readSettings() {
+  const fs = try FileSystem
+  return try fs.readFileString("./settings.json")
 }
 // Output: {"theme":"dark"}
 ```
 
-`FileSystem` is the prelude's module, and its name also names the module's service: `FileSystem.readFileString(path)` calls the service's operation, adding `FileSystem` to R, and `FileSystem()` returns the implementation. `readFileString` returns text or fails with an expected `PlatformError`. The module's own exports, such as `FileSystem.layerNoop`, keep their meaning, and the key itself is `FileSystem.FileSystem`.
+Getting the service adds `FileSystem` to the Effect's requirements. `readFileString` returns an Effect that succeeds with text or fails with `PlatformError`. The module's own exports, such as `FileSystem.layerNoop`, keep their meaning, and the key itself is `FileSystem.FileSystem`.
 
 ## Performing file operations
 
 ```vibe
-// run: provide NodeFileSystem.layer { Console.log(JSON.stringify(saveSummary("ready"))) }
+// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
+// run: provide NodeFileSystem.layer { try Console.log(JSON.stringify(try saveSummary("ready"))) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
-function saveSummary(text: string) {
-  FileSystem.makeDirectory("./output", { recursive: true })
-  FileSystem.writeFileString("./output/summary.txt", text)
-  const content = FileSystem.readFileString("./output/summary.txt", "utf8")
-  return { content, entries: FileSystem.readDirectory("./output") }
+effect saveSummary(text: string) {
+  const fs = try FileSystem
+  try fs.makeDirectory("./output", { recursive: true })
+  try fs.writeFileString("./output/summary.txt", text)
+  const content = try fs.readFileString("./output/summary.txt", "utf8")
+  return { content, entries: try fs.readDirectory("./output") }
 }
 // Output: {"content":"ready","entries":["summary.txt"]}
 ```
 
-Calls run in order: the write completes before the read starts. Expected I/O failures enter E, and `try`/`catch` handles them. `readFile` and `writeFile` take byte arrays where text encoding doesn't fit.
+The `try` expressions run in order: the write completes before the read starts. Expected I/O failures enter E, and a `catch` expression handles them. `readFile` and `writeFile` take byte arrays where text encoding doesn't fit.
 
 | Operations | Purpose |
 | --- | --- |
@@ -48,62 +52,76 @@ Calls run in order: the write completes before the read starts. Expected I/O fai
 | `stream`, `sink`, `watch` | Stream bytes, write through a sink, or observe changes |
 
 ```vibe
-// run: provide NodeFileSystem.layer { using path = FileSystem.makeTempFileScoped(); FileSystem.writeFileString(path, "hello"); Console.log(String(fileSize(path))) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
-function fileSize(path: string) {
-  using file = FileSystem.open(path)
-  return file.stat().size
+effect fileSize(path: string) {
+  return try scoped(effect {
+    const fs = try FileSystem
+    const file = try fs.open(path)
+    return (try file.stat).size
+  })
 }
 // Output: 5
 ```
 
-`open` requires a Scope and registers the close itself. `using` gives the acquisition to the enclosing block, so the handle closes when the function exits, on failure or interruption too. Without `using`, the acquisition keeps Scope in R and belongs to the caller's scope.
+`open` requires a Scope and registers the close itself. `scoped` supplies a Scope and closes it after its Effect completes, including on failure or interruption. Without `scoped`, the acquisition keeps Scope in R and belongs to the caller's scope.
 
 ## Supplying platform implementations
 
 ```vibe
 // main.vibe
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-export function main() {
+effect main() {
   provide NodeFileSystem.layer {
-    using path = FileSystem.makeTempFileScoped()
-    FileSystem.writeFileString(path, "Project notes")
-    Console.log(FileSystem.readFileString(path))
+    try scoped(effect {
+      const fs = try FileSystem
+      const path = try fs.makeTempFileScoped()
+      try fs.writeFileString(path, "Project notes")
+      try Console.log(try fs.readFileString(path))
+    })
   }
 }
+
+NodeRuntime.runMain(main())
 // Output: Project notes
 ```
 
-`NodeFileSystem.layer` supplies only the file system; `import "vibelang/platform/node"` instead makes the entry supply the whole Node platform bundle, `NodeServices.layer`, and `"vibelang/platform/bun"` Bun's, `BunServices.layer`. Application functions need only `FileSystem`, not an adapter package.
+`NodeFileSystem.layer` supplies only the file system; providing `NodeServices.layer` instead supplies the whole Node platform bundle, and `BunServices.layer` Bun's. Application functions need only `FileSystem`, not an adapter package.
 
 ## Replacing behavior in tests
 
 ```vibe
 // files.vibe
-// run: provide FilesTest { Console.log(readFixture()) }
-export function readFixture() {
-  if (!FileSystem.exists("/fixtures/title.txt")) return "Untitled"
-  return FileSystem.readFileString("/fixtures/title.txt")
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: provide FilesTest { try Console.log(try readFixture()) }
+export effect readFixture() {
+  const fs = try FileSystem
+  if (!(try fs.exists("/fixtures/title.txt"))) return "Untitled"
+  return try fs.readFileString("/fixtures/title.txt")
 }
 
 export const FilesTest = FileSystem.layerNoop({
-  exists: (path) => path === "/fixtures/title.txt",
-  readFileString: () => "Release notes"
+  exists: (path) => succeed(path === "/fixtures/title.txt"),
+  readFileString: () => succeed("Release notes")
 })
 // Output: Release notes
 ```
 
 ```vibe
 // files.test.vibe
-import { it } from "@effect/vitest"
+// pending: VIP-2, VIP-5, VIP-6, VIP-14
+import { assert, it } from "@effect/vitest"
 import { FilesTest, readFixture } from "./files.vibe"
 
-it.effect("reads the configured title") {
-  const title = Effect.provide(() => readFixture(), FilesTest)
-  if (title !== "Release notes") throw new Error("Unexpected title")
-}
+it.effect("reads the configured title", () => effect {
+  const title = try Effect.provide(readFixture(), FilesTest)
+  try sync(() => assert.strictEqual(title, "Release notes"))
+})
 // Output:
 ```
 
@@ -111,5 +129,4 @@ it.effect("reads the configured title") {
 
 ## Coming from Effect
 
-Test overrides are ordinary functions; contextual typing converts them to the Effect-returning methods the service interface expects, so `readFileString: () => "Release notes"` replaces a TypeScript `Effect.succeed` body.
-
+Test overrides return Effect values explicitly. Use `() => succeed("Release notes")` for a fixed result, or an effect arrow when the implementation needs several operations.

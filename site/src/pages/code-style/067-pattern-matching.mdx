@@ -1,11 +1,11 @@
 ---
 title: "Pattern Matching"
-description: "VibeLang matches values with match and tests them with is, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and an arm can..."
+description: "VibeLang matches values with match and tests them with is, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and inside an..."
 ---
 
 # Pattern Matching
 
-VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and an arm can call Effect functions. [Pattern matching with match and is](/vibelang-features/116-match-and-is) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
+VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and inside an effect function an arm can run an Effect with `try`. [Pattern matching with match and is](/vibelang-features/116-match-and-is) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
 
 ## Matching values
 
@@ -66,7 +66,7 @@ worker w-1
 report.csv
 ```
 
-`let n` binds a property, and a guard, `if (condition)`, tests the bindings before it. Matching `_tag` narrows a tagged union. An `error` class is itself a pattern: `when NotFound:` matches its instances. A [`data` declaration](/data-types/073-data) declares a tagged union whose variants are patterns: `when Job.Running { let worker }`.
+`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` narrows a tagged union. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](/data-types/073-data) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`.
 
 ## Negating and combining patterns
 
@@ -183,7 +183,7 @@ function describeAll(inputs: ReadonlyArray<number | string>) {
 ["count 3","label news"]
 ```
 
-`Match.type<T>()` builds a matcher with no input yet; its finalizer produces a plain function to pass as a callback. Match callbacks compute values synchronously, and Match functions are trusted Effect library functions: an exception escaping into Effect code is a defect that Effect catch doesn't recover. A plain function's catch doesn't recover it either. Use `match` when an arm does Effect work.
+`Match.type<T>()` builds a matcher with no input yet; its finalizer produces a plain function to pass as a callback. Match callbacks compute values synchronously. Use `match` inside an effect function when an arm needs `try` to run an Effect. Wrap any synchronous call that may throw with `Effect.try` before running it in effect code.
 
 ---
 

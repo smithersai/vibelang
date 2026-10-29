@@ -38,7 +38,7 @@ test("Markdown module preserves visible code, strips repository targets and move
     const repo = resolve(import.meta.dir, "../..")
     const source = readFileSync(join(repo, "docs/user/src/001-onboarding.md"), "utf8")
     const copy = readFileSync(join(dir, "001-onboarding.md"), "utf8")
-    for (const match of source.matchAll(/^\x60{3}[^\n]*\n[\s\S]*?^\x60{3}/gm)) expect(copy).toContain(match[0].replace(/^\s*\/\/\s*run:.*\n/gm, ""))
+    for (const match of source.matchAll(/^\x60{3}[^\n]*\n[\s\S]*?^\x60{3}/gm)) expect(copy).toContain(match[0].replace(/^\s*\/\/\s*(?:run|pending):.*\n/gm, ""))
     const appendix = readFileSync(join(dir, "spec/900-appendices.md"), "utf8")
     expect(appendix).not.toContain("{{testCount}}")
     expect(appendix).not.toMatch(/\]\([^)]*\.\.\//)

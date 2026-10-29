@@ -1,20 +1,21 @@
 # Exit
 
-`Exit` works in VibeLang exactly as in Effect. Use `Exit<A, E>` to inspect a success or an entire failure cause, defects and interruption included. A call that returns an Exit returns data; calling that data runs its recorded outcome.
+`Exit` works in VibeLang exactly as in Effect. Use `Exit.Exit<A, E>` to inspect a success or an entire failure cause, defects and interruption included. A plain call that returns an Exit returns data; `try outcome` runs its recorded outcome.
 
 ## Representing full outcomes
 
 ```vibe
-// run: Console.log(inspectExport())
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try inspectExport())
 error ExportRejected {
   reason: string
 }
 
-function inspectExport() {
-  const outcome = Effect.exit {
+effect inspectExport() {
+  const outcome = try exit(effect {
     throw new ExportRejected({ reason: "empty selection" })
-  }
-  if (outcome.isFailure()) return outcome.cause.reasons.length
+  })
+  if (Exit.isFailure(outcome)) return outcome.cause.reasons.length
   return 0
 }
 ```
@@ -23,16 +24,17 @@ function inspectExport() {
 1
 ```
 
-An exit is `Success` with `.value` or `Failure` with `.cause`. `Effect.exit` runs a program and succeeds with its outcome, which the caller inspects without re-raising the failure.
+An exit is `Success` with `.value` or `Failure` with `.cause`. `try exit(program)` runs an Effect and succeeds with its outcome, which the caller inspects without re-raising the failure.
 
 ## Creating success and cause-based failure exits
 
 ```vibe
-// run: const outcomes = sampleOutcomes(); Console.log(outcomes.successful.isSuccess(), outcomes.failed.isFailure(), constantSuccess().isSuccess()); if (outcomes.failed.isFailure()) Console.log(JSON.stringify(outcomes.failed.cause.reasons.map((reason) => reason._tag)))
+// pending: VIP-5, VIP-14
+// run: const outcomes = sampleOutcomes(); try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess())); if (Exit.isFailure(outcomes.failed)) try Console.log(JSON.stringify(outcomes.failed.cause.reasons.map((reason) => reason._tag)))
 function sampleOutcomes() {
   const successful = Exit.succeed(12)
   const failed = Exit.failCause(
-    Cause.fail("write rejected").combine(Cause.die(new Error("release failed")))
+    Cause.combine(Cause.fail("write rejected"), Cause.die(new Error("release failed")))
   )
   return { successful, failed }
 }
@@ -40,7 +42,7 @@ function sampleOutcomes() {
 function constantSuccess() {
   return Exit.succeed(12)
 }
-// Exit.Exit<number>!!
+// Exit.Exit<number>
 ```
 
 ```output
@@ -53,7 +55,8 @@ true true true
 ## Matching exit variants
 
 ```vibe
-// run: Console.log(describe(Exit.succeed(12))); Console.log(describe(Exit.failCause(Cause.empty)) === "")
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(describe(Exit.succeed(12))); try Console.log(describe(Exit.failCause(Cause.empty)) === "")
 function describe<A, E>(outcome: Exit.Exit<A, E>) {
   return match (outcome) {
     when Exit.Success(let value): `Completed: ${String(value)}`;
@@ -67,17 +70,18 @@ Completed: 12
 true
 ```
 
-`Exit.Success(let value)` binds the success value and `Exit.Failure(let cause)` the complete cause. Leaving out either arm is EK4701. Arms are ordinary expressions and can run Effect functions; `outcome.match({ onSuccess, onFailure })` also works when the callbacks compute values synchronously. To test one variant, write `outcome is Exit.Failure`.
+`Exit.Success(let value)` binds the success value and `Exit.Failure(let cause)` the complete cause. Leaving out either arm is EK4701. Arms are ordinary expressions and can run Effects with `try` inside an effect function; `Exit.match(outcome, { onSuccess, onFailure })` also works when the callbacks compute values synchronously. To test one variant, write `outcome is Exit.Failure`.
 
 ## Relating exits to results
 
 ```vibe
-// run: Console.log(asResult(Exit.succeed(12)).getOrThrow()); const failed = asResult(Exit.failCause(Cause.fail("rejected").combine(Cause.die("broken")))); if (failed.isFailure()) Console.log(JSON.stringify(failed.failure.reasons.map((reason) => reason._tag)))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try Effect.try(() => Result.getOrThrow(asResult(Exit.succeed(12))))); const failed = asResult(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken")))); if (Result.isFailure(failed)) try Console.log(JSON.stringify(failed.failure.reasons.map((reason) => reason._tag)))
 function asResult<A, E>(outcome: Exit.Exit<A, E>) {
-  if (outcome.isSuccess()) return Result.succeed(outcome.value)
+  if (Exit.isSuccess(outcome)) return Result.succeed(outcome.value)
   return Result.fail(outcome.cause)
 }
-// Result.Result<A, Cause.Cause<E>>!!
+// Result.Result<A, Cause.Cause<E>>
 ```
 
 ```output
@@ -85,14 +89,15 @@ function asResult<A, E>(outcome: Exit.Exit<A, E>) {
 ["Fail","Die"]
 ```
 
-An exit carries roughly the information of `Result<A, Cause<E>>`; a `Result<A, E>` cannot express the defect and interruption reasons. Keep the full cause when you move an outcome into another data structure.
+An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a `Result.Result<A, E>` cannot express the defect and interruption reasons. Keep the full cause when you move an outcome into another data structure.
 
 ## Relating exits to effects
 
 ```vibe
-// run: Console.log(replay(Exit.succeed(12))); const failed = Effect.exit(() => replay(Exit.failCause(Cause.fail("rejected").combine(Cause.die("broken"))))); if (failed.isFailure()) Console.log(JSON.stringify(failed.cause.reasons.map((reason) => reason._tag)))
-function replay<A, E>(outcome: Exit.Exit<A, E>) {
-  return outcome()
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try replay(Exit.succeed(12))); const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))); if (Exit.isFailure(failed)) try Console.log(JSON.stringify(failed.cause.reasons.map((reason) => reason._tag)))
+effect replay<A, E>(outcome: Exit.Exit<A, E>) {
+  return try outcome
 }
 // A!E!
 ```
@@ -102,8 +107,8 @@ function replay<A, E>(outcome: Exit.Exit<A, E>) {
 ["Fail","Die"]
 ```
 
-Calling a held exit runs its constant outcome: success returns the stored value and failure propagates the stored cause, without repeating the original work. So taking an exit with `exit(program)` and calling it later separates inspection from propagation. In a try statement, `finally (exit)` binds the statement's own exit.
+`try outcome` runs a held exit's constant outcome: success returns the stored value and failure propagates the stored cause, without repeating the original work. So taking an exit with `try exit(program)` and running it later with `try` separates inspection from propagation. `try onExit(program, (outcome) => cleanup(outcome))` runs cleanup with the program's own exit.
 
 ## Coming from Effect
 
-`const outcome = Exit.succeed(value)` still builds an exit object; `outcome()` propagates it, and `Effect.exit(() => work())` captures a program's outcome. Exit extends Effect, but under the call rule its constructors return data.
+`const outcome = Exit.succeed(value)` still builds an exit object; `try outcome` propagates it, and `try exit(work())` captures a program's outcome. Exit extends Effect, and its constructors return data.

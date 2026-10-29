@@ -5,28 +5,30 @@ Leftovers are elements of a batch that a sink received but had not consumed when
 ## Collecting leftover elements
 
 ```vibe
-// run: Console.log(JSON.stringify(inspectRemainder()))
-function inspectRemainder() {
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try inspectRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect inspectRemainder() {
   const source = Stream.fromArray([21, 34, 55, 89])
-  const sink = (Sink.take<number>(2)).mapEnd(([selected, leftover]) => [
+  const sink = Sink.mapEnd(Sink.take<number>(2), ([selected, leftover]) => [
     { selected, leftover: leftover ?? [] }
   ] as const)
-  return source.run(sink)
+  return try Stream.run(source, sink)
 }
 // { selected: [21, 34], leftover: [55, 89] }
 // Output: {"selected":[21,34],"leftover":[55,89]}
 ```
 
-`Sink.mapEnd` receives `[result, optionalLeftoverBatch]` and returns another such tuple. A one-element tuple moves the leftovers into the success result, leaving no separate leftover batch; `Stream.run` returns that result.
+`Sink.mapEnd` receives `[result, optionalLeftoverBatch]` and returns another such tuple. A one-element tuple moves the leftovers into the success result, leaving no separate leftover batch; `try Stream.run(source, sink)` returns that result.
 
 ```vibe
-// run: (() => { const result = inspectSmallBatches(); Console.log(JSON.stringify({ first: Option.getOrElse(result.first, () => 0), leftover: result.leftover })) })()
-function inspectSmallBatches() {
-  const source = Stream.fromArray([21, 34, 55, 89]).rechunk(2)
-  const sink = (Sink.head<number>()).mapEnd(([first, leftover]) => [
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: const remainder = try inspectSmallBatches(); { const jsonValue = { first: Option.getOrElse(remainder.first, () => 0), leftover: remainder.leftover }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect inspectSmallBatches() {
+  const source = Stream.rechunk(Stream.fromArray([21, 34, 55, 89]), 2)
+  const sink = Sink.mapEnd(Sink.head<number>(), ([first, leftover]) => [
     { first, leftover: leftover ?? [] }
   ] as const)
-  return source.run(sink)
+  return try Stream.run(source, sink)
 }
 // { first: Option.some(21), leftover: [34] }
 // Output: {"first":21,"leftover":[34]}
@@ -37,14 +39,16 @@ Here `55` and `89` are in a batch the sink never requests, so the leftovers you 
 ## Explicitly discarding leftovers
 
 ```vibe
-// run: Console.log(JSON.stringify(discardRemainder()))
-function discardRemainder() {
-  const sink = Sink.take<number>(2)
-    .ignoreLeftover()
-    .mapEnd(([selected, leftover]) => [
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try discardRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect discardRemainder() {
+  const sink = Sink.take<number>(2).pipe(
+    Sink.ignoreLeftover,
+    Sink.mapEnd(([selected, leftover]) => [
       { selected, leftover: leftover ?? [] }
     ] as const)
-  return Stream.fromArray([21, 34, 55, 89]).run(sink)
+  )
+  return try Stream.run(Stream.fromArray([21, 34, 55, 89]), sink)
 }
 // { selected: [21, 34], leftover: [] }
 // Output: {"selected":[21,34],"leftover":[]}

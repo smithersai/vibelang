@@ -5,7 +5,7 @@ description: "Schema classes work as in Effect. A class validates its fields, ac
 
 # Class APIs
 
-Schema classes work as in Effect. A class validates its fields, acts as a codec, and gives its instances domain behavior. Use one when methods or class identity help the model; use `Struct` for plain records. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schema classes work as in Effect. A class validates its fields, acts as a codec, and gives its instances domain behavior. Use one when methods or class identity help the model; use `Struct` for plain records. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Declaring validated classes
 
@@ -15,8 +15,8 @@ class Package extends Schema.Class<Package>("Package")({
   pieces: Schema.FiniteFromString
 }) {}
 
-function readPackage(input: unknown) {
-  return Schema.decodeUnknownEffect(Package)(input)
+effect readPackage(input: unknown) {
+  return try Schema.decodeUnknownEffect(Package)(input)
 }
 // Package!Schema.SchemaError!
 ```
@@ -30,8 +30,8 @@ Pass the class itself as the `Self` type, a stable identifier, and its fields. T
 ## Constructing and checking instances
 
 ```vibe
-function constructPackage(reference: string, pieces: number) {
-  return Package.makeEffect({ reference, pieces })
+effect constructPackage(reference: string, pieces: number) {
+  return try Package.makeEffect({ reference, pieces })
 }
 
 function constructWithNew(reference: string) {
@@ -69,9 +69,9 @@ class Container extends Schema.Class<Container>("Container")({
   labels: Schema.Array(Schema.String)
 }) {}
 
-function sameContainer() {
-  const first = Container.makeEffect({ labels: ["cold", "sealed"] })
-  const second = Container.makeEffect({ labels: ["cold", "sealed"] })
+effect sameContainer() {
+  const first = try Container.makeEffect({ labels: ["cold", "sealed"] })
+  const second = try Container.makeEffect({ labels: ["cold", "sealed"] })
   return Equal.equals(first, second) // true
 }
 ```
@@ -96,14 +96,14 @@ class LabeledPackage extends Schema.Class<LabeledPackage>("LabeledPackage")({
     return `Package ${this.reference}`
   }
 
-  announce() {
-    Console.log(this.describe())
+  effect announce() {
+    try Console.log(this.describe())
   }
 }
 
-function announcePackage() {
-  const item = LabeledPackage.makeEffect({ reference: "pkg-94" })
-  item.announce()
+effect announcePackage() {
+  const item = try LabeledPackage.makeEffect({ reference: "pkg-94" })
+  try item.announce()
   return item.displayReference
 }
 ```
@@ -113,16 +113,16 @@ Package pkg-94
 PKG-94
 ```
 
-Getters derive synchronous values from fields; keep them pure so formatting, checks, and compiled validators can read properties safely. Methods follow ordinary VibeLang call rules and can run effects, as `announce` does.
+Getters derive synchronous values from fields; keep them pure so formatting, checks, and compiled validators can read properties safely. Mark a method `effect` when it runs Effects, as `announce` does. Calling it returns an Effect; `try` runs it.
 
 ## Using classes as codecs
 
 ```vibe
 const Packages = Schema.Array(Package)
 
-function packageWireRoundTrip(input: unknown) {
-  const packages = Schema.decodeUnknownEffect(Packages)(input)
-  return Schema.encodeEffect(Packages)(packages)
+effect packageWireRoundTrip(input: unknown) {
+  const packages = try Schema.decodeUnknownEffect(Packages)(input)
+  return try Schema.encodeEffect(Packages)(packages)
 }
 ```
 
@@ -164,8 +164,8 @@ class Crate extends Schema.Class<Crate>("Crate")({
   )
 }) {}
 
-function readCrate(input: unknown) {
-  return Schema.decodeUnknownEffect(Crate)(input)
+effect readCrate(input: unknown) {
+  return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```
 
@@ -195,8 +195,8 @@ class InsuredPackage extends Package.extend<InsuredPackage>("InsuredPackage")({
   }
 }
 
-function reportMissing(reference: string) {
-  throw MissingPackage.makeEffect({ reference })
+effect reportMissing(reference: string) {
+  throw (try MissingPackage.makeEffect({ reference }))
 }
 // void!MissingPackage | SchemaIssue.Issue!
 ```
@@ -207,7 +207,7 @@ pkg-94: 100
 MissingPackage
 ```
 
-`TaggedClass` adds `_tag` with a constructor default. `Schema.TaggedError` also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or called; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel. For errors that need no serialization, use the global `TaggedError`.
+`TaggedClass` adds `_tag` with a constructor default. `Schema.TaggedError` also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or run with `try`; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel: `try MissingPackage.makeEffect({ reference })` constructs the error, then `throw` fails with it. For errors that need no serialization, use an `error` declaration.
 
 `extend` adds fields and keeps inherited behavior; give each extension its own identifier. Schema data-class inheritance is separate from service declarations, whose implementations use object literals or `implements`.
 

@@ -5,7 +5,8 @@
 ## Distinguishing identical representations
 
 ```vibe
-// run: Console.log(invoiceUrl("inv-3" as InvoiceId), customerUrl("customer-5" as CustomerId))
+// pending: VIP-5, VIP-14
+// run: try Console.log(invoiceUrl("inv-3" as InvoiceId), customerUrl("customer-5" as CustomerId))
 type InvoiceId = string & Brand.Brand<"InvoiceId">
 type CustomerId = string & Brand.Brand<"CustomerId">
 
@@ -27,7 +28,8 @@ Two plain aliases for `string` stay interchangeable; these branded types differ 
 ## Nominal brands
 
 ```vibe
-// run: Console.log(JSON.stringify(knownInvoice("inv-3")))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(knownInvoice("inv-3")))
 type InvoiceId = string & Brand.Brand<"InvoiceId">
 const InvoiceId = Brand.nominal<InvoiceId>()
 
@@ -41,12 +43,13 @@ function knownInvoice(raw: string) {
 {"id":"inv-3","url":"/invoices/inv-3"}
 ```
 
-`Brand.nominal` builds a constructor that returns its input unchanged, branded in its type. It validates nothing, so use it only where the domain meaning is already established. Brand builders and their constructors are trusted Effect library functions; call them directly. Their exceptions are defects.
+`Brand.nominal` builds a constructor that returns its input unchanged, branded in its type. It validates nothing, so use it only where the domain meaning is already established. Call a constructor directly from plain code. In effect code, wrap a call that may throw with `Effect.try`, or use a validation method that returns an Option or Result.
 
 ## Refined brands and validation
 
 ```vibe
-// run: Console.log(parseAmount(125)); try { parseAmount(1.5) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try parseAmount(125)); try Console.log(parseAmount(1.5) catch (error) => error._tag)
 type WholeCents = number & Brand.Brand<"WholeCents">
 const WholeCents = Brand.make<WholeCents>((n) =>
   Number.isSafeInteger(n) || "amount must be a safe integer"
@@ -56,8 +59,8 @@ error InvalidAmount {
   cause: unknown
 }
 
-function parseAmount(raw: number) {
-  return Effect.fromResult(WholeCents.result(raw)) catch (cause) => throw new InvalidAmount({ cause })
+effect parseAmount(raw: number) {
+  return fromResult(WholeCents.result(raw)) catch effect (cause) => { throw new InvalidAmount({ cause }) }
 }
 // WholeCents!InvalidAmount!
 ```
@@ -67,10 +70,11 @@ function parseAmount(raw: number) {
 InvalidAmount
 ```
 
-`Brand.make` takes a synchronous check that returns `true` for valid input or an explanation for invalid input. Its constructor throws a `Brand.BrandError` when validation fails. Escaping into Effect code, the exception is a defect that Effect catch doesn't see; a plain function's catch doesn't see it either. Here `result` avoids throwing, and ordinary `catch` maps its expected failure to `InvalidAmount`.
+`Brand.make` takes a synchronous check that returns `true` for valid input or an explanation for invalid input. Its constructor throws a `Brand.BrandError` when validation fails. Use `result` to avoid that exception. `fromResult` converts a failed Result to a typed Effect failure, and `catch` maps it to `InvalidAmount`. A plain function can use JavaScript `try`/`catch` for constructor exceptions.
 
 ```vibe
-// run: const valid = inspectAmount(125); const invalid = inspectAmount(1.5); Console.log(valid.optional.isSome(), valid.result.isSuccess(), valid.valid); Console.log(invalid.optional.isNone(), invalid.result.isFailure(), invalid.valid)
+// pending: VIP-5, VIP-6, VIP-14
+// run: const valid = inspectAmount(125); const invalid = inspectAmount(1.5); try Console.log(Option.isSome(valid.optional), Result.isSuccess(valid.result), valid.valid); try Console.log(Option.isNone(invalid.optional), Result.isFailure(invalid.result), invalid.valid)
 function inspectAmount(raw: number) {
   const optional = WholeCents.option(raw)
   const result = WholeCents.result(raw)
@@ -84,12 +88,13 @@ true true true
 true true false
 ```
 
-`option` returns `Some` or `None`; `result` returns a `Result` whose failure holds `BrandError`; `is` returns a boolean and has a refinement signature. These trusted calls report invalid data without throwing. To fail with `BrandError` in E, use `Effect.fromResult(WholeCents.result(raw))`. Unexpected exceptions stay defects.
+`option` returns `Some` or `None`; `result` returns a `Result` whose failure holds `BrandError`; `is` returns a boolean and has a refinement signature. These calls report invalid data without throwing. To fail with `BrandError` in E, use `try fromResult(WholeCents.result(raw))`. Unexpected exceptions stay defects.
 
 ## Composing constraints
 
 ```vibe
-// run: Console.log(chargeAmount(125)); for (const input of [-5, 1.5]) { try { chargeAmount(input) } catch (error) { Console.log(error._tag) } }
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: try Console.log(try chargeAmount(125)); for (const input of [-5, 1.5]) { try Console.log(chargeAmount(input) catch (error) => error._tag) }
 type WholeCents = number & Brand.Brand<"WholeCents">
 const WholeCents = Brand.make<WholeCents>((n) =>
   Number.isSafeInteger(n) || "amount must be a safe integer"
@@ -105,8 +110,8 @@ error InvalidCharge {
   cause: unknown
 }
 
-function chargeAmount(raw: number) {
-  return Effect.fromResult(Charge.result(raw)) catch (cause) => throw new InvalidCharge({ cause })
+effect chargeAmount(raw: number) {
+  return fromResult(Charge.result(raw)) catch effect (cause) => { throw new InvalidCharge({ cause }) }
 }
 // chargeAmount(125) succeeds; -5 and 1.5 fail with InvalidCharge.
 ```
@@ -121,4 +126,4 @@ InvalidCharge
 
 ## Coming from Effect
 
-Brands keep their usual types and runtime behavior. Direct constructor exceptions are defects; for an expected failure on invalid input, use the constructor's `result` with `Effect.fromResult`, or an explicit `try` mapping.
+Brands keep their usual types and runtime behavior. For an expected failure on invalid input, use the constructor's `result` with `fromResult`, or wrap the constructor with `Effect.try`. Run the resulting Effect with `try` or handle its failure with `catch`.

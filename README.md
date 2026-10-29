@@ -24,48 +24,52 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 
 ## Why VibeLang
 
-Effect gives you typed failures, dependency injection, concurrency and resource management. VibeLang gives those programs direct syntax: a call returns its value, and its errors and required services stay in its type.
+Effect gives you typed failures, dependency injection, concurrency and resource management. VibeLang gives those programs direct syntax: an `effect` function returns an Effect, `try` runs one, and its errors and required services stay in its type. Every form is exact sugar for the Effect TypeScript it replaces.
 
-Call your own `.ts` functions and npm packages through `try`, `trusted`, or `"trustedPackages"` ([TypeScript boundaries](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users#keep-platform-work-in-effect)). For example, import your parser and pass its input through a hatch:
+Plain and `async` functions are TypeScript's, so your `.ts` code and npm packages call as they do in TypeScript. The compiler tracks what a function may throw, and Effect code calls one that may throw through Effect's own `Effect.try` ([TypeScript boundaries](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users#keep-platform-work-in-effect)):
 
 ```vibe
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 
-function settings(text: string) {
-  // try's first argument is plain TypeScript, not VibeLang.
-  return try((text) => parseSettings(text), (cause) => new BadSettings({ cause }), text)
+effect settings(text: string) {
+  return try Effect.try({ try: () => parseSettings(text), catch: (cause) => new BadSettings({ cause }) })
 }
 ```
 
-Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped foreign calls as `EK4401`, platform calls as `EK4402`, and uncontrolled time or randomness reads as `EK4403` ([diagnostics](https://vibelang.sh/getting-started/012-devtools#diagnostics-completions-and-refactors)).
+Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock`, `Random` and `FileSystem`. A `.vibe` file reaches Node.js and web APIs only through Effect's services, provided by a platform layer ([platform services](https://vibelang.sh/platform/105-introduction)).
 
 Here is one program in both languages: a typed failure, an injected service, two concurrent lookups and a fallback.
 
 **VibeLang**
 
 ```vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-18, VIP-26
 error UserNotFound { id: string }
 service Users {
   find(id: string): string!UserNotFound
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "42") throw new UserNotFound({ id })
     return "Ada"
   }
 })
 
-export function main() {
+export effect main() {
   provide UsersLive {
-    const [name, fallback] = await.all [
-      Users.find("42"),
-      Users.find("7") catch "Guest"
+    const users = try Users
+    const [name, fallback] = try.all [
+      users.find("42"),
+      effect { return users.find("7") catch "Guest" }
     ]
-    Console.log(name, fallback)
+    try Console.log(name, fallback)
   }
 }
+
+runPromise(main())
 ```
 
 **Effect 4 TypeScript**
@@ -98,15 +102,15 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**14.4% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 13 pairs.** The example above uses **116 vs 202 tokens (42.6% fewer)**.
+**8.9% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 17 pairs.** The example above uses **133 vs 202 tokens (34.2% fewer)**.
 
 <!-- token-headline:end -->
 
 Counts use o200k_base. Both print `Ada Guest`. The counts cover the complete source files, including TypeScript's imports and runner, which VibeLang supplies. It is one example, not a general ratio. [Reproduce the counts and both runs](.smithers/token-compare/README.md). [Token counts](docs/user/src/vibelang-features/117-token-counts.md) measures the skill agents load, the docs and every cheat-sheet pair.
 
-`service` declares a dependency and `provide` supplies it. `await.all` runs calls concurrently, and `catch` handles the declared failure. `Console` and `Layer` are in scope without imports. A contract reads `Result!Error!Services`, and the compiler infers the parts you leave out. `Effect<Result, Error, Services>` is accepted too.
+`service` declares a dependency and `provide` supplies it. `try` runs an Effect, `try.all` runs Effects concurrently, and `catch` handles the declared failure. `Console` and `Layer` are in scope without imports, and the module runs `main` with a runner, as Effect TypeScript does. A contract reads `Result!Error!Services`, exactly `Effect<Result, Error, Services>`; leave it out and the compiler infers it.
 
-`match` is exhaustive: leave a variant of a `data` type out of a match without `default`, and the compiler reports `This match does not handle every case of Delivery: Delivery.Rejected is left.`
+`match` is TC39 pattern matching with one addition: leave a variant of a `data` type out of a match without `default`, and the compiler reports the missing case.
 
 The compiler checks `.vibe` and `.ts` files together and emits JavaScript. Set `"declaration": true` in `compilerOptions` to emit `.d.ts` files for TypeScript consumers. The starter leaves declaration output off.
 
@@ -140,16 +144,22 @@ Recovered from EmptyName
 Replace `src/main.vibe` with this program and run `npm run start` again:
 
 ```vibe
-error EmptyName {}
-function greet(name: string): string!EmptyName {
+// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-26
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
+error EmptyName
+effect greet(name: string): string!EmptyName {
   if (name === "") throw new EmptyName()
   return `Hello, ${name}!`
 }
-export function main() {
-  Console.log(greet("VibeLang"))
+
+export effect main() {
+  try Console.log(try greet("VibeLang"))
   const recovered = greet("") catch "Hello, stranger!"
-  Console.log(recovered)
+  try Console.log(recovered)
 }
+
+NodeRuntime.runMain(main())
 ```
 
 ```text
@@ -185,4 +195,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,093 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,237 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

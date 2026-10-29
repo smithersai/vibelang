@@ -10,18 +10,20 @@ A `PubSub` broadcasts values to independent subscribers: each active subscriber 
 ## Broadcasting to independent subscribers
 
 ```vibe
-function broadcast() {
-  const hub = PubSub.bounded<string>(4)
-  try {
-    using display = PubSub.subscribe(hub)
-    using audit = PubSub.subscribe(hub)
-    PubSub.publish(hub, "deployment complete")
-    return [PubSub.take(display), PubSub.take(audit)]
-  } finally {
-    PubSub.shutdown(hub)
-  }
+effect broadcast() {
+  const hub = try PubSub.bounded<string>(4)
+  return try ensuring(scoped(effect {
+    const display = try PubSub.subscribe(hub)
+    const audit = try PubSub.subscribe(hub)
+    try PubSub.publish(hub, "deployment complete")
+    return [try PubSub.take(display), try PubSub.take(audit)]
+  }), PubSub.shutdown(hub))
 }
 // Returns ["deployment complete", "deployment complete"].
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
 // Output: ["deployment complete","deployment complete"]
 ```
 
@@ -30,12 +32,12 @@ Subscribe before publishing a message that must be received: without replay conf
 ## Selecting capacity and overflow behavior
 
 ```vibe
-function makeHubs() {
+effect makeHubs() {
   return {
-    reliable: PubSub.bounded<string>(64),
-    bestEffort: PubSub.dropping<string>(64),
-    latest: PubSub.sliding<string>(64),
-    unlimited: PubSub.unbounded<string>()
+    reliable: try PubSub.bounded<string>(64),
+    bestEffort: try PubSub.dropping<string>(64),
+    latest: try PubSub.sliding<string>(64),
+    unlimited: try PubSub.unbounded<string>()
   }
 }
 // Output: 64 64 64 9007199254740991
@@ -46,31 +48,31 @@ When the buffer is full, a bounded hub backpressures publishers, so a slow subsc
 ## Managing scoped subscriptions
 
 ```vibe
-function listen(hub: PubSub.PubSub<string>) {
-  using subscription = PubSub.subscribe(hub)
-  const message = PubSub.take(subscription)
-  Console.log("notification", message)
+effect listen(hub: PubSub.PubSub<string>) {
+  try scoped(effect {
+    const subscription = try PubSub.subscribe(hub)
+    const message = try PubSub.take(subscription)
+    try Console.log("notification", message)
+  })
 }
 // Output: notification ready
 ```
 
-`subscribe` acquires a scoped subscription; `using` releases it when the block exits on success, failure, or interruption. Releasing a subscriber also removes its pressure on retained messages. Without `using`, `Scope` stays in the caller's requirements, so the caller's scope owns the subscription.
+`subscribe` acquires a scoped subscription; `scoped(effect { ... })` releases it when the scope closes on success, failure, or interruption. Releasing a subscriber also removes its pressure on retained messages. Without `scoped`, `Scope` stays in the caller's requirements, so the caller's scope owns the subscription.
 
 In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and the other PubSub taking functions.
 
 ## Publishing batches
 
 ```vibe
-function batch() {
-  const hub = PubSub.bounded<string>(3)
-  try {
-    using subscription = PubSub.subscribe(hub)
-    const accepted = PubSub.publishAll(hub, ["queued", "started", "finished"])
-    const messages = PubSub.takeAll(subscription)
+effect batch() {
+  const hub = try PubSub.bounded<string>(3)
+  return try ensuring(scoped(effect {
+    const subscription = try PubSub.subscribe(hub)
+    const accepted = try PubSub.publishAll(hub, ["queued", "started", "finished"])
+    const messages = try PubSub.takeAll(subscription)
     return { accepted, messages }
-  } finally {
-    PubSub.shutdown(hub)
-  }
+  }), PubSub.shutdown(hub))
 }
 // Output: {"accepted":true,"messages":["queued","started","finished"]}
 ```
@@ -80,42 +82,37 @@ function batch() {
 ## Inspecting size and capacity
 
 ```vibe
-function inspect() {
-  const hub = PubSub.bounded<number>(5)
-  try {
-    using subscriber = PubSub.subscribe(hub)
-    PubSub.publish(hub, 1)
+effect inspect() {
+  const hub = try PubSub.bounded<number>(5)
+  return try ensuring(scoped(effect {
+    const subscriber = try PubSub.subscribe(hub)
+    try PubSub.publish(hub, 1)
     return {
       capacity: PubSub.capacity(hub),
-      size: PubSub.size(hub),
-      empty: PubSub.isEmpty(hub),
-      full: PubSub.isFull(hub)
+      size: try PubSub.size(hub),
+      empty: try PubSub.isEmpty(hub),
+      full: try PubSub.isFull(hub)
     }
-  } finally {
-    PubSub.shutdown(hub)
-  }
+  }), PubSub.shutdown(hub))
 }
 // Output: {"capacity":5,"size":1,"empty":false,"full":false}
 ```
 
-Capacity is a plain value; size and fullness queries run Effects. Size counts messages the hub retains, not a sum of copies across subscribers. These are snapshots: they don't guarantee a later publication finds space.
+Capacity is a plain value; size and fullness queries return Effects that run with `try`. Size counts messages the hub retains, not a sum of copies across subscribers. These are snapshots: they don't guarantee a later publication finds space.
 
 ## Ending subscriptions and shutting down
 
 ```vibe
-function ownHub() {
-  const hub = PubSub.bounded<string>(8)
-  try {
-    {
-      using subscriber = PubSub.subscribe(hub)
-      PubSub.publish(hub, "last update")
-      Console.log(PubSub.take(subscriber))
-    } // This subscription is released here.
-  } finally {
-    PubSub.shutdown(hub)
-  }
-  PubSub.awaitShutdown(hub)
-  return PubSub.isShutdown(hub)
+effect ownHub() {
+  const hub = try PubSub.bounded<string>(8)
+  try ensuring(scoped(effect {
+    const subscriber = try PubSub.subscribe(hub)
+    try PubSub.publish(hub, "last update")
+    try Console.log(try PubSub.take(subscriber))
+  }), PubSub.shutdown(hub))
+  // The subscription's scope has closed and the hub has shut down.
+  try PubSub.awaitShutdown(hub)
+  return try PubSub.isShutdown(hub)
 }
 // Output: last update
 // Output: true

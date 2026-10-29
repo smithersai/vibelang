@@ -5,11 +5,12 @@ Transform a Sink when its consumption rule fits but its input or result type doe
 ## Adapting consumer input
 
 ```vibe
-// run: Console.log(countItems())
-const quantities = Sink.sum.mapInput((entry: { quantity: number }) => entry.quantity)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try countItems())
+const quantities = Sink.mapInput(Sink.sum, (entry: { quantity: number }) => entry.quantity)
 
-function countItems() {
-  return Stream.make({ quantity: 7 }, { quantity: 11 }).run(quantities)
+effect countItems() {
+  return try Stream.run(Stream.make({ quantity: 7 }, { quantity: 11 }), quantities)
 }
 // Returns 18.
 // Output: 18
@@ -18,12 +19,13 @@ function countItems() {
 `mapInput` converts each incoming value before the original sink sees it. Its callback is synchronous and cannot do Effect work; use `mapInputEffect` for validation, service calls, or other work with failures and requirements.
 
 ```vibe
-// run: (() => { Console.log(Stream.make("7", "11").run(parsedTotal)); try { Stream.make("bad").run(parsedTotal) } catch (error) { Console.log(error._tag, error.raw) } })()
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
+// run: try Console.log(try Stream.run(Stream.make("7", "11"), parsedTotal)); const outcome = try result(Stream.run(Stream.make("bad"), parsedTotal)); if (Result.isFailure(outcome)) match (outcome.failure) { when InvalidQuantity: try Console.log(outcome.failure._tag, outcome.failure.raw) }
 error InvalidQuantity {
   raw: string
 }
 
-const parsedTotal = Sink.sum.mapInputEffect((raw: string) => {
+const parsedTotal = Sink.mapInputEffect(Sink.sum, effect (raw: string) => {
   const value = Number(raw)
   if (!Number.isFinite(value)) throw new InvalidQuantity({ raw })
   return value
@@ -37,11 +39,12 @@ The new sink accepts strings and can fail with `InvalidQuantity`. A failed input
 ## Mapping consumer output
 
 ```vibe
-// run: Console.log(JSON.stringify(totalReport()))
-const report = Sink.sum.map((total) => ({ total, unit: "items" }))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try totalReport(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+const report = Sink.map(Sink.sum, (total) => ({ total, unit: "items" }))
 
-function totalReport() {
-  return Stream.make(7, 11).run(report)
+effect totalReport() {
+  return try Stream.run(Stream.make(7, 11), report)
 }
 // Returns { total: 18, unit: "items" }.
 // Output: {"total":18,"unit":"items"}
@@ -52,28 +55,31 @@ function totalReport() {
 ## Composing input and output transformations
 
 ```vibe
-// run: Console.log(byteReport())
-const report = Sink.sum
-  .mapInput((entry: { bytes: number }) => entry.bytes)
-  .map((bytes) => `${bytes} bytes`)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try byteReport())
+const report = Sink.sum.pipe(
+  Sink.mapInput((entry: { bytes: number }) => entry.bytes),
+  Sink.map((bytes) => `${bytes} bytes`)
+)
 
-function byteReport() {
-  return Stream.make({ bytes: 128 }, { bytes: 256 }).run(report)
+effect byteReport() {
+  return try Stream.run(Stream.make({ bytes: 128 }, { bytes: 256 }), report)
 }
 // Returns "384 bytes".
 // Output: 384 bytes
 ```
 
-The input stage adapts each element, the original sink accumulates, and the output stage formats once. The method chain builds a Sink value; `Stream.run` executes it.
+The input stage adapts each element, the original sink accumulates, and the output stage formats once. The pipeline builds a Sink value; `try Stream.run(source, sink)` executes it.
 
 ## Filtering before consumption
 
 ```vibe
-// run: Console.log(JSON.stringify(positiveBatches()))
-function positiveBatches() {
-  const positive = Stream.make(-3, 4, 0, 8, -1, 12, 16).filter((n) => n > 0)
-  const batches = positive.transduce(Sink.take<number>(3))
-  return batches.runCollect() // [[4, 8, 12], [16]]
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try positiveBatches(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect positiveBatches() {
+  const positive = Stream.filter(Stream.make(-3, 4, 0, 8, -1, 12, 16), (n) => n > 0)
+  const batches = Stream.transduce(positive, Sink.take<number>(3))
+  return try Stream.runCollect(batches) // [[4, 8, 12], [16]]
 }
 // Output: [[4,8,12],[16]]
 ```

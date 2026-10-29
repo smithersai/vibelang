@@ -17,6 +17,8 @@ export default defineConfig({ plugins: [vibelang()] })
 
 ## 2. Configure tsconfig.json
 
+Support for the new forms and configuration files arrives with the compiler's VIP implementation.
+
 The plugin compiles the project `tsconfig.json` describes, with its options and diagnostics. Its compile backend automatically enables `rewriteRelativeImportExtensions` when emitting JavaScript, so source imports such as `./greet.vibe` work with Vite's `allowImportingTsExtensions` configuration. Check two things:
 
 1. `include` selects the app's `.vibe` files under Vite's root. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
@@ -30,8 +32,9 @@ Create `src/greet.vibe`:
 
 ```vibe
 // src/greet.vibe
-// run: Console.log(greet("Vite"))
-export function greet(name: string) {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try greet("Vite"))
+export effect greet(name: string) {
   return `Hello, ${name}!`
 }
 // Output: Hello, Vite!
@@ -81,12 +84,14 @@ Create `src/greet.test.vibe`:
 
 ```vibe
 // src/greet.test.vibe
+// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 import { greet } from "./greet.vibe"
 
-it.effect("greets") {
-  assert.strictEqual(greet("Vite"), "Hello, Vite!")
-}
+it.effect("greets", () => effect {
+  const message = try greet("Vite")
+  try sync(() => assert.strictEqual(message, "Hello, Vite!"))
+})
 ```
 
 Run `npx vitest run`. Tests need no prior build. The output includes:

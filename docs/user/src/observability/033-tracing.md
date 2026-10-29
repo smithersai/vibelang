@@ -5,15 +5,19 @@ Tracing records an operation's duration and its relation to other operations. Vi
 ## Relating spans to traces
 
 ```vibe
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); Console.log(Effect.withTracer(() => requestTrace(), tracer)); Console.log(spans[0].name, spans[0].status._tag, spans[0].parent.isNone())
-import { ConfigProvider, Tracer } from "effect"
-
-function requestTrace() {
-  return withSpan(() => {
-    sleep("10 millis")
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(requestTrace(), tracer)); try Console.log(spans[0].name, spans[0].status._tag, Option.isNone(spans[0].parent))
+effect requestTrace() {
+  return try withSpan(effect {
+    try sleep("10 millis")
     return "response"
   }, "report-request")
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```output
@@ -26,10 +30,11 @@ A span describes one operation: name, identifiers, timestamps, status, and attri
 ## Adding spans around computations
 
 ```vibe
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); Console.log(Effect.withTracer(() => renderReport("csv"), tracer)); Console.log(spans[0].name, spans[0].attributes.get("report.format"), spans[0].status._tag)
-function renderReport(format: string) {
-  return withSpan(() => {
-    sleep("20 millis")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(renderReport("csv"), tracer)); try Console.log(spans[0].name, spans[0].attributes.get("report.format"), spans[0].status._tag)
+effect renderReport(format: string) {
+  return try withSpan(effect {
+    try sleep("20 millis")
     return `report.${format}`
   }, "render-report", { attributes: { "report.format": format } })
 }
@@ -45,11 +50,25 @@ render-report csv Ended
 
 ## Exporting spans and SDK boundaries
 
+The following TypeScript fixture supplies an in-memory HTTP collector for the examples. Keep Web API implementations in a `.ts` adapter and inject them through the HTTP client's service.
+
+```ts
+// collector.ts
+/** @throws {never} */
+export function collectorFixture() {
+  const requests: unknown[] = []
+  const collector: typeof globalThis.fetch = (_input, init) => {
+    requests.push(JSON.parse(new TextDecoder().decode(init?.body as Uint8Array)))
+    return Promise.resolve(new Response(null, { status: 200 }))
+  }
+  return { requests, collector }
+}
+```
+
 ```vibe
-// run: const requests: unknown[] = []; const collector: typeof globalThis.fetch = (_input, init) => { requests.push(JSON.parse(new TextDecoder().decode(init?.body as Uint8Array))); return Promise.resolve(new Response(null, { status: 200 })) }; Console.log(Effect.provideService(() => exportedReport(), FetchHttpClient.Fetch, collector)); Console.log(requests.length, JSON.stringify(requests).includes("render-report"), JSON.stringify(requests).includes("report-worker"))
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import * as OtlpSerialization from "effect/observability/OtlpSerialization"
-import * as OtlpTracer from "effect/observability/OtlpTracer"
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-23, VIP-33
+// run: const { requests, collector } = collectorFixture(); try Console.log(try provideService(exportedReport(), FetchHttpClient.Fetch, collector)); try Console.log(requests.length, (try stringify(requests)).includes("render-report"), (try stringify(requests)).includes("report-worker"))
+import { collectorFixture } from "./collector.ts"
 
 const Tracing = OtlpTracer.layer({
   url: "http://localhost:4318/v1/traces",
@@ -59,8 +78,8 @@ const Tracing = OtlpTracer.layer({
   |> Layer.provide(%, OtlpSerialization.layerJson)
   |> Layer.provide(%, FetchHttpClient.layer)
 
-function exportedReport() {
-  provide Tracing { return renderReport("csv") }
+effect exportedReport() {
+  provide Tracing { return try renderReport("csv") }
 }
 ```
 
@@ -71,23 +90,24 @@ report.csv
 
 This source version exports OTLP/HTTP directly under `effect/observability`. The layer batches ended spans, sends them with the supplied HTTP client and serialization, and flushes when its scope shuts down. Provide it around the application's lifetime, so requests don't each create and close an exporter.
 
-An application that already owns an OpenTelemetry SDK tracer provider initializes its compatible bridge in a TypeScript bootstrap or adapter and provides the resulting Effect layer to VibeLang. Effect's own packages are trusted; a plain third-party SDK call in a VibeLang function needs an explicit boundary such as `try`, or a wrapper made with `trusted(implementation, [ErrorClass])`, imported from `vibelang-runtime` (use `[]` when no synchronous failures are expected). A synchronous SDK context callback must compile to plain JavaScript, so it can't call services or run other Effect operations.
+An application that already owns an OpenTelemetry SDK tracer provider initializes its compatible bridge in a TypeScript bootstrap or adapter and provides the resulting Effect layer to VibeLang. Wrap a synchronous SDK call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A synchronous SDK context callback must compile to plain JavaScript, so it can't call services or run other Effect operations.
 
 ## Inspecting failures and attributes
 
 ```vibe
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const result = Effect.withTracer(() => Effect.provide(() => failingRender(), Logger.layer([])), tracer); Console.log(result.isFailure(), spans[0].attributes.get("report.format")); if (spans[0].status._tag === "Ended") Console.log(spans[0].status.exit.isFailure())
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const outcome = try withTracer(Effect.provide(failingRender(), Logger.layer([])), tracer); try Console.log(Exit.isFailure(outcome), spans[0].attributes.get("report.format")); if (spans[0].status._tag === "Ended") try Console.log(Exit.isFailure(spans[0].status.exit))
 error RenderFailed {
   format: string
 }
 
-function failingRender() {
-  const exit = Effect.exit(() => withSpan(() => {
-    Effect.annotateCurrentSpan("report.format", "unknown")
+effect failingRender() {
+  const outcome = try exit(withSpan(effect {
+    try annotateCurrentSpan("report.format", "unknown")
     throw new RenderFailed({ format: "unknown" })
   }, "render-report"))
-  if (exit.isFailure()) logError("render failed", exit.cause)
-  return exit
+  if (Exit.isFailure(outcome)) try logError("render failed", outcome.cause)
+  return outcome
 }
 ```
 
@@ -101,16 +121,16 @@ An exported failure carries error status and failure details; attributes identif
 ## Representing logs as span events
 
 ```vibe
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const original = Effect.service(Console.Console); Effect.withTracer(() => Effect.provideService(() => tracedLogs(), Console.Console, { ...original, log: () => {} }), tracer); Console.log(JSON.stringify(spans[0].events.map(([name]) => name)), spans[0].status._tag)
-function tracedLogs() {
-  Effect.provide(() => withSpan(() => {
-    logInfo("input validated")
-    sleep("10 millis")
-    logInfo("artifact written")
-  }, "generate-artifact"), Logger.layer([
-    Logger.defaultLogger,
-    Logger.tracerLogger
-  ]))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const original = try Console.Console; try withTracer(provideService(tracedLogs(), Console.Console, { ...original, log: () => {} }), tracer); try Console.log(try stringify(spans[0].events.map(([name]) => name)), spans[0].status._tag)
+effect tracedLogs() {
+  provide Logger.layer([Logger.defaultLogger, Logger.tracerLogger]) {
+    try withSpan(effect {
+      try logInfo("input validated")
+      try sleep("10 millis")
+      try logInfo("artifact written")
+    }, "generate-artifact")
+  }
 }
 ```
 
@@ -123,18 +143,19 @@ The tracer logger records logs inside an active span as timestamped events, a ti
 ## Nesting operations
 
 ```vibe
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); Console.log(JSON.stringify(Effect.withTracer(() => generate(), tracer))); Console.log(JSON.stringify(spans.map((span) => [span.name, span.parent.map((parent) => parent.spanId === spans[0].spanId).getOrElse(() => false), span.traceId === spans[0].traceId, span.status._tag])))
-function loadTemplate() {
-  return withSpan(() => {
-    sleep("10 millis")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try stringify(try withTracer(generate(), tracer))); try Console.log(try stringify(spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag])))
+effect loadTemplate() {
+  return try withSpan(effect {
+    try sleep("10 millis")
     return "weekly-template"
   }, "load-template")
 }
 
-function generate() {
-  return withSpan(() => {
-    const template = loadTemplate()
-    const output = renderReport("csv")
+effect generate() {
+  return try withSpan(effect {
+    const template = try loadTemplate()
+    const output = try renderReport("csv")
     return { template, output }
   }, "generate-report")
 }
@@ -150,9 +171,12 @@ The inner spans take the outer span as parent and share its trace ID; each has i
 ## Viewing traces locally
 
 ```vibe
-// run: const requests: unknown[] = []; const collector: typeof globalThis.fetch = (_input, init) => { requests.push(JSON.parse(new TextDecoder().decode(init?.body as Uint8Array))); return Promise.resolve(new Response(null, { status: 200 })) }; Effect.provideService(() => demonstration(), FetchHttpClient.Fetch, collector); Console.log(requests.length, JSON.stringify(requests).includes("generate-report"), JSON.stringify(requests).includes("load-template"), JSON.stringify(requests).includes("render-report"))
-function demonstration() {
-  provide Tracing { generate() }
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
+// run: const { requests, collector } = collectorFixture(); try provideService(demonstration(), FetchHttpClient.Fetch, collector); try Console.log(requests.length, (try stringify(requests)).includes("generate-report"), (try stringify(requests)).includes("load-template"), (try stringify(requests)).includes("render-report"))
+import { collectorFixture } from "./collector.ts"
+
+effect demonstration() {
+  provide Tracing { try generate() }
 }
 ```
 
@@ -169,22 +193,21 @@ Open a `generate-report` trace to compare parent and child durations, attributes
 ## Connecting external tracing services
 
 ```vibe
-// run: const requests: unknown[] = []; const collector: typeof globalThis.fetch = (_input, init) => { requests.push(JSON.parse(new TextDecoder().decode(init?.body as Uint8Array))); return Promise.resolve(new Response(null, { status: 200 })) }; provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { Console.log(JSON.stringify(Effect.provideService(() => productionReport(), FetchHttpClient.Fetch, collector))) }; Console.log(requests.length, JSON.stringify(requests).includes("generate-report"))
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import * as OtlpSerialization from "effect/observability/OtlpSerialization"
-import * as OtlpTracer from "effect/observability/OtlpTracer"
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-23, VIP-33
+// run: const { requests, collector } = collectorFixture(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { try Console.log(try stringify(try provideService(productionReport(), FetchHttpClient.Fetch, collector))) }; try Console.log(requests.length, (try stringify(requests)).includes("generate-report"))
+import { collectorFixture } from "./collector.ts"
 
 const TraceEndpoint = Config.String("TRACE_ENDPOINT")
 
-const VendorTracing = Layer.unwrap {
-  const url = TraceEndpoint()
+const VendorTracing = Layer.unwrap(effect {
+  const url = try TraceEndpoint
   return OtlpTracer.layer({ url, resource: { serviceName: "report-worker" } })
     |> Layer.provide(%, OtlpSerialization.layerJson)
     |> Layer.provide(%, FetchHttpClient.layer)
-}
+})
 
-function productionReport() {
-  provide VendorTracing { return generate() }
+effect productionReport() {
+  provide VendorTracing { return try generate() }
 }
 ```
 
@@ -193,8 +216,8 @@ function productionReport() {
 1 true
 ```
 
-`Config.String` builds a configuration value; `TraceEndpoint()` reads it when the layer builds. Point the exporter at an authenticated collector or a service's documented OTLP traces endpoint, and set any required headers through `OtlpTracer.layer`. A collector can route the spans to a hosted tracing backend. For Sentry or another service that installs its own SDK, use its compatible SDK bridge or documented OTLP route; exported successful spans don't create error-monitoring issues.
+`Config.String` builds a configuration value; `try TraceEndpoint` reads it when the layer builds. Point the exporter at an authenticated collector or a service's documented OTLP traces endpoint, and set any required headers through `OtlpTracer.layer`. A collector can route the spans to a hosted tracing backend. For Sentry or another service that installs its own SDK, use its compatible SDK bridge or documented OTLP route; exported successful spans don't create error-monitoring issues.
 
 ## Coming from Effect
 
-`withSpan` still adds tracing explicitly, but its program is an ordinary function. `Effect.withSpan(program, "name")` draws EK4836, whose quick fix writes `withSpan(() => program, "name")`. Don't span every helper to reproduce function boundaries; instrument the operations you need to diagnose.
+`withSpan` still adds tracing explicitly and takes an Effect value: `try withSpan(program, "name")`. Use `effect { ... }` when the spanned operation needs several statements. `Effect.withSpan` currently draws EK4836 and offers a quick fix to `withSpan`. Support for the new forms arrives with the compiler's VIP implementation. Don't span every helper to reproduce function boundaries; instrument the operations you need to diagnose.

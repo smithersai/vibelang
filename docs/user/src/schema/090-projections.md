@@ -1,18 +1,19 @@
 # Schema Projections
 
-Projections work exactly as in Effect: they turn one side of a codec into a schema that validates that representation without running the codec's conversion. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Projections work exactly as in Effect: they turn one side of a codec into a schema that validates that representation without running the codec's conversion. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Projecting a codec to its decoded schema
 
 ```vibe
-// run: Console.log(inspectCount(4)); for (const value of ["4", 0, 1.5]) { try { inspectCount(value) } catch (error) { Console.log(error._tag) } }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try inspectCount(4)); for (const value of ["4", 0, 1.5]) { try Effect.catch(inspectCount(value), (error) => Console.log(error._tag)) } })
 const CountFromText = Schema.FiniteFromString.check(
   Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)
 )
 const CountValue = Schema.toType(CountFromText)
 
-function inspectCount(input: unknown) {
-  return Schema.decodeUnknownEffect(CountValue)(input)
+effect inspectCount(input: unknown) {
+  return try Schema.decodeUnknownEffect(CountValue)(input)
 }
 // Accepts 4. Rejects "4", 0, and 1.5.
 ```
@@ -29,14 +30,15 @@ SchemaError
 ## Projecting a codec to its encoded schema
 
 ```vibe
-// run: Console.log(JSON.stringify(inspectWireName(" x ")))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try inspectWireName(" x "))) })
 const Name = Schema.String.check(Schema.isMinLength(3)).pipe(
   Schema.decodeTo(Schema.Trim)
 )
 const NameInput = Schema.toEncoded(Name)
 
-function inspectWireName(input: unknown) {
-  return Schema.decodeUnknownEffect(NameInput)(input)
+effect inspectWireName(input: unknown) {
+  return try Schema.decodeUnknownEffect(NameInput)(input)
 }
 // " x " passes unchanged: it has length 3 before trimming.
 ```
@@ -50,7 +52,8 @@ function inspectWireName(input: unknown) {
 ## Retaining checks appropriate to each side
 
 ```vibe
-// run: Console.log(JSON.stringify(compareViews())); try { Schema.decodeUnknownEffect(ParcelCount)("00") } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try compareViews())); try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag)) })
 const ParcelCount = Schema.String.check(Schema.isMinLength(2)).pipe(
   Schema.decodeTo(Schema.FiniteFromString),
   Schema.check(Schema.isGreaterThan(5))
@@ -58,9 +61,9 @@ const ParcelCount = Schema.String.check(Schema.isMinLength(2)).pipe(
 const TextOnly = Schema.toEncoded(ParcelCount)
 const NumberOnly = Schema.toType(ParcelCount)
 
-function compareViews() {
-  const text = Schema.decodeUnknownEffect(TextOnly)("00") // "00"
-  const count = Schema.decodeUnknownEffect(NumberOnly)(8) // 8
+effect compareViews() {
+  const text = try Schema.decodeUnknownEffect(TextOnly)("00") // "00"
+  const count = try Schema.decodeUnknownEffect(NumberOnly)(8) // 8
   return { text, count }
 }
 ```

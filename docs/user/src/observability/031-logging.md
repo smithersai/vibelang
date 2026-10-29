@@ -1,15 +1,21 @@
 # Logging
 
-Effect's structured logging records progress, failures, and diagnostic context. Log calls run where they appear; the current logging configuration decides which records are emitted and where.
+Effect's structured logging records progress, failures, and diagnostic context. Log functions return Effects; run them with `try` inside an effect function or block. The current logging configuration decides which records are emitted and where.
 
 ## Emitting structured records
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { reportProgress() }; Console.log(JSON.stringify(records))
-function reportProgress() {
-  log("export started", { format: "csv", stage: "prepare" })
-  logInfo("export completed", { rows: 240 })
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try reportProgress() }; try Console.log(try stringify(records))
+effect reportProgress() {
+  try log("export started", { format: "csv", stage: "prepare" })
+  try logInfo("export completed", { rows: 240 })
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```output
@@ -21,15 +27,16 @@ function reportProgress() {
 ## Selecting severity thresholds
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { diagnostics() }; Console.log(JSON.stringify(records))
-function diagnostics() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try diagnostics() }; try Console.log(try stringify(records))
+effect diagnostics() {
   provide References.MinimumLogLevel = "Debug" {
-    Effect.logTrace("entered parser")
-    logDebug("parsed header")
-    logInfo("input accepted")
-    logWarning("using fallback settings")
-    logError("destination unavailable")
-    Effect.logFatal("application cannot start")
+    try logTrace("entered parser")
+    try logDebug("parsed header")
+    try logInfo("input accepted")
+    try logWarning("using fallback settings")
+    try logError("destination unavailable")
+    try logFatal("application cannot start")
   }
 }
 ```
@@ -43,22 +50,23 @@ The default threshold, Info, filters Debug and Trace. Providing Debug enables De
 ## Annotating logs and scoped regions
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) }); provide Logger.layer([capture]) { annotatedExport(); scopedAnnotations() }; Console.log(JSON.stringify(records))
-function annotatedExport() {
-  Effect.annotateLogs(() => {
-    logInfo("preparing")
-    Effect.annotateLogs(() => logInfo("writing"), "stage", "write")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) }); provide Logger.layer([capture]) { try annotatedExport(); try scopedAnnotations() }; try Console.log(try stringify(records))
+effect annotatedExport() {
+  try annotateLogs(effect {
+    try logInfo("preparing")
+    try annotateLogs(logInfo("writing"), "stage", "write")
   }, { operation: "weekly-export", format: "csv" })
-  logInfo("outside annotated operation")
+  try logInfo("outside annotated operation")
 }
 
-function scopedAnnotations() {
-  Effect.scoped {
-    Effect.annotateLogsScoped({ component: "importer" })
-    logInfo("reading input")
-    logInfo("validating rows")
-  }
-  logInfo("outside importer scope")
+effect scopedAnnotations() {
+  try scoped(effect {
+    try annotateLogsScoped({ component: "importer" })
+    try logInfo("reading input")
+    try logInfo("validating rows")
+  })
+  try logInfo("outside importer scope")
 }
 ```
 
@@ -66,17 +74,18 @@ function scopedAnnotations() {
 [[["preparing"],{"operation":"weekly-export","format":"csv"}],[["writing"],{"operation":"weekly-export","format":"csv","stage":"write"}],[["outside annotated operation"],{}],[["reading input"],{"component":"importer"}],[["validating rows"],{"component":"importer"}],[["outside importer scope"],{}]]
 ```
 
-`annotateLogs` adds key/value metadata to every record in its program, nested calls and inherited child context included. `annotateLogsScoped` annotates until the supplied runtime scope closes; plain braces supply no scope, so use `Effect.scoped`.
+`annotateLogs` adds key/value metadata to every record in its program, nested calls and inherited child context included. `annotateLogsScoped` annotates until the supplied runtime scope closes; plain braces supply no scope, so use `try scoped(effect { ... })`.
 
 ## Measuring log spans
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) }); provide TestClock.layer() { TestClock.setTime(0); provide Logger.layer([capture]) { const worker = fork timedExport(); TestClock.adjust("30 millis"); join worker } }; Console.log(JSON.stringify(records))
-function timedExport() {
-  Effect.withLogSpan(() => {
-    logInfo("opening output")
-    sleep("30 millis")
-    logInfo("output written")
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
+// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) }); provide TestClock.layer() { try TestClock.setTime(0); provide Logger.layer([capture]) { const worker = fork timedExport(); try TestClock.adjust("30 millis"); join worker } }; try Console.log(try stringify(records))
+effect timedExport() {
+  try withLogSpan(effect {
+    try logInfo("opening output")
+    try sleep("30 millis")
+    try logInfo("output written")
   }, "write-output")
 }
 ```
@@ -90,23 +99,22 @@ Each record inside the log span carries the time elapsed since the span began, s
 ## Disabling and configuring logging
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { quiet(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ LOG_LEVEL: "Debug" })) { configured() } }; Console.log(JSON.stringify(records))
-import { ConfigProvider } from "effect"
-
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try quiet(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ LOG_LEVEL: "Debug" })) { try configured() } }; try Console.log(try stringify(records))
 const Silent = Layer.succeed(References.MinimumLogLevel, "None")
 const LogLevel = Config.LogLevel("LOG_LEVEL")
 
-const ConfiguredLevel = Layer.unwrap {
-  const minimum = LogLevel()
+const ConfiguredLevel = Layer.unwrap(effect {
+  const minimum = try LogLevel
   return Layer.succeed(References.MinimumLogLevel, minimum)
+})
+
+effect quiet() {
+  provide Silent { try logInfo("suppressed") }
 }
 
-function quiet() {
-  provide Silent { logInfo("suppressed") }
-}
-
-function configured() {
-  provide ConfiguredLevel { logDebug("configuration loaded") }
+effect configured() {
+  provide ConfiguredLevel { try logDebug("configuration loaded") }
 }
 ```
 
@@ -114,20 +122,21 @@ function configured() {
 [["Debug",["configuration loaded"]]]
 ```
 
-The None threshold silences the provided region. `Config.LogLevel` builds a configuration value; `LogLevel()` reads and validates it when the layer builds, and reports configuration errors then. Supply the configuration layer once at the application boundary, or in a shared `ManagedRuntime` for several entry points.
+The None threshold silences the provided region. `Config.LogLevel` builds a configuration value; `try LogLevel` reads and validates it when the layer builds, and reports configuration errors then. Supply the configuration layer once at the application boundary, or in a shared `ManagedRuntime` for several entry points.
 
 ## Defining a custom output handler
 
 ```vibe
-// run: Console.log(JSON.stringify(captureLogs()))
-function captureLogs() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
+// run: try Console.log(try stringify(try captureLogs()))
+effect captureLogs() {
   const records: Array<{ level: string; message: unknown }> = []
   const capture = Logger.make(({ logLevel, message }) => {
     records.push({ level: logLevel, message })
   })
   provide Logger.layer([capture, Logger.tracerLogger]) {
-    logInfo("batch accepted", { count: 3 })
-    logWarning("one retry required")
+    try logInfo("batch accepted", { count: 3 })
+    try logWarning("one retry required")
   }
   return records
 }
@@ -142,14 +151,15 @@ function captureLogs() {
 ## Choosing text, structured, and JSON formats
 
 ```vibe
-// run: const records: unknown[] = []; const original = Effect.service(Console.Console); Effect.provideService(() => jsonExample(), Console.Console, { ...original, log: (line: string) => { const record = JSON.parse(line); records.push([record.level, record.message]) } }); Console.log(JSON.stringify(records))
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const records: unknown[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { const record = JSON.parse(line); records.push([record.level, record.message]) } }); try Console.log(try stringify(records))
 const TextLogs = Logger.layer([Logger.consoleLogFmt, Logger.tracerLogger])
 const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])
 const JsonLogs = Logger.layer([Logger.consoleJson, Logger.tracerLogger])
 
-function jsonExample() {
-  provide JsonLogs { logInfo("started", { workers: 4 }) }
+effect jsonExample() {
+  provide JsonLogs { try logInfo("started", { workers: 4 }) }
 }
 ```
 
@@ -162,8 +172,9 @@ The default logger emits readable text, LogFmt compact key/value pairs, and Pret
 ## Sending records to multiple destinations
 
 ```vibe
-// run: const lines: unknown[][] = []; const original = Effect.service(Console.Console); const audit = Effect.provideService(() => consoleAndCapture(), Console.Console, { ...original, log: (...args: ReadonlyArray<unknown>) => { lines.push([...args]) } }); Console.log(JSON.stringify(audit), lines.length, JSON.stringify(lines).includes("job finished"))
-function consoleAndCapture() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
+// run: const lines: unknown[][] = []; const original = try Console.Console; const audit = try provideService(consoleAndCapture(), Console.Console, { ...original, log: (...args: ReadonlyArray<unknown>) => { lines.push([...args]) } }); try Console.log(try stringify(audit), lines.length, (try stringify(lines)).includes("job finished"))
+effect consoleAndCapture() {
   const auditMessages: unknown[] = []
   const audit = Logger.make(({ message }) => { auditMessages.push(message) })
   const destinations = Logger.layer([
@@ -171,7 +182,7 @@ function consoleAndCapture() {
     audit,
     Logger.tracerLogger
   ])
-  provide destinations { logInfo("job finished") }
+  provide destinations { try logInfo("job finished") }
   return auditMessages
 }
 ```

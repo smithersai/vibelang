@@ -6,22 +6,23 @@ A platform `runMain` starts a VibeLang application and ties its lifetime to the 
 
 ```vibe
 // preparation.vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-function main() {
-  Console.log("Preparing export")
-  sleep("100 millis")
-  Console.log("Export complete")
+effect main() {
+  try Console.log("Preparing export")
+  try sleep("100 millis")
+  try Console.log("Export complete")
 }
 
-NodeRuntime.runMain(() => main())
+NodeRuntime.runMain(main())
 // Output: Preparing export
 // Output: Export complete
 ```
 
-Pass the runner a program, `() => main()`, so `main` hasn't run yet; passing `main()` itself still compiles but is being retired. The module's top level calls the recognized runner; the application work runs inside `main`. Supply application layers with `Effect.provide(() => main(), AppLive)` inside the runner's program.
+Pass the runner the Effect value, `main()`. Calling an effect function builds its Effect without running its body. The top-level runner starts the application. Supply application layers with `NodeRuntime.runMain(Effect.provide(main(), AppLive))`.
 
-A runner also works in a plain callback passed from the top level to TypeScript, such as a framework's route handler or a `describe` body. A runner in code a fiber runs is EK1005: call the program or use `fork` there. Tests in `.vibe` use `it.effect`; Promise-style tests stay in `.ts`.
+A runner also works in a plain callback passed from the top level to TypeScript, such as a framework's route handler or a `describe` body. Inside effect code, use `try` to run another Effect or `fork` to start a child. Tests in `.vibe` use `it.effect("name", () => effect { ... })`.
 
 Bun uses `BunRuntime.runMain` from `@effect/platform-bun`; Node.js and Deno use the Node adapter. Run the generated JavaScript entry module after the VibeLang build. Import each Node module from its own subpath, as `@effect/platform-node/NodeRuntime`: the package's index loads every module, `NodeRedis` included, so under Yarn Classic `import { NodeRuntime } from "@effect/platform-node"` fails at startup with `Cannot find package 'redis'`.
 
@@ -29,17 +30,18 @@ Bun uses `BunRuntime.runMain` from `@effect/platform-bun`; Node.js and Deno use 
 
 ```vibe
 // startup-rejected.vibe
+// pending: VIP-1, VIP-4, VIP-13, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error StartupRejected {
   reason: string
 }
 
-function main() {
+effect main() {
   throw new StartupRejected({ reason: "configuration missing" })
 }
 
-NodeRuntime.runMain(() => main(), { disableErrorReporting: true })
+NodeRuntime.runMain(main(), { disableErrorReporting: true })
 ```
 
 `disableErrorReporting` suppresses automatic failure logging; the failure stays a failure, and the default exit-code policy holds. Leave reporting on unless the application has another reporting boundary. The optional `teardown` callback controls completion handling and finally calls the provided exit callback.
@@ -58,14 +60,15 @@ export const launchOptions = {
 
 ```vibe
 // custom-entry.vibe
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { launchOptions } from "./launch-options.ts"
 
-function main() {
-  Console.log("Starting with custom exit handling")
+effect main() {
+  try Console.log("Starting with custom exit handling")
 }
 
-NodeRuntime.runMain(() => main(), launchOptions)
+NodeRuntime.runMain(main(), launchOptions)
 // Output: Starting with custom exit handling
 ```
 
@@ -75,27 +78,26 @@ Teardown is a plain host callback, not an Effect program. Write a custom one in 
 
 ```vibe
 // invalid-batch.vibe
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error InvalidBatch {
   count: number
 }
 
-function exportBatch(count: number) {
-  try {
+effect exportBatch(count: number) {
+  try ensuring(effect {
     if (count <= 0) throw new InvalidBatch({ count })
-    Console.log(`Exporting ${count} records`)
-  } finally {
-    Console.log("Export cleanup finished")
-  }
+    try Console.log(`Exporting ${count} records`)
+  }, Console.log("Export cleanup finished"))
 }
 
-NodeRuntime.runMain(() => exportBatch(0))
+NodeRuntime.runMain(exportBatch(0))
 ```
 
 A normal return is success; `main`'s return value isn't printed. An unhandled expected failure or defect is reported by default and gets a failing exit code. Effect 4.0.6's default teardown exits 0 on success, 130 for interruption-only causes, and 1 for other failures, unless a supported error-specific exit code overrides it.
 
-On a termination signal, the platform interrupts the application and waits for registered cleanup. `finally` and `using` run during interruption; ordinary `catch` doesn't catch it. Handle recoverable failures inside the program, and let the runner report the rest.
+On a termination signal, the platform interrupts the application and waits for registered cleanup. Finalizers registered with `ensuring`, `onExit`, and scoped acquisitions run during interruption. A `catch` expression handles typed failures and lets interruption propagate. Handle recoverable failures inside the program, and let the runner report the rest.
 
 ## Check process completion
 

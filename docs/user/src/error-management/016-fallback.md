@@ -7,23 +7,38 @@ A fallback runs another computation after an expected failure; a catch expressio
 ## Recovering with another computation
 
 ```vibe
-// run: Console.log(title())
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
+// run: try Console.log(try title())
 error SourceOffline
 
-function latestTitle(): string!SourceOffline! {
+effect latestTitle(): string!SourceOffline! {
   throw new SourceOffline()
 }
 
-function cachedTitle() {
-  Console.log("Reading saved title")
+effect cachedTitle() {
+  try Console.log("Reading saved title")
   return "Saved issue"
 }
 
-function title() {
-  try {
-    return latestTitle()
-  } catch (error) {
-    return cachedTitle()
+effect title() {
+  return latestTitle() catch effect { return try cachedTitle() }
+}
+// string!!
+```
+
+```output
+Reading saved title
+Saved issue
+```
+
+The cache is read only if the primary computation fails. The fallback's errors become `title`'s; handling the primary doesn't handle them. A catch expression propagates defects and causes with only interruption. A typed failure beside a defect propagates as a defect, and one beside an interruption is handled.
+
+```vibe
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try titleInline())
+effect titleInline() {
+  return latestTitle() catch effect () => {
+    return try cachedTitle()
   }
 }
 // string!!
@@ -34,30 +49,16 @@ Reading saved title
 Saved issue
 ```
 
-The cache is read only if the primary computation fails. The fallback's errors become `title`'s; handling the primary doesn't handle them. Ordinary catch propagates defects and interruption. A typed failure beside a defect propagates as a defect, and one beside an interruption is handled.
+`x catch effect { … }` runs the left-hand Effect and runs its fallback only after an expected failure. An effect arrow can name the error and run Effects before returning its value. A plain arrow returns a success value; a `throw` in it is a defect.
 
-```vibe
-// run: Console.log(titleInline())
-function titleInline() {
-  return latestTitle() catch cachedTitle()
-}
-// string!!
-```
-
-```output
-Reading saved title
-Saved issue
-```
-
-`x catch fallback` is the expression form and recovers exactly what the statement does: the left side runs inside the catch, and the fallback runs only after an expected failure. `catch` binds looser than `??` and `||` and tighter than `? :`, so `a ?? b catch c` applies the default inside the catch.
-
-`Effect.catch(() => latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
+`try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
 
 ## Supplying a default success
 
 ```vibe
-// run: Console.log(titleOrPlaceholder())
-function titleOrPlaceholder() {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try titleOrPlaceholder())
+effect titleOrPlaceholder() {
   return latestTitle() catch "No title available"
 }
 // string!!
@@ -67,16 +68,19 @@ function titleOrPlaceholder() {
 No title available
 ```
 
-`x catch value` is `Effect.orElseSucceed(x, () => value)`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. The fallback is VibeLang code, so it can call functions that fail or need services; their errors become the expression's. `Effect.orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
+`x catch value` is `Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
 
 ## Typing both sides
 
 ```vibe
-// run: Console.log(JSON.stringify(lookup()))
+// pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try lookup()))
 type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
 
-function lookup(): Lookup!! {
-  return { _tag: "Found", title: latestTitle() } catch { _tag: "Offline" }
+effect lookup(): Lookup!! {
+  return effect {
+    return { _tag: "Found" as const, title: try latestTitle() }
+  } catch { _tag: "Offline" as const }
 }
 ```
 
@@ -84,17 +88,18 @@ function lookup(): Lookup!! {
 {"_tag":"Offline"}
 ```
 
-Both sides of a catch expression take the expression's contextual type, as both branches of a conditional do. Here that is `Lookup`, so each `_tag` stays a literal and the result checks as a `Lookup`. Without a contextual type, each side keeps its own type and the value is their union.
+The return annotation checks that the successful object and the fallback both produce a `Lookup`. Each `_tag` is kept literal with `as const`. Without a return annotation, the success type is inferred from the two alternatives.
 
 ## Trying alternatives until one succeeds
 
 ```vibe
-// run: Console.log(bestTitle())
-function bestTitle() {
-  return Effect.firstSuccessOf([
-    () => latestTitle(),
-    () => cachedTitle(),
-    () => "Untitled issue"
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try bestTitle())
+effect bestTitle() {
+  return try firstSuccessOf([
+    latestTitle(),
+    cachedTitle(),
+    succeed("Untitled issue")
   ])
 }
 ```
@@ -104,10 +109,22 @@ Reading saved title
 Saved issue
 ```
 
-`firstSuccessOf` tries programs one at a time in priority order and stops on success; if all fail with expected errors, it reports the last error. A cause without an expected failure stops the search, and so does one with a defect; an expected failure beside an interruption activates the next alternative. An empty iterable is a defect: pass at least one.
+`firstSuccessOf` tries Effects one at a time in priority order and stops on success; if all fail with expected errors, it reports the last error. A cause without an expected failure stops the search, and so does one with a defect; an expected failure beside an interruption activates the next alternative. An empty iterable is a defect: pass at least one.
 
-A chain of catch expressions also tries alternatives in order, because `catch` associates to the left: `latestTitle() catch cachedTitle() catch "Untitled issue"` tries the cache after the primary fails and the title after the cache fails. Unlike `firstSuccessOf`, it stops at a mixed cause, as every source catch does.
+How `catch` binds beside `??`, `||` and `? :`, and whether catch expressions chain from left to right, is not decided yet. This chain shows the form under discussion:
+
+```vibe
+// pending: VIP-1, VIP-5
+// pending-decision: catch-precedence
+effect chainedTitle() {
+  return latestTitle() catch cachedTitle() catch "Untitled issue"
+}
+```
+
+Until it is decided, nest the next alternative in an effect handler, which recovers it in turn: `latestTitle() catch effect { return cachedTitle() catch "Untitled issue" }`.
+
+A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect { return try cachedTitle() } } catch "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
 ## Coming from Effect
 
-Pass each alternative as a program, `Effect.firstSuccessOf([() => latestTitle(), () => cachedTitle()])`, so each call runs only when its alternative is tried. A call runs where it appears.
+Pass Effect values directly: `try firstSuccessOf([latestTitle(), cachedTitle()])`. Calling an effect function constructs its Effect. Each run executes its body again. Use `effect { … }` to make an alternative from several statements.

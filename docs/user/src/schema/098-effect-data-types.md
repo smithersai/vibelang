@@ -1,21 +1,22 @@
 # Effect Data Types
 
-Schemas for Effect data types work as in Effect. Runtime collection schemas expect the actual runtime container on both sides and transform its contents; derive a canonical JSON codec when the external representation is plain JSON. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schemas for Effect data types work as in Effect. Runtime collection schemas expect the actual runtime container on both sides and transform its contents; derive a canonical JSON codec when the external representation is plain JSON. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Building configuration-compatible codecs
 
 ```vibe
-// run: Console.log(JSON.stringify(configurationExample()))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try configurationExample())) })
 const DispatchConfig = Config.schema(Schema.Struct({
   depot: Schema.String,
   capacity: Schema.Finite
 }), "dispatch")
 
-function configurationExample() {
+effect configurationExample() {
   const provider = ConfigProvider.fromUnknown({
     dispatch: { depot: "north", capacity: 24 }
   })
-  return DispatchConfig.parse(provider)
+  return try DispatchConfig.parse(provider)
 }
 ```
 
@@ -23,20 +24,21 @@ function configurationExample() {
 {"depot":"north","capacity":24}
 ```
 
-`Config.schema` builds a Config value without reading it. `DispatchConfig()` reads the current provider; `DispatchConfig.parse(provider)` reads the given provider and decodes its representation to the schema's type. The example's structured provider has a numeric capacity; string-based providers need a representation that accepts strings, such as a string-tree codec or explicit `FiniteFromString` fields. Configuration errors use Config's error model, not the raw Schema parser's.
+`Config.schema` builds a Config value without reading it. `try DispatchConfig` reads the current provider; `try DispatchConfig.parse(provider)` reads the given provider and decodes its representation to the schema's type. The example's structured provider has a numeric capacity; string-based providers need a representation that accepts strings, such as a string-tree codec or explicit `FiniteFromString` fields. Configuration errors use Config's error model, not the raw Schema parser's.
 
 ## Encoding options, results, and exits
 
 ```vibe
-// run: const values = decodeContainers(); Console.log(values.option.isSome() ? values.option.value : "none"); Console.log(values.result.isFailure() ? values.result.failure : "success"); Console.log(values.exit._tag); Console.log(values.exit())
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const values = try decodeContainers(); try Console.log(values.option.isSome() ? values.option.value : "none"); try Console.log(values.result.isFailure() ? values.result.failure : "success"); try Console.log(values.exit._tag); try Console.log(try values.exit) })
 const OptionalCount = Schema.Option(Schema.FiniteFromString)
 const CountResult = Schema.Result(Schema.FiniteFromString, Schema.Trim)
 const CountExit = Schema.Exit(Schema.FiniteFromString, Schema.String, Schema.Defect())
 
-function decodeContainers() {
-  const option = Schema.decodeUnknownEffect(OptionalCount)(Option.some("9"))
-  const result = Schema.decodeUnknownEffect(CountResult)(Result.fail(" delayed "))
-  const exit = Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
+effect decodeContainers() {
+  const option = try Schema.decodeUnknownEffect(OptionalCount)(Option.some("9"))
+  const result = try Schema.decodeUnknownEffect(CountResult)(Result.fail(" delayed "))
+  const exit = try Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
   return { option, result, exit }
 }
 ```
@@ -48,13 +50,14 @@ Success
 9
 ```
 
-`Option` applies its value schema to `Some` and keeps `None`. `Result(success, failure)` transforms each channel independently. `Exit(success, failure, defect)` also describes failures and defects inside the cause. `Exit.succeed` and `Exit.fail` construct data, and an Exit the parser returns stays data: a failure stored in it does not fail the surrounding parser. Calling the Exit runs it, succeeding or failing with its stored outcome.
+`Option` applies its value schema to `Some` and keeps `None`. `Result(success, failure)` transforms each channel independently. `Exit(success, failure, defect)` also describes failures and defects inside the cause. `Exit.succeed` and `Exit.fail` construct data, and an Exit the parser returns stays data: a failure stored in it does not fail the surrounding parser. Running the Exit with `try` succeeds or fails with its stored outcome.
 
 ```vibe
-// run: Console.log(JSON.stringify(encodeResult()))
-function encodeResult() {
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(JSON.stringify(try encodeResult())) })
+effect encodeResult() {
   const codec = Schema.toCodecJson(CountResult)
-  return Schema.encodeEffect(codec)(Result.succeed(9))
+  return try Schema.encodeEffect(codec)(Result.succeed(9))
 }
 // { _tag: "Success", success: "9" }
 ```
@@ -79,17 +82,18 @@ Canonical JSON uses `{ _tag: "Some", value }` and `{ _tag: "None" }` for options
 ## Supporting native and Effect collections
 
 ```vibe
-// run: const values = collectionsFromJson(); Console.log(JSON.stringify(Array.from(values.set))); Console.log(JSON.stringify(Array.from(values.map))); Console.log(JSON.stringify(Array.from(Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"]))))); Console.log(JSON.stringify(Array.from(Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]])))))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const values = try collectionsFromJson(); try Console.log(JSON.stringify(Array.from(values.set))); try Console.log(JSON.stringify(Array.from(values.map))); try Console.log(JSON.stringify(Array.from(try Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"]))))); try Console.log(JSON.stringify(Array.from(try Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]]))))) })
 const NativeSet = Schema.ReadonlySet(Schema.FiniteFromString)
 const NativeMap = Schema.ReadonlyMap(Schema.String, Schema.FiniteFromString)
 const PersistentSet = Schema.HashSet(Schema.FiniteFromString)
 const PersistentMap = Schema.HashMap(Schema.String, Schema.FiniteFromString)
 
-function collectionsFromJson() {
+effect collectionsFromJson() {
   const setCodec = Schema.toCodecJson(PersistentSet)
   const mapCodec = Schema.toCodecJson(PersistentMap)
-  const set = Schema.decodeUnknownEffect(setCodec)(["4", "7"])
-  const map = Schema.decodeUnknownEffect(mapCodec)([["cold", "4"]])
+  const set = try Schema.decodeUnknownEffect(setCodec)(["4", "7"])
+  const map = try Schema.decodeUnknownEffect(mapCodec)([["cold", "4"]])
   return { set, map }
 }
 ```
@@ -106,13 +110,14 @@ function collectionsFromJson() {
 ## Converting durations and protected values
 
 ```vibe
-// run: const value = durations(); Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); Console.log(JSON.stringify(value.json))
-function durations() {
-  const hold = Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
-  const milliseconds = Schema.encodeEffect(Schema.DurationFromMillis)(hold)
-  const nanoseconds = Schema.decodeEffect(Schema.DurationFromNanos)(3_000_000_000n)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try durations(); try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); try Console.log(JSON.stringify(value.json)) })
+effect durations() {
+  const hold = try Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
+  const milliseconds = try Schema.encodeEffect(Schema.DurationFromMillis)(hold)
+  const nanoseconds = try Schema.decodeEffect(Schema.DurationFromNanos)(3_000_000_000n)
   const jsonCodec = Schema.toCodecJson(Schema.Duration)
-  const json = Schema.encodeEffect(jsonCodec)(Duration.seconds(3))
+  const json = try Schema.encodeEffect(jsonCodec)(Duration.seconds(3))
   return { milliseconds, nanoseconds, json }
 }
 // json: { _tag: "Millis", value: 3000 }
@@ -126,15 +131,16 @@ function durations() {
 `Schema.Duration` validates an existing Duration. `DurationFromString`, `DurationFromMillis`, and `DurationFromNanos` select text, numeric milliseconds, or bigint nanoseconds. The canonical Duration representation is tagged and preserves the supported precision and infinity cases.
 
 ```vibe
-// run: const value = readToken("example-token"); Console.log(String(value)); const codec = Schema.toCodecJson(NonSerializableToken); try { Schema.encodeEffect(codec)(value) } catch (error) { Console.log(error._tag) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { const value = try readToken("example-token"); try Console.log(String(value)); const codec = Schema.toCodecJson(NonSerializableToken); try Effect.catch(Schema.encodeEffect(codec)(value), (error) => Console.log(error._tag)) })
 const AccessToken = Schema.RedactedFromValue(Schema.NonEmptyString)
 const NonSerializableToken = Schema.Redacted(Schema.String, {
   label: "DispatchToken",
   disallowJsonEncode: true
 })
 
-function readToken(input: unknown) {
-  return Schema.decodeUnknownEffect(AccessToken)(input)
+effect readToken(input: unknown) {
+  return try Schema.decodeUnknownEffect(AccessToken)(input)
 }
 ```
 

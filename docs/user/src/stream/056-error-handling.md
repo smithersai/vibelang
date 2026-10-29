@@ -1,23 +1,24 @@
 # Error Handling in Streams
 
-Stream recovery replaces a failed source with another. Recover during consumption with stream operators, or use ordinary `try`/`catch` when the whole consuming function handles a typed failure. Elements emitted before a failure are not rolled back.
+Stream recovery replaces a failed source with another. Recover during consumption with stream operators, or use a `catch` expression on the consuming Effect when the whole consuming function handles a typed failure. Elements emitted before a failure are not rolled back.
 
 ## Recovering typed failures and defects
 
 ```vibe
-// run: Console.log(JSON.stringify([readRecovered(), tagged.runCollect().map((result) => result._tag)]))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
+// run: { const jsonValue = [try readRecovered(), (try Stream.runCollect(tagged)).map((outcome) => outcome._tag)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Disconnected
 
-const primary = Stream.make("live-a", "live-b").concat(Stream.fail(new Disconnected()))
+const primary = Stream.concat(Stream.make("live-a", "live-b"), Stream.fail(new Disconnected()))
 const recovered = Stream.catch(primary, () => Stream.succeed("cached"))
 
-function readRecovered() {
-  return recovered.runCollect() // ["live-a", "live-b", "cached"]
+effect readRecovered() {
+  return try Stream.runCollect(recovered) // ["live-a", "live-b", "cached"]
 }
 
 const tagged = Stream.catch(
-  primary.map((value) => Result.succeed(value)),
-  () => Stream.make("cached").map((value) => Result.fail(value))
+  Stream.map(primary, (value) => Result.succeed(value)),
+  () => Stream.map(Stream.make("cached"), (value) => Result.fail(value))
 )
 // Output: [["live-a","live-b","cached"],["Success","Success","Failure"]]
 ```
@@ -25,27 +26,36 @@ const tagged = Stream.catch(
 `Stream.catch` receives a typed failure and returns the replacement Stream. Recovery abandons the rest of the failed source; it does not resume after the failing step. Tag each source with `Result` when downstream code must tell live data from fallback.
 
 ```vibe
-// run: Console.log(JSON.stringify(boundary.runCollect()))
-const boundary = Stream.die(new Error("decoder invariant failed")).catchDefect(() => Stream.succeed("unreadable"))
+// pending: VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try Stream.runCollect(boundary); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+const boundary = Stream.catchDefect(
+  Stream.die(new Error("decoder invariant failed")),
+  () => Stream.succeed("unreadable")
+)
 // Output: ["unreadable"]
 ```
 
-`catchDefect` handles defects at a deliberate boundary. `catchCause` receives the full Cause, with failure, defect, and interruption reasons; use it only when you need all of it. Ordinary VibeLang `catch` handles typed failures only, as `Effect.catch` does. It propagates a cause with a defect, whose typed failures are defects by then, and an interruption without a typed failure.
+`catchDefect` handles defects at a deliberate boundary. `catchCause` receives the full Cause, with failure, defect, and interruption reasons; use it only when you need all of it. A VibeLang `catch` expression handles typed failures only, as `Effect.catch` does. It propagates a cause with a defect, whose typed failures are defects by then, and an interruption without a typed failure.
 
 ## Selective recovery
 
 ```vibe
-// run: Console.log(JSON.stringify([recoverKnown(Stream.fail(new NotReady())).runCollect(), selected.runCollect(), defectOnly.runCollect()])); try { recoverKnown(Stream.fail(new AccessDenied())).runCollect() } catch (error) { Console.log(error._tag) }
+// pending: VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
+// run: { const jsonValue = [try Stream.runCollect(recoverKnown(Stream.fail(new NotReady()))), try Stream.runCollect(selected), try Stream.runCollect(defectOnly)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(Stream.runCollect(recoverKnown(Stream.fail(new AccessDenied())))); if (Result.isFailure(outcome)) match (outcome.failure) { when AccessDenied: try Console.log(outcome.failure._tag) }
 error NotReady
 error AccessDenied
 
 function recoverKnown(source: Stream.Stream<string, NotReady | AccessDenied>) {
-  return source.catchTag("NotReady", () => Stream.succeed("pending"))
+  return Stream.catchTag(source, "NotReady", () => Stream.succeed("pending"))
 }
 
-const selected = Stream.fail("busy" as "busy" | "forbidden").catchFilter(Filter.fromPredicate((error: "busy" | "forbidden") => error === "busy"), () => Stream.succeed("try later"))
+const selected = Stream.catchFilter(
+  Stream.fail("busy" as "busy" | "forbidden"),
+  Filter.fromPredicate((error: "busy" | "forbidden") => error === "busy"),
+  () => Stream.succeed("try later")
+)
 
-const defectOnly = Stream.die("corrupt frame").catchCauseFilter(Cause.findDie, () => Stream.empty)
+const defectOnly = Stream.catchCauseFilter(Stream.die("corrupt frame"), Cause.findDie, () => Stream.empty)
 // Output: [["pending"],["try later"],[]]
 // Output: AccessDenied
 ```
@@ -55,35 +65,40 @@ const defectOnly = Stream.die("corrupt frame").catchCauseFilter(Cause.findDie, (
 ## Cleanup after failure
 
 ```vibe
-// run: try { consumeChecked() } catch (error) { Console.log(error) }
-function consumeChecked() {
-  const source = Stream.succeed("accepted")
-    .concat(Stream.fail("read failed"))
-    .onError(() => Console.log("input failed; closing reader"))
-  try {
-    return source.runCollect()
-  } finally {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: const outcome = try result(consumeChecked()); if (Result.isFailure(outcome)) try Console.log(outcome.failure)
+effect consumeChecked() {
+  const source = Stream.succeed("accepted").pipe(
+    Stream.concat(Stream.fail("read failed")),
+    Stream.onError(() => Console.log("input failed; closing reader"))
+  )
+  return try ensuring(
+    Stream.runCollect(source),
     Console.log("consumer finished")
-  }
+  )
 }
 // Output: input failed; closing reader
 // Output: consumer finished
 // Output: read failed
 ```
 
-`onError` runs its callback on an unsuccessful stream exit and keeps the failure if the callback succeeds: use it for source diagnostics. Use `Stream.ensuring` for every exit, or `finally` for the consuming function's cleanup. Cleanup failure is never silently discarded.
+`onError` runs its callback on an unsuccessful stream exit and keeps the failure if the callback succeeds: use it for source diagnostics. Use `Stream.ensuring(source, cleanup)` for every stream exit, or `try ensuring(consume(), cleanup)` around the consuming Effect. Cleanup failure is never silently discarded.
 
 ## Retrying a source
 
 ```vibe
-// run: (() => { let attempts = 0; provide Sensor = { read: () => { attempts++; if (attempts < 4) throw new Offline(); return 42 } } { Console.log(JSON.stringify(readings.runCollect()), attempts) } })()
+// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
+// run: let attempts = 0; provide Sensor = { read: effect () => { attempts++; if (attempts < 4) throw new Offline(); return 42 } } { { const jsonValue = try Stream.runCollect(readings); try Console.log(try Effect.try(() => JSON.stringify(jsonValue)), attempts) } }
 error Offline
 
 service Sensor {
   read(): number!Offline
 }
 
-const readings = Stream.fromEffect(() => Sensor.read()).retry(Schedule.recurs(3))
+const readings = Stream.fromEffect(effect {
+  const sensor = try Sensor
+  return try sensor.read()
+}).pipe(Stream.retry(Schedule.recurs(3)))
 // Output: [42] 4
 ```
 
@@ -92,7 +107,8 @@ const readings = Stream.fromEffect(() => Sensor.read()).retry(Schedule.recurs(3)
 ## Narrowing error types
 
 ```vibe
-// run: try { keepSyntaxErrors(Stream.fail(new SyntaxError("bad syntax"))).runCollect() } catch (error) { Console.log(error.message) }; Console.log(exit(keepSyntaxErrors(Stream.fail(new Error("defect"))).runCollect()).isFailure())
+// pending: VIP-5, VIP-6, VIP-14
+// run: const outcome = try result(Stream.runCollect(keepSyntaxErrors(Stream.fail(new SyntaxError("bad syntax"))))); if (Result.isFailure(outcome)) try Console.log(outcome.failure.message); try Console.log(Exit.isFailure(try exit(Stream.runCollect(keepSyntaxErrors(Stream.fail(new Error("defect")))))))
 function keepSyntaxErrors(source: Stream.Stream<string, Error>) {
   return Stream.catch(source, (error) => {
     if (error instanceof SyntaxError) return Stream.fail(error)
@@ -109,19 +125,20 @@ Refail the errors callers are expected to handle and turn impossible failures in
 ## Timeout failures and replacement sources
 
 ```vibe
-// run: Console.log(JSON.stringify(all([() => endWhenIdle.runCollect(), () => { const result = Effect.result(() => failWhenIdle.runCollect()); return result._tag }, () => { const outcome = exit(defectWhenIdle.runCollect()); return outcome.isFailure() }, () => fallbackWhenIdle.runCollect()], { concurrency: 4 })))
+// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-18
+// run: { const jsonValue = try.all [Stream.runCollect(endWhenIdle), effect { const outcome = try result(Stream.runCollect(failWhenIdle)); return outcome._tag }, effect { const outcome = try exit(Stream.runCollect(defectWhenIdle)); return Exit.isFailure(outcome) }, Stream.runCollect(fallbackWhenIdle)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Idle
 
-const endWhenIdle = Stream.never.timeout("3 seconds")
-const failWhenIdle = Stream.never.timeoutOrElse({
+const endWhenIdle = Stream.timeout(Stream.never, "3 seconds")
+const failWhenIdle = Stream.timeoutOrElse(Stream.never, {
   duration: "3 seconds",
   orElse: () => Stream.fail(new Idle())
 })
-const defectWhenIdle = Stream.never.timeoutOrElse({
+const defectWhenIdle = Stream.timeoutOrElse(Stream.never, {
   duration: "3 seconds",
   orElse: () => Stream.failCause(Cause.die("idle invariant"))
 })
-const fallbackWhenIdle = Stream.never.timeoutOrElse({
+const fallbackWhenIdle = Stream.timeoutOrElse(Stream.never, {
   duration: "3 seconds",
   orElse: () => Stream.make("backup-a", "backup-b")
 })

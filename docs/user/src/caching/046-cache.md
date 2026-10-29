@@ -5,7 +5,8 @@ A `Cache` stores lookup outcomes by key and shares in-progress lookups across ca
 ## Building a lookup cache
 
 ```vibe
-// run: const prices = Effect.provide(() => makePrices(), Layer.succeed(Products, { price: (sku) => 42 })); Console.log(Cache.get(prices, "ink"))
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-9, VIP-13, VIP-14
+// run: const prices = try Effect.provide(makePrices(), Layer.succeed(Products, { price: (sku) => succeed(42) })); try Console.log(try Cache.get(prices, "ink"))
 error MissingProduct {
   sku: string
 }
@@ -14,38 +15,40 @@ service Products {
   price(sku: string): number!MissingProduct
 }
 
-function makePrices() {
-  return Cache.make({
+effect makePrices() {
+  const products = try Products
+  return try Cache.make({
     capacity: 200,
     timeToLive: "2 minutes",
-    lookup: (sku: string) => Products.price(sku)
+    lookup: (sku: string) => products.price(sku)
   })
 }
 // Cache.Cache<string, number, MissingProduct>!!Products
 // Output: 42
 ```
 
-The default cache captures lookup services when created. `Cache.get(cache, sku)` then reads an entry or calls the captured lookup. A cache created per request shares nothing across requests; when the cache belongs to the application, allocate it in a service layer.
+The default cache captures lookup services when created. `try Cache.get(cache, sku)` then reads an entry or runs the captured lookup. A cache created per request shares nothing across requests; when the cache belongs to the application, allocate it in a service layer.
 
 ## Sharing concurrent requests
 
 ```vibe
-// run: Console.log(JSON.stringify(concurrentLookup()))
-function concurrentLookup() {
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
+// run: try Console.log(JSON.stringify(try concurrentLookup()))
+effect concurrentLookup() {
   let calls = 0
-  const cache = Cache.make({
+  const cache = try Cache.make({
     capacity: 10,
-    lookup: (key: string) => {
+    lookup: effect (key: string) => {
       calls++
-      sleep("30 millis")
+      try sleep("30 millis")
       return key.toUpperCase()
     }
   })
-  const values = all([
-    () => Cache.get(cache, "north"),
-    () => Cache.get(cache, "north"),
-    () => Cache.get(cache, "north")
-  ], { concurrency: 3 })
+  const values = try.all [
+    Cache.get(cache, "north"),
+    Cache.get(cache, "north"),
+    Cache.get(cache, "north")
+  ]
   return { values, calls }
 }
 // Returns { values: ["NORTH", "NORTH", "NORTH"], calls: 1 }.
@@ -57,12 +60,13 @@ Requests for the same missing key wait on one computation without blocking the J
 ## Setting capacity and expiration
 
 ```vibe
-// run: const names = makePermanentNames(); Console.log(Cache.get(names, "ink")); Console.log(Cache.get(names, "blue"))
-function makePermanentNames() {
-  return Cache.make({
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: const names = try makePermanentNames(); try Console.log(try Cache.get(names, "ink")); try Console.log(try Cache.get(names, "blue"))
+effect makePermanentNames() {
+  return try Cache.make({
     capacity: 50,
     timeToLive: Duration.infinity,
-    lookup: (id: string) => `item-${id}`
+    lookup: (id: string) => succeed(`item-${id}`)
   })
 }
 // Output: item-ink
@@ -74,38 +78,40 @@ Capacity bounds entries, not bytes; eviction keeps recently used entries over ol
 ## Inspecting cache state
 
 ```vibe
-// run: Console.log(JSON.stringify(inspect()))
-function inspect() {
-  const cache = Cache.make({ capacity: 5, lookup: (key: string) => key.length })
-  Cache.get(cache, "paper")
+// pending: VIP-1, VIP-5, VIP-6, VIP-14
+// run: try Console.log(JSON.stringify(try inspect()))
+effect inspect() {
+  const cache = try Cache.make({ capacity: 5, lookup: (key: string) => succeed(key.length) })
+  try Cache.get(cache, "paper")
   return {
-    present: Cache.has(cache, "paper"),
-    size: Cache.size(cache),
-    keys: Array.from(Cache.keys(cache)),
-    entries: Array.from(Cache.entries(cache))
+    present: try Cache.has(cache, "paper"),
+    size: try Cache.size(cache),
+    keys: Array.from(try Cache.keys(cache)),
+    entries: Array.from(try Cache.entries(cache))
   }
 }
 // Output: {"present":true,"size":1,"keys":["paper"],"entries":[["paper",5]]}
 ```
 
-`has`, `size`, `keys`, and `entries` inspect state without loading missing keys. `entries` includes resolved successes only, not failures or unfinished lookups. Concurrent access can change these observations at once, so don't use `has` followed by `get` as a synchronization protocol.
+`has`, `size`, `keys`, and `entries` return Effects that inspect state without loading missing keys; run each with `try`. `entries` includes resolved successes only, not failures or unfinished lookups. Concurrent access can change these observations at once, so don't use `has` followed by `get` as a synchronization protocol.
 
 ## Invalidating and refreshing entries
 
 ```vibe
-// run: Console.log(JSON.stringify(refreshExample()))
-function refreshExample() {
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(try refreshExample()))
+effect refreshExample() {
   let version = 0
-  const cache = Cache.make({
+  const cache = try Cache.make({
     capacity: 5,
     timeToLive: "1 minute",
-    lookup: (key: string) => `${key}:${++version}`
+    lookup: effect (key: string) => `${key}:${++version}`
   })
-  const first = Cache.get(cache, "profile")
-  const refreshed = Cache.refresh(cache, "profile")
-  Cache.invalidate(cache, "profile")
-  const reloaded = Cache.get(cache, "profile")
-  Cache.invalidateAll(cache)
+  const first = try Cache.get(cache, "profile")
+  const refreshed = try Cache.refresh(cache, "profile")
+  try Cache.invalidate(cache, "profile")
+  const reloaded = try Cache.get(cache, "profile")
+  try Cache.invalidateAll(cache)
   return { first, refreshed, reloaded }
 }
 // Output: {"first":"profile:1","refreshed":"profile:2","reloaded":"profile:3"}

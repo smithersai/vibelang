@@ -5,7 +5,7 @@ description: "Schemas for Effect data types work as in Effect. Runtime collectio
 
 # Effect Data Types
 
-Schemas for Effect data types work as in Effect. Runtime collection schemas expect the actual runtime container on both sides and transform its contents; derive a canonical JSON codec when the external representation is plain JSON. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schemas for Effect data types work as in Effect. Runtime collection schemas expect the actual runtime container on both sides and transform its contents; derive a canonical JSON codec when the external representation is plain JSON. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Building configuration-compatible codecs
 
@@ -15,11 +15,11 @@ const DispatchConfig = Config.schema(Schema.Struct({
   capacity: Schema.Finite
 }), "dispatch")
 
-function configurationExample() {
+effect configurationExample() {
   const provider = ConfigProvider.fromUnknown({
     dispatch: { depot: "north", capacity: 24 }
   })
-  return DispatchConfig.parse(provider)
+  return try DispatchConfig.parse(provider)
 }
 ```
 
@@ -27,7 +27,7 @@ function configurationExample() {
 {"depot":"north","capacity":24}
 ```
 
-`Config.schema` builds a Config value without reading it. `DispatchConfig()` reads the current provider; `DispatchConfig.parse(provider)` reads the given provider and decodes its representation to the schema's type. The example's structured provider has a numeric capacity; string-based providers need a representation that accepts strings, such as a string-tree codec or explicit `FiniteFromString` fields. Configuration errors use Config's error model, not the raw Schema parser's.
+`Config.schema` builds a Config value without reading it. `try DispatchConfig` reads the current provider; `try DispatchConfig.parse(provider)` reads the given provider and decodes its representation to the schema's type. The example's structured provider has a numeric capacity; string-based providers need a representation that accepts strings, such as a string-tree codec or explicit `FiniteFromString` fields. Configuration errors use Config's error model, not the raw Schema parser's.
 
 ## Encoding options, results, and exits
 
@@ -36,10 +36,10 @@ const OptionalCount = Schema.Option(Schema.FiniteFromString)
 const CountResult = Schema.Result(Schema.FiniteFromString, Schema.Trim)
 const CountExit = Schema.Exit(Schema.FiniteFromString, Schema.String, Schema.Defect())
 
-function decodeContainers() {
-  const option = Schema.decodeUnknownEffect(OptionalCount)(Option.some("9"))
-  const result = Schema.decodeUnknownEffect(CountResult)(Result.fail(" delayed "))
-  const exit = Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
+effect decodeContainers() {
+  const option = try Schema.decodeUnknownEffect(OptionalCount)(Option.some("9"))
+  const result = try Schema.decodeUnknownEffect(CountResult)(Result.fail(" delayed "))
+  const exit = try Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
   return { option, result, exit }
 }
 ```
@@ -51,12 +51,12 @@ Success
 9
 ```
 
-`Option` applies its value schema to `Some` and keeps `None`. `Result(success, failure)` transforms each channel independently. `Exit(success, failure, defect)` also describes failures and defects inside the cause. `Exit.succeed` and `Exit.fail` construct data, and an Exit the parser returns stays data: a failure stored in it does not fail the surrounding parser. Calling the Exit runs it, succeeding or failing with its stored outcome.
+`Option` applies its value schema to `Some` and keeps `None`. `Result(success, failure)` transforms each channel independently. `Exit(success, failure, defect)` also describes failures and defects inside the cause. `Exit.succeed` and `Exit.fail` construct data, and an Exit the parser returns stays data: a failure stored in it does not fail the surrounding parser. Running the Exit with `try` succeeds or fails with its stored outcome.
 
 ```vibe
-function encodeResult() {
+effect encodeResult() {
   const codec = Schema.toCodecJson(CountResult)
-  return Schema.encodeEffect(codec)(Result.succeed(9))
+  return try Schema.encodeEffect(codec)(Result.succeed(9))
 }
 // { _tag: "Success", success: "9" }
 ```
@@ -86,11 +86,11 @@ const NativeMap = Schema.ReadonlyMap(Schema.String, Schema.FiniteFromString)
 const PersistentSet = Schema.HashSet(Schema.FiniteFromString)
 const PersistentMap = Schema.HashMap(Schema.String, Schema.FiniteFromString)
 
-function collectionsFromJson() {
+effect collectionsFromJson() {
   const setCodec = Schema.toCodecJson(PersistentSet)
   const mapCodec = Schema.toCodecJson(PersistentMap)
-  const set = Schema.decodeUnknownEffect(setCodec)(["4", "7"])
-  const map = Schema.decodeUnknownEffect(mapCodec)([["cold", "4"]])
+  const set = try Schema.decodeUnknownEffect(setCodec)(["4", "7"])
+  const map = try Schema.decodeUnknownEffect(mapCodec)([["cold", "4"]])
   return { set, map }
 }
 ```
@@ -107,12 +107,12 @@ function collectionsFromJson() {
 ## Converting durations and protected values
 
 ```vibe
-function durations() {
-  const hold = Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
-  const milliseconds = Schema.encodeEffect(Schema.DurationFromMillis)(hold)
-  const nanoseconds = Schema.decodeEffect(Schema.DurationFromNanos)(3_000_000_000n)
+effect durations() {
+  const hold = try Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
+  const milliseconds = try Schema.encodeEffect(Schema.DurationFromMillis)(hold)
+  const nanoseconds = try Schema.decodeEffect(Schema.DurationFromNanos)(3_000_000_000n)
   const jsonCodec = Schema.toCodecJson(Schema.Duration)
-  const json = Schema.encodeEffect(jsonCodec)(Duration.seconds(3))
+  const json = try Schema.encodeEffect(jsonCodec)(Duration.seconds(3))
   return { milliseconds, nanoseconds, json }
 }
 // json: { _tag: "Millis", value: 3000 }
@@ -132,8 +132,8 @@ const NonSerializableToken = Schema.Redacted(Schema.String, {
   disallowJsonEncode: true
 })
 
-function readToken(input: unknown) {
-  return Schema.decodeUnknownEffect(AccessToken)(input)
+effect readToken(input: unknown) {
+  return try Schema.decodeUnknownEffect(AccessToken)(input)
 }
 ```
 

@@ -1,23 +1,22 @@
 # Error Messages
 
-Schema error messages work as in Effect. A `SchemaError` combines a readable message with a structured issue, including paths into nested values. Customize a message at the node that fails, so users get an explanation that fits that field. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schema error messages work as in Effect. A `SchemaError` combines a readable message with a structured issue, including paths into nested values. Customize a message at the node that fails, so users get an explanation that fits that field. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Understanding default validation messages
 
 ```vibe
-// run: Console.log(explainPackage({ label: 7, pieces: "several" })); Console.log(explainPackage({ label: "crate", pieces: 2 }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try explainPackage({ label: 7, pieces: "several" })); try Console.log(try explainPackage({ label: "crate", pieces: 2 })) })
 const Package = Schema.Struct({
   label: Schema.String,
   pieces: Schema.Finite
 })
 
-function explainPackage(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Package)(input, { errors: "all" })
+effect explainPackage(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Package)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 // { label: 7, pieces: "several" } reports both expected types and their paths.
 ```
@@ -35,7 +34,8 @@ A base-type mismatch reports the expected type, an absent required field `Missin
 ## Identifying schemas in error output
 
 ```vibe
-// run: for (const input of [{ tracking: 1, count: 1 }, { tracking: "pkg", count: NaN }, { tracking: "pkg", count: "1" }]) { try { Schema.decodeUnknownEffect(LabeledPackage)(input) } catch (error) { Console.log(error.message) } }
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { for (const input of [{ tracking: 1, count: 1 }, { tracking: "pkg", count: NaN }, { tracking: "pkg", count: "1" }]) { try Effect.catch(Schema.decodeUnknownEffect(LabeledPackage)(input), (error) => Console.log(error.message)) } })
 const Tracking = Schema.String.annotate({ identifier: "TrackingReference" })
 const Count = Schema.Finite.annotate({ expected: "a finite package count" })
 const LabeledPackage = Schema.Struct({ tracking: Tracking, count: Count }).annotate({
@@ -59,14 +59,15 @@ Naming the whole struct changes only the struct's own errors; an invalid nested 
 ## Customizing messages for checks and conversions
 
 ```vibe
-// run: for (const input of [2, "no", "1.5"]) { try { Schema.decodeUnknownEffect(WholeCount)(input) } catch (error) { Console.log(error.message) } }; try { Schema.decodeUnknownEffect(TrackingText)("x") } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { for (const input of [2, "no", "1.5"]) { try Effect.catch(Schema.decodeUnknownEffect(WholeCount)(input), (error) => Console.log(error.message)) }; try Effect.catch(Schema.decodeUnknownEffect(TrackingText)("x"), (error) => Console.log(error.message)) })
 const WholeCount = Schema.String.annotate({
   message: "Enter the count as text"
 }).pipe(
   Schema.decodeTo(
     Schema.Int.annotate({ message: "Use a whole package count" }),
     {
-      decode: SchemaGetter.transformEffect((text) => {
+      decode: SchemaGetter.transformEffect(effect (text) => {
         if (text.trim() === "" || !Number.isFinite(Number(text))) {
           throw new SchemaIssue.InvalidValue({ message: "Count is not numeric" })
         }
@@ -94,7 +95,8 @@ The conversion has three failure sites, each with its own message: the encoded s
 ## Assigning messages to scalar and compound values
 
 ```vibe
-// run: Console.log(explainOrders({ contacts: [], delivery: "air" })); Console.log(explainOrders({ contacts: [1], delivery: "courier" }))
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try explainOrders({ contacts: [], delivery: "air" })); try Console.log(try explainOrders({ contacts: [1], delivery: "courier" })) })
 const Contact = Schema.String.annotate({ message: "Contact must be text" })
 const Delivery = Schema.Union([
   Schema.Literal("collect"), Schema.Literal("courier")
@@ -106,13 +108,11 @@ const Orders = Schema.Struct({
   delivery: Delivery
 })
 
-function explainOrders(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Orders)(input, { errors: "all" })
+effect explainOrders(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Orders)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 ```
 
@@ -130,7 +130,8 @@ A scalar message replaces a mismatch at that scalar. A union message summarizes 
 ## Explaining missing fields
 
 ```vibe
-// run: try { Schema.decodeUnknownEffect(Dispatch)({}) } catch (error) { Console.log(error.message) }; try { readCoordinates([]) } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Effect.catch(Schema.decodeUnknownEffect(Dispatch)({}), (error) => Console.log(error.message)); try Effect.catch(readCoordinates([]), (error) => Console.log(error.message)) })
 const Dispatch = Schema.Struct({
   tracking: Schema.String.annotateKey({
     messageMissingKey: "Supply a tracking reference"
@@ -141,8 +142,8 @@ const Coordinates = Schema.Tuple([
   Schema.Finite.annotateKey({ messageMissingKey: "Supply latitude" })
 ])
 
-function readCoordinates(input: unknown) {
-  return Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
+effect readCoordinates(input: unknown) {
+  return try Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
 }
 ```
 

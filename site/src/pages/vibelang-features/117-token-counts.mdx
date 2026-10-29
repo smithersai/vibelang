@@ -23,68 +23,68 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
-| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 15,693 |
-| The skill and the user guide (134 pages) | 263,299 |
-| The user guide alone | 257,413 |
+| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 16,184 |
+| The skill and the user guide (136 pages) | 282,995 |
+| The user guide alone | 277,109 |
 | The specification (33 chapters) | 200,801 |
 | The decision log, `docs/design/DECISIONS.md` | 141,477 |
 
 ## Effect TypeScript beside VibeLang
 
-14.4% fewer tokens across 47 pairs in total; VibeLang is longer in 13 pairs. This is the saving over the combined source tokens, not the arithmetic mean of the percentages below.
+8.9% fewer tokens across 47 pairs in total; VibeLang is longer in 17 pairs. This is the saving over the combined source tokens, not the arithmetic mean of the percentages below.
 
 Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Effect TypeScript blocks against its VibeLang blocks. A negative saving means the VibeLang snippet is longer.
 
 | Entry | Effect TypeScript | VibeLang | Saved |
 | --- | ---: | ---: | ---: |
-| Effect types | 81 | 58 | 28.4% |
+| Effect types | 81 | 61 | 24.7% |
 | Errors | 36 | 9 | 75.0% |
-| Errors are classes | 97 | 60 | 38.1% |
+| Errors are classes | 97 | 89 | 8.2% |
 | Errors that encode | 37 | 12 | 67.6% |
-| Services | 37 | 20 | 45.9% |
-| Services of any shape | 57 | 23 | 59.6% |
-| Layers | 45 | 41 | 8.9% |
+| Services | 37 | 31 | 16.2% |
+| Services of any shape | 57 | 44 | 22.8% |
+| Layers | 45 | 44 | 2.2% |
 | Schemas | 48 | 24 | 50.0% |
 | Schema aliases | 26 | 10 | 61.5% |
 | Data types | 41 | 14 | 65.9% |
-| Readonly by default | 14 | 14 | 0.0% |
-| Statements instead of generators | 47 | 46 | 2.1% |
-| Programs as function literals | 28 | 31 | -10.7% |
-| Providing layers | 36 | 19 | 47.2% |
-| Providing one service | 63 | 51 | 19.0% |
-| Catching by tag | 50 | 49 | 2.0% |
-| Falling back in an expression | 40 | 21 | 47.5% |
-| Catching in an expression | 47 | 41 | 12.8% |
-| Entry point | 22 | 11 | 50.0% |
-| Catch every cause | 49 | 50 | -2.0% |
+| Readonly members | 14 | 14 | 0.0% |
+| Statements instead of generators | 47 | 48 | -2.1% |
+| Programs as Effect values | 28 | 29 | -3.6% |
+| Providing layers | 36 | 27 | 25.0% |
+| Providing one service | 63 | 53 | 15.9% |
+| Catching by tag | 50 | 48 | 4.0% |
+| Falling back in an expression | 40 | 27 | 32.5% |
+| Catching in an expression | 47 | 47 | 0.0% |
+| Entry point | 22 | 37 | -68.2% |
+| Catch every cause | 49 | 49 | 0.0% |
 | Rethrow a cause | 35 | 51 | -45.7% |
-| Run on every exit | 29 | 33 | -13.8% |
-| Exit, yield, and interrupt | 33 | 36 | -9.1% |
-| Interruption | 65 | 58 | 10.8% |
-| No imports from `effect` or its subpath packages | 29 | 14 | 51.7% |
-| A module's name names its export of that name | 63 | 19 | 69.8% |
-| Common functions without the `Effect.` prefix | 43 | 34 | 20.9% |
-| Methods on Effect's data types | 54 | 42 | 22.2% |
-| The pipe operator | 34 | 24 | 29.4% |
-| Throw in an expression | 41 | 30 | 26.8% |
-| Blocks as values | 34 | 46 | -35.3% |
-| Blocks after calls | 77 | 72 | 6.5% |
+| Run on every exit | 29 | 30 | -3.4% |
+| Exit, yield, and interrupt | 33 | 37 | -12.1% |
+| Interruption | 65 | 64 | 1.5% |
+| No imports from `effect` or its subpath packages | 29 | 15 | 48.3% |
+| Look up platform services | 63 | 28 | 55.6% |
+| Common functions without the `Effect.` prefix | 43 | 33 | 23.3% |
+| Operators on Effect's data types | 54 | 53 | 1.9% |
+| The pipe operator | 34 | 26 | 23.5% |
+| Fail on a missing value | 41 | 42 | -2.4% |
+| Blocks as values | 34 | 47 | -38.2% |
+| Effect blocks as arguments | 77 | 81 | -5.2% |
 | Match a value | 61 | 40 | 34.4% |
 | Match errors by class | 59 | 44 | 25.4% |
-| Match a data type's variants | 29 | 42 | -44.8% |
+| Match a data type's variants | 29 | 49 | -69.0% |
 | Option, Exit, and Result | 60 | 62 | -3.3% |
 | Test and bind | 44 | 45 | -2.3% |
-| Plain, self-contained TypeScript inside `sync`, `try`, and `callback` | 188 | 269 | -43.1% |
-| TypeScript modules inline | 88 | 89 | -1.1% |
+| Wrap TypeScript calls | 188 | 257 | -36.7% |
+| TypeScript companion files | 88 | 30 | 65.9% |
 | Fork and join | 43 | 34 | 20.9% |
-| Wait for several | 62 | 57 | 8.1% |
-| First success, expected outcomes | 53 | 48 | 9.4% |
-| Fork a block | 52 | 37 | 28.8% |
+| Wait for several | 62 | 65 | -4.8% |
+| First success, all outcomes | 53 | 48 | 9.4% |
+| Fork scoped work | 52 | 38 | 26.9% |
 | Detached and scoped fibers | 35 | 49 | -40.0% |
-| Wait for a Deferred | 30 | 28 | 6.7% |
-| Race | 43 | 56 | -30.2% |
-| A concurrent loop | 40 | 28 | 30.0% |
-| **All 47 entries** | **2,325** | **1,991** | **14.4%** |
+| Wait for a Deferred | 30 | 33 | -10.0% |
+| Race | 43 | 65 | -51.2% |
+| A concurrent loop | 40 | 35 | 12.5% |
+| **All 47 entries** | **2,325** | **2,118** | **8.9%** |
 
 ## Every page
 
@@ -92,185 +92,187 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **2,277** |
-| [Welcome](/001-onboarding) | 1,660 |
-| [Why VibeLang?](/getting-started/002-why-effect) | 617 |
-| **Learning Path** | **10,161** |
-| [The Effect Type](/getting-started/003-the-effect-type) | 2,179 |
-| [Installation](/getting-started/004-installation) | 2,471 |
-| [Creating Effects](/getting-started/005-creating-effects) | 3,375 |
-| [Two Types of Errors](/error-management/006-two-error-types) | 642 |
-| [Basic Concurrency](/concurrency/007-basic-concurrency) | 1,494 |
-| **Core Concepts** | **19,993** |
-| [Effect's Modules](/getting-started/008-importing-effect) | 2,602 |
-| [Running Effects](/getting-started/009-running-effects) | 1,790 |
-| [Sequencing Effects](/getting-started/010-using-generators) | 1,186 |
-| [Building Pipelines](/getting-started/011-building-pipelines) | 1,809 |
-| [Devtools](/getting-started/012-devtools) | 12,606 |
-| **All 12 pages** | **32,431** |
+| **Start Here** | **2,488** |
+| [Welcome](/001-onboarding) | 1,779 |
+| [Why VibeLang?](/getting-started/002-why-effect) | 709 |
+| **Learning Path** | **9,860** |
+| [The Effect Type](/getting-started/003-the-effect-type) | 1,881 |
+| [Installation](/getting-started/004-installation) | 2,620 |
+| [Creating Effects](/getting-started/005-creating-effects) | 2,940 |
+| [Two Types of Errors](/error-management/006-two-error-types) | 696 |
+| [Basic Concurrency](/concurrency/007-basic-concurrency) | 1,723 |
+| **Core Concepts** | **17,321** |
+| [Effect's Modules](/getting-started/008-importing-effect) | 2,435 |
+| [Running Effects](/getting-started/009-running-effects) | 1,717 |
+| [Sequencing Effects](/getting-started/010-using-generators) | 1,346 |
+| [Building Pipelines](/getting-started/011-building-pipelines) | 1,978 |
+| [Devtools](/getting-started/012-devtools) | 9,845 |
+| **All 12 pages** | **29,669** |
 
 ### Setup
 
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](/setup) | 1,826 |
-| [Known limitations](/setup/known-limitations) | 468 |
-| **Start a project** | **2,001** |
+| [Known limitations](/setup/known-limitations) | 448 |
+| **Start a project** | **2,112** |
 | [New project](/setup/new-project) | 543 |
-| [Existing project](/setup/existing-project) | 1,458 |
-| **Build and test** | **3,977** |
-| [vibelang CLI](/setup/vibelang-cli) | 2,438 |
-| [Vite and Vitest](/setup/vite) | 1,539 |
-| **Format and lint** | **1,470** |
-| [Format with dprint](/setup/formatting) | 1,470 |
-| **Frameworks** | **7,233** |
-| [React](/setup/react) | 1,966 |
-| [Vue](/setup/vue) | 2,814 |
-| [Svelte](/setup/svelte) | 2,453 |
-| **Editors** | **2,671** |
-| [VS Code and Cursor](/setup/vscode) | 914 |
-| [Neovim](/setup/neovim) | 999 |
-| [Zed](/setup/zed) | 431 |
-| [Other editors](/setup/other-editors) | 327 |
+| [Existing project](/setup/existing-project) | 1,569 |
+| **Build and test** | **4,209** |
+| [vibelang CLI](/setup/vibelang-cli) | 2,608 |
+| [Vite and Vitest](/setup/vite) | 1,601 |
+| **Format and lint** | **1,203** |
+| [Format with dprint](/setup/formatting) | 1,203 |
+| **Frameworks** | **9,494** |
+| [React](/setup/react) | 2,127 |
+| [Vue](/setup/vue) | 2,998 |
+| [Svelte](/setup/svelte) | 2,628 |
+| [Foldkit](/setup/foldkit) | 1,741 |
+| **Editors** | **2,807** |
+| [VS Code and Cursor](/setup/vscode) | 936 |
+| [Neovim](/setup/neovim) | 1,023 |
+| [Zed](/setup/zed) | 479 |
+| [Other editors](/setup/other-editors) | 369 |
 | **Upgrade** | **35,502** |
 | [Release notes](/setup/release-notes) | 35,502 |
-| **All 15 pages** | **55,148** |
+| **All 16 pages** | **57,601** |
 
 ### Guides
 
 | Page | Tokens |
 | --- | ---: |
-| [Getting Started](/013-getting-started) | 1,107 |
-| **Error Management** | **13,660** |
-| [Expected Errors](/error-management/014-expected-errors) | 4,386 |
-| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,330 |
-| [Fallback](/error-management/016-fallback) | 994 |
-| [Matching](/error-management/017-matching) | 764 |
-| [Retrying](/error-management/018-retrying) | 782 |
-| [Timing Out](/error-management/019-timing-out) | 847 |
-| [Sandboxing](/error-management/020-sandboxing) | 704 |
-| [Error Accumulation](/error-management/021-error-accumulation) | 617 |
-| [Error Channel Operations](/error-management/022-error-channel-operations) | 1,381 |
-| [Parallel and Sequential Errors](/error-management/023-parallel-and-sequential-errors) | 765 |
-| [Custom Error Classes](/error-management/024-yieldable-errors) | 1,090 |
-| **Requirements Management** | **6,514** |
-| [Managing Services](/requirements-management/025-services) | 2,137 |
-| [Default Services](/requirements-management/026-default-services) | 968 |
-| [Managing Layers](/requirements-management/027-layers) | 2,498 |
-| [Layer Memoization](/requirements-management/028-layer-memoization) | 911 |
-| **Resource Management** | **4,594** |
-| [Introduction](/resource-management/029-introduction) | 1,645 |
-| [Scope](/resource-management/030-scope) | 2,949 |
-| **Observability** | **6,471** |
-| [Logging](/observability/031-logging) | 1,933 |
-| [Metrics](/observability/032-metrics) | 1,314 |
-| [Tracing](/observability/033-tracing) | 2,487 |
-| [Tracking Fibers](/observability/034-tracking-fibers) | 737 |
-| [Configuration](/035-configuration) | 2,689 |
-| [Runtime](/036-runtime) | 1,415 |
-| **Scheduling** | **4,925** |
-| [Using schedules](/scheduling/037-using-schedules) | 922 |
-| [Choosing and combining schedules](/scheduling/038-choosing-and-combining-schedules) | 1,582 |
-| [Scheduling work with cron](/scheduling/039-cron) | 1,200 |
-| [Schedule cookbook](/scheduling/040-cookbook) | 1,221 |
-| **State Management** | **2,347** |
-| [Ref](/state-management/041-ref) | 893 |
-| [SynchronizedRef](/state-management/042-synchronizedref) | 715 |
-| [SubscriptionRef](/state-management/043-subscriptionref) | 739 |
-| [Batching](/044-batching) | 2,335 |
-| **Caching** | **1,845** |
-| [Caching Effects](/caching/045-caching-effects) | 859 |
-| [Cache](/caching/046-cache) | 986 |
-| **Concurrency** | **7,438** |
-| [Fibers](/concurrency/047-fibers) | 2,855 |
-| [Deferred](/concurrency/048-deferred) | 886 |
-| [Queue](/concurrency/049-queue) | 1,266 |
-| [PubSub](/concurrency/050-pubsub) | 1,132 |
-| [Semaphore](/concurrency/051-semaphore) | 706 |
-| [Latch](/concurrency/052-latch) | 593 |
-| **Stream** | **10,160** |
-| [Introduction](/stream/053-introduction) | 1,078 |
-| [Creating Streams](/stream/054-creating) | 2,380 |
-| [Consuming Streams](/stream/055-consuming-streams) | 775 |
-| [Error Handling](/stream/056-error-handling) | 1,450 |
-| [Operations](/stream/057-operations) | 3,817 |
-| [Resourceful Streams](/stream/058-resourceful-streams) | 660 |
-| **Sink** | **3,986** |
-| [Introduction](/sink/059-introduction) | 581 |
-| [Creating Sinks](/sink/060-creating) | 2,047 |
-| [Operations](/sink/061-operations) | 742 |
-| [Leftovers](/sink/062-leftovers) | 616 |
-| **Testing** | **1,227** |
-| [TestClock](/testing/063-testclock) | 1,227 |
-| **Code Style** | **7,291** |
-| [Guidelines](/code-style/064-guidelines) | 803 |
-| [Dual APIs](/code-style/065-dual) | 1,059 |
-| [Branded Types](/code-style/066-branded-types) | 1,132 |
-| [Pattern Matching](/code-style/067-pattern-matching) | 1,656 |
-| [Excessive Nesting](/code-style/068-do) | 907 |
-| [Control Flow Operators](/code-style/069-control-flow) | 1,734 |
-| **Data Types** | **16,811** |
-| [BigDecimal](/data-types/070-bigdecimal) | 1,308 |
-| [Cause](/data-types/071-cause) | 1,155 |
-| [Chunk](/data-types/072-chunk) | 870 |
-| [Data](/data-types/073-data) | 2,668 |
-| [DateTime](/data-types/074-datetime) | 2,798 |
-| [Duration](/data-types/075-duration) | 1,159 |
-| [Result](/data-types/076-result) | 1,463 |
-| [Exit](/data-types/077-exit) | 1,010 |
-| [HashSet](/data-types/078-hash-set) | 1,445 |
-| [Option](/data-types/079-option) | 2,249 |
-| [Redacted](/data-types/080-redacted) | 686 |
-| **Trait** | **1,611** |
-| [Equal](/trait/081-equal) | 1,009 |
-| [Hash](/trait/082-hash) | 602 |
-| **Behaviour** | **2,027** |
-| [Equivalence](/behaviour/083-equivalence) | 646 |
-| [Order](/behaviour/084-order) | 1,381 |
-| **Schema** | **30,462** |
-| [Introduction](/schema/085-introduction) | 1,280 |
-| [Getting Started](/schema/086-getting-started) | 2,187 |
-| [Basic Usage](/schema/087-basic-usage) | 2,602 |
-| [Filters](/schema/088-filters) | 1,460 |
-| [Advanced Usage](/schema/089-advanced-usage) | 2,793 |
-| [Projections](/schema/090-projections) | 668 |
-| [Transformations](/schema/091-transformations) | 2,187 |
-| [Annotations](/schema/092-annotations) | 1,092 |
-| [Canonical Codecs](/schema/093-canonical-codecs) | 1,196 |
-| [Error Messages](/schema/094-error-messages) | 1,434 |
-| [Error Formatters](/schema/095-error-formatters) | 1,045 |
-| [Class APIs](/schema/096-classes) | 1,775 |
-| [Default Constructors](/schema/097-default-constructors) | 1,294 |
-| [Effect Data Types](/schema/098-effect-data-types) | 1,655 |
-| [Standard Schema](/schema/099-standard-schema) | 835 |
-| [Arbitrary](/schema/100-arbitrary) | 1,741 |
-| [JSON Schema](/schema/101-json-schema) | 1,801 |
-| [Equivalence](/schema/102-equivalence) | 762 |
-| [Formatter](/schema/103-formatter) | 533 |
-| [Schema Compilers](/schema/104-compilers) | 2,122 |
-| **Platform** | **13,453** |
-| [Introduction](/platform/105-introduction) | 2,807 |
-| [FileSystem](/platform/106-file-system) | 1,216 |
-| [Path](/platform/107-path) | 926 |
-| [PlatformLogger](/platform/108-platformlogger) | 786 |
-| [Runtime](/platform/109-runtime) | 1,310 |
-| [Terminal](/platform/110-terminal) | 1,536 |
-| [Platform globals in VibeLang](/platform/platform-globals) | 4,125 |
-| [Cloudflare Workers](/platform/cloudflare-workers) | 747 |
-| **All 100 pages** | **142,368** |
+| [Getting Started](/013-getting-started) | 1,130 |
+| **Error Management** | **15,009** |
+| [Expected Errors](/error-management/014-expected-errors) | 4,671 |
+| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,463 |
+| [Fallback](/error-management/016-fallback) | 1,207 |
+| [Matching](/error-management/017-matching) | 857 |
+| [Retrying](/error-management/018-retrying) | 859 |
+| [Timing Out](/error-management/019-timing-out) | 928 |
+| [Sandboxing](/error-management/020-sandboxing) | 781 |
+| [Error Accumulation](/error-management/021-error-accumulation) | 709 |
+| [Error Channel Operations](/error-management/022-error-channel-operations) | 1,493 |
+| [Parallel and Sequential Errors](/error-management/023-parallel-and-sequential-errors) | 837 |
+| [Custom Error Classes](/error-management/024-yieldable-errors) | 1,204 |
+| **Requirements Management** | **7,502** |
+| [Managing Services](/requirements-management/025-services) | 2,465 |
+| [Default Services](/requirements-management/026-default-services) | 1,136 |
+| [Managing Layers](/requirements-management/027-layers) | 2,817 |
+| [Layer Memoization](/requirements-management/028-layer-memoization) | 1,084 |
+| **Resource Management** | **4,681** |
+| [Introduction](/resource-management/029-introduction) | 1,747 |
+| [Scope](/resource-management/030-scope) | 2,934 |
+| **Observability** | **7,303** |
+| [Logging](/observability/031-logging) | 2,195 |
+| [Metrics](/observability/032-metrics) | 1,523 |
+| [Tracing](/observability/033-tracing) | 2,663 |
+| [Tracking Fibers](/observability/034-tracking-fibers) | 922 |
+| [Configuration](/035-configuration) | 2,994 |
+| [Runtime](/036-runtime) | 1,566 |
+| **Scheduling** | **5,804** |
+| [Using schedules](/scheduling/037-using-schedules) | 1,156 |
+| [Choosing and combining schedules](/scheduling/038-choosing-and-combining-schedules) | 1,803 |
+| [Scheduling work with cron](/scheduling/039-cron) | 1,399 |
+| [Schedule cookbook](/scheduling/040-cookbook) | 1,446 |
+| **State Management** | **2,782** |
+| [Ref](/state-management/041-ref) | 1,086 |
+| [SynchronizedRef](/state-management/042-synchronizedref) | 842 |
+| [SubscriptionRef](/state-management/043-subscriptionref) | 854 |
+| [Batching](/044-batching) | 2,567 |
+| **Caching** | **2,119** |
+| [Caching Effects](/caching/045-caching-effects) | 979 |
+| [Cache](/caching/046-cache) | 1,140 |
+| **Concurrency** | **8,208** |
+| [Fibers](/concurrency/047-fibers) | 2,700 |
+| [Deferred](/concurrency/048-deferred) | 1,097 |
+| [Queue](/concurrency/049-queue) | 1,484 |
+| [PubSub](/concurrency/050-pubsub) | 1,355 |
+| [Semaphore](/concurrency/051-semaphore) | 863 |
+| [Latch](/concurrency/052-latch) | 709 |
+| **Stream** | **12,537** |
+| [Introduction](/stream/053-introduction) | 1,299 |
+| [Creating Streams](/stream/054-creating) | 3,033 |
+| [Consuming Streams](/stream/055-consuming-streams) | 950 |
+| [Error Handling](/stream/056-error-handling) | 1,814 |
+| [Operations](/stream/057-operations) | 4,613 |
+| [Resourceful Streams](/stream/058-resourceful-streams) | 828 |
+| **Sink** | **4,824** |
+| [Introduction](/sink/059-introduction) | 717 |
+| [Creating Sinks](/sink/060-creating) | 2,430 |
+| [Operations](/sink/061-operations) | 932 |
+| [Leftovers](/sink/062-leftovers) | 745 |
+| **Testing** | **1,470** |
+| [TestClock](/testing/063-testclock) | 1,470 |
+| **Code Style** | **8,103** |
+| [Guidelines](/code-style/064-guidelines) | 879 |
+| [Dual APIs](/code-style/065-dual) | 1,086 |
+| [Branded Types](/code-style/066-branded-types) | 1,270 |
+| [Pattern Matching](/code-style/067-pattern-matching) | 1,800 |
+| [Excessive Nesting](/code-style/068-do) | 1,132 |
+| [Control Flow Operators](/code-style/069-control-flow) | 1,936 |
+| **Data Types** | **18,853** |
+| [BigDecimal](/data-types/070-bigdecimal) | 1,487 |
+| [Cause](/data-types/071-cause) | 1,276 |
+| [Chunk](/data-types/072-chunk) | 961 |
+| [Data](/data-types/073-data) | 2,870 |
+| [DateTime](/data-types/074-datetime) | 3,201 |
+| [Duration](/data-types/075-duration) | 1,377 |
+| [Result](/data-types/076-result) | 1,618 |
+| [Exit](/data-types/077-exit) | 1,168 |
+| [HashSet](/data-types/078-hash-set) | 1,621 |
+| [Option](/data-types/079-option) | 2,459 |
+| [Redacted](/data-types/080-redacted) | 815 |
+| **Trait** | **1,697** |
+| [Equal](/trait/081-equal) | 1,066 |
+| [Hash](/trait/082-hash) | 631 |
+| **Behaviour** | **2,137** |
+| [Equivalence](/behaviour/083-equivalence) | 685 |
+| [Order](/behaviour/084-order) | 1,452 |
+| **Schema** | **34,767** |
+| [Introduction](/schema/085-introduction) | 1,468 |
+| [Getting Started](/schema/086-getting-started) | 2,475 |
+| [Basic Usage](/schema/087-basic-usage) | 2,915 |
+| [Filters](/schema/088-filters) | 1,626 |
+| [Advanced Usage](/schema/089-advanced-usage) | 3,151 |
+| [Projections](/schema/090-projections) | 775 |
+| [Transformations](/schema/091-transformations) | 2,544 |
+| [Annotations](/schema/092-annotations) | 1,227 |
+| [Canonical Codecs](/schema/093-canonical-codecs) | 1,380 |
+| [Error Messages](/schema/094-error-messages) | 1,598 |
+| [Error Formatters](/schema/095-error-formatters) | 1,220 |
+| [Class APIs](/schema/096-classes) | 2,148 |
+| [Default Constructors](/schema/097-default-constructors) | 1,550 |
+| [Effect Data Types](/schema/098-effect-data-types) | 1,890 |
+| [Standard Schema](/schema/099-standard-schema) | 923 |
+| [Arbitrary](/schema/100-arbitrary) | 2,028 |
+| [JSON Schema](/schema/101-json-schema) | 2,011 |
+| [Equivalence](/schema/102-equivalence) | 866 |
+| [Formatter](/schema/103-formatter) | 610 |
+| [Schema Compilers](/schema/104-compilers) | 2,362 |
+| **Platform** | **17,050** |
+| [Introduction](/platform/105-introduction) | 2,907 |
+| [FileSystem](/platform/106-file-system) | 1,427 |
+| [Path](/platform/107-path) | 1,012 |
+| [PlatformLogger](/platform/108-platformlogger) | 865 |
+| [Runtime](/platform/109-runtime) | 1,395 |
+| [Terminal](/platform/110-terminal) | 1,732 |
+| [Platform globals in VibeLang](/platform/platform-globals) | 4,633 |
+| [Cloudflare Workers](/platform/cloudflare-workers) | 787 |
+| [Alchemy](/platform/alchemy) | 2,292 |
+| **All 101 pages** | **163,103** |
 
 ### VibeLang features
 
 | Page | Tokens |
 | --- | ---: |
-| [Control operations and handlers](/vibelang-features/111-control-operations-and-handlers) | 2,027 |
-| [Producers](/vibelang-features/112-producers) | 1,453 |
-| [Building an HTTP API](/vibelang-features/113-building-an-http-api) | 1,383 |
-| [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 5,367 |
-| [Cheat sheet](/vibelang-features/115-cheat-sheet) | 9,807 |
-| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 4,210 |
-| [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) | 3,219 |
-| **All 7 pages** | **27,466** |
+| [Control operations and handlers](/vibelang-features/111-control-operations-and-handlers) | 65 |
+| [Producers](/vibelang-features/112-producers) | 1,738 |
+| [Building an HTTP API](/vibelang-features/113-building-an-http-api) | 1,615 |
+| [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 5,369 |
+| [Cheat sheet](/vibelang-features/115-cheat-sheet) | 10,298 |
+| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 4,037 |
+| [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) | 3,614 |
+| **All 7 pages** | **26,736** |
 
 ### Specification
 

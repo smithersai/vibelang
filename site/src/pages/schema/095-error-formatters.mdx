@@ -5,7 +5,7 @@ description: "Schema issue formatters work as in Effect. They render failures as
 
 # Error Formatters
 
-Schema issue formatters work as in Effect. They render failures as readable strings for diagnostics or as structured issue paths for forms and other validation clients; [value formatters](/schema/103-formatter) render successful values. Plain builders follow the [trusted call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+Schema issue formatters work as in Effect. They render failures as readable strings for diagnostics or as structured issue paths for forms and other validation clients; [value formatters](/schema/103-formatter) render successful values. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 ## Rendering schema issues as readable strings
 
@@ -15,13 +15,11 @@ const Dispatch = Schema.Struct({
   packages: Schema.Int
 })
 
-function readableFailure(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input)
+effect readableFailure(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input)
     return "Accepted"
-  } catch (error) {
-    return SchemaIssue.makeFormatterDefault()(error.issue)
-  }
+  } catch (error) => SchemaIssue.makeFormatterDefault()(error.issue)
 }
 ```
 
@@ -36,13 +34,11 @@ Accepted
 ## Reporting several issues
 
 ```vibe
-function allFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+effect allFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return "Accepted"
-  } catch (error) {
-    return error.message
-  }
+  } catch (error) => error.message
 }
 // {} reports missing destination and packages fields.
 ```
@@ -59,13 +55,11 @@ Formatting shows only the issues parsing collected; set `errors: "all"` on the p
 ## Formatting Standard Schema validation errors
 
 ```vibe
-function formFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+effect formFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
-  } catch (error) {
-    return SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
-  }
+  } catch (error) => SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 }
 // An issue has a message and a path such as ["destination"].
 ```
@@ -85,13 +79,11 @@ const formFormatter = SchemaIssue.makeFormatterStandardSchemaV1({
     : SchemaIssue.defaultLeafHook(issue)
 })
 
-function localizedFailures(input: unknown) {
-  try {
-    Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
+effect localizedFailures(input: unknown) {
+  return effect {
+    try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
-  } catch (error) {
-    return formFormatter(error.issue).issues
-  }
+  } catch (error) => formFormatter(error.issue).issues
 }
 ```
 

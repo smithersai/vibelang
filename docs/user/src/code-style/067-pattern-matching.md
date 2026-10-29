@@ -1,11 +1,12 @@
 # Pattern Matching
 
-VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and an arm can call Effect functions. [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
+VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and inside an effect function an arm can run an Effect with `try`. [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
 
 ## Matching values
 
 ```vibe
-// run: Console.log(describeInput(3)); Console.log(describeInput("news")); Console.log(describeJob({ state: "queued", attempts: 2 })); Console.log(describeJob({ state: "done", attempts: 1 }))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(describeInput(3)); try Console.log(describeInput("news")); try Console.log(describeJob({ state: "queued", attempts: 2 })); try Console.log(describeJob({ state: "done", attempts: 1 }))
 function describeInput(input: number | string) {
   return match (input) {
     when Number: `count ${input}`;
@@ -33,7 +34,8 @@ Arms are tried in order; the first that matches gives the value. `Number` and `S
 ## Shapes, guards, and tags
 
 ```vibe
-// run: Console.log(classifyRetry({ status: "failed", attempts: 3 }), classifyRetry({ status: "failed", attempts: 2 }), classifyRetry({ status: "done", attempts: 5 })); Console.log(jobLabel({ _tag: "Queued" })); Console.log(jobLabel({ _tag: "Running", worker: "w-1" })); Console.log(jobLabel({ _tag: "Done", output: "report.csv" }))
+// pending: VIP-5, VIP-6, VIP-7, VIP-14
+// run: try Console.log(classifyRetry({ status: "failed", attempts: 3 }), classifyRetry({ status: "failed", attempts: 2 }), classifyRetry({ status: "done", attempts: 5 })); try Console.log(jobLabel({ _tag: "Queued" })); try Console.log(jobLabel({ _tag: "Running", worker: "w-1" })); try Console.log(jobLabel({ _tag: "Done", output: "report.csv" }))
 function classifyRetry(input: { status: string; attempts: number }) {
   return match (input) {
     when { status: "failed", attempts: let n } and if (n >= 3): "escalate";
@@ -63,12 +65,13 @@ worker w-1
 report.csv
 ```
 
-`let n` binds a property, and a guard, `if (condition)`, tests the bindings before it. Matching `_tag` narrows a tagged union. An `error` class is itself a pattern: `when NotFound:` matches its instances. A [`data` declaration](../data-types/073-data.md) declares a tagged union whose variants are patterns: `when Job.Running { let worker }`.
+`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` narrows a tagged union. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`.
 
 ## Negating and combining patterns
 
 ```vibe
-// run: Console.log(availability("active"), availability("paused"), availability("closed")); Console.log(weekend("Saturday"), weekend("Sunday"), weekend("Monday"))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(availability("active"), availability("paused"), availability("closed")); try Console.log(weekend("Saturday"), weekend("Sunday"), weekend("Monday"))
 function availability(status: "active" | "paused" | "closed") {
   return match (status) {
     when not "closed": "can reopen";
@@ -94,7 +97,8 @@ true true false
 ## Fixing the return type
 
 ```vibe
-// run: Console.log(display(3), display(true), display(false))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(display(3), display(true), display(false))
 function display(input: number | boolean): string {
   return match (input) {
     when Number: input.toFixed(1);
@@ -112,7 +116,8 @@ A match's type is the union of its arms' types. Annotate the return type to requ
 ## Exhaustive handling
 
 ```vibe
-// run: Console.log(phaseLabel("draft"), phaseLabel("published"))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(phaseLabel("draft"), phaseLabel("published"))
 type Phase = "draft" | "published"
 
 function phaseLabel(phase: Phase) {
@@ -132,7 +137,8 @@ Draft Published
 ## Defaults, optional outputs, and result outputs
 
 ```vibe
-// run: Console.log(withDefault("start"), withDefault("stop")); Console.log(optionalCommand("start").getOrNull(), optionalCommand("help").isNone()); Console.log(commandResult("start").getOrElse((error) => error), commandResult("help").getOrElse((error) => error))
+// pending: VIP-5, VIP-7, VIP-14
+// run: try Console.log(withDefault("start"), withDefault("stop")); try Console.log(Option.getOrNull(optionalCommand("start")), Option.isNone(optionalCommand("help"))); try Console.log(Result.getOrElse(commandResult("start"), (error) => error), Result.getOrElse(commandResult("help"), (error) => error))
 type Command = "start" | "stop" | "help"
 
 function withDefault(command: Command) {
@@ -168,7 +174,8 @@ A `default` arm comes last and receives every unmatched input, narrowed to the c
 ## Reusable matchers with the Match module
 
 ```vibe
-// run: Console.log(JSON.stringify(describeAll([3, "news"])))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify(describeAll([3, "news"])))
 const describe = pipe(
   Match.type<number | string>(),
   Match.when(Match.number, (n) => `count ${n}`),
@@ -185,4 +192,4 @@ function describeAll(inputs: ReadonlyArray<number | string>) {
 ["count 3","label news"]
 ```
 
-`Match.type<T>()` builds a matcher with no input yet; its finalizer produces a plain function to pass as a callback. Match callbacks compute values synchronously, and Match functions are trusted Effect library functions: an exception escaping into Effect code is a defect that Effect catch doesn't recover. A plain function's catch doesn't recover it either. Use `match` when an arm does Effect work.
+`Match.type<T>()` builds a matcher with no input yet; its finalizer produces a plain function to pass as a callback. Match callbacks compute values synchronously. Use `match` inside an effect function when an arm needs `try` to run an Effect. Wrap any synchronous call that may throw with `Effect.try` before running it in effect code.

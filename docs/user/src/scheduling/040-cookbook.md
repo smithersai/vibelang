@@ -1,25 +1,26 @@
 # Schedule cookbook
 
-These recipes use ordinary functions as repeatable programs. Each bounds its attempts or checks, and a successful request stops retrying immediately. `Schedule` values and duration calculations work exactly as in Effect.
+These recipes use Effect values as repeatable programs. Each bounds its attempts or checks, and a successful request stops retrying immediately. `Schedule` values and duration calculations work exactly as in Effect.
 
 ## Honoring server retry hints
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork download(); TestClock.adjust("5 seconds"); Console.log(join worker) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork download(); try TestClock.adjust("5 seconds"); try Console.log(join worker) }
 error Throttled {
   retryAfter: Duration.Duration
 }
 
-function download() {
+effect download() {
   let calls = 0
   const policy = pipe(
     Schedule.exponential("500 millis"),
     Schedule.setInputType<Throttled>(),
-    Schedule.modifyDelay(({ duration, input }) =>
-      duration.max(input.retryAfter)),
+    Schedule.modifyDelay(effect ({ duration, input }) =>
+      Duration.max(duration, input.retryAfter)),
     Schedule.upTo({ times: 3 })
   )
-  return retry(() => {
+  return try retry(effect {
     calls++
     if (calls < 3) {
       throw new Throttled({ retryAfter: Duration.seconds(2) })
@@ -36,16 +37,17 @@ Parse the response's retry hint into a duration at the HTTP boundary. The policy
 ## Polling with response-dependent delays
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork waitForArchive(); TestClock.adjust("1 second"); Console.log(join worker) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork waitForArchive(); try TestClock.adjust("1 second"); try Console.log(join worker) }
 type Status =
   | { _tag: "Pending"; pollAfter: Duration.Duration }
   | { _tag: "Ready"; path: string }
 
 error PollLimit
 
-function waitForArchive() {
+effect waitForArchive() {
   let checks = 0
-  function check(): Status!! {
+  effect check(): Status!! {
     checks++
     return checks < 3
       ? { _tag: "Pending", pollAfter: Duration.millis(checks * 300) }
@@ -54,15 +56,15 @@ function waitForArchive() {
   const delay = pipe(
     Schedule.recurs(5),
     Schedule.setInputType<Status>(),
-    Schedule.modifyDelay(({ input }) =>
+    Schedule.modifyDelay(effect ({ input }) =>
       input._tag === "Pending" ? input.pollAfter : Duration.zero)
   )
-  const result = repeat(() => check(), {
+  const status = try repeat(check(), {
     schedule: delay,
     until: (status) => status._tag === "Ready"
   })
-  if (result._tag === "Pending") throw new PollLimit()
-  return result.path
+  if (status._tag === "Pending") throw new PollLimit()
+  return status.path
 }
 // string!PollLimit!
 // Output: /archives/week.csv
@@ -73,12 +75,13 @@ A pending response is a success, so it feeds `repeat`, not `retry`. This simulat
 ## Bounding the whole retry operation
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork Effect.result(() => readWithDeadline()); TestClock.adjust("1 second"); const result = join worker; if (result.isFailure()) Console.log(result.failure._tag) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork result(readWithDeadline()); try TestClock.adjust("1 second"); const outcome = join worker; if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
 error Offline
 
-function readWithDeadline() {
-  return timeout(
-    () => retry(() => { throw new Offline() }, Schedule.exponential("80 millis").upTo({ times: 5 })),
+effect readWithDeadline() {
+  return try timeout(
+    retry(effect { throw new Offline() }, Schedule.exponential("80 millis").pipe(Schedule.upTo({ times: 5 }))),
     "350 millis"
   )
 }
@@ -90,13 +93,17 @@ The outer timeout covers the first attempt, every wait, and every retry; a timeo
 ## Switching from rapid to slower retries
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork reconnect(); TestClock.adjust("5 seconds"); Console.log(join worker) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork reconnect(); try TestClock.adjust("5 seconds"); try Console.log(join worker) }
 error Disconnected
 
-function reconnect() {
+effect reconnect() {
   let attempts = 0
-  const phases = Schedule.spaced("200 millis").upTo({ times: 2 }).concat(Schedule.spaced("4 seconds").upTo({ times: 3 }))
-  return retry(() => {
+  const phases = Schedule.spaced("200 millis").pipe(
+    Schedule.upTo({ times: 2 }),
+    Schedule.concat(Schedule.spaced("4 seconds").pipe(Schedule.upTo({ times: 3 })))
+  )
+  return try retry(effect {
     attempts++
     if (attempts < 4) throw new Disconnected()
     return "connected"
@@ -110,26 +117,27 @@ The first two retries wait briefly; later ones wait four seconds. This simulatio
 ## Recording retry decisions
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork observedRequest(); TestClock.adjust("1 second"); Console.log(join worker) }
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork observedRequest(); try TestClock.adjust("1 second"); try Console.log(join worker) }
 error Unavailable {
   status: number
 }
 
-function observedRequest() {
+effect observedRequest() {
   let attempts = 0
   const policy = pipe(
     Schedule.exponential("250 millis"),
     Schedule.setInputType<Unavailable>(),
     Schedule.upTo({ times: 3 }),
-    Schedule.tap(({ attempt, duration, input }) => {
-      Console.log("retry planned", {
+    Schedule.tap(effect ({ attempt, duration, input }) => {
+      try Console.log("retry planned", {
         retry: attempt,
         status: input.status,
-        delayMs: duration.toMillis()
+        delayMs: Duration.toMillis(duration)
       })
     })
   )
-  return retry(() => {
+  return try retry(effect {
     attempts++
     if (attempts < 3) throw new Unavailable({ status: 503 })
     return "accepted"

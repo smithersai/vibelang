@@ -21,33 +21,38 @@ service Reports {
   render(title: string): string!!
 }
 
-function report(title: string) {
-  return Reports.render(title)
+effect report(title: string) {
+  const reports = try Reports
+  return try reports.render(title)
 }
 // string!!Reports
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
 // Output: report/Inventory
 ```
 
 On this page, `Printer` depends on `Settings`, and `Reports` on both. `Layer.Layer<Out, E, In>` gives the services produced, construction failures, and construction requirements; the global `Layer` namespace holds the constructors and that type.
 
-A `provide` block accepts a layer, a `Context`, or a non-empty list or tuple of layers. It removes only services supplied on every path: a union supplies the services common to all members, and optional tuple elements and array spreads supply no guaranteed services. Every possible construction error and input remains in the contract. A potentially empty array value, an invalid union member, `any`, or `unknown` is EK3207. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once.
+A `provide` block uses Effect's own provision types. It accepts a layer, a `Context`, a list or tuple of layers, or `Key = value` entries. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. The compiler currently reports EK3207 for a potentially empty array value, an invalid union member, `any`, or `unknown`. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
 
 ## Preventing dependency leakage
 
 ```vibe
-const PrinterLive = Layer.effect(Printer) {
-  const settings = Settings()
+const PrinterLive = Layer.effect(Printer, effect {
+  const settings = try Settings
   return {
-    print(text) {
-      Console.log(`${settings.prefix}: ${text}`)
+    effect print(text) {
+      try Console.log(`${settings.prefix}: ${text}`)
     }
   }
-}
+})
 // Layer<Printer, never, Settings>
 // Output: test: ready
 ```
 
-`Layer.effect(Printer) { ... }` builds a `Printer`: the block is the layer's effect, passed to Effect's `Layer.effect` through block params. Its statements, `Settings()` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
+`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 
@@ -59,24 +64,24 @@ const SettingsLive = Layer.succeed(Settings, {
 })
 // Layer<Settings, never, never>
 
-const ReportsLive = Layer.effect(Reports) {
-  const settings = Settings()
-  const printer = Printer()
+const ReportsLive = Layer.effect(Reports, effect {
+  const settings = try Settings
+  const printer = try Printer
   return {
-    render(title) {
-      printer.print("Rendering report")
+    effect render(title) {
+      try printer.print("Rendering report")
       return `${settings.prefix}/${title}`
     }
   }
-}
+})
 // Layer<Reports, never, Settings | Printer>
 // Output: reports: Rendering report
 // Output: reports/Inventory
 ```
 
-Use `Layer.succeed` for an existing implementation or constant factory, `Layer.effect` for a factory that performs Effect operations, and `Layer.sync` for a plain synchronous constructor, one with a plain return annotation such as `(): Users.Shape => …`, that needs no Effect work. Constructing a layer value doesn't run its initialization program.
+Use `Layer.succeed` for an existing implementation or constant factory, `Layer.effect` for a factory that performs Effect operations, and `Layer.sync` for a plain synchronous constructor, such as `(): Users.Shape => …`, that needs no Effect work. Constructing a layer value doesn't run its initialization program.
 
-A factory can register `Effect.addFinalizer` or acquire with `Effect.acquireRelease`; `Layer.effect` supplies the construction scope and removes `Scope` from the layer's input requirements. Acquire a returned service's resources without `using`: a lexical `using` releases them when the factory returns.
+A factory can register `try addFinalizer(...)` or acquire with `try acquireRelease(...)`; `Layer.effect` supplies the construction scope and removes `Scope` from the layer's input requirements. Acquire a returned service's resources with `try acquireRelease(...)`; a lexical `using` releases a TypeScript disposable when the factory returns.
 
 ## Merging independent layers
 
@@ -105,7 +110,7 @@ const PrinterAndSettings = Layer.provideMerge(PrinterLive, SettingsLive)
 const ReportsReady = Layer.provide(ReportsLive, PrinterAndSettings)
 // Layer<Reports, never, never>
 
-const AppLive = wire(ReportsLive, PrinterLive, SettingsLive)
+const AppLive = ReportsLive.pipe(Layer.provideMerge(PrinterAndSettings))
 // Layer<Reports | Printer | Settings, never, never>
 // Output: reports: ready
 // Output: reports
@@ -115,29 +120,29 @@ const AppLive = wire(ReportsLive, PrinterLive, SettingsLive)
 // Output: reports/app
 ```
 
-`Layer.provide(consumer, dependencies)` feeds dependency outputs into the consumer and keeps the consumer's outputs; `provideMerge` also keeps the dependency outputs. `wire` derives this ordering from the layer contracts and rejects duplicate providers (EK3202) and cycles (EK3203).
+`Layer.provide(consumer, dependencies)` feeds dependency outputs into the consumer and keeps the consumer's outputs; `provideMerge` also keeps the dependency outputs. Here `PrinterAndSettings` supplies the dependencies of `ReportsLive`, and `AppLive` retains all three services.
 
-Inputs no other argument provides stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report EK3201 with the unsatisfied inputs. A written contract that excludes a remaining requirement reports EK2002. An argument whose type doesn't name its outputs, such as `Layer.Layer<any>`, is EK3204; compose it with `Layer.provide` instead. `wire` imported under another name, or called as `Runtime.wire`, orders its layers the same way, and a spread array literal or tuple constant lists its layers one by one; a spread `wire` cannot list is EK3204.
+Inputs the composition doesn't provide stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report EK3201 with the unsatisfied inputs. A written contract that excludes a remaining requirement reports EK2002.
 
 Reuse one layer value when several paths need a shared instance: equivalent reconstructed layer values have different memoization identities.
 
 ## Providing and building layers
 
 ```vibe
-function main() {
+effect main() {
   provide AppLive {
-    const first = report("Inventory")
-    const second = report("Forecast")
+    const first = try report("Inventory")
+    const second = try report("Forecast")
     return [first, second]
   }
 }
 // string[]!!
 
-function withBuiltContext() {
-  return Effect.scoped {
-    const context = Layer.build(AppLive)
-    provide context { return report("Inventory") }
-  }
+effect withBuiltContext() {
+  return try scoped(effect {
+    const context = try Layer.build(AppLive)
+    provide context { return try report("Inventory") }
+  })
 }
 // Output: reports: Rendering report
 // Output: reports: Rendering report
@@ -146,21 +151,21 @@ function withBuiltContext() {
 // Output: reports/Inventory
 ```
 
-`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is short for `Effect.provide(() => { ... }, AppLive)` and, like it, accepts a layer, an array of layers, or a `Context`. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
+`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is short for `Effect.provide(effect { ... }, AppLive)` and, like it, accepts a layer, an array of layers, or a `Context`. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
 
-`Layer.build` produces a `Context` and requires a `Scope`, here from `Effect.scoped`; consume resource-owning services inside that scope. For an application that is entirely a layer, `Layer.launch(AppLive)` builds it and keeps its resources alive until interruption.
+`Layer.build` produces a `Context` and requires a `Scope`, here from `scoped(effect { ... })`; consume resource-owning services inside that scope. For an application that is entirely a layer, `Layer.launch(AppLive)` builds it and keeps its resources alive until interruption.
 
 ## Observing initialization and recovering failures
 
 ```vibe
 error InitializationFailed
 
-const ReportsUnavailable = Layer.effect(Reports) {
+const ReportsUnavailable = Layer.effect(Reports, effect {
   throw new InitializationFailed()
-}
+})
 
 const ReportsFallback = Layer.succeed(Reports, {
-  render(title) { return `Offline report: ${title}` }
+  effect render(title) { return `Offline report: ${title}` }
 })
 
 const ObservedReports = ReportsUnavailable
@@ -182,9 +187,9 @@ When a larger graph fails to initialize, acquired resources still release. Initi
 service Banner {
   text(title: string): string!!
 
-  static make(): Banner.Shape!!Settings {
-    const settings = Settings()
-    return { text: (title) => `${settings.prefix}: ${title}` }
+  static effect make(): Banner.Shape!!Settings {
+    const settings = try Settings
+    return { text: effect (title) => `${settings.prefix}: ${title}` }
   }
 
   static readonly layerWithoutDependencies = Layer.effect(Banner, Banner.make())
@@ -194,7 +199,7 @@ service Banner {
 // Output: reports: Orders
 ```
 
-Static members stay on the service class. `static make()` builds the implementation, replacing Effect 4's service `make` option. `layerWithoutDependencies` exposes a factory that requires `Settings`; `static readonly layer` holds the chosen default layer. The compiler generates no layer, and a service can expose several layer values for different configurations or runtimes.
+Static members stay on the service class. `static effect make()` returns an Effect that builds the implementation, replacing Effect 4's service `make` option. `layerWithoutDependencies` exposes a factory that requires `Settings`; `static readonly layer` holds the chosen default layer. The compiler generates no layer, and a service can expose several layer values for different configurations or runtimes.
 
 ## Replacing services in tests
 
@@ -204,20 +209,27 @@ const SettingsTest = Layer.succeed(Settings, {
 })
 const BannerWithTestSettings = Layer.provide(Banner.layerWithoutDependencies, SettingsTest)
 const BannerTest = Layer.succeed(Banner, {
-  text(title) { return `fixture/${title}` }
+  effect text(title) { return `fixture/${title}` }
 })
 
-function testBannerDependency() {
-  provide BannerWithTestSettings { return Banner.text("Orders") }
+effect testBannerDependency() {
+  provide BannerWithTestSettings {
+    return try (try Banner).text("Orders")
+  }
 }
 
-function testBannerDirectly() {
-  provide BannerTest { return Banner.text("Orders") }
+effect testBannerDirectly() {
+  provide BannerTest {
+    return try (try Banner).text("Orders")
+  }
 }
 
-function testBannerWithInlineSettings() {
+effect testBannerWithInlineSettings() {
   provide Settings = { prefix: "inline" } {
-    return Effect.provide(() => Banner.text("Orders"), Banner.layerWithoutDependencies)
+    provide Banner.layerWithoutDependencies {
+      const banner = try Banner
+      return try banner.text("Orders")
+    }
   }
 }
 // Output: ["test: Orders","fixture/Orders","inline: Orders"]
@@ -227,7 +239,7 @@ Replace a dependency to exercise the real factory, or the service itself to isol
 
 ## Coming from Effect
 
-Abstract services and static layer fields replace hand-written key classes and generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `return Effect.provide(program, AppLive)` draws EK4836, whose quick fix writes `provide AppLive { return program }`.
+`service` declarations and static layer fields replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw EK4836 and have a quick fix to write a `provide` block. Support for the new forms arrives with the compiler's VIP implementation.
 
 ---
 

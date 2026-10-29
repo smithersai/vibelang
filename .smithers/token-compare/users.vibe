@@ -4,18 +4,21 @@ service Users {
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "42") throw new UserNotFound({ id })
     return "Ada"
   }
 })
 
-export function main() {
+export effect main() {
   provide UsersLive {
-    const [name, fallback] = await.all [
-      Users.find("42"),
-      Users.find("7") catch "Guest"
+    const users = try Users
+    const [name, fallback] = try.all [
+      users.find("42"),
+      effect { return users.find("7") catch "Guest" }
     ]
-    Console.log(name, fallback)
+    try Console.log(name, fallback)
   }
 }
+
+runPromise(main())

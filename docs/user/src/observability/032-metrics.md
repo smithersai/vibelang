@@ -1,26 +1,32 @@
 # Metrics in VibeLang
 
-Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs run when called.
+Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs return Effects that run with `try`.
 
 ## Recording counters and gauges
 
 ```vibe
-// run: Console.log(JSON.stringify(recordBatch())); Console.log(String(Metric.value(bytes).count)); Console.log(JSON.stringify(recordBatch()))
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try stringify(try recordBatch())); try Console.log(String((try Metric.value(bytes)).count)); try Console.log(try stringify(try recordBatch()))
 const requests = Metric.counter("guide_requests", { incremental: true })
 const queued = Metric.gauge("guide_queued")
 const bytes = Metric.counter("guide_bytes", { bigint: true })
 
-function recordBatch() {
-  Metric.update(requests, 1)
-  Metric.update(requests, 3)
-  Metric.update(queued, 12)
-  Metric.update(queued, 5)
-  Metric.update(bytes, 4096n)
+effect recordBatch() {
+  try Metric.update(requests, 1)
+  try Metric.update(requests, 3)
+  try Metric.update(queued, 12)
+  try Metric.update(queued, 5)
+  try Metric.update(bytes, 4096n)
   return {
-    requests: Metric.value(requests).count,
-    queued: Metric.value(queued).value
+    requests: (try Metric.value(requests)).count,
+    queued: (try Metric.value(queued)).value
   }
 }
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
+}
+
 ```
 
 ```output
@@ -32,14 +38,15 @@ function recordBatch() {
 A counter accumulates changes; a gauge keeps its latest value. `incremental: true` ignores negative counter inputs; without it, a counter also decrements. Counters and gauges both have bigint variants. Updates to the same metric identity share state, so the totals above accumulate across runs.
 
 ```vibe
-// run: Console.log(instrumentedValue(), Metric.value(completions).count)
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
+// run: try Console.log(try instrumentedValue(), (try Metric.value(completions)).count)
 const completions = Metric.withConstantInput(
   Metric.counter("guide_completions", { incremental: true }),
   1
 )
 
-function instrumentedValue() {
-  return Effect.trackSuccesses(() => "processed", completions)
+effect instrumentedValue() {
+  return try trackSuccesses(effect { return "processed" }, completions)
 }
 ```
 
@@ -52,7 +59,8 @@ processed 1
 ## Measuring distributions
 
 ```vibe
-// run: const result = recordSizes(); Console.log(JSON.stringify({ count: result.histogram.count, sum: result.histogram.sum, min: result.histogram.min, max: result.histogram.max, buckets: result.histogram.buckets })); Console.log(result.summary.count, result.summary.sum, result.summary.min, result.summary.max)
+// pending: VIP-1, VIP-5, VIP-14
+// run: const result = try recordSizes(); try Console.log(try stringify({ count: result.histogram.count, sum: result.histogram.sum, min: result.histogram.min, max: result.histogram.max, buckets: result.histogram.buckets })); try Console.log(result.summary.count, result.summary.sum, result.summary.min, result.summary.max)
 const batchSizes = Metric.histogram("guide_batch_size", {
   boundaries: Metric.linearBoundaries({ start: 0, width: 20, count: 6 })
 })
@@ -62,14 +70,14 @@ const recentSizes = Metric.summary("guide_recent_batch_size", {
   quantiles: [0.5, 0.9, 0.99]
 })
 
-function recordSizes() {
+effect recordSizes() {
   for (const size of [12, 36, 8, 91]) {
-    Metric.update(batchSizes, size)
-    Metric.update(recentSizes, size)
+    try Metric.update(batchSizes, size)
+    try Metric.update(recentSizes, size)
   }
   return {
-    histogram: Metric.value(batchSizes),
-    summary: Metric.value(recentSizes)
+    histogram: try Metric.value(batchSizes),
+    summary: try Metric.value(recentSizes)
   }
 }
 ```
@@ -84,14 +92,15 @@ A histogram sorts observations into configured buckets and tracks count, sum, mi
 ## Timing computations
 
 ```vibe
-// run: provide TestClock.layer() { const worker = fork render(); TestClock.adjust("30 millis"); Console.log(join worker); const state = Metric.value(renderTime); Console.log(state.count, state.sum, state.min, state.max) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
+// run: provide TestClock.layer() { const worker = fork render(); try TestClock.adjust("30 millis"); try Console.log(join worker); const state = try Metric.value(renderTime); try Console.log(state.count, state.sum, state.min, state.max) }
 const renderTime = Metric.timer("guide_render_duration", {
   boundaries: [5, 20, 50, 100, 500]
 })
 
-function render() {
-  return Effect.trackDuration(() => {
-    sleep("30 millis")
+effect render() {
+  return try trackDuration(effect {
+    try sleep("30 millis")
     return "rendered"
   }, renderTime)
 }
@@ -107,14 +116,15 @@ rendered
 ## Counting categorical events
 
 ```vibe
-// run: Console.log(JSON.stringify(Array.from(recordOutcomes()).sort(([a], [b]) => Order.String(a, b))))
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try stringify(Array.from(try recordOutcomes()).sort(([a], [b]) => Order.String(a, b))))
 const outcomes = Metric.frequency("guide_validation_outcomes")
 
-function recordOutcomes() {
-  Metric.update(outcomes, "accepted")
-  Metric.update(outcomes, "rejected")
-  Metric.update(outcomes, "accepted")
-  return Metric.value(outcomes).occurrences
+effect recordOutcomes() {
+  try Metric.update(outcomes, "accepted")
+  try Metric.update(outcomes, "rejected")
+  try Metric.update(outcomes, "accepted")
+  return (try Metric.value(outcomes)).occurrences
 }
 ```
 
@@ -127,20 +137,21 @@ A frequency metric counts each observed string. Use a bounded set of categories,
 ## Attaching attributes to metrics and regions
 
 ```vibe
-// run: const result = attributed(); Console.log(result.requests.count, result.failures.count); Console.log(Metric.value(apiRequests).count, Metric.value(failures).count)
+// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
+// run: const result = try attributed(); try Console.log(result.requests.count, result.failures.count); try Console.log((try Metric.value(apiRequests)).count, (try Metric.value(failures)).count)
 const apiRequests = Metric.withAttributes(
   Metric.counter("guide_api_requests", { incremental: true }),
   { route: "/reports" }
 )
 const failures = Metric.counter("guide_api_failures", { incremental: true })
 
-function attributed() {
+effect attributed() {
   provide Metric.CurrentMetricAttributes = { environment: "staging" } {
-    Metric.update(apiRequests, 1)
-    Metric.update(failures, 1)
+    try Metric.update(apiRequests, 1)
+    try Metric.update(failures, 1)
     return {
-      requests: Metric.value(apiRequests),
-      failures: Metric.value(failures)
+      requests: try Metric.value(apiRequests),
+      failures: try Metric.value(failures)
     }
   }
 }

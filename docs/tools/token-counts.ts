@@ -25,7 +25,7 @@ const END = "<!-- token-counts: end -->"
 // are not part of the program a reader writes.
 // The docs' "Plain TypeScript … not VibeLang." comments annotate hatch and module bodies for readers;
 // like the snippet directives, they are not program text, so they don't count.
-const DIRECTIVE = /^\s*\/\/ (?:run:|Output:|expect-error:|fragment\b|compiler-gap:|.*\b[Pp]lain TypeScript\b.*\bnot VibeLang\.$)/
+const DIRECTIVE = /^\s*\/\/ (?:run:|Output:|expect-error:|fragment\b|compiler-gap:|pending:|pending-decision:|types:|.*\b[Pp]lain TypeScript\b.*\bnot VibeLang\.$)/
 export const program = (code: string) => code.split("\n").filter(line => !DIRECTIVE.test(line)).join("\n")
 
 export type Pair = { label: string; effect: string[]; vibe: string[] }

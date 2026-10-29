@@ -1,17 +1,18 @@
 # Filters
 
-Filters work as in Effect: they add validation without changing the decoded type, and run after the underlying schema accepts the value. Use synchronous predicates for local checks and effectful getters for checks that need services. Plain builders follow the [trusted call rules](085-introduction.md#configuring-compiler-prerequisites).
+Filters work as in Effect: they add validation without changing the decoded type, and run after the underlying schema accepts the value. Use synchronous predicates for local checks and effectful getters for checks that need services. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Defining predicate-based checks
 
 ```vibe
-// run: Console.log(readShelf("S-12")); try { readShelf("A-12") } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(try readShelf("S-12")); try Effect.catch(readShelf("A-12"), (error) => Console.log(error.message)) })
 const ShelfCode = Schema.String.check(
   Schema.makeFilter((code) => code.startsWith("S-") || "Use an S- shelf code")
 )
 
-function readShelf(input: unknown) {
-  return Schema.decodeUnknownEffect(ShelfCode)(input)
+effect readShelf(input: unknown) {
+  return try Schema.decodeUnknownEffect(ShelfCode)(input)
 }
 ```
 
@@ -27,7 +28,8 @@ Filters keep the original TypeScript type; add a brand to give validated values 
 ## Annotating validation checks
 
 ```vibe
-// run: Console.log(Schema.is(FourDigits)("1234")); try { Schema.decodeUnknownEffect(FourDigits)("abc") } catch (error) { Console.log(error.message) }
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(Schema.is(FourDigits)("1234")); try Effect.catch(Schema.decodeUnknownEffect(FourDigits)("abc"), (error) => Console.log(error.message)) })
 const FourDigits = Schema.String.check(
   Schema.makeFilter((text) => /^\d{4}$/.test(text), {
     expected: "four decimal digits",
@@ -47,7 +49,8 @@ Expected four decimal digits
 ## Assigning issue paths and reporting several issues
 
 ```vibe
-// run: try { validateWindow({ start: 2, end: 1, destination: "" }) } catch (error) { Console.log(error.message) }
+// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Effect.catch(validateWindow({ start: 2, end: 1, destination: "" }), (error) => Console.log(error.message)) })
 const DispatchWindow = Schema.Struct({
   start: Schema.Int,
   end: Schema.Int,
@@ -65,8 +68,8 @@ const DispatchWindow = Schema.Struct({
   })
 )
 
-function validateWindow(input: unknown) {
-  return Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
+effect validateWindow(input: unknown) {
+  return try Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
 }
 ```
 
@@ -82,7 +85,8 @@ Paths are relative to the checked value and can contain keys or array indices. E
 ## Applying built-in constraints
 
 ```vibe
-// run: Console.log(Schema.is(Label)(" ok"), Schema.is(Count)(4), Schema.is(Count)(3), Schema.is(Ratio)(2), Schema.is(Batch)([]), Schema.is(Serial)(1n))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(Schema.is(Label)(" ok"), Schema.is(Count)(4), Schema.is(Count)(3), Schema.is(Ratio)(2), Schema.is(Batch)([]), Schema.is(Serial)(1n)) })
 const Label = Schema.String.check(
   Schema.isMinLength(2), Schema.isMaxLength(40), Schema.isTrimmed()
 )
@@ -103,7 +107,8 @@ String checks include `isNonEmpty`, `isPattern`, `isStartingWith`, `isEndingWith
 Numbers have strict and inclusive lower and upper bounds, `isBetween`, `isInt`, and `isMultipleOf`; bigints have the matching `BigInt` bounds, `isBetweenBigInt` included. Checks only validate: they do not round numbers, change case, or trim strings.
 
 ```vibe
-// run: Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); Console.log(Schema.is(boundedPriceSchema())(BigDecimal.fromStringUnsafe("1.25"))); Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
+// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
+// run: await runPromise(effect { try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25")))); try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31))) })
 const ShipDate = Schema.Date.check(
   Schema.isBetweenDate({
     minimum: new Date("2026-01-01T00:00:00.000Z"),

@@ -5,13 +5,18 @@ A `Queue` passes values between fibers, delivering each offered value to one con
 ## Choosing an overflow strategy
 
 ```vibe
-// run: const queues = chooseQueues(); Console.log(queues.jobs.capacity, queues.optionalEvents.capacity, queues.recentPositions.capacity, queues.unrestricted.capacity)
-function chooseQueues() {
-  const jobs = Queue.bounded<string>(32)
-  const optionalEvents = Queue.dropping<string>(32)
-  const recentPositions = Queue.sliding<number>(32)
-  const unrestricted = Queue.unbounded<string>()
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: const queues = try chooseQueues(); try Console.log(queues.jobs.capacity, queues.optionalEvents.capacity, queues.recentPositions.capacity, queues.unrestricted.capacity)
+effect chooseQueues() {
+  const jobs = try Queue.bounded<string>(32)
+  const optionalEvents = try Queue.dropping<string>(32)
+  const recentPositions = try Queue.sliding<number>(32)
+  const unrestricted = try Queue.unbounded<string>()
   return { jobs, optionalEvents, recentPositions, unrestricted }
+}
+
+effect stringify(value: unknown) {
+  return try Effect.try(() => JSON.stringify(value))
 }
 // Output: 32 32 32 Infinity
 ```
@@ -21,20 +26,21 @@ When full, a bounded queue suspends offers until consumers free space, a droppin
 ## Offering values and batches
 
 ```vibe
-// run: Console.log(JSON.stringify([offerWithBackpressure(), rejectedBatch()]))
-function offerWithBackpressure() {
-  const queue = Queue.bounded<number>(1)
-  queue.offer(10)
-  const secondOffer = fork queue.offer(20)
-  const first = queue.take()
+// pending: VIP-1, VIP-5, VIP-14, VIP-17
+// run: try Console.log(try stringify([try offerWithBackpressure(), try rejectedBatch()]))
+effect offerWithBackpressure() {
+  const queue = try Queue.bounded<number>(1)
+  try Queue.offer(queue, 10)
+  const secondOffer = fork Queue.offer(queue, 20)
+  const first = try Queue.take(queue)
   join secondOffer
-  const second = queue.take()
+  const second = try Queue.take(queue)
   return [first, second] // [10, 20]
 }
 
-function rejectedBatch() {
-  const queue = Queue.dropping<number>(2)
-  return queue.offerAll([10, 20, 30]) // [30]
+effect rejectedBatch() {
+  const queue = try Queue.dropping<number>(2)
+  return try Queue.offerAll(queue, [10, 20, 30]) // [30]
 }
 // Output: [[10,20],[30]]
 ```
@@ -44,15 +50,16 @@ function rejectedBatch() {
 ## Taking, polling, and draining values
 
 ```vibe
-// run: const result = consumeBatches(); Console.log(JSON.stringify([result.first, result.optional.getOrElse(() => 0), result.pair, result.batch, result.empty]))
-function consumeBatches() {
-  const queue = Queue.bounded<number>(8)
-  queue.offerAll([1, 2, 3, 4, 5, 6])
-  const first = queue.take()           // 1
-  const optional = queue.poll()       // Some(2)
-  const pair = queue.takeN(2)        // [3, 4]
-  const batch = queue.takeBetween(1, 4) // [5, 6]
-  const empty = queue.clear()         // []
+// pending: VIP-1, VIP-5, VIP-14
+// run: const result = try consumeBatches(); try Console.log(try stringify([result.first, Option.getOrElse(result.optional, () => 0), result.pair, result.batch, result.empty]))
+effect consumeBatches() {
+  const queue = try Queue.bounded<number>(8)
+  try Queue.offerAll(queue, [1, 2, 3, 4, 5, 6])
+  const first = try Queue.take(queue)            // 1
+  const optional = try Queue.poll(queue)         // Some(2)
+  const pair = try Queue.takeN(queue, 2)          // [3, 4]
+  const batch = try Queue.takeBetween(queue, 1, 4) // [5, 6]
+  const empty = try Queue.clear(queue)           // []
   return { first, optional, pair, batch, empty }
 }
 // Output: [1,2,[3,4],[5,6],[]]
@@ -63,14 +70,15 @@ function consumeBatches() {
 ## Querying queue state
 
 ```vibe
-// run: Console.log(JSON.stringify(inspectQueue()))
-function inspectQueue() {
-  const queue = Queue.bounded<string>(2)
-  queue.offer("task")
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try stringify(try inspectQueue()))
+effect inspectQueue() {
+  const queue = try Queue.bounded<string>(2)
+  try Queue.offer(queue, "task")
   return {
     capacity: queue.capacity,
-    size: queue.size(),
-    full: queue.isFull()
+    size: try Queue.size(queue),
+    full: try Queue.isFull(queue)
   }
 }
 // Returns { capacity: 2, size: 1, full: false }.
@@ -82,27 +90,25 @@ Size counts buffered messages; capacity is the configured limit. Both are observ
 ## Shutting down and awaiting closure
 
 ```vibe
-// run: Console.log(JSON.stringify(finishNormally())); const stopped = stopImmediately(); Console.log(stopped.isFailure() && Cause.hasInterrupts(stopped.cause))
-function finishNormally() {
-  const queue = Queue.bounded<number, Cause.Done>(4)
-  queue.offerAll([7, 8])
-  queue.end()
-  const values = queue.collect()
-  Queue.await(queue)
+// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
+// run: try Console.log(try stringify(try finishNormally())); const stopped = try stopImmediately(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
+effect finishNormally() {
+  const queue = try Queue.bounded<number, Cause.Done>(4)
+  try Queue.offerAll(queue, [7, 8])
+  try Queue.end(queue)
+  const values = try Queue.collect(queue)
+  try Queue.await(queue)
   return values // [7, 8]
 }
 
-function stopImmediately() {
-  const queue = Queue.bounded<number>(4)
-  const waiter = fork {
-    try {
-      Queue.await(queue)
-    } finally {
-      Console.log("queue closed")
-    }
-  }
-  queue.shutdown()
-  return Fiber.await(waiter)
+effect stopImmediately() {
+  const queue = try Queue.bounded<number>(4)
+  const waiter = fork ensuring(
+    Queue.await(queue),
+    Console.log("queue closed")
+  )
+  try Queue.shutdown(queue)
+  return try Fiber.await(waiter)
 }
 // Output: [7,8]
 // Output: queue closed
@@ -111,24 +117,25 @@ function stopImmediately() {
 
 `end` stops new offers and lets buffered values drain before normal completion; `collect` consumes until that completion. `shutdown` discards buffered values at once and interrupts waiting operations. `Queue.await` waits for the terminal state and keeps its outcome, so awaiting a shut-down queue is interrupted; inspect that child with `Fiber.await` instead of propagating it through `join`.
 
-Ordinary block exit doesn't close a queue. When consumers and producers must stop with it, have its owner call shutdown in `finally`.
+Ordinary block exit doesn't close a queue. When consumers and producers must stop with it, have its owner use `ensuring(program, Queue.shutdown(queue))`.
 
 ## Restricting producer and consumer capabilities
 
 ```vibe
-// run: Console.log(handoff())
-function send(outbox: Queue.Enqueue<string>, message: string) {
-  return outbox.offer(message)
+// pending: VIP-1, VIP-5, VIP-14
+// run: try Console.log(try handoff())
+effect send(outbox: Queue.Enqueue<string>, message: string) {
+  return try Queue.offer(outbox, message)
 }
 
-function receive(inbox: Queue.Dequeue<string>) {
-  return inbox.take()
+effect receive(inbox: Queue.Dequeue<string>) {
+  return try Queue.take(inbox)
 }
 
-function handoff() {
-  const queue = Queue.bounded<string>(2)
-  send(queue.asEnqueue(), "ready")
-  return receive(queue.asDequeue())
+effect handoff() {
+  const queue = try Queue.bounded<string>(2)
+  try send(Queue.asEnqueue(queue), "ready")
+  return try receive(Queue.asDequeue(queue))
 }
 // Output: ready
 ```

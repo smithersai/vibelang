@@ -1,0 +1,225 @@
+# Alchemy
+
+[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.0.6 and VibeLang 0.0.11.
+
+The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) and serves (`GET /key`) them, is [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite runs against its VibeLang version and its Effect TypeScript original.
+
+## Install
+
+```sh
+mkdir my-stack && cd my-stack
+bun init -y
+bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.0.6 \
+  @effect/platform-bun@4.0.6 @effect/platform-node@4.0.6 vibelang-runtime@0.0.11
+bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.0.6
+```
+
+The Alchemy CLI refuses to start without `@effect/platform-bun` (`Alchemy could not load the required peer dependency`). Copy `tsconfig.json`, `vitest.config.ts` and `bunfig.toml` from the example; `bunfig.toml` lists the beta's exactly pinned `@alchemy.run/*` and `@distilled.cloud/*` packages, which are younger than the example's minimum release age.
+
+## Errors and matching
+
+An `error` declaration and `throw` replace `Data.TaggedError` and `Effect.fail`, and a `match` in `catch` replaces `Effect.catchTags`. This handler serves notes from a `Map`; the Worker below does the same over an R2 bucket:
+
+```ts effect
+import { Data, Effect } from "effect"
+import { HttpServerRequest, HttpServerResponse } from "effect/http"
+
+export class MissingNote extends Data.TaggedError("MissingNote")<{ readonly key: string }> {}
+
+const notes = new Map<string, string>([["todo", "milk"]])
+
+const read = (key: string) => {
+  const note = notes.get(key)
+  return note === undefined ? Effect.fail(new MissingNote({ key })) : Effect.succeed(note)
+}
+
+export const handle = Effect.gen(function* () {
+  const request = yield* HttpServerRequest.HttpServerRequest
+  const key = new URL(request.url, "http://worker").pathname.slice(1)
+  return HttpServerResponse.text(yield* read(key))
+}).pipe(
+  Effect.catchTags({
+    MissingNote: (error) => Effect.succeed(HttpServerResponse.text(`No note at ${error.key}`, { status: 404 }))
+  })
+)
+```
+
+```vibe
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-33
+export error MissingNote { key: string }
+
+const notes = new Map<string, string>([["todo", "milk"]])
+
+effect read(key: string) {
+  const note = notes.get(key)
+  if (note === undefined) throw new MissingNote({ key })
+  return note
+}
+
+export effect handle() {
+  const request = try HttpServerRequest
+  const url = try sync(() => new URL(request.url, "http://worker"))
+  const key = url.pathname.slice(1)
+  return effect {
+    return HttpServerResponse.text(try read(key))
+  } catch (error) => match (error) {
+    when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 })
+  }
+}
+```
+
+## The Worker and its bucket
+
+Alchemy declares a resource as an Effect value at the module's top level. Store that value directly. Run binding operations with `try`, and use `provide` to supply the binding layer around the Worker's initialization:
+
+```ts effect
+// fragment
+// api.ts
+import * as Cloudflare from "@alchemy.run/cloudflare"
+import { Data, Effect } from "effect"
+import { HttpServerRequest, HttpServerResponse } from "effect/http"
+
+// An R2 bucket of notes, keyed by the request path.
+export const Notes = Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
+
+export class MissingNote extends Data.TaggedError("MissingNote")<{ readonly key: string }> {}
+
+// The Worker's init: binds the bucket, then returns the request handler.
+export const makeApi = Effect.gen(function* () {
+  const bucket = yield* Cloudflare.R2.ReadWriteBucket(Notes)
+
+  const read = (key: string) =>
+    Effect.gen(function* () {
+      const note = yield* bucket.get(key)
+      if (note === null) return yield* Effect.fail(new MissingNote({ key }))
+      return yield* note.text()
+    })
+
+  return {
+    fetch: Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const key = new URL(request.url, "http://worker").pathname.slice(1)
+      if (request.method === "PUT") {
+        yield* bucket.put(key, yield* request.text)
+        return HttpServerResponse.empty({ status: 204 })
+      }
+      return HttpServerResponse.text(yield* read(key))
+    }).pipe(
+      Effect.catchTags({
+        MissingNote: error => Effect.succeed(HttpServerResponse.text(`No note at ${error.key}`, { status: 404 })),
+        R2Error: () => Effect.succeed(HttpServerResponse.text("Storage failed", { status: 502 }))
+      })
+    )
+  }
+})
+
+export default Cloudflare.Worker(
+  "Api",
+  { main: import.meta.url },
+  makeApi.pipe(Effect.provide(Cloudflare.R2.ReadWriteBucketBinding))
+)
+```
+
+```vibe
+// fragment
+// api.vibe
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-13, VIP-14, VIP-33
+import * as Cloudflare from "@alchemy.run/cloudflare"
+
+// An R2 bucket of notes, keyed by the request path. Alchemy declares a
+// resource as an Effect; a .vibe module holds that value without running it.
+export const Notes = Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
+
+export error MissingNote { key: string }
+
+// Initialization binds the bucket and builds the request Effect.
+export effect makeApi() {
+  const bucket = try Cloudflare.R2.ReadWriteBucket(Notes)
+
+  effect read(key: string) {
+    const note = try bucket.get(key)
+    if (note === null) throw new MissingNote({ key })
+    return try note.text()
+  }
+
+  effect handle() {
+    const request = try HttpServerRequest
+    const url = try sync(() => new URL(request.url, "http://worker"))
+    const key = url.pathname.slice(1)
+    return effect {
+      if (request.method === "PUT") {
+        try bucket.put(key, try request.text)
+        return HttpServerResponse.empty({ status: 204 })
+      }
+      return HttpServerResponse.text(try read(key))
+    } catch effect (error) => match (error) {
+      when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 })
+      when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 })
+      default: throw error
+    }
+  }
+
+  const api: Cloudflare.WorkerShape = { fetch: handle() }
+  return api
+}
+
+export default Cloudflare.Worker("Api", { main: import.meta.url }, effect {
+  provide Cloudflare.R2.ReadWriteBucketBinding {
+    return try makeApi()
+  }
+})
+```
+
+Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file, and a `match` arm over such a class covers nothing, so match its tag, `when { _tag: "R2Error" }:`.
+
+## The stack
+
+```ts effect
+// fragment
+export default Alchemy.Stack(
+  "NotesStack",
+  { providers: Cloudflare.providers(), state: Cloudflare.state() },
+  Effect.gen(function* () {
+    const api = yield* Api
+    return { url: api.url }
+  })
+)
+```
+
+```vibe
+// pending: VIP-2, VIP-5
+// fragment
+export default Alchemy.Stack(
+  "NotesStack",
+  { providers: Cloudflare.providers(), state: Cloudflare.state() },
+  effect {
+    const api = try Api
+    return { url: api.url }
+  }
+)
+```
+
+## Test without an account
+
+```sh
+bun run test
+```
+
+```out
+$ vibelang -p tsconfig.json --noEmit && vitest run
+
+ ✓ test/api.test.ts (4 tests) 20ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+```
+
+The test needs no Cloudflare account, credentials or network. It provides the `Cloudflare.R2.ReadWriteBucket` binding with an in-memory bucket and an empty Alchemy `Stack` service, which `Cloudflare.R2.Bucket` reads, then sends `PUT /todo`, `GET /todo` and `GET /other` and expects 204, `milk`, and 404 `No note at other`.
+
+## Deploying
+
+Deploying `.vibe` sources with Alchemy is not supported yet: Alchemy imports `alchemy.run.ts` and bundles the Worker's `main` itself, and neither path loads `.vibe` files. `alchemy plan` and `alchemy deploy` also need a configured Cloudflare profile; without one, plan stops with `Provider 'Cloudflare' is not configured in profile 'default'`. Until a deploy is verified, use the stack's code and the credential-free test above.
+
+## Migrating Alchemy code
+
+The [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack/pairs) are two excerpts from VibeLang's migration of Alchemy's `Telemetry.ts`. [Add VibeLang to an existing project](../setup/existing-project.md) covers porting an Effect file with `vibelang --fix`.

@@ -5,7 +5,8 @@
 ## Representing decimal values
 
 ```vibe
-// run: Console.log(BigDecimal.format(unitPrice)); Console.log(BigDecimal.format(bulkPrice))
+// pending: VIP-5, VIP-14
+// run: try Console.log(BigDecimal.format(unitPrice)); try Console.log(BigDecimal.format(bulkPrice))
 const unitPrice = BigDecimal.make(875n, 2)
 const bulkPrice = BigDecimal.make(875n, -1)
 BigDecimal.format(unitPrice) // "8.75"
@@ -22,14 +23,15 @@ A value is an integer coefficient and a scale, meaning coefficient × 10^-scale:
 ## Constructing decimals
 
 ```vibe
-// run: Console.log(parsed.isSome(), invalid.isNone(), BigDecimal.format(whole), fromNumber.isSome())
+// pending: VIP-5, VIP-14
+// run: try Console.log(Option.isSome(parsed), Option.isNone(invalid), BigDecimal.format(whole), Option.isSome(fromNumber))
 const whole = BigDecimal.fromBigInt(42n)
 const parsed = BigDecimal.fromString("18.625")
 const invalid = BigDecimal.fromString("eighteen")
 const fromNumber = BigDecimal.fromNumber(2.5)
 
-parsed.isSome() // true
-invalid.isNone() // true
+Option.isSome(parsed) // true
+Option.isNone(invalid) // true
 BigDecimal.format(whole) // "42"
 ```
 
@@ -42,12 +44,13 @@ true true 42 true
 ## Safe and unsafe constructors
 
 ```vibe
-// run: Console.log(BigDecimal.format(parsePrice("18.625")), BigDecimal.format(fixedRate)); try { parsePrice("invalid") } catch (error) { Console.log(error._tag, error.input) }
+// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
+// run: try Console.log(BigDecimal.format(try parsePrice("18.625")), BigDecimal.format(fixedRate)); try Console.log(parsePrice("invalid") catch (error) => `${error._tag} ${error.input}`)
 error InvalidPrice {
   input: string
 }
 
-function parsePrice(input: string) {
+effect parsePrice(input: string) {
   return match (BigDecimal.fromString(input)) {
     when Option.Some(let price): price;
     when Option.None: throw new InvalidPrice({ input });
@@ -68,17 +71,18 @@ InvalidPrice invalid
 ## Performing arithmetic
 
 ```vibe
-// run: Console.log(JSON.stringify([BigDecimal.format(total), BigDecimal.format(total.sum(discount)), total.divide(quantity).map(BigDecimal.format).getOrNull(), total.remainder(quantity).map(BigDecimal.format).getOrNull(), BigDecimal.sign(BigDecimal.negate(total)), BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total)))]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([BigDecimal.format(total), BigDecimal.format(BigDecimal.sum(total, discount)), Option.getOrNull(Option.map(BigDecimal.divide(total, quantity), BigDecimal.format)), Option.getOrNull(Option.map(BigDecimal.remainder(total, quantity), BigDecimal.format)), BigDecimal.sign(BigDecimal.negate(total)), BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total)))]))
 const price = BigDecimal.make(875n, 2)
 const quantity = BigDecimal.fromBigInt(4n)
-const subtotal = price.multiply(quantity)
+const subtotal = BigDecimal.multiply(price, quantity)
 const discount = BigDecimal.make(250n, 2)
-const total = subtotal.subtract(discount)
+const total = BigDecimal.subtract(subtotal, discount)
 
 BigDecimal.format(total) // "32.5"
-BigDecimal.format(total.sum(discount)) // "35"
-total.divide(quantity) // Some containing 8.125
-total.remainder(quantity) // Some containing 0.5
+BigDecimal.format(BigDecimal.sum(total, discount)) // "35"
+BigDecimal.divide(total, quantity) // Some containing 8.125
+BigDecimal.remainder(total, quantity) // Some containing 0.5
 BigDecimal.sign(BigDecimal.negate(total)) // -1
 BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total))) // "32.5"
 ```
@@ -92,16 +96,17 @@ BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total))) // "32.5"
 ## Comparing values
 
 ```vibe
-// run: Console.log(JSON.stringify([amount.isLessThan(limit), amount.isLessThanOrEqualTo(amount), limit.isGreaterThan(amount), limit.isGreaterThanOrEqualTo(limit), BigDecimal.format(amount.min(limit)), BigDecimal.format(amount.max(limit)), amount.between({ minimum: BigDecimal.fromBigInt(0n), maximum: limit }), BigDecimal.isZero(amount), BigDecimal.isPositive(amount), BigDecimal.isNegative(amount), BigDecimal.isInteger(amount)]))
+// pending: VIP-5, VIP-14
+// run: try Console.log(JSON.stringify([BigDecimal.isLessThan(amount, limit), BigDecimal.isLessThanOrEqualTo(amount, amount), BigDecimal.isGreaterThan(limit, amount), BigDecimal.isGreaterThanOrEqualTo(limit, limit), BigDecimal.format(BigDecimal.min(amount, limit)), BigDecimal.format(BigDecimal.max(amount, limit)), BigDecimal.between(amount, { minimum: BigDecimal.fromBigInt(0n), maximum: limit }), BigDecimal.isZero(amount), BigDecimal.isPositive(amount), BigDecimal.isNegative(amount), BigDecimal.isInteger(amount)]))
 const amount = BigDecimal.make(325n, 1)
 const limit = BigDecimal.fromBigInt(40n)
-amount.isLessThan(limit) // true
-amount.isLessThanOrEqualTo(amount) // true
-limit.isGreaterThan(amount) // true
-limit.isGreaterThanOrEqualTo(limit) // true
-amount.min(limit) // amount
-amount.max(limit) // limit
-amount.between({
+BigDecimal.isLessThan(amount, limit) // true
+BigDecimal.isLessThanOrEqualTo(amount, amount) // true
+BigDecimal.isGreaterThan(limit, amount) // true
+BigDecimal.isGreaterThanOrEqualTo(limit, limit) // true
+BigDecimal.min(amount, limit) // amount
+BigDecimal.max(amount, limit) // limit
+BigDecimal.between(amount, {
   minimum: BigDecimal.fromBigInt(0n), maximum: limit
 }) // true
 BigDecimal.isZero(amount) // false
@@ -119,10 +124,11 @@ Compare decimals directly, not as numbers. `between` bounds are inclusive. The s
 ## Normalization and equality
 
 ```vibe
-// run: Console.log(padded.equals(BigDecimal.make(875n, 2)), BigDecimal.format(compact), BigDecimal.toExponential(compact))
+// pending: VIP-5, VIP-14
+// run: try Console.log(BigDecimal.equals(padded, BigDecimal.make(875n, 2)), BigDecimal.format(compact), BigDecimal.toExponential(compact))
 const padded = BigDecimal.make(87500n, 4)
-const compact = padded.normalize()
-padded.equals(BigDecimal.make(875n, 2)) // true
+const compact = BigDecimal.normalize(padded)
+BigDecimal.equals(padded, BigDecimal.make(875n, 2)) // true
 BigDecimal.format(compact) // "8.75"
 BigDecimal.toExponential(compact) // "8.75e+0"
 ```

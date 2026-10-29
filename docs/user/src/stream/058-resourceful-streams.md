@@ -5,19 +5,23 @@ A stream can hold a connection, file, or subscription open while its elements ar
 ## Acquiring for the stream lifetime
 
 ```vibe
-// run: Console.log(JSON.stringify(readLines()))
-function openReader() {
-  Console.log("reader opened")
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try readLines(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+effect openReader() {
+  try Console.log("reader opened")
   return { lines: ["header", "entry-a", "entry-b"] }
 }
 
-const lines = ((Stream.fromEffect(Effect.acquireRelease(
-      () => openReader(),
-      () => Console.log("reader closed")
-    ))).flatMap((reader) => Stream.fromArray(reader.lines))).scoped()
+const lines = Stream.fromEffect(acquireRelease(
+  openReader(),
+  () => Console.log("reader closed")
+)).pipe(
+  Stream.flatMap((reader) => Stream.fromArray(reader.lines)),
+  Stream.scoped
+)
 
-function readLines() {
-  return lines.runCollect()
+effect readLines() {
+  return try Stream.runCollect(lines)
 }
 // Output: reader opened
 // Output: reader closed
@@ -29,19 +33,21 @@ function readLines() {
 ## Release after stopping or interruption
 
 ```vibe
-// run: Console.log(JSON.stringify(readHeader())); try { readWithDeadline() } catch (error) { Console.log(error._tag) }
-function readHeader() {
-  return lines.take(1).runCollect()
+// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(readWithDeadline()); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
+effect readHeader() {
+  return try Stream.runCollect(Stream.take(lines, 1))
 }
 // Returns ["header"] and closes the reader.
 
-function readWithDeadline() {
-  return timeout(() => {
-    lines.runForEach((line) => {
-      sleep("1 second")
-      Console.log(line)
-    })
-  }, "100 millis")
+effect readWithDeadline() {
+  return try timeout(
+    Stream.runForEach(lines, effect (line) => {
+      try sleep("1 second")
+      try Console.log(line)
+    }),
+    "100 millis"
+  )
 }
 // Output: reader opened
 // Output: reader closed
@@ -51,19 +57,20 @@ function readWithDeadline() {
 // Output: TimeoutError
 ```
 
-The timeout interrupts consumption and waits for release before reporting failure. A `using` acquisition in a function that only returns a Stream closes when that function returns, so acquire inside the stream, without `using`: that acquisition belongs to the supplied Scope, as this lifetime requires.
+The timeout interrupts consumption and waits for release before reporting failure. A `scoped(effect { … })` that acquires a resource and only returns a Stream closes when its Effect completes, so acquire inside the stream: that acquisition belongs to the supplied Scope, as this lifetime requires.
 
 ## Registering finalizers
 
 ```vibe
-// run: Console.log(JSON.stringify(readAudited()))
-const audited = lines.ensuring {
-  Console.log("reader resources released")
-  Console.log("consumption finished")
-}
+// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
+// run: { const jsonValue = try readAudited(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+const audited = Stream.ensuring(lines, effect {
+  try Console.log("reader resources released")
+  try Console.log("consumption finished")
+})
 
-function readAudited() {
-  return audited.runCollect()
+effect readAudited() {
+  return try Stream.runCollect(audited)
 }
 // Output: reader opened
 // Output: reader closed
@@ -72,9 +79,9 @@ function readAudited() {
 // Output: ["header","entry-a","entry-b"]
 ```
 
-`ensuring` runs its program after the wrapped stream's own finalizers, on every exit. Pass a program so the logging runs at finalization, not construction. The finalizer's expected error channel must be `never`, so handle expected cleanup errors inside it; cleanup defects stay in the reported cause.
+`Stream.ensuring` runs its Effect after the wrapped stream's own finalizers, on every exit. Pass an `effect { }` block so the logging runs at finalization, not construction. The finalizer's expected error channel must be `never`, so handle expected cleanup errors inside it; cleanup defects stay in the reported cause.
 
 ## Coming from Effect
 
 - Keep `Stream.scoped`, `Stream.fromEffect`, and `Stream.ensuring` as stream lifetime operators.
-- Use `using` for resources the consuming block owns. Acquire resources the stream owns in its resource program, without `using`.
+- Use `try scoped(effect { … })` for Effect resources the consuming operation owns. Acquire resources the stream owns in the Effect passed to `Stream.fromEffect`.

@@ -18,7 +18,7 @@ sameLabel("inbox", "archive") // false
 // Output: [true,false]
 ```
 
-An `Equivalence<A>` is a synchronous function from two A values to a boolean. A sound relation is reflexive, symmetric, and transitive. Keep it free of service calls and expected failures so Effect can call it as a plain JavaScript callback.
+An `Equivalence.Equivalence<A>` is a synchronous function from two A values to a boolean. A sound relation is reflexive, symmetric, and transitive. Keep it free of service calls and expected failures so Effect can call it as a plain JavaScript callback.
 
 ## Choosing built-in relations
 
