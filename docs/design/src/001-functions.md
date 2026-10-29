@@ -51,7 +51,7 @@ const loadAll = (ids: string[]) => ids.map(effect function (id) { return try fet
 
 class Users {
   effect find(id: string) { return try fetchUser(id) }
-  async load(url: string) { return await fetch(url) }
+  async load(q: string) { return await queryDb(q) }
 }
 ```
 
@@ -63,7 +63,7 @@ const loadAll = (ids: string[]) => ids.map(function (id) { return Effect.gen(fun
 
 class Users {
   find(id: string) { return Effect.gen(function* () { return yield* fetchUser(id) }) }
-  async load(url: string) { return await fetch(url) }
+  async load(q: string) { return await queryDb(q) }
 }
 ```
 
@@ -120,7 +120,7 @@ An `effect` function's return type is an Effect, as an `async` function's is a P
 // compiler-gap: pending VIP-1
 effect function load(id: string): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
 effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
-async function get(url: string): Promise<Response> { return await fetch(url) }                 // as in TypeScript
+async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
 
 An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them.
@@ -131,8 +131,10 @@ No construct converts between the two. Effect's own functions do, as [VIP-6](../
 
 | From | To | Write |
 | --- | --- | --- |
-| a Promise, in an `effect` function | an Effect | `try tryPromise(() => fetch(url))` or `try promise(() => p)` |
+| a Promise, in an `effect` function | an Effect | `try tryPromise(() => queryDb(q))` or `try promise(() => p)` |
 | an Effect, in an `async` function | a Promise | `await runPromise(load(id))` |
+
+In these examples `queryDb` is a Promise-returning function imported from a `.ts` module. A platform call such as `fetch` can't appear in a `.vibe` file at all, wrapped or not ([Services](005-services.md#the-platform-standard-library)).
 
 ## The `A!E!R` type shorthand
 

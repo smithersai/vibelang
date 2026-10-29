@@ -158,8 +158,8 @@ No language feature wraps TypeScript into an Effect. Effect's own functions do (
 
 ```vibe es
 // compiler-gap: pending VIP-6
-effect function fetchJson(url: string, s: string) {
-  const r = try tryPromise((signal) => fetch(url, { signal }))
+effect function lookup(q: string, s: string) {
+  const r = try tryPromise((signal) => queryDb(q, { signal }))   // queryDb is from a .ts module
   const n = try sync(() => Date.now())
   try sleep("1 second")
   const d = try Effect.try(() => JSON.parse(s))
@@ -169,9 +169,9 @@ effect function fetchJson(url: string, s: string) {
 
 ```ts effect
 // fragment
-function fetchJson(url: string, s: string) {
+function lookup(q: string, s: string) {
   return Effect.gen(function* () {
-    const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
+    const r = yield* Effect.tryPromise((signal) => queryDb(q, { signal }))
     const n = yield* Effect.sync(() => Date.now())
     yield* Effect.sleep("1 second")
     const d = yield* Effect.try(() => JSON.parse(s))
@@ -201,28 +201,55 @@ const first = Effect.Array.head([1, 2])        // JavaScript's Array keeps the b
 const o = Option.some(1)                       // Effect's Option: the DOM's Option is platform-specific
 ```
 
+```ts effect
+// fragment
+import * as Schema from "effect/Schema"
+import * as Array$ from "effect/Array"
+import * as Option from "effect/Option"
+const Port = Schema.Number
+const first = Array$.head([1, 2])
+const o = Option.some(1)
+```
+
+`Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`.
+
 ## The platform standard library
 
-1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`). Code that needs them lives in a `.ts` file, which is the escape ([VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules).
+1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
 3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with the precedence above.
 
 ```vibe es
 // compiler-gap: pending VIP-33
 effect function readConfig(path: string) {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
 }
 effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
+effect function page(url: string) {
+  return try tryPromise(() => fetch(url))            // error: a platform call, even inside tryPromise
+}
 ```
 
-There is no `Path.join(…)` shorthand for a service member; write `(try Path).join(…)`. The entry point provides nothing automatically ([Functions](001-functions.md#modules-and-the-top-level)).
+```ts effect
+// fragment
+import * as FileSystem from "effect/FileSystem"
+function readConfig(path: string) {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    return yield* fs.readFileString(path)
+  })
+}
+```
+
+A module is a namespace, not a service key. `try FileSystem` runs the namespace, which is not an Effect, so it is the error for `try` on a value that is not an Effect; in effect 4.1.0, `yield*` of the namespace is a defect. There is no `Path.join(…)` shorthand for a service member; write `(try Path.Path).join(…)`. The entry point provides nothing automatically ([Functions](001-functions.md#modules-and-the-top-level)).
 
 | Rule | Diagnostic |
 | --- | --- |
-| a `node:*` value import in a `.vibe` file | code pending |
-| a Node global (`process`, `Buffer`) in a `.vibe` file | code pending |
+| a `node:*` value import in a `.vibe` file | EK4402 |
+| a Node global (`process`, `Buffer`) in a `.vibe` file | EK4402 |
+| a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
 
-**Undecided (pending VIP):** the full list of Node globals the rule covers, and whether `import type` from `node:*` is allowed.
+**Undecided (pending VIP):** whether a bare module name at a `try` site, `try FileSystem`, means the module's service key, as VIP-33's first example wrote it; the full list of Node globals and web platform globals the rule covers; and whether `import type` from `node:*` is allowed.

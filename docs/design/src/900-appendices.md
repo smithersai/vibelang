@@ -67,7 +67,7 @@ Variant           = Name ("{" Fields "}")?
 
 ## Appendix B. Diagnostics
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). The VIPs assign these codes:
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). These codes are assigned, each one already in the compiler's registry:
 
 | Code | Rule | VIP |
 | --- | --- | --- |
@@ -76,6 +76,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | EK3003 | `new` on a service | 9 |
 | EK3004 | `instanceof` a service | 9 |
 | EK3005 | a generic service | 9 |
+| EK4402 | a `node:*` value import, a Node global or a platform call in a `.vibe` file | 33 |
 
 **Undecided (pending VIP):** the codes of every other rule in this specification, each marked "code pending" where it is defined:
 
@@ -92,7 +93,6 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | a constructor, `_tag` or `extends` in an `error` or `schema error` declaration | [Failures](003-failures.md#error-declarations) |
 | a `match` that is not exhaustive | [Pattern matching](004-match.md#exhaustiveness) |
 | a `schema` field type outside the mapping; a `data` declaration with more than 4 type parameters | [Data](006-data.md) |
-| a `node:*` value import or a Node global in a `.vibe` file | [Services](005-services.md#the-platform-standard-library) |
 
 The compiler's current registry (`typescript/tsc/internal/vibelang/diagnostics.go`) still carries the old language's codes, documented in `docs/design/history/src/428-part4-ch28-tooling.md`. It is not normative.
 

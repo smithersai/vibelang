@@ -58,11 +58,11 @@ A plain or `async` function may call a function that may throw, and then may thr
 function parse(s: string) { if (!s) throw new Error("empty"); return s }   // may throw Error (inferred)
 function add(a: number, b: number) { return a + b }                         // doesn't throw
 
-effect function load(s: string, url: string) {
+effect function load(s: string, q: string) {
   add(1, 2)                                      // ok: doesn't throw
   parse(s)                                       // error: may throw
   const p = try Effect.try(() => parse(s))       // ok
-  const r = try tryPromise(() => fetch(url))     // a Promise is always wrapped
+  const r = try tryPromise(() => queryDb(q))     // a Promise is always wrapped; queryDb is from a .ts module
   return [p, r]
 }
 ```
