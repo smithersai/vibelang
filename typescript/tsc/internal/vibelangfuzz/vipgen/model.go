@@ -49,6 +49,9 @@ type Construct struct {
 	// Declare, when set, prints a function: the construct is a form of
 	// function declaration (VIP-1), and a program needs one for main.
 	Declare func(f *Func) Node
+	// Plain is set for a construct of plain programs (Program.Plain), which
+	// uses only plain code and requires only plain constructs.
+	Plain bool
 }
 
 // A Citation ties a construct's reference to a VIP's words. Template is the
@@ -158,13 +161,22 @@ type Func struct {
 	Body   []Stmt
 	Export bool
 	Void   bool
-	// Form is the construct that declares the function.
+	// Form is the construct that declares the function, or nil for a plain
+	// program's plain main.
 	Form *Construct
 }
 
 // A Program is one generated module. It exports main, which takes nothing;
 // the helpers are declared before it and call only helpers declared before
 // themselves, so no program recurses.
+//
+// A program has one of two forms. An effect program's functions are
+// declared by an effect construct, such as VIP-1's effect function. A plain
+// program's main is a plain function (VIP-1: a function with neither keyword
+// is "plain JavaScript"), `export function main() { …; return
+// Effect.succeed(v) }` in both prints, with no helpers: its statements are
+// plain code, so it compares the constructs that work there, such as VIP-23's
+// pipe on numbers, before the compiler has VIP-1's declarations.
 type Program struct {
 	// Decls are the module's declarations, such as error and data
 	// declarations (VIP-13, VIP-16), printed before its functions.
@@ -180,6 +192,8 @@ type Program struct {
 	// Modules holds the other modules of effect the reference names, true
 	// for those the VibeLang print names too.
 	Modules map[string]bool
+	// Plain is set for a plain program, whose main runs its body when called.
+	Plain bool
 }
 
 // UsedKeys returns the program's constructs, in key order.
@@ -253,7 +267,11 @@ func printFuncs(w *Writer, p *Program) {
 	}
 	for _, f := range p.Funcs {
 		w.Line("")
-		w.Node(f.Form.Declare(f))
+		if f.Form == nil {
+			w.Node(&PlainFunction{Func: f})
+		} else {
+			w.Node(f.Form.Declare(f))
+		}
 		w.Line("")
 	}
 }

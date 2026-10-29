@@ -18,23 +18,10 @@ import "fmt"
 
 func init() {
 	Register(&Construct{
-		Key:      "vip23.pipe",
-		VIP:      23,
-		Requires: []string{"vip01.effect-function", "vip05.try"},
-		Citations: []Citation{
-			{
-				VIP:      23,
-				Template: "const ‹t1› = ‹head› const ‹t2› = ‹f›(‹t1›) const ‹n› = ‹g›(‹t2›)",
-				Quote:    "Its Effect TS is nested calls, with each topic evaluated once into a temporary: `const t1 = fetchUser(id); const t2 = retry(t1, policy); const n = timeout(t2, \"1 second\")`.",
-				Reading:  "VIP-23 states its Effect TS in its decision's prose, not in a code block. The suite prints each temporary on its own line, without semicolons.",
-			},
-			{
-				VIP:      23,
-				Template: "const ‹t1› = ‹head› const ‹t2› = Math.max(‹t1›, ‹t1›)",
-				Quote:    "`%` is the topic: the left side's value, evaluated once. The topic-versus-modulo grammar is TC39's, unchanged.",
-				Reading:  "VIP-23 shows no topic named twice. A stage that names % twice names its one temporary twice, so a head that logs logs once.",
-			},
-		},
+		Key:       "vip23.pipe",
+		VIP:       23,
+		Requires:  []string{"vip01.effect-function", "vip05.try"},
+		Citations: pipeCitations,
 		// The probe's head logs, its first stage names the topic twice, and
 		// its second builds an Effect, which the next statement runs: the
 		// log holds the head's event once, and main succeeds with 2.
@@ -81,6 +68,77 @@ func init() {
 			return &Seq{Stmts: []Stmt{p, &Const{Name: v, Value: &Try{X: &Ref{Name: p.Name}}}}}
 		},
 	})
+	// The plain form pipes numbers through plain stages only, so a plain
+	// program compares it before VIP-1's effect functions compile.
+	Register(&Construct{
+		Key:       "vip23.pipe-plain",
+		VIP:       23,
+		Plain:     true,
+		Citations: pipeCitations,
+		// The probe's head logs, its first stage names the topic twice, and
+		// its second is Math.max with a literal: the log holds the head's
+		// event once, and main succeeds with 3.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			p := &Pipe{Name: g.Name("n"), Head: &Logged{Label: g.Label(), Value: &Num{Value: 2}}}
+			t0 := g.Name("t")
+			p.Temps = append(p.Temps, t0)
+			p.Stages = append(p.Stages, &ModCall{Mod: "Math", Fn: "max", Args: []Expr{&Topic{Temp: t0}, &Topic{Temp: t0}}})
+			t1 := g.Name("t")
+			p.Temps = append(p.Temps, t1)
+			p.Stages = append(p.Stages, &ModCall{Mod: "Math", Fn: "max", Args: []Expr{&Topic{Temp: t1}, &Num{Value: 3}}})
+			s.Locals = append(s.Locals, p.Name)
+			return []Stmt{p}
+		},
+		Stmt: func(g *Gen, s *Scope) Stmt {
+			p := &Pipe{Name: g.Name("n"), Head: g.Num(s)}
+			if g.Chance(2) {
+				p.Head = &Logged{Label: g.Label(), Value: p.Head}
+			}
+			for range 1 + g.Intn(3) {
+				t := g.Name("t")
+				p.Temps = append(p.Temps, t)
+				stage := g.plainPipeStage(s, t)
+				if g.Chance(4) {
+					stage = &Logged{Label: g.Label(), Value: stage}
+				}
+				p.Stages = append(p.Stages, stage)
+			}
+			s.Locals = append(s.Locals, p.Name)
+			return p
+		},
+	})
+}
+
+// pipeCitations are the citations of both pipe constructs.
+var pipeCitations = []Citation{
+	{
+		VIP:      23,
+		Template: "const ‹t1› = ‹head› const ‹t2› = ‹f›(‹t1›) const ‹n› = ‹g›(‹t2›)",
+		Quote:    "Its Effect TS is nested calls, with each topic evaluated once into a temporary: `const t1 = fetchUser(id); const t2 = retry(t1, policy); const n = timeout(t2, \"1 second\")`.",
+		Reading:  "VIP-23 states its Effect TS in its decision's prose, not in a code block. The suite prints each temporary on its own line, without semicolons.",
+	},
+	{
+		VIP:      23,
+		Template: "const ‹t1› = ‹head› const ‹t2› = Math.max(‹t1›, ‹t1›)",
+		Quote:    "`%` is the topic: the left side's value, evaluated once. The topic-versus-modulo grammar is TC39's, unchanged.",
+		Reading:  "VIP-23 shows no topic named twice. A stage that names % twice names its one temporary twice, so a head that logs logs once.",
+	},
+}
+
+// plainPipeStage writes a plain stage whose topic is the temporary t, which
+// holds a number: Math.max or Math.min of it, which VIP-4 knows do not throw,
+// or a sum with it.
+func (g *Gen) plainPipeStage(s *Scope, t string) Expr {
+	topic := &Topic{Temp: t}
+	switch g.Intn(4) {
+	case 1:
+		return &ModCall{Mod: "Math", Fn: "max", Args: []Expr{topic, g.Num(s)}}
+	case 2:
+		return &ModCall{Mod: "Math", Fn: "min", Args: []Expr{topic, g.Num(s)}}
+	case 3:
+		return &Add{A: topic, B: g.Num(s)}
+	}
+	return &ModCall{Mod: "Math", Fn: "max", Args: []Expr{topic, topic}}
 }
 
 // pipeStage writes a stage whose topic is the temporary t, which holds a

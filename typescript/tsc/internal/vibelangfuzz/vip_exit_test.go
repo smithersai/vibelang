@@ -61,7 +61,10 @@ func TestVIPExitEncoding(t *testing.T) {
 		"sleep": {`export const main = () => Effect.sleep(5).pipe(Effect.andThen(Effect.sync(() => ev("late"))), Effect.as(1))`, "exit", `{"_tag":"Success","value":1}`},
 		"never": {`export const main = () => Effect.never`, "stuck", ``},
 		"hot":   {`export const main = () => { ev("hot"); return Effect.void }`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
-		"plain": {`export const main = () => 1`, "plain", `{"_tag":"Success","value":1}`},
+		// A plain program's main logs when called, and its Effect logs too.
+		"hot-later": {`export const main = () => { ev("hot"); return Effect.sync(() => ev("later")) }`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
+		"later":     {`export const main = () => Effect.sync(() => { ev("hot"); ev("later") })`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
+		"plain":     {`export const main = () => 1`, "plain", `{"_tag":"Success","value":1}`},
 	}
 	got := map[string]VIPOutcome{}
 	for name, m := range modules {
@@ -100,6 +103,8 @@ func TestVIPExitEncoding(t *testing.T) {
 		{"die", "ensuring", "reasons"},
 		{"fail-a", "interrupt", "reason-tags"},
 		{"undefined", "hot", "cold"},
+		{"hot-later", "hot-later", ""},
+		{"hot-later", "later", "called"},
 		{"success", "never", "kind"},
 		{"plain", "success", "kind"},
 	} {
@@ -163,18 +168,23 @@ func TestVIPCanonicalExit(t *testing.T) {
 func TestVIPReferenceDeterminism(t *testing.T) {
 	env := newVIPEnv(t)
 	counter := `export const main = () => Effect.sync(() => { globalThis.vipRuns = (globalThis.vipRuns ?? 0) + 1; return globalThis.vipRuns })`
-	err := vipReferenceStable(env.runVIPModule(t, "counter-1", counter), env.runVIPModule(t, "counter-2", counter))
+	err := vipReferenceStable(env.runVIPModule(t, "counter-1", counter), env.runVIPModule(t, "counter-2", counter), true)
 	if err == nil || !strings.Contains(err.Error(), "differs across two runs") {
 		t.Errorf("a reference that counts its runs: %v", err)
 	}
 	stable := `export const main = () => Effect.sync(() => { ev("x"); return 1 })`
-	if err := vipReferenceStable(env.runVIPModule(t, "stable-1", stable), env.runVIPModule(t, "stable-2", stable)); err != nil {
+	if err := vipReferenceStable(env.runVIPModule(t, "stable-1", stable), env.runVIPModule(t, "stable-2", stable), true); err != nil {
 		t.Errorf("a deterministic reference: %v", err)
 	}
-	if err := vipReferenceStable(env.runVIPModule(t, "hot-ref", `export const main = () => { ev("x"); return Effect.void }`), VIPOutcome{}); err == nil {
-		t.Error("a reference whose main() runs when called is accepted")
+	hot := `export const main = () => { ev("x"); return Effect.void }`
+	if err := vipReferenceStable(env.runVIPModule(t, "hot-ref", hot), VIPOutcome{}, true); err == nil {
+		t.Error("an effect program's reference whose main() runs when called is accepted")
 	}
-	if err := vipReferenceStable(env.runVIPModule(t, "never-ref", `export const main = () => Effect.never`), VIPOutcome{}); err == nil {
+	// A plain program's main runs its body when called.
+	if err := vipReferenceStable(env.runVIPModule(t, "hot-plain-1", hot), env.runVIPModule(t, "hot-plain-2", hot), false); err != nil {
+		t.Errorf("a plain program's reference: %v", err)
+	}
+	if err := vipReferenceStable(env.runVIPModule(t, "never-ref", `export const main = () => Effect.never`), VIPOutcome{}, true); err == nil {
 		t.Error("a reference that never ends is accepted")
 	}
 }

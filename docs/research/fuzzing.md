@@ -256,6 +256,8 @@ The target generates VIP-1 effect functions, VIP-2 effect blocks, VIP-4 throw, V
 
 The designs' probes found VIP-21's `Stream.callback` never ending its queue and VIP-18 not stating `allSettled`'s lowering; both VIPs now state them (`Queue.end`, and `Effect.all(xs.map(Effect.exit), { concurrency: "unbounded" })`). Where a VIP states its Effect TS only in prose or a table, as VIP-5's `catch` and VIP-7's `match` do, the construct carries a `Reading` that `TestVIPTemplatesCited` lists. Runs stay deterministic: forks synchronize through `Deferred` gates, a held child signals ready from inside its `ensuring` (a child interrupted before it reaches `ensuring` registers no finalizer), and the elements of a `try` operation wait on distinct virtual deadlines.
 
+A program has one of two forms. An effect program's main is `export effect function main()`. A plain program's main is a plain function, `export function main() { … return Effect.succeed(v) }`, the same text in both prints, built only from constructs that work in plain code: the pipe operator, `match`, data, generic data and error classes, each a `-plain` key. Plain programs are compared before VIP-1's declaration form is implemented. Their first comparison (2026-10-29) agreed on every Exit and event, and found one VIP-1 gap: the compiler still infers a plain `main` to be an Effect function, so calling it runs nothing (`exit:called`, pending under lane vip-core2). Only effect programs are checked for coldness; a plain main runs its body when called, and the `called` aspect compares what that call logs.
+
 ## How to run
 
 ```sh

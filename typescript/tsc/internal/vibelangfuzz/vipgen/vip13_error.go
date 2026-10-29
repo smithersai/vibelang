@@ -1,6 +1,9 @@
 package vipgen
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // VIP-13: `error` declarations. "`error Name { fields }` declares exactly
 // Effect's `Data.TaggedError` class. The tag is always the name, and every
@@ -18,24 +21,12 @@ func init() {
 		Key:      "vip13.error",
 		VIP:      13,
 		Requires: []string{"vip01.effect-function", "vip04.throw", "vip05.try"},
-		Citations: []Citation{
-			{
-				VIP:      13,
-				Template: `class ‹Name› extends Data.TaggedError(‹"Name"›) {}`,
-				Quote:    "`error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly.",
-			},
-			{
-				VIP:      13,
-				Template: "new ‹Name›({ ‹fields› })",
-				Quote:    "throw new NotFound({ id })                      // in an effect function: fails with NotFound",
-			},
-			{
-				VIP:      5,
-				Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f(e)›))",
-				Quote:    "`x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))`",
-				Reading:  "VIP-5 states this Effect TS in its decision's table, not in a code block; yield* runs the Effect, since `e catch y` \"runs `e`\" inside an effect function.",
-			},
-		},
+		Citations: append(slices.Clone(errorCitations), Citation{
+			VIP:      5,
+			Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f(e)›))",
+			Quote:    "`x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))`",
+			Reading:  "VIP-5 states this Effect TS in its decision's table, not in a code block; yield* runs the Effect, since `e catch y` \"runs `e`\" inside an effect function.",
+		}),
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			oops0, oops1 := newErrorDecl(g, true), newErrorDecl(g, false)
@@ -64,6 +55,62 @@ func init() {
 			return x
 		},
 	})
+	// The plain form builds error instances in a plain program and reads
+	// their fields and _tag, and never throws one, so it is compared before
+	// VIP-1's effect functions and VIP-4's throw compile.
+	Register(&Construct{
+		Key:       "vip13.error-plain",
+		VIP:       13,
+		Plain:     true,
+		Citations: errorCitations,
+		// The probe logs both errors' tags and succeeds with the error that
+		// has a field and that field, so the Exit compares the instance's
+		// class, name, message, tag and fields.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			oops0, oops1 := newErrorDecl(g, true), newErrorDecl(g, false)
+			e, v := g.Name("e"), g.Name("v")
+			s.Locals = append(s.Locals, v)
+			return []Stmt{
+				&Const{Name: e, Value: &NewTaggedError{Decl: oops0, N: &Num{Value: 1}}},
+				&TagEvent{X: &Ref{Name: e}},
+				&TagEvent{X: &NewTaggedError{Decl: oops1}},
+				&Const{Name: v, Value: &Field{X: &Ref{Name: e}, Name: "n"}},
+				&Return{Value: &List{Elems: []Expr{&Ref{Name: e}, &Ref{Name: v}}}, Succeed: true},
+			}
+		},
+		// A statement binds one error, or a choice of two, and logs its
+		// _tag or, when every error it may be has the field, reads the field.
+		Stmt: func(g *Gen, s *Scope) Stmt {
+			e := g.Name("e")
+			x, union := errorValueOf(g, s)
+			fields := true
+			for _, d := range union {
+				fields = fields && d.Field
+			}
+			bind := &Const{Name: e, Value: x}
+			if !fields || g.Chance(3) {
+				return &Seq{Stmts: []Stmt{bind, &TagEvent{X: &Ref{Name: e}}}}
+			}
+			v := g.Name("v")
+			s.Locals = append(s.Locals, v)
+			return &Seq{Stmts: []Stmt{bind, &Const{Name: v, Value: &Field{X: &Ref{Name: e}, Name: "n"}}}}
+		},
+	})
+}
+
+// errorCitations are VIP-13's citation of the declaration and of building an
+// error, which both error constructs print.
+var errorCitations = []Citation{
+	{
+		VIP:      13,
+		Template: `class ‹Name› extends Data.TaggedError(‹"Name"›) {}`,
+		Quote:    "`error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly.",
+	},
+	{
+		VIP:      13,
+		Template: "new ‹Name›({ ‹fields› })",
+		Quote:    "throw new NotFound({ id })                      // in an effect function: fails with NotFound",
+	},
 }
 
 // An ErrorDecl is `error Oops0 { n: number }`, or `error Oops1` with no
@@ -251,5 +298,9 @@ func catchConst(g *Gen, s *Scope, general, match bool) Stmt {
 		body = g.Num(s)
 	}
 	s.Locals = append(s.Locals, v)
-	return &Const{Name: v, Value: &CatchFn{X: x, Param: e, Body: body}}
+	c := &Const{Name: v, Value: &CatchFn{X: x, Param: e, Body: body}}
+	if _, ok := body.(*Match); ok {
+		c.Type = "number"
+	}
+	return c
 }

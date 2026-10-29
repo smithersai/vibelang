@@ -3,6 +3,7 @@ package vipgen
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // The nodes in this file belong to no VIP: they are JavaScript, which
@@ -18,8 +19,12 @@ func (e *Event) Effect(w *Writer) { e.Vibe(w) }
 func (e *Event) Ends() bool       { return false }
 
 // A Return returns from the function: its Effect succeeds with Value, or
-// with undefined when Value is nil.
-type Return struct{ Value Expr }
+// with undefined when Value is nil. In a plain program's main, Succeed is
+// set and it returns the Effect itself: return Effect.succeed(<Value>).
+type Return struct {
+	Value   Expr
+	Succeed bool
+}
 
 func (r *Return) Vibe(w *Writer)   { r.print(w) }
 func (r *Return) Effect(w *Writer) { r.print(w) }
@@ -31,7 +36,32 @@ func (r *Return) print(w *Writer) {
 		return
 	}
 	w.Write("return ")
+	if r.Succeed {
+		w.Node(&EffectCall{Fn: "succeed", Arg: r.Value})
+		return
+	}
 	w.Node(r.Value)
+}
+
+// A PlainFunction is a plain program's main, `export function main() { … }`,
+// the same JavaScript in both prints (VIP-1: a function with neither keyword
+// is "plain JavaScript"). It runs its body when called and returns
+// Effect.succeed of its value, so the worker runs it as it runs an effect
+// function's Effect.
+type PlainFunction struct{ *Func }
+
+func (d *PlainFunction) Vibe(w *Writer) {
+	d.head(w)
+	w.Block(d.Body)
+}
+
+func (d *PlainFunction) Effect(w *Writer) { d.Vibe(w) }
+
+func (d *PlainFunction) head(w *Writer) {
+	if d.Export {
+		w.Write("export ")
+	}
+	w.Write("function " + d.Name + "(" + strings.Join(d.Params, ", ") + ") ")
 }
 
 // An If runs Then when Cond holds.
@@ -51,20 +81,32 @@ func (i *If) print(w *Writer) {
 	w.Block(i.Then)
 }
 
-// A Const binds a number: const v1 = <Value>.
+// A Const binds a number: const v1 = <Value>. With Type set the VibeLang
+// print annotates it, `const v1: number = …`, so a value whose type is a
+// union of literals, as a match's whose arms are literals, has the type
+// number, and a later comparison with another literal is not TS2367. The
+// reference is untyped, so it drops the annotation.
 type Const struct {
 	Name  string
+	Type  string
 	Value Expr
 }
 
-func (c *Const) Vibe(w *Writer)   { c.print(w) }
-func (c *Const) Effect(w *Writer) { c.print(w) }
-func (c *Const) Ends() bool       { return false }
+func (c *Const) Vibe(w *Writer) {
+	w.Write("const " + c.Name)
+	if c.Type != "" {
+		w.Write(": " + c.Type)
+	}
+	w.Write(" = ")
+	w.Node(c.Value)
+}
 
-func (c *Const) print(w *Writer) {
+func (c *Const) Effect(w *Writer) {
 	w.Write("const " + c.Name + " = ")
 	w.Node(c.Value)
 }
+
+func (c *Const) Ends() bool { return false }
 
 // An ExprStmt evaluates an expression for its effect. EndsBlock is set
 // when the expression always leaves the block, as running Effect.fail does.

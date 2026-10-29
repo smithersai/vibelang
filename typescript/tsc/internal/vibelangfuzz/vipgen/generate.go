@@ -55,6 +55,7 @@ type Gen struct {
 	on      []*Construct // the focus, its requirements and the swarm's choice, in key order
 	used    map[string]bool
 	effect  bool
+	plain   bool
 	decls   []Node
 	modules map[string]bool
 	labels  int
@@ -89,6 +90,10 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	}
 	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}}
 	focus := enabled[g.c.intn(len(enabled))]
+	// The focus chooses the program's form, and the swarm chooses among the
+	// constructs of that form.
+	g.plain = focus.Plain
+	enabled = slices.DeleteFunc(enabled, func(c *Construct) bool { return c.Plain != focus.Plain })
 	on := map[string]bool{}
 	for _, k := range Closure(focus.Key) {
 		on[k] = true
@@ -108,30 +113,35 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 			g.on = append(g.on, c)
 		}
 	}
-	var forms []*Construct
-	for _, c := range g.on {
-		if c.Declare != nil {
-			forms = append(forms, c)
+	p := &Program{Focus: focus.Key, Plain: g.plain}
+	main := &Func{Name: "main", Export: true}
+	if g.plain {
+		// Effect.succeed of main's value names Effect.
+		g.UseEffect()
+	} else {
+		var forms []*Construct
+		for _, c := range g.on {
+			if c.Declare != nil {
+				forms = append(forms, c)
+			}
+		}
+		if len(forms) == 0 {
+			panic("vipgen: " + focus.Key + " requires no construct that declares a function")
+		}
+		for i := range g.c.intn(maxHelpers + 1) {
+			f := &Func{Name: fmt.Sprintf("f%d", i), Void: g.c.chance(4), Form: g.pick(forms)}
+			for range g.c.intn(maxParams + 1) {
+				f.Params = append(f.Params, g.Name("p"))
+			}
+			s := &Scope{Fn: f, Locals: slices.Clone(f.Params), Callable: slices.Clone(p.Funcs)}
+			f.Body = g.finish(s, g.Block(s))
+			p.Funcs = append(p.Funcs, f)
+		}
+		main.Form = g.pick(forms)
+		if focus.Declare != nil {
+			main.Form = focus
 		}
 	}
-	if len(forms) == 0 {
-		panic("vipgen: " + focus.Key + " requires no construct that declares a function")
-	}
-	p := &Program{Focus: focus.Key}
-	for i := range g.c.intn(maxHelpers + 1) {
-		f := &Func{Name: fmt.Sprintf("f%d", i), Void: g.c.chance(4), Form: g.pick(forms)}
-		for range g.c.intn(maxParams + 1) {
-			f.Params = append(f.Params, g.Name("p"))
-		}
-		s := &Scope{Fn: f, Locals: slices.Clone(f.Params), Callable: slices.Clone(p.Funcs)}
-		f.Body = g.finish(s, g.Block(s))
-		p.Funcs = append(p.Funcs, f)
-	}
-	main := &Func{Name: "main", Export: true, Form: g.pick(forms)}
-	if focus.Declare != nil {
-		main.Form = focus
-	}
-	g.Use(main.Form.Key)
 	s := &Scope{Fn: main, Callable: slices.Clone(p.Funcs)}
 	var body []Stmt
 	if focus.Focus != nil {
@@ -144,7 +154,9 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	main.Body = g.finish(s, body)
 	p.Funcs = append(p.Funcs, main)
 	for _, f := range p.Funcs {
-		g.Use(f.Form.Key)
+		if f.Form != nil {
+			g.Use(f.Form.Key)
+		}
 	}
 	p.Used, p.Effect, p.Decls, p.Modules = g.used, g.effect, g.decls, g.modules
 	return p
@@ -180,6 +192,10 @@ func (g *Gen) On(key string) bool {
 // file finds its own declarations by their type.
 func (g *Gen) AddDecl(n Node) { g.decls = append(g.decls, n) }
 func (g *Gen) Decls() []Node  { return g.decls }
+
+// Plain reports whether the program is plain (Program.Plain): its
+// statements are plain code, and main's returns give Effect.succeed.
+func (g *Gen) Plain() bool { return g.plain }
 
 // Use records that the program holds a construct.
 func (g *Gen) Use(key string) { g.used[key] = true }
@@ -221,7 +237,7 @@ func (g *Gen) Block(s *Scope) []Stmt {
 // can reach its end.
 func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
 	if !s.Fn.Void && !ends(body) {
-		body = append(body, &Return{Value: g.Num(s)})
+		body = append(body, &Return{Value: g.Num(s), Succeed: g.plain})
 	}
 	return body
 }
@@ -248,7 +264,7 @@ func (g *Gen) Stmt(s *Scope) Stmt {
 			if s.Fn.Void {
 				return &Return{}
 			}
-			return &Return{Value: g.Num(s)}
+			return &Return{Value: g.Num(s), Succeed: g.plain}
 		})
 	}
 	for _, c := range g.on {

@@ -35,7 +35,14 @@ import (
 //     same value, or the same reasons, in order, with their payloads; and
 //     the same event log, in order.
 //   - Coldness (VIP-1: "Calling an `effect` function returns its Effect
-//     unrun"): calling main() logs nothing before its Effect runs.
+//     unrun"): calling an effect program's main() logs nothing before its
+//     Effect runs. A plain program's main is a plain function, which runs its
+//     body when called, in both prints alike (VIPCompare's "called").
+//
+// A program is an effect program or a plain one (vipgen.Program): a plain
+// program's main, `export function main() { …; return Effect.succeed(v) }`,
+// holds only plain code, so the constructs that work there, such as VIP-23's
+// pipe on numbers, are compared before VIP-1's declarations compile.
 //
 // Two runs of the same reference that differ, a reference that does not end
 // with an Exit, or a reference Exit that does not encode is the generator's
@@ -87,7 +94,7 @@ func (e *vipEnv) run(t *testing.T, p *vipgen.Program) *vipRun {
 	}
 	defer r.Remove()
 	run.ref = e.node.RunVIP(r, "ref.mjs")
-	if err := vipReferenceStable(run.ref, e.node.RunVIP(r, "ref-again.mjs")); err != nil {
+	if err := vipReferenceStable(run.ref, e.node.RunVIP(r, "ref-again.mjs"), !p.Plain); err != nil {
 		t.Fatalf("a generator bug: %v\n%s", err, Archive(run.files))
 	}
 	for _, d := range r.Diagnostics {
@@ -103,12 +110,13 @@ func (e *vipEnv) run(t *testing.T, p *vipgen.Program) *vipRun {
 
 // vipReferenceStable reports what is wrong with a reference that two runs
 // show: it must end with an Exit that encodes, run nothing when main() is
-// called, and end the same way both times.
-func vipReferenceStable(first, second VIPOutcome) error {
+// called if cold is set (an effect program, VIP-1), and end the same way
+// both times.
+func vipReferenceStable(first, second VIPOutcome, cold bool) error {
 	if first.Kind != "exit" {
 		return fmt.Errorf("the reference ended %s, not with an Exit: %s", first.Kind, first.Log)
 	}
-	if len(first.Called) > 0 {
+	if cold && len(first.Called) > 0 {
 		return fmt.Errorf("calling the reference's main() logged %q", first.Called)
 	}
 	if _, err := CanonicalVIPExit(first.Exit); err != nil {
@@ -193,7 +201,9 @@ func (g *vipGaps) finish(corpusKey string) {
 }
 
 // vipLeaveOut is the constructs a campaign leaves out: every pending one,
-// unless VIBELANG_FUZZ_PENDING=1.
+// unless VIBELANG_FUZZ_PENDING=1. The plain constructs no pending line lists
+// keep a campaign generating plain programs while the effect constructs are
+// pending.
 func vipLeaveOut() map[string]bool {
 	leaveOut := map[string]bool{}
 	for name := range PendingFeatures(vipTarget) {
@@ -268,7 +278,16 @@ func TestVIPConstructs(t *testing.T) {
 				t.Errorf("%s and %s require each other", c.Key, r)
 			}
 		}
-		if !slices.ContainsFunc(vipgen.Closure(c.Key), func(k string) bool { return vipgen.Lookup(k).Declare != nil }) {
+		// A plain construct stands in a plain program's plain main, so it
+		// requires only plain constructs, and none of VIP-1's or VIP-5's.
+		switch {
+		case c.Plain:
+			for _, k := range vipgen.Closure(c.Key) {
+				if r := vipgen.Lookup(k); !r.Plain || r.VIP == 1 || r.VIP == 5 || r.Declare != nil {
+					t.Errorf("%s is plain, but requires %s, which a plain program cannot hold", c.Key, k)
+				}
+			}
+		case !slices.ContainsFunc(vipgen.Closure(c.Key), func(k string) bool { return vipgen.Lookup(k).Declare != nil }):
 			t.Errorf("%s: nothing it requires declares a function, so no program can hold it", c.Key)
 		}
 		if c.Focus == nil {
@@ -279,7 +298,7 @@ func TestVIPConstructs(t *testing.T) {
 	for _, c := range vipgen.Constructs() {
 		t.Run(c.Key, func(t *testing.T) {
 			p := vipgen.Probe(c.Key)
-			if p.Focus != c.Key || !p.Used[c.Key] {
+			if p.Focus != c.Key || !p.Used[c.Key] || p.Plain != c.Plain {
 				t.Fatalf("the probe of %s focuses %s and holds %v", c.Key, p.Focus, p.UsedKeys())
 			}
 			run := env.run(t, p)
@@ -299,6 +318,23 @@ func TestVIPConstructs(t *testing.T) {
 				if e, ok := Pending(vipTarget, "feature:"+k); ok && productOwners[e.Owner] {
 					t.Skipf("pending (%s) feature:%s: %s\n%s", e.Owner, k, e.Reason, strings.Join(report, "\n"))
 				}
+			}
+			// A probe that compiles and whose every disagreement a gap's
+			// line lists, keyed <oracle>/<construct> by one of its
+			// constructs, is skipped too: the construct is lowered, and
+			// the line names what disagrees.
+			var gaps []string
+			for _, key := range mapKeys(failures) {
+				i := slices.IndexFunc(order, func(k string) bool { _, ok := Pending(vipTarget, key+"/"+k); return ok })
+				if i < 0 {
+					gaps = nil
+					break
+				}
+				e, _ := Pending(vipTarget, key+"/"+order[i])
+				gaps = append(gaps, fmt.Sprintf("%s/%s (%s): %s", key, order[i], e.Owner, e.Reason))
+			}
+			if len(gaps) > 0 {
+				t.Skipf("pending %s\n%s", strings.Join(gaps, "; "), strings.Join(report, "\n"))
 			}
 			t.Errorf("the probe of %s fails, and no pending line lists it or what it requires:\n%s", c.Key, strings.Join(report, "\n"))
 		})

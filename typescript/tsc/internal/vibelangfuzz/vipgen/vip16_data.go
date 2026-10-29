@@ -17,32 +17,48 @@ import (
 
 func init() {
 	Register(&Construct{
-		Key:      "vip16.data",
-		VIP:      16,
-		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{
-			{
-				VIP:      16,
-				Template: "const ‹Name› = Data.taggedEnum‹<Name>›()",
-				Quote:    "`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name.",
-			},
-			{
-				VIP:      16,
-				Template: "‹Name›.‹Variant›({ ‹fields› })",
-				Quote:    `const d = Delivery.Sent({ tracking: "1Z" })`,
-			},
-		},
-		Focus: func(g *Gen, s *Scope) []Stmt {
-			d := minimalData(g)
-			v := g.Name("v")
-			read := &Const{Name: v, Value: &Field{X: &DataNew{Decl: d, Variant: d.Variants[1], N: &Num{Value: 1}}, Name: "n"}}
-			s.Locals = append(s.Locals, v)
-			// The log shows each variant's _tag, and main returns v, the
-			// field of the variant built with one.
-			return []Stmt{&TagEvent{X: &DataNew{Decl: d, Variant: d.Variants[0]}}, read}
-		},
-		Stmt: func(g *Gen, s *Scope) Stmt { return dataStmt(g, s, pickData(g, false)) },
+		Key:       "vip16.data",
+		VIP:       16,
+		Requires:  []string{"vip01.effect-function"},
+		Citations: dataCitations,
+		Focus:     dataFocus,
+		Stmt:      func(g *Gen, s *Scope) Stmt { return dataStmt(g, s, pickData(g, false)) },
 	})
+	// The plain form builds and reads the same values in a plain program,
+	// so it is compared before VIP-1's effect functions compile.
+	Register(&Construct{
+		Key:       "vip16.data-plain",
+		VIP:       16,
+		Plain:     true,
+		Citations: dataCitations,
+		Focus:     dataFocus,
+		Stmt:      func(g *Gen, s *Scope) Stmt { return dataStmt(g, s, pickData(g, false)) },
+	})
+}
+
+// dataFocus declares `data D0 { V0; V1 { n: number } }`, logs each
+// variant's _tag, and binds v to the field of the variant built with one,
+// which main returns.
+func dataFocus(g *Gen, s *Scope) []Stmt {
+	d := minimalData(g)
+	v := g.Name("v")
+	read := &Const{Name: v, Value: &Field{X: &DataNew{Decl: d, Variant: d.Variants[1], N: &Num{Value: 1}}, Name: "n"}}
+	s.Locals = append(s.Locals, v)
+	return []Stmt{&TagEvent{X: &DataNew{Decl: d, Variant: d.Variants[0]}}, read}
+}
+
+// dataCitations are the citations of both data constructs.
+var dataCitations = []Citation{
+	{
+		VIP:      16,
+		Template: "const ‹Name› = Data.taggedEnum‹<Name>›()",
+		Quote:    "`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name.",
+	},
+	{
+		VIP:      16,
+		Template: "‹Name›.‹Variant›({ ‹fields› })",
+		Quote:    `const d = Delivery.Sent({ tracking: "1Z" })`,
+	},
 }
 
 // A DataDecl is `data D0 { V0; V1 { n: number } }`, or with Params VIP-28's
@@ -125,8 +141,10 @@ func (t *TagEvent) Effect(w *Writer) { t.Vibe(w) }
 func (t *TagEvent) Ends() bool       { return false }
 
 // A DataConst binds a data value with its declared type, so the value has
-// the whole union's type: `const d0: D0 = …`. The reference is untyped, so
-// it drops the annotation.
+// the whole union's type: `const d0 = (…) as D0`. An annotation, `const d0: D0
+// = D0.V0()`, would not: TypeScript narrows a union-typed const to the type
+// of its initializer, and a match arm for another variant is then an error
+// (TS2367). The reference is untyped, so it drops the assertion.
 type DataConst struct {
 	Name  string
 	Type  string
@@ -134,8 +152,9 @@ type DataConst struct {
 }
 
 func (c *DataConst) Vibe(w *Writer) {
-	w.Write("const " + c.Name + ": " + c.Type + " = ")
+	w.Write("const " + c.Name + " = (")
 	w.Node(c.Value)
+	w.Write(") as " + c.Type)
 }
 
 func (c *DataConst) Effect(w *Writer) {
@@ -206,7 +225,7 @@ func minimalData(g *Gen) *DataDecl {
 // generic data when it is generic.
 func pickData(g *Gen, generic bool) *DataDecl {
 	if generic {
-		g.Use("vip28.generic-data")
+		g.Use(genericDataKey(g))
 	}
 	have := dataDecls(g, generic)
 	if len(have) == 0 || len(have) < 2 && g.Chance(3) {

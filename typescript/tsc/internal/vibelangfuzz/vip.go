@@ -21,12 +21,13 @@ import (
 // take before the worker reports it stuck.
 const vipMaxSteps = 10000
 
-// vipWorker is the worker's vip mode. It calls main() and checks that the
-// call ran nothing (VIP-1: "Calling an `effect` function returns its Effect
-// unrun"), then runs the Effect under TestClock.layer(), which installs the
-// clock's tracking scheduler, with References.MaxOpsBeforeYield at its
-// maximum: two equivalent programs whose op counts differ would otherwise
-// yield at different points. A driver advances the clock 1 ms per step
+// vipWorker is the worker's vip mode. It calls main() and records what the
+// call logged (VIP-1: "Calling an `effect` function returns its Effect
+// unrun"; a plain program's main runs its body when called), then runs the
+// Effect under TestClock.layer(), which installs the clock's tracking
+// scheduler, with References.MaxOpsBeforeYield at its maximum: two
+// equivalent programs whose op counts differ would otherwise yield at
+// different points. A driver advances the clock 1 ms per step
 // until the program's fiber ends. The encoding keeps every reason of the
 // cause in order, with its kind and payload; it drops only stacks and
 // annotations, and tags what JSON cannot say: undefined, bigint, NaN, the
@@ -217,8 +218,10 @@ func CanonicalVIPExit(raw json.RawMessage) (string, error) {
 // returns "" when they agree, or the first aspect that disagrees and how:
 // "kind" (one did not end with an Exit), "cold" (main() ran something when
 // called, which VIP-1 forbids), "exit-tag", "value", "reasons" (their
-// number), "reason-tags", "payload" (a reason's payload), or "events" (the
-// event logs, which are compared exactly, in order).
+// number), "reason-tags", "payload" (a reason's payload), "events" (the
+// event logs, which are compared exactly, in order), or "called" (calling a
+// plain program's main, which runs its body when called, logged
+// differently).
 func VIPCompare(want, got VIPOutcome) (aspect, diff string) {
 	if want.Kind != "exit" || got.Kind != "exit" {
 		if want.Kind != got.Kind {
@@ -273,6 +276,11 @@ func VIPCompare(want, got VIPOutcome) (aspect, diff string) {
 	}
 	if !slices.Equal(want.Events, got.Events) {
 		return "events", fmt.Sprintf("want events %q\ngot  events %q", want.Events, got.Events)
+	}
+	// Last, so that a known gap in when a plain main runs its body never
+	// hides a disagreement in what it ends with.
+	if !slices.Equal(want.Called, got.Called) {
+		return "called", fmt.Sprintf("calling main() logged %q, want %q", got.Called, want.Called)
 	}
 	return "", ""
 }

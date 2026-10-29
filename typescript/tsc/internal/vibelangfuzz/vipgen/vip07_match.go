@@ -54,37 +54,12 @@ func init() {
 			objectPattern,
 		},
 		Focus: func(g *Gen, s *Scope) []Stmt {
-			d := minimalData(g)
-			value := &Conditional{
-				Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}},
-				A:    &DataNew{Decl: d, Variant: d.Variants[1], N: &Num{Value: 1}},
-				B:    &DataNew{Decl: d, Variant: d.Variants[0]},
-			}
-			name, v, b := g.Name("d"), g.Name("v"), g.Name("b")
-			// The subject logs once; the first arm does not match, the
-			// second binds the field, and the two cover the union, so the
-			// match has no default.
-			m := &Match{
-				Subject: &Comma{Label: g.Label(), X: &Ref{Name: name}},
-				Temp:    g.Name("m"),
-				Arms: []*Arm{
-					{Pattern: &Pattern{Tag: d.Variants[0].Name}, Value: &Num{Value: 0}},
-					{Pattern: &Pattern{Tag: d.Variants[1].Name, Field: "n", Bind: b}, Value: &Ref{Name: b}},
-				},
-			}
+			v := g.Name("v")
 			s.Locals = append(s.Locals, v)
-			return []Stmt{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Value: m}}
+			return dataMatchFocus(g, v)
 		},
 		Stmt: func(g *Gen, s *Scope) Stmt {
-			d := pickData(g, g.On("vip28.generic-data") && g.Chance(2))
-			name, v := g.Name("d"), g.Name("v")
-			var value Expr = newVariant(g, s, d)
-			if g.Chance(2) {
-				value = &Conditional{Cond: g.Cond(s), A: value, B: newVariant(g, s, d)}
-			}
-			m := dataMatch(g, s, subject(g, &Ref{Name: name}), d)
-			s.Locals = append(s.Locals, v)
-			return &Seq{Stmts: []Stmt{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Value: m}}}
+			return dataMatchStmt(g, s)
 		},
 	})
 	Register(&Construct{
@@ -94,12 +69,7 @@ func init() {
 		Citations: []Citation{
 			matchOrder,
 			objectPattern,
-			{
-				VIP:      7,
-				Template: `‹m›._tag === ‹"NotFound"›`,
-				Quote:    "VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.",
-				Reading:  "VIP-7 shows no code for the matcher: `when NotFound:` matches a subject whose _tag is \"NotFound\".",
-			},
+			classArm,
 		},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -121,10 +91,103 @@ func init() {
 				},
 			}
 			s.Locals = append(s.Locals, v)
-			return []Stmt{&Const{Name: v, Value: &CatchFn{X: fail, Param: e, Body: m}}}
+			return []Stmt{&Const{Name: v, Type: "number", Value: &CatchFn{X: fail, Param: e, Body: m}}}
 		},
 		Stmt: func(g *Gen, s *Scope) Stmt { return catchConst(g, s, false, true) },
 	})
+	// The plain form matches data values and error instances that a plain
+	// program builds, never throws or catches, so it is compared before
+	// VIP-1's effect functions compile.
+	Register(&Construct{
+		Key:       "vip07.match-plain",
+		VIP:       7,
+		Plain:     true,
+		Requires:  []string{"vip13.error-plain", "vip16.data-plain"},
+		Citations: []Citation{matchOrder, objectPattern, classArm},
+		// The probe is match-data's probe, then a match on an error
+		// instance: the class arm of Oops1 does not match, and the object
+		// pattern on Oops0's _tag binds its field. Each subject logs once,
+		// and main succeeds with 2, the sum of the two bindings.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			v, w := g.Name("v"), g.Name("v")
+			out := dataMatchFocus(g, v)
+			oops0, oops1 := newErrorDecl(g, true), newErrorDecl(g, false)
+			e, b := g.Name("e"), g.Name("b")
+			value := &Conditional{
+				Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}},
+				A:    &NewTaggedError{Decl: oops0, N: &Num{Value: 1}},
+				B:    &NewTaggedError{Decl: oops1},
+			}
+			m := &Match{
+				Subject: &Comma{Label: g.Label(), X: &Ref{Name: e}},
+				Temp:    g.Name("m"),
+				Arms: []*Arm{
+					{Pattern: &Pattern{Class: oops1.Name}, Value: &Num{Value: 0}},
+					{Pattern: &Pattern{Tag: oops0.Name, Field: "n", Bind: b}, Value: &Ref{Name: b}},
+				},
+			}
+			s.Locals = append(s.Locals, v, w)
+			return append(out,
+				&Const{Name: e, Value: value},
+				&Const{Name: w, Type: "number", Value: m},
+				&Return{Value: &Add{A: &Ref{Name: v}, B: &Ref{Name: w}}, Succeed: true})
+		},
+		Stmt: func(g *Gen, s *Scope) Stmt {
+			if g.Chance(2) {
+				return dataMatchStmt(g, s)
+			}
+			e, v := g.Name("e"), g.Name("v")
+			x, union := errorValueOf(g, s)
+			m := errorMatch(g, s, &Ref{Name: e}, union)
+			s.Locals = append(s.Locals, v)
+			return &Seq{Stmts: []Stmt{&Const{Name: e, Value: x}, &Const{Name: v, Type: "number", Value: m}}}
+		},
+	})
+}
+
+// classArm is the reading of a class arm on an error class.
+var classArm = Citation{
+	VIP:      7,
+	Template: `‹m›._tag === ‹"NotFound"›`,
+	Quote:    "VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.",
+	Reading:  "VIP-7 shows no code for the matcher: `when NotFound:` matches a subject whose _tag is \"NotFound\".",
+}
+
+// dataMatchFocus declares `data D0 { V0; V1 { n: number } }` and binds v to
+// a match on a value of it. The subject logs once; the first arm does not
+// match, the second binds the field, and the two cover the union, so the
+// match has no default.
+func dataMatchFocus(g *Gen, v string) []Stmt {
+	d := minimalData(g)
+	value := &Conditional{
+		Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}},
+		A:    &DataNew{Decl: d, Variant: d.Variants[1], N: &Num{Value: 1}},
+		B:    &DataNew{Decl: d, Variant: d.Variants[0]},
+	}
+	name, b := g.Name("d"), g.Name("b")
+	m := &Match{
+		Subject: &Comma{Label: g.Label(), X: &Ref{Name: name}},
+		Temp:    g.Name("m"),
+		Arms: []*Arm{
+			{Pattern: &Pattern{Tag: d.Variants[0].Name}, Value: &Num{Value: 0}},
+			{Pattern: &Pattern{Tag: d.Variants[1].Name, Field: "n", Bind: b}, Value: &Ref{Name: b}},
+		},
+	}
+	return []Stmt{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Type: "number", Value: m}}
+}
+
+// dataMatchStmt binds a value of one of the program's data unions, and a
+// number to a match on it.
+func dataMatchStmt(g *Gen, s *Scope) Stmt {
+	d := pickData(g, g.On(genericDataKey(g)) && g.Chance(2))
+	name, v := g.Name("d"), g.Name("v")
+	var value Expr = newVariant(g, s, d)
+	if g.Chance(2) {
+		value = &Conditional{Cond: g.Cond(s), A: value, B: newVariant(g, s, d)}
+	}
+	m := dataMatch(g, s, subject(g, &Ref{Name: name}), d)
+	s.Locals = append(s.Locals, v)
+	return &Seq{Stmts: []Stmt{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Type: "number", Value: m}}}
 }
 
 // A Match is `match (<Subject>) { when <P>: <v>; …; default: <v> }`, read
