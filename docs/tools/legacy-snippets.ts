@@ -9,7 +9,7 @@ export function legacyProjects(temp: string) {
   linkModules(temp)
   return markdownPages(join(repo, "docs/user")).flatMap((page, index) => {
     const blocks = extract(readFileSync(page, "utf8"), {
-      hatchExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page)
+      inlineExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page)
     })
     if (!blocks.length) return []
     const dir = join(temp, String(index))

@@ -10,7 +10,7 @@ export type Block = { number: number; line: number; endLine?: number; language: 
 export type Result = Block & { status: "ok" | "fragment" | "pending" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
 export type Execution = { phase: "compile" | "run"; status: "passed" | "failed"; expectedStdout: string; stdout: string; stderr: string; exitCode: number; timedOut: boolean }
 
-export function extract(markdown: string, options: { hatchExamples?: boolean } = {}): Block[] {
+export function extract(markdown: string, options: { inlineExamples?: boolean } = {}): Block[] {
   const lines = markdown.split(/\r?\n/)
   const blocks: Block[] = []
   let number = 0
@@ -72,19 +72,20 @@ export function extract(markdown: string, options: { hatchExamples?: boolean } =
       gap: header.match(/\/\/ compiler-gap:\s*([^\n]+)/)?.[1] })
   }
 
-  // These inline examples are copied into new apps. Give f an imported
-  // TypeScript implementation and x a local binding, exactly as readers use them.
-  if (options.hatchExamples) {
-    const line = lines.findIndex(line => line.startsWith("- A plain TypeScript call needs "))
-    if (line < 0) throw new Error("Missing onboarding hatch examples")
-    const examples = [...lines[line].matchAll(/\x60((?:sync\(|try Effect\.try\()[^\x60]+)\x60/g)]
-    if (examples.length !== 2) throw new Error("Expected sync and try onboarding examples")
-    const add = (source: string, firstLine: string, filename?: string, language: "vibe" | "ts" = "vibe") =>
-      blocks.push({ number: ++number, line: line + 1, language, source, firstLine, filename, expected: [], fragment: false })
-    add("export function f(x: number): number { return x + 1 }", "TypeScript hatch input", "hatch-input.ts", "ts")
+  // These inline examples are copied into new apps. Give f and load imported
+  // TypeScript implementations and x a local binding, exactly as readers use them.
+  if (options.inlineExamples) {
+    const line = lines.findIndex(line => line.startsWith("- Plain and `async` functions are TypeScript's."))
+    if (line < 0) throw new Error("Missing onboarding wrapper examples")
+    const examples = [...lines[line].matchAll(/\x60(try (?:tryPromise|Effect\.try)\([^\x60]+)\x60/g)]
+    if (examples.length !== 2) throw new Error("Expected tryPromise and Effect.try onboarding examples")
+    const add = (source: string, firstLine: string, filename?: string, language: "vibe" | "ts" = "vibe", pending?: string[]) =>
+      blocks.push({ number: ++number, line: line + 1, language, source, firstLine, filename, expected: [], fragment: pending !== undefined, pending })
+    add("export function f(x: number): number { return x + 1 }\nexport async function load(): Promise<number> { return 1 }",
+      "TypeScript wrapper input", "wrapper-input.ts", "ts")
     for (const [, expression] of examples) add(
-      'import { f } from "./hatch-input.ts"; error E; function hatchExample() { const x = 1; return ' + expression + ' }',
-      expression)
+      'import { f, load } from "./wrapper-input.ts"; effect function wrapperExample() { const x = 1; return ' + expression + ' }',
+      expression, undefined, "vibe", ["VIP-1", "VIP-4", "VIP-6"])
   }
   // A block that imports a pending block's module can't compile or run without
   // it, so it waits for the same VIPs.
@@ -469,7 +470,7 @@ async function main() {
     console.log(`Compiler: ${Bun.which(compiler) ?? compiler}\nRuntime: ${runtime}\nEffect: ${effect}`)
     let index = 0
     for (const page of markdownPages(root).filter(p => relative(root, p).includes(filter))) {
-      const blocks = extract(readFileSync(page, "utf8"), { hatchExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page) })
+      const blocks = extract(readFileSync(page, "utf8"), { inlineExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page) })
       if (!blocks.length) continue
       const dir = join(temp, String(++index))
       // An explicit fragment opts out of the check, so it stays out of the

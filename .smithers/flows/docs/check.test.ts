@@ -62,10 +62,12 @@ test("the root AGENTS.md points to the skill with its exact token count", async 
   expect(render(sources)["AGENTS.md"]).toContain(`read ${facts.skill} (${tokens} tokens)`);
 });
 
-test("the shipped skill teaches current declarations and names the trusted import", async () => {
+test("the shipped skill teaches current declarations and wraps a call that may throw", async () => {
   const skill = (await readSources())[facts.skill];
   expect(skill).not.toContain("Until your compiler accepts a form, write its long form");
-  expect(skill).toContain('import { trusted } from "vibelang-runtime"');
+  // A function that may throw is wrapped with Effect's own Effect.try before Effect code runs it (VIP-4).
+  expect(skill).toContain("try Effect.try(() => parse(s))");
+  expect(skill).not.toContain("trusted");
 });
 
 test("contributing makes the maintainer-run PR checks explicit", async () => {

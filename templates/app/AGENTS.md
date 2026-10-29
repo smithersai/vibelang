@@ -6,34 +6,30 @@ Read `node_modules/vibelang/skills/vibelang/SKILL.md` before .vibe edits.
 
 ## Essentials
 
-Functions are Effects; calls run in order without `yield*`. `A!E`: result/failures; `A!!`: cannot fail. Omissions are inferred.
+`effect function` returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect<A, E, R>`; empty slots: `never`.
 
 ```vibe
+// pending: VIP-1, VIP-6, VIP-9, VIP-13
 error NotFound { id: string }
-
 service Users { name(id: string): string!NotFound }
 
-function nameOf(id: string): string!!Users {
-  // timeout bounds each attempt
-  return retry(() => timeout(() => Users.name(id), "1 second"), {
-    times: 3,
-    schedule: Schedule.exponential("100 millis")
-  }) catch (e) => "unknown"
+effect function nameOf(id: string) {
+  const users = try Users
+  const attempt = timeout(users.name(id), "1 second")
+  return retry(attempt, { times: 3 }) catch "unknown"
 }
 
-export function names(ids: ReadonlyArray<string>) {
-  return forEach(ids, nameOf, { concurrency: 8 })
+export effect function names(ids: ReadonlyArray<string>) {
+  return try forEach(ids, nameOf, { concurrency: 8 })
 }
 ```
 
-- `throw new NotFound({ id })` fails; `x catch (e) => y` and `try { } catch (e) { }` recover; `match (e) { when NotFound: ...; default: throw e; }` picks error classes.
-- Imports keep extensions: `"./user.vibe"`. Effect's modules are in scope.
-- `.ts`: import `"./user.vibe"`; run its Effect with `Effect.runPromise` from `effect`; include `src/**/*.ts` in tsconfig.
-- `provide UsersLive { ... }` supplies `Users`; `const UsersLive = Layer.succeed(Users, { name(id) { ... } })`.
-- `await.all [a(), b()]` runs both; `%` is `x` in `x |> f(%)`.
-- TypeScript bodies: `let`, loops, `typeof`, regex, Array/Map methods.
-- `using h = acquire()` frees it once on block exit, even on interruption. `yieldNow()` first honors interrupts.
-- A plain TypeScript call needs `sync((x) => f(x), x)`; if it can throw, `try Effect.try({ try: () => f(x), catch: (error: unknown) => new E() })`.
-- `@effect/vitest`: `it.effect("name") { assert.strictEqual(a, b) }` uses a test clock (`sleep` stalls); `it.live`: real time. Vitest hides `console.log` under agents; assert.
+- `throw e` fails in effect code. `x catch value`, `x catch (e) => value`, `x catch effect (e) => { … }` and `x catch effect { … }` recover. Effect handlers fail with `throw`; plain handlers throw defects. `catch` binds like `??`; parenthesize mixtures with `??`, `||`, `&&`.
+- No `try` statements in effect code, including `try`/`finally`; use `ensuring` or `onExit`. `@throws` is only for non-Effect functions; Effect failures use the error channel.
+- Imports keep `"./user.vibe"`. Effect modules and functions are global. Provide platform services; run `NodeRuntime.runMain(main())` yourself.
+- Plain and `async` functions are TypeScript's. `await` is Promise-only. Wrap a Promise: `try tryPromise(() => load())`; a throwing call: `try Effect.try(() => f(x))`.
+- `const UsersLive = Layer.succeed(Users, { effect name(id) { return id } })`; `provide UsersLive { … }` supplies it. `try.all [a(), b()]` runs both concurrently; `fork w()` starts a fiber, `join f` waits.
+- Resources: `try scoped(effect { const h = try acquireRelease(open(), close); … })`.
+- Tests: `it.effect("name", () => effect { … })` uses a test clock: `try TestClock.adjust("1 second")`. `it.live` uses real time. Assert.
 
-<!-- 561 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->
+<!-- 583 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->

@@ -15,9 +15,11 @@ test("setup instructions address the person following them", () => {
 test("the shipped skill demonstrates Effect 4 config and scoped file IO", () => {
   const skill = read("packages/compiler/skills/vibelang/SKILL.md")
   assert.doesNotMatch(skill, /that reading is never wrong/)
-  assert.match(skill, /Config\.withDefault\(Config\.String\("NAME"\), "stranger"\)\(\)/)
-  assert.match(skill, /using directory = FileSystem\.makeTempDirectoryScoped\(\)/)
-  assert.match(skill, /import "vibelang\/platform\/node"/)
+  assert.match(skill, /try Config\.withDefault\(Config\.String\("NAME"\), "stranger"\)/)
+  // using keeps TypeScript's meaning (VIP-8), so the scoped directory is acquired in scoped(effect { … }).
+  assert.match(skill, /try scoped\(effect \{\n\s+const directory = try fs\.makeTempDirectoryScoped\(\)/)
+  // No magic main (VIP-26): the module provides the platform layer and calls its runner.
+  assert.match(skill, /NodeRuntime\.runMain\(Effect\.provide\(main\(\), NodeServices\.layer\)\)/)
 })
 
 test("the current release discloses static platform limits and the mask-end using leak", () => {
