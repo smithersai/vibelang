@@ -97,7 +97,9 @@ Parameters, defaults included, are bound when the function is called. The body r
 | `super[k] = v` | `$super_set(k, v)`, with `const $super_set = (k, v) => (super[k] = v)`; `super.x += v` reads with `$super_get` and writes with `$super_set`, evaluating `k` once |
 | `super.m(a)` | `$apply($super_get("m"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read |
 
-The temporaries and helpers are declared at the top of the innermost enclosing non-arrow function, or the module, once per call, as TypeScript's own `async` downleveling does with `_arguments` and `_superIndex`. In an `effect` arrow and an `effect` block these bindings are that enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript.
+The temporaries and helpers are declared at the top of the innermost enclosing non-arrow function, or the module, once per call, as TypeScript's own `async` downleveling does with `_arguments` and `_superIndex`. A class field initializer has no function body to hold them, so there they are declared in an arrow called in place: `f = (() => { const $super_get = (k) => super[k]; return () => Effect.gen(…) })()`. In an `effect` arrow and an `effect` block these bindings are that enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript.
+
+A `var` in the body that names a parameter, or `arguments`, is that binding, as in an `async` function: the lowering declares nothing for it in the generator, and an initializer stays an assignment. So `effect function f(n) { var n; return n }` succeeds with its argument, where a `var n` inside the generator would give `undefined`.
 
 ```vibe es
 // compiler-gap: pending VIP-1
@@ -223,7 +225,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 - **Effectful functions carry no `@throws`.** A function that returns an `Effect`, a `Stream` or a `Layer` can't throw, so it carries none (VIP-4).
 - **Every other exported callable carries `@throws`:** a function, a method, a constructor (`new X()` is throw-tracked) and a function-typed `const`. The tag is its inferred thrown type, or `@throws {never}` when it can't throw. Getters and setters carry none: they are not throw-tracked.
 - **`async`.** An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](003-failures.md#calls-that-may-throw)).
-- **Function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. As in Swift, a function that may throw `T` is assignable to a function type only when that type's `@throws` admits `T`; otherwise it is an error (code pending): wrap it, or annotate the parameter `@throws`. An exported callable is a declaration, not a function type, so the output always tags it.
+- **Function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. The assignability rule this implies is in [Failures](003-failures.md#calls-that-may-throw). An exported callable is a declaration, not a function type, so the output always tags it.
 - **`@rethrows` is written, not inferred.** A function that calls a parameter it was given, and throws what that parameter throws, says so in its source with `/** @rethrows <param> */` (VIP-4), and the output copies the tag.
 - **A function that returns an Effect can't throw.** A plain `.vibe` function whose return type is an `Effect`, a `Stream` or a `Layer` is effectful, so a `throw`, or a call that may throw, in its body is an error (code pending): make it an `effect` function, or return `fail(e)`.
 

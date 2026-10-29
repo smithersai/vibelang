@@ -6,10 +6,10 @@
 
 ```ts
 match (e) {
-  when NotFound: guest                 // NotFound's Symbol.customMatcher decides, as TC39 says
-  when Option.Some(let v): v
-  when DbError and if (retryable): retry()
-  default: fallback
+  when NotFound: guest;                // NotFound's Symbol.customMatcher decides, as TC39 says
+  when Option.Some(let v): v;
+  when DbError and if (retryable): retry();
+  default: fallback;
 }
 ```
 
@@ -23,6 +23,8 @@ match (e) {
 ## Meaning in Effect TS terms
 
 `match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.
+
+*Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
 
 ## History
 

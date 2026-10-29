@@ -98,7 +98,7 @@ An arrow handler's body is TypeScript's concise body, which extends as far as an
 
 In `(a catch b) catch c`, the outer `catch` runs the value that `a catch b` gives, so that value must itself be an Effect. To try fallbacks in turn, nest them in the handler: `a catch effect { return b catch c }`.
 
-A value fallback is evaluated only on failure, in the enclosing effect code. When it runs Effects it is lowered inside a fresh `Effect.gen`, keeping its source bindings ([Runtime](008-runtime.md)). It never runs an Effect it gives as a value: `x catch (succeed(7))` gives the unrun Effect, `x catch (try succeed(7))` gives `7`.
+A value fallback is evaluated only on failure, in the enclosing effect code. When it runs Effects it is lowered inside a fresh `Effect.gen`, keeping its source bindings, `this` included (`Effect.gen({ self: this }, …)`), as an `effect` block does ([Runtime](008-runtime.md)). It never runs an Effect it gives as a value: `x catch (succeed(7))` gives the unrun Effect, `x catch (try succeed(7))` gives `7`.
 
 ### Static rules
 
@@ -117,7 +117,7 @@ A value fallback is evaluated only on failure, in the enclosing effect code. Whe
 | --- | --- |
 | `x catch guest` (a value) | `yield* Effect.catch(x, () => Effect.succeed(guest))` |
 | `x catch (try y)` (a value that runs Effects: `try`, `catch`, `join` …) | `yield* Effect.catch(x, () => Effect.gen(function* () { return yield* y }))` |
-| `x catch (e) => f(e)` (a plain function, called by effect code: one that may throw is an error, as for any call ([Failures](003-failures.md)); write `catch effect (e) =>` to fail again) | `yield* Effect.catch(x, (e) => Effect.succeed(f(e)))` |
+| `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect (VIP-5); write `catch effect (e) =>` to fail again, typed) | `yield* Effect.catch(x, (e) => Effect.succeed(f(e)))` |
 | `x catch effect (e) => …` (an effect function; it runs its Effects, and `throw` fails again, typed) | `yield* Effect.catch(x, (e) => Effect.gen(…))` |
 | `x catch effect { … }` (an effect block; runs the fallback) | `yield* Effect.catch(x, () => Effect.gen(…))` |
 
@@ -214,7 +214,7 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator. In an expression, the operands to the left of a `do` or `match` are evaluated into temporaries, the `do` or `match` runs as statements that assign its value to a temporary, and the expression continues: `f(try a(), match (x) { … })` is `const $t1 = yield* a(); let $t2; if (…) $t2 = …; f($t1, $t2)`.
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator. In an expression, everything evaluated before a `do` or `match` goes into temporaries in source order, the callee and a method's receiver included; the `do` or `match` runs as statements that assign its value to a temporary; and the expression continues. `f(try a(), match (x) { … })` is `const $f = f, $t1 = yield* a(); let $t2; if (…) $t2 = …; $f($t1, $t2)`, and `o.m(…)` reads `o.m` before the arguments and calls it with `Reflect.apply`, keeping `this` as `o`. A `do` or `match` on one side of `&&`, `||`, `??`, `?:` or a `catch` fallback runs only when JavaScript would evaluate that side: its statements go inside the matching `if`.
 
 ```vibe es
 // compiler-gap: pending VIP-2
@@ -250,7 +250,7 @@ effect function names(parts: Fiber.Fiber<string[]>, join: (xs: string[], sep: st
 
 `try`'s operand may start on the next line, because `try` is a reserved word. `fork` and `join` are not, so a line break after them ends the expression, and `fork` alone on a line is an identifier (VIP-17).
 
-**Undecided (pending VIP):** whether effect code that uses the `fork` or `join` keyword where a binding of that name is in scope gets a warning (`fork - 1` and `join [0]` are keyword forms).
+**Undecided (pending VIP):** whether effect code that uses the `fork` or `join` keyword where a binding of that name is in scope gets a warning (`fork - 1`, `join [0]`, `join++`, `join as T`, `join < 2`, `join!` and `` join`t` `` are keyword forms).
 
 ### Static rules
 
@@ -492,7 +492,7 @@ Interruptible   = "interruptible" Block
 
 These are contextual keywords followed by `{` on the same line, and they are statements in effect code.
 
-`uninterruptible { }` is `Effect.uninterruptibleMask((restore) => Effect.gen(…))` when a `restore` block is inside it, and `Effect.uninterruptible(Effect.gen(…))` otherwise; both give the same `Exit`.
+`uninterruptible { }` is always `Effect.uninterruptibleMask((restore) => Effect.gen(…))`, as VIP-22 writes it, whether or not a `restore` block is inside it.
 
 ### Static rules
 
@@ -576,7 +576,7 @@ function find(ids: string[]) {
 - A jump whose target is inside the block stays as written.
 - Nested blocks pass a record outward the same way, until it reaches the block that encloses its target.
 - Only a completed block gives a record. A failure, defect or interruption stays in Effect's `Cause`. The block's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
-- A `var` declared in the block belongs to the enclosing function, as in any block. The declaration moves to the enclosing generator, and the block keeps an assignment at the original position; a `var` with no initializer leaves nothing there. `let`, `const` and function declarations stay block-scoped.
+- A `var` declared in the block belongs to the enclosing source function, as in any block. The declaration moves to that function's generator, and the block keeps an assignment at the original position; a `var` with no initializer leaves nothing there. A `var` that names a parameter, or `arguments`, is that binding, so nothing is declared ([Functions](001-functions.md#meaning)). `let`, `const` and function declarations stay block-scoped.
 - `this`, `arguments`, `super` and `new.target` in the block are the enclosing function's, passed in as for an `effect` block ([Functions](001-functions.md#meaning)).
 
 ```vibe es
@@ -599,7 +599,7 @@ function f(xs: number[]) {
     for (const x of xs) {
       $s: switch (x) {
         case 1: {
-          const $c = yield* Effect.uninterruptible(Effect.gen(function* () {
+          const $c = yield* Effect.uninterruptibleMask((_restore) => Effect.gen(function* () {
             n = n + 10
             return { _tag: "Break", label: "$s" } as const
           }))

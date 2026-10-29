@@ -44,8 +44,9 @@ The type system tracks whether a function may throw, and what it throws. Trackin
 - A non-effectful library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`. Such a library or global declaration with no `@throws` is assumed to throw `unknown`. `@throws {never}` says it can't throw.
 - JavaScript's globals carry no tags in `lib.d.ts`. VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known not to throw.
 - A function type or interface member without `@throws` is non-throwing; `@throws` on its declaration opts in. This differs from an unannotated foreign library function, whose thrown type is `unknown`.
+- As for Swift's non-`throws` function type, a function that may throw `T` is assignable to a function type only when that type's `@throws` admits `T`. So `const r: () => string = parse` is an error (code pending): wrap the function, or annotate the type `@throws`.
 - `new X()` is throw-tracked; getter and setter access is not.
-- `@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback. Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. Storing a callback, as `setTimeout` does, does not rethrow it. Promise-producing calls still require wrappers.
+- `@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback. The tag is written, never inferred (VIP-4). A parameter named by `@rethrows` accepts a function that throws anything, and the call throws what that argument throws. Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. Storing a callback, as `setTimeout` does, does not rethrow it. Promise-producing calls still require wrappers.
 - VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; the decoder returned by `Schema.decodeUnknownSync` throws `SchemaError`. Building that decoder does not throw.
 - Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked. They are defects, as in `Effect.sync`.
 
@@ -116,15 +117,15 @@ function checked(text: string) {
 }
 ```
 
-`try` follows `await`: an effect function's parameter list is not effect code, and neither are class field initializers or static blocks. Effect operations cannot run there. Parameter binding happens at the call; an implicit destructuring exception remains a JavaScript exception (a defect when called inside effect code).
+An effectful function can't throw, so a plain `.vibe` function whose return type is an Effect, Stream or Layer may not `throw` or make an unwrapped call that may throw ([Declaration output](001-functions.md#declaration-output)).
 
-**Undecided (pending VIP):** throw-type assignability (including a throwing callback passed to a non-throwing parameter or plain `catch` handler), and whether `@rethrows` is inferred or must be written. TypeScript has no checked-throw counterpart.
+`try` follows `await`: an effect function's parameter list is not effect code, and neither are class field initializers or static blocks. Effect operations can't run there ([Functions](001-functions.md#static-rules)). Parameters are bound at the call, so throw tracking treats a default initializer as a call in effect code: a default that may throw is an error (code pending). An implicit destructuring exception remains a JavaScript exception, a defect when the call is inside effect code.
 
 **Undecided (pending VIP):** which default applies to foreign callable constants, class methods and overload signatures: the library-function default `unknown`, or the function-type default `never`; and where annotations on returned call signatures are recorded. The decoder example above describes runtime behavior, not a new annotation syntax.
 
-**Undecided (pending VIP):** a throwing default initializer on an effect function: reject the call during checking, or capture it in the returned Effect without changing when the initializer runs.
+**Undecided (pending VIP):** whether a plain `catch` handler whose body may throw a tracked error is a compile error. VIP-5 gives its `throw` a defect's meaning.
 
-**Undecided (pending VIP):** a plain, non-`async` `.vibe` function whose return type is an Effect and whose body may `throw` before returning it ([Declaration output](001-functions.md#declaration-output)); how to classify return types such as `any` or `Effect.Effect<number> | undefined` for the effectful exemption, and how exported callable constants, methods and callable-type declarations retain inferred throw metadata. VIP-27 specifies function exports but not all these representations.
+**Undecided (pending VIP):** how to classify return types such as `any` or `Effect.Effect<number> | undefined` for the effectful exemption, and how exported callable constants, methods and callable-type declarations retain inferred throw metadata. VIP-27 specifies function exports but not all these representations.
 
 ## `error` declarations
 
@@ -133,12 +134,13 @@ function checked(text: string) {
 ```text
 ErrorDeclaration = "export"? "error" Name ("{" ErrorBody "}")?
 ErrorBody        = (Field | Method | Getter)*
-Field            = "readonly"? PropertyName "?"? ":" Type
+Field            = "readonly"? PropertyName "?"? ":" Type Separator
+Separator        = ";" | "," | LineTerminator | before "}"   (as between interface members)
 Method           = TypeScript MethodDeclaration (no static modifier)
 Getter           = TypeScript GetAccessor (no static modifier)
 ```
 
-Fields use TypeScript's member separators: `;`, `,`, a line break, or the closing `}`. Adjacent fields on one line need a separator. An explicit `readonly` is allowed and redundant.
+`Field` and `Separator` are the productions of [Appendix A](900-appendices.md#productions), shared with `schema` and `data`. Adjacent fields on one line need a separator. An explicit `readonly` is allowed and redundant.
 
 `error` is a contextual keyword on the same line as its name, so `const error = …` and `catch (error)` still work.
 
@@ -184,7 +186,7 @@ class Timeout extends Data.TaggedError("Timeout") {
 
 The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
-VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect. They must not be replaced with ordinary inherited `Function.prototype` matching. **Undecided (pending VIP):** the complete retained constructor inventory, ordered tests and extracted lists; [Pattern matching](004-match.md#class-patterns) must specify them before implementation.
+VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect; [Pattern matching](004-match.md#class-patterns) says what is still undecided about them.
 
 An `error` always extends `Data.TaggedError`. Group errors with a union, `type LookupError = NotFound | Timeout`: tagged errors are matched by `_tag`, and a subclass would match two tags.
 

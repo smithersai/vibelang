@@ -43,6 +43,8 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 
   Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
+*Corrected 2026-10-29: under "mutability included", a writable `Record<K, V>` is `Schema.Record(K, Schema.mutableKey(V))` and `Readonly<Record<K, V>>` is `Schema.Record(K, V)`, because `Schema.Record(K, V).Type` is readonly in effect 4.1.0; and a union made only of literals is `Schema.Literals([...])`, as the decision example writes it (found by the round-3 review).*
+
 ## History
 
 One minor finding, a wrong Effect API name, fixed.

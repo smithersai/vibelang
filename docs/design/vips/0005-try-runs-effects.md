@@ -11,8 +11,8 @@ effect function load(id) {
   const u = try fetchUser(id)                     // runs the Effect; a failure propagates
   const g = fetchUser(id) catch guest             // runs it; on a failure, gives guest
   const h = fetchUser(id) catch effect (e) => match (e) {
-    when NotFound: guest
-    when DbError: throw e                         // fails again, typed (VIP-4): the handler is an effect function
+    when NotFound: guest;
+    when DbError: throw e;                        // fails again, typed (VIP-4): the handler is an effect function
   }
   try sleep("1 second")                           // an Effect that can't fail is still run with try
   await queryDb(q)                                // error: await belongs to async functions
@@ -41,6 +41,9 @@ effect function load(id) {
 
 *Corrected 2026-10-29: the examples call `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
 - **Amended 2026-10-29: a non-literal function fallback.** In `x catch f`, where `f` is a non-literal function value, the fallback is the value `f`: syntax decides. A VIP-38 lint warning, with quick fixes to `catch (e) => …` or `catch effect { … }`, flags a fallback whose type is an Effect or a function. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: `try` works like `await`.** It is a unary operator with `await`'s precedence, and where `await` can't appear in an `async` function (its parameter list, a class field initializer, a `static` block), `try` can't appear in an `effect` function. Will, 2026-10-29: "try works like await."
+
+*Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
 
 ## Prior art
 

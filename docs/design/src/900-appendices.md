@@ -139,13 +139,13 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | Rule | Chapter |
 | --- | --- |
 | `try` outside effect code, the top level included; `try` on a value that is not an Effect; a `try` statement in effect code | [Running Effects](002-running.md#try) |
-| `effect f() { }` or `async f() { }` outside a class or object literal; an `effect` getter, setter or constructor; an `effect` function whose written return type is not an Effect; `await` in effect code; `await` on an Effect in an `async` function | [Functions](001-functions.md#static-rules) |
+| `effect f() { }` or `async f() { }` outside a class or object literal; an `effect` getter, setter or constructor; an `effect` function whose written return type is not an Effect; `await` in effect code; `await` on an Effect in an `async` function; `try`, `catch`, `fork`, `join`, `provide` or an interruption block in an `effect` function's parameters or in a class field initializer or `static` block | [Functions](001-functions.md#static-rules) |
 | `catch` outside effect code; `try x catch y`; `e catch y` where `e` is not an Effect; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
 | `break`, `return` or a labeled `continue` leaving `for concurrent`; `return` in `for try` | [Running Effects](002-running.md) |
 | `return value` in a producer | [Running Effects](002-running.md) |
-| an unwrapped call that may throw, or an unwrapped Promise, in effect code | [Failures](003-failures.md#calls-that-may-throw) |
+| an unwrapped call that may throw, or an unwrapped Promise, in effect code; a parameter default that may throw; a function that may throw where a function type doesn't admit its thrown type; a `throw` or a call that may throw in a plain function that returns an Effect, Stream or Layer | [Failures](003-failures.md#calls-that-may-throw) |
 | a service member with a body, `private` or `protected`, or a `static` other than `key` and `defaultValue` | [Services](005-services.md#static-rules) |
 | a constructor, `_tag`, `extends`, a `static` member, a setter or type parameters in an `error` or `schema error` declaration | [Failures](003-failures.md#error-declarations) |
 | a `data` declaration with more than 4 type parameters | [Data](006-data.md) |

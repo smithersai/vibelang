@@ -7,14 +7,13 @@ Sources: [VIP-15](../vips/0015-schema-declarations.md), [VIP-16](../vips/0016-da
 ### Syntax
 
 ```text
-SchemaDeclaration = "export"? "schema" Name "{" SchemaFields "}"
+SchemaDeclaration = "export"? "schema" Name "{" Field* "}"
                   | "export"? "schema" Name "=" Type
-SchemaFields      = (Field TypeMemberSeparator)* Field?
-Field             = "readonly"? PropertyName "?"? ":" Type
-TypeMemberSeparator = ";" | "," | LineTerminator
+Field             = "readonly"? PropertyName "?"? ":" Type Separator
+Separator         = ";" | "," | LineTerminator | before "}"   (as between interface members)
 ```
 
-`schema` is a contextual keyword on the same line as its name. Fields use TypeScript type-member separators: `;`, `,` or a line terminator between members; the last separator is optional. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
+`Field` and `Separator` are the productions of [Appendix A](900-appendices.md#productions), shared with `error` and `data`. `schema` is a contextual keyword on the same line as its name. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
 
 ### Meaning
 
@@ -115,14 +114,10 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 ```text
 DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
-Separator       = ";" | LineTerminator   (as between interface members)
-Variant         = Name ("{" Fields "}")?
-Fields          = (Field TypeMemberSeparator)* Field?
-Field           = "readonly"? PropertyName "?"? ":" Type
-TypeMemberSeparator = ";" | "," | LineTerminator
+Variant         = Name ("{" Field* "}")?
 ```
 
-`data` is a contextual keyword on the same line as its name, so `const data = …` still works. Variant fields use the same TypeScript type-member separators and optional `readonly` modifier as schema fields; variants themselves are separated by `;` or a line terminator.
+`data` is a contextual keyword on the same line as its name, so `const data = …` still works. `Field` and `Separator` are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`.
 
 ### Meaning
 
