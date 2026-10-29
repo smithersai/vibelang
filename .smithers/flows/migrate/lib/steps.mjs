@@ -350,8 +350,11 @@ export async function setup(options) {
   const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages) })
   writeJson(p.inventory, inventory)
 
+  // The target's coding agents get the skill, the language server and a check after each edit.
+  const agents = wired ? await Wire.initAgents({ root: t, packageDir: config.packages[0].dir, log: join(logs, "agents-init.log") }) : null
+
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
-  const setupCommit = await Jj.commit(t, `migrate(vibelang): set up ${version.trim()}\n\nAdds the compiler, the runtime and the Vite plugin, replaces tsc with vibelang\nin scripts, and lets .vibe files import modules by source name. Effect\n${upgrade.effect.to} came in the commit before.`)
+  const setupCommit = await Jj.commit(t, `migrate(vibelang): set up ${version.trim()}\n\nAdds the compiler, the runtime and the Vite plugin, replaces tsc with vibelang\nin scripts, lets .vibe files import modules by source name, and sets coding\nagents up for .vibe files (vibelang agents init). Effect\n${upgrade.effect.to} came in the commit before.`)
   await Jj.setBookmark(t, config.bookmark, setupCommit ?? upgrade.jj.commit)
   const result = {
     at: new Date().toISOString(),
@@ -359,6 +362,7 @@ export async function setup(options) {
     compiler: { path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain },
     effect: upgrade.effect,
     wired,
+    agents,
     upstreamTests: upgrade.tests,
     tests: testsOf(tests),
     wiringRegressions: wiring && { newFailures: wiring.newFailures, missing: wiring.missing, exit: { before: upstream.code, after: tests.code } },

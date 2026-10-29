@@ -4,9 +4,11 @@
 // compiler option that lets .vibe files import local modules by their source
 // names. Each keeps the file's own formatting outside the lines it changes.
 // wireVite applies the plugin edit to the config files the tests load. The
-// Effect upgrade before setup is upgrade.mjs.
+// Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
+// coding agents up with the vibelang it installed.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
+import { must, quote } from "./util.mjs"
 
 /** Replaces tsc with vibelang in package scripts: `tsc -b x` becomes `vibelang -b x`. */
 export function replaceTsc(scripts = {}) {
@@ -232,4 +234,19 @@ export function setIgnoreLine(text, line, present) {
   const has = lines.some((l) => l.trim() === line)
   if (present) return has ? text : `${text}${text && !text.endsWith("\n") ? "\n" : ""}${line}\n`
   return has ? lines.filter((l) => l.trim() !== line).join("\n") : text
+}
+
+const wrote = "vibelang agents init: wrote "
+
+/**
+ * Runs `vibelang agents init` for the repository at root with the vibelang
+ * that packageDir installed, so its coding agents get the VibeLang skill, the
+ * language server and a check after each edit. Returns the files it wrote; a
+ * vibelang without the command, before 0.0.11, writes none.
+ */
+export async function initAgents({ root, packageDir, log }) {
+  const cwd = join(root, packageDir)
+  if (!existsSync(join(cwd, "node_modules/vibelang/agents.mjs"))) return { files: [], skipped: "the installed vibelang has no `vibelang agents` command" }
+  const { stdout } = await must(`node node_modules/vibelang/bin/vibelang agents init ${quote(root)}`, { cwd, log })
+  return { files: stdout.split("\n").filter((line) => line.startsWith(wrote)).map((line) => line.slice(wrote.length)) }
 }

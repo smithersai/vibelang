@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addCompilerOptions, addEffectLint, addVibeLang, addVitePlugin, installCommand, packageManager, replaceTsc, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
+import { addCompilerOptions, addEffectLint, addVibeLang, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -182,4 +182,31 @@ test("setIgnoreLine adds the toolchain directory once and removes it for a publi
   assert.equal(setIgnoreLine(added, ".vibelang-toolchain/", true), added)
   assert.equal(setIgnoreLine(added, ".vibelang-toolchain/", false), "node_modules\n")
   assert.equal(setIgnoreLine("node_modules\n", ".vibelang-toolchain/", false), "node_modules\n")
+})
+
+test("initAgents sets the target's coding agents up with the vibelang a workspace package installed", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-agents-"))
+  try {
+    writeFileSync(join(root, "package.json"), "{}")
+    mkdirSync(join(root, "packages/core/node_modules/.bin"), { recursive: true })
+    symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "packages/core/node_modules/vibelang"))
+    symlinkSync("../vibelang/bin/vibelang", join(root, "packages/core/node_modules/.bin/vibelang"))
+    const { files } = await initAgents({ root, packageDir: "packages/core", log: join(root, "agents-init.log") })
+    assert.ok(files.includes(".codex/hooks.json") && files.includes(".agents/skills/vibelang/SKILL.md"), files.join(", "))
+    const hook = JSON.parse(readFileSync(join(root, ".claude/settings.json"), "utf8")).hooks.PostToolUse[0].hooks[0].command
+    assert.equal(hook, "npx --no --prefix packages/core -- vibelang agents hook")
+    assert.match(readFileSync(join(root, "AGENTS.md"), "utf8"), /npx --prefix packages\/core vibelang agents check/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("initAgents writes nothing with a vibelang that has no agents command", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-agents-"))
+  try {
+    mkdirSync(join(root, "node_modules/vibelang"), { recursive: true })
+    assert.deepEqual((await initAgents({ root, packageDir: ".", log: join(root, "log") })).files, [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
