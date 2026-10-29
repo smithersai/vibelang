@@ -1,0 +1,8 @@
+// expect-result: [2,3]
+import { Stream } from "effect"
+export effect function main() {
+ const selected = Stream.map(Stream.make(1, 2), (x) => x + 1)
+ const result: number[] = []
+ for try (const row of selected) result.push(row)
+ return result
+}

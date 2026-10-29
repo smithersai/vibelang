@@ -36,7 +36,6 @@ FuzzVIPDifferential  feature:vip26.run-promise-async  compiler  VIP-26: `await r
 FuzzVIPDifferential  feature:vip07.match-unreachable  compiler  VIP-7: a match whose arms cover a data union is exhaustive wherever it stands, but in code after a block that always returns the compiler reports EK4701 ("does not handle every case") and TS2339 on a bound field (after-landing campaign 20261030T1700, crasher 3f2ac66a, fz-func triage); lane fix-vip-match fixes it
 FuzzVIPDifferential  feature:vip17.fork-scoped            compiler  VIP-17: `const f = fork.scoped e` is not lowered to `yield* Effect.forkScoped(e)` yet; lane unassigned
 FuzzVIPDifferential  feature:vip17.fork-detached          compiler  VIP-17: `const f = fork.detached e` is not lowered to `yield* Effect.forkDetach(e)` yet; lane unassigned
-FuzzVIPDifferential  feature:vip20.for-try              compiler  VIP-20: `for try (const x of s) { … }` is not lowered to `yield* Stream.runForEachWhile(s, (x) => Effect.gen(…))`, continue as return true and break as return false, yet; lane unassigned
 FuzzVIPDifferential  feature:vip23.pipe                 compiler  VIP-23: `a |> f(%) |> g(%)` is not lowered to nested calls with each topic evaluated once into a temporary yet; lane unassigned
 #
 # Plain programs (vipgen.Program.Plain): every construct's plain form
@@ -63,14 +62,12 @@ FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP
 FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file
 FuzzVIPDifferential corpus:fz-func-vip01-call-time compiler VIP-1: minimized binding or completion-record probe; lane vip-core2
 FuzzVIPDifferential corpus:fz-func-vip01-super compiler VIP-1: minimized binding or completion-record probe; lane vip-core2
-FuzzVIPDifferential feature:vip12.stream-jumps compiler VIP-12: region completion records reach the source callback loop target; lane w2-provide (coordinate core-fortry/core-forconcurrent)
-FuzzVIPDifferential corpus:fz-func-vip12-stream-jumps compiler VIP-12: minimized callback jump probe; lane w2-provide
-FuzzVIPDifferential feature:vip22.stream-jumps compiler VIP-22: region completion records reach the source callback loop target; lane w2-provide (coordinate core-fortry/core-forconcurrent)
-FuzzVIPDifferential corpus:fz-func-vip22-stream-jumps compiler VIP-22: minimized callback jump probe; lane w2-provide
 FuzzVIPDifferential exit:called/vip05.async-forms-plain compiler VIP-1: a plain main must execute its call-time event before returning the Promise-backed Effect; lane vip-core2
 FuzzVIPDifferential corpus:fz-func-vip05-async-forms-plain compiler VIP-1: minimized plain async-forms probe; lane vip-core2
 FuzzVIPDifferential feature:vip12.concurrent-own-label compiler VIP-12: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip12-concurrent-own-label compiler VIP-12: minimized own-label continue probe; lane impl-hunt-run
+FuzzVIPDifferential feature:vip20.rhs-return compiler VIP-20: a `return` inside a `do` in the `for try` operand is TS1108, because the `do` parser rejects every `return` (VIP-2's `do` return is not implemented); lane unassigned
+FuzzVIPDifferential feature:vip20.rhs-tdz compiler VIP-20: the operand's closure over the head name is TS7022, and the lowering evaluates the operand outside the head's uninitialized bindings (spec compiler-gap pending VIP-19, VIP-20); lane core-fortry
 FuzzVIPDifferential feature:vip22.concurrent-own-label compiler VIP-22: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip22-concurrent-own-label compiler VIP-22: minimized own-label continue probe; lane impl-hunt-run
 FuzzVIPDifferential  feature:vip29.schema-error-cross-copy-plain  compiler  VIP-29: a schema error is an error class, whose matcher "tests `_tag`" and "matches across copies of the same package" (004-match.md, class patterns), so `when Gone(let e):` matches `{ _tag: "Gone" }`, but the compiler's matcher rejects that copy and the match gives "no" (main 695576ac; added by 41278806 without a pending line); lane fix-vip-match fixes it

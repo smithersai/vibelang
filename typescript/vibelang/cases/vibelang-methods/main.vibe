@@ -30,7 +30,7 @@ effect function after() {
 export effect function main() {
   const alerts = readings().filter((v) => v >= 25).map((v) => `${v} C`).take(2)
   const collected: string[] = []
-  for (const alert of alerts) collected.push(alert)
+  for try (const alert of alerts) collected.push(alert)
   const some = Option.some(2).map((n) => n * 2).getOrElse(() => 0)
   const none = Option.none<number>().map((n) => n * 2).getOrElse(() => 0)
   const millis = Duration.seconds(1).sum(Duration.millis(500)).toMillis()

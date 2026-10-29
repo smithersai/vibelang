@@ -73,7 +73,7 @@ export effect function main() {
   const arrow = try (effect () => { const [n = try choose()] = values("arrow", [undefined]); return n })()
   const byName = try retry(effect { const [n = try choose()] = values("byName", [undefined]); return n }, { times: 0 })
   const produced: number[] = []
-  for (const n of producer()) produced.push(n)
+  for try (const n of producer()) produced.push(n)
   const recursion = try recursive(1)
   return { same, capture, method, arrow, byName, producer: produced, recursive: recursion }
 }

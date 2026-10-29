@@ -92,14 +92,15 @@ effect function iteratorInterrupted() {
 effect function producer(ending: string) {
   const events: string[] = []
   effect function work() {
-    for (using x of produce(events)) {
+    for try (const item of produce(events)) {
+      using x = item
       using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
-      if (ending === "return") return
+      if (ending === "return") break
       if (ending === "continue") continue
     }
   }
@@ -110,7 +111,8 @@ effect function producerInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
   effect function work() {
-    for (using x of produce(events)) {
+    for try (const item of produce(events)) {
+      using x = item
       using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)
@@ -126,14 +128,15 @@ effect function producerInterrupted() {
 effect function stream(ending: string) {
   const events: string[] = []
   effect function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+    for try (const item of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+      using x = item
       using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
-      if (ending === "return") return
+      if (ending === "return") break
       if (ending === "continue") continue
     }
   }
@@ -144,7 +147,8 @@ effect function streamInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
   effect function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+    for try (const item of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+      using x = item
       using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)

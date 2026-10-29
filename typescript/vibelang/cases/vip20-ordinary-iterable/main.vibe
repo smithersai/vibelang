@@ -1,0 +1,11 @@
+// expect-result: [true,[]]
+import { Effect, Exit, Stream } from "effect"
+effect function consume(values: Iterable<number>, seen: number[]) {
+ for (const x of values) { try yieldNow(); seen.push(x) }
+}
+export effect function main() {
+ const seen: number[] = []
+ const disguised = Stream.make(1,2) as unknown as Iterable<number>
+ const outcome = try Effect.exit(consume(disguised, seen))
+ return [Exit.isFailure(outcome), seen]
+}

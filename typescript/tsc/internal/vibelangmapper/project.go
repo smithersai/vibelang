@@ -247,6 +247,12 @@ func (p *projector) visit(node *ast.Node, e env) {
 		p.tryOperandExpression(node, e)
 		return
 	}
+	if node.Kind == ast.KindForOfStatement && node.Flags&ast.NodeFlagsVibeLang != 0 && !e.effect {
+		p.syntaxDiagnostic(node, 2001, "for try consumes a Stream inside effect code; move this loop into an effect function or block.")
+		p.plan.replace(p.tokenStart(node)+len("for"), p.tokenStart(node.AsForInOrOfStatement().Initializer), " (")
+		p.visitChildren(node, e)
+		return
+	}
 	if e.effect && p.programReturnBoundary(node) {
 		p.returnProgram(node, e)
 		return

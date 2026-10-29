@@ -1,0 +1,5 @@
+// expect: TS1134
+import { Stream } from "effect"
+export effect function main() {
+  for try (var value of Stream.make(1)) { void value }
+}

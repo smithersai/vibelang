@@ -283,6 +283,12 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		// the CLI"; every other code has the default category the chapter
 		// gives it when no setting or comment changes it (D34, D241, D420).
 		want := facts.Default(code)
+		// VIP-20, amended: Appendix B assigns EK2004 to a non-Stream
+		// operand, an error. The legacy catch warning still uses this code
+		// until its lane renumbers it; keep checking that warning unchanged.
+		if code == 2004 && strings.HasPrefix(d.MessageText(), "for try requires a Stream;") {
+			want = DefaultError
+		}
 		if want == DefaultNever {
 			g.Add("ek:"+name, "%s is never emitted by the CLI (Chapter 28), but was reported: %s", name, keyOf(dir, d))
 			continue

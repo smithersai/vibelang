@@ -254,14 +254,9 @@ export declare function $delegate<A, E, R>(
 ): Generator<$Emit<A> | EffectModule.Effect<never, E, R>, void, unknown>
 export declare function $delegate<T>(iterable: Iterable<T>): Generator<$Emit<T>, void, unknown>
 
-/**
- * A for...of in an Effect body or a producer iterates `(yield* $each(xs))`:
- * a Stream's elements, with its E and R, or an iterable as itself (D26).
- * The iterable overload comes first, so a value of type any iterates as
- * any, adding nothing to E and R; a Stream is not iterable.
- */
+/** Ordinary for...of keeps its Iterable; for try consumes a Stream (VIP-20). */
 export declare function $each<T>(iterable: Iterable<T>): EffectModule.Effect<Iterable<T>, never, never>
-export declare function $each<A, E, R>(stream: StreamModule.Stream<A, E, R>): EffectModule.Effect<Iterable<A>, E, R>
+export declare function $eachStream<A, E, R>(stream: StreamModule.Stream<A, E, R>): EffectModule.Effect<Iterable<A>, E, R>
 
 /**
  * L1's dual form: a parameterless lambda that is both a program and a

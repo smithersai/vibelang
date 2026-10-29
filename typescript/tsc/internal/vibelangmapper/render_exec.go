@@ -136,7 +136,11 @@ func renderExec(e edit) (text string, keep bool) {
 	case editEach:
 		// for (const x of (yield* $each(xs))): a Stream's elements, or an
 		// iterable as itself (execRendering.prologue).
-		return pick(e.part, "(yield* "+helperRef("$each")+"(", "", "))"), true
+		helper := "$each"
+		if e.arg == "stream" {
+			helper = "$eachStream"
+		}
+		return pick(e.part, "(yield* "+helperRef(helper)+"(", "", "))"), true
 	case editFail:
 		if e.arg == "void" {
 			return pick(e.part, "return (yield* "+helperRef("$fail")+"(", "", "))"), true
@@ -285,33 +289,33 @@ type execSource struct {
 var execHelpers = map[string]execSource{
 	"$method": {"vibelang-runtime/data-methods", "$method"},
 
-	"$gen":          {"effect/Effect", "gen"},
-	"$fail":         {"effect/Effect", "fail"},
-	"$plain":        {"vibelang-runtime", "$plainOf"},
-	"$promise":      {"effect/Effect", "promise"},
-	"$sync":         {"effect/Effect", "sync"},
-	"$resume":       {"vibelang-runtime", "resume"},
-	"$resumeWith":   {"vibelang-runtime", "resumeWith"},
-	"$withSpan":     {"effect/Effect", "withSpan"},
-	"$onExit":       {"effect/Effect", "onExit"},
-	"$map":          {"effect/Effect", "map"},
-	"$fnUntraced":   {"effect/Effect", "fnUntraced"},
-	"$scopedBody":   {"effect/Effect", "scoped"},
-	"$suspend":      {"effect/Effect", "suspend"},
-	"$isStream":     {"effect/Stream", "isStream"},
-	"$runCollect":   {"effect/Stream", "runCollect"},
-	"$isKey":        {"effect/Context", "isKey"},
-	"$isEffect":     {"effect/Effect", "isEffect"},
-	"$succeed":      {"effect/Effect", "succeed"},
-	"$ScopeKey":     {"effect/Scope", "Scope"},
-	"$provideScope": {"effect/Scope", "provide"},
+	"$gen":             {"effect/Effect", "gen"},
+	"$fail":            {"effect/Effect", "fail"},
+	"$plain":           {"vibelang-runtime", "$plainOf"},
+	"$promise":         {"effect/Effect", "promise"},
+	"$sync":            {"effect/Effect", "sync"},
+	"$resume":          {"vibelang-runtime", "resume"},
+	"$resumeWith":      {"vibelang-runtime", "resumeWith"},
+	"$withSpan":        {"effect/Effect", "withSpan"},
+	"$onExit":          {"effect/Effect", "onExit"},
+	"$map":             {"effect/Effect", "map"},
+	"$fnUntraced":      {"effect/Effect", "fnUntraced"},
+	"$scopedBody":      {"effect/Effect", "scoped"},
+	"$suspend":         {"effect/Effect", "suspend"},
+	"$runForEachWhile": {"effect/Stream", "runForEachWhile"},
+	"$runCollect":      {"effect/Stream", "runCollect"},
+	"$isKey":           {"effect/Context", "isKey"},
+	"$isEffect":        {"effect/Effect", "isEffect"},
+	"$succeed":         {"effect/Effect", "succeed"},
+	"$ScopeKey":        {"effect/Scope", "Scope"},
+	"$provideScope":    {"effect/Scope", "provide"},
 }
 
 // prologueHelpers are defined by the prefix of each file that uses them
 // (execRendering.prologue); temporaries are declared there too.
 var prologueHelpers = map[string]bool{
 	"$end": true, "$Jump": true, "$jump": true, "$returned": true, "$jumped": true, "$value": true, "$acquire": true,
-	"$returnRun": true, "$member": true, "$dual": true, "$asProgram": true, "$programs": true, "$each": true,
+	"$returnRun": true, "$member": true, "$dual": true, "$asProgram": true, "$programs": true, "$each": true, "$eachStream": true, "$iterateStream": true,
 	"$t": true, "$s": true, "$scope": true, "$iterate": true, "$producerGen": true, "$adapt": true,
 }
 
@@ -434,6 +438,11 @@ func (r *execRendering) prologue() string {
 			r.local(helper)
 		}
 	}
+	if r.used["$iterateStream"] {
+		for _, helper := range []string{"$end", "$Jump", "$map", "$runForEachWhile"} {
+			r.local(helper)
+		}
+	}
 	if r.used["$member"] {
 		r.local("$value")
 	}
@@ -493,17 +502,20 @@ func (r *execRendering) prologue() string {
 			"for (const k of Reflect.ownKeys(program)) Object.defineProperty(f, k, Object.getOwnPropertyDescriptor(program, k)); return f };")
 	}
 	if r.used["$each"] {
-		// The checking rendering iterates what $each gives, all of a
-		// Stream's elements, so a Stream runs to its end before the loop's
-		// first iteration; the plan has no loop region that would let a
-		// producer and its loop take turns, as the fork's $forOf does.
-		parts = append(parts, "const "+r.local("$each")+" = (v) => "+r.local("$isStream")+"(v) ? "+r.local("$runCollect")+"(v) : "+r.local("$succeed")+"(v);")
+		parts = append(parts, "const "+r.local("$each")+" = "+r.local("$succeed")+";")
+	}
+	if r.used["$eachStream"] {
+		parts = append(parts, "const "+r.local("$eachStream")+" = "+r.local("$runCollect")+";")
 	}
 	if r.used["$iterate"] {
 		// The runtime uses tagged loop completions; the checking rendering
 		// uses raw return values, the end sentinel, and Jump instances.
 		end, jump, cls, mapping := r.local("$end"), r.local("$jump"), r.local("$Jump"), r.local("$map")
-		parts = append(parts, "const "+r.local("$iterate")+" = (xs, body, label) => "+mapping+"("+r.local("$forOf")+"(xs, (v) => "+mapping+"(body(v), (c) => c === "+end+" ? { kind: \"normal\" } : c instanceof "+cls+" ? { kind: c.k.slice(0, c.k.indexOf(\":\")), label: c.k.slice(c.k.indexOf(\":\") + 1) } : { kind: \"return\", value: c }), label), (c) => c.kind === \"normal\" ? "+end+" : c.kind === \"return\" ? c.value : "+jump+"(c.kind + \":\" + c.label));")
+		parts = append(parts, "const "+r.local("$iterate")+" = (xs, body, label) => "+mapping+"("+r.local("$forOf")+"((function* () { for (const value of xs) yield value })(), (v) => "+mapping+"(body(v), (c) => c === "+end+" ? { kind: \"normal\" } : c instanceof "+cls+" ? { kind: c.k.slice(0, c.k.indexOf(\":\")), label: c.k.slice(c.k.indexOf(\":\") + 1) } : { kind: \"return\", value: c }), label), (c) => c.kind === \"normal\" ? "+end+" : c.kind === \"return\" ? c.value : "+jump+"(c.kind + \":\" + c.label));")
+	}
+	if r.used["$iterateStream"] {
+		end, cls, mapping := r.local("$end"), r.local("$Jump"), r.local("$map")
+		parts = append(parts, "const "+r.local("$iterateStream")+" = (xs, body, label) => "+mapping+"("+r.local("$runForEachWhile")+"(xs, (v) => "+mapping+"(body(v), (c) => c === "+end+" || c instanceof "+cls+" && c.k.startsWith(\"continue:\"))), () => "+end+");")
 	}
 
 	if r.used["$producerGen"] {
@@ -1145,6 +1157,39 @@ func callsRunnerSyntax(expression *ast.Node) bool {
 	return false
 }
 
+// moveLoopBinding preserves executable edits when the declaration moves from
+// the loop head into the per-element generator (VIP-20, amended).
+func (l *execLowering) moveLoopBinding(node *ast.Node, anchor int) string {
+	start, end := l.p.tokenStart(node), node.End()
+	var edits []edit
+	var indices []int
+	for i, e := range l.edits {
+		if e.pos >= start && e.end <= end {
+			edits = append(edits, e)
+			indices = append(indices, i)
+		}
+	}
+	slices.SortStableFunc(edits, func(a, b edit) int { return a.pos - b.pos })
+	var out strings.Builder
+	cursor := start
+	for _, e := range edits {
+		if e.pos < cursor {
+			l.p.unprojected(node)
+			return l.p.text[start:end]
+		}
+		out.WriteString(l.p.text[cursor:e.pos])
+		if text, keep := renderExec(e); keep {
+			out.WriteString(text)
+		}
+		cursor = e.end
+	}
+	out.WriteString(l.p.text[cursor:end])
+	for _, i := range indices {
+		l.edits[i] = edit{pos: anchor, end: anchor}
+	}
+	return out.String()
+}
+
 // lowerLoops renders the plan's each operations as internal iteration
 // (D26). A callback returns the same completions as a checking region;
 // $iterate adapts those to the runtime's for-of protocol. This preserves
@@ -1174,6 +1219,7 @@ func (l *execLowering) lowerLoops() {
 		if !ok {
 			return
 		}
+		stream := l.edits[s.open].arg == "stream"
 		l.set(s.open, "")
 		l.set(s.close, "")
 		start := l.p.tokenStart(n)
@@ -1182,10 +1228,21 @@ func (l *execLowering) lowerLoops() {
 			label = n.Parent.AsLabeledStatement().Label.Text()
 			start = l.p.tokenStart(n.Parent)
 		}
+		if stream {
+			for i, e := range l.edits {
+				if e.kind == editWitness && e.pos == l.p.tokenStart(n)+len("for") && e.end == l.p.tokenStart(loop.Initializer) {
+					l.edits[i] = edit{pos: start, end: start}
+				}
+			}
+		}
 		value := l.p.freshWord("$item")
 		completion := l.p.freshCompletion()
 		init := loop.Initializer
-		binding := l.p.text[l.p.tokenStart(init):init.End()] + " = " + value + "; "
+		bindingText := l.p.text[l.p.tokenStart(init):init.End()]
+		if stream {
+			bindingText = l.moveLoopBinding(init, start)
+		}
+		binding := bindingText + " = " + value + "; "
 		using := init.Kind == ast.KindVariableDeclarationList && init.Flags&ast.NodeFlagsUsing != 0
 		hoist := ""
 		if init.Kind == ast.KindVariableDeclarationList {
@@ -1198,13 +1255,17 @@ func (l *execLowering) lowerLoops() {
 				binding = l.p.text[l.p.tokenStart(name):name.End()] + " = " + value + "; "
 			}
 		}
-		opening := "{ " + hoist + "const " + completion + " = yield* " + helperRef("$iterate") + "("
+		helper := "$iterate"
+		if stream {
+			helper = "$iterateStream"
+		}
+		opening := "{ " + hoist + "const " + completion + " = yield* " + helperRef(helper) + "("
 		l.replace(start, l.p.tokenStart(loop.Expression), opening)
 		callback := ", (" + value + ") => "
 		if using {
 			callback += helperRef("$region") + "((" + helperRef("$scope") + ") => "
 		}
-		callback += helperRef("$gen") + "(" + selfPrefix(loop.Statement) + "function* () { " + binding
+		callback += helperRef("$gen") + "(" + selfPrefix(n) + "function* () { " + binding
 		l.replace(loop.Expression.End(), l.p.tokenStart(loop.Statement), callback)
 		closing := "; return " + helperRef("$end") + "; })"
 		if using {
@@ -1219,6 +1280,11 @@ func (l *execLowering) lowerLoops() {
 			}
 			if c.Kind == ast.KindBreakStatement || c.Kind == ast.KindContinueStatement {
 				target := execJumpTarget(c)
+				if stream {
+					for target != nil && target.Kind == ast.KindLabeledStatement {
+						target = target.AsLabeledStatement().Statement
+					}
+				}
 				if target != nil && (target == n || target.Pos() < n.Pos() || target.End() > n.End()) {
 					j := jump{kind: c.Kind}
 					if c.Label() != nil {

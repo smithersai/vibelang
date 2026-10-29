@@ -66,16 +66,17 @@ function lazy() {
 
 effect function returnInside() {
   const log: string[] = []
-  for (const n of numbers(100, log)) {
-    if (n > 1) return { n, log }
+  let result = -1
+  for try (const n of numbers(100, log)) {
+    if (n > 1) { result = n; break }
   }
-  return { n: -1, log }
+  return { n: result, log }
 }
 
 effect function breakInside() {
   const log: string[] = []
   let sum = 0
-  for (const n of numbers(10, log)) {
+  for try (const n of numbers(10, log)) {
     if (n === 3) break
     sum += n
   }
@@ -86,9 +87,9 @@ effect function breakInside() {
 effect function continueOuter() {
   const log: string[] = []
   const pairs: string[] = []
-  outer: for (const a of numbers(3, log)) {
-    for (const b of numbers(3, log)) {
-      if (b > a) continue outer
+  for try (const a of numbers(3, log)) {
+    for try (const b of numbers(3, log)) {
+      if (b > a) break
       pairs.push(`${a}${b}`)
     }
   }
@@ -99,20 +100,20 @@ effect function twoPasses() {
   const log: string[] = []
   const producer = numbers(2, log)
   let count = 0
-  for (const n of producer) count++
-  for (const n of producer) count++
+  for try (const n of producer) count++
+  for try (const n of producer) count++
   return count
 }
 
 effect function services() {
   let total = 0
-  for (const value of lookups(["a", "b", "c"])) total += value
+  for try (const value of lookups(["a", "b", "c"])) total += value
   return total
 }
 
 effect function delegated() {
   const values: number[] = []
-  for (const n of withTen([])) values.push(n)
+  for try (const n of withTen([])) values.push(n)
   return values
 }
 
@@ -124,20 +125,20 @@ effect function taken() {
 
 effect function overStream() {
   let sum = 0
-  for (const n of Stream.make(1, 2, 3, 4)) {
+  for try (const n of Stream.make(1, 2, 3, 4)) {
     if (n === 4) break
     sum += n
   }
   return sum
 }
 
-// A loop's binding can be a pattern, an existing variable, or a var.
+// A loop's binding can be a const or let declaration, including a pattern.
 effect function bindings() {
   const names: string[] = []
-  for (const [n, name] of pairs()) names.push(`${n}:${name}`)
+  for try (const [n, name] of pairs()) names.push(`${n}:${name}`)
   let last = 0
-  for (last of count(3)) names.push(`last ${last}`)
-  for (var v of count(2)) names.push(`var ${v}`)
+  for try (const value of count(3)) { last = value; names.push(`last ${last}`) }
+  for try (let v of count(2)) names.push(`var ${v}`)
   return { names, last }
 }
 
@@ -146,7 +147,7 @@ effect function bindings() {
 effect function caught() {
   const seen: number[] = []
   try {
-    for (const n of failing()) seen.push(n)
+    for try (const n of failing()) seen.push(n)
   } catch (e) {
     return { seen, error: e._tag, at: e.at }
   }
@@ -156,12 +157,14 @@ effect function caught() {
 // break to a label of an enclosing JavaScript loop leaves the producer loop.
 effect function outerBreak() {
   const seen: string[] = []
-  rows: for (let row = 0; row < 3; row++) {
-    for (const n of count(5)) {
-      if (n === 2) continue rows
-      if (row === 2) break rows
+  let stop = false
+  for (let row = 0; row < 3; row++) {
+    for try (const n of count(5)) {
+      if (n === 2) break
+      if (row === 2) { stop = true; break }
       seen.push(`${row}${n}`)
     }
+    if (stop) break
   }
   return seen
 }
@@ -172,7 +175,7 @@ effect function big() {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
   }
   let sum = 0
-  for (const n of count(100000)) sum += n
+  for try (const n of count(100000)) sum += n
   hooks.onResume = undefined
   return { sum, bounded: maxDepth < 50 }
 }

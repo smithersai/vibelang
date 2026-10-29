@@ -61,7 +61,8 @@ function* produce(events: string[]) {
 effect function producer(fail: boolean) {
   const events: string[] = []
   const outcome = try exit(effect {
-    for (using x of produce(events)) {
+    for try (const item of produce(events)) {
+      using x = item
       events.push("body")
       try sleep("1 millis")
       if (fail) throw new Bad()
@@ -74,7 +75,8 @@ effect function stream(fail: boolean) {
   const events: string[] = []
   const values = Stream.fromIterable([disposable(events, "s1"), disposable(events, "s2")])
   const outcome = try exit(effect {
-    for (using x of values) {
+    for try (const item of values) {
+      using x = item
       events.push("body")
       try sleep("1 millis")
       if (fail) throw new Bad()

@@ -106,6 +106,9 @@ func (c *comparer) same(a, b *ast.Node) error {
 	if associatedDocCount(a, c.before) != associatedDocCount(b, c.after) {
 		return c.differ(a, "JSDoc attachment changed; choose whether the comment should apply before formatting")
 	}
+	if a.Kind == ast.KindForOfStatement && (a.Flags^b.Flags)&ast.NodeFlagsVibeLang != 0 {
+		return c.differ(a, "for try changed to or from for...of")
+	}
 	if text, ok := leafText(a); ok {
 		if other, _ := leafText(b); text != other {
 			return c.differ(a, fmt.Sprintf("%q became %q", text, other))

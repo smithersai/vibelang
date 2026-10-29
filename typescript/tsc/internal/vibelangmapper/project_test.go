@@ -557,8 +557,8 @@ var projectionCases = []struct {
 	},
 	{
 		name:    "a producer is a Stream that emits its yields (D26)",
-		source:  "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() {\n  let sum = 0\n  for (const n of lookups([\"a\"])) sum += n\n  return sum\n}\n",
-		virtual: "function lookups(keys: string[]) { return $produce(function* () {\n  for (const key of (yield* $each(keys))) yield $emit((yield* $run($use(Store).get(key))))\n  yield* $delegate((yield* $run($value(more)())))\n})}\nfunction total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $each((yield* $run(lookups([\"a\"])))))) sum += n\n  return sum\n})}\n",
+		source:  "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() {\n  let sum = 0\n  for try (const n of lookups([\"a\"])) sum += n\n  return sum\n}\n",
+		virtual: "function lookups(keys: string[]) { return $produce(function* () {\n  for (const key of (yield* $each(keys))) yield $emit((yield* $run($use(Store).get(key))))\n  yield* $delegate((yield* $run($value(more)())))\n})}\nfunction total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $eachStream((yield* $run(lookups([\"a\"])))))) sum += n\n  return sum\n})}\n",
 	},
 	{
 		name:    "a layer without statements succeeds with its members",

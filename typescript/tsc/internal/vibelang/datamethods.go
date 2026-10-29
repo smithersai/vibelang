@@ -399,6 +399,11 @@ func (tx *lowering) moduleNamespace(module string) *ast.IdentifierNode {
 		return name
 	}
 	base := module[strings.LastIndex(module, "/")+1:]
+	// Method lowering can inject a prelude namespace absent from the source.
+	// The printer cannot reserve that name through the source identifiers.
+	if slices.Contains(tx.plan.prelude, base) && !tx.fresh.spelled(base) {
+		base += "$module"
+	}
 	name := tx.fileName(base)
 	tx.modules[module] = name
 	tx.moduleOrder = append(tx.moduleOrder, module)

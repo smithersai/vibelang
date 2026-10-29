@@ -95,3 +95,7 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 An explicitly `readonly` schema field requires known readonly decoded-key flags on its referenced codec (detail132), including aliases and nested structs. For `EK2109` conflicts, run `vibelang --fix` to keep the existing codec through explicit `Schema.Struct` values. Preserve emitted declarations, decode Exits/Causes, constructor/matcher behavior, getter order and directives. Do not replace a `mutableKey` codec with `readonlyKey` or confuse shallow key mutability with nested value mutability. Direct schema-error fields follow a separate effective-readonly rule (detail167).
 
 - Generic `data` parameters have no defaults (`EK2803`, VIP-28): preserve a default with `vibelang --fix`, which expands the declaration into equivalent Effect TypeScript.
+
+## VIP-20: Stream loops
+
+For `Stream` iteration, write `for try (const x of stream)` in effect code. Rewrite legacy `for await` over a `Stream` to `for try`; keep `for await` over `AsyncIterable` values in `async` code. `continue` skips an element and `break` stops consuming. A body `return` is `EK2002`: use `break` and return after the loop. `EK2007` offers the loop spelling migration through `vibelang --fix`.

@@ -29,7 +29,7 @@ effect function viaCall() {
 
 effect function loop(stream: Stream.Stream<number, never, Ask>) {
   let total = 0
-  for (const n of stream) total += n
+  for try (const n of stream) total += n
   return total
 }
 

@@ -60,7 +60,7 @@ export effect function main() {
   const retried = flaky() |> try retry(%, Schedule.recurs(5))
   const label = { first: "Ada", last: "Lovelace" } |> `${%.first} ${%.last}`
   const hot: string[] = []
-  for (const reading of readings() |> %.filter((c) => c > 25).map((c) => `${c} C`)) hot.push(reading)
+  for try (const reading of readings() |> %.filter((c) => c > 25).map((c) => `${c} C`)) hot.push(reading)
   const odd = 7 |> % % 2
   const signed = counted(-4) |> % > 0 ? % : 0
   const nested = 7 |> (`${%}` |> `<${%}>`)

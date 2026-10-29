@@ -20,7 +20,7 @@ function* countdown(from: number) {
 // for...of over a Stream
 effect function sumStream() {
   let total = 0
-  for (const n of Stream.make(1, 2, 3, 4)) {
+  for try (const n of Stream.make(1, 2, 3, 4)) {
     total += n
     if (total > 5) break
   }

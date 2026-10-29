@@ -29,7 +29,7 @@ function* lines(path: string) {
 
 effect function firstErrors(path: string) {
   const found: string[] = []
-  for (const line of lines(path)) {
+  for try (const line of lines(path)) {
     if (line.startsWith("ERROR")) found.push(line)
     if (found.length === 3) break       // the file closes here
   }
@@ -40,7 +40,7 @@ effect function firstErrors(path: string) {
 // The same loop, recording when it exits: the file must close before "loop exited".
 effect function firstErrorsTraced(path: string) {
   const found: string[] = []
-  for (const line of lines(path)) {
+  for try (const line of lines(path)) {
     if (line.startsWith("ERROR")) found.push(line)
     if (found.length === 3) break
   }
@@ -52,9 +52,9 @@ effect function firstErrorsTraced(path: string) {
 effect function twoPasses(path: string) {
   const producer = lines(path)
   let first = 0
-  for (const line of producer) first++
+  for try (const line of producer) first++
   let second = 0
-  for (const line of producer) second++
+  for try (const line of producer) second++
   return [first, second]
 }
 

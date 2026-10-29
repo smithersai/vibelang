@@ -1361,7 +1361,14 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
-	awaitToken := p.parseOptionalToken(ast.KindAwaitKeyword)
+	var tryToken *ast.Node
+	if p.isVibeLangFile() {
+		tryToken = p.parseOptionalToken(ast.KindTryKeyword)
+	}
+	var awaitToken *ast.Node
+	if tryToken == nil {
+		awaitToken = p.parseOptionalToken(ast.KindAwaitKeyword)
+	}
 	p.parseExpected(ast.KindOpenParenToken)
 	var initializer *ast.ForInitializer
 	if p.token != ast.KindSemicolonToken {
@@ -1374,9 +1381,12 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 			initializer = p.doInContext(ast.NodeFlagsDisallowInContext, true, (*Parser).parseExpression)
 		}
 	}
+	if tryToken != nil && (initializer == nil || !ast.IsVariableDeclarationList(initializer) || initializer.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 || initializer.Flags&ast.NodeFlagsUsing != 0) {
+		p.parseErrorAtCurrentToken(diagnostics.Variable_declaration_expected)
+	}
 	var result *ast.Statement
 	switch {
-	case awaitToken != nil && p.parseExpected(ast.KindOfKeyword) || awaitToken == nil && p.parseOptional(ast.KindOfKeyword):
+	case (awaitToken != nil || tryToken != nil) && p.parseExpected(ast.KindOfKeyword) || awaitToken == nil && p.parseOptional(ast.KindOfKeyword):
 		expression := p.doInContext(ast.NodeFlagsDisallowInContext, false, (*Parser).parseAssignmentExpressionOrHigher)
 		p.parseExpected(ast.KindCloseParenToken)
 		result = p.factory.NewForInOrOfStatement(ast.KindForOfStatement, awaitToken, initializer, expression, p.parseStatement())
@@ -1397,6 +1407,10 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 		}
 		p.parseExpected(ast.KindCloseParenToken)
 		result = p.factory.NewForStatement(initializer, condition, incrementor, p.parseStatement())
+	}
+	if tryToken != nil {
+		result.Flags |= ast.NodeFlagsVibeLang
+		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxForTry, Word: core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), scanner.SkipTrivia(p.sourceText, pos)+3), Head: core.NewTextRange(scanner.SkipTrivia(p.sourceText, tryToken.Pos()), tryToken.End()), Range: core.NewTextRange(pos, p.nodePos())})
 	}
 	p.finishNode(result, pos)
 	p.withJSDoc(result, jsdoc)

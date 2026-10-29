@@ -30,7 +30,7 @@ let maxDepth = 0
 // A loop body with its own regions: cleanup runs per element, still in constant stack.
 effect function sumWithFinally(n: number) {
   let sum = 0
-  for (const x of count(n)) {
+  for try (const x of count(n)) {
     try {
       sum += x
     } finally {
@@ -46,7 +46,7 @@ export effect function main() {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
   }
   let sum = 0
-  for (const x of count(100000)) sum += x
+  for try (const x of count(100000)) sum += x
   const loopDepth = maxDepth
   maxDepth = 0
   let seen = 0

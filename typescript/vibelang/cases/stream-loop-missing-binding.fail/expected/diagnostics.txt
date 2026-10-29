@@ -1,1 +1,1 @@
-main.vibe(8,13): error TS1123
+main.vibe(8,17): error TS1123

@@ -126,13 +126,13 @@ function* closingItems() {
 }
 
 effect function producerIteratorCloseThrows() {
-  for (const n of closingItems()) {
+  for try (const n of closingItems()) {
     throw new E()
   }
 }
 
 effect function producerCleanupDies() {
-  for (const n of numbers()) {
+  for try (const n of numbers()) {
     throw new E()
   }
 }

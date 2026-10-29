@@ -50,7 +50,8 @@ type jump struct {
 // A region collects the jumps that leave it while the lowering emits its
 // closures.
 type region struct {
-	jumps []jump // each jump once, in the order the lowering met them
+	forTry bool   // VIP-20: a consumer returns whether to keep pulling
+	jumps  []jump // each jump once, in the order the lowering met them
 }
 
 func (r *region) add(j jump) {
@@ -162,8 +163,18 @@ func (tx *lowering) jumpTo(j jump, original *ast.Node) *ast.Node {
 // leave makes the return of the completion record of j, which leaves the
 // region whose closure the frame emits, with value as a return's value.
 func (tx *lowering) leave(j jump, value *ast.Node, original *ast.Node) *ast.Node {
-	tx.frame.region.add(j)
 	f := tx.Factory()
+	if tx.frame.region.forTry && j.kind != ast.KindReturnStatement {
+		kind := ast.KindFalseKeyword
+		if j.kind == ast.KindContinueStatement {
+			kind = ast.KindTrueKeyword
+		}
+		statement := f.NewReturnStatement(f.NewKeywordExpression(kind))
+		tx.EmitContext().SetOriginal(statement, original)
+		statement.Loc = original.Loc
+		return statement
+	}
+	tx.frame.region.add(j)
 	properties := []*ast.Node{f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("kind"), nil /*postfixToken*/, nil /*typeNode*/, f.NewStringLiteral(jumpKind(j.kind), ast.TokenFlagsNone))}
 	if j.kind == ast.KindReturnStatement {
 		if value != nil {
@@ -261,19 +272,32 @@ func (tx *lowering) regionFunction(r *region, role string, binding *ast.Node, bl
 	var parameters []*ast.Node
 	if binding != nil {
 		name := binding.Name()
-		if ast.IsBindingPattern(name) {
+		if ast.IsBindingPattern(name) || r.forTry {
 			// catch ({ a = f() }): a pattern's defaults may run calls, which a
 			// generator's parameter list cannot yield, so the body destructures.
-			error := f.NewUniqueName("error")
+			word := "error"
+			if r.forTry {
+				word = "item"
+			}
+			error := f.NewUniqueName(word)
+			flags := ast.NodeFlagsConst
+			if r.forTry && binding.Parent != nil && binding.Parent.Flags&ast.NodeFlagsLet != 0 {
+				flags = ast.NodeFlagsLet
+			}
+			if r.forTry {
+				statements = []*ast.Node{f.NewBlock(f.NewNodeList(statements), true)}
+			}
 			destructure := f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
 				f.NewVariableDeclaration(tx.visitInFrame(r, name), nil /*exclamationToken*/, nil /*typeNode*/, error),
-			}), ast.NodeFlagsConst))
+			}), flags))
 			statements = append([]*ast.Node{destructure}, statements...)
 			name = error
 		}
 		parameters = append(parameters, f.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, name, nil /*questionToken*/, nil /*typeNode*/, nil /*initializer*/))
 	}
-	if len(r.jumps) > 0 && canCompleteNormally(block) {
+	if r.forTry {
+		statements = append(statements, f.NewReturnStatement(f.NewKeywordExpression(ast.KindTrueKeyword)))
+	} else if len(r.jumps) > 0 && canCompleteNormally(block) {
 		statements = append(statements, tx.generated(f.NewReturnStatement(tx.runtimeMember("$normal"))))
 	}
 	body := f.NewBlock(f.NewNodeList(statements), true /*multiLine*/)
@@ -285,6 +309,22 @@ func (tx *lowering) regionFunction(r *region, role string, binding *ast.Node, bl
 	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), name, nil /*typeParameters*/, f.NewNodeList(parameters), nil /*type*/, nil /*fullSignature*/, body)
 	tx.EmitContext().SetOriginal(generator, block)
 	tx.generated(generator)
+	if r.forTry {
+		// VIP-20: the consumer callback builds a fresh Effect.gen per item.
+		generator = f.NewFunctionExpression(nil, f.NewToken(ast.KindAsteriskToken), name, nil, f.NewNodeList(nil), nil, nil, body)
+		tx.EmitContext().SetOriginal(generator, block)
+		tx.generated(generator)
+		run := tx.wrapGenerator("gen", block, generator)
+		if usesThis(body) {
+			self := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
+				f.NewPropertyAssignment(nil, f.NewIdentifier("self"), nil, nil, f.NewThisExpression()),
+			}), false)
+			run = f.NewCallExpression(run.Expression(), nil, nil, f.NewNodeList([]*ast.Node{self, generator}), ast.NodeFlagsNone)
+			tx.EmitContext().SetOriginal(run, block)
+			run.Loc = block.Loc
+		}
+		return f.NewArrowFunction(nil, nil, f.NewNodeList(parameters), nil, nil, f.NewToken(ast.KindEqualsGreaterThanToken), run)
+	}
 	return tx.wrapGenerator("fnUntraced", block, generator)
 }
 
@@ -342,6 +382,14 @@ func (tx *lowering) dispatch(completion *ast.Node, j jump) *ast.Node {
 	}
 	var then *ast.Node
 	switch {
+	case !tx.frame.lands(j) && tx.frame.region != nil && tx.frame.region.forTry && j.kind != ast.KindReturnStatement:
+		// A cleanup region returned a completion record. The Stream callback
+		// consumes it as its boolean, just like a direct break or continue.
+		kind := ast.KindFalseKeyword
+		if j.kind == ast.KindContinueStatement {
+			kind = ast.KindTrueKeyword
+		}
+		then = f.NewReturnStatement(f.NewKeywordExpression(kind))
 	case !tx.frame.lands(j) && tx.frame.region != nil:
 		tx.frame.region.add(j)
 		then = f.NewReturnStatement(completion)

@@ -35,20 +35,8 @@ import (
 // Stream<T, E, R>: T joins the types of its yields, and E and R are what its
 // body can fail with and needs. Generator methods stay JavaScript's.
 //
-// for...of over a value whose type is a Stream, a producer or any other, is
-// a loop over its elements (D26). The loop body is a region (regions.go)
-// whose closure takes the element, and the runtime's $forOf runs the closure
-// once per element, pulling the Stream. $forOf handles the body's break and continue of its
-// own loop, and the enclosing generator dispatches every other jump:
-//
-//	for (const line of lines(path)) {      const completion = yield* runtime.$forOf(lines(path),
-//	  if (line.startsWith("ERROR")) break      Effect.fnUntraced(function* firstErrors$for(line) {
-//	  count++                                    if (line.startsWith("ERROR")) return { kind: "break", label: "" };
-//	}                                            count++;
-//	                                             return runtime.$normal;
-//	                                           }));
-//
-// Over any other iterable, for...of is JavaScript's loop.
+// VIP-20: for try consumes a Stream with Stream.runForEachWhile.
+// Ordinary for...of always retains its JavaScript iterator meaning.
 
 // isProducer reports whether fn is a producer: a function* declaration or
 // function expression, not async, with a body, in a .vibe file, without
@@ -69,7 +57,6 @@ const streamTypeID = "~effect/Stream"
 type producerState struct {
 	stream         *checker.Type // effect's generic Stream interface, found in the program's files
 	streamSearched bool
-	loops          map[*ast.Node]bool // for...of statements, by whether they iterate a Stream
 	pausing        map[*ast.Node]bool // functions, by whether their body loops over a Stream
 }
 
@@ -77,7 +64,7 @@ type producerStateKey struct{}
 
 func producersOf(c *checker.Checker) *producerState {
 	return c.ExtensionState(producerStateKey{}, func() any {
-		return &producerState{loops: map[*ast.Node]bool{}, pausing: map[*ast.Node]bool{}}
+		return &producerState{pausing: map[*ast.Node]bool{}}
 	}).(*producerState)
 }
 
@@ -163,12 +150,12 @@ func streamChannel(c *checker.Checker, t *checker.Type, name string) *checker.Ty
 }
 
 // iteratedElementType is the checker's iterated element type hook. In the
-// body of a .vibe function, a for...of statement over a Stream iterates the
+// body of a .vibe function, a for try statement over a Stream iterates the
 // Stream's elements, and so does a yield* of a Stream in a producer.
 func iteratedElementType(c *checker.Checker, node *ast.Node, iterated *checker.Type) *checker.Type {
 	switch node.Kind {
 	case ast.KindForOfStatement:
-		if node.AsForInOrOfStatement().AwaitModifier != nil || !inLowerableBody(node) {
+		if !isForTry(node) || !inLowerableBody(node) {
 			return nil
 		}
 	case ast.KindYieldExpression:
@@ -181,23 +168,13 @@ func iteratedElementType(c *checker.Checker, node *ast.Node, iterated *checker.T
 	return streamChannel(c, iterated, "_A")
 }
 
-// isStreamLoop reports whether statement is a for...of over a Stream in the
-// body of a .vibe function.
+// isStreamLoop recognizes explicit for try syntax in an Effect body.
+// The operand type determines its channels, never the loop semantics.
 func isStreamLoop(c *checker.Checker, statement *ast.Node) bool {
-	if statement.Kind != ast.KindForOfStatement || statement.AsForInOrOfStatement().AwaitModifier != nil || !inLowerableBody(statement) {
-		return false
-	}
-	s := producersOf(c)
-	if loop, ok := s.loops[statement]; ok {
-		return loop
-	}
-	s.loops[statement] = false // a loop whose iterated type depends on itself is JavaScript's
-	loop := streamChannel(c, c.GetTypeAtLocation(statement.Expression()), "_A") != nil
-	s.loops[statement] = loop
-	return loop
+	return isForTry(statement) && inLowerableBody(statement)
 }
 
-// forEachStreamLoop calls cb for each for...of over a Stream in fn's own
+// forEachStreamLoop calls cb for each for try in fn's own
 // body, skipping nested functions and classes, until cb returns true. It
 // reports whether cb returned true.
 func forEachStreamLoop(c *checker.Checker, fn *ast.Node, cb func(loop *ast.Node) bool) bool {
@@ -289,7 +266,7 @@ func (p *producerPlan) planProducer(c *checker.Checker, fn *ast.Node) {
 // covers an array with its own iterator and a binding that pauses.
 func isClosingLoop(c *checker.Checker, statement *ast.Node) bool {
 	loop := statement.AsForInOrOfStatement()
-	if loop.AwaitModifier != nil || !inLowerableBody(statement) || isStreamLoop(c, statement) {
+	if loop.AwaitModifier != nil || !inLowerableBody(statement) || isForTry(statement) {
 		return false
 	}
 	if initializer := loop.Initializer; ast.IsVariableDeclarationList(initializer) && len(initializer.AsVariableDeclarationList().Declarations.Nodes) == 0 {
@@ -444,8 +421,8 @@ func (tx *lowering) visitYield(node *ast.Node) *ast.Node {
 	return run
 }
 
-// visitStreamLoop lowers a for...of over a Stream to a region whose closure
-// takes each element, run by runtime.$forOf.
+// visitStreamLoop builds the per-element callback. Explicit for try uses
+// Stream.runForEachWhile; owned JavaScript iterators retain their protocol.
 func (tx *lowering) visitStreamLoop(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	loop := node.AsForInOrOfStatement()
@@ -460,7 +437,7 @@ func (tx *lowering) visitStreamLoop(node *ast.Node) *ast.Node {
 	}
 	iterable := tx.Visitor().VisitNode(loop.Expression)
 
-	r := &region{}
+	r := &region{forTry: isForTry(node)}
 	var binding *ast.Node  // the declaration the closure takes the element as
 	var prologue *ast.Node // the assignment of the element to an existing target
 	if isUsingForOf(node) {
@@ -468,10 +445,13 @@ func (tx *lowering) visitStreamLoop(node *ast.Node) *ast.Node {
 		// (scopes_lower.go), and the closure returns its completion record.
 		value := f.NewUniqueName("value")
 		binding = f.NewVariableDeclaration(value, nil /*exclamationToken*/, nil /*typeNode*/, nil /*initializer*/)
-		iteration := &region{}
+		iteration := &region{forTry: isForTry(node)}
 		run := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), tx.usingIteration(iteration, node, value))
 		body := tx.regionFunction(r, "for", binding, loop.Statement, []*ast.Node{f.NewReturnStatement(run)})
 		r.jumps = iteration.jumps
+		if isForTry(node) {
+			return tx.runForTry(node, iterable, body)
+		}
 		return tx.runForOf(node, iterable, body, label, r)
 	}
 	if ast.IsVariableDeclarationList(initializer) && initializer.Flags&ast.NodeFlagsBlockScoped != 0 {
@@ -499,7 +479,21 @@ func (tx *lowering) visitStreamLoop(node *ast.Node) *ast.Node {
 		statements = append([]*ast.Node{prologue}, statements...)
 	}
 	body := tx.regionFunction(r, "for", binding, loop.Statement, statements)
+	if isForTry(node) {
+		return tx.runForTry(node, iterable, body)
+	}
 	return tx.runForOf(node, iterable, body, label, r)
+}
+
+// runForTry consumes the Stream with the callback specified by VIP-20.
+func (tx *lowering) runForTry(node, iterable, body *ast.Node) *ast.Node {
+	f := tx.Factory()
+	callee := f.NewPropertyAccessExpression(tx.moduleNamespace("effect/Stream"), nil, f.NewIdentifier("runForEachWhile"), ast.NodeFlagsNone)
+	run := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{iterable, body}), ast.NodeFlagsNone)
+	statement := f.NewExpressionStatement(f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), run))
+	tx.EmitContext().SetOriginal(statement, node)
+	statement.Loc = node.Loc
+	return statement
 }
 
 // closingLoopLabel maps labels on the same closing loop to the one $forOf
@@ -528,7 +522,7 @@ func (tx *lowering) closingLoopLabel(node *ast.Node, label string) string {
 // dispatch the jumps that leave the loop.
 func (tx *lowering) runForOf(node *ast.Node, iterable *ast.Node, body *ast.Node, label string, r *region) *ast.Node {
 	f := tx.Factory()
-	arguments := []*ast.Node{iterable, body}
+	arguments := []*ast.Node{tx.javaScriptIterable(iterable), body}
 	if label != "" {
 		arguments = append(arguments, f.NewStringLiteral(label, ast.TokenFlagsNone))
 	}
@@ -537,6 +531,20 @@ func (tx *lowering) runForOf(node *ast.Node, iterable *ast.Node, body *ast.Node,
 		return j.kind != ast.KindReturnStatement && (j.label == "" || j.label == label)
 	})
 	return tx.runRegion(node, tx.runtimeCall("$forOf", arguments...), r)
+}
+
+// javaScriptIterable prevents the legacy runtime adapter from treating a
+// value branded as a Stream as anything but a JavaScript Iterable. The native
+// for...of keeps next() argument counts and IteratorClose behavior intact.
+func (tx *lowering) javaScriptIterable(iterable *ast.Node) *ast.Node {
+	f := tx.Factory()
+	source, element := f.NewUniqueName("iterable"), f.NewUniqueName("value")
+	parameter := f.NewParameterDeclaration(nil, nil, source, nil, nil, nil)
+	declaration := f.NewVariableDeclaration(element, nil, nil, nil)
+	initializer := f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsConst)
+	loop := f.NewForInOrOfStatement(ast.KindForOfStatement, nil, initializer, source, f.NewExpressionStatement(f.NewYieldExpression(nil, element)))
+	generator := f.NewFunctionExpression(nil, f.NewToken(ast.KindAsteriskToken), nil, nil, f.NewNodeList([]*ast.Node{parameter}), nil, nil, f.NewBlock(f.NewNodeList([]*ast.Node{loop}), true))
+	return f.NewCallExpression(f.NewParenthesizedExpression(generator), nil, nil, f.NewNodeList([]*ast.Node{iterable}), ast.NodeFlagsNone)
 }
 
 // loopBodyStatements visits statement, a loop body, as the statements of a

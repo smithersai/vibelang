@@ -98,14 +98,40 @@ func (p *projector) yieldExpression(node *ast.Node, e env) {
 	p.plan.mark(editEmit, partClose, expression.End(), expression.End(), "")
 }
 
-// forOfStatement lowers a for...of in an Effect body or a producer: the
-// iterated value goes through $each, which runs a Stream for its elements
-// and leaves any other iterable as it is (D26).
+// forOfStatement lowers explicit for try through $eachStream and ordinary
+// for...of through $each, which accepts only JavaScript Iterables.
 func (p *projector) forOfStatement(node *ast.Node, e env) {
 	statement := node.AsForInOrOfStatement()
 	if statement.AwaitModifier != nil {
 		p.jumpTarget(node, e)
 		return
+	}
+	kind := ""
+	if node.Flags&ast.NodeFlagsVibeLang != 0 {
+		kind = "stream"
+		var check func(*ast.Node) bool
+		check = func(n *ast.Node) bool {
+			if ast.IsFunctionLike(n) || ast.IsClassLike(n) {
+				return false
+			}
+			if ast.IsBreakOrContinueStatement(n) && n.Label() != nil {
+				target := execJumpTarget(n)
+				for target != nil && target.Kind == ast.KindLabeledStatement {
+					target = target.AsLabeledStatement().Statement
+				}
+				if target != nil && target != node && (target.Pos() < node.Pos() || target.End() > node.End()) {
+					p.syntaxDiagnostic(n, 2003, "A labeled jump cannot leave a for try body; move the decision after the loop.")
+				}
+			}
+			if n.Kind == ast.KindReturnStatement {
+				p.syntaxDiagnostic(n, 2002, "return cannot leave a for try body; use break to stop consuming the Stream, then return after the loop.")
+			}
+			return n.ForEachChild(check)
+		}
+		check(statement.Statement)
+
+		// Execution replaces the whole loop head; this edit belongs only to checking.
+		p.plan.edits = append(p.plan.edits, edit{kind: editWitness, pos: p.tokenStart(node) + len("for"), end: p.tokenStart(statement.Initializer), text: " ("})
 	}
 	expression := statement.Expression
 	t := target{loop: true}
@@ -113,8 +139,8 @@ func (p *projector) forOfStatement(node *ast.Node, e env) {
 	defer func() { e.frame.targets = e.frame.targets[:len(e.frame.targets)-1] }()
 	p.visit(statement.Initializer, e)
 	start := p.tokenStart(expression)
-	p.plan.mark(editEach, partOpen, start, start, "")
+	p.plan.mark(editEach, partOpen, start, start, kind)
 	p.visit(expression, e)
-	p.plan.mark(editEach, partClose, expression.End(), expression.End(), "")
+	p.plan.mark(editEach, partClose, expression.End(), expression.End(), kind)
 	p.visit(statement.Statement, e)
 }

@@ -1,0 +1,16 @@
+// expect-result: ["failed",["1","closed"]]
+import { Data, Effect, Stream } from "effect"
+class Bad extends Data.TaggedError("Bad")<{}> {}
+effect function consume(events: string[]) {
+ const rows = Stream.ensuring(Stream.make(1,2,3), Effect.sync(() => { events.push("closed") }))
+ for try (const x of rows) {
+  events.push(String(x))
+  throw new Bad()
+ }
+ return "finished"
+}
+export effect function main() {
+ const events: string[] = []
+ const result = try Effect.catch(consume(events), () => Effect.succeed("failed"))
+ return [result, events]
+}

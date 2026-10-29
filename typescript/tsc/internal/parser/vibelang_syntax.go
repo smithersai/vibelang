@@ -66,6 +66,7 @@ const (
 	// VibeSyntaxForConcurrent is for concurrent(n) (...) (D169): Word is for,
 	// Head runs from concurrent through the limit's closing parenthesis.
 	VibeSyntaxForConcurrent
+	VibeSyntaxForTry
 	// VibeSyntaxClause is one catch, handle, or finally clause of a try
 	// statement (Name): Head runs from the keyword to the clause's block, and
 	// Open and Close are the block's braces. Every catch and handle clause of a

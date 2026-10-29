@@ -1,0 +1,24 @@
+// expect-result: [1,3,10,30,1000,200,2000,3000]
+import { Stream } from "effect"
+export effect function main() {
+ const seen: number[] = []
+ for try (const x of Stream.make(1,2,3,4,5)) {
+  if (x === 2) continue
+  if (x === 4) break
+  seen.push(x)
+ }
+ for try (const x of Stream.make(1,3)) {
+  for (const y of [0,1]) {
+   if (y === 0) continue
+   seen.push(x * 10)
+   break
+  }
+ }
+ for try (const n of Stream.make(1,2,3,4)) {
+  using cleanup = { [Symbol.dispose](): void { seen.push(n * 1000) } }
+  if (n === 1) continue
+  if (n === 3) break
+  seen.push(n * 100)
+ }
+ return seen
+}

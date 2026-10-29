@@ -345,14 +345,14 @@ var emitCases = []struct {
 		absent:   []string{"f$fast", "f$body"},
 	},
 	{
-		name:   "a producer runs under the runtime's Yield operation, and for...of takes a Stream's elements (D26)",
-		source: "function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\nfunction sum() {\n  let s = 0\n  for (const x of numbers(3)) s += x\n  return s\n}\n",
+		name:   "a producer runs under the runtime's Yield operation, and for try takes a Stream's elements (D26)",
+		source: "function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\nfunction sum() {\n  let s = 0\n  for try (const x of numbers(3)) s += x\n  return s\n}\n",
 		contains: []string{
 			"return $produce(() => $producerGen(function* () {",
 			"yield* $yield(i);",
 			"yield* $yieldAll((($t = more(1)), $isRun($t) ? (yield* $t) : $t));",
 			"yield* $yield(undefined);",
-			"yield* $iterate((($t = numbers(3)), $isRun($t) ? (yield* $t) : $t),",
+			"yield* $iterateStream((($t = numbers(3)), $isRun($t) ? (yield* $t) : $t),",
 			"const x = $item;",
 		},
 	},
@@ -866,7 +866,7 @@ export function scenario() {
  let depth = 0
  hooks.onResume = (fiber): void => { depth = Math.max(depth, fiber._stack.length) }
  let sum = 0
- for (const n of count()) sum += n
+ for try (const n of count()) sum += n
  let seen = 0
  const called = handle(() => ticks(), Tick, { tick(n, k) { seen++; return resume(k, undefined) } })
  let stated = 0

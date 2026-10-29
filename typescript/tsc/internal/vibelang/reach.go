@@ -53,9 +53,9 @@ func checkReach(c *checker.Checker, file *ast.SourceFile) {
 			checkProducerArguments(c, file, node)
 			checkTypeScriptCallee(c, file, node)
 		}
-		if ast.IsForOfStatement(node) && node.AsForInOrOfStatement().AwaitModifier == nil {
+		if isForTry(node) {
 			expression := node.AsForInOrOfStatement().Expression
-			checkStreamControls(c, file, expression, " looped over with for...of")
+			checkStreamControls(c, file, expression, " looped over with for try")
 		}
 		if node.Kind == ast.KindYieldExpression && node.AsYieldExpression().AsteriskToken != nil && node.Expression() != nil {
 			checkStreamControls(c, file, node.Expression(), " yielded with yield*")

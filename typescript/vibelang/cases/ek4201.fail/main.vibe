@@ -34,7 +34,7 @@ export effect function collected(ids: ReadonlyArray<string>) {
 
 export effect function looped(ids: ReadonlyArray<string>) {
   let approved = 0
-  for (const ok of approvals(ids)) if (ok) approved++
+  for try (const ok of approvals(ids)) if (ok) approved++
   return approved
 }
 

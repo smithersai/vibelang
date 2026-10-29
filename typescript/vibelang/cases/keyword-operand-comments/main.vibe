@@ -159,7 +159,7 @@ function* produced() {
 
 effect function produce(): number[]!! {
   const values: number[] = []
-  for (const x of produced()) values.push(x)
+  for try (const x of produced()) values.push(x)
   return values
 }
 

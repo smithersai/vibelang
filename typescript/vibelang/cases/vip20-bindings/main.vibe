@@ -1,0 +1,16 @@
+// expect-result: [4,5,9,10]
+import { Effect, Stream } from "effect"
+export effect function main() {
+  const seen: number[] = []
+  for try (let [value = try Effect.succeed(3)] of Stream.make([] as number[], [4])) {
+    value += 1
+    seen.push(value)
+  }
+  for try (const value of Stream.make(1,2)) {
+    const value = 9
+    seen.push(value)
+    break
+  }
+  for try (const { value = try Effect.succeed(10) } of Stream.make({} as {value?: number})) seen.push(value)
+  return seen
+}

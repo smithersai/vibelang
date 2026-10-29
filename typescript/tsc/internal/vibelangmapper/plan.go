@@ -336,7 +336,11 @@ func (r checking) text(e edit) (string, bool) {
 			text = pick(e.part, helperRef("$emit")+"(", "", ")")
 		}
 	case editEach:
-		text = pick(e.part, "(yield* "+helperRef("$each")+"(", "", "))")
+		helper := "$each"
+		if e.arg == "stream" {
+			helper = "$eachStream"
+		}
+		text = pick(e.part, "(yield* "+helperRef(helper)+"(", "", "))")
 	case editServiceBase:
 		base, key, name := e.fields[0], e.fields[1], e.fields[2]
 		switch e.part {

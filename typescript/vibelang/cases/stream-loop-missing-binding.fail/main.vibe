@@ -5,6 +5,6 @@
 export effect function main() {
   const seen: string[] = []
   const words = Stream.make("a", "b")
-  for (const of words) seen.push("x")
+  for try (const of words) seen.push("x")
   return seen
 }

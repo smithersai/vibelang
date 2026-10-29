@@ -1015,6 +1015,7 @@ function limitReturn() { return Effect.gen(function* () { return 7 }) } // Succe
 | a labeled `break` or `continue` in head binding initialization or the body naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 | a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
+| a legacy `for...of` or `for await` loop over a `Stream`, `for await (const x of s) { }`; `vibelang --fix` writes `for try (const x of s) { }` | `EK2007` |
 
 ### Meaning
 

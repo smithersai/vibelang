@@ -51,7 +51,8 @@ effect function iterator(reverse: boolean) {
 
 effect function producer(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of produce(events)) {
+  outer: inner: for try (const item of produce(events)) {
+    using x = item
     events.push("body")
     try yieldNow()
     if (events.length < 2) {
@@ -66,7 +67,8 @@ effect function producer(reverse: boolean) {
 
 effect function stream(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of Stream.ensuring(Stream.fromIterable([disposable(events), disposable(events)]), effect { events.push("closed") })) {
+  outer: inner: for try (const item of Stream.ensuring(Stream.fromIterable([disposable(events), disposable(events)]), effect { events.push("closed") })) {
+    using x = item
     events.push("body")
     try yieldNow()
     if (events.length < 2) {

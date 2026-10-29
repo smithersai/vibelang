@@ -1,0 +1,3 @@
+// expect: EK2001
+import { Stream } from "effect"
+for try (const x of Stream.make(1)) { void x }

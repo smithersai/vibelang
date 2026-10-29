@@ -33,10 +33,6 @@ var (
 	EK1901 = message(1901, errorCategory, "A for concurrent operand that is not an Iterable. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
-	EK2001 = message(2001, errorCategory, "For try outside effect code. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
-	EK2002 = message(2002, errorCategory, "Return in a for try body. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
-	EK2003 = message(2003, errorCategory, "A labeled break or continue from a for try body to a statement outside it. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
-	EK2004 = message(2004, errorCategory, "A for try operand that is not a Stream. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
 	EK2102 = message(2102, errorCategory, "A producer whose written return type is not a Stream. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2103 = message(2103, errorCategory, "Yield* in a producer. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
@@ -46,7 +42,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2001, EK2002, EK2003, EK2004, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

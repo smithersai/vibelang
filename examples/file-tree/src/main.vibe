@@ -25,7 +25,7 @@ function* walk(directory: string) {
 
 function summarize(root: string) {
   const files: string[] = []
-  for (const path of walk(root)) files.push(path)
+  for try (const path of walk(root)) files.push(path)
   const lengths = forEach(files, (path) => {
     const text = FileSystem.readFileString(path)
     return { path: Path.relative(root, path), lines: text.trimEnd().split("\n").length }

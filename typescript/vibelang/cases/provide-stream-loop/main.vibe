@@ -11,7 +11,7 @@ const decorated = Stream.mapEffect(Stream.make("a", "b"), effect (word) => `${tr
 export effect function collect() {
   const seen: Array<string> = []
   provide Prefix = "> " {
-    for (const word of decorated) seen.push(word)
+    for try (const word of decorated) seen.push(word)
   }
   return seen.join(",")
 }

@@ -11,7 +11,7 @@ function* readings() {
 
 export function main() {
   const alerts = readings().filter((value) => value >= 25).map((value) => `${value} C`).take(2)
-  for (const alert of alerts) {
+  for try (const alert of alerts) {
     Console.log(`temperature alert: ${alert}`)
   }
 }

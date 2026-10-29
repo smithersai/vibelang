@@ -57,8 +57,8 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				cover(c, node) // the Effect the await leaves unrun restates EK0103
 			}
 		case ast.KindForOfStatement:
-			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && !inAsyncFunction(node) {
-				note(report(c, await, EK1003, "for await"), "Remove await: for...of over a producer or a Stream already waits.")
+			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && !inAsyncFunction(node) && streamChannel(c, c.GetTypeAtLocation(node.Expression()), "_A") == nil {
+				note(report(c, await, EK1003, "for await"), "Use for try to consume a Stream in effect code; for await is for AsyncIterables in async code.")
 				cover(c, await)
 			}
 		case ast.KindVariableDeclarationList:

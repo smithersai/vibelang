@@ -1,0 +1,4 @@
+// expect: EK2004
+export effect function main() {
+  for try (const value of [1, 2]) { void value }
+}

@@ -1,0 +1,16 @@
+// expect-result: [15,16]
+import { Effect, Stream } from "effect"
+class Base {
+  extra(count: number): number { return count }
+}
+class Counter extends Base {
+  offset = 10
+  effect read(add: number, ...extra: number[]) {
+    const values: number[] = []
+    for try (const value of Stream.make(1, 2)) {
+      try Effect.sync(() => { values.push(this.offset + value + add + super.extra(extra.length)) })
+    }
+    return values
+  }
+}
+export effect function main() { return try new Counter().read(3, 99) }

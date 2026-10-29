@@ -77,8 +77,8 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1904` | `return` in a `for concurrent` body |
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` |
 | `EK2001` | `for try` outside effect code |
-| `EK2002` | `return` in a `for try` body |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement outside it |
+| `EK2002` | `return` in a `for try` head binding initialization or body |
+| `EK2003` | a labeled `break` or `continue` from a `for try` head binding initialization or body to a statement outside it |
 | `EK2004` | a `for try` operand that is not a `Stream` |
 | `EK2102` | a producer whose written return type is not a `Stream` |
 | `EK2103` | `yield*` in a producer |

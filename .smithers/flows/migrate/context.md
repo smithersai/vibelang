@@ -97,6 +97,10 @@ An explicitly `readonly` schema field requires known readonly decoded-key flags 
 
 - Generic `data` parameters have no defaults (`EK2803`, VIP-28): preserve a default with `vibelang --fix`, which expands the declaration into equivalent Effect TypeScript.
 
+## VIP-20: Stream loops
+
+For `Stream` iteration, write `for try (const x of stream)` in effect code. Rewrite legacy `for await` over a `Stream` to `for try`; keep `for await` over `AsyncIterable` values in `async` code. `continue` skips an element and `break` stops consuming. A body `return` is `EK2002`: use `break` and return after the loop. `EK2007` offers the loop spelling migration through `vibelang --fix`.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
