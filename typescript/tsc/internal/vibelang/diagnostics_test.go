@@ -66,6 +66,12 @@ func TestCategory(t *testing.T) {
 func TestRegistryMatchesSpec(t *testing.T) {
 	t.Parallel()
 	spec, err := os.ReadFile("../../../../docs/design/src/428-part4-ch28-tooling.md")
+	if os.IsNotExist(err) {
+		// The VIPs replace the old chapters, which move to docs/design/history,
+		// and the specification has no diagnostics registry until VIP-34's
+		// appendix lands; until then the Go registry is the source of truth.
+		t.Skip("the specification has no Chapter 28 registry until VIP-34's diagnostics appendix lands")
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

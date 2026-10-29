@@ -14,7 +14,7 @@ import (
 // TestRuntimeFeatureCitations binds every feature to the chapter files and
 // decision registry of the specification, rather than to a copied reference.
 func TestRuntimeFeatureCitations(t *testing.T) {
-	chapters, err := filepath.Glob(SpecPath("*ch*.md"))
+	chapters, err := SpecGlob("*ch*.md")
 	if err != nil {
 		t.Fatal(err)
 	}

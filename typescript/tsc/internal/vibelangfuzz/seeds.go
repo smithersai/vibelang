@@ -149,7 +149,7 @@ var vibeFence = regexp.MustCompile("(?ms)^[ \t]*```vibe[^\\n]*\\n(.*?)^[ \t]*```
 // checker with every form the documents show.
 var SnippetSeeds = sync.OnceValue(func() []Seed {
 	var seeds []Seed
-	for _, dir := range []string{"docs/user/src", "docs/design/src"} {
+	for _, dir := range append([]string{"docs/user/src"}, specDirs...) {
 		root := filepath.Join(Root(), dir)
 		_ = filepath.WalkDir(root, func(name string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() || !strings.HasSuffix(name, ".md") {

@@ -11,12 +11,45 @@ import (
 
 // The specification is the oracle. These facts are read from
 // docs/design/src at test time, never copied into Go, so a specification
-// change reaches every target without an edit here.
+// change reaches every target without an edit here. The VIPs replace the old
+// chapters, which move to docs/design/history: a chapter not yet rewritten
+// from the VIPs is read there until its replacement lands.
+
+// specDirs are where a chapter is looked for, the current specification
+// first.
+var specDirs = []string{"docs/design/src", "docs/design/history"}
 
 // SpecPath returns the path of a specification chapter, such as
-// "428-part4-ch28-tooling.md".
+// "428-part4-ch28-tooling.md": in docs/design/src, or else in
+// docs/design/history.
 func SpecPath(chapter string) string {
-	return filepath.Join(Root(), "docs/design/src", chapter)
+	for _, dir := range specDirs {
+		path := filepath.Join(Root(), dir, chapter)
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return filepath.Join(Root(), specDirs[0], chapter)
+}
+
+// SpecGlob returns the chapters whose names match pattern, each from the
+// first directory of specDirs that has it.
+func SpecGlob(pattern string) ([]string, error) {
+	var paths []string
+	seen := map[string]bool{}
+	for _, dir := range specDirs {
+		matches, err := filepath.Glob(filepath.Join(Root(), dir, pattern))
+		if err != nil {
+			return nil, err
+		}
+		for _, path := range matches {
+			if name := filepath.Base(path); !seen[name] {
+				seen[name] = true
+				paths = append(paths, path)
+			}
+		}
+	}
+	return paths, nil
 }
 
 // SpecText returns a chapter's text. It panics when the chapter is missing:

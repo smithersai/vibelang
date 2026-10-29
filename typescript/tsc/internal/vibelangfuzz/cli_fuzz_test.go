@@ -1292,7 +1292,7 @@ func TestCommandLineFlagsCoverSpec(t *testing.T) {
 	command := regexp.MustCompile(`(?:^|\s)vibelang\s+(.*)$`)
 	flag := regexp.MustCompile(`^--?[A-Za-z][\w-]*$`)
 	found := map[string]string{}
-	names, err := filepath.Glob(SpecPath("*.md"))
+	names, err := SpecGlob("*.md")
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no specification chapters: %v", err)
 	}
