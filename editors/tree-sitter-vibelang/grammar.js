@@ -386,6 +386,11 @@ const VibeLang = grammar(TypeScript, {
     // for concurrent(8) (const id of ids) save(id) (D169, vibelang_fibers.go).
     for_in_statement: ($, previous) => choice(
       previous,
+      seq("for", "try", "(",
+        field("kind", choice("const", "let")),
+        field("left", choice($.identifier, $._destructuring_pattern)),
+        field("operator", "of"), field("right", $._expressions), ")",
+        field("body", $.statement)),
       seq(
         'for',
         'concurrent',

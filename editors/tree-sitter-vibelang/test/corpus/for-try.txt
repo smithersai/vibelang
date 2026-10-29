@@ -1,0 +1,33 @@
+==================
+Stream iteration with for try
+==================
+for try (const row of rows) {
+  if (row.skip) continue
+  if (row.last) break
+  save(row)
+}
+
+---
+
+(program
+  (for_in_statement
+    (identifier)
+    (identifier)
+    (statement_block
+      (if_statement
+        (parenthesized_expression
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (continue_statement))
+      (if_statement
+        (parenthesized_expression
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (break_statement))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (arguments
+            (identifier)))))))
