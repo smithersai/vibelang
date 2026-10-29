@@ -1,8 +1,11 @@
 package vipgen
 
 import (
+	"bytes"
 	"fmt"
+	"path"
 	"slices"
+	"strings"
 )
 
 // The generator is structure-aware, as specgen's is: the fuzzer's bytes
@@ -11,6 +14,14 @@ import (
 // (Groce et al., ISSTA 2012) of other constructs it may use. An exhausted
 // input chooses 0 everywhere, and 0 is always the smallest choice, so
 // []byte{i} is the minimal program of construct i: its probe.
+//
+// An input may name its focus instead: "key:<construct key>\x00", then the
+// bytes that drive the rest of the generator. The index of a construct
+// changes whenever a construct is registered or a pending line is deleted,
+// since the focus byte indexes the constructs not left out; a key does not.
+// So Seed writes the named form, and a named corpus file keeps its program
+// across registry changes. An input without the prefix chooses its focus by
+// index, as before.
 
 // Bounds keep every program small enough to compile and run in milliseconds.
 const (
@@ -60,6 +71,8 @@ type Gen struct {
 	modules map[string]bool
 	labels  int
 	names   int
+	files   map[string]string
+	imports map[string][]string
 }
 
 // A Scope is what a statement may refer to: the function it stands in, the
@@ -83,13 +96,26 @@ func (s *Scope) child() *Scope {
 
 // Generate turns fuzz bytes into a program over the constructs leaveOut
 // does not name. It returns nil when every construct is left out.
+// A named input whose construct is not registered or is left out generates
+// nil too: a campaign never generates a pending construct, and a named
+// corpus file never silently becomes another construct's program.
 func Generate(data []byte, leaveOut map[string]bool) *Program {
 	enabled := Enabled(leaveOut)
-	if len(enabled) == 0 {
-		return nil
+	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}, files: map[string]string{}, imports: map[string][]string{}}
+	var focus *Construct
+	if key, rest, named := NamedInput(data); named {
+		i := slices.IndexFunc(enabled, func(c *Construct) bool { return c.Key == key })
+		if i < 0 {
+			return nil
+		}
+		focus = enabled[i]
+		g.c.data = rest
+	} else {
+		if len(enabled) == 0 {
+			return nil
+		}
+		focus = enabled[g.c.intn(len(enabled))]
 	}
-	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}}
-	focus := enabled[g.c.intn(len(enabled))]
 	// The focus chooses the program's form, and the swarm chooses among the
 	// constructs of that form.
 	g.plain = focus.Plain
@@ -159,23 +185,43 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 		}
 	}
 	p.Used, p.Effect, p.Decls, p.Modules = g.used, g.effect, g.decls, g.modules
+	p.Files, p.imports = g.files, g.imports
 	return p
 }
 
 // Probe returns the minimal program of a construct, with nothing left out:
-// the program the seed []byte{i} of construct i generates. TestVIPConstructs
-// runs every probe, and FuzzVIPDifferential starts from them.
+// the program its seed, Seed(key), generates. TestVIPConstructs runs every
+// probe, and FuzzVIPDifferential starts from them.
 func Probe(key string) *Program {
 	return Generate(Seed(key), nil)
 }
 
-// Seed returns the input whose focus is a construct when nothing is left out.
+// namedPrefix starts an input that names its focus construct.
+const namedPrefix = "key:"
+
+// Seed returns the input that focuses a construct by its key,
+// "key:<key>\x00", whatever else is registered or left out. Bytes appended
+// to it drive the rest of the generator.
 func Seed(key string) []byte {
-	i := slices.IndexFunc(registry, func(c *Construct) bool { return c.Key == key })
-	if i < 0 {
+	if Lookup(key) == nil {
 		panic("vipgen: no construct " + key)
 	}
-	return []byte{byte(i)}
+	return []byte(namedPrefix + key + "\x00")
+}
+
+// NamedInput splits an input of the form "key:<key>\x00<rest>" into its key
+// and the rest. It reports false for any other input, which chooses its
+// focus by index.
+func NamedInput(data []byte) (key string, rest []byte, ok bool) {
+	after, found := bytes.CutPrefix(data, []byte(namedPrefix))
+	if !found {
+		return "", nil, false
+	}
+	name, rest, found := bytes.Cut(after, []byte{0})
+	if !found {
+		return "", nil, false
+	}
+	return string(name), rest, true
 }
 
 func (g *Gen) pick(forms []*Construct) *Construct {
@@ -192,6 +238,27 @@ func (g *Gen) On(key string) bool {
 // file finds its own declarations by their type.
 func (g *Gen) AddDecl(n Node) { g.decls = append(g.decls, n) }
 func (g *Gen) Decls() []Node  { return g.decls }
+
+// AddFile adds a TypeScript module beside main.vibe (Program.Files) and
+// imports names from it in both prints: main.vibe imports the module, and
+// the reference imports the JavaScript the compiler emits for it. Only a .ts
+// module may be added: the reference must never run compiled VibeLang, and a
+// .ts module compiles as TypeScript, so both prints run the same code. A
+// construct may add the same module again, with the same source.
+func (g *Gen) AddFile(name, source string, names ...string) {
+	if !strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".d.ts") || name != path.Clean(name) || strings.HasPrefix(name, "../") || path.IsAbs(name) || name == "main.ts" {
+		panic("vipgen: a program's extra module is a .ts file inside the project: " + name)
+	}
+	if old, ok := g.files[name]; ok && old != source {
+		panic("vipgen: two sources for the module " + name)
+	}
+	g.files[name] = source
+	for _, n := range names {
+		if !slices.Contains(g.imports[name], n) {
+			g.imports[name] = append(g.imports[name], n)
+		}
+	}
+}
 
 // Plain reports whether the program is plain (Program.Plain): its
 // statements are plain code, and main's returns give Effect.succeed.

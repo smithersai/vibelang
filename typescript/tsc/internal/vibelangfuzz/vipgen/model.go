@@ -18,6 +18,7 @@ package vipgen
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 )
@@ -194,7 +195,18 @@ type Program struct {
 	Modules map[string]bool
 	// Plain is set for a plain program, whose main runs its body when called.
 	Plain bool
+	// Files holds the program's other modules, by path relative to the
+	// project, such as lib.ts: the test writes each beside main.vibe and
+	// compiles it with main.vibe, and the reference imports the JavaScript
+	// the compiler emits for it from OutDir (Gen.AddFile).
+	Files map[string]string
+	// imports holds the names each prints import from each of Files.
+	imports map[string][]string
 }
+
+// OutDir is the project's output directory, DefaultConfig's outDir, where
+// the reference finds the JavaScript of each of Program.Files.
+const OutDir = "out"
 
 // UsedKeys returns the program's constructs, in key order.
 func (p *Program) UsedKeys() []string {
@@ -228,6 +240,7 @@ func PrintVibe(p *Program) string {
 		}
 	}
 	importModules(w, p, true)
+	importFiles(w, p, "./")
 	printFuncs(w, p)
 	return w.String()
 }
@@ -240,8 +253,20 @@ func PrintEffect(p *Program) string {
 	w.Line(fmt.Sprintf("import { ev } from %q", eventsModule))
 	w.Line(`import { Data, Effect } from "effect"`)
 	importModules(w, p, false)
+	importFiles(w, p, "./"+OutDir+"/")
 	printFuncs(w, p)
 	return w.String()
+}
+
+// importFiles imports the program's other modules, in path order, each by
+// the path of its JavaScript under dir: NodeNext resolution names lib.ts as
+// ./lib.js from main.vibe, and the reference names the emitted file itself.
+func importFiles(w *Writer, p *Program, dir string) {
+	for _, name := range slices.Sorted(maps.Keys(p.Files)) {
+		if names := p.imports[name]; len(names) > 0 {
+			w.Line(fmt.Sprintf("import { %s } from %q", strings.Join(names, ", "), dir+strings.TrimSuffix(name, ".ts")+".js"))
+		}
+	}
 }
 
 // importModules imports the program's other modules of effect, in name

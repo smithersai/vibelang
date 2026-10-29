@@ -86,6 +86,9 @@ func (e *vipEnv) run(t *testing.T, p *vipgen.Program) *vipRun {
 	t.Helper()
 	reference := vipgen.PrintEffect(p)
 	run := &vipRun{files: map[string]string{"main.vibe": vipgen.PrintVibe(p), "ref.mjs": reference, "ref-again.mjs": reference}}
+	// The program's other modules compile with main.vibe, and the
+	// reference imports what the compiler emits for them (Program.Files).
+	maps.Copy(run.files, p.Files)
 	var r *Result
 	var err error
 	Within("compile", func() { r, err = e.w.Compile(t.Context(), Project{Files: run.files}) })
@@ -212,12 +215,15 @@ func vipLeaveOut() map[string]bool {
 	return leaveOut
 }
 
-// vipSeeds holds each construct's probe input and, without -short, a rich
-// input per construct that turns on every construct of the swarm.
-func vipSeeds() [][]byte {
+// vipSeeds holds the probe input of each construct leaveOut does not name
+// and, without -short, a rich input per construct that turns on every
+// construct of the swarm. A seed names its construct (vipgen.Seed), so a
+// pending construct's seed would only skip, and campaigns mutating it would
+// skip too.
+func vipSeeds(leaveOut map[string]bool) [][]byte {
 	var seeds [][]byte
 	r := rand.New(rand.NewPCG(3, 1))
-	for _, c := range vipgen.Constructs() {
+	for _, c := range vipgen.Enabled(leaveOut) {
 		seed := vipgen.Seed(c.Key)
 		seeds = append(seeds, seed)
 		if !testing.Short() {
@@ -235,15 +241,15 @@ func vipSeeds() [][]byte {
 // lists, compiles its VibeLang print, and requires no error and the Exit,
 // event log and coldness of its VIPs' Effect TS.
 func FuzzVIPDifferential(f *testing.F) {
-	for _, seed := range vipSeeds() {
+	leaveOut := vipLeaveOut()
+	for _, seed := range vipSeeds(leaveOut) {
 		f.Add(seed)
 	}
 	env := newVIPEnv(f)
-	leaveOut := vipLeaveOut()
 	f.Fuzz(func(t *testing.T, data []byte) {
 		p := vipgen.Generate(data, leaveOut)
 		if p == nil {
-			t.Skip("every construct is pending; VIBELANG_FUZZ_PENDING=1 generates them, and TestVIPConstructs runs their probes")
+			t.Skip("every construct is pending, or the input names one that is pending or not registered; VIBELANG_FUZZ_PENDING=1 generates pending constructs, and TestVIPConstructs runs their probes")
 		}
 		run := env.run(t, p)
 		g := &vipGaps{t: t}
@@ -531,4 +537,101 @@ func TestVIPCoverage(t *testing.T) {
 		}
 	}
 	t.Logf("%d accepted VIPs; constructs not generated yet: %v; VIPs with no line yet: %v", len(accepted), debt, uncovered)
+}
+
+// TestVIPNamedInputs checks both encodings of an input's focus. A named
+// input, "key:<key>\x00<rest>", focuses its construct whatever else is
+// registered or left out, and its rest drives the generator as the bytes
+// after an index byte do; an index input, the encoding of the corpus files
+// written before names, still decodes. A named corpus file must name a
+// registered construct, or the target would skip it for good.
+func TestVIPNamedInputs(t *testing.T) {
+	rest := []byte{0xff, 0xff, 7, 1, 3, 9, 2, 5, 0, 4, 8, 6, 1, 1, 2, 3}
+	for i, c := range vipgen.Constructs() {
+		seed := vipgen.Seed(c.Key)
+		if key, tail, ok := vipgen.NamedInput(seed); !ok || key != c.Key || len(tail) != 0 {
+			t.Errorf("Seed(%s) is %q, not the named form", c.Key, seed)
+		}
+		named := vipgen.Generate(append(slices.Clone(seed), rest...), nil)
+		byIndex := vipgen.Generate(append([]byte{byte(i)}, rest...), nil)
+		if named.Focus != c.Key || byIndex.Focus != c.Key {
+			t.Errorf("%s: the named input focuses %s and the index input %s", c.Key, named.Focus, byIndex.Focus)
+			continue
+		}
+		if vipgen.PrintVibe(named) != vipgen.PrintVibe(byIndex) || vipgen.PrintEffect(named) != vipgen.PrintEffect(byIndex) {
+			t.Errorf("%s: the named input and the index input generate different programs:\n%s\n%s", c.Key, vipgen.PrintVibe(named), vipgen.PrintVibe(byIndex))
+		}
+		// Leaving the construct out turns its named input off; an index
+		// input chooses among the constructs left.
+		if p := vipgen.Generate(seed, map[string]bool{c.Key: true}); p != nil {
+			t.Errorf("%s: a named input of a construct left out generates a program focused on %s", c.Key, p.Focus)
+		}
+	}
+	if p := vipgen.Generate([]byte("key:vip99.none\x00"), nil); p != nil {
+		t.Errorf("a named input of no registered construct generates a program focused on %s", p.Focus)
+	}
+	// An input that only starts like a name is an index input.
+	if _, _, ok := vipgen.NamedInput([]byte("key:vip04.throw")); ok {
+		t.Error("an input with no NUL after its key decodes as named")
+	}
+	dir := filepath.Join(repoTestdata(), "fuzz", vipTarget)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaveOut := vipLeaveOut()
+	for _, entry := range entries {
+		contents, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		line := strings.TrimSpace(strings.TrimPrefix(string(contents), "go test fuzz v1\n"))
+		decoded, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(line, "[]byte("), ")"))
+		if err != nil {
+			t.Errorf("%s: not one []byte argument: %v", entry.Name(), err)
+			continue
+		}
+		key, _, named := vipgen.NamedInput([]byte(decoded))
+		switch {
+		case named && vipgen.Lookup(key) == nil:
+			t.Errorf("%s names %s, which is not registered", entry.Name(), key)
+		case !named && vipgen.Generate([]byte(decoded), leaveOut) == nil:
+			t.Errorf("%s: an index input generates no program", entry.Name())
+		}
+	}
+}
+
+// TestVIPFiles checks Program.Files on the probe of vip04.ts-throw: lib.ts is
+// a module of the program, main.vibe imports it by the path NodeNext
+// resolves, and the reference imports the JavaScript the compiler emits for
+// it, so both prints run the same load.
+func TestVIPFiles(t *testing.T) {
+	p := vipgen.Probe("vip04.ts-throw")
+	if !strings.Contains(p.Files["lib.ts"], "export function load(): Effect.Effect<number>") {
+		t.Fatalf("the probe of vip04.ts-throw has no lib.ts: %v", p.Files)
+	}
+	if vibe := vipgen.PrintVibe(p); !strings.Contains(vibe, `import { load } from "./lib.js"`) {
+		t.Errorf("main.vibe does not import lib.ts as ./lib.js:\n%s", vibe)
+	}
+	if ref := vipgen.PrintEffect(p); !strings.Contains(ref, `import { load } from "./`+vipgen.OutDir+`/lib.js"`) {
+		t.Errorf("the reference does not import lib.ts's emitted JavaScript:\n%s", ref)
+	}
+	if other := vipgen.Probe("vip04.throw"); len(other.Files) != 0 {
+		t.Errorf("a program with no construct that adds a module has modules: %v", other.Files)
+	}
+	// Chapter 3: "a `.ts` implementation that throws before returning
+	// produces a defect when called inside effect code". The reference ends
+	// with that defect, after load logged; TestVIPConstructs compares
+	// main.vibe's Exit with it.
+	run := newVIPEnv(t).run(t, p)
+	exit, err := CanonicalVIPExit(run.ref.Exit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"_tag":"Failure","reasons":[{"_tag":"Die","defect":{"$class":"Error","fields":{},"message":"x","name":"Error"}}]}`; exit != want {
+		t.Errorf("the reference ends with %s, not lib.ts's throw as a defect %s", exit, want)
+	}
+	if !slices.Contains(run.ref.Events, "load") {
+		t.Errorf("the reference never called load: events %q", run.ref.Events)
+	}
 }

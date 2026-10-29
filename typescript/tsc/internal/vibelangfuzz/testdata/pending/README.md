@@ -35,3 +35,12 @@ that part of the specification yet. See `pending.go`.
   an oracle whose rule a VIP replaced is not weakening it; rewrite or delete
   the oracle once its new rule is in the specification, and delete the line.
 - `TestPendingLines` checks all of this.
+
+A corpus line names its reproduction by file name, so the file's input must
+keep its meaning. `FuzzVIPDifferential`'s first input byte indexes the
+constructs not left out, which shifts whenever a construct is registered or a
+pending line is deleted; write its reproductions in the named form instead,
+`[]byte("key:<construct key>\x00<rest>")`, which `vipgen.Seed` produces and
+which focuses that construct whatever else is registered. A named
+reproduction of a pending construct generates nothing and skips until the
+construct's `feature:` line is deleted. Old index inputs still decode.
