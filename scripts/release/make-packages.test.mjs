@@ -21,7 +21,7 @@ function fixture(t) {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const path of ["scripts/release/make-packages.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "create-vibelang", "unplugin"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
-    ...compilerSources, "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
+    ...compilerSources, "editors/tree-sitter-vibelang/src", "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     cpSync(join(repo, path), join(root, path), { recursive: true, filter: (file) => !["node_modules", "dist", ".prototype"].includes(file.split("/").at(-1)) })
   }
@@ -41,7 +41,7 @@ function assemble(root) {
 }
 function archive(root, name, path) {
   const version = json(join(root, "packages/compiler/package.json")).version
-  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", `${name.replace("@", "").replace("/", "-")}-${version}.tgz`), `package/${path}`])
+  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", `${name.replace("@", "").replace("/", "-")}-${version}.tgz`), `package/${path}`], { maxBuffer: 64 * 1024 * 1024 })
 }
 
 test("packs every file the compiler package lists and every target its exports name", { timeout: 120_000 }, (t) => {
@@ -49,6 +49,8 @@ test("packs every file the compiler package lists and every target its exports n
   const result = assemble(root)
   assert.equal(result.status, 0, result.stderr)
   const compiler = json(join(root, "packages/compiler/package.json"))
+  assert.deepEqual(archive(root, "vibelang", "tree-sitter/scanner.c"), readFileSync(join(repo, "editors/tree-sitter-vibelang/src/scanner.c")))
+  assert.ok(archive(root, "vibelang", "tree-sitter/parser.c").length > 1000)
   const targets = Object.values(compiler.exports).flatMap((target) => typeof target === "string" ? [target] : Object.values(target))
   for (const path of [...targets.map((target) => target.replace(/^\.\//, "")), ...compiler.files.filter((file) => file !== "bin" && file !== "editor")]) {
     assert.ok(archive(root, "vibelang", path).length > 0, `vibelang tarball lacks ${path}`)

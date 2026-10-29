@@ -17,6 +17,7 @@ import { repairPrompt } from "./repair.mjs"
 import * as Jj from "./jj.mjs"
 import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
+import { wireDeveloperTools } from "./tooling.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, must, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
@@ -290,9 +291,12 @@ async function wireTarget(config, log) {
   const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts: typeScriptOf(config), specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
   warnings.push(...vite.warnings)
+  const tooling = wireDeveloperTools({ root: t, specsFor })
+  changed.push(...tooling.changed.filter(file => !changed.includes(file)))
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager)
   await must(install, { cwd: t, log: join(log, "install.log") })
+  for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
   return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, changed, warnings, install }
 }
 

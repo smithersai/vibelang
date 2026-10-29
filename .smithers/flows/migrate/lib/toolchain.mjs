@@ -4,6 +4,7 @@
 // reading declarations. Staging it from a checkout lets a run use the
 // compiler on main before it is published; a published version needs no
 // staging (setup takes --vibelang-version instead).
+import { execFileSync } from "node:child_process"
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -33,13 +34,15 @@ export async function stageToolchain({ vibelang, out }) {
   try {
     cpSync(join(repo, "packages/compiler"), staging, { recursive: true, filter: (src) => !/\/(?:node_modules|test)(?:\/|$)/.test(src.slice(repo.length)) })
     const manifest = readJson(join(staging, "package.json"))
-    manifest.files = [...new Set([...(manifest.files ?? []), "native/vibelang"])]
+    manifest.files = [...new Set([...(manifest.files ?? []), "native", "tree-sitter"])]
+    cpSync(join(repo, "editors/tree-sitter-vibelang/src"), join(staging, "tree-sitter"), { recursive: true })
     delete manifest.optionalDependencies
     writeFileSync(join(staging, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
     rmSync(join(staging, "native"), { recursive: true, force: true })
     mkdirSync(join(staging, "native"))
     copyFileSync(binary, join(staging, "native/vibelang"))
     chmodSync(join(staging, "native/vibelang"), 0o755)
+    execFileSync(binary, ["--write-dprint-plugin", staging], { stdio: "pipe" })
     compilerTgz = await pack(staging, out)
   } finally {
     rmSync(staging, { recursive: true, force: true })

@@ -48,7 +48,7 @@ const compilerNative = S.Shell.Build({
 
 const compilerTest = S.Shell.Test({
   summary: "The compiler package's node tests.",
-  shell: "cd packages/compiler && node --test test/*.test.mjs",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
   data: [compilerNative, S.glob("compiler/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",

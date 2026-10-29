@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+import { buildAstGrep } from "../ast-grep.mjs"
+try { console.log(buildAstGrep(process.argv[2])) }
+catch (error) { console.error(error.message); process.exitCode = 1 }

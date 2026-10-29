@@ -2,7 +2,13 @@
   "name": "vibelang",
   "version": "0.0.11",
   "description": "The VibeLang compiler and language server: a readable syntax for Effect that compiles to JavaScript with TypeScript declarations",
-  "keywords": ["vibelang", "effect", "typescript", "compiler", "language-server"],
+  "keywords": [
+    "vibelang",
+    "effect",
+    "typescript",
+    "compiler",
+    "language-server"
+  ],
   "homepage": "https://vibelang.sh",
   "repository": {
     "type": "git",
@@ -16,14 +22,44 @@
   "type": "module",
   "exports": {
     "./package.json": "./package.json",
-    "./project": { "types": "./project.d.mts", "default": "./project.mjs" },
+    "./project": {
+      "types": "./project.d.mts",
+      "default": "./project.mjs"
+    },
     "./register": "./register.mjs",
     "./eslint": "./eslint.mjs",
-    "./bun": "./bun.mjs"
+    "./bun": "./bun.mjs",
+    "./prettier": "./prettier.mjs",
+    "./format": "./format.mjs",
+    "./ast-grep": "./ast-grep.mjs"
   },
-  "bin": { "vibelang": "bin/vibelang" },
-  "files": ["bin", "editor", "cache.mjs", "diagnostics.mjs", "dprint-plugin.json", "eslint.mjs", "project.mjs", "project.d.mts", "register.mjs", "bun.mjs", "README.md", "LICENSE", "NOTICE", "skills/vibelang/SKILL.md"],
-  "scripts": { "test": "node --test test/*.test.mjs" },
+  "bin": {
+    "vibelang": "bin/vibelang",
+    "vibelang-format": "bin/vibelang-format",
+    "vibelang-ast-grep": "bin/vibelang-ast-grep"
+  },
+  "files": [
+    "bin",
+    "editor",
+    "cache.mjs",
+    "diagnostics.mjs",
+    "dprint-plugin.json",
+    "eslint.mjs",
+    "project.mjs",
+    "project.d.mts",
+    "register.mjs",
+    "bun.mjs",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "skills/vibelang/SKILL.md",
+    "format.mjs",
+    "prettier.mjs",
+    "ast-grep.mjs"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
   "optionalDependencies": {
     "vibelang-darwin-arm64": "0.0.11",
     "vibelang-darwin-x64": "0.0.11",
@@ -32,6 +68,14 @@
     "@vibelang/cli-win32-arm64": "0.0.11",
     "@vibelang/cli-win32-x64": "0.0.11"
   },
-  "devDependencies": { "fast-check": "4.10.2" },
-  "engines": { "node": ">=26" }
+  "devDependencies": {
+    "fast-check": "4.10.2",
+    "prettier": "3.6.2"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "dependencies": {
+    "dprint": "0.64.3"
+  }
 }

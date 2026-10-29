@@ -156,7 +156,10 @@ for (const [platform, [os, cpu]] of Object.entries(platforms)) {
 
 // Every file the compiler package lists, except the ones this script writes.
 const compilerFiles = compiler.files.filter((file) => !["editor", "dprint-plugin.json", "LICENSE", "NOTICE"].includes(file))
-const vibelangDir = stage("vibelang", [...compilerFiles.map((file) => [`packages/compiler/${file}`, file]), ["packages/compiler/package.json"]], { LICENSE: apache, NOTICE: notice })
+const vibelangDir = stage("vibelang", [...compilerFiles.map((file) => [`packages/compiler/${file}`, file]), ["packages/compiler/package.json"], ["editors/tree-sitter-vibelang/src", "tree-sitter"]], { LICENSE: apache, NOTICE: notice })
+const stagedCompiler = JSON.parse(readFileSync(join(vibelangDir, "package.json"), "utf8"))
+stagedCompiler.files.push("tree-sitter")
+writeFileSync(join(vibelangDir, "package.json"), JSON.stringify(stagedCompiler, null, 2) + "\n")
 mkdirSync(join(vibelangDir, "editor"))
 copyFileSync(vsix, join(vibelangDir, "editor", "vibelang.vsix"))
 order.push({

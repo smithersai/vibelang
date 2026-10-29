@@ -120,6 +120,10 @@ export const sidebar = [
           {
             "text": "Format with dprint",
             "link": "/setup/formatting"
+          },
+          {
+            "text": "Developer tools",
+            "link": "/setup/developer-tools"
           }
         ]
       },

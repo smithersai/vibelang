@@ -111,6 +111,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Migration now includes `.vibe` in formatter, lint and ast-grep commands: the compiler ships a Prettier plugin and formatter companion using its own dprint formatter, ESLint checks VibeLang beside Oxlint, and ast-grep loads the shipped tree-sitter grammar.
+
 - VIP-30: project discovery checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory; explicit config paths still select that file.
 
 - An LSP client that only accepts pushed diagnostics, such as Claude Code's, showed no errors in `.vibe` or `.ts` files, because the language server answered only `textDocument/diagnostic` requests. The server now publishes each open file's diagnostics to such a client after every open, change and save.

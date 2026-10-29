@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+import { formatFiles } from "../format.mjs"
+try { process.exitCode = formatFiles(process.argv.slice(2)) }
+catch (error) { console.error(error.message); process.exitCode = 2 }

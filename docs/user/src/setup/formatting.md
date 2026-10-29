@@ -79,3 +79,7 @@ Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are support
 ## The editor
 
 The language server's own formatting, `textDocument/formatting`, is TypeScript's formatter and ignores dprint's settings. Format with dprint: its editor extensions and `dprint lsp` run the same plugin.
+
+## Prettier, Oxfmt and migration
+
+The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools after migration](developer-tools.md) for the integrations, their shared formatter, and how migration extends existing checks.
