@@ -21,3 +21,4 @@ const back = try Schema.decodeUnknownEffect(NotFound)(json)
 - `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.
 - The body rules are VIP-13's: methods and getters are allowed, and a constructor or a `_tag` override is not.
 - **Ambiguity: none.** `schema error NotFound {` and the alias form `schema error = …` differ at the next token.
+- **Amended 2026-10-29: no braces.** `schema error Timeout`, with no body, is allowed, like VIP-13's `error Timeout`. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.

@@ -33,6 +33,11 @@ effect function load(id) {
   - VibeLang ships its own annotations for the globals, so that `JSON.parse` throws `SyntaxError` and `Math.max` is known not to throw.
 - A call given a callback that may throw may itself throw. Swift calls this `rethrows`.
 - Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked. They are defects, as in `Effect.sync`.
+- **Amended 2026-10-29: `Stream`- and `Layer`-returning functions count as effectful.** Like a function that returns an Effect, they can't throw and are never throw-tracked. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: annotations for Effect's exports.** VibeLang ships `@throws` annotations for Effect's exports that don't return an Effect, as it does for `JSON.parse`: `Option.some` throws `never`, and `Schema.decodeUnknownSync` throws `SchemaError`. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. `@throws` on the declaration opts in. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: rethrows.** A function declares that it rethrows with a `@rethrows <param>` JSDoc tag. VibeLang ships the rethrowing globals: `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. `setTimeout` does not rethrow, because it stores the callback. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: constructors and accessors.** `new X()` is throw-tracked; getters and setters are not. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## Prior art
 

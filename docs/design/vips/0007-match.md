@@ -18,6 +18,7 @@ match (e) {
 - One addition: a `match` with no `default` over a finite union that misses a case is a compile error. The check only reports errors; it never changes what runs.
 - Class arms use the class's `Symbol.customMatcher`. VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.
 - **Condition: no run-time patching of Effect.** Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208). We propose the matchers upstream.
+- **Amended 2026-10-29: what the exhaustiveness check covers.** Literal unions, `boolean`, `data` unions, `error` unions and enums. A guarded arm covers nothing. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## Meaning in Effect TS terms
 

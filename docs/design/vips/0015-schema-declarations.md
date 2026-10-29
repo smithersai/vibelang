@@ -32,6 +32,16 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 - `name?: T` means `Schema.optional`, which accepts a missing key or `undefined`, matching TypeScript's default.
 - Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`.
 - **Ambiguity: none.** `schema` is a contextual keyword on the same line as its name.
+- **Amended 2026-10-29: the type mappings mirror TypeScript, mutability included.**
+  - `"a"` → `Schema.Literal("a")`;
+  - a union → `Schema.Union([...])`;
+  - `null` / `undefined` → `Schema.Null` / `Schema.Undefined`;
+  - `T[]` → `Schema.mutable(Schema.Array(S))`, and `readonly T[]` → `Schema.Array(S)`;
+  - `[A, B]` → `Schema.Tuple([A, B])`, mutable unless `readonly`;
+  - `Record<K, V>` → `Schema.Record(K, V)`;
+  - a struct → `Schema.Struct`, with `Schema.mutableKey` for mutable fields.
+
+  Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## History
 

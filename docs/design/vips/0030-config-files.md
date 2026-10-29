@@ -16,6 +16,7 @@
 - **Superset.** Every tsconfig field means the same in `vibe.config.json`, including `extends`. The only addition is the `"vibe"` section.
 - **VibeLang's options live under a top-level `"vibe"` key.** Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so the repo's own TypeScript tooling keeps working.
 - The switches for VIP-6 (Effect function globals) and VIP-14 (Effect modules in scope) live there; their final names are settled during implementation.
+- **Amended 2026-10-29: the option names.** The keys are `vibe.effectGlobals`, `vibe.effectModules` and `vibe.severities`. Errors can't be set to `"off"` (VIP-34). Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## Prior art
 

@@ -17,6 +17,7 @@ const load = (p, q) => Effect.scoped(Effect.gen(function* () {
   return yield* db.query(q)
 }))
 ```
+- **Amended 2026-10-29: a warning for `using` in effect code.** There it leaks on a failure or interruption, so it gets a warning, with a quick fix to `acquireDisposable` inside `scoped`. `using` keeps TypeScript's meaning. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## What was proposed
 

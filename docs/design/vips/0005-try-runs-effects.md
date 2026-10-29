@@ -40,6 +40,7 @@ effect function load(id) {
 - An Effect that can't fail is still run with `try`, and that is fine.
 
 *Corrected 2026-10-29: the examples call `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
+- **Amended 2026-10-29: a non-literal function fallback.** In `x catch f`, where `f` is a non-literal function value, the fallback is the value `f`: syntax decides. A VIP-38 lint warning, with quick fixes to `catch (e) => …` or `catch effect { … }`, flags a fallback whose type is an Effect or a function. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## Prior art
 
