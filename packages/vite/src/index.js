@@ -3,6 +3,9 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+// Vite's default resolve.extensions, which a config that sets none uses.
+const viteExtensions = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
+
 const cleanId = (id) => id.split("?")[0]
 const slash = (path) => path.replaceAll("\\", "/")
 
@@ -74,12 +77,17 @@ export default function vibelang(options = {}) {
     name: "vibelang",
     enforce: "pre",
     config(config) {
-      if (!options.register) return
+      // An extensionless import, or a directory's index (`./mount` for
+      // mount/index.vibe), reaches a .vibe module as it reaches a .ts one.
+      // Vite concatenates a plugin's arrays with the config's.
+      const extensions = config.resolve?.extensions
+      const added = extensions?.includes(".vibe") ? {} : { resolve: { extensions: extensions ? [".vibe"] : [...viteExtensions, ".vibe"] } }
+      if (!options.register) return added
       // Vitest copies test.env into process.env, which the processes a test starts inherit.
       const flag = `--import=${registerUrl(resolve(config.root || process.cwd()))}`
       const inherited = config.test?.env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? ""
-      if (inherited.includes(flag)) return
-      return { test: { env: { NODE_OPTIONS: [inherited, flag].filter(Boolean).join(" ") } } }
+      if (inherited.includes(flag)) return added
+      return { ...added, test: { env: { NODE_OPTIONS: [inherited, flag].filter(Boolean).join(" ") } } }
     },
     // Vitest's fsModuleCache keys a transform by the module's own text, but a
     // .vibe module's JavaScript also depends on the compiler and on the

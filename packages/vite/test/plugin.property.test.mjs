@@ -245,13 +245,15 @@ function registerCase(root, input) {
   const plugin = vibelang({ register: input.register })
   const result = plugin.config(config)
   const original = input.configOptions ? inherited : process.env.NODE_OPTIONS
-  const value = result?.test.env.NODE_OPTIONS ?? original
-  if (!input.register) assert.equal(result, undefined)
+  const value = result?.test?.env.NODE_OPTIONS ?? original
+  // Every config gains .vibe in resolve.extensions; only register adds NODE_OPTIONS.
+  assert.deepEqual(result.resolve, { extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".vibe"] })
+  if (!input.register) assert.equal(result.test, undefined)
   else {
     assert.ok(value.startsWith(original))
     const flag = value.split(" ").filter(option => option.startsWith("--import="))
     assert.equal(flag.length, 1)
-    assert.equal(plugin.config({ ...config, test: { env: { NODE_OPTIONS: value } } }), undefined, "register is idempotent")
+    assert.equal(plugin.config({ ...config, test: { env: { NODE_OPTIONS: value } } }).test, undefined, "register is idempotent")
   }
   const file = join(root, input.directory, "n0.vibe")
   const spawned = run(process.execPath, ["--input-type=module", "-e",

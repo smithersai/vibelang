@@ -99,6 +99,14 @@ export default defineConfig({
   assert.throws(() => addVitePlugin("export default defineConfig({ plugins })\n", ts), /not an array literal/)
 })
 
+test("addVitePlugin adds the plugin to the object a defineConfig function returns", () => {
+  const block = "import { defineConfig } from 'vite'\n\nexport default defineConfig(() => {\n  const x = 1\n  return {\n    plugins: [react()],\n  }\n})\n"
+  assert.equal(addVitePlugin(block, ts), "import { defineConfig } from 'vite'\nimport vibelang from 'vibelang-vite'\n\nexport default defineConfig(() => {\n  const x = 1\n  return {\n    plugins: [vibelang(), react()],\n  }\n})\n")
+  const arrow = 'import { defineConfig } from "vite"\n\nexport default defineConfig(({ mode }) => ({\n  base: "/"\n}))\n'
+  assert.equal(addVitePlugin(arrow, ts), 'import { defineConfig } from "vite"\nimport vibelang from "vibelang-vite"\n\nexport default defineConfig(({ mode }) => ({\n  plugins: [vibelang()],\n  base: "/"\n}))\n')
+  assert.throws(() => addVitePlugin("export default defineConfig(make())\n", ts), /add vibelang\(\) from vibelang-vite to its plugins by hand/)
+})
+
 test("testConfigArgument reads --config and -c from the command or the package script it runs", () => {
   assert.equal(testConfigArgument("vp test run --config ../../vite.config.ts --dir ."), "../../vite.config.ts")
   assert.equal(testConfigArgument("vitest run --config=vitest.shared.ts"), "vitest.shared.ts")
@@ -162,6 +170,7 @@ test("wireViteApps adds the plugin to every config that bundles migrated sources
       "apps/deep/vite.config.mts": vitestConfig,
       "apps/function/package.json": { name: "function", devDependencies: { core: "workspace:*" } },
       "apps/function/vite.config.ts": "import { defineConfig } from 'vite'\n\nexport default defineConfig(() => ({}))\n",
+      "apps/function/vite.config.js": "export default makeConfig()\n",
       "apps/published/package.json": { name: "published", dependencies: { core: "^1.0.0" } },
       "apps/published/vite.config.ts": vitestConfig,
       "apps/other/package.json": { name: "other" },
@@ -173,11 +182,12 @@ test("wireViteApps adds the plugin to every config that bundles migrated sources
       mkdirSync(join(root, file, ".."), { recursive: true })
       writeFileSync(join(root, file), typeof content === "string" ? content : JSON.stringify(content, null, 2) + "\n")
     }
-    assert.deepEqual(viteAppConfigs(root, ["packages/core"]).sort(), ["apps/deep/vite.config.mts", "apps/function/vite.config.ts", "apps/web/vite.config.ts", "packages/core/vitest.config.ts"])
+    assert.deepEqual(viteAppConfigs(root, ["packages/core"]).sort(), ["apps/deep/vite.config.mts", "apps/function/vite.config.js", "apps/function/vite.config.ts", "apps/web/vite.config.ts", "packages/core/vitest.config.ts"])
     const specsFor = () => ({ vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
     const wired = wireViteApps({ root, packages: [{ dir: "packages/core" }], ts, specsFor, wired: ["packages/core/vitest.config.ts"] })
-    assert.deepEqual(wired.configs.sort(), ["apps/deep/vite.config.mts", "apps/web/vite.config.ts"])
-    assert.match(wired.warnings[0], /^apps\/function\/vite\.config\.ts: the config does not call defineConfig/)
+    assert.deepEqual(wired.configs.sort(), ["apps/deep/vite.config.mts", "apps/function/vite.config.ts", "apps/web/vite.config.ts"])
+    assert.equal(wired.warnings.length, 1)
+    assert.match(wired.warnings[0], /^apps\/function\/vite\.config\.js: the config does not call defineConfig/)
     assert.ok(readFileSync(join(root, "apps/web/vite.config.ts"), "utf8").includes("import vibelang from 'vibelang-vite'"))
     assert.deepEqual(JSON.parse(readFileSync(join(root, "apps/web/package.json"), "utf8")).devDependencies, { vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
     assert.equal(readFileSync(join(root, "apps/other/vite.config.ts"), "utf8"), vitestConfig)

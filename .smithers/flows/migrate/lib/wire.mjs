@@ -72,7 +72,9 @@ export function addVibeLangPlugin(pkg, specs) {
 
 /**
  * Adds `vibelang()` from vibelang-vite to a Vite or Vitest config that calls
- * defineConfig with an object literal, first in that object's own plugins,
+ * defineConfig with an object literal, or with a function that returns one
+ * (`defineConfig(() => ({ ... }))`, or a body whose last top-level return
+ * is one), first in that object's own plugins,
  * never in a nested option's (a `lint: { plugins: [...] }`). ts is
  * TypeScript's compiler API. Returns the text unchanged when the plugin is
  * already there; throws when the config has a shape this edit does not know,
@@ -82,13 +84,23 @@ export function addVitePlugin(text, ts) {
   if (/from\s+['"]vibelang-vite['"]/.test(text)) return text
   const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   let config
+  // The object a defineConfig argument gives: the literal, or what its function returns.
+  const objectOf = (node) => {
+    while (node && ts.isParenthesizedExpression(node)) node = node.expression
+    if (!node) return undefined
+    if (ts.isObjectLiteralExpression(node)) return node
+    if (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) return undefined
+    if (!ts.isBlock(node.body)) return objectOf(node.body)
+    const returned = node.body.statements.filter((s) => ts.isReturnStatement(s)).at(-1)
+    return returned && objectOf(returned.expression)
+  }
   const find = (node) => {
     if (config) return
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "defineConfig" && node.arguments[0] && ts.isObjectLiteralExpression(node.arguments[0])) config = node.arguments[0]
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "defineConfig" && objectOf(node.arguments[0])) config = objectOf(node.arguments[0])
     else ts.forEachChild(node, find)
   }
   find(source)
-  if (!config) throw new Error("the config does not call defineConfig({ ... }); add vibelang() from vibelang-vite to its plugins by hand")
+  if (!config) throw new Error("the config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its plugins by hand")
   const plugins = config.properties.find((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === "plugins")
   let plugin
   if (plugins) {

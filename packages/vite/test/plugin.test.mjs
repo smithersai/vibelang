@@ -269,6 +269,25 @@ test("Vite production builds accept .vibe entry modules", async (t) => {
   assert.ok(output.some((file) => file.type === "asset" && file.fileName.endsWith(".map")))
 })
 
+test("a TypeScript entry reaches a directory's index.vibe and an extensionless .vibe module", async (t) => {
+  const root = await fixture(t)
+  await mkdir(join(root, "mount"))
+  await writeFile(join(root, "mount/index.vibe"), "export const mounted = (): string => \"mounted\"\n")
+  await writeFile(join(root, "plain.vibe"), "export const plain = 2\n")
+  const tsconfig = JSON.parse(await readFile(join(root, "tsconfig.json"), "utf8"))
+  await writeFile(join(root, "tsconfig.json"), JSON.stringify({ ...tsconfig, include: ["*.vibe", "mount/*.vibe"] }))
+  await writeFile(join(root, "entry.ts"), 'import { mounted } from "./mount"\nimport { plain } from "./plain"\nexport const both = `${mounted()} ${plain}`\n')
+  const result = await build({
+    root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
+    build: { write: false, lib: { entry: join(root, "entry.ts"), formats: ["es"] }, rollupOptions: { external: [/^effect/] } }
+  })
+  const code = (result.output || result[0].output).filter((file) => file.type === "chunk").map((file) => file.code).join("\n")
+  assert.match(code, /mounted 2/)
+  // A config's own extensions keep their order, with .vibe after them.
+  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".js"] } }).resolve, { extensions: [".vibe"] })
+  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".vibe"] } }).resolve, undefined)
+})
+
 test("a native compiler named bin/vibelang is executed without Node", async (t) => {
   const root = await fixture(t)
   const native = join(root, "bin", "vibelang")
