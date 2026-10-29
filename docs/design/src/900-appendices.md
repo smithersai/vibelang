@@ -55,6 +55,7 @@ EffectType        = EffectOperand "!" EffectOperand "!" EffectOperand
 EffectOperand     = a Type that is not an unparenthesized EffectType
 
 TryExpression     = "try" UnaryExpression
+ShortCircuitExpression = LogicalORExpression | CoalesceExpression | CatchExpression
 CatchExpression   = (CatchExpression | Operand) "catch" Handler
 Handler           = HandlerFunction | "effect" Block | Operand      (the first that matches)
 HandlerFunction   = EffectArrow | ArrowFunction | "(" HandlerFunction ")"
@@ -85,10 +86,10 @@ SchemaErrorDecl   = "export"? "schema" "error" Name ("{" ErrorBody "}")?
 ErrorBody         = (Field | Method | Getter)*
 Method            = a non-static MethodDeclaration
 Getter            = a non-static get accessor
-Field             = PropertyName "?"? ":" Type ";"?
-SchemaDecl        = "export"? "schema" Name ("{" SchemaFields "}" | "=" Type)
-SchemaFields      = ("readonly"? Field)*
-DataDecl          = "export"? "data" Name TypeParameters? "{" Variant ((";" | LineTerminator) Variant)* ";"? "}"
+Field             = "readonly"? PropertyName "?"? ":" Type Separator
+Separator         = ";" | "," | LineTerminator | before "}"   (as between interface members)
+SchemaDecl        = "export"? "schema" Name ("{" Field* "}" | "=" Type)
+DataDecl          = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
 Variant           = Name ("{" Field* "}")?
 ```
 
@@ -104,9 +105,16 @@ a catch f                    the fallback is the value f         syntax decides,
 
 When a fallback's type is a function or an Effect, a VIP-38 lint warning offers `catch (e) => …` and `catch effect { … }` ([Running Effects](002-running.md#catch)).
 
+A field ends at `;`, `,`, a line break or `}`, so `{ a: string b: number }` is a syntax error. `readonly` is allowed on any field; `error` and `data` fields are readonly either way.
+
 `A!B!C` is always the three-slot form; write `(A!B)!C` to nest.
 
-After `for concurrent`, a parenthesized group followed by another `(` is the concurrency limit: `for concurrent (4) (const x of xs)`.
+After `for concurrent`, the first parenthesized group is the concurrency limit only when it parses as an `AssignmentExpression` and the next group is the for…of head. A group that holds `ForBinding of …` is the head, whatever follows it:
+
+```text
+for concurrent (4) (const x of xs) f(x)        limit 4
+for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
+```
 
 `try` has `await`'s precedence, because `try` works like `await`. **Undecided (pending VIP):** `ForkOperand`, the precedence of `fork` and `join` (a `UnaryExpression` or an `AssignmentExpression`), the precedence of `!` among type operators (`A!E | B`), and whether referencing a binding named `fork` or `join` in effect code is a diagnostic (`join - 1` there joins `-1`).
 
@@ -131,7 +139,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | Rule | Chapter |
 | --- | --- |
 | `try` outside effect code, the top level included; `try` on a value that is not an Effect; a `try` statement in effect code | [Running Effects](002-running.md#try) |
-| `effect f() { }` or `async f() { }` outside a class or object literal; `await` in effect code; `await` on an Effect in an `async` function | [Functions](001-functions.md#static-rules) |
+| `effect f() { }` or `async f() { }` outside a class or object literal; an `effect` getter, setter or constructor; an `effect` function whose written return type is not an Effect; `await` in effect code; `await` on an Effect in an `async` function | [Functions](001-functions.md#static-rules) |
 | `catch` outside effect code; `try x catch y`; `e catch y` where `e` is not an Effect; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
@@ -197,7 +205,7 @@ When the compiler implements VIP-N:
 | --- | --- |
 | `JSON.parse` | `@throws {SyntaxError}` |
 | `Math.max`, `Option.some` | `@throws {never}` |
-| `Schema.decodeUnknownSync` | `@throws {SchemaError}` |
+| the decoder that `Schema.decodeUnknownSync(schema)` returns | `@throws {SchemaError}` |
 | `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from`, the `Promise` executor | `@rethrows` the callback |
 
 `setTimeout` does not rethrow, because it stores the callback. A library declares rethrowing with `@rethrows <param>`:
@@ -230,4 +238,6 @@ function parse(s: string, xs: number[]) {
 }
 ```
 
-**Undecided (pending VIP):** the annotation of each remaining global and Effect export.
+`Schema.decodeUnknownSync(User)` only builds the decoder and throws nothing; calling the decoder throws `SchemaError`.
+
+**Undecided (pending VIP):** the annotation of each remaining global and Effect export, and how a shipped annotation names a returned function's call signature.
