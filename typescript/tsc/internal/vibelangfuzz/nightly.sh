@@ -39,6 +39,8 @@ root=${NIGHTLY_ROOT:-$HOME/es-nightly}
 # lanes/env.sh, when a host has one, puts its admission-controlled go
 # wrapper first; the lane user's tools in ~/.local, and ubuntu's es-tools on
 # nyc-01, come after it on PATH so they never bypass the wrapper.
+# cron sets no USER, which lanes/env.sh reads under set -u.
+export USER="${USER:-$(id -un)}"
 if [ -f "$HOME/lanes/env.sh" ]; then
 	. "$HOME/lanes/env.sh"
 fi
