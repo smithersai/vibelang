@@ -61,60 +61,47 @@ func TestCategory(t *testing.T) {
 	}
 }
 
-// TestRegistryMatchesSpec checks that the registry lists exactly the codes in
-// the table of Chapter 28.
+// TestRegistryMatchesSpec checks the registry against Appendix B of the
+// specification, the diagnostics VIP-34 asks for: every code the VIPs assign
+// must be registered. The registry's other codes are the old language's,
+// which Appendix B says are not normative, until a VIP assigns codes to the
+// rules it marks "code pending"; they are logged, not failed.
 func TestRegistryMatchesSpec(t *testing.T) {
 	t.Parallel()
-	spec, err := os.ReadFile("../../../../docs/design/history/src/428-part4-ch28-tooling.md")
-	if os.IsNotExist(err) {
-		// The old Chapter 28 registry lives in docs/design/history; the new
-		// specification has no registry until VIP-34's diagnostics are assigned.
-		// Without the history copy, the Go registry is the source of truth.
-		t.Skip("the specification has no Chapter 28 registry until VIP-34's diagnostics appendix lands")
-	}
+	spec, err := os.ReadFile("../../../../docs/design/src/900-appendices.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var want []int32
-	for _, m := range regexp.MustCompile(`(?m)^\| EK(\d{4}) \|`).FindAllStringSubmatch(string(spec), -1) {
+	text := string(spec)
+	start := strings.Index(text, "## Appendix B. Diagnostics")
+	if start < 0 {
+		t.Fatal("the specification has no Appendix B. Diagnostics")
+	}
+	appendix := text[start:]
+	if next := strings.Index(appendix[1:], "\n## "); next >= 0 {
+		appendix = appendix[:next+1]
+	}
+	var assigned []int32
+	for _, m := range regexp.MustCompile(`(?m)^\| EK(\d{4}) \|`).FindAllStringSubmatch(appendix, -1) {
 		code, _ := strconv.Atoi(m[1])
-		want = append(want, int32(code))
+		assigned = append(assigned, int32(code))
 	}
-	// D362 is approved; its specification patch is owned by another lane.
-	// Keep the registry check exact while that patch has not landed.
-	if !slices.Contains(want, int32(3207)) {
-		want = append(want, 3207)
+	if len(assigned) == 0 {
+		t.Fatal("Appendix B assigns no code")
 	}
-	// D376 lists EK1022 below the registry table until the spec lane updates it.
-	if !slices.Contains(want, int32(1022)) && strings.Contains(string(spec), "**EK1022**") {
-		want = append(want, 1022)
-	}
-	// D382 defines EK1023 in Chapter 28's revision bullets. The spec lane
-	// owns its table row; require the definition while that row is pending.
-	if !slices.Contains(want, EK1023.Code) {
-		if !strings.Contains(string(spec), "- **EK1023**:") {
-			t.Fatal("EK1023 has no Chapter 28 definition")
-		}
-		want = append(want, EK1023.Code)
-	}
-	// D394, D432 and D433 define EK4613 and EK4410 in the same bullets.
-	for _, m := range []*Message{EK4410, EK4613} {
-		if !slices.Contains(want, m.Code) {
-			if !strings.Contains(string(spec), "- **"+m.String()+"**:") {
-				t.Fatalf("%s has no Chapter 28 definition", m)
-			}
-			want = append(want, m.Code)
+	for _, code := range assigned {
+		if registry[code] == nil {
+			t.Errorf("Appendix B assigns EK%d, which the registry does not have", code)
 		}
 	}
-	var got []int32
+	var pending []int32
 	for code := range registry {
-		got = append(got, code)
+		if !slices.Contains(assigned, code) {
+			pending = append(pending, code)
+		}
 	}
-	slices.Sort(want)
-	slices.Sort(got)
-	if len(want) == 0 || !slices.Equal(got, want) {
-		t.Errorf("registry codes %v differ from Chapter 28's %v", got, want)
-	}
+	slices.Sort(pending)
+	t.Logf("%d codes assigned by Appendix B; %d registry codes of the old language await a VIP: %v", len(assigned), len(pending), pending)
 }
 
 func TestDirectiveCategory(t *testing.T) {
