@@ -14,6 +14,13 @@
 //   getUser(id) catch (e) => match (e) { when NotFound: guest; }
 //   function find(id: string): User!NotFound!Db { ... }
 //   module text { ...TypeScript... }       import { clean } from text
+//
+// The VIP forms (docs/design/vips/):
+//   export effect load(id) { ... }   effect function* ticks() { ... }   async get(url) { ... }
+//   { effect find(id) { ... } }      effect (x) => ...                  effect { ... }
+//   const user = try getUser(id)     try.all [a(), b()]                 x catch effect (e) => ...
+//   fork.in(scope) w()   fork.scoped w()   fork.detached w()            for try (const x of s) { ... }
+//   load() |> retry(%, policy)
 
 const name = "[_$[:alpha:]][_$[:alnum:]]*"
 const start = "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?"
@@ -35,8 +42,80 @@ function declaration(words, body, header = "") {
   }
 }
 
+// effect is a modifier wherever TypeScript's grammar takes async (VIP-1):
+// function declarations and expressions, methods, object members and arrows.
+// The replacements leave rewritten text alone, so applying them again is a no-op.
+const asyncForms = [
+  [/\(async\)/g, "(async|effect)"],
+  [/\(\\basync\)/g, "(\\b(?:async|effect))"],
+  [/\(async\\s([+*])\)\?/g, "((?:async|effect)\\s$1)?"],
+  [/\|async\|(?!effect\|)/g, "|async|effect|"]
+]
+function addEffectModifier(rule) {
+  if (Array.isArray(rule)) return rule.map(addEffectModifier)
+  if (rule === null || typeof rule !== "object") return rule
+  return Object.fromEntries(Object.entries(rule).map(([key, value]) => [key,
+    typeof value === "string" && ["begin", "end", "match", "while"].includes(key)
+      ? asyncForms.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value)
+      : addEffectModifier(value)]))
+}
+
 export function addVibeLangSyntax(grammar) {
   const { repository } = grammar
+  for (const key of Object.keys(repository)) if (!key.startsWith("vibelang-")) repository[key] = addEffectModifier(repository[key])
+  // The shorthand declaration, effect load(id) { ... } or async get(url) { ... },
+  // is TypeScript's function declaration without the function keyword.
+  const declarationRule = repository["function-declaration"]
+  repository["vibelang-function-shorthand"] = {
+    ...declarationRule,
+    begin: `${start}(?:(\\bdefault)\\s+)?(async|effect)\\s+(?!function\\b)(${name})(?=\\s*[<(])`,
+    beginCaptures: {
+      1: { name: "keyword.control.export.ts" },
+      2: { name: "keyword.control.default.ts" },
+      3: { name: "storage.modifier.async.ts" },
+      4: { name: "meta.definition.function.ts entity.name.function.ts" }
+    }
+  }
+  // effect { ... } builds an Effect from statements (VIP-2).
+  repository["vibelang-effect-block"] = {
+    match: "(?<![_$[:alnum:].])(effect)(?=[ \t]*\\{)",
+    captures: { 1: { name: "storage.modifier.async.ts" } }
+  }
+  // try e runs an Effect inside an effect function (VIP-5); try.all [...] and
+  // its siblings run several (VIP-18). A try block keeps TypeScript's rule.
+  repository["vibelang-try-operation"] = {
+    match: "(?<![_$[:alnum:].])(try)\\s*(\\.)\\s*(all|allSettled|race|any)(?![_$[:alnum:]])",
+    captures: {
+      1: { name: "keyword.control.flow.ts" },
+      2: { name: "punctuation.accessor.ts" },
+      3: { name: "keyword.control.flow.ts" }
+    }
+  }
+  repository["vibelang-try-expression"] = {
+    match: "(?<![_$[:alnum:].])(try)(?=[ \t]+[^\\s{=:;,)\\]}.])",
+    captures: { 1: { name: "keyword.control.trycatch.ts" } }
+  }
+  // fork.in(scope) w(), fork.scoped w(), fork.detached w() (VIP-17).
+  repository["vibelang-fork-form"] = {
+    match: "(?<![_$[:alnum:].])(fork)(\\.)(in|scoped|detached)(?![_$[:alnum:]])",
+    captures: {
+      1: { name: "keyword.control.flow.ts" },
+      2: { name: "punctuation.accessor.ts" },
+      3: { name: "keyword.control.flow.ts" }
+    }
+  }
+  // for try (const x of stream) { ... } consumes a Stream (VIP-20).
+  repository["vibelang-for-try"] = {
+    match: "(?<![_$[:alnum:]])(for)\\s+(try)(?=\\s*\\()",
+    captures: { 1: { name: "keyword.control.loop.ts" }, 2: { name: "keyword.control.loop.ts" } }
+  }
+  // TC39's Hack pipe and its topic reference (VIP-23): x |> f(%), x |> %.length.
+  repository["vibelang-pipe"] = {
+    patterns: [
+      { match: "\\|>", name: "keyword.operator.pipe.ts" },
+      { match: "(?:(?<=[(\\[,])|(?<=[(\\[,] )|(?<=\\|> ))%(?=\\s*[),.\\]\\[]|\\s*\\|>|\\s*$)", name: "variable.language.topic.ts" }
+    ]
+  }
   // schema Code = "a" | "b" (D280) is TypeScript's type alias with schema for
   // type: its = and type are the alias's, and it ends where the alias does
   // or at a line that starts another VibeLang declaration.
@@ -222,10 +301,10 @@ export function addVibeLangSyntax(grammar) {
     match: `(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))\\b(import)\\s+${specifier}`,
     captures: { 1: { name: "keyword.control.import.ts" }, 2: { name: "entity.name.type.module.ts" } }
   }
-  const vibelangIncludes = ["#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-layer-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
+  const vibelangIncludes = ["#vibelang-function-shorthand", "#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-layer-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
   const statements = repository.statements.patterns.filter((pattern) => !vibelangIncludes.includes(pattern.include))
   repository.statements.patterns = [...vibelangIncludes.map((include) => ({ include })), ...statements]
-  const vibelangExpressions = ["#vibelang-await-operation", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]
+  const vibelangExpressions = ["#vibelang-try-operation", "#vibelang-try-expression", "#vibelang-effect-block", "#vibelang-fork-form", "#vibelang-pipe", "#vibelang-await-operation", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]
   const expressions = repository.expression.patterns.filter((pattern) => !vibelangExpressions.includes(pattern.include))
   repository.expression.patterns = [...vibelangExpressions.map((include) => ({ include })), ...expressions]
   // `!` separates the slots of an Effect type: Result!Error!Dependencies.
