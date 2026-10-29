@@ -1,0 +1,3 @@
+schema Alias = { readonly one: string, readonly two: number }
+schema Outer { readonly nested: { readonly one: string, readonly two: number } }
+export const value: Outer = { nested: { one: "yes", two: 2 } }

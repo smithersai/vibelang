@@ -43,6 +43,7 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		{"error field comma", "error OutOfStock { sku: string, available: number }", "Write ; for the comma", "error OutOfStock { sku: string; available: number }", 1013},
 		{"schema error field comma", "schema error Bad { sku: string,\n  reason: string }", "Write ; for the comma", "schema error Bad { sku: string;\n  reason: string }", 1013},
 		{"service field comma", "service Stock { region: string, count(): number!! }", "Write ; for the comma", "service Stock { region: string; count(): number!! }", 1013},
+		{"schema field comma", "schema Draft { readonly title: string, readonly count: number }", "Write ; for the comma", "schema Draft { readonly title: string; readonly count: number }", 1013},
 		{"data field comma", "data Shape { Rect { width: number, height: number } }", "Write ; for the comma", "data Shape { Rect { width: number; height: number } }", 1013},
 		{"data variant comma", "data Answer { Yes, No }", "Write ; for the comma", "data Answer { Yes; No }", 1013},
 		{"tagged schema", `// @vibelang-diagnostics EK4821:warning

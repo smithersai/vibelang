@@ -22,7 +22,7 @@ import (
 // report "Expected '=' for property initializer." there. The quick fix
 // writes ; for the comma.
 
-// EK1013: a comma after a field of an error, schema error, service, or control declaration. {0} is the declaration's kind, such as "an error".
+// EK1013: a comma after a field of an error, schema, schema error, service, or control declaration. {0} is the declaration's kind, such as "an error".
 var EK1013 = message(1013, errorCategory, "The fields of {0} are separated by ; or a new line, not by a comma.")
 
 func init() {

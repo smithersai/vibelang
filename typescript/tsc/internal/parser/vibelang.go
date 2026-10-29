@@ -1234,7 +1234,12 @@ func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 			// Written mutable (D134): the field's key is mutable.
 			value = p.vibelangSchemaCall("mutableKey", name.Loc, value)
 		}
-		properties = append(properties, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, value), core.NewTextRange(name.Pos(), value.End())))
+		property := p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, value), core.NewTextRange(name.Pos(), value.End()))
+		// Preserve a written comma for the schema-body separator diagnostic.
+		if member.End() > 0 && p.sourceText[member.End()-1] == ',' {
+			property.Loc = core.NewTextRange(name.Pos(), member.End())
+		}
+		properties = append(properties, property)
 	}
 	return properties
 }

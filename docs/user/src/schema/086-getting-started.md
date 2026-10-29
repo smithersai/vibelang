@@ -59,6 +59,8 @@ schema Batch {
 
 Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.
 
+Separate `schema` declaration fields with `;` or a new line. A comma reports `EK1013`; `vibelang --fix` replaces it with `;`. Nested object types and alias types retain TypeScript’s comma separators.
+
 ## Declaring a schema for any type
 
 ```vibe

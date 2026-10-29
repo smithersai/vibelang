@@ -24,6 +24,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Before | After and repair |
 | --- | --- |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.0 is now the minimum supported version, pinned exactly: install `effect@4.1.0` and `@effect/*@4.1.0`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
+| Commas between `schema` declaration fields | Separate fields with `;` or a new line. `vibelang --fix` replaces commas with semicolons (`EK1013`). |
 | `import { Path } from "effect"`; `Path.Path.join("a", "b")` | Every unambiguous Effect module is global; write `Path.join("a", "b")`. Existing imports still work. `--fix` removes redundant imports and shortens the module's same-named export. |
 | The type `Option.Option<number>` | Write `Option<number>`; the long form remains valid. A module's own exports still win over its same-named export. |
 | A DOM type named `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | The bare name now means Effect's same-named type. Export an alias such as `export type DomWorker = Worker` from a `.ts` file and import that type. To use the DOM constructor, put `globalThis.Worker` in a hatch or named TypeScript module. |
@@ -157,6 +158,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang lint` skipped projects using `vibe.config.json` or `jsconfig.json` and ignored invalid project settings; it now uses compiler config precedence and reports configuration errors.
 
 - Cyclic schema declarations incorrectly reported that a schema was not a schema; they now report only TypeScript’s initialization diagnostics.
+
+- Schema declarations accepted comma field separators; the compiler now reports `EK1013`, and `vibelang --fix` writes semicolons.
 
 - Coding agents initialized with `vibelang agents init` missed Effect lint checks; their instructions now include `vibelang lint` and its Oxlint configuration.
 

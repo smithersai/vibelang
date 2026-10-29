@@ -1,0 +1,2 @@
+// expect: EK1013
+schema Comma { readonly one: string, readonly two: number }
