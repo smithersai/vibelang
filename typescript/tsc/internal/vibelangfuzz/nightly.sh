@@ -36,11 +36,12 @@
 set -eu
 
 root=${NIGHTLY_ROOT:-$HOME/es-nightly}
-# The lane user's tools; on nyc-01, ubuntu's es-tools.
+# The lane user's tools are in ~/.local, and lanes/env.sh, when a host has
+# one, sets the rest; on nyc-01, ubuntu's are in es-tools.
 if [ -f "$HOME/lanes/env.sh" ]; then
 	. "$HOME/lanes/env.sh"
 fi
-export PATH=$HOME/es-tools/go/bin:$HOME/es-tools/node/bin:$HOME/es-tools/bun/bin:$PATH
+export PATH=$HOME/.local/go/bin:$HOME/.local/node/bin:$HOME/.local/bin:$HOME/es-tools/go/bin:$HOME/es-tools/node/bin:$HOME/es-tools/bun/bin:$PATH
 # lanes/env.sh pins GOMAXPROCS for interactive lanes; a campaign wants more.
 export GOMAXPROCS=${NIGHTLY_GOMAXPROCS:-24}
 export GOFLAGS=-trimpath CGO_ENABLED=0
