@@ -30,20 +30,20 @@ abstract class FeatureFlags {
 }
 
 export function checkoutPage(cartId: string) {
-  return FeatureFlags().newCheckout ? `new ${cartId}` : `classic ${cartId}`
+  return (try FeatureFlags()).newCheckout ? `new ${cartId}` : `classic ${cartId}`
 }
 
 export function login(user: string) {
-  Sessions.set("t1", { user })
-  const session = Sessions.get("t1")
+  try Sessions.set("t1", { user })
+  const session = try Sessions.get("t1")
   return session?.user ?? "nobody"
 }
 
 // expect-result: {"classic":"classic c1","fresh":"new c2","session":"ada"}
 export function main() {
   return {
-    classic: checkoutPage("c1"),
-    fresh: Effect.provideService(() => checkoutPage("c2"), FeatureFlags, { newCheckout: true }),
-    session: Effect.provide(() => login("ada"), Sessions.layer)
+    classic: try checkoutPage("c1"),
+    fresh: try Effect.provideService(() => checkoutPage("c2"), FeatureFlags, { newCheckout: true }),
+    session: try Effect.provide(() => login("ada"), Sessions.layer)
   }
 }

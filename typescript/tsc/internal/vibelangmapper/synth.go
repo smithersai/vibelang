@@ -110,7 +110,7 @@ func (w *printer) node(n *ast.Node, e env) {
 	// These forms have source spans but synthesized descendants. Let their
 	// own lowering preserve lazy operands and lexical pipe topics, including
 	// when a match arm or do expression contains them.
-	if isCatchExpression(n) || isFiberHelper(n, "$join", 1) ||
+	if isCatchExpression(n) || isFiberHelper(n, "$join", 1) || isFiberHelper(n, "$try", 1) ||
 		isPipeExpression(n) || formsIsTopic(n) || p.isSource(n) ||
 		ast.IsCallExpression(n) && isRunnableCall(n) && p.isSource(n.Expression()) {
 		// A source call with synthesized arguments still needs the normal

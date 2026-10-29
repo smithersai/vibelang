@@ -27,7 +27,7 @@ function fail(error: NotFound | Locked): never!(NotFound | Locked) {
 function route(error: NotFound | Locked): string!! {
   return fail(error)
     |> Effect.catchTag(%, "NotFound", (caught) => `not found ${caught.attempts}`)
-    |> Effect.catchTag(%, "Locked", (caught) => caught.describe())
+    |> try Effect.catchTag(%, "Locked", (caught) => caught.describe())
 }
 
 export function main() {
@@ -41,7 +41,7 @@ export function main() {
     decoded: { tag: decoded._tag, method: decoded.method, family: decoded instanceof FsError },
     base: { tag: base._tag, encoded: Schema.encodeSync(FsError)(base) },
     isNotFound: Schema.is(NotFound)(base),
-    routed: route(notFound),
-    locked: route(new Locked({ holder: "ann" }))
+    routed: try route(notFound),
+    locked: try route(new Locked({ holder: "ann" }))
   }
 }

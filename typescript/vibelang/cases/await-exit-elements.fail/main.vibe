@@ -4,11 +4,11 @@
 // types it as an Effect, so an Exit element type is EK4603 and never runs.
 // Through 0.0.10 this compiled and ran each Exit, giving [4].
 function slow(n: number): number!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
 export function main() {
-  const exits = [exit(() => slow(4))]
+  const exits = [try exit(() => slow(4))]
   return await.all exits
 }

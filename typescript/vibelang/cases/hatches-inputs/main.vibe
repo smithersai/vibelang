@@ -11,39 +11,39 @@ error Rejected { reason: string }
 type Pair = readonly [number, number]
 
 function readName() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return "ada"
 }
 
 // expect-result: {"sum":5,"shouted":"ADA","awaited":"hi!","pair":7,"most":2,"parsed":{"n":1},"mapped":"Rejected","asyncMapped":"Rejected","waited":2,"read":40,"listed":3}
 export function main() {
-  const sum = sync((a, b) => a + b, 2, 3)
-  const shouted = sync((name) => name.toUpperCase(), readName())
-  const awaited = sync(async (word, signal) => (signal.aborted ? "aborted" : `${word}!`), "hi")
+  const sum = try sync((a, b) => a + b, 2, 3)
+  const shouted = try sync((name) => name.toUpperCase(), try readName())
+  const awaited = try sync(async (word, signal) => (signal.aborted ? "aborted" : `${word}!`), "hi")
   const pairOf: Pair = [3, 4]
-  const pair = sync((p: Pair) => p[0] + p[1], pairOf)
-  const most = sync(Math.max(1, 2))
-  const parsed = try((text) => JSON.parse(text), (error) => new Rejected({ reason: String(error) }), '{"n":1}')
+  const pair = try sync((p: Pair) => p[0] + p[1], pairOf)
+  const most = try sync(Math.max(1, 2))
+  const parsed = try Effect.try({ try: () => ((text) => JSON.parse(text))('{"n":1}'), catch: (error) => new Rejected({ reason: String(error) }) })
   let mapped = "none"
   try {
-    try((text) => JSON.parse(text), (error) => new Rejected({ reason: String(error) }), "{")
+    try Effect.try({ try: () => ((text) => JSON.parse(text))("{"), catch: (error) => new Rejected({ reason: String(error) }) })
   } catch (error) {
     mapped = error._tag
   }
   let asyncMapped = "none"
   try {
-    try(async (n) => { throw new Error(String(n)) }, (error) => new Rejected({ reason: String(error) }), 7)
+    try Effect.tryPromise({ try: () => (async (n) => { throw new Error(String(n)) })(7), catch: (error) => new Rejected({ reason: String(error) }) })
   } catch (error) {
     asyncMapped = error._tag
   }
-  const waited = callback((ms, resume) => {
+  const waited = try callback((ms, resume) => {
     const timer = setTimeout(() => resume(ms), ms)
     return () => clearTimeout(timer)
   }, 2)
-  const read = callback((n, resume: Resume<number, Rejected>) => {
+  const read = try callback((n, resume: Resume<number, Rejected>) => {
     if (n > 0) resume(n * 10)
     else resume.fail(new Rejected({ reason: "empty" }))
   }, 4)
-  const listed = sync((items) => items.length, [1, 2, 3])
+  const listed = try sync((items) => items.length, [1, 2, 3])
   return { sum, shouted, awaited, pair, most, parsed, mapped, asyncMapped, waited, read, listed }
 }

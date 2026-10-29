@@ -3,36 +3,36 @@
 // call cycle starts eagerly, then continues on heap frames at the depth bound.
 export function countdown(n: number): Effect<number> {
   if (n === 0) return 0
-  return countdown(n - 1)
+  return try countdown(n - 1)
 }
 
 export function isEven(n: number): Effect<boolean> {
   if (n === 0) return true
-  return isOdd(n - 1)
+  return try isOdd(n - 1)
 }
 
 export function isOdd(n: number): Effect<boolean> {
   if (n === 0) return false
-  return isEven(n - 1)
+  return try isEven(n - 1)
 }
 
 export function sumTo(n: number): Effect<number> {
-  return n === 0 ? 0 : n + sumTo(n - 1)
+  return n === 0 ? 0 : n + try sumTo(n - 1)
 }
 
 // A caller outside the cycle still reads a number.
 function deep() {
-  return countdown(100000) + 1
+  return try countdown(100000) + 1
 }
 
 // expect-result: {"countdown":0,"even":true,"odd":false,"sum":5000050000,"deep":1,"mapped":[0,0]}
 export function main() {
   return {
-    countdown: countdown(100000),
-    even: isEven(100000),
-    odd: isOdd(100000),
-    sum: sumTo(100000),
-    deep: deep(),
-    mapped: Effect.forEach([3, 100000], countdown)
+    countdown: try countdown(100000),
+    even: try isEven(100000),
+    odd: try isOdd(100000),
+    sum: try sumTo(100000),
+    deep: try deep(),
+    mapped: try Effect.forEach([3, 100000], countdown)
   }
 }

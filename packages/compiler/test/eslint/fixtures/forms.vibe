@@ -478,8 +478,8 @@ export function label(id: string) {
  */
 export function hatches(text: string, url: string) {
   const id = sync(crypto.randomUUID())
-  const parsed = try((text) => JSON.parse(text), (error) => new BadJson({ error }), text)
-  const fetched = try(async (url, signal) => fetch(url, { signal }), url)
+  const parsed = try Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
+  const fetched = try Effect.tryPromise((signal) => fetch(url, { signal }))
   const tick = callback<number>((resume) => {
     const timer = setTimeout(() => resume(7), 10)
     return () => clearTimeout(timer)

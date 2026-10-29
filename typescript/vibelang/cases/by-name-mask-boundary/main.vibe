@@ -4,70 +4,70 @@ import { write, publish, operand, transaction, writeValue, twice, make } from ".
 const repeat: (program: Effect.Effect<number>) => Effect.Effect<number[]> = twice
 
 export function commitThenPublish(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(write())
-    publish()
+    try restore(write())
+    try publish()
   })
 }
 
 export function withOperand(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(write(operand()))
-    publish()
+    try restore(write(operand()))
+    try publish()
   })
 }
 
 export function withTopic(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    write() |> restore(%)
-    publish()
+    write() |> try restore(%)
+    try publish()
   })
 }
 
 export function withValue(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(writeValue())
-    publish()
+    try restore(writeValue())
+    try publish()
   })
 }
 
 export function withOptional(): void!! {
   const writer: { write?: typeof write } = { write }
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(writer.write?.())
-    publish()
+    try restore(writer.write?.())
+    try publish()
   })
 }
 
 export function withTag(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(transaction`commit`)
-    publish()
+    try restore(transaction`commit`)
+    try publish()
   })
 }
 
 export function withThis(this: { write: typeof write }): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(this.write())
-    publish()
+    try restore(this.write())
+    try publish()
   })
 }
 
 export function withMethod(): void!! {
-  Effect.uninterruptibleMask((restoreInterruptibility) => {
+  try Effect.uninterruptibleMask((restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    restore(writeValue.interruptible())
-    publish()
+    try restore(writeValue.interruptible())
+    try publish()
   })
 }
 
 export function lazyTwice() {
-  return repeat(make())
+  return try repeat(make())
 }

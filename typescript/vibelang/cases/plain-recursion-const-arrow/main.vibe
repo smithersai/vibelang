@@ -31,7 +31,7 @@ export function main() {
     sum: sum(100000),
     even: isEven(100001),
     depth: depth(100000),
-    nested: nested(100000),
+    nested: try nested(100000),
     mapped: [3, 4].map(countdown),
   }
 }

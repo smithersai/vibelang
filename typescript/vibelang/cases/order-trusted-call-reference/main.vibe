@@ -12,11 +12,11 @@ function getter() {
     }
   }
   function input() {
-    Effect.yieldNow()
+    try Effect.yieldNow()
     trace.push("argument")
     return "7"
   }
-  const value: number = codec.parse(input())
+  const value: number = codec.parse(try input())
   return [value, trace]
 }
 
@@ -28,14 +28,14 @@ function replaced() {
   }
   const codec = { get parse(): typeof JSON.parse { return current } }
   function input() {
-    Effect.yieldNow()
+    try Effect.yieldNow()
     current = (text: string): any => {
       trace.push("replacement")
       return 107
     }
     return "7"
   }
-  const value: number = codec.parse(input())
+  const value: number = codec.parse(try input())
   return [value, trace]
 }
 
@@ -46,17 +46,17 @@ function rebound() {
     return 7
   }
   function input() {
-    Effect.yieldNow()
+    try Effect.yieldNow()
     parse = (text: string): any => {
       trace.push("replacement")
       return 107
     }
     return "7"
   }
-  const value: number = parse(input())
+  const value: number = parse(try input())
   return [value, trace]
 }
 
 export function main() {
-  return { getter: getter(), replaced: replaced(), rebound: rebound() }
+  return { getter: try getter(), replaced: try replaced(), rebound: try rebound() }
 }

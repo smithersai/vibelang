@@ -14,10 +14,10 @@ export function main() {
   }
   for concurrent(1) (let n of [1, 2]) {
     n = n + 1
-    Console.log(n)
+    try Console.log(n)
   }
   for concurrent(1) (let { value = 0 } of [{ value: 1 }]) {
     value = value + 1
-    Console.log(value)
+    try Console.log(value)
   }
 }

@@ -2,5 +2,5 @@
 import { sql, write } from "./sql.js"
 function encode(n: number) { throw "encoding" }
 export function invalid(): void!! {
-  write(sql`INSERT INTO invalid VALUES (${encode(1)})`)
+  try write(sql`INSERT INTO invalid VALUES (${encode(1)})`)
 }

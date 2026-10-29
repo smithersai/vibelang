@@ -4,5 +4,5 @@ import { Effect } from "effect"
 
 // expect-result: 3
 export function main() {
-  return Effect.succeed(1 + 2)
+  return try Effect.succeed(1 + 2)
 }

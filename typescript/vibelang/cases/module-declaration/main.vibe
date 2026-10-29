@@ -55,22 +55,22 @@ module text {
 import Counter, { clean, greet, later, safeLength, separator, type Cleaned, type Mode } from text
 
 function cleaned(input: string, mode: Mode): Cleaned!Unclean {
-  return try((input, mode) => clean(input, mode), (error) => new Unclean({ reason: String(error) }), input, mode)
+  return try Effect.try({ try: () => ((input, mode) => clean(input, mode))(input, mode), catch: (error) => new Unclean({ reason: String(error) }) })
 }
 
 // expect-result: {"cleaned":{"value":"HI","length":2},"failed":"Error: empty","length":-1,"later":"X.txt!","greeting":"hello, Ada!","joined":"a-b!","counted":2}
 export function main() {
-  const value = cleaned("  hi ", "upper")
+  const value = try cleaned("  hi ", "upper")
   let failed = "none"
   try {
-    cleaned("   ", "trim")
+    try cleaned("   ", "trim")
   } catch (error) {
     failed = error.reason
   }
-  const length = sync((text) => safeLength(text), "   ")
-  const file = sync(async (name) => later(name), "x.txt")
-  const greeting = greet("Ada")
-  const counted = sync(() => {
+  const length = try sync((text) => safeLength(text), "   ")
+  const file = try sync(async (name) => later(name), "x.txt")
+  const greeting = try greet("Ada")
+  const counted = try sync(() => {
     const counter = new Counter()
     counter.increment()
     return counter.increment()

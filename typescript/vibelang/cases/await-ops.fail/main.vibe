@@ -14,7 +14,7 @@ export function keyed() {
 }
 
 export function inHatch() {
-  return sync(() => {
+  return try sync(() => {
     await.all [Promise.resolve(1)]
   })
 }

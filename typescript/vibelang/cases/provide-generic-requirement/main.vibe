@@ -5,11 +5,11 @@ service Prefix: string
 
 export const withPrefix = <A, E, R>(body: A!E!R) => {
   provide Prefix = "> " {
-    return body()
+    return try body()
   }
 }
 
-const greet = (name: string) => `${Prefix()}${name}`
+const greet = (name: string) => `${try Prefix()}${name}`
 
 /** Fails to compile unless T is never. */
 type Never<T extends never> = T
@@ -21,5 +21,5 @@ export const greeting = (): string!! => withPrefix(greet("vibe"))
 // expect-result: "> vibe"
 export function main() {
   const left: Left[] = []
-  return [greeting(), ...left][0]
+  return [try greeting(), ...left][0]
 }

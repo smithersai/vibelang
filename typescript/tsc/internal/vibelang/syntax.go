@@ -8,9 +8,13 @@ import (
 )
 
 // The checks in this file report TypeScript syntax that VibeLang does not
-// have. A call already waits, so async, for await, and await using are
-// EK1003 (Chapter 10). The parser writes await outside an async function as
-// $await (fibers.go), so an AwaitExpression here is inside an async function. A module's top level is not inside a program, so using
+// have. An async function means what it means in TypeScript (VIP-1): its body
+// is TypeScript, as a hatch's is, where await waits for a promise; awaiting
+// an Effect there is EK4617, since an Effect goes through runPromise first
+// (VIP-5). Outside an async function a call already waits, so for await and
+// await using are EK1003 (Chapter 10). The parser writes await outside an
+// async function as $await (fibers.go), so an AwaitExpression here is inside
+// an async function. A module's top level is not inside a program, so using
 // there has no block to release it in: EK1004 (Chapter 6). D271 exempts
 // explicit JavaScript iterator generators and their own body syntax.
 
@@ -18,9 +22,13 @@ var EK1017 = message(1017, errorCategory, "provide is a statement; write provide
 
 var EK1015 = message(1015, errorCategory, "Calls run in VibeLang; remove yield*.")
 
+// EK4617: await on an Effect inside an async function (VIP-5). {0} is the operand.
+var EK4617 = message(4617, errorCategory, "await waits for a promise, but {0} is an Effect, which await never runs.")
+
 func init() {
 	registry[EK1015.Code] = EK1015
 	registry[EK1017.Code] = EK1017
+	registry[EK4617.Code] = EK4617
 	fileChecks = append(fileChecks, checkSyntax, checkThrowExpressionPrecedence)
 }
 
@@ -37,17 +45,6 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 			return node.ForEachChild(visit)
 		}
 		switch node.Kind {
-		case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindArrowFunction, ast.KindMethodDeclaration:
-			if ast.GetFunctionFlags(node)&ast.FunctionFlagsGenerator != 0 && vibelangmapper.HasJavaScriptIteratorReturn(node) {
-				break // D271 keeps async function* as TypeScript writes it.
-			}
-			if modifiers := node.Modifiers(); modifiers != nil {
-				for _, modifier := range modifiers.Nodes {
-					if modifier.Kind == ast.KindAsyncKeyword {
-						note(report(c, modifier, EK1003, "async"), "Remove async.")
-					}
-				}
-			}
 		case ast.KindYieldExpression:
 			fn := ast.GetContainingFunction(node)
 			if node.AsYieldExpression().AsteriskToken != nil && (fn == nil || ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator == 0) {
@@ -55,18 +52,22 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				cover(c, node)
 			}
 		case ast.KindAwaitExpression:
-			// TypeScript's own errors, such as await outside an async function,
-			// restate EK1003.
-			note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1003, "await"), "Remove await: the call runs and waits.")
-			cover(c, node)
+			if operand := node.Expression(); isEffectType(c, c.GetTypeAtLocation(operand)) {
+				text := nodeText(file, operand)
+				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK4617, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
+				cover(c, node) // the Effect the await leaves unrun restates EK4617
+			}
 		case ast.KindForOfStatement:
-			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil {
+			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && !inAsyncFunction(node) {
 				note(report(c, await, EK1003, "for await"), "Remove await: for...of over a producer or a Stream already waits.")
 				cover(c, await)
 			}
 		case ast.KindVariableDeclarationList:
 			switch node.Flags & ast.NodeFlagsBlockScoped {
 			case ast.NodeFlagsAwaitUsing:
+				if inAsyncFunction(node) {
+					break
+				}
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1003, "await using"), "Write using: it already waits for the acquisition and the release.")
 				cover(c, node)
 				if isAtModuleTopLevel(node) {
@@ -81,6 +82,13 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// inAsyncFunction reports whether node is in the body of an async function,
+// whose code is TypeScript (VIP-1).
+func inAsyncFunction(node *ast.Node) bool {
+	fn := ast.GetContainingFunction(node)
+	return fn != nil && ast.GetFunctionFlags(fn)&ast.FunctionFlagsAsync != 0
 }
 
 // reportUsingAtTopLevel reports EK1004 at the using keyword of list.

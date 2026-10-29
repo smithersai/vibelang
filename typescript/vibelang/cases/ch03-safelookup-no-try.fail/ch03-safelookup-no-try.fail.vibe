@@ -23,7 +23,7 @@ function parseId(raw: string) {
 
 function lookupOrGuest(raw: string) {
   try {
-    return Users.find(String(parseId(raw)))
+    return try Users.find(String(try parseId(raw)))
   } catch (e) {
     if (e instanceof UserNotFound) return guest
     throw e
@@ -31,5 +31,5 @@ function lookupOrGuest(raw: string) {
 }
 
 export function safeLookup(raw: string): Effect<User, never, Users> {
-  return lookupOrGuest(raw)
+  return try lookupOrGuest(raw)
 }

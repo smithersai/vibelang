@@ -68,10 +68,21 @@ var SpecCodes = sync.OnceValue(func() []int32 {
 })
 
 // SpecListedCodes returns the codes Chapter 28 lists after its table, in
-// order: "These codes are rules of the language as the table's are".
+// order: "These codes are rules of the language as the table's are", then
+// the codes accepted VIPs add before the specification is rewritten from
+// them (vipCodes).
 var SpecListedCodes = sync.OnceValue(func() []int32 {
-	return specCodes(`(?m)^- \*\*EK(\d{4})\*\*`)
+	return append(specCodes(`(?m)^- \*\*EK(\d{4})\*\*`), vipCodes...)
 })
+
+// vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
+// override Chapter 28 until it is rewritten from them: VIP-5's EK4615,
+// EK4616, and EK4617. vipRetiredCodes are those they retire: EK4404, with
+// the try hatch.
+var (
+	vipCodes        = []int32{4615, 4616, 4617}
+	vipRetiredCodes = []int32{4404}
+)
 
 func specCodes(pattern string) []int32 {
 	var codes []int32

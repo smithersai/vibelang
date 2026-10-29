@@ -16,7 +16,7 @@ function joined() {
 }
 
 function framed() {
-  yieldNow()
+  try yieldNow()
   try {
     try { throw new First() }
     finally { throw new Cleanup() }
@@ -74,13 +74,13 @@ function described(outcome: Exit<string, never>): string {
 // expect-result: {"joined":"First","framed":"First","catchRaises":"Second","cleanupOnly":"Cleanup","defect":"Die:First","jumps":["body 1","finally 1","continue 2","finally 3","returned"]}
 export function main() {
   const steps: string[] = []
-  jumps(steps)
+  try jumps(steps)
   return {
-    joined: joined(),
-    framed: framed(),
-    catchRaises: catchRaises(),
-    cleanupOnly: cleanupOnly(),
-    defect: described(exit(defect())),
+    joined: try joined(),
+    framed: try framed(),
+    catchRaises: try catchRaises(),
+    cleanupOnly: try cleanupOnly(),
+    defect: described(try exit(defect())),
     jumps: steps
   }
 }

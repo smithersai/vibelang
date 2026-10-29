@@ -186,7 +186,7 @@ func SpecCommentAdjustable(code int32) bool {
 // historical", rules for TypeScript files that D266 suppresses, which no
 // .vibe file can draw.
 var SpecRetiredCodes = sync.OnceValue(func() []int32 {
-	codes := codesIn(specParagraph(toolingChapter, "Retired codes keep their numbers unused"))
+	codes := append(codesIn(specParagraph(toolingChapter, "Retired codes keep their numbers unused")), vipRetiredCodes...)
 	for code, row := range SpecRows() {
 		if strings.HasPrefix(row.Reports, "Retired") || strings.HasPrefix(row.Reports, "Reserved historical") {
 			if !slices.Contains(codes, code) {

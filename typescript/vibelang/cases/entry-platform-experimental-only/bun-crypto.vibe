@@ -6,6 +6,6 @@ import { hex } from "./hex.vibe"
 
 export function main() {
   const key = Redacted.make(new TextEncoder().encode("Jefe"))
-  const mac = Experimental.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
-  Console.log(`bun crypto ${hex(mac)}`)
+  const mac = try Experimental.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
+  try Console.log(`bun crypto ${try hex(mac)}`)
 }

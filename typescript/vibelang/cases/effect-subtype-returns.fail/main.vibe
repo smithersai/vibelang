@@ -4,7 +4,7 @@ import * as Exit from "effect/Exit"
 import { implement, needsAction } from "./host.js"
 
 export function wrongSuccess() {
-  return implement((n) => Exit.succeed("wrong"))
+  return try implement((n) => Exit.succeed("wrong"))
 }
 
 export function wrongAnnotation(): Effect.Effect<number, never, never> {

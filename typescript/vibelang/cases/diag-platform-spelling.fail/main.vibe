@@ -9,7 +9,7 @@ export function host() {
 }
 
 export function pid() {
-  return sync(() => proces.pid)
+  return try sync(() => proces.pid)
 }
 
 export function exclusive() {

@@ -19,7 +19,7 @@ export schema User {
 
 function decode(input: unknown) {
   try {
-    return Schema.decodeUnknownEffect(User)(input)
+    return try Schema.decodeUnknownEffect(User)(input)
   } catch (e) {
     return "invalid"
   }
@@ -32,8 +32,8 @@ function guest(): User {
 
 export function main() {
   return {
-    a: decode({ id: "1", name: "Ada", role: "admin", tags: ["x"], home: { city: "Paris" }, score: [1, "a"], counts: { a: 1 }, verified: null, login: { at: 3 } }),
-    b: decode({ id: 1 }),
+    a: try decode({ id: "1", name: "Ada", role: "admin", tags: ["x"], home: { city: "Paris" }, score: [1, "a"], counts: { a: 1 }, verified: null, login: { at: 3 } }),
+    b: try decode({ id: 1 }),
     c: guest().role === "member"
   }
 }

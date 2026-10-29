@@ -416,8 +416,9 @@ type (
 		Body   string
 		Async  bool
 	}
-	// TryHatch is `try((s: string) => Number(JSON.parse(s)), (e) => Err, Prefix + Input)`,
-	// or with Async `try(async (s: string) => ..., ...)` (D439).
+	// TryHatch is `Effect.try({ try: () => Number(JSON.parse(s)), catch: (e) => Err })`
+	// run with try on s = Prefix + Input, or with Async Effect.tryPromise of
+	// an async function (VIP-5, which replaced the try hatch of D439).
 	TryHatch struct {
 		Prefix string // "" parses, anything else fails
 		Input  Expr

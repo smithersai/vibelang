@@ -8,31 +8,31 @@
 service Users { name: string }
 
 export function scoped<A, R extends Scope>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "scoped"
 }
 
 export function scopedUnion<A, R extends Scope | Users>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "scoped union"
 }
 
 export function bare<A, R>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "bare"
 }
 
 export function unknownBound<A, R extends unknown>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "unknown bound"
 }
 
 export function anyR<A>(open: () => A!!any) {
-  using r = open()
+  using r = try open()
   return "any"
 }
 
 export function unknownR<A>(open: () => A!!unknown) {
-  using r = open()
+  using r = try open()
   return "unknown"
 }

@@ -218,10 +218,10 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	var errorNames []string
 	for _, await := range awaits {
 		promise := await.Expression()
-		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), hatchCall(rc.c, rc.file, "try", promise, "")))
+		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "")))
 		name := uniqueName(failureName(promise), errorNames)
 		errorNames = append(errorNames, name)
-		mapped = append(mapped, rc.textEdit(nodeStart(rc.file, await), await.End(), hatchCall(rc.c, rc.file, "try", promise, "(cause) => new "+name+"({ cause })")))
+		mapped = append(mapped, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "(cause) => new "+name+"({ cause })")))
 	}
 	declarationStart := nodeStart(rc.file, fn)
 	if ast.IsVariableDeclaration(fn.Parent) || ast.IsPropertyAssignment(fn.Parent) || ast.IsCallExpression(fn.Parent) || !ast.IsFunctionDeclaration(fn) {

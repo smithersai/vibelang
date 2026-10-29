@@ -418,7 +418,7 @@ Output:
 error InvalidAddress { reason: unknown }
 
 export function hostname(address: string) {
-  return try((address) => new URL(address).hostname, (reason) => new InvalidAddress({ reason }), address)
+  return try Effect.try({ try: () => new URL(address).hostname, catch: (reason) => new InvalidAddress({ reason }) })
 }
 
 export function encoded(text: string) {

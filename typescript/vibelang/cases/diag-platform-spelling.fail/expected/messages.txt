@@ -1,4 +1,4 @@
 main.vibe(8,10): error TS2304: Cannot find name 'Process'.
 Process is VibeLang's experimental Process service, in scope as Experimental.Process: write Experimental.Process.hostname().
-main.vibe(12,21): error TS2552: Cannot find name 'proces'. Did you mean 'process'?
+main.vibe(12,25): error TS2552: Cannot find name 'proces'. Did you mean 'process'?
 Locks is VibeLang's experimental Locks service, in scope as Experimental.Locks: write Experimental.Locks.hold("a").

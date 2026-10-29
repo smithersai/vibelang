@@ -6,14 +6,14 @@ control Ask { ask(): number!! }
 
 function answered(n: number) {
   try {
-    return Ask.ask()
+    return try Ask.ask()
   } handle Ask.ask() {
-    resume(n)
+    try resume(n)
   }
 }
 
 function late() {
-  sleep("1 second")
+  try sleep("1 second")
   return 0
 }
 

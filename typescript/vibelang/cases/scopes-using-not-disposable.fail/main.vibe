@@ -4,16 +4,16 @@
 // (D401): using owns its value's disposal. Scope in the requirements lets
 // using bind a value it cannot dispose, which the acquisition releases.
 function count() {
-  yieldNow()
+  try yieldNow()
   return 5
 }
 
 function lease() {
-  return Effect.acquireRelease(() => 5, () => {})
+  return try Effect.acquireRelease(() => 5, () => {})
 }
 
 export function main() {
-  using leased = lease()
-  using counted = count()
+  using leased = try lease()
+  using counted = try count()
   return leased + counted
 }

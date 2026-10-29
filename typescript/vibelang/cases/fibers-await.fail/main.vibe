@@ -4,7 +4,7 @@ function load(): number!! {
 }
 
 export function alreadyRuns() {
-  return await load()
+  return await try load()
 }
 
 export function promise(p: Promise<number>) {
@@ -16,7 +16,7 @@ export function plain() {
 }
 
 export function inHatch() {
-  return sync(() => {
+  return try sync(() => {
     await Promise.resolve(1)
   })
 }
@@ -29,20 +29,20 @@ export function fiber() {
 
 // await on a Deferred: wait with d.await() (D226).
 export function deferred() {
-  const d = Deferred.make<number>()
-  Deferred.succeed(d, 1)
+  const d = try Deferred.make<number>()
+  try Deferred.succeed(d, 1)
   return await d
 }
 
 // join takes fibers only (D225).
 export function joinDeferred() {
-  const d = Deferred.make<number>()
+  const d = try Deferred.make<number>()
   return join d
 }
 
 // A hatch body is plain TypeScript.
 export function joinInHatch() {
-  return sync(() => {
+  return try sync(() => {
     const x: any = 1
     join x
   })

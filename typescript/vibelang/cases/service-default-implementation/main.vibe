@@ -22,5 +22,5 @@ export service Prefix: string {
 
 // expect-result: ["fast","hello ada","> "]
 export function main() {
-  return [Mode().speed, Greeter.greet("ada"), Prefix()]
+  return [(try Mode()).speed, try Greeter.greet("ada"), try Prefix()]
 }

@@ -39,7 +39,7 @@ function mixed() {
 
 // The same code in frames.
 function framed() {
-  yieldNow()
+  try yieldNow()
   try { return crash("first") }
   finally { crash("second") }
 }
@@ -56,10 +56,10 @@ export function reasons(outcome: Exit<unknown, unknown>): string {
 
 export function report() {
   return {
-    both: reasons(exit(both())),
-    nested: reasons(exit(nested())),
-    direct: reasons(exit(direct())),
-    mixed: reasons(exit(mixed())),
-    framed: reasons(exit(framed()))
+    both: reasons(try exit(both())),
+    nested: reasons(try exit(nested())),
+    direct: reasons(try exit(direct())),
+    mixed: reasons(try exit(mixed())),
+    framed: reasons(try exit(framed()))
   }
 }

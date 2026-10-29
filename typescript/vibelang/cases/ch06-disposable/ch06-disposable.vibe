@@ -14,14 +14,14 @@ function timer(name: string) {
 }
 
 function timed() {
-  using outer = timer("outer")
-  using inner = timer("inner")
+  using outer = try timer("outer")
+  using inner = try timer("inner")
   events.push("work")
   return `${outer.name}+${inner.name}`
 }
 
 // expect-result: {"result":"outer+inner","events":["start outer","start inner","work","dispose inner","dispose outer"]}
 export function main() {
-  const result = timed()
+  const result = try timed()
   return { result, events }
 }

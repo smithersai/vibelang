@@ -5,10 +5,10 @@
 export const S_base = 1
 export service S { value: string }
 
-export function read() { return S().value }
+export function read() { return (try S()).value }
 
 export function main() {
   provide S = { value: "ok" } {
-    return [read(), S_base]
+    return [try read(), S_base]
   }
 }

@@ -77,17 +77,17 @@ export function describe(shape: Shape): string!! {
 }
 
 export function main() {
-  const counter = sync(() => new Counter())
-  const counted = sync((counter) => counter.increment(), counter)
-  Console.log(JSON.stringify({
-    cleaned: sync(() => clean(" ab ")),
-    upper: sync(() => clean(" ab ", Mode.Upper)),
-    doubled: sync(() => tools.double("x")),
+  const counter = try sync(() => new Counter())
+  const counted = try sync((counter) => counter.increment(), counter)
+  try Console.log(JSON.stringify({
+    cleaned: try sync(() => clean(" ab ")),
+    upper: try sync(() => clean(" ab ", Mode.Upper)),
+    doubled: try sync(() => tools.double("x")),
     prefix: tools.prefix,
     more: tools.moreModule.more,
-    area: sync(() => tools.area({ width: 2, height: 3 })),
+    area: try sync(() => tools.area({ width: 2, height: 3 })),
     level,
     counted,
-    described: describe({ width: 1, height: 2 }),
+    described: try describe({ width: 1, height: 2 }),
   }))
 }

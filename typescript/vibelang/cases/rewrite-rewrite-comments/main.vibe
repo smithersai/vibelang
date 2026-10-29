@@ -1,23 +1,23 @@
 import "vibelang/platform/node"
 class Bad extends Data.TaggedError("Bad")<{ readonly /* field explanation */ n: number }> {}
 function value(): number!! {
-  return Effect.succeed(/* keep this explanation */ 7)
+  return try Effect.succeed(/* keep this explanation */ 7)
 }
 function lineValue(): number!! {
-  return Effect.succeed(
+  return try Effect.succeed(
     // value explanation
     4
   )
 }
 function wrapperValue(): number!! {
-  return Effect./* wrapper explanation */succeed(3)
+  return try Effect./* wrapper explanation */succeed(3)
 }
 function failed(): number!Bad {
-  return Effect.fail(
+  return try Effect.fail(
     // failure explanation
     new Bad({ n: 5 })
   )
 }
-export function main() { Console.log(value(), new Bad({n:1}).n)
-  Console.log(lineValue(), wrapperValue())
-  Console.log(failed() catch (e) => e.n) }
+export function main() { try Console.log(try value(), new Bad({n:1}).n)
+  try Console.log(try lineValue(), try wrapperValue())
+  try Console.log(failed() catch (e) => e.n) }

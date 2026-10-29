@@ -10,23 +10,23 @@ service Builder { greet(name: string): string!! }
 const Clock2Live = Layer.succeed(Clock2, { now() { return 42 } })
 
 const GreeterLive = Layer.effect(Greeter) {
-  const clock = Clock2()
-  return { greet(name) { return `hi ${name} at ${clock.now()}` } }
+  const clock = try Clock2()
+  return { greet(name) { return `hi ${name} at ${try clock.now()}` } }
 }
 
 const StampedLive = Layer.effect(Stamped) {
-  return { greet(name) { return `hi ${name} at ${Clock2.now()}` } }
+  return { greet(name) { return `hi ${name} at ${try Clock2.now()}` } }
 }
 
 const BuilderLive = Layer.effect(Builder) {
-  const clock = Clock2()
-  const impl = { greet(name: string) { return `built ${name} at ${clock.now()}` } }
+  const clock = try Clock2()
+  const impl = { greet(name: string) { return `built ${name} at ${try clock.now()}` } }
   return impl
 }
 
 // expect-result: ["hi a at 42","hi b at 42","built c at 42"]
 export function main() {
   provide wire(Clock2Live, GreeterLive, StampedLive, BuilderLive) {
-    return [Greeter.greet("a"), Stamped.greet("b"), Builder.greet("c")]
+    return [try Greeter.greet("a"), try Stamped.greet("b"), try Builder.greet("c")]
   }
 }

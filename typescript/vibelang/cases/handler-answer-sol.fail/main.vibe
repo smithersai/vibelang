@@ -4,10 +4,10 @@ control Step { go(): void!! }
 
 export function unsound() {
   try {
-    Step.go()
-    Step.go()
+    try Step.go()
+    try Step.go()
     return 1
   } handle Step.go() {
-    return resume().toFixed(0)
+    return (try resume()).toFixed(0)
   }
 }

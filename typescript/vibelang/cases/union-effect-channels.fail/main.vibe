@@ -6,13 +6,13 @@ service One { id: string }
 service Two { id: string }
 type Choose = () => Effect.Effect<string, First, One> | Effect.Effect<number, Second, Two>
 export function missingError(f: Choose): Effect.Effect<string | number, First, One | Two> {
-  return f()
+  return try f()
 }
 export function missingRequirement(f: Choose): Effect.Effect<string | number, First | Second, One> {
-  return f()
+  return try f()
 }
 export function missingByName(f: Choose): Effect.Effect<string | number, never, never> {
-  return Effect.map(f(), (value) => value)
+  return try Effect.map(f(), (value) => value)
 }
 export function mixedIsData(f: () => Effect.Effect<number> | string) {
   const value: number | string = f()

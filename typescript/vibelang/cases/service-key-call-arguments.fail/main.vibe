@@ -11,6 +11,6 @@ service Users {
 export function lookups() {
   const a = Fn(3)
   const b = Users("ada")
-  const c = Fn()(3)
+  const c = (try Fn())(3)
   return [a, b, c]
 }

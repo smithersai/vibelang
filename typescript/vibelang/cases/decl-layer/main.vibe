@@ -24,12 +24,12 @@ const DirectoryLive = Layer.succeed(Directory, {
 
 // Setup runs once, when the layer builds: Layer.effect.
 export const UsersLive = Layer.effect(Users) {
-  const directory = Directory()
-  const stats = Stats()
+  const directory = try Directory()
+  const stats = try Stats()
   return {
     find(id) {
-      stats.record()
-      const name = directory.lookup(id)
+      try stats.record()
+      const name = try directory.lookup(id)
       if (name === undefined) throw new UserNotFound({ id })
       return name
     },
@@ -38,29 +38,29 @@ export const UsersLive = Layer.effect(Users) {
 }
 
 const StatsLive = Layer.effect(Stats) {
-  const lookups = Ref.make(0)
+  const lookups = try Ref.make(0)
   return {
     count() {
-      return Ref.get(lookups)
+      return try Ref.get(lookups)
     },
     record() {
-      Ref.update(lookups, (n) => n + 1)
+      try Ref.update(lookups, (n) => n + 1)
     }
   }
 }
 
 function greet(id: string) {
   try {
-    return Users.find(id)
+    return try Users.find(id)
   } catch (error) {
     return `No user ${error.id}`
   }
 }
 
 export function main() {
-  return Effect.provide(() => {
-    const found = greet("42")
-    const missing = greet("7")
-    return { found, missing, region: Users().region, stats: `${Stats.count()} lookups` }
+  return try Effect.provide(() => {
+    const found = try greet("42")
+    const missing = try greet("7")
+    return { found, missing, region: (try Users()).region, stats: `${try Stats.count()} lookups` }
   }, wire(UsersLive, DirectoryLive, StatsLive))
 }

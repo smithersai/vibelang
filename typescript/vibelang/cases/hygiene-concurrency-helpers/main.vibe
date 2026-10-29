@@ -6,7 +6,7 @@ function $awaitAll(xs: unknown[]) { return "hijacked" }
 function $forConcurrent(xs: number[], n: number, f: (n: number) => void) { return 999 }
 
 function work() {
-  sleep("1 millis")
+  try sleep("1 millis")
   return 42
 }
 

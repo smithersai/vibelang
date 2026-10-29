@@ -21,8 +21,8 @@ export function main() {
   return {
     call: join("a", "b"),
     method: words.join(","),
-    indexed: indexed(),
-    member: obj.join(),
+    indexed: try indexed(),
+    member: try obj.join(),
     fiber: join f
   }
 }

@@ -1,4 +1,4 @@
 // D261: workspace package names, not node_modules paths, establish trust.
 import { data, explode, program } from "@smthrs/twin"
-export function succeeds() { return [data(), program()] }
+export function succeeds() { return [data(), try program()] }
 export function defects() { return explode() }

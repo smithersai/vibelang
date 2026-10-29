@@ -10,18 +10,18 @@ abstract class Greeter {
 
 class Hello implements Greeter {
   greet() {
-    return Effect.currentSpan().name
+    return (try Effect.currentSpan()).name
   }
 }
 
 function inner() {
-  return Effect.currentSpan().name
+  return (try Effect.currentSpan()).name
 }
 
-const viaArrow = (): string!Cause.NoSuchElementError! => Effect.currentSpan().name
+const viaArrow = (): string!Cause.NoSuchElementError! => (try Effect.currentSpan()).name
 
 // expect-result: ["inner","viaArrow","Hello.greet",["main"]]
 export function main() {
-  const callback = Effect.forEach([1], () => Effect.currentSpan().name)
-  return [inner(), viaArrow(), new Hello().greet(), callback]
+  const callback = try Effect.forEach([1], () => (try Effect.currentSpan()).name)
+  return [try inner(), try viaArrow(), try new Hello().greet(), callback]
 }

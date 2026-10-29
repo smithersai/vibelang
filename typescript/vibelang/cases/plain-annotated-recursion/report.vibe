@@ -2,6 +2,6 @@ import { countDown, isEven, sumTo } from "./recursion.vibe"
 
 // An Effect function's calls are plain calls too.
 export function report() {
-  yieldNow()
+  try yieldNow()
   return { sum: sumTo(100000), even: isEven(100000), count: countDown(100000) }
 }

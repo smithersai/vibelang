@@ -15,12 +15,12 @@ function a(): Layer.Layer<A> {
 
 function b(): Layer.Layer<B, never, A> {
   made.push("b")
-  return Layer.effect(B) { return { value: A().value + "b" } }
+  return Layer.effect(B) { return { value: (try A()).value + "b" } }
 }
 
 function read(layer: Layer.Layer<B>): string!! {
   provide layer {
-    return B().value
+    return (try B()).value
   }
 }
 
@@ -28,5 +28,5 @@ export function main() {
   const layer = wire(...[a(), b()] as const)
   const pair = [a(), b()] as const
   const fromTuple = wire(...pair)
-  return { made, value: read(layer), tuple: read(fromTuple) }
+  return { made, value: try read(layer), tuple: try read(fromTuple) }
 }

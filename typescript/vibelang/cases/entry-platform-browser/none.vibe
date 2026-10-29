@@ -5,5 +5,5 @@
 import "vibelang/platform/browser"
 
 export function main() {
-  Console.log("browser main ran")
+  try Console.log("browser main ran")
 }

@@ -1,0 +1,2 @@
+  Its quick fix writes try Effect.try({ try: () => ((text: string) => JSON.parse(text))("1"), catch: (cause) => new Bad({ cause }) }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.tryPromise(async () => 1); vibelang --fix applies every such fix in the project.

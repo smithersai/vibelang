@@ -10,14 +10,14 @@ abstract class Database {
 }
 
 const CacheLive = Layer.effect(Cache, () => {
-  const db = Database()
+  const db = try Database()
   return {
     get: (key) => db.query(key)
   }
 })
 
 const DatabaseLive = Layer.effect(Database, () => {
-  const cache = Cache()
+  const cache = try Cache()
   return {
     query: (sql) => cache.get(sql)
   }

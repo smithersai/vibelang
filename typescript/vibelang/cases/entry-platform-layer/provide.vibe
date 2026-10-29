@@ -5,8 +5,8 @@ import { FileSystem, layerNoop } from "effect/FileSystem"
 import { Path } from "effect/Path"
 
 export function main() {
-  const file = Path.join("data", "config.json")
+  const file = try Path.join("data", "config.json")
   provide layerNoop({ readFileString: () => "read through main's own layer" }) {
-    Console.log(FileSystem.readFileString(file))
+    try Console.log(try FileSystem.readFileString(file))
   }
 }

@@ -10,7 +10,7 @@ export function nested(): Effect.Effect<Effect.Effect<number>, never, never> {
 }
 // expect-result: [1,2,3,"function","function",true]
 export function main() {
-  const a = Effect.suspend(() => () => 1)
-  const b = Effect.flatMap(Effect.succeed(0), () => () => 2)
-  return [a(), b(), functionValue()(), typeof objectValue(), typeof unionValue(), sync((run: () => boolean) => run(), checkNested)]
+  const a = try Effect.suspend(() => () => 1)
+  const b = try Effect.flatMap(Effect.succeed(0), () => () => 2)
+  return [try a(), try b(), (try functionValue())(), typeof try objectValue(), typeof try unionValue(), try sync((run: () => boolean) => run(), checkNested)]
 }

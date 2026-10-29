@@ -3,6 +3,6 @@ import * as Effect from "effect/Effect"
 service Host { field: string }
 service Outside { value: number }
 export function run<A, E, R>(body: Effect.Effect<A, E, R>): A!E!(Exclude<R, Host>) {
-  Outside()
-  return Effect.scoped(Effect.provideService(body, Host, { field: "host" }))
+  try Outside()
+  return try Effect.scoped(Effect.provideService(body, Host, { field: "host" }))
 }

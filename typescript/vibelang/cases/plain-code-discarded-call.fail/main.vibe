@@ -1,5 +1,5 @@
 // expect: EK1001 EK1001 EK1001 EK1001 EK4801 EK4801
-function work() { sleep("1 millis"); return 1 }
+function work() { try sleep("1 millis"); return 1 }
 
 class Box {
   constructor() { work() }

@@ -4,46 +4,46 @@
 // in the generator that runs again each time the Effect runs.
 export function nested(a: number): number!! {
   const bump = () => {
-    const tick = Effect.sync(() => 0)
+    const tick = try Effect.sync(() => 0)
     return arguments[0]++
   }
-  return bump()
+  return try bump()
 }
 
 export function identity(a: number) {
-  const tick = Effect.sync(() => 0)
+  const tick = try Effect.sync(() => 0)
   const read = () => {
-    const step = Effect.sync(() => 0)
+    const step = try Effect.sync(() => 0)
     return arguments
   }
-  return read() === arguments
+  return try read() === arguments
 }
 
 // A shorthand property names the same arguments object.
 export function shorthand(a: number) {
-  const tick = Effect.sync(() => 0)
+  const tick = try Effect.sync(() => 0)
   const read = () => {
-    const step = Effect.sync(() => 0)
+    const step = try Effect.sync(() => 0)
     return { arguments }
   }
-  return read().arguments === arguments
+  return (try read()).arguments === arguments
 }
 
 // An anonymous function expression that refers to the variable it
 // initializes runs as a method-form generator.
 export const anonymous = function (a: number): number!! {
-  const tick = Effect.sync(() => 0)
+  const tick = try Effect.sync(() => 0)
   const read = () => {
-    const step = Effect.sync(() => 0)
+    const step = try Effect.sync(() => 0)
     return arguments[0] as number
   }
-  return read() + anonymous.length
+  return try read() + anonymous.length
 }
 
 // A plain function's body runs in its $direct variant.
 export function plain(a: number) {
   return () => {
-    const tick = Effect.sync(() => 0)
+    const tick = try Effect.sync(() => 0)
     return arguments[0] as number
   }
 }

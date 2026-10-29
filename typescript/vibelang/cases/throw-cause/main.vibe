@@ -5,20 +5,20 @@
 error Expected
 
 function fail() {
-  Effect.failCause(Cause.fail(new Expected()))
+  try Effect.failCause(Cause.fail(new Expected()))
 }
 
 function defect() {
-  Effect.failCause(Cause.die("defect"))
+  try Effect.failCause(Cause.die("defect"))
 }
 
 function combined() {
-  Effect.failCause(Cause.combine(Cause.fail(new Expected()), Cause.die("combined defect")))
+  try Effect.failCause(Cause.combine(Cause.fail(new Expected()), Cause.die("combined defect")))
 }
 
 function caught() {
   try {
-    fail()
+    try fail()
     return "missing"
   } catch (e) {
     return match (e) {
@@ -46,10 +46,10 @@ function reasons(outcome: Exit.Exit<unknown, Expected>) {
 
 export function main() {
   return {
-    caught: caught(),
-    defect: reasons(exit(defect())),
-    combined: reasons(exit(combined())),
-    escaped: reasons(exit(fail())),
-    value: value()
+    caught: try caught(),
+    defect: try reasons(try exit(defect())),
+    combined: try reasons(try exit(combined())),
+    escaped: try reasons(try exit(fail())),
+    value: try value()
   }
 }

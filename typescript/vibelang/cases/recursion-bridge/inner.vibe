@@ -1,2 +1,2 @@
-export function inner(n: number): number!! { return n === 0 ? 1 : inner(n - 1) }
-export function remoteBridge(n: number) { return inner(n) }
+export function inner(n: number): number!! { return n === 0 ? 1 : try inner(n - 1) }
+export function remoteBridge(n: number) { return try inner(n) }

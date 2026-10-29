@@ -65,12 +65,12 @@ function estimate(cart: Cart) {
 }
 
 function quoteCart(cartId: string) {
-  const cart = Carts.load(cartId)              // E: CartNotFound   R: Carts
+  const cart = try Carts.load(cartId)              // E: CartNotFound   R: Carts
   if (cart.items.length === 0) throw new EmptyCart({ cartId })
   try {
-    return Pricing.quote(cart)                 // E: PricingDown    R: Pricing
+    return try Pricing.quote(cart)                 // E: PricingDown    R: Pricing
   } catch (e) {                                // e: PricingDown
-    return estimate(cart)                      // a plain function
+    return try estimate(cart)                      // a plain function
   }
 }
 // Effect<Quote, CartNotFound | EmptyCart, Carts | Pricing>
@@ -80,8 +80,8 @@ function quoteCart(cartId: string) {
 // this version states the full contract, which must check.
 
 export function welcome(id: string): Effect<string, UserNotFound | MailError, Users | Mailer> {
-  const user = Users.find(id)
-  Mailer.send(user.email, "Welcome")
+  const user = try Users.find(id)
+  try Mailer.send(user.email, "Welcome")
   return user.name
 }
 
@@ -90,10 +90,10 @@ export function welcome(id: string): Effect<string, UserNotFound | MailError, Us
 // Recursion
 
 function totalSize(path: string): Effect<number, IOError, Files> {
-  const entry: Entry = Files.stat(path)
+  const entry: Entry = try Files.stat(path)
   if (!entry.isDirectory) return entry.size
   let total = 0
-  for (const child of Files.list(path)) total += totalSize(`${path}/${child}`)
+  for (const child of try Files.list(path)) total += try totalSize(`${path}/${child}`)
   return total
 }
 // Effect<number, IOError, Files>
@@ -157,26 +157,26 @@ const FilesTest = Layer.succeed(Files, {
 })
 
 function scenario() {
-  const full = quoteCart("full")
-  const down = quoteCart("down")
+  const full = try quoteCart("full")
+  const down = try quoteCart("down")
   let empty = "none"
   try {
-    quoteCart("empty")
+    try quoteCart("empty")
   } catch (e) {
     empty = e._tag
   }
   let missing = "none"
   try {
-    quoteCart("nope")
+    try quoteCart("nope")
   } catch (e) {
     missing = e._tag
   }
-  const name = welcome("1")
-  const size = totalSize("/root")
+  const name = try welcome("1")
+  const size = try totalSize("/root")
   return { full, down, empty, missing, name, size, outbox }
 }
 
 // expect-result: {"full":{"total":14,"estimated":false},"down":{"total":5,"estimated":true},"empty":"EmptyCart","missing":"CartNotFound","name":"Ada","size":42,"outbox":["ada@example.com: Welcome"]}
 export function main() {
-  return Effect.provide(() => scenario(), Layer.mergeAll(CartsTest, PricingTest, UsersTest, MailerTest, FilesTest))
+  return try Effect.provide(() => scenario(), Layer.mergeAll(CartsTest, PricingTest, UsersTest, MailerTest, FilesTest))
 }

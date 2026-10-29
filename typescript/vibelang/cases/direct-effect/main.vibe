@@ -4,12 +4,12 @@
 // never when the function is called, and a throw in it is a defect.
 // A program result.
 export function step(n: number) {
-  return Effect.succeed(n + 1)
+  return try Effect.succeed(n + 1)
 }
 
 // A program result whose argument records each time the body runs.
 export function record(runs: string[], n: number) {
-  return Effect.succeed((runs.push("record"), n))
+  return try Effect.succeed((runs.push("record"), n))
 }
 
 // An empty body.
@@ -17,7 +17,7 @@ export const ignore = (event: string): Effect<void, never, never> => {}
 
 // A value beside a program becomes Effect.succeed(value).
 export const resolve = (cached: string | undefined, load: () => Effect<string, never, never>): Effect<string, never, never> =>
-  cached === undefined ? load() : cached
+  cached === undefined ? try load() : cached
 
 // A throw while building the result.
 export const first = (items: string[]): Effect<string, never, never> => items[0]!.toUpperCase()

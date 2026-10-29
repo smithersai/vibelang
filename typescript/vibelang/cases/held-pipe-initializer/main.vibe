@@ -23,8 +23,8 @@ export function main() {
   const before = all.map((state) => state.runs)
   const results: Array<number> = []
   for (const program of [piped, chained, atModule, chainedAtModule]) {
-    program()
-    results.push(program())
+    try program()
+    results.push(try program())
   }
   return [before, all.map((state) => state.runs), results]
 }

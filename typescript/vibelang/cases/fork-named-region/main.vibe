@@ -7,7 +7,7 @@ const events: string[] = []
 
 function ticker(name: string) {
   try {
-    while (true) sleep("1 millis")
+    while (true) try sleep("1 millis")
   } finally {
     events.push(`stop ${name}`)
   }
@@ -17,33 +17,33 @@ function branch(flag: boolean) {
   if (flag) {
     fork ticker("if")
   }
-  sleep("3 millis")
+  try sleep("3 millis")
   events.push("if: after")
 }
 
 function branchWithoutBraces(flag: boolean) {
   if (flag) fork ticker("if without braces")
-  sleep("3 millis")
+  try sleep("3 millis")
   events.push("if without braces: after")
 }
 
 function bare() {
   {
     fork ticker("bare")
-    sleep("3 millis")
+    try sleep("3 millis")
   }
   events.push("bare: after")
 }
 
 function loop() {
-  for (const n of [1, 2]) (fork ticker(`loop ${n}`), sleep("3 millis"))
+  for (const n of [1, 2]) (fork ticker(`loop ${n}`), try sleep("3 millis"))
   events.push("loop: after")
 }
 
 function doBlock() {
   const marked = do {
     fork ticker("do")
-    sleep("3 millis")
+    try sleep("3 millis")
     "marked"
   }
   events.push(`do: after`)
@@ -53,18 +53,18 @@ function doBlock() {
 function guarded() {
   try {
     fork ticker("try")
-    sleep("3 millis")
+    try sleep("3 millis")
   } finally {
     events.push("try: finally")
   }
 }
 
 export function main() {
-  branch(true)
-  branchWithoutBraces(true)
-  bare()
-  loop()
-  doBlock()
-  guarded()
+  try branch(true)
+  try branchWithoutBraces(true)
+  try bare()
+  try loop()
+  try doBlock()
+  try guarded()
   return { events }
 }

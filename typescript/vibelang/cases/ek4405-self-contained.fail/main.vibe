@@ -17,17 +17,17 @@ function helper() {
 export function label(text: string) {
   const suffix = "!"
   // Allowed: an import, a global, a type, an error declaration, its own names.
-  const ok = sync((value: Label) => {
+  const ok = try sync((value: Label) => {
     const local = Str.trim(value)
     if (local === "") throw new Bad({ reason: JSON.stringify(local) })
     return local
   }, text)
   // Not allowed: a parameter, a local, a module constant, a module function,
   // and a shorthand property.
-  const a = sync(() => text.length)
-  const b = sync(() => suffix + ok)
-  const c = try(() => prefix + "x")
-  const d = sync(() => helper)
-  const e = sync(() => ({ suffix }))
+  const a = try sync(() => text.length)
+  const b = try sync(() => suffix + ok)
+  const c = try sync(() => prefix + "x")
+  const d = try sync(() => helper)
+  const e = try sync(() => ({ suffix }))
   return [a, b, c, d, e]
 }

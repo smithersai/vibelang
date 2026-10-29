@@ -4,22 +4,22 @@ const encode = (n: number): string => String(n)
 
 // No call in the template: write receives the statement and runs it.
 export function literal(): void!! {
-  write(sql`INSERT INTO literal VALUES (${1})`)
+  try write(sql`INSERT INTO literal VALUES (${1})`)
 }
 
 // RecallSemantic.upsert: database.write(sql`... ${vectorBytes(vector.vector)} ...`).
 // A call in an interpolation must preserve the statement as the tail program.
 export function interpolatedCall(): void!! {
-  write(sql`INSERT INTO interpolated_call VALUES (${encode(1)})`)
+  try write(sql`INSERT INTO interpolated_call VALUES (${encode(1)})`)
 }
 
 function encoded(n: number) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return String(n)
 }
 
 export function effectfulOperand(): void!! {
-  write(sql`INSERT INTO operand VALUES (${encoded(2)})`)
+  try write(sql`INSERT INTO operand VALUES (${encoded(2)})`)
 }
 
 // A tag with an explicit data contract stays plain (D24/D263).
@@ -28,5 +28,5 @@ function localSql(parts: TemplateStringsArray, ...values: ReadonlyArray<unknown>
 }
 
 export function localTemplate(): void!! {
-  write(localSql`INSERT INTO local VALUES (${encode(3)})`)
+  try write(localSql`INSERT INTO local VALUES (${encode(3)})`)
 }

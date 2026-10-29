@@ -5,5 +5,5 @@
 import { produce } from "./producer/src/lib.vibe"
 
 export function main() {
-  return produce()
+  return try produce()
 }

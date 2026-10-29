@@ -27,5 +27,5 @@ export function names(ids: ReadonlyArray<string>) {
 - `await.all [a(), b()]` runs both; `%` is `x` in `x |> f(%)`.
 - TypeScript bodies: `let`, loops, `typeof`, regex, Array/Map methods.
 - `using h = acquire()` frees it once on block exit, even on interruption. `yieldNow()` first honors interrupts.
-- A plain TypeScript call needs `sync((x) => f(x), x)`; if it can throw, `try((x) => f(x), (error: unknown) => new E(), x)`.
+- A plain TypeScript call needs `sync((x) => f(x), x)`; if it can throw, `try Effect.try({ try: () => f(x), catch: (error: unknown) => new E() })`.
 - `@effect/vitest`: `it.effect("name") { assert.strictEqual(a, b) }` uses a test clock (`sleep` stalls); `it.live`: real time. Vitest hides `console.log` under agents; assert.

@@ -9,19 +9,19 @@ function caught(cause: unknown) {
 }
 
 function failed() {
-  return caught(Cause.fail("bad"))
+  return try caught(Cause.fail("bad"))
 }
 
 function died() {
-  return caught(Cause.die("boom"))
+  return try caught(Cause.die("boom"))
 }
 
 function mixed() {
-  return caught(Cause.combine(Cause.fail("bad"), Cause.die("boom")))
+  return try caught(Cause.combine(Cause.fail("bad"), Cause.die("boom")))
 }
 
 function framedDied() {
-  yieldNow()
+  try yieldNow()
   const cause: unknown = Cause.die("boom")
   try { throw cause }
   catch (e) { return e === cause ? "Cause" : "other" }
@@ -30,9 +30,9 @@ function framedDied() {
 // expect-result: {"failed":"Cause","died":"Cause","framedDied":"Cause","mixed":"Cause"}
 export function main() {
   return {
-    failed: failed(),
-    died: died(),
-    framedDied: framedDied(),
-    mixed: mixed()
+    failed: try failed(),
+    died: try died(),
+    framedDied: try framedDied(),
+    mixed: try mixed()
   }
 }

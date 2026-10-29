@@ -32,19 +32,19 @@ import { count, anyCount, second, defaulted, echo, untilAborted } from foreign
 // expect-result: {"rest":2,"triedRest":2,"mappedRest":2,"unknownRest":2,"optional":"undefined","triedOptional":"undefined","defaulted":6,"input":{"value":42,"signal":true},"tried":{"value":7,"signal":true},"literalRest":2,"literalOptional":"undefined","literalSignal":true,"literalNone":1,"timedOut":"timed out","events":["aborted"]}
 export function main() {
   const events: string[] = []
-  const rest = sync(count, 1, 2)
-  const triedRest = try(count, 1, 2)
-  const mappedRest = try(count, (e) => e, 1, 2)
-  const unknownRest = sync(anyCount, 1, 2)
-  const optional = sync(second, 1)
-  const triedOptional = try(second, 1)
-  const sum = sync(defaulted, 1)
-  const input = sync(echo, 42)
-  const tried = try(echo, 7)
-  const literalRest = sync(async (...xs: number[]) => xs.length, 1, 2)
-  const literalOptional = sync(async (a: number, b?: number) => typeof b, 1)
-  const literalSignal = try(async (n: number, signal: AbortSignal) => signal instanceof AbortSignal, 3)
-  const literalNone = sync(async () => 1)
+  const rest = try sync(count, 1, 2)
+  const triedRest = try Effect.tryPromise(() => count(1, 2))
+  const mappedRest = try Effect.tryPromise({ try: () => count(1, 2), catch: (e) => e })
+  const unknownRest = try sync(anyCount, 1, 2)
+  const optional = try sync(second, 1)
+  const triedOptional = try Effect.tryPromise(() => second(1))
+  const sum = try sync(defaulted, 1)
+  const input = try sync(echo, 42)
+  const tried = try Effect.tryPromise((signal) => echo(7, signal))
+  const literalRest = try sync(async (...xs: number[]) => xs.length, 1, 2)
+  const literalOptional = try sync(async (a: number, b?: number) => typeof b, 1)
+  const literalSignal = try Effect.tryPromise((signal) => (async (n: number, signal: AbortSignal) => signal instanceof AbortSignal)(3, signal))
+  const literalNone = try sync(async () => 1)
   const timedOut = timeout(sync(untilAborted, events), "10 millis") catch "timed out"
   return {
     rest, triedRest, mappedRest, unknownRest, optional, triedOptional, defaulted: sum, input, tried,

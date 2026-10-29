@@ -27,7 +27,7 @@ export class Counter {
   }
   #increment(n: number): Effect<number, never, never> { return ++n }
   get operation() { return this.#increment }
-  privateRead(n: number): Effect<number, never, never> { return this.#increment(n) }
+  privateRead(n: number): Effect<number, never, never> { return try this.#increment(n) }
   loop(n: number): Effect<number, never, never> {
     let before = n
     for (n of [2]) {}
@@ -51,6 +51,6 @@ export class Base {
 export class Derived extends Base {
   read(n: number): Effect<number, never, never> {
     n += 1
-    return super.read(n)
+    return try super.read(n)
   }
 }

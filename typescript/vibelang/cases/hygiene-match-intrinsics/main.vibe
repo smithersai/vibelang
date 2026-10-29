@@ -28,7 +28,7 @@ function nested(n: 1): string {
 
 // The unmatched subject is a defect; a hatch reads its message.
 export function main() {
-  const unmatched = sync((outer: (n: 1) => string, inner: (n: 1) => string) => {
+  const unmatched = try sync((outer: (n: 1) => string, inner: (n: 1) => string) => {
     const message = (f: (n: 1) => string) => {
       try {
         return f(2 as 1)
@@ -38,5 +38,5 @@ export function main() {
     }
     return [message(outer), message(inner)]
   }, classify, nested)
-  return [classOf(42), ...unmatched]
+  return [try classOf(42), ...unmatched]
 }

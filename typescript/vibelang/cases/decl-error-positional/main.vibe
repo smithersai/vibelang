@@ -35,7 +35,7 @@ function fail(error: Integration | Plain): never!(Integration | Plain) {
 function route(error: Integration | Plain): string!! {
   return fail(error)
     |> Effect.catchTag(%, "Integration", (caught) => `integration ${caught.reason}`)
-    |> Effect.catchTag(%, "Plain", (caught) => `plain ${caught.code}`)
+    |> try Effect.catchTag(%, "Plain", (caught) => `plain ${caught.code}`)
 }
 
 function codeOf(failure: Failure): string {
@@ -51,7 +51,7 @@ export function main() {
     integration: { tag: integration._tag, code: integration.code, reason: integration.reason, summary: integration.summary },
     plain: { tag: plain._tag, code: plain.code, summary: plain.summary },
     keys: Object.keys(integration.toJSON()),
-    routed: [route(integration), route(plain)],
+    routed: [try route(integration), try route(plain)],
     base: codeOf(integration)
   }
 }

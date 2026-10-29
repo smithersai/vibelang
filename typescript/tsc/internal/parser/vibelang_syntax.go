@@ -42,8 +42,8 @@ const (
 	VibeSyntaxDo
 	// VibeSyntaxForkBlock is fork { ... } (D166): Word, Open, Close.
 	VibeSyntaxForkBlock
-	// VibeSyntaxPrefix is a keyword before a unary operand: fork, join, a throw
-	// expression, or an await operation such as await.all (Word, which for an
+	// VibeSyntaxPrefix is a keyword before a unary operand: try, fork, join, a
+	// throw expression, or an await operation such as await.all (Word, which for an
 	// await operation runs through the operation's name).
 	VibeSyntaxPrefix
 	// VibeSyntaxCatch is x catch y (D236): Word is catch, Left the left side,
@@ -59,8 +59,6 @@ const (
 	// VibeSyntaxMatch is match (subject) { arms } (D206): Word is match, Left
 	// the subject, Open and Close the braces, and Arms the arms.
 	VibeSyntaxMatch
-	// VibeSyntaxTryCall is the callee of the hatch try(...) (D148): Word.
-	VibeSyntaxTryCall
 	// VibeSyntaxBlockStatement is a statement made of a header and a block:
 	// provide or with and the providers (D172), or uninterruptible, restore,
 	// or interruptible (D180). Head is the header, Open and Close the braces.

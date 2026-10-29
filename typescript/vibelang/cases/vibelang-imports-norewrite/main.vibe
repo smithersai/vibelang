@@ -7,5 +7,5 @@ export { fullName } from "./names.vibe"
 
 // expect-result: ["Lovelace, Ada","Hopper, Grace"]
 export function main() {
-  return [fullName("Ada", "Lovelace"), formatName("Grace", "Hopper")]
+  return [try fullName("Ada", "Lovelace"), formatName("Grace", "Hopper")]
 }

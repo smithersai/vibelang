@@ -1,6 +1,0 @@
-// expect: EK1003
-// @ts-ignore hides TypeScript's diagnostics only; EK1003 is still reported.
-// @ts-ignore
-export async function total() {
-  return 1
-}

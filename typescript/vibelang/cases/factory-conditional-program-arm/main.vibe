@@ -18,9 +18,9 @@ const nested: Hook = (n) => n > 1 ? Effect.void : n > 0 ? () => die("crash") : E
 
 export function main() {
   return {
-    concise: exit(concise(1))._tag,
-    passes: exit(concise(0))._tag,
-    block: exit(block(1))._tag,
-    nested: exit(nested(1))._tag
+    concise: (try exit(concise(1)))._tag,
+    passes: (try exit(concise(0)))._tag,
+    block: (try exit(block(1)))._tag,
+    nested: (try exit(nested(1)))._tag
   }
 }

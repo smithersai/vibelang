@@ -4,7 +4,7 @@ error Boom
 function total() {
   let sum = 0
   for concurrent (const n of [1, 2, 3]) {
-    sleep("1 millis")
+    try sleep("1 millis")
     sum += n
   }
   return sum
@@ -17,7 +17,7 @@ function limited() {
   for concurrent(2) (const n of [1, 2, 3, 4, 5]) {
     running++
     maxRunning = Math.max(maxRunning, running)
-    sleep("2 millis")
+    try sleep("2 millis")
     running--
   }
   return maxRunning
@@ -28,7 +28,7 @@ function evens() {
   const found: number[] = []
   for concurrent (const n of [1, 2, 3, 4]) {
     if (n % 2 === 1) continue
-    sleep("1 millis")
+    try sleep("1 millis")
     found.push(n)
   }
   return found.sort()
@@ -38,7 +38,7 @@ function failed() {
   try {
     for concurrent (const n of [1, 2]) {
       if (n === 1) throw new Boom()
-      sleep("1 second")
+      try sleep("1 second")
     }
     return "no"
   } catch (e) {
@@ -52,17 +52,17 @@ function stopped() {
   try {
     for concurrent (const n of [1, 2]) {
       if (n === 1) {
-        sleep("1 millis")
+        try sleep("1 millis")
         throw new Boom()
       }
-      sleep("50 millis")
+      try sleep("50 millis")
       finished = true
     }
   } catch {}
-  sleep("100 millis")
+  try sleep("100 millis")
   return !finished
 }
 
 export function main() {
-  return { total: total(), maxRunning: limited(), evens: evens(), failed: failed(), stopped: stopped() }
+  return { total: try total(), maxRunning: try limited(), evens: try evens(), failed: try failed(), stopped: try stopped() }
 }

@@ -51,12 +51,12 @@ function mode(n: number): Mode!! {
 
 export function main() {
   return {
-    select: [select(1)._tag, select(-1)._tag],
-    fallback: [fallback(1)._tag, fallback(-1)._tag],
-    declared: declared(-1),
+    select: [(try select(1))._tag, (try select(-1))._tag],
+    fallback: [(try fallback(1))._tag, (try fallback(-1))._tag],
+    declared: try declared(-1),
     argument: report({ _tag: "Found", value: find(2) } catch (error) => ({ _tag: "Error", error })),
-    block: block(-1)._tag,
-    chained: [chained(1, 1), chained(-1, 1), chained(-1, -1)],
-    mode: mode(-1)
+    block: (try block(-1))._tag,
+    chained: [try chained(1, 1), try chained(-1, 1), try chained(-1, -1)],
+    mode: try mode(-1)
   }
 }

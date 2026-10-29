@@ -2,7 +2,7 @@
 import "vibelang/platform/node"
 export function main() {
   const n = do { var leaked = 42; leaked }
-  Console.log(n)
+  try Console.log(n)
   const nestedBlock = do { { var inner = 1; } 2 }
   const nestedDo = do { const value = do { var deeper = 3; deeper }; value }
   const loop = do { for (var i = 0; i < 1; i++) {} 4 }

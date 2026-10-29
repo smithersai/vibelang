@@ -27,7 +27,7 @@ function* numbers(limit: number, log: string[]) {
 
 // A producer calls a service between yields.
 function* lookups(keys: ReadonlyArray<string>) {
-  for (const key of keys) yield Store.get(key)
+  for (const key of keys) yield try Store.get(key)
 }
 
 // yield* yields every element of another producer.
@@ -118,7 +118,7 @@ function delegated() {
 
 function taken() {
   const log: string[] = []
-  const values = Stream.runCollect(Stream.take(numbers(100, log), 2))
+  const values = try Stream.runCollect(Stream.take(numbers(100, log), 2))
   return { values, log }
 }
 
@@ -183,23 +183,23 @@ const StoreLive = Layer.succeed(Store, {
 
 function scenario() {
   return {
-    lazy: lazy(),
-    returned: returnInside(),
-    broke: breakInside(),
-    labeled: continueOuter(),
-    passes: twoPasses(),
-    services: services(),
-    delegated: delegated(),
-    taken: taken(),
-    stream: overStream(),
-    bindings: bindings(),
-    caught: caught(),
-    outerBreak: outerBreak(),
-    big: big()
+    lazy: try lazy(),
+    returned: try returnInside(),
+    broke: try breakInside(),
+    labeled: try continueOuter(),
+    passes: try twoPasses(),
+    services: try services(),
+    delegated: try delegated(),
+    taken: try taken(),
+    stream: try overStream(),
+    bindings: try bindings(),
+    caught: try caught(),
+    outerBreak: try outerBreak(),
+    big: try big()
   }
 }
 
 // expect-result: {"lazy":0,"returned":{"n":2,"log":["yield 0","yield 1","yield 2","closed"]},"broke":{"sum":3,"log":["yield 0","yield 1","yield 2","yield 3","closed","after loop"]},"labeled":{"pairs":["00","10","11","20","21","22"],"closed":4},"passes":4,"services":6,"delegated":[0,1,10],"taken":{"values":[0,1],"log":["yield 0","yield 1","closed"]},"stream":6,"bindings":{"names":["1:one","2:two","last 0","last 1","last 2","var 0","var 1"],"last":2},"caught":{"seen":[1,2],"error":"Broken","at":3},"outerBreak":["00","01","10","11"],"big":{"sum":4999950000,"bounded":true}}
 export function main() {
-  return Effect.provide(() => scenario(), StoreLive)
+  return try Effect.provide(() => scenario(), StoreLive)
 }

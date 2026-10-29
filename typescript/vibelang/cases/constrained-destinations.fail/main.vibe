@@ -5,7 +5,7 @@
 import { once, useCallback } from "./helpers.ts"
 
 function fetchUser() {
-  Console.log("fetch")
+  try Console.log("fetch")
 }
 
 export function literal() {

@@ -18,13 +18,13 @@ const work = (): number!Lost! => {
 const held = <A, E>(effect: A!E!) => Effect.map(effect, (value) => value)
 
 export function main() {
-  const suspended = Effect.suspend(() => work() |> Effect.exit(%) |> Effect.ensuring(%, Effect.void))
-  const block = held(() => {
+  const suspended = try Effect.suspend(() => work() |> Effect.exit(%) |> try Effect.ensuring(%, Effect.void))
+  const block = try held(() => {
     const before = 1
-    return work() |> Effect.exit(%)
+    return work() |> try Effect.exit(%)
   })
-  const concise = held(() => work() |> Effect.exit(%))
-  const subtype = held(() => 7 |> Exit.succeed(%))
+  const concise = try held(() => work() |> try Effect.exit(%))
+  const subtype = try held(() => 7 |> Exit.succeed(%))
   const failure = Exit.isFailure(block) ? Cause.squash(block.cause) : undefined
   return {
     suspended: suspended._tag,

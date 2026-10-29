@@ -130,9 +130,6 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 			}
 			if form, ok := hatchFormOf(c, node); ok {
 				p.hatches[node] = form
-				if form.mapper {
-					p.noteStable(c, node.Arguments()...) // the options object moves the mapper (order.go)
-				}
 			}
 			if isFailureTest(node) {
 				p.failureTags[node], _ = failureTags(c, c.GetTypeFromTypeNode(node.TypeArguments()[0]))
@@ -163,6 +160,8 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 		file.AsNode().ForEachChild(visit)
 		p.prelude = p.withoutUnusedNoMatch(p.prelude)
 		p.prelude = p.withoutUnusedIs(p.prelude)
+		// The lowering writes try e as yield* e or e (try.go), never a call of $try.
+		p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
 		p.planTrustedCalls(c, a, file)
 		p.entry = planEntry(c, file)
 		p.planSpans(c, file)

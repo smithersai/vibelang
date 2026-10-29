@@ -10,45 +10,45 @@ control Notes {
 }
 
 function release(version: string) {
-  if (!Approval.approve(`deploy ${version}`)) return "no"
+  if (!try Approval.approve(`deploy ${version}`)) return "no"
   return "yes"
 }
 
 function releaseAndNote(version: string) {
-  if (!Approval.approve(`deploy ${version}`)) return "no"
-  Notes.note(`released ${version}`)
+  if (!try Approval.approve(`deploy ${version}`)) return "no"
+  try Notes.note(`released ${version}`)
   return "yes"
 }
 
 // One clause.
 export function one(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   }
 }
 
 // Two clauses for two controls, read as an if-else chain.
 export function two(version: string) {
   try {
-    return releaseAndNote(version)
+    return try releaseAndNote(version)
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   } handle Notes.note(text) {
-    resume()
+    try resume()
   }
 }
 
 // A clause that returns instead of resuming.
 export function three(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
     return "stopped"
   }
 }
 
 export function main() {
-  return { one: one("v1"), two: two("v2"), three: three("v3") }
+  return { one: try one("v1"), two: try two("v2"), three: try three("v3") }
 }

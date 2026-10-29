@@ -9,5 +9,5 @@ import * as ns from impl
 export { "__proto__" as protoValue, "two words" as "two words" } from impl
 export function main() {
   return [ns["__proto__"], ns.constructor, ns["two words"], ns['quote"name'], ns["re-export"],
-    sync(() => Object.prototype.toString.call(ns)), sync(() => Object.getPrototypeOf(ns) === null)]
+    try sync(() => Object.prototype.toString.call(ns)), try sync(() => Object.getPrototypeOf(ns) === null)]
 }

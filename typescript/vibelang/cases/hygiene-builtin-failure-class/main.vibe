@@ -23,7 +23,7 @@ function plainParse(SyntaxError: number) {
 
 // An Effect function.
 function effectParse(SyntaxError: number) {
-  sleep("0 millis")
+  try sleep("0 millis")
   try {
     JSON.parse("{")
     return "ok"
@@ -53,7 +53,7 @@ function plainDeclared(Bad: number) {
 }
 
 function effectTrusted(Bad: number) {
-  sleep("0 millis")
+  try sleep("0 millis")
   try {
     parseTrusted("")
     return "ok"
@@ -63,5 +63,5 @@ function effectTrusted(Bad: number) {
 }
 
 export function main() {
-  return [plainParse(0), effectParse(0), plainTrusted(0), effectTrusted(0), plainDeclared(0)]
+  return [try plainParse(0), try effectParse(0), try plainTrusted(0), try effectTrusted(0), try plainDeclared(0)]
 }

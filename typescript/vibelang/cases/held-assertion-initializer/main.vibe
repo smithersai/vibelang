@@ -36,8 +36,8 @@ export function main() {
   const calls = all.map((state) => state.calls)
   const before = all.map((state) => state.runs)
   for (const program of [asAny, asEffect, satisfied, nonNull, nested, factory, atModule]) {
-    program()
-    program()
+    try program()
+    try program()
   }
   return [calls, before, all.map((state) => state.runs)]
 }

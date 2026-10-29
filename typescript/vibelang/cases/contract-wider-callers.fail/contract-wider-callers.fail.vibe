@@ -13,10 +13,10 @@ function longForm(): number!Gone!Needed {
 
 // R = never, but the call needs Needed.
 export function needsNothing(): number!Gone! {
-  return longForm()
+  return try longForm()
 }
 
 // E = never, but the call can fail with Gone.
 export function failsNever(): number!!Needed {
-  return longForm()
+  return try longForm()
 }

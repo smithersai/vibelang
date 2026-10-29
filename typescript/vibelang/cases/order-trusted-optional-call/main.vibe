@@ -12,10 +12,10 @@ function method() {
   }
   function input() {
     trace.push("argument")
-    Effect.yieldNow()
+    try Effect.yieldNow()
     return "7"
   }
-  const value = codec.parse?.(input())
+  const value = codec.parse?.(try input())
   return [value ?? null, trace]
 }
 
@@ -23,13 +23,13 @@ function receiver(codec: { parse: typeof JSON.parse } | undefined) {
   const trace: string[] = []
   function input() {
     trace.push("argument")
-    Effect.yieldNow()
+    try Effect.yieldNow()
     return "7"
   }
-  const value = codec?.parse(input())
+  const value = codec?.parse(try input())
   return [value ?? null, trace]
 }
 
 export function main() {
-  return { method: method(), receiver: receiver(undefined), present: receiver(JSON) }
+  return { method: try method(), receiver: try receiver(undefined), present: try receiver(JSON) }
 }

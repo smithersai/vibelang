@@ -115,6 +115,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$global` | Captured global object, for a global failure class such as SyntaxError that a binding of the module shadows | — |
 | `$is` | Test a lowered pattern | — |
 | `$join` | Join a fiber or collection of fibers | — |
+| `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
 | `$noFailure` | Sentinel for a Cause without a recoverable expected failure | — |
 | `$noMatch` | Throw for a value that no match arm handled | — |
 | `$patternError` | Mark an unsupported pattern during checking | — |
@@ -126,7 +127,6 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$select` | Lower a retired select operation | — |
 | `acquireDisposable` | Effect's `acquireDisposable`, recording the value whose disposal it registered so `using` releases it once | D401, D481 |
 | `acquireRelease` | Effect's `acquireRelease`, recording the value whose release it registered so `using` releases it once | D401, D481 |
-| `attempt` | TypeScript name for the try hatch | — |
 | `callback` | Adapt a callback API with cancellation | — |
 | `customMatcher` | Symbol used to define a custom pattern matcher | — |
 | `detach` | Fork a program independently of the current block | — |
@@ -139,7 +139,6 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `runPromise` | Run a program as a Promise | — |
 | `runSync` | Run a synchronous program | — |
 | `sync` | Run a TypeScript hatch; exceptions become defects | — |
-| `try` | Run a TypeScript hatch; exceptions become expected failures | — |
 | `uninterruptible` | Run a program with interruption masked | — |
 | `yieldNow` | Yield to the scheduler | — |
 | `$bind` | Run an Effect result or lift an ordinary value during prototype call lowering | D24 |

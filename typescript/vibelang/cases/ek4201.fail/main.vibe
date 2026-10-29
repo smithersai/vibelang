@@ -12,24 +12,24 @@ abstract class Approval extends Control {
 }
 
 export function concurrent(ids: ReadonlyArray<string>) {
-  return Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 4 })
+  return try Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 4 })
 }
 
 export function raced() {
-  return Effect.race(() => Approval.approve("a"), () => Approval.approve("b"))
+  return try Effect.race(() => Approval.approve("a"), () => Approval.approve("b"))
 }
 
 export function timed() {
-  return Effect.timeout(() => Approval.approve("slow"), "1 second")
+  return try Effect.timeout(() => Approval.approve("slow"), "1 second")
 }
 
 // A producer used as a Stream runs on a fiber of its own (D26).
 function* approvals(ids: ReadonlyArray<string>) {
-  for (const id of ids) yield Approval.approve(id)
+  for (const id of ids) yield try Approval.approve(id)
 }
 
 export function collected(ids: ReadonlyArray<string>) {
-  return Stream.runCollect(approvals(ids))
+  return try Stream.runCollect(approvals(ids))
 }
 
 export function looped(ids: ReadonlyArray<string>) {
@@ -39,9 +39,9 @@ export function looped(ids: ReadonlyArray<string>) {
 }
 
 export function allowed(ids: ReadonlyArray<string>) {
-  const sequential = Effect.forEach(ids, (id) => Approval.approve(id))
-  const one = Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 1 })
-  const inside = Effect.forEach(ids, (id) =>
+  const sequential = try Effect.forEach(ids, (id) => Approval.approve(id))
+  const one = try Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 1 })
+  const inside = try Effect.forEach(ids, (id) =>
     handle(() => Approval.approve(id), Approval, {
       approve: (_request, k) => resume(k, true)
     }),

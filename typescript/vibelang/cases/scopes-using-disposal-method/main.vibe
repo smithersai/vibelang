@@ -25,15 +25,15 @@ module resources {
 import { both, replaceable, replace } from resources
 
 function work(events: string[]) {
-  using first = sync((log: string[]) => both(log), events)
-  using second = sync((log: string[]) => replaceable(log), events)
-  sync((resource: Disposable, log: string[]) => replace(resource, log), second, events)
+  using first = try sync((log: string[]) => both(log), events)
+  using second = try sync((log: string[]) => replaceable(log), events)
+  try sync((resource: Disposable, log: string[]) => replace(resource, log), second, events)
   events.push("body")
 }
 
 // expect-result: ["body","dispose replaceable","async dispose both"]
 export function main() {
   const events: string[] = []
-  work(events)
+  try work(events)
   return events
 }

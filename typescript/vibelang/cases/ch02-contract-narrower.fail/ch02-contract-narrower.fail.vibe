@@ -14,5 +14,5 @@ abstract class Users {
 }
 
 export function greeting(id: string): Effect<string, never, Users> {
-  return `Hello, ${Users.find(id).name}`
+  return `Hello, ${(try Users.find(id)).name}`
 }

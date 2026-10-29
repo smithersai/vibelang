@@ -11,7 +11,7 @@ export function firstOf(values: Chunk.Chunk<number>): Option.Option<number> {
 
 // expect-result: {"doubled":4,"size":3,"first":1,"id":5,"twice":8,"isArray":true,"text":"7","local":"local"}
 export function main() {
-  Console.log("effect's root is in scope")
+  try Console.log("effect's root is in scope")
   const doubled = Option.map(Option.some(2), (n) => n * 2)
   const values = Chunk.make(1, 2, 3)
   return {

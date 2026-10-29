@@ -24,25 +24,25 @@ layer GreeterLive: Greeter {
 }
 
 function release(version: string) {
-  if (!Approval.approve(`deploy ${version}`)) return "declined"
+  if (!try Approval.approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
 function approveAll(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(_request) {
-    resume(true)
+    try resume(true)
   }
 }
 
 function names() {
   provide NamesLive, GreeterLive {
-    const name = Names.name()
-    return { name, greeting: Greeter.greet(name) }
+    const name = try Names.name()
+    return { name, greeting: try Greeter.greet(name) }
   }
 }
 
 export function main() {
-  return { ...names(), approved: approveAll("v1") }
+  return { ...try names(), approved: try approveAll("v1") }
 }

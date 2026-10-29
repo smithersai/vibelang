@@ -5,16 +5,16 @@ import { Arbitrary, Schema } from "effect"
 import { probe } from "./helpers.ts"
 
 function isSmall(n: number) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return n < 10
 }
 
 const Count = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
 
 function roundTrip() {
-  const result = Arbitrary.checkEffect(Arbitrary.schema(Count), (count): boolean!Schema.SchemaError!never => {
-    const wire = Schema.encodeEffect(Schema.FiniteFromString)(count)
-    return Schema.decodeEffect(Schema.FiniteFromString)(wire) === count
+  const result = try Arbitrary.checkEffect(Arbitrary.schema(Count), (count): boolean!Schema.SchemaError!never => {
+    const wire = try Schema.encodeEffect(Schema.FiniteFromString)(count)
+    return try Schema.decodeEffect(Schema.FiniteFromString)(wire) === count
   }, { runs: 20, seed: "count-round-trip" })
   return result._tag
 }
@@ -22,8 +22,8 @@ function roundTrip() {
 // expect-result: {"plain":"plain: true","pausing":"effect: true","roundTrip":"Passed"}
 export function main() {
   return {
-    plain: probe((n): boolean => n > 0),
-    pausing: probe((n): boolean!! => isSmall(n)),
-    roundTrip: roundTrip()
+    plain: try probe((n): boolean => n > 0),
+    pausing: try probe((n): boolean!! => isSmall(n)),
+    roundTrip: try roundTrip()
   }
 }

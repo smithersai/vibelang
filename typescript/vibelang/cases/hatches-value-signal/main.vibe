@@ -1,12 +1,12 @@
-// A hatch called as a value runs through the runtime's sync and try, which
-// pass an async function the AbortSignal in the parameter after its inputs,
+// A hatch called as a value runs through the runtime's sync, which passes
+// an async function the AbortSignal in the parameter after its inputs,
 // as a direct call does (D230, D232). Interruption aborts the signal. A rest
 // or defaulted parameter gets no signal. VibeLang code calls a hatch only
 // under its own name (EK4410, D432), so the calls of hatches as values are
-// TypeScript's, in this module, where the runtime's sync and try are
-// ordinary functions (D330).
+// TypeScript's, in this module, where the runtime's sync is an ordinary
+// function (D330).
 module foreign {
-  import { sync as run, try as attempt } from "vibelang-runtime"
+  import { sync as run } from "vibelang-runtime"
 
   export async function hasSignal(signal: AbortSignal) {
     return signal instanceof AbortSignal && !signal.aborted
@@ -31,17 +31,16 @@ module foreign {
   }
   export const value = () => run(hasSignal)
   export const input = () => run(echo, 42)
-  export const tried = () => attempt(echo, 7)
   export const rest = () => run(count, 1, 2)
   export const sum = () => run(defaulted, 1)
   export const waiting = (events: string[]) => run(untilAbortedAsync, events)
 }
-import { hasSignal, value, input, tried, rest, sum, waiting } from foreign
+import { hasSignal, value, input, rest, sum, waiting } from foreign
 
-// expect-result: {"direct":true,"value":true,"input":{"value":42,"signal":true},"tried":{"value":7,"signal":true},"rest":2,"defaulted":6,"timedOut":"timed out","events":["aborted"]}
+// expect-result: {"direct":true,"value":true,"input":{"value":42,"signal":true},"rest":2,"defaulted":6,"timedOut":"timed out","events":["aborted"]}
 export function main() {
   const events: string[] = []
-  const direct = sync(hasSignal)
+  const direct = try sync(hasSignal)
   const timedOut = timeout(waiting(events), "10 millis") catch "timed out"
-  return { direct, value: value(), input: input(), tried: tried(), rest: rest(), defaulted: sum(), timedOut, events }
+  return { direct, value: try value(), input: try input(), rest: try rest(), defaulted: try sum(), timedOut, events }
 }

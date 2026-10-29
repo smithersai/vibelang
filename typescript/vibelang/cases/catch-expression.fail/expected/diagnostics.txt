@@ -1,5 +1,5 @@
 main.vibe(13,32): error EK4701
-main.vibe(20,38): error EK2114
+main.vibe(20,42): error EK2114
 main.vibe(25,12): warning EK2004
 main.vibe(30,10): error EK2001
 main.vibe(37,20): error EK1001

@@ -20,5 +20,5 @@ module text {
 import { tag } from text
 
 export function main() {
-  return sync((value) => tag(value), "a")
+  return try sync((value) => tag(value), "a")
 }

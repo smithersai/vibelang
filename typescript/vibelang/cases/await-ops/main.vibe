@@ -2,27 +2,27 @@
 error Boom { n: number }
 
 function getUser(id: string): string!! {
-  sleep("5 millis")
+  try sleep("5 millis")
   return `user ${id}`
 }
 
 function count(): number!! {
-  sleep("2 millis")
+  try sleep("2 millis")
   return 3
 }
 
 function slow(): string!! {
-  sleep("1 second")
+  try sleep("1 second")
   return "slow"
 }
 
 function fast(): string!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return "fast"
 }
 
 function boom(): string!Boom! {
-  sleep("1 millis")
+  try sleep("1 millis")
   throw new Boom({ n: 1 })
 }
 
@@ -74,11 +74,11 @@ function raceFailure() {
 function raceBlocks() {
   return await.race [
     do {
-      sleep("1 second")
+      try sleep("1 second")
       "timeout"
     },
     do {
-      const user = getUser("4");
+      const user = try getUser("4");
       `got ${user}`
     }
   ]
@@ -90,8 +90,8 @@ function anyWins() {
 }
 
 function deferred() {
-  const ready = Deferred.make<string>()
-  Deferred.succeed(ready, "ready")
+  const ready = try Deferred.make<string>()
+  try Deferred.succeed(ready, "ready")
   return await.race [ready.await(), slow()]
 }
 
@@ -104,11 +104,11 @@ function tie() {
 function raceDo() {
   return await.race [
     do {
-      sleep("1 second")
+      try sleep("1 second")
       "timeout"
     },
     do {
-      const user = getUser("5")
+      const user = try getUser("5")
       "got " + user
     }
   ]
@@ -126,19 +126,19 @@ function templateRace() {
 
 export function main() {
   return {
-    all: all(),
-    record: record(),
-    held: held(),
-    failFast: failFast(),
-    settled: settled(),
-    race: race(),
-    raceFailure: raceFailure(),
-    raceBlocks: raceBlocks(),
-    any: anyWins(),
-    deferred: deferred(),
-    tie: tie(),
-    raceDo: raceDo(),
-    templates: templates(),
-    templateRace: templateRace()
+    all: try all(),
+    record: try record(),
+    held: try held(),
+    failFast: try failFast(),
+    settled: try settled(),
+    race: try race(),
+    raceFailure: try raceFailure(),
+    raceBlocks: try raceBlocks(),
+    any: try anyWins(),
+    deferred: try deferred(),
+    tie: try tie(),
+    raceDo: try raceDo(),
+    templates: try templates(),
+    templateRace: try templateRace()
   }
 }

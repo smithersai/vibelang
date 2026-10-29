@@ -7,7 +7,7 @@ service B { value: string }
 
 const LA = Layer.succeed(A, { value: "a" })
 const LB = Layer.effect(B) {
-  return { value: A().value + "b" }
+  return { value: (try A()).value + "b" }
 }
 
 function layers(): readonly [typeof LA, typeof LB] {

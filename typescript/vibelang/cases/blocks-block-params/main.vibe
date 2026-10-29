@@ -6,64 +6,64 @@ function getName(): string!! {
 // An Effect dual takes its program first, or returns a function that takes
 // it, so its program is an arrow: a block is the call's last argument (D376).
 function spanned() {
-  return withSpan(() => {
-    const name = getName()
+  return try withSpan(() => {
+    const name = try getName()
     return name.toUpperCase()
   }, "load")
 }
 
 function timed() {
-  return timeout(() => {
-    sleep("1 millis")
+  return try timeout(() => {
+    try sleep("1 millis")
     return "in time"
   }, "1 second")
 }
 
 function guarded() {
-  const semaphore = Semaphore.make(1)
-  return semaphore.withPermits(1)(() => {
+  const semaphore = try Semaphore.make(1)
+  return try semaphore.withPermits(1)(() => {
     return "guarded"
   })
 }
 
 // A function that takes the program as its last argument gets the block there.
 function twice(label: string, program: () => number!!) {
-  return label.length + program() + program()
+  return label.length + try program() + try program()
 }
 
 function appended() {
-  return twice("abcd") {
+  return try twice("abcd") {
     return 19
   }
 }
 
 class Runner {
   run(name: string, program: () => string!!) {
-    return `${name}:${program()}`
+    return `${name}:${try program()}`
   }
 }
 
 function method() {
   const runner = new Runner()
-  return runner.run("job") {
+  return try runner.run("job") {
     return "done"
   }
 }
 
 // A name followed by a block passes the block as the only argument.
 function once(program: () => string!!) {
-  return program()
+  return try program()
 }
 
 function bare() {
-  return once {
+  return try once {
     return "once"
   }
 }
 
 function nested() {
-  return runnerOf().run("outer") {
-    return once { return "inner" }
+  return try (try runnerOf()).run("outer") {
+    return try once { return "inner" }
   }
 }
 
@@ -72,5 +72,5 @@ function runnerOf() {
 }
 
 export function main() {
-  return { spanned: spanned(), timed: timed(), guarded: guarded(), appended: appended(), method: method(), bare: bare(), nested: nested() }
+  return { spanned: try spanned(), timed: try timed(), guarded: try guarded(), appended: try appended(), method: try method(), bare: try bare(), nested: try nested() }
 }

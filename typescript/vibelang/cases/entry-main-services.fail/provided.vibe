@@ -3,6 +3,6 @@ import { Users, UsersLive } from "./services.vibe"
 
 export function main() {
   provide UsersLive {
-    Console.log(Users.find("1"))
+    try Console.log(try Users.find("1"))
   }
 }

@@ -1,0 +1,24 @@
+// expect-result: [1,2,"a"]
+// An async function means what it means in TypeScript (VIP-1): its body is
+// TypeScript, await waits for a promise, and a call returns a promise. A
+// promise reaches an Effect through Effect.tryPromise, run with try.
+export async function load() {
+  return 1
+}
+
+export const loadAll = async () => [await load(), await Promise.resolve(2)]
+
+export class Repo {
+  async find(id: string) {
+    for await (const part of [Promise.resolve(id)]) {
+      return part
+    }
+    return ""
+  }
+}
+
+export function main() {
+  const [a, b] = try Effect.tryPromise(() => loadAll())
+  const c = try Effect.tryPromise(() => new Repo().find("a"))
+  return [a, b, c]
+}

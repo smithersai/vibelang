@@ -18,33 +18,33 @@ abstract class Clock2 {
 const TodosTest = Layer.succeed(Todos, { list: () => ["a"] })
 
 function count() {
-  return Todos.list().length
+  return (try Todos.list()).length
 }
 
 function stamped() {
-  return `${count()} at ${Clock2.now()}`
+  return `${try count()} at ${try Clock2.now()}`
 }
 
 NodeRuntime.runMain(() => {
-  Effect.log(count())
+  try Effect.log(try count())
 })
 
 Effect.runPromise(() => stamped())
 
 it.effect("counts", () => {
-  count()
+  try count()
 })
 
 layer(TodosTest)("with todos", (it) => {
   it.effect("counts", () => {
-    count()
+    try count()
   })
 })
 
 it.effect("provides its own", () => {
-  Effect.provide(() => count(), TodosTest)
+  try Effect.provide(() => count(), TodosTest)
 })
 
 it.effect("keeps the errors in its body", () => {
-  const total: string = count()
+  const total: string = try count()
 })

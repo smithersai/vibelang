@@ -1,15 +1,15 @@
 import * as Layer from "effect/Layer"
 
 export const fresh = () => Layer.unwrap { return Layer.empty }.pipe(Layer.fresh)
-function box(program: () => number!!) { return { value: program() } }
-function array(program: () => number!!) { return [program()] }
-function callable(program: () => number!!) { const n = program(); return (x: number): number => n + x }
+function box(program: () => number!!) { return { value: try program() } }
+function array(program: () => number!!) { return [try program()] }
+function callable(program: () => number!!) { const n = try program(); return (x: number): number => n + x }
 // expect-result: {"member":3,"element":4,"call":7,"layer":true}
 export function main() {
   return {
-    member: box { return 3 }.value,
-    element: array { return 4 }[0],
-    call: callable { return 5 }(2),
-    layer: Layer.isLayer(fresh())
+    member: (try box { return 3 }).value,
+    element: (try array { return 4 })[0],
+    call: (try callable { return 5 })(2),
+    layer: Layer.isLayer(try fresh())
   }
 }

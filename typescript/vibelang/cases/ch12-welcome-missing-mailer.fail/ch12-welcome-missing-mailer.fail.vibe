@@ -20,7 +20,7 @@ abstract class Mailer {
 }
 
 export function welcome(id: string): Effect<string, UserNotFound | MailError, Users> {
-  const user = Users.find(id)
-  Mailer.send(user.email, "Welcome")
+  const user = try Users.find(id)
+  try Mailer.send(user.email, "Welcome")
   return user.name
 }

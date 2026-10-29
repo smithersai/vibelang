@@ -13,7 +13,7 @@ abstract class Replica {
 }
 
 function both() {
-  return `${Primary.query("select 1")} / ${Replica.query("select 1")}`
+  return `${try Primary.query("select 1")} / ${try Replica.query("select 1")}`
 }
 
 const PrimaryLive = Layer.succeed(Primary, {
@@ -21,5 +21,5 @@ const PrimaryLive = Layer.succeed(Primary, {
 })
 
 export function onlyPrimary(): Effect<string, never, never> {
-  return Effect.provide(() => both(), PrimaryLive)
+  return try Effect.provide(() => both(), PrimaryLive)
 }

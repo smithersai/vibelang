@@ -28,5 +28,5 @@ function getter() {
 }
 
 export function main() {
-  return { replaced: replaced(), getter: getter() }
+  return { replaced: try replaced(), getter: try getter() }
 }

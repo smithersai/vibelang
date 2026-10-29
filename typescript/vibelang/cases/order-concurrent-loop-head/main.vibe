@@ -14,7 +14,7 @@ export function main() {
     order.push("items")
     return xs
   }
-  for concurrent(limit()) (const x of items()) {
+  for concurrent(try limit()) (const x of try items()) {
     order.push(String(x))
     seen.push(x)
   }

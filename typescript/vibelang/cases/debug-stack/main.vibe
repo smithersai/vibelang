@@ -8,21 +8,21 @@ interface Account {
 }
 
 function ownerName(account: Account) {
-  Effect.yieldNow()
+  try Effect.yieldNow()
   return account.owner!.name
 }
 
 function lookup(id: number) {
-  Effect.yieldNow()
+  try Effect.yieldNow()
   throw new NotFound({ id })
 }
 
 function audited(account: Account) {
   try {
-    Effect.yieldNow()
+    try Effect.yieldNow()
     return account.owner!.name.length
   } finally {
-    Effect.yieldNow()
+    try Effect.yieldNow()
   }
 }
 
@@ -30,9 +30,9 @@ function audited(account: Account) {
 // literal's method, which binds no name: countdown(n - 1, seen) still calls
 // the Effect function.
 function countdown(n: number, seen: number[]): Effect<number[], never, never> {
-  Effect.yieldNow()
+  try Effect.yieldNow()
   seen.push(n)
-  if (n > 0) countdown(n - 1, seen)
+  if (n > 0) try countdown(n - 1, seen)
   return seen
 }
 
@@ -40,25 +40,25 @@ function countdown(n: number, seen: number[]): Effect<number[], never, never> {
 // thunk that evaluates it is still named after the function; Effect calls it
 // as a method, so the frame also names the receiver's class, PrimitiveImpl.
 function logOwner(account: Account) {
-  return Console.log(account.owner!.name)
+  return try Console.log(account.owner!.name)
 }
 
 export function crash() {
-  return ownerName({ owner: undefined })
+  return try ownerName({ owner: undefined })
 }
 
 export function missing() {
-  return lookup(7)
+  return try lookup(7)
 }
 
 export function region() {
-  return audited({ owner: undefined })
+  return try audited({ owner: undefined })
 }
 
 export function counted() {
-  return countdown(3, [])
+  return try countdown(3, [])
 }
 
 export function direct() {
-  return logOwner({ owner: undefined })
+  return try logOwner({ owner: undefined })
 }

@@ -4,10 +4,10 @@
 export error Late { label: string }
 
 export const coalesced = <E, R>(label?: (seconds: number) => Late!E!R): Late!! => {
-  return label?.(2) ?? new Late({ label: "default" })
+  return try label?.(2) ?? new Late({ label: "default" })
 }
 
 export function announced<E, R>(log?: (n: number) => void!E!R): boolean!! {
-  log?.(2)
+  try log?.(2)
   return true
 }

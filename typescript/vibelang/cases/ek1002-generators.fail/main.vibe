@@ -6,12 +6,12 @@ import { Effect, Option } from "effect"
 import { fromTypeScript } from "./helpers.ts"
 
 export const findName = (id: string) => Effect.gen(function* () {
-  const n = yield* Effect.succeed(id.length)
+  const n = yield* try Effect.succeed(id.length)
   return n
 })
 
 export const traced = Effect.fn("traced")(function* (n: number) {
-  return yield* Effect.succeed(n)
+  return yield* try Effect.succeed(n)
 })
 
 export const maybe = Option.gen(function* () {
@@ -20,7 +20,7 @@ export const maybe = Option.gen(function* () {
 })
 
 function* body() {
-  yield* Effect.succeed(1)
+  yield* try Effect.succeed(1)
   return 2
 }
 

@@ -10,7 +10,7 @@ export function viaLet(id: string) {
 }
 // Pins the inferred failure channel of viaLet, not just exhaustiveness.
 export function inferredContract(id: string): string!Out!S {
-  return viaLet(id)
+  return try viaLet(id)
 }
 export function viaDefault(id: string) {
   return S.get(id) catch (error) => match (error) {

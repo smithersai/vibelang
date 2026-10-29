@@ -1,11 +1,11 @@
 // expect: EK1001 EK1001 EK1001
-function work() { sleep("1 millis"); return 1 }
+function work() { try sleep("1 millis"); return 1 }
 
 function plain(value = work()) { return 1 }
 
 function effectful(value = work()) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return 2
 }
 
-function held(program: number!! = work()) { return program() }
+function held(program: number!! = work()) { return try program() }

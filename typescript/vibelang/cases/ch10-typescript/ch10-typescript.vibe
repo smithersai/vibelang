@@ -28,13 +28,13 @@ abstract class Users {
 // Using TypeScript Effect code from VibeLang
 
 export function title(id: string) {
-  return findUser(id).name.toUpperCase()
+  return (try findUser(id)).name.toUpperCase()
 }
 // Effect<string, UserNotFound | DbError, Database>
 
 // Services written as Context.Service classes in TypeScript are used like .vibe services.
 function rowCount(id: string) {
-  return Database.query("select * from users where id = $1", [id]).length
+  return (try Database.query("select * from users where id = $1", [id])).length
 }
 
 // Generator-style code stays in TypeScript: see ch10-effect-gen.fail.vibe (EK1002).
@@ -42,7 +42,7 @@ function rowCount(id: string) {
 // Plain functions
 
 function parseConfig(text: string) {
-  return Effect.try({
+  return try Effect.try({
     try: () => JSON.parse(text) as Config,
     catch: (cause) => new ConfigError({ cause })
   })
@@ -53,10 +53,10 @@ function parseConfig(text: string) {
 // see ch02-plain-ts-call.fail.vibe), so the plain call is wrapped in Effect.try; the claim below is the
 // proposal's, from before D5.
 function profileCard(id: string) {
-  const user = Users.find(id)
+  const user = try Users.find(id)
   return {
-    title: Effect.try(() => formatName(user)),   // a plain call behind a boundary
-    avatar: loadAvatar(user.id)                  // returns an Effect, so the call runs it
+    title: try Effect.try(() => formatName(user)),   // a plain call behind a boundary
+    avatar: try loadAvatar(user.id)                  // returns an Effect, so the call runs it
   }
 }
 // Effect<{ title: string; avatar: Avatar }, UserNotFound | AvatarError, Users | Storage>
@@ -64,7 +64,7 @@ function profileCard(id: string) {
 // A throwing plain function behind a boundary, with the typed failure caught.
 function portOrDefault(text: string) {
   try {
-    return Effect.try({ try: () => parsePort(text), catch: (cause) => new ConfigError({ cause }) })
+    return try Effect.try({ try: () => parsePort(text), catch: (cause) => new ConfigError({ cause }) })
   } catch (e) {
     return 80
   }
@@ -81,7 +81,7 @@ function portFrom(text: string) {
 // NOTE: the proposal calls fetch, a platform API (D5: EK4402, see ch10-fetch.fail.vibe); a local
 // Promise-returning helper stands in for it.
 function fetchJson(url: string) {
-  const response = Effect.tryPromise({
+  const response = try Effect.tryPromise({
     try: () => fetchGreeting(url),
     catch: (cause) => new HttpError({ url, cause })
   })
@@ -100,36 +100,36 @@ const UsersTest = Layer.succeed(Users, {
 })
 
 function scenario() {
-  const upper = title("1")
+  const upper = try title("1")
   let missing = "none"
   try {
-    title("2")
+    try title("2")
   } catch (e) {
     missing = e._tag
   }
-  const rows = rowCount("1")
-  const config = parseConfig(`{"port":8080}`)
+  const rows = try rowCount("1")
+  const config = try parseConfig(`{"port":8080}`)
   let badConfig = "none"
   try {
-    parseConfig("{")
+    try parseConfig("{")
   } catch (e) {
     badConfig = e._tag
   }
-  const card = profileCard("1")
-  const defaultPort = portOrDefault("x")
-  const trustedPort = portFrom("9090")
+  const card = try profileCard("1")
+  const defaultPort = try portOrDefault("x")
+  const trustedPort = try portFrom("9090")
   let badPort = "none"
   try {
-    portFrom("x")
+    try portFrom("x")
   } catch (e) {
     badPort = e._tag
   }
-  const greeting = fetchJson("ada")
-  const trimmed = trimAll([" a ", "b "])
+  const greeting = try fetchJson("ada")
+  const trimmed = try trimAll([" a ", "b "])
   return { upper, missing, rows, port: config.port, badConfig, card, defaultPort, trustedPort, badPort, greeting, trimmed }
 }
 
 // expect-result: {"upper":"ADA","missing":"UserNotFound","rows":1,"port":8080,"badConfig":"ConfigError","card":{"title":"Ada <ada@example.com>","avatar":{"userId":"1","url":"https://img.example.com/1.png"}},"defaultPort":80,"trustedPort":9090,"badPort":"PortError","greeting":"hello ada","trimmed":["a","b"]}
 export function main() {
-  return Effect.provide(() => scenario(), Layer.mergeAll(DatabaseTest, StorageTest, UsersTest))
+  return try Effect.provide(() => scenario(), Layer.mergeAll(DatabaseTest, StorageTest, UsersTest))
 }

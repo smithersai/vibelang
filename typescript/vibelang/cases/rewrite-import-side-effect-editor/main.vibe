@@ -3,4 +3,4 @@ import { Data, type Label } from "./adapter.ts"
 const label: Label = "x"
 import { events } from "./events.ts"
 class Gone extends Data.TaggedError("Gone")<{ readonly n: number }> {}
-export function main() { Console.log(JSON.stringify(events), new Gone({n:1}).n) }
+export function main() { try Console.log(JSON.stringify(events), new Gone({n:1}).n) }

@@ -4,11 +4,11 @@
 // a Config, a call that returns a function, and a function that needs
 // arguments stay quiet.
 function work() {
-  Console.log("work")
+  try Console.log("work")
 }
 
 function greet(name: string) {
-  Console.log(name)
+  try Console.log(name)
 }
 
 const Port = Config.Number("PORT")
@@ -18,7 +18,7 @@ function unsubscribe(): () => void!! {
 }
 
 export function main() {
-  Console.log("before")
+  try Console.log("before")
   interrupt
   work
   yieldNow
@@ -26,5 +26,5 @@ export function main() {
   greet
   Port
   unsubscribe()
-  Console.log("after interrupt")
+  try Console.log("after interrupt")
 }

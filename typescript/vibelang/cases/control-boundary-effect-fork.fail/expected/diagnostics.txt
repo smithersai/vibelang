@@ -1,6 +1,6 @@
-main.vibe(10,32): error EK4201
-main.vibe(19,33): error EK4201
+main.vibe(10,36): error EK4201
+main.vibe(19,37): error EK4201
 main.vibe(28,15): error EK4201
-main.vibe(37,27): error EK4201
-main.vibe(45,24): error EK4201
-main.vibe(53,28): error EK4201
+main.vibe(37,31): error EK4201
+main.vibe(45,28): error EK4201
+main.vibe(53,32): error EK4201

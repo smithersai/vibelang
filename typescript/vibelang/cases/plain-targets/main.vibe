@@ -26,7 +26,7 @@ class Box<T> {
   }
 }
 function work() {
-  Console.log("work")
+  try Console.log("work")
 }
 const both: () => number | Effect<void> = work
 

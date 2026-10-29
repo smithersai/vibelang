@@ -11,7 +11,7 @@ function find(id: string): string!NotFound | Timeout! {
 
 function typed(id: string) {
   try {
-    return find(id)
+    return try find(id)
   } catch (e: NotFound) {
     return `missing ${e.id}`
   } catch (e: Timeout) {
@@ -21,7 +21,7 @@ function typed(id: string) {
 
 function caused(id: string) {
   try {
-    return find(id)
+    return try find(id)
   } catch (cause: Cause) {
     return "fallback"
   }
@@ -29,7 +29,7 @@ function caused(id: string) {
 
 export function main() {
   return {
-    typed: [typed("7"), typed("slow"), typed("1")],
-    caused: [caused("1"), caused("7")]
+    typed: [try typed("7"), try typed("slow"), try typed("1")],
+    caused: [try caused("1"), try caused("7")]
   }
 }

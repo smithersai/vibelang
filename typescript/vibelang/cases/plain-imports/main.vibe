@@ -9,18 +9,18 @@ import * as Listed from "./listed.vibe"
 import { multiplied, forwarded } from "./barrel.vibe"
 
 function quadruple(n: number) {
-  return double(double(n))
+  return try double(try double(n))
 }
 
 // expect-result: {"quadruple":12,"squares":[1,4,9],"renamed":16,"namespace":[14,25],"viaEffect":[2,4],"listed":[6,9,12],"mapped":[3,6],"barrel":[15,18]}
 export function main() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return {
-    quadruple: quadruple(3),
+    quadruple: try quadruple(3),
     squares: [1, 2, 3].map(sq),
     renamed: sq(4),
-    namespace: [M.double(7), M.square(5)],
-    viaEffect: Effect.forEach([1, 2], double),
+    namespace: [try M.double(7), M.square(5)],
+    viaEffect: try Effect.forEach([1, 2], double),
     listed: [triple(2), threeTimes(3), Listed.threeTimes(4)],
     mapped: [1, 2].map(threeTimes),
     barrel: [multiplied(5), forwarded(6)]

@@ -3,5 +3,5 @@
 // runs nothing and prints nothing, and its quick fix writes the declaration
 // that tsforms-entry-main-fixed holds.
 export function main() {
-  Console.log("Hello")
+  try Console.log("Hello")
 }

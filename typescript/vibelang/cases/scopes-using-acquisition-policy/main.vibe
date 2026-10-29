@@ -26,16 +26,16 @@
 // expect-result: {"interruptible":["TimeoutError"],"helperMask":["connected","released","TimeoutError"],"effectMask":["connected","released","TimeoutError"],"nestedPlain":["TimeoutError"],"nestedScoped":["TimeoutError"],"nestedMasked":["locked","opened","unlocked","disposed","TimeoutError"],"interruptibleBlock":["TimeoutError"],"interruptibleMask":["TimeoutError"],"outside":["opened","disposed","TimeoutError"],"inner":["ticketed","opened","disposed","ticket released","TimeoutError"]}
 export function main() {
   return {
-    interruptible: deadline((seen) => holdSocket(seen)),
-    helperMask: deadline((seen) => holdHelperMask(seen)),
-    effectMask: deadline((seen) => holdEffectMask(seen)),
-    nestedPlain: deadline((seen) => holdNestedPlain(seen)),
-    nestedScoped: deadline((seen) => holdNestedScoped(seen)),
-    nestedMasked: deadline((seen) => holdNestedMasked(seen)),
-    interruptibleBlock: deadline((seen) => holdInterruptibleBlock(seen)),
-    interruptibleMask: deadline((seen) => holdInterruptibleMask(seen)),
-    outside: deadline((seen) => holdOutside(seen)),
-    inner: deadline((seen) => holdInner(seen))
+    interruptible: try deadline((seen) => holdSocket(seen)),
+    helperMask: try deadline((seen) => holdHelperMask(seen)),
+    effectMask: try deadline((seen) => holdEffectMask(seen)),
+    nestedPlain: try deadline((seen) => holdNestedPlain(seen)),
+    nestedScoped: try deadline((seen) => holdNestedScoped(seen)),
+    nestedMasked: try deadline((seen) => holdNestedMasked(seen)),
+    interruptibleBlock: try deadline((seen) => holdInterruptibleBlock(seen)),
+    interruptibleMask: try deadline((seen) => holdInterruptibleMask(seen)),
+    outside: try deadline((seen) => holdOutside(seen)),
+    inner: try deadline((seen) => holdInner(seen))
   }
 }
 
@@ -48,7 +48,7 @@ const short = "300 millis"
 function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
   try {
-    Effect.timeout(() => work(seen), "100 millis")
+    try Effect.timeout(() => work(seen), "100 millis")
     seen.push("finished")
   } catch (e) {
     seen.push(e._tag)
@@ -57,9 +57,9 @@ function deadline(work: (seen: string[]) => void!!) {
 }
 
 function connect(seen: string[], pause: Duration.Input) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
-      sleep(pause)
+      try sleep(pause)
       seen.push("connected")
       return { socket: "open" }
     },
@@ -72,14 +72,14 @@ function connect(seen: string[], pause: Duration.Input) {
 
 function connectMasked(seen: string[], pause: Duration.Input) {
   uninterruptible {
-    return connect(seen, pause)
+    return try connect(seen, pause)
   }
 }
 
 function acquireLock(seen: string[], pause: Duration.Input) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
-      sleep(pause)
+      try sleep(pause)
       seen.push("locked")
       return { held: true }
     },
@@ -97,42 +97,42 @@ function disposable(seen: string[]) {
 
 // Its using supplies the lock's Scope, so openLocked requires no Scope.
 function openLocked(seen: string[], pause: Duration.Input) {
-  using lock = acquireLock(seen, pause)
-  return disposable(seen)
+  using lock = try acquireLock(seen, pause)
+  return try disposable(seen)
 }
 
 // It returns its database through acquireRelease, so it requires Scope.
 function openLockedScoped(seen: string[], pause: Duration.Input) {
-  using lock = acquireLock(seen, pause)
+  using lock = try acquireLock(seen, pause)
   seen.push("opened")
-  return Effect.acquireRelease(() => ({ name: "db" }), () => {
+  return try Effect.acquireRelease(() => ({ name: "db" }), () => {
     seen.push("closed")
   })
 }
 
 function openInterruptible(seen: string[], pause: Duration.Input) {
   interruptible {
-    sleep(pause)
+    try sleep(pause)
   }
-  return disposable(seen)
+  return try disposable(seen)
 }
 
 function openInterruptibleMask(seen: string[], pause: Duration.Input) {
-  Effect.interruptibleMask(() => {
-    sleep(pause)
+  try Effect.interruptibleMask(() => {
+    try sleep(pause)
   })
-  return disposable(seen)
+  return try disposable(seen)
 }
 
 function openDb(seen: string[], pause: Duration.Input) {
-  sleep(pause)
-  return disposable(seen)
+  try sleep(pause)
+  return try disposable(seen)
 }
 
 function openInner(seen: string[], pause: Duration.Input) {
-  const ticket = Effect.acquireRelease(
+  const ticket = try Effect.acquireRelease(
     () => {
-      sleep(pause)
+      try sleep(pause)
       seen.push("ticketed")
       return "ticket"
     },
@@ -141,55 +141,55 @@ function openInner(seen: string[], pause: Duration.Input) {
     },
     { interruptible: true }
   )
-  return disposable(seen)
+  return try disposable(seen)
 }
 
 function holdSocket(seen: string[]) {
-  using socket = connect(seen, long)
+  using socket = try connect(seen, long)
   seen.push("body")
 }
 
 function holdHelperMask(seen: string[]) {
-  using socket = connectMasked(seen, short)
+  using socket = try connectMasked(seen, short)
   seen.push("body")
 }
 
 function holdEffectMask(seen: string[]) {
-  using socket = Effect.uninterruptible(() => connect(seen, short))
+  using socket = try Effect.uninterruptible(() => connect(seen, short))
   seen.push("body")
 }
 
 function holdNestedPlain(seen: string[]) {
-  using db = openLocked(seen, long)
+  using db = try openLocked(seen, long)
   seen.push("body")
 }
 
 function holdNestedScoped(seen: string[]) {
-  using db = openLockedScoped(seen, long)
+  using db = try openLockedScoped(seen, long)
   seen.push("body")
 }
 
 function holdNestedMasked(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openLocked(seen, short))
+  using db = try Effect.acquireDisposable(() => openLocked(seen, short))
   seen.push("body")
 }
 
 function holdInterruptibleBlock(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openInterruptible(seen, long))
+  using db = try Effect.acquireDisposable(() => openInterruptible(seen, long))
   seen.push("body")
 }
 
 function holdInterruptibleMask(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openInterruptibleMask(seen, long))
+  using db = try Effect.acquireDisposable(() => openInterruptibleMask(seen, long))
   seen.push("body")
 }
 
 function holdOutside(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openDb(seen, short))
+  using db = try Effect.acquireDisposable(() => openDb(seen, short))
   seen.push("body")
 }
 
 function holdInner(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openInner(seen, short))
+  using db = try Effect.acquireDisposable(() => openInner(seen, short))
   seen.push("body")
 }

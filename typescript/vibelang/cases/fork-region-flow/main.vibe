@@ -4,12 +4,12 @@
 // the Fiber functions whose result holds no Fiber and their methods, and a
 // fork operand, await element, or for concurrent body in the region.
 function slow(): number!! {
-  sleep("5 millis")
+  try sleep("5 millis")
   return 7
 }
 
 function forever(): number!! {
-  sleep("1 minute")
+  try sleep("1 minute")
   return 0
 }
 
@@ -32,22 +32,22 @@ function record() {
 
 function interrupted() {
   const fiber = fork forever()
-  Fiber.interrupt(fiber)
-  const exit = Fiber.await(fiber)
+  try Fiber.interrupt(fiber)
+  const exit = try Fiber.await(fiber)
   return Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)
 }
 
 function method() {
   const fiber = fork forever()
-  fiber.interrupt()
-  return Exit.isFailure(fiber.await())
+  try fiber.interrupt()
+  return Exit.isFailure(try fiber.await())
 }
 
 function all() {
   const a = fork forever()
   const b = fork forever()
-  Fiber.interruptAll([a, b])
-  return Exit.isFailure(Fiber.await(a)) && Exit.isFailure(Fiber.await(b))
+  try Fiber.interruptAll([a, b])
+  return Exit.isFailure(try Fiber.await(a)) && Exit.isFailure(try Fiber.await(b))
 }
 
 function operand() {
@@ -58,7 +58,7 @@ function operand() {
 
 function raced() {
   const fiber = fork slow()
-  return await.race [join fiber, do { sleep("1 second"); 0 }]
+  return await.race [join fiber, do { try sleep("1 second"); 0 }]
 }
 
 function loop() {
@@ -82,16 +82,16 @@ function done() {
 
 export function main() {
   return {
-    joined: joined(),
-    pair: pair(),
-    record: record(),
-    interrupted: interrupted(),
-    method: method(),
-    all: all(),
-    operand: operand(),
-    raced: raced(),
-    loop: loop(),
-    chosen: chosen(true),
-    done: done()
+    joined: try joined(),
+    pair: try pair(),
+    record: try record(),
+    interrupted: try interrupted(),
+    method: try method(),
+    all: try all(),
+    operand: try operand(),
+    raced: try raced(),
+    loop: try loop(),
+    chosen: try chosen(true),
+    done: try done()
   }
 }

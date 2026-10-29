@@ -1,5 +1,5 @@
 // expect: EK1003
-export function wrongFork() { const fiber = fork do { log("x") }; return fiber }
-export function wrongMask() { uninterruptible do { log("x") } }
-export function wrongInterruptible() { interruptible do { log("x") } }
-export function wrongRestore() { uninterruptible { restore do { log("x") } } }
+export function wrongFork() { const fiber = fork do { try log("x") }; return fiber }
+export function wrongMask() { uninterruptible do { try log("x") } }
+export function wrongInterruptible() { interruptible do { try log("x") } }
+export function wrongRestore() { uninterruptible { restore do { try log("x") } } }

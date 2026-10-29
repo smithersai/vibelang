@@ -9,10 +9,10 @@ function fallback(): number!Fallback! { throw new Fallback() }
 
 export function failing(): number!! {
   try { throw {} as { id?: number } }
-  catch ({ id = fallback() }) { return id }
+  catch ({ id = try fallback() }) { return id }
 }
 
 export function needing(): number!! {
   try { throw {} as { id?: number } }
-  catch ({ id = Lookup().value }) { return id }
+  catch ({ id = (try Lookup()).value }) { return id }
 }

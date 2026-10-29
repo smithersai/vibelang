@@ -23,8 +23,8 @@ import { open } from files
 error Bad {}
 
 function acquire(events: string[]) {
-  return Effect.acquireRelease(
-    () => ({ value: sync((log: string[]) => open(log), events) }),
+  return try Effect.acquireRelease(
+    () => ({ value: try sync((log: string[]) => open(log), events) }),
     (holder) => sync((h) => h.value[Symbol.dispose](), holder)
   )
 }
@@ -38,39 +38,39 @@ function describe(outcome: Exit.Exit<void, Bad>) {
 
 function run(ending: string) {
   const events: string[] = []
-  const outcome = exit(() => {
-    using file = acquire(events)
+  const outcome = try exit(() => {
+    using file = try acquire(events)
     events.push("body")
     if (ending === "fail") throw new Bad()
-    if (ending === "die") Effect.die("boom")
+    if (ending === "die") try Effect.die("boom")
   })
-  return [describe(outcome), events]
+  return [try describe(outcome), events]
 }
 
 function pending() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
   function work() {
-    using file = Effect.acquireRelease(
+    using file = try Effect.acquireRelease(
       () => {
-        Deferred.succeed(entered, undefined)
-        Deferred.await(gate)
-        return { value: sync((log: string[]) => open(log), events) }
+        try Deferred.succeed(entered, undefined)
+        try Deferred.await(gate)
+        return { value: try sync((log: string[]) => open(log), events) }
       },
       (holder) => sync((h) => h.value[Symbol.dispose](), holder)
     )
     events.push("never runs")
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  const outcome = Fiber.await(child)
-  return [describe(outcome), events]
+  try Deferred.succeed(gate, undefined)
+  const outcome = try Fiber.await(child)
+  return [try describe(outcome), events]
 }
 
 // expect-result: {"succeeds":["success",["open","body","closed"]],"fails":["failure",["open","body","closed"]],"dies":["defect",["open","body","closed"]],"pending":["interrupted",["open","closed"]]}
 export function main() {
-  return { succeeds: run("succeed"), fails: run("fail"), dies: run("die"), pending: pending() }
+  return { succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }
 }

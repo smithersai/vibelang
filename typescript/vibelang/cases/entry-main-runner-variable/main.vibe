@@ -1,6 +1,6 @@
 // A runner in an initializer suppresses automatic main execution too (D135).
 export function main() {
-  Console.log("ran once")
+  try Console.log("ran once")
 }
 
 export const pending = runPromise(main())

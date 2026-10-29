@@ -4,15 +4,15 @@
 import { FileSystem } from "vibelang-runtime/experimental/FileSystem"
 
 export function isLink(path: string) {
-  return FileSystem.lstat(path).type === "SymbolicLink"
+  return (try FileSystem.lstat(path)).type === "SymbolicLink"
 }
 
 export function size(path: string) {
-  return FileSystem.stat(path).size
+  return (try FileSystem.stat(path)).size
 }
 
 // A parameter of the prelude namespace's implementation type: the declaration file
 // imports Experimental from vibelang-runtime.
 export function kind(fs: Experimental.FileSystem.Service, path: string) {
-  return fs.lstat(path).type
+  return (try fs.lstat(path)).type
 }

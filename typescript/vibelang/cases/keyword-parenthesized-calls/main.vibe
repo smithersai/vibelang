@@ -4,13 +4,13 @@
 // value. await.all([a(), b()]).length counts the results, and
 // fork(work(3)).join() forks the call and joins the fiber.
 function work(n: number) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
 export function main() {
   const count = await.all([work(1), work(2)]).length
   const first = await.all([work(1), work(2)])[0]
-  const joined = fork(work(3)).join()
+  const joined = try fork(work(3)).join()
   return { count, first, joined }
 }

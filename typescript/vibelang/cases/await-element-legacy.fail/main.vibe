@@ -5,19 +5,19 @@
 // result is its value (D394); await-element-legacy-fixed is what
 // vibelang --fix writes.
 function work(n: number) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
 export function main() {
   const program: number!! = Effect.succeed(1)
   const fiber = fork work(2)
-  const ready = Deferred.make<number>()
-  Deferred.succeed(ready, 3)
+  const ready = try Deferred.make<number>()
+  try Deferred.succeed(ready, 3)
   const exited = Exit.succeed(5)
   const values = await.all [program, fiber, ready, () => work(4), exited]
   const raced = await.race [() => {
-    sleep("1 millis")
+    try sleep("1 millis")
     return "block"
   }]
   return { values, raced }

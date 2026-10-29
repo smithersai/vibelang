@@ -4,18 +4,18 @@ import { events, tag, plain, SqlClient } from "./tags.js"
 function nativePlain(parts: TemplateStringsArray): string { return parts[0] }
 const topPlain = nativePlain`native-top`
 export function main() {
-  tag`statement`
-  const value = tag`expression${7}`
+  try tag`statement`
+  const value = try tag`expression${7}`
   plain`plain-statement`
   const plainValue = plain`plain-expression${9}`
   provide Layer.succeed(SqlClient, tag) {
-    const sql = Effect.service(SqlClient)
-    sql`CREATE TABLE example (id TEXT)`
+    const sql = try Effect.service(SqlClient)
+    try sql`CREATE TABLE example (id TEXT)`
   }
-  const deferred = Effect.as(tag`deferred`, "ignored")
+  const deferred = try Effect.as(tag`deferred`, "ignored")
   function local(parts: TemplateStringsArray) {
-    return tag`local`
+    return try tag`local`
   }
-  local`ignored`
+  try local`ignored`
   return { value, plainValue, events, topPlain, nativePlain: nativePlain`native-body` }
 }

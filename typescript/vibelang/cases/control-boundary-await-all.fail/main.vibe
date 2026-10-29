@@ -5,14 +5,14 @@
 control Ask { ask(): number!! }
 
 function asks() {
-  return Ask.ask() + 1
+  return try Ask.ask() + 1
 }
 
 export function all() {
   try {
     return await.all [Ask.ask(), Ask.ask()]
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
@@ -20,7 +20,7 @@ export function keyed() {
   try {
     return await.all { first: asks(), second: Ask.ask() }
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
@@ -28,6 +28,6 @@ export function settled() {
   try {
     return await.allSettled [Ask.ask()]
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }

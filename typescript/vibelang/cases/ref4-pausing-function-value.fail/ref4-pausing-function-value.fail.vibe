@@ -14,7 +14,7 @@ abstract class Users {
 }
 
 function findName(id: string) {
-  return Users.find(id).name
+  return (try Users.find(id)).name
 }
 
 function names(ids: ReadonlyArray<string>) {

@@ -9,5 +9,5 @@ export function* numbers() {
 
 export function main() {
   const stream: Stream.Stream<number, never, never> = numbers()
-  return [Stream.isStream(stream), Stream.runCollect(stream)]
+  return [Stream.isStream(stream), try Stream.runCollect(stream)]
 }

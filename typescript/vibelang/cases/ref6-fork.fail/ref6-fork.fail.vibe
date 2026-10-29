@@ -8,10 +8,10 @@ abstract class Ask extends Control {
 }
 
 function forked() {
-  return handle(() => {
+  return try handle(() => {
     const child = fork Ask.ask("in a child fiber")
-    return Fiber.join(child)
+    return try Fiber.join(child)
   }, Ask, {
-    ask(question, k) { return resume(k, question.length) }
+    ask(question, k) { return try resume(k, question.length) }
   })
 }

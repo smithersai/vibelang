@@ -2,7 +2,7 @@ import { check } from "./caller.js"
 import { Effect } from "effect"
 export const capture = (input: { mutable value: number }): Effect.Effect<number, never, never> => {
   const captured = input.value
-  return () => { Effect.succeed(0); return captured }
+  return () => { try Effect.succeed(0); return captured }
 }
 export function declared(input: { mutable value: number }): number!! {
   const captured = input.value
@@ -52,4 +52,4 @@ export const refuse = (reason: string): Effect.Effect<never, string, never> => {
 }
 
 // expect-result: "snapshot: 1 (seven forms, twice)"
-export function main() { return sync((run: () => string) => run(), check) }
+export function main() { return try sync((run: () => string) => run(), check) }

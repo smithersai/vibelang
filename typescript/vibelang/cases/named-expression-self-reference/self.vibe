@@ -3,24 +3,24 @@
 // generator named after it for stack traces.
 export const retried = function self(n: number): number!! {
   if (n === 0) return 7
-  return Effect.retry(self(n - 1), { times: 0 })
+  return try Effect.retry(self(n - 1), { times: 0 })
 }
 
 // Recursion makes Effect calls, so it stays off the JavaScript stack.
 export const deep = function self(n: number): number!! {
   if (n === 0) return 0
-  return 1 + self(n - 1)
+  return 1 + try self(n - 1)
 }
 
 type Self = () => Self!!
 export const identity = function inner(): Self!! {
-  const tick = Effect.sync(() => 0)
+  const tick = try Effect.sync(() => 0)
   return inner
 }
 
 export const viaDefault = function self(n: number, next: (n: number) => number!! = self): number!! {
   if (n === 0) return 3
-  return next(n - 1)
+  return try next(n - 1)
 }
 
 // A producer's plain function keeps its name too.

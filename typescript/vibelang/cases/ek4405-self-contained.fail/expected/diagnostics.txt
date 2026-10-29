@@ -1,6 +1,6 @@
-main.vibe(27,24): error EK4405
-main.vibe(28,24): error EK4405
-main.vibe(28,33): error EK4405
-main.vibe(29,23): error EK4405
-main.vibe(30,24): error EK4405
-main.vibe(31,27): error EK4405
+main.vibe(27,28): error EK4405
+main.vibe(28,28): error EK4405
+main.vibe(28,37): error EK4405
+main.vibe(29,28): error EK4405
+main.vibe(30,28): error EK4405
+main.vibe(31,31): error EK4405

@@ -4,5 +4,5 @@
 import { helper } from "./lib.vibe"
 
 export function main() {
-  Console.log(`app main uses ${helper}`)
+  try Console.log(`app main uses ${helper}`)
 }

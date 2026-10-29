@@ -8,7 +8,7 @@ import { Scope } from "effect"
 control Ask { ask(): number!! }
 
 function asks() {
-  return Ask.ask() + 1
+  return try Ask.ask() + 1
 }
 
 export function byName() {
@@ -16,16 +16,16 @@ export function byName() {
     const f = fork Ask.ask()
     return join f
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function block() {
   try {
-    const f = fork { return Ask.ask() }
+    const f = fork { return try Ask.ask() }
     return join f
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
@@ -34,24 +34,24 @@ export function called() {
     const f = fork asks()
     return join f
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function detached() {
   try {
-    const f = detach(Ask.ask())
+    const f = try detach(Ask.ask())
     return join f
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function inScope(scope: Scope.Scope) {
   try {
-    const f = forkIn(scope, Ask.ask())
+    const f = try forkIn(scope, Ask.ask())
     return join f
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }

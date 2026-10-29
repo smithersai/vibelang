@@ -11,31 +11,31 @@ service Users {
 // EK2108: Approval.note has no clause.
 function partial() {
   try {
-    return Approval.approve("x")
+    return try Approval.approve("x")
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   }
 }
 
 // EK2108: Approval.approve already has a clause.
 function twice() {
   try {
-    return Approval.approve("x")
+    return try Approval.approve("x")
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   } handle Approval.approve(request) {
-    resume(false)
+    try resume(false)
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
 // EK2107: Users is a service.
 function service() {
   try {
-    return Users.find("1")
+    return try Users.find("1")
   } handle Users.find(id) {
-    resume("Ada")
+    try resume("Ada")
   }
 }
 
@@ -51,9 +51,9 @@ control Ask {
 // does not provide.
 function secret() {
   try {
-    return Ask.ask("password")
+    return try Ask.ask("password")
   } handle Ask.ask(question) {
-    resumeWith(() => Secret.read())
+    try resumeWith(() => Secret.read())
   }
 }
 

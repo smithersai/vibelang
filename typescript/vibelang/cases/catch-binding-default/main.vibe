@@ -7,10 +7,10 @@ function fallback(): number!Fallback! { throw new Fallback() }
 
 export function read(found?: number) {
   try { throw { id: found } as { id?: number } }
-  catch ({ id = fallback() }) { return id }
+  catch ({ id = try fallback() }) { return id }
 }
 
 // expect-result: {"missing":"Fallback","found":7}
 export function main() {
-  return { missing: read() catch (e) => e._tag, found: read(7) }
+  return { missing: read() catch (e) => e._tag, found: try read(7) }
 }

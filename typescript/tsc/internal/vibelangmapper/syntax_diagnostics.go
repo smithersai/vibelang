@@ -11,13 +11,21 @@ func (p *projector) syntaxDiagnostic(node *ast.Node, code int32, message string)
 	p.diagnostics = append(p.diagnostics, Diagnostic{Start: r.Pos(), Length: r.Len(), Code: code, Message: message})
 }
 
+// inAsyncFunction reports whether node is in the body of an async function,
+// whose code is TypeScript (VIP-1).
+func inAsyncFunction(node *ast.Node) bool {
+	fn := ast.GetContainingFunction(node)
+	return fn != nil && ast.GetFunctionFlags(fn)&ast.FunctionFlagsAsync != 0
+}
+
 // syntaxToken matches keyword diagnostics such as EK1003 and EK2006.
 func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 	r := scanner.GetRangeOfTokenAtPosition(p.file, node.Pos())
 	p.diagnostics = append(p.diagnostics, Diagnostic{Start: r.Pos(), Length: r.Len(), Code: code, Message: message})
 }
 
-// checkSyntaxDiagnostics mirrors EK1003/EK1004/EK1010, D15's finally exits
+// checkSyntaxDiagnostics mirrors EK1003 (for await and await using outside an
+// async function), EK1004/EK1010, D15's finally exits
 // (EK2006), D1's bodiless service contracts (EK2101), D129's setup order
 // (EK2104), and D229's lexical hatch captures (EK4405). Alias/type identity
 // and unresolved types remain native. A type argument left out of an Effect
@@ -48,22 +56,14 @@ func (p *projector) checkSyntaxDiagnostics() {
 				p.checkPlainGeneratorThrows(n) // D296 (plain_contract_effects.go)
 				break                          // D271 permits an explicitly JavaScript async generator.
 			}
-			if modifiers := n.Modifiers(); modifiers != nil {
-				for _, m := range modifiers.Nodes {
-					if m.Kind == ast.KindAsyncKeyword {
-						p.syntaxDiagnostic(m, 1003, "async is not part of VibeLang: a call already waits.")
-					}
-				}
-			}
-		case ast.KindAwaitExpression:
-			p.syntaxToken(n, 1003, "await is not part of VibeLang: a call already waits.")
+			// An async function means what it means in TypeScript (VIP-1).
 		case ast.KindForOfStatement:
-			if a := n.AsForInOrOfStatement().AwaitModifier; a != nil {
+			if a := n.AsForInOrOfStatement().AwaitModifier; a != nil && !inAsyncFunction(n) {
 				p.syntaxDiagnostic(a, 1003, "for await is not part of VibeLang: a call already waits.")
 			}
 		case ast.KindVariableDeclarationList:
 			flags := n.Flags & ast.NodeFlagsBlockScoped
-			if flags == ast.NodeFlagsAwaitUsing {
+			if flags == ast.NodeFlagsAwaitUsing && !inAsyncFunction(n) {
 				p.syntaxToken(n, 1003, "await using is not part of VibeLang: a call already waits.")
 			}
 			if flags == ast.NodeFlagsUsing || flags == ast.NodeFlagsAwaitUsing {

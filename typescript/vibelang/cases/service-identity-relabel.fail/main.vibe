@@ -8,17 +8,17 @@ service A { value: number }
 service B { value: number }
 type Shape = { value: number }
 
-function needsA(): number!!A { return A().value }
+function needsA(): number!!A { return (try A()).value }
 
 export function viaProvideService(): number!! {
   const p: Effect<number, never, Shape> = needsA()
-  return Effect.provideService(p, B, { value: 2 })
+  return try Effect.provideService(p, B, { value: 2 })
 }
 
 export function viaProvideBlock(): number!! {
   const p: Effect<number, never, Shape> = needsA()
   provide B = { value: 2 } {
-    return p()
+    return try p()
   }
 }
 

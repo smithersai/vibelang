@@ -10,10 +10,10 @@ abstract class Users {
 }
 
 function profileCard(id: string) {
-  const user = Users.find(id)
+  const user = try Users.find(id)
   return {
     title: formatName(user),                 // a plain call
-    avatar: loadAvatar(user.id)              // returns an Effect, so the call runs it
+    avatar: try loadAvatar(user.id)              // returns an Effect, so the call runs it
   }
 }
 // Effect<{ title: string; avatar: Avatar }, UserNotFound | AvatarError, Users | Storage>

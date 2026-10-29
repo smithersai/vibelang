@@ -26,13 +26,13 @@ function display(input: number | boolean): string {
 
 export function main() {
   let size = 0
-  const s: Shape = sync((Shape) => Shape.Sq({ s: 5 }) as Shape, Shape)
+  const s: Shape = try sync((Shape) => Shape.Sq({ s: 5 }) as Shape, Shape)
   match (s) {
     when Shape.Sq { let s }: size = s * s;
     when Shape.Empty: size = 0;
   }
   let calls = 0
   function subject() { calls++; return Shape.Sq({ s: 6 }) }
-  const once = area(subject())
+  const once = area(try subject())
   return [area(Shape.Sq({ s: 3 })), expression(Shape.Sq({ s: 4 })), size, calls, once, display(3)]
 }

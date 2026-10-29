@@ -77,15 +77,15 @@ function parseReport(text: string) {
 }
 
 function readReport(path: string) {
-  using file = Files.open(path)
-  return parseReport(file.readAll())
+  using file = try Files.open(path)
+  return try parseReport(try file.readAll())
 }
 // Effect<Report, IOError | ParseError, Files>
 
 // Defining a resource
 
 function openFile(path: string) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => FileSystem.open(path),      // acquire
     (file) => file.close()            // release: always runs, exactly once
   )
@@ -93,7 +93,7 @@ function openFile(path: string) {
 // Effect<FileHandle, IOError, FileSystem | Scope>
 
 function openLog(day: string) {
-  return Files.open(`/var/log/app-${day}.log`)    // no `using`: the caller owns the file
+  return try Files.open(`/var/log/app-${day}.log`)    // no `using`: the caller owns the file
 }
 // Effect<FileHandle, IOError, Files | Scope>
 
@@ -103,9 +103,9 @@ function diffLines(left: string, right: string) {
 }
 
 function compareLogs(a: string, b: string) {
-  using left = openLog(a)
-  using right = openLog(b)
-  return diffLines(left.readAll(), right.readAll())
+  using left = try openLog(a)
+  using right = try openLog(b)
+  return try diffLines(try left.readAll(), try right.readAll())
 }
 // Effect<Diff, IOError, Files>; both files close when compareLogs returns
 
@@ -113,14 +113,14 @@ function compareLogs(a: string, b: string) {
 // without `using`, so it belongs to the caller and must still be open when openAndLog returns.
 
 function openAndLog() {
-  const connection = Database.connect() // caller-owned: no `using`
-  using log = Logs.open()
+  const connection = try Database.connect() // caller-owned: no `using`
+  using log = try Logs.open()
   return connection
 }
 
 function connectionOutlivesBlock() {
-  return Effect.scoped(() => {
-    const connection = openAndLog()
+  return try Effect.scoped(() => {
+    const connection = try openAndLog()
     events.push(`after openAndLog: open=${connection.open}`)
     return connection.open
   })
@@ -132,7 +132,7 @@ const FilesTest = Layer.succeed(Files, {
   open: (path) => Effect.acquireRelease(
     () => {
       events.push(`open ${path}`)
-      return memoryFile(path)
+      return try memoryFile(path)
     },
     (file) => file.close()
   )
@@ -141,7 +141,7 @@ const FilesTest = Layer.succeed(Files, {
 const FileSystemTest = Layer.succeed(FileSystem, {
   open: (path) => {
     events.push(`open ${path}`)
-    return memoryFile(path)
+    return try memoryFile(path)
   }
 })
 
@@ -163,7 +163,7 @@ const LogsTest = Layer.succeed(Logs, {
   open: () => Effect.acquireRelease(
     () => {
       events.push("open log")
-      return memoryFile("/var/log/app.log")
+      return try memoryFile("/var/log/app.log")
     },
     () => {
       events.push("close log")
@@ -172,14 +172,14 @@ const LogsTest = Layer.succeed(Logs, {
 })
 
 function scenario() {
-  const report = readReport("/reports/q3.txt")
-  const opened = Effect.scoped(() => openFile("/reports/q3.txt").path)
-  const diff = compareLogs("mon", "tue")
-  const outlived = connectionOutlivesBlock()
+  const report = try readReport("/reports/q3.txt")
+  const opened = try Effect.scoped(() => (try openFile("/reports/q3.txt")).path)
+  const diff = try compareLogs("mon", "tue")
+  const outlived = try connectionOutlivesBlock()
   return { report, opened, diff, outlived, events }
 }
 
 // expect-result: {"report":{"title":"Q3 report","lines":3},"opened":"/reports/q3.txt","diff":{"same":false,"left":3,"right":3},"outlived":true,"events":["open /reports/q3.txt","close /reports/q3.txt","open /reports/q3.txt","close /reports/q3.txt","open /var/log/app-mon.log","open /var/log/app-tue.log","close /var/log/app-tue.log","close /var/log/app-mon.log","connect","open log","close log","after openAndLog: open=true","disconnect"]}
 export function main() {
-  return Effect.provide(() => scenario(), Layer.mergeAll(FilesTest, FileSystemTest, DatabaseTest, LogsTest))
+  return try Effect.provide(() => scenario(), Layer.mergeAll(FilesTest, FileSystemTest, DatabaseTest, LogsTest))
 }

@@ -11,7 +11,7 @@ import { expect as vitestExpect } from "vitest"
 import type { Account } from "./account.ts"
 
 export function trusted(n: number) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   assert.strictEqual(n, 1)
   expect(n).toBe(1)
   EffectVitest.assert.isTrue(n > 0)
@@ -19,7 +19,7 @@ export function trusted(n: number) {
 }
 
 export function untrusted(n: number, account: Option.Option<Account>) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   vitestExpect(n).toBe(1)
   Option.getOrThrow(account).close()
   return n

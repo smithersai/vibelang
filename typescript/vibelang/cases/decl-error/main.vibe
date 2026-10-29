@@ -10,7 +10,7 @@ function find(id: string) {
 
 function describe(id: string) {
   try {
-    return find(id)
+    return try find(id)
   } catch (error) {
     return error._tag === "NotFound" ? `${error._tag}:${error.id}` : error._tag
   }
@@ -31,5 +31,5 @@ function label(error: string) {
 }
 
 export function main() {
-  return { timeout: describe("slow"), missing: describe("42"), wrapped: unwrap(), label: label("plain") }
+  return { timeout: try describe("slow"), missing: try describe("42"), wrapped: try unwrap(), label: try label("plain") }
 }

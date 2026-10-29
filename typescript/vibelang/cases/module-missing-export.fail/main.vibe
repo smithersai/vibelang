@@ -14,5 +14,5 @@ module text {
 import { clean, missing, hidden } from text
 
 export function main() {
-  return sync((value) => clean(value) + missing + hidden, " a ")
+  return try sync((value) => clean(value) + missing + hidden, " a ")
 }

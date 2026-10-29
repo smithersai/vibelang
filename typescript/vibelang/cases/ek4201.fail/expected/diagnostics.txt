@@ -1,7 +1,7 @@
 main.vibe(8,7): warning EK4830
 main.vibe(11,38): warning EK4833
-main.vibe(15,38): error EK4201
-main.vibe(19,28): error EK4201
-main.vibe(19,57): error EK4201
-main.vibe(23,31): error EK4201
-main.vibe(32,28): error EK4201
+main.vibe(15,42): error EK4201
+main.vibe(19,32): error EK4201
+main.vibe(19,61): error EK4201
+main.vibe(23,35): error EK4201
+main.vibe(32,32): error EK4201

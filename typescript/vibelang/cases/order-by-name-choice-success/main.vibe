@@ -6,23 +6,23 @@
 const log: string[] = []
 
 function value(name: string, n: number | undefined) {
-  Effect.yieldNow()
+  try Effect.yieldNow()
   log.push(name)
   return n
 }
 
 export function main() {
   const or = [
-    retry(value("or-left", 0) || value("or-right", 7), { times: 0 }),
-    retry(() => value("or-left", 0) || value("or-right", 7), { times: 0 })
+    try retry(value("or-left", 0) || value("or-right", 7), { times: 0 }),
+    try retry(() => try value("or-left", 0) || try value("or-right", 7), { times: 0 })
   ]
   const nullish = [
-    retry(value("nullish-left", undefined) ?? value("nullish-right", 8), { times: 0 }),
-    retry(() => value("nullish-left", undefined) ?? value("nullish-right", 8), { times: 0 })
+    try retry(value("nullish-left", undefined) ?? value("nullish-right", 8), { times: 0 }),
+    try retry(() => try value("nullish-left", undefined) ?? try value("nullish-right", 8), { times: 0 })
   ]
   const and = [
-    retry(value("and-left", 0) && value("and-right", 9), { times: 0 }),
-    retry(() => value("and-left", 0) && value("and-right", 9), { times: 0 })
+    try retry(value("and-left", 0) && value("and-right", 9), { times: 0 }),
+    try retry(() => try value("and-left", 0) && try value("and-right", 9), { times: 0 })
   ]
   return { or, nullish, and, log }
 }

@@ -4,5 +4,5 @@ const $is1 = 1
 function twice(n: number) { return { a: n, b: n } }
 
 export function isFunction(n: number) {
-  return twice(n) is { a: $is1, b: $is1 }
+  return try twice(n) is { a: $is1, b: $is1 }
 }

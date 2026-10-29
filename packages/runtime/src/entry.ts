@@ -44,6 +44,7 @@ export const {
   $isRun,
   $iteratorFrame,
   $join,
+  $try,
   $joinedFrame,
   $noFailure,
   $noMatch,
@@ -85,7 +86,6 @@ export const {
   abandon,
   acquireDisposable,
   acquireRelease,
-  attempt,
   callback,
   customMatcher,
   detach,
@@ -113,5 +113,3 @@ export const {
   yieldNow,
 } = abi
 
-const tryHatch = abi.try
-export { tryHatch as try }

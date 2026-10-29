@@ -20,8 +20,8 @@ abstract class Mailer {
 
 // welcome from Chapter 1, used by notifyAll and welcomeTraced.
 function welcome(id: string) {
-  const user = Users.find(id)
-  Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try Users.find(id)
+  try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
@@ -34,7 +34,7 @@ function add(a: number, b: number) {
 // Effect<number, never, never>
 
 function greeting(id: string) {
-  const user = Users.find(id)
+  const user = try Users.find(id)
   return `Hello, ${user.name}`
 }
 // Effect<string, UserNotFound, Users>
@@ -42,8 +42,8 @@ function greeting(id: string) {
 // Calling runs the function
 
 function userName(id: string) {
-  const name = Users.find(id).name.trim()
-  Effect.log(`found ${name}`)
+  const name = (try Users.find(id)).name.trim()
+  try Effect.log(`found ${name}`)
   return name
 }
 
@@ -52,9 +52,9 @@ function userName(id: string) {
 function notifyAll(ids: ReadonlyArray<string>) {
   let sent = 0
   for (const id of ids) {
-    const user = Users.find(id)
+    const user = try Users.find(id)
     if (!user.subscribed) continue
-    welcome(id)
+    try welcome(id)
     sent++
   }
   return sent
@@ -64,7 +64,7 @@ function notifyAll(ids: ReadonlyArray<string>) {
 // Tracing
 
 function welcomeTraced(id: string) {
-  return Effect.withSpan(() => welcome(id), "welcome")
+  return try Effect.withSpan(() => welcome(id), "welcome")
 }
 
 // Writing the contract yourself
@@ -72,7 +72,7 @@ function welcomeTraced(id: string) {
 // The narrower contract from the same section is ch02-contract-narrower.fail.vibe.
 
 export function greetingChecked(id: string): Effect<string, UserNotFound, Users> {
-  const user = Users.find(id)
+  const user = try Users.find(id)
   return `Hello, ${user.name}`
 }
 
@@ -102,16 +102,16 @@ const MailerTest = Layer.succeed(Mailer, {
 })
 
 function scenario() {
-  const sum = add(1, 2)
-  const hello = greeting("1")
-  const trimmed = userName("2")
-  const sent = notifyAll(["1", "2", "3"])
-  const traced = welcomeTraced("1")
-  const checked = greetingChecked("3")
+  const sum = try add(1, 2)
+  const hello = try greeting("1")
+  const trimmed = try userName("2")
+  const sent = try notifyAll(["1", "2", "3"])
+  const traced = try welcomeTraced("1")
+  const checked = try greetingChecked("3")
   return { sum, greeting: hello, userName: trimmed, sent, traced, checked, outbox }
 }
 
 // expect-result: {"sum":3,"greeting":"Hello, Ada","userName":"Grace","sent":2,"traced":"Ada","checked":"Hello, Edsger","outbox":["ada@example.com: Welcome, Ada!","edsger@example.com: Welcome, Edsger!","ada@example.com: Welcome, Ada!"]}
 export function main() {
-  return Effect.provide(() => scenario(), Layer.mergeAll(UsersTest, MailerTest))
+  return try Effect.provide(() => scenario(), Layer.mergeAll(UsersTest, MailerTest))
 }

@@ -15,7 +15,7 @@ function piped() {
     const $pipe0: string!Error! = () => flaky()
     const $pipe1 = { times: 3 }
     const $pipe2 = Effect.withSpan("flaky")
-    $pipe2(() => Effect.timeout(() => Effect.retry($pipe0, $pipe1), "1 second"))
+    try $pipe2(() => Effect.timeout(() => Effect.retry($pipe0, $pipe1), "1 second"))
   }
 }
 
@@ -26,7 +26,7 @@ function stored() {
     const $pipe3 = job
     const $pipe4: string!Error! = () => $pipe3()
     const $pipe5 = Schedule.recurs(1)
-    Effect.retry($pipe4, $pipe5)
+    try Effect.retry($pipe4, $pipe5)
   }
 }
 
@@ -37,5 +37,5 @@ function data() {
 
 // expect-result: {"piped":"ok after 3","stored":"ok after 4","data":12}
 export function main() {
-  return { piped: piped(), stored: stored(), data: data() }
+  return { piped: try piped(), stored: try stored(), data: try data() }
 }

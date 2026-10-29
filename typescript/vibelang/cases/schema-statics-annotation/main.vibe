@@ -24,6 +24,6 @@ export const Counter = withStatics(Schema.Struct({ n: Schema.Number }), {
 // expect-result: {"part":{"type":"text","text":"hi"},"counter":2}
 export function main() {
   const part = TextPart.make({ text: "hi" })
-  const counter = Counter.make(2)
+  const counter = try Counter.make(2)
   return { part, counter: counter.n }
 }

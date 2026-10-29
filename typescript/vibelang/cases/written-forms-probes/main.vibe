@@ -48,15 +48,15 @@ export function main() {
   // A holder of Effect functions runs the one it holds, once.
   let g = unannotatedDouble
   g = logged
-  const held = g(5)
+  const held = try g(5)
   // A plain function returning a program: a VibeLang call runs it, once.
-  const picked = pick(load)
+  const picked = try pick(load)
   // An arrow holds a program: building it runs nothing, calling it runs once.
   const before = runs
   const p = () => work()
   const built = runs - before
-  const ran = p()
+  const ran = try p()
   // A union of functions of one form calls the one chosen, in that form.
-  const unions = [(ran > 0 ? unannotatedDouble : triple)(-2), (ran > 0 ? double : Math.abs)(-2)]
+  const unions = [try (ran > 0 ? unannotatedDouble : triple)(-2), (ran > 0 ? double : Math.abs)(-2)]
   return { plainOnce, effectOnce, count, stored: [[1, 2].map(twin), [1, 2].map(api.double)], held, picked, built, ran, runs, unions }
 }

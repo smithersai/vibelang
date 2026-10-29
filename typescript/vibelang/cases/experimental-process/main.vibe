@@ -3,11 +3,11 @@ import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-
 import { layerTest, Process } from "vibelang-runtime/experimental/Process"
 
 function observe() {
-  const pid = Process.pid()
+  const pid = try Process.pid()
   return {
     pid: pid > 0,
-    platform: typeof Process.platform() === "string",
-    running: Process.isRunning(pid),
+    platform: typeof try Process.platform() === "string",
+    running: try Process.isRunning(pid),
     missing: Process.kill(4194000) catch (e) => e.reason._tag,
     refused: Process.isRunning(0) catch (e) => e.reason._tag,
   }
@@ -15,12 +15,12 @@ function observe() {
 
 function fakePlatform() {
   provide layerTest({ platform: Effect.succeed("win32") }) {
-    return Process.platform()
+    return try Process.platform()
   }
 }
 
 export function main() {
   provide ExperimentalNodeProcess.layer {
-    return { ...observe(), fake: fakePlatform() }
+    return { ...try observe(), fake: try fakePlatform() }
   }
 }

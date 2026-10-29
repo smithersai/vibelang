@@ -5,45 +5,45 @@
 error Late { label: string }
 
 const coalesced = <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
-  return label?.(2) ?? new Late({ label: "default" })
+  return try label?.(2) ?? new Late({ label: "default" })
 }
 
 const bound = <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
-  const value = label?.(2)
+  const value = try label?.(2)
   return value
 }
 
 const scaled = <E = never, R = never>(scale?: (n: number) => number!E!R) => scale?.(2)
 
 const announced = <E = never, R = never>(log?: (n: number) => void!E!R) => {
-  log?.(2)
+  try log?.(2)
   return true
 }
 
 // An omitted callback adds no failure and needs nothing: E and R default to never.
 function defaulted(): Late!! {
-  return coalesced()
+  return try coalesced()
 }
 
 function unscaled(): number!! {
-  return scaled() ?? -1
+  return try scaled() ?? -1
 }
 
 export function main() {
   const ran: Array<string> = []
-  const a = coalesced((s) => new Late({ label: "custom " + s }))
-  const b = bound((s) => new Late({ label: "custom " + s }))
-  const c = coalesced()
-  const d = bound()
-  const n = scaled((n) => {
-    sleep("1 millis")
+  const a = try coalesced((s) => new Late({ label: "custom " + s }))
+  const b = try bound((s) => new Late({ label: "custom " + s }))
+  const c = try coalesced()
+  const d = try bound()
+  const n = try scaled((n) => {
+    try sleep("1 millis")
     return n * 10
   })
   const caught = coalesced((s) => {
     throw new Late({ label: "thrown" })
   }) catch (e) => new Late({ label: "caught " + e.label })
-  const announcedOk = announced((n) => {
+  const announcedOk = try announced((n) => {
     ran.push("ran " + n)
   })
-  return [a.label, b?.label, c.label, d === undefined, n, caught.label, announcedOk, ran[0], defaulted().label, unscaled()]
+  return [a.label, b?.label, c.label, d === undefined, n, caught.label, announcedOk, ran[0], (try defaulted()).label, try unscaled()]
 }

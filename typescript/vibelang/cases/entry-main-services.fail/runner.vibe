@@ -4,7 +4,7 @@
 import { Users } from "./services.vibe"
 
 export function main() {
-  Console.log(Users.find("1"))
+  try Console.log(try Users.find("1"))
 }
 
 Effect.runPromise(main())

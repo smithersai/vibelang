@@ -3,7 +3,7 @@ import { Effect } from "effect"
 
 export const walk = (depth: number): Effect.Effect<number, never, never> => {
   if (depth === 0) return 0
-  const found = walk(depth - 1)
+  const found = try walk(depth - 1)
   if (found > 0) return "wrong"
   return found
 }

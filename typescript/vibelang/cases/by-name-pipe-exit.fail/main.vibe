@@ -2,8 +2,8 @@
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 export function wrongSuccess(): number!! {
-  return Effect.orDie(Effect.succeed(Exit.succeed(1)) |> (Effect.tap(%, () => Effect.sleep("1 millis"))))
+  return try Effect.orDie(Effect.succeed(Exit.succeed(1)) |> (Effect.tap(%, () => Effect.sleep("1 millis"))))
 }
 export function wrongFailure(): Exit.Exit<number, never>!! {
-  return Effect.map(Effect.fail("bad") |> Effect.tap(%, () => Effect.sleep("1 millis")), () => Exit.succeed(1))
+  return try Effect.map(Effect.fail("bad") |> Effect.tap(%, () => Effect.sleep("1 millis")), () => Exit.succeed(1))
 }

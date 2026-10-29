@@ -5,11 +5,11 @@ function getName(): string!! {
 
 // getName takes no program, so it cannot take a block.
 function wrong() {
-  return getName() {
+  return try getName() {
     return 1
   }
 }
 
 export function main() {
-  return wrong()
+  return try wrong()
 }

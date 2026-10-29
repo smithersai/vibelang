@@ -17,7 +17,7 @@ export function partial(id: string) {
 
 // A hatch body is plain TypeScript (EK2114).
 export function parsed() {
-  return sync(() => JSON.parse("{}") catch null)
+  return try sync(() => JSON.parse("{}") catch null)
 }
 
 // The left side cannot fail, so the catch never runs (EK2004, a warning).

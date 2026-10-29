@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// The prelude's fork and join, and the hatches sync, try and callback, take
+// The prelude's fork and join, and the hatches sync and callback, take
 // their first operand by syntax, so they are reached only through their own
 // spellings (rule H4, D330, D432, D452): a call spelled otherwise would read
 // its operand by a binding its reader cannot see.
@@ -20,10 +20,10 @@ func init() {
 
 // keywordNames are the prelude bindings whose first operand is syntax: the
 // contextual keywords fork and join, and the hatches (D432).
-var keywordNames = map[string]bool{"fork": true, "join": true, "sync": true, "try": true, "callback": true}
+var keywordNames = map[string]bool{"fork": true, "join": true, "sync": true, "callback": true}
 
 // checkKeywordBindings reports EK4410 at each use of the prelude's fork,
-// join, sync, try, or callback other than as the callee of a call spelled
+// join, sync, or callback other than as the callee of a call spelled
 // with its own name: an import that renames one, and any other reference,
 // such as const spawn = fork (D330, D432). A call spelled otherwise would
 // defer its operand by the callee's resolved symbol, which its reader cannot
@@ -64,7 +64,7 @@ func checkKeywordBindings(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // isKeywordCallee reports whether name is the callee of a call, as fork is
-// in fork(e) and fork e, and try is in try(…).
+// in fork(e) and fork e, and sync is in sync(…).
 func isKeywordCallee(name *ast.Node) bool {
 	parent := name.Parent
 	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == name
@@ -107,7 +107,7 @@ func isRuntimeSymbol(c *checker.Checker, symbol *ast.Symbol, name string) bool {
 	if declaration == nil {
 		return false
 	}
-	if symbol.Name() != name && !(name == "try" && symbol.Name() == "tryHatch") {
+	if symbol.Name() != name {
 		return false
 	}
 	return packageNameOf(c, ast.GetSourceFileOfNode(declaration)) == "vibelang-runtime"

@@ -1,7 +1,7 @@
 // expect-result: {"all":[1,2],"record":{"f":1,"g":2},"settled":true,"raced":1,"any":1,"forked":1,"interrupted":true,"looped":true}
 // Direct reads in concurrent operands stay with the owning region.
 function work(n: number) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
@@ -11,16 +11,16 @@ export function main() {
   const all = await.all [join f, join g]
   const record = await.all { f: join f, g: join g }
   const settled = await.allSettled [join f, join g]
-  const raced = await.race [join f, do { sleep("1 second"); 0 }]
+  const raced = await.race [join f, do { try sleep("1 second"); 0 }]
   const any = await.any [join f]
   const waiter = fork (join f)
   const forked = join waiter
   const pending = fork sleep("1 minute")
-  const stopper = fork { Fiber.interrupt(pending) }
+  const stopper = fork { try Fiber.interrupt(pending) }
   join stopper
-  const interrupted = Exit.isFailure(Fiber.await(pending))
+  const interrupted = Exit.isFailure(try Fiber.await(pending))
   const other = fork sleep("1 minute")
-  for concurrent (const n of [1]) { Fiber.interrupt(other) }
+  for concurrent (const n of [1]) { try Fiber.interrupt(other) }
   for concurrent (const n of [1]) join f
-  return { all, record, settled: settled.length === 2, raced, any, forked, interrupted, looped: Exit.isFailure(Fiber.await(other)) }
+  return { all, record, settled: settled.length === 2, raced, any, forked, interrupted, looped: Exit.isFailure(try Fiber.await(other)) }
 }

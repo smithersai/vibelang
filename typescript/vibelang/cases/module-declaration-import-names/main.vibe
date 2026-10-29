@@ -13,10 +13,10 @@ module hosts {
 import { none, twice } from hosts
 
 function first(): number!! {
-  Effect.annotateCurrentSpan({ first: true })
+  try Effect.annotateCurrentSpan({ first: true })
   return Option.some(1).getOrElse(() => 0) + none.getOrElse(() => 0)
 }
 
 export function main() {
-  return [first(), sync(() => twice(1))]
+  return [try first(), try sync(() => twice(1))]
 }

@@ -2,7 +2,7 @@
 // A fiber assigned to a binding or property declared outside the region
 // that owns it outlives that region, which interrupts it on exit (D409).
 function heartbeat() {
-  sleep("1 minute")
+  try sleep("1 minute")
 }
 
 interface Monitor {
@@ -36,7 +36,7 @@ export function throughBinding(monitor: Monitor) {
 // Only a const or let of the region may hold the fiber.
 export function inVar() {
   var fiber = fork heartbeat()
-  Fiber.interrupt(fiber)
+  try Fiber.interrupt(fiber)
 }
 
 export class Worker {

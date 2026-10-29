@@ -15,7 +15,7 @@ function read(key: string) {
 
 function readOr(key: string, fallback: string) {
   try {
-    return read(key)
+    return try read(key)
   } catch (e) {
     return `${fallback} (${e._tag})`
   }
@@ -23,5 +23,5 @@ function readOr(key: string, fallback: string) {
 
 // expect-result: {"runtime":"node","one":1,"mode":"fast","level":"info (Missing)"}
 export function main() {
-  return { runtime, one: Effect_1, mode: readOr("mode", "slow"), level: readOr("level", "info") }
+  return { runtime, one: Effect_1, mode: try readOr("mode", "slow"), level: try readOr("level", "info") }
 }

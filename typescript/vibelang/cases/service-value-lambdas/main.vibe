@@ -4,24 +4,24 @@ export const Timings = Context.Reference<(timing: number) => Effect.Effect<void>
   defaultValue: () => () => {}
 })
 function report(timing: number) {
-  const hear = Timings()
-  hear(timing)
+  const hear = try Timings()
+  try hear(timing)
   return timing
 }
 export function main() {
   let reported = 0
-  Effect.provideService(report(10), Timings, (heard) => { reported = heard })
+  try Effect.provideService(report(10), Timings, (heard) => { reported = heard })
   const bare = reported
-  Effect.provideService(report(20), Timings, (heard): void!! => { reported = heard })
+  try Effect.provideService(report(20), Timings, (heard): void!! => { reported = heard })
   const annotated = reported
-  Effect.provideService(Timings, (heard) => { reported = heard })(() => report(30))
+  try Effect.provideService(Timings, (heard) => { reported = heard })(() => report(30))
   const curried = reported
-  Stream.runCollect(Stream.provideService(Stream.fromEffect(report(40)), Timings, (heard) => { reported = heard }))
+  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(40)), Timings, (heard) => { reported = heard }))
   const stream = reported
-  Stream.runCollect(Stream.provideService(Stream.fromEffect(report(50)), Timings, (heard): void!! => { reported = heard }))
+  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(50)), Timings, (heard): void!! => { reported = heard }))
   const streamAnnotated = reported
-  provide Timings = (heard) => { reported = heard } { report(60) }
+  provide Timings = (heard) => { reported = heard } { try report(60) }
   const block = reported
-  provide Timings = (heard): void!! => { reported = heard } { report(70) }
+  provide Timings = (heard): void!! => { reported = heard } { try report(70) }
   return [bare, annotated, curried, stream, streamAnnotated, block, reported]
 }

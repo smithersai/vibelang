@@ -12,7 +12,7 @@ export function main() {
   const length = join forked
   const parenthesized = fork(events.push("fork(…) operand"))
   events.push("after fork(…)")
-  const again = join(parenthesized)
+  const again = try join(parenthesized)
   const all = await.all [events.push("element 1"), `${events.length} events`]
   const keyed = await.all { first: events.push("field"), count: events.length }
   events.push("after await.all")

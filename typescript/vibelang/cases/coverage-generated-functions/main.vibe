@@ -21,7 +21,7 @@ export function step(n: number): number!Oops! {
 }
 
 export function direct(n: number): number!Oops! {
-  return step(n)
+  return try step(n)
 }
 
 export const handler = (base: number): infer _ => (n: number) => step(base + n)
@@ -40,11 +40,11 @@ export function orZero(n: number): number!! {
 }
 
 export function timed(n: number) {
-  return timeout(step(n), "1 second")
+  return try timeout(step(n), "1 second")
 }
 
 export function pair(n: number): number!Oops! {
-  const [x, y] = Effect.all([step(n), step(n + 1)])
+  const [x, y] = try Effect.all([step(n), step(n + 1)])
   return x + y
 }
 
@@ -59,20 +59,20 @@ export function label(n: number): string {
 
 export function guarded(n: number): number!! {
   try {
-    return step(n)
+    return try step(n)
   } catch (e) {
     return 0
   }
 }
 
 export function block(n: number): number!Oops! {
-  const v = do { const a = step(n); a + 1 }
+  const v = do { const a = try step(n); a + 1 }
   return v
 }
 
 export function traced(n: number): number!Oops! {
-  return withSpan(() => {
-    const v = step(n)
+  return try withSpan(() => {
+    const v = try step(n)
     return v
   }, "traced")
 }

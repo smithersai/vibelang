@@ -3,15 +3,15 @@ import { Prompt } from "effect/cli"
 
 // The written contract: a program whose success is a Prompt.
 export const plainBody = (pick: boolean): Effect.Effect<Prompt.Prompt<string>, never, never> => {
-  if (pick) return sync(() => Prompt.succeed(""))
-  return sync(() => Prompt.succeed("x"))
+  if (pick) return try sync(() => Prompt.succeed(""))
+  return try sync(() => Prompt.succeed("x"))
 }
 
 // Same contract, with an additional Effect operation: emitted as declared.
 export const effectBody = (pick: boolean): Effect.Effect<Prompt.Prompt<string>, never, never> => {
-  const n = Effect.succeed(1)
-  if (pick) return sync(() => Prompt.succeed(""))
-  return sync((n: number) => Prompt.succeed(`x${n}`), n)
+  const n = try Effect.succeed(1)
+  if (pick) return try sync(() => Prompt.succeed(""))
+  return try sync((n: number) => Prompt.succeed(`x${n}`), n)
 }
 
 export const noOperation = (): Effect.Effect<number, never, never> => { return 42 }

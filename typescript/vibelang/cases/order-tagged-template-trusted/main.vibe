@@ -5,7 +5,7 @@
 import { tag } from "./helper.js"
 
 function number(n: number) {
-  Effect.yieldNow()
+  try Effect.yieldNow()
   return n
 }
 
@@ -15,6 +15,6 @@ export function main() {
   let effect = ""
   try { tag(Object.assign(["a", "b"], { raw: ["a", "b"] }), 0) } catch { call = "caught" }
   try { tag`a${0}b` } catch { tagged = "caught" }
-  try { tag`a${number(0)}b` } catch { effect = "caught" }
-  return { call, tagged, effect, value: tag`a${7}b`, "effect value": tag`a${number(7)}b` }
+  try { tag`a${try number(0)}b` } catch { effect = "caught" }
+  return { call, tagged, effect, value: tag`a${7}b`, "effect value": tag`a${try number(7)}b` }
 }

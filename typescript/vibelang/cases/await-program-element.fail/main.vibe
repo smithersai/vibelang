@@ -5,14 +5,14 @@
 // Through 0.0.10 each of these elements ran its program or waited for its
 // fiber or Deferred; write job(), held(), join f and ready.await().
 function slow(n: number): number!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
 export function main() {
   const job = () => slow(1)
   const held: number!! = () => {
-    Console.log("ran")
+    try Console.log("ran")
     return 42
   }
   const a = await.all [job]
@@ -20,8 +20,8 @@ export function main() {
   const c = await.all [held, slow(2)]
   const f = fork slow(3)
   const d = await.all [f]
-  const ready = Deferred.make<number>()
-  Deferred.succeed(ready, 4)
+  const ready = try Deferred.make<number>()
+  try Deferred.succeed(ready, 4)
   const e = await.all [ready]
   return { a, b, c, d, e }
 }

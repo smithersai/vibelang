@@ -19,5 +19,5 @@ export service Version: number {
 }
 
 export function greet(query: string) {
-  return `${Prefix()}${Search.find(query)} v${Version()}`
+  return `${try Prefix()}${try Search.find(query)} v${try Version()}`
 }

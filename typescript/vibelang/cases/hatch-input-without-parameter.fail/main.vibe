@@ -3,7 +3,7 @@
 // EK4405 alone: TypeScript's report that the function fits no overload of
 // sync, naming the async one, is hidden.
 function size(r: { name: string }) {
-  return sync(() => { return r.name.length }, r)
+  return try sync(() => { return r.name.length }, r)
 }
 
-export function main() { return size({ name: "a" }) }
+export function main() { return try size({ name: "a" }) }

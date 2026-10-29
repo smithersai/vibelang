@@ -36,12 +36,12 @@ const DirectoryLive = Layer.succeed(Directory, {
 // The provider captures Directory when the layer is built, so Directory is a
 // requirement of the layer, not of Users.find.
 function makeUsers() {
-  const directory = Directory()
+  const directory = try Directory()
   const impl: Users.Shape = {
     find(id) {
-      const user = directory.lookup(id)
-      if (user === undefined) return Effect.fail(new UserNotFound({ id }))
-      return Effect.succeed(user)
+      const user = try directory.lookup(id)
+      if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
+      return try Effect.succeed(user)
     }
   }
   return impl
@@ -55,8 +55,8 @@ class UsersInMemory implements Users {
 
   find(id: string) {
     const user = this.rows.get(id)
-    if (user === undefined) return Effect.fail(new UserNotFound({ id }))
-    return Effect.succeed(user)
+    if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
+    return try Effect.succeed(user)
   }
 }
 
@@ -75,12 +75,12 @@ const UsersGrace = Layer.succeed(Users, {
 })
 
 export function greet(id: string) {
-  const user = Users.find(id)
-  return Settings.shout(`${Settings().greeting}, ${user.name}`)
+  const user = try Users.find(id)
+  return try Settings.shout(`${(try Settings()).greeting}, ${user.name}`)
 }
 
 export function lookupBoth(id: string) {
-  const first = Users().find(id)
+  const first = try (try Users()).find(id)
   return first.name
 }
 
@@ -89,11 +89,11 @@ const Memory = Layer.mergeAll(Layer.succeed(Users, new UsersInMemory()), Setting
 // expect-result: {"live":"Welcome, Ada!","memory":"Welcome, Grace!","direct":"Grace","missing":"UserNotFound","fake":"fake 3","grace":"Grace"}
 export function main() {
   return {
-    live: Effect.provide(() => greet("1"), Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), Settings.layer)),
-    memory: Effect.provide(() => greet("7"), Memory),
-    direct: Effect.provide(() => lookupBoth("7"), Layer.succeed(Users, new UsersInMemory())),
-    missing: Effect.flip(() => Effect.provide(() => greet("9"), Memory))._tag,
-    fake: Effect.provide(() => lookupBoth("3"), Layer.succeed(Users, new UsersFake())),
-    grace: Effect.provide(() => lookupBoth("4"), UsersGrace)
+    live: try Effect.provide(() => greet("1"), Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), Settings.layer)),
+    memory: try Effect.provide(() => greet("7"), Memory),
+    direct: try Effect.provide(() => lookupBoth("7"), Layer.succeed(Users, new UsersInMemory())),
+    missing: (try Effect.flip(() => Effect.provide(() => greet("9"), Memory)))._tag,
+    fake: try Effect.provide(() => lookupBoth("3"), Layer.succeed(Users, new UsersFake())),
+    grace: try Effect.provide(() => lookupBoth("4"), UsersGrace)
   }
 }

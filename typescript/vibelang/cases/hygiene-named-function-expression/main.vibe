@@ -5,30 +5,30 @@
 type Self = () => Self!!
 
 const named = function inner(): Self!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return inner
 }
 
 function declaration(f: Self = declaration): Self!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return f
 }
 
 // Recursion through the name runs on Effect's frames, by name too.
 const byName = function self(n: number): number!! {
   if (n === 0) return 7
-  return Effect.retry(self(n - 1), { times: 0 })
+  return try Effect.retry(self(n - 1), { times: 0 })
 }
 
 const deep = function count(n: number): number!! {
-  const tick = Effect.sync(() => 0)
-  return n === 0 ? 0 : count(n - 1) + 1
+  const tick = try Effect.sync(() => 0)
+  return n === 0 ? 0 : try count(n - 1) + 1
 }
 
 export function main() {
-  const fromNamed = named()
-  const fromDeclaration = declaration()
+  const fromNamed = try named()
+  const fromDeclaration = try declaration()
   // Calling a Self in TypeScript builds an Effect.
-  const builds = sync((a: Self, b: Self) => [Effect.isEffect(a()), Effect.isEffect(b())], fromNamed, fromDeclaration)
-  return [fromNamed === named, builds[0], fromDeclaration === declaration, builds[1], byName(2), deep(20000)]
+  const builds = try sync((a: Self, b: Self) => [Effect.isEffect(a()), Effect.isEffect(b())], fromNamed, fromDeclaration)
+  return [fromNamed === named, builds[0], fromDeclaration === declaration, builds[1], try byName(2), try deep(20000)]
 }

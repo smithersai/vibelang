@@ -130,6 +130,5 @@ const VibeSyntaxPrefix = parser.VibeSyntaxPrefix
 const VibeSyntaxSchemaAlias = parser.VibeSyntaxSchemaAlias
 const VibeSyntaxStatement = parser.VibeSyntaxStatement
 const VibeSyntaxTopic = parser.VibeSyntaxTopic
-const VibeSyntaxTryCall = parser.VibeSyntaxTryCall
 
 type VibeSyntaxVariant = parser.VibeSyntaxVariant

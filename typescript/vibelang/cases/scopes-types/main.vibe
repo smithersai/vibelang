@@ -17,20 +17,20 @@ export abstract class Audit {
 
 // using: the block's Scope; Pool and Down remain.
 export function query() {
-  using conn = Pool.acquire()
+  using conn = try Pool.acquire()
   return conn.id
 }
 
 // No using: the caller's Scope owns the connection.
 export function lease() {
-  const conn = Pool.acquire()
+  const conn = try Pool.acquire()
   return conn.id
 }
 
 // An acquisition without using and one with using in the same block.
 export function both() {
-  const kept = Pool.acquire()
-  using held = Pool.acquire()
+  const kept = try Pool.acquire()
+  using held = try Pool.acquire()
   return kept.id + held.id
 }
 
@@ -51,8 +51,8 @@ export const background = () => join fork(Audit.record("background"))
 
 // Effect.forkScoped keeps Effect's contract inside a region too.
 export function scopedFork() {
-  using conn = Pool.acquire()
-  Effect.forkScoped(() => Audit.record(`conn ${conn.id}`))
+  using conn = try Pool.acquire()
+  try Effect.forkScoped(() => Audit.record(`conn ${conn.id}`))
   return conn.id
 }
 
@@ -63,13 +63,13 @@ const PoolTest = Layer.succeed(Pool, {
 const AuditTest = Layer.succeed(Audit, { record: () => {} })
 
 function all() {
-  const q = query()
-  const b = Effect.scoped(() => both())
-  const a = audited()
+  const q = try query()
+  const b = try Effect.scoped(() => both())
+  const a = try audited()
   return [q, b, a]
 }
 
 // expect-result: [1,5,"audited"]
 export function main() {
-  return Effect.provide(() => all(), Layer.mergeAll(PoolTest, AuditTest))
+  return try Effect.provide(() => all(), Layer.mergeAll(PoolTest, AuditTest))
 }

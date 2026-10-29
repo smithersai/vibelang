@@ -8,5 +8,5 @@ export const scoped: Effect<void, never, Scope> = Effect.void
 
 // expect-result: "ada"
 export function main() {
-  return lookup(0)
+  return try lookup(0)
 }

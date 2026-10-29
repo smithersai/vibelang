@@ -10,18 +10,18 @@ interface Hooks {
 
 export const hooks: Hooks = {
   emit: (n) => {
-    return n === 0 ? Effect.interrupt : Console.log("emit", n)
+    return n === 0 ? Effect.interrupt : try Console.log("emit", n)
   },
-  sleep: (n) => n <= 2 ? Console.log("sleep", n) : (Effect.never),
+  sleep: (n) => n <= 2 ? try Console.log("sleep", n) : (Effect.never),
   cached: (n) => n ?? Effect.interrupt,
 }
 
 export function unannotated(n: number) {
-  return n === 0 ? Effect.interrupt : n === 1 ? Effect.never : Console.log("call", n)
+  return n === 0 ? Effect.interrupt : n === 1 ? Effect.never : try Console.log("call", n)
 }
 
 // Both arms are programs: a factory, which runs the chosen one.
 export const both = (n: number): void!! => n === 0 ? Effect.interrupt : Effect.void
 
 // A called arm runs, as EK4802's quick fix writes it.
-export const called = (n: number): void!! => n === 0 ? Effect.interrupt() : Console.log("emit", n)
+export const called = (n: number): void!! => n === 0 ? try Effect.interrupt() : try Console.log("emit", n)

@@ -2,5 +2,5 @@
 import * as Effect from "effect/Effect"
 export function invalid(choose: boolean): number!! {
   const held: Effect.Effect<number, string> = () => { throw "held" }
-  return Effect.uninterruptible(choose ? held : Effect.fail("call"))
+  return try Effect.uninterruptible(choose ? held : Effect.fail("call"))
 }

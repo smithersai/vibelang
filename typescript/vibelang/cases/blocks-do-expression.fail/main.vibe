@@ -20,5 +20,5 @@ function returns() {
 }
 
 export function main() {
-  return [noElse(2), endsInDeclaration(), returns()]
+  return [try noElse(2), try endsInDeclaration(), try returns()]
 }

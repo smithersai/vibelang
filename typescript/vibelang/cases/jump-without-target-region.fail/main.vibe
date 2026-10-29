@@ -13,7 +13,7 @@ function find(key: string): number!Missing {
 
 export function owned() {
   {
-    using r = Effect.acquireRelease(() => 1, () => {})
+    using r = try Effect.acquireRelease(() => 1, () => {})
     break
   }
 }
@@ -21,7 +21,7 @@ export function owned() {
 export function caught(keys: ReadonlyArray<string>) {
   const kept: number[] = []
   try {
-    kept.push(find(keys[0]))
+    kept.push(try find(keys[0]))
   } catch (_) {
     continue
   }
@@ -30,17 +30,17 @@ export function caught(keys: ReadonlyArray<string>) {
 
 export function labeled() {
   try {
-    find("a")
+    try find("a")
     break outer
   } finally {
-    Console.log("done")
+    try Console.log("done")
   }
 }
 
 export function looped() {
   for (const key of ["a", ""]) {
     try {
-      find(key)
+      try find(key)
     } catch (_) {
       continue missing
     }

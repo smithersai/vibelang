@@ -23,7 +23,7 @@ const UsersLive = Layer.succeed(Users, {
 })
 
 function full(id: string): string!NotFound!Users {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 function noDependencies(n: number): number!Timeout! {
@@ -32,7 +32,7 @@ function noDependencies(n: number): number!Timeout! {
 }
 
 function inferred(id: string): string!NotFound {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 function neither(): number!! {
@@ -40,10 +40,10 @@ function neither(): number!! {
 }
 
 function onlyDependencies(): number!!Users {
-  return Users.count()
+  return try Users.count()
 }
 
-const arrow = (n: number): number!Timeout => noDependencies(n) + 1
+const arrow = (n: number): number!Timeout => try noDependencies(n) + 1
 
 type Finder = (id: string) => string!NotFound
 type Maybe = (number!!) | undefined
@@ -54,28 +54,28 @@ function find(finder: Finder, id: string): string!! {
 }
 
 function either(program: Maybe): number!! {
-  return program === undefined ? 0 : program()
+  return program === undefined ? 0 : try program()
 }
 
 const five: Effect<number> = Effect.sync(() => 5)
 
 function unwrap(program: Nested): number!NotFound! {
-  const inner = program()
-  return inner()
+  const inner = try program()
+  return try inner()
 }
 
 export function main() {
   provide UsersLive {
     return {
-      full: full("42"),
-      noDependencies: noDependencies(1),
-      inferred: inferred("42"),
-      neither: neither(),
-      onlyDependencies: onlyDependencies(),
-      arrow: arrow(1),
-      find: find((id) => { if (id === "7") throw new NotFound({ id }); return id }, "7"),
-      either: either(Effect.succeed(4)),
-      unwrap: unwrap(Effect.succeed(five))
+      full: try full("42"),
+      noDependencies: try noDependencies(1),
+      inferred: try inferred("42"),
+      neither: try neither(),
+      onlyDependencies: try onlyDependencies(),
+      arrow: try arrow(1),
+      find: try find((id) => { if (id === "7") throw new NotFound({ id }); return id }, "7"),
+      either: try either(Effect.succeed(4)),
+      unwrap: try unwrap(Effect.succeed(five))
     }
   }
 }

@@ -3,6 +3,6 @@ import { Stamp, Users, UsersLive } from "./services.vibe"
 
 export function main() {
   provide UsersLive {
-    Console.log(`${Users.find("1")} at ${Stamp.now()}`)
+    try Console.log(`${try Users.find("1")} at ${try Stamp.now()}`)
   }
 }

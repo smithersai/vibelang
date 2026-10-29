@@ -15,8 +15,8 @@ control Stop {
 }
 
 function release(version: string) {
-  if (!Approval.approve(`deploy ${version}`)) return "declined"
-  Approval.note(`released ${version}`)
+  if (!try Approval.approve(`deploy ${version}`)) return "declined"
+  try Approval.note(`released ${version}`)
   return `released ${version}`
 }
 
@@ -24,21 +24,21 @@ function release(version: string) {
 // function.
 function autoApprove(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
 function decline(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
-    resume(request.endsWith("v9"))
+    try resume(request.endsWith("v9"))
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
@@ -49,7 +49,7 @@ function search(limit: number) {
   try {
     for (let i = 0; ; i++) {
       total += i
-      if (total > limit) Stop.stop("full")
+      if (total > limit) try Stop.stop("full")
     }
   } handle Stop.stop(reason) {
     return `stopped: ${reason}`
@@ -61,14 +61,14 @@ function search(limit: number) {
 function audit(version: string) {
   const events: Array<string> = []
   try {
-    events.push(release(version))
+    events.push(try release(version))
     return events
   } handle Approval.approve(request) {
     events.push(request)
-    resume(true)
+    try resume(true)
     events.push("approval done")
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
@@ -78,16 +78,16 @@ function cancel() {
   const steps: Array<string> = []
   try {
     try {
-      Approval.approve("deploy now")
+      try Approval.approve("deploy now")
       steps.push("deployed")
     } finally {
       steps.push("cleanup")
     }
   } handle Approval.approve(request) {
-    abandon()
+    try abandon()
     steps.push("cancelled")
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
   return steps.join(" then ")
 }
@@ -96,11 +96,11 @@ function cancel() {
 // the handle clauses see it.
 function busy(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
-    resumeWith(() => { throw new ReviewBusy({ request }) })
+    try resumeWith(() => { throw new ReviewBusy({ request }) })
   } handle Approval.note(text) {
-    resume()
+    try resume()
   } catch (e) {
     return `busy ${(e as { readonly request: string }).request}`
   }
@@ -111,13 +111,13 @@ function skipEven(items: ReadonlyArray<number>) {
   const kept: Array<number> = []
   for (const item of items) {
     try {
-      if (!Approval.approve(`${item}`)) continue
+      if (!try Approval.approve(`${item}`)) continue
       kept.push(item)
     } handle Approval.approve(request) {
       if (Number(request) % 2 === 0) continue
-      resume(true)
+      try resume(true)
     } handle Approval.note(text) {
-      resume()
+      try resume()
     }
   }
   return kept
@@ -127,11 +127,11 @@ function skipEven(items: ReadonlyArray<number>) {
 function logs() {
   const lines: Array<string> = []
   try {
-    Log.write("hi", "info")
-    Log.write("bye")
+    try Log.write("hi", "info")
+    try Log.write("bye")
   } handle Log.write(message, level = "default") {
     lines.push(`${message}/${level}`)
-    resume()
+    try resume()
   }
   return lines.join(",")
 }
@@ -139,19 +139,19 @@ function logs() {
 // One statement can handle several controls.
 function both() {
   try {
-    Log.write("x")
-    return Approval.approve("y") ? "two controls" : "no"
+    try Log.write("x")
+    return try Approval.approve("y") ? "two controls" : "no"
   } handle Log.write(message) {
-    resume()
+    try resume()
   } handle Approval.approve(request) {
-    resume(true)
+    try resume(true)
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
 function resource(name: string, events: Array<string>) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
       events.push(`acquire ${name}`)
       return name
@@ -167,31 +167,31 @@ function resource(name: string, events: Array<string>) {
 function scoped() {
   const events: Array<string> = []
   try {
-    events.push(`answer ${Approval.approve("scoped")}`)
+    events.push(`answer ${try Approval.approve("scoped")}`)
     return events
   } handle Approval.approve(request) {
     if (request === "scoped") {
-      using held = resource("held", events)
-      resume(true)
+      using held = try resource("held", events)
+      try resume(true)
     } else {
-      resume(false)
+      try resume(false)
     }
   } handle Approval.note(text) {
-    resume()
+    try resume()
   }
 }
 
 export function main() {
   return {
-    a: autoApprove("v1"),
-    b: decline("v1"),
-    c: search(10),
-    d: audit("v2"),
-    e: cancel(),
-    f: busy("v3"),
-    g: skipEven([1, 2, 3]),
-    h: logs(),
-    i: both(),
-    j: scoped()
+    a: try autoApprove("v1"),
+    b: try decline("v1"),
+    c: try search(10),
+    d: try audit("v2"),
+    e: try cancel(),
+    f: try busy("v3"),
+    g: try skipEven([1, 2, 3]),
+    h: try logs(),
+    i: try both(),
+    j: try scoped()
   }
 }

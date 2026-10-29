@@ -10,8 +10,8 @@ control Steps {
 }
 
 function work() {
-  Steps.first()
-  Steps.second()
+  try Steps.first()
+  try Steps.second()
   return 42
 }
 
@@ -19,9 +19,9 @@ function work() {
 // clause's resume then returns.
 export function early() {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    const n: number = resume()
+    const n: number = try resume()
     return n.toFixed(1)
   } handle Steps.second() {
     return "early"
@@ -35,9 +35,9 @@ function half(n: number) {
 // TS2345: the same result, passed where a number is expected.
 export function passed() {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    return half(resume())
+    return try half(try resume())
   } handle Steps.second() {
     return "early"
   }
@@ -48,8 +48,8 @@ control Once {
 }
 
 function twice() {
-  Once.step()
-  Once.step()
+  try Once.step()
+  try Once.step()
   return 42
 }
 
@@ -57,9 +57,9 @@ function twice() {
 // the resume that answers the first.
 export function nested() {
   try {
-    return twice()
+    return try twice()
   } handle Once.step() {
-    const n: number = resume()
+    const n: number = try resume()
     return n.toFixed(1)
   }
 }
@@ -68,10 +68,10 @@ export function nested() {
 // undefined.
 export function falls() {
   try {
-    twice()
+    try twice()
   } handle Once.step() {
-    const n: number = resume()
-    Console.log(n.toFixed(1))
+    const n: number = try resume()
+    try Console.log(n.toFixed(1))
   }
 }
 
@@ -79,11 +79,11 @@ export function falls() {
 export function breaks() {
   for (const round of [1, 2]) {
     try {
-      twice()
+      try twice()
       break
     } handle Once.step() {
-      const n: number = resume()
-      Console.log(round, n.toFixed(1))
+      const n: number = try resume()
+      try Console.log(round, n.toFixed(1))
     }
   }
 }
@@ -94,13 +94,13 @@ let calls = 0
 // undefined, which the first step's resume then returns.
 export function stops() {
   try {
-    return twice()
+    return try twice()
   } handle Once.step() {
     calls++
     if (calls === 2) {
-      Console.log("second step stops")
+      try Console.log("second step stops")
     } else {
-      const n: number = resume()
+      const n: number = try resume()
       return n + 1
     }
   }
@@ -109,9 +109,9 @@ export function stops() {
 // EK2110: handle types resume's result with the program's, number, but the
 // second clause can end the handle with "early" first.
 export function expression() {
-  return handle(() => work(), Steps, {
+  return try handle(() => work(), Steps, {
     first(k) {
-      const n: number = resume(k, undefined)
+      const n: number = try resume(k, undefined)
       return n.toFixed(1)
     },
     second(k) {
@@ -122,13 +122,13 @@ export function expression() {
 
 // EK2110: with onReturn, resume's result is typed never.
 export function transformed() {
-  return handle(() => work(), Steps, {
+  return try handle(() => work(), Steps, {
     first(k) {
-      const n: number = resume(k, undefined)
+      const n: number = try resume(k, undefined)
       return n + 1
     },
     second(k) {
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   }, (n) => `${n}`)
 }
@@ -137,10 +137,10 @@ export function transformed() {
 // This used to run in handle-resume-result with only an EK2119 warning.
 export function unwritten() {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    return `${resume()} first`
+    return `${try resume()} first`
   } handle Steps.second() {
-    resume()
+    try resume()
   }
 }

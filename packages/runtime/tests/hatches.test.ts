@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Cause, Context, Deferred, Effect, Exit, Fiber } from "effect"
-import { $asyncHatch, callback, sync, try as attempt, type Resume } from "vibelang-runtime"
+import { $asyncHatch, $try, callback, sync, type Resume } from "vibelang-runtime"
 
 test("sync is lazy and rerunnable, passes inputs, and leaves returned Effects inert", async () => {
   let runs = 0
@@ -17,53 +17,27 @@ test("sync is lazy and rerunnable, passes inputs, and leaves returned Effects in
 })
 
 for (const asynchronous of [false, true]) {
-  test(`sync ${asynchronous ? "rejection" : "throw"} is a defect; try maps it to an expected failure`, async () => {
+  test(`sync ${asynchronous ? "rejection" : "throw"} is a defect`, async () => {
     const error = new Error("foreign failure")
     const evaluate = asynchronous ? async () => { throw error } : () => { throw error }
     expect(await Effect.runPromiseExit(sync(evaluate))).toEqual(Exit.die(error))
-    const unmapped = await Effect.runPromiseExit(attempt(evaluate))
-    expect(Exit.isFailure(unmapped)).toBe(true)
-    if (Exit.isFailure(unmapped)) {
-      const failure = unmapped.cause.reasons.find(Cause.isFailReason)?.error
-      expect(failure).toBeInstanceOf(Cause.UnknownError)
-      expect((failure as Cause.UnknownError).cause).toBe(error)
-    }
-    expect(await Effect.runPromiseExit(attempt(evaluate, cause => ({ _tag: "Mapped", cause })))).toEqual(
-      Exit.fail({ _tag: "Mapped", cause: error })
-    )
   })
 }
 
-test("try keeps the mapper second, passes inputs, and calls the mapper only on failure", async () => {
-  const errors: unknown[] = []
-  const mapper = (error: unknown) => { errors.push(error); return "invalid" }
-  expect(Effect.runSync(attempt((a: number, b: number) => a + b, mapper, 20, 22))).toBe(42)
-  expect(await Effect.runPromise(attempt(async (n: number) => n + 1, 41))).toBe(42)
-  expect(Effect.runSync(attempt(42, mapper))).toBe(42)
-  expect(await Effect.runPromise(attempt(Promise.resolve(42), mapper))).toBe(42)
-  expect(errors).toEqual([])
-  expect(Effect.runSyncExit(attempt(JSON.parse, mapper, "{"))).toEqual(Exit.fail("invalid"))
-  expect(errors).toHaveLength(1)
-  expect(errors[0]).toBeInstanceOf(SyntaxError)
-})
-
-test("a try mapper that throws produces a defect", async () => {
-  const defect = new Error("bad mapper")
-  for (const evaluate of [() => { throw "foreign" }, async () => { throw "foreign" }]) {
-    expect(await Effect.runPromiseExit(attempt(evaluate, () => { throw defect }))).toEqual(Exit.die(defect))
-  }
+test("$try, which try e lowers to, returns its Effect unrun", () => {
+  const program = Effect.succeed(42)
+  expect($try(program)).toBe(program)
 })
 
 test("synchronous hatch rest parameters receive exactly the supplied inputs", () => {
   expect(Effect.runSync(sync((...inputs: number[]) => inputs, 1, 2, 3))).toEqual([1, 2, 3])
-  expect(Effect.runSync(attempt((...inputs: number[]) => inputs, 1, 2, 3))).toEqual([1, 2, 3])
 })
 
-// Called as a value or from TypeScript, sync and try see no types, so they
-// decide by the function's declaration (D232): an async function that
-// declares a parameter after its inputs gets the AbortSignal there; any
-// other function gets its inputs only.
-for (const [name, hatch] of [["sync", sync], ["try", attempt]] as const) {
+// Called as a value or from TypeScript, sync sees no types, so it decides
+// by the function's declaration (D232): an async function that declares a
+// parameter after its inputs gets the AbortSignal there; any other function
+// gets its inputs only.
+for (const [name, hatch] of [["sync", sync]] as const) {
   test(`${name}: an async function receives the AbortSignal after its inputs (D230)`, async () => {
     const value = await Effect.runPromise(hatch(async (input: number, signal: AbortSignal) => ({ input, signal }), 42))
     expect(value.input).toBe(42)
@@ -104,7 +78,7 @@ for (const [name, hatch] of [["sync", sync], ["try", attempt]] as const) {
 
 // A direct hatch calls an async function through $asyncHatch: the compiler
 // passes signal false when the overload TypeScript chose gives the function
-// its inputs alone, and sync and try called as values pass true (D232).
+// its inputs alone, and sync called as a value passes true (D232).
 test("$asyncHatch gives exactly the inputs, then the signal only when allowed and declared", async () => {
   const optional = async (a: number, b?: unknown) => [a, b]
   expect(await Effect.runPromise(Effect.promise($asyncHatch(optional, false, 1)))).toEqual([1, undefined])

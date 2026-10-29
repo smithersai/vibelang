@@ -5,6 +5,6 @@ import { attempts } from "./repro.vibe"
 const run = <A>(_program: Effect.Effect<A, unknown>): Promise<A> => Promise.resolve(1 as A)
 // expect-result: {"cold":0,"promises":[true,true,true]}
 export function main() {
-  const results = [methodShorthand(run).go(), arrowProperty(run).go(), unannotated(run).go()]
+  const results = [(try methodShorthand(run)).go(), (try arrowProperty(run)).go(), try (try unannotated(run)).go()]
   return { cold: attempts, promises: results.map((p) => p instanceof Promise) }
 }

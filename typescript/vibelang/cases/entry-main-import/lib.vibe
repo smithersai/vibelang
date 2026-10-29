@@ -1,6 +1,6 @@
 // An imported module's main does not run: import.meta.main is false there.
 export function main() {
-  Console.log("lib main ran")
+  try Console.log("lib main ran")
 }
 
 export function helper() {

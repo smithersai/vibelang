@@ -11,11 +11,11 @@ const work = (): void!! => {
   ran++
 }
 
-const hook: Hook = (n) => n > 0 ? (work() |> Effect.orDie(%)) : Effect.void
+const hook: Hook = (n) => n > 0 ? (work() |> try Effect.orDie(%)) : Effect.void
 
 export function main() {
-  hook(0)
+  try hook(0)
   const skipped = ran
-  hook(1)
+  try hook(1)
   return { ran, skipped }
 }

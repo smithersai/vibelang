@@ -4,30 +4,30 @@
 // under a written number success. A pipe's value is its body's (D154): an
 // Exit a running body succeeds with is data, as for the call without the pipe.
 const settled = (effect: number!string!): Exit.Exit<number, string>!! =>
-  Effect.suspend(() => Effect.exit(effect) |> Effect.ensuring(%, Effect.void))
+  Effect.suspend(() => Effect.exit(effect) |> try Effect.ensuring(%, Effect.void))
 
 const masked = (effect: number!string!): Exit.Exit<number, string>!! =>
   Effect.uninterruptibleMask((restore) => {
-    return restore(Effect.exit(effect)) |> Effect.ensuring(%, Effect.void)
+    return restore(Effect.exit(effect)) |> try Effect.ensuring(%, Effect.void)
   })
 
 const chained = (effect: number!string!): Exit.Exit<number, string>!! =>
-  Effect.suspend(() => Effect.exit(effect) |> Effect.ensuring(%, Effect.void) |> Effect.tap(%, () => Console.log("settled")))
+  Effect.suspend(() => Effect.exit(effect) |> Effect.ensuring(%, Effect.void) |> try Effect.tap(%, () => Console.log("settled")))
 
 // A body that does not run, such as a call that returns an Exit, stays the
 // program the callback returns, as Effect.suspend(() => Exit.succeed(n)) does.
 const fromValue = (n: number): number!! => Effect.suspend(() => n |> Exit.succeed(%))
 
 export function main() {
-  const failed = settled(Effect.fail("boom"))
-  const ok = masked(Effect.succeed(7))
-  const tapped = chained(Effect.succeed(9))
+  const failed = try settled(Effect.fail("boom"))
+  const ok = try masked(Effect.succeed(7))
+  const tapped = try chained(Effect.succeed(9))
   return [
     Exit.isFailure(failed),
     Exit.isSuccess(ok),
     Exit.isSuccess(ok) ? ok.value : -1,
     Exit.isSuccess(tapped),
     Exit.isSuccess(tapped) ? tapped.value : -1,
-    fromValue(5),
+    try fromValue(5),
   ]
 }

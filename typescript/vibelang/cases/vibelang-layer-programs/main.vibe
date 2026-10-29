@@ -25,12 +25,12 @@ const DatabaseLive = Layer.succeed(Database, {
 })
 
 const UsersLive = Layer.effect(Users, () => {
-  const db = Database()
+  const db = try Database()
   return {
     find(id) {
-      const user = db.lookup(id)
-      if (user === undefined) return Effect.fail(new UserNotFound({ id }))
-      return Effect.succeed(user)
+      const user = try db.lookup(id)
+      if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
+      return try Effect.succeed(user)
     },
     count: () => 1
   }
@@ -41,10 +41,10 @@ export const inferred: Equals<typeof UsersLive, Layer.Layer<Users, never, Databa
 
 // expect-result: {"name":"Ada","count":1,"missing":"UserNotFound"}
 export function main() {
-  return Effect.provide(() => {
-    const name = Users.find("1").name
-    const count = Users.count()
-    const missing = Effect.flip(() => Users.find("9"))._tag
+  return try Effect.provide(() => {
+    const name = (try Users.find("1")).name
+    const count = try Users.count()
+    const missing = (try Effect.flip(() => Users.find("9")))._tag
     return { name, count, missing }
   }, Layer.provide(UsersLive, DatabaseLive))
 }

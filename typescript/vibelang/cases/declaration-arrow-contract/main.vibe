@@ -12,20 +12,20 @@ export const parse = (input: string): Digest!Empty! => {
 }
 
 export const parseExpression = function (input: string): Digest!Empty! {
-  return parse(input)
+  return try parse(input)
 }
 
 export const codec = {
   parse(input: string): Digest!Empty! {
-    return parse(input)
+    return try parse(input)
   }
 }
 
 export function parseDeclaration(input: string): Digest!Empty! {
-  return parse(input)
+  return try parse(input)
 }
 
 // expect-result: "abc abc abc abc"
 export function main(): string!Empty! {
-  return `${parse("abc")} ${parseExpression("abc")} ${codec.parse("abc")} ${parseDeclaration("abc")}`
+  return `${try parse("abc")} ${try parseExpression("abc")} ${try codec.parse("abc")} ${try parseDeclaration("abc")}`
 }

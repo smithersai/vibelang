@@ -33,7 +33,7 @@ function show(cause: Cause.Cause<unknown>): string {
 }
 
 function outcome(program: unknown!unknown) {
-  return match (exit(program)) {
+  return match (try exit(program)) {
     when Exit.Success(let value): `ok(${name(value)})`;
     when Exit.Failure(let cause): show(cause);
   }
@@ -45,19 +45,19 @@ function failNow() {
 }
 
 function dieNow() {
-  die("D")
+  try die("D")
 }
 
 function failLater() {
-  sleep("5 millis")
+  try sleep("5 millis")
   throw new E()
 }
 
 function dieOnInterrupt() {
   try {
-    sleep("1 hour")
+    try sleep("1 hour")
   } finally {
-    die("D")
+    try die("D")
   }
 }
 
@@ -65,7 +65,7 @@ function finallyDies() {
   try {
     throw new E()
   } finally {
-    die("D")
+    try die("D")
   }
 }
 
@@ -79,7 +79,7 @@ function finallyThrows() {
 
 function dieThenFinallyThrows() {
   try {
-    die("D")
+    try die("D")
   } finally {
     throw new E2()
   }
@@ -92,17 +92,17 @@ function finallyExitDies() {
     throw new E()
   } finally (outcome) {
     seenExit = outcome._tag
-    die("D")
+    try die("D")
   }
 }
 
 function usingReleaseDies() {
-  using resource = Effect.acquireRelease(() => 1, (_) => die("D"))
+  using resource = try Effect.acquireRelease(() => 1, (_) => die("D"))
   throw new E()
 }
 
 function usingDisposeThrows() {
-  using resource = sync(() => ({ [Symbol.dispose]() { throw new Error("D") } }))
+  using resource = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } }))
   throw new E()
 }
 
@@ -111,12 +111,12 @@ function* numbers() {
     yield 1
     yield 2
   } finally {
-    die("D")
+    try die("D")
   }
 }
 
 function* closingItems() {
-  const items = sync(() => ({
+  const items = try sync(() => ({
     [Symbol.iterator]() {
       return { next: () => ({ done: false, value: 1 }), return(): IteratorResult<number> { throw new Error("D") } }
     }
@@ -142,8 +142,8 @@ function awaitAllMixed() {
 
 function forConcurrentMixed() {
   for concurrent (const i of [0, 1]) {
-    if (i === 0) failLater()
-    else dieOnInterrupt()
+    if (i === 0) try failLater()
+    else try dieOnInterrupt()
   }
 }
 
@@ -157,7 +157,7 @@ function awaitAnyMixed() {
 
 function interruptThenFinallyThrows() {
   try {
-    interrupt()
+    try interrupt()
   } finally {
     throw new E()
   }
@@ -165,15 +165,15 @@ function interruptThenFinallyThrows() {
 
 function asksWithCleanup() {
   try {
-    return Ask.ask()
+    return try Ask.ask()
   } finally {
-    die("D")
+    try die("D")
   }
 }
 
 function abandonMixed() {
   try {
-    return asksWithCleanup()
+    return try asksWithCleanup()
   } handle Ask.ask() {
     throw new E()
   }
@@ -185,38 +185,38 @@ function allSettledMixed() {
 }
 
 function forUsingHead() {
-  for (using r = sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })); ;) {
+  for (using r = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })); ;) {
     throw new E()
   }
 }
 function forUsingOf() {
-  for (using r of sync(() => [{ [Symbol.dispose]() { throw new Error("D") } }])) {
+  for (using r of try sync(() => [{ [Symbol.dispose]() { throw new Error("D") } }])) {
     throw new E()
   }
 }
 function callableDispose() {
-  using r = sync(() => Object.assign(() => {}, { [Symbol.dispose]() { throw new Error("D") } }))
+  using r = try sync(() => Object.assign(() => {}, { [Symbol.dispose]() { throw new Error("D") } }))
   throw new E()
 }
 function callableAsyncDispose() {
-  using r = sync(() => Object.assign(() => {}, { async [Symbol.asyncDispose]() { throw new Error("D") } }))
+  using r = try sync(() => Object.assign(() => {}, { async [Symbol.asyncDispose]() { throw new Error("D") } }))
   throw new E()
 }
 function holderDispose() {
-  using holder = Effect.acquireRelease(
-    () => ({ value: sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })) }),
+  using holder = try Effect.acquireRelease(
+    () => ({ value: try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })) }),
     (h) => sync((holder) => holder.value[Symbol.dispose](), h)
   )
   throw new E()
 }
 function handBuiltMixed() {
-  Effect.failCause(Cause.combine(Cause.fail(new E()), Cause.die("D")))
+  try Effect.failCause(Cause.combine(Cause.fail(new E()), Cause.die("D")))
 }
 
 // Recovery forms.
 function viaCatch(src: () => unknown!E | E2) {
   try {
-    src()
+    try src()
     return "no failure"
   } catch (e) {
     return `catch ran: ${e._tag}`
@@ -233,58 +233,58 @@ function viaCatchValue(src: () => unknown!E | E2) {
 
 function viaRetry(src: () => unknown!E | E2) {
   attempts = 0
-  return retry(() => {
+  return try retry(() => {
     attempts++
-    return src()
+    return try src()
   }, { times: 2 })
 }
 
 function viaMapError(src: () => unknown!E | E2) {
-  return Effect.mapError(src(), (e) => new M({ of: e._tag }))
+  return try Effect.mapError(src(), (e) => new M({ of: e._tag }))
 }
 
 function viaCatchDefect(src: () => unknown!E | E2) {
-  return Effect.catchDefect(src(), (d) => `defect ${name(d)}`)
+  return try Effect.catchDefect(src(), (d) => `defect ${name(d)}`)
 }
 
 function forms(src: () => unknown!E | E2) {
-  const raw = outcome(src())
-  const caught = outcome(viaCatch(src))
-  const matched = outcome(viaCatchMatch(src))
-  const fallback = outcome(viaCatchValue(src))
-  const retried = outcome(viaRetry(src))
+  const raw = try outcome(src())
+  const caught = try outcome(viaCatch(src))
+  const matched = try outcome(viaCatchMatch(src))
+  const fallback = try outcome(viaCatchValue(src))
+  const retried = try outcome(viaRetry(src))
   const tries = attempts
-  const mapped = outcome(viaMapError(src))
-  const defect = outcome(viaCatchDefect(src))
+  const mapped = try outcome(viaMapError(src))
+  const defect = try outcome(viaCatchDefect(src))
   return { exit: raw, catch: caught, catchMatch: matched, catchValue: fallback, retry: `${retried} x${tries}`, mapError: mapped, catchDefect: defect }
 }
 
 export function main() {
   const rows = {
-    r0_fail: forms(failNow),
-    r1_finallyDies: forms(finallyDies),
-    r1_finallyExitDies: forms(finallyExitDies),
-    r1_finallyThrows: forms(finallyThrows),
-    r1_dieThenFinallyThrows: forms(dieThenFinallyThrows),
-    r2_usingReleaseDies: forms(usingReleaseDies),
-    r2_usingDisposeThrows: forms(usingDisposeThrows),
-    r3_producerCleanupDies: forms(producerCleanupDies),
-    r3_producerIteratorCloseThrows: forms(producerIteratorCloseThrows),
-    r4_awaitAll: forms(awaitAllMixed),
-    r4_forConcurrent: forms(forConcurrentMixed),
-    r5_awaitRace: forms(awaitRaceMixed),
-    r5_awaitAny: forms(awaitAnyMixed),
-    r6_interruptThenFinallyThrows: forms(interruptThenFinallyThrows),
-    r8_abandonMixed: forms(abandonMixed),
-    r8_allSettled: forms(allSettledMixed),
-    r2_forUsingHead: forms(forUsingHead),
-    r2_forUsingOf: forms(forUsingOf),
-    r2_callableDispose: forms(callableDispose),
-    r2_callableAsyncDispose: forms(callableAsyncDispose),
-    r2_holder: forms(holderDispose),
-    r9_handBuiltMixed: forms(handBuiltMixed),
+    r0_fail: try forms(failNow),
+    r1_finallyDies: try forms(finallyDies),
+    r1_finallyExitDies: try forms(finallyExitDies),
+    r1_finallyThrows: try forms(finallyThrows),
+    r1_dieThenFinallyThrows: try forms(dieThenFinallyThrows),
+    r2_usingReleaseDies: try forms(usingReleaseDies),
+    r2_usingDisposeThrows: try forms(usingDisposeThrows),
+    r3_producerCleanupDies: try forms(producerCleanupDies),
+    r3_producerIteratorCloseThrows: try forms(producerIteratorCloseThrows),
+    r4_awaitAll: try forms(awaitAllMixed),
+    r4_forConcurrent: try forms(forConcurrentMixed),
+    r5_awaitRace: try forms(awaitRaceMixed),
+    r5_awaitAny: try forms(awaitAnyMixed),
+    r6_interruptThenFinallyThrows: try forms(interruptThenFinallyThrows),
+    r8_abandonMixed: try forms(abandonMixed),
+    r8_allSettled: try forms(allSettledMixed),
+    r2_forUsingHead: try forms(forUsingHead),
+    r2_forUsingOf: try forms(forUsingOf),
+    r2_callableDispose: try forms(callableDispose),
+    r2_callableAsyncDispose: try forms(callableAsyncDispose),
+    r2_holder: try forms(holderDispose),
+    r9_handBuiltMixed: try forms(handBuiltMixed),
   }
-  const expected = referenceRows()
-  const parity = sync((actual, reference) => JSON.stringify(actual) === JSON.stringify(reference), rows, expected)
+  const expected = try referenceRows()
+  const parity = try sync((actual, reference) => JSON.stringify(actual) === JSON.stringify(reference), rows, expected)
   return { rows, seenExit, parity }
 }

@@ -2,13 +2,13 @@
 // initializer has a generic R omits Scope from its own R, written
 // Exclude<R, Scope> (D490).
 export function withResource<A extends Disposable, R>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "used"
 }
 
 // A written contract that says so holds.
 export function withResourceTyped<A extends Disposable, R>(open: () => A!!R): string!!(Exclude<R, Scope>) {
-  using r = open()
+  using r = try open()
   return "used"
 }
 
@@ -16,6 +16,6 @@ export function withResourceTyped<A extends Disposable, R>(open: () => A!!R): st
 // initializer requires Scope, so using may bind a value it cannot dispose,
 // which its acquisition releases (rule 4).
 export function withScoped<A, R extends Scope>(open: () => A!!R) {
-  using r = open()
+  using r = try open()
   return "scoped"
 }

@@ -3,7 +3,7 @@
 // fiber returned from it, alone or in an object or array, is already
 // interrupted when the caller gets it (D409).
 function heartbeat() {
-  sleep("1 minute")
+  try sleep("1 minute")
 }
 
 export function startHeartbeat() {
@@ -50,7 +50,7 @@ export function guarded() {
     const fiber = fork heartbeat()
     return fiber
   } finally {
-    Console.log("left")
+    try Console.log("left")
   }
 }
 

@@ -22,7 +22,7 @@ const satisfies = (): Service => {
   const version = () => ++runs
   return { version } satisfies Service
 }
-function effectful() { return Effect.sync(() => ++runs) }
+function effectful() { return try Effect.sync(() => ++runs) }
 function plainDeclaration() { return ++runs }
 const annotated: Service = { version: effectful }
 const declared: Service = { version: plainDeclaration }
@@ -55,7 +55,7 @@ export function main() {
   const constrainedValue = constrainedRecord()
   const data = dataPrograms()
   const before = runs
-  const config = data.config()
-  const snapshot = data.snapshot()
-  return [before, a.version(), a.version(), b.version(), c.version(), d.version(), e.version(), annotated.version(), declared.version(), f.version(), g.version(), h.version(), i.version(), sharedRecord.version(), shared(), constrainedValue.version(), runs, Config.isConfig(config), Exit.isSuccess(snapshot) && snapshot.value === 9]
+  const config = try data.config()
+  const snapshot = try data.snapshot()
+  return [before, try a.version(), try a.version(), try b.version(), try c.version(), try d.version(), try e.version(), try annotated.version(), try declared.version(), try f.version(), try g.version(), try h.version(), try i.version(), try sharedRecord.version(), try shared(), try constrainedValue.version(), runs, Config.isConfig(config), Exit.isSuccess(snapshot) && snapshot.value === 9]
 }

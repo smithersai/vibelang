@@ -1,9 +1,9 @@
 // The parenthesized await operations are calls in shape (D452): a member
 // access, an element access, or a call after the `)` applies to the form's
 // value, as `fork(x).join()` does to a call of fork.
-function one() { yieldNow(); return 1 }
-function two() { yieldNow(); return 2 }
-function work() { yieldNow(); return { y: 7 } }
+function one() { try yieldNow(); return 1 }
+function two() { try yieldNow(); return 2 }
+function work() { try yieldNow(); return { y: 7 } }
 
 // expect-result: {"count":2,"second":2,"field":2,"winner":"1","joined":7}
 export function main() {
@@ -12,6 +12,6 @@ export function main() {
     second: await.all([one(), two()])[1],
     field: await.all({ a: one(), b: two() }).b,
     winner: await.race([one(), one()]).toString(),
-    joined: fork(work()).join().y
+    joined: (try fork(work()).join()).y
   }
 }

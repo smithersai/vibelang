@@ -6,7 +6,7 @@ const holder = {
 }
 function layer() { events.push("layer"); return Layer.empty }
 function label(): string { events.push("label"); return "span" }
-function run() { return Effect.provide(holder.program, layer()) }
+function run() { return try Effect.provide(holder.program, try layer()) }
 export function main() {
-  Console.log(run(), events.join(","))
+  try Console.log(try run(), events.join(","))
 }

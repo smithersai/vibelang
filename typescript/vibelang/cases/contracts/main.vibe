@@ -22,7 +22,7 @@ export function find(id: string): Effect<User, UserNotFound, never> {
 
 // Wider than the body: Invalid can never happen here.
 export function wide(id: string): Effect<string, UserNotFound | Invalid, never> {
-  return find(id).name
+  return (try find(id)).name
 }
 
 // A contract makes a function an Effect even when its body runs nothing.
@@ -37,23 +37,23 @@ export function point(): Effect<{ x: number; kind: "point" }, never, never> {
 
 // Partial annotations: infer E, infer R, and infer A.
 export function greeting(id: string): Effect<string, infer E, infer R> {
-  return `Hello, ${find(id).name}`
+  return `Hello, ${(try find(id)).name}`
 }
 
 export function safe(id: string): Effect<string, never, infer R> {
   try {
-    return find(id).name
+    return (try find(id)).name
   } catch (e) {
     return `missing ${e.id}`
   }
 }
 
 export function named(id: string): Effect<infer A, UserNotFound, never> {
-  return { id, name: find(id).name }
+  return { id, name: (try find(id)).name }
 }
 
 export function everything(id: string): Effect<infer _, infer _, infer _> {
-  return find(id)
+  return try find(id)
 }
 
 // A lambda with a plain return type.
@@ -62,14 +62,14 @@ export const twice = (n: number): number => n * 2
 // expect-result: {"find":"Ada","wide":"Ada","answer":42,"point":"point","greeting":"Hello, Ada","safe":"missing 7","named":"Ada","everything":"42","twice":8}
 export function main() {
   return {
-    find: find("42").name,
-    wide: wide("42"),
-    answer: answer(),
-    point: point().kind,
-    greeting: greeting("42"),
-    safe: safe("7"),
-    named: named("42").name,
-    everything: everything("42").id,
+    find: (try find("42")).name,
+    wide: try wide("42"),
+    answer: try answer(),
+    point: (try point()).kind,
+    greeting: try greeting("42"),
+    safe: try safe("7"),
+    named: (try named("42")).name,
+    everything: (try everything("42")).id,
     twice: twice(4)
   }
 }

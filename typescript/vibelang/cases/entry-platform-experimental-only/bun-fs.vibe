@@ -2,6 +2,6 @@
 import "vibelang/platform/bun"
 
 export function main() {
-  Experimental.FileSystem.access("package.json", { executable: false })
-  Console.log("bun fs accessible")
+  try Experimental.FileSystem.access("package.json", { executable: false })
+  try Console.log("bun fs accessible")
 }

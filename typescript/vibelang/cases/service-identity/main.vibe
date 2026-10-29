@@ -47,14 +47,14 @@ function regionOf(users: Users.Shape) {
 }
 
 function lookup(id: string) {
-  const users = Users()
-  return `${Users.find(id)} in ${regionOf(users)}, beta ${Flags().beta}`
+  const users = try Users()
+  return `${try Users.find(id)} in ${try regionOf(users)}, beta ${(try Flags()).beta}`
 }
 
 function search(query: string) {
-  const engine: SearchApi = Search()
-  const prefix: string = Prefix()
-  return `${prefix}${engine.find(query)}`
+  const engine: SearchApi = try Search()
+  const prefix: string = try Prefix()
+  return `${prefix}${try engine.find(query)}`
 }
 
 const UsersLive = Layer.succeed(Users, new UsersInMemory())
@@ -65,25 +65,25 @@ const UsersEffect = Layer.effect(Users) {
 
 function provided(id: string) {
   provide Users = shaped {
-    return lookup(id)
+    return try lookup(id)
   }
 }
 
 function searched(query: string) {
   provide Search = { find: (q: string) => `hit:${q}` }, Prefix = "> " {
-    return search(query)
+    return try search(query)
   }
 }
 
 // expect-result: {"live":"Ada in memory, beta true","effect":"effect 2 in effect, beta true","service":"fake 3 in fake, beta false","block":"fake 4 in fake, beta true","missing":"NotFound","shape":"fake","search":"> hit:q"}
 export function main() {
   return {
-    live: Effect.provide(() => lookup("1"), UsersLive),
-    effect: Effect.provide(() => lookup("2"), UsersEffect),
-    service: Effect.provideService(() => Effect.provideService(() => lookup("3"), Flags, { beta: false }), Users, fake),
-    block: provided("4"),
-    missing: Effect.flip(() => Effect.provide(() => lookup("9"), UsersLive))._tag,
-    shape: regionOfShape(fake),
-    search: searched("q")
+    live: try Effect.provide(() => lookup("1"), UsersLive),
+    effect: try Effect.provide(() => lookup("2"), UsersEffect),
+    service: try Effect.provideService(() => Effect.provideService(() => lookup("3"), Flags, { beta: false }), Users, fake),
+    block: try provided("4"),
+    missing: (try Effect.flip(() => Effect.provide(() => lookup("9"), UsersLive)))._tag,
+    shape: try regionOfShape(fake),
+    search: try searched("q")
   }
 }

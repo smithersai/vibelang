@@ -4,13 +4,13 @@ control Steps { first(): void!!; second(): void!! }
 
 export function probe() {
   try {
-    Steps.first()
-    Steps.second()
+    try Steps.first()
+    try Steps.second()
     return 42
   } handle Steps.first() {
-    const n: number = resume()
+    const n: number = try resume()
     n.toFixed(0)
   } handle Steps.second() {
-    return `${resume()}`
+    return `${try resume()}`
   }
 }

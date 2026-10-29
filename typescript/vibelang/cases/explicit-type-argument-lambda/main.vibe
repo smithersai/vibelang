@@ -8,5 +8,5 @@ type Make = () => Effect.Effect<string, never, never>
 const make = hold<Make>(() => "x")
 
 export function main() {
-  return make()
+  return try make()
 }

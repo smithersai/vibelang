@@ -5,5 +5,5 @@ function runPromise(n: number): number {
 const started = runPromise(3)
 
 export function main() {
-  Console.log("local runner", started)
+  try Console.log("local runner", started)
 }

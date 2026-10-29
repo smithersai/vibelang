@@ -33,14 +33,14 @@ const collapsed: Collapsed = false
 
 function lookup(query: string) {
   try {
-    return `${Prefix()}${Search.find(query)}`
+    return `${try Prefix()}${try Search.find(query)}`
   } catch (error) {
     return `missing:${error.query}`
   }
 }
 
 function format(value: string) {
-  return Format()(value)
+  return try (try Format())(value)
 }
 
 function upper(value: string) {
@@ -49,6 +49,6 @@ function upper(value: string) {
 
 export function main() {
   provide Search.layer, Prefix = "> ", Format = upper {
-    return { hit: lookup("a"), miss: lookup(""), index: Search().index, formatted: format("x"), collapsed }
+    return { hit: try lookup("a"), miss: try lookup(""), index: (try Search()).index, formatted: try format("x"), collapsed }
   }
 }

@@ -4,7 +4,7 @@
 error Bad { message: string }
 
 const later = (n: number): number!! => {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
@@ -23,7 +23,7 @@ const traced = (n: number): number!! =>
 
 const parse = (text: string) =>
   // The comment sits between the arrow and its body.
-  try((text) => JSON.parse(text) as unknown, (cause) => new Bad({ message: String(cause) }), text)
+  try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
 
 const step = (n: number) =>
   // A comment before a sync hatch.
@@ -35,5 +35,5 @@ const stepped = (n: number) =>
   step(n)
 
 export function main() {
-  return [both(), joined(), traced(3), parse("[1]"), step(2), stepped(4)]
+  return [try both(), try joined(), try traced(3), try parse("[1]"), try step(2), try stepped(4)]
 }

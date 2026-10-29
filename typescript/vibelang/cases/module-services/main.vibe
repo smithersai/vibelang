@@ -3,16 +3,16 @@
 // implementation, and the type M is the service. The module's exports keep
 // their meaning: FileSystem.layerNoop and Path.layer.
 function notes(directory: string) {
-  const file = Path.join(directory, "notes.txt")
-  return [file, FileSystem.readFileString(file)]
+  const file = try Path.join(directory, "notes.txt")
+  return [file, try FileSystem.readFileString(file)]
 }
 
 export function exists(fs: FileSystem, path: string) {
-  return fs.exists(path)
+  return try fs.exists(path)
 }
 
 export function read(path: string) {
-  return FileSystem.readFileString(path)
+  return try FileSystem.readFileString(path)
 }
 
 export const id = () => Crypto.randomUUIDv4()
@@ -29,8 +29,8 @@ const Args = Stdio.layerTest({ args: Effect.succeed(["--verbose"]) })
 // expect-result: ["/srv/notes.txt","read /srv/notes.txt",true,["--verbose"]]
 export function main() {
   provide Path.layer, Files, Args {
-    const [file, text] = notes("/srv")
-    const fs = FileSystem()
-    return [file, text, exists(fs, file), Stdio.args()]
+    const [file, text] = try notes("/srv")
+    const fs = try FileSystem()
+    return [file, text, try exists(fs, file), try Stdio.args()]
   }
 }

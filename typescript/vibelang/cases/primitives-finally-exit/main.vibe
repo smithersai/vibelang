@@ -4,7 +4,7 @@ error Boom
 function ok() {
   let tag = ""
   try {
-    sleep("1 millis")
+    try sleep("1 millis")
   } finally (exit) {
     tag = exit._tag
   }
@@ -30,10 +30,10 @@ function returned() {
   try {
     return "value"
   } finally (exit) {
-    Console.log(exit._tag)
+    try Console.log(exit._tag)
   }
 }
 
 export function main() {
-  return { ok: ok(), failing: failing(), returned: returned() }
+  return { ok: try ok(), failing: try failing(), returned: try returned() }
 }

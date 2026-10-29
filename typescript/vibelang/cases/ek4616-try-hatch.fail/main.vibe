@@ -1,0 +1,12 @@
+// expect: EK4616 EK4616
+// try(…) is no longer a hatch (VIP-5): try runs an Effect, and Effect.try or
+// Effect.tryPromise wraps code that may throw or reject. EK4616's quick fix
+// writes the wrapper, with the hatch's inputs as the function's arguments.
+error Bad { cause: unknown }
+
+export function main() {
+  try yieldNow()
+  const n = try((text: string) => JSON.parse(text), (cause) => new Bad({ cause }), "1")
+  const m = try(async () => 1)
+  return [n, m]
+}

@@ -11,7 +11,7 @@ function double(n: number): number {
 }
 
 function area(w: number, h: number) {
-  return double(w) * double(h) * Settings.scale()
+  return double(w) * double(h) * try Settings.scale()
 }
 
 // Evaluation order (Codex review finding 6): the proposal's generated area moves both double calls
@@ -22,18 +22,18 @@ function tracedDouble(n: number) {
 }
 
 function tracedArea(w: number, h: number) {
-  return tracedDouble(w) * tracedDouble(h) * Settings.scale()
+  return try tracedDouble(w) * try tracedDouble(h) * try Settings.scale()
 }
 
 // Recursion
 // NOTE: D10 runs pure recursion on the JavaScript stack, so sumTo stays well under the host limit here.
 
 function sumTo(n: number): Effect<number, never, never> {
-  return n === 0 ? 0 : n + sumTo(n - 1)
+  return n === 0 ? 0 : n + try sumTo(n - 1)
 }
 
 function gcd(a: number, b: number): Effect<number, never, never> {
-  return b === 0 ? a : gcd(b, a % b)        // a call to itself in tail position: compiled to a loop
+  return b === 0 ? a : try gcd(b, a % b)        // a call to itself in tail position: compiled to a loop
 }
 
 // D9: a pure .vibe function passed where JavaScript expects a plain function passes its plain variant.
@@ -49,20 +49,20 @@ const SettingsTest = Layer.succeed(Settings, {
 })
 
 function scenario() {
-  const plain = area(2, 3)
-  const traced = tracedArea(2, 3)
+  const plain = try area(2, 3)
+  const traced = try tracedArea(2, 3)
   return {
     double: double(4),
     area: plain,
     traced,
     order,
-    sumTo: sumTo(1000),
-    gcd: gcd(48, 18),
-    doubled: doubleAll([1, 2, 3])
+    sumTo: try sumTo(1000),
+    gcd: try gcd(48, 18),
+    doubled: try doubleAll([1, 2, 3])
   }
 }
 
 // expect-result: {"double":8,"area":240,"traced":240,"order":["scale","double 2","double 3","scale"],"sumTo":500500,"gcd":6,"doubled":[2,4,6]}
 export function main() {
-  return Effect.provide(() => scenario(), SettingsTest)
+  return try Effect.provide(() => scenario(), SettingsTest)
 }

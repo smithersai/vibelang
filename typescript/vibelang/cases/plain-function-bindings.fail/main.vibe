@@ -1,5 +1,5 @@
 // expect: EK4301
-function logged(n: number) { sleep("1 millis"); log(n) }
+function logged(n: number) { try sleep("1 millis"); try log(n) }
 function get(): (n: number) => void { return logged }
 function runAll(fs: ReadonlyArray<(n: number) => void>) { for (const f of fs) f(1) }
 export function main() {
@@ -10,7 +10,7 @@ export function main() {
   holder.run = logged
   const fs: ReadonlyArray<(n: number) => void> = [logged]
   const object: { run: (n: number) => void } = { run: logged }
-  runAll([logged])
+  try runAll([logged])
   cb(1); assigned(2); holder.run(3); get()(4)
   return [fs, object]
 }

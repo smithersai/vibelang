@@ -5,7 +5,7 @@ service Primary: string
 service Replica: string
 
 function read() {
-  return Primary()
+  return try Primary()
 }
 
 export const program: string!! = Effect.provide(read(), Layer.succeed(Replica, "replica"))

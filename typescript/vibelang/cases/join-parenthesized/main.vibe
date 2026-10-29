@@ -5,7 +5,7 @@
 // keeping the shape. A join the program declares is an ordinary call
 // (fibers-join-identifiers).
 function work(n: number) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
@@ -13,9 +13,9 @@ export function main() {
   const a = fork work(1)
   const b = fork work(2)
   const c = fork(work(3))
-  const one = join(a)
-  const pair = join([a, b])
-  const keyed = join({ a, b })
-  const spaced = join (c)
+  const one = try join(a)
+  const pair = try join([a, b])
+  const keyed = try join({ a, b })
+  const spaced = try join (c)
   return { one, pair, keyed, spaced }
 }

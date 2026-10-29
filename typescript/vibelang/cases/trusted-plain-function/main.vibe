@@ -17,7 +17,7 @@ export function main() {
   return {
     ts: fromTypeScript(),
     slugs: [" Hello World", "A B"].map(slugify),
-    parsed: attempt("7"),
-    failure: attempt("x")
+    parsed: try attempt("7"),
+    failure: try attempt("x")
   }
 }

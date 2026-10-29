@@ -7,7 +7,7 @@ schema Item { kind: string; extra?: string }
 export function main() {
   const extra = "outside"
   const item: Item = { kind: "a", extra: "b" }
-  const { rest, picked } = sync((item: Item) => {
+  const { rest, picked } = try sync((item: Item) => {
     const { extra: picked, ...rest } = item
     return { rest, picked }
   }, item)

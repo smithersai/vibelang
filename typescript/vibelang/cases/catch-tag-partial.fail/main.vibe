@@ -7,7 +7,7 @@ function fail(second: boolean): never!First | Second! {
   throw new First()
 }
 export function incomplete(): number!! {
-  try { return fail(true) } catch (e) {
+  try { return try fail(true) } catch (e) {
     return match (e) { when { _tag: "First" }: 1; default: throw e; }
   }
 }

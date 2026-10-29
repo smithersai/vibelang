@@ -8,8 +8,8 @@ control Steps {
 }
 
 function work() {
-  Steps.first()
-  Steps.second()
+  try Steps.first()
+  try Steps.second()
   return 42
 }
 
@@ -18,9 +18,9 @@ const log: string[] = []
 // resume returns number | string: the second clause's "early" reaches it.
 function early() {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    const n = resume()
+    const n = try resume()
     return typeof n === "number" ? n.toFixed(1) : n
   } handle Steps.second() {
     return "early"
@@ -31,23 +31,23 @@ function early() {
 // block did.
 function after() {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    const n: number = resume()
+    const n: number = try resume()
     log.push(`first ${n}`)
   } handle Steps.second() {
-    resume()
+    try resume()
   }
 }
 
 // A written success type covers a return computed from resume's result.
 function written(): number | string!! {
   try {
-    return work()
+    return try work()
   } handle Steps.first() {
-    return `${resume()} first`
+    return `${try resume()} first`
   } handle Steps.second() {
-    resume()
+    try resume()
   }
 }
 
@@ -55,25 +55,25 @@ function written(): number | string!! {
 function falls() {
   const seen: string[] = []
   try {
-    work()
+    try work()
   } handle Steps.first() {
-    const n = resume()
+    const n = try resume()
     seen.push(String(n))
   } handle Steps.second() {
-    resume()
+    try resume()
   }
   return seen
 }
 
 // handle's clauses that return the program's type may read resume's result.
 function agreed() {
-  return handle(() => work(), Steps, {
+  return try handle(() => work(), Steps, {
     first(k) {
-      const n = resume(k, undefined)
+      const n = try resume(k, undefined)
       return n + 1
     },
     second(k) {
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   })
 }
@@ -81,25 +81,25 @@ function agreed() {
 // A result held in a const and returned unread is never read, even with
 // onReturn.
 function held() {
-  return handle(() => work(), Steps, {
+  return try handle(() => work(), Steps, {
     first(k) {
-      const n = resume(k, undefined)
+      const n = try resume(k, undefined)
       return n
     },
     second(k) {
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   }, (n) => n * 2)
 }
 
 export function main() {
   return {
-    early: early(),
-    after: after(),
-    written: written(),
-    falls: falls(),
-    agreed: agreed(),
-    held: held(),
+    early: try early(),
+    after: try after(),
+    written: try written(),
+    falls: try falls(),
+    agreed: try agreed(),
+    held: try held(),
     log
   }
 }

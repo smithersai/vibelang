@@ -2,6 +2,6 @@
 // (D500, which withdrew D68's contract-less channels), so a using of its call
 // leaves Exclude<R, Scope> in R (D490).
 export function withAnyResource<E, R>(open: () => Disposable!E!R) {
-  using r = open()
+  using r = try open()
   return "used"
 }

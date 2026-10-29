@@ -18,19 +18,19 @@ import { asyncResource } from resources
 const events: string[] = []
 
 function openSync(name: string) {
-  yieldNow()
+  try yieldNow()
   events.push(`open ${name}`)
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
 function openAsync(name: string) {
-  yieldNow()
+  try yieldNow()
   events.push(`open ${name}`)
-  return sync((n: string, log: string[]) => asyncResource(n, log), name, events)
+  return try sync((n: string, log: string[]) => asyncResource(n, log), name, events)
 }
 
 function releasing(name: string) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => openAsync(name),
     () => {
       events.push(`release ${name}`)
@@ -39,14 +39,14 @@ function releasing(name: string) {
 }
 
 function work() {
-  using a = openSync("a")
-  using b = openAsync("b")
-  using c = releasing("c")
+  using a = try openSync("a")
+  using b = try openAsync("b")
+  using c = try releasing("c")
   events.push("work")
 }
 
 // expect-result: ["open a","open b","open c","work","release c","async dispose b","dispose a"]
 export function main() {
-  work()
+  try work()
   return events
 }

@@ -1,1 +1,1 @@
-main.vibe(10,10): error EK4202
+main.vibe(10,14): error EK4202

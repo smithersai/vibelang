@@ -258,6 +258,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitClauseResume(node)
 	case isInvocation(node) && tx.inEffect && tx.plan.runsCall(node):
 		return tx.visitRunningCall(node)
+	case isTryCall(node):
+		return tx.visitTry(node) // try e passed by name passes e (try.go)
 	case isInvocation(node) && tx.inEffect && tx.plan.trusted[node] != nil:
 		return tx.visitTrustedCall(node)
 	case isInvocation(node) && tx.plain && tx.plan.trusted[node] != nil:
@@ -602,6 +604,8 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 	var call *ast.Node
 	if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
+	} else if operand := tryOperand(node); operand != nil {
+		call = tx.Visitor().VisitNode(operand) // try e runs e: yield* e (try.go)
 	} else {
 		call = tx.Visitor().VisitEachChild(node)
 	}

@@ -6,7 +6,7 @@ import { Console } from "effect"
 import { find } from "./helpers.ts"
 
 function findId(id: string) {
-  return find(id).id
+  return (try find(id)).id
 }
 
 export function lambdas(ids: ReadonlyArray<string>) {

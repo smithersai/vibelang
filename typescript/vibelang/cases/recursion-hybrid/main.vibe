@@ -1,11 +1,11 @@
 import down, { even, tree, guarded, caught, catchTyped, complex, args } from "./lib.vibe"
 export function values() {
-  return [down(100000), even(100000), guarded(100000), caught(100000), catchTyped(100000), complex(100000), args(100000, 1, 2)]
+  return [try down(100000), try even(100000), try guarded(100000), try caught(100000), try catchTyped(100000), try complex(100000), try args(100000, 1, 2)]
 }
-export function mapped() { return Effect.forEach([3, 100000], down) }
+export function mapped() { return try Effect.forEach([3, 100000], down) }
 export function nested(n: number) { return tree(n) }
 export function concurrent() {
-  const a = fork { yieldNow(); return down(100000) }
-  const b = fork { yieldNow(); return down(100001) }
+  const a = fork { try yieldNow(); return try down(100000) }
+  const b = fork { try yieldNow(); return try down(100001) }
   return join [a, b]
 }

@@ -5,7 +5,7 @@
 // including when its result has no contextual type.
 // TypeScript can also report errors where the unrun Effect is used
 // as a success value in arithmetic or a comparison.
-function now(): number!! { return Clock.currentTimeMillis() }
+function now(): number!! { return try Clock.currentTimeMillis() }
 
 class Box {
   created = now()
@@ -18,5 +18,5 @@ class Box {
 function label(id: number = now()) { return `#${id}` }
 
 export function main() {
-  return [new Box().size, label()]
+  return [new Box().size, try label()]
 }

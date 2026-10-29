@@ -20,16 +20,16 @@ export function main(): object!! {
   const left: Array<Left | LeftTyped | LeftCallback> = []
   return {
     socket: {
-      inline: deadline((seen) => holdSocket(seen)),
-      generic: deadline((seen) => { withResource(() => connect(seen)) }),
-      typed: deadline((seen) => { withResourceTyped(() => connect(seen)) })
+      inline: try deadline((seen) => holdSocket(seen)),
+      generic: try deadline((seen) => { try withResource(() => connect(seen)) }),
+      typed: try deadline((seen) => { try withResourceTyped(() => connect(seen)) })
     },
     db: {
-      inline: deadline((seen) => holdDb(seen)),
-      generic: deadline((seen) => { withResource(() => openDb(seen)) }),
-      callback: deadline((seen) => { withAnyResource(() => openDb(seen)) })
+      inline: try deadline((seen) => holdDb(seen)),
+      generic: try deadline((seen) => { try withResource(() => openDb(seen)) }),
+      callback: try deadline((seen) => { try withAnyResource(() => openDb(seen)) })
     },
-    scoped: [withScoped(() => plainScoped()), ...left][0]
+    scoped: [try withScoped(() => plainScoped()), ...left][0]
   }
 }
 
@@ -38,7 +38,7 @@ export function main(): object!! {
 function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
   try {
-    Effect.timeout(() => work(seen), "100 millis")
+    try Effect.timeout(() => work(seen), "100 millis")
     seen.push("finished")
   } catch (e) {
     seen.push(e._tag)
@@ -51,9 +51,9 @@ class Socket {
 }
 
 function connect(seen: string[]) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
-      sleep("2 seconds")
+      try sleep("2 seconds")
       seen.push("connected")
       return new Socket()
     },
@@ -65,7 +65,7 @@ function connect(seen: string[]) {
 }
 
 function openDb(seen: string[]) {
-  sleep("2 seconds")
+  try sleep("2 seconds")
   seen.push("opened")
   return { [Symbol.dispose](): void { seen.push("disposed") } }
 }
@@ -75,11 +75,11 @@ function plainScoped(): { name: string }!!Scope {
 }
 
 function holdSocket(seen: string[]) {
-  using socket = connect(seen)
+  using socket = try connect(seen)
   seen.push("body")
 }
 
 function holdDb(seen: string[]) {
-  using db = openDb(seen)
+  using db = try openDb(seen)
   seen.push("body")
 }

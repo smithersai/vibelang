@@ -27,5 +27,5 @@ function describe(shape: Shape) {
 }
 
 export function main() {
-  return [label("idle"), label("busy"), size("busy"), describe({ _tag: "Circle", radius: 2 })]
+  return [try label("idle"), try label("busy"), try size("busy"), try describe({ _tag: "Circle", radius: 2 })]
 }

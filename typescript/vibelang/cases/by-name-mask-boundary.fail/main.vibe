@@ -2,7 +2,7 @@
 class WriteError extends Data.TaggedError("WriteError")<{}> {}
 function write() { throw new WriteError() }
 export function invalid(): void!! {
-  Effect.uninterruptibleMask((restore) => {
-    restore(write())
+  try Effect.uninterruptibleMask((restore) => {
+    try restore(write())
   })
 }

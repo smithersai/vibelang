@@ -16,42 +16,42 @@ function fail(): Effect.Effect<never, string, never> {
 }
 
 function take(started: Deferred.Deferred<void>) {
-  Deferred.await(started)
+  try Deferred.await(started)
   return 7
 }
 
 function closedLater(started: Deferred.Deferred<void>, closed: Deferred.Deferred<never, string>) {
-  Deferred.succeed(started, undefined)
-  return Deferred.await(closed)
+  try Deferred.succeed(started, undefined)
+  return try Deferred.await(closed)
 }
 
 // S5-11: the failing Deferred is cold, so take wins once the reader starts.
 function socket() {
-  const started = Deferred.make<void>()
-  const closed = Deferred.make<never, string>()
-  return Effect.raceFirst(take(started), closedLater(started, closed))
+  const started = try Deferred.make<void>()
+  const closed = try Deferred.make<never, string>()
+  return try Effect.raceFirst(take(started), closedLater(started, closed))
 }
 
 function tick(started: Deferred.Deferred<void>) {
-  Deferred.succeed(started, undefined)
-  Effect.yieldNow()
+  try Deferred.succeed(started, undefined)
+  try Effect.yieldNow()
 }
 
 // S6-3: the joined fiber cannot finish before forever has started. Both
 // direct and local forms, and forever's options overload, use no clock.
 function host(local: boolean) {
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   const fiber = fork(take(started))
   if (local) {
-    const winner = Effect.raceFirst(Fiber.join(fiber), Effect.forever(tick(started), { disableYield: false }))
+    const winner = try Effect.raceFirst(Fiber.join(fiber), Effect.forever(tick(started), { disableYield: false }))
     return winner
   }
-  return Effect.raceFirst(Fiber.join(fiber), Effect.forever(tick(started)))
+  return try Effect.raceFirst(Fiber.join(fiber), Effect.forever(tick(started)))
 }
 
 function raceNever() {
-  const started = Deferred.make<void>()
-  return Effect.race(take(started), Effect.forever(tick(started)))
+  const started = try Deferred.make<void>()
+  return try Effect.race(take(started), Effect.forever(tick(started)))
 }
 
 type OptionsLike = { readonly onWinner?: undefined }
@@ -59,23 +59,23 @@ type OptionsLike = { readonly onWinner?: undefined }
 // Its written success type fits the curried options parameter, so rejecting
 // only never is insufficient. D257 must prefer the two-program candidate.
 function optionsLater(started: Deferred.Deferred<void>, closed: Deferred.Deferred<never>): Effect.Effect<OptionsLike, never, never> {
-  Deferred.succeed(started, undefined)
-  return Deferred.await(closed)
+  try Deferred.succeed(started, undefined)
+  return try Deferred.await(closed)
 }
 
 function preferProgram() {
-  const started = Deferred.make<void>()
-  const closed = Deferred.make<never>()
-  return Effect.raceFirst(take(started), optionsLater(started, closed))
+  const started = try Deferred.make<void>()
+  const closed = try Deferred.make<never>()
+  return try Effect.raceFirst(take(started), optionsLater(started, closed))
 }
 
 export function raceFail() {
   const before = failures
-  try { return Effect.race(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
+  try { return try Effect.race(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
 }
 
 function raceFirstFail() {
-  try { return Effect.raceFirst(fail(), fail()) } catch (error) { return error }
+  try { return try Effect.raceFirst(fail(), fail()) } catch (error) { return error }
 }
 
 function first() {
@@ -84,40 +84,40 @@ function first() {
 }
 
 function zipFail() {
-  try { return Effect.zip(first(), fail()) } catch (error) { return { error, zipped } }
+  try { return try Effect.zip(first(), fail()) } catch (error) { return { error, zipped } }
 }
 
 // Sequential zip and fallback never start an unreachable second program.
 function zipNever() {
-  try { return Effect.zip(fail(), Effect.forever(Effect.yieldNow())) } catch (error) { return error }
+  try { return try Effect.zip(fail(), Effect.forever(Effect.yieldNow())) } catch (error) { return error }
 }
 
 function fallbackFail() {
   const before = failures
-  try { return orElse(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
+  try { return try orElse(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
 }
 
 function fallbackNever() {
-  return orElse(Effect.succeed(9), Effect.forever(Effect.yieldNow()))
+  return try orElse(Effect.succeed(9), Effect.forever(Effect.yieldNow()))
 }
 
 function curried() {
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   const x = () => take(started)
   return do {
     const $pipe0 = x
     const $pipe1: number!! = () => $pipe0()
     const $pipe2: never!! = () => (Effect.forever(tick(started)))
-    Effect.race($pipe1, $pipe2)
+    try Effect.race($pipe1, $pipe2)
   }
 }
 
 // expect-result: {"socket":7,"host":7,"local":7,"raceNever":7,"raceFail":{"error":"failed","runs":2},"raceFirstFail":"failed","zipFail":{"error":"failed","zipped":1},"zipNever":"failed","fallbackFail":{"error":"failed","runs":2},"fallbackNever":9,"curried":7,"preferred":7,"applicable":"value"}
 export function main() {
   return {
-    socket: socket(), host: host(false), local: host(true), raceNever: raceNever(),
-    raceFail: raceFail(), raceFirstFail: raceFirstFail(), zipFail: zipFail(), zipNever: zipNever(),
-    fallbackFail: fallbackFail(), fallbackNever: fallbackNever(), curried: curried(),
-    preferred: preferProgram(), applicable: applicable(Effect.succeed(1))
+    socket: try socket(), host: try host(false), local: try host(true), raceNever: try raceNever(),
+    raceFail: try raceFail(), raceFirstFail: try raceFirstFail(), zipFail: try zipFail(), zipNever: try zipNever(),
+    fallbackFail: try fallbackFail(), fallbackNever: try fallbackNever(), curried: try curried(),
+    preferred: try preferProgram(), applicable: try applicable(try Effect.succeed(1))
   }
 }

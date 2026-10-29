@@ -6,5 +6,5 @@ import { FileSystem } from "effect/FileSystem"
 import { Path } from "effect/Path"
 
 export function main() {
-  Console.log(FileSystem.readFileString(Path.join("data", "config.json")))
+  try Console.log(try FileSystem.readFileString(try Path.join("data", "config.json")))
 }

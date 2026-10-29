@@ -7,7 +7,7 @@
 service Status { set(code: number): void!! }
 
 const listFlows = () => {
-  Console.log("listing")
+  try Console.log("listing")
 }
 const handlers = { list: listFlows }
 
@@ -24,7 +24,7 @@ export const thunk = () => Effect.suspend(() => listFlows)
 export const param = (body: () => void!!) => Effect.suspend(() => body)
 
 // An arm of a conditional whose other arm runs.
-export const arm = (code: number) => Effect.suspend(() => code > 0 ? listFlows : Status.set(code))
+export const arm = (code: number) => Effect.suspend(() => code > 0 ? listFlows : try Status.set(code))
 
 // Not reported: the call runs, the success type names the function, or no
 // Effect is expected.

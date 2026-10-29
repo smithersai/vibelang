@@ -1,16 +1,17 @@
-import { Cause, Effect, Exit } from "effect"
+import { Effect, Exit } from "effect"
 
-// The boundary hatches (D148): `sync`, `try`, and `callback` run plain
+// The boundary hatches (D148): `sync` and `callback` run plain
 // TypeScript inside VibeLang. In a .vibe file a hatch's first argument is not
 // VibeLang: calls do not run, `throw`, `async`, and `await` keep their
 // JavaScript meaning, and platform APIs are allowed. That TypeScript is
 // self-contained (D229): values reach it as inputs, the arguments after the
 // function, which fill its first parameters (D230); an async function then
 // receives the AbortSignal, and a callback `resume` and the signal. The
-// compiler lowers `sync` and `try` to Effect's own functions and reads the
-// overload it chose by the first parameter's name (evaluate or value) and
-// whether the second is named mapError (D231); the function itself decides
-// between sync and async by its type (D232). These implementations serve
+// compiler lowers `sync` to Effect's own functions and reads the overload it
+// chose by the first parameter's name (evaluate or value); the function
+// itself decides between sync and async by its type (D232). A throw that is
+// an expected failure goes through Effect's own Effect.try or
+// Effect.tryPromise, which replaced the `try` hatch (VIP-5). These implementations serve
 // TypeScript callers and a hatch passed as a value. They see no types, so
 // they decide by the function's declaration: an async function that
 // declares a parameter after its inputs gets the AbortSignal there, and
@@ -30,21 +31,21 @@ const call = (evaluate: unknown, inputs: Inputs): unknown => (evaluate as (...ar
 
 /**
  * Whether evaluate is declared async, the only kind of function the
- * runtime's sync and try pass an AbortSignal (D232). An async generator
+ * runtime's sync passes an AbortSignal (D232). An async generator
  * function is not: it returns a generator, not a promise.
  */
 const isAsyncFunction = (evaluate: unknown): evaluate is Function =>
   Object.prototype.toString.call(evaluate) === "[object AsyncFunction]"
 
 /**
- * An async hatch function as the evaluate of Effect.promise or tryPromise
+ * An async hatch function as the evaluate of Effect.promise
  * (D230, D232): evaluate with exactly its inputs, then the AbortSignal when
  * signal allows one and evaluate declares a parameter for it. Effect.promise
  * makes a signal only for an evaluate that takes one; a rest or defaulted
  * parameter does not count, so it never receives one, nor the undefined
  * Effect passes in its place. The compiler passes signal false when the
- * overload TypeScript chose gives the function its inputs alone; sync and
- * try called as values see no types and pass true.
+ * overload TypeScript chose gives the function its inputs alone; sync
+ * called as a value sees no types and passes true.
  */
 export const $asyncHatch = (evaluate: Function, signal: boolean, ...inputs: Inputs): (signal: AbortSignal) => PromiseLike<unknown> =>
   signal && evaluate.length > inputs.length
@@ -75,46 +76,12 @@ export function sync(evaluate: unknown, ...inputs: Array<unknown>): Effect.Effec
 }
 
 /**
- * D148: `try((text) => JSON.parse(text), text)` is Effect.try, so a throw is an
- * expected Cause.UnknownError, or the error that `mapError` makes of it; an
- * async function is Effect.tryPromise, and it gets the AbortSignal after its
- * inputs when it declares a parameter for it, which interruption aborts; and
- * `try(expression)` evaluates the
- * expression when the Effect runs. The mapper stays the second argument, and
- * inputs follow it (D231). A function that is not async but returns a
- * promise is awaited without a signal (D232). Exported as `try`.
+ * VIP-5: `try p` runs the Effect p where it stands and gives its success
+ * value. Before anything but a call, the parser writes it as $try(p), and
+ * the lowering writes yield* p, so this identity runs only where TypeScript
+ * code calls it.
  */
-export function attempt<R, E, Args extends Inputs = []>(
-  evaluate: (...args: [...Args, AbortSignal]) => PromiseLike<R>,
-  mapError: (error: unknown) => E,
-  ...args: Args
-): Effect.Effect<R, E>
-export function attempt<R, E, Args extends Inputs = []>(evaluate: (...args: Args) => R, mapError: (error: unknown) => E, ...args: Args): Effect.Effect<Awaited<R>, E>
-export function attempt<R, Args extends Inputs = []>(evaluate: (...args: [...Args, AbortSignal]) => PromiseLike<R>, ...args: Args): Effect.Effect<R, Cause.UnknownError>
-export function attempt<R, Args extends Inputs = []>(evaluate: (...args: Args) => R, ...args: Args): Effect.Effect<Awaited<R>, Cause.UnknownError>
-export function attempt<A, E>(value: A, mapError: (error: unknown) => E): Effect.Effect<Awaited<A>, E>
-export function attempt<A>(value: A): Effect.Effect<Awaited<A>, Cause.UnknownError>
-export function attempt(evaluate: unknown, ...rest: Array<unknown>): Effect.Effect<unknown, unknown> {
-  // A function in second place is the mapper, as the overloads read it.
-  const mapError = typeof rest[0] === "function" ? (rest[0] as (error: unknown) => unknown) : undefined
-  const inputs = mapError ? rest.slice(1) : rest
-  const run = typeof evaluate === "function" ? () => call(evaluate, inputs) : () => evaluate
-  const failure = (error: unknown) => (mapError ? mapError(error) : new Cause.UnknownError(error))
-  if (isAsyncFunction(evaluate)) return Effect.tryPromise({ try: $asyncHatch(evaluate, true, ...inputs), catch: failure })
-  return Effect.suspend(() => {
-    let result: unknown
-    try {
-      result = run()
-    } catch (error) {
-      return Effect.fail(failure(error))
-    }
-    if (!isPromiseLike(result)) return Effect.succeed(result)
-    const pending = result
-    return Effect.tryPromise({ try: () => pending, catch: failure })
-  })
-}
-
-export { attempt as try }
+export const $try = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => effect
 
 /**
  * The `resume` a `callback` hatch receives. A .vibe file names it without an

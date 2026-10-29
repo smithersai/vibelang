@@ -4,7 +4,7 @@
 import { Config, Effect, Schedule } from "effect"
 
 function loadConfig() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return { port: 8080 }
 }
 

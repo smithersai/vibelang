@@ -1,4 +1,4 @@
 main.vibe(3,11): error EK3207
 main.vibe(7,11): error EK3207
 main.vibe(11,10): warning EK4836
-main.vibe(11,34): error EK3207
+main.vibe(11,38): error EK3207

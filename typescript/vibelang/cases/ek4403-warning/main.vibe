@@ -3,7 +3,7 @@
 import { Effect } from "effect"
 
 function stamp() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return Date.now()
 }
 
@@ -13,5 +13,5 @@ function uuid() {
 
 // expect-result: [true,36]
 export function main() {
-  return [stamp() > 0, uuid().length]
+  return [try stamp() > 0, (try uuid()).length]
 }

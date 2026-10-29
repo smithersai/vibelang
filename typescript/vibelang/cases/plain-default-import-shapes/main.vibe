@@ -8,23 +8,23 @@ import reexported, { forwarded, forwardedOther } from "./barrel.vibe"
 
 // expect-result: {"solo":"solo#","mixed":"mixed#","other":"other?","withNamespace":"namespace#","namespace":"ns?","namespaceDefault":"ns-default#","empty":"empty#","named":"named#","reexported":"reexported#","forwarded":"forwarded#","forwardedOther":"forwarded?"}
 export function main() {
-  const a: string = solo("solo")
-  const b: string = mixed("mixed")
-  const c: string = withNamespace("namespace")
-  const d: string = empty("empty")
-  const e: string = named("named")
-  const f: string = reexported("reexported")
+  const a: string = try solo("solo")
+  const b: string = try mixed("mixed")
+  const c: string = try withNamespace("namespace")
+  const d: string = try empty("empty")
+  const e: string = try named("named")
+  const f: string = try reexported("reexported")
   return {
     solo: a,
     mixed: b,
-    other: other("other"),
+    other: try other("other"),
     withNamespace: c,
-    namespace: ns.other("ns"),
-    namespaceDefault: ns.default("ns-default"),
+    namespace: try ns.other("ns"),
+    namespaceDefault: try ns.default("ns-default"),
     empty: d,
     named: e,
     reexported: f,
-    forwarded: forwarded("forwarded"),
-    forwardedOther: forwardedOther("forwarded")
+    forwarded: try forwarded("forwarded"),
+    forwardedOther: try forwardedOther("forwarded")
   }
 }

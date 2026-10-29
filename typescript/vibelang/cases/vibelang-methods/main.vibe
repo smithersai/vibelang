@@ -22,7 +22,7 @@ function shadowed(maybe: Option.Option<number>) {
 }
 
 function after() {
-  sleep("1 millis")
+  try sleep("1 millis")
   return "done"
 }
 
@@ -38,8 +38,8 @@ export function main() {
   const piped = Option.some(2).pipe(Option.map((n) => n + 1)).getOrElse(() => 0)
   const doubled = [1, 2].map((n) => n * 2)
   const fiber = fork(after())
-  const joined = fiber.join()
-  const counter = Ref.make(1)
-  counter.update((n) => n + 1)
-  return { alerts: collected, some, none, millis, size, piped, doubled, joined, counter: counter.get(), described: describe(Option.some(5)), shadowed: shadowed(Option.some(7)) }
+  const joined = try fiber.join()
+  const counter = try Ref.make(1)
+  try counter.update((n) => n + 1)
+  return { alerts: collected, some, none, millis, size, piped, doubled, joined, counter: try counter.get(), described: try describe(Option.some(5)), shadowed: try shadowed(Option.some(7)) }
 }

@@ -18,7 +18,7 @@ abstract class Tick extends Control {
 function ticks(n: number) {
   let i = 0
   while (i < n) {
-    Tick.tick(i)
+    try Tick.tick(i)
     i++
   }
   return i
@@ -50,15 +50,15 @@ export function main() {
   const loopDepth = maxDepth
   maxDepth = 0
   let seen = 0
-  const ticked = handle(() => ticks(100000), Tick, {
+  const ticked = try handle(() => ticks(100000), Tick, {
     tick(n, k) {
       seen++
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   })
   const handlerDepth = maxDepth
   maxDepth = 0
-  const withFinally = sumWithFinally(100000)
+  const withFinally = try sumWithFinally(100000)
   const finallyDepth = maxDepth
   hooks.onResume = undefined
   return {

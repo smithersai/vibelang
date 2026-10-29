@@ -43,7 +43,7 @@ function failWith(error: NotFound | Timeout): never!(NotFound | Timeout) {
 function route(error: NotFound | Timeout): string!! {
   return failWith(error)
     |> Effect.catchTag(%, "NotFound", (caught) => `not found ${caught.path}`)
-    |> Effect.catchTag(%, "Timeout", (caught) => `timeout ${caught.code}`)
+    |> try Effect.catchTag(%, "Timeout", (caught) => `timeout ${caught.code}`)
 }
 
 function failBase(error: AppError): never!AppError {
@@ -80,8 +80,8 @@ export function main() {
     names: errors.map((error) => error.name),
     family: errors.map((error) => error is AppError),
     notFoundIsTimeout: notFound is Timeout,
-    routed: [route(notFound), route(timeout)],
-    base: routeBase(base),
+    routed: [try route(notFound), try route(timeout)],
+    base: try routeBase(base),
     classified: [classify(notFound), classify(timeout), classify(base), classify(new Gone({ status: 1 }))],
     typed: codeOf(typed) === "y" ? typed.value : "",
     static: NotFound.family,

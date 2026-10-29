@@ -8,19 +8,19 @@
 error Bad
 
 function joined(log: string[]) {
-  const startedA = Deferred.make<void>()
-  const startedB = Deferred.make<void>()
-  const releasedB = Deferred.make<void>()
+  const startedA = try Deferred.make<void>()
+  const startedB = try Deferred.make<void>()
+  const releasedB = try Deferred.make<void>()
   const a = fork {
-    try { Deferred.succeed(startedA, undefined); Effect.never() }
-    finally { log.push("A waits"); releasedB.await(); log.push("A done") }
+    try { try Deferred.succeed(startedA, undefined); try Effect.never() }
+    finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
   }
   const b = fork {
-    try { Deferred.succeed(startedB, undefined); Effect.never() }
-    finally { log.push("B done"); Deferred.succeed(releasedB, undefined) }
+    try { try Deferred.succeed(startedB, undefined); try Effect.never() }
+    finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
   }
-  startedA.await()
-  startedB.await()
+  try startedA.await()
+  try startedB.await()
   const bad = fork { throw new Bad() }
   try { join [bad, a, b] } catch (e) { log.push("caught " + e._tag) }
 }
@@ -28,22 +28,22 @@ function joined(log: string[]) {
 // await.all's elements are programs (D394): when one fails, the operation
 // interrupts the others, and every one is signalled before any is waited for.
 function all(log: string[]) {
-  const startedA = Deferred.make<void>()
-  const startedB = Deferred.make<void>()
-  const releasedB = Deferred.make<void>()
+  const startedA = try Deferred.make<void>()
+  const startedB = try Deferred.make<void>()
+  const releasedB = try Deferred.make<void>()
   try {
     await.all [
       do {
-        try { Deferred.succeed(startedA, undefined); Effect.never() }
-        finally { log.push("A waits"); releasedB.await(); log.push("A done") }
+        try { try Deferred.succeed(startedA, undefined); try Effect.never() }
+        finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
       },
       do {
-        try { Deferred.succeed(startedB, undefined); Effect.never() }
-        finally { log.push("B done"); Deferred.succeed(releasedB, undefined) }
+        try { try Deferred.succeed(startedB, undefined); try Effect.never() }
+        finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
       },
       do {
-        startedA.await()
-        startedB.await()
+        try startedA.await()
+        try startedB.await()
         throw new Bad()
       }
     ]
@@ -51,15 +51,15 @@ function all(log: string[]) {
 }
 
 function racePrograms(log: string[]) {
-  const releasedB = Deferred.make<void>()
+  const releasedB = try Deferred.make<void>()
   log.push(await.race [
     do {
-      try { Effect.never() }
-      finally { log.push("A waits"); releasedB.await(); log.push("A done") }
+      try { try Effect.never() }
+      finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
     },
     do {
-      try { Effect.never() }
-      finally { log.push("B done"); Deferred.succeed(releasedB, undefined) }
+      try { try Effect.never() }
+      finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
     },
     do { "winner" }
   ])
@@ -68,8 +68,8 @@ function racePrograms(log: string[]) {
 // expect-result: {"joined":["A waits","B done","A done","caught Bad"],"all":["A waits","B done","A done","caught Bad"],"racePrograms":["A waits","B done","A done","winner"]}
 export function main() {
   const logs = { joined: [] as string[], all: [] as string[], racePrograms: [] as string[] }
-  joined(logs.joined)
-  all(logs.all)
-  racePrograms(logs.racePrograms)
+  try joined(logs.joined)
+  try all(logs.all)
+  try racePrograms(logs.racePrograms)
   return logs
 }

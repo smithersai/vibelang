@@ -489,6 +489,8 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 			}
 		case hatchOf(node) != "":
 			return forEachHatchVibeLang(node, visit) // a hatch's TypeScript may use the platform (D148)
+		case isWrappedCode(node):
+			return false // so may the code that Effect.try or Effect.tryPromise wraps (VIP-5)
 		case ast.IsCallExpression(node) || ast.IsNewExpression(node):
 			checkClockRead(c, file, node)
 		case ast.IsIdentifier(node) || globalPlatformName(c, node) != "":

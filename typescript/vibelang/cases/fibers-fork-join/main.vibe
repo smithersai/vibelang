@@ -2,13 +2,13 @@
 error NotFound { id: string }
 
 function getUser(id: string): string!NotFound! {
-  sleep("5 millis")
+  try sleep("5 millis")
   if (id === "missing") throw new NotFound({ id })
   return "Ada"
 }
 
 function count(): number!! {
-  sleep("2 millis")
+  try sleep("2 millis")
   return 3
 }
 
@@ -35,12 +35,12 @@ function record() {
 
 // fork { ... } forks a block.
 function block() {
-  const done = Deferred.make<string>()
+  const done = try Deferred.make<string>()
   fork {
-    sleep("1 millis")
-    Deferred.succeed(done, "done")
+    try sleep("1 millis")
+    try Deferred.succeed(done, "done")
   }
-  return done.await()
+  return try done.await()
 }
 
 // The call form still works.
@@ -50,9 +50,9 @@ function old() {
 }
 
 function deferred() {
-  const d = Deferred.make<number>()
-  Deferred.succeed(d, 7)
-  return d.await()
+  const d = try Deferred.make<number>()
+  try Deferred.succeed(d, 7)
+  return try d.await()
 }
 
 function failed() {
@@ -67,7 +67,7 @@ function failed() {
 // When one fiber fails, join interrupts the others.
 function interrupted() {
   const slow = fork {
-    sleep("1 second")
+    try sleep("1 second")
     return "slow"
   }
   const bad = fork getUser("missing")
@@ -78,36 +78,36 @@ function interrupted() {
     // join has already interrupted slow, so Fiber.await returns at once.
     // A Fiber function keeps an owned fiber in its region; passing it to
     // another call, such as a hatch, would be EK4838 (D409).
-    const exit = Fiber.await(slow)
+    const exit = try Fiber.await(slow)
     return Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)
   }
 }
 
 function detached() {
-  const d = Deferred.make<string>()
-  detach(Deferred.succeed(d, "background"))
-  return d.await()
+  const d = try Deferred.make<string>()
+  try detach(Deferred.succeed(d, "background"))
+  return try d.await()
 }
 
 function scoped() {
-  const scope = Scope.make()
-  const fiber = forkIn(scope, label())
+  const scope = try Scope.make()
+  const fiber = try forkIn(scope, label())
   const value = join fiber
-  Scope.close(scope, Exit.void)
+  try Scope.close(scope, Exit.void)
   return value
 }
 
 export function main() {
   return {
-    pair: pair(),
-    tuple: tuple(),
-    record: record(),
-    block: block(),
-    old: old(),
-    deferred: deferred(),
-    failed: failed(),
-    interrupted: interrupted(),
-    detached: detached(),
-    scoped: scoped()
+    pair: try pair(),
+    tuple: try tuple(),
+    record: try record(),
+    block: try block(),
+    old: try old(),
+    deferred: try deferred(),
+    failed: try failed(),
+    interrupted: try interrupted(),
+    detached: try detached(),
+    scoped: try scoped()
   }
 }

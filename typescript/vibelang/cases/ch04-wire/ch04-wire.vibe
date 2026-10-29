@@ -36,8 +36,8 @@ const env = new Map<string, string>([["DATABASE_URL", "postgres://wired"]])
 const rows: ReadonlyArray<User> = [{ id: "1", name: "Ada", email: "ada@example.com" }]
 
 function welcome(id: string) {
-  const user = Users.find(id)
-  Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try Users.find(id)
+  try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
@@ -49,14 +49,14 @@ function readEnv(key: string) {
 }
 
 const ConfigLive = Layer.effect(Config, () => {
-  const url = readEnv("DATABASE_URL")
+  const url = try readEnv("DATABASE_URL")
   return { url }
 })
 
 const DatabaseLive = Layer.effect(Database, () => {
-  const url = Config().url
+  const url = (try Config()).url
   if (url.length === 0) throw new ConnectError({ url })
-  Effect.acquireRelease(
+  try Effect.acquireRelease(
     () => {
       events.push(`open ${url}`)
     },
@@ -70,10 +70,10 @@ const DatabaseLive = Layer.effect(Database, () => {
 })
 
 const UsersLive = Layer.effect(Users, () => {
-  const db = Database()
+  const db = try Database()
   return {
     find(id) {
-      const found = Effect.orDie(() => db.query("select * from users where id = $1", [id]))
+      const found = try Effect.orDie(() => db.query("select * from users where id = $1", [id]))
       if (found.length === 0) throw new UserNotFound({ id })
       return found[0]
     }
@@ -95,7 +95,7 @@ const AppLive = wire(UsersLive, MailerLive, DatabaseLive, ConfigLive)
 
 // expect-result: {"live":"Ada","test":"Grace","events":["open postgres://wired","close postgres://wired"],"outbox":["ada@example.com: Welcome, Ada!","grace@example.com: Welcome, Grace!"]}
 export function main() {
-  const live = Effect.provide(() => welcome("1"), AppLive)
-  const test = Effect.provide(() => welcome("1"), wire(UsersTest, MailerLive))
+  const live = try Effect.provide(() => welcome("1"), AppLive)
+  const test = try Effect.provide(() => welcome("1"), wire(UsersTest, MailerLive))
   return { live, test, events, outbox }
 }

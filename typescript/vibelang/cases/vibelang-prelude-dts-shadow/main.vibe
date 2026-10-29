@@ -22,5 +22,5 @@ export function fallback(): Effect<string, never, never> {
 }
 
 export function greet(id: number) {
-  return `Hello, ${Names.lookup(id)}`
+  return `Hello, ${try Names.lookup(id)}`
 }

@@ -12,14 +12,14 @@ abstract class Mailer {
 class Offline extends TaggedError("Offline")<{}> {}
 
 const Announce = Layer.effectDiscard(() => {
-  const sent = Mailer.send("team@example.com")
+  const sent = try Mailer.send("team@example.com")
   if (sent === undefined) throw new Offline()
 })
 
 const AppLive = wire(Announce)
 
 export function launch(): Effect<never, never, infer R> {
-  return Layer.launch(AppLive)
+  return try Layer.launch(AppLive)
 }
 
 Effect.runFork(() => launch())

@@ -1,3 +1,3 @@
-Call it through try((titles) => sortTitles(titles), Todos.list()), or declare its failures once, const sortTitlesTrusted = trusted(sortTitles, [Errors]) with trusted imported from "vibelang-runtime", and call sortTitlesTrusted.
-Call it through try((shelf) => shelf.titles(), Todos.shelf()), or wrap it in a function and declare that function's failures with trusted(impl, [Errors]), imported from "vibelang-runtime".
-Call it through try((titles) => sortTitles(titles), titles), or declare its failures once, const sortTitlesTrusted = trusted(sortTitles, [Errors]) with trusted imported from "vibelang-runtime", and call sortTitlesTrusted.
+Call it through const titles = try Todos.list(); try Effect.try(() => sortTitles(titles)), or declare its failures once, const sortTitlesTrusted = trusted(sortTitles, [Errors]) with trusted imported from "vibelang-runtime", and call sortTitlesTrusted.
+Call it through const shelf2 = try Todos.shelf(); try Effect.try(() => shelf2.titles()), or wrap it in a function and declare that function's failures with trusted(impl, [Errors]), imported from "vibelang-runtime".
+Call it through try Effect.try(() => sortTitles(titles)), or declare its failures once, const sortTitlesTrusted = trusted(sortTitles, [Errors]) with trusted imported from "vibelang-runtime", and call sortTitlesTrusted.

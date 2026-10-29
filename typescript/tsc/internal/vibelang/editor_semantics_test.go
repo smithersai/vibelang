@@ -13,8 +13,8 @@ import (
 
 func TestEditorAsyncRefactorGoldens(t *testing.T) {
 	for _, test := range []struct{ title, want string }{
-		{"Convert to a VibeLang function", "export function load(input: Promise<number>) { return try((input) => input, input) }"},
-		{"Convert to a VibeLang function with an error per await", "error PromiseFailed { cause: unknown }\nexport function load(input: Promise<number>) { return try((input) => input, (cause) => new PromiseFailed({ cause }), input) }"},
+		{"Convert to a VibeLang function", "export function load(input: Promise<number>) { return try Effect.tryPromise(() => input) }"},
+		{"Convert to a VibeLang function with an error per await", "error PromiseFailed { cause: unknown }\nexport function load(input: Promise<number>) { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }"},
 	} {
 		t.Run(test.title, func(t *testing.T) {
 			const source = "export async function load(input: Promise<number>) { return await input }"

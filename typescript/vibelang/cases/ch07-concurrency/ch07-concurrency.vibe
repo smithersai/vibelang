@@ -25,13 +25,13 @@ const events: string[] = []
 let beats = 0
 
 function loadProfile(id: string) {
-  Effect.sleep("5 millis")
+  try Effect.sleep("5 millis")
   const profile: Profile = { id, name: "Ada" }
   return profile
 }
 
 function recentOrders(id: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   const orders: ReadonlyArray<Order> = [{ id: "o1", total: 10 }, { id: "o2", total: 32 }]
   return orders
 }
@@ -39,37 +39,37 @@ function recentOrders(id: string) {
 // Running several things at once
 
 function dashboard(id: string) {
-  const [profile, orders] = Effect.all([() => loadProfile(id), () => recentOrders(id)], {
+  const [profile, orders] = try Effect.all([() => loadProfile(id), () => recentOrders(id)], {
     concurrency: 2
   })
   return { profile, orders }
 }
 
 function resize(image: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return `${image}@thumb`
 }
 
 function fromCache(id: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return `cache:${id}`
 }
 
 function fromNetwork(id: string) {
-  Effect.sleep("50 millis")
+  try Effect.sleep("50 millis")
   return `network:${id}`
 }
 
 function slowQuery(id: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return `rows for ${id}`
 }
 
 // NOTE: the proposal shows these three lines as fragments; they are wrapped in one function.
 function combinators(id: string, images: ReadonlyArray<string>) {
-  const thumbnails = Effect.forEach(images, (image) => resize(image), { concurrency: 8 })
-  const first = Effect.race(() => fromCache(id), () => fromNetwork(id))
-  const quick = Effect.timeout(() => slowQuery(id), "500 millis")
+  const thumbnails = try Effect.forEach(images, (image) => resize(image), { concurrency: 8 })
+  const first = try Effect.race(() => fromCache(id), () => fromNetwork(id))
+  const quick = try Effect.timeout(() => slowQuery(id), "500 millis")
   return { thumbnails, first, quick }
 }
 
@@ -78,7 +78,7 @@ function combinators(id: string, images: ReadonlyArray<string>) {
 function heartbeat() {
   try {
     while (true) {
-      Effect.sleep("1 millis")
+      try Effect.sleep("1 millis")
       beats++
     }
   } finally {
@@ -87,13 +87,13 @@ function heartbeat() {
 }
 
 function serve(port: number) {
-  using server = Http.listen(port)
+  using server = try Http.listen(port)
   fork heartbeat()          // stopped before the server closes
-  return server.awaitShutdown()
+  return try server.awaitShutdown()
 }
 
 function buildReport(id: string) {
-  Effect.sleep("2 millis")
+  try Effect.sleep("2 millis")
   events.push(`report ${id} built`)
   return `report ${id}`
 }
@@ -105,8 +105,8 @@ function sendProgressEmail(id: string) {
 // NOTE: the proposal shows this as a fragment; it is wrapped in reportWithProgress.
 function reportWithProgress(id: string) {
   const pending = fork buildReport(id)
-  sendProgressEmail(id)
-  const report = Fiber.join(pending)      // waits for it; fails if it failed
+  try sendProgressEmail(id)
+  const report = try Fiber.join(pending)      // waits for it; fails if it failed
   return report
 }
 
@@ -119,7 +119,7 @@ const HttpTest = Layer.succeed(Http, {
         awaitShutdown: () => {
           // Long enough for the forked heartbeat to beat even when the
           // machine is busy and the fiber starts late.
-          Effect.sleep("100 millis")
+          try Effect.sleep("100 millis")
           events.push("shutdown requested")
           return "stopped"
         }
@@ -133,10 +133,10 @@ const HttpTest = Layer.succeed(Http, {
 })
 
 function scenario() {
-  const board = dashboard("42")
-  const combined = combinators("42", ["a.png", "b.png"])
-  const served = serve(8080)
-  const report = reportWithProgress("r1")
+  const board = try dashboard("42")
+  const combined = try combinators("42", ["a.png", "b.png"])
+  const served = try serve(8080)
+  const report = try reportWithProgress("r1")
   return {
     profile: board.profile.name,
     orders: board.orders.length,
@@ -152,5 +152,5 @@ function scenario() {
 
 // expect-result: {"profile":"Ada","orders":2,"thumbnails":["a.png@thumb","b.png@thumb"],"first":"cache:42","quick":"rows for 42","served":"stopped","beating":true,"report":"report r1","events":["listen 8080","shutdown requested","heartbeat stopped","server closed","progress email r1","report r1 built"]}
 export function main() {
-  return Effect.provide(() => scenario(), HttpTest)
+  return try Effect.provide(() => scenario(), HttpTest)
 }

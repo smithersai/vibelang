@@ -1,9 +1,0 @@
-// expect: EK4404
-// try takes the code and the error mapping as two arguments (D148). Effect's
-// { try, catch } options object would be a value to the hatch, which would
-// succeed with the object itself.
-error BadJson { error: unknown }
-
-export function parse(text: string) {
-  return try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
-}

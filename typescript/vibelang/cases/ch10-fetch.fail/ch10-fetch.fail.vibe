@@ -1,17 +1,15 @@
 // expect: EK4402
-// Chapter 10 "Promises", verbatim. fetch is a platform API, which D5 makes uncallable from .vibe
-// files; D6 points at HttpClient instead.
+// Chapter 10 "Promises". fetch is a platform API, which D5 makes uncallable
+// from .vibe code; D6 points at HttpClient instead. The function that
+// Effect.tryPromise wraps is TypeScript, as the try hatch it replaced was
+// (VIP-5), so only the call outside it is EK4402.
 
 class HttpError extends TaggedError("HttpError")<{ readonly url: string; readonly cause: unknown }> {}
 
 function fetchJson(url: string) {
-  const response = Effect.tryPromise({
-    try: (signal) => fetch(url, { signal }),
-    catch: (cause) => new HttpError({ url, cause })
-  })
-  return Effect.tryPromise({
-    try: () => response.json(),
+  const pending = fetch(url)
+  return try Effect.tryPromise({
+    try: () => pending.then((response) => response.json()),
     catch: (cause) => new HttpError({ url, cause })
   })
 }
-// Effect<any, HttpError, never>: Response.json() returns Promise<any>

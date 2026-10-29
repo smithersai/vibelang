@@ -6,5 +6,5 @@ export const expanded = (n: number): Effect<number, never, never> => {
 }
 export function declared(n: number): Effect<number, never, never> { return ++n }
 export const expression = function (n: number): Effect<number, never, never> { return ++n }
-export function declaredProgram(n: number): Effect<number, never, never> { return Effect.succeed(++n) }
+export function declaredProgram(n: number): Effect<number, never, never> { return try Effect.succeed(++n) }
 export const closure = (n: number): Effect<() => number, never, never> => () => ++n

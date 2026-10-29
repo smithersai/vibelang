@@ -17,11 +17,11 @@ const NamesLive = Layer.succeed(Names, {
 })
 
 const CounterLive = Layer.effect(Counter) {
-  const count = Ref.make(0)
+  const count = try Ref.make(0)
   return {
     next() {
-      Ref.update(count, (n) => n + 1)
-      return Ref.get(count)
+      try Ref.update(count, (n) => n + 1)
+      return try Ref.get(count)
     }
   }
 }
@@ -29,7 +29,7 @@ const CounterLive = Layer.effect(Counter) {
 // The block provides Names, so the function needs no services.
 function greeting(id: string): string!NotFound! {
   provide NamesLive {
-    return `Hello, ${Names.name(id)}`
+    return `Hello, ${try Names.name(id)}`
   }
 }
 
@@ -46,15 +46,15 @@ function early() {
 // One layer instance serves the whole block.
 function counted() {
   provide CounterLive {
-    Counter.next()
-    return Counter.next()
+    try Counter.next()
+    return try Counter.next()
   }
 }
 
 // An array of layers provides all of their services.
 function both(): string!NotFound! {
   provide [NamesLive, CounterLive] {
-    return `${Names.name("42")} ${Counter.next()}`
+    return `${try Names.name("42")} ${try Counter.next()}`
   }
 }
 
@@ -62,10 +62,10 @@ function both(): string!NotFound! {
 function context(): string!NotFound! {
   const names = Context.make(Names, { name: () => "Context" })
   provide names {
-    return Names.name("42")
+    return try Names.name("42")
   }
 }
 
 export function main() {
-  return { greeting: greeting("42"), early: early(), count: counted(), both: both(), context: context() }
+  return { greeting: try greeting("42"), early: try early(), count: try counted(), both: try both(), context: try context() }
 }

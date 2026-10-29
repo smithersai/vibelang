@@ -29,7 +29,7 @@ export const startBody = (body: unknown!unknown!never) =>
 // A callback whose success is a type parameter.
 const announce: void!! = Console.log("chunk")
 export function main() {
-  Stream.make(1, 2) |> Stream.run(%, Sink.forEach((_n: number) => announce))
+  Stream.make(1, 2) |> try Stream.run(%, Sink.forEach((_n: number) => announce))
 }
 
 // A program literal under a type parameter.
@@ -37,7 +37,7 @@ interface S { go: (n: number) => void!! }
 export const s: S = {
   go: (n) => Effect.uninterruptibleMask((restore) => {
     return () => {
-      Console.log("ran", n)
+      try Console.log("ran", n)
     }
   })
 }
@@ -47,7 +47,7 @@ export const kept = (n: number): (unknown!!)!! => {
   const program: unknown!! = () => n + 1
   return program
 }
-export const ran = () => Stream.make(1) |> Stream.run(%, Sink.forEach((_n: number) => announce()))
+export const ran = () => Stream.make(1) |> try Stream.run(%, Sink.forEach((_n: number) => announce()))
 export const factory = (n: number): number!! => {
   const copy = n
   return () => copy + 1

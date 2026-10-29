@@ -52,10 +52,10 @@ const events: string[] = []
 let reviewersBusy = false
 
 function checkout(cartId: string) {
-  using hold = Inventory.reserve(cartId)
-  const ok = Approval.approve(`charge cart ${cartId}`)
+  using hold = try Inventory.reserve(cartId)
+  const ok = try Approval.approve(`charge cart ${cartId}`)
   if (!ok) throw new Declined({ cartId })
-  return Payments.charge(cartId)
+  return try Payments.charge(cartId)
 }
 // Effect<Receipt, ReviewBusy | Declined | PaymentError, Approval | Inventory | Payments>
 
@@ -63,10 +63,10 @@ function checkout(cartId: string) {
 // NOTE: the proposal shows `const receipt = handle(...)` as a fragment; wrapped in approvedCheckout.
 
 function approvedCheckout() {
-  const receipt = handle(() => checkout("c-42"), Approval, {
+  const receipt = try handle(() => checkout("c-42"), Approval, {
     approve(request, k) {
-      const decision = Reviewers.decide(request)    // may take minutes: the fiber just waits
-      return resume(k, decision)                    // checkout continues from its call
+      const decision = try Reviewers.decide(request)    // may take minutes: the fiber just waits
+      return try resume(k, decision)                    // checkout continues from its call
     }
   })
   // receipt: Receipt
@@ -80,10 +80,10 @@ abstract class Found extends Control {
 }
 
 function locate(grid: Grid, target: number) {
-  return handle(() => {
+  return try handle(() => {
     for (const row of grid.rows) {
-      using cursor = grid.open(row)
-      for (const cell of cursor.cells) if (cell.value === target) Found.found(cell)
+      using cursor = try grid.open(row)
+      for (const cell of cursor.cells) if (cell.value === target) try Found.found(cell)
     }
     return undefined
   }, Found, {
@@ -112,10 +112,10 @@ function makeGrid(values: ReadonlyArray<ReadonlyArray<number>>) {
 // Continuing with an error
 
 function busyCheckout() {
-  const outcome = handle(() => checkout("c-42"), Approval, {
+  const outcome = try handle(() => checkout("c-42"), Approval, {
     approve(request, k) {
-      if (Reviewers.busy()) return resumeWith(k, () => { throw new ReviewBusy({ request }) })
-      return resume(k, Reviewers.decide(request))
+      if (try Reviewers.busy()) return try resumeWith(k, () => { throw new ReviewBusy({ request }) })
+      return try resume(k, try Reviewers.decide(request))
     }
   })
   return outcome
@@ -125,7 +125,7 @@ function busyCheckout() {
 // NOTE: the proposal wraps this in it.effect(...) with assert.isTrue; here it returns the value.
 
 function testApproved() {
-  const receipt = handle(() => checkout("c-42"), Approval, {
+  const receipt = try handle(() => checkout("c-42"), Approval, {
     approve: (_request, k) => resume(k, true)
   })
   return receipt.paid
@@ -163,22 +163,22 @@ const PaymentsTest = Layer.succeed(Payments, {
 })
 
 function scenario() {
-  const receipt = approvedCheckout()
-  const tested = testApproved()
+  const receipt = try approvedCheckout()
+  const tested = try testApproved()
   reviewersBusy = true
   let busy = "none"
   try {
-    busyCheckout()
+    try busyCheckout()
   } catch (e) {
     busy = e._tag
   }
   reviewersBusy = false
-  const cell = locate(makeGrid([[1, 2], [3, 5], [7]]), 5)
+  const cell = try locate(try makeGrid([[1, 2], [3, 5], [7]]), 5)
   events.push("locate returned")
   return { paid: receipt.paid, tested, busy, cell, events }
 }
 
 // expect-result: {"paid":true,"tested":true,"busy":"ReviewBusy","cell":{"row":1,"value":5},"events":["reserve c-42","decide charge cart c-42","charge c-42","release c-42","reserve c-42","charge c-42","release c-42","reserve c-42","release c-42","open row 0","close row 0","open row 1","close row 1","locate returned"]}
 export function main() {
-  return Effect.provide(() => scenario(), Layer.mergeAll(ReviewersTest, InventoryTest, PaymentsTest))
+  return try Effect.provide(() => scenario(), Layer.mergeAll(ReviewersTest, InventoryTest, PaymentsTest))
 }

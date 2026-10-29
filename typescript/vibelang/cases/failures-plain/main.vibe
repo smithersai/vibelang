@@ -45,12 +45,12 @@ const steps: string[] = []
 
 // expect-result: {"clamp":[5,-10,-100],"length":[0,3],"defect":["Die"],"rethrown":["negative",2],"steps":["finally -1","finally 2"]}
 export function main() {
-  const defect = Effect.exit(() => Effect.suspend(() => length(undefined)))
+  const defect = try Effect.exit(() => Effect.suspend(() => length(undefined)))
   return {
-    clamp: [clamp(5), clamp(50), clamp(500)],
-    length: [length(0), length("abc")],
+    clamp: [try clamp(5), try clamp(50), try clamp(500)],
+    length: [try length(0), try length("abc")],
     defect: Exit.isFailure(defect) ? (defect.cause.reasons as ReadonlyArray<(typeof defect.cause.reasons)[number]>).map((reason) => reason._tag) : ["Success"],
-    rethrown: [rethrown(-1), rethrown(2)],
+    rethrown: [try rethrown(-1), try rethrown(2)],
     steps
   }
 }

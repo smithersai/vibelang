@@ -4,20 +4,20 @@ control Step { next(): void!! }
 
 export function resumeWritten(): number | string!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = resume()
+    const n: number = try resume()
     return n
   }
 }
 
 export function resumeWithWritten(): number | string!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = resumeWith(() => undefined)
+    const n: number = try resumeWith(() => undefined)
     return n
   }
 }
@@ -25,16 +25,16 @@ export function resumeWithWritten(): number | string!! {
 // Every ordinary return still has to fit the written success type.
 export function invalidTry(): number!! {
   try {
-    Step.next()
+    try Step.next()
     return "bad"
   } handle Step.next() {
-    resume()
+    try resume()
   }
 }
 
 export function invalidClause(): number!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
     return "bad"
@@ -44,9 +44,9 @@ export function invalidClause(): number!! {
 // Normal completion of the try block adds undefined to the written H.
 export function fallthroughWritten(): number!! {
   try {
-    Step.next()
+    try Step.next()
   } handle Step.next() {
-    const n: number = resume()
+    const n: number = try resume()
     n.toFixed(0)
   }
   return 1
@@ -55,11 +55,11 @@ export function fallthroughWritten(): number!! {
 // A clause that can stop without resuming also adds undefined to H.
 export function stopWritten(stop: boolean): number!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
     if (!stop) {
-      const n: number = resume()
+      const n: number = try resume()
       n.toFixed(0)
     }
   }
@@ -70,10 +70,10 @@ export function stopWritten(stop: boolean): number!! {
 export function breakWritten(): number!! {
   for (const round of [1, 2]) {
     try {
-      Step.next()
+      try Step.next()
       break
     } handle Step.next() {
-      const n: number = resumeWith(() => undefined)
+      const n: number = try resumeWith(() => undefined)
       n.toFixed(0)
     }
   }

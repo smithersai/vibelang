@@ -5,7 +5,7 @@
 import { route } from "./helpers.ts"
 
 function health() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return "healthy"
 }
 
@@ -14,8 +14,8 @@ const healthyProgram: string!! = () => health()
 // expect-result: {"withParameter":"function: got req","pausing":"program: healthy","plain":"function: static"}
 export function main() {
   return {
-    withParameter: route((request): string!! => `got ${request}`),
-    pausing: route(healthyProgram),
-    plain: route((): string!! => "static")
+    withParameter: try route((request): string!! => `got ${request}`),
+    pausing: try route(healthyProgram),
+    plain: try route((): string!! => "static")
   }
 }

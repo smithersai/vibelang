@@ -2,6 +2,6 @@
 import "vibelang/platform/node"
 
 export function main() {
-  Experimental.FileSystem.access("package.json", { executable: false })
-  Console.log("node fs accessible")
+  try Experimental.FileSystem.access("package.json", { executable: false })
+  try Console.log("node fs accessible")
 }

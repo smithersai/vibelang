@@ -18,8 +18,7 @@ import (
 // The boundary hatches (design D148) run plain TypeScript inside VibeLang:
 //
 //	const id = sync(crypto.randomUUID())                       // Effect.sync
-//	const parsed = try((text) => JSON.parse(text), text)       // Effect.try: a throw is UnknownError
-//	const body = try(async (url, signal) => fetch(url, { signal }), (error) => new Offline({ error }), url)
+//	const n = sync((text) => text.length, text)                // inputs fill its parameters
 //	const tick = callback<number>((resume) => {                // Effect.callback
 //	  const timer = setTimeout(() => resume(1), 10)
 //	  return () => clearTimeout(timer)
@@ -33,15 +32,15 @@ import (
 // (D229): it may use its own parameters and locals, globals, imports, and the
 // file's error declarations, but no other binding of the .vibe file
 // (EK4405). Values reach it as inputs, the arguments after the function, which
-// fill its first parameters (D230); try's error mapper stays the second
-// argument (D231). The inputs and the mapper are VibeLang (D232).
+// fill its first parameters (D230). The inputs are VibeLang (D232). A
+// throw or rejection that may fail is wrapped with Effect's own Effect.try
+// or Effect.tryPromise, which replaced the try hatch (VIP-5).
 //
-// A hatch is a call whose callee is the prelude's sync, try, or callback: the
-// name, with no declaration in any scope around the call that shadows it. try
-// is a keyword, so nothing can shadow it.
+// A hatch is a call whose callee is the prelude's sync or callback: the name,
+// with no declaration in any scope around the call that shadows it.
 
 // hatchNames are the prelude's hatches.
-var hatchNames = map[string]bool{"sync": true, "try": true, "callback": true}
+var hatchNames = map[string]bool{"sync": true, "callback": true}
 
 // hatchOf returns the name of the hatch that call calls, or "".
 func hatchOf(call *ast.Node) string {
@@ -53,7 +52,7 @@ func hatchOf(call *ast.Node) string {
 		return ""
 	}
 	name := callee.Text()
-	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) || name != "try" && shadowed(call, name) {
+	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) || shadowed(call, name) {
 		return ""
 	}
 	return name
@@ -73,8 +72,12 @@ func shadowed(node *ast.Node, name string) bool {
 }
 
 // isHatchArgument reports whether node is a hatch's TypeScript: its first
-// argument. The inputs after it, and try's error mapper, are VibeLang (D232).
+// argument. The inputs after it are VibeLang (D232). The function that
+// Effect.try or Effect.tryPromise wraps is TypeScript too (isWrappedCode).
 func isHatchArgument(node *ast.Node) bool {
+	if isWrappedCode(node) {
+		return true
+	}
 	parent := node.Parent
 	if parent == nil || !ast.IsCallExpression(parent) || parent.Expression() == node || hatchOf(parent) == "" {
 		return false
@@ -83,8 +86,35 @@ func isHatchArgument(node *ast.Node) bool {
 	return len(arguments) > 0 && arguments[0] == node
 }
 
+// isWrappedCode reports whether node is the code that Effect.try or
+// Effect.tryPromise wraps, the wrappers that replaced the try hatch (VIP-5):
+// a function literal that is the call's argument, or the try property of
+// its options object. Like a hatch's, its body is TypeScript, where a throw
+// or a rejection is JavaScript's, for the wrapper to catch.
+func isWrappedCode(node *ast.Node) bool {
+	if !ast.IsFunctionExpressionOrArrowFunction(node) {
+		return false
+	}
+	call := node.Parent
+	if call != nil && ast.IsPropertyAssignment(call) && ast.IsIdentifier(call.Name()) && call.Name().Text() == "try" && call.Initializer() == node {
+		if object := call.Parent; object != nil && ast.IsObjectLiteralExpression(object) {
+			call = object.Parent
+			node = object
+		}
+	}
+	if call == nil || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 || call.Arguments()[0] != node {
+		return false
+	}
+	callee := call.Expression()
+	if !ast.IsPropertyAccessExpression(callee) || !ast.IsIdentifier(callee.Expression()) || callee.Expression().Text() != "Effect" {
+		return false
+	}
+	name := callee.Name().Text()
+	return (name == "try" || name == "tryPromise") && isVibeLangFile(ast.GetSourceFileOfNode(call))
+}
+
 // forEachHatchVibeLang calls visit with the arguments of call, a hatch, that are
-// VibeLang: its error mapper and inputs, every argument after the first (D232).
+// VibeLang: its inputs, every argument after the first (D232).
 // It returns true when visit does, as ForEachChild would.
 func forEachHatchVibeLang(call *ast.Node, visit func(node *ast.Node) bool) bool {
 	arguments := call.Arguments()
@@ -113,28 +143,18 @@ func init() {
 	ls.RegisterQuickInfoHook(hatchQuickInfo)
 }
 
-// checkHatches reports EK4404 at try({ try: …, catch: … }): Effect's options
-// object is a value to the hatch, which would succeed with the object itself.
-// It reports EK4405 at each reference in a hatch's TypeScript to a binding
+// checkHatches reports EK4405 at each reference in a hatch's TypeScript to a binding
 // that the .vibe file declares outside it (D229).
 func checkHatches(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := hatchOf(node); name != "" {
-			if name == "try" {
-				if arguments := node.Arguments(); len(arguments) == 1 && ast.IsObjectLiteralExpression(arguments[0]) && hasProperty(arguments[0], "try") {
-					d := report(c, arguments[0], EK4404, "try")
-					note(d, "Write try(code, (error) => …), as in try((text) => parse(text), (error) => new BadInput({ error }), text).")
-					cover(c, arguments[0]) // TypeScript's errors inside the object restate EK4404
-					return node.ForEachChild(visit)
-				}
-			}
 			references := outsideReferences(c, hatchIsland(node))
 			for _, reference := range references {
 				d := report(c, reference, EK4405, reference.Text(), name)
 				note(d, "Add a parameter for it and pass the value after the function, as in {0}(({1}) => …, {1}).", name, reference.Text())
 			}
-			if len(references) > 0 && takesFewerInputs(node, name) {
+			if len(references) > 0 && takesFewerInputs(node) {
 				// TypeScript then reports that the function fits no overload,
 				// naming one it was never meant for; EK4405 explains the call.
 				coverArgument(c, hatchIsland(node))
@@ -145,20 +165,15 @@ func checkHatches(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// takesFewerInputs reports whether call, a hatch named name, passes more
-// inputs after its function than the function has parameters for: try's
-// mapper stays its second argument (D231), so its inputs follow that.
-func takesFewerInputs(call *ast.Node, name string) bool {
+// takesFewerInputs reports whether call, a hatch, passes more inputs after
+// its function than the function has parameters for.
+func takesFewerInputs(call *ast.Node) bool {
 	arguments := call.Arguments()
 	island := hatchIsland(call)
 	if island == nil || !ast.IsFunctionLike(island) {
 		return false
 	}
-	inputs := len(arguments) - 1
-	if name == "try" && len(arguments) > 1 && ast.IsFunctionLike(ast.SkipParentheses(arguments[1])) {
-		inputs--
-	}
-	return len(island.Parameters()) < inputs
+	return len(island.Parameters()) < len(arguments)-1
 }
 
 // hatchIsland returns the TypeScript of call, a hatch: its first argument, or
@@ -214,41 +229,31 @@ func outsideNames(c *checker.Checker, island *ast.Node) []string {
 	return names
 }
 
-// hatchCall writes code, a plain expression, as a call of hatch that passes
-// the bindings code reads from its file as inputs (D229, D230), for a note
-// that suggests the hatch: try(parse(text)) reads text, so it is
-// try((text) => parse(text), text). A mapper that is not "" goes second.
-func hatchCall(c *checker.Checker, file *ast.SourceFile, hatch string, code *ast.Node, mapper string) string {
-	names := strings.Join(outsideNames(c, code), ", ")
-	text := nodeText(file, code)
-	if names != "" {
-		text = "(" + names + ") => " + text
+// wrappedCall writes code, a plain expression, run through Effect's
+// wrapper effect, Effect.try or Effect.tryPromise (VIP-5), for a note or a
+// refactor that suggests it: try Effect.try(() => parse(text)). A mapper
+// that is not "" becomes the wrapper's catch.
+func wrappedCall(effect string, code string, mapper string) string {
+	if mapper == "" {
+		return "try Effect." + effect + "(() => " + code + ")"
 	}
-	if mapper != "" {
-		text += ", " + mapper
-	}
-	if names != "" {
-		text += ", " + names
-	}
-	return hatch + "(" + text + ")"
+	return "try Effect." + effect + "({ try: () => " + code + ", catch: " + mapper + " })"
 }
 
-// boundaryCall writes call, a plain TypeScript call that EK4401 reports, as a
-// call of hatch that compiles, for the note that suggests it. A hatch's
-// function is TypeScript, where a .vibe function's call is an Effect value
-// that nothing runs (D148, D232), so each operand of call, its receiver or
-// an argument, that runs an Effect or calls a .vibe function is an input: it
-// runs before the hatch, and the function receives its value under the
-// callee's parameter name. The bindings the rest reads from its file are
-// inputs too (D229, D230). A mapper that is not "" goes second.
+// boundaryCall writes call, a plain TypeScript call that EK4401 reports, as
+// a run of Effect's wrapper effect, Effect.try or Effect.tryPromise, that
+// compiles, for the note that suggests it. The wrapper's function is a plain
+// callback, which runs no Effect, so each operand of call, its receiver or
+// an argument, that runs an Effect or calls a .vibe function is bound first
+// to a const named after the callee's parameter. A mapper that is not ""
+// becomes the wrapper's catch.
 //
-//	shout(hello("VibeLang"))   try((s) => shout(s), hello("VibeLang"))
-//	sortTitles(titles)         try((titles) => sortTitles(titles), titles)
-//	shout("hi")                try(shout("hi"))
-func boundaryCall(c *checker.Checker, file *ast.SourceFile, hatch string, call *ast.Node, mapper string) string {
+//	shout(hello("VibeLang"))   const s = try hello("VibeLang"); try Effect.try(() => shout(s))
+//	sortTitles(titles)         try Effect.try(() => sortTitles(titles))
+func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call *ast.Node, mapper string) string {
 	a := analyzerFor(c)
 	type input struct {
-		node        *ast.Node // the operand the parameter stands for, or nil for a binding
+		node        *ast.Node // the operand the const stands for
 		pos         int
 		param, text string
 	}
@@ -271,9 +276,9 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, hatch string, call *
 		}
 	}
 	replaced := func(n *ast.Node) bool {
-		return slices.ContainsFunc(inputs, func(in input) bool { return in.node != nil && in.node.Pos() <= n.Pos() && n.End() <= in.node.End() })
+		return slices.ContainsFunc(inputs, func(in input) bool { return in.node.Pos() <= n.Pos() && n.End() <= in.node.End() })
 	}
-	// The names the rest of the call reads, which a parameter must not shadow.
+	// The names the rest of the call reads, which a const must not shadow.
 	taken := map[string]bool{}
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
@@ -286,15 +291,19 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, hatch string, call *
 		return n.ForEachChild(visit)
 	}
 	visit(call)
-	for _, reference := range outsideReferences(c, call) {
-		if !replaced(reference) && !slices.ContainsFunc(inputs, func(in input) bool { return in.node == nil && in.param == reference.Text() }) {
-			inputs = append(inputs, input{pos: nodeStart(file, reference), param: reference.Text(), text: reference.Text()})
+	// The consts join the enclosing function's scope, so they must not
+	// shadow or redeclare a name written anywhere in it.
+	if fn := enclosingFunction(call); fn != nil {
+		var names func(n *ast.Node) bool
+		names = func(n *ast.Node) bool {
+			if ast.IsIdentifier(n) {
+				taken[n.Text()] = true
+			}
+			return n.ForEachChild(names)
 		}
+		fn.ForEachChild(names)
 	}
 	for i := range inputs {
-		if inputs[i].node == nil {
-			continue
-		}
 		base, name := inputs[i].param, inputs[i].param
 		for n := 2; taken[name]; n++ {
 			name = base + strconv.Itoa(n)
@@ -302,26 +311,21 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, hatch string, call *
 		taken[name] = true
 		inputs[i].param = name
 	}
-	slices.SortFunc(inputs, func(x, y input) int { return x.pos - y.pos })
 	start := nodeStart(file, call)
 	text := file.Text()[start:call.End()]
 	for i := len(inputs) - 1; i >= 0; i-- {
-		if in := inputs[i]; in.node != nil {
-			text = text[:in.pos-start] + in.param + text[in.node.End()-start:]
+		in := inputs[i]
+		text = text[:in.pos-start] + in.param + text[in.node.End()-start:]
+	}
+	var consts []string
+	for _, in := range inputs {
+		value := in.text
+		if operand := ast.SkipParentheses(in.node); isInvocation(operand) && a.performs(operand) {
+			value = "try " + value
 		}
+		consts = append(consts, "const "+in.param+" = "+value+"; ")
 	}
-	if mapper != "" {
-		mapper = ", " + mapper
-	}
-	if len(inputs) == 0 {
-		return hatch + "(" + text + mapper + ")"
-	}
-	params := make([]string, len(inputs))
-	values := make([]string, len(inputs))
-	for i, in := range inputs {
-		params[i], values[i] = in.param, in.text
-	}
-	return hatch + "((" + strings.Join(params, ", ") + ") => " + text + mapper + ", " + strings.Join(values, ", ") + ")"
+	return strings.Join(consts, "") + wrappedCall(effect, text, mapper)
 }
 
 // runsVibeLang reports whether evaluating node, an expression, runs an
@@ -451,28 +455,26 @@ func hasProperty(object *ast.Node, name string) bool {
 	return false
 }
 
-// hatchForm is what the lowering emits for a sync or try hatch.
+// hatchForm is what the lowering emits for a sync hatch.
 type hatchForm struct {
-	effect string // "sync", "promise", "try", or "tryPromise"
-	value  bool   // sync(expression), try(expression): wrap it in () =>
-	mapper bool   // try's second argument maps a thrown error (D231)
+	effect string // "sync" or "promise"
+	value  bool   // sync(expression): wrap it in () =>
 	signal bool   // the overload gives an async function the AbortSignal after its inputs (D230)
 
 	// adapter says the type cannot tell a promise from a plain value, so the
-	// runtime's sync or try decides for each value the function returns.
+	// runtime's sync decides for each value the function returns.
 	adapter bool
 }
 
-// hatchFormOf returns the form of call, a sync or try hatch. The overload the
+// hatchFormOf returns the form of call, a sync hatch. The overload the
 // checker selected tells a function from a value, by the name the runtime
-// gives its first parameter (evaluate or value), whether try has an error
-// mapper (a second parameter named mapError), and whether an async function
-// gets the AbortSignal after its inputs (takesSignal). The function itself
-// decides between sync and async (D232): an async function, or one that
-// returns a promise, is Effect.promise or Effect.tryPromise.
+// gives its first parameter (evaluate or value), and whether an async
+// function gets the AbortSignal after its inputs (takesSignal). The function
+// itself decides between sync and async (D232): an async function, or one
+// that returns a promise, is Effect.promise.
 func hatchFormOf(c *checker.Checker, call *ast.Node) (hatchForm, bool) {
 	name := hatchOf(call)
-	if name != "sync" && name != "try" {
+	if name != "sync" {
 		return hatchForm{}, false
 	}
 	signature := c.GetResolvedSignature(call)
@@ -491,12 +493,11 @@ func hatchFormOf(c *checker.Checker, call *ast.Node) (hatchForm, bool) {
 	default:
 		return hatchForm{}, false
 	}
-	form.mapper = len(parameters) > 1 && ast.IsIdentifier(parameters[1].Name()) && parameters[1].Name().Text() == "mapError"
 	form.signal = takesSignal(parameters[0])
 	form.effect = name
 	switch hatchPromiseOf(c, call.Arguments()[0], form.value) {
 	case alwaysPromise:
-		form.effect = map[string]string{"sync": "promise", "try": "tryPromise"}[name]
+		form.effect = "promise"
 	case maybePromise:
 		form.adapter = true
 	}
@@ -629,15 +630,14 @@ func joinPromiseness(kinds []promiseness) promiseness {
 	return kinds[0]
 }
 
-// visitHatchCall lowers a sync or try hatch to Effect's function:
+// visitHatchCall lowers a sync hatch to Effect's function:
 //
 //	sync(() => f())                    Effect.sync(() => f())
 //	sync(fetch)                        Effect.promise(fetch) when fetch returns a promise
 //	sync((n) => n * 2, count)          Effect.sync(((n) => n * 2).bind(undefined, count))
-//	try((s) => parse(s), wrap, text)   Effect.try({ try: ((s) => parse(s)).bind(undefined, text), catch: wrap })
 //
-// The first argument stays TypeScript: its calls do not run. The inputs and
-// the mapper are VibeLang, lowered where the call stands, so a call among the
+// The first argument stays TypeScript: its calls do not run. The inputs are
+// VibeLang, lowered where the call stands, so a call among the
 // inputs runs before the hatch starts. bind fills the function's first
 // parameters with the inputs; Effect then passes the signal, if any, after
 // them. An async function is called through the runtime's $asyncHatch unless
@@ -649,7 +649,7 @@ func joinPromiseness(kinds []promiseness) promiseness {
 // has left and undefined when it has none, which a rest parameter collects.
 // $asyncHatch gives the function exactly its inputs, then the signal when
 // the overload passes one (hatchForm.signal) and the function declares a
-// parameter for it: the rule sync and try follow when called as values. The
+// parameter for it: the rule sync follows when called as a value. The
 // call itself returns an Effect, so it runs as yield* where calls run.
 func (tx *lowering) visitHatchCall(node *ast.Node) *ast.Node {
 	form := tx.plan.hatches[node]
@@ -659,35 +659,15 @@ func (tx *lowering) visitHatchCall(node *ast.Node) *ast.Node {
 	tx.inEffect, tx.plain = false, false
 	body := tx.Visitor().VisitNode(arguments[0])
 	tx.inEffect, tx.plain = saved, savedPlain
-	rest := arguments[1:]
-	var mapper *ast.Node
-	if form.mapper && len(rest) > 0 {
-		mapper = tx.Visitor().VisitNode(rest[0])
-		rest = rest[1:]
-	}
 	inputs := []*ast.Node{f.NewIdentifier("undefined")}
-	for _, input := range rest {
+	for _, input := range arguments[1:] {
 		inputs = append(inputs, tx.Visitor().VisitNode(input))
 	}
-	// The runtime's adapter takes the function, the mapper and the inputs in
-	// the order written, so only Effect's own forms reorder them.
+	// The runtime's adapter takes the function and the inputs as written.
 	if form.adapter {
-		return tx.adapterHatchCall(node, form, body, mapper, inputs[1:])
+		return tx.adapterHatchCall(node, form, body, inputs[1:])
 	}
-	if mapper != nil && !form.value && len(rest) > 0 {
-		// The options object evaluates the inputs, which bind fills in, before
-		// the mapper written ahead of them: keep the source's order (order.go).
-		sources := append([]*ast.Node{arguments[0], arguments[1]}, rest...)
-		operands := append([]*ast.Node{body, mapper}, inputs[1:]...)
-		emit := []int{0}
-		for i := range rest {
-			emit = append(emit, i+2)
-		}
-		emitted := tx.inOrder(operands, sources, append(emit, 1))
-		body, mapper = emitted[0], emitted[len(emitted)-1]
-		inputs = append(inputs[:1], emitted[1:len(emitted)-1]...)
-	}
-	async := form.effect == "promise" || form.effect == "tryPromise"
+	async := form.effect == "promise"
 	switch {
 	case form.value:
 		body = tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), body))
@@ -703,13 +683,6 @@ func (tx *lowering) visitHatchCall(node *ast.Node) *ast.Node {
 		body = f.NewCallExpression(bind, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(inputs), ast.NodeFlagsNone)
 	}
 	effectArguments := []*ast.Node{body}
-	if mapper != nil {
-		options := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
-			f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("try"), nil /*postfixToken*/, nil /*typeNode*/, body),
-			f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("catch"), nil /*postfixToken*/, nil /*typeNode*/, mapper),
-		}), false /*multiLine*/)
-		effectArguments = []*ast.Node{options}
-	}
 	callee := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier(form.effect), ast.NodeFlagsNone)
 	lowered := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(effectArguments), ast.NodeFlagsNone)
 	tx.EmitContext().SetOriginal(lowered, node)
@@ -733,7 +706,7 @@ func hatchQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 		return "", ""
 	}
 	paragraph := "An escape hatch: its first argument is self-contained TypeScript (D229)."
-	if inputs := hatchInputs(c, call); len(inputs) > 0 {
+	if inputs := hatchInputs(call); len(inputs) > 0 {
 		var names []string
 		for _, input := range inputs {
 			names = append(names, "`"+scanner.GetSourceTextOfNodeFromSourceFile(ast.GetSourceFileOfNode(call), input, false /*includeTrivia*/)+"`")
@@ -743,25 +716,20 @@ func hatchQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	return "", paragraph
 }
 
-// adapterHatchCall lowers node, a sync or try hatch whose function or value
-// may or may not give a promise, to the runtime's hatch, which awaits a
-// value whose then is a function and returns any other value (D232):
+// adapterHatchCall lowers node, a sync hatch whose function or value may or
+// may not give a promise, to the runtime's hatch, which awaits a value whose
+// then is a function and returns any other value (D232):
 //
 //	sync((flag) => flag ? Promise.resolve(1) : 1, f)   runtime.sync((flag) => …, f)
-//	try(load(), wrap)                                  runtime.try(() => load(), wrap)
 //
-// body is the lowered function, or the value; the mapper and inputs follow
-// it as the source wrote them.
-func (tx *lowering) adapterHatchCall(node *ast.Node, form hatchForm, body, mapper *ast.Node, inputs []*ast.Node) *ast.Node {
+// body is the lowered function, or the value; the inputs follow it as the
+// source wrote them.
+func (tx *lowering) adapterHatchCall(node *ast.Node, form hatchForm, body *ast.Node, inputs []*ast.Node) *ast.Node {
 	f := tx.Factory()
 	if form.value {
 		body = tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), body))
 	}
-	arguments := []*ast.Node{body}
-	if mapper != nil {
-		arguments = append(arguments, mapper)
-	}
-	arguments = append(arguments, inputs...)
+	arguments := append([]*ast.Node{body}, inputs...)
 	lowered := f.NewCallExpression(tx.runtimeMember(form.effect), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	tx.EmitContext().SetOriginal(lowered, node)
 	lowered.Loc = node.Loc
@@ -774,17 +742,12 @@ func (tx *lowering) adapterHatchCall(node *ast.Node, form hatchForm, body, mappe
 }
 
 // hatchInputs returns the inputs of call, a hatch: the arguments after its
-// function and, for try, after its error mapper.
-func hatchInputs(c *checker.Checker, call *ast.Node) []*ast.Node {
-	arguments := call.Arguments()
-	if len(arguments) < 2 {
-		return nil
+// function.
+func hatchInputs(call *ast.Node) []*ast.Node {
+	if arguments := call.Arguments(); len(arguments) > 1 {
+		return arguments[1:]
 	}
-	rest := arguments[1:]
-	if form, ok := hatchFormOf(c, call); ok && form.mapper {
-		rest = rest[1:]
-	}
-	return rest
+	return nil
 }
 
 // hatchInputFix is EK4405's quick fix: it makes every binding the hatch's
@@ -840,7 +803,7 @@ func hatchInputEdits(c *checker.Checker, fix *ls.CodeFixContext, file *ast.Sourc
 		return []*lsproto.TextEdit{{NewText: replacement, Range: rangeOf(start, island.End())}}
 	}
 	parameters := function.Parameters()
-	existing := len(hatchInputs(c, call))
+	existing := len(hatchInputs(call))
 	if len(parameters) > 0 && !parenthesized(text, parameters[0].Pos()) {
 		// x => …: a lone parameter without parentheses.
 		first := scanner.SkipTrivia(text, parameters[0].Pos())

@@ -2,6 +2,6 @@
 import "vibelang/platform/node"
 
 export function main() {
-  using held = Experimental.Locks.hold("a")
-  Console.log("held")
+  using held = try Experimental.Locks.hold("a")
+  try Console.log("held")
 }

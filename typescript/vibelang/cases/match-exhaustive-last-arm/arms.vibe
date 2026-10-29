@@ -56,9 +56,9 @@ export function greeting(name: Option.Option<string>) {
 // In an Effect function, whose arms run Effects.
 export function announce(phase: Phase) {
   match (phase) {
-    when "draft": Effect.log("draft");
-    when "review": Effect.log("review");
-    when "published": Effect.log("published");
+    when "draft": try Effect.log("draft");
+    when "review": try Effect.log("review");
+    when "published": try Effect.log("published");
   }
   return phase
 }

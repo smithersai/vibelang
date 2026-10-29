@@ -21,18 +21,18 @@ abstract class Database {
 }
 
 export const UsersLive = Layer.effect(Users, () => {
-  const db = Database()
+  const db = try Database()
   return {
     find(id) {
-      const rows = db.query(`select ${id}`)
-      if (rows.length === 0) return Effect.fail(new UserNotFound({ id }))
-      return Effect.succeed(rows[0])
+      const rows = try db.query(`select ${id}`)
+      if (rows.length === 0) return try Effect.fail(new UserNotFound({ id }))
+      return try Effect.succeed(rows[0])
     }
   }
 })
 
 export class UsersFlaky implements Users {
   find(id: string) {
-    return Effect.fail(new DbError({ reason: `no connection for ${id}` }))
+    return try Effect.fail(new DbError({ reason: `no connection for ${id}` }))
   }
 }

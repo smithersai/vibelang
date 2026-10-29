@@ -1,5 +1,5 @@
 // expect: EK4301 TS2769
 import * as Effect from "effect/Effect"
-function load() { yieldNow(); return 1 }
+function load() { try yieldNow(); return 1 }
 export const named = Effect.fn("Reader.named")(load)
 export const inline = Effect.fn("Reader.inline")((n: number) => { yieldNow(); return n + 1 })

@@ -7,24 +7,24 @@ error Missing { id: string }
 
 const followUntil = () => {
   while (true) {
-    sleep("1 second")
+    try sleep("1 second")
   }
 }
 const lookup = (id: number) => {
-  sleep("1 millis")
+  try sleep("1 millis")
   return id
 }
 
 export const make = (ok: boolean) => {
-  const missing = Effect.fail(new Missing({ id: "a" }))
-  let retried = Effect.fail(new Missing({ id: "b" }))
-  const programs = [followUntil()]
-  return { follow: followUntil(), check: () => ok ? 1 : missing, retried, programs }
+  const missing = try Effect.fail(new Missing({ id: "a" }))
+  let retried = try Effect.fail(new Missing({ id: "b" }))
+  const programs = [try followUntil()]
+  return { follow: try followUntil(), check: () => ok ? 1 : missing, retried, programs }
 }
 
 export const reassigned = () => {
-  let current = lookup(0)
-  current = Effect.fail(new Missing({ id: "c" }))
+  let current = try lookup(0)
+  current = try Effect.fail(new Missing({ id: "c" }))
   return current
 }
 
@@ -36,10 +36,10 @@ interface Follower {
 }
 export const kept = (ok: boolean): Follower => {
   const missing: never!Missing! = Effect.fail(new Missing({ id: "d" }))
-  return { follow: followUntil(), check: () => ok ? 1 : missing() }
+  return { follow: followUntil(), check: () => ok ? 1 : try missing() }
 }
-export const later = () => ({ follow: () => followUntil(), id: lookup(1) })
+export const later = () => ({ follow: () => followUntil(), id: try lookup(1) })
 export const statement = () => {
-  lookup(2)
-  followUntil()
+  try lookup(2)
+  try followUntil()
 }

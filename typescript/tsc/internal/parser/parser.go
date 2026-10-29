@@ -1140,8 +1140,8 @@ func (p *Parser) parseStatement() *ast.Statement {
 	case ast.KindThrowKeyword:
 		return p.parseThrowStatement()
 	case ast.KindTryKeyword, ast.KindCatchKeyword, ast.KindFinallyKeyword:
-		if p.isStartOfTryCall() {
-			break // try(…), a VibeLang boundary hatch (vibelang_hatches.go)
+		if p.isStartOfVibeLangTry() {
+			break // try e, which runs an Effect (vibelang_try.go)
 		}
 		return p.parseTryStatement()
 	case ast.KindDebuggerKeyword:
@@ -4941,6 +4941,8 @@ func (p *Parser) isUpdateExpression() bool {
 	switch p.token {
 	case ast.KindPlusToken, ast.KindMinusToken, ast.KindTildeToken, ast.KindExclamationToken, ast.KindDeleteKeyword, ast.KindTypeOfKeyword, ast.KindVoidKeyword, ast.KindAwaitKeyword:
 		return false
+	case ast.KindTryKeyword:
+		return !p.isStartOfVibeLangTry() // try e, a unary operator (vibelang_try.go)
 	case ast.KindLessThanToken:
 		return p.languageVariant == core.LanguageVariantJSX
 	}
@@ -5312,6 +5314,11 @@ func (p *Parser) parseSimpleUnaryExpression() *ast.Expression {
 		// //  UnaryExpression (modified):
 		// //      < type > UnaryExpression
 		return p.parseTypeAssertion()
+	case ast.KindTryKeyword:
+		if p.isStartOfVibeLangTry() {
+			return p.parseVibeLangTry() // try e, which runs an Effect (vibelang_try.go)
+		}
+		return p.parseUpdateExpression()
 	case ast.KindAwaitKeyword:
 		if p.isVibeLangAwaitOperation() {
 			return p.parseVibeLangAwaitOperation() // await.all, await.race, ... (vibelang_fibers.go)
@@ -5623,7 +5630,7 @@ func (p *Parser) parseMemberExpressionRest(pos int, expression *ast.Expression, 
 		if questionDotToken == nil {
 			if p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak() {
 				p.nextToken()
-				expression = p.checkJSSyntax(p.finishNode(p.factory.NewNonNullExpression(expression, ast.NodeFlagsNone), pos))
+				expression = p.checkJSSyntax(p.finishNode(p.factory.NewNonNullExpression(triedChainOperand(expression), ast.NodeFlagsNone), pos))
 				continue
 			}
 			typeArguments := p.tryParseTypeArgumentsInExpression()
@@ -5646,6 +5653,7 @@ func (p *Parser) nextTokenIsIdentifierOrKeywordOrOpenBracketOrTemplate() bool {
 }
 
 func (p *Parser) parsePropertyAccessExpressionRest(pos int, expression *ast.Expression, questionDotToken *ast.Node) *ast.Node {
+	expression = triedChainOperand(expression)
 	name := p.parseRightSideOfDot(true /*allowIdentifierNames*/, true /*allowPrivateIdentifiers*/, true /*allowUnicodeEscapeSequenceInIdentifierName*/)
 	isOptionalChain := questionDotToken != nil || p.tryReparseOptionalChain(expression)
 	propertyAccess := p.factory.NewPropertyAccessExpression(expression, questionDotToken, name, core.IfElse(isOptionalChain, ast.NodeFlagsOptionalChain, ast.NodeFlagsNone))
@@ -5685,6 +5693,7 @@ func (p *Parser) tryReparseOptionalChain(node *ast.Expression) bool {
 }
 
 func (p *Parser) parseElementAccessExpressionRest(pos int, expression *ast.Expression, questionDotToken *ast.Node) *ast.Node {
+	expression = triedChainOperand(expression)
 	argumentExpression := p.createMissingIdentifier()
 	if p.token == ast.KindCloseBracketToken {
 		p.parseErrorAt(p.nodePos(), p.nodePos(), diagnostics.An_element_access_expression_should_take_an_argument)
@@ -5714,6 +5723,7 @@ func (p *Parser) parseCallExpressionRest(pos int, expression *ast.Expression) *a
 				typeArguments = expression.TypeArgumentList()
 				expression = expression.AsExpressionWithTypeArguments().Expression
 			}
+			expression = triedChainOperand(expression)
 			inner := expression
 			argumentList := p.parseArgumentList()
 			isOptionalChain := questionDotToken != nil || p.tryReparseOptionalChain(expression)
@@ -5765,6 +5775,7 @@ func (p *Parser) parseSpreadElement() *ast.Node {
 }
 
 func (p *Parser) parseTaggedTemplateRest(pos int, tag *ast.Expression, questionDotToken *ast.Node, typeArguments *ast.NodeList) *ast.Node {
+	tag = triedChainOperand(tag)
 	var template *ast.Expression
 	if p.token == ast.KindNoSubstitutionTemplateLiteral {
 		p.reScanTemplateToken(true /*isTaggedTemplate*/)
@@ -5854,10 +5865,6 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 		return p.parseTemplateExpression(false /*isTaggedTemplate*/)
 	case ast.KindPrivateIdentifier:
 		return p.parsePrivateIdentifier()
-	case ast.KindTryKeyword:
-		if p.isStartOfTryCall() {
-			return p.parseTryCallee() // the callee of try(…) (vibelang_hatches.go)
-		}
 	case ast.KindDoKeyword:
 		if p.isStartOfVibeLangDoExpression() {
 			return p.parseVibeLangDoExpression() // do { ... } as an expression (vibelang_blocks.go)
@@ -6465,7 +6472,7 @@ func (p *Parser) isStartOfLeftHandSideExpression() bool {
 	case ast.KindImportKeyword:
 		return p.isNextTokenOpenParenOrLessThanOrDot()
 	case ast.KindTryKeyword:
-		return p.isStartOfTryCall()
+		return p.isStartOfVibeLangTry()
 	case ast.KindPercentToken:
 		return p.isVibeLangFile()
 	case ast.KindDoKeyword:

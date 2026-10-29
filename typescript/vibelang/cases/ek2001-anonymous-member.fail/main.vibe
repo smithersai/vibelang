@@ -26,7 +26,7 @@ export const aliased: Probe = {
 
 export const audited: { exists: (path: string) => boolean!! } = {
   exists: (path) => {
-    Audit.record(path)
+    try Audit.record(path)
     return true
   }
 }

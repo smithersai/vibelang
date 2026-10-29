@@ -31,5 +31,5 @@ export const tally = {
 
 export function main() {
   const counter: CounterApi = new Counter()
-  Console.log(counter.count() + 1)
+  try Console.log(counter.count() + 1)
 }

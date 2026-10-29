@@ -7,18 +7,18 @@ function fail(n: number): number!A | B {
   throw new B({ n: 2 })
 }
 function recover(n: number) {
-  return Effect.catchTags(fail(n), {
+  return try Effect.catchTags(fail(n), {
     A: (e) => e.n,
     B: () => e.n
   })
 }
 function nested(n: number) {
-  return Effect.catchTags(fail(n), {
-    A: (problem) => ({ problem }).problem.n + ((problem: number) => problem)(10),
+  return try Effect.catchTags(fail(n), {
+    A: (problem) => ({ problem }).problem.n + try ((problem: number) => problem)(10),
     B: (other) => e.n + other.n - other.n
   })
 }
 export function main() {
-  Console.log(recover(1), recover(2))
-  Console.log(nested(1), nested(2))
+  try Console.log(try recover(1), try recover(2))
+  try Console.log(try nested(1), try nested(2))
 }

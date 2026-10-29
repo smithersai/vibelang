@@ -11,8 +11,8 @@ function failing() {
 
 // expect-result: {"errorOption":true,"error":1,"pretty":true,"found":"Success","defect":"Failure","abs":"2.5","zero":true,"sign":-1,"rounded":"3","hrTime":[2,0],"span":1,"annotated":2,"zipped":[1,2],"channel":"object"}
 export function main() {
-  const outcome = exit(failing())
-  if (outcome is Exit.Failure(let cause)) return describe(outcome, cause)
+  const outcome = try exit(failing())
+  if (outcome is Exit.Failure(let cause)) return try describe(outcome, cause)
   return "succeeded"
 }
 
@@ -25,7 +25,7 @@ function describe(outcome: Exit.Exit<void, Boom>, cause: Cause.Cause<Boom>) {
   const negative = BigDecimal.fromNumberUnsafe(-2.5)
   const one: Effect.Effect<number> = Effect.succeed(1)
   const two: Effect.Effect<number> = Effect.succeed(2)
-  const zipped = Stream.make(1, 2).zipLeft(Stream.make(3, 4)).runCollect()
+  const zipped = try Stream.make(1, 2).zipLeft(Stream.make(3, 4)).runCollect()
   return {
     errorOption,
     error,
@@ -37,8 +37,8 @@ function describe(outcome: Exit.Exit<void, Boom>, cause: Cause.Cause<Boom>) {
     sign: negative.sign(),
     rounded: BigDecimal.fromNumberUnsafe(2.5).round({ scale: 0 }).format(),
     hrTime: Duration.seconds(2).toHrTime(),
-    span: one.withLogSpan("span"),
-    annotated: two.annotateLogs("key", "value"),
+    span: try one.withLogSpan("span"),
+    annotated: try two.annotateLogs("key", "value"),
     zipped,
     channel: typeof Stream.make(1).toChannel()
   }

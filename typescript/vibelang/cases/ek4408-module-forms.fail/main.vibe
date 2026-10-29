@@ -33,5 +33,5 @@ function nested() {
 import { two } from text
 
 export function main() {
-  return two + nested()
+  return two + try nested()
 }

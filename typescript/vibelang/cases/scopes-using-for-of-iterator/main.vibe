@@ -23,10 +23,10 @@ function disposable(events: string[], name: string) {
 
 function iterator(fail: boolean) {
   const events: string[] = []
-  const outcome = exit(() => {
-    for (using x of sync((e: string[]) => elements(e), events)) {
+  const outcome = try exit(() => {
+    for (using x of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
-      sleep("1 millis")
+      try sleep("1 millis")
       if (fail) throw new Bad()
     }
   })
@@ -35,24 +35,24 @@ function iterator(fail: boolean) {
 
 function iteratorInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function child() {
-    for (using x of sync((e: string[]) => elements(e), events)) {
+    for (using x of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const fiber = Effect.forkChild(child())
-  Deferred.await(started)
-  Fiber.interrupt(fiber)
+  const fiber = try Effect.forkChild(child())
+  try Deferred.await(started)
+  try Fiber.interrupt(fiber)
   return events
 }
 
 function* produce(events: string[]) {
   try {
-    yield disposable(events, "p1")
-    yield disposable(events, "p2")
+    yield try disposable(events, "p1")
+    yield try disposable(events, "p2")
   } finally {
     events.push("producer done")
   }
@@ -60,10 +60,10 @@ function* produce(events: string[]) {
 
 function producer(fail: boolean) {
   const events: string[] = []
-  const outcome = exit(() => {
+  const outcome = try exit(() => {
     for (using x of produce(events)) {
       events.push("body")
-      sleep("1 millis")
+      try sleep("1 millis")
       if (fail) throw new Bad()
     }
   })
@@ -72,11 +72,11 @@ function producer(fail: boolean) {
 
 function stream(fail: boolean) {
   const events: string[] = []
-  const values = Stream.fromIterable([disposable(events, "s1"), disposable(events, "s2")])
-  const outcome = exit(() => {
+  const values = Stream.fromIterable([try disposable(events, "s1"), try disposable(events, "s2")])
+  const outcome = try exit(() => {
     for (using x of values) {
       events.push("body")
-      sleep("1 millis")
+      try sleep("1 millis")
       if (fail) throw new Bad()
     }
   })
@@ -86,9 +86,9 @@ function stream(fail: boolean) {
 function labeled() {
   const events: string[] = []
   outer: for (const i of [1, 2]) {
-    for (using x of sync((e: string[]) => elements(e), events)) {
+    for (using x of try sync((e: string[]) => elements(e), events)) {
       events.push(`body ${i}`)
-      sleep("1 millis")
+      try sleep("1 millis")
       if (i === 1) continue outer
       break outer
     }
@@ -99,13 +99,13 @@ function labeled() {
 // expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body","dispose g1","iterator closed"]],"iteratorInterrupted":["body","dispose g1","iterator closed"],"producer":[false,["body","dispose p1","body","dispose p2","producer done"]],"producerFails":[true,["body","dispose p1","producer done"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body","dispose s1"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
 export function main() {
   return {
-    iterator: iterator(false),
-    iteratorFails: iterator(true),
-    iteratorInterrupted: iteratorInterrupted(),
-    producer: producer(false),
-    producerFails: producer(true),
-    stream: stream(false),
-    streamFails: stream(true),
-    labeled: labeled(),
+    iterator: try iterator(false),
+    iteratorFails: try iterator(true),
+    iteratorInterrupted: try iteratorInterrupted(),
+    producer: try producer(false),
+    producerFails: try producer(true),
+    stream: try stream(false),
+    streamFails: try stream(true),
+    labeled: try labeled(),
   }
 }

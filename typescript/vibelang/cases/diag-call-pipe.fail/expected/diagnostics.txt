@@ -1,2 +1,2 @@
-main.vibe(4,38): error EK4502
-main.vibe(10,51): error EK4502
+main.vibe(4,44): error EK4502
+main.vibe(10,57): error EK4502

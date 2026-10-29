@@ -285,7 +285,7 @@ func (e *encoder) insert(pos int, text string, order int) {
 func (e *encoder) form(form parser.VibeSyntax) error {
 	block := "((" + e.sentinel + ") => {"
 	switch form.Kind {
-	case parser.VibeSyntaxEffectType, parser.VibeSyntaxTopic, parser.VibeSyntaxTryCall:
+	case parser.VibeSyntaxEffectType, parser.VibeSyntaxTopic:
 		r := form.Range
 		e.opaque(placeholderText, r, "", "", firstLineWidth(e.text(r)))
 	case parser.VibeSyntaxMutable:

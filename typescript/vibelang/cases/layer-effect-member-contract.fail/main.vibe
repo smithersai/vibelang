@@ -10,19 +10,19 @@ service Clock2 { now(): number!! }
 service Greeter { greet(name: string): string!! }
 service Files { open(name: string): string!! }
 
-function stamp(): number!!Clock2 { return Clock2.now() }
-function helper(name: string) { return `hi ${name} at ${Clock2.now()}` }
+function stamp(): number!!Clock2 { return try Clock2.now() }
+function helper(name: string) { return `hi ${name} at ${try Clock2.now()}` }
 
 export const Lookup = Layer.effect(Greeter) {
   return {
-    greet(name) { return `hi ${name} at ${Clock2.now()}` }
+    greet(name) { return `hi ${name} at ${try Clock2.now()}` }
   }
 }
 
-export const ArrowHelper = Layer.effect(Greeter) { return { greet: (name) => `hi ${name} ${stamp()}` } }
+export const ArrowHelper = Layer.effect(Greeter) { return { greet: (name) => `hi ${name} ${try stamp()}` } }
 
 export const Variable = Layer.effect(Greeter) {
-  const impl = { greet(name: string) { return helper(name) } }
+  const impl = { greet(name: string) { return try helper(name) } }
   return impl
 }
 
@@ -34,7 +34,7 @@ export const VariableArrow = Layer.effect(Greeter, () => {
 export const Acquires = Layer.effect(Files) {
   return {
     open(name) {
-      return Effect.acquireRelease(sync((name) => `handle:${name}`, name), (h) => Console.log("closed", h))
+      return try Effect.acquireRelease(sync((name) => `handle:${name}`, name), (h) => Console.log("closed", h))
     }
   }
 }

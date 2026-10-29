@@ -10,14 +10,14 @@ function fail(): number!Boom {
 }
 
 function slow(): string!! {
-  sleep("1 second")
+  try sleep("1 second")
   return "slow"
 }
 
 // The value of a do expression is the completion value of its last statement.
 function value() {
   return do {
-    const name = getName()
+    const name = try getName()
     name.toUpperCase()
   }
 }
@@ -36,7 +36,7 @@ function branch(n: number) {
 function caught() {
   return do {
     try {
-      fail()
+      try fail()
       "unreachable"
     } catch (e) {
       "recovered"
@@ -50,13 +50,13 @@ function plain() {
 
 // Where a parameter expects a program, a do expression is passed, not run.
 function raced() {
-  return race(do { sleep("1 millis"); "fast" }, slow())
+  return try race(do { try sleep("1 millis"); "fast" }, slow())
 }
 
 function exited() {
-  return Effect.exit(do { getName() })._tag
+  return (try Effect.exit(do { try getName() }))._tag
 }
 
 export function main() {
-  return { value: value(), branch: branch(42), caught: caught(), plain: plain(), raced: raced(), exit: exited() }
+  return { value: try value(), branch: try branch(42), caught: try caught(), plain: try plain(), raced: try raced(), exit: try exited() }
 }

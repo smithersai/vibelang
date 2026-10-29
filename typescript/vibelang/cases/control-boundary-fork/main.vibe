@@ -6,9 +6,9 @@ control Ask { ask(): number!! }
 
 function answered(n: number) {
   try {
-    return Ask.ask()
+    return try Ask.ask()
   } handle Ask.ask() {
-    resume(n)
+    try resume(n)
   }
 }
 
@@ -16,9 +16,9 @@ export function main() {
   const byName = fork answered(2)
   const block = fork {
     try {
-      return Ask.ask()
+      return try Ask.ask()
     } handle Ask.ask() {
-      resume(3)
+      try resume(3)
     }
   }
   return [join byName, join block]

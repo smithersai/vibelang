@@ -10,7 +10,7 @@ class Missing extends Data.TaggedError("Missing")<{}> {}
 
 function firstAdmin(names: ReadonlyArray<string>) {
   try {
-    Effect.succeed(0)
+    try Effect.succeed(0)
     return Option.getOrThrow(Option.fromNullishOr(names.find((name) => name.startsWith("admin"))))
   } catch (e) {
     return e._tag
@@ -30,7 +30,7 @@ function parse(text: string) {
 function live(names: ReadonlyArray<string>) {
   try {
     if (names.length === 0) throw new Missing()
-    Console.log(names[0])
+    try Console.log(names[0])
   } catch (e) {
     return e._tag
   }
@@ -39,11 +39,11 @@ function live(names: ReadonlyArray<string>) {
 
 // A written contract's E and R are never, but its call still runs an Effect.
 function infallible(): Effect.Effect<number, never, never> {
-  return Effect.succeed(1)
+  return try Effect.succeed(1)
 }
 function annotatedCall() {
   try {
-    return infallible()
+    return try infallible()
   } catch (e) {
     return e._tag
   }
@@ -51,6 +51,6 @@ function annotatedCall() {
 
 // In an Effect function, a try block that fails with nothing is dead as well.
 function plainBlock() {
-  Effect.succeed(0)
+  try Effect.succeed(0)
   try { return "ok" } catch { return "fallback" }
 }

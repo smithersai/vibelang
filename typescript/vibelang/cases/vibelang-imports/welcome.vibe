@@ -8,7 +8,7 @@ export function shout(text: string) {
 }
 
 export function welcome(name: string) {
-  if (name.length === 0) Effect.fail(new EmptyName())
-  Effect.sync(() => events.push(`welcome ${name}`))
-  return `Welcome, ${shout(name)}!`
+  if (name.length === 0) try Effect.fail(new EmptyName())
+  try Effect.sync(() => events.push(`welcome ${name}`))
+  return `Welcome, ${try shout(name)}!`
 }

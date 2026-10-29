@@ -14,16 +14,16 @@ module iterators {
 import { elements } from iterators
 function* produce(events: string[]) {
   try {
-    yield disposable(events)
-    yield disposable(events)
+    yield try disposable(events)
+    yield try disposable(events)
   } finally { events.push("closed") }
 }
 
 function array(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of [disposable(events), disposable(events)]) {
+  outer: inner: for (using x of [try disposable(events), try disposable(events)]) {
     events.push("body")
-    yieldNow()
+    try yieldNow()
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -36,9 +36,9 @@ function array(reverse: boolean) {
 
 function iterator(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of sync((e: string[]) => elements(e), events)) {
+  outer: inner: for (using x of try sync((e: string[]) => elements(e), events)) {
     events.push("body")
-    yieldNow()
+    try yieldNow()
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -53,7 +53,7 @@ function producer(reverse: boolean) {
   const events: string[] = []
   outer: inner: for (using x of produce(events)) {
     events.push("body")
-    yieldNow()
+    try yieldNow()
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -66,9 +66,9 @@ function producer(reverse: boolean) {
 
 function stream(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of Stream.ensuring(Stream.fromIterable([disposable(events), disposable(events)]), () => { events.push("closed") })) {
+  outer: inner: for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events), try disposable(events)]), () => { events.push("closed") })) {
     events.push("body")
-    yieldNow()
+    try yieldNow()
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -81,9 +81,9 @@ function stream(reverse: boolean) {
 
 function cStyle() {
   const events: string[] = []
-  outer: inner: for (using h = disposable(events); ;) {
+  outer: inner: for (using h = try disposable(events); ;) {
     events.push("body")
-    yieldNow()
+    try yieldNow()
     if (events.length < 2) continue outer
     break inner
   }
@@ -92,11 +92,11 @@ function cStyle() {
 function nested() {
   const events: string[] = []
   let i = 0
-  outer: alias: for (using x of sync((e: string[]) => elements(e), events)) {
+  outer: alias: for (using x of try sync((e: string[]) => elements(e), events)) {
     i++
-    inner: innerAlias: for (using y of sync((e: string[]) => elements(e), events)) {
+    inner: innerAlias: for (using y of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (i === 1) continue outer
       break alias
     }
@@ -107,10 +107,10 @@ function nested() {
 // expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["body","dispose","body","dispose","closed"],"producerReverse":["body","dispose","body","dispose","closed"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
 export function main() {
   return {
-    array: array(false), arrayReverse: array(true),
-    iterator: iterator(false), iteratorReverse: iterator(true),
-    producer: producer(false), producerReverse: producer(true),
-    stream: stream(false), streamReverse: stream(true),
-    cStyle: cStyle(), nested: nested(),
+    array: try array(false), arrayReverse: try array(true),
+    iterator: try iterator(false), iteratorReverse: try iterator(true),
+    producer: try producer(false), producerReverse: try producer(true),
+    stream: try stream(false), streamReverse: try stream(true),
+    cStyle: try cStyle(), nested: try nested(),
   }
 }

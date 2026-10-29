@@ -26,17 +26,17 @@ export service Reader {
 }
 
 export function flag(): boolean!! {
-  return Flags().enabled
+  return (try Flags()).enabled
 }
 
 export function prefix(): string!! {
-  return Prefix()
+  return try Prefix()
 }
 
 export function version(): number!! {
-  return Version()
+  return try Version()
 }
 
 export function read(): string!! {
-  return Reader.read()
+  return try Reader.read()
 }

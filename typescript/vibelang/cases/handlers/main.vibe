@@ -18,21 +18,21 @@ abstract class Log extends Control {
 const events: string[] = []
 
 function conversation() {
-  const a = Ask.ask("first")
-  Log.log(`got ${a}`)
-  const b = Ask.ask("second")
-  Log.log(`got ${b}`)
+  const a = try Ask.ask("first")
+  try Log.log(`got ${a}`)
+  const b = try Ask.ask("second")
+  try Log.log(`got ${b}`)
   return a + b
 }
 
 // Two handlers for one program: Ask inside, Log outside.
 function twoHandlers() {
-  return handle(() => handle(() => conversation(), Ask, {
-    ask(question, k) { return resume(k, question.length) }
+  return try handle(() => handle(() => conversation(), Ask, {
+    ask(question, k) { return try resume(k, question.length) }
   }), Log, {
     log: (message, k) => {
       events.push(message)
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   })
 }
@@ -40,9 +40,9 @@ function twoHandlers() {
 // A clause that returns without resuming: the program's cleanup runs before
 // handle returns, and the code after the operation never runs.
 function stopEarly() {
-  const result = handle(() => {
+  const result = try handle(() => {
     try {
-      Ask.ask("stop")
+      try Ask.ask("stop")
       events.push("not reached")
       return "finished"
     } finally {
@@ -57,15 +57,15 @@ function stopEarly() {
 
 // abandon(k) runs the program's cleanup inside the clause.
 function abandonInClause() {
-  return handle(() => {
+  return try handle(() => {
     try {
-      return Ask.ask("drop")
+      return try Ask.ask("drop")
     } finally {
       events.push("abandoned cleanup")
     }
   }, Ask, {
     ask(_question, k) {
-      abandon(k)
+      try abandon(k)
       events.push("after abandon")
       return -1
     }
@@ -75,30 +75,30 @@ function abandonInClause() {
 // resumeWith raises the operation's declared error at the perform site, where
 // the program catches it.
 function busyAnswer() {
-  return handle(() => {
+  return try handle(() => {
     try {
-      return Ask.ask("now")
+      return try Ask.ask("now")
     } catch (e) {
       return e._tag === "Busy" ? -2 : -3
     }
   }, Ask, {
-    ask(request, k) { return resumeWith(k, () => { throw new Busy({ request }) }) }
+    ask(request, k) { return try resumeWith(k, () => { throw new Busy({ request }) }) }
   })
 }
 
 // onReturn transforms what the program returns.
 function doubled() {
-  return handle(() => Ask.ask("four"), Ask, {
-    ask(question, k) { return resume(k, question.length) }
+  return try handle(() => Ask.ask("four"), Ask, {
+    ask(question, k) { return try resume(k, question.length) }
   }, (n) => n * 2)
 }
 
 // A second resume of the same continuation is a defect.
 function resumeTwice() {
-  return handle(() => Ask.ask("twice"), Ask, {
+  return try handle(() => Ask.ask("twice"), Ask, {
     ask(_question, k) {
-      const first = resume(k, 1)
-      const second = resume(k, 2)
+      const first = try resume(k, 1)
+      const second = try resume(k, 2)
       return first + second
     }
   })
@@ -108,18 +108,18 @@ function resumeTwice() {
 // program finishes, so its resume is not a tail resume.
 function leaseWhileResuming() {
   const log: string[] = []
-  const answer = handle(() => {
-    const n = Ask.ask("lease")
+  const answer = try handle(() => {
+    const n = try Ask.ask("lease")
     log.push(`program got ${n}`)
     return n
   }, Ask, {
     ask(_question, k) {
-      using lease = Effect.acquireRelease(() => {
+      using lease = try Effect.acquireRelease(() => {
         log.push("acquire")
       }, () => {
         log.push("release")
       })
-      return resume(k, 7)
+      return try resume(k, 7)
     }
   })
   return { answer, log }
@@ -128,7 +128,7 @@ function leaseWhileResuming() {
 function count(n: number) {
   let i = 0
   while (i < n) {
-    Log.log("tick")
+    try Log.log("tick")
     i++
   }
   return i
@@ -141,10 +141,10 @@ function manyTicks() {
   hooks.onResume = (fiber): void => {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
   }
-  const total = handle(() => count(100000), Log, {
+  const total = try handle(() => count(100000), Log, {
     log(_message, k) {
       seen++
-      return resume(k, undefined)
+      return try resume(k, undefined)
     }
   })
   hooks.onResume = undefined
@@ -153,16 +153,16 @@ function manyTicks() {
 
 // expect-result: {"sum":11,"stopped":"stopped at stop","dropped":-1,"busy":-2,"twice":8,"again":["ContinuationAlreadyConsumed"],"leased":{"answer":7,"log":["acquire","program got 7","release"]},"many":{"total":100000,"seen":100000,"bounded":true},"events":["got 5","got 6","cleanup ran","handle returned","abandoned cleanup","after abandon"]}
 export function main() {
-  const sum = twoHandlers()
-  const stopped = stopEarly()
-  const dropped = abandonInClause()
-  const busy = busyAnswer()
-  const twice = doubled()
-  const exit = Effect.exit(() => resumeTwice())
+  const sum = try twoHandlers()
+  const stopped = try stopEarly()
+  const dropped = try abandonInClause()
+  const busy = try busyAnswer()
+  const twice = try doubled()
+  const exit = try Effect.exit(() => resumeTwice())
   const again = Exit.isFailure(exit)
     ? (exit.cause.reasons as ReadonlyArray<(typeof exit.cause.reasons)[number]>).map((reason) => (reason._tag === "Die" ? (reason.defect as { _tag?: string })._tag : reason._tag))
     : ["Success"]
-  const leased = leaseWhileResuming()
-  const many = manyTicks()
+  const leased = try leaseWhileResuming()
+  const many = try manyTicks()
   return { sum, stopped, dropped, busy, twice, again, leased, many, events }
 }

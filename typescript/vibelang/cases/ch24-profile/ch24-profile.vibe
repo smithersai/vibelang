@@ -24,13 +24,13 @@ function parseId(raw: string) {
 }
 
 function profile(raw: string) {
-  const id = parseId(raw)                 // may throw InvalidId
+  const id = try parseId(raw)                 // may throw InvalidId
   try {
-    return Users.find(String(id))
+    return try Users.find(String(id))
   } catch (e) {                           // e: UserNotFound
     return guest
   } finally {
-    Metrics.increment("profile")
+    try Metrics.increment("profile")
   }
 }
 // Effect<User, InvalidId, Users | Metrics>
@@ -52,11 +52,11 @@ const MetricsTest = Layer.succeed(Metrics, {
 
 // expect-result: {"found":"Ada","missing":"guest","invalid":"InvalidId","counts":["profile","profile"]}
 export function main() {
-  const found = Effect.provide(() => profile("42"), Layer.mergeAll(UsersTest, MetricsTest))
-  const missing = Effect.provide(() => profile("7"), Layer.mergeAll(UsersTest, MetricsTest))
+  const found = try Effect.provide(() => profile("42"), Layer.mergeAll(UsersTest, MetricsTest))
+  const missing = try Effect.provide(() => profile("7"), Layer.mergeAll(UsersTest, MetricsTest))
   let invalid = "none"
   try {
-    Effect.provide(() => profile("x"), Layer.mergeAll(UsersTest, MetricsTest))
+    try Effect.provide(() => profile("x"), Layer.mergeAll(UsersTest, MetricsTest))
   } catch (e) {
     invalid = e._tag
   }

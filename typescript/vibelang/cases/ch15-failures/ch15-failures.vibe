@@ -42,28 +42,28 @@ let uploadFails = false
 
 // NOTE: writeRows is unspecified in the proposal; it writes each row to the temporary file.
 function writeRows(file: TempFile, rows: ReadonlyArray<string>) {
-  for (const row of rows) file.write(row)
+  for (const row of rows) try file.write(row)
 }
 
 function exportReport(id: string) {
-  using tmp = TempFiles.create()
+  using tmp = try TempFiles.create()
   try {
-    writeRows(tmp, Reports.rows(id))
-    return Storage.upload(tmp)
+    try writeRows(tmp, try Reports.rows(id))
+    return try Storage.upload(tmp)
   } catch (e) {                    // e: UploadError
-    return Storage.queueRetry(id)
+    return try Storage.queueRetry(id)
   } finally {
-    Metrics.increment("exports")
+    try Metrics.increment("exports")
   }
 }
 
 function exportWithDeadline(id: string) {
-  return Effect.timeout(() => exportReport(id), "30 seconds")
+  return try Effect.timeout(() => exportReport(id), "30 seconds")
 }
 
 // NOTE: the same deadline at 10 millis, so the run interrupts a slow upload quickly.
 function exportWithShortDeadline(id: string) {
-  return Effect.timeout(() => exportReport(id), "10 millis")
+  return try Effect.timeout(() => exportReport(id), "10 millis")
 }
 
 // A defect is not caught by catch (D13): a JavaScript TypeError is a defect.
@@ -83,7 +83,7 @@ function mixedCause() {
     try {
       throw new Expected()
     } finally {
-      Effect.die("release-defect")
+      try Effect.die("release-defect")
     }
   } catch (e) {
     events.push("catch saw a mixed cause")  // must not run
@@ -92,9 +92,9 @@ function mixedCause() {
 }
 
 function moveFunds(from: Account, to: Account, amount: number) {
-  Effect.uninterruptible(() => {
-    Ledger.debit(from, amount)
-    Ledger.credit(to, amount)     // an interruption waits until both have run
+  try Effect.uninterruptible(() => {
+    try Ledger.debit(from, amount)
+    try Ledger.credit(to, amount)     // an interruption waits until both have run
   })
 }
 
@@ -124,7 +124,7 @@ const ReportsTest = Layer.succeed(Reports, {
 
 const StorageTest = Layer.succeed(Storage, {
   upload: (file) => {
-    Effect.sleep(uploadDelay)
+    try Effect.sleep(uploadDelay)
     if (uploadFails) throw new UploadError({ file: file.name })
     events.push(`upload ${file.name}`)
     return `uploaded ${file.name}`
@@ -143,7 +143,7 @@ const MetricsTest = Layer.succeed(Metrics, {
 
 const LedgerTest = Layer.succeed(Ledger, {
   debit: (account, amount) => {
-    Effect.sleep("20 millis")
+    try Effect.sleep("20 millis")
     events.push(`debit ${account.id} ${amount}`)
   },
   credit: (account, amount) => {
@@ -152,24 +152,24 @@ const LedgerTest = Layer.succeed(Ledger, {
 })
 
 function scenario() {
-  const first = exportReport("r1")
+  const first = try exportReport("r1")
   uploadFails = true
-  const second = exportReport("r2")
+  const second = try exportReport("r2")
   uploadFails = false
   uploadDelay = 50
   let third = "none"
   try {
-    exportWithShortDeadline("r3")
+    try exportWithShortDeadline("r3")
   } catch (e) {
     third = e._tag
   }
   uploadDelay = 0
-  const deadline = exportWithDeadline("r4")
-  const defect = Effect.exit(() => defectThroughCatch())
-  const mixed = Effect.exit(() => mixedCause())
+  const deadline = try exportWithDeadline("r4")
+  const defect = try Effect.exit(() => defectThroughCatch())
+  const mixed = try Effect.exit(() => mixedCause())
   let moved = "none"
   try {
-    Effect.timeout(() => moveFunds({ id: "a" }, { id: "b" }, 10), "5 millis")
+    try Effect.timeout(() => moveFunds({ id: "a" }, { id: "b" }, 10), "5 millis")
   } catch (e) {
     moved = e._tag
   }
@@ -187,7 +187,7 @@ function scenario() {
 
 // expect-result: {"first":"uploaded tmp1","second":"queued r2","third":"TimeoutError","deadline":"uploaded tmp4","defect":["Die"],"mixed":["Die","Die"],"moved":"TimeoutError","events":["create tmp1","write tmp1 a","upload tmp1","metric exports","remove tmp1","create tmp2","write tmp2 a","queue r2","metric exports","remove tmp2","create tmp3","write tmp3 a","metric exports","remove tmp3","create tmp4","write tmp4 a","upload tmp4","metric exports","remove tmp4","debit a 10","credit b 10"]}
 export function main() {
-  return Effect.provide(
+  return try Effect.provide(
     () => scenario(),
     Layer.mergeAll(TempFilesTest, ReportsTest, StorageTest, MetricsTest, LedgerTest)
   )

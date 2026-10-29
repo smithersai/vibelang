@@ -58,8 +58,6 @@ typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:27:24 lambda: dual fal
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:52:11 lambda: dual fallback -> choice fallback # a function from another file may take either form by overload: the user chooses
 typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: plain annotation -> choice annotation # a plain return annotation cannot throw a failure (the fork reports EK2003)
 typescript/vibelang/cases/ek4202.fail/main.vibe:14:16 lambda: dual fallback -> choice fallback # a function from another file (helpers.ts) may take either form by overload: the user chooses
-typescript/vibelang/cases/ek4404-try-options.fail/main.vibe:8:21 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
-typescript/vibelang/cases/ek4404-try-options.fail/main.vibe:8:52 lambda: plain fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/hatches-inputs/main.vibe:40:30 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/hatches-inputs/main.vibe:41:12 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/lambda-forms/main.vibe:10:19 lambda: plain fallback -> choice fallback # a function from another file may take either form by overload (lambda-forms' attach): the user chooses

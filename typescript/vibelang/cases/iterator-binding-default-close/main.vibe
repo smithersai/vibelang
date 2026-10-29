@@ -2,10 +2,10 @@ import { Effect } from "effect"
 import { pairs, events } from "./helper.js"
 function boom(): number!string! { throw "boom" }
 function main() {
- try { for (const [n = boom()] of pairs()) { events.push("body:"+n) } } catch { events.push("caught") }
- Console.log("binding", events.join(","))
+ try { for (const [n = try boom()] of pairs()) { events.push("body:"+n) } } catch { events.push("caught") }
+ try Console.log("binding", events.join(","))
  events.length = 0
- try { for (const pair of pairs()) { const [n = boom()] = pair; events.push("body:"+n) } } catch { events.push("caught") }
- Console.log("body", events.join(","))
+ try { for (const pair of pairs()) { const [n = try boom()] = pair; events.push("body:"+n) } } catch { events.push("caught") }
+ try Console.log("body", events.join(","))
 }
 Effect.runPromise(main())

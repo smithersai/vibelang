@@ -8,5 +8,5 @@ export function unknownProvider(provider: unknown) {
 }
 
 export function effectProvider(provider: any) {
-  return Effect.provide(() => 0, provider)
+  return try Effect.provide(() => 0, provider)
 }

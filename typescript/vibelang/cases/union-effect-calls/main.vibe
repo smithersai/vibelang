@@ -3,21 +3,21 @@ import { Effect } from "effect"
 import { choose, bootstrap, counts } from "./callbacks.js"
 
 export function direct(flag: boolean) {
-  const value = choose(flag)
+  const value = try choose(flag)
   return value
 }
 export function byName(flag: boolean) {
-  return Effect.map(choose(flag), (value) => value)
+  return try Effect.map(choose(flag), (value) => value)
 }
 function readCounts(): number { return counts() }
 export function main() {
-  const a = direct(true)
-  const b = direct(false)
-  const c = byName(true)
-  const d = byName(false)
-  const args = bootstrap(false)
+  const a = try direct(true)
+  const b = try direct(false)
+  const c = try byName(true)
+  const d = try byName(false)
+  const args = try bootstrap(false)
   let failure = "missing"
-  try { bootstrap(true) } catch (error) { failure = error }
-  choose(true)
+  try { try bootstrap(true) } catch (error) { failure = error }
+  try choose(true)
   return [a, b, c, d, args.length, failure, readCounts()]
 }

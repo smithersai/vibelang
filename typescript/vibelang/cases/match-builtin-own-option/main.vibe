@@ -20,5 +20,5 @@ function isNone(x: Option) {
 
 // expect-result: [5,-1,"none","some"]
 export function main() {
-  return [ownOption(Option.Some({ value: 5 })), ownOption(Option.None()), isNone(Option.None()), isNone(Option.Some({ value: 1 }))]
+  return [try ownOption(Option.Some({ value: 5 })), try ownOption(Option.None()), try isNone(Option.None()), try isNone(Option.Some({ value: 1 }))]
 }

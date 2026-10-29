@@ -2,9 +2,9 @@
 import { Stamp, Users } from "./services.vibe"
 
 function stamped() {
-  return `${Users.find("1")} at ${Stamp.now()}`
+  return `${try Users.find("1")} at ${try Stamp.now()}`
 }
 
 export function main() {
-  Console.log(stamped())
+  try Console.log(try stamped())
 }

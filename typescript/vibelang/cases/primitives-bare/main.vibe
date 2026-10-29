@@ -6,23 +6,23 @@ function boom() {
 }
 
 function exitTag() {
-  const result = exit(boom())
+  const result = try exit(boom())
   return result._tag
 }
 
 function yielded() {
-  yieldNow()
-  yieldNow(5)
+  try yieldNow()
+  try yieldNow(5)
   return true
 }
 
 function interrupted() {
   const fiber = fork {
-    interrupt()
+    try interrupt()
   }
-  return exit(fiber.join())._tag === "Failure"
+  return (try exit(fiber.join()))._tag === "Failure"
 }
 
 export function main() {
-  return { exitTag: exitTag(), yielded: yielded(), interrupted: interrupted() }
+  return { exitTag: try exitTag(), yielded: try yielded(), interrupted: try interrupted() }
 }

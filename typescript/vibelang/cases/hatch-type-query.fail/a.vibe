@@ -2,5 +2,5 @@
 const parse = (text: string): number => Number(text)
 // Type queries are exempt; the actual value capture is not.
 export function invalid(text: string) {
-  return sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
+  return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
 }

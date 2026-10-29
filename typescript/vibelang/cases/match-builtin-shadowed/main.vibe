@@ -26,7 +26,7 @@ function primitive(x: string | number) {
 }
 
 function settled(n: number) {
-  const outcome = exit(() => {
+  const outcome = try exit(() => {
     if (n < 0) throw "negative"
     return n
   })
@@ -39,13 +39,13 @@ function settled(n: number) {
 // expect-result: [true,false,true,false,"string 3","number",2,-1]
 export function main() {
   return [
-    shadowedString(42, 42),
-    shadowedString("x", 42),
-    variable(42, 42),
-    variable("x", 42),
-    primitive("abc"),
-    primitive(7),
-    settled(2),
-    settled(-1)
+    try shadowedString(42, 42),
+    try shadowedString("x", 42),
+    try variable(42, 42),
+    try variable("x", 42),
+    try primitive("abc"),
+    try primitive(7),
+    try settled(2),
+    try settled(-1)
   ]
 }

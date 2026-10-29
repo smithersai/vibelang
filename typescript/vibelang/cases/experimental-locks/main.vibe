@@ -3,25 +3,25 @@ import { Locks } from "vibelang-runtime/experimental/Locks"
 import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-node"
 
 function contend() {
-  using held = Locks.hold("experimental-locks")
-  using tried = Locks.tryHold("experimental-locks")
-  return { held: Locks.query().held.length, tried: tried.isSome() }
+  using held = try Locks.hold("experimental-locks")
+  using tried = try Locks.tryHold("experimental-locks")
+  return { held: (try Locks.query()).held.length, tried: tried.isSome() }
 }
 
 function steal() {
-  using first = Locks.hold("experimental-locks-steal")
-  using second = Locks.hold("experimental-locks-steal", { steal: true })
-  first.lost()
+  using first = try Locks.hold("experimental-locks-steal")
+  using second = try Locks.hold("experimental-locks-steal", { steal: true })
+  try first.lost()
   return true
 }
 
 function reserved() {
-  using held = Locks.hold("-reserved")
+  using held = try Locks.hold("-reserved")
   return "held"
 }
 
 export function main() {
   provide ExperimentalNodeLocks.layer {
-    return { ...contend(), stolen: steal(), refused: reserved() catch (e) => e.reason._tag }
+    return { ...try contend(), stolen: try steal(), refused: reserved() catch (e) => e.reason._tag }
   }
 }

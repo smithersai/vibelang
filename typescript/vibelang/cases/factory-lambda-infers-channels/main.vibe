@@ -18,5 +18,5 @@ export const declared = (): number!! => withRollback(Effect.succeed(2), () => Ef
 // expect-result: [1,2]
 export function main() {
   const services: InferredServices[] = []
-  return [inferred(), declared(), ...services]
+  return [try inferred(), try declared(), ...services]
 }

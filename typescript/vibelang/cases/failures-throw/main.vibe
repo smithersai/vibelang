@@ -28,9 +28,9 @@ export function find(id: string) {
 
 // The catch handles UserNotFound; InvalidId escapes from before the try.
 export function lookup(raw: string) {
-  const id = parseId(raw)
+  const id = try parseId(raw)
   try {
-    return find(String(id))
+    return try find(String(id))
   } catch (e) {
     return guest
   }
@@ -40,7 +40,7 @@ export function lookup(raw: string) {
 // which the rethrow adds to E.
 export function lookupOrGuest(raw: string) {
   try {
-    return find(String(parseId(raw)))
+    return try find(String(try parseId(raw)))
   } catch (e) {
     if (e instanceof UserNotFound) return guest
     throw e
@@ -57,7 +57,7 @@ export function oops(n: number) {
 // _tag narrows the caught union too.
 export function describe(raw: string) {
   try {
-    return find(String(parseId(raw))).name
+    return (try find(String(try parseId(raw)))).name
   } catch (e) {
     switch (e._tag) {
       case "InvalidId":
@@ -78,25 +78,25 @@ const doubled = (n: number): number!InvalidId! => {
 export function main() {
   let invalid = "none"
   try {
-    lookupOrGuest("x")
+    try lookupOrGuest("x")
   } catch (e) {
     invalid = e._tag
   }
   const failures: Array<string | number> = []
   for (const n of [2, 1, 0]) {
     try {
-      failures.push(oops(n))
+      failures.push(try oops(n))
     } catch (e) {
       failures.push(typeof e === "string" ? e : e.message)
     }
   }
   return {
-    found: lookup("42").name,
-    missing: lookup("7").name,
-    orGuest: lookupOrGuest("7").name,
+    found: (try lookup("42")).name,
+    missing: (try lookup("7")).name,
+    orGuest: (try lookupOrGuest("7")).name,
     invalid,
     oops: failures,
-    describe: [describe("42"), describe("x"), describe("7")],
-    lambda: [doubled(21), Effect.catch(() => doubled(-1), (e) => e._tag)]
+    describe: [try describe("42"), try describe("x"), try describe("7")],
+    lambda: [try doubled(21), try Effect.catch(() => doubled(-1), (e) => e._tag)]
   }
 }

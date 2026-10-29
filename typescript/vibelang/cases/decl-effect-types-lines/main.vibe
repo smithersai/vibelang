@@ -5,7 +5,7 @@ export abstract class Counter {
   abstract increment(): void!!
 
   static readonly layer = Layer.effect(Counter, () => {
-    const count = Ref.make(0)
+    const count = try Ref.make(0)
     return {
       increment: () => Ref.update(count, (n) => n + 1),
       read: () => Ref.get(count)
@@ -16,9 +16,9 @@ export abstract class Counter {
 }
 
 export function main() {
-  return Effect.provide(() => {
-    Counter.increment()
-    Counter.increment()
-    return { count: Counter.read() }
+  return try Effect.provide(() => {
+    try Counter.increment()
+    try Counter.increment()
+    return { count: try Counter.read() }
   }, Counter.layer)
 }

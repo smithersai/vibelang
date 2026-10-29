@@ -4,7 +4,7 @@ class Maker {
   run: () => boolean!!
   constructor() {
     this.run = () => {
-      sync(() => {})
+      try sync(() => {})
       return new.target === Maker
     }
   }
@@ -12,5 +12,5 @@ class Maker {
 
 // expect-result: true
 export function main() {
-  return new Maker().run()
+  return try new Maker().run()
 }

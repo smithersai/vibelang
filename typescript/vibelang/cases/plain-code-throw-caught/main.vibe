@@ -38,8 +38,8 @@ import { value } from hostile
 
 // expect-result: {"port":-1,"level":0,"top":"caught","hostile":"getter blew up","hatch":"hatch"}
 export function main() {
-  const read = try((v) => v.boom, (e) => new Unreadable({ message: (e as Error).message }), value) catch (e) => e.message
-  const hatch = sync(() => {
+  const read = Effect.try({ try: () => ((v) => v.boom)(value), catch: (e) => new Unreadable({ message: (e as Error).message }) }) catch (e) => e.message
+  const hatch = try sync(() => {
     class Local {
       constructor() { throw new Error("hatch") }
     }

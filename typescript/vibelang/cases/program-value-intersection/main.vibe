@@ -4,5 +4,5 @@ import { labelled } from "./values.ts"
 
 // expect-result: {"value":42,"label":"answer"}
 export function main() {
-  return { value: labelled() + 1, label: labelled.label }
+  return { value: try labelled() + 1, label: labelled.label }
 }

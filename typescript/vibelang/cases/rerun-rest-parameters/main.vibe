@@ -20,5 +20,5 @@ export class Defaults {
   read(values: number[] = [1, 2]): Effect<number | undefined, never, never> { return values.pop() }
   destructured({ values = [1, 2] }: { values?: number[] } = {}): Effect<number | undefined, never, never> { return values.pop() }
 }
-export function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return Effect.succeed(values.pop()) }
+export function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return try Effect.succeed(values.pop()) }
 export const fresh = (...values: number[]): Effect<number[], never, never> => values

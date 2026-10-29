@@ -4,6 +4,6 @@ function fail(): number!Gone {
   throw Object.assign({}, new Gone({ n: 7 }))
 }
 function recover() {
-  return Effect.catchTag(fail(), "Gone", (e) => e.n)
+  return try Effect.catchTag(fail(), "Gone", (e) => e.n)
 }
-export function main() { Console.log(recover()) }
+export function main() { try Console.log(try recover()) }

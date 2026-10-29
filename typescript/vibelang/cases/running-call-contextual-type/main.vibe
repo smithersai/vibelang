@@ -7,19 +7,19 @@ error Late { label: string }
 const late = <E = never>(label?: string): Late!E => new Late({ label: label ?? "default" })
 
 function returned(): Late!! {
-  return late()
+  return try late()
 }
 
 function bound() {
-  const value: Late = late("given")
+  const value: Late = try late("given")
   return value
 }
 
 function inArray(): Array<Late>!! {
-  return [late("given")]
+  return [try late("given")]
 }
 
 export function main() {
-  const fallback: Late = late()
-  return [returned().label, bound().label, fallback.label, inArray().map((e) => e.label)]
+  const fallback: Late = try late()
+  return [(try returned()).label, (try bound()).label, fallback.label, (try inArray()).map((e) => e.label)]
 }

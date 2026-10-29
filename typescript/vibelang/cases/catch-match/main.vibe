@@ -11,7 +11,7 @@ function find(id: string): string!NotFound | Timeout! {
 // A complete match over the caught failure needs no rethrow.
 function describe(id: string): string!! {
   try {
-    return find(id)
+    return try find(id)
   } catch (e) {
     return match (e) {
       when NotFound and { let id }: `no user ${id}`;
@@ -23,7 +23,7 @@ function describe(id: string): string!! {
 // Partial handling rethrows the rest with a throw expression.
 function partial(id: string): string!Timeout! {
   try {
-    return find(id)
+    return try find(id)
   } catch (e) {
     return match (e) {
       when NotFound: "missing";
@@ -35,7 +35,7 @@ function partial(id: string): string!Timeout! {
 // An is chain narrows statement bodies.
 function chain(id: string): string!! {
   try {
-    return find(id)
+    return try find(id)
   } catch (e) {
     if (e is NotFound) {
       return `missing ${e.id}`
@@ -46,7 +46,7 @@ function chain(id: string): string!! {
 
 // A whole cause: match on the exit.
 function outcome(id: string): string!! {
-  return match (exit(find(id))) {
+  return match (try exit(find(id))) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasFails(cause) ? "failed" : "other";
   }
@@ -55,15 +55,15 @@ function outcome(id: string): string!! {
 export function main() {
   let partialSlow = "none"
   try {
-    partial("slow")
+    try partial("slow")
   } catch (e) {
     partialSlow = e._tag
   }
   return {
-    describe: [describe("1"), describe("missing"), describe("slow")],
-    partial: partial("missing"),
+    describe: [try describe("1"), try describe("missing"), try describe("slow")],
+    partial: try partial("missing"),
     partialSlow,
-    chain: [chain("missing"), chain("slow")],
-    cause: [outcome("1"), outcome("missing")]
+    chain: [try chain("missing"), try chain("slow")],
+    cause: [try outcome("1"), try outcome("missing")]
   }
 }

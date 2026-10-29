@@ -5,11 +5,11 @@ control Step { next(): void!! }
 // The example from Chapter 9, with the owner's corrected type for n.
 function written(): number | string!! {
   try {
-    Step.next()
-    Step.next()
+    try Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n: number | string = resume()
+    const n: number | string = try resume()
     return typeof n === "number" ? n.toFixed(1) : "done"
   }
 }
@@ -17,10 +17,10 @@ function written(): number | string!! {
 // A resumed clause's fallthrough adds no undefined when the try returns.
 function after(): number!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = resume()
+    const n: number = try resume()
     n.toFixed(0)
   }
   return 0
@@ -29,31 +29,31 @@ function after(): number!! {
 // A dependent return already within H is accepted without an annotation.
 function same() {
   try {
-    Step.next()
-    Step.next()
+    try Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n = resume()
+    const n = try resume()
     return n + 1
   }
 }
 
 function held() {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n = resume()
+    const n = try resume()
     return n
   }
 }
 
 function withValue(): number!! {
   try {
-    Step.next()
+    try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = resumeWith(() => undefined)
+    const n: number = try resumeWith(() => undefined)
     return n + 1
   }
 }
@@ -62,9 +62,9 @@ function withValue(): number!! {
 function falls(): string[]!! {
   const seen: string[] = []
   try {
-    Step.next()
+    try Step.next()
   } handle Step.next() {
-    const n: string[] | undefined = resume()
+    const n: string[] | undefined = try resume()
     seen.push(String(n))
   }
   seen.push("after")
@@ -76,13 +76,13 @@ function stops(): string[]!! {
   const seen: string[] = []
   let count = 0
   try {
-    Step.next()
-    Step.next()
+    try Step.next()
+    try Step.next()
     return seen
   } handle Step.next() {
     count++
     if (count === 1) {
-      const n: string[] | undefined = resume()
+      const n: string[] | undefined = try resume()
       seen.push(String(n))
     }
   }
@@ -94,10 +94,10 @@ function breaks(): string[]!! {
   const seen: string[] = []
   for (const round of [1, 2]) {
     try {
-      Step.next()
+      try Step.next()
       break
     } handle Step.next() {
-      const n: string[] | undefined = resume()
+      const n: string[] | undefined = try resume()
       seen.push(String(n))
     }
   }
@@ -109,10 +109,10 @@ function continues(): string[]!! {
   const seen: string[] = []
   for (const round of [1, 2]) {
     try {
-      Step.next()
+      try Step.next()
       continue
     } handle Step.next() {
-      const n: string[] | undefined = resume()
+      const n: string[] | undefined = try resume()
       seen.push(String(n))
     }
   }
@@ -121,5 +121,5 @@ function continues(): string[]!! {
 }
 
 export function main() {
-  return { written: written(), after: after(), same: same(), held: held(), withValue: withValue(), falls: falls(), stops: stops(), breaks: breaks(), continues: continues() }
+  return { written: try written(), after: try after(), same: try same(), held: try held(), withValue: try withValue(), falls: try falls(), stops: try stops(), breaks: try breaks(), continues: try continues() }
 }

@@ -6,8 +6,8 @@ import { greetTwice } from "./greeter.ts"
 
 // expect-result: {"one":"Welcome, ADA!","two":"Welcome, GRACE! Welcome, GRACE!","loud":"HI","events":["welcome Ada","welcome Grace","welcome Grace"]}
 export function main() {
-  const one = welcome("Ada")
-  const two = greetTwice("Grace")
-  const loud = shout("hi")
+  const one = try welcome("Ada")
+  const two = try greetTwice("Grace")
+  const loud = try shout("hi")
   return { one, two, loud, events }
 }

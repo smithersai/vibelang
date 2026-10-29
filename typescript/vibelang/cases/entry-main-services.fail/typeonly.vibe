@@ -6,5 +6,5 @@ export interface Shape {
 }
 
 export function main() {
-  Console.log(Users.find("4"))
+  try Console.log(try Users.find("4"))
 }

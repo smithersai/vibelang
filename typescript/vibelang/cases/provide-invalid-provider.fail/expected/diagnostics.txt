@@ -1,5 +1,5 @@
 main.vibe(13,11): error EK3207
 main.vibe(19,11): error EK3207
-main.vibe(20,12): error EK2002
+main.vibe(20,13): error EK2002
 main.vibe(25,11): error EK3207
-main.vibe(26,12): error EK2002
+main.vibe(26,13): error EK2002

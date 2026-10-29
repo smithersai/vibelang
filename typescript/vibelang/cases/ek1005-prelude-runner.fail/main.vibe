@@ -2,12 +2,12 @@
 // The prelude's runPromise leads back in from TypeScript, such as a hatch's
 // body (D148). Called in code a fiber runs, it starts a second root: EK1005.
 function later() {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return "later"
 }
 
 export function main() {
-  const fine = sync(async (later) => runPromise(later()), later)
+  const fine = try sync(async (later) => runPromise(later()), later)
   runPromise(later())
   return fine
 }

@@ -32,7 +32,7 @@ export const label = { toString() { return "ok" }, toJSON: () => 1 }
 
 // Effect code runs an Effect function where it calls it.
 export function main() {
-  const first = bump()
-  const second = bump()
-  return [first, second, arrow(1), api.triple(2), double(4)]
+  const first = try bump()
+  const second = try bump()
+  return [first, second, try arrow(1), try api.triple(2), double(4)]
 }

@@ -13,7 +13,7 @@ export function annotatedAtPlain() {
 // A literal at a destination that returns an Effect is an Effect function, so
 // returning the program cached returns it unrun; write cached().
 export function nested() {
-  return Effect.flatMap(Effect.succeed(1), (v) => cached)
+  return try Effect.flatMap(Effect.succeed(1), (v) => cached)
 }
 
 // A union of a plain and an Effect function: its call would build the Effect

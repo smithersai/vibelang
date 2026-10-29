@@ -25,20 +25,20 @@ abstract class Audit {
 }
 
 export const UsersAudited = Layer.effect(Users, () => {
-  const db = Database()
+  const db = try Database()
   return {
     find(id) {
-      Audit.record(`users.find ${id}`)
-      const user = db.query(`select ${id}`)
-      if (user === undefined) return Effect.fail(new UserNotFound({ id }))
-      return Effect.succeed(user)
+      try Audit.record(`users.find ${id}`)
+      const user = try db.query(`select ${id}`)
+      if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
+      return try Effect.succeed(user)
     }
   }
 })
 
 export class UsersLogged implements Users {
   find(id: string) {
-    Audit.record(`find ${id}`)
-    return Effect.fail(new UserNotFound({ id }))
+    try Audit.record(`find ${id}`)
+    return try Effect.fail(new UserNotFound({ id }))
   }
 }

@@ -13,6 +13,6 @@ const hatch = { callback }
 
 export function main() {
   const fiber = fork Effect.succeed(1)
-  const value = Runtime.sync(() => 2)
-  return [join(fiber), value]
+  const value = try Runtime.sync(() => 2)
+  return [try join(fiber), value]
 }

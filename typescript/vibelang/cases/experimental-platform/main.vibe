@@ -10,34 +10,34 @@ function hex(bytes: Uint8Array) {
 }
 
 export function inspect(dir: string) {
-  const fs = Experimental.FileSystem.FileSystem()
-  fs.writeFileString(`${dir}/data`, "1234")
-  fs.chmod(`${dir}/data`, 0o644)
-  fs.symlink("data", `${dir}/link`)
-  const denied = Effect.flip(fs.access(`${dir}/data`, { executable: true })).reason._tag;
+  const fs = try Experimental.FileSystem.FileSystem()
+  try fs.writeFileString(`${dir}/data`, "1234")
+  try fs.chmod(`${dir}/data`, 0o644)
+  try fs.symlink("data", `${dir}/link`)
+  const denied = (try Effect.flip(fs.access(`${dir}/data`, { executable: true }))).reason._tag;
   {
-    using file = fs.open(`${dir}/data`, { flag: "r+", noFollow: true, nonBlocking: true })
-    fs.rename(`${dir}/data`, `${dir}/moved`)
-    file.chmod(0o600)
+    using file = try fs.open(`${dir}/data`, { flag: "r+", noFollow: true, nonBlocking: true })
+    try fs.rename(`${dir}/data`, `${dir}/moved`)
+    try file.chmod(0o600)
   }
   const key = Redacted.make(new TextEncoder().encode("Jefe"))
-  const mac = Experimental.Crypto.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
+  const mac = try Experimental.Crypto.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
   return {
-    link: fs.lstat(`${dir}/link`).type,
-    isLink: isLink(`${dir}/link`),
-    kind: kind(fs, `${dir}/link`),
-    followed: isLink(`${dir}/moved`),
-    size: Number(size(`${dir}/moved`)),
+    link: (try fs.lstat(`${dir}/link`)).type,
+    isLink: try isLink(`${dir}/link`),
+    kind: try kind(fs, `${dir}/link`),
+    followed: try isLink(`${dir}/moved`),
+    size: Number(try size(`${dir}/moved`)),
     denied,
-    mode: (fs.stat(`${dir}/moved`).mode & 0o777).toString(8),
-    mac: hex(mac)
+    mode: ((try fs.stat(`${dir}/moved`)).mode & 0o777).toString(8),
+    mac: try hex(mac)
   }
 }
 
 // expect-result: {"link":"SymbolicLink","isLink":true,"kind":"SymbolicLink","followed":false,"size":4,"denied":"PermissionDenied","mode":"600","mac":"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"}
 export function main() {
   provide ExperimentalNodeServices.layer {
-    using dir = Experimental.FileSystem.FileSystem.makeTempDirectoryScoped()
-    return inspect(dir)
+    using dir = try Experimental.FileSystem.FileSystem.makeTempDirectoryScoped()
+    return try inspect(dir)
   }
 }

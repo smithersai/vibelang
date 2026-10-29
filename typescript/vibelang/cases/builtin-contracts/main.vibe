@@ -10,7 +10,7 @@ function parse(text: string) {
 // A catch in an Effect function receives the typed SyntaxError.
 function config(text: string) {
   try {
-    return parse(text).port
+    return (try parse(text)).port
   } catch (e) {
     return e instanceof SyntaxError ? -1 : -2
   }
@@ -30,9 +30,9 @@ function parseOr(text: string, fallback: number): number {
 // expect-result: {"parsed":{"port":8080},"config":[8080,-1],"failure":"SyntaxError","plain":[1,0]}
 export function main() {
   return {
-    parsed: parse(`{"port":8080}`),
-    config: [config(`{"port":8080}`), config("{")],
-    failure: Effect.flip(() => parse("{")).name,
+    parsed: try parse(`{"port":8080}`),
+    config: [try config(`{"port":8080}`), try config("{")],
+    failure: (try Effect.flip(() => parse("{"))).name,
     plain: ["1", "{"].map((text) => parseOr(text, 0))
   }
 }

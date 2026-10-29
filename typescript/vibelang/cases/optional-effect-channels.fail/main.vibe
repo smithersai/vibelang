@@ -4,16 +4,16 @@ error Gone {}
 service Needed { id: string }
 type Decode = () => Effect.Effect<number, Gone, Needed>
 export function failsNever(f: Decode | undefined): Effect.Effect<number | undefined, never, Needed> {
- return f?.()
+ return try f?.()
 }
 export function needsNothing(o: { readonly decode?: Decode }): Effect.Effect<number | undefined, Gone, never> {
- return o.decode?.()
+ return try o.decode?.()
 }
 
 function declared(): Effect.Effect<number, Gone, Needed> { return 1 }
 export function declaredFailsNever(): Effect.Effect<number | undefined, never, Needed> {
- return declared?.()
+ return try declared?.()
 }
 export function declaredNeedsNothing(): Effect.Effect<number | undefined, Gone, never> {
- return declared?.()
+ return try declared?.()
 }

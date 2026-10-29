@@ -15,5 +15,5 @@ export const pair = () => twice(Effect.succeed(1))
 
 // expect-result: [1,1]
 export function main() {
-  return pair()
+  return try pair()
 }

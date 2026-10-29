@@ -1,1 +1,1 @@
-a.vibe(5,65): error EK4405
+a.vibe(5,69): error EK4405

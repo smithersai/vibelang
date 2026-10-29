@@ -6,8 +6,8 @@
 import { legacyParse } from "./legacy.ts"
 
 export function inputs(text: string) {
-  const inside = sync((text) => legacyParse(text) + Date.now(), text)
-  const parsed = sync((n) => n + 1, legacyParse(text))
-  const stamped = sync((t) => t, Date.now())
+  const inside = try sync((text) => legacyParse(text) + Date.now(), text)
+  const parsed = try sync((n) => n + 1, legacyParse(text))
+  const stamped = try sync((t) => t, Date.now())
   return [inside, parsed, stamped]
 }

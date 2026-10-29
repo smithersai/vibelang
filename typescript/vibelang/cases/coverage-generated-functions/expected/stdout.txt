@@ -14,6 +14,6 @@ main.vibe:55:7 label covered
 main.vibe:60:1 guarded covered
 main.vibe:68:1 block covered
 main.vibe:73:1 traced covered
-main.vibe:74:19 (anonymous) covered
+main.vibe:74:23 (anonymous) covered
 main.vibe:80:1 unused uncovered
 main.vibe:84:1 double$direct covered

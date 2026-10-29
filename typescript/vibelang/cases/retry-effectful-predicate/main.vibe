@@ -4,13 +4,13 @@ error Busy { attempt: number }
 function retryWhileBusy() {
   let attempts = 0
   try {
-    return retry(() => {
+    return try retry(() => {
       attempts++
       throw new Busy({ attempt: attempts })
     }, {
       times: 5,
       while: (error): boolean!! => {
-        sleep("1 millis")
+        try sleep("1 millis")
         return error.attempt < 3
       }
     })
@@ -22,21 +22,21 @@ function retryWhileBusy() {
 // expect-result: {"attempts":3,"reserved":2,"quoted":3,"strict":4,"generator":5,"named":"async"}
 export function main() {
   const named = function async() {
-    sleep("1 millis")
+    try sleep("1 millis")
     return async.name
   }
   const handlers = {
-    default: (n: number) => { sleep("1 millis"); return n + 1 },
-    "not-an-identifier": (n: number) => { sleep("1 millis"); return n + 2 },
-    arguments: (n: number) => { sleep("1 millis"); return n + 3 },
-    yield: (n: number) => { sleep("1 millis"); return n + 4 }
+    default: (n: number) => { try sleep("1 millis"); return n + 1 },
+    "not-an-identifier": (n: number) => { try sleep("1 millis"); return n + 2 },
+    arguments: (n: number) => { try sleep("1 millis"); return n + 3 },
+    yield: (n: number) => { try sleep("1 millis"); return n + 4 }
   }
   return {
-    attempts: retryWhileBusy(),
-    reserved: handlers.default(1),
-    quoted: handlers["not-an-identifier"](1),
-    strict: handlers.arguments(1),
-    generator: handlers.yield(1),
-    named: named()
+    attempts: try retryWhileBusy(),
+    reserved: try handlers.default(1),
+    quoted: try handlers["not-an-identifier"](1),
+    strict: try handlers.arguments(1),
+    generator: try handlers.yield(1),
+    named: try named()
   }
 }

@@ -20,13 +20,13 @@ import { counted } from inputs
 // "iterate" and every run gave [1] (audit concurrency §5).
 export function main() {
   const seen: string[] = []
-  const xs = sync((s: string[]) => counted(s), seen)
+  const xs = try sync((s: string[]) => counted(s), seen)
   const held: number[]!! = await.all xs
   const made = [...seen]
-  const runs = [held(), held(), held()]
-  const ys = sync((s: string[]) => counted(s), [] as string[])
+  const runs = [try held(), try held(), try held()]
+  const ys = try sync((s: string[]) => counted(s), [] as string[])
   const settled = await.allSettled ys
-  const race = await.race sync((s: string[]) => counted(s), [] as string[])
-  const any = await.any sync((s: string[]) => counted(s), [] as string[])
+  const race = await.race try sync((s: string[]) => counted(s), [] as string[])
+  const any = await.any try sync((s: string[]) => counted(s), [] as string[])
   return { made, runs, settled: settled.map((r) => Result.getOrElse(r, () => 0)), race, any }
 }

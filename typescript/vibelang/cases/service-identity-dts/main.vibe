@@ -54,10 +54,10 @@ export function sourceOf(users: Users.Shape) {
 }
 
 export function current() {
-  return Users()
+  return try Users()
 }
 
 export function greet(id: string) {
-  const user = Users.find(id)
-  return `${user.name} via ${Users().source}, beta ${Flags().beta}`
+  const user = try Users.find(id)
+  return `${user.name} via ${(try Users()).source}, beta ${(try Flags()).beta}`
 }

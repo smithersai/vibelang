@@ -2,7 +2,7 @@
 import "vibelang/platform/node"
 export function main() {
   const f = fork sleep("1 minute")
-  const g = fork (() => { Fiber.interrupt(f) })
+  const g = fork (() => { try Fiber.interrupt(f) })
   join g
-  Console.log("accepted capture")
+  try Console.log("accepted capture")
 }

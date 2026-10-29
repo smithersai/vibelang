@@ -131,8 +131,10 @@ type env struct {
 
 // projector holds the state of one Project call.
 type projector struct {
-	file  *ast.SourceFile
-	text  string
+	file *ast.SourceFile
+	text string
+	// tries are the offsets of the try keywords lower blanks (triedKeywords).
+	tries []int
 	ctx   FileContext
 	names *names
 	plan  plan
@@ -173,6 +175,7 @@ type projector struct {
 // lower yet draws an EK9001 diagnostic.
 func Project(text string, ctx FileContext) Projection {
 	p := lower(text, ctx)
+	text = p.text // without the try keywords lower blanks
 	p.brandPureExports()
 	out, segments, overlap, ok := p.plan.render(checking{names: p.names}, text, p.names.importLine)
 	if !ok {
@@ -186,7 +189,7 @@ func Project(text string, ctx FileContext) Projection {
 			Message: "The TypeScript 7 mapper produced invalid or overlapping edits here; the file is passed through unchanged.",
 		})
 	}
-	return Projection{Text: out, Segments: segments, Diagnostics: p.diagnostics, Purity: p.purity()}
+	return Projection{Text: out, Segments: withoutTries(segments, p.tries), Diagnostics: p.diagnostics, Purity: p.purity()}
 }
 
 // lower parses text and walks it in context ctx, recording the lowering
@@ -195,9 +198,15 @@ func Project(text string, ctx FileContext) Projection {
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
+	tries := triedKeywords(file, text)
+	if len(tries) > 0 {
+		text = blank(text, tries)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
+	}
 	p := &projector{
 		file:            file,
 		text:            text,
+		tries:           tries,
 		ctx:             ctx,
 		names:           newNames(file, text),
 		forms:           newFormResolver(file),
@@ -292,6 +301,9 @@ func (p *projector) visit(node *ast.Node, e env) {
 		return
 	case isFiberHelper(node, "$join", 1):
 		p.join(node, e)
+		return
+	case isFiberHelper(node, "$try", 1):
+		p.tryValue(node, e)
 		return
 	case isFiberHelper(node, "$forConcurrent", 3):
 		p.forConcurrent(node, e)

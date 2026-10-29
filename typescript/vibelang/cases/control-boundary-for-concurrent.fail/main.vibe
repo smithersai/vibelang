@@ -7,9 +7,9 @@ control Ask { ask(): number!! }
 export function limited() {
   let total = 0
   try {
-    for concurrent(2) (const n of [1, 2]) total += Ask.ask()
+    for concurrent(2) (const n of [1, 2]) total += try Ask.ask()
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
   return total
 }
@@ -18,10 +18,10 @@ export function unlimited() {
   let total = 0
   try {
     for concurrent (const n of [1, 2]) {
-      total += Ask.ask()
+      total += try Ask.ask()
     }
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
   return total
 }
@@ -29,9 +29,9 @@ export function unlimited() {
 export function one() {
   let total = 0
   try {
-    for concurrent(1) (const n of [1, 2]) total += Ask.ask()
+    for concurrent(1) (const n of [1, 2]) total += try Ask.ask()
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
   return total
 }

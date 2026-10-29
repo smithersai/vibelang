@@ -8,7 +8,7 @@ import { describe, it, layer } from "@effect/vitest"
 import { onRequest } from "./server.ts"
 
 function refresh(id: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return id
 }
 
@@ -42,18 +42,18 @@ register(() => {
 
 it.effect("a test", () => {
   it.effect("nested", () => refresh("n"))
-  return refresh("t")
+  return try refresh("t")
 })
 
 // A runner bound to the fiber's services is a value: building one starts
 // nothing, so a fiber may hand it to a callback host. Applying it starts a
 // root.
 function bridge() {
-  return Effect.runPromiseWith(Effect.context<never>())
+  return Effect.runPromiseWith(try Effect.context<never>())
 }
 
 function boundRunner() {
-  const run = Effect.runPromiseWith(Effect.context<never>())
+  const run = Effect.runPromiseWith(try Effect.context<never>())
   return run(() => refresh("b"))
 }
 

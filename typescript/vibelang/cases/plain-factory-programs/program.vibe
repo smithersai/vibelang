@@ -13,7 +13,7 @@ export const stored: Effect.Effect<{ n: number }, never, never> = () => makeRunt
 
 // This body has no other Effect operation to force generator lowering.
 export function useIt(options: { n: number }): number!! {
-  const service = makeRuntime(options)
+  const service = try makeRuntime(options)
   return service.n
 }
 
@@ -23,6 +23,6 @@ function identity<A>(value: A): A {
 }
 // The instantiated call type, rather than the generic's plain body, decides.
 export function useGenericFactory() {
-  const service = identity(stored)
+  const service = try identity(stored)
   return service.n
 }

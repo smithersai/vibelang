@@ -38,7 +38,6 @@ export const retiredByVips: Record<string, string> = {
   EK2121: "VIP-11: no layer declarations",
   EK3202: "VIP-24: wire is denied",
   EK4202: "VIP-35: handlers are open",
-  EK4404: "VIP-6: no hatches",
   EK4405: "VIP-6: no hatches",
   EK4501: "no VIP adds data-type method calls",
   EK4601: "VIP-5: await is only for Promises",

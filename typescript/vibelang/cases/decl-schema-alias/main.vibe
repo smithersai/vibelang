@@ -19,7 +19,7 @@ function describe(code: Code): string {
 
 function decode(input: unknown) {
   try {
-    return Schema.decodeUnknownEffect(Code)(input)
+    return try Schema.decodeUnknownEffect(Code)(input)
   } catch (e) {
     return "invalid"
   }
@@ -31,17 +31,17 @@ const schema = { version: 1 }
 export function main() {
   const origin: Point = { x: 1 }
   return {
-    code: decode("read_failed"),
-    invalid: decode("other"),
+    code: try decode("read_failed"),
+    invalid: try decode("other"),
     described: describe("root_missing"),
     port: Schema.is(Port)(8080),
     id: [Schema.is(Id)("a"), Schema.is(Id)(1), Schema.is(Id)(true)],
-    tags: Schema.decodeUnknownEffect(Tags)(["a"]),
+    tags: try Schema.decodeUnknownEffect(Tags)(["a"]),
     names: Schema.is(Names)(["a", 1]),
-    pair: Schema.decodeUnknownEffect(Pair)(["a", 1]),
-    counts: Schema.decodeUnknownEffect(Counts)({ a: 1 }),
-    point: Schema.encodeEffect(Point)(origin),
-    home: Schema.decodeUnknownEffect(Home)({ city: "Paris" }),
+    pair: try Schema.decodeUnknownEffect(Pair)(["a", 1]),
+    counts: try Schema.decodeUnknownEffect(Counts)({ a: 1 }),
+    point: try Schema.encodeEffect(Point)(origin),
+    home: try Schema.decodeUnknownEffect(Home)({ city: "Paris" }),
     status: [Schema.is(Status)(null), Schema.is(Status)("read_failed"), Schema.is(Status)("x")],
     flag: Schema.is(Flag)(true),
     version: schema.version

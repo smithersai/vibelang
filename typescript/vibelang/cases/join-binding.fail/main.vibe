@@ -10,5 +10,5 @@ const joiner = join
 
 export function main() {
   const fiber = fork Effect.succeed(1)
-  return Runtime.join(fiber)
+  return try Runtime.join(fiber)
 }

@@ -69,7 +69,7 @@ var (
 	EK1001 = message(1001, errorCategory, "{0} runs a program, but a module's top level is not inside one.")
 	// EK1002: a generator-based API such as Effect.gen, where function* declares a producer. {0} is the API.
 	EK1002 = message(1002, errorCategory, "{0} expects a JavaScript generator, but in VibeLang function* declares a producer.")
-	// EK1003: async, for await, await using, or await inside an async function outside a hatch. {0} is the keyword.
+	// EK1003: for await or await using outside an async function. {0} is the keyword.
 	EK1003 = message(1003, errorCategory, "{0} is not part of VibeLang: a call already waits.")
 	// EK1004: using at a module's top level.
 	EK1004 = message(1004, errorCategory, "using needs a block that a program runs, but a module's top level is not inside one.")
@@ -185,8 +185,6 @@ var (
 	EK4403 = message(4403, errorCategory, "{0} reads the clock or randomness, which a test cannot control.")
 	// EK4501: method syntax without a call. {0} is the method, {1} the module.
 	EK4501 = message(4501, errorCategory, "{0} is a method of {1}'s values only in a call: x.{0}(…) calls {1}.{0}(x, …).")
-	// EK4404: a hatch given Effect's options object. {0} is the hatch.
-	EK4404 = message(4404, errorCategory, "{0} takes the code and the error mapping as two arguments, not Effect's options object.")
 	// EK4405: a hatch's TypeScript reads a binding of the .vibe file. {0} is the binding, {1} the hatch.
 	EK4405 = message(4405, errorCategory, "{0} is declared outside the hatch, and a hatch's TypeScript is self-contained: pass {0} to {1} as an input.")
 	// EK4406: a declaration tag cannot reach the per-file emit (D249).
@@ -207,7 +205,7 @@ func init() {
 		EK1001, EK1002, EK1003, EK1004, EK1005, EK1006, EK1007, EK1008, EK1009, EK1010, EK1011, EK1012, EK1022, EK1023,
 		EK2001, EK2002, EK2003, EK2004, EK2005, EK2006, EK2101, EK2102, EK2103, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK3006, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
-		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4404, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,
+		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,
 	} {
 		registry[m.Code] = m
 	}

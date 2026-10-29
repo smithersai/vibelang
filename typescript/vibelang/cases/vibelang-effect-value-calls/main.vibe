@@ -7,7 +7,7 @@ import { Data, Effect, Exit } from "effect"
 class EmptyDocument extends Data.TaggedError("EmptyDocument")<{ readonly documentId: string }> {}
 
 export function replay<A, E>(outcome: Exit.Exit<A, E>) {
-  return outcome()
+  return try outcome()
 }
 
 function emptyDocumentError(documentId: string) {
@@ -15,8 +15,8 @@ function emptyDocumentError(documentId: string) {
 }
 
 export function rejectDocument(documentId: string) {
-  const error = emptyDocumentError(documentId) // data, not a failure
-  return error() // calling the error fails with it
+  const error = try emptyDocumentError(documentId) // data, not a failure
+  return try error() // calling the error fails with it
 }
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
@@ -25,9 +25,9 @@ export const rejectType: Equals<ReturnType<typeof rejectDocument>, Effect.Effect
 
 // expect-result: {"value":42,"replayedFailure":"EmptyDocument d1","rejection":"EmptyDocument d2"}
 export function main() {
-  const value = replay(sync((): Exit.Exit<number> => Exit.succeed(42)))
-  const replayedFailure = Effect.flip(() => replay(sync((): Exit.Exit<never, EmptyDocument> => Exit.fail(new EmptyDocument({ documentId: "d1" })))))
-  const rejection = Effect.flip(() => rejectDocument("d2"))
+  const value = try replay(try sync((): Exit.Exit<number> => Exit.succeed(42)))
+  const replayedFailure = try Effect.flip(() => replay(try sync((): Exit.Exit<never, EmptyDocument> => Exit.fail(new EmptyDocument({ documentId: "d1" })))))
+  const rejection = try Effect.flip(() => rejectDocument("d2"))
   return {
     value,
     replayedFailure: `${replayedFailure._tag} ${replayedFailure.documentId}`,

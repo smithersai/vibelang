@@ -4,7 +4,7 @@ error Boom
 
 function find(id: string): string!NotFound! {
   if (id === "missing") throw new NotFound({ id })
-  if (id === "bug") die(new Error("bug"))
+  if (id === "bug") try die(new Error("bug"))
   return id
 }
 
@@ -14,23 +14,23 @@ function boom() {
 
 // Catch expected failures inside exit; defects remain in its Failure case.
 function typed() {
-  const outcome = exit(do {
-    try { find("missing") } catch (e) { e._tag }
+  const outcome = try exit(do {
+    try { try find("missing") } catch (e) { e._tag }
   })
   if (outcome._tag === "Success") return outcome.value
   return "cause"
 }
 
 function defect() {
-  const outcome = exit(find("bug"))
+  const outcome = try exit(find("bug"))
   if (outcome._tag === "Success") return outcome.value
   return outcome.cause.reasons[0]._tag
 }
 
 function rethrown() {
   try {
-    const outcome = exit(boom())
-    if (outcome._tag === "Failure") Effect.failCause(outcome.cause)
+    const outcome = try exit(boom())
+    if (outcome._tag === "Failure") try Effect.failCause(outcome.cause)
     return "no"
   } catch (e) {
     return e._tag
@@ -38,19 +38,19 @@ function rethrown() {
 }
 
 function onlyCause() {
-  const outcome = exit(boom())
+  const outcome = try exit(boom())
   if (outcome._tag === "Success") return "no"
   return outcome.cause.reasons[0]._tag
 }
 
 function untyped() {
-  const outcome = exit(do {
-    try { boom(); "no" } catch (e) { "Expected" }
+  const outcome = try exit(do {
+    try { try boom(); "no" } catch (e) { "Expected" }
   })
   if (outcome._tag === "Success") return outcome.value
   return "cause"
 }
 
 export function main() {
-  return { typed: typed(), defect: defect(), rethrown: rethrown(), onlyCause: onlyCause(), untyped: untyped() }
+  return { typed: try typed(), defect: try defect(), rethrown: try rethrown(), onlyCause: try onlyCause(), untyped: try untyped() }
 }

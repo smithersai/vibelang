@@ -7,15 +7,15 @@ interface Hooks {
 }
 
 const hooks: Hooks = {
-  emit: (n) => n === 0 ? Effect.interrupt() : Console.log("emit", n),
-  cached: (n) => n ?? Effect.interrupt(),
+  emit: (n) => n === 0 ? try Effect.interrupt() : try Console.log("emit", n),
+  cached: (n) => n ?? try Effect.interrupt(),
 }
 
 export function main() {
   return [
-    Exit.isFailure(exit(hooks.emit(0))),
-    Exit.isSuccess(exit(hooks.emit(1))),
-    Exit.isFailure(exit(hooks.cached(undefined))),
-    Exit.isSuccess(exit(hooks.cached(2))),
+    Exit.isFailure(try exit(hooks.emit(0))),
+    Exit.isSuccess(try exit(hooks.emit(1))),
+    Exit.isFailure(try exit(hooks.cached(undefined))),
+    Exit.isSuccess(try exit(hooks.cached(2))),
   ]
 }

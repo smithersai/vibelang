@@ -7,60 +7,60 @@ control Ask { ask(): number!! }
 
 export function forked() {
   try {
-    const f = Effect.forkChild(Ask.ask())
-    return Fiber.join(f)
+    const f = try Effect.forkChild(Ask.ask())
+    return try Fiber.join(f)
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function detached() {
   try {
-    const f = Effect.forkDetach(Ask.ask())
-    return Fiber.join(f)
+    const f = try Effect.forkDetach(Ask.ask())
+    return try Fiber.join(f)
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function piped() {
   try {
-    const f = Ask.ask() |> Effect.forkChild(%)
-    return Fiber.join(f)
+    const f = Ask.ask() |> try Effect.forkChild(%)
+    return try Fiber.join(f)
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function timed() {
   try {
-    return Effect.timeout(Ask.ask(), "1 second")
+    return try Effect.timeout(Ask.ask(), "1 second")
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function raced() {
   try {
-    return Effect.race(Ask.ask(), sleep("1 second"))
+    return try Effect.race(Ask.ask(), sleep("1 second"))
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 export function keyed() {
   try {
-    return Effect.all({ x: Ask.ask(), y: sleep("1 second") }, { concurrency: 2 })
+    return try Effect.all({ x: Ask.ask(), y: sleep("1 second") }, { concurrency: 2 })
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
 // retry runs its program on this fiber, so the handler is reached.
 export function retried() {
   try {
-    return retry(Ask.ask(), { times: 1 })
+    return try retry(Ask.ask(), { times: 1 })
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }

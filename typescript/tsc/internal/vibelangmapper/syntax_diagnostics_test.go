@@ -53,7 +53,7 @@ func checkSyntaxFixture(t *testing.T, name string, code int32, count int) {
 		t.Fatalf("%s: want %d EK%d, got %v", name, count, code, found)
 	}
 	if code == 4405 {
-		positions := [][2]int{{27, 24}, {28, 24}, {28, 33}, {29, 23}, {30, 24}, {31, 27}}
+		positions := [][2]int{{27, 28}, {28, 28}, {28, 37}, {29, 28}, {30, 28}, {31, 31}}
 		for i, pos := range positions {
 			offset := 0
 			lines := strings.Split(source, "\n")
@@ -67,16 +67,12 @@ func checkSyntaxFixture(t *testing.T, name string, code int32, count int) {
 	}
 }
 
-// TestSyntaxEK1003 preserves the Chapter 10 hatch exception and ignores trivia.
+// TestSyntaxEK1003 reports for await and await using outside an async
+// function; an async function means what it means in TypeScript (VIP-1).
 func TestSyntaxEK1003(t *testing.T) {
-	checkSyntaxFixture(t, "ek1003-async", 1003, 4)
-	checkSyntaxFixture(t, "ek1003-ts-ignore", 1003, 1)
 	checkSyntaxFixture(t, "ek1004-await-using", 1003, 1)
-	for _, source := range []string{"export async function load() { return 1 }", "// @ts-ignore\nexport async function load() { return 1 }", "const load = async () => 1"} {
-		checkSyntaxDiagnostic(t, 1003, source, "async", "async is not part of VibeLang: a call already waits.", `function f() { return sync(async () => { return await Promise.resolve("await") }) }`)
-	}
-	checkSyntaxDiagnostic(t, 1003, `await using log = open()`, "await", "await using is not part of VibeLang: a call already waits.", `const text = "async await"; // await`)
-	checkSyntaxDiagnostic(t, 1003, `for await (const x of xs) {}`, "await", "for await is not part of VibeLang: a call already waits.", `function f() { for (const x of xs) {} }`)
+	checkSyntaxDiagnostic(t, 1003, `await using log = open()`, "await", "await using is not part of VibeLang: a call already waits.", `export async function load() { await using log = open(); return await Promise.resolve(1) }`)
+	checkSyntaxDiagnostic(t, 1003, `for await (const x of xs) {}`, "await", "for await is not part of VibeLang: a call already waits.", `const load = async (xs: AsyncIterable<number>) => { for await (const x of xs) {} }`)
 }
 
 // TestSyntaxEK1004 includes module blocks and class static initialization.

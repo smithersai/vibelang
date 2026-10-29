@@ -35,7 +35,7 @@ function throwing(): number!Stop {
 
 function throwingAfterEffect(): number!Stop {
   for (const x of counting("throw after an effect")) {
-    sleep("0 millis")
+    try sleep("0 millis")
     if (x === 2) throw new Stop({ at: x })
   }
   return 0
@@ -43,14 +43,14 @@ function throwingAfterEffect(): number!Stop {
 
 function failingCall(): number!Stop {
   for (const x of counting("failing call")) {
-    if (x === 2) throwing()
+    if (x === 2) try throwing()
   }
   return 0
 }
 
 function breaking(): number!! {
   for (const x of counting("break")) {
-    sleep("0 millis")
+    try sleep("0 millis")
     if (x === 2) break
   }
   return 1
@@ -58,7 +58,7 @@ function breaking(): number!! {
 
 function returning(): number!! {
   outer: for (const x of counting("return")) {
-    sleep("0 millis")
+    try sleep("0 millis")
     if (x === 1) continue outer
     if (x === 2) return x
   }
@@ -68,7 +68,7 @@ function returning(): number!! {
 function exhausted(): number!! {
   let sum = 0
   for (const x of counting("exhausted")) {
-    sleep("0 millis")
+    try sleep("0 millis")
     sum += x
   }
   return sum
@@ -76,7 +76,7 @@ function exhausted(): number!! {
 
 function slow(): number!! {
   for (const x of counting("interrupted")) {
-    sleep("1 second")
+    try sleep("1 second")
   }
   return 0
 }
@@ -87,9 +87,9 @@ export function main() {
     throwing() catch -1,
     throwingAfterEffect() catch -1,
     failingCall() catch -1,
-    breaking(),
-    returning(),
-    exhausted(),
+    try breaking(),
+    try returning(),
+    try exhausted(),
     timeout(slow(), "10 millis") catch -1
   ]
   return { results, events }

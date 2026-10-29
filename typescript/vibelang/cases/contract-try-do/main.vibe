@@ -10,7 +10,7 @@ function bump(n: number) { return n + 1 }
 function bumped(p0: number): number!! {
   try {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = bump(p0); 0 }
+    return do { const v: number = try bump(p0); 0 }
   } catch (e) {
     return e._tag.length
   }
@@ -27,7 +27,7 @@ function plain(p0: number): number!! {
 
 function thrown(p0: number): number!! {
   try {
-    return do { if (p0 > 0) throw new E1({ n: 2 }); bump(p0) }
+    return do { if (p0 > 0) throw new E1({ n: 2 }); try bump(p0) }
   } catch (e) {
     return e.n
   }
@@ -44,7 +44,7 @@ function beside(p0: number): number!! {
 function unwritten(p0: number) {
   try {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = bump(p0); 0 }
+    return do { const v: number = try bump(p0); 0 }
   } catch (e) {
     return e._tag.length
   }
@@ -52,10 +52,10 @@ function unwritten(p0: number) {
 
 export function main() {
   return {
-    bumped: [bumped(1), bumped(0)],
-    plain: [plain(1), plain(0)],
-    thrown: [thrown(1), thrown(0)],
-    beside: [beside(-1), beside(0), beside(5)],
-    unwritten: [unwritten(1), unwritten(0)]
+    bumped: [try bumped(1), try bumped(0)],
+    plain: [try plain(1), try plain(0)],
+    thrown: [try thrown(1), try thrown(0)],
+    beside: [try beside(-1), try beside(0), try beside(5)],
+    unwritten: [try unwritten(1), try unwritten(0)]
   }
 }

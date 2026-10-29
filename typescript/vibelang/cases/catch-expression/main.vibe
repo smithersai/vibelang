@@ -56,12 +56,12 @@ function nickname(id: string): string!! {
 }
 
 function crash(): string!Timeout! {
-  return Effect.die("boom")
+  return try Effect.die("boom")
 }
 
 // Defects pass through a catch expression.
 function defect(): string!! {
-  return match (exit(crash() catch "caught")) {
+  return match (try exit(crash() catch "caught")) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasDies(cause) ? "died" : "other";
   }
@@ -76,16 +76,16 @@ export function main() {
   let ran = false
   const quick = find("1") catch do { ran = true; "guest" }
   return {
-    orGuest: [orGuest("1"), orGuest("missing")],
-    describe: [describe("1"), describe("missing"), describe("slow")],
-    partial: partial("missing"),
+    orGuest: [try orGuest("1"), try orGuest("missing")],
+    describe: [try describe("1"), try describe("missing"), try describe("slow")],
+    partial: try partial("missing"),
     partialSlow: partial("slow") catch (e) => e._tag,
-    firstOf: [firstOf("1", "2"), firstOf("missing", "2"), firstOf("missing", "slow")],
+    firstOf: [try firstOf("1", "2"), try firstOf("missing", "2"), try firstOf("missing", "slow")],
     wrapped: wrapped("slow") catch (e) => e.reason,
-    precedence: [precedence("missing", true), precedence("1", false)],
-    nickname: [nickname("anon"), nickname("missing"), nickname("x")],
-    defect: defect(),
-    piped: piped("missing"),
+    precedence: [try precedence("missing", true), try precedence("1", false)],
+    nickname: [try nickname("anon"), try nickname("missing"), try nickname("x")],
+    defect: try defect(),
+    piped: try piped("missing"),
     lazy: [quick, ran]
   }
 }

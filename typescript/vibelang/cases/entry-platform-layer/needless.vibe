@@ -3,5 +3,5 @@
 import "vibelang/platform/node"
 
 export function main() {
-  Console.log("needs no service")
+  try Console.log("needs no service")
 }

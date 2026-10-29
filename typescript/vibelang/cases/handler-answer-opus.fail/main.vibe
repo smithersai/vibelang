@@ -3,18 +3,18 @@
 control Ask { ask(): number!! }
 
 function prog() {
-  const a = Ask.ask()
-  const b = Ask.ask()
+  const a = try Ask.ask()
+  const b = try Ask.ask()
   return a + b
 }
 
 function run() {
   try {
-    return prog()
+    return try prog()
   } handle Ask.ask() {
-    const r = resume(1)
+    const r = try resume(1)
     return r.toFixed(1)
   }
 }
 
-export function main() { log(`result: ${run()}`) }
+export function main() { try log(`result: ${try run()}`) }

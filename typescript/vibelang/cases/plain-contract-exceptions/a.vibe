@@ -50,6 +50,6 @@ export const half = (n: number): number!string! => {
 
 // A JavaScript exception that escapes into an Effect function is a defect.
 export function effectful(): Effect<string, never, never> {
-  Effect.succeed(0)
+  try Effect.succeed(0)
   return callForeign("")
 }

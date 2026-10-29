@@ -41,14 +41,14 @@ export function main() {
   const failure: Source = { read: failed }
   let reads = 0
   const getter: Source = { get read(): Read { reads++; return read } }
-  const getterValue = ternary(getter)
+  const getterValue = try ternary(getter)
   return {
-    ternary: [ternary(absent), ternary(present), ternary(failure)],
-    and: [and(absent), and(present), and(failure)],
-    if: [guardedIf(absent), guardedIf(present), guardedIf(failure)],
-    typeof: [guardedTypeof(absent), guardedTypeof(present), guardedTypeof(failure)],
-    bracket: [bracket(absent), bracket(present), bracket(failure)],
-    nested: [nested(absent), nested(present), nested(failure)],
+    ternary: [try ternary(absent), try ternary(present), try ternary(failure)],
+    and: [try and(absent), try and(present), try and(failure)],
+    if: [try guardedIf(absent), try guardedIf(present), try guardedIf(failure)],
+    typeof: [try guardedTypeof(absent), try guardedTypeof(present), try guardedTypeof(failure)],
+    bracket: [try bracket(absent), try bracket(present), try bracket(failure)],
+    nested: [try nested(absent), try nested(present), try nested(failure)],
     rethrow: rethrow(present) catch -1,
     getter: [getterValue, reads]
   }

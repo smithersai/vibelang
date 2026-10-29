@@ -14,19 +14,19 @@ function fetchReport() {
 }
 
 function slow() {
-  Effect.sleep("1 second")
+  try Effect.sleep("1 second")
   return "slow"
 }
 
 function fast() {
   fastRuns++
-  Effect.sleep("5 millis")
+  try Effect.sleep("5 millis")
   return "fast"
 }
 
 function deadline() {
   try {
-    return Effect.timeout(slow(), "20 millis")
+    return try Effect.timeout(slow(), "20 millis")
   } catch (error) {
     return error._tag
   }
@@ -42,12 +42,12 @@ const total = Effect.runSync(subtotal())
 
 // expect-result: {"report":"report after 3 attempts","winner":"fast","timed":"TimeoutError","joined":"fast","both":["fast","fast"],"logged":true,"attempts":3,"fastRuns":5,"total":56}
 export function main() {
-  const report = Effect.retry(fetchReport(), { times: 5 })
-  const winner = Effect.race(fast(), slow())
-  const timed = deadline()
+  const report = try Effect.retry(fetchReport(), { times: 5 })
+  const winner = try Effect.race(fast(), slow())
+  const timed = try deadline()
   const fiber = fork(fast())
-  const joined = Fiber.join(fiber)
-  const both = Effect.all([fast(), fast()])
-  Console.log(fast())
+  const joined = try Fiber.join(fiber)
+  const both = try Effect.all([fast(), fast()])
+  try Console.log(try fast())
   return { report, winner, timed, joined, both, logged: true, attempts, fastRuns, total }
 }

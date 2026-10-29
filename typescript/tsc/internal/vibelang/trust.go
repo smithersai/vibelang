@@ -617,7 +617,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	switch {
 	case (t.kind == trustForeign || t.kind == trustTagged) && t.promise:
 		d := report(c, callee, promiseCall, name)
-		note(d, "Wait for it with {0}, or name its failure: {1}.", boundaryCall(c, file, "try", call, ""), boundaryCall(c, file, "try", call, "(error) => …"))
+		note(d, "Wait for it with {0}, or name its failure: {1}.", boundaryCall(c, file, "tryPromise", call, ""), boundaryCall(c, file, "tryPromise", call, "(error) => …"))
 	case t.kind == trustForeign:
 		d := report(c, callee, EK4401, name)
 		note(d, "Call it through {0}, or {1}.", boundaryCall(c, file, "try", call, ""), trustedNote(c, file, call))

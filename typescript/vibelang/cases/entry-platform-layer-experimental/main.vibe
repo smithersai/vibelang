@@ -6,5 +6,5 @@ import { FileSystem } from "effect/FileSystem"
 import { Process } from "vibelang-runtime/experimental/Process"
 
 export function main() {
-  Console.log(`${Process.pid()}: ${FileSystem.readFileString("pid.txt")}`)
+  try Console.log(`${try Process.pid()}: ${try FileSystem.readFileString("pid.txt")}`)
 }

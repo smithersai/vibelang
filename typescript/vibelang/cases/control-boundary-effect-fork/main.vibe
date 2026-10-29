@@ -6,18 +6,18 @@ control Ask { ask(): number!! }
 
 function answered(n: number) {
   try {
-    return Ask.ask()
+    return try Ask.ask()
   } handle Ask.ask() {
-    resume(n)
+    try resume(n)
   }
 }
 
 export function main() {
-  const forked = Effect.forkChild(answered(1))
-  const detached = Effect.forkDetach(answered(2))
+  const forked = try Effect.forkChild(answered(1))
+  const detached = try Effect.forkDetach(answered(2))
   return {
-    forked: Fiber.join(forked),
-    detached: Fiber.join(detached),
-    timed: Effect.timeout(answered(3), "1 second")
+    forked: try Fiber.join(forked),
+    detached: try Fiber.join(detached),
+    timed: try Effect.timeout(answered(3), "1 second")
   }
 }

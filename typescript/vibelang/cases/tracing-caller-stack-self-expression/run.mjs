@@ -10,6 +10,6 @@ const exit = await Effect.runPromiseExit(program.main())
 assert.ok(Exit.isFailure(exit))
 const stack = Cause.pretty(exit.cause)
 // Logical caller frames: the recursive call, then main's call.
-assert.match(stack, /at leaf \(.*\/main\.vibe:7:21\)/, stack)
-assert.match(stack, /at leaf \(.*\/main\.vibe:13:10\)/, stack)
+assert.match(stack, /at leaf \(.*\/main\.vibe:7:25\)/, stack)
+assert.match(stack, /at leaf \(.*\/main\.vibe:13:14\)/, stack)
 console.log("traced self-referring expression callers: ok")

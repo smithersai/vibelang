@@ -27,25 +27,25 @@ const box = {
 }
 
 export function callerOfLong() {
-  const n = longForm()
+  const n = try longForm()
   return n
 }
 
 export function callerOfShort() {
-  return shortForm() + 1
+  return try shortForm() + 1
 }
 
 export function callerOfPlain() {
-  return plain() + 1
+  return try plain() + 1
 }
 
 export function callerOfMethod() {
-  return box.get()
+  return try box.get()
 }
 
 // expect-result: [1,3,4,4]
 export function main() {
   provide Needed = { id: "x" } {
-    return [callerOfLong(), callerOfShort(), callerOfPlain(), callerOfMethod()]
+    return [try callerOfLong(), try callerOfShort(), try callerOfPlain(), try callerOfMethod()]
   }
 }

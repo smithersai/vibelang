@@ -9,44 +9,44 @@ service Audit { note(n: number): void!! }
 function fact(n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
-  return n * fact(n - 1)
+  return n * try fact(n - 1)
 }
 
 function factVia(n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
-  const rest = factVia(n - 1)
+  const rest = try factVia(n - 1)
   return n * rest
 }
 
 function audited(n: number): number!Neg {
-  Audit.note(n)
+  try Audit.note(n)
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
-  return n * audited(n - 1)
+  return n * try audited(n - 1)
 }
 
 function inferred(n: number): Effect<number, infer E, infer R> {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
-  return n * inferred(n - 1)
+  return n * try inferred(n - 1)
 }
 
 function label(n: number): string!Neg {
   if (n < 0) throw new Neg({ n })
   if (n === 0) return "0"
-  if (label(n - 1).length > 3) return "long"
-  return `${n}${label(n - 1)}`
+  if ((try label(n - 1)).length > 3) return "long"
+  return `${n}${try label(n - 1)}`
 }
 
 // R reaches isEven through isOdd.
 function isEven(n: number): boolean!never {
-  return n === 0 ? true : !isOdd(n - 1)
+  return n === 0 ? true : !try isOdd(n - 1)
 }
 
 function isOdd(n: number): boolean!never {
-  Audit.note(n)
-  return n === 0 ? false : !isEven(n - 1)
+  try Audit.note(n)
+  return n === 0 ? false : !try isEven(n - 1)
 }
 
 const notes: number[] = []
@@ -55,6 +55,6 @@ const notes: number[] = []
 export function main() {
   provide Audit = { note(n) { notes.push(n) } } {
     const failed = fact(-1) catch (e) => e._tag
-    return { fact: fact(5), factVia: factVia(5), audited: audited(3), inferred: inferred(4), label: label(4), even: isEven(4), failed, notes }
+    return { fact: try fact(5), factVia: try factVia(5), audited: try audited(3), inferred: try inferred(4), label: try label(4), even: try isEven(4), failed, notes }
   }
 }

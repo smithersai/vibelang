@@ -14,9 +14,9 @@ const events: string[] = []
 
 function statement() {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
-    resume(41)
+    try resume(41)
     events.push("statement done")
   }
 }
@@ -24,9 +24,9 @@ function statement() {
 // The expression sees the body's value and fallthrough keeps its return.
 function expression() {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
-    const value = (resume(41))
+    const value = (try resume(41))
     events.push(`expression ${value}`)
   }
 }
@@ -34,9 +34,9 @@ function expression() {
 // A clause return replaces the pending return, as in finally.
 function override(): Effect<number | string, infer E, infer R> {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
-    return `${resume(41)} clause`
+    return `${try resume(41)} clause`
   }
 }
 
@@ -44,9 +44,9 @@ function override(): Effect<number | string, infer E, infer R> {
 function normal() {
   const steps: string[] = []
   try {
-    steps.push(`body ${Ask.answer()}`)
+    steps.push(`body ${try Ask.answer()}`)
   } handle Ask.answer() {
-    steps.push(String(resume(1)))
+    steps.push(String(try resume(1)))
     steps.push("clause done")
   }
   steps.push("after")
@@ -57,10 +57,10 @@ function breaks() {
   const steps: string[] = []
   outer: for (;;) {
     try {
-      steps.push(`body ${Ask.answer()}`)
+      steps.push(`body ${try Ask.answer()}`)
       break outer
     } handle Ask.answer() {
-      steps.push(String(resume(1)))
+      steps.push(String(try resume(1)))
       steps.push("clause done")
     }
     steps.push("unreachable")
@@ -73,10 +73,10 @@ function continues() {
   const steps: string[] = []
   outer: for (let i = 1; i <= 2; i++) {
     try {
-      steps.push(`body ${Ask.answer()}`)
+      steps.push(`body ${try Ask.answer()}`)
       continue outer
     } handle Ask.answer() {
-      steps.push(String(resume(i)))
+      steps.push(String(try resume(i)))
     }
     steps.push("unreachable")
   }
@@ -86,24 +86,24 @@ function continues() {
 
 function scoped() {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
-    using held = Effect.acquireRelease(() => {
+    using held = try Effect.acquireRelease(() => {
       events.push("scoped acquire")
     }, () => {
       events.push("scoped release")
     })
-    const value = resume(41)
+    const value = try resume(41)
     events.push(`scoped ${value}`)
   }
 }
 
 function inFinally() {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
     try {
-      const value = resume(41)
+      const value = try resume(41)
       events.push(`finally ${value}`)
     } finally {
       events.push("finally done")
@@ -113,9 +113,9 @@ function inFinally() {
 
 function withValue() {
   try {
-    return Ask.answer() + 1
+    return try Ask.answer() + 1
   } handle Ask.answer() {
-    const value = resumeWith(() => 41)
+    const value = try resumeWith(() => 41)
     events.push(`with ${value}`)
   }
 }
@@ -123,12 +123,12 @@ function withValue() {
 function withError() {
   try {
     try {
-      return String(Ask.answer())
+      return String(try Ask.answer())
     } catch (e) {
       return `caught ${e.message}`
     }
   } handle Ask.answer() {
-    const value = resumeWith(() => { throw new Busy({ message: "busy" }) })
+    const value = try resumeWith(() => { throw new Busy({ message: "busy" }) })
     events.push(`error ${value}`)
   }
 }
@@ -136,35 +136,35 @@ function withError() {
 // User data that resembles a completion is unwrapped only once.
 function record() {
   try {
-    Ask.answer()
+    try Ask.answer()
     return { kind: "return", value: "data" }
   } handle Ask.answer() {
-    const value = resume(1)
+    const value = try resume(1)
     return value
   }
 }
 
 function twiceStatements() {
   try {
-    const value = Once.answer()
+    const value = try Once.answer()
     events.push(`twice body ${value}`)
     return value
   } handle Once.answer() {
-    resume(true)
+    try resume(true)
     events.push("twice first done")
-    resume(false)
+    try resume(false)
   }
 }
 
 function twiceExpressions() {
   try {
-    const value = Once.answer()
+    const value = try Once.answer()
     events.push(`twice body ${value}`)
     return value
   } handle Once.answer() {
-    const first = resume(true)
+    const first = try resume(true)
     events.push(`twice first ${first}`)
-    const second = resume(false)
+    const second = try resume(false)
     return second
   }
 }
@@ -179,19 +179,19 @@ function defects(result: Exit.Exit<unknown, unknown>) {
 
 export function main() {
   return {
-    statement: statement(),
-    expression: expression(),
-    override: override(),
-    normal: normal(),
-    breaks: breaks(),
-    continues: continues(),
-    scoped: scoped(),
-    inFinally: inFinally(),
-    withValue: withValue(),
-    withError: withError(),
-    record: record(),
-    twiceStatements: defects(Effect.exit(() => twiceStatements())),
-    twiceExpressions: defects(Effect.exit(() => twiceExpressions())),
+    statement: try statement(),
+    expression: try expression(),
+    override: try override(),
+    normal: try normal(),
+    breaks: try breaks(),
+    continues: try continues(),
+    scoped: try scoped(),
+    inFinally: try inFinally(),
+    withValue: try withValue(),
+    withError: try withError(),
+    record: try record(),
+    twiceStatements: try defects(try Effect.exit(() => twiceStatements())),
+    twiceExpressions: try defects(try Effect.exit(() => twiceExpressions())),
     events
   }
 }

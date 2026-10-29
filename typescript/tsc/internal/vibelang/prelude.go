@@ -63,8 +63,9 @@ var preludeModules = map[string]string{
 	"abandon":            runtimeModule,
 	// The boundary hatches and the runners that lead back in (D148, hatches.go).
 	"sync":     runtimeModule,
-	"try":      runtimeModule,
 	"callback": runtimeModule,
+	// try e, which the parser writes as $try(e) (VIP-5, try.go).
+	"$try": runtimeModule,
 	// The type of callback's resume parameter. Inputs keep callback's type
 	// arguments from being written, so the parameter's annotation names them.
 	"Resume":      runtimeModule,
@@ -576,12 +577,12 @@ func effectExportSymbol(c *checker.Checker, state *preludeState, file *ast.Sourc
 	return c.TryGetMemberInModuleExports(name, module)
 }
 
-// isLoweredHatchCallee reports whether location names the callee of a sync or
-// try hatch, which the lowering replaces with Effect's function, so the
-// emitted JavaScript needs no import of it. try cannot be imported at all.
+// isLoweredHatchCallee reports whether location names the callee of a sync
+// hatch, which the lowering replaces with Effect's function, so the emitted
+// JavaScript needs no import of it.
 func isLoweredHatchCallee(location *ast.Node) bool {
 	parent := location.Parent
-	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && (location.Text() == "sync" || location.Text() == "try")
+	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && location.Text() == "sync"
 }
 
 // sharedWebGlobals are the web-standard globals that every runtime VibeLang

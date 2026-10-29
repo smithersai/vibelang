@@ -27,7 +27,7 @@ export function main() {
     Option.getOrElse(firstOr(Chunk.make(1, 2), 7), () => 0),
     Option.getOrElse(firstOr(Chunk.empty(), 7), () => 0),
     spelled(Option.none()),
-    promptAst(),
+    try promptAst(),
     prompt("hi").content[0].role,
   ]
 }

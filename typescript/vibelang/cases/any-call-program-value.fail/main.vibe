@@ -8,7 +8,7 @@ export const register = (execute: any) => Effect.updateContext(() => execute(), 
 export const each = (handler: any, items: Array<number>) => Effect.forEach(items, (item) => handler.run(item))
 
 export function load(loader: any) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return (loader as any)()
 }
 
@@ -16,7 +16,7 @@ export function load(loader: any) {
 export const typed = (execute: () => number!!) => Effect.updateContext(() => execute(), (context) => context)
 
 export function parse(text: string) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return JSON.parse(text)
 }
 

@@ -15,21 +15,21 @@ function handle(name: string) {
 }
 
 function unscoped(name: string) {
-  yieldNow()
-  return handle(name)
+  try yieldNow()
+  return try handle(name)
 }
 
 function lease(name: string): Disposable!!Scope {
-  yieldNow()
-  return handle(name)
+  try yieldNow()
+  return try handle(name)
 }
 
 function open(name: string) {
-  return Effect.acquireRelease(() => handle(name), (h) => { h[Symbol.dispose]() })
+  return try Effect.acquireRelease(() => handle(name), (h) => { h[Symbol.dispose]() })
 }
 
 function openDisposable(name: string) {
-  return Effect.acquireDisposable(() => handle(name))
+  return try Effect.acquireDisposable(() => handle(name))
 }
 
 const leasedValue: Disposable!!Scope = Effect.acquireRelease(() => handle("value"), (h) => { h[Symbol.dispose]() })
@@ -39,27 +39,27 @@ function closes(name: string) {
 }
 
 function work() {
-  using plain = handle("plain")
-  using fromEffect = unscoped("unscoped")
-  using leased = lease("lease")
-  using released = Effect.acquireRelease(() => handle("released"), (h) => { h[Symbol.dispose]() })
-  using wrapped = open("wrapped")
-  using value = leasedValue()
-  using disposable = openDisposable("disposable")
+  using plain = try handle("plain")
+  using fromEffect = try unscoped("unscoped")
+  using leased = try lease("lease")
+  using released = try Effect.acquireRelease(() => handle("released"), (h) => { h[Symbol.dispose]() })
+  using wrapped = try open("wrapped")
+  using value = try leasedValue()
+  using disposable = try openDisposable("disposable")
   events.push("body")
 }
 
 // expect-result: {"released":1,"wrapped":1,"value":1,"disposable":1,"plain":1,"unscoped":1,"lease":1,"events":["body","dispose disposable","dispose value","dispose wrapped","dispose released","dispose lease","dispose unscoped","dispose plain"]}
 export function main() {
-  work()
+  try work()
   return {
-    released: closes("released"),
-    wrapped: closes("wrapped"),
-    value: closes("value"),
-    disposable: closes("disposable"),
-    plain: closes("plain"),
-    unscoped: closes("unscoped"),
-    lease: closes("lease"),
+    released: try closes("released"),
+    wrapped: try closes("wrapped"),
+    value: try closes("value"),
+    disposable: try closes("disposable"),
+    plain: try closes("plain"),
+    unscoped: try closes("unscoped"),
+    lease: try closes("lease"),
     events
   }
 }

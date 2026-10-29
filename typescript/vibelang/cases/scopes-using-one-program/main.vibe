@@ -15,13 +15,13 @@
 // expect-result: {"scoped":["TimeoutError"],"object":["TimeoutError"],"acquiredFirst":["dispose first","TimeoutError"],"plain":["TimeoutError"],"narrow":["TimeoutError"],"wide":["TimeoutError"],"acquireDisposable":["opened","disposed","TimeoutError"]}
 export function main() {
   return {
-    scoped: deadline((seen) => holdScoped(seen)),
-    object: deadline((seen) => holdObject(seen)),
-    acquiredFirst: deadline((seen) => holdAcquiredFirst(seen)),
-    plain: deadline((seen) => holdPlain(seen)),
-    narrow: deadline((seen) => holdNarrow(seen)),
-    wide: deadline((seen) => holdWide(seen)),
-    acquireDisposable: deadline((seen) => holdMasked(seen))
+    scoped: try deadline((seen) => holdScoped(seen)),
+    object: try deadline((seen) => holdObject(seen)),
+    acquiredFirst: try deadline((seen) => holdAcquiredFirst(seen)),
+    plain: try deadline((seen) => holdPlain(seen)),
+    narrow: try deadline((seen) => holdNarrow(seen)),
+    wide: try deadline((seen) => holdWide(seen)),
+    acquireDisposable: try deadline((seen) => holdMasked(seen))
   }
 }
 
@@ -46,7 +46,7 @@ class Lease {
 function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
   try {
-    Effect.timeout(() => work(seen), "100 millis")
+    try Effect.timeout(() => work(seen), "100 millis")
     seen.push("finished")
   } catch (e) {
     seen.push(e._tag)
@@ -55,73 +55,73 @@ function deadline(work: (seen: string[]) => void!!) {
 }
 
 function lease(seen: string[]): Lease!!Scope {
-  sleep(long)
+  try sleep(long)
   seen.push("leased")
   return new Lease(seen, "scoped")
 }
 
 function leaseObject(seen: string[]): object!!Scope {
-  sleep(long)
+  try sleep(long)
   seen.push("leased")
   return {}
 }
 
 function leaseFirst(seen: string[]): Lease!!Scope {
-  const made = Effect.acquireRelease(() => new Lease(seen, "first"), (l) => l[Symbol.dispose]())
-  sleep(long)
+  const made = try Effect.acquireRelease(() => new Lease(seen, "first"), (l) => l[Symbol.dispose]())
+  try sleep(long)
   seen.push("waited")
   return made
 }
 
 function openDb(seen: string[], pause: Duration.Input) {
-  sleep(pause)
+  try sleep(pause)
   seen.push("opened")
   return { [Symbol.dispose](): void { seen.push("disposed") } }
 }
 
 function waitLease(seen: string[], name: string): Lease!! {
-  sleep(long)
+  try sleep(long)
   seen.push("leased")
   return new Lease(seen, name)
 }
 
 function waitLeaseWide(seen: string[], name: string): Lease!!Scope {
-  sleep(long)
+  try sleep(long)
   seen.push("leased")
   return new Lease(seen, name)
 }
 
 function holdScoped(seen: string[]) {
-  using held = lease(seen)
+  using held = try lease(seen)
   seen.push("body")
 }
 
 function holdObject(seen: string[]) {
-  using held = leaseObject(seen)
+  using held = try leaseObject(seen)
   seen.push("body")
 }
 
 function holdAcquiredFirst(seen: string[]) {
-  using held = leaseFirst(seen)
+  using held = try leaseFirst(seen)
   seen.push("body")
 }
 
 function holdPlain(seen: string[]) {
-  using db = openDb(seen, long)
+  using db = try openDb(seen, long)
   seen.push("body")
 }
 
 function holdNarrow(seen: string[]) {
-  using held = waitLease(seen, "narrow")
+  using held = try waitLease(seen, "narrow")
   seen.push("body")
 }
 
 function holdWide(seen: string[]) {
-  using held = waitLeaseWide(seen, "wide")
+  using held = try waitLeaseWide(seen, "wide")
   seen.push("body")
 }
 
 function holdMasked(seen: string[]) {
-  using db = Effect.acquireDisposable(() => openDb(seen, short))
+  using db = try Effect.acquireDisposable(() => openDb(seen, short))
   seen.push("body")
 }

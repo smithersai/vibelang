@@ -11,9 +11,9 @@ service Users {
 }
 
 export function find(id: string): Effect<string> {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 export function lookup(id: string): Effect<string, Gone> {
-  return Users.find(id)
+  return try Users.find(id)
 }

@@ -6,10 +6,10 @@
 import { runAll, register, resetAll } from "./helpers.ts"
 
 function tick() {
-  Console.log("tick")
+  try Console.log("tick")
 }
 function logged(n: number) {
-  Console.log(n)
+  try Console.log(n)
 }
 interface Resettable {
   reset(): void
@@ -17,7 +17,7 @@ interface Resettable {
 class Counter {
   n = 5
   reset() {
-    Console.log("reset")
+    try Console.log("reset")
     this.n = 0
   }
 }
@@ -30,7 +30,7 @@ export function held() {
   runAll([...fs])
 }
 export function handlers() {
-  const handlers = { onSave(doc: string) { Console.log(doc) } }
+  const handlers = { onSave(doc: string) { try Console.log(doc) } }
   register(handlers)
   register({ ...handlers })
 }
@@ -39,7 +39,7 @@ export function handlers() {
 export function members() {
   const r: Resettable = new Counter()
   resetAll([new Counter()])
-  const o = { run() { Console.log("run") } }
+  const o = { run() { try Console.log("run") } }
   const p: { run(): void } = o
   return [r, p]
 }

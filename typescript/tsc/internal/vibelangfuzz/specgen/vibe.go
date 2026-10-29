@@ -922,11 +922,14 @@ func (v *vibePrinter) expr(x Expr) string {
 		}
 		return "sync((a, b) => " + x.Body + ", " + v.args(x.Inputs) + ")"
 	case *TryHatch:
-		async := ""
+		// VIP-5: Effect's own wrapper, run with try. The input is evaluated
+		// first, as the retired hatch's input was, and reaches the wrapped
+		// TypeScript as the arrow's parameter.
+		wrapper, async := "Effect.try", ""
 		if x.Async {
-			async = "async "
+			wrapper, async = "Effect.tryPromise", "async "
 		}
-		return fmt.Sprintf("try(%s(s: string) => Number(JSON.parse(s)), (cause) => %s, %q + %s)", async, v.expr(x.Err), x.Prefix, v.expr(x.Input))
+		return fmt.Sprintf("((s: string) => { return try %s({ try: %s() => Number(JSON.parse(s)), catch: (cause) => %s }) })(%q + %s)", wrapper, async, v.expr(x.Err), x.Prefix, v.expr(x.Input))
 	case *DataField:
 		return v.name(x.Var) + "." + x.Field
 	case *Reasons:

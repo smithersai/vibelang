@@ -2,10 +2,10 @@
 import { migrate, parenthesized, stored, runs } from "./program.vibe"
 export function main() {
   const atImport = runs
-  migrate()
+  try migrate()
   const afterOnce = runs
-  migrate()
+  try migrate()
   const afterTwice = runs
-  const value = stored()
-  return [atImport, afterOnce, afterTwice, parenthesized(), value, runs]
+  const value = try stored()
+  return [atImport, afterOnce, afterTwice, try parenthesized(), value, runs]
 }

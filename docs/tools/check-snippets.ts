@@ -77,7 +77,7 @@ export function extract(markdown: string, options: { hatchExamples?: boolean } =
   if (options.hatchExamples) {
     const line = lines.findIndex(line => line.startsWith("- A plain TypeScript call needs "))
     if (line < 0) throw new Error("Missing onboarding hatch examples")
-    const examples = [...lines[line].matchAll(/\x60((?:sync|try)\([^\x60]+)\x60/g)]
+    const examples = [...lines[line].matchAll(/\x60((?:sync\(|try Effect\.try\()[^\x60]+)\x60/g)]
     if (examples.length !== 2) throw new Error("Expected sync and try onboarding examples")
     const add = (source: string, firstLine: string, filename?: string, language: "vibe" | "ts" = "vibe") =>
       blocks.push({ number: ++number, line: line + 1, language, source, firstLine, filename, expected: [], fragment: false })

@@ -11,8 +11,8 @@ import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 
 function notes(directory: string) {
-  const file = Path.join(directory, "notes.txt")
-  return [file, FileSystem.readFileString(file)]
+  const file = try Path.join(directory, "notes.txt")
+  return [file, try FileSystem.readFileString(file)]
 }
 
 export const status = () => ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
@@ -29,6 +29,6 @@ const Files = layerNoop({ readFileString: (path) => `read ${path}` })
 // expect-result: ["/srv/notes.txt","read /srv/notes.txt"]
 export function main() {
   provide PosixPath, Files {
-    return notes("/srv")
+    return try notes("/srv")
   }
 }

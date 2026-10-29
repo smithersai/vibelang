@@ -29,12 +29,12 @@ function sumStream() {
 
 // A producer where a Stream is expected: taking three elements closes the producer early.
 function firstThree() {
-  return Stream.runCollect(Stream.take(countdown(10), 3))
+  return try Stream.runCollect(Stream.take(countdown(10), 3))
 }
 
 // expect-result: {"sum":6,"collected":[10,9,8],"events":["countdown closed"]}
 export function main() {
-  const sum = sumStream()
-  const collected = firstThree()
+  const sum = try sumStream()
+  const collected = try firstThree()
   return { sum, collected, events }
 }

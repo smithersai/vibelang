@@ -5,7 +5,7 @@
 class Box {
   size = 5
   read() {
-    Effect.yieldNow()
+    try Effect.yieldNow()
     return { value: this.size, items: [this.size + 1] }
   }
 }
@@ -24,11 +24,11 @@ function call(make: (() => { value: number }!!) | undefined) {
 
 export function main() {
   return {
-    absent: value(undefined),
-    present: value(new Box()),
-    element: element(undefined),
-    "present element": element(new Box()),
-    call: call(undefined),
-    "present call": call(() => ({ value: 3 }))
+    absent: try value(undefined),
+    present: try value(new Box()),
+    element: try element(undefined),
+    "present element": try element(new Box()),
+    call: try call(undefined),
+    "present call": try call(() => ({ value: 3 }))
   }
 }

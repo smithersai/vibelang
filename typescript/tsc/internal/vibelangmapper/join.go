@@ -1,6 +1,11 @@
 package vibelangmapper
 
-import "github.com/microsoft/TypeScript/tsc/internal/ast"
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+)
 
 // isFiberHelper recognizes parser-generated calls without claiming written
 // calls whose names happen to match the fiber helpers.
@@ -178,4 +183,86 @@ func (p *projector) joinType(t *ast.Node, level, depth int) (valid, known bool) 
 		return false, false
 	}
 	return false, true
+}
+
+// tryValue runs the Effect p of try p, which the parser writes as $try(p)
+// before anything but a call, at the source position (VIP-5). Before a call,
+// try is the call itself, whose keyword visit removes.
+func (p *projector) tryValue(call *ast.Node, e env) {
+	if !e.effect {
+		p.awaitChoice(call, "A try must run in an Effect body; move it into an Effect function with an explicit contract.")
+		return
+	}
+	operand := call.Arguments()[0]
+	start := p.tokenStart(call)
+	if p.statementStarts[start] {
+		p.plan.insert(start, ";")
+		delete(p.statementStarts, start)
+	}
+	p.plan.mark(editRun, partOpen, start, start, "")
+	p.plan.replace(start, p.tokenStart(operand), helperRef("$try")+"(")
+	p.visit(operand, e)
+	p.plan.insert(call.End(), ")")
+	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
+}
+
+// triedKeywords returns the offset of the try of each call the parser
+// flagged NodeFlagsVibeLangTry. try f() means f() where the call runs
+// (VIP-5), so lower projects the program with each such try blanked.
+func triedKeywords(file *ast.SourceFile, text string) []int {
+	var keywords []int
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+			keywords = append(keywords, scanner.SkipTrivia(text, node.Pos()))
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return keywords
+}
+
+// blank returns text with the try at each of keywords written as spaces,
+// which keep every position.
+func blank(text string, keywords []int) string {
+	b := []byte(text)
+	for _, at := range keywords {
+		copy(b[at:at+len("try")], "   ")
+	}
+	return string(b)
+}
+
+// withoutTries returns segments without the blanked try keywords: a verbatim
+// segment that holds one is split around it, so the spaces that stand for
+// the keyword map to no original text, and every verbatim segment still
+// matches the original text.
+func withoutTries(segments []spanmap.Segment, keywords []int) []spanmap.Segment {
+	if len(keywords) == 0 {
+		return segments
+	}
+	var out []spanmap.Segment
+	for _, segment := range segments {
+		if segment.Kind != spanmap.KindVerbatim {
+			out = append(out, segment)
+			continue
+		}
+		for _, at := range keywords {
+			start, end := core.TextPos(at), core.TextPos(at+len("try"))
+			if start < segment.OriginalStart || end > segment.OriginalEnd {
+				continue
+			}
+			if start > segment.OriginalStart {
+				before := segment
+				before.OriginalEnd = start
+				before.VirtualEnd = segment.VirtualStart + (start - segment.OriginalStart)
+				out = append(out, before)
+			}
+			segment.VirtualStart += end - segment.OriginalStart
+			segment.OriginalStart = end
+		}
+		if segment.OriginalEnd > segment.OriginalStart {
+			out = append(out, segment)
+		}
+	}
+	return out
 }

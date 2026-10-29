@@ -19,9 +19,9 @@ const contents = new Map<string, ReadonlyArray<string>>([
 ])
 
 function* lines(path: string) {
-  using file = Files.open(path)
+  using file = try Files.open(path)
   while (true) {
-    const line = file.readLine()        // a service call: may wait on I/O
+    const line = try file.readLine()        // a service call: may wait on I/O
     if (line === undefined) return
     yield line
   }
@@ -85,14 +85,14 @@ function scenario() {
   const before = events.length
   const producer = lines("/var/log/app.log")     // lazy: runs none of its body
   const openedByCall = events.length - before
-  const found = firstErrors("/var/log/app.log")
+  const found = try firstErrors("/var/log/app.log")
   const readForFirst = linesRead
-  const traced = firstErrorsTraced("/var/log/app.log")
-  const passes = twoPasses("/var/log/app.log")
+  const traced = try firstErrorsTraced("/var/log/app.log")
+  const passes = try twoPasses("/var/log/app.log")
   return { openedByCall, found, readForFirst, traced: traced.length, passes, events }
 }
 
 // expect-result: {"openedByCall":0,"found":["ERROR one","ERROR two","ERROR three"],"readForFirst":5,"traced":3,"passes":[7,7],"events":["open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log","loop exited","open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log"]}
 export function main() {
-  return Effect.provide(() => scenario(), FilesTest)
+  return try Effect.provide(() => scenario(), FilesTest)
 }

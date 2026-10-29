@@ -5,7 +5,7 @@ main.vibe(43,33): warning EK4833
 main.vibe(45,10): error EK4802
 main.vibe(50,20): error EK4804
 main.vibe(55,14): error EK4805
-main.vibe(59,38): error EK4806
+main.vibe(59,59): error EK4806
 main.vibe(63,54): error EK4807
 main.vibe(67,11): error EK4816
 main.vibe(68,5): error EK4808

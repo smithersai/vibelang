@@ -16,76 +16,76 @@ module iterators {
 import { elements } from iterators
 function* produce(events: string[]) {
   try {
-    yield disposable(events, "x1")
-    yield disposable(events, "x2")
+    yield try disposable(events, "x1")
+    yield try disposable(events, "x2")
   } finally { events.push("source closed") }
 }
 
 function array(ending: string) {
   const events: string[] = []
   function work() {
-    for (using x of [disposable(events, "x1"), disposable(events, "x2")]) {
-      using local = disposable(events, "local")
+    for (using x of [try disposable(events, "x1"), try disposable(events, "x2")]) {
+      using local = try disposable(events, "local")
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (ending === "failure") throw new Bad()
-      if (ending === "defect") Effect.die("boom")
+      if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
       if (ending === "return") return
       if (ending === "continue") continue
     }
   }
-  const outcome = exit(work())
+  const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
 function arrayInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function work() {
-    for (using x of [disposable(events, "x1"), disposable(events, "x2")]) {
-      using local = disposable(events, "local")
+    for (using x of [try disposable(events, "x1"), try disposable(events, "x2")]) {
+      using local = try disposable(events, "local")
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(started)
-  Fiber.interrupt(child)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(started)
+  try Fiber.interrupt(child)
   return events
 }
 
 function iterator(ending: string) {
   const events: string[] = []
   function work() {
-    for (using x of sync((e: string[]) => elements(e), events)) {
-      using local = disposable(events, "local")
+    for (using x of try sync((e: string[]) => elements(e), events)) {
+      using local = try disposable(events, "local")
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (ending === "failure") throw new Bad()
-      if (ending === "defect") Effect.die("boom")
+      if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
       if (ending === "return") return
       if (ending === "continue") continue
     }
   }
-  const outcome = exit(work())
+  const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
 function iteratorInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function work() {
-    for (using x of sync((e: string[]) => elements(e), events)) {
-      using local = disposable(events, "local")
+    for (using x of try sync((e: string[]) => elements(e), events)) {
+      using local = try disposable(events, "local")
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(started)
-  Fiber.interrupt(child)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(started)
+  try Fiber.interrupt(child)
   return events
 }
 
@@ -93,79 +93,79 @@ function producer(ending: string) {
   const events: string[] = []
   function work() {
     for (using x of produce(events)) {
-      using local = disposable(events, "local")
+      using local = try disposable(events, "local")
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (ending === "failure") throw new Bad()
-      if (ending === "defect") Effect.die("boom")
+      if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
       if (ending === "return") return
       if (ending === "continue") continue
     }
   }
-  const outcome = exit(work())
+  const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
 function producerInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function work() {
     for (using x of produce(events)) {
-      using local = disposable(events, "local")
+      using local = try disposable(events, "local")
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(started)
-  Fiber.interrupt(child)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(started)
+  try Fiber.interrupt(child)
   return events
 }
 
 function stream(ending: string) {
   const events: string[] = []
   function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), () => { events.push("source closed") })) {
-      using local = disposable(events, "local")
+    for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events, "x1"), try disposable(events, "x2")]), () => { events.push("source closed") })) {
+      using local = try disposable(events, "local")
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (ending === "failure") throw new Bad()
-      if (ending === "defect") Effect.die("boom")
+      if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
       if (ending === "return") return
       if (ending === "continue") continue
     }
   }
-  const outcome = exit(work())
+  const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
 function streamInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), () => { events.push("source closed") })) {
-      using local = disposable(events, "local")
+    for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events, "x1"), try disposable(events, "x2")]), () => { events.push("source closed") })) {
+      using local = try disposable(events, "local")
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(started)
-  Fiber.interrupt(child)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(started)
+  try Fiber.interrupt(child)
   return events
 }
 
 function concurrent(ending: string) {
   const events: string[] = []
-  const outcome = exit(() => {
+  const outcome = try exit(() => {
     for concurrent(1) (const i of [1, 2]) {
-      using item = disposable(events, "x" + i)
+      using item = try disposable(events, "x" + i)
       events.push("body")
-      yieldNow()
+      try yieldNow()
       if (ending === "failure") throw new Bad()
-      if (ending === "defect") Effect.die("boom")
+      if (ending === "defect") try Effect.die("boom")
       if (ending === "continue") continue
     }
   })
@@ -173,56 +173,56 @@ function concurrent(ending: string) {
 }
 function concurrentInterrupted() {
   const events: string[] = []
-  const started = Deferred.make<void>()
+  const started = try Deferred.make<void>()
   function work() {
     for concurrent(1) (const i of [1, 2]) {
-      using item = disposable(events, "x" + i)
+      using item = try disposable(events, "x" + i)
       events.push("body")
-      Deferred.succeed(started, undefined)
-      sleep("10 seconds")
+      try Deferred.succeed(started, undefined)
+      try sleep("10 seconds")
     }
   }
-  const child = Effect.forkChild(work())
-  Deferred.await(started)
-  Fiber.interrupt(child)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(started)
+  try Fiber.interrupt(child)
   return events
 }
 
 // expect-result: {"arraysuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2"]],"arrayfailure":[true,["body","dispose local","dispose x1"]],"arraydefect":[true,["body","dispose local","dispose x1"]],"arraybreak":[false,["body","dispose local","dispose x1"]],"arrayreturn":[false,["body","dispose local","dispose x1"]],"arraycontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2"]],"arrayInterrupted":["body","dispose local","dispose x1"],"iteratorsuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"iteratorfailure":[true,["body","dispose local","dispose x1","source closed"]],"iteratordefect":[true,["body","dispose local","dispose x1","source closed"]],"iteratorbreak":[false,["body","dispose local","dispose x1","source closed"]],"iteratorreturn":[false,["body","dispose local","dispose x1","source closed"]],"iteratorcontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"iteratorInterrupted":["body","dispose local","dispose x1","source closed"],"producersuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"producerfailure":[true,["body","dispose local","dispose x1","source closed"]],"producerdefect":[true,["body","dispose local","dispose x1","source closed"]],"producerbreak":[false,["body","dispose local","dispose x1","source closed"]],"producerreturn":[false,["body","dispose local","dispose x1","source closed"]],"producercontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"producerInterrupted":["body","dispose local","dispose x1","source closed"],"streamsuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"streamfailure":[true,["body","dispose local","dispose x1","source closed"]],"streamdefect":[true,["body","dispose local","dispose x1","source closed"]],"streambreak":[false,["body","dispose local","dispose x1","source closed"]],"streamreturn":[false,["body","dispose local","dispose x1","source closed"]],"streamcontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"streamInterrupted":["body","dispose local","dispose x1","source closed"],"concurrentsuccess":[false,["body","dispose x1","body","dispose x2"]],"concurrentfailure":[true,["body","dispose x1"]],"concurrentdefect":[true,["body","dispose x1"]],"concurrentcontinue":[false,["body","dispose x1","body","dispose x2"]],"concurrentInterrupted":["body","dispose x1"]}
 export function main() {
   return {
-    arraysuccess: array("success"),
-    arrayfailure: array("failure"),
-    arraydefect: array("defect"),
-    arraybreak: array("break"),
-    arrayreturn: array("return"),
-    arraycontinue: array("continue"),
-    arrayInterrupted: arrayInterrupted(),
-    iteratorsuccess: iterator("success"),
-    iteratorfailure: iterator("failure"),
-    iteratordefect: iterator("defect"),
-    iteratorbreak: iterator("break"),
-    iteratorreturn: iterator("return"),
-    iteratorcontinue: iterator("continue"),
-    iteratorInterrupted: iteratorInterrupted(),
-    producersuccess: producer("success"),
-    producerfailure: producer("failure"),
-    producerdefect: producer("defect"),
-    producerbreak: producer("break"),
-    producerreturn: producer("return"),
-    producercontinue: producer("continue"),
-    producerInterrupted: producerInterrupted(),
-    streamsuccess: stream("success"),
-    streamfailure: stream("failure"),
-    streamdefect: stream("defect"),
-    streambreak: stream("break"),
-    streamreturn: stream("return"),
-    streamcontinue: stream("continue"),
-    streamInterrupted: streamInterrupted(),
-    concurrentsuccess: concurrent("success"),
-    concurrentfailure: concurrent("failure"),
-    concurrentdefect: concurrent("defect"),
-    concurrentcontinue: concurrent("continue"),
-    concurrentInterrupted: concurrentInterrupted(),
+    arraysuccess: try array("success"),
+    arrayfailure: try array("failure"),
+    arraydefect: try array("defect"),
+    arraybreak: try array("break"),
+    arrayreturn: try array("return"),
+    arraycontinue: try array("continue"),
+    arrayInterrupted: try arrayInterrupted(),
+    iteratorsuccess: try iterator("success"),
+    iteratorfailure: try iterator("failure"),
+    iteratordefect: try iterator("defect"),
+    iteratorbreak: try iterator("break"),
+    iteratorreturn: try iterator("return"),
+    iteratorcontinue: try iterator("continue"),
+    iteratorInterrupted: try iteratorInterrupted(),
+    producersuccess: try producer("success"),
+    producerfailure: try producer("failure"),
+    producerdefect: try producer("defect"),
+    producerbreak: try producer("break"),
+    producerreturn: try producer("return"),
+    producercontinue: try producer("continue"),
+    producerInterrupted: try producerInterrupted(),
+    streamsuccess: try stream("success"),
+    streamfailure: try stream("failure"),
+    streamdefect: try stream("defect"),
+    streambreak: try stream("break"),
+    streamreturn: try stream("return"),
+    streamcontinue: try stream("continue"),
+    streamInterrupted: try streamInterrupted(),
+    concurrentsuccess: try concurrent("success"),
+    concurrentfailure: try concurrent("failure"),
+    concurrentdefect: try concurrent("defect"),
+    concurrentcontinue: try concurrent("continue"),
+    concurrentInterrupted: try concurrentInterrupted(),
   }
 }

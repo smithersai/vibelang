@@ -13,9 +13,9 @@ function work() {
 export function main() {
   const value = do {
     const $pipe0: number!Again! = () => work()
-    const $pipe1 = policy()
-    const $pipe2 = duration()
-    Effect.timeout(() => Effect.retry($pipe0, $pipe1), $pipe2)
+    const $pipe1 = try policy()
+    const $pipe2 = try duration()
+    try Effect.timeout(() => Effect.retry($pipe0, $pipe1), $pipe2)
   }
   return { value, events }
 }

@@ -3,5 +3,5 @@
 import { Users } from "./services.vibe"
 
 export function main(id: string) {
-  Console.log(Users.find(id))
+  try Console.log(try Users.find(id))
 }

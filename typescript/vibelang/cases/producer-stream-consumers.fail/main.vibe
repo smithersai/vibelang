@@ -10,12 +10,12 @@ control Ask {
 }
 
 function* asks() {
-  yield Ask.ask()
+  yield try Ask.ask()
 }
 
 function viaBinding() {
   const stream: Stream.Stream<number, never, Ask> = asks()
-  return Stream.runCollect(stream)
+  return try Stream.runCollect(stream)
 }
 
 function viaMethod() {
@@ -24,7 +24,7 @@ function viaMethod() {
 }
 
 function viaCall() {
-  return Stream.runCollect(asks())
+  return try Stream.runCollect(asks())
 }
 
 function loop(stream: Stream.Stream<number, never, Ask>) {
@@ -35,5 +35,5 @@ function loop(stream: Stream.Stream<number, never, Ask>) {
 
 function passedOn() {
   const stream: Stream.Stream<number, never, Ask> = asks()
-  return loop(stream)
+  return try loop(stream)
 }

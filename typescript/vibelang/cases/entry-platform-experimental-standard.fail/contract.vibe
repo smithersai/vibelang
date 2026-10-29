@@ -5,6 +5,6 @@ import { NodeServices } from "@effect/platform-node"
 
 export function executable(path: string): void!PlatformError! {
   provide NodeServices.layer {
-    Experimental.FileSystem.access(path, { executable: true })
+    try Experimental.FileSystem.access(path, { executable: true })
   }
 }

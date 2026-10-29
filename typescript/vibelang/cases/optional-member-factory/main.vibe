@@ -19,8 +19,8 @@ const hanging = layerNoop({ heartbeat: () => Effect.never })
 const answering = layerNoop({ heartbeat: () => Effect.succeed({ _tag: "Updated" as const }) })
 
 export function main() {
-  const answered = layerNoop().heartbeat("run")
-  const overridden = answering.heartbeat("run")
-  const hung = hanging.heartbeat("run") |> Effect.timeoutOption(%, "20 millis")
+  const answered = try layerNoop().heartbeat("run")
+  const overridden = try answering.heartbeat("run")
+  const hung = hanging.heartbeat("run") |> try Effect.timeoutOption(%, "20 millis")
   return { answered, overridden, hung: Option.isNone(hung) }
 }

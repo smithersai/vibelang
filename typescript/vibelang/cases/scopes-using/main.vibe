@@ -10,7 +10,7 @@ const events: string[] = []
 
 // Effect<string, never, Scope>: the caller's Scope owns what it acquires.
 function resource(name: string) {
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
       events.push(`acquire ${name}`)
       return name
@@ -34,29 +34,29 @@ function disposable(name: string) {
 
 // Effect<string, never, never>: the block supplies the Scope.
 function ordered() {
-  using a = resource("a")
-  using b = resource("b")
+  using a = try resource("a")
+  using b = try resource("b")
   events.push(`use ${a}+${b}`)
   return a + b
 }
 
 // Effect<never, Busy, never>: the release runs before the failure leaves.
 function failing() {
-  using f = resource("f")
+  using f = try resource("f")
   throw new Busy({ name: f })
 }
 
 // Interrupted by a timeout: the release still runs.
 function slow() {
-  using s = resource("slow")
-  Effect.sleep("1 second")
+  using s = try resource("slow")
+  try Effect.sleep("1 second")
   return "finished"
 }
 
 // One acquisition and one release per iteration, on every exit.
 function loop() {
   for (const name of ["l1", "l2", "l3", "l4"]) {
-    using r = resource(name)
+    using r = try resource(name)
     if (r === "l2") continue
     if (r === "l3") return `returned at ${r}`
     events.push(`body ${r}`)
@@ -68,8 +68,8 @@ function loop() {
 // after what the iteration acquired, and on break.
 function eachDisposable() {
   const seen: string[] = []
-  outer: for (using d of [disposable("x"), disposable("y"), disposable("z")]) {
-    using r = resource(`for ${d.name}`)
+  outer: for (using d of [try disposable("x"), try disposable("y"), try disposable("z")]) {
+    using r = try resource(`for ${d.name}`)
     if (d.name === "y") continue outer
     if (d.name === "z") break
     seen.push(d.name)
@@ -80,7 +80,7 @@ function eachDisposable() {
 function labeled() {
   outer: for (const i of [1, 2]) {
     for (const j of [1, 2]) {
-      using r = resource(`${i}.${j}`)
+      using r = try resource(`${i}.${j}`)
       if (j === 2) continue outer
       if (i === 2) break outer
     }
@@ -90,33 +90,33 @@ function labeled() {
 
 // D14: kept is acquired without using, so the caller's Scope owns it.
 function openWithLog() {
-  const kept = resource("kept")
-  using log = resource("log")
+  const kept = try resource("kept")
+  using log = try resource("log")
   events.push(`opened ${kept} with ${log}`)
   return kept
 }
 
 function keeper() {
-  return Effect.scoped(() => {
-    const kept = openWithLog()
+  return try Effect.scoped(() => {
+    const kept = try openWithLog()
     events.push(`still open: ${kept}`)
     return kept
   })
 }
 
 function mixed() {
-  using d = disposable("d")
+  using d = try disposable("d")
   using nothing = null
-  using r = resource("r")
+  using r = try resource("r")
   return d.name + r + String(nothing)
 }
 
 // D25: using adds no masking. The default acquisition is masked, so a timeout
 // waits for it, and then its release runs.
 function maskedAcquire() {
-  using m = Effect.acquireRelease(
+  using m = try Effect.acquireRelease(
     () => {
-      Effect.sleep("20 millis")
+      try Effect.sleep("20 millis")
       events.push("masked acquired")
       return "m"
     },
@@ -124,15 +124,15 @@ function maskedAcquire() {
       events.push("masked released")
     }
   )
-  Effect.sleep("1 second")
+  try Effect.sleep("1 second")
   return m
 }
 
 // With { interruptible: true }, the timeout cancels the acquisition itself.
 function interruptibleAcquire() {
-  using i = Effect.acquireRelease(
+  using i = try Effect.acquireRelease(
     () => {
-      Effect.sleep("1 second")
+      try Effect.sleep("1 second")
       events.push("never acquired")
       return "i"
     },
@@ -146,7 +146,7 @@ function interruptibleAcquire() {
 
 function deadline(program: () => Effect<string, never, never>) {
   try {
-    return Effect.timeout(program, "5 millis")
+    return try Effect.timeout(program, "5 millis")
   } catch (e) {
     return e._tag
   }
@@ -155,7 +155,7 @@ function deadline(program: () => Effect<string, never, never>) {
 // A Scope region inside try: the release runs before the catch.
 function tryUsing() {
   try {
-    using t = resource("t")
+    using t = try resource("t")
     throw new Busy({ name: t })
   } catch (e) {
     events.push(`caught ${e.name}`)
@@ -166,7 +166,7 @@ function tryUsing() {
 function nested() {
   events.push("before");
   {
-    using inner = resource("inner")
+    using inner = try resource("inner")
     events.push(`in ${inner}`)
   }
   events.push("after")
@@ -176,14 +176,14 @@ function nested() {
 class Counter {
   count = 0
   bump() {
-    using r = resource("bump")
+    using r = try resource("bump")
     this.count++
     return `${r} ${this.count}`
   }
 }
 
 const arrow = (name: string): number!! => {
-  using r = resource(name)
+  using r = try resource(name)
   return r.length
 }
 
@@ -194,32 +194,32 @@ function phase<A>(name: string, result: A) {
 
 // expect-result: {"ordered":"ab","failed":"Busy","timedOut":"TimeoutError","loop":"returned at l3","labeled":"labeled done","each":"x","kept":"kept","mixed":"drnull","tried":"recovered","nested":"nested done","bumped":"bump 1","arrow":5,"masked":"TimeoutError","interruptible":"TimeoutError","events":["acquire a","acquire b","use a+b","release b","release a","-- ordered","acquire f","release f","-- failed","acquire slow","release slow","-- timedOut","acquire l1","body l1","release l1","acquire l2","release l2","acquire l3","release l3","-- loop","acquire 1.1","release 1.1","acquire 1.2","release 1.2","acquire 2.1","release 2.1","-- labeled","create x","create y","create z","acquire for x","release for x","dispose x","acquire for y","release for y","dispose y","acquire for z","release for z","dispose z","-- each","acquire kept","acquire log","opened kept with log","release log","still open: kept","release kept","-- kept","create d","acquire r","release r","dispose d","-- mixed","acquire t","release t","caught t","-- tried","before","acquire inner","in inner","release inner","after","-- nested","acquire bump","release bump","-- bumped","acquire arrow","release arrow","-- arrow","masked acquired","masked released","-- masked","-- interruptible"]}
 export function main() {
-  const o = phase("ordered", ordered())
+  const o = try phase("ordered", try ordered())
   let failed = "none"
   try {
-    failing()
+    try failing()
   } catch (e) {
     failed = e._tag
   }
-  phase("failed", failed)
+  try phase("failed", failed)
   let timedOut = "none"
   try {
-    Effect.timeout(() => slow(), "5 millis")
+    try Effect.timeout(() => slow(), "5 millis")
   } catch (e) {
     timedOut = e._tag
   }
-  phase("timedOut", timedOut)
-  const l = phase("loop", loop())
-  const lb = phase("labeled", labeled())
-  const each = phase("each", eachDisposable())
-  const k = phase("kept", keeper())
-  const m = phase("mixed", mixed())
-  const t = phase("tried", tryUsing())
-  const n = phase("nested", nested())
+  try phase("timedOut", timedOut)
+  const l = try phase("loop", try loop())
+  const lb = try phase("labeled", try labeled())
+  const each = try phase("each", try eachDisposable())
+  const k = try phase("kept", try keeper())
+  const m = try phase("mixed", try mixed())
+  const t = try phase("tried", try tryUsing())
+  const n = try phase("nested", try nested())
   const counter = new Counter()
-  const b = phase("bumped", counter.bump())
-  const a = phase("arrow", arrow("arrow"))
-  const masked = phase("masked", deadline(() => maskedAcquire()))
-  const interruptible = phase("interruptible", deadline(() => interruptibleAcquire()))
+  const b = try phase("bumped", try counter.bump())
+  const a = try phase("arrow", try arrow("arrow"))
+  const masked = try phase("masked", try deadline(() => maskedAcquire()))
+  const interruptible = try phase("interruptible", try deadline(() => interruptibleAcquire()))
   return { ordered: o, failed, timedOut, loop: l, labeled: lb, each, kept: k, mixed: m, tried: t, nested: n, bumped: b, arrow: a, masked, interruptible, events }
 }

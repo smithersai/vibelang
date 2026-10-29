@@ -37,8 +37,8 @@ function parity(n: number) {
 // Calls pure helpers and an Effect, so it is an Effect itself; the helper
 // calls run in source order, before the Effect runs.
 function area(w: number, h: number) {
-  const scaled = traced("w", double(w)) * traced("h", double(h))
-  Effect.sleep("1 millis")
+  const scaled = try traced("w", double(w)) * try traced("h", double(h))
+  try Effect.sleep("1 millis")
   return scaled
 }
 
@@ -47,7 +47,7 @@ function area(w: number, h: number) {
 function maps(xs: ReadonlyArray<number>) {
   const doubled = xs.map(double)
   const viaLambda = xs.map((x) => double(x) + 1)
-  const viaEffect = Effect.forEach(xs, (x) => double(x))
+  const viaEffect = try Effect.forEach(xs, (x) => double(x))
   return { doubled, viaLambda, viaEffect }
 }
 
@@ -55,9 +55,9 @@ function maps(xs: ReadonlyArray<number>) {
 export function main() {
   return {
     sum: sumTo(1000),
-    parity: [parity(10), parity(7)],
-    area: area(2, 3),
+    parity: [try parity(10), try parity(7)],
+    area: try area(2, 3),
     order,
-    maps: maps([1, 2])
+    maps: try maps([1, 2])
   }
 }

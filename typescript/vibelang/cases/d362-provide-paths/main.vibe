@@ -13,22 +13,22 @@ service Default {
 
 function common(flag: boolean): number!! {
   const provider = flag ? Layer.mergeAll(CommonLive, LeftLive) : Layer.mergeAll(CommonLive, RightLive)
-  provide provider { return Common().shared }
+  provide provider { return (try Common()).shared }
 }
 
 function tuple(): number!! {
   const providers: readonly [Layer.Layer<Common>, Layer.Layer<Left>] = [CommonLive, LeftLive]
-  provide providers { return Common().shared + Left().left }
+  provide providers { return (try Common()).shared + (try Left()).left }
 }
 
 function spread(): number!! {
   const extra: Layer.Layer<Right>[] = []
   const required: readonly [Layer.Layer<Common>] = [CommonLive]
-  provide [...extra, ...required, Layer.empty] { return Common().shared }
+  provide [...extra, ...required, Layer.empty] { return (try Common()).shared }
 }
 
 function context(): number!! {
-  provide Context.make(Common, { shared: 4 }) { return Common().shared }
+  provide Context.make(Common, { shared: 4 }) { return (try Common()).shared }
 }
 
 export function main() {
@@ -37,11 +37,11 @@ export function main() {
   function layer() { events.push("eval:layer"); return live }
   function value() { events.push("eval:value"); return { right: 4 } }
   let provided = 0
-  provide layer(), Right = value(), layer() {
-    provided = Left().left + Right().right
+  provide try layer(), Right = try value(), try layer() {
+    provided = (try Left()).left + (try Right()).right
   }
   return {
-    common: common(true), tuple: tuple(), spread: spread(), context: context(), default: Default.next(4),
+    common: try common(true), tuple: try tuple(), spread: try spread(), context: try context(), default: try Default.next(4),
     events: events.slice(0, 3), builds: events.filter((event) => event === "build").length, provided
   }
 }

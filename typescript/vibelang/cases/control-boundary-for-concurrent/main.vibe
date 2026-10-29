@@ -9,9 +9,9 @@ function limited() {
   let total = 0
   for concurrent(2) (const n of [1, 2, 3]) {
     try {
-      total += Ask.ask(`item ${n}`)
+      total += try Ask.ask(`item ${n}`)
     } handle Ask.ask(name) {
-      resume(n)
+      try resume(n)
     }
   }
   return total
@@ -21,12 +21,12 @@ function unlimited() {
   const seen: Array<string> = []
   for concurrent (const name of ["a", "b"]) {
     try {
-      seen.push(`${name}${Ask.ask(name)}`)
+      seen.push(`${name}${try Ask.ask(name)}`)
     } handle Ask.ask(asked) {
       if (asked === "a") {
-        resume(1)
+        try resume(1)
       } else {
-        resume(2)
+        try resume(2)
       }
     }
   }
@@ -34,5 +34,5 @@ function unlimited() {
 }
 
 export function main() {
-  return { limited: limited(), unlimited: unlimited() }
+  return { limited: try limited(), unlimited: try unlimited() }
 }

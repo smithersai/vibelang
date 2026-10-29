@@ -1,8 +1,8 @@
 // expect: EK1015
 function load(): string!! { return "x" }
 export function main() {
-  const value = yield* load()
-  Console.log(value)
+  const value = yield* try load()
+  try Console.log(value)
 }
 
 export function* delegated(): Generator<number, void, unknown> { yield* [1, 2] }

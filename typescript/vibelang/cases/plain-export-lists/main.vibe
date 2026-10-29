@@ -4,7 +4,7 @@ import { renamed, forwarded } from "./barrel.vibe"
 
 // expect-result: {"direct":4,"aliased":6,"namespace":8,"renamed":10,"forwarded":12,"mapped":[2,4]}
 export function main() {
-  sleep("1 millis")
+  try sleep("1 millis")
   return {
     direct: double(2),
     aliased: aliased(3),

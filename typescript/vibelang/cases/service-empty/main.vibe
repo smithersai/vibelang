@@ -1,4 +1,4 @@
 // expect-result: "ok"
 service Empty {}
 const L = Layer.succeed(Empty, {})
-export function main() { provide L { Empty(); return "ok" } }
+export function main() { provide L { try Empty(); return "ok" } }

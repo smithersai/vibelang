@@ -17,90 +17,90 @@
 // is disposed once ("acquireDisposable").
 // expect-result: {"ending":["acquired"],"acquireDisposable":["acquired","disposed"],"waiting":[],"nested":[],"scoped":[],"interruptible":[]}
 export function main() {
-  return { ending: endingInMask(), acquireDisposable: acquireDisposable(), waiting: waiting(), nested: nested(), scoped: scoped(), interruptible: interruptible() }
+  return { ending: try endingInMask(), acquireDisposable: try acquireDisposable(), waiting: try waiting(), nested: try nested(), scoped: try scoped(), interruptible: try interruptible() }
 }
 
 function endingInMask() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function work() {
-    using resource = Effect.uninterruptible(() => {
-      Deferred.succeed(entered, undefined)
-      Deferred.await(gate)
+    using resource = try Effect.uninterruptible(() => {
+      try Deferred.succeed(entered, undefined)
+      try Deferred.await(gate)
       events.push("acquired")
       return { [Symbol.dispose](): void { events.push("disposed") } }
     })
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }
 
 function acquireDisposable() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function work() {
-    using resource = Effect.acquireDisposable(() => {
-      Deferred.succeed(entered, undefined)
-      Deferred.await(gate)
+    using resource = try Effect.acquireDisposable(() => {
+      try Deferred.succeed(entered, undefined)
+      try Deferred.await(gate)
       events.push("acquired")
       return { [Symbol.dispose](): void { events.push("disposed") } }
     })
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }
 
 function waiting() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function open() {
-    Deferred.succeed(entered, undefined)
-    Deferred.await(gate)
+    try Deferred.succeed(entered, undefined)
+    try Deferred.await(gate)
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
   function work() {
-    using resource = open()
+    using resource = try open()
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }
 
 function nested() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function lock() {
-    return Effect.acquireRelease(
+    return try Effect.acquireRelease(
       () => {
-        Deferred.succeed(entered, undefined)
-        Deferred.await(gate)
+        try Deferred.succeed(entered, undefined)
+        try Deferred.await(gate)
         events.push("locked")
         return { held: true }
       },
@@ -113,59 +113,59 @@ function nested() {
 
   // Its using supplies the lock's Scope, so open requires no Scope.
   function open() {
-    using held = lock()
+    using held = try lock()
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
   function work() {
-    using resource = open()
+    using resource = try open()
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }
 
 function scoped() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function open(): object!!Scope {
-    Deferred.succeed(entered, undefined)
-    Deferred.await(gate)
+    try Deferred.succeed(entered, undefined)
+    try Deferred.await(gate)
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
   function work() {
-    using resource = open()
+    using resource = try open()
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }
 
 function interruptible() {
   const events: string[] = []
-  const entered = Deferred.make<void>()
-  const gate = Deferred.make<void>()
+  const entered = try Deferred.make<void>()
+  const gate = try Deferred.make<void>()
 
   function connect() {
-    return Effect.acquireRelease(
+    return try Effect.acquireRelease(
       () => {
-        Deferred.succeed(entered, undefined)
-        Deferred.await(gate)
+        try Deferred.succeed(entered, undefined)
+        try Deferred.await(gate)
         events.push("acquired")
         return { socket: "open" }
       },
@@ -177,14 +177,14 @@ function interruptible() {
   }
 
   function work() {
-    using resource = connect()
+    using resource = try connect()
     events.push("body")
   }
 
-  const child = Effect.forkChild(work())
-  Deferred.await(entered)
+  const child = try Effect.forkChild(work())
+  try Deferred.await(entered)
   child.interruptUnsafe(98765)
-  Deferred.succeed(gate, undefined)
-  Fiber.await(child)
+  try Deferred.succeed(gate, undefined)
+  try Fiber.await(child)
   return events
 }

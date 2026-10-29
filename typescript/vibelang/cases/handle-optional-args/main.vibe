@@ -7,26 +7,26 @@ control Log {
 }
 
 function program(level?: string) {
-  return level === undefined ? Log.write("hi") : Log.write("hi", level)
+  return level === undefined ? try Log.write("hi") : try Log.write("hi", level)
 }
 
 function run(level?: string) {
-  return handle(() => program(level), Log, {
+  return try handle(() => program(level), Log, {
     write(message, given, k) {
-      return resume(k, `${message}/${given ?? "default"}`)
+      return try resume(k, `${message}/${given ?? "default"}`)
     }
   })
 }
 
 function runWithDefault() {
-  return handle(() => Log.write("hi"), Log, {
+  return try handle(() => Log.write("hi"), Log, {
     write(message, level = "info", k) {
-      return resume(k, `${message}/${level}`)
+      return try resume(k, `${message}/${level}`)
     }
   })
 }
 
 // expect-result: {"omitted":"hi/default","given":"hi/warn","withDefault":"hi/info"}
 export function main() {
-  return { omitted: run(), given: run("warn"), withDefault: runWithDefault() }
+  return { omitted: try run(), given: try run("warn"), withDefault: try runWithDefault() }
 }

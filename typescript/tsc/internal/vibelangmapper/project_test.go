@@ -191,19 +191,9 @@ var projectionCases = []struct {
 		virtual: "function f() { return $gen(function* () { return (yield* $run(all([$gen(function* () { return (yield* $run(Effect.succeed(1))) }), $gen(function* () { return (yield* $run(Effect.succeed(2))) })]))) })}",
 	},
 	{
-		name:    "try hatch keeps its TypeScript body and typed mapper",
-		source:  "function f() { return try(() => { throw new Error(\"x\") }, (error) => error) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($hatchTryMapped(() => { throw new Error(\"x\") }, (error) => error))) })}",
-	},
-	{
-		name:    "untyped mapper arrow is decisive with callable inputs",
-		source:  "function f(make: Function) { return try((make, n) => make(n), (error) => error, make, 7) }",
-		virtual: "function f(make: Function) { return $gen(function* () { return (yield* $run($hatchTryMapped((make, n) => make(n), (error) => error, make, 7))) })}",
-	},
-	{
 		name:    "library data call is evaluated lazily in a hatch",
-		source:  "function f() { return try(BigDecimal.fromNumberUnsafe(0)) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($hatchTry(() => (BigDecimal.fromNumberUnsafe(0))))) })}",
+		source:  "function f() { return sync(BigDecimal.fromNumberUnsafe(0)) }",
+		virtual: "function f() { return $gen(function* () { return (yield* $run(sync(() => (BigDecimal.fromNumberUnsafe(0))))) })}",
 	},
 
 	{
@@ -221,11 +211,6 @@ var projectionCases = []struct {
 		name:    "hatch value is deferred and its inputs run",
 		source:  "function f() { return sync(String(7)) + sync((n) => n * 2, read()) }",
 		virtual: "function f() { return $gen(function* () { return (yield* $run(sync(() => (String(7))))) + (yield* $run(sync((n) => n * 2, (yield* $run($value(read)()))))) })}",
-	},
-	{
-		name:    "async try hatch preserves signal and mapper contextual typing",
-		source:  "function f() { return try(async (n, signal) => { await Promise.resolve(); return n }, (error) => error, 7) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($hatchTryMapped(async (n, signal) => { await Promise.resolve(); return n }, (error) => error, 7))) })}",
 	},
 	{
 		name:    "schema primitives optional literals arrays and readonly",
@@ -450,11 +435,9 @@ var projectionCases = []struct {
 		virtual: "async function* steps(): AsyncGenerator<number> { yield await f() }\n",
 	},
 	{
-		name:    "top-level calls stay and invalid async is diagnosed; a generator function is a producer (D26)",
+		name:    "top-level calls stay and an async function is TypeScript (VIP-1); a generator function is a producer (D26)",
 		source:  "const top = f()\nasync function a() { return f() }\nfunction* g() { yield f() }\n",
 		virtual: "const top = f()\nasync function a() { return f() }\nfunction g() { return $produce(function* () { yield $emit((yield* $run($value(f)()))) })}\n",
-		// EK1003: native checkSyntax rejects async outside hatch TypeScript.
-		diagnostics: []Diagnostic{{Start: 16, Length: 5, Code: 1003, Message: "async is not part of VibeLang: a call already waits."}},
 	},
 	{
 		name:    "a service is an interface and a key (D45)",
@@ -596,7 +579,6 @@ func TestCatchExpressionHatch(t *testing.T) {
 	for _, source := range []string{
 		"function f() { return sync(() => a() catch 1) }",
 		"function f() { return sync(() => [1].map(() => a() catch 1)) }",
-		"function f() { return try(() => a() catch 1, e => e) }",
 		"function f() { return callback(resume => a() catch 1) }",
 	} {
 		projection := Project(source, testContext)
@@ -1238,29 +1220,19 @@ func TestRetiredCatchMigration(t *testing.T) {
 	}
 }
 
-// TestHatchAnnotations keeps unresolved value/function and mapper/input
-// positions from silently inheriting the runtime helper's overload guess.
+// TestHatchAnnotations keeps unresolved value/function positions from
+// silently inheriting the runtime helper's overload guess.
 func TestHatchAnnotations(t *testing.T) {
 	for _, source := range []string{
 		"import { opaque } from './foreign'; function f() { return sync(opaque()) }",
 		"import { evaluate } from './foreign'; function f() { return sync(evaluate) }",
-		"import { opaque } from './foreign'; function f() { return try(() => 1, opaque) }",
 	} {
 		projection := Project(source, testContext)
 		assert.Equal(t, len(projection.Diagnostics), 1, "%s: %v", source, projection.Diagnostics)
 		assert.Assert(t, strings.Contains(projection.Diagnostics[0].Message, "annotat"))
 	}
-	source := "function f(text: string) { return try((s) => JSON.parse(s), text) }"
+	source := "function f(text: string) { return sync((s) => JSON.parse(s), text) }"
 	assert.Equal(t, len(Project(source, testContext).Diagnostics), 0)
-}
-
-// TestHatchOptions rejects Effect's options shape rather than succeeding
-// with the object as a hatch value (D148, EK4404).
-func TestHatchOptions(t *testing.T) {
-	source := "function f() { return try({ try: () => 1, catch: (e) => e }) }"
-	projection := Project(source, testContext)
-	assert.Equal(t, len(projection.Diagnostics), 1)
-	assert.Equal(t, projection.Diagnostics[0].Code, int32(4404))
 }
 
 // TestRegionVarNeedsAnnotation keeps lexical dependencies and repeated
@@ -1319,16 +1291,16 @@ func TestDoControlFlow(t *testing.T) {
 // a library data result's permission to project without an annotation.
 func TestHatchDataExports(t *testing.T) {
 	for _, source := range []string{
-		`function f() { return try(Schema.toCodecJson(Schema.String)) }`,
-		`function f() { return try(Schema.toJsonSchemaDocument(Schema.String)) }`,
-		`function f() { return try(Arbitrary.schema(Schema.String)) }`,
-		`import { BigDecimal as B } from "effect"; function f() { return try(B.fromNumberUnsafe(0)) }`,
+		`function f() { return sync(Schema.toCodecJson(Schema.String)) }`,
+		`function f() { return sync(Schema.toJsonSchemaDocument(Schema.String)) }`,
+		`function f() { return sync(Arbitrary.schema(Schema.String)) }`,
+		`import { BigDecimal as B } from "effect"; function f() { return sync(B.fromNumberUnsafe(0)) }`,
 	} {
 		assert.Equal(t, len(Project(source, testContext).Diagnostics), 0, "%s", source)
 		assert.Equal(t, len(Executable(source, testContext).Diagnostics), 0, "%s", source)
 	}
-	source := `function f(BigDecimal: { fromNumberUnsafe(n: number): () => number }) { return try(BigDecimal.fromNumberUnsafe(0)) }`
-	// D229/EK4405: the parameter is outside try's first argument, just as
+	source := `function f(BigDecimal: { fromNumberUnsafe(n: number): () => number }) { return sync(BigDecimal.fromNumberUnsafe(0)) }`
+	// D229/EK4405: the parameter is outside sync's first argument, just as
 	// native checkHatches -> outsideReferences -> declaredOutside decides.
 	// Keep this invalid input to also test the original callable-value ambiguity.
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
@@ -1339,7 +1311,7 @@ func TestHatchDataExports(t *testing.T) {
 			if diagnostic.Code == 4405 {
 				assert.Equal(t, diagnostic.Start, strings.LastIndex(source, "BigDecimal"))
 				assert.Equal(t, diagnostic.Length, len("BigDecimal"))
-				assert.Equal(t, diagnostic.Message, "BigDecimal is declared outside the hatch, and a hatch's TypeScript is self-contained: pass BigDecimal to try as an input.")
+				assert.Equal(t, diagnostic.Message, "BigDecimal is declared outside the hatch, and a hatch's TypeScript is self-contained: pass BigDecimal to sync as an input.")
 			}
 		}
 		assert.Assert(t, codes[CodeUnprojectedForm] && codes[4405], "%v", projection.Diagnostics)

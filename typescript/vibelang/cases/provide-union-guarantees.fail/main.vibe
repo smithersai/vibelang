@@ -14,20 +14,20 @@ const CB = Context.make(B, { name: "B" })
 export function layers(flag: boolean): string!! {
   const chosen = flag ? LA : LB
   provide chosen {
-    return A().name + B().name
+    return (try A()).name + (try B()).name
   }
 }
 
 export function contexts(flag: boolean): string!! {
   const chosen = flag ? CA : CB
   provide chosen {
-    return A().name + B().name
+    return (try A()).name + (try B()).name
   }
 }
 
 export function shared(flag: boolean): string!! {
   const chosen = flag ? LA : Layer.mergeAll(LA, LB)
   provide chosen {
-    return A().name
+    return (try A()).name
   }
 }

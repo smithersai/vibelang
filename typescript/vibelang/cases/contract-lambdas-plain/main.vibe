@@ -27,7 +27,7 @@ const SemicolonNumbers = Schema.String.pipe(
 
 // expect-result: {"crate":{"count":2,"children":[{"count":1,"children":[]}]},"numbers":[2,5,8]}
 export function main() {
-  const crate = Schema.decodeUnknownEffect(Crate)({ count: "2", children: [{ count: "1", children: [] }] })
-  const numbers = Schema.decodeEffect(SemicolonNumbers)("2;5;8")
+  const crate = try Schema.decodeUnknownEffect(Crate)({ count: "2", children: [{ count: "1", children: [] }] })
+  const numbers = try Schema.decodeEffect(SemicolonNumbers)("2;5;8")
   return { crate, numbers }
 }

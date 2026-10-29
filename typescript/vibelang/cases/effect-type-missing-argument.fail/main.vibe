@@ -17,5 +17,5 @@ export const Shape = Schema.Struct({ id: Schema.String, note: })
 
 export function recover(fail: boolean) {
   return (() => { if (fail) throw new Plain({ code: 1 }); return "ok" })
-    |> Effect.catchTag(%, "Plain", (caught) => )
+    |> try Effect.catchTag(%, "Plain", (caught) => )
 }

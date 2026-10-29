@@ -4,7 +4,7 @@
 // succeed with that program unrun (D433). Through 0.0.10 each of these forks
 // ran the program; write fork job(), fork heartbeat(), or fork held().
 function heartbeat(): number!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return 7
 }
 

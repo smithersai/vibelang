@@ -8,7 +8,7 @@ export function race() {
   try {
     return await.race [Ask.ask(), Ask.ask()]
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }
 
@@ -16,6 +16,6 @@ export function any() {
   try {
     return await.any [sleep("1 second"), Ask.ask()]
   } handle Ask.ask() {
-    resume(1)
+    try resume(1)
   }
 }

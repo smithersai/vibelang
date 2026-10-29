@@ -37,7 +37,7 @@ export function failing(id: string): Effect<string, Gone> {
 }
 
 export function found(id: string): Effect<string, Gone, Users> {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 export function guest(id: string): Effect<string, never, Users> {
@@ -45,7 +45,7 @@ export function guest(id: string): Effect<string, never, Users> {
 }
 
 export function inferred(id: string): Effect<string, Gone, infer R> {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 export function onlyErrors(id: string): Effect<string, infer E> {
@@ -54,26 +54,26 @@ export function onlyErrors(id: string): Effect<string, infer E> {
 }
 
 export function partial(id: string): Effect<string, infer E, infer R> {
-  return Users.find(id)
+  return try Users.find(id)
 }
 
 export function run(program: Effect<number>): Effect<number> {
-  return program()
+  return try program()
 }
 
 export function main() {
   provide UsersLive {
     return {
-      plain: plain(),
+      plain: try plain(),
       failing: failing("") catch (e) => e._tag,
-      found: found("42"),
-      guest: guest("7"),
-      inferred: inferred("42"),
-      onlyErrors: onlyErrors("x"),
-      partial: partial("42"),
-      count: Users.count(),
-      all: Users.all(),
-      ran: run(plain())
+      found: try found("42"),
+      guest: try guest("7"),
+      inferred: try inferred("42"),
+      onlyErrors: try onlyErrors("x"),
+      partial: try partial("42"),
+      count: try Users.count(),
+      all: try Users.all(),
+      ran: try run(plain())
     }
   }
 }

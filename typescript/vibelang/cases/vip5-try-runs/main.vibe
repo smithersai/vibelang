@@ -1,0 +1,29 @@
+// expect-result: {"a":2,"b":"guest","c":3,"parsed":{"x":1},"bad":"Bad","n":4}
+// try e runs the Effect e where it stands and gives its success value
+// (VIP-5): before a call, before an Effect value, and in parentheses that a
+// member access continues. x catch y runs x itself. Effect.try wraps code
+// that may throw, as the retired try(…) hatch did.
+error NotFound { id: string }
+error Bad { cause: unknown }
+
+function find(id: string) {
+  try yieldNow()
+  if (id === "missing") throw new NotFound({ id })
+  return id
+}
+
+function double(n: number) {
+  try yieldNow()
+  return n * 2
+}
+
+export function main() {
+  const a = try double(1)
+  const b = find("missing") catch "guest"
+  const program: number!! = () => double(1.5)
+  const c = try program
+  const parsed = try Effect.try(() => JSON.parse("{\"x\":1}"))
+  const bad = Effect.try({ try: () => JSON.parse("{"), catch: (cause) => new Bad({ cause }) }) catch (e) => e._tag
+  const n = (try find("abcd")).length
+  return { a, b, c, parsed, bad, n }
+}

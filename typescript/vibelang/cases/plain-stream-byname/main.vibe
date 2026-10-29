@@ -11,7 +11,7 @@ export function main() {
   const other = named()
   const cold = attempts
   let caught = "none"
-  try { Stream.runDrain(stream) } catch (e) { caught = e._tag }
-  try { Stream.runDrain(other) } catch (e) { caught = e._tag }
+  try { try Stream.runDrain(stream) } catch (e) { caught = e._tag }
+  try { try Stream.runDrain(other) } catch (e) { caught = e._tag }
   return { cold, after: attempts, caught }
 }

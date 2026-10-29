@@ -10,7 +10,7 @@ function double(n: number): number {
 // Console.log returns an Effect, so calling it runs it, and greet becomes
 // an Effect itself.
 function greet(name: string) {
-  Console.log(`hello, ${name}`)
+  try Console.log(`hello, ${name}`)
   return name.length
 }
 
@@ -21,17 +21,17 @@ const shout = (text: string) => Console.log(text.toUpperCase())
 
 export function main() {
   for (const id of [0, 1]) {
-    const length = greet(`user ${id}`) // a .vibe Effect: runs
-    Console.log(`greeted with ${length} letters`)
+    const length = try greet(`user ${id}`) // a .vibe Effect: runs
+    try Console.log(`greeted with ${length} letters`)
   }
-  shout("calls run in order")
-  const total = greet("a") + greet("bc") // operands run left to right
-  Console.log(`total ${total}`)
-  Console.log(`doubled: ${[1, 2, 3].map(double).join(", ")}`) // plain calls stay plain
+  try shout("calls run in order")
+  const total = try greet("a") + try greet("bc") // operands run left to right
+  try Console.log(`total ${total}`)
+  try Console.log(`doubled: ${[1, 2, 3].map(double).join(", ")}`) // plain calls stay plain
   // Config extends Effect, but only Effect itself runs: a Config is data (design D24).
   const port = Config.Port("PORT")
-  Console.log(`config is data: ${Config.isConfig(port)}`)
+  try Console.log(`config is data: ${Config.isConfig(port)}`)
   // findName returns Effect<string>, so the call runs it and name is a string.
-  const name = findName(2)
-  Console.log(`found ${name.toUpperCase()}`)
+  const name = try findName(2)
+  try Console.log(`found ${name.toUpperCase()}`)
 }

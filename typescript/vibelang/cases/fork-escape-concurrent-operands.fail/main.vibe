@@ -3,7 +3,7 @@
 let escaped: Fiber<void> | undefined
 
 function keep(fiber: Fiber<void>) {}
-function within(body: () => void!!) { body() }
+function within(body: () => void!!) { try body() }
 
 export function settledAssignment() {
   const f = fork sleep("1 minute")
@@ -22,7 +22,7 @@ export function anyCall() {
 
 export function awaitCapture() {
   const f = fork sleep("1 minute")
-  await.all [within(() => { Fiber.interrupt(f) })]
+  await.all [within(() => { try Fiber.interrupt(f) })]
 }
 
 export function forkAssignment() {
@@ -51,7 +51,7 @@ export function forkArray() {
 
 export function forkBlockParam() {
   const f = fork sleep("1 minute")
-  const g = fork within { Fiber.interrupt(f) }
+  const g = fork within { try Fiber.interrupt(f) }
   join g
 }
 
@@ -62,18 +62,18 @@ export function concurrentAssignment() {
 
 export function concurrentCall() {
   const f = fork sleep("1 minute")
-  for concurrent (const n of [1]) { keep(f) }
+  for concurrent (const n of [1]) { try keep(f) }
 }
 
 export function concurrentCapture() {
   const f = fork sleep("1 minute")
   for concurrent (const n of [1]) {
-    const stop = () => { Fiber.interrupt(f) }
-    stop()
+    const stop = () => { try Fiber.interrupt(f) }
+    try stop()
   }
 }
 
 export function concurrentBlockParam() {
   const f = fork sleep("1 minute")
-  for concurrent (const n of [1]) { within { Fiber.interrupt(f) } }
+  for concurrent (const n of [1]) { try within { try Fiber.interrupt(f) } }
 }

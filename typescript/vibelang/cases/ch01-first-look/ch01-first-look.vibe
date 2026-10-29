@@ -25,8 +25,8 @@ abstract class Mailer {
 }
 
 export function welcome(id: string) {
-  const user = Users.find(id)
-  Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try Users.find(id)
+  try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
@@ -50,7 +50,7 @@ const AppLive = Layer.mergeAll(UsersTest, MailerTest)
 // installed here, so the example runner runs main instead.
 // expect-result: {"name":"Ada","outbox":["ada@example.com: Welcome, Ada!"]}
 export function main() {
-  const name = Effect.provide(() => welcome("42"), AppLive)
-  Effect.log(`sent a welcome email to ${name}`)
+  const name = try Effect.provide(() => welcome("42"), AppLive)
+  try Effect.log(`sent a welcome email to ${name}`)
   return { name, outbox }
 }

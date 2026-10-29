@@ -12,21 +12,21 @@ export const recovered = (): Effect.Effect<number, never, never> =>
 function dataFail(): never!DataFailure! { throw new DataFailure() }
 function declFail(): never!DeclFailure! { throw new DeclFailure() }
 export function dataRecovered(): number!! {
-  try { return dataFail() } catch (e) {
+  try { return try dataFail() } catch (e) {
     return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
   }
 }
 export function declRecovered(): number!! {
-  try { return declFail() } catch (e) {
+  try { return try declFail() } catch (e) {
     return match (e) { when { _tag: "DeclFailure" }: 3; default: throw e; }
   }
 }
 function both(data: boolean): never!ProbeFailure | DataFailure! {
-  if (data) dataFail()
-  return failed()
+  if (data) try dataFail()
+  return try failed()
 }
 export function allRecovered(): number!! {
-  try { return both(true) } catch (e) {
+  try { return try both(true) } catch (e) {
     return match (e) {
       when { _tag: "ProbeFailure" }: 0;
       when { _tag: "DataFailure" }: 4;
@@ -35,7 +35,7 @@ export function allRecovered(): number!! {
   }
 }
 export function partial(data: boolean): number!DataFailure! {
-  try { return both(data) } catch (e) {
+  try { return try both(data) } catch (e) {
     return match (e) { when { _tag: "ProbeFailure" }: 0; default: throw e; }
   }
 }
@@ -45,12 +45,12 @@ export const inferredSchema = () => failed() catch (e) => match (e) {
   default: throw e;
 }
 export function inferredData() {
-  try { return dataFail() } catch (e) {
+  try { return try dataFail() } catch (e) {
     return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
   }
 }
 export function inferredDecl() {
-  try { return declFail() } catch (e) {
+  try { return try declFail() } catch (e) {
     return match (e) { when { _tag: "DeclFailure" }: 3; }
   }
 }
@@ -59,6 +59,6 @@ const dataCheck: () => Effect.Effect<number, never, never> = inferredData
 const declCheck: () => Effect.Effect<number, never, never> = inferredDecl
 export function main() {
   let tag = "none"
-  try { partial(true) } catch (e) { tag = e._tag }
-  return [recovered(), dataRecovered(), declRecovered(), allRecovered(), tag]
+  try { try partial(true) } catch (e) { tag = e._tag }
+  return [try recovered(), try dataRecovered(), try declRecovered(), try allRecovered(), tag]
 }

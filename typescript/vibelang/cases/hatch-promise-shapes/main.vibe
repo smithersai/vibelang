@@ -1,4 +1,4 @@
-// A sync or try hatch awaits a promise and returns any other value (D232).
+// A sync hatch awaits a promise and returns any other value (D232).
 // The compiler writes Effect.sync or Effect.promise only where the type
 // proves which applies: a value whose then is data is not a promise, and a
 // function that may return either, number | Promise<number>, goes through
@@ -11,15 +11,13 @@ module helpers {
 }
 import { pick } from helpers
 
-// expect-result: [1,2,3,4,5,6,7,42]
+// expect-result: [1,2,5,6,7,42]
 export function main() {
-  const resolved: number = sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, true)
-  const plain: number = sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, false)
-  const tried: number = try((flag: boolean): number | Promise<number> => flag ? Promise.resolve(3) : 4, (error) => String(error), true)
-  const triedPlain: number = try((flag: boolean): number | Promise<number> => flag ? Promise.resolve(3) : 4, (error) => String(error), false)
-  const value: number = sync([1].length > 1 ? 0 : Promise.resolve(5))
-  const data = sync(() => ({ then: 7, value: 42 }))
-  const picked: number = sync(pick, true)
-  const pickedPlain: number = sync(pick, false)
-  return [resolved, plain, tried, triedPlain, value, picked, pickedPlain, data.value]
+  const resolved: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, true)
+  const plain: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, false)
+  const value: number = try sync([1].length > 1 ? 0 : Promise.resolve(5))
+  const data = try sync(() => ({ then: 7, value: 42 }))
+  const picked: number = try sync(pick, true)
+  const pickedPlain: number = try sync(pick, false)
+  return [resolved, plain, value, picked, pickedPlain, data.value]
 }

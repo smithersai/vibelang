@@ -33,8 +33,8 @@ var (
 	EK4804 = message(4804, warningCategory, "This failure is a global {0}, which has no _tag for a catch or a match to tell it apart by.")
 	// EK4805 (extendsNativeError): a class that extends Error. {0} is the class, {1} what it extends.
 	EK4805 = message(4805, warningCategory, "{0} extends {1}, but a VibeLang failure is an error declaration.")
-	// EK4806 (unknownInEffectCatch): a try hatch whose mapping returns unknown or any. {0} is the type.
-	EK4806 = message(4806, warningCategory, "This try maps its failure to {0}, which tells a catch nothing about what failed.")
+	// EK4806 (unknownInEffectCatch): Effect.try or Effect.tryPromise whose mapping returns unknown or any. {0} is the type.
+	EK4806 = message(4806, warningCategory, "This catch maps the failure to {0}, which tells a catch nothing about what failed.")
 	// EK4807 (layerMergeAllWithDependencies): Layer.mergeAll of a layer that needs another. {0} is the dependent layer, {1} the services, {2} the provider.
 	EK4807 = message(4807, warningCategory, "{0} needs {1}, which {2} provides, but Layer.mergeAll builds its layers side by side.")
 	// EK4808 (multipleEffectProvide): a provide block that is all of another one.
@@ -198,11 +198,12 @@ func isHelperCall(expression *ast.Node) bool {
 
 // isDiscardingForm reports whether expression is a form whose value a
 // statement means to discard, or that runs on its own: an assignment, void,
-// delete, or a producer's yield.
+// delete, a producer's yield, or an async function's await, which EK4617
+// reports when its operand is an Effect.
 func isDiscardingForm(expression *ast.Node) bool {
 	expression = ast.SkipParentheses(expression)
 	switch expression.Kind {
-	case ast.KindVoidExpression, ast.KindDeleteExpression, ast.KindYieldExpression:
+	case ast.KindVoidExpression, ast.KindDeleteExpression, ast.KindYieldExpression, ast.KindAwaitExpression:
 		return true
 	}
 	return ast.IsAssignmentExpression(expression, false)
@@ -673,18 +674,17 @@ func isGlobal(c *checker.Checker, symbol *ast.Symbol) bool {
 	})
 }
 
-// checkCall checks a call: a try hatch's mapping (EK4806, EK4804),
+// checkCall checks a call: Effect.try's or Effect.tryPromise's mapping (EK4806, EK4804),
 // Layer.mergeAll (EK4807), JSON (EK4818), Effect.provide (EK4816), and
 // a running call that adds any or unknown to a channel (EK4811).
 func (r *ruleCheck) checkCall(call *ast.Node) {
-	if hatchOf(call) == "try" {
-		r.checkTryMapping(call)
-		return
-	}
 	if inHatch(call) {
 		return
 	}
 	switch module, name := effectFunctionOf(r.c, call.Expression()); {
+	case module == "Effect" && (name == "try" || name == "try_" || name == "tryPromise"):
+		r.checkTryMapping(call)
+		return // EK4806 or EK4804 says what its mapping adds to E
 	case module == "Layer" && name == "mergeAll":
 		r.checkMergeAll(call)
 	case module == "Effect" && name == "provide":
@@ -705,25 +705,37 @@ func (r *ruleCheck) checkCall(call *ast.Node) {
 	}
 }
 
-// checkTryMapping reports EK4806 or EK4804 at a try hatch's error mapping,
-// its second argument (D231), that returns unknown, any, or a global Error.
+// checkTryMapping reports EK4806 or EK4804 at the error mapping of
+// Effect.try or Effect.tryPromise, the catch of its options object, that
+// returns unknown, any, or a global Error.
 func (r *ruleCheck) checkTryMapping(call *ast.Node) {
 	arguments := call.Arguments()
-	if len(arguments) < 2 {
+	if len(arguments) != 1 || !ast.IsObjectLiteralExpression(arguments[0]) {
 		return
 	}
-	signatures := r.c.GetSignaturesOfType(r.c.GetTypeAtLocation(arguments[1]), checker.SignatureKindCall)
+	var mapping *ast.Node
+	for _, property := range arguments[0].AsObjectLiteralExpression().Properties.Nodes {
+		if ast.IsPropertyAssignment(property) && ast.IsIdentifier(property.Name()) && property.Name().Text() == "catch" {
+			mapping = property.Initializer()
+		} else if ast.IsMethodDeclaration(property) && ast.IsIdentifier(property.Name()) && property.Name().Text() == "catch" {
+			mapping = property
+		}
+	}
+	if mapping == nil {
+		return
+	}
+	signatures := r.c.GetSignaturesOfType(r.c.GetTypeAtLocation(mapping), checker.SignatureKindCall)
 	if len(signatures) != 1 {
 		return
 	}
 	result := r.c.GetReturnTypeOfSignature(signatures[0])
 	if result.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
-		d := report(r.c, arguments[1], EK4806, r.c.TypeToString(result))
-		note(d, "Return an error declaration's instance: try(code, (cause) => new Failed({ cause })).")
+		d := report(r.c, mapping, EK4806, r.c.TypeToString(result))
+		note(d, "Return an error declaration's instance: Effect.try({ try: () => code, catch: (cause) => new Failed({ cause }) }).")
 		return
 	}
 	if name := globalErrorName(r.c, result.Symbol()); name != "" {
-		noteErrorDeclaration(report(r.c, arguments[1], EK4804, name))
+		noteErrorDeclaration(report(r.c, mapping, EK4804, name))
 	}
 }
 

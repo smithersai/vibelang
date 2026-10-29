@@ -11,8 +11,8 @@ export const layer = (config: { mutable value: number }): Layer.Layer<Registry> 
   return Layer.effect(Registry)(built)
 }
 export function read(config: { mutable value: number }) {
-  return Effect.provide(() => Registry(), layer(config))
+  return try Effect.provide(() => Registry(), layer(config))
 }
 
 // expect-result: "layer snapshot: 1"
-export function main() { return sync((run: () => string) => run(), check) }
+export function main() { return try sync((run: () => string) => run(), check) }

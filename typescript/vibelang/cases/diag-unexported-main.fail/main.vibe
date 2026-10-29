@@ -1,2 +1,2 @@
 // expect: 
-function main() { Console.log("hello") }
+function main() { try Console.log("hello") }

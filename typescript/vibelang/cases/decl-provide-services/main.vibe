@@ -18,43 +18,43 @@ const fixedRandom = { nextIntUnsafe: (): number => 7, nextDoubleUnsafe: (): numb
 
 function single(): string!! {
   provide Greeting = { text: () => "hi" } {
-    return Greeting.text()
+    return try Greeting.text()
   }
 }
 
 // Layers and services mix in one list.
 function mixed(): string!! {
   provide NamesLive, Greeting = { text: () => "hi" } {
-    return `${Names.name()} ${Greeting.text()}`
+    return `${try Names.name()} ${try Greeting.text()}`
   }
 }
 
 // An effect module stands for its key of the same name: Random is Random.Random.
 function module(): number!! {
   provide Random = fixedRandom {
-    return Random.nextInt()
+    return try Random.nextInt()
   }
 }
 
 function qualified(): number!! {
   provide Random.Random = fixedRandom {
-    return Random.nextInt()
+    return try Random.nextInt()
   }
 }
 
 function both(): string!! {
   provide NamesLive, Random = fixedRandom {
-    return `${Names.name()} ${Random.nextInt()}`
+    return `${try Names.name()} ${try Random.nextInt()}`
   }
 }
 
 // The call shape means the same: provide(...) { ... } is provide ... { ... }.
 function called(): string!! {
   provide(NamesLive, Greeting = { text: () => "hi" }) {
-    return `${Names.name()} ${Greeting.text()}`
+    return `${try Names.name()} ${try Greeting.text()}`
   }
 }
 
 export function main() {
-  return { single: single(), mixed: mixed(), module: module(), qualified: qualified(), both: both(), called: called() }
+  return { single: try single(), mixed: try mixed(), module: try module(), qualified: try qualified(), both: try both(), called: try called() }
 }

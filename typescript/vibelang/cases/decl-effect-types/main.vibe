@@ -11,7 +11,7 @@ export function find(id: string): string!NotFound! {
 // Dependencies left out: the body supplies them. The union is the error slot.
 export function lookup(id: string): string!NotFound | Timeout {
   if (id === "slow") throw new Timeout()
-  return find(id)
+  return try find(id)
 }
 
 // Neither errors nor dependencies.
@@ -26,7 +26,7 @@ export type Values = ReadonlyArray<number!!>
 
 function tryFind(f: Finder, id: string) {
   try {
-    return f(id)
+    return try f(id)
   } catch (error) {
     return "none"
   }
@@ -34,12 +34,12 @@ function tryFind(f: Finder, id: string) {
 
 function describe(id: string) {
   try {
-    return lookup(id)
+    return try lookup(id)
   } catch (error) {
     return error._tag
   }
 }
 
 export function main() {
-  return { found: lookup("42"), slow: describe("slow"), missing: tryFind(find, "7"), count: count(), plain: "ok" }
+  return { found: try lookup("42"), slow: try describe("slow"), missing: try tryFind(find, "7"), count: try count(), plain: "ok" }
 }

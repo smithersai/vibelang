@@ -5,7 +5,7 @@ export function main() {
   const events: string[] = []
   const batches: number[][] = []
   {
-    using pull = Stream.fromEffect(Effect.acquireRelease(
+    using pull = try Stream.fromEffect(Effect.acquireRelease(
       () => {
         events.push("open")
         return [30, 31, 32, 33, 34]
@@ -13,19 +13,19 @@ export function main() {
       () => { events.push("close") }
     )).flatMap((numbers) => Stream.fromArray(numbers)).rechunk(2).toPull()
     while (true) {
-      const batch = Pull.catchDone(() => pull(), () => undefined)
+      const batch = try Pull.catchDone(() => pull(), () => undefined)
       if (batch === undefined) break
       batches.push([...batch])
     }
   }
-  using branches = Stream.range(1, 4).partition(
+  using branches = try Stream.range(1, 4).partition(
     Filter.fromPredicate((n: number) => n % 2 === 0),
     { capacity: 1 }
   )
   const [even, odd] = branches
-  const partitioned = all([even.runCollect(), odd.runCollect()], { concurrency: 2 })
-  using copies = Stream.range(1, 4).broadcastN({ n: 2, capacity: 1 })
+  const partitioned = try all([even.runCollect(), odd.runCollect()], { concurrency: 2 })
+  using copies = try Stream.range(1, 4).broadcastN({ n: 2, capacity: 1 })
   const [totals, audit] = copies
-  const broadcast = all([totals.runSum(), audit.runCollect()], { concurrency: 2 })
+  const broadcast = try all([totals.runSum(), audit.runCollect()], { concurrency: 2 })
   return { batches, events, partitioned, broadcast }
 }

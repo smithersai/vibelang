@@ -6,7 +6,7 @@
 const events: string[] = []
 
 function work(): number!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   events.push("work ran")
   return 1
 }

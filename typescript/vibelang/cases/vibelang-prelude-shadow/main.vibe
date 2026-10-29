@@ -9,5 +9,5 @@ function handle(n: number) {
 
 // expect-result: 40
 export function main() {
-  return Effect.succeed(handle(4))
+  return try Effect.succeed(try handle(4))
 }

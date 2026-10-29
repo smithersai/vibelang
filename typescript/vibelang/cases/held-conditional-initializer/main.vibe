@@ -9,7 +9,7 @@ const count = (state: { mutable runs: number }): number!! => {
 
 const pick = (state: { mutable runs: number }, fixed: number | undefined): number!! => {
   const program: number!! = fixed === undefined ? count(state) : Effect.succeed(fixed)
-  return program() + program()
+  return try program() + try program()
 }
 
 // expect-result: [[0,0,1],[2,0,1],[3,14,3]]
@@ -20,8 +20,8 @@ export function main() {
   const fromCall: number!! = right.runs === 0 ? count(left) : count(right)
   const fromSucceed: number!! = ((checks.runs++, left.runs === 0) ? Effect.succeed(7) : count(right)) as number!!
   const before = [left.runs, right.runs, checks.runs]
-  const a = fromCall() + fromCall()
+  const a = try fromCall() + try fromCall()
   const after = [left.runs, right.runs, checks.runs]
-  const b = fromSucceed() + fromSucceed()
-  return [before, after, [a, b, pick({ runs: 0 }, undefined)]]
+  const b = try fromSucceed() + try fromSucceed()
+  return [before, after, [a, b, try pick({ runs: 0 }, undefined)]]
 }

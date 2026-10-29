@@ -18,10 +18,10 @@ const DirectoryLive = Layer.succeed(Directory, {
 })
 
 const UsersLive = Layer.effect(Users) {
-  const directory = Directory()
+  const directory = try Directory()
   return {
     find(id) {
-      return directory.lookup(id)
+      return try directory.lookup(id)
     }
   }
 }
@@ -33,7 +33,7 @@ export function floating(program: Effect.Effect<number>) {
 }
 
 export function hatched() {
-  return sync(() => {
+  return try sync(() => {
     Effect.log("lost")
     return 1
   })
@@ -41,7 +41,7 @@ export function hatched() {
 
 // EK4802: an Effect function that returns an Effect value.
 export function nested(program: Effect.Effect<number>) {
-  Directory.lookup("1")
+  try Directory.lookup("1")
   return program
 }
 
@@ -54,9 +54,9 @@ export function negative(n: number) {
 // EK4805: a class that extends Error.
 export class Legacy extends Error {}
 
-// EK4806: a try mapping that returns unknown.
+// EK4806: an Effect.try mapping that returns unknown.
 export function decoded(text: string) {
-  return try((text) => Number(text), (cause) => cause, text)
+  return try Effect.try({ try: () => Number(text), catch: (cause) => cause })
 }
 
 // EK4807: Layer.mergeAll of a layer that needs another.
@@ -66,7 +66,7 @@ export const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)
 export function lookUp() {
   provide DirectoryLive {
     provide UsersLive {
-      return Users.find("1")
+      return try Users.find("1")
     }
   }
 }

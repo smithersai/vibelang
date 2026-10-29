@@ -11,10 +11,10 @@ const curried = <A>(value: A) => (flag: boolean): Effect.Effect<A, never, never>
 const nested = (n: number): Effect.Effect<number, never, never> | Effect.Effect<never, Refused, never> =>
   n > 1 ? (n > 5 ? Exit.succeed(n) : Exit.succeed(2)) : Exit.fail(new Refused({ reason: "small" }))
 export function main() {
-  const a = decide(true)
+  const a = try decide(true)
   const b = decide(false) catch (_) => "failed"
-  const c = curried(3)(true)
+  const c = try (try curried(3))(true)
   const d = curried(4)(false) catch (failure) => failure.reason
-  const e = nested(3)
+  const e = try nested(3)
   return [a, b, c, d, e]
 }

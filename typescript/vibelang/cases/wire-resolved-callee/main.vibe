@@ -11,7 +11,7 @@ service B { value: string }
 
 const LA = Layer.succeed(A, { value: "a" })
 const LB = Layer.effect(B) {
-  return { value: A().value + "b" }
+  return { value: (try A()).value + "b" }
 }
 const pair = [LA, LB] as const
 
@@ -23,11 +23,11 @@ const SpreadTuple = wire(...pair)
 
 function read(layer: Layer.Layer<B>): string!! {
   provide layer {
-    return B().value
+    return (try B()).value
   }
 }
 
 // expect-result: ["ab","ab","ab","ab","ab"]
 export function main() {
-  return [read(Direct), read(Aliased), read(Namespaced), read(SpreadLiteral), read(SpreadTuple)]
+  return [try read(Direct), try read(Aliased), try read(Namespaced), try read(SpreadLiteral), try read(SpreadTuple)]
 }

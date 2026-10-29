@@ -47,9 +47,9 @@ const data = new Map<string, ReadonlyArray<string>>([
 
 // The shared database: one connection per provide, released when the provided program ends.
 const DatabaseLive = Layer.effect(Database, () => {
-  const url = Config().url
+  const url = (try Config()).url
   if (url.startsWith("broken:")) throw new ConnectError({ url })   // a failing acquisition
-  Effect.acquireRelease(
+  try Effect.acquireRelease(
     () => {
       connections++
       events.push(`connect ${url}`)
@@ -67,10 +67,10 @@ const DatabaseLive = Layer.effect(Database, () => {
 // Two services that depend on the database. Each captures Database when its layer is built, so
 // callers of Users.find and Orders.forUser need only Users and Orders.
 const UsersLive = Layer.effect(Users, () => {
-  const db = Database()
+  const db = try Database()
   return {
     find(id) {
-      const rows = Effect.orDie(() => db.query("users", id))
+      const rows = try Effect.orDie(() => db.query("users", id))
       if (rows.length === 0) throw new UserNotFound({ id })
       return { id, name: rows[0] }
     }
@@ -79,10 +79,10 @@ const UsersLive = Layer.effect(Users, () => {
 // Layer<Users, never, Database>
 
 const OrdersLive = Layer.effect(Orders, () => {
-  const db = Database()
+  const db = try Database()
   return {
     forUser(userId) {
-      const rows = Effect.orDie(() => db.query("orders", userId))
+      const rows = try Effect.orDie(() => db.query("orders", userId))
       return (rows as ReadonlyArray<(typeof rows)[number]>).map((row): Order => {
         const [id, total] = row.split(":")
         return { id, userId, total: Number(total) }
@@ -94,8 +94,8 @@ const OrdersLive = Layer.effect(Orders, () => {
 
 // A caller: R is Users | Orders, never Database.
 function summary(userId: string) {
-  const user = Users.find(userId)
-  const orders = Orders.forUser(userId)
+  const user = try Users.find(userId)
+  const orders = try Orders.forUser(userId)
   let total = 0
   for (const order of orders) total += order.total
   return `${user.name}: ${orders.length} orders, ${total}`
@@ -137,11 +137,11 @@ const AppBroken = pipe(
 // The database is shared by Users and Orders within one provide: two provides, two connections.
 // expect-result: {"live":"Ada: 2 orders, 42","fake":"fake-1: 2 orders, 42","broken":"ConnectError","connections":2,"events":["connect postgres://shared","disconnect postgres://shared","connect postgres://shared","disconnect postgres://shared"]}
 export function main() {
-  const live = Effect.provide(() => summary("1"), AppLive)
-  const fake = Effect.provide(() => summary("1"), AppWithFakeUsers)
+  const live = try Effect.provide(() => summary("1"), AppLive)
+  const fake = try Effect.provide(() => summary("1"), AppWithFakeUsers)
   let broken = "none"
   try {
-    Effect.provide(() => summary("1"), AppBroken)
+    try Effect.provide(() => summary("1"), AppBroken)
   } catch (e) {
     broken = e._tag
   }

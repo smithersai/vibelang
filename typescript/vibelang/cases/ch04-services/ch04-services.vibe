@@ -54,13 +54,13 @@ abstract class Settings {
 }
 
 function apiUrl(path: string) {
-  return `${Settings().baseUrl}/${path}`
+  return `${(try Settings()).baseUrl}/${path}`
 }
 // Effect<string, never, Settings>
 
 function welcome(id: string) {
-  const user = Users.find(id)
-  Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try Users.find(id)
+  try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
@@ -73,15 +73,15 @@ function toUser(row: Row) {
 // Writing a provider (the version without Effect.orDie is ch04-provider-escapes.fail.vibe)
 
 const UsersLive = Layer.effect(Users, () => {
-  const db = Database()              // runs once, when the layer is built
+  const db = try Database()              // runs once, when the layer is built
   return {
     find(id) {
-      const rows = Effect.orDie(() => db.query("select * from users where id = $1", [id]))
+      const rows = try Effect.orDie(() => db.query("select * from users where id = $1", [id]))
       if (rows.length === 0) throw new UserNotFound({ id })
-      return toUser(rows[0])
+      return try toUser(rows[0])
     },
     rename(id, name) {
-      Effect.orDie(() => db.execute("update users set name = $1 where id = $2", [name, id]))
+      try Effect.orDie(() => db.execute("update users set name = $1 where id = $2", [name, id]))
     }
   }
 })
@@ -115,10 +115,10 @@ function memoryPool() {
 // Effect<Pool, ConnectError, Scope>; it is modeled as an object holding a .vibe function.
 function connect(url: string) {
   if (url.length === 0) throw new ConnectError({ url })
-  return Effect.acquireRelease(
+  return try Effect.acquireRelease(
     () => {
       poolEvents.push(`open ${url}`)
-      return memoryPool()
+      return try memoryPool()
     },
     () => {
       poolEvents.push(`close ${url}`)
@@ -129,7 +129,7 @@ function connect(url: string) {
 const Postgres = { connect }
 
 const DatabaseLive = Layer.effect(Database, () => {
-  const pool = Postgres.connect(Config().url)    // no `using`: the pool lives as long as the layer
+  const pool = try Postgres.connect((try Config()).url)    // no `using`: the pool lives as long as the layer
   return {
     query: (sql, params) => pool.query(sql, params),
     execute: (sql, params) => pool.execute(sql, params)
@@ -159,13 +159,13 @@ const UsersTest = Layer.succeed(Users, {
 })
 
 function welcomeQuietly(id: string) {
-  return Effect.provideService(() => welcome(id), Mailer, { send: () => {} })
+  return try Effect.provideService(() => welcome(id), Mailer, { send: () => {} })
 }
 
 function renameAndWelcomeQuietly() {
-  Users.rename("1", "Augusta")
-  const renamed = Users.find("1").name
-  const quiet = welcomeQuietly("1")
+  try Users.rename("1", "Augusta")
+  const renamed = (try Users.find("1")).name
+  const quiet = try welcomeQuietly("1")
   return { renamed, quiet }
 }
 
@@ -173,13 +173,13 @@ function renameAndWelcomeQuietly() {
 // and closes once per provide.
 // expect-result: {"name":"Ada","renamed":"Augusta","quiet":"Augusta","test":"Ada","url":"https://api.example.com/users","scale":3,"outbox":["ada@example.com: Welcome, Ada!","ada@example.com: Welcome, Ada!"],"poolEvents":["open postgres://test","close postgres://test","open postgres://test","close postgres://test"]}
 export function main() {
-  const name = Effect.provide(() => welcome("1"), AppLive)
-  const after = Effect.provide(() => renameAndWelcomeQuietly(), AppLive)
-  const test = Effect.provide(() => welcome("42"), Layer.mergeAll(UsersTest, Mailer.layer))
-  const url = Effect.provideService(() => apiUrl("users"), Settings, {
+  const name = try Effect.provide(() => welcome("1"), AppLive)
+  const after = try Effect.provide(() => renameAndWelcomeQuietly(), AppLive)
+  const test = try Effect.provide(() => welcome("42"), Layer.mergeAll(UsersTest, Mailer.layer))
+  const url = try Effect.provideService(() => apiUrl("users"), Settings, {
     baseUrl: "https://api.example.com",
     scale: () => 3
   })
-  const scale = Effect.provideService(() => Settings.scale(), Settings, { baseUrl: "unused", scale: () => 3 })
+  const scale = try Effect.provideService(() => Settings.scale(), Settings, { baseUrl: "unused", scale: () => 3 })
   return { name, renamed: after.renamed, quiet: after.quiet, test, url, scale, outbox, poolEvents }
 }

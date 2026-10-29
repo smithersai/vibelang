@@ -6,7 +6,7 @@
 error Missing
 
 function rethrown() {
-  const outcome = exit(Effect.die("boom"))
+  const outcome = try exit(Effect.die("boom"))
   if (outcome is Exit.Failure(let cause)) throw cause
   return 1
 }
@@ -29,5 +29,5 @@ function widened(cause: Cause<never>) {
 }
 
 function restored(cause: Cause<string>) {
-  Effect.failCause(cause)
+  try Effect.failCause(cause)
 }

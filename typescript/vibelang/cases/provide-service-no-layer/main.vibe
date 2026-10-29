@@ -16,7 +16,7 @@ const NamesLive = Layer.succeed(Names, {
 const events: string[] = []
 
 function scope(): string!! {
-  const memo = Effect.serviceOption(Layer.CurrentMemoMap)
+  const memo = try Effect.serviceOption(Layer.CurrentMemoMap)
   return Option.isSome(memo) ? "layer" : "no layer"
 }
 
@@ -32,29 +32,29 @@ function names() {
 
 export function single(): string!! {
   provide Greeting = { text: () => "hi" } {
-    return `${Greeting.text()}, ${scope()}`
+    return `${try Greeting.text()}, ${try scope()}`
   }
 }
 
 export function two(): string!! {
   provide Greeting = { text: () => "hi" }, Names = { name: () => "Bo" } {
-    return `${Names.name()} ${Greeting.text()}, ${scope()}`
+    return `${try Names.name()} ${try Greeting.text()}, ${try scope()}`
   }
 }
 
 // A Layer the source writes still builds one.
 export function layer(): string!! {
   provide NamesLive {
-    return `${Names.name()}, ${scope()}`
+    return `${try Names.name()}, ${try scope()}`
   }
 }
 
 // Providers evaluate in source order, Layers and services alike.
 export function mixed(): string!! {
   events.length = 0
-  provide Greeting = greeting("first"), names() {
-    provide names(), Greeting = greeting("last") {
-      return `${Names.name()} ${Greeting.text()}, ${scope()}, ${events.join(" ")}`
+  provide Greeting = greeting("first"), try names() {
+    provide try names(), Greeting = greeting("last") {
+      return `${try Names.name()} ${try Greeting.text()}, ${try scope()}, ${events.join(" ")}`
     }
   }
 }
@@ -63,7 +63,7 @@ export function mixed(): string!! {
 export function nested(): string!! {
   provide Greeting = { text: () => "outer" } {
     provide Greeting = { text: () => "early" }, Greeting = { text: () => "inner" } {
-      return Greeting.text()
+      return try Greeting.text()
     }
   }
 }
@@ -71,11 +71,11 @@ export function nested(): string!! {
 // One pass through a one-service block, for the run-loop count.
 export function once(): number!! {
   provide Greeting = { text: () => "hi" } {
-    return Greeting.text().length
+    return (try Greeting.text()).length
   }
 }
 
 // The same statements, for Effect.provideService to provide.
 export function bare() {
-  return Greeting.text().length
+  return (try Greeting.text()).length
 }

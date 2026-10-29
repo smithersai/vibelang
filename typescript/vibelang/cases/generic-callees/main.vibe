@@ -3,8 +3,8 @@
 class Missing extends TaggedError("Missing")<{ readonly key: string }> {}
 
 function run<A, E, R>(program: () => Effect<A, E, R>) {
-  Effect.sleep("1 millis")
-  return program()
+  try Effect.sleep("1 millis")
+  return try program()
 }
 
 function lookup(key: string) {
@@ -14,10 +14,10 @@ function lookup(key: string) {
 
 // expect-result: {"found":1,"caught":"Missing b"}
 export function main() {
-  const found = run(() => lookup("a"))
+  const found = try run(() => lookup("a"))
   let caught = "none"
   try {
-    run(() => lookup("b"))
+    try run(() => lookup("b"))
   } catch (e) {
     caught = `${e._tag} ${e.key}`
   }

@@ -7,37 +7,37 @@ const events: string[] = []
 
 function ticker(name: string) {
   try {
-    while (true) sleep("1 millis")
+    while (true) try sleep("1 millis")
   } finally {
     events.push(`stop ${name}`)
   }
 }
 
 function step() {
-  sleep("5 millis")
+  try sleep("5 millis")
   events.push("step")
   return "stepped"
 }
 
-const concise = (name: string) => (fork ticker(name), step())
+const concise = (name: string) => (fork ticker(name), try step())
 
 function nested() {
-  const inner = () => (fork ticker("nested"), step())
-  return inner()
+  const inner = () => (fork ticker("nested"), try step())
+  return try inner()
 }
 
 function block(name: string) {
   fork ticker(name)
-  return step()
+  return try step()
 }
 
 export function main() {
-  return Effect.scoped(() => {
-    const a = concise("concise")
+  return try Effect.scoped(() => {
+    const a = try concise("concise")
     events.push("after concise")
-    const b = nested()
+    const b = try nested()
     events.push("after nested")
-    const c = block("block")
+    const c = try block("block")
     events.push("after block")
     return { results: [a, b, c], events }
   })

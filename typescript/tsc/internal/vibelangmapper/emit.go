@@ -87,6 +87,7 @@ func Emit(text string, ctx FileContext) (js string, sourceMap string, diagnostic
 // edits overlap, a projector bug, which a diagnostic reports.
 func Executable(text string, ctx FileContext) Projection {
 	p := lower(text, ctx)
+	text = p.text // without the try keywords lower blanks
 	lowered := p.execPlan()
 	r := newExecRendering(p.names)
 	exec, segments, overlap, ok := lowered.render(r, text, r.prefix)
@@ -99,7 +100,7 @@ func Executable(text string, ctx FileContext) Projection {
 		})
 		return Projection{Diagnostics: diagnostics}
 	}
-	return Projection{Text: exec, Segments: segments, Diagnostics: diagnostics}
+	return Projection{Text: exec, Segments: withoutTries(segments, p.tries), Diagnostics: diagnostics}
 }
 
 // originalPosition maps pos, a position in a rendering, to the original

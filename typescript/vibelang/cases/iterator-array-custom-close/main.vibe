@@ -2,18 +2,18 @@ import { Effect } from "effect"
 import { customArray, subclassArray, proxyArray, events } from "./helper.js"
 function boom(): never!string! { throw "boom" }
 function main() {
- try { for (const n of customArray()) { boom() } } catch { events.push("caught") }
- Console.log("array", events.join(","))
+ try { for (const n of customArray()) { try boom() } } catch { events.push("caught") }
+ try Console.log("array", events.join(","))
  events.length = 0
  const iterable: Iterable<number> = customArray()
- try { for (const n of iterable) { boom() } } catch { events.push("caught") }
- Console.log("iterable", events.join(","))
+ try { for (const n of iterable) { try boom() } } catch { events.push("caught") }
+ try Console.log("iterable", events.join(","))
  events.length = 0
- try { for (const n of subclassArray()) { boom() } } catch { events.push("caught") }
- Console.log("subclass", events.join(","))
+ try { for (const n of subclassArray()) { try boom() } } catch { events.push("caught") }
+ try Console.log("subclass", events.join(","))
  events.length = 0
- try { for (const n of proxyArray()) { boom() } } catch { events.push("caught") }
- Console.log("proxy", events.join(","))
+ try { for (const n of proxyArray()) { try boom() } } catch { events.push("caught") }
+ try Console.log("proxy", events.join(","))
 
 }
 Effect.runPromise(main())

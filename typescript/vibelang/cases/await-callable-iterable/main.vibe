@@ -14,7 +14,7 @@ import { values } from inputs
 
 // expect-result: {"all":[3,7],"settled":[3,7],"race":3,"any":3}
 export function main() {
-  const input = sync(() => values())
+  const input = try sync(() => values())
   const all = await.all input
   const settled = await.allSettled input
   const race = await.race input

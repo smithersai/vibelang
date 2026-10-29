@@ -354,9 +354,7 @@ func (p *projector) isPureGlobal(call *ast.Node) bool {
 // isPreludeName reports whether name, written in the file, means the
 // prelude's export: no declaration of the file declares it.
 func (p *projector) isPreludeName(name string) bool {
-	// The parser accepts the runtime hatch named try as a call even though
-	// the ordinary prelude identifier table omits the keyword.
-	return (preludeNames[name] || name == "try") && !p.names.declared[name] && !p.names.topLevel[name]
+	return preludeNames[name] && !p.names.declared[name] && !p.names.topLevel[name]
 }
 
 // isEffectImport reports whether name is imported from effect, one of its

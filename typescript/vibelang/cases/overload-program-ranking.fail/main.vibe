@@ -8,5 +8,5 @@ export function invalid() {
 
 // A running call cannot make either value overload applicable by never.
 export function noValueCandidate() {
-  return valueOnly(Effect.fail("failed"))
+  return valueOnly(try Effect.fail("failed"))
 }

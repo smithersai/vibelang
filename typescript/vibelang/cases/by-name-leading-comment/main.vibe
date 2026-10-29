@@ -20,8 +20,8 @@ const make = (state: { mutable runs: number }): number!! => {
 export function main() {
   const state = { runs: 0 }
   // A comment on the statement: the left side runs a call, so the program is a generator.
-  journal.emit({ value: make(state) }) |> Effect.orDie(%)
+  journal.emit({ value: make(state) }) |> try Effect.orDie(%)
   // A comment on the second statement.
-  journal.emit({ value: make(state) }) |> Effect.orDie(%)
+  journal.emit({ value: make(state) }) |> try Effect.orDie(%)
   return [recorded, state.runs]
 }

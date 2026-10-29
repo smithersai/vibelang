@@ -1,4 +1,4 @@
 export function read(this: { value: number }, add: number) {
-  yieldNow()
+  try yieldNow()
   return this.value + add
 }

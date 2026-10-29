@@ -10,7 +10,7 @@ class Greeter extends Context.Service<Greeter, {
 
 const main = Effect.gen(function* () {
   const greeter = yield* Greeter
-  yield* Effect.log(yield* greeter.greet("VibeLang"))
+  yield* try Effect.log(yield* try greeter.greet("VibeLang"))
 })
 
 Effect.runPromise(main)

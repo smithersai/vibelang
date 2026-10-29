@@ -12,25 +12,25 @@ const LB = Layer.succeed(B, { value: "b" })
 export function empty(): string!! {
   const layers: Layer.Layer<A>[] = []
   provide layers {
-    return A().value
+    return (try A()).value
   }
 }
 
 export function rest(more: Layer.Layer<B>[]): string!! {
   provide [LA, ...more] {
-    return A().value + B().value
+    return (try A()).value + (try B()).value
   }
 }
 
 export function tuple(): string!! {
   const pair = [LA, LB] as const
   provide pair {
-    return A().value + B().value
+    return (try A()).value + (try B()).value
   }
 }
 
 export function literal(): string!! {
   provide [LA, LB] {
-    return A().value + B().value
+    return (try A()).value + (try B()).value
   }
 }

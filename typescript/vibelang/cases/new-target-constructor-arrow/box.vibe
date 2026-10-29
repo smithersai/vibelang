@@ -9,11 +9,11 @@ export class Box {
     const target = new.target
     this.fast = () => new.target?.name
     this.slow = () => {
-      const tick = Effect.sync(() => 0)
+      const tick = try Effect.sync(() => 0)
       return new.target?.name
     }
     this.control = () => {
-      const tick = Effect.sync(() => 0)
+      const tick = try Effect.sync(() => 0)
       return target?.name
     }
   }

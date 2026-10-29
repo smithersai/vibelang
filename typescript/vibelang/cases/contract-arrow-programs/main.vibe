@@ -2,18 +2,18 @@
 import { Effect } from "effect"
 error Bad { reason: string }
 function wrap<A, R>(effect: Effect.Effect<A, Bad, R>): Effect.Effect<A, Bad, R> {
-  return effect()
+  return try effect()
 }
 let runs = 0
 const fields: { read: Effect.Effect<number, Bad, never> } = { read: (): number!Bad => ++runs }
 export function main() {
   const before = runs
-  const plain = wrap(() => ++runs)
-  const annotated = wrap((): number!Bad => ++runs)
-  const literal = wrap((): number!Bad => { return ++runs })
-  const explicit = wrap((): Effect.Effect<number, Bad, never> => ++runs)
-  const fn = wrap(function(): number!Bad { return ++runs })
-  const field = fields.read()
+  const plain = try wrap(() => ++runs)
+  const annotated = try wrap((): number!Bad => ++runs)
+  const literal = try wrap((): number!Bad => { return ++runs })
+  const explicit = try wrap((): Effect.Effect<number, Bad, never> => ++runs)
+  const fn = try wrap(function(): number!Bad { return ++runs })
+  const field = try fields.read()
   const failed = wrap((): number!Bad => { throw new Bad({ reason: "bad" }) }) catch (e) => e.reason
   return [before, plain, annotated, literal, explicit, fn, field, failed, runs]
 }

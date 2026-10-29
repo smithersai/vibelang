@@ -8,13 +8,13 @@ const RightLive = Layer.mergeAll(CommonLive, Layer.succeed(Right, { right: 3 }))
 
 // Common is present on both paths and must leave R.
 export function common(flag: boolean): number!! {
-  provide (flag ? LeftLive : RightLive) { return Common().shared }
+  provide (flag ? LeftLive : RightLive) { return (try Common()).shared }
 }
 
 // Neither Left nor Right is present on every path.
 function missing(flag: boolean) {
   provide (flag ? LeftLive : RightLive) {
-    return Common().shared + Left().left + Right().right
+    return (try Common()).shared + (try Left()).left + (try Right()).right
   }
 }
 Effect.runFork(() => missing(true))

@@ -12,7 +12,7 @@ const NamesLive = Layer.succeed(Names, {
 
 function old() {
   with NamesLive {
-    return Names.name()
+    return try Names.name()
   }
 }
 
@@ -21,8 +21,8 @@ function provide(n: number) {
 }
 
 function called() {
-  provide(1)
-  return provide(2)
+  try provide(1)
+  return try provide(2)
 }
 
 function indexed() {
@@ -38,5 +38,5 @@ function shadowed() {
 }
 
 export function main() {
-  return { old: old(), called: called(), indexed: indexed(), shadowed: shadowed() }
+  return { old: try old(), called: try called(), indexed: try indexed(), shadowed: try shadowed() }
 }

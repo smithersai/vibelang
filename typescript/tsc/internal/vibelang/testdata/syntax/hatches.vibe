@@ -1,1 +1,1 @@
-function f() { const a = sync((n) => n + 1, read()); const b = try((n) => JSON.parse(n), text()); return callback((resume) => resume(a + b)); }
+function f() { const a = sync((n) => n + 1, read()); const b = read(); const c = $try(program); return callback((resume) => resume(a + b + c)); }

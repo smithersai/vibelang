@@ -15,7 +15,7 @@ function reasons(exit: Exit.Exit<unknown, unknown>) {
 // A JavaScript TypeError is a defect: the catch does not run, the finally does.
 function defect() {
   try {
-    Effect.sleep("1 millis")
+    try Effect.sleep("1 millis")
     const broken: any = undefined
     return broken.name
   } catch (e) {
@@ -33,7 +33,7 @@ function mixed() {
     try {
       throw new Expected()
     } finally {
-      Effect.die("release-defect")
+      try Effect.die("release-defect")
     }
   } catch (e) {
     events.push("catch saw a mixed cause")
@@ -54,7 +54,7 @@ function failingFinally(bodyFails: boolean) {
 // Interruption runs finally and skips catch.
 function slow() {
   try {
-    Effect.sleep("1 second")
+    try Effect.sleep("1 second")
     return "finished"
   } catch (e) {
     events.push("catch saw an interruption")
@@ -67,11 +67,11 @@ function slow() {
 // expect-result: {"defect":["Die"],"mixed":["Die","Die"],"cleanup":["Fail"],"both":["Fail","Fail"],"timeout":["Fail"],"events":["finally after a defect","finally after interruption"]}
 export function main() {
   return {
-    defect: reasons(Effect.exit(() => defect())),
-    mixed: reasons(Effect.exit(() => mixed())),
-    cleanup: reasons(Effect.exit(() => failingFinally(false))),
-    both: reasons(Effect.exit(() => failingFinally(true))),
-    timeout: reasons(Effect.exit(() => Effect.timeout(() => slow(), "10 millis"))),
+    defect: try reasons(try Effect.exit(() => defect())),
+    mixed: try reasons(try Effect.exit(() => mixed())),
+    cleanup: try reasons(try Effect.exit(() => failingFinally(false))),
+    both: try reasons(try Effect.exit(() => failingFinally(true))),
+    timeout: try reasons(try Effect.exit(() => Effect.timeout(() => slow(), "10 millis"))),
     events
   }
 }

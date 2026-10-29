@@ -355,7 +355,7 @@ func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[stri
 	for range 32 { // each round applies a fix; a construct draws no fix of its own kind again
 		changed := false
 		for _, file := range fixableFiles(program) {
-			p := fileFixes(t.Context(), program, file, map[string]bool{})
+			p := fileFixes(t.Context(), program, file, map[string]bool{}, tsFormFixCodes)
 			p.fixes = slices.DeleteFunc(p.fixes, func(f fileFix) bool { return !slices.Contains(codes, f.code) })
 			if len(p.fixes) > 0 {
 				texts[file.FileName()] = p.text()

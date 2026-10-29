@@ -29,13 +29,13 @@ function pureMaps(ids: ReadonlyArray<string>, xs: ReadonlyArray<number>) {
 
 // Effect-aware traversals: Effect.forEach takes callbacks that return Effects; so does a for...of loop.
 function names(ids: ReadonlyArray<string>) {
-  return Effect.forEach(ids, (id) => Users.find(id).name)
+  return try Effect.forEach(ids, (id) => (try Users.find(id)).name)
 }
 // Effect<string[], UserNotFound, Users>
 
 function namesLoop(ids: ReadonlyArray<string>) {
   const out: string[] = []
-  for (const id of ids) out.push(Users.find(id).name)
+  for (const id of ids) out.push((try Users.find(id)).name)
   return out
 }
 // Effect<string[], UserNotFound, Users>
@@ -46,8 +46,8 @@ function handshake(socket: FakeSocket) {
 }
 
 function session(url: string, delayMs: number) {
-  using socket = connect(url, delayMs)
-  return handshake(socket)
+  using socket = try connect(url, delayMs)
+  return try handshake(socket)
 }
 
 const UsersTest = Layer.succeed(Users, {
@@ -55,13 +55,13 @@ const UsersTest = Layer.succeed(Users, {
 })
 
 function scenario() {
-  const maps = pureMaps([" a", "b "], [1, 2, 3])
-  const viaForEach = names(["1", "2"])
-  const viaLoop = namesLoop(["2", "1"])
-  const fast = session("tcp://fast", 1)
+  const maps = try pureMaps([" a", "b "], [1, 2, 3])
+  const viaForEach = try names(["1", "2"])
+  const viaLoop = try namesLoop(["2", "1"])
+  const fast = try session("tcp://fast", 1)
   let slow = "none"
   try {
-    Effect.timeout(() => session("tcp://slow", 50), "5 millis")
+    try Effect.timeout(() => session("tcp://slow", 50), "5 millis")
   } catch (e) {
     slow = e._tag
   }
@@ -70,5 +70,5 @@ function scenario() {
 
 // expect-result: {"trimmed":["a","b"],"doubled":[2,4,6],"viaForEach":["user-1","user-2"],"viaLoop":["user-2","user-1"],"fast":"hello tcp://fast","slow":"TimeoutError","log":["dial tcp://fast","destroy tcp://fast","dial tcp://slow","destroy tcp://slow"]}
 export function main() {
-  return Effect.provide(() => scenario(), UsersTest)
+  return try Effect.provide(() => scenario(), UsersTest)
 }

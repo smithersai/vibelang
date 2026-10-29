@@ -2,8 +2,8 @@ import { Effect, Exit } from "effect"
 
 function defect() {
   try {
-    Effect.succeed(0)
-    Effect.die("bug")
+    try Effect.succeed(0)
+    try Effect.die("bug")
     return "finished"
   } catch {
     return "caught"
@@ -12,6 +12,6 @@ function defect() {
 
 // expect-result: ["Die"]
 export function main() {
-  const result = Effect.exit(() => defect())
+  const result = try Effect.exit(() => defect())
   return Exit.isFailure(result) ? (result.cause.reasons as ReadonlyArray<(typeof result.cause.reasons)[number]>).map((reason) => reason._tag) : ["Success"]
 }

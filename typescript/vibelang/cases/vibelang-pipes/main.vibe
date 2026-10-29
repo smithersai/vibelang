@@ -39,31 +39,31 @@ function handlers() {
 export const doubled = 21 |> % * 2
 
 function hello() {
-  sleep("1 millis")
+  try sleep("1 millis")
   return "hi"
 }
 
 // At the top level a runner receives its program by name, so EK1001 does not
 // apply; the runner starts tracedHello, the whole pipe, as one program.
-function tracedHello(): string!! { return hello() |> withSpan(%, "hello") }
+function tracedHello(): string!! { return hello() |> try withSpan(%, "hello") }
 export const started = runFork(tracedHello())
 
 // A pipe passed by name as a whole: fork runs it on a child fiber.
 function forked() {
   const fiber = fork(hello() |> timeout(%, "1 second") |> `${%}!`)
-  return fiber.join()
+  return try fiber.join()
 }
 
 // expect-result: {"price":"Price: 24","retried":3,"label":"Ada Lovelace","hot":["26 C","31 C"],"handlers":[11,21,31],"odd":1,"signed":0,"evaluations":1,"doubled":42,"nested":"<7>","forked":"hi!","hatched":"id-1"}
 export function main() {
-  const price = 9 |> addMargin(%) |> double(%) |> `Price: ${%}`
-  const retried = flaky() |> retry(%, Schedule.recurs(5))
+  const price = 9 |> try addMargin(%) |> try double(%) |> `Price: ${%}`
+  const retried = flaky() |> try retry(%, Schedule.recurs(5))
   const label = { first: "Ada", last: "Lovelace" } |> `${%.first} ${%.last}`
   const hot: string[] = []
   for (const reading of readings() |> %.filter((c) => c > 25).map((c) => `${c} C`)) hot.push(reading)
   const odd = 7 |> % % 2
-  const signed = counted(-4) |> % > 0 ? % : 0
+  const signed = try counted(-4) |> % > 0 ? % : 0
   const nested = 7 |> (`${%}` |> `<${%}>`)
-  const hatched = sync(() => "id" |> `${%}-1`)
-  return { price, retried, label, hot, handlers: handlers(), odd, signed, evaluations, doubled, nested, forked: forked(), hatched }
+  const hatched = try sync(() => "id" |> `${%}-1`)
+  return { price, retried, label, hot, handlers: try handlers(), odd, signed, evaluations, doubled, nested, forked: try forked(), hatched }
 }

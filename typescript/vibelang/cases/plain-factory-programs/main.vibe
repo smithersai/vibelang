@@ -4,19 +4,19 @@ export function main() {
   const before = runs
   const localFactory = (options: { n: number }): infer _ => {
     const p: Effect.Effect<{ n: number }, never, never> = () => {
-      const service = makeRuntime(options)
+      const service = try makeRuntime(options)
       return service
     }
     return p
   }
-  const service = localFactory({ n: 7 })
-  const again = localFactory({ n: 7 })
+  const service = try localFactory({ n: 7 })
+  const again = try localFactory({ n: 7 })
   const afterLocal = runs
-  const firstStored = stored()
-  const secondStored = stored()
+  const firstStored = try stored()
+  const secondStored = try stored()
   const afterStored = runs
-  const directResult = useIt({ n: 13 })
+  const directResult = try useIt({ n: 13 })
   const afterDirect = runs
-  const genericResult = useGenericFactory()
+  const genericResult = try useGenericFactory()
   return [before, service.n, again.n, afterLocal, firstStored.n, secondStored.n, afterStored, directResult, afterDirect, genericResult, runs]
 }

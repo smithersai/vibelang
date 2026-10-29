@@ -22,6 +22,6 @@ export function main() {
   const b = new Money(500, "EUR")
   const c = new Money(700, "EUR")
   const set = HashSet.make(a, b, c)
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return { equal: Equal.equals(a, b), different: Equal.equals(a, c), size: HashSet.size(set) }
 }

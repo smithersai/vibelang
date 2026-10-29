@@ -1,7 +1,7 @@
 error BadJson { error: unknown }
 
 export function parsed(text: string) {
-  return try((text) => JSON.parse(text) as unknown, (error) => new BadJson({ error }), text)
+  return try Effect.try({ try: () => JSON.parse(text) as unknown, catch: (error) => new BadJson({ error }) })
 }
 
 export function id() {

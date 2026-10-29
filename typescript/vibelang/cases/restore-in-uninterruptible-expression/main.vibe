@@ -4,25 +4,25 @@
 // `return uninterruptible { … }`, restores the interruptibility the region
 // began with, as it does inside the statement form (D180).
 function restored() {
-  const started = Deferred.make<string>()
+  const started = try Deferred.make<string>()
   const fiber = fork {
-    return uninterruptible {
+    return try uninterruptible {
       restore {
-        Deferred.succeed(started, "started")
-        sleep("1 second")
+        try Deferred.succeed(started, "started")
+        try sleep("1 second")
       }
       return "finished"
     }
   }
-  started.await()
-  fiber.interrupt()
-  return exit(fiber.join())._tag
+  try started.await()
+  try fiber.interrupt()
+  return (try exit(fiber.join()))._tag
 }
 
 // The restore block runs where it stands, inside the region.
 function value(): number!! {
   let ran = 0
-  return uninterruptible {
+  return try uninterruptible {
     restore {
       ran = 1
     }
@@ -31,5 +31,5 @@ function value(): number!! {
 }
 
 export function main() {
-  return { restored: restored(), value: value() }
+  return { restored: try restored(), value: try value() }
 }

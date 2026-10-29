@@ -2,6 +2,6 @@
 export function main() {
   const notALayer = "x"
   provide notALayer {
-    log("inside block")
+    try log("inside block")
   }
 }

@@ -2,4 +2,4 @@
 service Prefix: string {
   static readonly default = 42
 }
-export function example() { return Prefix() }
+export function example() { return try Prefix() }

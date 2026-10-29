@@ -3,7 +3,7 @@
 import { runMain } from "./runner.ts"
 
 export function main() {
-  Console.log("made runner ran once")
+  try Console.log("made runner ran once")
 }
 
 runMain(main())

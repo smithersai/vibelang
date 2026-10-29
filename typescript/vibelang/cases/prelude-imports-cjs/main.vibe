@@ -13,19 +13,19 @@ service Greeter {
 }
 
 const GreeterLive = Layer.succeed(Greeter, {
-  greet(name: string) { return greeting(name) }
+  greet(name: string) { return try greeting(name) }
 })
 
 export function main() {
   provide GreeterLive {
-    Console.log(Greeter.greet("VibeLang"))
+    try Console.log(try Greeter.greet("VibeLang"))
     try {
-      Greeter.greet("")
+      try Greeter.greet("")
     } catch (error) {
-      Console.log(`Recovered from ${error._tag}`)
+      try Console.log(`Recovered from ${error._tag}`)
     }
   }
-  sleep("1 millis")
+  try sleep("1 millis")
   const double = flow((n: number) => n + 1, (n: number) => n * 2)
-  Console.log(pipe(1, double), new Late({ ms: 5 })._tag)
+  try Console.log(pipe(1, double), new Late({ ms: 5 })._tag)
 }

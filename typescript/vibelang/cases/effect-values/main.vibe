@@ -13,28 +13,28 @@ let loads = 0
 
 function loadConfig() {
   loads++
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return { port: 8080 }
 }
 
 function cachedTwice() {
-  const cached = Effect.cached(() => loadConfig())
-  const first = cached()
-  const second = cached()
+  const cached = try Effect.cached(() => loadConfig())
+  const first = try cached()
+  const second = try cached()
   return [first.port, second.port, loads]
 }
 
 function greeted() {
-  const greeter = Greeter()
-  return greeter.greet("ada")
+  const greeter = try Greeter()
+  return try greeter.greet("ada")
 }
 
 // expect-result: {"clock":"number","cached":[8080,8080,1],"port":3000,"greeted":"hello ada"}
 export function main() {
   return {
-    clock: typeof Clock.currentTimeMillis(),
-    cached: cachedTwice(),
-    port: Port(),
-    greeted: Effect.provide(() => greeted(), GreeterLive)
+    clock: typeof try Clock.currentTimeMillis(),
+    cached: try cachedTwice(),
+    port: try Port(),
+    greeted: try Effect.provide(() => greeted(), GreeterLive)
   }
 }

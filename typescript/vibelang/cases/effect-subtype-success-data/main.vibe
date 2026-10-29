@@ -20,7 +20,7 @@ function stored(): Exit.Exit<number>!! {
 }
 function generic<T extends Exit.Exit<number>>(value: T): T!! { return value }
 function accept(confine: (value: Exit.Exit<number>) => Exit.Exit<number>!!, value: Exit.Exit<number>) {
-  return confine(value)
+  return try confine(value)
 }
 function broad(value: Exit.Exit<number>): unknown!! { return value }
 function broadConstructed(): unknown!! { return Exit.fail("data") }
@@ -30,11 +30,11 @@ function unionValue(): Exit.Exit<number> | string!! { return Exit.succeed(7) }
 function run(): number!! { return Exit.succeed(8) }
 export function main() {
   // Construct data in a sync hatch to isolate the return-boundary rule in (B).
-  const command = sync((): ChildProcess.StandardCommand => ChildProcess.make("s22-3-must-never-spawn"))
+  const command = try sync((): ChildProcess.StandardCommand => ChildProcess.make("s22-3-must-never-spawn"))
   const value = Exit.succeed(3)
-  return [Effect.scoped(() => keep(command)) === command, Effect.scoped(() => noop.confine(command)) === command,
-    keepExit(value) === value, Exit.isExit(constructed()), Exit.isExit(stored()),
-    broad(value) === value, Exit.isExit(broadConstructed()),
-    Exit.isExit(objectValue()), Exit.isExit(unionValue()), run() === 8,
-    generic(value) === value, accept((item) => item, value) === value]
+  return [try Effect.scoped(() => keep(command)) === command, try Effect.scoped(() => noop.confine(command)) === command,
+    try keepExit(value) === value, Exit.isExit(try constructed()), Exit.isExit(try stored()),
+    try broad(value) === value, Exit.isExit(try broadConstructed()),
+    Exit.isExit(try objectValue()), Exit.isExit(try unionValue()), try run() === 8,
+    try generic(value) === value, try accept((item) => item, value) === value]
 }

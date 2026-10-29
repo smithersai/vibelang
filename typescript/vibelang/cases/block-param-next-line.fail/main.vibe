@@ -1,6 +1,6 @@
 // expect: EK1022 EK1022
 function once(program: () => string!!) {
-  return program()
+  return try program()
 }
 
 function returned() {

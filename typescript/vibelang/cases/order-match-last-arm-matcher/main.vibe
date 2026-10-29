@@ -21,5 +21,5 @@ function label(x: State) {
 }
 
 export function main() {
-  return [label(State.Waiting()), reads]
+  return [try label(State.Waiting()), reads]
 }

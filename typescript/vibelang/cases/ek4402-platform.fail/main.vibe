@@ -12,15 +12,15 @@ import { Effect } from "effect"
 import { setup } from "./setup.ts"
 
 export function load(path: string) {
-  return Effect.tryPromise(() => readFile(path, "utf8"))
+  return try Effect.tryPromise(() => readFile(path, "utf8"))
 }
 
 export function exists(path: string) {
-  return Effect.sync(() => fs.existsSync(path))
+  return try Effect.sync(() => fs.existsSync(path))
 }
 
 export function cores() {
-  return Effect.sync(() => os.cpus().length)
+  return try Effect.sync(() => os.cpus().length)
 }
 
 export function signals() {
@@ -28,11 +28,11 @@ export function signals() {
 }
 
 export function get(url: string) {
-  return Effect.tryPromise(() => fetch(url))
+  return try Effect.tryPromise(() => fetch(url))
 }
 
 export function later() {
-  return Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+  return try Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
 }
 
 export function log(message: string) {

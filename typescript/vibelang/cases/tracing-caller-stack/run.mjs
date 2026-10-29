@@ -28,8 +28,8 @@ assert.ok(Exit.isFailure(exit))
 const stack = Cause.pretty(exit.cause)
 // These are logical caller frames, including calls made after suspension.
 // Keep exact coordinates: a closing brace or generated .apply is not a call.
-assert.match(stack, /at leaf \(.*\/main\.vibe:10:10\)/, stack)
-assert.match(stack, /at middle \(.*\/main\.vibe:15:10\)/, stack)
+assert.match(stack, /at leaf \(.*\/main\.vibe:10:14\)/, stack)
+assert.match(stack, /at middle \(.*\/main\.vibe:15:14\)/, stack)
 assert.doesNotMatch(stack, /at leaf \(.*\/main\.vibe:6:2\)/, stack)
 assert.doesNotMatch(stack, /at middle \(.*\/main\.vibe:11:2\)/, stack)
 
@@ -46,7 +46,7 @@ try {
     assert.ok(Exit.isFailure(exit))
     const stack = Cause.pretty(exit.cause)
     assert.match(stack, new RegExp("at recursive \\(.*run\\.mjs:" + line + ":" + column + "\\)"), stack)
-    assert.match(stack, /at recursive \(.*\/main\.vibe:33:21\)/, stack)
+    assert.match(stack, /at recursive \(.*\/main\.vibe:33:25\)/, stack)
   }
 } finally {
   $eager.depth = savedDepth
@@ -63,8 +63,8 @@ try {
     const stack = Cause.pretty(exit.cause)
     if (limit === 0) assert.doesNotMatch(stack, /main\.vibe:\d+:\d+/)
     else {
-      assert.match(stack, /at leaf \(.*\/main\.vibe:10:10\)/, stack)
-      assert.match(stack, /at middle \(.*\/main\.vibe:15:10\)/, stack)
+      assert.match(stack, /at leaf \(.*\/main\.vibe:10:14\)/, stack)
+      assert.match(stack, /at middle \(.*\/main\.vibe:15:14\)/, stack)
     }
   }
 } finally {

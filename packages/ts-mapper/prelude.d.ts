@@ -386,24 +386,9 @@ export type $PreludeLoaded =
       ? "vibelang-ts-mapper: the prelude cannot resolve vibelang-runtime from its own location; install vibelang-runtime beside vibelang-ts-mapper"
       : true
 
-/** D148: a legal TypeScript identifier for the try hatch, preserving its overloads. */
-export { try as $hatchTry } from "vibelang-runtime"
-
-/** D231: a written mapper arrow selects only mapper overloads. This prevents
- * stock TypeScript from silently retrying it as a callable input. */
-export declare function $hatchTryMapped<R, E, Args extends ReadonlyArray<unknown> = []>(
-  evaluate: (...args: [...Args, AbortSignal]) => PromiseLike<R>,
-  mapError: (error: unknown) => E,
-  ...args: Args
-): EffectModule.Effect<R, E>
-export declare function $hatchTryMapped<R, E, Args extends ReadonlyArray<unknown> = []>(
-  evaluate: (...args: Args) => R,
-  mapError: (error: unknown) => E,
-  ...args: Args
-): EffectModule.Effect<Awaited<R>, E>
-
-// D169, D225: fiber forms share the runtime declarations in both renderings.
-export { $join, $forConcurrent } from "vibelang-runtime"
+// D169, D225: fiber forms share the runtime declarations in both renderings,
+// and so does try p (VIP-5).
+export { $join, $forConcurrent, $try } from "vibelang-runtime"
 
 /** D49: stored collections convert parameterless Effect functions elementwise. */
 type $ProgramOf<T> = T extends () => EffectModule.Effect<infer A, infer E, infer R> ? EffectModule.Effect<A, E, R> : T

@@ -2,7 +2,7 @@
 // What vibelang --fix writes for fork-operand-legacy.fail: each fork keeps
 // its 0.0.10 meaning with an operand that is a program by syntax (D433).
 function work(n: number) {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
@@ -14,7 +14,7 @@ export function main() {
   const b = fork job()
   const c = fork work(3)
   const d = fork {
-    sleep("1 millis")
+    try sleep("1 millis")
     return 4
   }
   const e = fork exited()

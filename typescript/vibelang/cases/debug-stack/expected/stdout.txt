@@ -2,4 +2,4 @@
 at ownerName (main.vibe:12:25)
 at lookup (main.vibe:17:9)
 at audited$try (main.vibe:23:27)
-at PrimitiveImpl.logOwner (main.vibe:43:37)
+at PrimitiveImpl.logOwner (main.vibe:43:41)

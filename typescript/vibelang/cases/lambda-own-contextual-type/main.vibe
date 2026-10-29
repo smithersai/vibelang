@@ -27,5 +27,5 @@ const names = [one().label, two().label]
 
 // expect-result: ["one","two",2]
 export function main() {
-  return [...names, two()()]
+  return [...names, try two()()]
 }

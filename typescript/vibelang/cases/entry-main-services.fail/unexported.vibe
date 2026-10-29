@@ -2,7 +2,7 @@
 import { Users } from "./services.vibe"
 
 function main() {
-  Console.log(Users.find("1"))
+  try Console.log(try Users.find("1"))
 }
 
 export const program = main

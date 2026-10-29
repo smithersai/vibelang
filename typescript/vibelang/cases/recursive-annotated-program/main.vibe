@@ -11,19 +11,19 @@ const find = (
       current: string,
       chain: ReadonlyArray<string>
     ): Effect.Effect<ReadonlyArray<string> | undefined, never, never> => {
-      const parents = parentsOf(current)
+      const parents = try parentsOf(current)
       for (const parent of parents) {
         if (parent === target) return [...chain, parent]
-        const found = walk(parent, [...chain, parent])
+        const found = try walk(parent, [...chain, parent])
         if (found !== undefined) return found
       }
       return undefined
     }
-    return walk(start, [start])
+    return try walk(start, [start])
   })
 
 export function main() {
   const parentsOf = (id: string): Effect.Effect<ReadonlyArray<string>, never, never> =>
     Effect.succeed(id === "a" ? ["b"] : id === "b" ? ["c"] : [])
-  return [find("c", "a", parentsOf), find("missing", "a", parentsOf)]
+  return [try find("c", "a", parentsOf), try find("missing", "a", parentsOf)]
 }

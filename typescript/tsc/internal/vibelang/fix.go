@@ -53,14 +53,23 @@ import (
 // it did not before. Then an import of effect or one of its modules that
 // the fixes left unused is removed. Nothing is written until every round is
 // done, nothing at all when the command is interrupted, and a second run
-// finds nothing to fix. --fix cannot be combined with --build or --watch.
+// finds nothing to fix. The fix of the retired try(…) hatch (EK4616, VIP-5)
+// runs under --fix-migration-only too. --fix-vip-only applies only the VIP
+// migrations: that fix, then try before each call that runs where it stands
+// (fix_try.go), which keeps the call's meaning while every call still runs
+// where it stands. --fix cannot be combined with --build or --watch.
+
+// vipMigrationFixCodes are the codes whose quick fixes migrate code to an
+// accepted VIP, which --fix-migration-only applies too.
+var vipMigrationFixCodes []int32
 
 // FixFlag is the command line flag that applies the quick fixes.
 const FixFlag = "--fix"
 
 // FixOptions scopes repository migration tools without also rewriting the
 // TypeScript-style teaching examples or their explicit imports (D382).
-type FixOptions struct{ MigrationOnly bool }
+// VIPOnly applies the VIP migrations and nothing else.
+type FixOptions struct{ MigrationOnly, VIPOnly bool }
 
 // FixOptionsArguments removes the optional scope flag after --fix was found.
 // Ordinary --fix keeps its existing behavior, including prelude cleanup.
@@ -70,6 +79,8 @@ func FixOptionsArguments(args []string) ([]string, FixOptions) {
 	for _, arg := range args {
 		if strings.EqualFold(arg, "--fix-migration-only") {
 			options.MigrationOnly = true
+		} else if strings.EqualFold(arg, "--fix-vip-only") {
+			options.VIPOnly = true
 		} else {
 			rest = append(rest, arg)
 		}
@@ -194,7 +205,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, diagnosticSource+strconv.Itoa(int(code))+" ×"+strconv.Itoa(fixed.Counts[code]))
 		}
-		for _, kind := range []string{preludeImportLabel, preludeKeyLabel} {
+		for _, kind := range []string{tryLabel, preludeImportLabel, preludeKeyLabel} {
 			if n := fixed.Rewrites[kind]; n > 0 {
 				parts = append(parts, kind+" ×"+strconv.Itoa(n))
 				count += n
@@ -250,11 +261,21 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				g.refused[key] = true
 				result.Refused = append(result.Refused, refusal)
 			}
-			p := pipeMigrationFixes(ctx, program, file, g.refused, refuse)
+			var p proposal
+			if options.VIPOnly {
+				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
+				if len(p.fixes) > 0 {
+					proposals = append(proposals, p)
+				}
+				continue
+			}
+			p = pipeMigrationFixes(ctx, program, file, g.refused, refuse)
 			p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
 			p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
 			if len(p.fixes) == 0 && !options.MigrationOnly {
-				p = fileFixes(ctx, program, file, g.refused)
+				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
+			} else if len(p.fixes) == 0 {
+				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 			}
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
@@ -296,7 +317,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 		seen[state] = true
 	}
-	if options.MigrationOnly {
+	// try before each call that runs where it stands (VIP-5, fix_try.go).
+	if done.Err() == nil && options.VIPOnly {
+		rewriteTries(g, fs, build(texts), texts, result)
+	}
+	if options.MigrationOnly || options.VIPOnly {
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
 	}
@@ -622,11 +647,12 @@ func (p proposal) text() string {
 }
 
 // fileFixes asks the language server for the quick fix of each safe
-// diagnostic of file and applies the fixes whose edits do not overlap.
-func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
+// diagnostic of file, one of codes, and applies the fixes whose edits do
+// not overlap.
+func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, codes []int32) proposal {
 	var fixable []*ast.Diagnostic
 	for _, d := range program.GetSemanticDiagnostics(ctx, file) {
-		if d.Source() == diagnosticSource && slices.Contains(tsFormFixCodes, d.Code()) && d.File() == file {
+		if d.Source() == diagnosticSource && slices.Contains(codes, d.Code()) && d.File() == file {
 			fixable = append(fixable, d)
 		}
 	}

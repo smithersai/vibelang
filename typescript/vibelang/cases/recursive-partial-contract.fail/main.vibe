@@ -7,22 +7,22 @@ error Neg { n: number }
 service Audit { note(n: number): void!! }
 
 export function biggest(n: number): number!Neg {
-  Audit.note(n)
+  try Audit.note(n)
   if (n < 0) throw new Neg({ n })
-  return n === 0 ? 0 : Math.max(biggest(n - 1), n)
+  return n === 0 ? 0 : Math.max(try biggest(n - 1), n)
 }
 
 export function either(n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
-  return n === 0 ? 0 : (either(n - 1) || n)
+  return n === 0 ? 0 : (try either(n - 1) || n)
 }
 
 export function depth<T>(xs: ReadonlyArray<T>, n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
-  return xs.length === 0 ? n : 1 + depth(xs.slice(1), n)
+  return xs.length === 0 ? n : 1 + try depth(xs.slice(1), n)
 }
 
 export function plain(n: number) {
   if (n < 0) throw new Neg({ n })
-  return n === 0 ? 0 : Math.max(plain(n - 1), n)
+  return n === 0 ? 0 : Math.max(try plain(n - 1), n)
 }

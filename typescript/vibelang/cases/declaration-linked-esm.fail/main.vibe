@@ -1,3 +1,3 @@
 // expect: TS2322
 import { work } from "./host.js";
-export const fn = (x: number) => { const y: string = work(x); return y };
+export const fn = (x: number) => { const y: string = try work(x); return y };

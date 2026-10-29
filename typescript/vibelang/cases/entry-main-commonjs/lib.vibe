@@ -1,5 +1,5 @@
 export function main() {
-  Console.log("lib main ran")
+  try Console.log("lib main ran")
 }
 
 export const helper = "helper"

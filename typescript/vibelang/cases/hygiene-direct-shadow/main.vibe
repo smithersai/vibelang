@@ -10,7 +10,7 @@ function add(n: number) { return n + 1 }
 // A local spelled like add's variant: add(2) still calls add.
 function shadow() {
   const add$direct = (n: number): number => n + 100
-  return [add(2), add$direct(2)]
+  return [try add(2), add$direct(2)]
 }
 
 // A function of its own beside twice, in the same scope.
@@ -18,5 +18,5 @@ function twice(n: number) { return n + 1 }
 function twice$direct(n: number): number { return n + 100 }
 
 export function main() {
-  return [shadow(), [twice(2), twice$direct(2)], [inc(2), inc$direct(2), Lib.inc(2), Effect.forEach([3], inc)[0]]]
+  return [try shadow(), [try twice(2), twice$direct(2)], [try inc(2), inc$direct(2), try Lib.inc(2), (try Effect.forEach([3], inc))[0]]]
 }

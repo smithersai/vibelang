@@ -55,22 +55,22 @@ module text {
 import Counter, { clean, greet, later, safeLength, separator, type Cleaned, type Mode } from text
 
 function cleaned(input: string, mode: Mode): Cleaned!Error {
-  return try((input, mode) => clean(input, mode), (error) => new Error(String(error)), input, mode)
+  return try Effect.try({ try: () => ((input, mode) => clean(input, mode))(input, mode), catch: (error) => new Error(String(error)) })
 }
 
 // run.mjs requires out/main.js and runs program().
 export function program() {
-  const value = cleaned("  hi ", "upper")
+  const value = try cleaned("  hi ", "upper")
   let failed = "none"
   try {
-    cleaned("   ", "trim")
+    try cleaned("   ", "trim")
   } catch (error) {
     failed = error.message
   }
-  const length = sync((text) => safeLength(text), "   ")
-  const file = sync(async (name) => later(name), "x.txt")
-  const greeting = greet("Ada")
-  const counted = sync(() => {
+  const length = try sync((text) => safeLength(text), "   ")
+  const file = try sync(async (name) => later(name), "x.txt")
+  const greeting = try greet("Ada")
+  const counted = try sync(() => {
     const counter = new Counter()
     counter.increment()
     return counter.increment()

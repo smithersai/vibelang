@@ -2,7 +2,7 @@ import { Effect, Fiber } from "effect"
 
 // S19-30's original repro: abort resolves pending only after cleanup finishes.
 export function waitWithAsyncCleanup(log: Array<string>) {
-  return callback((log: Array<string>, resume: Resume<string, never>, signal: AbortSignal) => {
+  return try callback((log: Array<string>, resume: Resume<string, never>, signal: AbortSignal) => {
     const pending = new Promise<string>((resolve) => {
       signal.addEventListener("abort", () => setTimeout(() => {
         log.push("cleanup finished")
@@ -15,7 +15,7 @@ export function waitWithAsyncCleanup(log: Array<string>) {
 }
 
 export function waitWithEffectCleanup(log: Array<string>) {
-  return callback((log: Array<string>, _resume: Resume<string, never>, signal: AbortSignal) => {
+  return try callback((log: Array<string>, _resume: Resume<string, never>, signal: AbortSignal) => {
     // The finalizer runs after abort and is awaited, just as Effect.callback.
     return Effect.promise(() => new Promise<void>((resolve) => setTimeout(() => {
       log.push(signal.aborted ? "cleanup finished" : "not aborted")
@@ -25,7 +25,7 @@ export function waitWithEffectCleanup(log: Array<string>) {
 }
 
 export function waitWithSyncCleanup(log: Array<string>) {
-  return callback((log: Array<string>, _resume: Resume<string, never>) => {
+  return try callback((log: Array<string>, _resume: Resume<string, never>) => {
     // Sync cleanup retains the original void callback assignability.
     return () => log.push("cleanup finished")
   }, log)
@@ -36,14 +36,14 @@ export function main() {
   const promise: Array<string> = []
   const effect: Array<string> = []
   const sync: Array<string> = []
-  const first = Effect.forkChild(waitWithAsyncCleanup(promise), { startImmediately: true })
-  Fiber.interrupt(first)
+  const first = try Effect.forkChild(waitWithAsyncCleanup(promise), { startImmediately: true })
+  try Fiber.interrupt(first)
   promise.push("interrupt returned")
-  const second = Effect.forkChild(waitWithEffectCleanup(effect), { startImmediately: true })
-  Fiber.interrupt(second)
+  const second = try Effect.forkChild(waitWithEffectCleanup(effect), { startImmediately: true })
+  try Fiber.interrupt(second)
   effect.push("interrupt returned")
-  const third = Effect.forkChild(waitWithSyncCleanup(sync), { startImmediately: true })
-  Fiber.interrupt(third)
+  const third = try Effect.forkChild(waitWithSyncCleanup(sync), { startImmediately: true })
+  try Fiber.interrupt(third)
   sync.push("interrupt returned")
   return [promise, effect, sync]
 }

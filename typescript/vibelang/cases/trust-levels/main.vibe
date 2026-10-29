@@ -23,12 +23,12 @@ function port(text: string) {
 
 // An exception the contract does not list is a defect that no catch sees.
 function crash() {
-  return Effect.exit(() => parsePort("boom"))
+  return try Effect.exit(() => parsePort("boom"))
 }
 
 // The arguments run their Effects before the trusted call.
 function loaded() {
-  return parsePort(Effect.succeed("8443"))
+  return parsePort(try Effect.succeed("8443"))
 }
 
 // Value contracts are Effects; catch their failures in a VibeLang function.
@@ -48,7 +48,7 @@ function first(values: ReadonlyArray<number>) {
 // A boundary: inside Effect.try, a plain TypeScript call is allowed.
 function legacy(text: string) {
   try {
-    return Effect.try({ try: () => legacyParse(text), catch: () => "bad port" })
+    return try Effect.try({ try: () => legacyParse(text), catch: () => "bad port" })
   } catch (e) {
     return e
   }
@@ -78,23 +78,23 @@ function apply(f: (x: number) => number, x: number) {
 
 function parsedValues() {
   const values: number[] = []
-  for (const text of ["1", "{"]) values.push(parseOr(text, 0))
+  for (const text of ["1", "{"]) values.push(try parseOr(text, 0))
   return values
 }
 
 // expect-result: {"config":[8080,-1],"port":[80,"PortError"],"crash":true,"loaded":8443,"parsed":[1,0],"first":3,"legacy":[81,"bad port"],"reexported":[{"a":1},"SyntaxError"],"offset":[65535,"PortError"],"apply":4}
 export function main() {
-  const exit = crash()
+  const exit = try crash()
   return {
-    config: [config(`{"port":8080}`), config("{")],
-    port: [port("80"), port("x")],
+    config: [try config(`{"port":8080}`), try config("{")],
+    port: [try port("80"), try port("x")],
     crash: Exit.isFailure(exit) && Cause.hasDies(exit.cause),
-    loaded: loaded(),
-    parsed: parsedValues(),
-    first: first([3, 4]),
-    legacy: [legacy("81"), legacy("x")],
-    reexported: [reexported(`{"a":1}`), reexported("{")],
-    offset: [offset(5), offset(6)],
-    apply: apply((x) => x * 2, 2)
+    loaded: try loaded(),
+    parsed: try parsedValues(),
+    first: try first([3, 4]),
+    legacy: [try legacy("81"), try legacy("x")],
+    reexported: [try reexported(`{"a":1}`), try reexported("{")],
+    offset: [try offset(5), try offset(6)],
+    apply: try apply((x) => x * 2, 2)
   }
 }

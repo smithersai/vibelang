@@ -9,7 +9,7 @@ func (p *projector) isHatchCall(node *ast.Node) bool {
 		return false
 	}
 	name := node.Expression().Text()
-	return formsHatchNames[name] && (name == "try" || p.forms.(*Resolver).binding(node.Expression(), name) == nil)
+	return formsHatchNames[name] && p.forms.(*Resolver).binding(node.Expression(), name) == nil
 }
 
 // hatchSpelling records one boundary spelling in the shared plan. The body
@@ -19,7 +19,7 @@ func (p *projector) hatchSpelling(start, end int, checking, executable string) {
 }
 
 // hatchCall keeps the first argument entirely TypeScript (D232), while the
-// mapper and inputs run in their enclosing Effect body. Explicit async
+// inputs run in their enclosing Effect body. Explicit async
 // functions use Effect's promise boundary, which supplies the AbortSignal
 // after bound inputs; value expressions are deferred until the hatch runs.
 func (p *projector) hatchCall(call *ast.Node, e env) {
@@ -33,33 +33,6 @@ func (p *projector) hatchCall(call *ast.Node, e env) {
 	}
 	name := call.Expression().Text()
 	args := call.Arguments()
-	if name == "try" && len(args) == 1 && ast.IsObjectLiteralExpression(ast.SkipParentheses(args[0])) {
-		for _, property := range ast.SkipParentheses(args[0]).AsObjectLiteralExpression().Properties.Nodes {
-			if property.Name() != nil && ast.IsIdentifier(property.Name()) && property.Name().Text() == "try" {
-				p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(args[0]), Length: args[0].End() - p.tokenStart(args[0]), Code: 4404, Message: "The try hatch takes code, then an optional error mapper; write try(() => code, (error: unknown) => mappedError), rather than Effect's options object."})
-				break
-			}
-		}
-	}
-	calleeEdit := -1
-	if name == "try" {
-		calleeEdit = len(p.plan.edits)
-		checking := helperRef("$hatchTry")
-		// A written arrow fixes the mapper position (D231). Parameter
-		// arity or uses of the input cannot reopen the callable-input overload.
-		if len(args) > 1 && ast.IsFunctionExpressionOrArrowFunction(ast.SkipParentheses(args[1])) {
-			checking = helperRef("$hatchTryMapped")
-		}
-		p.hatchSpelling(start, call.Expression().End(), checking, helperRef("$hatchTry"))
-	}
-	if name == "try" && len(args) > 1 {
-		second := ast.SkipParentheses(args[1])
-		if !ast.IsFunctionExpressionOrArrowFunction(second) && !p.hatchValueInput(second, map[*ast.Node]bool{}) {
-			// An opaque function input and an error mapper occupy the same
-			// position. Only an annotation or an explicit arrow can decide.
-			p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(second), Length: second.End() - p.tokenStart(second), Code: CodeUnprojectedForm, Message: "The mapper cannot decide whether this argument maps a failure or supplies an input. For a mapper, write (error: unknown) => mapError(error). For a scalar input, annotate the binding with its non-callable type (for example, const text: string = value), or assert it at the call as value as string. For an opaque or callable input, write try((input) => code(input), (error: unknown) => new Cause.UnknownError(error), value)."})
-		}
-	}
 	if len(args) > 0 && name != "callback" {
 		first := ast.SkipParentheses(args[0])
 		function := ast.IsFunctionExpressionOrArrowFunction(first)
@@ -73,28 +46,9 @@ func (p *projector) hatchCall(call *ast.Node, e env) {
 			p.plan.insert(args[0].End(), ")")
 		}
 		if function && ast.GetFunctionFlags(first)&ast.FunctionFlagsAsync != 0 {
-			mapper := false
-			if name == "try" && len(args) > 1 {
-				second := ast.SkipParentheses(args[1])
-				mapper = ast.IsFunctionExpressionOrArrowFunction(second)
-			}
 			fn, inputs := p.freshWord("$evaluate"), p.freshWord("$inputs")
-			params := fn + ", ..." + inputs
-			body := helperRef("$promise") + "(" + fn + ".bind(undefined, ..." + inputs + "))"
-			if name == "try" {
-				body = helperRef("$tryPromise") + "(" + fn + ".bind(undefined, ..." + inputs + "))"
-				if mapper {
-					mapping := p.freshWord("$mapError")
-					params = fn + ", " + mapping + ", ..." + inputs
-					body = helperRef("$tryPromise") + "({ try: " + fn + ".bind(undefined, ..." + inputs + "), catch: " + mapping + " })"
-				}
-			}
-			executable := "((" + params + ") => " + body + ")"
-			if calleeEdit >= 0 {
-				p.plan.edits[calleeEdit].arg = executable
-			} else {
-				p.hatchSpelling(start, call.Expression().End(), name, executable)
-			}
+			executable := "((" + fn + ", ..." + inputs + ") => " + helperRef("$promise") + "(" + fn + ".bind(undefined, ..." + inputs + ")))"
+			p.hatchSpelling(start, call.Expression().End(), name, executable)
 		}
 	}
 	if len(args) > 0 {

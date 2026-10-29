@@ -74,13 +74,8 @@ var ruleInjections = []*ruleInjection{
 	{Code: 1002, Name: "effect-gen", Quote: "A `function*` passed to an API whose parameter returns a library Generator or Iterator, such as `Effect.gen`", Slots: effectOnly,
 		Text: "const gen$$ = Effect.gen(function* () {\n  return 1;\n});"},
 
-	// Chapter 10: a call already waits (D283).
-	{Code: 1003, Name: "async-function", Quote: "`async`, `for await`, or `await using`", Slots: top,
-		Text: "export async function total$$() {\n  return 1;\n}"},
-	{Code: 1003, Name: "async-arrow", Quote: "`async`, `for await`, or `await using`", Slots: stmt,
-		Text: "const later$$ = async () => 1;"},
-	{Code: 1003, Name: "async-method", Quote: "`async`, `for await`, or `await using`", Slots: []string{slotMember},
-		Text: "async total$$() {\n    return 1;\n  }"},
+	// Chapter 10: a call already waits (D283); an async function means what it
+	// means in TypeScript (VIP-1), so only for await and await using remain.
 	{Code: 1003, Name: "for-await", Quote: "`async`, `for await`, or `await using`", Slots: effectOnly,
 		Text: "for await (const x$$ of [1, 2]) {\n  Console.log(x$$);\n}"},
 
@@ -362,9 +357,6 @@ var ruleInjections = []*ruleInjection{
 		Text: "const roll$$ = Math.random();"},
 	{Code: 4403, Name: "new-date", Quote: "a clock or randomness read", Slots: stmt,
 		Text: "const today$$ = new Date();"},
-	{Code: 4404, Name: "options-object", Quote: "`try` given Effect's `{ try, catch }` options object", Slots: effectOnly,
-		Decls: "error BadJson$$ { error: unknown }",
-		Text:  "const parsed$$ = try({ try: () => JSON.parse(\"1\"), catch: (error) => new BadJson$$({ error }) });"},
 	{Code: 4405, Name: "reads-local", Quote: "A hatch's TypeScript reads a binding the `.vibe` file declares outside the hatch", Slots: stmt,
 		Text: "const base$$ = 2;\nconst sum$$ = ⟦sync(() => base$$ + 1)⟧;"},
 	{Code: 4405, Name: "reads-module-binding", Quote: "a local, a parameter, or a module declaration", Slots: []string{slotEffect, slotHatch},
@@ -485,7 +477,7 @@ var ruleInjections = []*ruleInjection{
 	{Code: 4805, Name: "extends-error", Quote: "a class that extends `Error`", Slots: top,
 		Text: "export class Legacy$$ extends Error {}"},
 	{Code: 4806, Name: "unknown-mapping", Quote: "a `try` mapping that returns `unknown` or `any`", Slots: effectOnly,
-		Text: "const decoded$$ = try((text) => Number(text), (cause) => cause, \"1\");"},
+		Text: "const decoded$$ = try Effect.try({ try: () => Number(\"1\"), catch: (cause) => cause });"},
 	{Code: 4807, Name: "merge-dependent", Quote: "`Layer.mergeAll` of a layer that needs a service another argument provides", Slots: top,
 		Decls: "service Directory$$ {\n  lookup(id: string): string!!\n}\nservice People$$ {\n  find(id: string): string!!\n}\nconst DirectoryLive$$ = Layer.succeed(Directory$$, { lookup(id) { return id; } });\nconst PeopleLive$$ = Layer.effect(People$$) {\n  const directory = Directory$$();\n  return { find(id) { return directory.lookup(id); } };\n}",
 		Text:  "export const App$$ = Layer.mergeAll(DirectoryLive$$, PeopleLive$$);"},
@@ -635,7 +627,7 @@ var ruleInjections = []*ruleInjection{
 	{Code: 4802, Name: "returned-arm", Quote: "also an arm of a returned conditional", Slots: top,
 		Text: "export function either$$(flag: boolean, program: Effect<void>) {\n  yieldNow();\n  return flag ? program : undefined;\n}"},
 	{Code: 4804, Name: "mapping-error", Quote: "a failure that is a global `Error`, thrown or returned by a `try` mapping", Slots: effectOnly,
-		Text: "const parsed$$ = try((text) => Number(text), (cause) => new Error(String(cause)), \"1\");"},
+		Text: "const parsed$$ = try Effect.try({ try: () => Number(\"1\"), catch: (cause) => new Error(String(cause)) });"},
 	{Code: 4834, Name: "running-fail", Quote: "`Effect.succeed(x)` or `Effect.fail(e)` where the call runs", Slots: effectOnly,
 		Decls: "error Missing$$ { id: number }", Text: "if (1 + 1 === 3) Effect.fail(new Missing$$({ id: 1 }));"},
 	{Code: 4835, Name: "effect-catch", Quote: "`Effect.catchTag`, `Effect.catchTags`, or `Effect.catch` in a VibeLang function", Slots: effectOnly,

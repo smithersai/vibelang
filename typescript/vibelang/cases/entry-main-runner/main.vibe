@@ -1,7 +1,7 @@
 // A module that calls a runner at its top level starts its program itself,
 // so main runs once.
 export function main() {
-  Console.log("ran once")
+  try Console.log("ran once")
 }
 
 runPromise(main())

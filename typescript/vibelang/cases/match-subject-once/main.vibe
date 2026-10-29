@@ -60,11 +60,11 @@ function statement(box: Turns<"a" | "b" | "c">): number {
 
 // In an Effect function, whose arms can run Effects.
 function effectful(box: Turns<"a" | "b" | "c">) {
-  yieldNow()
+  try yieldNow()
   return match (box.value) {
     when "a": 1;
-    when "b": do { yieldNow(); 2 };
-    when "c": do { yieldNow(); 3 };
+    when "b": do { try yieldNow(); 2 };
+    when "c": do { try yieldNow(); 3 };
   }
 }
 
@@ -198,7 +198,7 @@ export function main() {
   const loop = new Turns<Option.Option<number>>([Option.some(1), Option.some(2), Option.none()])
   const signal = new Signal()
   return [
-    [returned(a), a.reads], [expression(b), b.reads], [statement(c), c.reads], [effectful(f), f.reads],
+    [returned(a), a.reads], [expression(b), b.reads], [statement(c), c.reads], [try effectful(f), f.reads],
     [either(d), d.reads], [guardOnly(e), e.reads], [ifBinds(some), some.reads], [whileBinds(loop), loop.reads],
     [signal.next(), signal.reads], guardAssigns(),
     [width({ value: "abc" }), area({ kind: "square", side: 2 }), firstTwo({ value: "b" }), retryable(new Denied({ user: "Ada" })), kindOf({ kind: "b" }), size({ kind: "a", x: 1 }), size({ kind: "c", y: "yy" }), optional(undefined), optional({ b: 2 }), sum({ opt: Option.some(2) }), narrowedFirst("a"), variantAfterIs(Delivery.Waiting())]

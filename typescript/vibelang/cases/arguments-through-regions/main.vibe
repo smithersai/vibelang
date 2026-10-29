@@ -1,14 +1,14 @@
 // expect-result: [42,43,44]
 function throughUsing(value: number): number!! {
-  using resource = Effect.acquireRelease(() => 1, () => {})
+  using resource = try Effect.acquireRelease(() => 1, () => {})
   return arguments[0] as number
 }
 function throughArrow(value: number): number!! {
   const inspect = () => {
-    sleep("1 millis")
+    try sleep("1 millis")
     return arguments[0] as number
   }
-  return inspect()
+  return try inspect()
 }
 function throughFork(value: number): number!! {
   const child = fork sleep("1 millis")
@@ -16,5 +16,5 @@ function throughFork(value: number): number!! {
   return arguments[0] as number
 }
 export function main() {
-  return [throughUsing(42), throughArrow(43), throughFork(44)]
+  return [try throughUsing(42), try throughArrow(43), try throughFork(44)]
 }

@@ -2,48 +2,48 @@
 
 // An uninterruptible block finishes even when its fiber is interrupted.
 function masked() {
-  const done = Deferred.make<string>()
+  const done = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
-      sleep("20 millis")
-      Deferred.succeed(done, "done")
+      try sleep("20 millis")
+      try Deferred.succeed(done, "done")
     }
   }
-  sleep("5 millis")
-  fiber.interrupt()
-  return done.await()
+  try sleep("5 millis")
+  try fiber.interrupt()
+  return try done.await()
 }
 
 // restore brings back the interruptibility the block began with.
 function restored() {
-  const started = Deferred.make<string>()
+  const started = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
       restore {
-        Deferred.succeed(started, "started")
-        sleep("1 second")
+        try Deferred.succeed(started, "started")
+        try sleep("1 second")
       }
     }
   }
-  started.await()
-  fiber.interrupt()
-  return exit(fiber.join())._tag
+  try started.await()
+  try fiber.interrupt()
+  return (try exit(fiber.join()))._tag
 }
 
 // interruptible makes code interruptible inside an uninterruptible block.
 function forced() {
-  const started = Deferred.make<string>()
+  const started = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
       interruptible {
-        Deferred.succeed(started, "started")
-        sleep("1 second")
+        try Deferred.succeed(started, "started")
+        try sleep("1 second")
       }
     }
   }
-  started.await()
-  fiber.interrupt()
-  return exit(fiber.join())._tag
+  try started.await()
+  try fiber.interrupt()
+  return (try exit(fiber.join()))._tag
 }
 
 // A return inside the block returns from the function.
@@ -59,9 +59,9 @@ function work() {
 
 // The call form runs a program the same way.
 function call() {
-  return uninterruptible(work())
+  return try uninterruptible(work())
 }
 
 export function main() {
-  return { masked: masked(), restored: restored(), forced: forced(), returned: returned(), call: call() }
+  return { masked: try masked(), restored: try restored(), forced: try forced(), returned: try returned(), call: try call() }
 }

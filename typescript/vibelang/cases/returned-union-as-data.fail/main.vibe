@@ -6,14 +6,14 @@
 service Status { set(code: number): void!! }
 
 const listFlows = () => {
-  Console.log("listing")
+  try Console.log("listing")
 }
 
 // A local that a conditional between an Effect value and a running call
 // initialized: the call runs at the const, and Effect.void is the value.
 export const report = (code: number | undefined) =>
   Effect.suspend(() => {
-    const chosen = code === undefined ? Effect.void : Status.set(code)
+    const chosen = code === undefined ? Effect.void : try Status.set(code)
     return chosen
   })
 
@@ -33,6 +33,6 @@ export const programs = (code: number) => Effect.suspend(() => {
 // Not reported: the chosen program runs where it is chosen.
 export const ran = (code: number | undefined) =>
   Effect.suspend(() => {
-    if (code === undefined) return Effect.void()
-    return Status.set(code)
+    if (code === undefined) return try Effect.void()
+    return try Status.set(code)
   })

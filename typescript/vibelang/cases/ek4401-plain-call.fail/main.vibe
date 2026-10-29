@@ -26,7 +26,7 @@ export function loud(text: string) {
 }
 
 export function bounded(user: User) {
-  return Effect.try(() => formatName(user))
+  return try Effect.try(() => formatName(user))
 }
 
 export const ada = formatName({ name: "Ada" })

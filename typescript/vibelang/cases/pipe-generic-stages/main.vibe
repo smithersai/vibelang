@@ -40,12 +40,12 @@ function requireSetting(name: string) {
 function startup() {
   return do {
     const $pipe0: void!Missing! = () => requireSetting("region")
-    Effect.catch(() => Effect.mapError($pipe0, (error) => `needs ${error.name}`), (message) => Effect.succeed(message))
+    try Effect.catch(() => Effect.mapError($pipe0, (error) => `needs ${error.name}`), (message) => Effect.succeed(message))
   }
 }
 
 function title() {
-  return Reports().title
+  return (try Reports()).title
 }
 
 // expect-result: {"numbers":"count 1","strings":"label a","phase":["Draft","other published"],"startup":"needs region","title":"offline"}
@@ -53,8 +53,8 @@ export function main() {
   return {
     numbers: describe(1),
     strings: describe("a"),
-    phase: [phase("draft"), phase("published")],
-    startup: startup(),
-    title: Effect.provide(() => title(), Resilient)
+    phase: [try phase("draft"), try phase("published")],
+    startup: try startup(),
+    title: try Effect.provide(() => title(), Resilient)
   }
 }

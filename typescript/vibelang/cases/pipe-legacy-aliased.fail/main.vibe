@@ -7,7 +7,7 @@ import { pipe as flow } from "effect"
 import * as Fn from "effect/Function"
 
 function task() {
-  yieldNow()
+  try yieldNow()
   return 7
 }
 

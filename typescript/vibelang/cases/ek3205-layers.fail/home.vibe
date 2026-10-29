@@ -4,5 +4,5 @@
 import "vibelang/platform/node"
 
 export function main() {
-  Console.log(UserDirectories.home())
+  try Console.log(try UserDirectories.home())
 }

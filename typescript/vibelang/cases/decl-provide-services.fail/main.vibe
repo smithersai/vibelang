@@ -15,10 +15,10 @@ function notAKey() {
 
 function wrongShape() {
   provide Greeting = { words: 1 } {
-    return Greeting.text()
+    return try Greeting.text()
   }
 }
 
 export function main() {
-  return [notAKey(), wrongShape()]
+  return [try notAKey(), try wrongShape()]
 }

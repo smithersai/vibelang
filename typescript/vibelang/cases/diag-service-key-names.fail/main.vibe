@@ -65,13 +65,13 @@ export function method() { return Named.name }
 
 // Valid: a call, the implementation, the key's members that the service does
 // not declare, and the module's top level, where the member rules do not apply (D90).
-export function called() { return Named.name() }
-export function implementation() { return [Person().name, Shadowed().length, Shadowed().key] }
+export function called() { return try Named.name() }
+export function implementation() { return [(try Person()).name, (try Shadowed()).length, (try Shadowed()).key] }
 export function keyMembers() { return [Plain.name, Plain.key] }
 export const className = Person.name
 
 // Valid: a local schema's interface extends Schema.Schema.Type, a type.
 export function typed() {
   schema Local { value: string }
-  return Schema.decodeUnknownEffect(Local)({ value: "v" })
+  return try Schema.decodeUnknownEffect(Local)({ value: "v" })
 }

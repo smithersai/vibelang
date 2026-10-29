@@ -10,42 +10,42 @@ function hex(bytes: Uint8Array) {
 }
 
 function facts() {
-  const pid = Experimental.Process.pid()
+  const pid = try Experimental.Process.pid()
   return {
-    same: pid === Experimental.Process.Process.pid(),
+    same: pid === try Experimental.Process.Process.pid(),
     positive: pid > 0,
-    running: Experimental.Process.isRunning(pid),
-    host: typeof Experimental.Process.hostname() === "string",
+    running: try Experimental.Process.isRunning(pid),
+    host: typeof try Experimental.Process.hostname() === "string",
   }
 }
 
 export function alive(process: Experimental.Process, pid: number) {
-  return process.isRunning(pid)
+  return try process.isRunning(pid)
 }
 
 export function faked() {
   provide Experimental.Process.layerTest({ platform: Effect.succeed("win32") }) {
-    return Experimental.Process.platform()
+    return try Experimental.Process.platform()
   }
 }
 
 export function mac(key: Redacted<Uint8Array>, data: Uint8Array) {
-  return Experimental.Crypto.hmac("SHA-256", key, data)
+  return try Experimental.Crypto.hmac("SHA-256", key, data)
 }
 
 export function executable(path: string) {
-  return Experimental.FileSystem.access(path, { executable: true })
+  return try Experimental.FileSystem.access(path, { executable: true })
 }
 
 export function lock(name: string) {
-  return Experimental.Locks.hold(name)
+  return try Experimental.Locks.hold(name)
 }
 
 // expect-result: {"same":true,"positive":true,"running":true,"host":true,"alive":true,"faked":"win32","mac":"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"}
 export function main() {
   provide ExperimentalNodeServices.layer {
     const key = Redacted.make(new TextEncoder().encode("Jefe"))
-    const digest = mac(key, new TextEncoder().encode("what do ya want for nothing?"))
-    return { ...facts(), alive: alive(Experimental.Process(), Experimental.Process.pid()), faked: faked(), mac: hex(digest) }
+    const digest = try mac(key, new TextEncoder().encode("what do ya want for nothing?"))
+    return { ...try facts(), alive: try alive(try Experimental.Process(), try Experimental.Process.pid()), faked: try faked(), mac: try hex(digest) }
   }
 }

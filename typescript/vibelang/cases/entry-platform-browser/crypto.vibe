@@ -3,6 +3,6 @@
 import "vibelang/platform/browser"
 
 export function main() {
-  const mac = Experimental.Crypto.hmac("SHA-256", Redacted.make(new Uint8Array([1])), new Uint8Array([2]))
-  Console.log(mac.length)
+  const mac = try Experimental.Crypto.hmac("SHA-256", Redacted.make(new Uint8Array([1])), new Uint8Array([2]))
+  try Console.log(mac.length)
 }

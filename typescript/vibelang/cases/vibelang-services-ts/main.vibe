@@ -7,27 +7,27 @@ import { layer as PathLayer, Path } from "effect/Path"
 import { UserRepo, UserRepoLive } from "./repo.ts"
 
 export function describe(id: string) {
-  const user = UserRepo.byId(id)
-  const everyone = UserRepo.all()
+  const user = try UserRepo.byId(id)
+  const everyone = try UserRepo.all()
   return `${user.name} of ${everyone.length}`
 }
 
 export function piped() {
-  return UserRepo().pipe("label")
+  return try (try UserRepo()).pipe("label")
 }
 
 export function joined(a: string, b: string) {
-  return Path.join(a, b)
+  return try Path.join(a, b)
 }
 
 // A lambda whose body only looks a service up is an Effect function too.
 const underRoot = (part: string) => Path.join("root", part)
 
 function everything() {
-  return [describe("2"), piped(), joined("a", "b"), underRoot("c")]
+  return [try describe("2"), try piped(), try joined("a", "b"), try underRoot("c")]
 }
 
 // expect-result: ["Grace of 2","piped label","a/b","root/c"]
 export function main() {
-  return Effect.provide(() => everything(), Layer.mergeAll(UserRepoLive, PathLayer))
+  return try Effect.provide(() => everything(), Layer.mergeAll(UserRepoLive, PathLayer))
 }

@@ -5,7 +5,7 @@
 import { each } from "./helpers.ts"
 
 function tick(n: number) {
-  Console.log(n)
+  try Console.log(n)
 }
 
 // Accepted: the binding declares that it holds either form.

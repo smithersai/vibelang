@@ -17,14 +17,14 @@ function text(value: string) {
 export function main() {
   const phases: Array<Phase> = ["draft", "review", "published"]
   const logged: Array<string> = []
-  for (const phase of phases) record(phase, logged)
+  for (const phase of phases) try record(phase, logged)
   return {
     phases: phases.map(phaseLabel),
     widths: phases.map(width),
     logged,
-    failures: [describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada" }))],
-    greetings: [greeting(Option.none()), greeting(Option.some("Ada"))],
-    announced: announce("published"),
-    text: text("hi")
+    failures: [try describe(new NotFound({ id: "7" })), try describe(new Timeout()), try describe(new Denied({ user: "Ada" }))],
+    greetings: [try greeting(Option.none()), try greeting(Option.some("Ada"))],
+    announced: try announce("published"),
+    text: try text("hi")
   }
 }

@@ -587,14 +587,13 @@ func (r *Resolver) keyless(d Decision) (string, bool) {
 
 // formsHatchNames are the hatches (D148): a call of one of these names,
 // unshadowed, takes TypeScript as its first argument.
-var formsHatchNames = map[string]bool{"sync": true, "try": true, "callback": true}
+var formsHatchNames = map[string]bool{"sync": true, "callback": true}
 
 // inHatch reports whether node is inside the first argument of a hatch,
-// sync(…), try(…), or callback(…). The table decides sync/try's first
-// argument itself. D148/S19-30 also keeps callback's registration itself
-// plain: its returned Effect is a finalizer, not an Effect-function body.
-// Nested functions keep the existing hatch rule. try cannot be shadowed,
-// being a keyword; the others are hatches only when no scope binds them.
+// sync(…) or callback(…). The table decides sync's first argument itself.
+// D148/S19-30 also keeps callback's registration itself plain: its returned
+// Effect is a finalizer, not an Effect-function body. Nested functions keep
+// the existing hatch rule. A hatch is one only when no scope binds its name.
 func (r *Resolver) inHatch(node *ast.Node) (string, bool) {
 	for n := node; n.Parent != nil; n = n.Parent {
 		p := n.Parent
@@ -612,7 +611,7 @@ func (r *Resolver) inHatch(node *ast.Node) (string, bool) {
 		if n == node && callee.Text() != "callback" {
 			continue
 		}
-		if callee.Text() != "try" && r.binding(callee, callee.Text()) != nil {
+		if r.binding(callee, callee.Text()) != nil {
 			continue
 		}
 		return callee.Text(), true

@@ -17,18 +17,18 @@ export function number(): string!! {
 
 export function maybe(layer: Layer.Layer<A> | undefined): string!! {
   provide layer {
-    return A().value
+    return (try A()).value
   }
 }
 
 export function contextInList(): string!! {
   provide [LA, CA] {
-    return A().value
+    return (try A()).value
   }
 }
 
 export function context(): string!! {
   provide CA {
-    return A().value
+    return (try A()).value
   }
 }

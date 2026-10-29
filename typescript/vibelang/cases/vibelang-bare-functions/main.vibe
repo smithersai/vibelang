@@ -12,24 +12,24 @@ function flaky() {
 }
 
 function after(ms: number, value: string) {
-  sleep(`${ms} millis`)
+  try sleep(`${ms} millis`)
   return value
 }
 
 function shadowed() {
   const log = (text: string) => text.toUpperCase()
-  return log("local")
+  return try log("local")
 }
 
 // expect-result: {"retried":3,"both":["one","two"],"each":[2,4],"timed":"ok","raced":"fast","traced":"ok","local":"LOCAL"}
 export function main() {
-  log("bare log")
-  logInfo("bare logInfo")
-  const retried = retry(flaky(), { times: 5 })
-  const both = all([after(2, "one"), after(1, "two")])
-  const each = forEach([1, 2], (n) => n * 2)
-  const timed = timeout(after(1, "ok"), "1 second")
-  const raced = race(after(1, "fast"), after(200, "slow"))
-  const traced = withSpan(after(1, "ok"), "traced")
-  return { retried, both, each, timed, raced, traced, local: shadowed() }
+  try log("bare log")
+  try logInfo("bare logInfo")
+  const retried = try retry(flaky(), { times: 5 })
+  const both = try all([after(2, "one"), after(1, "two")])
+  const each = try forEach([1, 2], (n) => n * 2)
+  const timed = try timeout(after(1, "ok"), "1 second")
+  const raced = try race(after(1, "fast"), after(200, "slow"))
+  const traced = try withSpan(after(1, "ok"), "traced")
+  return { retried, both, each, timed, raced, traced, local: try shadowed() }
 }

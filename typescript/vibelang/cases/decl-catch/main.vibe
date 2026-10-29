@@ -14,7 +14,7 @@ function fail(kind: string) {
 
 function describe(kind: string) {
   try {
-    return fail(kind)
+    return try fail(kind)
   } catch (e) {
     switch (e._tag) {
       case "NotFound": return `missing ${e.id}`
@@ -28,7 +28,7 @@ function describe(kind: string) {
 // The default rethrows failures this match does not handle.
 function partial(kind: string): string!Broken! {
   try {
-    return fail(kind)
+    return try fail(kind)
   } catch (e) {
     switch (e._tag) {
       case "NotFound": case "Busy": case "Offline": return "handled"
@@ -41,7 +41,7 @@ function partial(kind: string): string!Broken! {
 function rethrow() {
   try {
     try {
-      fail("missing")
+      try fail("missing")
       return "none"
     } catch (e) {
       switch (e._tag) {
@@ -60,7 +60,7 @@ const Port = Schema.Struct({ port: Schema.Number })
 
 function parsePort(input: unknown) {
   try {
-    return `${Schema.decodeUnknownEffect(Port)(input).port}`
+    return `${(try Schema.decodeUnknownEffect(Port)(input)).port}`
   } catch (e) {
     if (e._tag === "SchemaError") return "schema"
     throw e
@@ -69,12 +69,12 @@ function parsePort(input: unknown) {
 
 export function main() {
   return {
-    a: describe("missing"),
-    b: describe("busy"),
-    c: describe("offline"),
-    d: describe("broken"),
-    e: rethrow(),
-    f: partial("busy"),
-    g: parsePort({ port: "x" })
+    a: try describe("missing"),
+    b: try describe("busy"),
+    c: try describe("offline"),
+    d: try describe("broken"),
+    e: try rethrow(),
+    f: try partial("busy"),
+    g: try parsePort({ port: "x" })
   }
 }

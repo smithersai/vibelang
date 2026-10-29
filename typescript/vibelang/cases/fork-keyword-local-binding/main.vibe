@@ -8,15 +8,15 @@ function fork(x: number) {
 }
 
 function slow(): number!! {
-  sleep("1 millis")
+  try sleep("1 millis")
   return 7
 }
 
 export function main() {
-  const a = fork(1)
+  const a = try fork(1)
   const f = fork slow()
   const g = fork {
-    sleep("1 millis")
+    try sleep("1 millis")
     return 8
   }
   return { a, b: join f, c: join g }

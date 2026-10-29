@@ -13,8 +13,8 @@ function bad(n: number) {
 // A fiber that waits until something interrupts it, and traces its finally.
 function hold(ready: Deferred.Deferred<void>, trace: string[]) {
   try {
-    Deferred.succeed(ready, undefined)
-    Effect.never()
+    try Deferred.succeed(ready, undefined)
+    try Effect.never()
   } finally {
     trace.push("hold")
   }
@@ -23,9 +23,9 @@ function hold(ready: Deferred.Deferred<void>, trace: string[]) {
 function masked() {
   const trace: string[] = []
   uninterruptible {
-    const ready = Deferred.make<void>()
+    const ready = try Deferred.make<void>()
     const held = fork hold(ready, trace)
-    ready.await()
+    try ready.await()
     const failing = fork bad(1)
     try {
       join [held, failing]
@@ -39,9 +39,9 @@ function masked() {
 function record() {
   const trace: string[] = []
   uninterruptible {
-    const ready = Deferred.make<void>()
+    const ready = try Deferred.make<void>()
     const held = fork hold(ready, trace)
-    ready.await()
+    try ready.await()
     const failing = fork bad(1)
     try {
       join { held, failing }
@@ -55,19 +55,19 @@ function record() {
 // The same join outside a mask, with the held fiber waiting in its own restore.
 function held() {
   const trace: string[] = []
-  const ready = Deferred.make<void>()
+  const ready = try Deferred.make<void>()
   const fiber = fork {
     try {
       uninterruptible {
-        Deferred.succeed(ready, undefined)
-        restore { Effect.never() }
+        try Deferred.succeed(ready, undefined)
+        restore { try Effect.never() }
         trace.push("not interrupted")
       }
     } finally {
       trace.push("hold")
     }
   }
-  ready.await()
+  try ready.await()
   const failing = fork bad(1)
   try {
     join [fiber, failing]
@@ -78,5 +78,5 @@ function held() {
 }
 
 export function main() {
-  return { masked: masked(), record: record(), held: held() }
+  return { masked: try masked(), record: try record(), held: try held() }
 }

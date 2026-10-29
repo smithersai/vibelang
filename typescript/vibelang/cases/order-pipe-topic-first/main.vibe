@@ -15,7 +15,7 @@ function getter() {
     trace.push("source")
     return 7
   }
-  const value = source() |> sink.take(%)
+  const value = try source() |> sink.take(%)
   return [value, trace]
 }
 
@@ -25,11 +25,11 @@ function rebound() {
     fn = (x: number): number => 2
     return 7
   }
-  return source() |> fn(%)
+  return try source() |> fn(%)
 }
 
 function increment(n: number) { return n + 1 }
 
 export function main() {
-  return { getter: getter(), rebound: rebound(), stable: 7 |> increment(%) }
+  return { getter: try getter(), rebound: try rebound(), stable: 7 |> try increment(%) }
 }

@@ -9,36 +9,36 @@ let attempts = 0
 
 function flaky() {
   attempts++
-  if (attempts < 3) Effect.fail("not yet")
+  if (attempts < 3) try Effect.fail("not yet")
   return `ok after ${attempts}`
 }
 
 function slow(label: string) {
-  Effect.sleep("200 millis")
+  try Effect.sleep("200 millis")
   return label
 }
 
 function fast(label: string) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return label
 }
 
 function retried() {
-  return Effect.retry(() => flaky(), Schedule.recurs(5))
+  return try Effect.retry(() => flaky(), Schedule.recurs(5))
 }
 
 function raced() {
-  return Effect.race(() => slow("slow"), () => fast("fast"))
+  return try Effect.race(() => slow("slow"), () => fast("fast"))
 }
 
 function timedOut() {
-  return Effect.catch(() => Effect.timeout(() => slow("slow"), "5 millis"), (e) => e._tag)
+  return try Effect.catch(() => Effect.timeout(() => slow("slow"), "5 millis"), (e) => e._tag)
 }
 
 // An array and a record of programs where Effect.all expects Effects.
 function both() {
-  const list = Effect.all([() => fast("a"), () => fast("b")])
-  const record = Effect.all({ c: () => fast("c"), d: () => fast("d") })
+  const list = try Effect.all([() => fast("a"), () => fast("b")])
+  const record = try Effect.all({ c: () => fast("c"), d: () => fast("d") })
   return `${list.join("")}${record.c}${record.d}`
 }
 
@@ -48,16 +48,16 @@ function stored() {
   let runs = 0
   const job = (): string!! => {
     runs++
-    return fast(`run ${runs}`)
+    return try fast(`run ${runs}`)
   }
-  const first = job()
-  const second = job()
+  const first = try job()
+  const second = try job()
   return `${first}, ${second}`
 }
 
 // An Effect function nested in another, each decided by its own position.
 function grid(xs: ReadonlyArray<number>, ys: ReadonlyArray<number>) {
-  return Effect.forEach(xs, (x) => Effect.forEach(ys, (y) => fast(`${x}${y}`)).join(" ")).join(" | ")
+  return (try Effect.forEach(xs, (x) => (try Effect.forEach(ys, (y) => fast(`${x}${y}`))).join(" "))).join(" | ")
 }
 
 // The object literal's property is expected to be a function returning an
@@ -67,18 +67,18 @@ const GreeterLive = Layer.succeed(Greeter, {
 })
 
 function greeted() {
-  return Effect.flatMap(Greeter, (greeter) => greeter.greet("ada"))
+  return try Effect.flatMap(Greeter, (greeter) => greeter.greet("ada"))
 }
 
 // expect-result: {"retried":"ok after 3","raced":"fast","timedOut":"TimeoutError","both":"abcd","stored":"run 1, run 2","grid":"13 14 | 23 24","greeted":"hello ada"}
 export function main() {
   return {
-    retried: retried(),
-    raced: raced(),
-    timedOut: timedOut(),
-    both: both(),
-    stored: stored(),
-    grid: grid([1, 2], [3, 4]),
-    greeted: Effect.provide(() => greeted(), GreeterLive)
+    retried: try retried(),
+    raced: try raced(),
+    timedOut: try timedOut(),
+    both: try both(),
+    stored: try stored(),
+    grid: try grid([1, 2], [3, 4]),
+    greeted: try Effect.provide(() => greeted(), GreeterLive)
   }
 }

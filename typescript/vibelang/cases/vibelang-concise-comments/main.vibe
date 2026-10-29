@@ -7,11 +7,11 @@ abstract class Settings {
 }
 
 function findName(id: number) {
-  return id === 1 ? Effect.succeed("ada") : Effect.succeed("grace")
+  return id === 1 ? try Effect.succeed("ada") : try Effect.succeed("grace")
 }
 
-export const greeting = () => Settings().greeting
+export const greeting = () => (try Settings()).greeting
 // Effect<string, never, Settings>
 
-export const nameLength = () => findName(1).length
+export const nameLength = () => (try findName(1)).length
 // Effect<number, never, never>

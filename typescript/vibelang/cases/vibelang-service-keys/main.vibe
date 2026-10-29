@@ -28,7 +28,7 @@ export const UsersLive = Layer.succeed(Users, {
 // An implementation can be a class that implements the service.
 export class UsersInMemory implements Users {
   find(id: string) {
-    return id === "7" ? Effect.succeed({ id, name: "Grace" }) : Effect.fail(new UserNotFound({ id }))
+    return id === "7" ? try Effect.succeed({ id, name: "Grace" }) : try Effect.fail(new UserNotFound({ id }))
   }
 }
 

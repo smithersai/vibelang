@@ -17,10 +17,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,218 |
-| The skill and the user guide (138 pages) | 286,989 |
-| The user guide alone | 281,103 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,976 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,308 |
+| The skill and the user guide (138 pages) | 287,430 |
+| The user guide alone | 281,454 |
 | The specification (10 chapters) | 19,410 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 2,952 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 1,732 |
-| **Core Concepts** | **17,475** |
+| **Core Concepts** | **17,515** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,440 |
-| [Running Effects](../getting-started/009-running-effects.md) | 1,722 |
+| [Running Effects](../getting-started/009-running-effects.md) | 1,762 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,354 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,989 |
 | [Devtools](../getting-started/012-devtools.md) | 9,970 |
-| **All 12 pages** | **29,881** |
+| **All 12 pages** | **29,921** |
 
 ### Setup
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 401 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **36,172** |
-| [Release notes](../setup/release-notes.md) | 36,172 |
-| **All 18 pages** | **60,781** |
+| **Upgrade** | **36,483** |
+| [Release notes](../setup/release-notes.md) | 36,483 |
+| **All 18 pages** | **61,092** |
 
 ### Guides
 

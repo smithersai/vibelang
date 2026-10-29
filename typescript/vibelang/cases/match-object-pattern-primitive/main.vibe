@@ -15,5 +15,5 @@ function size(value: unknown) {
 export function main() {
   const sized = (() => 0) as unknown as { mutable size: number }
   sized.size = 4
-  return { string: size("abc"), number: size(5), null: size(null), object: size({ size: 2 }), function: size(sized), reads }
+  return { string: try size("abc"), number: try size(5), null: try size(null), object: try size({ size: 2 }), function: try size(sized), reads }
 }

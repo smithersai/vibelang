@@ -6,9 +6,9 @@ export function main() {
   const sub = new Sub({ who: "x" })
   const input = { who: "y", count: 7, _tag: "spoof" }
   const extra = new Sub(input)
-  Console.log(sub._tag, sub.who)
-  try { fail() } catch (e) {
-    Console.log(e._tag, e.who)
+  try Console.log(sub._tag, sub.who)
+  try { try fail() } catch (e) {
+    try Console.log(e._tag, e.who)
     return [sub._tag, sub.who, e._tag, e.who, extra._tag, extra.who, extra.count]
   }
 }

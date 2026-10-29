@@ -5,5 +5,5 @@ import { it } from "@effect/vitest"
 import { main } from "./platform.vibe"
 
 it.effect("reads the config") {
-  main()
+  try main()
 }

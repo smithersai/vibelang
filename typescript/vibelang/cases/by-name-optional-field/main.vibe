@@ -11,7 +11,7 @@ const decode = (tags: string | null): Effect.Effect<{ value: number; tags: Reado
     tags: (tags === null ? undefined : decodeTags(tags))
   }), (row) => row)
 export function main() {
-  const missing = decode(null)
-  const present = decode("branch:main")
+  const missing = try decode(null)
+  const present = try decode("branch:main")
   return { missing, present, runs }
 }

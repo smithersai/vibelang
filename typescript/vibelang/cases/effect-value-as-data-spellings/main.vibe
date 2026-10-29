@@ -2,11 +2,11 @@
 // The two spellings EK4802 offers where a success type names no value: call
 // the program to run it, or write its type as the success type to keep it.
 export function main() {
-  const count = Ref.make(0)
+  const count = try Ref.make(0)
   const tick: void!! = Ref.update(count, (n) => n + 1)
-  Stream.make(1, 2) |> Stream.run(%, Sink.forEach((_n: number) => tick()))
-  const after = Ref.get(count)
-  const kept = Effect.suspend((): (void!!)!! => tick)
-  kept()
-  return [after, Effect.isEffect(kept), Ref.get(count)]
+  Stream.make(1, 2) |> try Stream.run(%, Sink.forEach((_n: number) => tick()))
+  const after = try Ref.get(count)
+  const kept = try Effect.suspend((): (void!!)!! => tick)
+  try kept()
+  return [after, Effect.isEffect(kept), try Ref.get(count)]
 }

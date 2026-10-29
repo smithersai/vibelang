@@ -5,8 +5,8 @@
 // is a function literal, so one that returned an owned fiber would capture
 // it (EK4838, D409; fork-escape-getter.fail).
 export function main() {
-  const a = detach(() => "A")
-  const b = detach(() => "B")
+  const a = try detach(() => "A")
+  const b = try detach(() => "B")
   let reads = 0
   const tasks = {
     get task() {

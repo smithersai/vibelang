@@ -3,7 +3,7 @@ import { plainCaller } from "./lib.js"
 import { consumerSeesRecord } from "./consumer.js"
 
 export function main() {
-  const value = plainCaller().changes()
-  const record = sync(() => consumerSeesRecord())
+  const value = try plainCaller().changes()
+  const record = try sync(() => consumerSeesRecord())
   return { value, record }
 }

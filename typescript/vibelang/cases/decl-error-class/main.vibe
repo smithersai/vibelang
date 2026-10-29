@@ -49,7 +49,7 @@ function fail(code: string): never!Validated {
 }
 
 function recover(): string!! {
-  return fail("X") |> Effect.catchTag(%, "Validated", (error) => error.code)
+  return fail("X") |> try Effect.catchTag(%, "Validated", (error) => error.code)
 }
 
 function classify(value: unknown): string {
@@ -74,7 +74,7 @@ export function main() {
     made: Validated.make("A").code,
     coded: codeOf(error),
     attempts: error.attempts,
-    recovered: recover(),
+    recovered: try recover(),
     wrapped: new Wrapped({ value: "w" }).value,
     matched: classify(error)
   }

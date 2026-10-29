@@ -7,12 +7,12 @@
 error Bad { message: string }
 
 const later = (n: number): number!! => {
-  sleep("1 millis")
+  try sleep("1 millis")
   return n
 }
 
 const failing = (): string!Bad => {
-  sleep("1 millis")
+  try sleep("1 millis")
   throw new Bad({ message: "failed" })
 }
 
@@ -30,14 +30,14 @@ const arrowBlock = (): number!! =>
 const blockArrow = (): number!! => {
   return (
     // line
-    later(3)
+    try later(3)
   )
 }
 
 const expression = function (): number!! {
   return (
     /* block */
-    later(4)
+    try later(4)
   )
 }
 
@@ -45,7 +45,7 @@ const box = {
   read(): number!! {
     return (
       // line
-      later(5)
+      try later(5)
     )
   }
 }
@@ -54,7 +54,7 @@ class Holder {
   read(): number!! {
     return (
       /* block */
-      later(6)
+      try later(6)
     )
   }
 }
@@ -74,13 +74,13 @@ function handlerBlock(): string!! {
 
 // return: a closure in a pipe stage that reads the topic
 function topicLine(): number!! {
-  return later(1) |> Effect.map(Effect.succeed(7),
+  return try later(1) |> try Effect.map(Effect.succeed(7),
     // line
     (n) => n + %)
 }
 
 function topicBlock(): number!! {
-  return later(1) |> Effect.map(Effect.succeed(8),
+  return try later(1) |> try Effect.map(Effect.succeed(8),
     /* block */
     (n) => n + %)
 }
@@ -88,7 +88,7 @@ function topicBlock(): number!! {
 // return: hatches as an arrow's body
 const parsed = (text: string) =>
   // line
-  try((text) => JSON.parse(text) as unknown, (cause) => new Bad({ message: String(cause) }), text)
+  try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
 
 const stepped = (n: number) =>
   /* block */
@@ -96,7 +96,7 @@ const stepped = (n: number) =>
 
 // return: match arms, in an Effect function and a plain function
 function matchEffect(x: string): number!! {
-  later(0)
+  try later(0)
   return match (x) {
     when "a":
       // line
@@ -121,7 +121,7 @@ function matchPlain(x: string): number {
 // return: a do block's value
 function doValue(): number!! {
   const v = do {
-    const a = later(13)
+    const a = try later(13)
     // line
     a + 1
   }
@@ -130,7 +130,7 @@ function doValue(): number!! {
 
 // throw: a statement and an expression
 function throwLine(): string!Bad {
-  later(0)
+  try later(0)
   throw (
     // line
     new Bad({ message: "throw line" })
@@ -149,7 +149,7 @@ function throwBlock(flag: boolean): string!Bad {
 function* produced() {
   yield (
     // line
-    later(15)
+    try later(15)
   )
   yield (
     /* block */
@@ -191,7 +191,7 @@ module text {
 import { loaded } from text
 
 function awaited(): number!! {
-  return sync(async () => loaded())
+  return try sync(async () => loaded())
 }
 
 // break and continue with a label, across a finally region
@@ -200,13 +200,13 @@ function jumps(): number!! {
   outer: for (const i of [1, 2, 3]) {
     for (const j of [1, 2, 3]) {
       try {
-        later(0)
+        try later(0)
         // line
         if (j === 2) continue outer
         if (i === 3) break /* block */ outer
         total += i * j
       } finally {
-        later(0)
+        try later(0)
       }
     }
   }
@@ -218,7 +218,7 @@ function counted(): number!! {
   let up = 0
   let down = 10
   for (const x of [1, 2, 3]) {
-    later(x)
+    try later(x)
     // line
     up++
     down /* block */ --
@@ -236,7 +236,7 @@ const sum = (
 
 // by-name arguments
 function byName(): number!! {
-  return retry(
+  return try retry(
     // line
     later(22),
     /* block */
@@ -246,29 +246,29 @@ function byName(): number!! {
 
 export function main() {
   return {
-    arrowLine: arrowLine(),
-    arrowBlock: arrowBlock(),
-    blockArrow: blockArrow(),
-    expression: expression(),
-    method: box.read(),
-    classMethod: new Holder().read(),
-    handlerLine: handlerLine(),
-    handlerBlock: handlerBlock(),
-    topicLine: topicLine(),
-    topicBlock: topicBlock(),
-    parsed: parsed("[1]"),
-    stepped: stepped(8),
-    matchEffect: [matchEffect("a"), matchEffect("b")],
+    arrowLine: try arrowLine(),
+    arrowBlock: try arrowBlock(),
+    blockArrow: try blockArrow(),
+    expression: try expression(),
+    method: try box.read(),
+    classMethod: try new Holder().read(),
+    handlerLine: try handlerLine(),
+    handlerBlock: try handlerBlock(),
+    topicLine: try topicLine(),
+    topicBlock: try topicBlock(),
+    parsed: try parsed("[1]"),
+    stepped: try stepped(8),
+    matchEffect: [try matchEffect("a"), try matchEffect("b")],
     matchPlain: [matchPlain("a"), matchPlain("b")],
-    doValue: doValue(),
+    doValue: try doValue(),
     throwLine: throwLine() catch (e) => e.message,
-    throwBlock: [throwBlock(true), throwBlock(false) catch (e) => e.message],
-    produced: produce(),
+    throwBlock: [try throwBlock(true), throwBlock(false) catch (e) => e.message],
+    produced: try produce(),
     generated: [...generated()],
-    awaited: awaited(),
-    jumps: jumps(),
-    counted: counted(),
-    sum: sum(20, 1),
-    byName: byName()
+    awaited: try awaited(),
+    jumps: try jumps(),
+    counted: try counted(),
+    sum: try sum(20, 1),
+    byName: try byName()
   }
 }

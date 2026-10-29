@@ -19,23 +19,23 @@ export control Approval {
 }
 
 function release(version: string) {
-  if (!Approval.approve(`deploy ${version}`)) return "declined"
+  if (!try Approval.approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
 function greet(id: string) {
   try {
-    return Users.find(id)
+    return try Users.find(id)
   } catch (error) {
     return `No user ${error.id}`
   }
 }
 
 export function main() {
-  const approved = handle(() => release("v1"), Approval, {
+  const approved = try handle(() => release("v1"), Approval, {
     approve(_request, continuation) {
-      return resume(continuation, true)
+      return try resume(continuation, true)
     }
   })
-  return Effect.provide(() => ({ name: greet("42"), missing: greet("7"), region: Users().region, approved }), Users.layer)
+  return try Effect.provide(() => ({ name: try greet("42"), missing: try greet("7"), region: (try Users()).region, approved }), Users.layer)
 }

@@ -27,9 +27,9 @@ function name(shape: Shapes.Shape) {
 export function main() {
   const tree = Tree.Node({ left: Tree.Leaf({ value: 1 }), right: Tree.Node({ left: Tree.Leaf({ value: 2 }), right: Tree.Leaf({ value: 3 }) }) })
   return {
-    areas: [area(Shape.Circle({ radius: 2 })), area(Shape.Square({ side: 3 })), area(Shape.Dot())],
+    areas: [try area(Shape.Circle({ radius: 2 })), try area(Shape.Square({ side: 3 })), try area(Shape.Dot())],
     sum: sum(tree),
     leaves: leaves(tree),
-    named: name(Shape.Square({ side: 1 }))
+    named: try name(Shape.Square({ side: 1 }))
   }
 }

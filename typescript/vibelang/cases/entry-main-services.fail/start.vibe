@@ -8,7 +8,7 @@ export { main as reexported } from "./reexported.vibe"
 
 Effect.runPromise(() => {
   provide UsersLive {
-    main()
-    namespaced.main()
+    try main()
+    try namespaced.main()
   }
 })

@@ -4,7 +4,7 @@ import * as Option from "effect/Option"
 let checks = 0
 
 export const guard = (n: number): Effect.Effect<Effect.Effect<void, string, never>, string, never> => {
-  sleep("1 millis")
+  try sleep("1 millis")
   if (n < 0) throw "outer"
   const check: Effect.Effect<void, string, never> = () => {
     checks += 1
@@ -14,12 +14,12 @@ export const guard = (n: number): Effect.Effect<Effect.Effect<void, string, neve
 }
 
 export function viaOption(n: number) {
-  const checked = Effect.option(guard(n))
+  const checked = try Effect.option(guard(n))
   return [checks, Option.isSome(checked)]
 }
 
 export function viaThunk(n: number) {
-  const checked = Effect.option(() => guard(n))
+  const checked = try Effect.option(() => guard(n))
   return [checks, Option.isSome(checked)]
 }
 
@@ -28,7 +28,7 @@ export function viaCatchContinue(ns: ReadonlyArray<number>) {
   for (const n of ns) {
     let check: Effect.Effect<void, string, never>
     try {
-      check = guard(n)
+      check = try guard(n)
     } catch (_) {
       continue
     }
@@ -38,6 +38,6 @@ export function viaCatchContinue(ns: ReadonlyArray<number>) {
 }
 
 export function typedOption(): boolean!! {
-  const checked: Option.Option<Effect.Effect<void, string, never>> = Effect.option(guard(0))
+  const checked: Option.Option<Effect.Effect<void, string, never>> = try Effect.option(guard(0))
   return Option.isSome(checked)
 }

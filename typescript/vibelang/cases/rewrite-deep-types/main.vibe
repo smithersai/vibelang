@@ -1,3 +1,3 @@
 import "vibelang/platform/node"
 export type Deep = Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<number>>>>>>>>>>>>>>>>>>>>;
-export function main() { Console.log("ok") }
+export function main() { try Console.log("ok") }

@@ -13,7 +13,7 @@ function lookup(id: string) {
 
 function missing() {
   try {
-    return lookup("9")
+    return try lookup("9")
   } catch (e) {
     return e._tag
   }
@@ -32,7 +32,7 @@ function label(text: string) {
 
 function tooLong() {
   try {
-    return label("much too long")
+    return try label("much too long")
   } catch (e) {
     return e._tag
   }
@@ -40,9 +40,9 @@ function tooLong() {
 
 function arrow() {
   const get = (id: string): string!NotFound! => find(id) ?? throw new NotFound({ id })
-  return get("2")
+  return try get("2")
 }
 
 export function main() {
-  return { found: lookup("1"), missing: missing(), lazy: lazy(), picked: label("abc"), tooLong: tooLong(), arrow: arrow() }
+  return { found: try lookup("1"), missing: try missing(), lazy: try lazy(), picked: try label("abc"), tooLong: try tooLong(), arrow: try arrow() }
 }

@@ -22,10 +22,10 @@ import { disposable, asyncDisposable } from resources
 function block() {
   const events: string[] = []
   {
-    using syncResource = sync((e: string[]) => disposable("sync", e), events)
-    using asyncResource = sync((e: string[]) => asyncDisposable("async", e), events)
+    using syncResource = try sync((e: string[]) => disposable("sync", e), events)
+    using asyncResource = try sync((e: string[]) => asyncDisposable("async", e), events)
     events.push("body")
-    yieldNow()
+    try yieldNow()
   }
   events.push("after")
   return events
@@ -33,13 +33,13 @@ function block() {
 
 function loops() {
   const events: string[] = []
-  for (using resource of sync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
+  for (using resource of try sync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
     events.push("sync body")
-    yieldNow()
+    try yieldNow()
   }
-  for (using resource of sync((e: string[]) => [asyncDisposable("a1", e), asyncDisposable("a2", e)], events)) {
+  for (using resource of try sync((e: string[]) => [asyncDisposable("a1", e), asyncDisposable("a2", e)], events)) {
     events.push("async body")
-    yieldNow()
+    try yieldNow()
   }
   events.push("after")
   return events
@@ -47,5 +47,5 @@ function loops() {
 
 // expect-result: {"block":["body","disposing async","disposed async","dispose sync","after"],"loops":["sync body","dispose s1","sync body","dispose s2","async body","disposing a1","disposed a1","async body","disposing a2","disposed a2","after"]}
 export function main() {
-  return { block: block(), loops: loops() }
+  return { block: try block(), loops: try loops() }
 }

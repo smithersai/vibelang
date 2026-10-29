@@ -4,6 +4,6 @@ const Timings = Context.Reference<(timing: number) => Effect.Effect<void>>("prob
   defaultValue: () => () => {}
 })
 export function main() {
-  Effect.provideService(Effect.void, Timings, (heard: string) => {})
-  Effect.provideService(Effect.void, Timings, (heard): void!! => { return "wrong" })
+  try Effect.provideService(Effect.void, Timings, (heard: string) => {})
+  try Effect.provideService(Effect.void, Timings, (heard): void!! => { return "wrong" })
 }

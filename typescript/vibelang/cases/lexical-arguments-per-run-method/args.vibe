@@ -5,35 +5,35 @@
 export class Counter {
   defaulted(a: number, step = 1): number!! {
     const bump = () => {
-      const tick = Effect.sync(() => step)
+      const tick = try Effect.sync(() => step)
       return arguments[0]++
     }
-    return bump()
+    return try bump()
   }
 
   rest(...values: number[]): number!! {
     const bump = () => {
-      const tick = Effect.sync(() => values.length)
+      const tick = try Effect.sync(() => values.length)
       return arguments[0]++
     }
-    return bump()
+    return try bump()
   }
 
   written(a: number): number!! {
     a += 0
     const bump = () => {
-      const tick = Effect.sync(() => a)
+      const tick = try Effect.sync(() => a)
       return arguments[0]++
     }
-    return bump()
+    return try bump()
   }
 
   identity(a: number, step = 1) {
-    const tick = Effect.sync(() => step)
+    const tick = try Effect.sync(() => step)
     const read = () => {
-      const next = Effect.sync(() => 0)
+      const next = try Effect.sync(() => 0)
       return arguments
     }
-    return read() === arguments
+    return try read() === arguments
   }
 }

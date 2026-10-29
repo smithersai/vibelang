@@ -12,8 +12,8 @@ service Flaky {
 service Leaky {
   read(): number!!
   static readonly default = {
-    read() { Audit.record(); return 1 }
+    read() { try Audit.record(); return 1 }
   }
 }
 
-export function example() { return Flaky.read() + Leaky.read() }
+export function example() { return try Flaky.read() + try Leaky.read() }

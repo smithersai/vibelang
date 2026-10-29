@@ -1,2 +1,2 @@
 error EK4405: text is declared outside the hatch, and a hatch's TypeScript is self-contained: pass text to sync as an input.
-error EK4405: prefix is declared outside the hatch, and a hatch's TypeScript is self-contained: pass prefix to try as an input.
+error EK4405: prefix is declared outside the hatch, and a hatch's TypeScript is self-contained: pass prefix to sync as an input.

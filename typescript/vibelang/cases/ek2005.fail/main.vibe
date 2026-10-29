@@ -17,23 +17,23 @@ abstract class Secret {
 }
 
 export function needsService() {
-  return handle(() => Approval.approve("x"), Approval, {
-    approve(_request, k) { return resumeWith(k, () => Secret.read()) }
+  return try handle(() => Approval.approve("x"), Approval, {
+    approve(_request, k) { return try resumeWith(k, () => Secret.read()) }
   })
 }
 
 export function undeclaredError() {
-  return handle(() => Approval.approve("x"), Approval, {
-    approve(_request, k) { return resumeWith(k, () => { throw new Other() }) }
+  return try handle(() => Approval.approve("x"), Approval, {
+    approve(_request, k) { return try resumeWith(k, () => { throw new Other() }) }
   })
 }
 
 export function allowed() {
-  return handle(() => Approval.approve("x"), Approval, {
+  return try handle(() => Approval.approve("x"), Approval, {
     approve(_request, k) {
-      const secret = Secret.read()
-      if (secret) return resumeWith(k, () => { throw new Busy() })
-      return resumeWith(k, () => secret)
+      const secret = try Secret.read()
+      if (secret) return try resumeWith(k, () => { throw new Busy() })
+      return try resumeWith(k, () => secret)
     }
   })
 }

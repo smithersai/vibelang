@@ -1,0 +1,14 @@
+// expect: EK4615 EK4615 EK4615
+// try runs an Effect (VIP-5): before a plain call, a value that is not an
+// Effect, or a call passed by name, which the callee runs, it runs nothing.
+function plain(n: number) {
+  return n + 1
+}
+
+export function main() {
+  try yieldNow()
+  const a = try plain(1)
+  const b = try 42
+  const c = try retry(try sleep("1 millis"), Schedule.recurs(1))
+  return [a, b, c]
+}

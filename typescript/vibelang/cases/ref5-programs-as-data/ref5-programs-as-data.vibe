@@ -16,7 +16,7 @@ function work(name: string) {
     failuresLeft.set(name, left - 1)
     throw new Flaky({ name })
   }
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return name.toUpperCase()
 }
 
@@ -34,14 +34,14 @@ function countRuns() {
 
 function scenario() {
   const stored = () => work("stored")                               // store a program
-  const returned = makeJob("returned")                              // return a program
-  const flaky = makeJob("flaky")
-  const builtButNotRun = countRuns()                                // nothing ran yet
+  const returned = try makeJob("returned")                              // return a program
+  const flaky = try makeJob("flaky")
+  const builtButNotRun = try countRuns()                                // nothing ran yet
 
-  const once = stored()                                             // calling runs it
-  const retried = Effect.retry(flaky, Schedule.recurs(3))           // retry a stored program
-  const both = Effect.all([stored, returned], { concurrency: 2 })   // compose stored programs
-  const twice = [returned(), returned()]                            // each call runs it again
+  const once = try stored()                                             // calling runs it
+  const retried = try Effect.retry(flaky, Schedule.recurs(3))           // retry a stored program
+  const both = try Effect.all([stored, returned], { concurrency: 2 })   // compose stored programs
+  const twice = [try returned(), try returned()]                            // each call runs it again
 
   return {
     builtButNotRun,
@@ -55,5 +55,5 @@ function scenario() {
 
 // expect-result: {"builtButNotRun":0,"once":"STORED","retried":"FLAKY","both":["STORED","RETURNED"],"twice":["RETURNED","RETURNED"],"runs":{"stored":2,"returned":3,"flaky":3}}
 export function main() {
-  return scenario()
+  return try scenario()
 }

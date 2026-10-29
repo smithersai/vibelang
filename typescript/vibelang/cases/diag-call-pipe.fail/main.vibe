@@ -1,10 +1,10 @@
 // expect: EK4502 EK4502
 error Flaky
 function f(s: number): number!Flaky { if (s < 1) throw new Flaky(); return s }
-export function main() { return f(1).pipe(Effect.retry({ times: 3 })) }
+export function main() { return (try f(1)).pipe(Effect.retry({ times: 3 })) }
 
 // A real pipe member on an ordinary result is valid.
 function value() { return { pipe(n: number) { return n } } }
-export function realMember() { return value().pipe(3) }
+export function realMember() { return try (try value()).pipe(3) }
 
-export function span() { return Effect.succeed(1).pipe(Effect.withSpan("n")) }
+export function span() { return (try Effect.succeed(1)).pipe(Effect.withSpan("n")) }

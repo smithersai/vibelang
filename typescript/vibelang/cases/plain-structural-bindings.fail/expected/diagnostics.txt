@@ -4,7 +4,7 @@ main.vibe(15,14): error EK4301
 main.vibe(17,14): error EK4301
 main.vibe(18,41): error EK4301
 main.vibe(19,37): error EK4301
-main.vibe(20,12): error EK4301
+main.vibe(20,16): error EK4301
 main.vibe(22,30): error EK4301
 main.vibe(23,34): error EK4301
 main.vibe(29,14): error EK4301

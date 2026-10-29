@@ -5,12 +5,12 @@
 export function main() {
   let index = 0
   let runs = 0
-  Effect.whileLoop({
+  try Effect.whileLoop({
     while: () => index < 3,
     body: () => Console.log(`iteration ${index}`),
     step: () => { index++; runs++ }
   })
-  const value = Effect.timeoutOrElse(() => sleep("1 minute"), {
+  const value = try Effect.timeoutOrElse(() => sleep("1 minute"), {
     duration: "1 millis",
     orElse: () => "fallback"
   })

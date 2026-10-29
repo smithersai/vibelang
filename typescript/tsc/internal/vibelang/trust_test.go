@@ -231,11 +231,12 @@ export declare const vi: { spyOn(target: object, name: string): Spy }`,
 	}
 }
 
-// EK4401's note suggests a hatch call that compiles. Inside the hatch,
-// TypeScript sees a .vibe function's call as an Effect, so an operand that
-// calls one is an input, named after the callee's parameter; the bindings
-// the rest reads are inputs too. Each suggestion, written in place of the
-// call, compiles without an error.
+// EK4401's note suggests running the call through Effect.try (VIP-5), in
+// statements that compile. The function Effect.try wraps is TypeScript, where
+// a .vibe function's call is an Effect, so an operand that calls one is bound
+// first to a const named after the callee's parameter, under a name the
+// function does not use. Each suggestion, written in place of the call's
+// statement, compiles without an error.
 func TestEK4401SuggestionCompiles(t *testing.T) {
 	const prefix = "module util {\n" +
 		"  export function shout(s: string): string { return s.toUpperCase() }\n" +
@@ -245,15 +246,15 @@ func TestEK4401SuggestionCompiles(t *testing.T) {
 		"function hello(name: string) { return `hello ${name}` }\n" +
 		"function box() { return new Box(\"b\") }\n" +
 		"export function main(s: string) {\n  return "
-	suggestion := regexp.MustCompile(`Call it through (try\(.*?\)), or `)
+	suggestion := regexp.MustCompile(`Call it through (.*?\)\)), or `)
 	for _, test := range []struct{ call, want string }{
-		{`shout(hello("VibeLang"))`, `try((s) => shout(s), hello("VibeLang"))`},
-		{`shout(s + hello(s))`, `try((s) => shout(s), s + hello(s))`},
-		{`shout(s)`, `try((s) => shout(s), s)`},
-		{`new Box(s).show(s)`, `try((s) => new Box(s).show(s), s)`},
-		{`box().show(s + hello(s))`, `try((box, prefix) => box.show(prefix), box(), s + hello(s))`},
-		{`shout("hi")`, `try(shout("hi"))`},
-		{`box().show(hello(s))`, `try((box, prefix) => box.show(prefix), box(), hello(s))`},
+		{`shout(hello("VibeLang"))`, `const s2 = try hello("VibeLang"); try Effect.try(() => shout(s2))`},
+		{`shout(s + hello(s))`, `const s2 = s + hello(s); try Effect.try(() => shout(s2))`},
+		{`shout(s)`, `try Effect.try(() => shout(s))`},
+		{`new Box(s).show(s)`, `try Effect.try(() => new Box(s).show(s))`},
+		{`box().show(s + hello(s))`, `const box2 = try box(); const prefix = s + hello(s); try Effect.try(() => box2.show(prefix))`},
+		{`shout("hi")`, `try Effect.try(() => shout("hi"))`},
+		{`box().show(hello(s))`, `const box2 = try box(); const prefix = try hello(s); try Effect.try(() => box2.show(prefix))`},
 	} {
 		t.Run(test.call, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prefix+test.call+"\n}\n")
@@ -268,7 +269,8 @@ func TestEK4401SuggestionCompiles(t *testing.T) {
 			if got != test.want {
 				t.Fatalf("EK4401 suggests %q, want %q", got, test.want)
 			}
-			fixed, fixedFile, _, _ := editorProgram(t, prefix+got+"\n}\n")
+			// The suggestion is statements: the consts it binds, then the run.
+			fixed, fixedFile, _, _ := editorProgram(t, strings.TrimSuffix(prefix, "return ")+got+"\n}\n")
 			for _, d := range append(fixed.GetSyntacticDiagnostics(t.Context(), fixedFile), fixed.GetSemanticDiagnostics(t.Context(), fixedFile)...) {
 				if d.Category() == diagnostics.CategoryError {
 					t.Errorf("the suggestion %s does not compile: %s", got, diagnosticWithNotes(d))
