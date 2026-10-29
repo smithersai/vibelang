@@ -8,7 +8,7 @@
 // VibeLang
 data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
 const d = Delivery.Sent({ tracking: "1Z" })
-match (d) { when { _tag: "Sent", tracking }: tracking; default: "none" }
+match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none" }
 
 // exactly this Effect TS
 type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejected: { reason: string } }>
@@ -16,7 +16,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 ```
 
 - `data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name.
-- Variants are matched with TC39 object patterns on `_tag` (VIP-7). The variant constructors get no custom matchers.
+- Variants are matched with TC39 object patterns on `_tag` (VIP-7). In the pinned TC39 snapshot, a bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`, the snapshot's shorthand for `tracking: let tracking`. The variant constructors get no custom matchers.
 - Generic unions (`data Result<A, E> { … }`) are left to a later VIP.
 - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
 
@@ -33,3 +33,5 @@ Rust and Swift enums with payloads, Kotlin sealed classes, Effect's `Data.Tagged
 > "OK I accpet with your recomendations"
 
 (The recommendations: match with object patterns, and decide generic unions in a later VIP.)
+
+*Corrected 2026-10-29: the example now binds with `let`, using TC39's `let tracking` shorthand (found by the differential fuzz suite).*
