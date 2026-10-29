@@ -52,11 +52,13 @@ Each field's schema is written from its TypeScript type:
 
 Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`.
 
+The generated constants keep TypeScript declaration order and temporal dead zone: declare `Address` before a schema that reads it. There is no implicit reordering or `Schema.suspend`; a forward or cyclic value reference has the same initialization behavior as the shown TypeScript.
+
 | Rule | Diagnostic |
 | --- | --- |
 | a field type outside the mapping | EK2109 |
 
-**Undecided (pending VIP):** the exact mapping of each remaining type: a single literal (`Schema.Literal("a")` or `Schema.Literals(["a"])`), a union mixing literals and other types, `null` and `undefined`, `readonly` arrays and fields, and a nested object type (an inline `Schema.Struct`).
+**Undecided (pending VIP):** exact mappings beyond the concrete rows above: single literals, mixed unions, `null`, `undefined`, arrays, tuples, `Record` and nested objects. The broad combinator row identifies supported type families, not their exact signatures. In particular, whether mutable TypeScript members and arrays produce mutable decoded types (using `Schema.mutableKey` / `Schema.mutable`) or retain Schema readonly defaults needs a VIP; `typeof Name.Type` remains the declared type.
 
 ## `data` declarations
 
@@ -77,6 +79,7 @@ Variant         = Name ("{" Fields "}")?
 ```vibe es
 // compiler-gap: pending VIP-16
 data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
+const tracking = "outer"
 const d = Delivery.Sent({ tracking: "1Z" })
 const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none" }
 ```
@@ -85,9 +88,18 @@ const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default
 // fragment
 type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejected: { reason: string } }>
 const Delivery = Data.taggedEnum<Delivery>()
+const tracking = "outer"
+const d: Delivery = Delivery.Sent({ tracking: "1Z" })
+const label = (() => {
+  if (d._tag === "Sent" && "tracking" in d) {
+    const tracking = d.tracking
+    return tracking
+  }
+  return "none"
+})()
 ```
 
-Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. The variant constructors get no custom matchers.
+Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
 
 ### Generic unions
 
