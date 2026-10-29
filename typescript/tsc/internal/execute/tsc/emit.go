@@ -138,6 +138,15 @@ func EmitFilesAndReportErrors(input EmitInput) (result CompileAndEmitResult) {
 		emitResult = input.ProgramLike.Emit(ctx, compiler.EmitOptions{
 			WriteFile: input.WriteFile,
 		})
+		if input.Program != nil {
+			// VibeLang: each .vibe module's x.d.vibe.ts, with the vibelang setting declarationSidecars.
+			sidecars := input.Program.EmitDeclarationSidecars(ctx, func(fileName string, text string) error {
+				return input.Sys.FS().WriteFile(tspath.RootedFilePathFromNormalized(fileName), text)
+			})
+			if emitResult != nil {
+				emitResult.Diagnostics = append(emitResult.Diagnostics, sidecars...)
+			}
+		}
 		result.times.emitTime += input.Sys.Now().Sub(emitStart)
 	}
 	if emitResult != nil {

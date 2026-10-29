@@ -161,6 +161,34 @@ Run `npx vitest run`. The output includes:
 
 You now have `src/hello.vibe`, `src/main.vibe`, and `src/hello.test.vibe`. Keep them as a starting point or delete them.
 
+## Let TypeScript tools read .vibe modules
+
+Stock `tsc`, `tsrs`, `bun check`, TypeDoc and other checkers built on TypeScript cannot read a `.vibe` file. Turn on `declarationSidecars` in the `vibelang` settings of the project that owns the `.vibe` files:
+
+```json
+{
+  "compilerOptions": { "strict": true },
+  "vibelang": { "declarationSidecars": true },
+  "include": ["src"]
+}
+```
+
+`vibelang`, `vibelang --watch` and `vibelang -b` then write each module's declarations beside it, `src/greet.d.vibe.ts` for `src/greet.vibe`, even with `--noEmit`. A sidecar is rewritten only when its text changes. Its text is the module's declaration file with one change: an import of another `.vibe` module names its source, `./name.vibe`.
+
+In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitraryExtensions`](https://www.typescriptlang.org/tsconfig/allowArbitraryExtensions.html), and import the module by its source name:
+
+```json
+{ "compilerOptions": { "allowArbitraryExtensions": true } }
+```
+
+TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. TypeScript never maps `./greet.js` or `./greet` to a sidecar, so a `.ts` file that such a checker reads names the `.vibe` module by its source. `vibelang` itself reads `greet.vibe` and never the sidecar, and a project's `include` leaves out a sidecar whose source is beside it.
+
+These checkers read only the sidecars: they do not type-check the `.vibe` files themselves. Run `vibelang` before them, in the same script, so a sidecar is current and a type error in a `.vibe` file fails the check:
+
+```sh
+vibelang --noEmit && tsrs -b
+```
+
 ## Run sources with Node
 
 To run a TypeScript entry point that imports `.vibe` modules without building
