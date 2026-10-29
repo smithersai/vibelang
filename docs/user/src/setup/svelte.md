@@ -57,7 +57,6 @@ Create `src/cart.vibe`. `quote` reserves a product and recovers from `OutOfStock
 
 ```vibe
 // src/cart.vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15, VIP-18
 // run: provide InventoryLive { try Console.log((try quoteCart()).join("\n")); try Console.log(try quote("missing", 1)); const inventory = try Inventory; try Console.log(inventory.reserve("coffee", 3) catch (error) => `${error._tag} ${error.sku} ${error.available}`) }
 export schema Product { sku: string; name: string; cents: number; stock: number }
 
@@ -153,7 +152,6 @@ Create `src/cart.test.vibe`:
 
 ```vibe
 // src/cart.test.vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 import { assert, it } from "@effect/vitest"
 import { InventoryLive, Inventory, OutOfStock, quote, quoteCart } from "./cart.vibe"
 

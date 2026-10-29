@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
 )
 
 // preludeCompletions offers the prelude names (prelude.go), effect's root
@@ -44,11 +45,14 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 				symbols = append(symbols, symbol)
 			}
 		}
-		if effect := c.TryGetMemberInModuleExports("Effect", module); effect != nil {
+		if effect := c.TryGetMemberInModuleExports("Effect", module); effect != nil && effectGlobalsOn(c, file) {
 			if effect.Flags()&ast.SymbolFlagsAlias != 0 {
 				effect = c.GetAliasedSymbol(effect)
 			}
-			for name := range effectFunctionNames {
+			for name := range effectglobals.Names {
+				if _, ok := preludeModules[name]; ok {
+					continue // the runtime's prelude name wins
+				}
 				if symbol := c.TryGetMemberInModuleExports(name, effect); symbol != nil && hasMeaning(c, symbol, meaning) {
 					symbols = append(symbols, symbol)
 				}

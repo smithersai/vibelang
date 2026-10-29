@@ -42,7 +42,6 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | `file.chmod(mode)` | Changes the permissions of the file the handle opened, even after its path was renamed or replaced | `FileHandle.chmod` |
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide ExperimentalNodeServices.layer { { const jsonValue = try runnable(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
@@ -70,7 +69,6 @@ effect function runnable() {
 `noFollow` with `nonBlocking` opens a path that another process may replace: the open fails on a symbolic link and returns at once on a FIFO, and `file.chmod` then changes the file that was opened, not whatever the path names later.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-33
 effect function restrict(path: string) {
   try scoped(effect {
     const fs = try Experimental.FileSystem.FileSystem
@@ -142,7 +140,6 @@ The user's home directory is Effect's own, `try (try UserDirectories.UserDirecto
 
 ```vibe
 // stop.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
 effect function stop(pid: number) {
@@ -210,7 +207,6 @@ NodeRuntime.runMain(Effect.provide(Effect.scoped(serve()), ExperimentalNodeServi
 
 ```vibe
 // platform-name.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Experimental.Process.layerTest({ platform: succeed("win32") }) { try Console.log(try platformName()) }
 export effect function platformName() {
   const process = try Experimental.Process.Process
@@ -225,7 +221,6 @@ export effect function platformName() {
 
 ```vibe
 // leader.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Experimental.Locks.layerTest({ hold: () => succeed({ lost: Effect.void }) }) { try lead("engine") }
 export effect function lead(name: string) {
   try scoped(effect {

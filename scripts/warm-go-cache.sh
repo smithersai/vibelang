@@ -18,7 +18,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # scripts/go-cache.test.mjs fails when a target names a package these miss.
 tests="./internal/vibelangestree/... ./internal/vibelangfmt/... ./internal/vibelang/... ./internal/vibelangmapper/... ./internal/vibelangfuzz/... ./internal/checker/...
 ./internal/effecttsgo/shim/checker/ ./internal/parser/... ./internal/format/... ./internal/core/...
-./internal/vibelangfmt/..."
+./internal/vibelangfmt/... ./internal/effectglobals/..."
 commands="./cmd/tsc ./cmd/vibelang-forms ./cmd/vibelang-mapper"
 
 if [ "${1:-}" = --print ]; then

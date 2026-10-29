@@ -180,7 +180,6 @@ Create `src/todos.test.vibe`:
 
 ```vibe
 // src/todos.test.vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 import { assert, it } from "@effect/vitest"
 import { completeTodo, loadBoard, TodoNotFound, Todos, TodosLive } from "./todos.vibe"
 

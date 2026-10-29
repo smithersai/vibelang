@@ -672,7 +672,7 @@ const size = (path: string) =>
 
 :::
 
-**Common functions without the `Effect.` prefix**: `sleep`, `log`, `retry`, `repeat`, `timeout`, `race`, `all`, `forEach`, `die`, `withSpan`, and the `log` levels.
+**Effect's functions without the `Effect.` prefix**: every export of the `Effect` module, such as `sleep`, `log`, `retry`, `timeout`, `race`, `all`, `tryPromise`, and `map`, except a name that clashes, such as `Effect.try` and `Effect.match`. `"vibe": { "effectGlobals": false }` turns them off.
 
 :::code-group
 

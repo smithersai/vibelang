@@ -38,7 +38,6 @@ const boundary = Stream.catchDefect(
 ## Selective recovery
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(recoverKnown(Stream.fail(new NotReady()))), try Stream.runCollect(selected), try Stream.runCollect(defectOnly)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(Stream.runCollect(recoverKnown(Stream.fail(new AccessDenied())))); if (Result.isFailure(outcome)) match (outcome.failure) { when AccessDenied: try Console.log(outcome.failure._tag); }
 error NotReady
 error AccessDenied
@@ -63,7 +62,6 @@ const defectOnly = Stream.catchCauseFilter(Stream.die("corrupt frame"), Cause.fi
 ## Cleanup after failure
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: const outcome = try result(consumeChecked()); if (Result.isFailure(outcome)) try Console.log(outcome.failure)
 effect function consumeChecked() {
   const source = Stream.succeed("accepted").pipe(
@@ -104,7 +102,6 @@ const readings = Stream.fromEffect(effect {
 ## Narrowing error types
 
 ```vibe
-// pending: VIP-5, VIP-6, VIP-14
 // run: const outcome = try result(Stream.runCollect(keepSyntaxErrors(Stream.fail(new SyntaxError("bad syntax"))))); if (Result.isFailure(outcome)) try Console.log(outcome.failure.message); try Console.log(Exit.isFailure(try exit(Stream.runCollect(keepSyntaxErrors(Stream.fail(new Error("defect")))))))
 function keepSyntaxErrors(source: Stream.Stream<string, Error>) {
   return Stream.catch(source, (error) => {
@@ -122,7 +119,6 @@ Refail the errors callers are expected to handle and turn impossible failures in
 ## Timeout failures and replacement sources
 
 ```vibe
-// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-18
 // run: { const jsonValue = try.all [Stream.runCollect(endWhenIdle), effect { const outcome = try result(Stream.runCollect(failWhenIdle)); return outcome._tag }, effect { const outcome = try exit(Stream.runCollect(defectWhenIdle)); return Exit.isFailure(outcome) }, Stream.runCollect(fallbackWhenIdle)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Idle
 

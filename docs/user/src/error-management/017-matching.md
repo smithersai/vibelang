@@ -34,7 +34,6 @@ Count unavailable
 ## Choosing effectful branches
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try reportCount(3)); try Console.log(try reportCount(-1))
 effect function reportCount(raw: number) {
   return try matchEffect(itemCount(raw), {
@@ -62,7 +61,6 @@ Count unavailable
 ## Matching complete failure causes
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try outcomeLabel()); try Console.log(try reportOutcome())
 effect function outcomeLabel() {
   return try matchCause(die(new Error("index invariant")), {
@@ -93,7 +91,6 @@ Unavailable
 ## Discarding failures or all causes
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6
 // run: try ignoreRejectedCount(); try discardBoundaryOutcome()
 effect function ignoreRejectedCount() {
   try ignore(itemCount(-2))

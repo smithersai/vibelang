@@ -29,7 +29,6 @@ Bun uses `BunRuntime.runMain` from `@effect/platform-bun`; Node.js and Deno use 
 
 ```vibe
 // startup-rejected.vibe
-// pending: VIP-1, VIP-4, VIP-13, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error StartupRejected {
@@ -59,7 +58,6 @@ export const launchOptions = {
 
 ```vibe
 // custom-entry.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { launchOptions } from "./launch-options.ts"
 
@@ -77,7 +75,6 @@ Teardown is a plain host callback, not an Effect program. Write a custom one in 
 
 ```vibe
 // invalid-batch.vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error InvalidBatch {

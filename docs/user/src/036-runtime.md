@@ -5,7 +5,6 @@ Effect's runtime executes computations, carries service implementations, schedul
 ## Execution infrastructure
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 // run: const result = try promise(() => outcome); try Console.log(result._tag); if (Exit.isSuccess(result)) try Console.log(result.value)
 effect function operation() {
   try sleep("10 millis")

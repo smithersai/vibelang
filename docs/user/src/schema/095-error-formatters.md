@@ -96,7 +96,6 @@ effect function localizedFailures(input: unknown) {
 ## Connecting validation to form libraries
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: { const jsonValue = try tryPromise(() => Promise.resolve(formSchema()["~standard"].validate({}))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const DispatchForm = Schema.toStandardSchemaV1(Dispatch, {
   parseOptions: { errors: "all" },

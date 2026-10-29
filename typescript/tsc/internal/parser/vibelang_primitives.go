@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
@@ -24,11 +26,7 @@ const (
 // open brace follows it on the same line. An identifier followed by a block
 // on one line is a TypeScript syntax error, so the form takes nothing away.
 func isVibeLangMaskWord(text string) bool {
-	switch text {
-	case "uninterruptible", "restore", "interruptible":
-		return true
-	}
-	return false
+	return slices.Contains(vibelangMaskWords, text)
 }
 
 // isStartOfVibeLangMaskBlock reports whether the current token starts

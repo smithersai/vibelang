@@ -50,7 +50,6 @@ Fiber operators compose with other unary expressions. `join fork task` starts th
 ## Handling asynchronous interruption
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try stopWorker()
 effect function stopWorker() {
   const started = try Deferred.make<void>()

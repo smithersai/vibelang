@@ -1,0 +1,24 @@
+// VIP-6: every export of effect/Effect is a global of a .vibe file, and the
+// emitted JavaScript imports each one it uses from effect/Effect. A member
+// name, such as the map of xs.map, is no use of the global, and a local
+// declaration shadows a global as it does any other.
+error Missing { key: string }
+
+const xs = [1, 2, 3]
+
+effect function shadowed() {
+  const map = (text: string) => `local ${text}`
+  return map("map")
+}
+
+// expect-result: {"chained":42,"zipped":[1,"a"],"mapped":[2,4,6],"caught":"recovered k","asValue":"done","flipped":"boom","both":[1,2],"shadow":"local map"}
+export effect function main() {
+  const chained = try andThen(succeed(20), (n) => succeed(n * 2 + 2))
+  const zipped = try zip(succeed(1), succeed("a"))
+  const mapped = xs.map((n) => n * 2)
+  const caught = try catchTag(fail(new Missing({ key: "k" })), "Missing", (e) => succeed(`recovered ${e.key}`))
+  const asValue = try as(succeed(1), "done")
+  const flipped = try flip(fail("boom"))
+  const both = try all([succeed(1), succeed(2)])
+  return { chained, zipped, mapped, caught, asValue, flipped, both, shadow: try shadowed() }
+}

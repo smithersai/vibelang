@@ -5,7 +5,6 @@
 ## Requesting terminal services
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { { const jsonValue = try dimensions(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 effect function dimensions() {
   const terminal = try Terminal.Terminal
@@ -38,7 +37,6 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 ## Reading standard input
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
 effect function askName() {
   const terminal = try Terminal.Terminal
@@ -56,7 +54,6 @@ effect function askName() {
 ## Handling terminal quit errors
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
 effect function askNameOrQuit() {
   return askName() catch effect (error) => match (error) {
@@ -76,7 +73,6 @@ A host SIGINT or SIGTERM is a separate termination path: the runner interrupts t
 
 ```vibe
 // guessing.vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
 // run: const inputs = ["no", "2", "19", "11"]; provide Random.Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
 function parseGuess(input: string) {
   const text = input.trim()
@@ -137,7 +133,6 @@ The random service picks the secret once per game, both endpoints included. Inva
 
 ```vibe
 // guessing-main.vibe
-// pending: VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeTerminal from "@effect/platform-node/NodeTerminal"
 import { main } from "./guessing.vibe"

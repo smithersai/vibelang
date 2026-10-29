@@ -7,7 +7,6 @@ Sandboxing puts the complete runtime failure cause in the typed error channel, f
 ## Moving causes into the error channel
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try flip(readRow())).line); { const jsonValue = (try flip(sandboxedRow())).reasons.map((reason) => reason._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidRow {
   line: number
@@ -33,7 +32,6 @@ effect function sandboxedRow() {
 ## Inspecting individual reasons
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try rowFailureKinds(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function rowFailureKinds() {
   return sandboxedRow() catch (cause) => cause.reasons.map((reason) => {
@@ -53,7 +51,6 @@ Effect 4 stores reasons in a flat readonly array; one outcome can hold several, 
 ## Recovering selected variants
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try rowOrPlaceholder())
 effect function rowOrPlaceholder() {
   return try Effect.catch(sandboxedRow(), effect (cause) => {

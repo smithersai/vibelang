@@ -5,7 +5,6 @@ A `PubSub` broadcasts values to independent subscribers: each active subscriber 
 ## Broadcasting to independent subscribers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try broadcast(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function broadcast() {
   const hub = try PubSub.bounded<string>(4)
@@ -46,7 +45,6 @@ When the buffer is full, a bounded hub backpressures publishers, so a slow subsc
 ## Managing scoped subscriptions
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const hub = try PubSub.bounded<string>(2); const listener = try forkChild(listen(hub), { startImmediately: true }); try PubSub.publish(hub, "ready"); try Fiber.join(listener); try PubSub.shutdown(hub)
 effect function listen(hub: PubSub.PubSub<string>) {
   try scoped(effect {
@@ -65,7 +63,6 @@ In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and t
 ## Publishing batches
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try batch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function batch() {
   const hub = try PubSub.bounded<string>(3)
@@ -84,7 +81,6 @@ effect function batch() {
 ## Inspecting size and capacity
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const hub = try PubSub.bounded<number>(5)
@@ -107,7 +103,6 @@ Capacity is a plain value; size and fullness queries return Effects that run wit
 ## Ending subscriptions and shutting down
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try ownHub())
 effect function ownHub() {
   const hub = try PubSub.bounded<string>(8)

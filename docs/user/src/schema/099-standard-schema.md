@@ -5,7 +5,6 @@ Standard Schema adaptation works as in Effect: it exposes a codec to libraries t
 ## Adapting codecs to the standard validation interface
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(standardMetadata()); { const jsonValue = try tryPromise(() => Promise.resolve(DispatchStandard["~standard"].validate({ reference: "pkg-94", count: "2" }))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Dispatch = Schema.Struct({
   reference: Schema.NonEmptyString,
@@ -30,7 +29,6 @@ effect
 ## Choosing synchronous or asynchronous validation
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
 // run: { const jsonValue = try validateDispatch({ reference: "pkg-94", count: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try validateDispatch({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const ReviewedDispatch = Dispatch.pipe(Schema.decode({
   decode: SchemaGetter.checkEffect(effect (_dispatch) => {
@@ -62,7 +60,6 @@ Plain TypeScript calls are allowed inside the callback passed to `tryPromise`. T
 ## Handling defects during validation
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: { const jsonValue = try inspectBrokenValidation(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const BrokenLabel = Schema.String.pipe(Schema.decode({
   decode: SchemaGetter.transformEffect(effect (_label) => try die("label invariant failed")),

@@ -25,7 +25,6 @@ Support for the new forms arrives with the compiler's VIP implementation.
 ## Controlling virtual time
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-33
 import { assert, it } from "@effect/vitest"
 
 effect function check(condition: boolean, message: string) {
@@ -101,7 +100,6 @@ Use the `check` helper from the first example. Advancing to each boundary lets t
 ## Checking clock-dependent behavior
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-14, VIP-33
 import { it } from "@effect/vitest"
 
 effect function isExpired(createdAt: number, lifetimeMillis: number) {

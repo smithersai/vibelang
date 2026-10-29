@@ -1,0 +1,20 @@
+// VIP-6: scoped, acquireRelease and addFinalizer are globals, the exports of
+// Effect with no prefix: scoped closes the scope when its Effect ends.
+const events: string[] = []
+
+const open = (name: string) => Effect.sync(() => {
+  events.push(`open ${name}`)
+  return name
+})
+
+// expect-result: {"used":"res","events":["open res","use res","finalizer","close res","after"]}
+export effect function main() {
+  const used = try scoped(effect {
+    const r = try acquireRelease(open("res"), (r) => Effect.sync(() => { events.push(`close ${r}`) }))
+    try addFinalizer(() => Effect.sync(() => { events.push("finalizer") }))
+    events.push(`use ${r}`)
+    return r
+  })
+  events.push("after")
+  return { used, events }
+}

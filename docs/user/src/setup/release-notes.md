@@ -128,6 +128,17 @@ Projects using another bundler update `vibelang-unplugin` to 0.0.11
 instead of installing the Vite plugin. See the 0.0.10 notes below for the
 Effect 4.0.6 defect-precedence and interruption migration.
 
+### Effect globals
+
+- Every export of Effect's `Effect` module is a global in a `.vibe` file
+  ([VIP-6](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0006-effect-globals.md)),
+  not only the 15 most used: `tryPromise`, `promise`, `map`, `andThen`,
+  `result` and the rest need no `Effect.` prefix, and the emitted JavaScript
+  imports each one used from `effect/Effect`. A local declaration or import
+  shadows one. A name that is a reserved word, a JavaScript global or a
+  VibeLang keyword stays `Effect.x`: `Effect.try`, `Effect.undefined`,
+  `Effect.match`. Set `"vibe": { "effectGlobals": false }` to turn the
+  globals off ([Effect's modules](../getting-started/008-importing-effect.md)).
 
 ### Configuration upgrade
 
@@ -1503,6 +1514,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Inline type-only and empty Node imports could retain runtime module loads under `verbatimModuleSyntax`; they now report `EK4402`, and the type-binding fix writes an erased `import type` clause.
 
 - A `service` could silently accept index signatures or constructor bodies; both now report `EK0902` with guidance to declare named contracts.
+
+- Effect functions such as `andThen`, `scoped` and `tryPromise` needed a qualified name, and the skill's first program failed with `TS2304`; every non-clashing `Effect` export is now global, and `vibe.effectGlobals` can turn them off.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
 - The specification checked throwing calls in plain handlers' bodies but skipped eager parameter initialization. The same check now covers defaults, destructuring and computed binding keys, while implicit exceptions and uncalled functions keep their existing behavior.

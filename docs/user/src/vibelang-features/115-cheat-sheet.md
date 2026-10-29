@@ -3,7 +3,6 @@
 Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. Converted VibeLang blocks name the VIPs they need with `// pending:`. Support for the new forms arrives with the compiler's VIP implementation. The VibeLang examples share these declarations:
 
 ```vibe es
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
 // run: provide Approval = { approve: (_request) => succeed(true) } { { const jsonValue = [try getUser("1"), try getOrders("1"), try release("v1")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 error NotFound { id: string }
 interface User { id: string; name: string }
@@ -41,7 +40,6 @@ const hello = (id: string): Effect.Effect<string, NotFound> =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try hello("1"))
 type Find = (id: string) => User!NotFound
 type Release = (version: string) => string!!Approval
@@ -127,7 +125,6 @@ class Users extends Context.Service<Users, {
 ```
 
 ```vibe es
-// pending: VIP-3, VIP-9
 service Users {
   static readonly key = "app/Users"
   find(id: string): User!NotFound
@@ -166,7 +163,6 @@ const UsersLive = Layer.effect(Users, Effect.gen(function* () {
 ```
 
 ```vibe es
-// pending: VIP-2, VIP-5, VIP-12, VIP-14
 // run: provide UsersLive { const users = try Users; { const jsonValue = try users.find("1"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(users.region) }
 const UsersLive = Layer.effect(Users, effect {
   const seen = new Set<string>()
@@ -287,7 +283,6 @@ const first = yield* Effect.race(getUser("1"), getUser("2"))
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try fastest()).name)
 effect function fastest() {
   const user = try getUser("1")
@@ -307,7 +302,6 @@ const program = Effect.gen(function* () {
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-12
 // run: { const jsonValue = try program(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function program() {
   provide UsersLive {
@@ -353,7 +347,6 @@ const describe = (id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
 // run: { const jsonValue = [try describe("1"), try describe("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function describe(id: string) {
   return effect {
@@ -376,7 +369,6 @@ const nameOrGuest = (id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-14
 // run: { const jsonValue = [try nameOrGuest("1"), try nameOrGuest("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nameOrGuest(id: string) {
   return effect { return (try getUser(id)).name } catch () => "guest"
@@ -395,7 +387,6 @@ const nameOrReason = (id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
 // run: { const jsonValue = [try nameOrReason("1"), try nameOrReason("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nameOrReason(id: string) {
   return effect { return (try getUser(id)).name } catch (e) => match (e) {
@@ -602,7 +593,7 @@ effect function size(path: string) {
 // Output: 5
 ```
 
-**Common functions without the `Effect.` prefix**: `sleep`, `log`, `retry`, `repeat`, `timeout`, `race`, `all`, `forEach`, `die`, `withSpan`, and the `log` levels.
+**Effect's functions without the `Effect.` prefix**: every export of the `Effect` module, such as `sleep`, `log`, `retry`, `timeout`, `race`, `all`, `tryPromise`, and `map`, except a name that clashes, such as `Effect.try` and `Effect.match`. `"vibe": { "effectGlobals": false }` turns them off.
 
 ```ts effect
 // fragment

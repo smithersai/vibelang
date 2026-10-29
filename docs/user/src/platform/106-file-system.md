@@ -5,7 +5,6 @@
 ## Requesting the file-system service
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed('{"theme":"dark"}') }) { try Console.log(try readSettings()) }
 effect function readSettings() {
   const fs = try FileSystem.FileSystem
@@ -51,7 +50,6 @@ The `try` expressions run in order: the write completes before the read starts. 
 | `stream`, `sink`, `watch` | Stream bytes, write through a sink, or observe changes |
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
@@ -71,7 +69,6 @@ effect function fileSize(path: string) {
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
@@ -96,7 +93,6 @@ NodeRuntime.runMain(main())
 
 ```vibe
 // files.vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FilesTest { try Console.log(try readFixture()) }
 export effect function readFixture() {
   const fs = try FileSystem.FileSystem
@@ -113,7 +109,6 @@ export const FilesTest = FileSystem.layerNoop({
 
 ```vibe
 // files.test.vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14
 import { assert, it } from "@effect/vitest"
 import { FilesTest, readFixture } from "./files.vibe"
 

@@ -1,39 +1,15 @@
-# Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-alchemy.
-FuzzEffectGlobals global:acquireRelease compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:andThen compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:callback compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:catchTag compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:currentParentSpan compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:ensuring compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:fail compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:flatMap compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:gen compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:map compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:never compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:onExit compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:scoped compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:serviceOption compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:succeed compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:suspend compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:sync compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:tap compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals global:tryPromise compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-acquireRelease compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-andThen compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-callback compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-catchTag compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-currentParentSpan compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-ensuring compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-fail compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-flatMap compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-gen compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-map compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-never compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-onExit compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-scoped compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-serviceOption compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-succeed compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-suspend compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-sync compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-tap compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
-FuzzEffectGlobals corpus:global-tryPromise compiler VIP-6: every non-clashing Effect export is a global and a local binding shadows it; minimized corpus reproduction; lane migfix-alchemy
+# VIP-6 gaps left after every export became a global. sync and callback are still the prelude's hatches, and interrupt, yieldNow, interruptible and uninterruptible still resolve to the runtime's functions. Owner fix-vip-globals-2.
+FuzzEffectGlobals global:sync compiler VIP-6: sync is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
+FuzzEffectGlobals identity:sync compiler VIP-6: sync is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
+FuzzEffectGlobals modules-off:sync compiler VIP-6: sync is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
+FuzzEffectGlobals global:callback compiler VIP-6: callback is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
+FuzzEffectGlobals identity:callback compiler VIP-6: callback is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
+FuzzEffectGlobals modules-off:callback compiler VIP-6: callback is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
+FuzzEffectGlobals off:interrupt compiler VIP-6: vibe.effectGlobals false leaves the runtime's interrupt in scope; lane fix-vip-globals-2
+FuzzEffectGlobals identity:interrupt compiler VIP-6: bare interrupt is the runtime's function, not Effect's export; lane fix-vip-globals-2
+FuzzEffectGlobals off:yieldNow compiler VIP-6: vibe.effectGlobals false leaves the runtime's yieldNow in scope; lane fix-vip-globals-2
+FuzzEffectGlobals identity:yieldNow compiler VIP-6: bare yieldNow is the runtime's function, not Effect's export; lane fix-vip-globals-2
+FuzzEffectGlobals clash:interruptible compiler VIP-6: interruptible is a keyword, but the runtime's function still resolves bare; lane fix-vip-globals-2
+FuzzEffectGlobals clash:uninterruptible compiler VIP-6: uninterruptible is a keyword, but the runtime's function still resolves bare; lane fix-vip-globals-2
+FuzzEffectGlobals corpus:global-sync compiler VIP-6: minimized corpus reproduction of global:sync; lane fix-vip-globals-2
+FuzzEffectGlobals corpus:global-callback compiler VIP-6: minimized corpus reproduction of global:callback; lane fix-vip-globals-2

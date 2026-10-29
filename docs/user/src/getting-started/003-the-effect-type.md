@@ -37,7 +37,6 @@ Inferred errors and services are unions: running the same Effect more than once 
 ## Write a contract
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(safeRate("EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 effect function rateOf(currency: string): number!MissingRate!Rates {
   const rates = try Rates
@@ -66,7 +65,6 @@ Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, 
 ## Check selected channels
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(checkedConversion(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 effect function rate(currency: string): Effect.Effect<number, MissingRate, Rates> {
   const rates = try Rates
@@ -105,7 +103,6 @@ The shorthand has the same meaning in parameter types, aliases, service members,
 ## Description and execution
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try Effect.provide(displayedPrice(), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 const conversion = convert(30, "EUR")
 

@@ -25,7 +25,6 @@ effect function reportConfiguration() {
 ## Revealing values deliberately
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate(Redacted.make("example-token")), try authenticate(Redacted.make("wrong-token"))) }
 service CredentialsClient {
   authenticate(token: string): boolean!!

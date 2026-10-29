@@ -7,7 +7,6 @@ Effect gives the clock, random generation, console output, configuration sources
 ## Using the clock, random, and console
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const liveClock = try Clock.Clock; provide Random.Random = { nextDoubleUnsafe: () => 0.25, nextIntUnsafe: () => 12 }, Clock.Clock = { ...liveClock, currentTimeMillis: succeed(1000), currentTimeMillisUnsafe: () => 1000 } { try startupMessage() }
 effect function startupMessage() {
   const started = try Clock.currentTimeMillis
@@ -42,7 +41,6 @@ effect function configuredPort() {
 ## Replacing default implementations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try fixedRandomSample())
 effect function fixedRandomSample() {
   return try provideService(Random.next, Random.Random, {
@@ -78,7 +76,6 @@ A service with `static readonly defaultValue = () => implementation` compiles to
 ## Reproducible random computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const pairs = try reproduciblePairs(); try Console.log(try stringify(pairs.first) === try stringify(pairs.second), pairs.first[0] !== pairs.first[1])
 effect function pair() {
   return [try Random.next, try Random.next]

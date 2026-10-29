@@ -5,7 +5,6 @@ VibeLang uses ordinary branches and loops for sequential work. Effect's operator
 ## Branching and conditional computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(Option.isNone(optionalSize(-1)), Option.getOrNull(optionalSize(3)), try requiredSize(3)); try Console.log(requiredSize(-1) catch (error) => `${error._tag} ${error.size}`); try Console.log(Option.isNone(try announceIfEnabled(false))); try Console.log(Option.getOrNull(try announceIfEnabled(true)))
 error InvalidSize {
   size: number
@@ -163,7 +162,6 @@ id 8
 ## Collecting programs
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try collected(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function collected() {
   const tuple = try all([succeed(12), succeed("ready")] as const)

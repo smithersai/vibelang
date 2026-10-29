@@ -55,7 +55,6 @@ export const handle = Effect.gen(function* () {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-33
 export error MissingNote { key: string }
 
 const notes = new Map<string, string>([["todo", "milk"]])

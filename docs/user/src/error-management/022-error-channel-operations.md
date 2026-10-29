@@ -7,7 +7,6 @@ Error-channel operations transform, observe, or expose failures without immediat
 ## Mapping failures or both outcomes
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try publicQuantity(2)); try Console.log(try flip(publicQuantity(0))); try Console.log(try quantityMessage(2)); try Console.log(try flip(quantityMessage(0)))
 error InvalidQuantity {
   value: number
@@ -51,7 +50,6 @@ These combinators keep Effect's own policy: `mapError` maps every expected failu
 ## Rejecting successes with a predicate
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try boundedQuantity(20)); try Console.log(try flip(boundedQuantity(21))); try Console.log(try cappedQuantity(21)); try Console.log((try flip(cappedQuantity(0)))._tag)
 effect function boundedQuantity(value: number) {
   return try filterOrFail(
@@ -84,7 +82,6 @@ The statement form is an `if` followed by `throw`. Neither form changes the sour
 ## Observing errors, tags, causes, and defects
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try observeQuantity(2)); try Console.log((try flip(observeQuantity(0)))._tag); try Console.log(try matchCause(observeDefect(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 effect function observeQuantity(value: number) {
   const logged = tapError(quantity(value), (error) => Console.log(`Rejected quantity ${error.value}`))
@@ -118,7 +115,6 @@ A failing observation can change the resulting cause, so observe with code that 
 ## Exposing failures as successes
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectQuantity(2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try inspectQuantity(0); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try quantityOrErrorValue(2)); const value = try quantityOrErrorValue(0); try Console.log(typeof value === "number" ? value : value._tag)
 effect function inspectQuantity(value: number) {
   const outcome = try result(quantity(value))
@@ -148,7 +144,6 @@ InvalidQuantity
 ## Swapping channels
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try rejectedQuantity())._tag)
 effect function rejectedQuantity() {
   return try flip(quantity(0))

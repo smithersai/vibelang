@@ -7,7 +7,6 @@ Independent checks often must report every problem in one response. Validation c
 ## Validating every computation
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try validateHandle(" RIVER ")); { const jsonValue = (try flip(validateTeam())).map((error) => error.input); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidHandle {
   input: string
@@ -37,7 +36,6 @@ river
 `validate` runs each input's Effect even when others fail with typed errors. If any fail, the error channel holds a nonempty array of every domain error and the successes are discarded; otherwise it returns an array of successes.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try checkTeamOnly(); try Console.log("All handles valid")
 effect function checkTeamOnly() {
   try validate(["RIVER", "SKY"], (input) => validateHandle(input), {
@@ -56,7 +54,6 @@ All handles valid
 ## Partitioning successes and failures
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectTeam(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectTeam() {
   const [handles, errors] = try partition(

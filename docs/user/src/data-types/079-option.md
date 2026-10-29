@@ -149,7 +149,6 @@ true true 0 ""
 ## Converting options into effects
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try requiredPair(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requiredName(Option.none()) catch (error) => error._tag)
 effect function requiredName(name: Option.Option<string>) {
   return try fromOption(name)

@@ -5,7 +5,6 @@ A stream can hold a connection, file, or subscription open while its elements ar
 ## Acquiring for the stream lifetime
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readLines(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function openReader() {
   try Console.log("reader opened")
@@ -33,7 +32,6 @@ effect function readLines() {
 ## Release after stopping or interruption
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(readWithDeadline()); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
 effect function readHeader() {
   return try Stream.runCollect(Stream.take(lines, 1))
@@ -62,7 +60,6 @@ The timeout interrupts consumption and waits for release before reporting failur
 ## Registering finalizers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readAudited(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const audited = Stream.ensuring(lines, effect {
   try Console.log("reader resources released")

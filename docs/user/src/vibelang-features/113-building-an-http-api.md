@@ -6,7 +6,6 @@ Build routes with Effect's HTTP modules and write each request handler as an eff
 
 ```vibe
 // users.vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15
 // run: provide UsersLive { const users = try Users; { const jsonValue = try users.create("Ada"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const repeated = try result(users.create("Ada")); match (repeated) { when Result.Failure(let error): try Console.log(error.name); default: undefined; } }
 export schema CreateUser { name: string }
 export error NameTaken { name: string }
@@ -37,7 +36,6 @@ export const UsersLive = Layer.effect(Users, effect {
 
 ```vibe
 // routes.vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-14, VIP-33
 // run: try scoped(effect { const app = try HttpRouter.toHttpEffect(App); const statuses: number[] = []; for (const body of [{ name: "Ada" }, { name: "Ada" }, { name: 123 }]) { const client = try HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body); const request = HttpServerRequest.fromClientRequest(client); statuses.push((try provideService(app, HttpServerRequest.HttpServerRequest, request)).status) }; try Console.log(try Effect.try(() => JSON.stringify(statuses))) })
 import { CreateUser, NameTaken, Users, UsersLive } from "./users.vibe"
 
@@ -77,7 +75,6 @@ export { createServer } from "node:http"
 
 ```vibe
 // server.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Logger.layer([]) { try scoped(effect { try Layer.build(server(0)); try Console.log("server acquired") }); try Console.log("server released") }
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import { createServer } from "./node-server.ts"
@@ -114,7 +111,6 @@ NodeRuntime.runMain(main())
 
 ```vibe
 // routes.test.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-33
 import { assert, it } from "@effect/vitest"
 import { App } from "./routes.vibe"
 

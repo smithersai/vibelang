@@ -9,7 +9,6 @@ Resources need cleanup on success, failure, and cancellation. Use `ensuring` for
 ## Guaranteeing cleanup
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try exportRows(true)); try Effect.catch(exportRows(false), (error) => Console.log(error._tag))
 error ExportRejected
 
@@ -38,7 +37,6 @@ effect function exportRows(accepted: boolean) {
 ## Finalizing based on the outcome
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try observedExport(true)); try Effect.catch(observedExport(false), (error) => Console.log(error._tag))
 effect function observedExport(accepted: boolean) {
   return try onExit(exportRows(accepted), effect (outcome) => {
@@ -64,7 +62,6 @@ effect function observedExport(accepted: boolean) {
 ## Cleaning up failed work
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try reportFailedExport(true)); try Effect.catch(reportFailedExport(false), (error) => Console.log(error._tag))
 effect function reportFailedExport(accepted: boolean) {
   return try onError(exportRows(accepted), effect (cause) => {
@@ -89,7 +86,6 @@ effect function reportFailedExport(accepted: boolean) {
 ## Bracketing acquisition, use, and release
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide LeaseStore = { acquire: () => succeed({ id: "test-lease" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try withLease()) }
 interface Lease {
   id: string
@@ -128,7 +124,6 @@ Release receives the resource and the use phase's `Exit`. The combined contract 
 ## Giving the caller resource ownership
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try example()); provide LeaseStore = { acquire: () => succeed({ id: "owned" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try leaseId()) }
 effect function acquireLease() {
   const store = try LeaseStore

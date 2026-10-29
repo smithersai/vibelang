@@ -113,7 +113,6 @@ Each sibling `provide` starts its own build boundary, and a nested one reuses a 
 ## Controlling memoization explicitly
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try manualSharing(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function manualSharing() {
   return try scoped(effect {

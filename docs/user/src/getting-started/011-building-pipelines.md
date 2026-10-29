@@ -77,7 +77,6 @@ One `try` after another expresses the dependency that `flatMap` or `andThen` han
 ## Integrate Option and Result
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log([try positive(2), try validated(0)].join(", "))
 effect function positive(value: number) {
   const optional = value > 0 ? Option.some(value) : Option.none()

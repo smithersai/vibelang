@@ -1,0 +1,20 @@
+// VIP-6: tryPromise is a global, Effect.tryPromise with no prefix, no import.
+// Its arrow captures locals as in Effect TypeScript; a local shadows the global.
+import { queryDb } from "./helper.ts"
+
+effect function shadowed() {
+  const tryPromise = (text: string) => `local ${text}`
+  return tryPromise("x")
+}
+
+effect function load(q: string) {
+  return try tryPromise((signal) => queryDb(q, { signal }))
+}
+
+// expect-result: {"row":"row a true","failed":"Rejected","shadow":"local x","retried":"row b false"}
+export effect function main() {
+  const row = try load("a")
+  const failed = try load("bad") catch () => "Rejected"
+  const retried = try retry(tryPromise(() => queryDb("b")), { times: 1 })
+  return { row, failed, shadow: try shadowed(), retried }
+}

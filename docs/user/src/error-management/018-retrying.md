@@ -35,7 +35,6 @@ A failure ends the current attempt before the retry begins. Defects and interrup
 ## Selecting retryable domain errors
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try flip(sendTransient())).transient)
 error RequestRejected {
   transient: boolean
@@ -62,7 +61,6 @@ false
 ## Controlling timing and limits
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try flip(sendWithBackoff()))._tag); try Console.log((try flip(sendThreeMoreTimes()))._tag)
 effect function sendWithBackoff() {
   return try retry(sendRequest(), {
@@ -87,7 +85,6 @@ A schedule controls delay and can add its own stopping condition; with `times`, 
 ## Recovering after retries end
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try sendOrQueue())
 effect function sendOrQueue() {
   return try retryOrElse(

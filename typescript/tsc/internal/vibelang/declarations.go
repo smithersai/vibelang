@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -490,7 +491,7 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 // sleep is Effect.sleep in Effect TypeScript.
 func isEffectGlobal(c *checker.Checker, state *preludeState, file *ast.SourceFile, identifier *ast.Node) bool {
 	name := identifier.Text()
-	if !effectFunctionNames[name] && !hatchNames[name] && !slices.Contains(effectRootRunners, name) {
+	if !effectglobals.Names[name] && !hatchNames[name] && !slices.Contains(effectRootRunners, name) {
 		return false
 	}
 	prelude := preludeSymbol(c, state, file, name)

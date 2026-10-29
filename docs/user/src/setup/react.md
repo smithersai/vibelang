@@ -137,7 +137,6 @@ Create `src/users.test.vibe`:
 
 ```vibe
 // src/users.test.vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 import { assert, it } from "@effect/vitest"
 import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 

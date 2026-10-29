@@ -45,7 +45,6 @@ The initial check is separate from the seven permitted repetitions, so the loop 
 ## Delaying the initial run
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork delayedCleanup(); try Console.log("before first sweep"); try TestClock.adjust("60 minutes"); try Fiber.interrupt(worker) }
 effect function delayedCleanup() {
   try schedule(

@@ -7,7 +7,6 @@ A scope owns registered finalizers and runs them when its lifetime ends. Use `sc
 ## Registering finalizers
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try runRegisteredWork())
 effect function registeredWork() {
   try addFinalizer((outcome) =>
@@ -31,7 +30,6 @@ Finalizers run in reverse registration order by default, with interruption defer
 ## Opening and closing scopes explicitly
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try manuallyManagedWork())
 effect function manuallyManagedWork() {
   return try acquireUseRelease(
@@ -57,7 +55,6 @@ effect function manuallyManagedWork() {
 ## Acquiring resources with automatic release
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try copyLabels())
 effect function openBuffer(label: string) {
   return try acquireRelease(
@@ -168,7 +165,6 @@ effect function pending() {
 ## Arranging nested resource lifetimes
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try nestedLifetimes(); try observeOwnership()
 effect function nestedLifetimes() {
   try scoped(effect {
@@ -219,7 +215,6 @@ A plain `fork` creates a child owned by the current fiber. It is interrupted whe
 ## Sequencing scoped operations with rollback
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
 // run: provide ProjectSteps = { create: effect (stage) => { try Console.log(`create ${stage}`); return stage }, remove: (id) => Console.log(`remove ${id}`), finish: () => succeed("ready") } { try Console.log(try setupProject()) }; provide ProjectSteps = { create: effect (stage) => { try Console.log(`create ${stage}`); if (stage === "index") throw new SetupFailed({ stage }); return stage }, remove: (id) => Console.log(`remove ${id}`), finish: () => succeed("ready") } { try Effect.catch(setupProject(), (error) => Console.log(error.stage)) }
 error SetupFailed {
   stage: string

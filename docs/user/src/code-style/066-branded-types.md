@@ -46,7 +46,6 @@ function knownInvoice(raw: string) {
 ## Refined brands and validation
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try parseAmount(125)); try Console.log(parseAmount(1.5) catch (error) => error._tag)
 type WholeCents = number & Brand.Brand<"WholeCents">
 const WholeCents = Brand.make<WholeCents>((n) =>
@@ -71,7 +70,6 @@ InvalidAmount
 `Brand.make` takes a synchronous check that returns `true` for valid input or an explanation for invalid input. Its constructor throws a `Brand.BrandError` when validation fails. Use `result` to avoid that exception. `fromResult` converts a failed Result to a typed Effect failure, and `catch` maps it to `InvalidAmount`. A plain function can use JavaScript `try`/`catch` for constructor exceptions.
 
 ```vibe
-// pending: VIP-5, VIP-6, VIP-14
 // run: const valid = inspectAmount(125); const invalid = inspectAmount(1.5); try Console.log(Option.isSome(valid.optional), Result.isSuccess(valid.result), valid.valid); try Console.log(Option.isNone(invalid.optional), Result.isFailure(invalid.result), invalid.valid)
 function inspectAmount(raw: number) {
   const optional = WholeCents.option(raw)
@@ -91,7 +89,6 @@ true true false
 ## Composing constraints
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try chargeAmount(125)); for (const input of [-5, 1.5]) { try Console.log(chargeAmount(input) catch (error) => error._tag) }
 type WholeCents = number & Brand.Brand<"WholeCents">
 const WholeCents = Brand.make<WholeCents>((n) =>

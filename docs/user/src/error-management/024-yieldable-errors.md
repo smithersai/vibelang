@@ -7,7 +7,6 @@ Effect's custom error values can be yielded inside TypeScript generators. An eff
 ## Defining an error without a tag
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try requireText("doc-1", "Hello")); try Console.log((try flip(requireText("doc-1", " "))).documentId)
 class EmptyDocument extends Data.Error<{
   readonly documentId: string
@@ -28,7 +27,6 @@ doc-1
 `Data.Error` creates an error class with typed fields and Effect's yieldable behavior. An explicit `throw` in an effect function puts `EmptyDocument` in `E`. Creating or returning an error object alone doesn't fail the computation.
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(emptyDocumentError("doc-1").documentId); try Console.log((try flip(rejectDocument("doc-1"))).documentId)
 function emptyDocumentError(documentId: string) {
   return new EmptyDocument({ documentId })
@@ -51,7 +49,6 @@ doc-1
 ## Creating tagged error classes
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: const longTitle = try orDie(Effect.try(() => "x".repeat(81))); try Console.log(try title("Draft")); try Console.log((try flip(title("")))._tag); const error = try flip(title(longTitle)); try Console.log(match (error) { when TitleTooLong and { let length }: length; default: 0; })
 error EmptyTitle
 error TitleTooLong {
@@ -79,7 +76,6 @@ Give distinct error cases distinct tags. Tag-based matching compares strings, so
 ## Recovering failures by tag
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: const longTitle = try orDie(Effect.try(() => "x".repeat(81))); try Console.log(try displayTitle("")); try Console.log(try editableTitle("")); try Console.log(try displayTitle("Draft")); try Console.log(try editableTitle("Draft")); try Console.log((try flip(displayTitle(longTitle)))._tag); try Console.log((try flip(editableTitle(longTitle)))._tag)
 effect function displayTitle(text: string) {
   return try catchTag(title(text), "EmptyTitle", () => succeed("Untitled"))

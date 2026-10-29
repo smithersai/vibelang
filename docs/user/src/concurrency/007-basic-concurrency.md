@@ -66,7 +66,6 @@ effect function cancelWork() {
 ## Attaching interruption cleanup
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try cancelWithCleanup(); try Console.log("interrupt returned")
 effect function cancelWithCleanup() {
   const started = try Deferred.make<void>()
@@ -92,7 +91,6 @@ The child signals `started` after both cleanup handlers are installed, and the p
 ## Propagating cancellation across concurrent work
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-19
 // run: const stopped = try exit(cancelBatch()); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function cancelBatch() {
   for concurrent (const id of [1, 2, 3]) {
@@ -154,7 +152,6 @@ The `try` operations (TC39 await operations proposal) keep the same-named `Promi
 ## Inspecting the winner
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const result = try inspectRace(); try Console.log(Result.isFailure(result.outcome)); { const jsonValue = result.winners; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectRace() {
   const winners: number[] = []

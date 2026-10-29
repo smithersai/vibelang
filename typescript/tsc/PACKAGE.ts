@@ -47,6 +47,11 @@ export const Package = S.Package({
     "go-parser": goTest("Go tests of internal/parser.", "./internal/parser/...", "internal/parser"),
     "go-format": goTest("Go tests of internal/format.", "./internal/format/...", "internal/format"),
     "go-vibelangfmt": goTest("Go tests of the VibeLang formatter.", "./internal/vibelangfmt/...", "internal/vibelangfmt"),
-    "go-core": goTest("Go tests of internal/core.", "./internal/core/...", "internal/core")
+    "go-core": goTest("Go tests of internal/core.", "./internal/core/...", "internal/core"),
+    "go-effectglobals": goTest(
+      "Go tests of internal/effectglobals: the globals of a .vibe file match the installed effect/Effect.",
+      "./internal/effectglobals/...",
+      "internal/effectglobals"
+    )
   }
 })

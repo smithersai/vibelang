@@ -1,0 +1,7 @@
+// expect: TS2304
+// VIP-6: vibe.effectGlobals: false turns the globals of effect/Effect
+// off, so andThen is unknown here, while Effect.andThen still works.
+export effect function main() {
+  const ok = try Effect.andThen(Effect.succeed(1), (n: number) => Effect.succeed(n + 1))
+  return andThen(ok, (n: number) => Effect.succeed(n))
+}

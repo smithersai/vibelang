@@ -18,7 +18,6 @@ effect function countItems() {
 `mapInput` converts each incoming value before the original sink sees it. Its callback is synchronous and cannot do Effect work; use `mapInputEffect` for validation, service calls, or other work with failures and requirements.
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try Stream.run(Stream.make("7", "11"), parsedTotal)); const outcome = try result(Stream.run(Stream.make("bad"), parsedTotal)); if (Result.isFailure(outcome)) match (outcome.failure) { when InvalidQuantity: try Console.log(outcome.failure._tag, outcome.failure.raw); }
 error InvalidQuantity {
   raw: string

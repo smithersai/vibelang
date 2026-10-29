@@ -32,7 +32,6 @@ Compile both files with `vibelang`, rather than ordinary `tsc`. In a `.ts` sourc
 
 ```vibe
 // t5.vibe
-// pending: VIP-1, VIP-5, VIP-6
 export effect function clampAll(values: ReadonlyArray<number>) {
   return try forEach(values, (value) => succeed(Math.min(10, Math.max(0, value))))
 }
@@ -224,7 +223,6 @@ Every export of Effect's `Effect` module is global unless its name clashes with 
 ## Keep platform work in Effect
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { try Console.log(try reportTime()) }
 effect function reportTime() {
   const now = try Clock.currentTimeMillis
@@ -239,7 +237,6 @@ effect function reportTime() {
 
 ```vibe
 // notes.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26, VIP-33
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 

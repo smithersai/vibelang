@@ -267,7 +267,6 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 - Every form beside its Effect code: `vibelang-features/115-cheat-sheet`. The language decisions: `docs/design/vips/`.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-6, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 

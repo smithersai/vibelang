@@ -81,7 +81,6 @@ export function rows(fail = false): AsyncIterable<string> {
 ```
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: { const jsonValue = try Stream.runCollect(adaptRows(rows())); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(Stream.runCollect(adaptRows(rows(true)))); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
 import { rows } from "./rows.js"
 
@@ -101,7 +100,6 @@ function adaptRows(rows: AsyncIterable<string>) {
 ## Effects and callbacks
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { { const jsonValue = [try Stream.runCollect(timestamp), try readNotices()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const timestamp = Stream.fromEffect(Clock.currentTimeMillis)
 
@@ -124,7 +122,6 @@ For a foreign event API, register the raw callback in a TypeScript adapter and r
 ## Scoped sources
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Stream.runCollect(sessionNames); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function openSession() {
   try Console.log("open session")

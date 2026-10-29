@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -29,11 +31,7 @@ func (p *Parser) isVibeLangFile() bool {
 // a TypeScript syntax error, so these forms never change the meaning of code
 // that parses today.
 func isVibeLangDeclarationWord(text string) bool {
-	switch text {
-	case "error", "service", "control", "layer", "schema", "data":
-		return true
-	}
-	return false
+	return slices.Contains(vibelangDeclarationWords, text)
 }
 
 // scanStartOfVibeLangDeclaration reports whether the current token starts an

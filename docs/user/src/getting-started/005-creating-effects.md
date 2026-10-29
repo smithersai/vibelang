@@ -25,7 +25,6 @@ The compiler records the returned object in `A` and `Unavailable` in `E`. `succe
 ## Track errors as values
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try attemptReservation("notebook", false))
 effect function attemptReservation(item: string, available: boolean) {
   const outcome = try result(reserve(item, available))
@@ -114,7 +113,6 @@ export async function hmac(secret: string, text: string): Promise<ArrayBuffer> {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try sign("secret", "parcel")).byteLength)
 import { hmac } from "./signing.ts"
 

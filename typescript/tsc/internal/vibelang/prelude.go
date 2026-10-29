@@ -9,6 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
@@ -71,11 +72,7 @@ var preludeModules = map[string]string{
 	"$try": runtimeModule,
 	// The type of callback's resume parameter. Inputs keep callback's type
 	// arguments from being written, so the parameter's annotation names them.
-	"Resume":      runtimeModule,
-	"runPromise":  runtimeModule,
-	"runFork":     runtimeModule,
-	"runSync":     runtimeModule,
-	"runCallback": runtimeModule,
+	"Resume": runtimeModule,
 	// The test of a typed catch clause, which the parser writes (D131, catches.go).
 	"$isFailure": runtimeModule,
 	// A catch expression, which the parser writes (D236, catch_expressions.go).
@@ -207,7 +204,7 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 				// The native namespaces also resolve directly from Effect
 				// when this file has no runtime package (VIP-14).
 				root = root || strings.HasPrefix(module, "effect/")
-			} else if _, ok := effectRootNames[name]; ok || effectFunctionNames[name] {
+			} else if _, ok := effectRootNames[name]; ok || effectglobals.Names[name] && !isMemberNameOf(node) {
 				root = true
 			} else if subpath, ok := effectSubpathNames[name]; ok && !loaded[subpath.barrel] && !isMemberNameOf(node) {
 				loaded[subpath.barrel] = true
@@ -420,7 +417,7 @@ func isPreludeName(name string) bool {
 		return true
 	}
 	_, ok := effectSubpathNames[name]
-	return ok || effectFunctionNames[name]
+	return ok || effectglobals.Names[name]
 }
 
 // resolvePreludeName resolves name, which no scope around location declares,
@@ -567,7 +564,7 @@ func preludeSpellingCandidates(c *checker.Checker, location *ast.Node, meaning a
 	for name := range effectRootNames {
 		offer(name)
 	}
-	for name := range effectFunctionNames {
+	for name := range effectglobals.Names {
 		offer(name)
 	}
 	for name := range effectSubpathNames {
@@ -605,10 +602,18 @@ func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile
 		}
 		return nil
 	}
-	if isBuiltinGlobal(c, name) {
+	if isBuiltinGlobal(c, name) || effectglobals.Names[name] && !effectGlobalsOn(c, file) {
 		return nil
 	}
 	return effectExportSymbol(c, state, file, name)
+}
+
+// effectGlobalsOn reports whether the exports of effect/Effect are globals of
+// file (VIP-6, internal/effectglobals): unless the project that owns file
+// sets vibelang.effectGlobals to false.
+func effectGlobalsOn(c *checker.Checker, file *ast.SourceFile) bool {
+	options := optionsFor(c, file)
+	return options == nil || options.VibeLang == nil || options.VibeLang.EffectGlobals != core.TSFalse
 }
 
 // effectExportSymbol returns the export of effect that name, an effect root
@@ -631,7 +636,7 @@ func effectExportSymbol(c *checker.Checker, state *preludeState, file *ast.Sourc
 	if module == nil {
 		return nil
 	}
-	if effectFunctionNames[name] {
+	if effectglobals.Names[name] {
 		// A function of the Effect module, reached through the root's Effect.
 		effect := c.TryGetMemberInModuleExports("Effect", module)
 		if effect == nil {
@@ -822,7 +827,7 @@ func preludeImports(f *ast.NodeFactory, names []string) []*ast.Node {
 	var namedModules []string
 	for _, name := range names {
 		module, namespace := preludeModules[name], true
-		if module == "" && effectFunctionNames[name] {
+		if module == "" && effectglobals.Names[name] {
 			module, namespace = "effect/Effect", false
 		} else if subpath, ok := effectSubpathNames[name]; module == "" && ok {
 			module = subpath.module

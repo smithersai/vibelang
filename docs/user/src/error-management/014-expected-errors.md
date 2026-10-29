@@ -7,7 +7,6 @@ Expected errors are situations callers can handle: invalid input, a denied opera
 ## Constructing typed failures
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try normalizeCode(" pen ")); try Console.log((try flip(normalizeCode(" ")))._tag)
 error InvalidCode {
   input: string
@@ -98,7 +97,6 @@ export function parseQuantity(text: string): number {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try quantity("3")); try Console.log((try flip(quantity("x")))._tag)
 import { InvalidQuantity, parseQuantity } from "./quantity.ts"
 
@@ -123,7 +121,6 @@ InvalidQuantity
 ## Failing in an expression
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try port(new Map([["PORT", "3000"]]))); try Console.log((try flip(port(new Map())))._tag)
 error MissingPort
 
@@ -147,7 +144,6 @@ An `effect { … }` expression builds an Effect from statements. Here it validat
 ## Tracking several error cases
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try findItem("pen")).label); try Console.log((try flip(findItem("book")))._tag); try Console.log((try flip(findItem("")))._tag)
 effect function findItem(input: string) {
   const code = try normalizeCode(input)
@@ -168,7 +164,6 @@ An effect function collects the failures it throws and those of the Effects it r
 ## Turning failures into values
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try inspectItem("pen")); try Console.log(try inspectItem("")); try Console.log(try inspectItem("book")); try Console.log(try optionalItem("pen")); try Console.log(try optionalItem("book"))
 effect function inspectItem(input: string) {
   const outcome = try result(findItem(input))
@@ -197,7 +192,6 @@ No item
 ## Recovering all failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-14
 // run: try Console.log(try itemLabel("pen")); try Console.log(try itemLabel("")); try Console.log(try itemLabel("book"))
 effect function itemLabel(input: string) {
   return effect {
@@ -216,7 +210,6 @@ Unavailable (ItemMissing)
 The catch expression receives `InvalidCode | ItemMissing` and handles both, but only in causes with no defect; given several expected failures together, it receives the first and handles their whole cause.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try itemLabelInline("pen")); try Console.log(try itemLabelInline("")); try Console.log(try itemLabelInline("book"))
 effect function itemLabelInline(input: string) {
   const item = findItem(input) catch (error) => ({
@@ -241,7 +234,6 @@ After an Effect, `x catch (error) => handler` runs `x` and passes an expected fa
 ## Recovering selected failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try labelOrMissing("book")); try Console.log((try flip(labelOrMissing("")))._tag); try Console.log((try labelByTag("book")).label); try Console.log((try flip(labelByTag("")))._tag)
 effect function labelOrMissing(input: string) {
   return effect {
@@ -274,7 +266,6 @@ Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles t
 The handler's failure type is the error channel, which an effect function or block infers as `Effect.gen` does. A `throw` adds its class unless an Effect the body runs already fails with a supertype of it. Beside `try read()`, where `read()` fails with `Error | ApiError`, `throw new NotReady()` of a class that extends `Error` adds nothing: the channel stays `Error | ApiError`. A tag arm `when { _tag: "NotReady" }:` then finds no member with that tag, and TypeScript reports `TS2367`, as it rejects `catchTag("NotReady", …)` on the same Effect. Match the class instead: `when NotReady:` tests `instanceof`, so it handles the failure whatever the channel says.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try withTagTable("")).label); try Console.log((try withFilter("book")).label); try Console.log((try withPredicate("book")).label); try Console.log((try flip(withFilter("")))._tag); try Console.log((try flip(withPredicate("")))._tag)
 effect function withTagTable(input: string) {
   return try catchTags(findItem(input), {
@@ -313,7 +304,6 @@ InvalidCode
 ## Filtering nested reasons
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try explainBusy()); try Console.log(try explainReasons()); try Console.log((try flip(exposeReasons()))._tag)
 error Busy { seconds: number }
 error Rejected

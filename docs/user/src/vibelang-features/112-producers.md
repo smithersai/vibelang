@@ -5,7 +5,6 @@ A producer emits values and can run Effects between yields. Declare one with `ef
 ## Yield values on demand
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-20, VIP-21
 // run: try Console.log(try firstAlert())
 effect function* readings() {
   try addFinalizer(() => Console.log("sensor closed"))
@@ -42,7 +41,6 @@ A bare `return` ends a producer. `return value` is an error (`EK2128`) because a
 ## Call services between yields
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-20, VIP-21, VIP-33
 // run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
@@ -79,7 +77,6 @@ Resources a producer acquires in its Effect Scope stay open between yields and c
 ## Use a producer as a Stream
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-20
 // run: { const jsonValue = try alerts(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function alerts() {
   const selected = readings().pipe(

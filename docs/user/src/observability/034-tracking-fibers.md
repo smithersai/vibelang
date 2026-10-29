@@ -5,7 +5,6 @@
 ## Managing groups of running fibers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-17
 // run: { const jsonValue = try runGroup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function runGroup() {
   return try scoped(effect {
@@ -39,7 +38,6 @@ tracked workers 2
 ## Tracking fibers by key
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try replacePreview())
 effect function replacePreview() {
   return try scoped(effect {
@@ -66,7 +64,6 @@ Running a fiber under an existing key interrupts that key's previous fiber: late
 ## Removing completed work
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try waitForAllTracked())
 effect function waitForAllTracked() {
   return try scoped(effect {
@@ -88,7 +85,6 @@ Sets and maps remove completed fibers automatically, so a long-lived owner doesn
 ## Interrupting tracked work on scope closure
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try serveBriefly()
 effect function serveBriefly() {
   try scoped(effect {

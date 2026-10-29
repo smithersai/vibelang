@@ -31,7 +31,6 @@ Each key stores its own outcome: repeated calls for the key reuse it, and concur
 ## Reusing one computed result
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try cachedSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function cachedSettings() {
   let loads = 0
@@ -53,7 +52,6 @@ effect function cachedSettings() {
 ## Expiring results after a duration
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try expiringSnapshot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function expiringSnapshot() {
   let revision = 0
@@ -72,7 +70,6 @@ The TTL bounds how long an outcome is reused. Expiration starts no background re
 ## Invalidating explicitly
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try reloadableSnapshot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function reloadableSnapshot() {
   let revision = 0

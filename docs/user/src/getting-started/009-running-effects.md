@@ -60,7 +60,6 @@ const total = Effect.runSync(subtotal())
 ## Run promise-based computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try promise(() => pending))
 effect function preparedMessage() {
   try sleep("15 millis")
@@ -77,7 +76,6 @@ const pending = Effect.runPromise(preparedMessage())
 ## Collect complete execution results
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14, VIP-26
 // run: try Console.log(immediate._tag)
 error BadInput
 

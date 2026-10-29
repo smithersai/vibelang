@@ -15,9 +15,11 @@ type VibeLangOptions struct {
 	// an invalid value or exposing it in the effective serialized configuration.
 	InvalidSeverities map[string]bool `json:"-"`
 	// Severities is the release configuration, separate from legacy diagnostics.
-	Severities    map[string]string `json:"severities,omitzero"`
-	EffectGlobals Tristate          `json:"effectGlobals,omitzero"`
-	EffectModules Tristate          `json:"effectModules,omitzero"`
+	Severities map[string]string `json:"severities,omitzero"`
+	// EffectGlobals controls the value exports of effect/Effect in .vibe files
+	// (VIP-6). Unknown means true.
+	EffectGlobals Tristate `json:"effectGlobals,omitzero"`
+	EffectModules Tristate `json:"effectModules,omitzero"`
 	// SidecarDir is vibe.sidecarDir, the absolute directory that holds the
 	// project's declaration sidecars, or "" for x.d.vibe.ts beside x.vibe
 	// (VIP-27, decided detail 268). It may still begin with ${configDir}

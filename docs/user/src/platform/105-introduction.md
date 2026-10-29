@@ -10,7 +10,6 @@ The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.time
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
@@ -118,7 +117,6 @@ TypeScript runner.
 
 ```vibe
 // greeting.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed("  Hello, VibeLang!\n") }) { try greet() }
 export effect function greet() {
   const fs = try FileSystem.FileSystem
@@ -134,7 +132,6 @@ export effect function greet() {
 
 ```vibe
 // main-node.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { greet } from "./greeting.vibe"
@@ -157,7 +154,6 @@ A `provide` inside `main` wins for the code inside it, so `provide NodeFileSyste
 
 ```vibe
 // main-bun.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
 import { greet } from "./greeting.vibe"

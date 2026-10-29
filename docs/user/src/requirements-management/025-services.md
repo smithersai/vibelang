@@ -97,7 +97,6 @@ Use Effect's `Context.Service` class for a service whose implementation has any 
 ## Requesting and supplying implementations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try fixedLabel()); provide Sequence = { next: effect () => 23 } { try Console.log(try nextLabel(), try readImplementation()) }
 effect function nextLabel() {
   const sequence = try Sequence
@@ -161,7 +160,6 @@ Providers infer and check the implementation from the key argument, so most laye
 ## Combining multiple dependencies
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-9, VIP-12, VIP-14
 // run: { const jsonValue = try testAnnouncement(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function announceTicket() {
   const label = try nextLabel()
@@ -187,7 +185,6 @@ effect function testAnnouncement() {
 A union in `R` needs both capabilities. Layers supply the group together; `Layer.merge` combines independent layers, and `Layer.provide` feeds one layer's outputs into another's construction requirements. Inputs no argument provides stay requirements of the resulting layer, reported as missing where a runner or contract needs them satisfied. For a small local override, nest direct service provision.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: try Console.log(try testWithContext())
 const testContext = Context.add(
   Context.make(Sequence, { next: effect () => 17 }),
@@ -206,7 +203,6 @@ A `Context` holds existing implementations; a `Layer` describes how to build the
 ## Requesting optional services
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try optionalAnnouncement("hello")); provide Reporter = { write: (message) => Console.log(message) } { try Console.log(try optionalAnnouncement("hello")) }
 effect function optionalAnnouncement(message: string) {
   const reporter = try serviceOption(Reporter)

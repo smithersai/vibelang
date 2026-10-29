@@ -73,7 +73,6 @@ A pending response is a success, so it feeds `repeat`, not `retry`. This simulat
 ## Bounding the whole retry operation
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork result(readWithDeadline()); try TestClock.adjust("1 second"); const outcome = join worker; if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
 error Offline
 

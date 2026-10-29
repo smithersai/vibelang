@@ -5,7 +5,6 @@ Tracing records an operation's duration and its relation to other operations. Vi
 ## Relating spans to traces
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(requestTrace(), tracer)); try Console.log(spans[0].name, spans[0].status._tag, Option.isNone(spans[0].parent))
 effect function requestTrace() {
   return try withSpan(effect {
@@ -30,7 +29,6 @@ A span describes one operation: name, identifiers, timestamps, status, and attri
 ## Adding spans around computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(renderReport("csv"), tracer)); try Console.log(spans[0].name, spans[0].attributes.get("report.format"), spans[0].status._tag)
 effect function renderReport(format: string) {
   return try withSpan(effect {
@@ -66,7 +64,6 @@ export function collectorFixture() {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-23, VIP-33
 // run: const { requests, collector } = collectorFixture(); try Console.log(try provideService(exportedReport(), FetchHttpClient.Fetch, collector)); try Console.log(requests.length, (try stringify(requests)).includes("render-report"), (try stringify(requests)).includes("report-worker"))
 import { collectorFixture } from "./collector.ts"
 
@@ -95,7 +92,6 @@ An application that already owns an OpenTelemetry SDK tracer provider initialize
 ## Inspecting failures and attributes
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const outcome = try withTracer(Effect.provide(failingRender(), Logger.layer([])), tracer); try Console.log(Exit.isFailure(outcome), spans[0].attributes.get("report.format")); if (spans[0].status._tag === "Ended") try Console.log(Exit.isFailure(spans[0].status.exit))
 error RenderFailed {
   format: string
@@ -121,7 +117,6 @@ An exported failure carries error status and failure details; attributes identif
 ## Representing logs as span events
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const original = try Console.Console; try withTracer(provideService(tracedLogs(), Console.Console, { ...original, log: () => {} }), tracer); try Console.log(try stringify(spans[0].events.map(([name]) => name)), spans[0].status._tag)
 effect function tracedLogs() {
   provide Logger.layer([Logger.defaultLogger, Logger.tracerLogger]) {
@@ -143,7 +138,6 @@ The tracer logger records logs inside an active span as timestamped events, a ti
 ## Nesting operations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); { const jsonValue = try withTracer(generate(), tracer); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function loadTemplate() {
   return try withSpan(effect {
@@ -171,7 +165,6 @@ The inner spans take the outer span as parent and share its trace ID; each has i
 ## Viewing traces locally
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: const { requests, collector } = collectorFixture(); try provideService(demonstration(), FetchHttpClient.Fetch, collector); try Console.log(requests.length, (try stringify(requests)).includes("generate-report"), (try stringify(requests)).includes("load-template"), (try stringify(requests)).includes("render-report"))
 import { collectorFixture } from "./collector.ts"
 
@@ -193,7 +186,6 @@ Open a `generate-report` trace to compare parent and child durations, attributes
 ## Connecting external tracing services
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-23, VIP-33
 // run: const { requests, collector } = collectorFixture(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { { const jsonValue = try provideService(productionReport(), FetchHttpClient.Fetch, collector); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }; try Console.log(requests.length, (try stringify(requests)).includes("generate-report"))
 import { collectorFixture } from "./collector.ts"
 

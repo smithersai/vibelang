@@ -40,7 +40,6 @@ effect function inspect() {
 ## Keeping dependent asynchronous updates atomic
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14, VIP-18
 // run: provide Versions = { loadAfter: effect (version) => { try sleep("10 millis"); return version + 1 } } { { const jsonValue = try refreshTwice(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }; const state = try SynchronizedRef.make(0); try Effect.catch(SynchronizedRef.updateEffect(state, effect () => { throw new RefreshFailed() }), (error) => Console.log(error._tag)); try Console.log(try SynchronizedRef.updateAndGetEffect(state, (n) => succeed(n + 1)))
 error RefreshFailed
 

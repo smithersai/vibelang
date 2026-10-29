@@ -39,7 +39,6 @@ Interruption, a third kind of termination, bypasses `catch` when the cause has n
 ## Choosing the error type
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try percentage(1, 4)); try Console.log(try matchCause(percentage(1, 0), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 effect function percentage(part: number, total: number) {
   if (total <= 0) {

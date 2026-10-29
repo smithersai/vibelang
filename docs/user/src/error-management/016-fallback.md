@@ -93,7 +93,6 @@ The return annotation checks that the successful object and the fallback both pr
 ## Trying alternatives until one succeeds
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try bestTitle())
 effect function bestTitle() {
   return try firstSuccessOf([

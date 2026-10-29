@@ -28,6 +28,16 @@ const backoff = Schedule.exponential("50 millis")
 
 `Effect` and every root module of `effect` need no import. Type exports are not global, so the type is `Effect.Effect<A, E, R>`, or `A!E!R`. Every export of the `Effect` module is global unless its name clashes with a keyword or JavaScript global. This includes `sleep`, `log`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, `die`, `sync`, `tryPromise`, `callback`, `result`, and the runners. Names that clash stay qualified, such as `Effect.try`, `Effect.catch`, `Effect.match`, and `Effect.provide`. `pipe`, `flow`, and `identity` need no import either. `fork` and `join` use their language forms.
 
+These globals follow [VIP-6](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0006-effect-globals.md): a local declaration or an import of the same name shadows one, and the emitted JavaScript imports each one a file uses from `effect/Effect`. A name that clashes is not a global, and you write `Effect.x` instead:
+
+| Clashes with | Write |
+| --- | --- |
+| A reserved word | `Effect.try`, `Effect.catch`, `Effect.void`, `Effect.let` |
+| A JavaScript global | `Effect.undefined` |
+| A VibeLang keyword | `Effect.match`, `Effect.when`, `Effect.service`, `Effect.provide`, `Effect.interruptible`, `Effect.uninterruptible` |
+
+The compiler reads this list from the installed `effect` when it is built, so it follows the pinned Effect version's exports. The prelude's own names win over an export of the same name: `sync`, `callback`, `interrupt`, and `yieldNow` are the prelude's. To turn these globals off and write every one as `Effect.x`, set `"vibe": { "effectGlobals": false }` in `tsconfig.json` ([options](012-devtools.md)).
+
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 
 ```vibe

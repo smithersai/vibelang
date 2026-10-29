@@ -86,7 +86,6 @@ Size counts buffered messages; capacity is the configured limit. Both are observ
 ## Shutting down and awaiting closure
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: { const jsonValue = try finishNormally(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const stopped = try stopImmediately(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function finishNormally() {
   const queue = try Queue.bounded<number, Cause.Done>(4)

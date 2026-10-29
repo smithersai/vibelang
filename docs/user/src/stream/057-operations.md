@@ -67,7 +67,6 @@ effect function exportRows(source: Stream.Stream<string>) {
 `try Stream.toAsyncIterableEffect(source)` captures the current services and returns an async iterable for a TypeScript consumer; `toAsyncIterable` is the direct variant for a source with no service requirements. Conversion consumes nothing. Iteration failures cross as JavaScript errors, so the foreign consumer must map them back into its declared failure channel.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try printBatches()
 effect function printBatches() {
   try scoped(effect {
@@ -173,7 +172,6 @@ const names = Stream.crossWith(
 ## Partitioning and grouping
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try partitionReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function partitionReadings() {
   return try scoped(effect {
@@ -251,7 +249,6 @@ effect function formatFields() {
 ## Broadcasting and buffering
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try shareReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try Stream.runCollect(buffered); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function shareReadings() {
   return try scoped(effect {

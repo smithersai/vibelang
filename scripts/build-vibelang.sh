@@ -8,6 +8,13 @@ exe=vibelang
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) exe=vibelang.exe ;; esac
 entry=./cmd/tsc
 [ ! -d "$root/typescript/tsc/cmd/vibelang" ] || entry=./cmd/vibelang
+# The globals of a .vibe file include every export of effect/Effect (VIP-6).
+# Regenerate their list from the installed effect, so an Effect upgrade
+# updates it; without effect installed, the checked-in list stands.
+modules=${EFFECT_NODE_MODULES:-$root/experiments/node_modules}
+if [ -f "$modules/effect/dist/Effect.d.ts" ]; then
+	(cd "$root/typescript/tsc" && CGO_ENABLED=0 go run ./internal/effectglobals/gen "$modules")
+fi
 echo "build-vibelang: CGO_ENABLED=0 go build $entry"
 (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$root/packages/compiler/native/$exe" "$entry")
 echo "build-vibelang: $root/packages/compiler/native/$exe"

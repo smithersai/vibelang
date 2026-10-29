@@ -31,7 +31,6 @@ A direct service call per item repeats backend work. Batching helps only when th
 ## Define request resolvers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try request(FindPart({ code: "ink-blue" }), PartResolver); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const DemoCatalog = new Map<string, Part>([
   ["ink-black", { code: "ink-black", label: "Black ink" }],
@@ -59,7 +58,6 @@ Complete every entry, including requests for absent rows. Use `Request.succeed` 
 ## Build queries from requests
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try partLabel("ink-black")); const missing = try result(findPart("missing")); if (Result.isFailure(missing)) try Console.log(missing.failure._tag)
 effect function findPart(code: string) {
   return try request(FindPart({ code }), PartResolver)
@@ -80,7 +78,6 @@ effect function partLabel(code: string) {
 ## Combine compatible requests into batches
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try labels(["ink-black", "ink-blue"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function labels(codes: ReadonlyArray<string>) {
   return try forEach(codes, (code) => partLabel(code), {
@@ -98,7 +95,6 @@ Requests with the same resolver and batch key can join one pending batch. The de
 ## Control batch execution
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-23
 // run: const parts = try forEach(Array.from({ length: 65 }, () => "ink-blue"), (code) => tunedLookup(code), { concurrency: "unbounded" }); try Console.log(parts.length, parts.every((part) => part.label === "Blue ink"))
 const TunedResolver = PartResolver
   |> RequestResolver.setDelay(%, "8 millis")
@@ -119,7 +115,6 @@ For full control, `RequestResolver.makeWith` accepts `batchKey`, `delay`, `colle
 ## Supply resolver dependencies
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag)))) }; provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success")))) }
 service CatalogApi {
   fetchMany(codes: ReadonlyArray<string>): ReadonlyMap<string, Part>!CatalogUnavailable
@@ -162,7 +157,6 @@ Match results by identifier; don't assume the backend preserves request order. A
 ## Share and tune request caches
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try cachedExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const queries = try cachedQueries(); for (let i = 0; i < 2; i++) { const outcome = try result(queries.find("missing")); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
 effect function cachedQueries() {
   const resolver = try RequestResolver.withCache(PartResolver, {
@@ -192,7 +186,6 @@ effect function cachedExample() {
 The cache is bounded by `capacity`, with `"lru"` eviction by default or `"fifo"` for insertion order. Completed expected failures are cached; interrupted results are not. Entries have no time-based expiry, and hits depend on request equality.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try expiringLookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function expiringLookup() {
   const cache = try RequestResolver.asCache(PartResolver, {

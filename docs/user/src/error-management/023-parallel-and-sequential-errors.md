@@ -24,7 +24,6 @@ A `Cause.Cause<E>` holds a readonly array of `Cause.Reason<E>`, each `Fail` with
 ## Combining concurrent or sequential reasons
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectDelivery(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function operationWithBrokenCleanup() {
   return try ensuring(
@@ -59,7 +58,6 @@ When every reason is an expected failure, ordinary catch receives the first and 
 ## Runtime causes and domain error collections
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: { const jsonValue = (try flip(validatePorts())).map((error) => error.port); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidPort { port: number }
 

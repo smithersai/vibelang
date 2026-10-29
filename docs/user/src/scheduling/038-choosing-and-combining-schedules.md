@@ -5,7 +5,6 @@
 ## Choosing a starting rule
 
 ```vibe
-// pending: VIP-5, VIP-6, VIP-14
 // run: const rules: ReadonlyArray<Schedule.Schedule<unknown, unknown, Cron.CronParseError>> = [immediate, afterCompletion, cadence, backoff, calendar]; for (const rule of rules) { const step = try Schedule.toStep(rule); const outcome = try result(step(Date.parse("2026-11-02T00:00:00Z"), undefined)); if (Result.isSuccess(outcome)) try Console.log(Duration.toMillis(outcome.success[1])) }
 const immediate = Schedule.recurs(4)
 const afterCompletion = Schedule.spaced("20 seconds")
@@ -53,7 +52,6 @@ A schedule step takes input and produces output plus timing metadata. The input 
 ## Limiting duration and adjusting delays
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Random.withSeed(effect { const rules: ReadonlyArray<Schedule.Schedule<unknown>> = [bounded, firstThree]; for (const rule of rules) { const step = try Schedule.toStep(rule); let now = 0; const waits: number[] = []; for (let i = 0; i < 10; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; try Console.log(waits.length, waits.every((ms) => ms >= 0 && ms <= 9600)) } }, "docs-schedule")
 const bounded = Schedule.exponential("300 millis").pipe(
   Schedule.modifyDelay(effect ({ duration }) => Duration.min(duration, Duration.seconds(8))),
@@ -74,7 +72,6 @@ const firstThree = Schedule.while(
 ## Requiring every timing rule
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: const step = try Schedule.toStep(policy); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const policy = Schedule.max([
   Schedule.exponential("400 millis"),
@@ -88,7 +85,6 @@ const policy = Schedule.max([
 ## Accepting any timing rule
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: const step = try Schedule.toStep(startupAndSteady); let now = 0; const waits: number[] = []; for (let i = 0; i < 5; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const startupAndSteady = Schedule.min([
   Schedule.spaced("500 millis").pipe(Schedule.upTo({ times: 2 })),
@@ -102,7 +98,6 @@ const startupAndSteady = Schedule.min([
 ## Switching rules in phases
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: const step = try Schedule.toStep(reconnect); let now = 0; const waits: number[] = []; for (let i = 0; i < 8; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; { const jsonValue = waits; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const reconnect = Schedule.spaced("150 millis").pipe(
   Schedule.upTo({ times: 2 }),

@@ -37,7 +37,6 @@ effect function stringify(value: unknown) {
 A counter accumulates changes; a gauge keeps its latest value. `incremental: true` ignores negative counter inputs; without it, a counter also decrements. Counters and gauges both have bigint variants. Updates to the same metric identity share state, so the totals above accumulate across runs.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try instrumentedValue(), (try Metric.value(completions)).count)
 const completions = Metric.withConstantInput(
   Metric.counter("guide_completions", { incremental: true }),
@@ -90,7 +89,6 @@ A histogram sorts observations into configured buckets and tracks count, sum, mi
 ## Timing computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork render(); try TestClock.adjust("30 millis"); try Console.log(join worker); const state = try Metric.value(renderTime); try Console.log(state.count, state.sum, state.min, state.max) }
 const renderTime = Metric.timer("guide_render_duration", {
   boundaries: [5, 20, 50, 100, 500]

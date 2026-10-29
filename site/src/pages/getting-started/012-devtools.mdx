@@ -128,7 +128,8 @@ A contract gives the compiler a promise to check. Write all three channels, such
     "sourceMap": true
   },
   "vibe": {
-    "severities": { "EK0801": "error", "EK4609": "warning", "EK3801": "off" }
+    "severities": { "EK0801": "error", "EK4609": "warning", "EK3801": "off" },
+    "effectGlobals": true
   }
 }
 ```
@@ -144,6 +145,8 @@ Root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics` are legac
 For example, a legacy `EK4406` policy entry cannot appear in `vibe.severities`; remove it before migrating the map. `EK9100` is editor-only and warns by default; it requests a written type for the text-only projection and is not reported by the CLI.
 
 Unknown or retired warning codes cannot be configured. Remove an `EK1016` entry: the warning for an unused `main` was retired when `main` became an ordinary function (VIP-26).
+
+`vibe.effectGlobals` defaults to `true`, making every value export of `effect/Effect` a global, such as `retry` and `tryPromise`. Set it to `false` to use `Effect.retry` and other qualified names ([Effect's functions](/getting-started/008-importing-effect)).
 
 ## TypeScript-style Effect code
 

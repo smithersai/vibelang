@@ -5,7 +5,6 @@ A `Cache` stores lookup outcomes by key and shares in-progress lookups across ca
 ## Building a lookup cache
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-9, VIP-13, VIP-14
 // run: const prices = try Effect.provide(makePrices(), Layer.succeed(Products, { price: (sku) => succeed(42) })); try Console.log(try Cache.get(prices, "ink"))
 error MissingProduct {
   sku: string
@@ -59,7 +58,6 @@ Requests for the same missing key wait on one computation without blocking the J
 ## Setting capacity and expiration
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: const names = try makePermanentNames(); try Console.log(try Cache.get(names, "ink")); try Console.log(try Cache.get(names, "blue"))
 effect function makePermanentNames() {
   return try Cache.make({
@@ -77,7 +75,6 @@ Capacity bounds entries, not bytes; eviction keeps recently used entries over ol
 ## Inspecting cache state
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const cache = try Cache.make({ capacity: 5, lookup: (key: string) => succeed(key.length) })

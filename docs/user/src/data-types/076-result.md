@@ -73,7 +73,6 @@ Rejected COUNT: INVALID
 ## Converting results into effects
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-13, VIP-14
 // run: { const jsonValue = try validatePair(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requireCount("-1") catch (error) => `${error._tag} ${error.input}`)
 error InvalidCount {
   input: string

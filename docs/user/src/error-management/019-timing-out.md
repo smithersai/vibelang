@@ -7,7 +7,6 @@ A timeout limits how long a caller waits for work. Effect interrupts the timed c
 ## Limiting execution duration
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try buildPreview()); try Console.log((try flip(previewWithDeadline()))._tag)
 effect function buildPreview() {
   try sleep("3 seconds")
@@ -30,7 +29,6 @@ TimeoutError
 `timeout` adds `Cause.TimeoutError` to `E`. A timely success keeps its value, and a domain failure before the deadline keeps its error. Pass the Effect value, `buildPreview()`, so the timer surrounds its execution.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try previewLabel())
 effect function previewLabel() {
   return previewWithDeadline() catch (error) => {
@@ -51,7 +49,6 @@ The internal interruption that stops the source is separate from the typed timeo
 ## Representing timeout as absence
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try optionalPreview())
 effect function optionalPreview() {
   const preview = try timeoutOption(buildPreview(), "500 millis")
@@ -68,7 +65,6 @@ No preview yet
 ## Choosing an alternative or custom failure
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try previewOrPlaceholder()); try Console.log((try flip(requiredPreview("doc-1"))).documentId)
 effect function previewOrPlaceholder() {
   return try timeoutOrElse(buildPreview(), {
@@ -100,7 +96,6 @@ The alternative Effect runs lazily, after the timer wins, and can use services, 
 ## Interruption of protected work
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-22
 // run: try Console.log((try flip(protectedPreview()))._tag)
 effect function protectedPreview() {
   return try timeout(

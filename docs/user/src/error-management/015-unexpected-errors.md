@@ -7,7 +7,6 @@ Defects report bugs and broken invariants, outside the typed error contract. Dom
 ## Creating defects
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try decodeOpcode(1)); try Console.log(try matchCause(decodeOpcode(2), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 effect function decodeOpcode(opcode: number) {
   if (opcode !== 1) try die(new Error("unknown internal opcode"))
@@ -26,7 +25,6 @@ true
 An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. In a plain or async function, `throw` is JavaScript's. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure. A tracked throwing callback is not assignable to `sync`'s non-throwing thunk; use `orDie(Effect.try(() => call()))` when that exception should be a defect.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
 effect function firstLabel(labels: ReadonlyArray<string>) {
   return fromOption(Option.fromNullishOr(labels[0])) catch () => "No label"
@@ -43,7 +41,6 @@ No label
 ## Promoting typed failures to defects
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try matchCause(startup(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false })); try Console.log(try matchCause(startupWithMessage(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 error MissingSetting {
   name: string
@@ -75,7 +72,6 @@ true
 ## Examining complete execution results
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try inspectStartup())
 effect function inspectStartup() {
   const outcome = try exit(startup())
@@ -97,7 +93,6 @@ An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs on
 ## Recovering defects at a boundary
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try isolateDecoder(1)); try Console.log(try isolateDecoder(2))
 effect function isolateDecoder(opcode: number) {
   return try catchDefect(decodeOpcode(opcode), effect (defect) => {
@@ -121,7 +116,6 @@ disabled
 ## Recovering a complete cause
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(try decoderBoundary(1)); try Console.log(try decoderBoundary(2))
 effect function decoderBoundary(opcode: number) {
   const outcome = try exit(decodeOpcode(opcode))

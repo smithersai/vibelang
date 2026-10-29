@@ -27,19 +27,6 @@ type effectRootExport struct {
 	namespace bool
 }
 
-// effectFunctionNames are the functions of effect's Effect module that a
-// .vibe file sees without the Effect. prefix (D151): the ones the docs and
-// examples call most, whose names read clearly alone. The emitted JavaScript
-// imports each one used from effect/Effect. Operations that VibeLang spells
-// another way stay qualified: Effect.fail is throw, Effect.provide is with,
-// Effect.scoped and acquireRelease are using, and Effect.sync, promise, try,
-// and tryPromise are the hatches.
-var effectFunctionNames = map[string]bool{
-	"all": true, "die": true, "exit": true, "forEach": true, "log": true, "logDebug": true, "logError": true,
-	"logInfo": true, "logWarning": true, "race": true, "repeat": true, "retry": true, "sleep": true,
-	"timeout": true, "withSpan": true,
-}
-
 var effectRootNames = map[string]effectRootExport{
 	"Arbitrary":            {module: "effect/Arbitrary", namespace: true},
 	"Array":                {module: "effect/Array", namespace: true},

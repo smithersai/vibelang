@@ -136,7 +136,6 @@ Reuse one layer value when several paths need a shared instance: equivalent reco
 ## Providing and building layers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: { const jsonValue = try main(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try withBuiltContext())
 effect function main() {
   provide AppLive {
