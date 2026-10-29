@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const register = fileURLToPath(new URL("../register.mjs", import.meta.url))
@@ -23,8 +23,8 @@ const tsconfig = (include) => JSON.stringify({
 })
 
 // A scratch project whose compiler records each invocation in calls.jsonl.
-function project(t, files) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-register-")))
+function project(t, files, prefix = "vibelang-register-") {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), prefix)))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "node_modules"))
   symlinkSync(realpathSync(effect), join(root, "node_modules/effect"))
@@ -245,6 +245,25 @@ test("stack traces name .vibe lines without --enable-source-maps", { skip }, (t)
   assert.match(result.stdout, /boom\.vibe:4:\d+\)?$/m)
 })
 
+test("the inline source map names each .vibe source by file URL, in a directory with a space, # and %", { skip }, (t) => {
+  // A source map's sources are URLs resolved against the module's URL, so a
+  // Windows path such as C:/app/main.vibe would read as the scheme c:.
+  const { root, run } = project(t, {
+    "src/boom.vibe": "export function boom(): number { return 1 }\n",
+    "src/main.ts": [
+      "import { registerHooks } from \"node:module\"",
+      "let source = \"\"",
+      "registerHooks({ load(url, context, nextLoad) { const result = nextLoad(url, context); if (url.endsWith(\"boom.vibe\")) source = String(result.source); return result } })",
+      "await import(\"./boom.vibe\")",
+      "const inline = /sourceMappingURL=data:application\\/json;base64,(\\S+)/.exec(source)![1]",
+      "console.log(JSON.stringify(JSON.parse(Buffer.from(inline, \"base64\").toString()).sources))",
+      ""
+    ].join("\n")
+  }, "vibelang register #%-")
+  const result = run("src/main.ts")
+  assert.equal(result.stderr, "")
+  assert.deepEqual(JSON.parse(result.stdout), [pathToFileURL(join(root, "src/boom.vibe")).href])
+})
 
 test("the published modules hold no line that reads as their own inline source map", () => {
   // source-map-support, which Playwright loads, takes the last match of this

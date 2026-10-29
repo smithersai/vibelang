@@ -29,7 +29,8 @@ import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
 // Bump when an entry's shape or meaning changes. 2: a compile checks only
 // its project's own files (vibelang --loader-root).
 // 3: loaders retain emission and select diagnostics per loaded source.
-const format = 3
+// 4: source maps name sources by absolute path again, not file URL.
+const format = 4
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed

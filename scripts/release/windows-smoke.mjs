@@ -39,13 +39,13 @@ writeFileSync(join(root, "emitted.test.mjs"), tests("./dist/main.js"))
 writeFileSync(join(root, "source.test.mjs"), tests("./src/main.vibe"))
 run(process.execPath, ["--test", "emitted.test.mjs"])
 run(process.execPath, ["--import", "vibelang/register", "--test", "source.test.mjs"])
-// Check the loader's maps use file URLs, including Windows drives and escaped #/%.
+// Bundler maps name sources by forward-slash path; vibelang/register turns them into file URLs.
 const { compileProjectSync } = await import(pathToFileURL(join(root, "node_modules/vibelang/project.mjs")))
 const result = compileProjectSync({ project: join(root, "tsconfig.json") })
 assert.equal(result.errors.length, 0)
 const output = result.outputs.get(join(root, "src/main.vibe"))
 assert.ok(output)
-assert.ok(output.map.sources.includes(pathToFileURL(join(root, "src/main.vibe")).href))
+assert.ok(output.map.sources.includes(join(root, "src/main.vibe").replaceAll("\\", "/")))
 // --fix must actually edit a CRLF file and stay idempotent.
 writeFileSync(join(root, "src/fix.vibe"), 'export function fixed(): number!! {\r\n  return Effect.succeed(7)\r\n}\r\n')
 compile("--project", join(root, "tsconfig.json"), "--fix", "--pretty", "false")

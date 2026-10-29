@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { test } from "node:test"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { fileURLToPath } from "node:url"
 import { compileProjectSync, findCompiler, formatDiagnostic, moduleDeclarationSource, nearestProject, parseExplainFiles, parseOutput, projectBackend, projectImports, projects } from "../project.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
@@ -196,7 +196,7 @@ test("a module outside root compiles with its own package's project, once per re
   assert.match(main.code, /fromApp = "app"/)
   assert.match(lib.code, /toUpperCase/)
   assert.deepEqual([main.errors, main.error, lib.errors, lib.error], [[], false, [], false])
-  assert.ok(lib.map.sources.includes(pathToFileURL(join(root, "dep/src/lib.vibe")).href))
+  assert.ok(lib.map.sources.includes(join(root, "dep/src/lib.vibe")))
   await modules.load(join(root, "dep/src/lib.vibe"))
   assert.deepEqual(compiles(), [join(app, "tsconfig.json"), join(root, "dep/tsconfig.json")])
   modules.invalidate()
@@ -237,7 +237,7 @@ test("a module of a package nested inside root compiles with that package's own 
   assert.equal(inner.project, join(app, "packages/inner/tsconfig.json"))
   assert.match(inner.code, /fromInner = "inner"/)
   assert.deepEqual([inner.errors, inner.error], [[], false])
-  assert.ok(inner.map.sources.includes(pathToFileURL(join(app, "packages/inner/src/inner.vibe")).href))
+  assert.ok(inner.map.sources.includes(join(app, "packages/inner/src/inner.vibe")))
   assert.deepEqual(compiles(), [join(app, "packages/inner/tsconfig.json")])
   // Root's own directories, and a nested package without a project of its own, stay in root's project.
   assert.equal(modules.projectOf(join(app, "src/deep/main.vibe")), join(app, "tsconfig.json"))
@@ -283,7 +283,7 @@ test("a project whose rootDir holds sources above root compiles them, without TS
   const main = await modules.load(join(app, "src/main.vibe"))
   assert.deepEqual([main.errors, main.error], [[], false])
   assert.match(main.code, /fromApp = now\(\)/)
-  assert.ok(main.map.sources.includes(pathToFileURL(join(app, "src/main.vibe")).href))
+  assert.ok(main.map.sources.includes(join(app, "src/main.vibe")))
 })
 
 test("a check-only project that imports .ts files compiles, without TS5096", { skip }, async (t) => {
@@ -329,7 +329,7 @@ test("a module declaration compiles to an output of its own from its file's comp
   const tools = await modules.load(join(app, "src/main.vibe.tools.js"))
   assert.deepEqual([tools.errors, tools.error], [[], false])
   assert.match(tools.code, /export function shout\(text\) \{ return text\.toUpperCase\(\); \}/)
-  assert.deepEqual(tools.map.sources, [pathToFileURL(main).href], "the module's source map names its .vibe file")
+  assert.deepEqual(tools.map.sources, [main], "the module's source map names its .vibe file")
   assert.ok(loaded.inputs.includes(main))
   assert.deepEqual(loaded.inputs.filter((input) => !existsSync(input)), [], "every input is a file on disk")
   await modules.load(main)

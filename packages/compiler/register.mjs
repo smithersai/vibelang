@@ -157,7 +157,10 @@ registerHooks({
     const started = performance.now()
     const compile = spent.compile
     const { code, map } = emitted(path)
-    const inline = Buffer.from(JSON.stringify(map)).toString("base64")
+    // Node resolves a source against the module URL: a path with # or %, or a
+    // Windows drive, needs a file URL.
+    const sources = map.sources.map((source) => pathToFileURL(source).href)
+    const inline = Buffer.from(JSON.stringify({ ...map, sources })).toString("base64")
     spent.modules++
     spent.load += since(started) - (spent.compile - compile)
     return {
