@@ -114,11 +114,18 @@ error Timeout
 // fragment
 class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {
   get message() { return `no user ${this.id}` }
+  static [Symbol.customMatcher](subject: unknown) {          // VIP-7: tests _tag
+    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" ? [subject] : false
+  }
 }
-class Timeout extends Data.TaggedError("Timeout") {}
+class Timeout extends Data.TaggedError("Timeout") {
+  static [Symbol.customMatcher](subject: unknown) {
+    return (subject as { _tag?: unknown } | null)?._tag === "Timeout" ? [subject] : false
+  }
+}
 ```
 
-An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
+The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
 An `error` always extends `Data.TaggedError`. Group errors with a union, `type LookupError = NotFound | Timeout`: tagged errors are matched by `_tag`, and a subclass would match two tags.
 
@@ -145,5 +152,9 @@ schema error NotFound { id: string }
 
 ```ts effect
 // fragment
-class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {}
+class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {
+  static [Symbol.customMatcher](subject: unknown) {          // as for error
+    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" ? [subject] : false
+  }
+}
 ```

@@ -33,7 +33,7 @@ EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params Retur
 
 | Rule | Diagnostic |
 | --- | --- |
-| `try` used outside an `effect` function or `effect` block, including in a plain or `async` function | code pending |
+| `try` outside effect code, including in a plain or `async` function ([Running Effects](002-running.md#static-rules)) | code pending |
 | `await` used inside an `effect` function | code pending |
 | `await` applied to an Effect inside an `async` function | code pending |
 
@@ -118,7 +118,7 @@ An `effect` function's return type is an Effect, as an `async` function's is a P
 
 ```vibe es
 // compiler-gap: pending VIP-1
-effect function load(id: string): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+effect function load(id: string): Effect.Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
 effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
 async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
@@ -149,7 +149,7 @@ EffectType = Type "!" Type "!" Type      (A!E!R)
 
 ### Meaning
 
-`A!E!R` is a type alias for `Effect<A, E, R>`, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written.
+`A!E!R` is a type alias for `Effect<A, E, R>`, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written. In a `.vibe` file the type `Effect<A, E, R>`, as VIP-1 and VIP-3 write it, is Effect's `Effect.Effect<A, E, R>`; Effect TypeScript writes `Effect.Effect`.
 
 | Written | Means exactly |
 | --- | --- |
@@ -168,8 +168,8 @@ interface UserStore { find(id: string): User!NotFound }
 
 ```ts effect
 // fragment
-function load(id: string): Effect<User, NotFound, Users> { return Effect.gen(function* () { return yield* (yield* Users).find(id) }) }
-interface UserStore { find(id: string): Effect<User, NotFound> }
+function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.gen(function* () { return yield* (yield* Users).find(id) }) }
+interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
 **Undecided (pending VIP):** how `!` binds next to other type operators, for example whether `A | B!E` is `(A | B)!E` or `A | (B!E)`, and whether a union in the error slot needs parentheses.
@@ -184,6 +184,7 @@ A module's top level is ordinary JavaScript (VIP-26).
 
 ```vibe es
 // compiler-gap: pending VIP-26
+import { NodeRuntime } from "@effect/platform-node"
 export effect function main() { try log("started") }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
 ```
@@ -214,7 +215,7 @@ export function add(a: number, b: number) { return a + b }
 ```ts effect
 // fragment
 // load.d.vibe.ts
-export declare function load(id: string): Effect<User, NotFound, Users>   // returns an Effect: no @throws
+export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // returns an Effect: no @throws
 /** @throws {BadInput} */
 export declare function parse(s: string): string
 /** @throws {never} */

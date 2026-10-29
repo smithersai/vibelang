@@ -54,7 +54,7 @@ Refinements and transformations stay Schema constants, which a field names, as i
 
 | Rule | Diagnostic |
 | --- | --- |
-| a field type outside the mapping | code pending |
+| a field type outside the mapping | EK2109 |
 
 **Undecided (pending VIP):** the exact mapping of each remaining type: a single literal (`Schema.Literal("a")` or `Schema.Literals(["a"])`), a union mixing literals and other types, `null` and `undefined`, `readonly` arrays and fields, and a nested object type (an inline `Schema.Struct`).
 

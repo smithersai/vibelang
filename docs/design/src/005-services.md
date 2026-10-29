@@ -27,8 +27,9 @@ service Users {
 ```ts effect
 // fragment
 class Users extends Context.Service<Users, {
-  find(id: string): Effect<User, NotFound>
+  find(id: string): Effect.Effect<User, NotFound>
 }>()("@acme/app/src/users#Users") {}
+declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 ```
 
 - **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name, as in the example. A service can write it explicitly instead, `static readonly key = "app/Users"`, as a migrated service does to keep its key.
@@ -44,10 +45,11 @@ class Users extends Context.Service<Users, {
 
   ```ts effect
   // fragment
-  const Flags = Context.Reference<{ newCheckout: boolean }>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  const Flags = Context.Reference<Flags.Shape>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  declare namespace Flags { type Shape = { newCheckout: boolean } }
   ```
 
-- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`.
+- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as the namespace above. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. EK3001 to EK3004 apply to it unchanged.
 
 ### Using a service
 
@@ -109,7 +111,7 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
 ### Meaning
 
-`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer, or `Key = value`, which means `Layer.succeed(Key, value)`.
+`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer, or `Key = value`, which means `Layer.succeed(Key, value)`. As `Effect.provide` documents in effect 4.1.0, a layer an enclosing `provide` already built is reused, and a sibling `provide` builds its own copy.
 
 ```vibe es
 // compiler-gap: pending VIP-12
@@ -152,7 +154,7 @@ A name that clashes is not a global, and is written `Effect.x` instead. A name c
 
 - a reserved word: `try`, `catch`, `void`, `let`;
 - a JavaScript global: `undefined`;
-- a VibeLang keyword. In effect 4.0.6 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
+- a VibeLang keyword. In effect 4.1.0 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
 
 When a later VIP adds a keyword with the name of an Effect export, that global is removed.
 
@@ -186,7 +188,7 @@ An option in the config's `"vibe"` section turns the globals off ([Configuration
 
 ## Effect's modules are in scope
 
-Every root export of the core `effect` package (149 in effect 4.0.6, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. An option in the config's `"vibe"` section turns this off.
+Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. An option in the config's `"vibe"` section turns this off.
 
 **Precedence.** JavaScript globals that aren't platform-specific, and TypeScript's own global types, keep their meaning. Effect's module of the same name is then written `Effect.X`, or imported.
 
@@ -195,6 +197,8 @@ Every root export of the core `effect` package (149 in effect 4.0.6, such as `Sc
 | `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp` | JavaScript's | `Effect.Array`, `Effect.String`, … |
 | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
 | `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
+
+**Undecided (pending VIP):** what `Crypto` names. VIP-14's table lists it, but effect 4.1.0 has no root module `Crypto`; `effect/crypto` is a subpath.
 
 ```vibe es
 // compiler-gap: pending VIP-14
@@ -227,6 +231,7 @@ effect function readConfig(path: string) {
   const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
 }
+import { NodeServices } from "@effect/platform-node"   // a platform package: imported, not in scope
 effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }

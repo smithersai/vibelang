@@ -72,6 +72,8 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 
 | Code | Rule | VIP |
 | --- | --- | --- |
+| EK2109 | a `schema` field type outside the mapping | 15 |
+| EK2111 | `restore` outside an `uninterruptible` block | 22 |
 | EK3001 | two services with the same key | 9 |
 | EK3002 | a class extends a service | 9 |
 | EK3003 | `new` on a service | 9 |
@@ -89,11 +91,11 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
 | `break` or `return` in `for concurrent`; `return` in `for try` | [Running Effects](002-running.md) |
-| `return value` in a producer; `restore` outside `uninterruptible` | [Running Effects](002-running.md) |
+| `return value` in a producer | [Running Effects](002-running.md) |
 | an unwrapped call that may throw, or an unwrapped Promise, in effect code | [Failures](003-failures.md#calls-that-may-throw) |
 | a constructor, `_tag` or `extends` in an `error` or `schema error` declaration | [Failures](003-failures.md#error-declarations) |
 | a `match` that is not exhaustive | [Pattern matching](004-match.md#exhaustiveness) |
-| a `schema` field type outside the mapping; a `data` declaration with more than 4 type parameters | [Data](006-data.md) |
+| a `data` declaration with more than 4 type parameters | [Data](006-data.md) |
 
 The compiler's current registry (`typescript/tsc/internal/vibelang/diagnostics.go`) still carries the old language's codes, documented in `docs/design/history/src/428-part4-ch28-tooling.md`. It is not normative.
 

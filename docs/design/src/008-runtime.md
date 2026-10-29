@@ -2,21 +2,23 @@
 
 Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 
-- **No runtime semantics of VibeLang's own.** Every construct is exact sugar for Effect, so failures, defects, interruption, finalizer order and the combination of causes are Effect 4's.
+- **No runtime semantics of VibeLang's own.** Every construct is exact sugar for Effect, so failures, defects, interruption, finalizer order and the combination of causes are those of the pinned effect 4.1.0 ([Configuration](007-tooling.md#the-effect-version)).
 - **The guarantee.** Compiled output gives the same `Exit` as the Effect TypeScript shown beside each construct in this specification: success, failure, defect or interruption, with finalizers run in the same order.
 - **How it is checked.** Each VIP's VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s. The fuzz suite generates more pairs.
 - **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it ([Pattern matching](004-match.md#class-patterns)).
 - Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](../vips/0035-handlers-open.md)), not part of the language.
 
-Resources follow from this. `using` keeps TypeScript's meaning, and Effect resources use Effect's own `scoped`, `acquireRelease` and `addFinalizer` ([VIP-8](../vips/0008-using-denied.md), denied):
+Resources follow from this. `using` keeps TypeScript's meaning, and Effect resources use Effect's own `scoped`, `acquireRelease` and `addFinalizer` ([VIP-8](../vips/0008-using-denied.md), denied). In effect code the block is a generator body, and `Effect.gen` abandons the generator on a failure or an interruption without calling its `return()`. So a `using` disposer runs only when the block completes normally. Anything that must be released on every exit uses `acquireRelease`, `acquireDisposable` or `addFinalizer`:
 
 ```vibe es
 // compiler-gap: pending VIP-8
 effect function query(p: string, q: string) {
-  using f = openFile(p)                // TypeScript's using: f[Symbol.dispose]() at the end of the block
+  using f = openFile(p)                // TypeScript's using: disposed only if the block completes normally
   return try scoped(effect {           // an Effect resource: Effect's own scoped
     const db = try openDb()
     return try db.query(q)
   })
 }
 ```
+
+**Undecided (pending VIP):** whether `using` in effect code gets a warning that points to `acquireDisposable`.
