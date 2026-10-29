@@ -1,3 +1,5 @@
+import Module from "node:module"
+import { extensionlessImport } from "./relative-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // bun --preload vibelang/bun: Bun loads .vibe modules from source.
 //
@@ -11,12 +13,23 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // are unchanged. A module declaration of a .vibe module is a module of its
 // own, main.vibe.text.js beside main.vibe for module text (D403), which is not
 // on disk; its JavaScript comes from the same compile.
-import { existsSync } from "node:fs"
-import { dirname, resolve } from "node:path"
+import { existsSync, readFileSync, realpathSync } from "node:fs"
+import { dirname, resolve, isAbsolute } from "node:path"
 import { compileProjectSync, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
 
 if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
+}
+
+// Bun honors Node's CommonJS hook for extensionless require requests.
+const resolveFilename = Module._resolveFilename
+Module._resolveFilename = function (specifier, parent, ...args) {
+  if (typeof specifier === "string" && parent?.filename &&
+      (specifier.startsWith("./") || specifier.startsWith("../"))) {
+    const source = extensionlessImport(dirname(parent.filename), specifier)
+    if (source?.endsWith(".vibe")) return source
+  }
+  return resolveFilename.call(this, specifier, parent, ...args)
 }
 
 const results = new Map()
@@ -61,15 +74,88 @@ function isModuleOutput(path) {
 const moduleNamespace = "vibelang-module"
 const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? importer.slice(moduleNamespace.length + 1) : importer
 
+// Bun runtime resolution does not call onResolve for an extensionless
+// import. Let Bun parse the importing source, externalizing every import
+// and replacing only the relative names that TypeScript resolves to .vibe.
+// The common path needs only a scan; dependencies keep Bun's own loader.
+async function resolveImports(path, contents, loader) {
+  const replacements = new Map()
+  for (const entry of new Bun.Transpiler({ loader }).scanImports(contents)) {
+    if (!entry.path.startsWith("./") && !entry.path.startsWith("../")) continue
+    const source = extensionlessImport(dirname(path), entry.path)
+    if (source?.endsWith(".vibe")) replacements.set(entry.path, source)
+  }
+  if (replacements.size === 0) return { contents, loader }
+  const result = await Bun.build({
+    entrypoints: [path], target: "bun", write: false, sourcemap: "inline",
+    plugins: [{ name: "vibelang-imports", setup(build) {
+      build.onLoad({ filter: /.*/ }, () => ({ contents, loader }))
+      build.onResolve({ filter: /.*/ }, (args) => args.importer
+        ? { path: replacements.get(args.path) ?? args.path, external: true }
+        : undefined)
+    } }]
+  })
+  if (!result.success) throw new AggregateError(result.logs, `vibelang/bun: cannot load ${path}`)
+  return { contents: await result.outputs[0].text(), loader: "js" }
+}
+
 Bun.plugin({
   name: "vibelang",
   setup(build) {
+    const discovered = new Set()
+    let discovering = false
+    const loaderOf = (file) => file.endsWith("tsx") ? "tsx" : file.endsWith("jsx") ? "jsx" : /\.[cm]?ts$/.test(file) ? "ts" : "js"
+    // Register only importers that actually need rewriting. A broad onLoad
+    // changes Bun's native CommonJS export interop, even for dependencies
+    // that never import a .vibe module.
+    function discover(file, code, loader = loaderOf(file)) {
+      file = resolve(file)
+      const emittedSource = code !== undefined
+      if (!emittedSource && !/\.[cm]?[jt]sx?$/.test(file)) return
+      let physical = file
+      try { physical = realpathSync(file) } catch { if (!emittedSource) return }
+      if (discovered.has(physical)) return
+      discovered.add(physical)
+      let imports
+      try {
+        code ??= readFileSync(file, "utf8")
+        imports = new Bun.Transpiler({ loader }).scanImports(code)
+      } catch { return }
+      const needsRewrite = imports.some((entry) =>
+        entry.kind !== "require-call" &&
+        (entry.path.startsWith("./") || entry.path.startsWith("../")) &&
+        extensionlessImport(dirname(file), entry.path)?.endsWith(".vibe"))
+      if (needsRewrite && !emittedSource && !/\.(?:cjs|cts)$/.test(file) &&
+          !/\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)) {
+        const escape = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
+        build.onLoad({ filter: new RegExp("^(?:" + [file, physical].map(escape).join("|") + ")$") },
+          ({ path }) => resolveImports(path, readFileSync(path, "utf8"), loaderOf(path)))
+      }
+      for (const entry of imports) {
+        try {
+          const relative = entry.path.startsWith("./") || entry.path.startsWith("../")
+          const target = relative ? extensionlessImport(dirname(file), entry.path) : undefined
+          discover(target ?? Bun.resolveSync(entry.path, dirname(file)))
+        } catch { /* Builtins, assets and unresolved imports keep native handling. */ }
+      }
+    }
+    build.onResolve({ filter: /.*/ }, ({ path, importer }) => {
+      if (discovering) return undefined
+      discovering = true
+      try {
+        const from = pathOf(importer)
+        discover(Bun.resolveSync(path, from && isAbsolute(from) ? dirname(from) : process.cwd()))
+      } catch { /* The specific resolver and Bun report resolution errors. */ } finally { discovering = false }
+      return undefined
+    })
+
     // vibelang rewrites a .vibe module's relative imports to the emitted .js
     // names, and a TypeScript module imports a .vibe module that replaced its
     // .ts file by the same .js name. From source, a missing ./x.js is the .vibe
     // file beside it, or a module declaration's output. Bun maps a missing .js
     // to its .ts or .tsx file itself, except from a module declaration's output.
     build.onResolve({ filter: /^\.\.?\/.*\.js$/ }, ({ path, importer }) => {
+      if (discovering) return undefined
       const fromModule = importer?.startsWith(`${moduleNamespace}:`)
       importer = pathOf(importer)
       if (importer === undefined || /[\\/]node_modules[\\/]/.test(importer)) return undefined
@@ -85,7 +171,7 @@ Bun.plugin({
       return undefined
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
-    build.onLoad({ filter: /\.vibe$/ }, ({ path }) => ({ contents: emitted(path).code, loader: "js" }))
-    build.onLoad({ filter: /\.js$/, namespace: moduleNamespace }, ({ path }) => ({ contents: emitted(path).code, loader: "js" }))
+    build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })
+    build.onLoad({ filter: /\.js$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })
   }
 })

@@ -49,6 +49,7 @@
     "eslint.mjs",
     "knip.mjs",
     "project.mjs",
+    "relative-imports.mjs",
     "project.d.mts",
     "register.mjs",
     "bun.mjs",

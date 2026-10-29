@@ -55,7 +55,10 @@ rewrites those imports to `./welcome.js` and `./config.js`; the plugin resolves
 them back to `welcome.vibe` and `config.ts`. A `module` declaration of
 `welcome.vibe` is a module of its own, `welcome.vibe.text.js`, which the plugin
 serves from the same compile. The plugin compiles only `.vibe` modules; `.ts`
-files go through your bundler's usual TypeScript support.
+files go through your bundler's usual TypeScript support. An extensionless
+import resolves as TypeScript resolves it: `./welcome` reaches `welcome.vibe`
+when there is no `welcome.ts` or `welcome.tsx`, ahead of a `welcome.js` beside
+it, and `./mount` reaches `mount/index.vibe`.
 
 A `.vibe` module of another workspace package, such as one that your app
 imports by name, compiles with the nearest `tsconfig.json` above it: its own

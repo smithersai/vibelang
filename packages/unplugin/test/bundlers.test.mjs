@@ -285,6 +285,17 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
       assert.equal(await runBundle(bundler, root), expected.replace(/\n?$/, "\nhello, dep\n"))
     })
 
+    it(`${bundler}: an extensionless import reaches the .vibe file TypeScript resolves it to`, { skip }, async (t) => {
+      const root = await fixture(t, `${bundler}-extensionless`)
+      await edit(join(root, "tsconfig.json"), '"module": "NodeNext", "moduleResolution": "NodeNext"', '"module": "ESNext", "moduleResolution": "Bundler"')
+      await edit(join(root, "src/main.ts"), 'from "./shop.vibe"', 'from "./shop"')
+      // A stale emit beside its source: TypeScript resolves ./shop to shop.vibe first.
+      await writeFile(join(root, "src/shop.js"), 'throw new Error("stale shop.js")\n')
+      const result = await bundleOnce(bundler, root)
+      assert.deepEqual(result.event, { ok: true }, result.stderr)
+      assert.equal(await runBundle(bundler, root), expected)
+    })
+
     it(`${bundler}: a type error fails the build at its .vibe position`, { skip }, async (t) => {
       const root = await fixture(t, `${bundler}-error`)
       const file = join(root, "src/shop.vibe")

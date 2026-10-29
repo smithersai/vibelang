@@ -1,3 +1,4 @@
+import { extensionlessImport } from "./relative-imports.js"
 import { existsSync, readFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
@@ -16,6 +17,12 @@ function isModuleOutput(path) {
 }
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
 const isCompiled = (id) => cleanId(id).endsWith(".vibe") || isModuleOutput(cleanId(id))
+
+// Keep TypeScript's source priority when the bundler cannot find .vibe.
+function extensionlessVibe(directory, specifier) {
+  const source = extensionlessImport(directory, specifier)
+  return source?.endsWith(".vibe") ? source : undefined
+}
 
 // VIBELANG_UNPLUGIN_DEBUG=1 traces each compile and module load on stderr.
 const debug = process.env.VIBELANG_UNPLUGIN_DEBUG ? (text) => console.error(`vibelang-unplugin: ${text}`) : () => {}
@@ -128,6 +135,9 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const target = resolve(importer ? dirname(cleanId(importer)) : root || process.cwd(), path)
     // Resolve .vibe here too, so esbuild loads every .vibe module in one namespace.
     if (path.endsWith(".vibe")) return existsSync(target) ? target + query : undefined
+    // TypeScript resolves `./x` to `x.vibe` when there is no `x.ts` or `x.tsx`.
+    const vibe = importer ? extensionlessVibe(dirname(cleanId(importer)), path) : undefined
+    if (vibe !== undefined) return vibe + query
     // vibelang rewrites `./x.vibe` and `./x.ts` imports to `./x.js`. Map them back to the source.
     if (!importer || !path.endsWith(".js") || existsSync(target)) return
     if (isModuleOutput(target)) return target + query
@@ -183,7 +193,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     bun: {
       setup(build) {
-        build.onResolve({ filter: /(?:\.vibe|^\.\.?\/.+\.js)(?:\?.*)?$/ }, (args) => {
+        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibe(?:\?.*)?$/ }, (args) => {
           const entry = args.kind === "entry-point-build" || args.kind === "entry-point-run"
           const id = resolveId(args.path, entry ? undefined : args.importer)
           return id === undefined ? undefined : { path: id }
@@ -224,7 +234,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       onResolveFilter: /a^/,
       setup(build) {
         build.onDispose?.(close)
-        build.onResolve({ filter: /(?:\.vibe|^\.\.?\/.+\.js)(?:\?.*)?$/ }, (args) => {
+        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibe(?:\?.*)?$/ }, (args) => {
           const id = resolveId(args.path, args.kind === "entry-point" ? undefined : args.importer)
           if (id === undefined) return
           // Without this, esbuild keeps every .vibe module of a package that declares

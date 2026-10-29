@@ -1,3 +1,4 @@
+import { extensionlessImport } from "./relative-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // node --import vibelang/register: Node loads .vibe modules from source.
 //
@@ -131,16 +132,20 @@ registerHooks({
       return nextResolve(specifier, context)
     } catch (error) {
       const parent = context.parentURL
-      if (
-        error?.code !== "ERR_MODULE_NOT_FOUND" || !/^\.\.?\//.test(specifier) ||
-        parent === undefined || !compiled(parent)
-      ) throw error
+      const missing = ["ERR_MODULE_NOT_FOUND", "ERR_UNSUPPORTED_DIR_IMPORT", "MODULE_NOT_FOUND"].includes(error?.code)
+      if (!missing || !/^\.\.?(?:\/|$)/.test(specifier) || !parent?.startsWith("file:")) throw error
       const target = new URL(specifier, parent)
       const resolved = (result) => {
         spent.imports++
         spent.resolve += since(started)
         return result
       }
+      // TypeScript resolves an extensionless import, ./archive, to
+      // archive.vibe after archive.ts and archive.tsx; Node's own resolution
+      // knows no .vibe file.
+      const source = extensionlessImport(dirname(fileURLToPath(parent)), clean(specifier))
+      if (source?.endsWith(".vibe")) return resolved(nextResolve(pathToFileURL(source).href + target.search + target.hash, context))
+      if (error.code !== "ERR_MODULE_NOT_FOUND" || !compiled(parent)) throw error
       if (moduleOutput(target.href) !== undefined) return resolved({ url: target.href, format: "module", shortCircuit: true })
       const path = fileURLToPath(clean(target.href))
       const extension = Object.keys(sources).find((name) => path.endsWith(name))

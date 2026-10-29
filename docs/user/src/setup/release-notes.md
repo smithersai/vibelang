@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` could write a fix that added a type error when the file also had an unrelated syntax error, because its check of the fixed program then saw only syntax errors. It now checks every error, so such a fix is listed as not fixed.
 
+- Bun, `vibelang/register`, Vite and unplugin could report `Cannot find module` for extensionless or directory imports after their TypeScript targets became `.vibe` files. They now resolve those imports with TypeScript's file priority and `index.vibe` fallback, preserving existing source files.
+
 - A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
 
 - The specification admitted generic parameters and return annotations on a bare effect-arrow parameter. Arrow heads now follow TypeScript: those decorations require parentheses, while `effect x => x` remains valid.

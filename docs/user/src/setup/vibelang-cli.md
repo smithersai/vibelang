@@ -211,7 +211,9 @@ off, and `VIBELANG_REGISTER_DEBUG=1` to print how long each project's compile
 took, stage by stage. A type error stops the import with the compiler's
 diagnostics, and a stack trace names `.vibe` lines. A workspace package the
 project imports as source is checked by that package's own compile, when one of
-its `.vibe` modules loads.
+its `.vibe` modules loads. An extensionless import resolves as TypeScript's
+`Bundler` resolution does: `../src/archive` reaches `archive.vibe` when there
+is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`.
 
 ## Run sources with Bun
 
@@ -224,7 +226,7 @@ preload = ["vibelang/bun"]
 preload = ["vibelang/bun"]
 ```
 
-or on the command line: `bun --preload vibelang/bun src/main.ts`. The first `.vibe` import compiles the whole project in the nearest `tsconfig.json` above the module, once per process, with the same cache as Node. Set `VIBELANG_PROJECT` to a tsconfig path to choose another project for the modules in its directory; a module of another workspace package compiles with that package's own `tsconfig.json`. A TypeScript module may import a `.vibe` module by its emitted name, such as `./x.js` for `x.vibe`, as a migrated project does after it replaces `x.ts`; an `x.ts` beside it still wins. A composite project compiles too. Diagnostics that stop the compile fail the import. Bun ignores a plugin's source maps, so a stack frame names the `.vibe` file with the line of its compiled JavaScript.
+or on the command line: `bun --preload vibelang/bun src/main.ts`. The first `.vibe` import compiles the whole project in the nearest `tsconfig.json` above the module, once per process, with the same cache as Node. Set `VIBELANG_PROJECT` to a tsconfig path to choose another project for the modules in its directory; a module of another workspace package compiles with that package's own `tsconfig.json`. A TypeScript module may import a `.vibe` module by its emitted name, such as `./x.js` for `x.vibe`, as a migrated project does after it replaces `x.ts`; an `x.ts` beside it still wins. An extensionless import, such as `../src/archive`, resolves to `archive.vibe` or a directory's `index.vibe` as TypeScript's `Bundler` resolution does. The preload uses Bun's parser to rewrite these imports before runtime resolution. A composite project compiles too. Diagnostics that stop the compile fail the import. Bun ignores a plugin's source maps, so a stack frame names the `.vibe` file with the line of its compiled JavaScript.
 
 Bun also leaves stack locations unmapped when it runs the compiler's emitted JavaScript, such as `bun dist/main.js`, even with `"sourceMap": true`. For mapped traces, run `node --enable-source-maps dist/main.js`; see [Debug stack traces](../getting-started/012-devtools.md#debug-stack-traces) for a debugging entry that prints the underlying stack.
 

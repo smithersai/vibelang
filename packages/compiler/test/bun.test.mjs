@@ -230,3 +230,62 @@ test("loads a clean module despite unrelated baseline errors, but rejects a load
   assert.match(bad.stderr, /bad\.vibe:1:\d+ - error TS2322/)
   assert.doesNotMatch(bad.stderr, /unrelated\.ts/)
 })
+
+test("resolves an extensionless import to the .vibe file TypeScript resolves it to", { skip }, (t) => {
+  const bundler = JSON.stringify({
+    compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, noEmit: true },
+    include: ["script/**/*", "src/**/*"]
+  })
+  const { bun } = project(t, {
+    "tsconfig.json": bundler,
+    "src/archive.vibe": "export const archive: string = \"archive\"\n",
+    // A stale emit beside its source: TypeScript resolves ../src/archive to archive.vibe first.
+    "src/archive.js": "throw new Error(\"stale archive.js\")\n",
+    "src/mount/index.vibe": "export const mounted: string = \"mounted\"\n",
+    "src/nested.vibe": "import { archive } from \"./archive\"\nexport const nested: string = archive + \"!\"\n",
+    "script/run.ts": [
+      "import { archive } from \"../src/archive\"",
+      "import { mounted } from \"../src/mount\"",
+      "import { nested } from \"../src/nested\"",
+      "console.log([archive, mounted, nested].join(\" \"))",
+      ""
+    ].join("\n")
+  })
+  const result = bun(["--preload", preload, "script/run.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "archive mounted archive!\n")
+})
+
+
+test("extensionless imports preserve TypeScript priority, dynamic imports and CommonJS dependencies", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] }),
+    "src/chosen.ts": 'export const chosen = "typescript"\n',
+    "src/chosen.vibe": 'export const chosen = "wrong"\n',
+    "src/value.vibe": 'export const value = "vibe"\n',
+    "dep.cjs": 'module.exports = { cjs: "commonjs" }\n',
+    "main.js": 'import dep from "./dep.cjs"; import { chosen } from "./src/chosen"; const { value } = await import("./src/value"); console.log(chosen, value, dep.cjs)\n'
+  })
+  const result = bun(["--preload", preload, "main.js"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "typescript vibe commonjs\n")
+})
+
+test("extensionless imports keep native CommonJS .js interop through nested TypeScript", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] }),
+    "src/archive.vibe": 'export const archive = "archive"\n',
+    "src/helper.ts": 'export { archive } from "./archive"\n',
+    "cjs/package.json": '{"type":"commonjs"}',
+    "cjs/index.js": 'module.exports = { local: "local" }\n',
+    "node_modules/legacy-cjs/package.json": '{"main":"index.js"}',
+    "node_modules/legacy-cjs/index.js": 'module.exports = { dependency: "dependency" }\n',
+    "main.ts": 'import local, { local as named } from "./cjs/index.js"; import dep from "legacy-cjs"; import { archive } from "./src/helper"; console.log(archive, local.local, named, dep.dependency)\n',
+    "main.cjs": 'const { archive } = require("./src/archive"); console.log(archive)\n'
+  })
+  for (const [entry, expected] of [["main.ts", "archive local local dependency\n"], ["main.cjs", "archive\n"]]) {
+    const result = bun(["--preload", preload, entry])
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, expected)
+  }
+})

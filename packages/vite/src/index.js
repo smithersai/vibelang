@@ -1,3 +1,4 @@
+import { extensionlessImport } from "./relative-imports.js"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
@@ -18,6 +19,12 @@ function isModuleOutput(path) {
 }
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
 const isCompiled = (path) => path.endsWith(".vibe") || isModuleOutput(path)
+
+// Keep TypeScript's source priority when the bundler cannot find .vibe.
+function extensionlessVibe(directory, specifier) {
+  const source = extensionlessImport(directory, specifier)
+  return source?.endsWith(".vibe") ? source : undefined
+}
 
 // The compile backend is the vibelang package's own: the project's install
 // first, so it matches the compiler that runs, else the one beside this plugin.
@@ -127,8 +134,11 @@ export default function vibelang(options = {}) {
       })
     },
     resolveId(source, importer) {
+      if (!importer || !source.startsWith(".")) return
+      const vibe = extensionlessVibe(dirname(cleanId(importer)), cleanId(source))
+      if (vibe !== undefined) return slash(vibe) + source.slice(cleanId(source).length)
       // vibelang rewrites .vibe imports to .js. Keep the original source in Vite's graph.
-      if (!importer || !source.startsWith(".") || !cleanId(source).endsWith(".js")) return
+      if (!cleanId(source).endsWith(".js")) return
       const target = resolve(dirname(cleanId(importer)), cleanId(source))
       if (existsSync(target)) return
       const query = source.slice(cleanId(source).length)

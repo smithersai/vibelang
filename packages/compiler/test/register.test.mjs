@@ -124,6 +124,31 @@ test("loads a .vibe module's module declaration as a module of its own, with sta
   assert.equal(compilations(), 1)
 })
 
+test("resolves an extensionless import to the .vibe file TypeScript resolves it to", { skip }, (t) => {
+  const bundler = JSON.stringify({
+    compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, noEmit: true },
+    include: ["script/**/*", "src/**/*"]
+  })
+  const { run } = project(t, {
+    "tsconfig.json": bundler,
+    "src/archive.vibe": "export const archive: string = \"archive\"\n",
+    // A stale emit beside its source: TypeScript resolves ../src/archive to archive.vibe first.
+    "src/archive.js": "throw new Error(\"stale archive.js\")\n",
+    "src/mount/index.vibe": "export const mounted: string = \"mounted\"\n",
+    "src/nested.vibe": "import { archive } from \"./archive\"\nexport const nested: string = archive + \"!\"\n",
+    "script/run.ts": [
+      "import { archive } from \"../src/archive\"",
+      "import { mounted } from \"../src/mount\"",
+      "import { nested } from \"../src/nested\"",
+      "console.log([archive, mounted, nested].join(\" \"))",
+      ""
+    ].join("\n")
+  })
+  const result = run("script/run.ts")
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "archive mounted archive!\n")
+})
+
 test("reports the compiler's diagnostics when the project does not compile", { skip }, (t) => {
   const { run } = project(t, {
     "src/bad.vibe": "export const count: number = \"three\"\n",
