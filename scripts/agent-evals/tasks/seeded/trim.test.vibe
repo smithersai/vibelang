@@ -1,0 +1,16 @@
+import { assert, it } from "@effect/vitest"
+import { load } from "./profile.vibe"
+import { Store } from "./store.vibe"
+
+it.effect("trims the id before reading the Store") {
+  const seen: Array<string> = []
+  provide Layer.succeed(Store, {
+    get(id: string) {
+      seen.push(id)
+      return id
+    },
+  }) {
+    assert.strictEqual(load("  ada "), "ADA")
+  }
+  assert.deepStrictEqual(seen, ["ada"])
+}

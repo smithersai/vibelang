@@ -1,0 +1,8 @@
+{
+  "prompt": "In src/profile.vibe, make load() trim the id before it calls Store.get. src/trim.test.vibe tests it; don't change the test. Stop when the change is done.",
+  "test": "src/trim.test.vibe",
+  "files": {
+    "profile.vibe": "src/profile.vibe",
+    "trim.test.vibe": "src/trim.test.vibe"
+  }
+}

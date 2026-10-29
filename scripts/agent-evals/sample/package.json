@@ -1,0 +1,26 @@
+{
+  "name": "profiles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vibelang",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "4.0.6",
+    "@effect/platform-node": "4.0.6",
+    "vibelang-runtime": "file:./vendor/vibelang-runtime.tgz"
+  },
+  "devDependencies": {
+    "vibelang": "file:./vendor/vibelang.tgz",
+    "vibelang-vite": "file:./vendor/vibelang-vite.tgz",
+    "vite": "8.3.5",
+    "vitest": "5.0.5",
+    "@effect/vitest": "4.0.6"
+  },
+  "overrides": {
+    "@effect/platform-node-shared": "4.0.6",
+    "vibelang-runtime": "file:./vendor/vibelang-runtime.tgz",
+    "vibelang": "file:./vendor/vibelang.tgz"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "prompt": "Add a retry to load() in src/profile.vibe: when Store.get fails with Unavailable, retry it up to 3 times; don't retry Missing. The tests in src/profile.test.vibe describe the behavior; don't change them. Stop when the change is done.",
+  "test": "src/profile.test.vibe",
+  "files": {}
+}

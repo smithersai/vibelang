@@ -1,0 +1,6 @@
+export error Unavailable { attempt: number }
+export error Missing { id: string }
+
+export service Store {
+  get(id: string): string!(Unavailable | Missing)
+}

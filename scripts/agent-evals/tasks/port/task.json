@@ -1,0 +1,8 @@
+{
+  "prompt": "Port src/fetch.ts to VibeLang: replace it with src/fetch.vibe, which exports the same names, and delete src/fetch.ts. src/fetch.test.vibe tests it; don't change the test. Stop when the port is done.",
+  "test": "src/fetch.test.vibe",
+  "files": {
+    "fetch.ts": "src/fetch.ts",
+    "fetch.test.vibe": "src/fetch.test.vibe"
+  }
+}

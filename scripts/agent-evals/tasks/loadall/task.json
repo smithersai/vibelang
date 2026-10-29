@@ -1,0 +1,7 @@
+{
+  "prompt": "Add loadAll(ids) to src/profile.vibe: it loads each profile with load(), at most 4 at a time, keeps the input order, and skips ids whose Store.get fails with Missing. The tests in src/load-all.test.vibe describe the behavior; don't change them. Stop when the change is done.",
+  "test": "src/load-all.test.vibe",
+  "files": {
+    "load-all.test.vibe": "src/load-all.test.vibe"
+  }
+}

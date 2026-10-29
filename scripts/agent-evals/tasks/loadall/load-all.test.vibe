@@ -1,0 +1,34 @@
+import { assert, it } from "@effect/vitest"
+import { loadAll } from "./profile.vibe"
+import { Missing, Store } from "./store.vibe"
+
+// A Store that takes 20 ms per call, records how many calls overlap, and
+// fails with Missing for ids that start with "x".
+function countingStore(state: { mutable running: number; mutable peak: number }) {
+  return Layer.succeed(Store, {
+    get(id: string) {
+      state.running += 1
+      state.peak = Math.max(state.peak, state.running)
+      sleep("20 millis")
+      state.running -= 1
+      if (id.startsWith("x")) throw new Missing({ id })
+      return id
+    },
+  })
+}
+
+it.live("loads every id in order, skipping Missing ones") {
+  const state = { running: 0, peak: 0 }
+  provide countingStore(state) {
+    assert.deepStrictEqual(loadAll(["ada", "xeno", "bob"]), ["ADA", "BOB"])
+  }
+}
+
+it.live("loads at most 4 ids at once") {
+  const state = { running: 0, peak: 0 }
+  const ids = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+  provide countingStore(state) {
+    assert.strictEqual(loadAll(ids).length, 10)
+  }
+  assert.strictEqual(state.peak, 4)
+}

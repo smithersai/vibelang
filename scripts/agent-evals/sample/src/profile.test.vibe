@@ -1,0 +1,57 @@
+import { assert, it } from "@effect/vitest"
+import { load } from "./profile.vibe"
+import { Missing, Store, Unavailable } from "./store.vibe"
+
+// A Store that fails with Unavailable for its first `failures` calls.
+function flakyStore(failures: number, calls: { mutable count: number }) {
+  return Layer.succeed(Store, {
+    get(id: string) {
+      calls.count += 1
+      if (calls.count <= failures) throw new Unavailable({ attempt: calls.count })
+      if (id === "") throw new Missing({ id })
+      return ` ${id} `
+    },
+  })
+}
+
+it.effect("loads a name") {
+  const calls = { count: 0 }
+  provide flakyStore(0, calls) {
+    assert.strictEqual(load("ada"), "ADA")
+  }
+  assert.strictEqual(calls.count, 1)
+}
+
+it.effect("retries Unavailable") {
+  const calls = { count: 0 }
+  provide flakyStore(2, calls) {
+    assert.strictEqual(load("ada"), "ADA")
+  }
+  assert.strictEqual(calls.count, 3)
+}
+
+it.effect("gives up after 3 retries") {
+  const calls = { count: 0 }
+  provide flakyStore(10, calls) {
+    try {
+      load("ada")
+      assert.fail("expected Unavailable")
+    } catch (error) {
+      assert.instanceOf(error, Unavailable)
+    }
+  }
+  assert.strictEqual(calls.count, 4)
+}
+
+it.effect("does not retry Missing") {
+  const calls = { count: 0 }
+  provide flakyStore(0, calls) {
+    try {
+      load("")
+      assert.fail("expected Missing")
+    } catch (error) {
+      assert.instanceOf(error, Missing)
+    }
+  }
+  assert.strictEqual(calls.count, 1)
+}
