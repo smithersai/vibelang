@@ -14,7 +14,7 @@ A call never runs anything. Calling an `effect` function, or any function that r
 | `for try` | one Effect per Stream element, in order |
 | `provide`, `uninterruptible`, `interruptible` | a block of statements ([Services](005-services.md#provide-blocks) for `provide`) |
 
-In this chapter, "effect code" means the body of an `effect` function or an `effect` block, not counting functions nested inside it.
+In this chapter, "effect code" means the body of an `effect` function, a producer or an `effect` block, not counting functions or class bodies (field initializers, `static` blocks) nested inside it, as `await` is not allowed there in an `async` function. Parentheses, `do` and `match` are not boundaries.
 
 Every operand is evaluated once, left to right as written, with three exceptions: a `catch` handler is evaluated only on failure; the body of an `effect` block or function is evaluated on each run; and `fork.in(scope) e` evaluates `e` before `scope`, as VIP-17's `Effect.forkIn(e, scope)` does. Where Effect's argument order differs from the source order elsewhere (`for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first.
 
@@ -70,6 +70,7 @@ function load(id: string) {
 CatchExpression = CatchExpression "catch" Handler
                 | Operand "catch" Handler
 Operand         = BitwiseORExpression    (the operand of ??)
+ShortCircuitExpression = LogicalORExpression | CoalesceExpression | CatchExpression
 Handler         = HandlerFunction        (a function of the error)
                 | "effect" Block         (an effect block)
                 | Operand                (a value)
@@ -88,12 +89,16 @@ The first alternative that matches wins, so the handler alternatives are tried b
 | `x catch effect { return 7 }` | effect block | `7` |
 | `x catch (effect { return 7 })` | value | the unrun Effect |
 | `x catch f`, `x catch (f)` (`f` a function value) | value | the function `f` |
+| `x catch function (e) { return 7 }` | value | the function (VIP-38 warning) |
+| `x catch async (e) => 7` | syntax error: an async arrow is not a `HandlerFunction` | |
 
 `catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result. A value handler is an `Operand`, so `x catch y, z` is a comma expression whose first part is `x catch y`.
 
 An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`. So `a catch (e) => b catch c` means `a catch ((e) => (b catch c))`. Parenthesize the arrow to chain: `a catch ((e) => b) catch c`.
 
 In `(a catch b) catch c`, the outer `catch` runs the value that `a catch b` gives, so that value must itself be an Effect. To try fallbacks in turn, nest them in the handler: `a catch effect { return b catch c }`.
+
+A value fallback is evaluated only on failure, in the enclosing effect code. When it runs Effects it is lowered inside a fresh `Effect.gen`, keeping its source bindings ([Runtime](008-runtime.md)). It never runs an Effect it gives as a value: `x catch (succeed(7))` gives the unrun Effect, `x catch (try succeed(7))` gives `7`.
 
 ### Static rules
 
@@ -111,7 +116,8 @@ In `(a catch b) catch c`, the outer `catch` runs the value that `a catch b` give
 | Written | Effect TypeScript |
 | --- | --- |
 | `x catch guest` (a value) | `yield* Effect.catch(x, () => Effect.succeed(guest))` |
-| `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `yield* Effect.catch(x, (e) => Effect.succeed(f(e)))` |
+| `x catch (try y)` (a value that runs Effects: `try`, `catch`, `join` …) | `yield* Effect.catch(x, () => Effect.gen(function* () { return yield* y }))` |
+| `x catch (e) => f(e)` (a plain function, called by effect code: one that may throw is an error, as for any call ([Failures](003-failures.md)); write `catch effect (e) =>` to fail again) | `yield* Effect.catch(x, (e) => Effect.succeed(f(e)))` |
 | `x catch effect (e) => …` (an effect function; it runs its Effects, and `throw` fails again, typed) | `yield* Effect.catch(x, (e) => Effect.gen(…))` |
 | `x catch effect { … }` (an effect block; runs the fallback) | `yield* Effect.catch(x, () => Effect.gen(…))` |
 
@@ -208,7 +214,7 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator.
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator. In an expression, the operands to the left of a `do` or `match` are evaluated into temporaries, the `do` or `match` runs as statements that assign its value to a temporary, and the expression continues: `f(try a(), match (x) { … })` is `const $t1 = yield* a(); let $t2; if (…) $t2 = …; f($t1, $t2)`.
 
 ```vibe es
 // compiler-gap: pending VIP-2
@@ -231,14 +237,14 @@ JoinExpression = "join" ForkOperand
 
 `fork` and `join` are contextual keywords, and the operand starts on the same line. The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`. A `ForkOperand` never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
 
-In effect code, `fork` or `join` is the keyword where an `IdentifierReference` could stand and the next token, on the same line, can start an expression, as `await` is in an `async` function. It is never the keyword as a property name after `.` or `?.`, a property key, a label, a binding name, or an import or export name. Elsewhere, `fork` and `join` are identifiers.
+In effect code, `fork` or `join` is the keyword where an `IdentifierReference` could stand and the next token, on the same line, can start an expression or, for `fork`, is `.` followed by `in`, `scoped` or `detached`, as `await` is in an `async` function. After the keyword, `/` begins a regular expression, as after `await`: `join / 2` is a syntax error and `(join) / 2` divides. It is never the keyword as a property name after `.` or `?.`, a property key, a label, a binding name, or an import or export name. Elsewhere, `fork` and `join` are identifiers.
 
 ```vibe es
 // compiler-gap: pending VIP-17
-effect function names(parts: Fiber.Fiber<string[]>) {
+effect function names(parts: Fiber.Fiber<string[]>, join: (xs: string[], sep: string) => string) {
   const xs = join(parts)             // the keyword: joins the fiber parts
   const s = xs.join(",")             // a method call
-  return (join)(xs, "/")             // calls a function named join in scope
+  return (join)(xs, "/")             // calls the parameter join
 }
 ```
 
@@ -341,18 +347,18 @@ function page(id: string) {
 ForConcurrent = "for" "concurrent" ("(" AssignmentExpression ")")? "(" ForBinding "of" AssignmentExpression ")" Statement
 ```
 
-JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading. After `for concurrent`, a parenthesized group followed by another `(` is the limit `n`.
+JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading. After `for concurrent`, a parenthesized group is the limit `n` when it parses as an `AssignmentExpression` and is followed by a parenthesized `ForBinding "of"` head; a group that holds the `of` head is the head, whatever follows it. So `for concurrent (const x of xs) (try f(x));` has no limit.
 
 ### Static rules
 
 | Rule | Diagnostic |
 | --- | --- |
 | `for concurrent` outside effect code | code pending |
-| `break` in the body | code pending |
+| `break` that would leave the body | code pending |
 | `return` in the body | code pending |
-| a labeled `continue` whose target is outside the body | code pending |
+| a labeled `continue` naming a statement that encloses the `for concurrent` | code pending |
 
-`continue` ends that one item: it is `return` from the item's generator, as the example shows. `break`, `return` and a labeled `continue` are errors when they would leave the body, because no loop runs on the body's fiber (VIP-19); a loop nested in the body keeps its own `break` and `continue`.
+`continue`, and a labeled `continue` naming the `for concurrent` itself, end that one item: each is `return` from the item's generator, as the example shows. The others are errors because no loop runs on the body's fiber (VIP-19). A loop or `switch` nested in the body keeps its own `break` and `continue`.
 
 ### Meaning
 
@@ -444,7 +450,7 @@ ProducerMethod = Modifiers? "effect" "*" PropertyName TypeParameters? Params Ret
 
 ### Meaning
 
-`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects. It compiles to `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered (VIP-21, corrected). Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`: it is `(yield* Queue.offer(queue, x), undefined)`. A failure run by `try` in the body fails the stream. The return type, when written, is `Stream.Stream<A, E, R>`.
+`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. Its body is effect code: `yield x` emits `x`, and `try` and the other constructs run Effects. `yield` belongs to the innermost producer, as in JavaScript, so `yield` in a nested `effect` block or arrow is a syntax error. It compiles to `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered (VIP-21, corrected). Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`: it is `(yield* Queue.offer(queue, x), undefined)`. A failure run by `try` in the body fails the stream. The return type, when written, is `Stream.Stream<A, E, R>`.
 
 ```vibe es
 // compiler-gap: pending VIP-21
@@ -465,6 +471,11 @@ function ticks() {
     yield* Queue.offer(queue, 2)
   }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })
 }
+function consume() {
+  return Effect.gen(function* () {
+    yield* Stream.runForEachWhile(ticks(), (t) => Effect.gen(function* () { yield* Effect.log(t); return true }))
+  })
+}
 ```
 
 **Undecided (pending VIP):** what `yield*` (delegation) means in a producer.
@@ -480,6 +491,8 @@ Interruptible   = "interruptible" Block
 ```
 
 These are contextual keywords followed by `{` on the same line, and they are statements in effect code.
+
+`uninterruptible { }` is `Effect.uninterruptibleMask((restore) => Effect.gen(…))` when a `restore` block is inside it, and `Effect.uninterruptible(Effect.gen(…))` otherwise; both give the same `Exit`.
 
 ### Static rules
 
@@ -520,7 +533,7 @@ The keywords remove the globals of the same name ([VIP-6](../vips/0006-effect-gl
 
 ### Leaving a block
 
-These are ordinary blocks: `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block (VIP-22, amended). The same holds for `provide` blocks (VIP-12, amended). `for concurrent` and `for try` keep their own rules, because their bodies run once per item.
+These are ordinary blocks: `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block (VIP-22, amended). The same holds for `provide` blocks (VIP-12, amended). `for concurrent` and `for try` keep their own rules, because their bodies run once per item. A record whose target is a `for try` dispatches as `return true` (`Continue`) or `return false` (`Break`) from the element's callback; one whose target is a `for concurrent`, as `return`.
 
 The block's body is a separate generator, so a jump to a target outside it can't be written there. It ends the generator with a completion record instead, and the code where the block stands carries out the jump:
 
