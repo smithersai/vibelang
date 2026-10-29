@@ -26,20 +26,32 @@ export VIBELANG_BINARY
 effect_modules=${EFFECT_NODE_MODULES:-$repo/experiments/node_modules}
 effect=$(cd "$effect_modules/effect" && pwd -P)
 
-# The runtime's dist/ is not checked in. Build it with this compiler against
-# the same effect the fixtures use, so a bundle holds one copy of effect.
-mkdir -p "$runtime/node_modules"
-rm -rf "$runtime/node_modules/effect"
-ln -s "$effect" "$runtime/node_modules/effect"
-echo "build: vibelang -p packages/runtime/tsconfig.json"
-"$VIBELANG_BINARY" -p "$runtime/tsconfig.json"
+# The runtime's dist/ is not checked in. Build a private copy with this
+# compiler against the same effect the fixtures use, so a test loads one copy
+# of effect. The copy keeps the tests from writing packages/runtime, which the
+# build graph's runtime and compiler targets read while these tests run.
+built=$package/test/.fixtures/vibelang-runtime
+rm -rf "$built"
+mkdir -p "$built/node_modules"
+cp -R "$runtime/package.json" "$runtime/tsconfig.json" "$runtime/src" "$built/"
+# Node resolves a package's imports from its real path, so @effect/platform-*
+# are copied, not linked: they must import the effect beside them.
+for entry in "$runtime"/node_modules/* "$runtime"/node_modules/.bin; do
+	name=$(basename "$entry")
+	case "$name" in effect|@effect) continue ;; esac
+	if [ -e "$entry" ]; then ln -s "$(cd "$entry" && pwd -P)" "$built/node_modules/$name"; fi
+done
+cp -RL "$runtime/node_modules/@effect" "$built/node_modules/@effect"
+ln -s "$effect" "$built/node_modules/effect"
+echo "build: vibelang -p test/.fixtures/vibelang-runtime/tsconfig.json"
+"$VIBELANG_BINARY" -p "$built/tsconfig.json"
 
 # Every fixture copy lives under test/.fixtures and resolves packages here.
 modules=$package/test/.fixtures/node_modules
 mkdir -p "$modules"
 rm -rf "$modules/effect" "$modules/vibelang-runtime" "$modules/vibelang" "$modules/vibelang-unplugin"
 ln -s "$effect" "$modules/effect"
-ln -s "$runtime" "$modules/vibelang-runtime"
+ln -s "$built" "$modules/vibelang-runtime"
 # The plugin's compile backend is the project's vibelang package (vibelang/project).
 ln -s "$repo/packages/compiler" "$modules/vibelang"
 # A fixture program that imports vibelang-unplugin/deferred resolves this package.

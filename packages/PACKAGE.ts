@@ -55,6 +55,22 @@ const compilerTest = S.Shell.Test({
   timeout: "15m"
 })
 
+// The bundler plugins compile through vibelang/project and pass its source
+// maps on, so a change to the compiler package reruns them. Each run.sh links
+// this checkout's compiler into its fixtures and builds a private copy of the
+// runtime's sources with the native compiler, under test/.fixtures: it never
+// writes packages/runtime, which the runtime and compiler targets read.
+const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.Test({
+  summary,
+  shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
+  data: [compilerNative, S.glob("compiler/**"), S.glob(`${name}/**`), ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun")],
+  sandbox: "none",
+  timeout
+})
+const viteTest = pluginTest("vite", "vibelang-vite's node tests: Vite and Vitest builds, source maps and watch.", "15m")
+const unpluginTest = pluginTest("unplugin", "vibelang-unplugin's node tests: each bundler's build, source maps and watch.", "20m")
+
 /** Every file in the npm packages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
@@ -65,6 +81,8 @@ export const Package = S.Package({
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "compiler-test": compilerTest,
+    "vite-test": viteTest,
+    "unplugin-test": unpluginTest,
     tree
   }
 })

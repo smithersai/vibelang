@@ -118,7 +118,7 @@ it("starts a Node process that imports a .vibe module", () => {
   const program = \`const { triple } = await import(\${JSON.stringify(plain)}); console.log(triple(14), process.env.NODE_OPTIONS.includes("--no-warnings"))\`
   const output = execFileSync(process.execPath, ["--input-type=module", "-e", program], { cwd: tmpdir(), encoding: "utf8" })
   expect(output.trim()).toBe("42 true")
-})
+}, 60_000) // The child compiles the project; Vitest's 5s default fails on a loaded host.
 `)
   const config = (register) => `
 import { defineConfig } from "vitest/config"

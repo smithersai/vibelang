@@ -37,6 +37,7 @@ target's inputs, its key and whether the cache holds a result for it.
   :runtime-test                 bun test (runtime)
   :compiler-native              the binary and dprint plugin in packages/compiler
   :compiler-test                node --test (compiler package)
+  :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
@@ -48,7 +49,7 @@ target's inputs, its key and whether the cache holds a result for it.
 
 ```text
 :srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test
-                    ├─► :compiler-native ─► :compiler-test
+                    ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
@@ -117,6 +118,6 @@ A cached result is only as correct as its key is complete. Each target names:
   installs its own. Its targets are declared in `packages/PACKAGE.ts`.
 - **`:tree` is coarse.** Any change reruns the repository-wide checks. Naming
   what each one reads would let a case change skip the docs checks.
-- **Not yet in the graph.** vite, unplugin, ts-mapper, create-vibelang, the
+- **Not yet in the graph.** ts-mapper, create-vibelang, the
   editors, the examples, `scripts/e2e.sh` and the LSP smoke test run outside
   it.
