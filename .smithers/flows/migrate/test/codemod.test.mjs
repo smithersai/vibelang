@@ -22,9 +22,11 @@ test("a .vibe importer names local modules by their source names", () => {
   assert.equal(rewriteSpecifier("src/a.vibe", "./b.vibe", "src/b.vibe"), "./b.vibe")
 })
 
-test("a .ts importer keeps .js specifiers, and a .ts specifier of a renamed module becomes .vibe", () => {
-  assert.equal(rewriteSpecifier("src/a.ts", "./b.js", "src/b.vibe"), "./b.js")
+test("a .ts importer names a .vibe module by its source name, which stock TypeScript resolves to its sidecar", () => {
+  assert.equal(rewriteSpecifier("src/a.ts", "./b.js", "src/b.vibe"), "./b.vibe")
   assert.equal(rewriteSpecifier("src/a.ts", "./b.ts", "src/b.vibe"), "./b.vibe")
+  // An extensionless specifier stays: its declaration would name ./b.js.
+  assert.equal(rewriteSpecifier("src/a.ts", "./b", "src/b.vibe"), "./b")
   assert.equal(rewriteSpecifier("src/a.ts", "./c.js", "src/c.ts"), "./c.js")
   // After revert returns b to .ts, the codemod's .vibe specifier names it again.
   assert.equal(rewriteSpecifier("src/a.ts", "./b.vibe", "src/b.ts"), "./b.ts")
@@ -45,10 +47,11 @@ test("renameBatch and rewriteImports update a small package", () => {
     assert.deepEqual(edits, [
       { file: "src/a.vibe", from: "./b.js", to: "./b.ts" },
       { file: "src/a.vibe", from: "./c.js", to: "./c.ts" },
+      { file: "src/c.ts", from: "./a.js", to: "./a.vibe" },
       { file: "src/d.vibe", from: "./a.ts", to: "./a.vibe" }
     ])
     assert.equal(readFileSync(join(root, "src/a.vibe"), "utf8"), "import { b } from './b.ts'\nimport { c } from './c.ts'\nexport const a = b + c\n")
-    assert.equal(readFileSync(join(root, "src/c.ts"), "utf8"), "import { a } from './a.js'\nexport const c = 2\n")
+    assert.equal(readFileSync(join(root, "src/c.ts"), "utf8"), "import { a } from './a.vibe'\nexport const c = 2\n")
     assert.equal(existsSync(join(root, "src/a.ts")), false)
     assert.deepEqual(rewriteImports(root, ["src/a.vibe", "src/b.ts", "src/c.ts", "src/d.vibe"]), [])
   } finally {

@@ -1,12 +1,14 @@
 // The edits that set up VibeLang in an existing project, as text-in,
 // text-out functions: the package's dependencies, tsc replaced by vibelang
-// in scripts, the vibelang-vite plugin in the Vitest or Vite config, and the
+// in scripts, the vibelang-vite plugin in the Vitest or Vite config, the
 // compiler option that lets .vibe files import local modules by their source
-// names. Each keeps the file's own formatting outside the lines it changes.
+// names, and the settings that let every TypeScript checker read a .vibe
+// module through its declaration sidecar. Each keeps the file's own
+// formatting outside the lines it changes.
 // wireVite applies the plugin edit to the config files the tests load. The
 // Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
 // coding agents up with the vibelang it installed.
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { must, quote } from "./util.mjs"
 
@@ -198,6 +200,67 @@ export function addCompilerOptions(text, options) {
   const empty = /^\s*\}/.test(rest)
   return text.slice(0, open + 1) + `\n${indent}"compilerOptions": {\n${body(indent + indent)}\n${indent}}${empty ? "\n" : ","}` + rest
 }
+
+/**
+ * Sets key to value in a tsconfig's VibeLang settings (JSON with comments):
+ * its top-level `vibelang` object, or `compilerOptions.vibelang` where the
+ * file keeps them there, or a new top-level object. ts is TypeScript's
+ * compiler API. A setting already there is left as it is.
+ */
+export function addVibeLangSetting(text, ts, key, value) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) throw new Error("not a tsconfig object")
+  const property = (object, name) => object.properties.find((p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) && p.name.text === name)
+  const options = property(root, "compilerOptions")
+  const settings = property(root, "vibelang") ?? (options && ts.isObjectLiteralExpression(options.initializer) ? property(options.initializer, "vibelang") : undefined)
+  const entry = `"${key}": ${JSON.stringify(value)}`
+  if (settings) {
+    const object = settings.initializer
+    if (!ts.isObjectLiteralExpression(object)) throw new Error("the tsconfig's vibelang setting is not an object")
+    if (property(object, key)) return text
+    const at = object.getStart(file) + 1
+    return text.slice(0, at) + (object.properties.length ? ` ${entry},` : ` ${entry} `) + text.slice(at)
+  }
+  const indent = /\n([ \t]+)\S/.exec(text.slice(root.getStart(file) + 1))?.[1] ?? "  "
+  const last = root.properties.at(-1)
+  if (!last) {
+    const at = root.getStart(file) + 1
+    return text.slice(0, at) + `\n${indent}"vibelang": { ${entry} }\n` + text.slice(at)
+  }
+  return text.slice(0, last.end) + `,\n${indent}"vibelang": { ${entry} }` + text.slice(last.end)
+}
+
+/**
+ * The repository's tsconfig files (tsconfig*.json, outside node_modules and
+ * hidden directories) that extend none of the others, as repository-relative
+ * paths: a compiler option set in each is set in every project. ts is
+ * TypeScript's compiler API.
+ */
+export function rootTsconfigs(root, ts) {
+  const files = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+      const path = dir ? posix.join(dir, entry.name) : entry.name
+      if (entry.isDirectory()) walk(path)
+      else if (/^tsconfig.*\.json$/.test(entry.name)) files.push(path)
+    }
+  }
+  walk("")
+  const all = new Set(files)
+  const local = (file, extended) => {
+    const path = posix.normalize(posix.join(posix.dirname(file), extended))
+    return all.has(path) || all.has(`${path}.json`)
+  }
+  return files.filter((file) => {
+    const { config } = ts.parseConfigFileTextToJson(file, readFileSync(join(root, file), "utf8"))
+    return ![config?.extends ?? []].flat().some((extended) => typeof extended === "string" && extended.startsWith(".") && local(file, extended))
+  })
+}
+
+/** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
+export const sidecarIgnore = "*.d.vibe.ts"
 
 /** The package manager a repository uses, from its lockfile. */
 export function packageManager(files) {

@@ -7,7 +7,7 @@ import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, keepMutableMembers, renameBatch, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, keepMutableMembers, renameBatch, restoreSpecifiers, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, emitDeclarations, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
@@ -236,7 +236,7 @@ export async function upgradeEffect(options) {
   return result
 }
 
-/** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin and tsconfig. Returns what it changed. */
+/** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
 async function wireTarget(config, log) {
   const t = config.target
   const changed = []
@@ -267,6 +267,7 @@ async function wireTarget(config, log) {
     changed.push(posix.relative(t, path))
   }
   const warnings = []
+  const ts = typeScriptOf(config)
   for (const pkg of config.packages) {
     const path = join(t, pkg.dir, "package.json")
     const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
@@ -275,7 +276,9 @@ async function wireTarget(config, log) {
     const dir = join(t, pkg.dir)
     for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig])) {
       const file = join(dir, tsconfig)
-      writeIfChanged(file, readFileSync(file, "utf8"), Wire.addCompilerOptions(readFileSync(file, "utf8"), { rewriteRelativeImportExtensions: true }))
+      const text = readFileSync(file, "utf8")
+      // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads.
+      writeIfChanged(file, text, Wire.addVibeLangSetting(Wire.addCompilerOptions(text, { rewriteRelativeImportExtensions: true }), ts, "declarationSidecars", true))
     }
   }
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
@@ -287,8 +290,17 @@ async function wireTarget(config, log) {
     const scripts = Wire.addEffectLint(root.scripts, readConfig)
     if (JSON.stringify(scripts) !== JSON.stringify(root.scripts ?? {})) writeIfChanged(rootPackage, before, JSON.stringify({ ...root, scripts }, null, 2) + "\n")
   }
+  // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
+  for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
+    const file = join(t, tsconfig)
+    writeIfChanged(file, readFileSync(file, "utf8"), Wire.addCompilerOptions(readFileSync(file, "utf8"), { allowArbitraryExtensions: true }))
+  }
+  // The sidecars are vibelang's output, in its format; formatters leave them alone.
+  const formatIgnore = join(t, ".prettierignore")
+  const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
+  writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true))
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
-  const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts: typeScriptOf(config), specsFor })
+  const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
   warnings.push(...vite.warnings)
   const tooling = wireDeveloperTools({ root: t, specsFor })
@@ -496,7 +508,10 @@ export async function revert(options) {
   const vibe = options.file.replace(/\.ts$/, ".vibe")
   const ts = vibe.replace(/\.vibe$/, ".ts")
   await Jj.restore(config.target, "@-", [ts, vibe])
-  const importEdits = rewriteImports(config.target, scopeFiles(config))
+  rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true }) // its declaration sidecar
+  // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
+  const codemodEdits = readJsonIf(p.codemod(b))?.importEdits ?? []
+  const importEdits = [...restoreSpecifiers(config.target, codemodEdits, ts), ...rewriteImports(config.target, scopeFiles(config))]
   const reverted = readJsonIf(p.reverted(b), [])
   reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), importEdits })
   writeJson(p.reverted(b), reverted)

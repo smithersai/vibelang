@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addCompilerOptions, addEffectLint, addVibeLang, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
+import { addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -156,6 +156,39 @@ test("addCompilerOptions adds to compilerOptions, or creates it, and keeps optio
   const set = '{ "compilerOptions": { "rewriteRelativeImportExtensions": false } }'
   assert.equal(addCompilerOptions(set, { rewriteRelativeImportExtensions: true }), set)
   assert.equal(addCompilerOptions("{}", { a: 1 }), '{\n  "compilerOptions": {\n    "a": 1\n  }\n}')
+})
+
+test("addVibeLangSetting adds to the vibelang object the file keeps, or a new top-level one", () => {
+  const set = (text) => addVibeLangSetting(text, ts, "declarationSidecars", true)
+  assert.equal(set('{\n  "compilerOptions": { "strict": true }\n}\n'), '{\n  "compilerOptions": { "strict": true },\n  "vibelang": { "declarationSidecars": true }\n}\n')
+  assert.equal(set('{\n\t// comment\n\t"include": ["src"],\n}\n'), '{\n\t// comment\n\t"include": ["src"],\n\t"vibelang": { "declarationSidecars": true },\n}\n')
+  assert.equal(set('{ "vibelang": { "tracing": "all" } }'), '{ "vibelang": { "declarationSidecars": true, "tracing": "all" } }')
+  assert.equal(set('{ "compilerOptions": { "vibelang": {} } }'), '{ "compilerOptions": { "vibelang": { "declarationSidecars": true } } }')
+  assert.equal(set('{}'), '{\n  "vibelang": { "declarationSidecars": true }\n}')
+  const done = '{ "vibelang": { "declarationSidecars": true } }'
+  assert.equal(set(done), done)
+})
+
+test("rootTsconfigs lists the tsconfig files that extend no other of the repository's", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-tsconfigs-"))
+  try {
+    const files = {
+      "tsconfig.base.json": '{ "compilerOptions": { "strict": true } }',
+      "tsconfig.json": '{ "files": [], "references": [{ "path": "packages/a" }] }',
+      "packages/a/tsconfig.json": '{\n  // inherits\n  "extends": "../../tsconfig.base.json"\n}',
+      "packages/a/tsconfig.build.json": '{ "extends": "./tsconfig" }',
+      "packages/b/tsconfig.json": '{ "extends": ["@tsconfig/node22/tsconfig.json"] }',
+      "packages/b/node_modules/x/tsconfig.json": "{}",
+      ".cache/tsconfig.json": "{}"
+    }
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text)
+    }
+    assert.deepEqual(rootTsconfigs(root, ts).sort(), ["packages/b/tsconfig.json", "tsconfig.base.json", "tsconfig.json"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test("packageManager reads the lockfile", () => {

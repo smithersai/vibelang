@@ -22,13 +22,17 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     writeFileSync(join(target, "src/b.ts"), "export const b = 1\n")
     writeFileSync(join(target, "src/b.test.ts"), 'import { b } from "./b.ts"\n')
     writeFileSync(join(target, "src/c.ts"), 'import { b } from "./b.js"\nexport const c = b\n')
+    writeFileSync(join(target, "src/d.ts"), 'import { b } from "./b.js"\nexport const d = b\n')
     await Jj.commit(target, "base")
 
     writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
     writeJson(paths(run).plan, { batches: [{ files: ["src/b.ts", "src/c.ts"] }] })
     renameBatch(target, ["src/b.ts", "src/c.ts"])
-    const scope = ["src/a.ts", "src/b.test.ts", "src/b.vibe", "src/c.vibe"]
-    assert.deepEqual(rewriteImports(target, scope).map((e) => `${e.file}: ${e.to}`), ["src/a.ts: ./b.vibe", "src/b.test.ts: ./b.vibe", "src/c.vibe: ./b.vibe"])
+    const scope = ["src/a.ts", "src/b.test.ts", "src/b.vibe", "src/c.vibe", "src/d.ts"]
+    const importEdits = rewriteImports(target, scope)
+    assert.deepEqual(importEdits.map((e) => `${e.file}: ${e.to}`), ["src/a.ts: ./b.vibe", "src/b.test.ts: ./b.vibe", "src/c.vibe: ./b.vibe", "src/d.ts: ./b.vibe"])
+    writeJson(paths(run).codemod("01"), { importEdits })
+    writeFileSync(join(target, "src/b.d.vibe.ts"), "export declare const b = 1;\n")
 
     const reverted = await revert({ run, batch: "01", file: "src/b.vibe", reason: "blocked on an issue" })
     assert.equal(readFileSync(join(target, "src/b.ts"), "utf8"), "export const b = 1\n")
@@ -37,9 +41,13 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     assert.equal(readFileSync(join(target, "src/b.test.ts"), "utf8"), 'import { b } from "./b.ts"\n')
     // A .vibe importer names the module by its source name, now .ts.
     assert.equal(readFileSync(join(target, "src/c.vibe"), "utf8"), 'import { b } from "./b.ts"\nexport const c = b\n')
+    // A TypeScript importer gets back the specifier it had: ./b.js stays ./b.js.
+    assert.equal(readFileSync(join(target, "src/d.ts"), "utf8"), 'import { b } from "./b.js"\nexport const d = b\n')
+    assert.equal(existsSync(join(target, "src/b.d.vibe.ts")), false)
     assert.deepEqual(reverted.importEdits, [
       { file: "src/a.ts", from: "./b.vibe", to: "./b.ts" },
       { file: "src/b.test.ts", from: "./b.vibe", to: "./b.ts" },
+      { file: "src/d.ts", from: "./b.vibe", to: "./b.js" },
       { file: "src/c.vibe", from: "./b.vibe", to: "./b.ts" }
     ])
     assert.deepEqual(readJson(paths(run).reverted("01")).map((r) => [r.file, r.reason]), [["src/b.ts", "blocked on an issue"]])

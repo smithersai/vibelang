@@ -68,16 +68,21 @@ export function renameBatch(root, files) {
 
 /**
  * The specifier that names target from a file, by VibeLang's rules: a .vibe
- * file imports a local module by its source name (./user.vibe, ./util.ts); a
- * .ts file may keep a .js specifier, which resolves to the .vibe source, and
- * a .ts specifier of a renamed module becomes .vibe. A .vibe specifier of a
+ * file imports a local module by its source name (./user.vibe, ./util.ts). A
+ * .ts file names a .vibe module by its source name too, ./user.vibe for
+ * ./user.js or ./user.ts: stock TypeScript, and every checker built on it,
+ * resolves only that name, to the module's declaration sidecar
+ * user.d.vibe.ts (vibelang setting declarationSidecars), while vibelang,
+ * its loaders and its bundler plugins resolve it to the source, and vibelang
+ * emits and declares it as ./user.js (D298). An extensionless specifier stays
+ * as written, since its declaration would gain .js. A .vibe specifier of a
  * module that revert returned to .ts names its .ts source again.
  */
 export function rewriteSpecifier(importer, specifier, target) {
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
   const vibeImporter = importer.endsWith(".vibe")
-  if (vibeImporter) {
+  if (vibeImporter || (targetExt === ".vibe" && [".js", ".ts", ".mts"].includes(ext))) {
     if (ext === targetExt) return specifier
     if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
     // Extensionless: name the file, or the directory's index file.
@@ -85,9 +90,38 @@ export function rewriteSpecifier(importer, specifier, target) {
     if (target === `${base}/index${targetExt}`) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
     return specifier + targetExt
   }
-  if (targetExt === ".vibe" && [".ts", ".mts"].includes(ext)) return specifier.slice(0, -ext.length) + ".vibe"
-  if (ext === ".vibe" && targetExt !== ".vibe") return specifier.slice(0, -ext.length) + targetExt
+  if (ext === ".vibe") return specifier.slice(0, -ext.length) + targetExt
   return specifier
+}
+
+/**
+ * Puts back the specifiers the codemod rewrote to name a module that revert
+ * returns to .ts: each edit { file, from, to } of a TypeScript importer whose
+ * `to` names `module` (repository-relative, now .ts) gets its `from` again,
+ * so ./user.js stays ./user.js. Returns the edits made.
+ */
+export function restoreSpecifiers(root, edits, module) {
+  const vibe = module.replace(/\.ts$/, ".vibe")
+  const restored = []
+  const byFile = new Map()
+  for (const edit of edits) {
+    if (edit.file.endsWith(".vibe") || resolveRelative(edit.file, edit.to, new Set([vibe])) !== vibe) continue
+    byFile.set(edit.file, [...(byFile.get(edit.file) ?? []), edit])
+  }
+  for (const [file, fileEdits] of byFile) {
+    const path = join(root, file)
+    if (!existsSync(path)) continue
+    const text = readFileSync(path, "utf8")
+    const changes = []
+    for (const i of parseImports(text)) {
+      const edit = fileEdits.find((e) => e.to === i.specifier)
+      if (!edit) continue
+      changes.push({ start: i.start, end: i.end, text: edit.from })
+      restored.push({ file, from: i.specifier, to: edit.from })
+    }
+    if (changes.length) writeFileSync(path, applyEdits(text, changes))
+  }
+  return restored
 }
 
 /**
