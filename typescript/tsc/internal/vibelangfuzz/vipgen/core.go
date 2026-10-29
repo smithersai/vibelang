@@ -162,3 +162,20 @@ func (t *Thunk) Vibe(w *Writer) {
 	w.Write(" }")
 }
 func (t *Thunk) Effect(w *Writer) { t.Vibe(w) }
+
+// A Seq is several statements that one Stmt hook writes together, each on
+// its own line.
+type Seq struct{ Stmts []Stmt }
+
+func (q *Seq) Vibe(w *Writer)   { q.print(w) }
+func (q *Seq) Effect(w *Writer) { q.print(w) }
+func (q *Seq) Ends() bool       { return ends(q.Stmts) }
+
+func (q *Seq) print(w *Writer) {
+	for i, st := range q.Stmts {
+		if i > 0 {
+			w.Line("")
+		}
+		w.Node(st)
+	}
+}

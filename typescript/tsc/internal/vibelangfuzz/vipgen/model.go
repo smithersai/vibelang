@@ -177,6 +177,9 @@ type Program struct {
 	// Effect is set when the VibeLang print uses an Effect.* function and
 	// so imports Effect.
 	Effect bool
+	// Modules holds the other modules of effect the reference names, true
+	// for those the VibeLang print names too.
+	Modules map[string]bool
 }
 
 // UsedKeys returns the program's constructs, in key order.
@@ -203,6 +206,7 @@ func PrintVibe(p *Program) string {
 	if p.Effect {
 		w.Line(`import { Effect } from "effect"`)
 	}
+	importModules(w, p, true)
 	printFuncs(w, p)
 	return w.String()
 }
@@ -214,8 +218,24 @@ func PrintEffect(p *Program) string {
 	w := &Writer{mode: modeEffect}
 	w.Line(fmt.Sprintf("import { ev } from %q", eventsModule))
 	w.Line(`import { Data, Effect } from "effect"`)
+	importModules(w, p, false)
 	printFuncs(w, p)
 	return w.String()
+}
+
+// importModules imports the program's other modules of effect, in name
+// order: those the VibeLang print names, or with vibe unset every one.
+func importModules(w *Writer, p *Program, vibe bool) {
+	var names []string
+	for name, named := range p.Modules {
+		if named || !vibe {
+			names = append(names, name)
+		}
+	}
+	if len(names) > 0 {
+		slices.Sort(names)
+		w.Line(fmt.Sprintf("import { %s } from \"effect\"", strings.Join(names, ", ")))
+	}
 }
 
 func printFuncs(w *Writer, p *Program) {

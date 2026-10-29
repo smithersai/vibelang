@@ -51,13 +51,14 @@ func (c *chooser) chance(n int) bool {
 // A Gen is the state of one program's generation. Construct files write
 // their nodes through its methods.
 type Gen struct {
-	c      chooser
-	on     []*Construct // the focus, its requirements and the swarm's choice, in key order
-	used   map[string]bool
-	effect bool
-	decls  []Node
-	labels int
-	names  int
+	c       chooser
+	on      []*Construct // the focus, its requirements and the swarm's choice, in key order
+	used    map[string]bool
+	effect  bool
+	decls   []Node
+	modules map[string]bool
+	labels  int
+	names   int
 }
 
 // A Scope is what a statement may refer to: the function it stands in, the
@@ -67,10 +68,16 @@ type Scope struct {
 	Locals   []string
 	Callable []*Func
 	Depth    int
+	// NoReturn is set in a body that its construct runs as an Effect of its
+	// own, where return would leave that Effect and not the function: VIP-19
+	// makes return in a for concurrent body a compile error, and VIP-22's
+	// blocks are Effect.gen bodies in their Effect TS. The generator writes
+	// no return there.
+	NoReturn bool
 }
 
 func (s *Scope) child() *Scope {
-	return &Scope{Fn: s.Fn, Locals: slices.Clone(s.Locals), Callable: s.Callable, Depth: s.Depth + 1}
+	return &Scope{Fn: s.Fn, Locals: slices.Clone(s.Locals), Callable: s.Callable, Depth: s.Depth + 1, NoReturn: s.NoReturn}
 }
 
 // Generate turns fuzz bytes into a program over the constructs leaveOut
@@ -80,7 +87,7 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	if len(enabled) == 0 {
 		return nil
 	}
-	g := &Gen{c: chooser{data: data}, used: map[string]bool{}}
+	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}}
 	focus := enabled[g.c.intn(len(enabled))]
 	on := map[string]bool{}
 	for _, k := range Closure(focus.Key) {
@@ -139,7 +146,7 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	for _, f := range p.Funcs {
 		g.Use(f.Form.Key)
 	}
-	p.Used, p.Effect, p.Decls = g.used, g.effect, g.decls
+	p.Used, p.Effect, p.Decls, p.Modules = g.used, g.effect, g.decls, g.modules
 	return p
 }
 
@@ -179,6 +186,11 @@ func (g *Gen) Use(key string) { g.used[key] = true }
 
 // UseEffect records that the VibeLang print names Effect.
 func (g *Gen) UseEffect() { g.effect = true }
+
+// UseModule records that the reference names another module of effect,
+// such as Deferred or Fiber, and, when vibe is set, that the VibeLang print
+// names it too.
+func (g *Gen) UseModule(name string, vibe bool) { g.modules[name] = g.modules[name] || vibe }
 
 // Intn and Chance expose the input's choices to construct files.
 func (g *Gen) Intn(n int) int       { return g.c.intn(n) }
@@ -231,12 +243,14 @@ func (g *Gen) Stmt(s *Scope) Stmt {
 			return &If{Cond: g.Cond(s), Then: g.Block(inner)}
 		})
 	}
-	forms = append(forms, func() Stmt {
-		if s.Fn.Void {
-			return &Return{}
-		}
-		return &Return{Value: g.Num(s)}
-	})
+	if !s.NoReturn {
+		forms = append(forms, func() Stmt {
+			if s.Fn.Void {
+				return &Return{}
+			}
+			return &Return{Value: g.Num(s)}
+		})
+	}
 	for _, c := range g.on {
 		if c.Stmt != nil {
 			forms = append(forms, func() Stmt {

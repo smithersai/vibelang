@@ -84,7 +84,7 @@ func init() {
 			}
 			m := dataMatch(g, s, subject(g, &Ref{Name: name}), d)
 			s.Locals = append(s.Locals, v)
-			return &Seq{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Value: m}}
+			return &Seq{Stmts: []Stmt{&DataConst{Name: name, Type: d.TypeName(), Value: value}, &Const{Name: v, Value: m}}}
 		},
 	})
 	Register(&Construct{
@@ -239,22 +239,6 @@ func (c *Comma) Vibe(w *Writer) {
 	w.Write(")")
 }
 func (c *Comma) Effect(w *Writer) { c.Vibe(w) }
-
-// A Seq is statements the generator writes as one, each on its own line.
-type Seq []Stmt
-
-func (q *Seq) Vibe(w *Writer)   { q.print(w) }
-func (q *Seq) Effect(w *Writer) { q.print(w) }
-func (q *Seq) Ends() bool       { return len(*q) > 0 && (*q)[len(*q)-1].Ends() }
-
-func (q *Seq) print(w *Writer) {
-	for i, st := range *q {
-		if i > 0 {
-			w.Line("")
-		}
-		w.Node(st)
-	}
-}
 
 // subject writes a match's subject: x, or now and then x behind an event,
 // which shows the subject evaluated once.
