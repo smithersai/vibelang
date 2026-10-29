@@ -121,7 +121,7 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 	diagnostics := section(text, "#### Diagnostics")
 
 	// "Before EK4801, nine EK codes are warnings by default. Five mark
-	// retired spellings …: EK1009, …. Three are policy diagnostics: …. EK4406
+	// retired spellings …: EK2112, …. Three are policy diagnostics: …. EK4406
 	// marks deprecated trust tags (D249). EK4408 also warns for a module name
 	// that collides with a value binding, while its other forms are errors
 	// (D303). Every other code before EK4801 is an error by default."

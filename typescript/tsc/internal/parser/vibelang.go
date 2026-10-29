@@ -588,13 +588,11 @@ func (p *Parser) scanVibeLangProvideArguments() bool {
 // or continue leaves its loops (D130, D172). The block parses as a Block
 // flagged NodeFlagsVibeLang whose first statement holds the layer expression,
 // so the checker reads both as ordinary code; the analyzer and the lowering
-// recognize the flag. The old spelling, with UsersLive { ... }, parses the
-// same way and draws the warning EK1009; in a .vibe file, a module,
-// JavaScript's with statement is a syntax error, so it took nothing away.
+// recognize the flag. Only provide introduces a provider block.
 func (p *Parser) parseVibeLangProvideStatement() *ast.Node {
 	pos := p.nodePos()
 	form := VibeSyntax{Kind: VibeSyntaxBlockStatement, Word: p.tokenRange()}
-	p.nextToken() // provide, or the old spelling with
+	p.nextToken() // provide
 	var providers *ast.Node
 	if p.token == ast.KindOpenParenToken && p.lookAhead((*Parser).scanVibeLangProvideArguments) {
 		// provide(A, Key = value) { ... } means provide A, Key = value { ... },

@@ -1130,9 +1130,6 @@ func (p *Parser) parseStatement() *ast.Statement {
 	case ast.KindReturnKeyword:
 		return p.parseReturnStatement()
 	case ast.KindWithKeyword:
-		if p.isVibeLangFile() {
-			return p.parseVibeLangProvideStatement() // old spelling of provide Layer { ... } (vibelang.go)
-		}
 		return p.parseWithStatement()
 	case ast.KindSwitchKeyword:
 		return p.parseSwitchStatement()

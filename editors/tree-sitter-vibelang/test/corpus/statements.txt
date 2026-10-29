@@ -67,14 +67,11 @@ function roll(): number!! {
               arguments: (arguments))))))))
 
 ================================================================================
-Provide in the call shape, and the old with spelling
+Provide in the call shape, and ordinary JavaScript with
 ================================================================================
 
 provide(NamesLive, Greeting = { text: () => "hi" }) {
   greet()
-}
-with SaluteLive {
-  return Salute.text()
 }
 with (scope) {
   run()
@@ -100,15 +97,6 @@ with (scope) {
       (expression_statement
         (call_expression
           function: (identifier)
-          arguments: (arguments)))))
-  (provide_statement
-    providers: (identifier)
-    body: (statement_block
-      (return_statement
-        (call_expression
-          function: (member_expression
-            object: (identifier)
-            property: (property_identifier))
           arguments: (arguments)))))
   (with_statement
     object: (parenthesized_expression

@@ -55,12 +55,9 @@
 (effect_type
   "!" @operator)
 
-; provide Layer { ... } and the old spelling with Layer { ... } (D130, D172).
+; provide Layer { ... } (VIP-12).
 (provide_statement
-  [
-    "provide"
-    "with"
-  ] @keyword)
+  "provide" @keyword)
 
 ; Handlers and catch expressions (D132, D236).
 (handle_clause

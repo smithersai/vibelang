@@ -173,6 +173,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An unused local `main` previously warned that it should be exported; it now compiles without that warning (VIP-26).
 
+- The obsolete `with Layer { ... }` provider alias previously compiled with a warning; only `provide Layer { ... }` is now supported, and the old alias receives TypeScript syntax errors (VIP-12).
+
 - Coding agents initialized with `vibelang agents init` missed Effect lint checks; their instructions now include `vibelang lint` and its Oxlint configuration.
 
 - Agent instructions taught retired call and function forms; the shipped skill and starter essentials now follow the accepted syntax, distinguish Promise `await` from Effect `try`, and explain failure handlers and cleanup.

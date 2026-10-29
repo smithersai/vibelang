@@ -12756,17 +12756,8 @@
         "type": "SEQ",
         "members": [
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "STRING",
-                "value": "provide"
-              },
-              {
-                "type": "STRING",
-                "value": "with"
-              }
-            ]
+            "type": "STRING",
+            "value": "provide"
           },
           {
             "type": "FIELD",

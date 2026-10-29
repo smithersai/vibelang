@@ -1,0 +1,5 @@
+{
+  "name": "with-provider-unsupported",
+  "source": "with SaluteLive { return Salute.text() }",
+  "accepted": false
+}

@@ -333,7 +333,7 @@ func TestSpecFacts(t *testing.T) {
 			t.Errorf("EK%d: \"A project may set\" it, but the options table does not list it", code)
 		}
 	}
-	for _, code := range []int32{4813, 4838, 9100, 2001, 1009} {
+	for _, code := range []int32{4813, 4838, 9100, 2001} {
 		if facts.IsAdjustable(code) {
 			t.Errorf("EK%d is adjustable by the derivation; Chapter 28 says no setting changes it", code)
 		}

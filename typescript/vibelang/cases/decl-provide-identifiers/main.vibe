@@ -1,0 +1,42 @@
+// expect-result: {"old":"Ada","called":3,"indexed":[20,20],"shadowed":"local"}
+// provide is the provider block keyword; with is ordinary TypeScript syntax.
+// The word provide alone stays an ordinary identifier: a call, an element
+// access, and a local name.
+service Names {
+  name(): string!!
+}
+
+const NamesLive = Layer.succeed(Names, {
+  name() { return "Ada" }
+})
+
+function old() {
+  provide NamesLive {
+    return try Names.name()
+  }
+}
+
+function provide(n: number) {
+  return n + 1
+}
+
+function called() {
+  try provide(1)
+  return try provide(2)
+}
+
+function indexed() {
+  const values = [10, 20]
+  const provide = values
+  provide[0] = provide[1]
+  return provide
+}
+
+function shadowed() {
+  const provide = "local"
+  return provide
+}
+
+export function main() {
+  return { old: try old(), called: try called(), indexed: try indexed(), shadowed: try shadowed() }
+}

@@ -107,7 +107,7 @@ var tsFormRules = map[int32]*tsFormRule{}
 // (D291): the rules above, whose fixes keep the program's meaning, and the
 // retired spellings whose fixes write the current ones (D172, D219, D221,
 // D223).
-var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 1009, 2112, 2113, 2120, 2121}
+var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 2112, 2113, 2120, 2121}
 
 // checkTypeScriptForms reports the rules' warnings in file.
 func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {

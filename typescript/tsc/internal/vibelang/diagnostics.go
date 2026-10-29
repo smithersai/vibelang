@@ -60,7 +60,7 @@ const (
 // The registry: every EK code in Chapter 28 of the spec
 // (docs/design/history/src/428-part4-ch28-tooling.md) with its default category and
 // the headline the spec prints for it. Every code is an error except EK2004,
-// EK1009, EK2112, EK2113, EK2120, EK2121, and EK4406, which are warnings by default; a
+// EK2112, EK2113, EK2120, EK2121, and EK4406, which are warnings by default; a
 // EK4408 name collisions are warnings (D303). A
 // project may change the category of EK2004, EK4403, and EK4406 (design decisions D34,
 // D53, and D172).
@@ -82,8 +82,6 @@ var (
 	// EK1008: a pipe that passes its left side by name and also uses it as a value. {0} is the left side.
 	EK1008 = message(1008, errorCategory, "% stands for {0}, which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
 
-	// EK1009: a provide block written with its old keyword, with. A warning.
-	EK1009 = message(1009, warningCategory, "with is the old spelling of this block's keyword; write provide.")
 	// EK1010: an unparenthesized throw expression before an operator. {0} is its unary operand.
 	EK1010 = message(1010, errorCategory, "throw takes only {0} here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.")
 	// EK1011: a function compiles to an Effect in a program without effect's Effect type. {0} is the function.
@@ -202,7 +200,7 @@ var registry = map[int32]*Message{}
 
 func init() {
 	for _, m := range []*Message{
-		EK1001, EK1002, EK1003, EK1004, EK1005, EK1006, EK1007, EK1008, EK1009, EK1010, EK1011, EK1012, EK1022, EK1023,
+		EK1001, EK1002, EK1003, EK1004, EK1005, EK1006, EK1007, EK1008, EK1010, EK1011, EK1012, EK1022, EK1023,
 		EK2001, EK2002, EK2003, EK2004, EK2005, EK2006, EK2101, EK2102, EK2103, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK3006, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
 		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,

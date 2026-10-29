@@ -330,9 +330,9 @@ const VibeLang = grammar(TypeScript, {
     statement: ($, previous) => choice(previous, $.provide_statement),
 
     // provide UsersLive { ... }, provide AppLive, Random = seeded { ... }
-    // (D130, D172, D173), and the old spelling with UsersLive { ... } (EK1009).
+    // VIP-12 adopts only the provide spelling.
     provide_statement: $ => prec.dynamic(1, seq(
-      choice('provide', 'with'),
+      'provide',
       field('providers', $._expressions),
       field('body', $.statement_block),
     )),

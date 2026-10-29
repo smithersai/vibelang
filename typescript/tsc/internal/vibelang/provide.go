@@ -1,15 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -32,12 +28,10 @@ import (
 //	})(), UsersLive);
 //	if (completion.kind === "return") return completion.value;
 //
-// The keyword matches Effect.provide. The old spelling, with UsersLive { ... },
-// still compiles and draws the warning EK1009, whose quick fix writes provide.
+// The keyword matches Effect.provide.
 
 func init() {
-	fileChecks = append(fileChecks, checkProvideBlocks, checkProvideProviders, checkProvideSpelling)
-	ls.RegisterCodeFixProvider(provideSpellingFix)
+	fileChecks = append(fileChecks, checkProvideBlocks, checkProvideProviders)
 	ls.RegisterQuickInfoHook(providerQuickInfo)
 }
 
@@ -444,38 +438,6 @@ func providedCallType(c *checker.Checker, call *ast.Node, t *checker.Type) *chec
 	}
 	returned := result(c.GetReturnTypeOfSignature(signature), c.GetTypeOfSymbol(signature.Parameters()[0]))
 	return c.NewFunctionType(nil, []*checker.Signature{c.SignatureWithReturnType(signature, returned)})
-}
-
-// checkProvideSpelling reports EK1009, a warning, at a provide block written
-// with its old keyword, with (D172). The block compiles the same either way.
-func checkProvideSpelling(c *checker.Checker, file *ast.SourceFile) {
-	text := file.Text()
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if isProvideBlock(n) {
-			if start := scanner.SkipTrivia(text, n.Pos()); strings.HasPrefix(text[start:], "with") {
-				reportAt(c, file, core.NewTextRange(start, start+len("with")), EK1009)
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-}
-
-// provideSpellingFix is EK1009's quick fix: it replaces with by provide.
-var provideSpellingFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1009.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		text := fix.SourceFile.Text()
-		if fix.Diagnostic == nil || fix.Span.End() > len(text) || text[fix.Span.Pos():fix.Span.End()] != "with" {
-			return nil, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Write provide instead of with",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: "provide"}},
-		}}, nil
-	},
 }
 
 // providerCall returns the $provideService call that the parser wrote for a

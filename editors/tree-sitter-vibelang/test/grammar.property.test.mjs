@@ -186,7 +186,7 @@ function repairedKnownSyntax(compiler, tree) {
 }
 
 function category(kind) {
-  if (kind.startsWith('vibe:')) return kind.replace('schema error', 'error').replace('schema alias', 'schema').replace('vibe:with', 'vibe:provide');
+  if (kind.startsWith('vibe:')) return kind.replace('schema error', 'error').replace('schema alias', 'schema');
   if (/^(error|service|control|schema|data|layer|module)_declaration$/.test(kind)) return 'vibe:' + kind.split('_')[0];
   if (['KindVariableStatement', 'lexical_declaration', 'variable_declaration'].includes(kind)) return 'variable';
   if (['KindFunctionDeclaration', 'function_declaration', 'generator_function_declaration', 'function_signature'].includes(kind)) return 'function';

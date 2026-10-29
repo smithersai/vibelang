@@ -311,22 +311,6 @@ try {
     assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
   })
 
-  await check("code action: EK1009 warns at the old with, and its quick fix writes provide", async () => {
-    open("src/old-with.vibe", "vibe")
-    const items = await diagnostics("src/old-with.vibe")
-    assert(items.length === 1, `expected one diagnostic, got ${JSON.stringify(items.map((d) => d.message))}`)
-    const [item] = items
-    assert(item.source === "EK" && item.code === 1009 && item.severity === 2, `expected warning EK 1009, got ${item.source} ${JSON.stringify(item.code)} severity ${item.severity}`)
-    const start = at("src/old-with.vibe", "with SaluteLive")
-    assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
-    const uri = fileUri("src/old-with.vibe")
-    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-    const fix = actions.find((a) => a.title === "Write provide instead of with")
-    assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
-    const edits = fix.edit?.changes?.[uri] ?? []
-    assert(edits.length === 1 && edits[0].newText === "provide" && JSON.stringify(edits[0].range) === JSON.stringify(item.range), `edits ${JSON.stringify(edits)}`)
-  })
-
   await check("code action: await on a fiber is EK4609, and its quick fix writes join; on a Deferred, EK4610 writes d.await()", async () => {
     open("src/old-await.vibe", "vibe")
     const items = await diagnostics("src/old-await.vibe")

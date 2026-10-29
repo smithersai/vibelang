@@ -22,7 +22,6 @@ export function diagnosticCodes(sources: string[]): string[] {
 export const retiredByVips: Record<string, string> = {
   EK1004: "VIP-8: using keeps TypeScript's meaning",
   EK1008: "VIP-23: the topic is the Effect value, with no by-name operand",
-  EK1009: "VIP-12: with is not a spelling of provide",
   EK1022: "VIP-11: no block params",
   EK2005: "VIP-35: handlers are open",
   EK2006: "VIP-5: effect code has no try statements",
