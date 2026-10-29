@@ -109,7 +109,7 @@ export function generate(): string {
   const skill = count(read(SKILL))
   const cheat = tokens.get(CHEAT_SHEET)
   if (cheat === undefined) throw new Error(`token-counts: the sidebar has no ${CHEAT_SHEET}`)
-  const decisions = count(read("docs/design/DECISIONS.md"))
+  const decisions = count(read("docs/design/history/DECISIONS.md"))
   const out: string[] = []
   out.push(
     "## What an agent loads",
@@ -121,7 +121,7 @@ export function generate(): string {
     `| The skill and the user guide (${guide.length} pages) | ${(skill + sum(guide)).toLocaleString("en-US")} |`,
     `| The user guide alone | ${sum(guide).toLocaleString("en-US")} |`,
     `| The specification (${spec.length} chapters) | ${sum(spec).toLocaleString("en-US")} |`,
-    `| The decision log, \`docs/design/DECISIONS.md\` | ${decisions.toLocaleString("en-US")} |`,
+    `| The decision log, \`docs/design/history/DECISIONS.md\` | ${decisions.toLocaleString("en-US")} |`,
     ""
   )
   const measured = measurePairs(readFileSync(fileOf(CHEAT_SHEET), "utf8"))

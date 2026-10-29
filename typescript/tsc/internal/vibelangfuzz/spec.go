@@ -12,16 +12,16 @@ import (
 // The specification is the oracle. These facts are read from
 // docs/design/src at test time, never copied into Go, so a specification
 // change reaches every target without an edit here. The VIPs replace the old
-// chapters, which move to docs/design/history: a chapter not yet rewritten
+// chapters, which move to docs/design/history/src: a chapter not yet rewritten
 // from the VIPs is read there until its replacement lands.
 
 // specDirs are where a chapter is looked for, the current specification
 // first.
-var specDirs = []string{"docs/design/src", "docs/design/history"}
+var specDirs = []string{"docs/design/src", "docs/design/history/src"}
 
 // SpecPath returns the path of a specification chapter, such as
 // "428-part4-ch28-tooling.md": in docs/design/src, or else in
-// docs/design/history.
+// docs/design/history/src.
 func SpecPath(chapter string) string {
 	for _, dir := range specDirs {
 		path := filepath.Join(Root(), dir, chapter)

@@ -12,9 +12,9 @@ import { projectArbitrary, projectFiles } from "../../../scripts/testing/project
 import { client, languageServer, offset, position } from "./protocol-client.mjs"
 
 const { M1_WORK: work, M1_MAPPER: mapper, M1_TRACING_MAPPER: tracingMapper, M1_STOCK: stock, VIBELANG_BINARY: compiler } = process.env
-const tooling = "docs/design/src/428-part4-ch28-tooling.md"
+const tooling = "docs/design/history/src/428-part4-ch28-tooling.md"
 const spansRule = `${tooling}: Diagnostics (D61), The editor; metamorphic verbatim/edit round trips`
-const renderRule = "docs/design/src/427-part4-ch27-compiler.md: Other renderings (D366/D416); docs/design/src/213-part2-ch13-calls.md: Contracts; docs/design/src/326-part3-ch26-compiled.md: Modules"
+const renderRule = "docs/design/history/src/427-part4-ch27-compiler.md: Other renderings (D366/D416); docs/design/history/src/213-part2-ch13-calls.md: Contracts; docs/design/history/src/326-part3-ch26-compiled.md: Modules"
 const regressions = new URL("./property-regressions/", import.meta.url)
 const arbitrary = fc.record({ project: projectArbitrary(fc),
   form: fc.constantFrom("plain", "contract", "failure", "hatch"),

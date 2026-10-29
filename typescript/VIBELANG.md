@@ -2,7 +2,7 @@
 
 This directory is microsoft/TypeScript with a short stack of commits that teach the Go compiler (`tsc/`) VibeLang: TypeScript syntax in which every function is an Effect (effect@4.0.6). A call to a function that returns an Effect runs it, and the compiler infers each function's `Effect<A, E, R>`.
 
-It is a first prototype. It lowers `.vibe` files with checker types, runs the output on Effect 4, and emits `.d.ts` files with the inferred Effect types. Services, control operations, handlers, producers, failures and regions, Scope regions (`using` and `fork`), the prelude, trust levels at TypeScript boundaries, platform APIs, runners, and debugging and tracing work (see their sections); the acceptance table below says which lane builds each remaining feature. The design is the specification in `../docs/design/src/`; the syntax decisions are `../docs/design/DECISIONS.md`.
+It is a first prototype. It lowers `.vibe` files with checker types, runs the output on Effect 4, and emits `.d.ts` files with the inferred Effect types. Services, control operations, handlers, producers, failures and regions, Scope regions (`using` and `fork`), the prelude, trust levels at TypeScript boundaries, platform APIs, runners, and debugging and tracing work (see their sections); the acceptance table below says which lane builds each remaining feature. The design is the specification in `../docs/design/src/`; the syntax decisions are `../docs/design/history/DECISIONS.md`.
 
 ## Base
 

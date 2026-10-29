@@ -1,6 +1,6 @@
 {
   "property": "scaffold-builds-checkout-npm-00-new",
-  "rule": "docs/user/src/setup/new-project.md: 1. Create the project, 3. Run the tests; docs/design/src/428-part4-ch28-tooling.md: Building and testing",
+  "rule": "docs/user/src/setup/new-project.md: 1. Create the project, 3. Run the tests; docs/design/history/src/428-part4-ch28-tooling.md: Building and testing",
   "knownFailure": true,
   "input": {
     "source": "checkout",

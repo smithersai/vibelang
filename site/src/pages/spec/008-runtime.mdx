@@ -1,0 +1,26 @@
+---
+title: "8. Runtime guarantees"
+---
+
+# Runtime guarantees
+
+Source: [VIP-31](/vips/0031-runtime-guarantees).
+
+- **No runtime semantics of VibeLang's own.** Every construct is exact sugar for Effect, so failures, defects, interruption, finalizer order and the combination of causes are Effect 4's.
+- **The guarantee.** Compiled output gives the same `Exit` as the Effect TypeScript shown beside each construct in this specification: success, failure, defect or interruption, with finalizers run in the same order.
+- **How it is checked.** Each VIP's VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s. The fuzz suite generates more pairs.
+- **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it ([Pattern matching](/spec/004-match#class-patterns)).
+- Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](/vips/0035-handlers-open)), not part of the language.
+
+Resources follow from this. `using` keeps TypeScript's meaning, and Effect resources use Effect's own `scoped`, `acquireRelease` and `addFinalizer` ([VIP-8](/vips/0008-using-denied), denied):
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-8
+effect query(p: string, q: string) {
+  using f = openFile(p)                // TypeScript's using: f[Symbol.dispose]() at the end of the block
+  return try scoped(effect {           // an Effect resource: Effect's own scoped
+    const db = try openDb()
+    return try db.query(q)
+  })
+}
+```

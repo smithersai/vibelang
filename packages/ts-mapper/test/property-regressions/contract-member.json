@@ -1,6 +1,6 @@
 {
   "property": "mapper-renderings",
-  "rule": "docs/design/src/427-part4-ch27-compiler.md: Other renderings (D366/D416); docs/design/src/213-part2-ch13-calls.md: Contracts; docs/design/src/326-part3-ch26-compiled.md: Modules",
+  "rule": "docs/design/history/src/427-part4-ch27-compiler.md: Other renderings (D366/D416); docs/design/history/src/213-part2-ch13-calls.md: Contracts; docs/design/history/src/326-part3-ch26-compiled.md: Modules",
   "input": {
     "project": {
       "modules": [

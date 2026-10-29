@@ -33,10 +33,10 @@ test('facts are explicit; unknown, missing and invalid placeholders fail', () =>
 })
 test('chapter, user, cross-chapter and local fragments resolve; repository files retain text', () => {
   const { put, load } = fixture()
-  put('docs/design/src/000-intro.md', '# Intro\n\n[chapter](101-calls.md#calls) [user](../../user/src/welcome.md) [fragment](#rules) [local](#intro) [repo](../../../README.md)\n')
+  put('docs/design/src/000-intro.md', '# Intro\n\n[chapter](101-calls.md#calls) [user](../../user/src/welcome.md) [fragment](#rules) [local](#intro) [vip](../vips/0001-one.md#why) [vips](../vips/README.md) [repo](../../../README.md)\n')
   const spec = load(), body = spec.convert('000-intro.md', facts)
-  for (const link of ['/spec/101-calls#calls', '/welcome', '/spec/202-rules#rules', '/spec/000-intro#intro']) assert.ok(body.includes(`](${link})`))
-  assert.ok(body.includes(' repo\n')); assert.equal(spec.counts().links, 4)
+  for (const link of ['/spec/101-calls#calls', '/welcome', '/spec/202-rules#rules', '/spec/000-intro#intro', '/vips/0001-one#why', '/vips/']) assert.ok(body.includes(`](${link})`))
+  assert.ok(body.includes(' repo\n')); assert.equal(spec.counts().links, 6)
 })
 test('page titles are the inventory labels, not the first heading', () => {
   const { put, load } = fixture()

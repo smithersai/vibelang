@@ -24,7 +24,7 @@ test("user Markdown hides decision annotations while the specification keeps the
     expect(page).not.toMatch(/\bD\d+/)
     expect(page).toContain("**Errors**.")
     expect(page).toContain("[do expressions](https://github.com/tc39/proposal-do-expressions)")
-    const spec = readFileSync(join(dir, "spec/900-appendices.md"), "utf8")
+    const spec = readFileSync(join(dir, "spec/000-intro.md"), "utf8")
     expect(spec).toMatch(/\bD\d+/)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })

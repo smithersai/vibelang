@@ -136,7 +136,7 @@ test("all current repository release references match the compiler manifest", ()
 test("install docs describe published platforms; the next launcher supports scoped Windows packages", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   for (const path of ["docs/user/src/getting-started/004-installation.md", "docs/user/src/setup.md",
-    "docs/design/src/428-part4-ch28-tooling.md", ".smithers/instructions/app.md", "packages/compiler/README.md"]) {
+    "docs/design/history/src/428-part4-ch28-tooling.md", ".smithers/instructions/app.md", "packages/compiler/README.md"]) {
     const text = readFileSync(join(root, path), "utf8")
     assert.match(text, /Windows.*not (?:available|published).*WSL/s, path)
     assert.doesNotMatch(text, /\| Windows on .*vibelang-win32/, path)

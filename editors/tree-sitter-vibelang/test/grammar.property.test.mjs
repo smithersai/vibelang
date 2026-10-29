@@ -15,8 +15,8 @@ const scratch = mkdtempSync(join(tmpdir(), 'vibe-grammar-property-'));
 const binary = process.env.G1_PARSE_BINARY || join(scratch, 'parse');
 const cli = join(here, 'node_modules/.bin/tree-sitter');
 const regressions = new URL('./property-regressions/', import.meta.url);
-const grammar = 'docs/design/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns';
-const editor = 'docs/design/src/428-part4-ch28-tooling.md: The editor';
+const grammar = 'docs/design/history/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns';
+const editor = 'docs/design/history/src/428-part4-ch28-tooling.md: The editor';
 const command = 'node --test test/grammar.property.test.mjs';
 const known = existsSync(regressions) ? readdirSync(regressions).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(readFileSync(new URL(f, regressions)))).filter(r => r.knownFailure) : [];
@@ -271,8 +271,8 @@ async function differential(input) {
   catch (error) { failureDiagnostics = diagnostics; throw error; }
 }
 
-// docs/design/src/428-part4-ch28-tooling.md (The editor) and
-// docs/design/src/900-appendices.md (Grammar): editor syntax must agree with
+// docs/design/history/src/428-part4-ch28-tooling.md (The editor) and
+// docs/design/history/src/900-appendices.md (Grammar): editor syntax must agree with
 // the compiler parser, independent of semantic/checker rejection. The compiler
 // suite's specgen supplies recursive forms, contracts and patterns (Ch 11/13).
 test('G1 generated programs and mutations', async () => {
@@ -281,8 +281,8 @@ test('G1 generated programs and mutations', async () => {
     check: differential });
 });
 
-// docs/design/src/428-part4-ch28-tooling.md (The editor) and
-// docs/design/src/900-appendices.md (Grammar, D419); metamorphic statement splicing.
+// docs/design/history/src/428-part4-ch28-tooling.md (The editor) and
+// docs/design/history/src/900-appendices.md (Grammar, D419); metamorphic statement splicing.
 test('G1 acceptance cases, splices and mutations', async () => {
   const cases = sourcesUnder(join(root, 'typescript/vibelang/cases'));
   // Compiler surface statements give category-preserving deletion/splicing and
@@ -296,19 +296,19 @@ test('G1 acceptance cases, splices and mutations', async () => {
     check: differential });
 });
 
-// docs/design/src/428-part4-ch28-tooling.md (The editor) and
-// docs/design/src/900-appendices.md (Grammar, D419), including TypeScript strings.
+// docs/design/history/src/428-part4-ch28-tooling.md (The editor) and
+// docs/design/history/src/900-appendices.md (Grammar, D419), including TypeScript strings.
 test('G1 shared project syntax and Unicode', async () => {
   await checkProperty(fc, { ...common, name: 'grammar-projects', rule: `${editor}; ${grammar}`,
     arbitrary: fc.record({ project: projectArbitrary(fc), mutation }), check: differential });
 });
 
-// docs/design/src/900-appendices.md (Grammar, Precedence) and
-// docs/design/src/213-part2-ch13-calls.md (expression rules).
+// docs/design/history/src/900-appendices.md (Grammar, Precedence) and
+// docs/design/history/src/213-part2-ch13-calls.md (expression rules).
 // catch follows every binary operator, including ??, in the precedence table.
 test('G1 expression precedence', async () => {
   await checkProperty(fc, { ...common, name: 'grammar-precedence',
-    rule: `${grammar}, Precedence; docs/design/src/213-part2-ch13-calls.md: expression rules`,
+    rule: `${grammar}, Precedence; docs/design/history/src/213-part2-ch13-calls.md: expression rules`,
     generatorVersion: 2, arbitrary: fc.record({ operator: fc.constantFrom('+', '*', '||', '??', '|>'),
       left: fc.constantFrom('a', 'café', '雪'), right: fc.constantFrom('b', 'value') }),
     artifacts: input => ({ 'main.vibe': input.source ?? `const x = ${input.left} ${input.operator} ${input.right} catch fallback;\n` }),
@@ -341,8 +341,8 @@ test('G1 expression precedence', async () => {
     } });
 });
 
-// docs/design/src/111-part1-ch11-stdlib.md (Data types) and
-// docs/design/src/900-appendices.md (Grammar, Patterns): recursively composed
+// docs/design/history/src/111-part1-ch11-stdlib.md (Data types) and
+// docs/design/history/src/900-appendices.md (Grammar, Patterns): recursively composed
 // patterns retain the same syntax in the editor, independently of exhaustivity.
 test('G1 recursive patterns', async () => {
   const patterns = fc.letrec(tie => ({
@@ -351,7 +351,7 @@ test('G1 recursive patterns', async () => {
       tie('pattern').map(p => `[${p}]`), tie('pattern').map(p => `({ field: ${p} })`),
       fc.tuple(tie('pattern'), tie('pattern')).map(([a, b]) => `(${a} and ${b})`)),
   })).pattern;
-  await checkProperty(fc, { ...common, name: 'grammar-patterns', rule: `${editor}; ${grammar}; docs/design/src/111-part1-ch11-stdlib.md: Data types`,
+  await checkProperty(fc, { ...common, name: 'grammar-patterns', rule: `${editor}; ${grammar}; docs/design/history/src/111-part1-ch11-stdlib.md: Data types`,
     arbitrary: patterns.map(pattern => ({ source: `const x = match (value) { when ${pattern}: 1; default: 0; };\n` })),
     check: differential });
 });

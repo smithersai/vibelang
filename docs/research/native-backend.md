@@ -147,7 +147,7 @@ Position: no VibeLang native backend and no Zig runtime in 2026. Revisit when an
 - Koka: [project page](https://www.microsoft.com/en-us/research/project/koka/), [Generalized Evidence Passing for Effect Handlers](https://www.microsoft.com/en-us/research/?p=769738).
 - Zig: [0.16.0 notes](https://ziglang.org/download/0.16.0/release-notes.html), [0.17.0 notes](https://ziglang.org/download/0.17.0/release-notes.html), [release index](https://ziglang.org/download/index.json).
 - Roc, secondary: [Ziggit thread](https://ziggit.dev/t/roc-how-our-rust-to-zig-rewrite-is-going/16743), [Tildes thread](https://tildes.net/~comp/1v5c/how_our_rust_to_zig_rewrite_is_going).
-- In-repo: [Chapter 24](../design/src/324-part3-ch24-effect.md), [Chapter 25](../design/src/325-part3-ch25-strategies.md), [effect4-runtime.md](effect4-runtime.md), [continuation-prior-art.md](continuation-prior-art.md).
+- In-repo: [Chapter 24](../design/history/src/324-part3-ch24-effect.md), [Chapter 25](../design/history/src/325-part3-ch25-strategies.md), [effect4-runtime.md](effect4-runtime.md), [continuation-prior-art.md](continuation-prior-art.md).
 
 ## Reproduce
 

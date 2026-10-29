@@ -12,7 +12,7 @@ test("no page says a platform value may be imported or passed (D310 amends D108)
   for (const path of current) {
     assert.ok(!/(?:importing|passing)[^.|\n]{0,60}(?:value|binding)[^.|\n]{0,30}\b(?:is|are) (?:allowed|fine)/i.test(read(path)), path)
   }
-  assert.match(read("docs/design/src/428-part4-ch28-tooling.md"), /\| EK4402 \| [^\n]*held as a value[^\n]*\(D310/)
+  assert.match(read("docs/design/history/src/428-part4-ch28-tooling.md"), /\| EK4402 \| [^\n]*held as a value[^\n]*\(D310/)
 })
 
 test("the skill sends a struct of named schemas to a schema declaration, as EK4832 does", () => {

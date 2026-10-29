@@ -21,8 +21,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,218 |
 | The skill and the user guide (137 pages) | 285,737 |
 | The user guide alone | 279,851 |
-| The specification (33 chapters) | 200,801 |
-| The decision log, `docs/design/DECISIONS.md` | 141,477 |
+| The specification (10 chapters) | 17,803 |
+| The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
 
@@ -274,45 +274,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](../../../design/src/000-intro.md) | 1,809 |
-| **Part I. The language by example** | **51,432** |
-| [1. A first look](../../../design/src/101-part1-ch01-first-look.md) | 2,248 |
-| [2. Functions and calls](../../../design/src/102-part1-ch02-functions.md) | 2,104 |
-| [3. Errors: the E channel](../../../design/src/103-part1-ch03-errors.md) | 5,660 |
-| [4. Dependency injection: the R channel](../../../design/src/104-part1-ch04-di.md) | 6,825 |
-| [5. Programs as values: retry, timeout, and pipe](../../../design/src/105-part1-ch05-programs.md) | 3,618 |
-| [6. Resources](../../../design/src/106-part1-ch06-resources.md) | 4,046 |
-| [7. Concurrency](../../../design/src/107-part1-ch07-concurrency.md) | 4,610 |
-| [8. Producers: streams of values](../../../design/src/108-part1-ch08-producers.md) | 1,874 |
-| [9. Handlers: defining your own effects](../../../design/src/109-part1-ch09-handlers.md) | 3,393 |
-| [10. Working with TypeScript](../../../design/src/110-part1-ch10-typescript.md) | 8,016 |
-| [11. The standard library](../../../design/src/111-part1-ch11-stdlib.md) | 5,480 |
-| [12. Questions Effect users ask](../../../design/src/112-part1-ch12-faq.md) | 3,558 |
-| **Part II. The rules** | **38,260** |
-| [13. What a call means](../../../design/src/213-part2-ch13-calls.md) | 22,791 |
-| [14. Contracts and inference](../../../design/src/214-part2-ch14-contracts.md) | 5,303 |
-| [15. Which functions compile to plain JavaScript](../../../design/src/215-part2-ch15-direct.md) | 3,305 |
-| [16. Callbacks and higher-order functions](../../../design/src/216-part2-ch16-callbacks.md) | 1,744 |
-| [17. Failures, defects, interruption, and cleanup](../../../design/src/217-part2-ch17-failures.md) | 5,117 |
-| **Part III. The runtime** | **25,927** |
-| [18. Why a continuation runtime](../../../design/src/318-part3-ch18-why.md) | 2,258 |
-| [19. The checkout trace, step by step](../../../design/src/319-part3-ch19-trace.md) | 1,583 |
-| [20. The machine](../../../design/src/320-part3-ch20-machine.md) | 3,750 |
-| [21. One-shot ownership and races](../../../design/src/321-part3-ch21-ownership.md) | 1,946 |
-| [22. What resume restores](../../../design/src/322-part3-ch22-restore.md) | 1,478 |
-| [23. Boundaries and finalization](../../../design/src/323-part3-ch23-boundaries.md) | 2,052 |
-| [24. What Effect provides and what the kernel adds](../../../design/src/324-part3-ch24-effect.md) | 4,572 |
-| [25. Implementation strategies and costs](../../../design/src/325-part3-ch25-strategies.md) | 1,946 |
-| [26. What compiled code must guarantee](../../../design/src/326-part3-ch26-compiled.md) | 6,342 |
-| **Part IV. The compiler** | **21,695** |
-| [27. Compiler architecture](../../../design/src/427-part4-ch27-compiler.md) | 5,296 |
-| [28. Tooling](../../../design/src/428-part4-ch28-tooling.md) | 16,399 |
-| **Part V. Decisions** | **41,600** |
-| [29. Decisions](../../../design/src/529-part5-ch29-decisions.md) | 26,550 |
-| [30. Risks and experiments](../../../design/src/530-part5-ch30-risks.md) | 15,050 |
-| **Appendices** | **20,078** |
-| [A. Evidence index and B. Prior art](../../../design/src/900-appendices.md) | 11,473 |
-| [C. Every Effect feature in VibeLang](../../../design/src/901-appendix-c-coverage.md) | 8,605 |
-| **All 33 pages** | **200,801** |
+| [Introduction](../../../design/src/000-intro.md) | 1,814 |
+| **The language** | **13,570** |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 2,117 |
+| [2. Running Effects](../../../design/src/002-running.md) | 4,547 |
+| [3. Failures](../../../design/src/003-failures.md) | 1,507 |
+| [4. Pattern matching](../../../design/src/004-match.md) | 629 |
+| [5. Services and the environment](../../../design/src/005-services.md) | 2,483 |
+| [6. Data](../../../design/src/006-data.md) | 1,003 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 908 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 376 |
+| **Appendices** | **2,419** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 2,419 |
+| **All 10 pages** | **17,803** |
 
 <!-- token-counts: end -->

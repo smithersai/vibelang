@@ -103,12 +103,12 @@ export const KEEP = [
   },
   {
     why: "D125 records the earlier name, and D255, the rename, quotes it",
-    paths: ["docs/design/DECISIONS.md", "site/src/pages/spec/529-part5-ch29-decisions.mdx"],
+    paths: ["docs/design/history/DECISIONS.md", "site/src/pages/spec/529-part5-ch29-decisions.mdx"],
     pattern: /^\*\*D(?:125|255)\. .*$|^\| D125 \|.*$/gm,
   },
   {
     why: "the spec's row for D125, a record of the earlier name, and its copy on the vibelang.sh site",
-    paths: ["docs/design/src/529-part5-ch29-decisions.md", "site/src/pages/spec/529-part5-ch29-decisions.mdx"],
+    paths: ["docs/design/history/src/529-part5-ch29-decisions.md", "site/src/pages/spec/529-part5-ch29-decisions.mdx"],
     pattern: /^\| D125 \|.*$/g,
   },
 ]
@@ -127,9 +127,9 @@ export const RULES = [
 
   // The earlier VibeLang project (effect-lang) is prior art in the spec; once
   // the language takes its name, those lines must say which one they mean.
-  ["prior art", /\bVibeLang's checkpoint\b/g, "the earlier VibeLang project's checkpoint", ["docs/design/src/"]],
-  ["prior art", /\bVibeLang reversed course\b/g, "The earlier VibeLang project reversed course", ["docs/design/src/"]],
-  ["prior art", /: VibeLang `main`/g, ": the earlier VibeLang project's `main`", ["docs/design/src/"]],
+  ["prior art", /\bVibeLang's checkpoint\b/g, "the earlier VibeLang project's checkpoint", ["docs/design/history/src/"]],
+  ["prior art", /\bVibeLang reversed course\b/g, "The earlier VibeLang project reversed course", ["docs/design/history/src/"]],
+  ["prior art", /: VibeLang `main`/g, ": the earlier VibeLang project's `main`", ["docs/design/history/src/"]],
 
   // "an Effeck" becomes "a VibeLang".
   ["article", /\b([Aa])n(\s+[`*_"'(\[]*)(?=\.?(?:effeck|Effeck|EFFECK))/g, "$1$2"],
@@ -307,8 +307,8 @@ export function isBinary(rel, buffer) {
 }
 
 // ---- The decision log records the rename once. ----
-const DECISIONS = "docs/design/DECISIONS.md"
-const DECISIONS_TABLE = "docs/design/src/529-part5-ch29-decisions.md"
+const DECISIONS = "docs/design/history/DECISIONS.md"
+const DECISIONS_TABLE = "docs/design/history/src/529-part5-ch29-decisions.md"
 
 function decisionText(number) {
   return [

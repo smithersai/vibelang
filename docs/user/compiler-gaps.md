@@ -7,7 +7,7 @@ error fails the check until its marker is removed. The checker reports Markdown
 line numbers and can write full per-block diagnostics with `--json path`.
 
 This inventory records language/compiler disagreements, not new language rules.
-The rule references are in `docs/design/DECISIONS.md`. A `// fragment` example
+The rule references are in `docs/design/history/DECISIONS.md`. A `// fragment` example
 instead omits a fixture or contains an incomplete integration sketch. Type
 checking does not prove runtime behavior; the native smoke suite covers that.
 

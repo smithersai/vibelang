@@ -26,8 +26,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 16,218 |
 | The skill and the user guide (137 pages) | 285,737 |
 | The user guide alone | 279,851 |
-| The specification (33 chapters) | 200,801 |
-| The decision log, `docs/design/DECISIONS.md` | 141,477 |
+| The specification (10 chapters) | 17,803 |
+| The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
 
@@ -279,43 +279,16 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](/spec/000-intro) | 1,809 |
-| **Part I. The language by example** | **51,432** |
-| [1. A first look](/spec/101-part1-ch01-first-look) | 2,248 |
-| [2. Functions and calls](/spec/102-part1-ch02-functions) | 2,104 |
-| [3. Errors: the E channel](/spec/103-part1-ch03-errors) | 5,660 |
-| [4. Dependency injection: the R channel](/spec/104-part1-ch04-di) | 6,825 |
-| [5. Programs as values: retry, timeout, and pipe](/spec/105-part1-ch05-programs) | 3,618 |
-| [6. Resources](/spec/106-part1-ch06-resources) | 4,046 |
-| [7. Concurrency](/spec/107-part1-ch07-concurrency) | 4,610 |
-| [8. Producers: streams of values](/spec/108-part1-ch08-producers) | 1,874 |
-| [9. Handlers: defining your own effects](/spec/109-part1-ch09-handlers) | 3,393 |
-| [10. Working with TypeScript](/spec/110-part1-ch10-typescript) | 8,016 |
-| [11. The standard library](/spec/111-part1-ch11-stdlib) | 5,480 |
-| [12. Questions Effect users ask](/spec/112-part1-ch12-faq) | 3,558 |
-| **Part II. The rules** | **38,260** |
-| [13. What a call means](/spec/213-part2-ch13-calls) | 22,791 |
-| [14. Contracts and inference](/spec/214-part2-ch14-contracts) | 5,303 |
-| [15. Which functions compile to plain JavaScript](/spec/215-part2-ch15-direct) | 3,305 |
-| [16. Callbacks and higher-order functions](/spec/216-part2-ch16-callbacks) | 1,744 |
-| [17. Failures, defects, interruption, and cleanup](/spec/217-part2-ch17-failures) | 5,117 |
-| **Part III. The runtime** | **25,927** |
-| [18. Why a continuation runtime](/spec/318-part3-ch18-why) | 2,258 |
-| [19. The checkout trace, step by step](/spec/319-part3-ch19-trace) | 1,583 |
-| [20. The machine](/spec/320-part3-ch20-machine) | 3,750 |
-| [21. One-shot ownership and races](/spec/321-part3-ch21-ownership) | 1,946 |
-| [22. What resume restores](/spec/322-part3-ch22-restore) | 1,478 |
-| [23. Boundaries and finalization](/spec/323-part3-ch23-boundaries) | 2,052 |
-| [24. What Effect provides and what the kernel adds](/spec/324-part3-ch24-effect) | 4,572 |
-| [25. Implementation strategies and costs](/spec/325-part3-ch25-strategies) | 1,946 |
-| [26. What compiled code must guarantee](/spec/326-part3-ch26-compiled) | 6,342 |
-| **Part IV. The compiler** | **21,695** |
-| [27. Compiler architecture](/spec/427-part4-ch27-compiler) | 5,296 |
-| [28. Tooling](/spec/428-part4-ch28-tooling) | 16,399 |
-| **Part V. Decisions** | **41,600** |
-| [29. Decisions](/spec/529-part5-ch29-decisions) | 26,550 |
-| [30. Risks and experiments](/spec/530-part5-ch30-risks) | 15,050 |
-| **Appendices** | **20,078** |
-| [A. Evidence index and B. Prior art](/spec/900-appendices) | 11,473 |
-| [C. Every Effect feature in VibeLang](/spec/901-appendix-c-coverage) | 8,605 |
-| **All 33 pages** | **200,801** |
+| [Introduction](/spec/000-intro) | 1,814 |
+| **The language** | **13,570** |
+| [1. Functions and Effect types](/spec/001-functions) | 2,117 |
+| [2. Running Effects](/spec/002-running) | 4,547 |
+| [3. Failures](/spec/003-failures) | 1,507 |
+| [4. Pattern matching](/spec/004-match) | 629 |
+| [5. Services and the environment](/spec/005-services) | 2,483 |
+| [6. Data](/spec/006-data) | 1,003 |
+| [7. Configuration and tooling](/spec/007-tooling) | 908 |
+| [8. Runtime guarantees](/spec/008-runtime) | 376 |
+| **Appendices** | **2,419** |
+| [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 2,419 |
+| **All 10 pages** | **17,803** |

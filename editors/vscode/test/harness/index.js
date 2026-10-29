@@ -85,7 +85,7 @@ async function editProperties(typescript) {
   // and reports its codes at source positions. Fresh CLI output is the oracle;
   // edit/repair equivalence is metamorphic. Astral text and CRLF exercise UTF-16.
   await checkProperty(fc, { name, numRuns: 2, generatorVersion: 2,
-    rule: "docs/design/src/428-part4-ch28-tooling.md: The editor (D32), Diagnostics (D61); metamorphic edit/repair equivalence",
+    rule: "docs/design/history/src/428-part4-ch28-tooling.md: The editor (D32), Diagnostics (D61); metamorphic edit/repair equivalence",
     command: "bun run test", regressions: pathToFileURL(path.resolve(__dirname, "../property-regressions") + path.sep),
     arbitrary: fc.record({ project: projectArbitrary(fc), crlf: fc.boolean(),
       edits: fc.array(fc.record({ broken: fc.boolean(), syntax: fc.constantFrom("complete", "incomplete", "async"), padding: fc.integer({ min: 0, max: 3 }),

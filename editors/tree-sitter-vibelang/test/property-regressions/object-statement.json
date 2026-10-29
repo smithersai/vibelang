@@ -1,6 +1,6 @@
 {
   "property": "grammar-projects",
-  "rule": "docs/design/src/428-part4-ch28-tooling.md: The editor; docs/design/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns",
+  "rule": "docs/design/history/src/428-part4-ch28-tooling.md: The editor; docs/design/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns",
   "seed": -657496828,
   "counterexamplePath": "0:3:2:2:2:2:2:2:2:2:2:18:18",
   "generatorVersion": 1,

@@ -11,152 +11,40 @@ export const specSidebar = [
         "link": "/spec/"
       },
       {
-        "text": "Part I. The language by example",
+        "text": "The language",
         "collapsed": true,
         "items": [
           {
-            "text": "1. A first look",
-            "link": "/spec/101-part1-ch01-first-look"
+            "text": "1. Functions and Effect types",
+            "link": "/spec/001-functions"
           },
           {
-            "text": "2. Functions and calls",
-            "link": "/spec/102-part1-ch02-functions"
+            "text": "2. Running Effects",
+            "link": "/spec/002-running"
           },
           {
-            "text": "3. Errors: the E channel",
-            "link": "/spec/103-part1-ch03-errors"
+            "text": "3. Failures",
+            "link": "/spec/003-failures"
           },
           {
-            "text": "4. Dependency injection: the R channel",
-            "link": "/spec/104-part1-ch04-di"
+            "text": "4. Pattern matching",
+            "link": "/spec/004-match"
           },
           {
-            "text": "5. Programs as values: retry, timeout, and pipe",
-            "link": "/spec/105-part1-ch05-programs"
+            "text": "5. Services and the environment",
+            "link": "/spec/005-services"
           },
           {
-            "text": "6. Resources",
-            "link": "/spec/106-part1-ch06-resources"
+            "text": "6. Data",
+            "link": "/spec/006-data"
           },
           {
-            "text": "7. Concurrency",
-            "link": "/spec/107-part1-ch07-concurrency"
+            "text": "7. Configuration and tooling",
+            "link": "/spec/007-tooling"
           },
           {
-            "text": "8. Producers: streams of values",
-            "link": "/spec/108-part1-ch08-producers"
-          },
-          {
-            "text": "9. Handlers: defining your own effects",
-            "link": "/spec/109-part1-ch09-handlers"
-          },
-          {
-            "text": "10. Working with TypeScript",
-            "link": "/spec/110-part1-ch10-typescript"
-          },
-          {
-            "text": "11. The standard library",
-            "link": "/spec/111-part1-ch11-stdlib"
-          },
-          {
-            "text": "12. Questions Effect users ask",
-            "link": "/spec/112-part1-ch12-faq"
-          }
-        ]
-      },
-      {
-        "text": "Part II. The rules",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "13. What a call means",
-            "link": "/spec/213-part2-ch13-calls"
-          },
-          {
-            "text": "14. Contracts and inference",
-            "link": "/spec/214-part2-ch14-contracts"
-          },
-          {
-            "text": "15. Which functions compile to plain JavaScript",
-            "link": "/spec/215-part2-ch15-direct"
-          },
-          {
-            "text": "16. Callbacks and higher-order functions",
-            "link": "/spec/216-part2-ch16-callbacks"
-          },
-          {
-            "text": "17. Failures, defects, interruption, and cleanup",
-            "link": "/spec/217-part2-ch17-failures"
-          }
-        ]
-      },
-      {
-        "text": "Part III. The runtime",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "18. Why a continuation runtime",
-            "link": "/spec/318-part3-ch18-why"
-          },
-          {
-            "text": "19. The checkout trace, step by step",
-            "link": "/spec/319-part3-ch19-trace"
-          },
-          {
-            "text": "20. The machine",
-            "link": "/spec/320-part3-ch20-machine"
-          },
-          {
-            "text": "21. One-shot ownership and races",
-            "link": "/spec/321-part3-ch21-ownership"
-          },
-          {
-            "text": "22. What resume restores",
-            "link": "/spec/322-part3-ch22-restore"
-          },
-          {
-            "text": "23. Boundaries and finalization",
-            "link": "/spec/323-part3-ch23-boundaries"
-          },
-          {
-            "text": "24. What Effect provides and what the kernel adds",
-            "link": "/spec/324-part3-ch24-effect"
-          },
-          {
-            "text": "25. Implementation strategies and costs",
-            "link": "/spec/325-part3-ch25-strategies"
-          },
-          {
-            "text": "26. What compiled code must guarantee",
-            "link": "/spec/326-part3-ch26-compiled"
-          }
-        ]
-      },
-      {
-        "text": "Part IV. The compiler",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "27. Compiler architecture",
-            "link": "/spec/427-part4-ch27-compiler"
-          },
-          {
-            "text": "28. Tooling",
-            "link": "/spec/428-part4-ch28-tooling"
-          }
-        ]
-      },
-      {
-        "text": "Part V. Decisions",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "29. Decisions",
-            "link": "/spec/529-part5-ch29-decisions"
-          },
-          {
-            "text": "30. Risks and experiments",
-            "link": "/spec/530-part5-ch30-risks"
+            "text": "8. Runtime guarantees",
+            "link": "/spec/008-runtime"
           }
         ]
       },
@@ -165,12 +53,8 @@ export const specSidebar = [
         "collapsed": true,
         "items": [
           {
-            "text": "A. Evidence index and B. Prior art",
+            "text": "Grammar, diagnostics, and denied and open VIPs",
             "link": "/spec/900-appendices"
-          },
-          {
-            "text": "C. Every Effect feature in VibeLang",
-            "link": "/spec/901-appendix-c-coverage"
           }
         ]
       }

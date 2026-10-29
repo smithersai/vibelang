@@ -81,7 +81,7 @@ different patch version and Effect 3.
 ## Public exports
 
 Every export from the package root. `$` marks compiler helpers; types have no
-JavaScript value. Decisions are in [`docs/design/DECISIONS.md`](../../docs/design/DECISIONS.md).
+JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../docs/design/history/DECISIONS.md).
 
 | Export | Purpose | Decision |
 | --- | --- | --- |

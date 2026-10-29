@@ -13,7 +13,7 @@ import { compileProjectSync, projects } from "../project.mjs"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
-const rule = "docs/design/src/428-part4-ch28-tooling.md: Packages and versions (D299), Building and testing (D297)"
+const rule = "docs/design/history/src/428-part4-ch28-tooling.md: Packages and versions (D299), Building and testing (D297)"
 const regressions = new URL("./property-regressions/", import.meta.url)
 const action = fc.record({
   kind: fc.constantFrom("source", "same-stamp", "create", "delete", "rename", "config", "workspace-config", "package", "dependency", "compiler"),

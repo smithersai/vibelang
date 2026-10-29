@@ -5,8 +5,8 @@ import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { programArbitrary, runInterrupted, runProgram } from "./property-programs.ts"
 
-const failures = "docs/design/src/217-part2-ch17-failures.md: Combining causes, catch, finalization (D305/D306)"
-const machine = "docs/design/src/320-part3-ch20-machine.md: Final, Mask, interrupt transitions"
+const failures = "docs/design/history/src/217-part2-ch17-failures.md: Combining causes, catch, finalization (D305/D306)"
+const machine = "docs/design/history/src/320-part3-ch20-machine.md: Final, Mask, interrupt transitions"
 const regressions = new URL("./property-regressions/", import.meta.url)
 
 function effectVersion() {

@@ -1,6 +1,6 @@
 {
   "property": "grammar-cases",
-  "rule": "docs/design/src/428-part4-ch28-tooling.md: The editor; docs/design/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns; metamorphic statement splicing",
+  "rule": "docs/design/history/src/428-part4-ch28-tooling.md: The editor; docs/design/src/900-appendices.md: Grammar (D419), Contextual words, Declarations, Statements, Expressions, Patterns; metamorphic statement splicing",
   "seed": 42,
   "counterexamplePath": "3:6:6",
   "generatorVersion": 1,

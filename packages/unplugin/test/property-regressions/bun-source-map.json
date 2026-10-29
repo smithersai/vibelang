@@ -1,6 +1,6 @@
 {
   "property": "bundlers-build",
-  "rule": "docs/design/src/428-part4-ch28-tooling.md: Packages and versions, Building and testing; docs/design/src/326-part3-ch26-compiled.md: Modules (D364/D365/D403); docs/design/src/428-part4-ch28-tooling.md: Debugging (original .vibe positions)",
+  "rule": "docs/design/history/src/428-part4-ch28-tooling.md: Packages and versions, Building and testing; docs/design/history/src/326-part3-ch26-compiled.md: Modules (D364/D365/D403); docs/design/history/src/428-part4-ch28-tooling.md: Debugging (original .vibe positions)",
   "input": {
     "modules": [
       {

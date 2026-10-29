@@ -96,11 +96,11 @@ test("the codemod renames a tree that then passes the gate, and a second run cha
 
 test("the rename records the decision without author or review provenance", t => {
   const root = fixture(t, {
-    "docs/design/DECISIONS.md": "**D125. The language is Effeck** (supersedes D58). Earlier name.\n",
+    "docs/design/history/DECISIONS.md": "**D125. The language is Effeck** (supersedes D58). Earlier name.\n",
   })
   const result = codemod("--root", root)
   assert.equal(result.status, 0, result.stderr)
-  const decision = readFileSync(join(root, "docs/design/DECISIONS.md"), "utf8")
+  const decision = readFileSync(join(root, "docs/design/history/DECISIONS.md"), "utf8")
   assert.match(decision, /The language is VibeLang/)
   assert.doesNotMatch(decision, /Will|GPT-|review|owner/)
 })

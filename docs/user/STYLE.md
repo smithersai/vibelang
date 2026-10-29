@@ -4,9 +4,10 @@ These docs mirror the Effect 4 documentation page for page: same sections, order
 
 ## Sources of truth
 
-1. `docs/design/DECISIONS.md`, the decision log, wins every conflict.
-2. `docs/design/src/`, the spec, one file per chapter, especially Part I (the language by example) and Part II (the rules). Chapter numbers change; refer to topics. Read the tooling chapter for exact names before writing about tooling. Cite only diagnostic codes the spec defines (D53).
-3. Effect 4.0.6's API, in `experiments/node_modules/effect/src`. Check every Effect name you use there.
+1. The accepted VIPs in `docs/design/vips/` win every conflict. Nothing is part of the language unless a VIP adds it.
+2. `docs/design/src/`, the spec, rewritten from the VIPs, one file per chapter. Chapter numbers change; refer to topics.
+3. `docs/design/history/`, the previous specification and its decision log (`DECISIONS.md`). They are historical, not normative, but they still describe the compiler where it hasn't caught up with the VIPs: read the historical tooling chapter (`docs/design/history/src/428-part4-ch28-tooling.md`) for exact tool names and diagnostic codes, and cite only codes the compiler's registry defines (D53).
+4. Effect 4.0.6's API, in `experiments/node_modules/effect/src`. Check every Effect name you use there.
 
 ## The language
 

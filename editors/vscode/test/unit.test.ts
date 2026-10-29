@@ -264,7 +264,7 @@ test("an unconfigured workspace without any ancestor compiler reports a missing 
   expect(status.text).toBe("vibelang not found")
 })
 
-const tooling = "docs/design/src/428-part4-ch28-tooling.md: The editor (D79/D76)"
+const tooling = "docs/design/history/src/428-part4-ch28-tooling.md: The editor (D79/D76)"
 const guide = "docs/user/src/setup/vscode.md: 3; Server settings and troubleshooting"
 const regressions = new URL("./property-regressions/", import.meta.url)
 const property = (name: string, arbitrary: any, check: (input: any) => Promise<void>) => checkProperty(fc, {

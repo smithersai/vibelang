@@ -71,6 +71,12 @@ export function loadSpec(root) {
       links++
       return `/spec/${file.slice(0, -3)}${fragment ? `#${fragment}` : ''}`
     }
+    const vips = path.join(root, 'design/vips') + path.sep
+    if (resolved.startsWith(vips) && /^(README|\d{4}-[^/]+)\.md$/.test(path.relative(vips, resolved)) && fs.existsSync(resolved)) {
+      links++
+      const name = path.basename(resolved, '.md')
+      return `/vips/${name === 'README' ? '' : name}${fragment ? `#${fragment}` : ''}`
+    }
     const user = path.join(root, 'user/src') + path.sep
     if (resolved.startsWith(user) && resolved.endsWith('.md') && fs.existsSync(resolved)) {
       links++

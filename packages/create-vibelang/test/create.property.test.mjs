@@ -10,7 +10,7 @@ const regressions = new URL("./property-regressions/", import.meta.url)
 const pending = readdirSync(regressions).filter(file => file.endsWith(".json"))
   .map(file => JSON.parse(readFileSync(new URL(file, regressions)))).filter(input => input.knownFailure)
 const guide = "docs/user/src/setup/new-project.md: 1. Create the project"
-const tooling = "docs/design/src/428-part4-ch28-tooling.md: Packages and versions, Building and testing"
+const tooling = "docs/design/history/src/428-part4-ch28-tooling.md: Packages and versions, Building and testing"
 const command = "node --test test/create.property.test.mjs"
 const propertyEnv = { ...process.env, FC_ARTIFACT_DIR: process.env.FC_ARTIFACT_DIR || join(root, ".cache/property-failures/S1") }
 // Construct portable directory components; no slash/NUL, traversal, or real commands.

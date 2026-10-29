@@ -1,68 +1,68 @@
-# VibeLang
+# The VibeLang specification
 
-A language for writing Effect programs. Specification, revised 2026-10-28. Runtime: `effect@4.0.6`.
+This specification defines VibeLang as the accepted VibeLang Improvement Proposals (VIPs) define it, and nothing more. Each VIP lives in [`docs/design/vips/`](../vips/README.md), with the reasons for the decision and its history. Where this text and an accepted VIP disagree, the VIP wins and this text is the bug.
 
-VibeLang is TypeScript syntax in which every function is an Effect. Seen from TypeScript, every VibeLang function is a function that returns a cold `Effect`, so calling it runs nothing; the exceptions are a function or method with a plain return annotation, such as `: number`, which is an ordinary JavaScript function to every caller, VibeLang's included (D500); a method that implements a plain member of an interface or base class its class declares, or a JavaScript protocol method such as `toString`, which is plain too (Chapter 10); and a producer, `function*`, which returns a `Stream`. Inside VibeLang, a call of a function declared to return an Effect runs it where the call stands, and an arrow, `() => f(x)`, delays it (Chapter 13). You call functions normally, `throw` and `catch` typed errors, and ask for services by name. The compiler infers each function's `Effect<A, E, R>` and emits the Effect code you would write by hand, so TypeScript uses it like any other Effect library.
+The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it.
 
-```ts effect
-const welcome = Effect.fn("welcome")(function* (id: string) {
-  const users = yield* Users
-  const mailer = yield* Mailer
-  const user = yield* users.find(id)
-  yield* mailer.send(user.email, `Welcome, ${user.name}!`)
-  return user.name
-})
-```
+## Principles
 
-```ts es
-function welcome(id: string) {
-  const user = Users.find(id)
-  Mailer.send(user.email, `Welcome, ${user.name}!`)
-  return user.name
-}
-// string!UserNotFound | MailError!Users | Mailer
-```
+VibeLang is TypeScript with a small set of constructs for writing Effect programs. Four principles decide every rule.
 
-You don't write the comment under the VibeLang version: it is the inferred contract, which your editor shows when you hover over `welcome`.
+1. **Syntax decides.** A keyword on a function, a block or an expression decides what it means. A type never chooses what code runs: a function literal never becomes an Effect because a parameter expects one, and a type never decides whether a loop consumes a Stream (VIP-1, VIP-2, VIP-20).
+2. **Exact sugar for Effect.** Every construct means one specific piece of Effect TypeScript, shown beside it in this specification. Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31). VibeLang has no runtime semantics of its own.
+3. **No ambiguity.** Every new keyword is contextual and has exactly one reading. "A little bit of ambiguity is unacceptable" (VIP-8). A proposal that can't meet that bar is denied (VIP-8, VIP-10, VIP-11, VIP-24).
+4. **TypeScript's meaning outside Effect code.** Plain functions, `async` functions, `await`, `throw`, `using`, classes, `do` expressions and the pipe operator mean exactly what TypeScript and the pinned TC39 proposals say. VibeLang changes meaning only inside `effect` functions and `effect` blocks, and only through the constructs below.
 
-The two functions do the same work, with two differences. `Effect.fn("welcome")` opens a tracing span on every call; VibeLang adds one only where you ask (Chapter 2). And the generated code looks each service up at the call that uses it, so a missing `Mailer` fails after `Users.find` runs, not before.
+## The language at a glance
 
-## How to read this document
+| Construct | Means exactly | VIP | Chapter |
+| --- | --- | --- | --- |
+| `effect function f() { }`, `effect f() { }`, `effect () => …` | a function returning `Effect.gen(function* () { … })` | 1 | [Functions](001-functions.md) |
+| `A!E!R` | `Effect<A, E, R>` | 3 | [Functions](001-functions.md) |
+| `try e` | `yield* e` | 5 | [Running Effects](002-running.md) |
+| `e catch y` | `yield* Effect.catch(e, …)` | 5 | [Running Effects](002-running.md) |
+| `effect { … }` | `Effect.gen(function* () { … })` | 2 | [Running Effects](002-running.md) |
+| `fork e`, `fork.in(s) e`, `fork.scoped e`, `fork.detached e`, `join f` | `Effect.forkChild`, `forkIn`, `forkScoped`, `forkDetach`, `Fiber.join` | 17 | [Running Effects](002-running.md) |
+| `try.all [ … ]`, `try.race`, `try.any`, `try.allSettled` | `Effect.all(…, { concurrency: "unbounded" })`, `raceAllFirst`, `raceAll`, … | 18 | [Running Effects](002-running.md) |
+| `for concurrent (const x of xs) { }` | `Effect.forEach(xs, …, { concurrency, discard: true })` | 19 | [Running Effects](002-running.md) |
+| `for try (const x of stream) { }` | `Stream.runForEachWhile` | 20 | [Running Effects](002-running.md) |
+| `effect function* p() { yield x }` | `Stream.callback` | 21 | [Running Effects](002-running.md) |
+| `uninterruptible { restore { } }`, `interruptible { }` | `Effect.uninterruptibleMask`, `Effect.interruptible` | 22 | [Running Effects](002-running.md) |
+| `throw e` in an `effect` function | `yield* Effect.fail(e)` | 4 | [Failures](003-failures.md) |
+| `error E { fields }` | `class E extends Data.TaggedError("E")<…> {}` | 13 | [Failures](003-failures.md) |
+| `schema error E { fields }` | `class E extends Schema.TaggedError<E>()("E", { … }) {}` | 29 | [Failures](003-failures.md) |
+| `match (x) { when P: … }` | TC39 pattern matching, plus an exhaustiveness check | 7 | [Pattern matching](004-match.md) |
+| `service S { members }` | `class S extends Context.Service<S, { … }>()("key") {}` | 9 | [Services](005-services.md) |
+| `provide L, K = v { … }` | `yield* Effect.provide(Effect.gen(…), [L, Layer.succeed(K, v)])` | 12 | [Services](005-services.md) |
+| `retry`, `sleep`, `Schema`, `Layer`, … | Effect's exports and modules, in scope without an import | 6, 14, 33 | [Services](005-services.md) |
+| `schema S { fields }` | `const S = Schema.Struct({ … }); type S = typeof S.Type` | 15 | [Data](006-data.md) |
+| `data D { V; W { f: T } }` | `Data.TaggedEnum` and `Data.taggedEnum` | 16, 28 | [Data](006-data.md) |
 
-| Part | What it covers | Read it if |
-| --- | --- | --- |
-| [I. The language by example](#part-i-the-language-by-example) | Functions, errors, dependency injection, pipelines, resources, concurrency, producers, handlers, TypeScript interop, the standard library, and the questions Effect users ask, each beside today's Effect code | You use Effect. Start here. |
-| [II. The rules](#part-ii-the-rules) | The precise rules behind Part I: what a call means, how contracts are inferred and checked, which functions compile to plain JavaScript | You review the language design |
-| [III. The runtime](#part-iii-the-runtime) | How VibeLang runs on Effect's fiber runtime: one-shot delimited continuations, ownership, cancellation, and the tests that check them | You care how it runs, or review the runtime |
-| [IV. The compiler](#part-iv-the-compiler) | The TypeScript compiler fork, the pipeline, declarations, and editor support | You build it |
-| [V. Decisions](#part-v-decisions) | Every decision with its reason and evidence, the closed end-to-end build calls, and the experiments that confirm the implementation | You check or change a decision |
-| [Appendices](#appendices) | The evidence index, prior art, and every Effect feature mapped to VibeLang | You check a claim |
+What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`, no inline modules. The open VIPs (handlers, the declaration manifest, Effectify the universe) are not part of the language.
 
-To learn VibeLang by task, not by rule, start with the [user guide](../../user/src/001-onboarding.md). The [cheat sheet](../../user/src/vibelang-features/115-cheat-sheet.md) puts every change beside the Effect code it replaces.
+## How to read this specification
 
-**Status.** This revision decides every rule. A count the repository measures, such as the number of kernel tests, is a placeholder in the source that the documentation build fills from the repository (`docs/tools/kernel-facts.ts`). A rule the compiler does not implement yet is listed as a gap in `typescript/VIBELANG.md`, and it still governs. `docs/design/DECISIONS.md` records each decision, D1-D520, with its reason and evidence; [Part V](#29-decisions) indexes them and marks the ones later decisions superseded. The Part III runtime is a working prototype: {{testCount}} tests pass in `experiments/`. The shipped compiler is the Go fork of TypeScript in `typescript/`, which infers contracts and lowers each call by its callee's declared type (Chapter 27); `prototype/esc`, on TypeScript's API, is the earlier prototype. The compiler, spec, runtime, and tooling share one repository (D60).
+Each construct has four parts:
 
-## Effect to VibeLang at a glance
+- **Syntax**, as a short grammar in the notation of [Appendix A](900-appendices.md#appendix-a-grammar).
+- **Static rules**, with the diagnostic each rule reports. Codes the VIPs assign are given; a rule whose code is not yet assigned says "code pending" (VIP-34 requires every diagnostic to have one).
+- **Meaning**, as the exact Effect TypeScript the construct equals, beside the VibeLang.
+- **Examples.**
 
-| In Effect today | In VibeLang | Chapter |
-| --- | --- | --- |
-| `Effect.gen(function* () { … })`, `Effect.fn(…)` | an ordinary `function` | [2](#2-functions-and-calls) |
-| `yield* effect` | call it: `f(x)` | [2](#2-functions-and-calls) |
-| `Effect.map`, `Effect.flatMap`, `Effect.andThen`, `Effect.tap` | statements: `const x = f(); g(x)` | [2](#2-functions-and-calls) |
-| `Effect.fail(e)` or `return yield* new E()` | `throw new E()` | [3](#3-errors-the-e-channel) |
-| `class E extends Data.TaggedError("E")<{ ... }> {}` | `error E { ... }` | [3](#3-errors-the-e-channel) |
-| `Effect.catchTag("E", h)` | `try { … } catch (e) { … }` | [3](#3-errors-the-e-channel) |
-| `Effect.ensuring(cleanup)` | `finally { … }` | [3](#3-errors-the-e-channel) |
-| `class S extends Context.Service<…>()("key") {}` | `service S { method(): A!E }` | [4](#4-dependency-injection-the-r-channel) |
-| `const s = yield* S` then `yield* s.method()` | `S.method()` | [4](#4-dependency-injection-the-r-channel) |
-| `Layer.effect(S, Effect.gen(…))` | `Layer.effect(S) { … }` | [4](#4-dependency-injection-the-r-channel) |
-| `program.pipe(Effect.provide(layer))` | `provide layer { program() }` | [4](#4-dependency-injection-the-r-channel) |
-| `effect.pipe(Effect.retry(…), Effect.timeout(…))` | `timeout(() => retry(() => f(), …), …)` | [5](#5-programs-as-values-retry-timeout-and-pipe) |
-| `Effect.scoped` with `Effect.acquireRelease` | `using x = acquire()` | [6](#6-resources) |
-| `Effect.all([a, b], { concurrency: 2 })` | `Effect.all([() => a(), () => b()], { concurrency: 2 })` | [7](#7-concurrency) |
-| `Effect.forkScoped(effect)` | `fork f()`, owned by the function body, loop iteration, or region around it | [7](#7-concurrency) |
-| a `Stream` you build by hand | a `function*` producer and `for...of` | [8](#8-producers-streams-of-values) |
-| none | `control Op { ... }` and `handle` | [9](#9-handlers-defining-your-own-effects) |
-| `node:fs`, `fetch`, `process.env`, `child_process` | `FileSystem`, `HttpClient`, `Config`, `ChildProcessSpawner` | [11](#11-the-standard-library) |
+A detail that a precise specification needs and no VIP decides is marked **Undecided (pending VIP)**. Such details are not part of the language until a VIP decides them.
 
-[Chapter 12](#12-questions-effect-users-ask) answers where `async`, `Option`, `Schema`, `Stream`, testing, and the rest of Effect fit; [Appendix C](#c-every-effect-feature-in-vibelang) answers feature by feature.
+### Examples are pending
+
+The compiler is being changed to match the VIPs. Until it does, every VibeLang example here starts with a `// compiler-gap: pending VIP-N` line, which the snippet checker (`docs/tools/check-snippets.ts`) reports as a known gap rather than a failure. The Effect TypeScript beside it is marked `// fragment`, because it names functions such as `fetchUser` that the example doesn't declare. [Appendix D](900-appendices.md#appendix-d-flipping-pending-examples) says how to flip an example once its VIP is implemented.
+
+## Chapters
+
+1. [Functions and Effect types](001-functions.md): VIP-1, VIP-3, VIP-26, VIP-27.
+2. [Running Effects](002-running.md): VIP-5, VIP-2, VIP-17 to VIP-23.
+3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29.
+4. [Pattern matching](004-match.md): VIP-7.
+5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
+6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.
+7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38.
+8. [Runtime guarantees](008-runtime.md): VIP-31.
+9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, and flipping pending examples.

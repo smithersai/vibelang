@@ -16,8 +16,8 @@ import vibelang from "../src/index.js"
 const here = fileURLToPath(new URL(".", import.meta.url))
 const self = fileURLToPath(import.meta.url)
 const compiler = process.env.VIBELANG_BINARY
-const tooling = "docs/design/src/428-part4-ch28-tooling.md"
-const integration = `${tooling}: Building and testing; docs/user/src/setup/vite.md: 1, 2, 5; docs/design/src/326-part3-ch26-compiled.md: Modules (D364/D365/D403)`
+const tooling = "docs/design/history/src/428-part4-ch28-tooling.md"
+const integration = `${tooling}: Building and testing; docs/user/src/setup/vite.md: 1, 2, 5; docs/design/history/src/326-part3-ch26-compiled.md: Modules (D364/D365/D403)`
 const mapping = `${tooling}: Debugging (original .vibe positions)`
 const hot = `${tooling}: Building and testing (every loaded .vibe module and its importers); Diagnostics (D61)`
 const register = "docs/user/src/setup/vite.md: 4. Test with Vitest (register, inherited NODE_OPTIONS)"
