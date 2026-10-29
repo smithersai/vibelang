@@ -306,6 +306,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
 - Diagnostic codes used the old numbering and dropped leading zeros; matching checks now use Appendix B codes, and terminal output keeps all four digits. See the [diagnostic code map](../vibelang-features/diagnostic-code-map.md).
 - The AST layout regression test failed because it expected a 32-byte node header; it now checks the 40-byte header that 64-bit node flags give.
+- Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 ### Configuration upgrade
 
