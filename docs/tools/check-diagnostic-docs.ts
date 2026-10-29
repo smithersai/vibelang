@@ -33,7 +33,7 @@ export const retiredByVips: Record<string, string> = {
   EK2110: "VIP-35: handlers are open",
   EK2113: "VIP-5: no catch clauses in effect code",
   EK2116: "VIP-2: factories return Effect values, not programs",
-  EK2117: "VIP-13: error inheritance is not settled",
+  EK2117: "VIP-13: an error never extends another error",
   EK2120: "VIP-9: no service class spelling",
   EK2121: "VIP-11: no layer declarations",
   EK3202: "VIP-24: wire is denied",

@@ -88,7 +88,10 @@ Don't decide language. Write the case with Effect's existing functions, which VI
 - `Date` and `Math.random()` are ECMAScript, so VIP-33 allows them. Prefer `try Clock.currentTimeMillis` and `try Random.next` where a test must control them.
 - ESTree node shapes for the new forms are tooling detail: `pending: VIP-34`.
 
-Open, marked `// pending-decision:` in a block's header: `error-extends` (error inheritance and class members beyond VIP-13) and `catch-precedence` (how `catch` binds beside `??`, `||` and `? :`, and whether catch expressions chain). `check-snippets` holds such a block out as it does a pending one and lists its topic.
+- An `error` declaration always extends `Data.TaggedError`: `error X extends Y` is a compile error, and related errors are grouped with a union type, `type LookupError = NotFound | Timeout` (VIP-13 amendment).
+- `catch` has the precedence of `??` and associates to the left; mixing it with `??`, `||` or `&&` needs parentheses (VIP-5 amendment).
+
+A case still open goes in a `// pending-decision: <topic>` line in the block's header. `check-snippets` holds such a block out as it does a pending one and lists its topic.
 
 ## Prose
 

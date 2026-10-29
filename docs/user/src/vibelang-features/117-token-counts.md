@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,184 |
-| The skill and the user guide (136 pages) | 284,235 |
-| The user guide alone | 278,349 |
+| The skill and the user guide (136 pages) | 284,102 |
+| The user guide alone | 278,216 |
 | The specification (33 chapters) | 200,801 |
 | The decision log, `docs/design/DECISIONS.md` | 141,477 |
 
@@ -137,10 +137,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,130 |
-| **Error Management** | **15,009** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 4,671 |
+| **Error Management** | **14,876** |
+| [Expected Errors](../error-management/014-expected-errors.md) | 4,570 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,463 |
-| [Fallback](../error-management/016-fallback.md) | 1,207 |
+| [Fallback](../error-management/016-fallback.md) | 1,175 |
 | [Matching](../error-management/017-matching.md) | 857 |
 | [Retrying](../error-management/018-retrying.md) | 859 |
 | [Timing Out](../error-management/019-timing-out.md) | 928 |
@@ -254,7 +254,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 4,633 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 787 |
 | [Alchemy](../platform/alchemy.md) | 2,292 |
-| **All 101 pages** | **163,227** |
+| **All 101 pages** | **163,094** |
 
 ### VibeLang features
 

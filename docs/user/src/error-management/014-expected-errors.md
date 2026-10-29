@@ -388,21 +388,16 @@ Use a union of error classes to describe several cases. Each class has its own b
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-7, VIP-13
-// pending-decision: error-extends
-// run: try Console.log(try describeFamily(new MissingFile({ code: "E1", path: "/a" }))); try Console.log(try describeFamily(new ExpiredFile({ code: "E2" }))); try Console.log(new MissingFile({ code: "E1", path: "/a" }) is FileError)
-/** The base of a family: each subclass carries its own tag. */
-error FileError {
-  _tag: string
-  code: string
-}
-error MissingFile extends FileError { path: string }
-error ExpiredFile extends FileError
+// run: try Console.log(try describeFamily(new MissingFile({ code: "E1", path: "/a" }))); try Console.log(try describeFamily(new ExpiredFile({ code: "E2" })))
+error MissingFile { code: string; path: string }
+error ExpiredFile { code: string }
+type FileError = MissingFile | ExpiredFile
 
-effect raiseFile(error: MissingFile | ExpiredFile) {
+effect raiseFile(error: FileError) {
   throw error
 }
 
-effect describeFamily(error: MissingFile | ExpiredFile) {
+effect describeFamily(error: FileError) {
   return raiseFile(error) catch (failure) => match (failure) {
     when MissingFile and { let path }: `missing ${path}`;
     when ExpiredFile and { let code }: `expired ${code}`;
@@ -413,10 +408,9 @@ effect describeFamily(error: MissingFile | ExpiredFile) {
 ```output
 missing /a
 expired E2
-true
 ```
 
-An error that extends another error is not decided yet. VIP-13 settles an `error` declaration's fields, methods and getters, and rules out a constructor and a `_tag` override. Whether an `error` may extend another error, be `abstract`, `implements` an interface, or hold static and private members is open. The example shows the form under discussion: each subclass is tagged with its own bare name, so `catchTag("MissingFile")` routes it, while `is FileError` and a `when FileError:` arm match the whole family by class.
+An `error` declaration always extends `Data.TaggedError`, so `error MissingFile extends FileError` is a compile error. Group related errors with a union type, `type FileError = MissingFile | ExpiredFile`, and choose among them with `match`. Each error keeps its own bare name as its tag, so `catchTag("MissingFile")` routes it.
 
 ## Errors that encode
 

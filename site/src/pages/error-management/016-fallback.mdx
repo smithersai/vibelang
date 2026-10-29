@@ -105,15 +105,7 @@ Saved issue
 
 `firstSuccessOf` tries Effects one at a time in priority order and stops on success; if all fail with expected errors, it reports the last error. A cause without an expected failure stops the search, and so does one with a defect; an expected failure beside an interruption activates the next alternative. An empty iterable is a defect: pass at least one.
 
-How `catch` binds beside `??`, `||` and `? :`, and whether catch expressions chain from left to right, is not decided yet. This chain shows the form under discussion:
-
-```vibe
-effect chainedTitle() {
-  return latestTitle() catch cachedTitle() catch "Untitled issue"
-}
-```
-
-Until it is decided, nest the next alternative in an effect handler, which recovers it in turn: `latestTitle() catch effect { return cachedTitle() catch "Untitled issue" }`.
+`catch` has the precedence of `??` and associates to the left. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses: `loadTitle() catch (savedTitle || "Untitled issue")`. To try one more alternative after a fallback fails, nest it in an effect handler, which recovers it in turn: `latestTitle() catch effect { return cachedTitle() catch "Untitled issue" }`.
 
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect { return try cachedTitle() } } catch "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
