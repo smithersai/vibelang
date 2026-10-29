@@ -19,6 +19,25 @@ import "fmt"
 // it encoded, which gives an equal error; a decode of a corrupted encoding
 // fails with a SchemaError, whose structure the Exit comparison checks.
 // The encoding is a plain object, so it is what JSON would carry.
+//
+// A schema error may have no fields. VIP-29's error is VIP-13's, and VIP-13
+// shows one, "error Timeout // an error with no fields", read as
+// `class Timeout extends Data.TaggedError("Timeout") {}`.
+// Chapter 3's grammar keeps the braces of a schema error and lets its
+// fields be empty ("SchemaErrorDeclaration = … "schema" "error" Name "{"
+// SchemaFields (Method | Getter)* "}"", and Chapter 6's SchemaFields is a
+// list of zero or more), and VIP-29's "`schema error NotFound {`" tells the
+// declaration from an alias by the brace, so the zero-field form is
+//
+//	schema error E0 {}
+//	class E0 extends Schema.TaggedError()("E0", {}) {}
+//
+// Effect's Schema.TaggedError takes its fields as a required argument, and
+// `{}` is an empty field set; its class's constructor takes no props when
+// the field set is empty, so such an error is `new E0()`, as VIP-13's
+// generator writes its field-less errors. A catch reads a number field only
+// where the error has one, and a corruption of a field-less encoding
+// replaces its _tag.
 
 func init() {
 	Register(&Construct{
@@ -144,13 +163,18 @@ func (d *SchemaErrorDecl) numberField() *SchemaField {
 }
 
 // A NewSchemaError is `new E0({ f0: <v0>, f1: <v1> })`, in both prints: one
-// value per field, nil for an optional field left out.
+// value per field, nil for an optional field left out. An error with no
+// fields is `new E0()`.
 type NewSchemaError struct {
 	Decl   *SchemaErrorDecl
 	Values []Expr
 }
 
 func (n *NewSchemaError) Vibe(w *Writer) {
+	if len(n.Decl.Fields) == 0 {
+		w.Write("new " + n.Decl.Name + "()")
+		return
+	}
 	o := &ObjectLit{}
 	for i, f := range n.Decl.Fields {
 		if n.Values[i] != nil {
@@ -196,11 +220,15 @@ func schemaErrorName(g *Gen) string {
 }
 
 // pickSchemaError returns one of the program's schema errors, declaring a
-// new one, up to two, now and then.
+// new one, up to two, now and then. One error in five it declares has no
+// fields (VIP-13's `error Timeout`).
 func pickSchemaError(g *Gen) *SchemaErrorDecl {
 	have := schemaErrorDecls(g)
 	if len(have) == 0 || len(have) < 2 && g.Chance(3) {
-		d := &SchemaErrorDecl{Fields: newSchemaFields(g)}
+		d := &SchemaErrorDecl{}
+		if !g.Chance(5) {
+			d.Fields = newSchemaFields(g)
+		}
 		d.Name = schemaErrorName(g)
 		g.UseModule("Schema", true)
 		g.AddDecl(d)
@@ -232,7 +260,8 @@ func newSchemaError(g *Gen, s *Scope, d *SchemaErrorDecl) *NewSchemaError {
 }
 
 // corruption replaces one field of an encoding with a value of the wrong
-// type, or its _tag with another error's.
+// type, or its _tag with another error's. An error with no fields has only
+// its _tag to corrupt.
 func corruption(g *Gen, s *Scope, d *SchemaErrorDecl) *Entry {
 	i := g.Intn(len(d.Fields) + 1)
 	if i == len(d.Fields) {
