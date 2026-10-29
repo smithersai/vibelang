@@ -1,0 +1,22 @@
+// expect-result: {"generic":[1,2],"derived":[3],"empty":[],"exits":["Success","Failure"],"settledDerived":["Success"]}
+import { values, derived, empty, exits } from "./factory.js"
+import type { Values } from "./factory.js"
+
+function collect<T extends ReadonlyArray<Effect.Effect<number>>>(xs: T) {
+  return try.all xs
+}
+function inherited(xs: Values) { return try.all xs }
+function settledInherited(xs: Values) { return try.allSettled xs }
+function bottom(xs: never[]) { return try.all xs }
+function settled(xs: ReadonlyArray<Exit.Exit<number, string>>) {
+  return try.allSettled xs
+}
+export effect function main() {
+  return {
+    generic: try collect(values),
+    derived: try inherited(derived),
+    empty: try bottom(empty),
+    exits: (try settled(exits)).map((e) => e._tag),
+    settledDerived: (try settledInherited(derived)).map((e) => e._tag)
+  }
+}

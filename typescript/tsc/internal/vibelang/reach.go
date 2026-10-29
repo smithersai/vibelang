@@ -69,6 +69,9 @@ func checkReach(c *checker.Checker, file *ast.SourceFile) {
 // "forEach with concurrency 4", with the fix that keeps it on this fiber, or
 // returns "" when call runs its arguments on the calling fiber.
 func forkingCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) (what string, fix string) {
+	if name := tryOperationName(call); name != "" {
+		return name, "run it on this fiber"
+	}
 	switch helper := fiberHelper(call); helper {
 	case "$awaitAll", "$awaitAllSettled", "$awaitRace", "$awaitAny":
 		// Each element starts in its own fiber (D196).

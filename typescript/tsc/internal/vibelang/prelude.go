@@ -88,6 +88,10 @@ var preludeModules = map[string]string{
 	"join":    runtimeModule,
 	"$select": runtimeModule,
 	// The await operations (D196): await.all, await.allSettled, await.race, await.any.
+	"$tryAll":          runtimeModule,
+	"$tryRace":         runtimeModule,
+	"$tryAny":          runtimeModule,
+	"$tryAllSettled":   runtimeModule,
 	"$awaitAll":        runtimeModule,
 	"$awaitAllSettled": runtimeModule,
 	"$awaitRace":       runtimeModule,

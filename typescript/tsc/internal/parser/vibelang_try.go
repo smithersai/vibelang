@@ -27,7 +27,7 @@ import (
 // expression: in a .vibe file, try followed on the same line by a token other
 // than {.
 func (p *Parser) isStartOfVibeLangTry() bool {
-	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenStartsTryOperand)
+	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && (p.isVibeLangTryOperation() || p.lookAhead((*Parser).nextTokenStartsTryOperand))
 }
 
 func (p *Parser) nextTokenStartsTryOperand() bool {
@@ -37,6 +37,9 @@ func (p *Parser) nextTokenStartsTryOperand() bool {
 
 // parseVibeLangTry parses `try operand`.
 func (p *Parser) parseVibeLangTry() *ast.Node {
+	if p.isVibeLangTryOperation() {
+		return p.parseVibeLangTryOperation()
+	}
 	pos := p.nodePos()
 	anchor := p.tokenRange()
 	p.nextToken() // try
@@ -64,4 +67,34 @@ func triedChainOperand(expression *ast.Expression) *ast.Expression {
 		return expression
 	}
 	return inner
+}
+
+// VIP-18 uses try precedence and accepts any array expression of Effects.
+var tryOperations = map[string]string{
+	"all": "$tryAll", "race": "$tryRace", "any": "$tryAny", "allSettled": "$tryAllSettled",
+}
+
+func (p *Parser) isVibeLangTryOperation() bool {
+	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		if p.token != ast.KindDotToken || p.hasPrecedingLineBreak() {
+			return false
+		}
+		p.nextToken()
+		_, ok := tryOperations[p.scanner.TokenValue()]
+		return ok && !p.hasPrecedingLineBreak()
+	})
+}
+func (p *Parser) parseVibeLangTryOperation() *ast.Node {
+	pos := p.nodePos()
+	anchor := p.tokenRange()
+	p.nextToken() // try
+	p.nextToken() // .
+	helper := tryOperations[p.scanner.TokenValue()]
+	p.nextToken()
+	word := core.NewTextRange(anchor.Pos(), p.nodePos())
+	operand := p.parseSimpleUnaryExpression()
+	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: word, Range: core.NewTextRange(anchor.Pos(), operand.End())})
+	callee := p.vibelangIntrinsic(helper, anchor)
+	return p.finishNode(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(operand.Loc, []*ast.Node{operand}), ast.NodeFlagsNone), pos)
 }

@@ -13,7 +13,6 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 | The skill | Write on this toolchain | Until then |
 | --- | --- | --- |
-| `try.all [a(), b()]`, `try.race`, `try.any`, `try.allSettled` | `await.all [a(), b()]`, `await.race`, `await.any`, `await.allSettled` | `try.all` does not parse (TS1109) |
 | `const users = try Users`, then `try users.find(id)` | `try Users.find(id)`, or `const users = Users`; for a service key declared in TypeScript, `Users()` | `try Users` is EK0502 |
 | Every export of `Effect` as a global: `ensuring(…)`, `scoped(…)`, `onExit(…)`, `serviceOption(…)`, `currentParentSpan` | `Effect.ensuring(…)`, `Effect.scoped(…)`, `Effect.onExit(…)`, `Effect.serviceOption(…)`, `Effect.currentParentSpan`; unqualified are `all`, `die`, `exit`, `forEach`, `log`, `logDebug`, `logError`, `logInfo`, `logWarning`, `race`, `repeat`, `retry`, `sleep`, `timeout` and `withSpan` | TS2304 |
 | `fork.scoped w()`, `fork.in(scope) w()`, `fork.detached w()` | `Effect.forkScoped(w())`, `Effect.forkIn(w(), scope)`, `Effect.forkDetach(w())` | TS1005, EK4410 |

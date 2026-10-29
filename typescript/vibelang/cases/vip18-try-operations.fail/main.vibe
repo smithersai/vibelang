@@ -1,0 +1,7 @@
+// expect: EK1801
+export effect function main() { return try.all { x: Effect.succeed(1) } }
+
+export function numbers() { return try.all [1, 2] }
+export function functions() { return try.all [() => 1] }
+export function functionArray(xs: ReadonlyArray<() => number>) { return try.all xs }
+export function effectFunctionArray(xs: ReadonlyArray<() => Effect.Effect<number>>) { return try.all xs }

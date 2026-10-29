@@ -116,6 +116,10 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$is` | Test a lowered pattern | — |
 | `$join` | Join a fiber or collection of fibers | — |
 | `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
+| `$tryAll` | `try.all [a, b]`: run every Effect at once and keep their results in order (Effect.all, unbounded) | VIP-18 |
+| `$tryAllSettled` | `try.allSettled [a, b]`: run every Effect at once and return each one's `Exit`; never fails | VIP-18 |
+| `$tryAny` | `try.any [a, b]`: the first Effect to succeed wins; fails with every failure when all fail (Effect.raceAll) | VIP-18 |
+| `$tryRace` | `try.race [a, b]`: the first Effect to finish wins, success or failure (Effect.raceAllFirst) | VIP-18 |
 | `$noFailure` | Sentinel for a Cause without a recoverable expected failure | — |
 | `$noMatch` | Throw for a value that no match arm handled | — |
 | `$patternError` | Mark an unsupported pattern during checking | — |

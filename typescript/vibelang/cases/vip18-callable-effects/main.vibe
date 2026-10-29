@@ -1,0 +1,9 @@
+// expect-result: {"result":[1],"literal":[1],"events":["ran","ran"]}
+import { values } from "./factory.js"
+export effect function main() {
+ const events: string[] = []
+ const xs = values(events)
+ const result = try.all xs
+ const literal = try.all [xs[0]]
+ return { result, literal, events }
+}

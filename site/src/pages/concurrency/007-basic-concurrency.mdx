@@ -168,6 +168,10 @@ The synchronous `onWinner` callback observes the winning fiber and its index: ze
 
 `Effect.all([task(1), task(2)], { concurrency: "unbounded" })` becomes `try.all [task(1), task(2)]`, and `Effect.raceFirst(a, b)` becomes `try.race [a, b]`. Each element is an Effect value, so `task(1)` returns its Effect unrun and `try.all` starts it in its own fiber. Use `effect { ... }` for a branch that needs several statements.
 
+`try.all`, `try.race`, `try.any` and `try.allSettled` require arrays or tuples of Effects (`EK1801`). For an object, use `try all({ user: load() }, { concurrency: "unbounded" })`; the `try.all` quick fix writes this form.
+
+Each operation runs its elements on separate fibers. A control operation must be handled inside its element; a handler around the whole operation cannot reach those fibers (`EK4201`).
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/concurrency/basic-concurrency](https://effect.website/docs/v4/concurrency/basic-concurrency/)

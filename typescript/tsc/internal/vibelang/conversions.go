@@ -238,6 +238,11 @@ func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
 
 // convert decides what value of type t converts to at a position.
 func (a *analyzer) convert(node *ast.Node, t *checker.Type, position valuePosition) (conversion, *checker.Type) {
+	// A try operation's operand elements are Effects already, callable ones
+	// included (VIP-18): only by-name deferral applies, never function adoption.
+	if call, _ := ownerCall(node); tryOperationName(call) != "" && (tryOperationEffectType(a.checker, t) || tryOperationArrayType(a.checker, t)) {
+		return a.convertByName(node, t, position)
+	}
 	switch {
 	case position.program && !(position.effectFn || position.plainFn):
 		if effect := a.programOf(t); effect != nil {
@@ -297,6 +302,12 @@ func (a *analyzer) convert(node *ast.Node, t *checker.Type, position valuePositi
 			}
 		}
 	}
+	return a.convertByName(node, t, position)
+}
+
+// convertByName passes an expression that runs an Effect by name where a
+// program is expected.
+func (a *analyzer) convertByName(node *ast.Node, t *checker.Type, position valuePosition) (conversion, *checker.Type) {
 	// An expression that runs an Effect where a program is expected is passed
 	// by name (D147): fork(fetchReport()) passes fetchReport() as a program,
 	// as if written () => fetchReport(), and runs nothing at the call site. A

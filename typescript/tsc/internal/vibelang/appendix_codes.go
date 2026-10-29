@@ -29,7 +29,6 @@ var (
 	EK1201 = message(1201, errorCategory, "Provide outside effect code. Move provide into an effect function or effect block.")
 	EK1401 = message(1401, errorCategory, "A namespace name that two subpaths export, or a subpath and the root. Import the conflicting modules under distinct names.")
 	EK1701 = message(1701, errorCategory, "Fork or join outside effect code. Move fork or join into an effect function or effect block.")
-	EK1801 = message(1801, errorCategory, "A try.all operand that is not an array of Effects. Pass an array of Effects to the concurrent operation.")
 	EK1901 = message(1901, errorCategory, "A for concurrent operand that is not an Iterable. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1905 = message(1905, errorCategory, "A labeled continue naming a statement that encloses the for concurrent. Iterate an Iterable inside effect code, and use continue to end an item.")
@@ -46,7 +45,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1801, EK1901, EK1902, EK1905, EK2001, EK2002, EK2003, EK2004, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2001, EK2002, EK2003, EK2004, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

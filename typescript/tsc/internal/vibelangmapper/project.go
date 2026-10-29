@@ -113,6 +113,10 @@ type Diagnostic struct {
 
 // env is what the walk knows about the code around a node.
 type env struct {
+	// holdCalls keeps untried calls as values in an operand. Explicit try
+	// still runs in the enclosing Effect body.
+	holdCalls bool
+	rawTry    *ast.Node
 	// effect reports whether the node is in an Effect body, a projected
 	// function's generator, where calls run and throw fails.
 	effect bool
@@ -198,11 +202,13 @@ func Project(text string, ctx FileContext) Projection {
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
+	operandTries := tryOperandMarks(file, text)
 	keywords := vipKeywords(file, text)
 	if len(keywords) > 0 {
 		text = blank(text, keywords)
 		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
 	}
+	restoreTryOperandMarks(file, text, operandTries)
 	p := &projector{
 		file:            file,
 		text:            text,
@@ -237,6 +243,10 @@ func lower(text string, ctx FileContext) *projector {
 
 // visit walks node and records the edits that lower it.
 func (p *projector) visit(node *ast.Node, e env) {
+	if e.holdCalls && node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		p.tryOperandExpression(node, e)
+		return
+	}
 	if e.effect && p.programReturnBoundary(node) {
 		p.returnProgram(node, e)
 		return
@@ -314,6 +324,9 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case isFiberHelper(node, "$forConcurrent", 3):
 		p.forConcurrent(node, e)
 		return
+	case tryOperationHelper(node) != "":
+		p.tryOperation(node, e)
+		return
 	case awaitOperationHelper(node) != "":
 		p.awaitOperation(node, e)
 		return
@@ -349,7 +362,10 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case isLambda(node):
 		p.lambda(node, e)
 		return
-	case node.Kind == ast.KindCallExpression && (!e.effect || p.forms.(*Resolver).holdsProgram(node)):
+	case node.Kind == ast.KindTaggedTemplateExpression && e.holdCalls:
+		p.visitChildren(node, e)
+		return
+	case node.Kind == ast.KindCallExpression && (!e.effect || e.holdCalls || p.forms.(*Resolver).holdsProgram(node)):
 		// moduleCall applies D152 outside the hatch's TypeScript island.
 		p.moduleCall(node, e)
 		return

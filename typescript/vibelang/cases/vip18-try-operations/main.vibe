@@ -1,0 +1,15 @@
+// expect-result: {"all":[1,2],"held":[3,4],"race":2,"any":3,"settled":["Success","Failure","Failure"]}
+import { build, effects, values } from "./factory.js"
+export effect function main() {
+  const evaluated = try.all (try build())
+  if (evaluated[0] !== 6) throw new Error("explicit operand")
+  const all = try.all [Effect.succeed(1), Effect.succeed(2)]
+  const held = try.all values
+  const fromCall = try.all effects()
+  const n: number | string = fromCall[0]
+  if (n !== 5) throw new Error("array expression")
+  const race = try.race [Effect.delay(Effect.succeed(1), "100 millis"), Effect.succeed(2)]
+  const any = try.any [Effect.fail("first"), Effect.succeed(3)]
+  const settled = try.allSettled [Effect.succeed(1), Effect.fail("bad"), Effect.die("defect")]
+  return { all, held, race, any, settled: settled.map((e) => e._tag) }
+}

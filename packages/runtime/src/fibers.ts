@@ -1,4 +1,4 @@
-import { Deferred, Effect, Fiber, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 
 // The fiber forms of a .vibe file (D166-D170). The parser writes `await x`
 // as $await(x), `select { ... }` as a call of $select, and `for concurrent`
@@ -353,3 +353,24 @@ export const detach = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<
 /** D170: starts a program in a fiber that `scope` owns (Effect.forkIn). */
 export const forkIn = <A, E, R>(scope: Scope.Scope, program: Effect.Effect<A, E, R>): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
   Effect.forkIn(program, scope)
+
+// VIP-18: values are Effects already; constructing the array runs no element.
+type TryEffects = ReadonlyArray<Effect.Effect<any, any, any>>
+export function $tryAll<const A extends TryEffects>(operand: A): Effect.Effect<
+  { -readonly [K in keyof A]: Effect.Success<A[K]> }, Effect.Error<A[number]>, Effect.Services<A[number]>
+> {
+  return Effect.all(operand, { concurrency: "unbounded" }) as any
+}
+export function $tryRace<const A extends TryEffects>(operand: A): Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>> {
+  return Effect.raceAllFirst(operand)
+}
+export function $tryAny<const A extends TryEffects>(operand: A): Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>> {
+  return Effect.raceAll(operand)
+}
+export function $tryAllSettled<const A extends TryEffects>(operand: A): Effect.Effect<
+  number extends A["length"]
+    ? Array<Exit.Exit<Effect.Success<A[number]>, Effect.Error<A[number]>>>
+    : { -readonly [K in keyof A]: Exit.Exit<Effect.Success<A[K]>, Effect.Error<A[K]>> }, never, Effect.Services<A[number]>
+> {
+  return Effect.all(operand.map(Effect.exit), { concurrency: "unbounded" }) as any
+}

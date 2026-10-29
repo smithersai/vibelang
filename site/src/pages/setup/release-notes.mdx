@@ -563,6 +563,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` left some arrows with Effect return annotations unmarked, so they lost their Effect behavior when only the `effect` keyword decided their form. It now marks these arrows `effect`, including arrows whose bodies qualify for direct-call optimization.
 
+- Concurrent arrays could not use the documented concurrency spellings; they now run with `try.all`, `try.race`, `try.any` and `try.allSettled`; settled outcomes include defects and interruption as `Exit` values.
+
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
 - After an Effect upgrade, CI reused an older `node_modules` tree and failed to build the runtime; CI now refreshes installs that disagree with a package's exact Effect pin.

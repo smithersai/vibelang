@@ -113,6 +113,8 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 			`do range="do { 2 }" word="do" open="{" close="}"`},
 		{"fork", `function f() { const t = fork read(); fork { poll() } }`,
 			"prefix range=\"fork read()\" word=\"fork\"\nfork-block range=\"fork { poll() }\" word=\"fork\" open=\"{\" close=\"}\""},
+		{"try operations", `function f() { const a = try.all [read()]; const b = try.any xs }`,
+			"prefix range=\"try.all [read()]\" word=\"try.all\"\nprefix range=\"try.any xs\" word=\"try.any\""},
 		{"join and await operations", `function f() { const a = join task; const b = await.allSettled [read()] }`,
 			"prefix range=\"join task\" word=\"join\"\nprefix range=\"await.allSettled [read()]\" word=\"await.allSettled\""},
 		{"throw expression", `const v = x ?? throw new Gone()`,

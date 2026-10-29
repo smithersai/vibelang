@@ -1,0 +1,14 @@
+// expect-result: {"all":[1,2],"race":3,"any":4,"settled":["Success"]}
+control Ask { ask(): number!! }
+function answered(n: number) {
+  try { return try Ask.ask() }
+  handle Ask.ask() { try resume(n) }
+}
+export effect function main() {
+  return {
+    all: try.all [answered(1), answered(2)],
+    race: try.race [answered(3)],
+    any: try.any [answered(4)],
+    settled: (try.allSettled [answered(5)]).map((e) => e._tag)
+  }
+}
