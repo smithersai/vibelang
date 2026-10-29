@@ -48,6 +48,6 @@ body:
     attributes:
       label: Platform
       description: Operating system, CPU, and your Node or Bun version.
-      placeholder: macOS 26 arm64, Node 26.10
+      placeholder: macOS 26 arm64, Node 22.22.3
     validations:
       required: true

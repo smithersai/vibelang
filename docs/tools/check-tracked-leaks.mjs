@@ -1,4 +1,4 @@
-// Run with Node 26 or Bun from a jj checkout. Private patterns are supplied in
+// Run with Node 22.22.3 or Bun from a jj checkout. Private patterns are supplied in
 // VIBELANG_LEAK_PATTERNS (see leaks.ts), never checked into the repository.
 import { execFileSync } from "node:child_process"
 import { lstatSync, readFileSync } from "node:fs"

@@ -30,7 +30,7 @@ async function loadBackend(root) {
     } catch {
       continue
     }
-    // Node 26 can require this synchronous ESM graph. A computed import()
+    // Node 22.22.3 can require this synchronous ESM graph. A computed import()
     // makes webpack's filesystem-cache dependency scanner warn and skip it.
     return { ...createRequire(base)(path), backendPath: path }
   }

@@ -183,7 +183,7 @@ test("starter prerequisites make Bun conditional on the chosen package manager",
   const root = fileURLToPath(new URL("../../",import.meta.url))
   for (const path of ["README.md","docs/user/src/getting-started/004-installation.md"]) {
     const text = readFileSync(join(root,path),"utf8")
-    assert.match(text,/Node 26 or later\. If you use Bun, use Bun 1\.4 or later\./,path)
+    assert.match(text,/Node 22\.22\.3 \(22\.x\) or Node 24\.11\.1 or later\. If you use Bun, use Bun 1\.4 or later\./,path)
   }
 })
 

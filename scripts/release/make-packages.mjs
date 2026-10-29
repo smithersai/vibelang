@@ -56,10 +56,10 @@ const expect = (ok, message) => { if (!ok) problems.push(message) }
 expect(version, "identity.go: no Version constant")
 for (const [name, pkg] of [["vibelang", compiler], ["vibelang-runtime", runtime], ["vibelang-vite", vite], ["vibelang-unplugin", unplugin], ["create-vibelang", create]]) {
   expect(pkg.name === name, `${name}: package.json names ${pkg.name}`)
-  expect(pkg.engines?.node === nodeEngine && nodeEngine === ">=26", name + ": engines.node " + pkg.engines?.node + ", expected >=26 (matching vibelang-runtime)")
+  expect(pkg.engines?.node === nodeEngine && nodeEngine === "^22.22.3 || >=24.11.1", name + ": engines.node " + pkg.engines?.node + ", expected ^22.22.3 || >=24.11.1 (matching vibelang-runtime)")
   expect(pkg.version === version, `${name}: version ${pkg.version}, but the compiler is ${version}`)
 }
-expect(template.engines?.node === nodeEngine, "template: engines.node " + template.engines?.node + ", expected >=26 (matching vibelang-runtime)")
+expect(template.engines?.node === nodeEngine, "template: engines.node " + template.engines?.node + ", expected ^22.22.3 || >=24.11.1 (matching vibelang-runtime)")
 const optional = compiler.optionalDependencies ?? {}
 expect(JSON.stringify(Object.keys(optional).sort()) === JSON.stringify(Object.keys(platforms).map((p) => platformPackage(p)).sort()),
   `vibelang: optionalDependencies must list exactly ${Object.keys(platforms).join(", ")}`)

@@ -80,8 +80,9 @@ by both a TypeScript and a `.vibe` module loads once. A `module` declaration in
 `main.vibe` is a module of its own, `main.vibe.text.js` beside it, which is not
 on disk; the hook serves it from the same compile. Errors in the loaded source and project-wide errors are thrown at the import;
 unrelated source diagnostics do not block a clean module. The hook turns on Node's source-map support,
-so a stack trace names `.vibe` lines. It needs Node 26 or later, for
-`module.registerHooks`. `VIBELANG_REGISTER_DEBUG=1` prints each project's
+so a stack trace names `.vibe` lines. It uses `module.registerHooks` (added in Node 22.15).
+Use Node 22.22.3 (22.x) or Node 24.11.1 or later for the synchronous loader fixes
+needed by the runtime bridge. `VIBELANG_REGISTER_DEBUG=1` prints each project's
 compile time with the time of each stage (the cache lookup, the snapshot of its
 inputs, the compiler, reading its output, and the cache write), or that it came
 from the cache, and at exit the time the hook took in all.

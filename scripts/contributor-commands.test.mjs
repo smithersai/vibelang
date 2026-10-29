@@ -13,7 +13,7 @@ function fixture(t) {
   return root
 }
 
-test("the starter test command discovers individual test files on Node 26", t => {
+test("the starter test command discovers individual test files on Node 22.22.3", t => {
   const root = fixture(t)
   mkdirSync(join(root, "test"))
   for (const name of ["one", "two"]) {

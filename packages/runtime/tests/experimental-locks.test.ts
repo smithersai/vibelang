@@ -131,7 +131,24 @@ test("Locks: layerTest grants every request at once and never loses a lock", asy
   expect(none).toEqual(Option.none())
 })
 
-test("Locks: Node.js's layer runs every scenario over its own navigator.locks", () => {
+// Node 22 has no Web Locks. Probe the selected Node, not the Bun test host.
+const nodeHasLocks = Bun.spawnSync(["node", "--input-type=module", "-e",
+  "process.exit(globalThis.navigator?.locks === undefined ? 1 : 0)"]).exitCode === 0
+
+test("Locks: Node without Web Locks rejects only the opt-in layer", () => {
+  if (nodeHasLocks) return
+  const result = Bun.spawnSync(["node", "--input-type=module", "-e", `
+    import { Effect, Exit } from "vibelang-runtime"
+    import { Locks } from "vibelang-runtime/experimental"
+    import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-node"
+    const exit = await Effect.runPromiseExit(Effect.provide(Effect.service(Locks.Locks), ExperimentalNodeLocks.layer))
+    if (!Exit.isFailure(exit) || !String(exit).includes("The Locks layer needs navigator.locks")) process.exit(1)
+  `], { cwd: packageDir })
+  expect(result.stderr.toString()).toBe("")
+  expect(result.exitCode).toBe(0)
+})
+
+test.skipIf(!nodeHasLocks)("Locks: Node.js's layer runs every scenario over its own navigator.locks", () => {
   const result = Bun.spawnSync(["node", "tests/fixtures/locks-node.ts", "scenarios"], {
     cwd: packageDir, stdout: "pipe", stderr: "pipe"
   })
@@ -140,7 +157,7 @@ test("Locks: Node.js's layer runs every scenario over its own navigator.locks", 
   expect(JSON.parse(result.stdout.toString())).toEqual(scenarios)
 }, 30_000)
 
-test("Locks: Node.js's locks exclude a worker thread, never another process", () => {
+test.skipIf(!nodeHasLocks)("Locks: Node.js's locks exclude a worker thread, never another process", () => {
   const result = Bun.spawnSync(["node", "tests/fixtures/locks-node.ts", "reach"], {
     cwd: packageDir, stdout: "pipe", stderr: "pipe"
   })

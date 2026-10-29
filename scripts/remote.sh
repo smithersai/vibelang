@@ -15,10 +15,10 @@
 # the same relative directory. The exit code is the command's. Binaries built
 # there are Linux x64; build locally when you need one on this machine.
 #
-# The host needs Go 1.27, Node 26, and Bun 1.4 under ~/es-tools:
+# The host needs Go 1.27, Node 22.22.3, and Bun 1.4 under ~/es-tools:
 #   mkdir -p ~/es-tools && cd ~/es-tools
 #   curl -fsSL https://go.dev/dl/go1.27.0.linux-amd64.tar.gz | tar xz
-#   curl -fsSL https://nodejs.org/dist/v26.10.0/node-v26.10.0-linux-x64.tar.xz | tar xJ && mv node-v26.10.0-linux-x64 node
+#   curl -fsSL https://nodejs.org/dist/v22.22.3/node-v22.22.3-linux-x64.tar.xz | tar xJ && mv node-v22.22.3-linux-x64 node
 #   curl -fsSL https://bun.sh/install | BUN_INSTALL=$HOME/es-tools/bun bash -s bun-v1.4.1
 set -eu
 

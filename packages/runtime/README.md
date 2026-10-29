@@ -29,7 +29,7 @@ bun run test
 ```
 
 The build uses TypeScript to write ES2022 JavaScript modules, declarations,
-source maps, and declaration maps to `dist/`. Node 26 and Bun 1.4 load the
+source maps, and declaration maps to `dist/`. Node 22.22.3 (22.x) or Node 24.11.1 or later and Bun 1.4 load the
 package's JavaScript export; TypeScript resolves it to `dist/index.d.ts`. The
 package includes `dist/`, this README, and the license; build before packing or
 installing a local copy. Generated files under `dist/` are ignored.
@@ -38,6 +38,16 @@ installing a local copy. Generated files under `dist/` are ignored.
 `bun test` uses the current build. The tests import `bun:test`, so they run
 only under Bun; Vitest cannot load that module. Fast-call suite only:
 `bun run build && bun test tests/fastcalls.test.ts`.
+
+From the repository root, `sh scripts/test-node-versions.sh` checks Node 22.22.3
+and current Node 24: it runs `tests/node-compat.mjs` directly under Node, the
+Bun suite with that Node on PATH for its subprocess consumers, and the compiler
+package tests. Build the native compiler/runtime and install experiments first.
+
+The Node floor includes the imported-CommonJS `require(esm)` cache and synchronous loader-hook fixes in
+[Node 22.22.3](https://nodejs.org/en/blog/release/v22.22.3) (Node.js #59679).
+Earlier Node 22 versions fail compiler import-hook consumers with
+`ERR_VM_MODULE_LINK_FAILURE`, even though they supply the individual APIs.
 
 The shared kernel model suite imports `experiments/tests/conformance/model-laws.ts`.
 Before the full suite, install its pinned dependencies once from this directory:
@@ -226,7 +236,7 @@ supersets of Effect's interfaces. The layers are in
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation. `ExperimentalNodeServices` and `ExperimentalBunServices`
 are Effect's bundles plus `FileSystem`, `Crypto` and `Process`;
-`ExperimentalBrowserServices` provides `Crypto` and `Locks`; `ExperimentalNodeLocks`, which locks
+`ExperimentalBrowserServices` provides `Crypto` and `Locks`; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
 within one process only, is in no bundle. Install the matching
 `@effect/platform-*` package, an optional peer dependency. The
 platform-neutral modules import only `effect`, and the service keys are pure,

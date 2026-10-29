@@ -16,7 +16,7 @@ npm install --save-dev vitest@5.0.5 @effect/vitest@4.0.6
 ```
 
 The plugin compiles with the `vibelang` package, a peer dependency, through its
-`vibelang/project` backend. It supports Vite 7 and 8 on Node 26 or later; the
+`vibelang/project` backend. It supports Vite 7 and 8 on Node 22.22.3 (22.x) or Node 24.11.1 or later; the
 acceptance tests use Vite 8 and Vitest 5. `create-vibelang` apps already include
 the plugin and a Vitest configuration.
 

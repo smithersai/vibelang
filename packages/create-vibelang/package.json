@@ -18,5 +18,5 @@
   "files": ["bin", "template", "README.md", "LICENSE"],
   "scripts": { "test": "node --test test/*.test.mjs" },
   "devDependencies": { "fast-check": "4.10.2" },
-  "engines": { "node": ">=26" }
+  "engines": { "node": "^22.22.3 || >=24.11.1" }
 }

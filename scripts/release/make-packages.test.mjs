@@ -171,9 +171,9 @@ test("refuses stale install docs before replacing release artifacts", (t) => {
   assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
 })
 
-test("all release packages and the starter declare the Node 26 floor", () => {
+test("all release packages and the starter declare the Node 22.22.3 floor", () => {
   for (const path of [...["compiler", "runtime", "vite", "unplugin", "create-vibelang"].map(name => "packages/" + name + "/package.json"), "templates/app/package.json"]) {
-    assert.equal(json(join(repo, path)).engines?.node, ">=26", path)
+    assert.equal(json(join(repo, path)).engines?.node, "^22.22.3 || >=24.11.1", path)
   }
 })
 
@@ -182,20 +182,20 @@ for (const name of ["compiler", "runtime", "vite", "unplugin", "create-vibelang"
     const root = fixture(t)
     const path = join(root, "packages", name, "package.json")
     const pkg = json(path)
-    pkg.engines = { ...pkg.engines, node: ">=22" }
+    pkg.engines = { ...pkg.engines, node: ">=20" }
     writeFileSync(path, JSON.stringify(pkg))
     const result = assemble(root)
     assert.equal(result.status, 1)
-    assert.match(result.stderr, /engines.node .*expected >=26/)
+    assert.ok(result.stderr.includes("expected ^22.22.3 || >=24.11.1"), result.stderr)
     assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
   })
 }
 
-test("package READMEs teach the Node 26 floor", () => {
+test("package READMEs teach the Node 22.22.3 floor", () => {
   for (const name of ["compiler", "runtime", "vite", "unplugin", "create-vibelang"]) {
     const readme = readFileSync(join(repo, "packages", name, "README.md"), "utf8")
-    assert.doesNotMatch(readme, /Node (?:22|24)(?:\.\d+)? or later/, name)
-    assert.match(readme, /Node 26(?:\s|\.)/, name)
+    assert.doesNotMatch(readme, /Node 26 or later/, name)
+    assert.match(readme, /Node 22\.22\.3(?:\s|\.)/, name)
   }
 })
 
