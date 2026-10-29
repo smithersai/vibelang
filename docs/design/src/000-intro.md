@@ -9,7 +9,7 @@ The previous specification and its decision log (`D1` to `D558`) are in `docs/de
 VibeLang is TypeScript with a small set of constructs for writing Effect programs. Four principles decide every rule.
 
 1. **Syntax decides.** A keyword on a function, a block or an expression decides what it means. A type never chooses what code runs: a function literal never becomes an Effect because a parameter expects one, and a type never decides whether a loop consumes a Stream (VIP-1, VIP-2, VIP-20).
-2. **Exact sugar for Effect.** Every construct means one specific piece of Effect TypeScript, shown beside it in this specification. Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31). Failures, defects, interruption and `Cause` combination follow Effect. Compiler-provided pattern checks and matchers are the explicit VIP-7 additions to TC39 matching; they do not patch Effect at runtime.
+2. **Exact sugar for Effect.** Every construct means one specific piece of Effect TypeScript, shown beside it in this specification. Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31). Failures, defects, interruption and `Cause` combination follow Effect. VIP-7 adds exhaustiveness checking and generated error matchers to TC39 matching, and retains compiler fixed checks for Effect's `Option`, `Exit`, `Result` and tagged errors until Effect ships custom matchers; none patches Effect at runtime.
 3. **No ambiguity.** Every new keyword is contextual and has exactly one reading. "A little bit of ambiguity is unacceptable" (VIP-8). A proposal that can't meet that bar is denied (VIP-8, VIP-10, VIP-11, VIP-24).
 4. **TypeScript's meaning outside Effect code.** Plain functions, `async` functions, `await`, `throw`, `using`, classes, `do` expressions and the pipe operator keep their TypeScript or pinned TC39 meaning. The additional static checks still apply: [throw tracking](003-failures.md#calls-that-may-throw) applies to non-effectful functions (VIP-4), and [platform restrictions](005-services.md#the-platform-standard-library) apply throughout `.vibe`, including plain functions and wrapper arrows (VIP-33).
 
@@ -28,7 +28,7 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 | `for try (const x of stream) { }` | `Stream.runForEachWhile` | 20 | [Running Effects](002-running.md) |
 | `effect function* p() { yield x }` | `Stream.callback` | 21 | [Running Effects](002-running.md) |
 | `uninterruptible { restore { } }`, `interruptible { }` | `Effect.uninterruptibleMask`, `Effect.interruptible` | 22 | [Running Effects](002-running.md) |
-| `throw e` in an `effect` function | `yield* Effect.fail(e)` | 4 | [Failures](003-failures.md) |
+| `throw e` in an `effect` function | `return yield* Effect.fail(e)` | 4 | [Failures](003-failures.md) |
 | `error E { fields }` | `class E extends Data.TaggedError("E")<…> {}` | 13 | [Failures](003-failures.md) |
 | `schema error E { fields }` | `class E extends Schema.TaggedError<E>()("E", { … }) {}` | 29 | [Failures](003-failures.md) |
 | `match (x) { when P: … }` | TC39 pattern matching, plus an exhaustiveness check, generated error matchers and fixed Effect pattern checks | 7 | [Pattern matching](004-match.md) |
