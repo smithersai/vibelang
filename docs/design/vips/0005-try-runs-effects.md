@@ -10,9 +10,9 @@ async get(url) { return await fetch(url) }        // await: Promises only, exact
 effect load(id) {
   const u = try fetchUser(id)                     // runs the Effect; a failure propagates
   const g = fetchUser(id) catch guest             // runs it; on a failure, gives guest
-  const h = fetchUser(id) catch (e) => match (e) {
+  const h = fetchUser(id) catch effect (e) => match (e) {
     when NotFound: guest
-    when DbError: throw e                         // fails again (VIP-4)
+    when DbError: throw e                         // fails again, typed (VIP-4): the handler is an effect function
   }
   try sleep("1 second")                           // an Effect that can't fail is still run with try
   await fetch(url)                                // error: await belongs to async functions
@@ -20,9 +20,20 @@ effect load(id) {
 ```
 
 - `try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |e| return e`.
-- `e catch y` runs `e`, and on a failure evaluates `y`, which is either a value (`fetchUser(id) catch guest`) or a function of the error (`fetchUser(id) catch (e) => fallback(e)`), as Zig's `catch` takes a value or `|err|`. As in Zig, you write `try x` or `x catch y`, never both.
+- `e catch y` runs `e`, and on a failure evaluates `y`, as Zig's `catch` takes a value or `|err|`. As in Zig, you write `try x` or `x catch y`, never both. **Amended 2026-10-29:** the handler's syntax decides whether it runs Effects, as VIP-1 decides for any function:
+
+  | Written | Effect TS |
+  | --- | --- |
+  | `x catch guest` (a value) | `Effect.catch(x, () => Effect.succeed(guest))` |
+  | `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |
+  | `x catch effect (e) => …` (an effect function; it runs its Effects, and `throw` fails again, typed) | `Effect.catch(x, (e) => Effect.gen(…))` |
+  | `x catch effect { … }` (an effect block; runs the fallback) | `Effect.catch(x, () => Effect.gen(…))` |
+
+  Recorded under Will's standing approval of recommendations, after the differential fuzz suite found that the earlier example's `throw` was a defect.
+- **Amended 2026-10-29: `catch` binds like `??`.** It has the same precedence and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result. Mixing it with `??`, `||` or `&&` without parentheses is a compile error, as JavaScript requires for `??`. Recorded under Will's standing approval of recommendations.
 - `try` is only for Effects. A call that may throw, and a Promise, is first wrapped into an Effect with Effect's own functions (VIP-6: `Effect.try`, `tryPromise`), then run with `try`.
 - An `effect` function has no `try`/`catch` statement. It handles failures with `catch` and `match`.
+- **Amended 2026-10-29: no `try` statements of any kind**, `try`/`finally` included. Cleanup uses Effect's `ensuring` or `onExit` (VIP-6 globals): `try ensuring(write(x), close())`. Effect code has exactly one `try`, the one that runs an Effect. Recorded under Will's standing approval of recommendations.
 - `await` keeps exactly JavaScript's meaning and belongs only to `async` functions:
   - `await` inside an `effect` function is an error;
   - `await` on an Effect inside an `async` function is an error.

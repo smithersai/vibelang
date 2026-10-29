@@ -20,6 +20,7 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest }
 
 - `error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly.
 - The body may hold methods and getters, as any class can, for example `get message() { return \`no user ${this.id}\` }`. It may not hold a constructor or a `_tag` override.
+- **Amended 2026-10-29: no `extends`.** An `error` declaration always extends `Data.TaggedError`, so `error UserNotFound extends NotFound { … }` is a compile error. Errors are grouped with a union, as in `type LookupError = NotFound | Timeout`, because tagged errors are matched by `_tag` and a subclass would match two tags. Recorded under Will's standing approval of recommendations.
 - The base is `Data.TaggedError`, which can't be decoded from JSON. Serializable, Schema-based errors are left to the `schema` VIP.
 - Two packages that both declare `error NotFound` match each other, as with Effect's `catchTag`, because VIP-7's matcher tests `_tag`.
 - **Ambiguity: none.** `error` is a contextual keyword on the same line as its name, so `const error = …` and `catch (error)` still work.

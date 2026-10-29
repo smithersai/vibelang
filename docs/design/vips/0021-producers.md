@@ -17,7 +17,7 @@ const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
   yield* Queue.offer(queue, 1)
   yield* Effect.sleep("1 second")
   yield* Queue.offer(queue, 2)
-}), { bufferSize: 1, strategy: "suspend" })   // the stream ends when the body returns
+}).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })   // ends the stream when the body returns
 ```
 
 - `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects (VIP-5).
@@ -37,3 +37,5 @@ JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async gene
 ## Will's words
 
 > "Accept"
+
+*Corrected 2026-10-29: the Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*

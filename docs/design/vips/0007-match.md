@@ -19,6 +19,10 @@ match (e) {
 - Class arms use the class's `Symbol.customMatcher`. VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.
 - **Condition: no run-time patching of Effect.** Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208). We propose the matchers upstream.
 
+## Meaning in Effect TS terms
+
+`match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.
+
 ## History
 
 | Problem | Kind | Status |

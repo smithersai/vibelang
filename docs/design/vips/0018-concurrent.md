@@ -8,12 +8,14 @@
 const [u, o] = try.all [fetchUser(id), fetchOrders(id)]  // yield* Effect.all([…], { concurrency: "unbounded" })
 const fast   = try.race [primary(), mirror()]            // yield* Effect.raceAllFirst([…])   first to finish
 const ok     = try.any [primary(), mirror()]             // yield* Effect.raceAll([…])        first to succeed
-const rs     = try.allSettled [a(), b()]                 // every element's Result; none fails the whole
+const rs     = try.allSettled [a(), b()]                 // yield* Effect.all([…].map(Effect.exit), { concurrency: "unbounded" })
 ```
 
 - These are TC39's await operations, run with `try` (VIP-5) instead of `await`. Each is exact sugar for an Effect function.
 - The names keep JavaScript's meanings: `try.all` runs everything at once, like `Promise.all`, even though `Effect.all` defaults to one at a time. `try.race` gives the first to finish, and `try.any` the first to succeed.
+- **Amended 2026-10-29:** `try.allSettled` gives each element's `Exit` (success, failure, defect or interruption), and the whole never fails, as `Promise.allSettled` never rejects. Recorded under Will's standing approval of recommendations.
 - They use the same `keyword.name` shape as VIP-17's `fork.in`.
+- **Amended 2026-10-29: operands are arrays.** An object of Effects uses the `all` global: `try all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })`. An object form of `try.all` can be added later without breaking anything. Recorded under Will's standing approval of recommendations.
 - **Ambiguity: none.** `try` is a reserved word, so `try.` can't start anything else.
 
 ## History
