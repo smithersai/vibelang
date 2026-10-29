@@ -11,7 +11,7 @@ Sources: [VIP-4](../vips/0004-throw.md), [VIP-13](../vips/0013-error-declaration
 | Where | `throw e` means |
 | --- | --- |
 | a plain or `async` function, or the top level | JavaScript's `throw` |
-| effect code | the Effect fails with `e`, a typed error: `yield* Effect.fail(e)` |
+| effect code | the Effect fails with `e`, a typed error: `return yield* Effect.fail(e)` |
 
 ```vibe es
 // compiler-gap: pending VIP-4
@@ -46,7 +46,7 @@ The type system tracks whether a function may throw, and what it throws. Trackin
 - A function type or interface member without `@throws` is non-throwing; `@throws` on its declaration opts in. This differs from an unannotated foreign library function, whose thrown type is `unknown`.
 - `new X()` is throw-tracked; getter and setter access is not.
 - `@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback. Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. Storing a callback, as `setTimeout` does, does not rethrow it. Promise-producing calls still require wrappers.
-- VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.decodeUnknownSync` throws `SchemaError`.
+- VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; the decoder returned by `Schema.decodeUnknownSync` throws `SchemaError`. Building that decoder does not throw.
 - Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked. They are defects, as in `Effect.sync`.
 
 ### Static rules
@@ -90,7 +90,8 @@ class Input {
 effect function checked(text: string) {
   const input = try Effect.try(() => new Input(text)) // constructor is tracked
   const some = Option.some(input.value)                  // non-throwing
-  return try Effect.try(() => Schema.decodeUnknownSync(Schema.String)(text))
+  const decode = Schema.decodeUnknownSync(Schema.String) // builds a non-throwing decoder
+  return try Effect.try(() => decode(text))              // decoding may throw SchemaError
 }
 ```
 
@@ -109,10 +110,19 @@ function checked(text: string) {
   return Effect.gen(function* () {
     const input = yield* Effect.try(() => new Input(text))
     const some = Option.some(input.value)
-    return yield* Effect.try(() => Schema.decodeUnknownSync(Schema.String)(text))
+    const decode = Schema.decodeUnknownSync(Schema.String)
+    return yield* Effect.try(() => decode(text))
   })
 }
 ```
+
+`try` follows `await`: an effect function's parameter list is not effect code, and neither are class field initializers or static blocks. Effect operations cannot run there. Parameter binding happens at the call; an implicit destructuring exception remains a JavaScript exception (a defect when called inside effect code).
+
+**Undecided (pending VIP):** throw-type assignability (including a throwing callback passed to a non-throwing parameter or plain `catch` handler), and whether `@rethrows` is inferred or must be written. TypeScript has no checked-throw counterpart.
+
+**Undecided (pending VIP):** which default applies to foreign callable constants, class methods and overload signatures: the library-function default `unknown`, or the function-type default `never`; and where annotations on returned call signatures are recorded. The decoder example above describes runtime behavior, not a new annotation syntax.
+
+**Undecided (pending VIP):** a throwing default initializer on an effect function: reject the call during checking, or capture it in the returned Effect without changing when the initializer runs.
 
 **Undecided (pending VIP):** a plain, non-`async` `.vibe` function whose return type is an Effect and whose body may `throw` before returning it ([Declaration output](001-functions.md#declaration-output)); how to classify return types such as `any` or `Effect.Effect<number> | undefined` for the effectful exemption, and how exported callable constants, methods and callable-type declarations retain inferred throw metadata. VIP-27 specifies function exports but not all these representations.
 
@@ -122,11 +132,13 @@ function checked(text: string) {
 
 ```text
 ErrorDeclaration = "export"? "error" Name ("{" ErrorBody "}")?
-ErrorBody        = (ErrorField | Method | Getter)*
-ErrorField       = PropertyName "?"? ":" Type ";"?
+ErrorBody        = (Field | Method | Getter)*
+Field            = "readonly"? PropertyName "?"? ":" Type
 Method           = TypeScript MethodDeclaration (no static modifier)
 Getter           = TypeScript GetAccessor (no static modifier)
 ```
+
+Fields use TypeScript's member separators: `;`, `,`, a line break, or the closing `}`. Adjacent fields on one line need a separator. An explicit `readonly` is allowed and redundant.
 
 `error` is a contextual keyword on the same line as its name, so `const error = …` and `catch (error)` still work.
 
@@ -172,6 +184,8 @@ class Timeout extends Data.TaggedError("Timeout") {
 
 The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
+VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect. They must not be replaced with ordinary inherited `Function.prototype` matching. **Undecided (pending VIP):** the complete retained constructor inventory, ordered tests and extracted lists; [Pattern matching](004-match.md#class-patterns) must specify them before implementation.
+
 An `error` always extends `Data.TaggedError`. Group errors with a union, `type LookupError = NotFound | Timeout`: tagged errors are matched by `_tag`, and a subclass would match two tags.
 
 Neither form accepts type parameters. For example, `error Invalid<T> { value: T }` and `schema error Invalid<T> { value: T }` are compile errors.
@@ -184,9 +198,9 @@ Neither form accepts type parameters. For example, `error Invalid<T> { value: T 
 SchemaErrorDeclaration = "export"? "schema" "error" Name ("{" ErrorBody "}")?
 ```
 
-`ErrorBody` and its optional `ErrorField` production are shared with `error`. Each field's type is mapped as in a `schema` declaration, optional properties included. Every field is readonly, as in `error`, so no field gets `Schema.mutableKey`. Omitting the body means no fields, as for `error Timeout`.
+`ErrorBody` and its optional-field `Field` production are shared with `error`. Each field's type is mapped as in a `schema` declaration, optional properties included. Every field is readonly, as in `error`, so no field gets `Schema.mutableKey`. Omitting the body means no fields, as for `error Timeout`.
 
-`schema error NotFound {` and a schema named `error` (`schema error = …`) differ at the next token.
+`schema error NotFound {` and a schema named `error` (`schema error = …`) differ at the next token. `schema error { id: string }` is a schema named `error`: `{` is not the name required after `schema error`.
 
 ### Meaning
 
