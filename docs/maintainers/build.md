@@ -42,6 +42,8 @@ target's inputs, its key and whether the cache holds a result for it.
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
   :release :snippets :tokens :forms :docs-tools :docs-check
   :site-contrast                exclusive: runs only with --include-exclusive
+  :design-files                 Filegroup: docs/design
+  :spec-tests                   the Go tests that read docs/design (registry, VIP citations, pending lines)
 ```
 
 ```text
@@ -49,6 +51,7 @@ target's inputs, its key and whether the cache holds a result for it.
                     ├─► :compiler-native ─► :compiler-test
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
+:design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
@@ -62,6 +65,7 @@ the repository root, so they and the other repository-wide checks take `:tree`.
 | Change | Reruns | Replays |
 | --- | --- | --- |
 | A doc page | the `:tree` checks | compiler, runtime, every case, the upstream Go tests |
+| A page in `docs/design` | `:spec-tests` and the `:tree` checks | compiler, runtime, every case, the upstream Go tests |
 | One case's files | that case and the `:tree` checks | compiler, runtime, 808 cases |
 | The runtime's `src/` | `:runtime-*`, every case, the `:tree` checks | compiler, compiler package |
 | A Go source file | `:compiler`, every case, every Go test, the `:tree` checks | runtime |

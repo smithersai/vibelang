@@ -37,6 +37,29 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
     ...data
   ], [go, node], timeout)
 
+// The Go tests that read docs/design: the registry against the
+// specification's Appendix B, the fuzz suite's citations of the VIPs, its
+// coverage of the accepted VIPs, its pending lines' VIP reasons, and the
+// chapters its oracles still read. Their inputs are the specification and the
+// Go sources, not the whole tree, so a specification edit runs them before it
+// lands and they stay cached otherwise.
+const specTests = [
+  "TestRegistryMatchesSpec",
+  "TestRegistryRowsSuggestRepairs",
+  "TestCommandLineFlagsCoverSpec",
+  "TestSpecFacts",
+  "TestPendingLines",
+  "TestSuperseded",
+  "TestSpecRuleFacts",
+  "TestSpecRuleTable",
+  "TestSpecRuleCoverage",
+  "TestRuntimeFeatureCitations",
+  "TestToolsHelpers",
+  "TestVIPTemplatesCited",
+  "TestVIPCoverage"
+]
+const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
+
 const targets = {
   release: check(
     "The release and contributor scripts' node tests.",
@@ -99,7 +122,17 @@ const targets = {
     // adds the build of the test binaries. Under the post-merge suite's
     // load the target took 17m to 29m, and 30m killed it with no output.
     "45m"
-  )
+  ),
+  "spec-tests": S.Shell.Test({
+    summary: "The Go tests that read docs/design: the registry, the VIP citations and coverage, the pending lines.",
+    shell:
+      `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} ` +
+      `go test -count=1 -trimpath -run '^(${specTests.join("|")})$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
+    tools: [go, node],
+    sandbox: "none",
+    timeout: "15m"
+  })
 }
 
-export const Package = S.Package({ targets: { tree, ...targets } })
+export const Package = S.Package({ targets: { tree, "design-files": design, ...targets } })
