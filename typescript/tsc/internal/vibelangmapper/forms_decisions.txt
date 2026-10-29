@@ -2958,6 +2958,8 @@ typescript/vibelang/cases/throw-operator-precedence.fail/main.vibe:9:30 lambda d
 typescript/vibelang/cases/throw-trailing-precedence.fail/main.vibe:12:15 lambda dual fallback
 typescript/vibelang/cases/throw-trailing-precedence.fail/main.vibe:6:15 lambda dual fallback
 typescript/vibelang/cases/throw-trailing-precedence.fail/main.vibe:9:15 lambda dual fallback
+typescript/vibelang/cases/throws-effect-returning/main.vibe:7:22 byname program table
+typescript/vibelang/cases/throws-effect-returning/main.vibe:7:33 byname program table
 typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:3:43 lambda effectFn table
 typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:4:72 lambda effectFn table
 typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:5:52 lambda effectFn table
