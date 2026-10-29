@@ -2,7 +2,7 @@
 
 ## Appendix A. Grammar
 
-VibeLang's grammar is TypeScript's, with the TC39 proposals for do expressions, pattern matching and the Hack pipe operator, each pinned to a dated snapshot, plus the productions below. Names not defined here (`Block`, `Params`, `Type`, `Expression`, …) are TypeScript's. `"x"` is a token; `X?` is optional; `X*` repeats.
+VibeLang's grammar is TypeScript's, with the TC39 proposals for do expressions, pattern matching and the Hack pipe operator, each pinned to a dated snapshot (**Undecided (pending VIP):** the three dates), plus the productions below. Names not defined here (`Block`, `Params`, `Type`, `Expression`, …) are TypeScript's. `"x"` is a token; `X?` is optional; `X*` repeats.
 
 ### Contextual keywords
 
@@ -11,8 +11,8 @@ Every VibeLang keyword is contextual: it is a keyword only in the positions belo
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
 | `effect` | `function`, `(` or `<` of an arrow's parameters, a method name, `*` (methods), `{` | [Functions](001-functions.md) |
-| `fork` | an expression, or `.in(…)`, `.scoped`, `.detached` | [Running Effects](002-running.md#fork-and-join) |
-| `join` | an expression | [Running Effects](002-running.md#fork-and-join) |
+| `fork` | in effect code, a token that can start an expression, or `.in(…)`, `.scoped`, `.detached` | [Running Effects](002-running.md#fork-and-join) |
+| `join` | in effect code, a token that can start an expression | [Running Effects](002-running.md#fork-and-join) |
 | `concurrent` | after `for`, then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
 | `provide` | a provider list, then `{` | [Services](005-services.md#provide-blocks) |
@@ -22,7 +22,18 @@ Every VibeLang keyword is contextual: it is a keyword only in the positions belo
 | `data` | a name | [Data](006-data.md#data-declarations) |
 | `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says | [Pattern matching](004-match.md) |
 
-`try` and `catch` are reserved words already; VibeLang gives them new expression forms in effect code.
+In effect code, `fork` and `join` are keywords as `await` is in an `async` function:
+
+```vibe es
+// compiler-gap: pending VIP-17
+const join = (xs: string[]) => xs.join(",")
+effect function f(parts: Fiber.Fiber<string>) {
+  const a = join(parts)        // joins the fiber parts
+  const b = (join)(["x"])      // calls the function join
+}
+```
+
+`try` and `catch` are reserved words already; VibeLang gives them new expression forms in effect code. As for `await`, `try`'s operand may start on the next line; a statement that starts with `try {` is TypeScript's `try` statement.
 
 ### Productions
 
@@ -56,13 +67,22 @@ Provider          = LeftHandSideExpression "=" AssignmentExpression | Conditiona
 
 ServiceDecl       = "export"? "service" Name "{" ServiceMember* "}"
 ErrorDecl         = "export"? "error" Name ("{" (Field | Method | Getter)* "}")?
-SchemaErrorDecl   = "export"? "schema" "error" Name "{" SchemaFields (Method | Getter)* "}"
+SchemaErrorDecl   = "export"? "schema" "error" Name ("{" (SchemaField | Method | Getter)* "}")?
+SchemaField       = PropertyName "?"? ":" Type ";"?
 SchemaDecl        = "export"? "schema" Name ("{" SchemaFields "}" | "=" Type)
 DataDecl          = "export"? "data" Name TypeParameters? "{" Variant ((";" | LineTerminator) Variant)* ";"? "}"
 Variant           = Name ("{" Fields "}")?
 ```
 
-`catch` has the precedence of `??` and is left-associative (VIP-5).
+`catch` has the precedence of `??` and is left-associative (VIP-5). An arrow handler's body extends as far as any arrow body:
+
+```text
+a catch b catch c            (a catch b) catch c
+a catch (e) => b catch c     a catch ((e) => (b catch c))
+a catch ((e) => b) catch c   (a catch ((e) => b)) catch c
+```
+
+After `for concurrent`, a parenthesized group followed by another `(` is the concurrency limit: `for concurrent (4) (const x of xs)`.
 
 `try` has `await`'s precedence, because `try` works like `await`. **Undecided (pending VIP):** `ForkOperand`, the precedence of `fork` and `join` (a `UnaryExpression` or an `AssignmentExpression`), and the precedence of `!` among type operators.
 
@@ -85,8 +105,8 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 
 | Rule | Chapter |
 | --- | --- |
-| `try` outside effect code; `try` on a value that is not an Effect; `try x catch y`; a `try` statement in effect code | [Running Effects](002-running.md#try) |
-| `effect f() { }` or `async f() { }` outside a class or object literal; `await` in effect code; `await` on an Effect in an `async` function; `try` at the top level | [Functions](001-functions.md#static-rules) |
+| `try` outside effect code, the top level included; `try` on a value that is not an Effect; `try x catch y`; a `try` statement in effect code | [Running Effects](002-running.md#try) |
+| `effect f() { }` or `async f() { }` outside a class or object literal; `await` in effect code; `await` on an Effect in an `async` function | [Functions](001-functions.md#static-rules) |
 | `catch` outside effect code; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |
@@ -141,3 +161,9 @@ When the compiler implements VIP-N:
 2. Delete that block's `// compiler-gap: pending VIP-N` line. If the block only names functions it doesn't declare (`fetchUser`), declare them in the block or a page fixture, or mark it `// fragment`.
 3. When a page has no `compiler-gap` markers left, add `docs/design/src` to the snippet step of the merge queue's gate (`//:snippets`), so the examples stay checked.
 4. To make an Effect TypeScript example checked, replace `// fragment` with the declarations it needs; the checker compiles ```` ```ts effect ```` blocks as comparisons.
+
+## Appendix E. Shipped `@throws` annotations
+
+VibeLang ships `@throws` annotations for JavaScript's globals ([Failures](003-failures.md#calls-that-may-throw)): `JSON.parse` throws `SyntaxError`, and `Math.max` throws nothing.
+
+**Undecided (pending VIP):** the list, and which `lib.d.ts` functions rethrow a callback's throws (`Array.prototype.map` calls its callback; `setTimeout` stores it).
