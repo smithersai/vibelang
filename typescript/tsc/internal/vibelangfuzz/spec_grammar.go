@@ -37,7 +37,8 @@ func grammarLines(text string) map[int]string {
 }
 
 // appendixProductions returns the productions Appendix A defines: the names
-// on the left of "=" in the text blocks of its "### Productions" section.
+// on the left of "=" in the text blocks of the appendix, under "### Productions"
+// and before it, such as the contextual keywords' DeclarationStart.
 func appendixProductions(text string) map[string]bool {
 	names := map[string]bool{}
 	start := strings.Index(text, "## Appendix A")
@@ -47,11 +48,6 @@ func appendixProductions(text string) map[string]bool {
 	section := text[start:]
 	if end := strings.Index(section[1:], "\n## "); end >= 0 {
 		section = section[:end+1]
-	}
-	if p := strings.Index(section, "### Productions"); p >= 0 {
-		section = section[p:]
-	} else {
-		return names
 	}
 	for _, line := range grammarLines(section) {
 		if m := production.FindStringSubmatch(line); m != nil {

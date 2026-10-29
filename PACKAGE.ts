@@ -58,7 +58,10 @@ const specTests = [
   "TestRuntimeFeatureCitations",
   "TestToolsHelpers",
   "TestVIPTemplatesCited",
-  "TestVIPCoverage"
+  "TestVIPCoverage",
+  "TestSpecProductionsOnlyInAppendixA",
+  "TestSpecCitedProductionsExist",
+  "TestSpecCodesInAppendixB"
 ]
 const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
 
