@@ -12,7 +12,7 @@
 | `User!!` | `Effect<User>`, that is `Effect<User, never, never>` |
 
 ```ts
-effect load(id): User!NotFound!Users { … }
+effect function load(id): User!NotFound!Users { … }
 interface Users { find(id: string): User!NotFound }
 ```
 

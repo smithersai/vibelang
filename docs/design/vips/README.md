@@ -34,6 +34,7 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [33](0033-platform-stdlib.md) | The platform standard library | accepted 2026-10-29 |
 | [34](0034-compiler-and-tooling.md) | Compiler and tooling requirements | accepted 2026-10-29 |
 | [38](0038-effect-lint-built-in.md) | Effect's type-aware lint is built into VibeLang | accepted 2026-10-29 |
+| [39](0039-effect-goes-where-async-goes.md) | `effect` goes exactly where `async` goes | accepted 2026-10-29 |
 
 
 ## Denied

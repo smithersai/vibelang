@@ -6,11 +6,9 @@
 
 ```ts
 effect function load(id) { return try fetchUser(id) }   // an Effect function
-effect load(id) { return try fetchUser(id) }            // shorthand
 effect (id) => try fetchUser(id)                        // arrow
 
 async function get(url) { return await fetch(url) }     // a Promise function, as in TypeScript
-async get(url) { return await fetch(url) }              // shorthand
 
 class Users {
   effect find(id) { … }                                  // method
@@ -20,7 +18,7 @@ class Users {
 const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns the Effect unrun
 ```
 
-- `effect` marks an Effect function, and `async` marks a Promise function. Each may appear wherever TypeScript allows `async`, and also in the declaration shorthand (`effect load()`, `async get()`). Outside those positions `effect` is an ordinary identifier, so `Layer.effect` and `const effect = …` still work.
+- `effect` marks an Effect function, and `async` marks a Promise function. **Amended by VIP-39:** `effect` appears exactly where TypeScript allows `async` (`effect function f()`, `effect (x) =>`, `effect find()` in a class or object literal), and the top-level shorthands `effect f()` and `async f()` are removed. Outside those positions `effect` is an ordinary identifier, so `Layer.effect` and `const effect = …` still work.
 - Inside an `effect` function, `try` runs an Effect (VIP-5). Inside an `async` function, `await` waits for a Promise, exactly as in JavaScript. Either keyword used in the other kind of function is an error.
 - Calling an `effect` function returns its Effect unrun, just as calling an `async` function returns a Promise.
 - An `effect` function's return type is an Effect, just as an `async` function's is a Promise. Like any function's return type, it can be written or left out, in which case it is inferred. An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, as `Effect.gen` infers them.

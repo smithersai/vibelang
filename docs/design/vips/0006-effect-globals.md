@@ -5,7 +5,7 @@
 ## Decision
 
 ```ts
-effect load(url) {
+effect function load(url) {
   const r = try tryPromise((signal) => fetch(url, { signal }))   // Effect.tryPromise
   const n = try sync(() => Date.now())                           // Effect.sync
   try retry(tryPromise(() => fetch(url)), policy)

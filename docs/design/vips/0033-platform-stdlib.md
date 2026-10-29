@@ -5,7 +5,7 @@
 ## Decision
 
 ```ts
-effect readConfig(path: string) {
+effect function readConfig(path: string) {
   const fs = try FileSystem                        // Effect's platform service, injected by a layer
   return try fs.readFileString(path)
 }

@@ -9,7 +9,7 @@ Old VibeLang's own feature, built on one-shot delimited continuations. Effect ha
 ```ts
 control Approval { approve(request: string): boolean!ReviewBusy }
 
-effect reviewedCheckout(cartId) {
+effect function reviewedCheckout(cartId) {
   try { return try checkout(cartId) }               // checkout calls Approval.approve(…) inside
   handle Approval.approve(request) {
     const decision = try Reviewers.decide(request)

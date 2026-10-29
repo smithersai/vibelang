@@ -6,7 +6,7 @@
 
 ```ts
 // load.vibe
-export effect load(id: string) { … }
+export effect function load(id: string) { … }
 export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export function add(a: number, b: number) { return a + b }
 
