@@ -166,6 +166,9 @@ type Func struct {
 // the helpers are declared before it and call only helpers declared before
 // themselves, so no program recurses.
 type Program struct {
+	// Decls are the module's declarations, such as error and data
+	// declarations (VIP-13, VIP-16), printed before its functions.
+	Decls []Node
 	Funcs []*Func
 	// Focus is the construct the input chose; Used holds every construct
 	// the program holds, which a gap's key names.
@@ -210,12 +213,17 @@ func PrintVibe(p *Program) string {
 func PrintEffect(p *Program) string {
 	w := &Writer{mode: modeEffect}
 	w.Line(fmt.Sprintf("import { ev } from %q", eventsModule))
-	w.Line(`import { Effect } from "effect"`)
+	w.Line(`import { Data, Effect } from "effect"`)
 	printFuncs(w, p)
 	return w.String()
 }
 
 func printFuncs(w *Writer, p *Program) {
+	for _, d := range p.Decls {
+		w.Line("")
+		w.Node(d)
+		w.Line("")
+	}
 	for _, f := range p.Funcs {
 		w.Line("")
 		w.Node(f.Form.Declare(f))

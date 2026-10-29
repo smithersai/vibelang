@@ -55,6 +55,7 @@ type Gen struct {
 	on     []*Construct // the focus, its requirements and the swarm's choice, in key order
 	used   map[string]bool
 	effect bool
+	decls  []Node
 	labels int
 	names  int
 }
@@ -138,7 +139,7 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	for _, f := range p.Funcs {
 		g.Use(f.Form.Key)
 	}
-	p.Used, p.Effect = g.used, g.effect
+	p.Used, p.Effect, p.Decls = g.used, g.effect, g.decls
 	return p
 }
 
@@ -166,6 +167,12 @@ func (g *Gen) pick(forms []*Construct) *Construct {
 func (g *Gen) On(key string) bool {
 	return slices.ContainsFunc(g.on, func(c *Construct) bool { return c.Key == key })
 }
+
+// AddDecl adds a module-level declaration, which both prints write before
+// the functions; Decls returns those added so far, in order, so a construct
+// file finds its own declarations by their type.
+func (g *Gen) AddDecl(n Node) { g.decls = append(g.decls, n) }
+func (g *Gen) Decls() []Node  { return g.decls }
 
 // Use records that the program holds a construct.
 func (g *Gen) Use(key string) { g.used[key] = true }

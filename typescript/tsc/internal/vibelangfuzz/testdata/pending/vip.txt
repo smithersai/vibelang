@@ -19,23 +19,25 @@ FuzzVIPDifferential  feature:vip05.catch-effect-block  compiler  VIP-5: `x catch
 FuzzVIPDifferential  feature:vip06.globals          compiler  VIP-6: succeed, fail, die and sync are not globals that name Effect.succeed, Effect.fail, Effect.die and Effect.sync yet; lane vip-globals implements it
 FuzzVIPDifferential  feature:vip06.try-promise      compiler  VIP-6: tryPromise is not a global that names Effect.tryPromise yet; lane vip-globals implements it
 FuzzVIPDifferential  feature:vip06.effect-try       compiler  VIP-6: Effect.try of a throwing arrow, run with try in an effect function, does not fail with Effect.try's error yet; lane vip-globals implements it
+FuzzVIPDifferential  feature:vip13.error          compiler  VIP-13: `error Name { n: number }` is not lowered to a Data.TaggedError class, thrown and caught with `x catch (e) => f(e)` (VIP-5's table), yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip16.data           compiler  VIP-16: `data Name { V0; V1 { n: number } }` is not lowered to Data.taggedEnum constructors yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip28.generic-data   compiler  VIP-28: generic `data Name<A, B> { … }` with up to 4 type parameters is not lowered to Data.taggedEnum yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip07.match-data     compiler  VIP-7: `match` on a data value by TC39 object patterns on _tag is not lowered to ordered tests with the subject evaluated once yet; lane vip-match implements it
+FuzzVIPDifferential  feature:vip07.match-error    compiler  VIP-7: `match` on a caught error by class arms (a matcher that tests _tag) and object patterns is not lowered to ordered tests with the subject evaluated once yet; lane vip-match implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
 # vip, whose reason starts "not generated", names a VIP whose construct file
 # is not written yet: it is this target's debt, not the compiler's.
 FuzzVIPDifferential  not-runtime:vip03              vip       VIP-3: A!E!R is a type alias for Effect<A, E, R>; it changes no Exit
-FuzzVIPDifferential  feature:vip07.match            vip       not generated: VIP-7's match needs its construct file and an Effect reading, which VIP-7 does not show
 FuzzVIPDifferential  feature:vip09.service          vip       not generated: VIP-9's service declarations need their construct file
 FuzzVIPDifferential  feature:vip12.provide          vip       not generated: VIP-12's provide blocks need their construct file
 FuzzVIPDifferential  not-runtime:vip27              vip       VIP-27: declaration output and @throws are checked by declaration identity, not by an Exit
 FuzzVIPDifferential  not-runtime:vip30              vip       VIP-30: config files change no Exit; FuzzConfig checks them
 FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned Effect version; NewWorkspace refuses any other
 FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
-FuzzVIPDifferential  feature:vip13.error            vip       not generated: VIP-13's error declarations need their construct file
 FuzzVIPDifferential  feature:vip14.modules          vip       not generated: VIP-14's Effect modules in scope need their construct file
 FuzzVIPDifferential  feature:vip15.schema           vip       not generated: VIP-15's schema declarations need their construct file and decoding oracles
-FuzzVIPDifferential  feature:vip16.data             vip       not generated: VIP-16's data declarations need their construct file
 FuzzVIPDifferential  feature:vip17.fork             vip       not generated: VIP-17's fork and join need their construct file
 FuzzVIPDifferential  feature:vip18.concurrent       vip       not generated: VIP-18's try.all, try.race, try.any and try.allSettled need their construct file
 FuzzVIPDifferential  feature:vip19.for-concurrent   vip       not generated: VIP-19's for concurrent needs its construct file
@@ -44,6 +46,5 @@ FuzzVIPDifferential  feature:vip21.producer         vip       not generated: VIP
 FuzzVIPDifferential  feature:vip22.interruption     vip       not generated: VIP-22's interruption blocks need their construct file
 FuzzVIPDifferential  feature:vip23.pipe             vip       not generated: VIP-23's pipe operator needs its construct file
 FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP-26's top-level await of a runner needs its construct file; runMain exits the worker
-FuzzVIPDifferential  feature:vip28.generic-data     vip       not generated: VIP-28's generic data unions need their construct file
 FuzzVIPDifferential  feature:vip29.schema-error     vip       not generated: VIP-29's schema errors need their construct file
 FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file
