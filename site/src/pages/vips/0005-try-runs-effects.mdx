@@ -1,0 +1,65 @@
+---
+title: "VIP-5: try runs an Effect; await is only for Promises"
+---
+
+# VIP-5: `try` runs an Effect; `await` is only for Promises
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+```ts
+async get(url) { return await fetch(url) }        // await: Promises only, exactly as in JavaScript
+
+effect load(id) {
+  const u = try fetchUser(id)                     // runs the Effect; a failure propagates
+  const g = fetchUser(id) catch guest             // runs it; on a failure, gives guest
+  const h = fetchUser(id) catch (e) => match (e) {
+    when NotFound: guest
+    when DbError: throw e                         // fails again (VIP-4)
+  }
+  try sleep("1 second")                           // an Effect that can't fail is still run with try
+  await fetch(url)                                // error: await belongs to async functions
+}
+```
+
+- `try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |e| return e`.
+- `e catch y` runs `e`, and on a failure evaluates `y`, which is either a value (`fetchUser(id) catch guest`) or a function of the error (`fetchUser(id) catch (e) => fallback(e)`), as Zig's `catch` takes a value or `|err|`. As in Zig, you write `try x` or `x catch y`, never both.
+- `try` is only for Effects. A call that may throw, and a Promise, is first wrapped into an Effect with Effect's own functions (VIP-6: `Effect.try`, `tryPromise`), then run with `try`.
+- An `effect` function has no `try`/`catch` statement. It handles failures with `catch` and `match`.
+- `await` keeps exactly JavaScript's meaning and belongs only to `async` functions:
+  - `await` inside an `effect` function is an error;
+  - `await` on an Effect inside an `async` function is an error.
+- An Effect that can't fail is still run with `try`, and that is fine.
+
+## Prior art
+
+- Zig's `try` and `catch`.
+- Rust's `?`.
+- Swift's `try`, which marks each call that can fail.
+- Effect's `yield*`.
+
+## Will's words
+
+> "using try and catch like zig seem like they really make a lot of sense to me. Then await can stay a promise thing … So then rather than overloading anything. We don't overload await it just means promise await. We instead [have] try be how you unwrap an effect. And then we have a concise way to wrap an sync or a promise in an effect. Sync that does not throw you can just callIt() normally otherwise it yells at you for not try if it has error type or error is unknown. promise you must wrap in an effect and then you can try it too."
+
+> "I don't think effect functions should allow try catch statements nor do they need try catch statements nor would it be idiomatic to use them if we did support them. I think the cost for can't fail is fine."
+
+> "Ok I accept that VIP"
+
+> "for 2 yea it works pretty much like zig" (on `catch` taking a value or a function of the error)
+
+## Footnote: old VibeLang
+
+Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
+
+
+- VIP-1's "await unwraps both". VIP-1 has been updated to match this VIP.
+- D540's `await`, which ran Effects.
+- The `try`/`catch` statement in Effect code.
+
+
+
+## Later VIPs
+
+- `for await` over a Stream, and `await.all` / `await.race`, need new spellings. They are decided in their own VIPs.

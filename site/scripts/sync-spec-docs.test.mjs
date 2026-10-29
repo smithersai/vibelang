@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { loadSpec, substituteFacts } from './spec-docs.mjs'
+import { loadVips } from './vip-docs.mjs'
 
 const roots = []
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }) })
@@ -18,6 +19,9 @@ function fixture() {
   put('docs/design/src/202-rules.md', '# Rules\n\n## Shared\n')
   put('docs/user/src/welcome.md', '# Welcome\n')
   put('README.md', 'Repository')
+  put('docs/design/vips/README.md', '# VIPs\n\n| VIP | Title | Status |\n| --- | --- | --- |\n| [1](0001-one.md) | `one` | accepted |\n\n## Denied\n\n| VIP | Title | Status |\n| --- | --- | --- |\n| [2](0002-two.md) | Two `\\|>` | denied |\n')
+  put('docs/design/vips/0001-one.md', '# VIP-1: `one`\n\nSee [two](0002-two.md#why), [index](README.md), [repo](../../../README.md) and {braces}.\n\n```ts\nconst x = { a: 1 }\n```\n')
+  put('docs/design/vips/0002-two.md', '# VIP-2: Two\n')
   return { root, put, load: () => loadSpec(path.join(root, 'docs')) }
 }
 const facts = { testCount: '12', testFiles: 2, kernelLines: 100 }
@@ -72,11 +76,29 @@ test('inventory entries with no chapter fail', () => {
   fs.unlinkSync(path.join(root, 'docs/design/src/101-calls.md'))
   assert.throws(load, /does not exist/)
 })
+test('VIPs render from docs/design/vips: README order, links, escaping and missing records', () => {
+  const { root, put } = fixture()
+  const vips = loadVips(path.join(root, 'docs'))
+  assert.deepEqual(vips.sidebar.items, [
+    { text: 'Index', link: '/vips/' },
+    { text: 'Accepted', collapsed: true, items: [{ text: '1. one', link: '/vips/0001-one' }] },
+    { text: 'Denied', collapsed: true, items: [{ text: '2. Two |>', link: '/vips/0002-two' }] },
+  ])
+  assert.deepEqual([...vips.pages.keys()], ['index.mdx', '0001-one.mdx', '0002-two.mdx'])
+  const one = vips.pages.get('0001-one.mdx')
+  assert.ok(one.startsWith('---\ntitle: "VIP-1: one"\n---\n\n# VIP-1: `one`'))
+  for (const text of ['[two](/vips/0002-two#why)', '[index](/vips/)', '[repo](https://github.com/smithersai/vibelang/blob/main/README.md)', '\\{braces\\}', 'const x = { a: 1 }']) assert.ok(one.includes(text), text)
+  put('docs/design/vips/0003-three.md', '# VIP-3: Three\n')
+  assert.throws(() => loadVips(path.join(root, 'docs')), /missing from README/)
+  fs.unlinkSync(path.join(root, 'docs/design/vips/0003-three.md'))
+  put('docs/design/vips/0002-two.md', '# VIP-2: Two\n\n[gone](0009-gone.md)\n')
+  assert.throws(() => loadVips(path.join(root, 'docs')), /Unresolvable link/)
+})
 test('CLI validates before writing, writes duplicate introduction, and user sync keeps spec pages', () => {
   const { root, put } = fixture()
   const site = path.join(root, 'site')
   fs.mkdirSync(path.join(site, 'scripts'), { recursive: true })
-  for (const file of ['sync-spec-docs.mjs', 'sync-user-docs.mjs', 'spec-docs.mjs', 'docs-markdown.mjs', 'user-docs.mjs']) fs.copyFileSync(fileURLToPath(new URL(file, import.meta.url)), path.join(site, 'scripts', file))
+  for (const file of ['sync-spec-docs.mjs', 'sync-user-docs.mjs', 'spec-docs.mjs', 'vip-docs.mjs', 'docs-markdown.mjs', 'user-docs.mjs']) fs.copyFileSync(fileURLToPath(new URL(file, import.meta.url)), path.join(site, 'scripts', file))
   put('facts.json', JSON.stringify(facts))
   const run = (name, args) => execFileSync(process.execPath, [path.join(site, 'scripts', name), ...args], { stdio: 'pipe' })
   run('sync-spec-docs.mjs', [path.join(root, 'docs'), '--facts', path.join(root, 'facts.json')])
@@ -89,6 +111,8 @@ test('CLI validates before writing, writes duplicate introduction, and user sync
   put('docs/user/src/welcome.md', '# Welcome\n\n[spec](../../design/src/101-calls.md#calls)\n')
   run('sync-user-docs.mjs', [path.join(root, 'docs/user')])
   assert.equal(fs.readFileSync(path.join(site, 'src/pages/spec/index.mdx'), 'utf8'), intro)
+  assert.ok(fs.existsSync(path.join(site, 'src/pages/vips/0001-one.mdx')))
+  assert.ok(fs.readFileSync(path.join(site, 'vips-sidebar.ts'), 'utf8').includes('/vips/0002-two'))
   assert.ok(fs.readFileSync(path.join(site, 'src/pages/welcome.mdx'), 'utf8').includes('/spec/101-calls#calls'))
   put('facts.json', '{}')
   assert.throws(() => run('sync-spec-docs.mjs', [path.join(root, 'docs'), '--facts', path.join(root, 'facts.json')]))

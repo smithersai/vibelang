@@ -1,0 +1,70 @@
+---
+title: "VIP-9: service declarations"
+---
+
+# VIP-9: `service` declarations
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+```ts
+// VibeLang
+service Users {
+  find(id: string): User!NotFound
+}
+
+// compiles to exactly Effect's class
+class Users extends Context.Service<Users, {
+  find(id: string): Effect<User, NotFound>
+}>()("@acme/app/src/users#Users") {}
+```
+
+- `service Name { members }` is the only way to declare a service. An `abstract class` is no longer a service.
+- **The key.** The key is Effect's run-time identity for the service. It is derived from the package, the file and the name. A service can write it explicitly instead, `static readonly key = "app/Users"`, as a migrated service does to keep its key. A duplicate key anywhere in the program is a compile error (EK3001).
+- **A default.** `static readonly defaultValue`, of the same type as `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default.
+
+  ```ts
+  service Flags {
+    static readonly defaultValue = () => ({ newCheckout: false })
+    newCheckout: boolean
+  }
+  // Context.Reference<{ newCheckout: boolean }>("…#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  ```
+
+- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`.
+- Contracts are written out, because members have no bodies to infer from.
+- **Misuse checks.** A service is a key, not a class you use, so these are compile errors:
+
+  | Error | Code | Why |
+  | --- | --- | --- |
+  | `class X extends Users {}` | EK3002 | X would inherit Users' key and silently become the same service |
+  | `new Users()` | EK3003 | |
+  | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
+  | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
+
+## History
+
+| Problem | Kind | Status |
+| --- | --- | --- |
+| Two installed copies of a package shared one service (private brands) | lego | fixed, by the derived key |
+| `Users` vs `Users.Shape` confused | local | fixed (D519) |
+
+Declarations drew no review findings after round 4. The call shorthand `Users.find(id)` is a separate VIP.
+
+## Prior art
+
+Effect's `Context.Service` and `Context.Reference`; a ZIO service trait; an Angular or NestJS injection token.
+
+## Will's words
+
+> "yea remove that I don't accept that 2 spellings."
+
+> "even though we treat it like a class these safeguards make sense. I acccept static default but name it defaultValue. and the same type as defaultValue in context.reference. With all that and all our changes I accept this VIP"
+
+## Footnote: old VibeLang
+
+Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
+
+
+D40's abstract-class services, and `static readonly default`, which becomes `defaultValue`.

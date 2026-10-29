@@ -1,0 +1,30 @@
+---
+title: "VIP-11: trailing blocks (denied)"
+---
+
+# VIP-11: trailing blocks (denied)
+
+**Status:** denied by Will, 2026-10-28. There is no trailing-block syntax. A function argument is written as an ordinary argument.
+
+```ts
+withSpan("load", () => { … })          // a function argument, as in TypeScript
+Layer.effect(Users, effect { … })      // an Effect argument (VIP-2)
+```
+
+## What it was
+
+Old VibeLang (D188, D376) wrote a block after a call as the call's last argument, a function. It copied Kotlin's trailing lambdas and Swift's trailing closures.
+
+```ts
+withSpan("load") { … }                 // meant withSpan("load", () => { … })
+```
+
+## Why it was denied
+
+It is not TypeScript. It made `provide(AppLive) { … }` ambiguous (VIP-12), and old VibeLang also let a trailing block silently become a program where an Effect was expected.
+
+## Will's words
+
+> "ok yea trailing blocks is fucking awful remove that"
+
+Implementation: `vibelang --fix` rewrites `f(args) { … }` to `f(args, () => { … })`, or to `f(args, effect { … })` where the old block became a program.

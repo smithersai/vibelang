@@ -1,0 +1,40 @@
+---
+title: "VIP-3: A!E!R is an alias for Effect<A, E, R>"
+---
+
+# VIP-3: `A!E!R` is an alias for `Effect<A, E, R>`
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+| Written | Means exactly |
+| --- | --- |
+| `User!NotFound!Users` | `Effect<User, NotFound, Users>` |
+| `User!NotFound` | `Effect<User, NotFound>`, that is `Effect<User, NotFound, never>` |
+| `User!!Users` | `Effect<User, never, Users>` |
+| `User!!` | `Effect<User>`, that is `Effect<User, never, never>` |
+
+```ts
+effect load(id): User!NotFound!Users { … }
+interface Users { find(id: string): User!NotFound }
+```
+
+- `A!E!R` is a type alias, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written, and it behaves exactly the same.
+- An omitted slot is `never`, as Effect's own defaults make it. The meaning never depends on where the type is written. In particular, an omitted slot is never inferred, so `User!NotFound` means `Effect<User, NotFound, never>` even on a function with a body.
+- To have the type inferred, leave out the annotation (VIP-1).
+
+## Prior art
+
+Zig's error unions write `NotFound!User`, error first. VibeLang writes the success type first because `Effect<A, E, R>` lists it first.
+
+## Will's words
+
+> "Keep it but get rid of that complexity where we can infer R. It's simply an alias for Effect\<...> and should work the exact same as if we wrote it the long form way"
+
+## Footnote: old VibeLang
+
+Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
+
+
+The part of D127 and D309 under which an omitted slot was inferred on a function with a body.

@@ -1,0 +1,53 @@
+---
+title: "VIP-7: match is TC39 pattern matching, plus a compile-time exhaustiveness check"
+---
+
+# VIP-7: `match` is TC39 pattern matching, plus a compile-time exhaustiveness check
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+```ts
+match (e) {
+  when NotFound: guest                 // NotFound's Symbol.customMatcher decides, as TC39 says
+  when Option.Some(let v): v
+  when DbError and if (retryable): retry()
+  default: fallback
+}
+```
+
+- `match`, `when`, `is`, patterns, guards, `and`/`or`/`not` and `default` are exactly the TC39 pattern-matching proposal, pinned to a dated snapshot. We move to a newer snapshot deliberately, never automatically.
+  The snapshot is [tc39/proposal-pattern-matching at `ba73ffe`, 2025-10-03](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/tc39-pattern-matching/README.md).
+- The full proposal is implemented, not today's subset (D207): regular-expression and relational patterns and `async match` included.
+- One addition: a `match` with no `default` over a finite union that misses a case is a compile error. The check only reports errors; it never changes what runs.
+- Class arms use the class's `Symbol.customMatcher`. VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.
+- **Condition: no run-time patching of Effect.** Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208). We propose the matchers upstream.
+
+## History
+
+| Problem | Kind | Status |
+| --- | --- | --- |
+| Structural error types (D501) made `instanceof` arms unsound for exhaustiveness | lego, major | fixed (D515), kept here by custom matchers |
+| The subject's static type chose tag test vs `instanceof` | lego, major | fixed (D531), kept here by custom matchers |
+| `or` patterns: chapters disagreed on what runs | local, minor | fixed (D558), now TC39's definition |
+| Guard grammar disagreed between grammar, chapters and parser | local, minor | fixed (D502), TC39's `and if` |
+| A local named `Option` still compiled to `Option.isSome` (D208) | local, none raised | open until Effect ships matchers |
+| The formatter broke a statement `match` after a call (ASI) | implementation | fixed |
+
+No reviewer raised a `match` issue in round 11.
+
+## Prior art
+
+The TC39 pattern-matching proposal; Effect's `Match.exhaustive`; Rust's and Swift's exhaustive `match` and `switch`.
+
+## Will's words
+
+> "Ok I accept it."
+
+## Footnote: old VibeLang
+
+Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
+
+
+D207's subset. D206, D209, D515 and D531 are restated here on TC39's terms.

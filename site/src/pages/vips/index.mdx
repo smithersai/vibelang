@@ -1,0 +1,28 @@
+---
+title: "VibeLang improvement proposals"
+---
+
+# VibeLang improvement proposals
+
+Will decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until a VIP adds it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Each accepted VIP is recorded here with Will's words. Where an accepted VIP disagrees with the specification, the VIP wins until the specification is rewritten to match it. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [1](/vips/0001-effect-and-async-functions) | `effect` and `async` functions | accepted 2026-10-28 |
+| [2](/vips/0002-effect-blocks-and-do) | `effect { }` blocks, and `do { }` as TC39 defines it | accepted 2026-10-28 |
+| [3](/vips/0003-effect-type-shorthand) | `A!E!R` is an alias for `Effect<A, E, R>` | accepted 2026-10-28 |
+| [4](/vips/0004-throw) | `throw`, and calls that may throw | accepted 2026-10-28 |
+| [5](/vips/0005-try-runs-effects) | `try` runs an Effect; `await` is only for Promises | accepted 2026-10-28 |
+| [6](/vips/0006-effect-globals) | Effect's functions are globals | accepted 2026-10-28 |
+| [7](/vips/0007-match) | `match` is TC39 pattern matching, plus a compile-time exhaustiveness check | accepted 2026-10-28 |
+| [9](/vips/0009-service-declarations) | `service` declarations | accepted 2026-10-28 |
+| [12](/vips/0012-provide) | `provide` blocks | accepted 2026-10-28 |
+
+
+## Denied
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [8](/vips/0008-using-denied) | Special syntax for Effect resources (`using`, a `scoped` keyword) | denied 2026-10-28 |
+| [10](/vips/0010-service-call-shorthand-denied) | The `Users.find(id)` shorthand | denied 2026-10-28 |
+| [11](/vips/0011-trailing-blocks-denied) | Trailing blocks | denied 2026-10-28 |

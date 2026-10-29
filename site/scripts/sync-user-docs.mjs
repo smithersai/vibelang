@@ -8,7 +8,7 @@
 // page in docs/user/src becomes one .mdx page here at the same path, so
 // vibelang.sh/error-management/014-expected-errors is
 // docs/user/src/error-management/014-expected-errors.md. The script rewrites
-// src/pages (keeping the hand-written pages in KEEP) and sidebar.ts, and
+// src/pages (keeping the hand-written pages and the synced spec and vips in KEEP) and sidebar.ts, and
 // converts the Markdown that MDX rejects. The hand-written Proposals page,
 // src/pages/proposals.mdx, is not in the language repo; the script keeps it and
 // lists it as the last sidebar entry (SITE_SIDEBAR). Links into the
@@ -27,7 +27,7 @@ import { loadSpec } from './spec-docs.mjs'
 
 let SPEC_URL = 'https://vibelang.sh/spec/'
 const EFFECT_DOCS_URL = 'https://effect.website/docs/'
-const KEEP = new Set(['index.mdx', '_root.css', 'proposals.mdx', 'spec'])
+const KEEP = new Set(['index.mdx', '_root.css', 'proposals.mdx', 'spec', 'vips'])
 // Sidebar entries for site-only pages, appended after the inventory's sections.
 const SITE_SIDEBAR = [{ text: 'Proposals', link: '/proposals' }]
 

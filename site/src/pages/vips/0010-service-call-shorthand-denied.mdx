@@ -1,0 +1,43 @@
+---
+title: "VIP-10: the Users.find(id) shorthand (denied)"
+---
+
+# VIP-10: the `Users.find(id)` shorthand (denied)
+
+**Status:** denied by Will, 2026-10-28. There is no shorthand: get the service, then call it.
+
+```ts
+const users = try Users
+const user = try users.find(id)
+// or
+const user = try (try Users).find(id)
+
+// Effect TS
+const user = yield* (yield* Users).find(id)
+```
+
+## What was proposed
+
+`try Users.find(id)` would look up `Users`, call `find` and run the result. It was allowed only for members that return an Effect (D552). Prior art: Effect 3's `accessors: true`.
+
+## Why it was denied
+
+It is ambiguous. Class statics collide with member names: for a service with a member `name()`, `Users.name` could be `Function.name` or the shorthand. The same holds for `key`, `length`, `prototype`, `defaultValue` and `Shape`. A rule could have banned those member names; the shorthand saves too little to justify one.
+
+## History
+
+| Problem | Kind | Status |
+| --- | --- | --- |
+| It ran a member's returned program by its declared type (round 10, major) | lego | fixed by D552, now moot |
+| It looked up `Users` before evaluating the arguments (round 10) | local | fixed by D552, now moot |
+
+## Will's words
+
+> "I think we can safely deny this one"
+
+## Footnote: old VibeLang
+
+Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
+
+
+D552's service shorthand and EK4503. Implementation: the shorthand is removed, and `vibelang --fix` rewrites `S.m(args)` to `(try S).m(args)`.

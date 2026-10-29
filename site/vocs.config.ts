@@ -3,6 +3,7 @@ import { defineConfig } from 'vocs/config'
 import vibeGrammar from './vibe.tmLanguage.json' with { type: 'json' }
 import { sidebar } from './sidebar.ts'
 import { specSidebar } from './spec-sidebar.ts'
+import { vipsSidebar } from './vips-sidebar.ts'
 
 // The JSON's inferred type is narrower than Shiki's grammar type, hence the cast.
 const vibe: LanguageRegistration = {
@@ -65,7 +66,7 @@ export default defineConfig({
     dark: '/logo-dark.svg',
   },
   renderStrategy: 'full-static',
-  sidebar: [...sidebar, ...specSidebar],
+  sidebar: [...sidebar, ...specSidebar, ...vipsSidebar],
   socials: [{ icon: 'github', link: 'https://github.com/smithersai/vibelang' }],
   title: 'VibeLang',
   titleTemplate: '%s | VibeLang',
@@ -74,6 +75,7 @@ export default defineConfig({
     { text: 'Guides', link: '/013-getting-started' },
     { text: 'Cheat sheet', link: '/vibelang-features/115-cheat-sheet' },
     { text: 'Specification', link: '/spec/' },
+    { text: 'VIPs', link: '/vips/' },
     { text: 'GitHub', link: 'https://github.com/smithersai/vibelang', external: true },
   ],
 })
