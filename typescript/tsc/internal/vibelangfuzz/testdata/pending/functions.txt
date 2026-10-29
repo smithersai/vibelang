@@ -1,0 +1,68 @@
+FuzzFunctionsSpec rule:arguments compiler VIP-1: chapter 1 requires the specified EK diagnostic for arguments; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-arguments compiler VIP-1: minimized arguments violation; lane vip-core2
+FuzzFunctionsSpec rule:var compiler VIP-1: chapter 1 requires the specified EK diagnostic for var; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-var compiler VIP-1: minimized var violation; lane vip-core2
+FuzzFunctionsSpec rule:eval compiler VIP-1: chapter 1 requires the specified EK diagnostic for eval; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-eval compiler VIP-1: minimized eval violation; lane vip-core2
+FuzzFunctionsSpec rule:function-alias compiler VIP-1: chapter 1 requires the specified EK diagnostic for function-alias; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-function-alias compiler VIP-1: minimized function-alias violation; lane vip-core2
+FuzzFunctionsSpec rule:with compiler VIP-1: chapter 1 requires the specified EK diagnostic for with; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-with compiler VIP-1: minimized with violation; lane vip-core2
+FuzzFunctionsSpec rule:await compiler VIP-1: chapter 1 requires the specified EK diagnostic for await; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-await compiler VIP-1: minimized await violation; lane vip-core2
+FuzzFunctionBoundaries rule:shorthand compiler VIP-1: chapter 1 requires the specified EK diagnostic for shorthand; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-shorthand compiler VIP-1: minimized shorthand violation; lane vip-core2
+FuzzFunctionBoundaries rule:async-shorthand compiler VIP-1: chapter 1 requires the specified EK diagnostic for async-shorthand; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-async-shorthand compiler VIP-1: minimized async-shorthand violation; lane vip-core2
+FuzzFunctionBoundaries rule:await-using compiler VIP-1: chapter 1 requires the specified EK diagnostic for await-using; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-await-using compiler VIP-1: minimized await-using violation; lane vip-core2
+FuzzFunctionBoundaries rule:for-await compiler VIP-1: chapter 1 requires the specified EK diagnostic for for-await; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-for-await compiler VIP-1: minimized for-await violation; lane vip-core2
+FuzzFunctionBoundaries rule:await-effect compiler VIP-1: chapter 1 requires the specified EK diagnostic for await-effect; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-await-effect compiler VIP-1: minimized await-effect violation; lane vip-core2
+FuzzFunctionBoundaries rule:getter compiler VIP-1: chapter 1 requires the specified EK diagnostic for getter; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-getter compiler VIP-1: minimized getter violation; lane vip-core2
+FuzzFunctionBoundaries rule:setter compiler VIP-1: chapter 1 requires the specified EK diagnostic for setter; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-setter compiler VIP-1: minimized setter violation; lane vip-core2
+FuzzFunctionBoundaries rule:constructor compiler VIP-1: chapter 1 requires the specified EK diagnostic for constructor; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-constructor compiler VIP-1: minimized constructor violation; lane vip-core2
+FuzzFunctionBoundaries rule:both compiler VIP-1: chapter 1 requires the specified EK diagnostic for both; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-both compiler VIP-1: minimized both violation; lane vip-core2
+FuzzFunctionBoundaries rule:return-type compiler VIP-1: chapter 1 requires the specified EK diagnostic for return-type; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-return-type compiler VIP-1: minimized return-type violation; lane vip-core2
+FuzzFunctionSyntax syntax:identifier compiler VIP-1: a plain arrow named effect is misclassified as a program; calling it at module scope reports EK1001; lane vip-core2
+FuzzFunctionSyntax corpus:fz-func-syntax-identifier compiler VIP-1: minimized syntax probe; lane vip-core2
+FuzzFunctionSyntax syntax:method-name compiler VIP-1: an ordinary method named effect is misclassified as a program; module-scope call reports EK1001; lane vip-core2
+FuzzFunctionSyntax corpus:fz-func-syntax-method-name compiler VIP-1: minimized syntax probe; lane vip-core2
+FuzzFunctionTypeScriptRules typescript:new compiler VIP-1: new of a .vibe function still reports the forbidden additional EK1020; lane vip-core2 (coordinate deletion lane)
+FuzzFunctionTypeScriptRules corpus:fz-func-typescript-new compiler VIP-1: minimized new-function diagnostic probe; lane vip-core2
+FuzzRestoreFunctionBoundary rule:arrow compiler VIP-22: lexical restore cannot cross a nested effect-function/block boundary; lane w2-provide
+FuzzRestoreFunctionBoundary rule:block compiler VIP-22: lexical restore cannot cross a nested effect-function/block boundary; lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-arrow compiler VIP-22: minimized lexical restore boundary; lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-block compiler VIP-22: minimized lexical restore boundary; lane w2-provide
+FuzzFunctionEffectInference corpus:fz-func-inference-0 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionEffectInference corpus:fz-func-inference-1 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionEffectInference corpus:fz-func-inference-2 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionEffectInference corpus:fz-func-inference-4 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionEffectInference corpus:fz-func-inference-5 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionEffectInference corpus:fz-func-inference-6 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
+FuzzFunctionsSpec rule:var-loop compiler VIP-1: var declarations in loop heads must be rejected with EK0107; lane vip-core2
+FuzzFunctionsSpec corpus:fz-func-var-loop compiler VIP-1: minimized var-loop ban; lane vip-core2
+FuzzFunctionBoundaries rule:arguments-default compiler VIP-1: arguments is banned in parameter defaults too; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-arguments-default compiler VIP-1: minimized default binding ban; lane vip-core2
+FuzzFunctionBoundaries rule:await-effect-top compiler VIP-1: `await` on an Effect at the module top level reports a legacy message, not EK0103; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-await-effect-top compiler VIP-1: minimized await-effect-top violation; lane vip-core2
+FuzzFunctionBoundaries rule:await-effect-union compiler VIP-1: `await` on a union with an Effect member must report EK0103 by the Result test; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-await-effect-union compiler VIP-1: minimized await-effect-union violation; lane vip-core2
+FuzzFunctionBoundaries rule:return-type-any compiler VIP-1: a written `any` return type on an effect function reports nothing, not EK0106; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-return-type-any compiler VIP-1: minimized return-type-any violation; lane vip-core2
+FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unknown` return type on an effect function reports nothing, not EK0106; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
+FuzzRestoreFunctionBoundary rule:function compiler VIP-22: restore in a nested function reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-function compiler VIP-22: minimized function restore boundary; lane w2-provide
+FuzzRestoreFunctionBoundary rule:method compiler VIP-22: restore in a nested method reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-method compiler VIP-22: minimized method restore boundary; lane w2-provide
+FuzzRestoreFunctionBoundary rule:producer compiler VIP-22: restore in a nested producer reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-producer compiler VIP-22: minimized producer restore boundary; lane w2-provide
+FuzzRestoreFunctionBoundary rule:concurrent compiler VIP-22: restore in a nested concurrent reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
+FuzzRestoreFunctionBoundary corpus:fz-func-restore-concurrent compiler VIP-22: minimized concurrent restore boundary; lane w2-provide

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip12.concurrent-jumps\x00")

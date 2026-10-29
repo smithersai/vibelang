@@ -243,3 +243,37 @@ func pickLayer(g *Gen, svc *ServiceDecl) *LayerRef {
 	}
 	return &LayerRef{Decl: have[g.Intn(len(have))]}
 }
+
+// Jumps out of a provide block, which "are ordinary blocks" (VIP-12,
+// amended 2026-10-29): the completion records of vip22_interruption.go,
+// through a provide of a layer that logs when it is built and released, so
+// the log shows the layer released before the jump.
+func init() {
+	Register(&Construct{
+		Key:      "vip12.jumps",
+		VIP:      12,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{
+			VIP:      12,
+			Template: `const ‹c› = yield* Effect.provide(Effect.gen(function* () { ‹body› return { _tag: "Continue", label: ‹l› } ‹body› return { _tag: "Normal" } }), [‹layer›]) if (‹c›._tag === "Break" ‹and its label›) break ‹l›`,
+			Quote:    jumpsQuote,
+			Reading:  recordReading + " Its own words for the order: \"The block's own finalizers, such as releasing a `provide`'s layers, run before the jump\".",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			return jumpsFocus(g, s, func(body []Stmt) Stmt {
+				return &Provide{Providers: []Node{newLayer(g, nil)}, Body: body}
+			})
+		},
+		Stmt: func(g *Gen, s *Scope) Stmt {
+			return jumpNest(g, s, func(body []Stmt) Stmt {
+				return &Provide{Providers: []Node{pickLayer(g, nil)}, Body: body}
+			})
+		},
+	})
+}
+
+func init() {
+	registerCallbackJumps(12, false, false)
+	registerCallbackJumps(12, false, true)
+	registerCallbackJumps(12, true, false)
+}

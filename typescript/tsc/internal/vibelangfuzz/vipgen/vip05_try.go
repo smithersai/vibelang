@@ -1,5 +1,7 @@
 package vipgen
 
+import "strings"
+
 // VIP-5: "`try e` runs the Effect `e` inside an `effect` function or block
 // and gives its success value. A failure propagates to the enclosing
 // Effect". Inside Effect.gen that is yield*, which VIP-5 names as prior art.
@@ -55,3 +57,68 @@ func (t *Try) Effect(w *Writer) {
 	w.Write("yield* ")
 	w.Node(t.X)
 }
+
+// No Effect function is needed for Promise semantics: this is a plain-main
+// pair, and both prints use the same ordinary JavaScript async forms.
+func init() {
+	Register(&Construct{
+		Key: "vip05.async-forms-plain", VIP: 5, Plain: true,
+		Citations: []Citation{
+			{VIP: 5, Template: "await Promise.resolve(‹p›)", Quote: "`await` keeps exactly JavaScript's meaning",
+				Reading: "VIP-5 preserves Promise await. The pair awaits already fulfilled Promises in order, without racing them."},
+			{VIP: 1, Template: "async function ‹f›(‹p› = ‹default›)", Quote: "`async` marks a Promise function",
+				Reading: "VIP-1 keeps TypeScript async declarations, expressions, arrows and methods; defaults, hoisting and receivers keep JavaScript's meaning."},
+		},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			name := g.Name("Async")
+			code := strings.ReplaceAll(asyncFormsSource, "NAME", name)
+			g.AddDecl(&Code{V: code, E: code})
+			return []Stmt{&Event{Label: g.Label()}, &AsyncFormsReturn{Name: name + "Run"}}
+		},
+	})
+}
+
+const asyncFormsSource = `
+async function NAMEDecl(p = (ev("default"), 1)) {
+ ev("declaration")
+ return await Promise.resolve(p)
+}
+const NAMEExpr = async function(p = 2) {
+ ev("expression")
+ return await Promise.resolve(p)
+}
+const NAMEArrow = async (p = 3) => {
+ ev("arrow")
+ return await Promise.resolve(p)
+}
+const NAMEObject = {
+ n: 4,
+ async m(p = 1) {
+  ev("object")
+  const a = async (q = 0) => this.n + p + q
+  return await a()
+ }
+}
+class NAMEClass {
+ n = 5
+ async m(p = 1) { ev("class"); return await Promise.resolve(this.n + p) }
+ static async m(p = 6) { ev("static"); return await Promise.resolve(p) }
+}
+async function NAMEReject() { throw "rejected" }
+async function NAMERun() {
+ const h = await hoisted()
+ async function hoisted() { return 1 }
+ try { await NAMEReject() } catch (e) { if (e !== "rejected") return -999; ev("rejection") }
+ return h + (await NAMEDecl()) + (await NAMEExpr()) + (await NAMEArrow()) +
+  (await NAMEObject.m()) + (await new NAMEClass().m()) + (await NAMEClass.m())
+}
+`
+
+type AsyncFormsReturn struct{ Name string }
+
+func (a *AsyncFormsReturn) Ends() bool { return true }
+func (a *AsyncFormsReturn) Vibe(w *Writer) {
+	w.Write("return Effect.all([Effect.promise(() => " + a.Name + "()), Effect.exit(Effect.promise(() => " + strings.TrimSuffix(a.Name, "Run") + "Reject()))])")
+}
+func (a *AsyncFormsReturn) Effect(w *Writer) { a.Vibe(w) }
