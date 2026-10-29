@@ -9,8 +9,8 @@ Source: [VIP-7](../vips/0007-match.md).
 effect function label(d: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }) {
   const tracking = "outer"
   return match (d) {
-    when { _tag: "Sent", let tracking }: try Effect.succeed(tracking)
-    default: tracking
+    when { _tag: "Sent", let tracking }: try Effect.succeed(tracking);
+    default: tracking;
   }
 }
 ```
@@ -33,7 +33,16 @@ function label(d: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }) {
 
 `match`, `when`, `is`, patterns, guards, `and`, `or`, `not` and `default` follow the [vendored TC39 snapshot](../vips/tc39-pattern-matching/README.md): commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e`, dated `2025-10-03`, with the reconciliations listed there. VibeLang moves to a newer snapshot deliberately, never automatically. The full proposal is in the language, including regular-expression patterns, relational patterns and `async match`.
 
-`match` evaluates its subject once and tests arms in order. It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above. Only the selected arm runs. `async match` explicitly produces a `Promise`, as the snapshot describes. When no arm matches and there is no `default`, it throws a `TypeError`; in effect code that is a defect, not a failure.
+The arm grammar is the pinned draft with VIP-7's `when` prefix:
+
+```text
+MatchBody = "{" MatchArm (";" MatchArm)* ";" "}"
+MatchArm = "when" MatchPattern ":" Expression | "default" ":" Expression
+```
+
+`default` is last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; built-in matchers use the draft specification, emulated without modifying globals.
+
+Synchronous `match` evaluates its subject once and tests arms in order. It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above. Only the selected arm runs. `async match` explicitly produces a `Promise`, as the snapshot describes. When no arm matches and there is no `default`, it throws a `TypeError`; in effect code that is a defect, not a failure.
 
 - In an object pattern, a bare key such as `{ tracking }` only tests that the property exists. Binding it takes `let tracking`, shorthand for `tracking: let tracking` (VIP-16). Replacing `let tracking` with `tracking` above would return `"outer"`, not the field.
 - An arm's body may be `throw e`, as VIP-5's example writes it. In effect code it fails the Effect ([Failures](003-failures.md#throw)).
@@ -44,11 +53,34 @@ VibeLang adds one check to TC39's proposal.
 
 | Rule | Diagnostic |
 | --- | --- |
-| a `match` with no `default` over a finite union that misses a case | code pending |
+| a `match` with no `default` over a finite union that misses a case | `EK4701` |
 
 The check only reports errors. It never changes what runs: a `match` that passes the check compiles to the same tests as one that doesn't need it.
 
-**Undecided (pending VIP):** which subject types count as a finite union for the check (literal unions, `data` unions, unions of `error` classes, `boolean`, enums), and how a case counts as covered when an arm has a guard.
+The check covers literal unions, `boolean`, `data` unions, `error` unions and enums. Guarded arms cover nothing (decision 10, 2026-10-29).
+
+```vibe es
+// compiler-gap: pending VIP-7
+effect function bit(b: boolean) {
+  return match (b) { when true: 1; when false: 0; }
+}
+// Guarding the true arm requires another unguarded true arm or default.
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function bit(b: boolean) {
+  return Effect.gen(function* () {
+    const subject = b
+    if (subject === true) return 1
+    if (subject === false) return 0
+    throw new TypeError("No match")
+  })
+}
+```
+
+**Undecided (pending VIP):** whether `async match` inside effect code creates a plain async boundary, permitting `await` and excluding effect `try`, or keeps the enclosing effect context. Its Promise still requires an explicit Promise bridge.
 
 ## Class patterns
 
@@ -56,5 +88,51 @@ A class arm such as `when NotFound:` uses the class's `Symbol.customMatcher`, as
 
 - An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`. It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject. Thus `when NotFound:` matches across copies of the same package. The TypeScript counterpart is in [Failures](003-failures.md#error-declarations).
 - `data` variants get no custom matchers. Match them with object patterns on `_tag`: `when { _tag: "Sent", let tracking }: …` ([Data](006-data.md#data-declarations)).
-- **No run-time patching of Effect.** Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler tests those types with fixed checks: `when Option.Some(let v):` compiles to a test of the value's tag and binds its `value` field to `v`. VibeLang proposes the matchers upstream.
-- Where an engine lacks `Symbol.customMatcher`, a small runtime shim defines it ([Runtime guarantees](008-runtime.md)).
+- **No run-time patching of Effect.** The six fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.0. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
+- Existing Effect tagged-error classes use the snapshot's inherited `Function.prototype` matcher; VibeLang `error` and `schema error` declarations use the generated tag matcher above. There is no additional unnamed fixed-error inventory.
+- Built-in constructor patterns, including `Array`, `Error`, `Map`, `Set`, `Date` and `Promise`, use the runtime's `$is`/`$extract` emulation of the snapshot's built-in matchers, without defining methods on globals. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](008-runtime.md)).
+
+Here `s` is the subject, evaluated once; modules mean the resolved `effect/Option`, `effect/Exit` and `effect/Result` identities. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns using the snapshot's list-matching rules: without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail. Rest patterns follow the snapshot. Arity mismatch is a failed match, not a new compile-time error.
+
+| Fixed pattern | Ordered test | Extracted list |
+| --- | --- | --- |
+| `Option.Some(P)` | `Option.isOption(s) && Option.isSome(s)` | `[s.value]` |
+| `Option.None` / `Option.None()` | `Option.isOption(s) && Option.isNone(s)` | `[]` |
+| `Exit.Success(P)` | `Exit.isExit(s) && Exit.isSuccess(s)` | `[s.value]` |
+| `Exit.Failure(P)` | `Exit.isExit(s) && Exit.isFailure(s)` | `[s.cause]` |
+| `Result.Success(P)` | `Result.isResult(s) && Result.isSuccess(s)` | `[s.success]` |
+| `Result.Failure(P)` | `Result.isResult(s) && Result.isFailure(s)` | `[s.failure]` |
+
+```vibe es
+// compiler-gap: pending VIP-7
+import * as O from "effect/Option"
+effect function unwrap(s: unknown) {
+  return match (s) {
+    when O.Some(let v): v;
+    when O.None: "none";
+    when Exit.Success(let v): v;
+    when Exit.Failure(let c): c;
+    when Result.Success(let v): v;
+    when Result.Failure(let e): e;
+    default: "other";
+  }
+}
+// A local Option uses Option.Some[Symbol.customMatcher] instead.
+```
+
+```ts effect
+import { Effect, Exit, Option as O, Result } from "effect"
+
+function unwrap(s: unknown) {
+  return Effect.gen(function* () {
+    const subject = s
+    if (O.isOption(subject) && O.isSome(subject)) return subject.value
+    if (O.isOption(subject) && O.isNone(subject)) return "none"
+    if (Exit.isExit(subject) && Exit.isSuccess(subject)) return subject.value
+    if (Exit.isExit(subject) && Exit.isFailure(subject)) return subject.cause
+    if (Result.isResult(subject) && Result.isSuccess(subject)) return subject.success
+    if (Result.isResult(subject) && Result.isFailure(subject)) return subject.failure
+    return "other"
+  })
+}
+```
