@@ -140,7 +140,7 @@ Layers are composed with Effect's own Layer API; there is no `wire` ([VIP-24](..
 const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
 ```
 
-A `provide` block is an ordinary block: `return`, `break` and `continue` inside it reach the enclosing function or loop, as in any TypeScript block.
+A `provide` block is an ordinary block: `return`, `break` and `continue` inside it reach the enclosing function or loop, as in any TypeScript block. [Leaving a block](002-running.md#leaving-a-block) gives the Effect TypeScript.
 
 ## Effect's functions are globals
 

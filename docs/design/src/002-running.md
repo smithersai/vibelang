@@ -287,7 +287,7 @@ JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` h
 | `break` in the body | code pending |
 | `return` in the body | code pending |
 
-`continue` ends that one item.
+`continue` ends that one item: it is `return` from the item's generator. `break` and `return` are errors when they would leave the body; a loop nested in the body keeps its own `break` and `continue`.
 
 ### Meaning
 
@@ -451,7 +451,51 @@ function pay(card: Card, user: User) {
 
 The keywords remove the globals of the same name ([VIP-6](../vips/0006-effect-globals.md)), so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
 
-These are ordinary blocks: `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block. The same holds for `provide` blocks. (`for concurrent` and `for try` keep their own rules, because their bodies run once per item.)
+### Leaving a block
+
+These are ordinary blocks: `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block (VIP-22, amended). The same holds for `provide` blocks (VIP-12, amended). `for concurrent` and `for try` keep their own rules, because their bodies run once per item.
+
+The block's body is a separate generator, so a jump to a target outside it can't be written there. It ends the generator with a completion record instead, and the code where the block stands carries out the jump:
+
+```vibe es
+// compiler-gap: pending VIP-12
+effect function find(ids: string[]) {
+  outer: for (const id of ids) {
+    provide Users = testUsers {
+      if (id === "skip") continue outer
+      if (id === "stop") break outer
+      if (try (try Users).has(id)) return id
+    }
+  }
+  return "none"
+}
+```
+
+```ts effect
+// fragment
+function find(ids: string[]) {
+  return Effect.gen(function* () {
+    outer: for (const id of ids) {
+      const $c = yield* Effect.provide(Effect.gen(function* () {
+        if (id === "skip") return { _tag: "Continue", label: "outer" } as const
+        if (id === "stop") return { _tag: "Break", label: "outer" } as const
+        if (yield* (yield* Users).has(id)) return { _tag: "Return", value: id } as const
+        return { _tag: "Normal" } as const
+      }), [Layer.succeed(Users, testUsers)])
+      if ($c._tag === "Return") return $c.value
+      if ($c._tag === "Break") break outer
+      if ($c._tag === "Continue") continue outer
+    }
+    return "none"
+  })
+}
+```
+
+- The records are `Normal`, `Return(value)`, `Break(label)` and `Continue(label)`, under fresh names. An unlabeled `break` or `continue` targets the innermost enclosing loop, as in JavaScript, and the record names that loop.
+- `return e` evaluates `e` once, inside the block.
+- A jump whose target is inside the block stays as written.
+- Nested blocks pass a record outward the same way, until it reaches the block that encloses its target.
+- Only a completed block gives a record. A failure, defect or interruption stays in Effect's `Cause`. The block's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
 
 **Undecided (pending VIP):** whether `restore` reaches into an `effect` arrow or `effect` block nested inside the `uninterruptible` block.
 
