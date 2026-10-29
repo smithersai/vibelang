@@ -1,0 +1,16 @@
+# VIP-29: serializable errors: `schema error`
+
+**Status:** accepted, 2026-10-29, under Will's standing approval of recommendations ("assume I accept now. I will interrupt you if I need to").
+
+## Decision
+
+```ts
+schema error NotFound { id: string }
+
+// exactly Effect TS
+class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {}
+```
+
+- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.
+- The body rules are VIP-13's: methods and getters are allowed, and a constructor or a `_tag` override is not.
+- **Ambiguity: none.** `schema error NotFound {` and the alias form `schema error = …` differ at the next token.

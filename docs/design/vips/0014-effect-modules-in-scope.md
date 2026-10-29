@@ -1,0 +1,36 @@
+# VIP-14: Effect's modules are in scope without an import
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+```ts
+const Port = Schema.Number                       // Effect's Schema, no import
+try sleep(Duration.seconds(1))
+const first = Effect.Array.head(xs)              // Effect's Array module: JavaScript's Array wins the bare name
+const o = Option.some(1)                         // Effect's Option: the DOM's Option is platform-specific
+```
+
+- Every root export of the core `effect` package (149 in effect 4.0.6, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`.
+- This is configurable in `tsconfig.json`, as VIP-6's globals are.
+- **Precedence by default.** JavaScript globals that aren't platform-specific, and TypeScript's own globals, keep their meaning. Effect's module of the same name is then reachable as `Effect.X`, or by import.
+
+  | Name | Bare name means | Effect's module |
+  | --- | --- | --- |
+  | `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp` | JavaScript's | `Effect.Array`, `Effect.String`, … |
+  | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
+  | `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
+
+## History
+
+One minor finding, "unclassified globals", resolved. No other findings.
+
+## Prior art
+
+Rust's prelude; Elixir's `Kernel`; VIP-6.
+
+## Will's words
+
+> "So like before this should be configurable in the tsconfig.json but by default we should make javascript globals that are not platform specific take president but we should also make them available on Effect.* not just via impport with those changes I accept"
+
+> "Yea Typescript globals like Record take president"

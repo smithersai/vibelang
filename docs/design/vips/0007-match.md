@@ -14,7 +14,6 @@ match (e) {
 ```
 
 - `match`, `when`, `is`, patterns, guards, `and`/`or`/`not` and `default` are exactly the TC39 pattern-matching proposal, pinned to a dated snapshot. We move to a newer snapshot deliberately, never automatically.
-  The snapshot is [tc39/proposal-pattern-matching at `ba73ffe`, 2025-10-03](tc39-pattern-matching/README.md).
 - The full proposal is implemented, not today's subset (D207): regular-expression and relational patterns and `async match` included.
 - One addition: a `match` with no `default` over a finite union that misses a case is a compile error. The check only reports errors; it never changes what runs.
 - Class arms use the class's `Symbol.customMatcher`. VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.

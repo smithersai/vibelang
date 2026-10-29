@@ -1,0 +1,15 @@
+# VIP-31: runtime guarantees
+
+**Status:** accepted, 2026-10-29, under Will's standing approval of recommendations ("assume I accept now. I will interrupt you if I need to").
+
+## Decision
+
+- **No runtime semantics of VibeLang's own.** Every accepted construct is exact sugar for Effect, so failures, defects, interruption, finalizer order and Cause combination are Effect 4's.
+- **The guarantee.** Compiled output gives the same `Exit` as the Effect TypeScript shown in each VIP: success, failure, defect or interruption, with finalizers in the same order.
+- **Checking it.** Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s. The fuzz suite generates more pairs.
+- **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it (VIP-7).
+- Effect handlers (`handle`/`resume`) would need a continuation runtime, and are decided separately.
+
+## History
+
+Old VibeLang's Part III (continuations, region ownership, its own rules for combining cleanup failures) served features that VIP-8, VIP-17, VIP-21 and VIP-22 denied or redefined as sugar. Its findings, including the round-2 and round-3 blockers about disposal ownership, don't apply.

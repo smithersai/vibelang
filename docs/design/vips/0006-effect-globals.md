@@ -15,7 +15,7 @@ effect load(url) {
 ```
 
 - Every export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, and so on. A local declaration or import shadows one, as with any global.
-- A compiler option turns the globals off. Its name is chosen when it's implemented.
+- An option in `tsconfig.json` turns the globals off (VIP-14: "like before this should be configurable in the tsconfig.json").
 - A name that clashes is not a global, and is used as `Effect.x` instead. A name clashes if it is:
   - a reserved word: `try`, `catch`, `void`, `let`;
   - a JavaScript global: `undefined`;

@@ -1,0 +1,17 @@
+# VIP-34: compiler and tooling requirements
+
+**Status:** accepted, 2026-10-29, under Will's standing approval of recommendations ("assume I accept now. I will interrupt you if I need to").
+
+## Decision
+
+1. **Diagnostics.** Every diagnostic has a code (`EKxxxx`) and a message in the user's words that says what is wrong and how to fix it, with a quick fix wherever the fix is mechanical.
+2. **Codemods.** Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically.
+3. **One formatter.** VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repo's existing formatter command covers `.vibe` files.
+4. **Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories.
+5. **Severities.** Warning severities can be adjusted in the config's `"vibe"` section (VIP-30). Errors can't be turned off.
+
+## Will's words
+
+> "make sure we have good compile error messages too"
+
+> "They should not only compile and tests pass but we should be able to actually suggest migrating via having everything work including all their existing tooling"

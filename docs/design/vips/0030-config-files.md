@@ -1,0 +1,26 @@
+# VIP-30: config files: `vibe.config.json`, `tsconfig.json`, `jsconfig.json`
+
+**Status:** accepted, 2026-10-29. Will asked for this VIP ("accepting tsconfig.json jsconfig.json and vibe.config.json with vibe config being a strict superset of a tsconfig"); the details are recorded under his standing approval of recommendations.
+
+## Decision
+
+```jsonc
+// tsconfig.json or jsconfig.json
+{ "compilerOptions": { "strict": true }, "vibe": { "effectGlobals": false } }
+
+// vibe.config.json: a strict superset of tsconfig.json
+{ "extends": "./tsconfig.base.json", "compilerOptions": { … }, "vibe": { … } }
+```
+
+- **Precedence.** In a directory, VibeLang reads the first that exists: `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`.
+- **Superset.** Every tsconfig field means the same in `vibe.config.json`, including `extends`. The only addition is the `"vibe"` section.
+- **VibeLang's options live under a top-level `"vibe"` key.** Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so the repo's own TypeScript tooling keeps working.
+- The switches for VIP-6 (Effect function globals) and VIP-14 (Effect modules in scope) live there; their final names are settled during implementation.
+
+## Prior art
+
+ts-node's top-level `"ts-node"` key in tsconfig; `deno.json`; VS Code's `jsconfig.json`.
+
+## Will's words
+
+> "There should be a proposal towards end about accepting tsconfig.json jsconfig.json and vibe.config.json with vibe config being a strict superset of a tsconfig."

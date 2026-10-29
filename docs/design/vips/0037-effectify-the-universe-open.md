@@ -1,0 +1,7 @@
+# VIP-37: Effectify the universe (open)
+
+**Status:** open, 2026-10-29. To be proposed but not accepted right away, and not in the first release.
+
+## Will's words (2026-10-28)
+
+> "Later we will make a language proposal that we wont' accept right away to Effectify the universe. This will be a language proposal to remove all non effectful functions such as Array.map() and replacing them with effect aware versions but this is a very complex and controversial one that we might not even do and won't be in our initial release"
