@@ -1,0 +1,2 @@
+main.vibe(7,10): error EK4401
+main.vibe(7,21): error EK4401

@@ -1,0 +1,17 @@
+// VIP-4: a TypeScript function says what it throws with @throws, and
+// VibeLang annotates JavaScript's globals. @throws {BadPort} makes BadPort an
+// expected failure; @throws {never} and Math.max are called directly.
+import { double, parsePort } from "./helpers.ts"
+
+function port(text: string) {
+  try {
+    return parsePort(text)
+  } catch (e) {
+    return e._tag
+  }
+}
+
+// expect-result: {"ports":[80,"BadPort"],"double":4,"max":3}
+export function main() {
+  return { ports: [port("80"), port("x")], double: double(2), max: Math.max(1, 3) }
+}

@@ -104,7 +104,7 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	}
 	switch pkg := packageOf(c, file); {
 	case isLibFile(c, file):
-		return tagged(c, call, candidates, &trust{kind: trustBuiltin, failures: builtinFailures(c, decl)})
+		return tagged(c, call, candidates, builtinTrust(c, call, decl))
 	case isTrustedPackage(c, ast.GetSourceFileOfNode(call), pkg):
 		return tagged(c, call, candidates, &trust{kind: trustEffect})
 	case isPlatformPackage(pkg):
@@ -302,9 +302,10 @@ func importedFromTrustedPackage(c *checker.Checker, name *ast.Node) bool {
 	return false
 }
 
-// tagged returns the trust of a declaration among candidates that is tagged
-// `@vibelang trusted` and declared outside lib files and trusted
-// packages, else otherwise.
+// tagged returns the trust of a declaration among candidates that says what
+// it throws, with `@throws {E}` or `@vibelang trusted`, and is declared
+// outside lib files and trusted packages, else otherwise. A declaration
+// whose only tag is `@throws {unknown}` says what having none says (VIP-4).
 func tagged(c *checker.Checker, call *ast.Node, candidates []*ast.Node, otherwise *trust) *trust {
 	for _, candidate := range candidates {
 		file := ast.GetSourceFileOfNode(candidate)
@@ -312,11 +313,17 @@ func tagged(c *checker.Checker, call *ast.Node, candidates []*ast.Node, otherwis
 			continue
 		}
 		for _, host := range jsdocHosts(candidate) {
-			if hasTrustedTag(host) {
-				t := &trust{kind: trustTagged, promise: returnsPromise(c, call), declaration: candidate}
-				t.failures, t.unreachable = throwsOf(c, host)
-				return t
+			throws := hasThrowsTag(host)
+			if !hasTrustedTag(host) && !throws {
+				continue
 			}
+			t := &trust{kind: trustTagged, promise: returnsPromise(c, call), declaration: candidate}
+			var unknown bool
+			t.failures, t.unreachable, unknown = throwsOf(c, host)
+			if unknown {
+				return otherwise
+			}
+			return t
 		}
 	}
 	return otherwise
@@ -417,10 +424,24 @@ func jsdocComment(tag *ast.Node) string {
 	return b.String()
 }
 
+// hasThrowsTag reports whether node's JSDoc has a `@throws {T}` tag.
+func hasThrowsTag(node *ast.Node) bool {
+	for _, jsdoc := range node.JSDoc(nil) {
+		for _, tag := range jsdocTags(jsdoc) {
+			if ast.IsJSDocThrowsTag(tag) && tag.AsJSDocThrowsTag().TypeExpression != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // throwsOf reads the `@throws {T}` tags of host's JSDoc. Each names a class
-// in host's scope whose instances are expected failures. It returns the
-// failures, and the text of the first type that names no class.
-func throwsOf(c *checker.Checker, host *ast.Node) ([]failure, string) {
+// in host's scope whose instances are expected failures; `@throws {never}`
+// names none, and `@throws {unknown}` says the function may throw anything
+// (VIP-4). It returns the failures, the text of the first type that names no
+// class, and whether a tag says unknown.
+func throwsOf(c *checker.Checker, host *ast.Node) ([]failure, string, bool) {
 	var failures []failure
 	for _, jsdoc := range host.JSDoc(nil) {
 		for _, tag := range jsdocTags(jsdoc) {
@@ -428,6 +449,12 @@ func throwsOf(c *checker.Checker, host *ast.Node) ([]failure, string) {
 				continue
 			}
 			t := tag.AsJSDocThrowsTag().TypeExpression.AsJSDocTypeExpression().Type
+			switch {
+			case t != nil && t.Kind == ast.KindNeverKeyword:
+				continue
+			case t != nil && (t.Kind == ast.KindUnknownKeyword || t.Kind == ast.KindAnyKeyword):
+				return nil, "", true
+			}
 			name := ""
 			if t != nil && ast.IsTypeReferenceNode(t) && ast.IsIdentifier(t.AsTypeReferenceNode().TypeName) {
 				name = t.AsTypeReferenceNode().TypeName.Text()
@@ -435,12 +462,12 @@ func throwsOf(c *checker.Checker, host *ast.Node) ([]failure, string) {
 			f, ok := classFailure(c, name, c.ResolveName(name, host, ast.SymbolFlagsValue, false /*excludeGlobals*/))
 			if !ok {
 				file := ast.GetSourceFileOfNode(host)
-				return nil, file.Text()[t.Pos():t.End()]
+				return nil, file.Text()[t.Pos():t.End()], false
 			}
 			failures = append(failures, f)
 		}
 	}
-	return failures, ""
+	return failures, "", false
 }
 
 // classFailure makes the failure for symbol, a class named name, or reports
@@ -459,35 +486,22 @@ func classFailure(c *checker.Checker, name string, symbol *ast.Symbol) (failure,
 	return failure{name: name, class: c.GetMergedSymbol(symbol), t: c.GetDeclaredTypeOfSymbol(symbol), global: global}, true
 }
 
-// builtinContracts lists the JavaScript built-ins whose exceptions are
-// expected failures (D5): each parses text from outside the program. Every
-// other built-in is trusted, and its exceptions are defects. Keys are
-// "Container.member", or "member" for a global function.
-var builtinContracts = map[string]string{
-	"JSON.parse":         "SyntaxError",
-	"decodeURI":          "URIError",
-	"decodeURIComponent": "URIError",
-}
-
-// builtinFailures returns the expected failures of the built-in that decl, a
-// lib file's declaration, declares.
-func builtinFailures(c *checker.Checker, decl *ast.Node) []failure {
-	owner := ownerOf(decl)
-	if owner == nil {
-		return nil
+// builtinTrust returns the trust of the built-in that decl, a lib file's
+// declaration, declares: the classes VibeLang's annotation of it lists
+// (globalThrowsTable) are expected failures, and a built-in the table does
+// not annotate throws unknown (VIP-4).
+func builtinTrust(c *checker.Checker, call *ast.Node, decl *ast.Node) *trust {
+	names, known := globalThrowsOf(globalKey(decl))
+	if !known {
+		return &trust{kind: trustForeign, promise: returnsPromise(c, call)}
 	}
-	key := declarationName(owner)
-	if container := containerName(owner); container != "" {
-		key = container + "." + key
+	var failures []failure
+	for _, name := range names {
+		if f, ok := classFailure(c, name, c.GetGlobalSymbol(name, ast.SymbolFlagsValue, nil /*diagnostic*/)); ok {
+			failures = append(failures, f)
+		}
 	}
-	name, ok := builtinContracts[key]
-	if !ok {
-		return nil
-	}
-	if f, ok := classFailure(c, name, c.GetGlobalSymbol(name, ast.SymbolFlagsValue, nil /*diagnostic*/)); ok {
-		return []failure{f}
-	}
-	return nil
+	return &trust{kind: trustBuiltin, failures: failures}
 }
 
 // boundaryAPIs are the exports of effect's Effect module that are explicit

@@ -287,14 +287,13 @@ func mayLowerToEffect(file *ast.SourceFile) (effect bool, runtime bool) {
 }
 
 // namesParsingBuiltin reports whether node names a built-in whose failures
-// are expected (builtinContracts, D101): decodeURI, decodeURIComponent, or
+// are expected (globalThrowsTable, D101): decodeURI, decodeURIComponent, or
 // JSON.parse, globalThis.JSON.parse included. It reads syntax, before binding,
 // so a local of the same name counts too, which only loads a module.
 func namesParsingBuiltin(node *ast.Node) bool {
 	switch {
 	case ast.IsIdentifier(node):
-		_, ok := builtinContracts[node.Text()]
-		return ok
+		return parsingBuiltinNames[node.Text()]
 	case ast.IsPropertyAccessExpression(node):
 		object := node.Expression()
 		if ast.IsPropertyAccessExpression(object) {
@@ -303,8 +302,7 @@ func namesParsingBuiltin(node *ast.Node) bool {
 		if !ast.IsIdentifier(object) || !ast.IsIdentifier(node.Name()) {
 			return false
 		}
-		_, ok := builtinContracts[object.Text()+"."+node.Name().Text()]
-		return ok
+		return parsingBuiltinNames[object.Text()+"."+node.Name().Text()]
 	}
 	return false
 }

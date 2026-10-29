@@ -1,0 +1,8 @@
+// expect: EK4401
+// VIP-4: @throws {unknown}, like no @throws, says the function may throw
+// anything, so an Effect function calls it only through a wrapper.
+import { risky, unannotated } from "./helpers.ts"
+
+export function main() {
+  return risky(1) + unannotated(2)
+}

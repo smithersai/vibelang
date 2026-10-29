@@ -1,0 +1,13 @@
+// VIP-4, amended 2026-10-29: a TypeScript function that returns an Effect
+// can't throw, so a call of it is never throw-tracked, whether the call
+// runs the Effect or passes it on.
+import { loadTs, lookup, twice } from "./helpers.ts"
+
+function held() {
+  return Effect.all([loadTs(3), twice(2)])
+}
+
+// expect-result: {"a":1,"b":4,"c":11,"held":[3,4]}
+export function main() {
+  return { a: loadTs(1), b: twice(2), c: lookup.find(1), held: held() }
+}
