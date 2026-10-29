@@ -190,11 +190,11 @@ function lookup(q: string, s: string) {
 }
 ```
 
-An option in the config's `"vibe"` section turns the globals off ([Configuration](/spec/007-tooling#config-files)).
+`"vibe": { "effectGlobals": false }` in the config turns the globals off ([Configuration](/spec/007-tooling#config-files)).
 
 ## Effect's modules are in scope
 
-Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. An option in the config's `"vibe"` section turns this off.
+Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. `"vibe": { "effectModules": false }` in the config turns this off.
 
 **Precedence.** JavaScript globals that aren't platform-specific, and TypeScript's own global types, keep their meaning. Effect's module of the same name is then written `Effect.X`, or imported.
 
@@ -229,7 +229,7 @@ const o = Option.some(1)
 
 1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](/vips/0025-inline-modules-denied) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
-3. **Subpath namespaces are in scope:** the namespaces exported by `effect`'s subpaths (22 in 4.1.0, such as `HttpClient` from `effect/http` and `ChildProcess` from `effect/process`), with the precedence above, so `Headers`, `Response` and `Event`, which are web platform globals, name Effect's. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
+3. **Subpath namespaces are in scope:** the namespaces exported by the 22 lowercase subpaths in effect 4.1.0's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so `Headers`, `Response` and `Event`, which are web platform globals, name Effect's. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
 
    **Undecided (pending VIP):** a name two subpaths export, or a subpath and a root (`Model`, `Prompt`, `Utils` in 4.1.0).
 
@@ -269,4 +269,4 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 
 `import type` from `node:*` is allowed: VIP-33 bans value imports, and a type import is erased.
 
-**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers.
+**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers, including whether `console` is one.

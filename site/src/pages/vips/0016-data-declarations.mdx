@@ -12,7 +12,7 @@ title: "VIP-16: data declarations (tagged unions)"
 // VibeLang
 data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
 const d = Delivery.Sent({ tracking: "1Z" })
-match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none" }
+match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none"; }
 
 // exactly this Effect TS
 type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejected: { reason: string } }>
@@ -39,3 +39,5 @@ Rust and Swift enums with payloads, Kotlin sealed classes, Effect's `Data.Tagged
 (The recommendations: match with object patterns, and decide generic unions in a later VIP.)
 
 *Corrected 2026-10-29: the example now binds with `let`, using TC39's `let tracking` shorthand (found by the differential fuzz suite).*
+
+*Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*

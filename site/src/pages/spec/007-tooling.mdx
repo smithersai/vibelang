@@ -30,7 +30,7 @@ The decided keys are:
 
 These are compiler settings, with no Effect TypeScript runtime translation. In the example, use explicit Effect imports instead of the disabled globals and modules, just as in TypeScript.
 
-**Undecided (pending VIP):** the entry format and allowed warning severity values of `vibe.severities`.
+**Undecided (pending VIP):** the entry format, diagnostic identifiers and allowed warning severity values of `vibe.severities`.
 
 ## The Effect version
 
@@ -56,4 +56,4 @@ The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rul
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-**Undecided (pending VIP):** lint-specific command-line options.
+**Undecided (pending VIP):** lint-specific command-line options, including whether it adds any beyond the compiler’s options.
