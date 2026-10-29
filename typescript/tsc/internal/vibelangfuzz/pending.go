@@ -91,6 +91,15 @@ func Pending(target, key string) (PendingEntry, bool) {
 	return findPending(entries, target, key)
 }
 
+// SkipRetired skips a target, or a test of its oracles, that a superseded
+// line keyed "*" retires: the VIPs replaced everything it checks.
+func SkipRetired(tb testing.TB, target string) {
+	tb.Helper()
+	if entry, ok := Pending(target, "*"); ok && entry.Owner == Superseded {
+		tb.Skipf("%s is retired, superseded by %s", target, entry.Reason)
+	}
+}
+
 // findPending returns the entry of a target's key: its own line, or else a
 // superseded line whose key ends in "*" and prefixes it.
 func findPending(entries []PendingEntry, target, key string) (PendingEntry, bool) {

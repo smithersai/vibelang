@@ -599,6 +599,7 @@ func pickInjection(data []byte) (*ruleInjection, ruleChoice) {
 // the slot, the names' suffix, the nesting, the benign statements around the
 // injection, and a category setting.
 func FuzzSpecRules(f *testing.F) {
+	SkipRetired(f, rulesTarget)
 	// Every injection runs at least once, -short or not: the smoke run's
 	// seeds are the gate that each registered rule is checked.
 	for _, inj := range ruleInjections {
@@ -650,6 +651,7 @@ var allowedItems = sync.OnceValue(func() []allowedItem {
 // only TypeScript's diagnostics may appear. Its input has FuzzSpecRules'
 // shape, naming an allowed item.
 func FuzzSpecAllowed(f *testing.F) {
+	SkipRetired(f, allowedTarget)
 	for _, item := range allowedItems() {
 		f.Add(ruleInput(item.Name, "template:minimal"))
 	}

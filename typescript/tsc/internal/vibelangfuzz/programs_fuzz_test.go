@@ -464,6 +464,7 @@ func (s *specProgramRun) compileGaps(g *specGaps, files map[string]string, fileF
 // prints together, and requires no error, the same Outcome and trace, and
 // the declared contracts the model infers.
 func FuzzSpecPrograms(f *testing.F) {
+	SkipRetired(f, specTargetPrograms)
 	for _, seed := range specProgramSeeds() {
 		f.Add(seed)
 	}
@@ -506,6 +507,7 @@ func FuzzSpecPrograms(f *testing.F) {
 // and its Effect reading in one project, and requires every variant to end as
 // the base does.
 func FuzzSpecVariants(f *testing.F) {
+	SkipRetired(f, specTargetVariants)
 	for _, seed := range specVariantSeeds() {
 		f.Add(seed)
 	}
@@ -551,6 +553,7 @@ func FuzzSpecVariants(f *testing.F) {
 // TestGeneratorCoversFeatures proves that the generator can write every
 // named feature: the one-byte input that focuses on a feature holds it.
 func TestGeneratorCoversFeatures(t *testing.T) {
+	SkipRetired(t, specTargetPrograms)
 	for i, f := range specgen.Features {
 		p := specgen.Generate([]byte{byte(i)}, nil)
 		if p.Focus != f.Name {
@@ -673,6 +676,7 @@ var specCodeSpan = regexp.MustCompile("`([^`]+)`")
 // checks that every code span maps to a generator feature, or to a pending line
 // that says why the generator leaves it out.
 func TestGeneratorMatchesSpecForms(t *testing.T) {
+	SkipRetired(t, specTargetPrograms)
 	data, err := os.ReadFile(filepath.Join(Root(), "packages/compiler/skills/vibelang/SKILL.md"))
 	if err != nil {
 		t.Fatal(err)

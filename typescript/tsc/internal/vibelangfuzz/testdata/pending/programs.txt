@@ -2,14 +2,6 @@
 #
 # Forms of SKILL.md's table that the generator does not write, and why
 # (TestGeneratorMatchesSpecForms reads these):
-FuzzSpecPrograms  feature:schema-error     programs  not generated: a schema error's observable behavior is a Data.TaggedError's, which "throw" covers; its encoding is Schema's
-FuzzSpecPrograms  feature:service-shape    programs  not generated: service Name: Type changes only the declared shape; "service" covers the calls
-FuzzSpecPrograms  feature:schema           programs  not generated: schema declarations are types and Schema values, with no control flow to observe
-FuzzSpecPrograms  feature:mutable-members  programs  not generated: readonly and mutable members are types only
-FuzzSpecPrograms  feature:spans            programs  not generated: withSpan's spans are not observable in an Outcome or trace without a tracer
-FuzzSpecPrograms  feature:callback-hatch   programs  not generated: Ch 10 (D230): callback's register function hands resume to a host source, a timer, an event or a socket, so when it resumes against the program's other fibers depends on the host; the generated hatches finish before they return or wait for a promise that is already settled
-FuzzSpecPrograms  feature:platform-entry   programs  not generated: the platform entry runs main when Node starts a file, not when a worker imports it
-FuzzSpecPrograms  feature:module-block     programs  not generated: a module block is TypeScript, outside VibeLang's semantics
 #
 # Compiler gaps the generator found. A pending feature stays out of
 # campaigns. Each gap is pending under its oracle's key, which names what
@@ -17,31 +9,13 @@ FuzzSpecPrograms  feature:module-block     programs  not generated: a module blo
 # in programs_fuzz_test.go), so a new disagreement of an input that holds the
 # feature still fails. The corpus line only marks the reproduction, which
 # holds every feature and fails as XPASS once every oracle holds.
-FuzzSpecPrograms  feature:unreachable-code             compiler  D346, D214: an exhaustive match in code after a return draws EK4701 ("E1 is left") and TS2339 on its bindings, because the lowering relies on TypeScript's narrowing, which unreachable code lacks; the spec covers by the subject's declared type
-FuzzSpecPrograms  compile:EK4701/unreachable-code      compiler  D346, D214: an exhaustive match after a statement that always returns draws EK4701, since TypeScript narrows unreachable code to never
-FuzzSpecPrograms  corpus:unreachable-match             compiler  D346, D214: an exhaustive match after a statement that always returns draws EK4701
-FuzzSpecPrograms  feature:narrowed-subject             compiler  D346, D307: `const d: D0 = D0.V0(); match (d) { when D0.V0: 1; when D0.V1 { let x }: x; }` is TS2339 ("Property 'x' does not exist on type 'never'"): the lowering reads a binding off a subject TypeScript has narrowed, by its initializer or (campaign) by an enclosing match's arms over the same subject, where the spec accepts every variant's arm
-FuzzSpecPrograms  compile:TS2339/narrowed-subject      compiler  D346, D307: a variant arm's binding over a subject TypeScript has narrowed is TS2339 on never
-FuzzSpecPrograms  corpus:narrowed-subject              compiler  D346, D307: a variant arm's binding over a subject narrowed by its initializer is TS2339
-FuzzSpecPrograms  feature:do-yield                     compiler  Ch 13 rule L5 (D187), Ch 8: a yield inside a do block of a producer, `function* gen0(p0: number) { for (let i1 = 0; i1 < 2; i1++) { const v2: number = do { yield 0; 0 } } }`, is TS1163 ("A 'yield' expression is only allowed in a generator body"), though a do block is evaluated where it stands and rule L5 rejects only break, continue, var and return in it
-FuzzSpecPrograms  compile:TS1163/do-yield              compiler  Ch 13 rule L5 (D187): a yield inside a producer's do block is TS1163
-FuzzSpecPrograms  compile:TS1214/do-yield              compiler  Ch 13 rule L5 (D187): `do { yield (0 + 0); 0 }` in a producer is TS1214 ("'yield' is a reserved word in strict mode"), read as a call of an identifier
-FuzzSpecPrograms  compile:TS2304/do-yield              compiler  Ch 13 rule L5 (D187): `do { yield (0 + 0); 0 }` in a producer is TS2304 ("Cannot find name 'yield'"), read as a call of an identifier
-FuzzSpecPrograms  corpus:do-yield                      compiler  Ch 13 rule L5 (D187): the do-yield focus yields inside a do block of gen0 and draws TS1163
-FuzzSpecVariants  compile:TS7024/hatch-promise         compiler  Ch 2 Writing the contract yourself, Ch 14 (D71): the annot-bang, annot-effect and combined variants of FuzzSpecVariants seed 16 under -short (VIBELANG_FUZZ_SEED=v16; seed 31 without -short) write the inferred contract on f11, which holds an async sync hatch, and draw TS7024 at its last return, though the base print compiles; an unfinished minimization pointed at `sync(async (a, b) => ...)` inside a provide block's return, but no hand-written reduction reproduces it yet
-FuzzSpecVariants  feature:pipe-self-call               compiler  Ch 5, Ch 13 rule E6, Ch 14 Recursion (D57, D272): `x |> rec0(%)` inside rec0, annotated `number!E` with R left to the fixpoint, is EK2102 ("its contract must write every channel"), while the call `rec0(x)` it means compiles
-FuzzSpecVariants  compile:EK2102/pipe-self-call        compiler  Ch 5, Ch 13 rule E6, Ch 14 (D57): a pipe into the function's own call, `((p0 - 1) |> rec0(%))`, is EK2102 where the call it means is not
-FuzzSpecVariants  corpus:pipe-self-call                compiler  Ch 5, Ch 13 rule E6, Ch 14 (D57): the pipe variant of rec0, `((p0 - 1) |> rec0(%))`, is EK2102
+# Retired 2026-10-29: the VIPs replaced the language these targets generate.
+FuzzSpecPrograms  *  superseded  VIP-31: VibeLang has no runtime semantics of its own, and nothing of old VibeLang is part of the language unless a VIP adds it; FuzzVIPDifferential checks programs against each VIP's Effect TS, so this generator of the old language is retired
+FuzzSpecVariants  *  superseded  VIP-31: VibeLang has no runtime semantics of its own, and nothing of old VibeLang is part of the language unless a VIP adds it; FuzzVIPDifferential checks programs against each VIP's Effect TS, so this generator of the old language is retired
 
 # Additional code spans in the Forms table that the generator does not write.
-FuzzSpecPrograms feature:timeout-retry programs not generated: Ch 5: retry is generated, but whether a deadline around it fires depends on the wall clock against the work's own speed, since the worker runs no test clock; a deadline that cannot fire leaves retry's result as it is
-FuzzSpecPrograms feature:throw-cause-invalid programs not generated: Ch 17, D406: throw cause is invalid (EK2140); this generator writes valid programs only
-FuzzSpecPrograms feature:test-block-param programs not generated: Ch 5: it.effect requires a test runner; the worker directly calls exported programs
 
-FuzzSpecPrograms  feature:service-identity programs  not generated: Chapter 4 (D361): typing an implementation, a default or a TypeScript class's implements clause as Users.Shape is a type-level rule with no runtime behavior; the generator's layers are typed by inference
 #
 # s3 (D382, D394, D433): an await operation's operand is a program by syntax, and a
 # site whose meaning changed from VibeLang 0.0.10 is EK1023. The generator writes
 # await.all's do-block elements and records with 0.0.10's evaluation order.
-FuzzSpecPrograms  compile:EK1023/await-all-record  programs  D394, D433: the generator writes an await.all record whose do-block fields 0.0.10 evaluated where the form stood, which EK1023 now names; its Outcome model needs s3's deferred elements
-FuzzSpecPrograms  compile:EK1023/await-all         programs  D394, D433: the generator writes await.all do-block elements that 0.0.10 evaluated where the form stood, which EK1023 now names; its Outcome model needs s3's deferred elements

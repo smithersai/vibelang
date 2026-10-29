@@ -19,6 +19,7 @@ func normalizeSpace(s string) string {
 // what the chapter's prose says about them, so a parse that drifts from the
 // text fails here and not as a wrong oracle.
 func TestSpecRuleFacts(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	rows := SpecRows()
 	for _, code := range SpecCodes() {
 		if _, ok := rows[code]; !ok {
@@ -72,6 +73,7 @@ func names(codes []int32) []string {
 // each injection names a registry code and quotes the clause of its row
 // that it violates, and each allowed form quotes the text that allows it.
 func TestSpecRuleTable(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	seen := map[string]bool{}
 	allSlots := []string{slotTop, slotEffect, slotPlain, slotMember, slotHatch, slotAsyncHatch, slotModule, slotTS, slotFile, slotNoEffect}
 	for _, inj := range ruleInjections {
@@ -115,6 +117,7 @@ func TestSpecRuleTable(t *testing.T) {
 // keeps unused. It fails when the specification adds a code that nothing
 // here checks.
 func TestSpecRuleCoverage(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	injected := map[int32][]*ruleInjection{}
 	for _, inj := range ruleInjections {
 		injected[inj.Code] = append(injected[inj.Code], inj)
@@ -153,6 +156,7 @@ func TestSpecRuleCoverage(t *testing.T) {
 // TestSpecRuleHosts checks that every host compiles with no error when no
 // injection is in it: a host that does not is a host bug or a gap.
 func TestSpecRuleHosts(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	rc := newRuleCompiler(t)
 	// Every template, and a sample of the case hosts; all of them with
 	// VIBELANG_FUZZ_RULES_HOSTS=all, which takes about a minute.
@@ -193,6 +197,7 @@ func sample[T any](items []T, n int) []T {
 // first, in the first template host that offers the slot, with no
 // variation; FuzzSpecRules' seeds run each in its first slot.
 func TestSpecRules(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	if testing.Short() {
 		t.Skip("FuzzSpecRules' seeds run every injection in its first slot")
 	}
@@ -222,6 +227,7 @@ func firstChoice(slot string, dom bool) ruleChoice {
 // adjustable code, each setting gives the category it names, and for any
 // other code no comment or wildcard changes it.
 func TestSpecRuleSettings(t *testing.T) {
+	SkipRetired(t, rulesTarget)
 	rc := newRuleCompiler(t)
 	done := map[int32]bool{}
 	for n, inj := range ruleInjections {
@@ -266,6 +272,7 @@ func TestSpecRuleSettings(t *testing.T) {
 // TestSpecAllowed runs every allowed form in every slot it lists after the
 // first; FuzzSpecAllowed's seeds run each item in its first slot.
 func TestSpecAllowed(t *testing.T) {
+	SkipRetired(t, allowedTarget)
 	if testing.Short() {
 		t.Skip("FuzzSpecAllowed's seeds run every item in its first slot")
 	}

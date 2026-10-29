@@ -2,46 +2,16 @@
 # by fault injection. See rules_test.go.
 #
 # Codes no injection can reach from the compiler:
-FuzzSpecRules  ek:EK9100  projector  Chapter 28 (D366, D416): only a renderer other than the compiler, the text projector, reports it; FuzzProjectionSpans' area
-FuzzSpecRules  ek:EK9101  projector  Chapter 28: an editor-only suggestion of the text projector, "not emitted by the CLI"
 #
 # Rules the compiler does not check as Chapter 28 words them (found by TestSpecRules and FuzzSpecRules):
-FuzzSpecRules  ek:EK1001/top-provide-calls  compiler  D282: a provide block at a module's top level draws EK1001 at the block and again at each call inside it, with TS2349 at a service member call; one violation, one diagnostic
-FuzzSpecRules  ek:EK3205/entry-needs  compiler  D420: EK3205 is reported as a warning; Chapter 28 makes it an error by default (the registry in diagnostics.go still says warningCategory)
-FuzzSpecRules  ek:EK4409/any-call  compiler  D321: EK4409 is reported as a warning; Chapter 28 makes it an error by default
-FuzzSpecRules  ek:EK4802/returned-program  compiler  D321: EK4802 is reported as a warning; Chapter 28 makes it an error by default
-FuzzSpecRules  ek:EK4838/stored-fiber  compiler  D353, D386: an owned fiber passed to a call or stored in a collection, fibers.push(fiber), draws no EK4838
 #
 # Codes Chapter 28 lists after its table with no injection yet:
-FuzzSpecRules  ek:EK1021  rules  Chapter 13 (D380, D392, D422, D450): an overload set whose candidates give a function argument different forms needs an overload fixture this table does not have yet
-FuzzSpecRules  ek:EK1023  rules  Chapter 13 (D382): reported by the 2026-10-27 migration analyzer, which a single compilation does not run
-FuzzSpecRules  ek:EK2128  rules  Chapter 9 (D410, D440): a continuation used outside resume needs a handle(...) fixture this table does not have yet
-FuzzSpecRules  ek:EK4843  rules  Chapter 13 (D498, D517): an exported const main that holds a function needs a whole-file fixture whose host has no main of its own, which this table does not have yet
-FuzzSpecRules  ek:EK2130  rules  Chapter 16 (D434): a contract-less callback's channel name shadowed by a declaration needs a callback fixture this table does not have yet
-FuzzSpecRules  ek:EK4408/export-equals  compiler  D283: export = in a module body draws TypeScript's TS1203 in the module's own file instead of EK4408
-FuzzSpecRules  ek:EK4704/iterable-array-pattern  compiler  D417: an array pattern over a subject typed Iterable<number> draws nothing
-FuzzSpecRules  ek:EK4802/returned-arm  compiler  D321: EK4802 for a returned conditional's arm is reported as a warning; Chapter 28 makes it an error by default
 #
 # Codes Chapter 28 lists after its table that the compiler does not report yet (spec ahead):
-FuzzSpecRules  ek:EK1018/call-to-effect-destination  compiler  D322, D395: const program: Effect<number> = load(), a running call whose destination is an Effect, draws nothing
-FuzzSpecRules  ek:EK2129/infer-twice  compiler  D414: number!infer X!infer X draws nothing
-FuzzSpecRules  ek:EK3208/wire-value  compiler  D363: const w = wire draws nothing
-FuzzSpecRules  ek:EK4411/hatch-function-expression  compiler  D396, D503: a hatch whose first argument is not a function, followed by inputs, sync(Math.PI, 1), draws nothing
-FuzzSpecRules  ek:EK4832/exported-struct-constant  compiler  D286: an exported Schema.Struct constant without its type draws no EK4832 where declarations emit; the compiler follows D501, which main's specification does not have
 #
 # The minimal reproduction of each gap above, in testdata/fuzz/FuzzSpecRules/. Its line
 # marks it for XPASS: once the compiler meets the rule there, the input fails until both
 # lines go.
-FuzzSpecRules  corpus:ek1001-top-provide-calls  compiler  D282: a provide block at a module's top level draws EK1001 at the block and again at each call inside it, with TS2349 at a service member call; one violation, one diagnostic
-FuzzSpecRules  corpus:ek1018-call-to-effect-destination  compiler  D322, D395: const program: Effect<number> = load(), a running call whose destination is an Effect, draws nothing
-FuzzSpecRules  corpus:ek2129-infer-twice  compiler  D414: number!infer X!infer X draws nothing
-FuzzSpecRules  corpus:ek3205-entry-needs  compiler  D420: EK3205 is reported as a warning; Chapter 28 makes it an error by default (the registry in diagnostics.go still says warningCategory)
-FuzzSpecRules  corpus:ek3208-wire-value  compiler  D363: const w = wire draws nothing
-FuzzSpecRules  corpus:ek4408-export-equals  compiler  D283: export = in a module body draws TypeScript's TS1203 in the module's own file instead of EK4408
-FuzzSpecRules  corpus:ek4409-any-call  compiler  D321: EK4409 is reported as a warning; Chapter 28 makes it an error by default
-FuzzSpecRules  corpus:ek4411-hatch-function-expression  compiler  D396, D503: a hatch whose first argument is not a function, followed by inputs, sync(Math.PI, 1), draws nothing
-FuzzSpecRules  corpus:ek4704-iterable-array-pattern  compiler  D417: an array pattern over a subject typed Iterable<number> draws nothing
-FuzzSpecRules  corpus:ek4802-returned-arm  compiler  D321: EK4802 for a returned conditional's arm is reported as a warning; Chapter 28 makes it an error by default
-FuzzSpecRules  corpus:ek4802-returned-program  compiler  D321: EK4802 is reported as a warning; Chapter 28 makes it an error by default
-FuzzSpecRules  corpus:ek4838-stored-fiber  compiler  D353, D386: an owned fiber passed to a call or stored in a collection, fibers.push(fiber), draws no EK4838
-FuzzSpecRules  corpus:ek4832-exported-struct-constant  compiler  D286: an exported Schema.Struct constant without its type draws no EK4832 where declarations emit; the compiler follows D501, which main's specification does not have
+# Retired 2026-10-29: the VIPs replaced the rules these targets inject.
+FuzzSpecRules     *  superseded  VIP-1: old VibeLang is a reference only, and nothing in it is part of the language unless a VIP adds it; these oracles quote the old chapters, and rule oracles are rewritten from the VIP chapters
+FuzzSpecAllowed   *  superseded  VIP-1: old VibeLang is a reference only, and nothing in it is part of the language unless a VIP adds it; these oracles quote the old chapters, and rule oracles are rewritten from the VIP chapters
