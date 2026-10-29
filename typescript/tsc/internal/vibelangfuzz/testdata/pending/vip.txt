@@ -40,6 +40,9 @@ FuzzVIPDifferential  feature:vip09.service            compiler  VIP-9: `service 
 FuzzVIPDifferential  feature:vip09.service-default    compiler  VIP-9: a service with `static readonly defaultValue` is not lowered to `Context.Reference(key, { defaultValue })`, usable with nothing providing it, yet; lane vip-decls implements it
 FuzzVIPDifferential  feature:vip12.provide            compiler  VIP-12: `provide L, Svc0 = testSvc0 { … }` is not lowered to `yield* Effect.provide(Effect.gen(…), [L, Layer.succeed(Svc0, testSvc0)])` yet; lane vip-decls implements it
 FuzzVIPDifferential  feature:vip14.modules            compiler  VIP-14: Effect's root modules (Option, Duration, Schedule, Schema, Stream, Effect) are not in scope without an import, nor Effect's Array module as `Effect.Array`, yet; lane vip-globals implements it
+FuzzVIPDifferential  feature:vip20.for-try              compiler  VIP-20: `for try (const x of s) { … }` is not lowered to `yield* Stream.runForEachWhile(s, (x) => Effect.gen(…))`, continue as return true and break as return false, yet; lane unassigned
+FuzzVIPDifferential  feature:vip21.producer             compiler  VIP-21: `effect function* p() { yield x … }` is not lowered to `Stream.callback((queue) => Effect.gen(…).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })`, yield as Queue.offer, yet; lane unassigned
+FuzzVIPDifferential  feature:vip23.pipe                 compiler  VIP-23: `a |> f(%) |> g(%)` is not lowered to nested calls with each topic evaluated once into a temporary yet; lane unassigned
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
@@ -51,9 +54,6 @@ FuzzVIPDifferential  not-runtime:vip30              vip       VIP-30: config fil
 FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned Effect version; NewWorkspace refuses any other
 FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
 FuzzVIPDifferential  feature:vip15.schema           vip       not generated: VIP-15's schema declarations need their construct file and decoding oracles
-FuzzVIPDifferential  feature:vip20.for-try          vip       not generated: VIP-20's for try over a Stream needs its construct file
-FuzzVIPDifferential  feature:vip21.producer         vip       not generated: VIP-21's producers need their construct file
-FuzzVIPDifferential  feature:vip23.pipe             vip       not generated: VIP-23's pipe operator needs its construct file
 FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP-26's top-level await of a runner needs its construct file; runMain exits the worker
 FuzzVIPDifferential  feature:vip29.schema-error     vip       not generated: VIP-29's schema errors need their construct file
 FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file
