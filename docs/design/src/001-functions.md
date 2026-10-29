@@ -156,7 +156,7 @@ await runPromise(main())
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc`, TypeDoc and `bun check` understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare.
-- **`@throws`.** Every exported function carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw ([Failures](003-failures.md#calls-that-may-throw)).
+- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw ([Failures](003-failures.md#calls-that-may-throw)).
 
 ```vibe es
 // compiler-gap: pending VIP-27
@@ -169,7 +169,7 @@ export function add(a: number, b: number) { return a + b }
 ```ts effect
 // fragment
 // load.d.vibe.ts
-export declare const load: (id: string) => Effect<User, NotFound, Users>
+export declare function load(id: string): Effect<User, NotFound, Users>   // returns an Effect: no @throws
 /** @throws {BadInput} */
 export declare function parse(s: string): string
 /** @throws {never} */

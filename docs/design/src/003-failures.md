@@ -33,8 +33,9 @@ const load = (id: string) => Effect.gen(function* () {
 
 ## Calls that may throw
 
-The type system tracks whether a function may throw, and what it throws.
+The type system tracks whether a function may throw, and what it throws. Tracking applies only to functions that don't return an Effect (VIP-4, amended 2026-10-29: "an effectful function literally cannot throw").
 
+- A function that returns an Effect can't throw: an `effect` function, Effect's own `sleep`, `tryPromise`, `sync` and `Effect.try`, a service member whose type is an Effect, or a `.ts` function whose return type is `Effect`. A call of it is never throw-tracked, and its failures are its Effect's error channel. So none of them rethrows a callback.
 - A `.vibe` function's thrown type is inferred from its body: an uncaught `throw`, or an unwrapped call of a function that may throw. Koka infers its `exn` effect the same way.
 - A library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`. A function with no `@throws` is assumed to throw `unknown`. `@throws {never}` says it can't throw.
 - JavaScript's globals carry no tags in `lib.d.ts`. VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known not to throw.
@@ -71,6 +72,9 @@ effect function load(s: string, url: string) {
 - How a thrown type is carried by a function-typed value with no JSDoc: a parameter of type `(s: string) => string`, a function stored in a variable, a method of an interface. VIP-4 says only that library functions without `@throws` throw `unknown`.
 - Whether constructors (`new X()`), getters and setters are tracked.
 - How `rethrows` is expressed in a declaration, so a library function can say "throws what its callback throws".
+- Whether a function that returns a `Stream` or a `Layer` counts as effectful, and so is never throw-tracked.
+- Whether VibeLang ships `@throws` annotations for Effect's exports that don't return an Effect (`Option.some`, `Array.head`, `Schema.decodeUnknownSync`), as it does for JavaScript's globals.
+- What an `async` function's thrown type is: it never throws when called, it rejects.
 
 ## `error` declarations
 
