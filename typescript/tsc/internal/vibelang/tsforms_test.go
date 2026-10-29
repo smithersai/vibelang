@@ -56,6 +56,7 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		{"succeed in a return", 4834, "export function find(id: number) {\n  if (id === 0) throw new Error(\"no\")\n  return Effect.succeed(\"Ada\")\n}", "export function find(id: number) {\n  if (id === 0) throw new Error(\"no\")\n  return \"Ada\"\n}"},
 		{"fail in a return", 4834, "error Gone\nexport function find(id: number) {\n  if (id === 0) return Effect.fail(new Gone())\n  return 1\n}", "error Gone\nexport function find(id: number) {\n  if (id === 0) throw new Gone()\n  return 1\n}"},
 		{"succeed in an Effect-typed arrow", 4834, "export const read: () => Effect.Effect<{ ok: boolean }> = () => Effect.succeed({ ok: true })", "export const read: () => Effect.Effect<{ ok: boolean }> = () => ({ ok: true })"},
+		{"fail of a Cause", 4834, "export function rethrow(cause: Cause.Cause<string>) {\n  return Effect.fail(cause)\n}", "export function rethrow(cause: Cause.Cause<string>) {\n  throw cause\n}"},
 		{"fail in an Effect-typed arrow", 4834, "error Gone\nexport const gone: () => Effect.Effect<never, Gone> = () => Effect.fail(new Gone())", "error Gone\nexport const gone: () => Effect.Effect<never, Gone> = () => throw new Gone()"},
 		// EK4835 (D289)
 		{"method catchTag", 4835, "error Gone { id: number }\nfunction find(id: number): string!Gone { throw new Gone({ id }) }\nexport function describe(id: number) { return find(id).pipe(Effect.catchTag(\"Gone\", (e) => Effect.succeed(\"gone \" + e.id))) }", "error Gone { id: number }\nfunction find(id: number): string!Gone { throw new Gone({ id }) }\nexport function describe(id: number) { return find(id) catch (e) => match (e) { when { _tag: \"Gone\" }: (\"gone \" + e.id); } }"},
@@ -187,7 +188,6 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 		{"succeed passed by name", `export function patient() { return retry(Effect.succeed(1), Schedule.recurs(1)) }`, 4834, ""},
 		{"succeed of an Effect", "const inner: Effect.Effect<number> = Effect.sync(() => 1)\nexport function outer() { return Effect.succeed(inner) }", 4834, ""},
 		{"succeed in a lambda whose form follows its body", `export const free = { run: () => Effect.succeed(1) } as unknown as { run: () => number!! }`, 4834, ""},
-		{"fail of a Cause", `export function rethrow(cause: Cause.Cause<string>) { return Effect.fail(cause) }`, 4834, ""},
 		{"catchTag with a block handler", "error Gone\nfunction find(): string!Gone { throw new Gone() }\nexport function f() { return Effect.catchTag(find(), \"Gone\", () => { const x = 1; return x }) }", 4835, ""},
 		{"provide as a value", "service Region { name(): string!! }\nconst RegionLive = Layer.succeed(Region, { name() { return \"eu\" } })\nexport function region() {\n  const name = Effect.provide(Region.name(), RegionLive)\n  return name\n}", 4836, "a provide block stands only as a statement or a return"},
 		{"provide of an arrow as a value", "service Region { name(): string!! }\nconst RegionLive = Layer.succeed(Region, { name() { return \"eu\" } })\nexport function region() {\n  const name = Effect.provide(() => Region.name(), RegionLive)\n  return name\n}", 4836, "a provide block stands only as a statement or a return"},

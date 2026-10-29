@@ -86,7 +86,7 @@ Row computation stopped ["Fail"]
 8
 ```
 
-`failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `fail(cause)` instead keeps the cause as typed error data, which is why `throw cause` is EK2140. For a single inspection or recovery step, `catchCause(readRow(), handler)` avoids changing the error channel first.
+`failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `fail(cause)` and `throw cause` instead keep the cause as typed error data. For a single inspection or recovery step, `catchCause(readRow(), handler)` avoids changing the error channel first.
 
 ---
 

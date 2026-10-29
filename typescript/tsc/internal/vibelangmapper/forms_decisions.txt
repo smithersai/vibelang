@@ -3018,8 +3018,15 @@ typescript/vibelang/cases/terse-contracts/main.vibe:60:42 lambda plain table
 typescript/vibelang/cases/terse-contracts/main.vibe:76:22 lambda effectFn annotation
 typescript/vibelang/cases/terse-contracts/main.vibe:77:26 byname program annotation
 typescript/vibelang/cases/terse-contracts/main.vibe:78:26 byname program annotation
-typescript/vibelang/cases/throw-cause.fail/main.vibe:19:19 lambda dual fallback
-typescript/vibelang/cases/throw-cause.fail/main.vibe:9:28 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:13:19 lambda dual fallback
+typescript/vibelang/cases/throw-cause-object/main.vibe:26:145 lambda plain fallback
+typescript/vibelang/cases/throw-cause-object/main.vibe:26:36 lambda choice fallback
+typescript/vibelang/cases/throw-cause-object/main.vibe:31:25 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:35:28 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:36:29 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:37:34 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:38:30 byname program table
+typescript/vibelang/cases/throw-cause-object/main.vibe:7:28 byname program table
 typescript/vibelang/cases/throw-cause/main.vibe:26:16 lambda dual fallback
 typescript/vibelang/cases/throw-cause/main.vibe:43:104 lambda plain fallback
 typescript/vibelang/cases/throw-cause/main.vibe:50:30 byname program table

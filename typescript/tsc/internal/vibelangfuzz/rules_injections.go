@@ -278,10 +278,6 @@ var ruleInjections = []*ruleInjection{
 		Decls: "data Delivery$$ {\n  Waiting\n  Sent { tracking: string }\n}",
 		Text:  "const typo$$ = Delivery$$.Snet({ tracking: \"parcel-8\" });"},
 
-	// Chapters 3 and 17: throw takes a failure, not a Cause (D406).
-	{Code: 2140, Name: "throw-cause", Quote: "A `throw` whose operand's type is a Cause type", Slots: top,
-		Text: "function rethrown$$(cause: Cause<string>) {\n  throw cause;\n}"},
-
 	// Chapter 4: services are keys.
 	{Code: 3001, Name: "shared-key", Quote: "Two services share a key", Slots: top,
 		MaxReports: 2,
@@ -577,10 +573,6 @@ var ruleInjections = []*ruleInjection{
 	{Code: 2127, Name: "unknown-variant-pattern", Quote: "in a call, a pattern, or anywhere else", Slots: top,
 		Decls: "data Delivery$$ {\n  Waiting\n  Sent { tracking: string }\n}",
 		Text:  "export function typo$$(d: Delivery$$) {\n  return match (d) {\n    when Delivery$$.Snet: 2;\n    default: 3;\n  };\n}"},
-	{Code: 2140, Name: "throw-cause-union", Quote: "or a union with one", Slots: top,
-		Decls: "error Missing$$", Text: "function either$$(cause: Cause<string> | Missing$$) {\n  throw cause;\n}"},
-	{Code: 2140, Name: "throw-expression-cause", Quote: "A `throw` whose operand's type is a Cause type", Slots: top,
-		Text: "function inExpression$$(cause: Cause<never>, value: number | undefined) {\n  return value ?? throw cause;\n}"},
 	{Code: 3201, Name: "run-promise-missing", Quote: "No provider for a required service", Slots: top,
 		Decls: "service Mailer$$ {\n  send(to: string): void!!\n}\nfunction welcome$$() {\n  Mailer$$.send(\"ada\");\n}",
 		Text:  "export const sent$$ = Effect.runPromise(() => welcome$$());"},

@@ -26,8 +26,7 @@ import (
 // program the function returns rather than one it holds as data. The fix of
 // Effect.fail(e) writes a throw statement for a statement or a return, and a
 // throw expression (D186) for an arrow function's body, a branch of ?:, and
-// the right side of ??, ||, or &&; it refuses e whose type is a Cause, whose
-// throw is EK2140 (D406). Calls with type arguments are
+// the right side of ??, ||, or &&. Calls with type arguments are
 // refused: the value alone would not carry them.
 
 // directFailMessage is EK4834's text for Effect.fail.
@@ -156,9 +155,6 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			}
 		}
 	case "fail":
-		if isCauseType(c.GetTypeAtLocation(argument), c) {
-			return nil
-		}
 		operand := argumentText
 		switch position {
 		case positionStatement:
