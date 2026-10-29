@@ -1,14 +1,9 @@
 package vibelangmapper
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -141,36 +136,24 @@ export function main() {
 	}
 }
 
-// TestBuiltinContractsGenerated guards the shared source of truth even when
-// a fork contract is added without explicitly running go generate.
+// TestBuiltinContractsGenerated keeps the projector's contracts generated from
+// the checker's globalThrowsTable (VIP-4), the one list of what JavaScript's
+// globals throw, even when an annotation changes without go generate.
 func TestBuiltinContractsGenerated(t *testing.T) {
-	fs := token.NewFileSet()
-	file, err := parser.ParseFile(fs, "../vibelang/trust.go", nil, 0)
+	fresh := filepath.Join(t.TempDir(), "builtin_contracts_generated.go")
+	if out, err := exec.Command("go", "run", "gen_builtin_contracts.go", "-o", fresh).CombinedOutput(); err != nil {
+		t.Fatalf("go run gen_builtin_contracts.go: %v\n%s", err, out)
+	}
+	want, err := os.ReadFile(fresh)
 	if err != nil {
 		t.Fatal(err)
 	}
-	contracts := map[string]string{}
-	ast.Inspect(file, func(n ast.Node) bool {
-		v, ok := n.(*ast.ValueSpec)
-		if !ok || len(v.Names) != 1 || v.Names[0].Name != "builtinContracts" {
-			return true
-		}
-		for _, entry := range v.Values[0].(*ast.CompositeLit).Elts {
-			kv := entry.(*ast.KeyValueExpr)
-			key, err := strconv.Unquote(kv.Key.(*ast.BasicLit).Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			value, err := strconv.Unquote(kv.Value.(*ast.BasicLit).Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			contracts[key] = value
-		}
-		return false
-	})
-	if !reflect.DeepEqual(contracts, builtinContracts) {
-		t.Fatalf("fork contracts changed; run go generate builtin_contracts.go: %v != %v", contracts, builtinContracts)
+	got, err := os.ReadFile("builtin_contracts_generated.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("builtin contracts changed; run go generate builtin_contracts.go:\n%s", want)
 	}
 }
 

@@ -24,6 +24,20 @@ func TestBuiltinUncaughtContract(t *testing.T) {
 	}
 }
 
+// TestBuiltinVIP4Contract projects a global that VIP-4's table annotates
+// beyond JSON.parse and decodeURI with its shipped failure class: "the Intl
+// locale lookups RangeError".
+func TestBuiltinVIP4Contract(t *testing.T) {
+	source := `export function locales(tag: string) { return Intl.getCanonicalLocales(tag) }`
+	for name, p := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
+		t.Run(name, func(t *testing.T) {
+			if !strings.Contains(p.Text, "$trusted") || !strings.Contains(p.Text, "[RangeError]") {
+				t.Fatalf("missing Intl.getCanonicalLocales contract:\n%s", p.Text)
+			}
+		})
+	}
+}
+
 // TestBuiltinPlainCatch pins D54's synchronous direct entry, which a plain
 // Array.map callback must call with JavaScript exception handling (D260).
 func TestBuiltinPlainCatch(t *testing.T) {
