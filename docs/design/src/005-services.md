@@ -84,6 +84,7 @@ A service is a key, not a class you use.
 | `new Users()` | EK3003 | |
 | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
 | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
+| a member with a body, `private` or `protected` on a member, or a `static` other than `key` and `defaultValue` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
 **Undecided (pending VIP):** the exact format of a derived key. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name); it doesn't say what a file outside any package, or a nested declaration, gets.
 
