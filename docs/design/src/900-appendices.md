@@ -54,10 +54,10 @@ ProvideStatement  = "provide" Provider ("," Provider)* Block
 Provider          = Expression | Expression "=" Expression
 
 ServiceDecl       = "export"? "service" Name "{" ServiceMember* "}"
-ErrorDecl         = "export"? "error" Name ("{" ClassMember* "}")?
-SchemaErrorDecl   = "export"? "schema" "error" Name "{" ClassMember* "}"
+ErrorDecl         = "export"? "error" Name ("{" (Field | Method | Getter)* "}")?
+SchemaErrorDecl   = "export"? "schema" "error" Name "{" SchemaFields (Method | Getter)* "}"
 SchemaDecl        = "export"? "schema" Name ("{" SchemaFields "}" | "=" Type)
-DataDecl          = "export"? "data" Name TypeParameters? "{" Variant (";" Variant)* ";"? "}"
+DataDecl          = "export"? "data" Name TypeParameters? "{" Variant ((";" | LineTerminator) Variant)* ";"? "}"
 Variant           = Name ("{" Fields "}")?
 ```
 

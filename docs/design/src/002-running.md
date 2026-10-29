@@ -115,8 +115,9 @@ function load(id: string) {
   return Effect.gen(function* () {
     const g = yield* Effect.catch(fetchUser(id), () => Effect.succeed(guest))
     const h = yield* Effect.catch(fetchUser(id), (e) => Effect.gen(function* () {
-      if (e._tag === "NotFound") return guest
-      return yield* Effect.fail(e)
+      if (e._tag === "NotFound") return guest              // NotFound's matcher tests _tag
+      if (e._tag === "DbError") return yield* Effect.fail(e)
+      throw new TypeError("no arm matched")                // TC39: a defect
     }))
     return [g, h]
   })

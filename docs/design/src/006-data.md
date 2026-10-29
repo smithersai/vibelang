@@ -63,7 +63,8 @@ Refinements and transformations stay Schema constants, which a field names, as i
 ### Syntax
 
 ```text
-DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (";" Variant)* ";"? "}"
+DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
+Separator       = ";" | LineTerminator   (as between interface members)
 Variant         = Name ("{" Fields "}")?
 ```
 
@@ -77,7 +78,7 @@ Variant         = Name ("{" Fields "}")?
 // compiler-gap: pending VIP-16
 data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
 const d = Delivery.Sent({ tracking: "1Z" })
-const label = match (d) { when { _tag: "Sent", tracking }: tracking; default: "none" }
+const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none" }
 ```
 
 ```ts effect
@@ -86,7 +87,7 @@ type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejec
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). The variant constructors get no custom matchers.
+Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. The variant constructors get no custom matchers.
 
 ### Generic unions
 
