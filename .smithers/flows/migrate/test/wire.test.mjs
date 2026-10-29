@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -189,6 +189,21 @@ test("rootTsconfigs lists the tsconfig files that extend no other of the reposit
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test("bun test gets vibelang/bun in the [test] preload, which is the one it applies", () => {
+  assert.equal(addBunTestPreload(""), '[test]\npreload = ["vibelang/bun"]\n')
+  // A top-level preload is for bun run; bun test ignores it.
+  assert.equal(addBunTestPreload('preload = ["vibelang/bun"]\n'), 'preload = ["vibelang/bun"]\n\n[test]\npreload = ["vibelang/bun"]\n')
+  assert.equal(addBunTestPreload('[test]\ntimeout = 5000\n\n[install]\nexact = true\n'), '[test]\npreload = ["vibelang/bun"]\ntimeout = 5000\n\n[install]\nexact = true\n')
+  assert.equal(addBunTestPreload('[test]\npreload = ["./setup.ts"]\n'), '[test]\npreload = ["vibelang/bun", "./setup.ts"]\n')
+  assert.equal(addBunTestPreload('[test]\npreload = "./setup.ts"\n'), '[test]\npreload = ["vibelang/bun", "./setup.ts"]\n')
+  const done = '[test]\npreload = ["vibelang/bun"]\n'
+  assert.equal(addBunTestPreload(done), done)
+  assert.equal(runsBunTest("bun test"), true)
+  assert.equal(runsBunTest("bun run test", { test: "bun test --timeout 30000" }), true)
+  assert.equal(runsBunTest("pnpm test", { test: "vitest run" }), false)
+  assert.equal(runsBunTest("bun run test", { test: "bunx vitest" }), false)
 })
 
 test("packageManager reads the lockfile", () => {

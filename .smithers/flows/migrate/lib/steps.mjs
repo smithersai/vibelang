@@ -299,6 +299,14 @@ async function wireTarget(config, log) {
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
   writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true))
+  // bun test loads .vibe modules through vibelang/bun, which only a [test] preload applies to it.
+  const testCwd = join(t, config.test.cwd)
+  const testScripts = existsSync(join(testCwd, "package.json")) ? readJson(join(testCwd, "package.json")).scripts : undefined
+  if (Wire.runsBunTest(config.test.command, testScripts)) {
+    const bunfig = join(testCwd, "bunfig.toml")
+    const text = existsSync(bunfig) ? readFileSync(bunfig, "utf8") : ""
+    writeIfChanged(bunfig, text, Wire.addBunTestPreload(text))
+  }
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
   const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))

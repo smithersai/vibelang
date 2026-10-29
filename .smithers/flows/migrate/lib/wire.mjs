@@ -262,6 +262,41 @@ export function rootTsconfigs(root, ts) {
 /** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
 export const sidecarIgnore = "*.d.vibe.ts"
 
+/**
+ * Whether a test command runs `bun test`, itself or through the package
+ * script it runs (`bun run test`, `pnpm test`).
+ */
+export function runsBunTest(command, scripts = {}) {
+  const script = /^\s*(?:(?:pnpm|npm|yarn)(?:\s+run)?|bun\s+run)\s+([\w:.-]+)\s*$/.exec(command)
+  const text = script && scripts[script[1]] ? scripts[script[1]] : command
+  return /(?:^|[\s;&|(])bun\s+test\b/.test(text)
+}
+
+/**
+ * A bunfig.toml's text with vibelang/bun in its `[test]` section's preload,
+ * the one `bun test` applies; Bun reads a top-level preload only for `bun
+ * run`. Other lines are kept.
+ */
+export function addBunTestPreload(text) {
+  const entry = '"vibelang/bun"'
+  const lines = text.split("\n")
+  const header = lines.findIndex((line) => /^\s*\[test\]\s*(#.*)?$/.test(line))
+  if (header < 0) return `${text}${text && !text.endsWith("\n") ? "\n" : ""}${text ? "\n" : ""}[test]\npreload = [${entry}]\n`
+  let end = lines.findIndex((line, i) => i > header && /^\s*\[/.test(line))
+  if (end < 0) end = lines.length
+  const at = lines.findIndex((line, i) => i > header && i < end && /^\s*preload\s*=/.test(line))
+  if (at < 0) {
+    lines.splice(header + 1, 0, `preload = [${entry}]`)
+    return lines.join("\n")
+  }
+  if (lines[at].includes(entry)) return text
+  const single = /^(\s*preload\s*=\s*)(?:\[(.*)\]|("[^"]*"))\s*$/.exec(lines[at])
+  if (!single) throw new Error("the bunfig.toml [test] preload spans lines; add \"vibelang/bun\" to it by hand")
+  const items = single[2] !== undefined ? single[2].trim().replace(/,\s*$/, "") : single[3]
+  lines[at] = `${single[1]}[${entry}${items ? `, ${items}` : ""}]`
+  return lines.join("\n")
+}
+
 /** The package manager a repository uses, from its lockfile. */
 export function packageManager(files) {
   if (files.includes("pnpm-lock.yaml")) return "pnpm"
