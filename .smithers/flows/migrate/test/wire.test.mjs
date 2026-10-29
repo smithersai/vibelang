@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, formattable, formatterOf, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -281,6 +281,17 @@ test("wireKnip moves a JSON Knip configuration to knip.config.ts with VibeLang's
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test("formatterOf finds the repository's own formatter, from its format scripts or its dependencies", () => {
+  assert.deepEqual(formatterOf({ scripts: { format: "oxfmt", "format:check": "oxfmt --check" } }), ["oxfmt"])
+  assert.deepEqual(formatterOf({ scripts: { fmt: "vp fmt", "fmt:check": "vp fmt --check" } }), ["vp", "fmt"])
+  assert.deepEqual(formatterOf({ scripts: { "lint:format": "prettier --check ." } }), ["prettier", "--write"])
+  assert.deepEqual(formatterOf({ scripts: { format: "biome format --write ." } }), ["biome", "format", "--write"])
+  assert.deepEqual(formatterOf({ scripts: { lint: "oxlint" }, devDependencies: { prettier: "3.6.2" } }), ["prettier", "--write"])
+  assert.equal(formatterOf({ scripts: { lint: "oxlint" } }), null)
+  assert.deepEqual(formattable(["package.json", "tsconfig.json", "pnpm-workspace.yaml", "vite.config.ts", "src/a.vibe", "src/a.d.vibe.ts", "pnpm-lock.yaml", ".gitignore", ".prettierignore", "bunfig.toml", "knip.config.ts"]),
+    ["package.json", "tsconfig.json", "pnpm-workspace.yaml", "vite.config.ts", "knip.config.ts"])
 })
 
 test("packageManager reads the lockfile", () => {

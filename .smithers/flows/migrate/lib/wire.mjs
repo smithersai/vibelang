@@ -461,6 +461,43 @@ export function wireKnip({ root, specs }) {
   return { changed, warnings, config: "knip.config.ts" }
 }
 
+// The formatters the flow knows, by the name a script runs, each as the argv
+// that formats the files given after it.
+const formatters = [
+  [/(?:^|[\s;&|(])vp\s+fmt\b/, ["vp", "fmt"]],
+  [/(?:^|[\s;&|(/])oxfmt\b/, ["oxfmt"]],
+  [/(?:^|[\s;&|(/])prettier\b/, ["prettier", "--write"]],
+  [/(?:^|[\s;&|(/])biome\s+(?:format|check)\b/, ["biome", "format", "--write"]],
+  [/(?:^|[\s;&|(/])dprint\s+(?:fmt|check)\b/, ["dprint", "fmt"]]
+]
+
+/**
+ * The repository's own formatter, from its root package.json, as the argv
+ * that writes the files given after it, or null: the one its format scripts
+ * run (`format`, `fmt`, `format:check`, `lint:format`, ...), else Prettier,
+ * Oxfmt, Biome or dprint when it installs one.
+ */
+export function formatterOf(manifest = {}) {
+  const scripts = Object.entries(manifest.scripts ?? {}).filter(([name]) => /(?:^|:)(?:format|fmt|prettier)(?::|$)/.test(name)).map(([, command]) => command).join("\n")
+  const run = formatters.find(([pattern]) => pattern.test(scripts))
+  if (run) return run[1]
+  const installed = { ...manifest.dependencies, ...manifest.devDependencies }
+  for (const [name, argv] of [["prettier", ["prettier", "--write"]], ["oxfmt", ["oxfmt"]], ["@biomejs/biome", ["biome", "format", "--write"]], ["dprint", ["dprint", "fmt"]]]) {
+    if (installed[name]) return argv
+  }
+  return null
+}
+
+/**
+ * The files of `files` a formatter reads: JSON, YAML, Markdown and
+ * JavaScript or TypeScript sources, without lockfiles, .vibe files (VibeLang's
+ * formatter owns them) or the declaration sidecars vibelang writes.
+ */
+export function formattable(files) {
+  return files.filter((file) => /\.(?:jsonc?|ya?ml|md|[cm]?[jt]sx?)$/.test(file) && !/\.d\.vibe\.ts$/.test(file) &&
+    !["pnpm-lock.yaml", "package-lock.json", "yarn.lock", "bun.lock"].includes(posix.basename(file)))
+}
+
 /** The package manager a repository uses, from its lockfile. */
 export function packageManager(files) {
   if (files.includes("pnpm-lock.yaml")) return "pnpm"

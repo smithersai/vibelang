@@ -192,7 +192,10 @@ test("upgrade-effect commits the Effect upgrade on the base and records the test
     mkdirSync(join(target, "packages/core"), { recursive: true })
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
     const core = '{\n  "name": "core",\n  "type": "module",\n  "files": ["dist"],\n  "dependencies": { "effect": "catalog:" },\n  "peerDependencies": { "effect": "^4.0.5" }\n}\n'
-    writeFileSync(join(target, "package.json"), '{ "name": "fixture", "private": true }\n')
+    writeFileSync(join(target, "package.json"), '{ "name": "fixture", "private": true, "scripts": { "format": "oxfmt", "format:check": "oxfmt --check" } }\n')
+    // The repository's formatter: it records the files it is given.
+    mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
+    writeFileSync(join(target, "node_modules/.bin/oxfmt"), `#!/bin/sh\necho "$@" >> ${join(root, "formatted.txt")}\n`, { mode: 0o755 })
     writeFileSync(join(target, "pnpm-lock.yaml"), "")
     writeFileSync(join(target, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n\ncatalog:\n  effect: 4.0.5\n\noverrides:\n  effect: \"catalog:\"\n")
     writeFileSync(join(target, "packages/core/package.json"), core)
@@ -205,6 +208,9 @@ test("upgrade-effect commits the Effect upgrade on the base and records the test
     const result = await upgradeEffect(options)
     assert.deepEqual(result.effect, { from: "4.0.5", to: "4.0.6" })
     assert.deepEqual(result.changed, ["pnpm-workspace.yaml", "packages/core/package.json"])
+    // What the upgrade wrote went through the repository's own formatter.
+    assert.deepEqual(result.formatted, { formatter: "oxfmt", files: ["pnpm-workspace.yaml", "packages/core/package.json"], code: 0 })
+    assert.equal(readFileSync(join(root, "formatted.txt"), "utf8"), "pnpm-workspace.yaml packages/core/package.json\n")
     assert.equal(readFileSync(join(target, "pnpm-workspace.yaml"), "utf8"), "packages:\n  - packages/*\n\ncatalog:\n  effect: 4.0.6\n\noverrides:\n  effect: \"catalog:\"\n")
     assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), core.replace("^4.0.5", "^4.0.6"))
 

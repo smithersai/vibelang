@@ -20,7 +20,7 @@ import * as Wire from "./wire.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
-import { appendJsonl, batchName, must, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
+import { appendJsonl, batchName, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 
 export const flowDir = fileURLToPath(new URL("../", import.meta.url))
 // The agent runs in the target, so the prompts name this checkout's step.mjs by its full path.
@@ -149,6 +149,21 @@ async function runtimeEffect(config) {
   return stdout.trim()
 }
 
+/**
+ * Formats the files a step wrote, repository-relative, with the target's own
+ * formatter (Wire.formatterOf), so its format check passes on them. A
+ * formatter that fails leaves the files as written and returns its exit code.
+ */
+async function formatWritten(t, files, log) {
+  const formatter = Wire.formatterOf(readJsonIf(join(t, "package.json"), {}))
+  const targets = Wire.formattable(files).filter((file) => existsSync(join(t, file)))
+  if (!formatter || !targets.length) return { formatter: formatter?.join(" ") ?? null, files: [], code: 0 }
+  const [tool, ...args] = formatter
+  const local = join(t, "node_modules/.bin", tool)
+  const { code } = await sh([existsSync(local) ? local : tool, ...args, ...targets].map(quote).join(" "), { cwd: t, log })
+  return { formatter: formatter.join(" "), files: targets, code }
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -201,6 +216,7 @@ export async function upgradeEffect(options) {
     rmSync(join(t, patch.from))
   }
   const changed = [...upgrade.files.map((f) => f.path), ...upgrade.patches.flatMap((patch) => [patch.from, patch.to])]
+  const formatted = await formatWritten(t, upgrade.files.map((f) => f.path), join(logs, "upgrade-format.log"))
 
   let after = before
   let comparison = null
@@ -228,6 +244,7 @@ export async function upgradeEffect(options) {
     selectors: upgrade.selectors,
     patches: upgrade.patches.map(({ from, to }) => ({ from, to })),
     changed,
+    formatted,
     upstreamTests: testsOf(before),
     tests: testsOf(after),
     regressions: comparison && { newFailures: comparison.newFailures, missing: comparison.missing, exit: { before: before.code, after: after.code } }
@@ -321,11 +338,14 @@ async function wireTarget(config, log) {
   const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))
   warnings.push(...knip.warnings)
+  // What setup wrote is in the repository's own format.
+  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
+  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager)
   await must(install, { cwd: t, log: join(log, "install.log") })
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
-  return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, changed, warnings, install }
+  return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /** setup: on the Effect upgrade's commit, wire the toolchain, install, record the baseline tests, compile, declarations and inventory, and commit. */
@@ -603,10 +623,12 @@ export async function record(options) {
     `Tokens (o200k) of the migrated files: ${before} -> ${now} (${tokens.percent ?? 0}%).`,
     `Verify: ${verified?.ok ? "tests, declarations and style pass" : `forced: ${options.force}`}.`
   ]
+  // The batch's other files, such as a test or config the repair edited, are in the repository's own format.
+  const formatted = await formatWritten(t, (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path), join(p.batch(b), "logs", "format.log"))
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, forced: verified?.ok ? null : options.force }
+  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, forced: verified?.ok ? null : options.force }
   writeJson(p.record(b), result)
   return result
 }
