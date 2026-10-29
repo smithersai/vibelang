@@ -88,10 +88,10 @@
     "test": "bun run build && bun test"
   },
   "peerDependencies": {
-    "@effect/platform-browser": "4.0.6",
-    "@effect/platform-bun": "4.0.6",
-    "@effect/platform-node": "4.0.6",
-    "effect": "4.0.6"
+    "@effect/platform-browser": "4.1.0",
+    "@effect/platform-bun": "4.1.0",
+    "@effect/platform-node": "4.1.0",
+    "effect": "4.1.0"
   },
   "peerDependenciesMeta": {
     "@effect/platform-browser": {
@@ -105,17 +105,17 @@
     }
   },
   "devDependencies": {
-    "@effect/platform-browser": "4.0.6",
-    "@effect/platform-bun": "4.0.6",
-    "@effect/platform-node": "4.0.6",
+    "@effect/platform-browser": "4.1.0",
+    "@effect/platform-bun": "4.1.0",
+    "@effect/platform-node": "4.1.0",
     "@types/node": "26.6.5",
-    "effect": "4.0.6",
+    "effect": "4.1.0",
     "fast-check": "4.10.2",
     "playwright": "1.64.1",
     "typescript": "5.9.3"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.0.6"
+    "@effect/platform-node-shared": "4.1.0"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1",

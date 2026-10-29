@@ -212,7 +212,7 @@ func TestEmbeddedTableHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for pkg, version := range map[string]string{"effect": "4.0.6", "@effect/vitest": "4.0.6", "@effect/platform-node": "4.0.6", "@effect/platform-bun": "4.0.6", "vibelang-runtime": runtime.Version} {
+	for pkg, version := range map[string]string{"effect": "4.1.0", "@effect/vitest": "4.1.0", "@effect/platform-node": "4.1.0", "@effect/platform-bun": "4.1.0", "vibelang-runtime": runtime.Version} {
 		if pinned[pkg].Version != version {
 			t.Errorf("%s pinned at %q, want %s", pkg, pinned[pkg].Version, version)
 		}

@@ -47,9 +47,13 @@ type platformService struct {
 	provider string // the layers that provide it, or "" when Effect's runtime does
 }
 
-// nodeServices provides FileSystem, Path, ChildProcessSpawner, Crypto, Stdio,
-// and Terminal.
+// nodeServices provides FileSystem, Path, ChildProcessSpawner, Stdio, and
+// Terminal. Since Effect 4.1 it provides no crypto service: cryptoLayers do.
 const nodeServices = `NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun"`
+
+// cryptoLayers provide Effect's crypto services: SecureRandom, Digest, Mac,
+// Signature, Cipher, Aead and the rest of effect/crypto.
+const cryptoLayers = `NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser"`
 
 // The layers of the experimental services (D313), which provide Effect's
 // services of the same names too. experimentalNodeBundle is the one that the
@@ -57,12 +61,11 @@ const nodeServices = `NodeServices.layer from "@effect/platform-node", or BunSer
 const (
 	experimentalNodeBundle = `ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node"`
 	experimentalServices   = experimentalNodeBundle + `, or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun"`
-	experimentalCrypto     = experimentalNodeBundle + `, ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun", or ExperimentalBrowserCrypto.layer from "vibelang-runtime/experimental/platform-browser"`
 )
 
 // platformServices are the Effect APIs that replace platform APIs (Chapter 11), by
 // the names the tables below use. Each import and layer is declared by
-// effect 4.0.6 or its platform packages; TestPlatformServicesTable checks
+// effect 4.1.0 or its platform packages; TestPlatformServicesTable checks
 // that each example uses what its import brings in.
 var platformServices = map[string]*platformService{
 	"FileSystem": {"the FileSystem service", "FileSystem.readFileString(path)", "", nodeServices},
@@ -71,8 +74,7 @@ var platformServices = map[string]*platformService{
 	"PathWin32":  {"the Path service", "Path.join(directory, name)", "", `NodePath.layerWin32 from "@effect/platform-node"`},
 	"ChildProcess": {"the ChildProcessSpawner service", "ChildProcessSpawner.string(ChildProcess.make(command, args))",
 		"", nodeServices},
-	"Crypto": {"the Crypto service", "Crypto.randomBytes(size)", "",
-		`NodeServices.layer from "@effect/platform-node", BunServices.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser"`},
+	"Crypto":   {"Effect's crypto services", "SecureRandom.randomBytes(size)", "", cryptoLayers},
 	"Terminal": {"the Terminal service", "Terminal.readLine()", "", nodeServices},
 	"Stdio":    {"the Stdio service", "Stdio.args()", "", nodeServices},
 	"HttpClient": {"HttpClient", "HttpClient.get(url)", "",
@@ -117,7 +119,6 @@ var platformServices = map[string]*platformService{
 	"UserDirectories": {"the UserDirectories service", "UserDirectories.home()", "", "UserDirectories.layer"},
 	// VibeLang's experimental services (D313), for what Effect lacks.
 	"ExperimentalFileSystem": {"the experimental FileSystem service", "Experimental.FileSystem.access(path, { executable: true })", "", experimentalServices},
-	"ExperimentalCrypto":     {"the experimental Crypto service", `Experimental.Crypto.hmac("SHA-256", key, data)`, "", experimentalCrypto},
 	"ExperimentalProcess":    {"the experimental Process service", "Experimental.Process.pid()", "", experimentalServices},
 	"ExperimentalLocks": {"the experimental Locks service", "Experimental.Locks.hold(name)", "",
 		`ExperimentalBrowserLocks.layer from "vibelang-runtime/experimental/platform-browser"; ExperimentalNodeLocks.layer from "vibelang-runtime/experimental/platform-node" locks only within one Node.js process`},
@@ -222,25 +223,25 @@ var platformAPIs = map[string]platformAPI{
 	"child_process.execFileSync": {"ChildProcess", "", ""},
 	"child_process.spawnSync":    {"ChildProcess", "", ""},
 
-	"crypto.randomUUID":       {"Crypto", "Crypto.randomUUIDv4()", ""},
-	"crypto.randomBytes":      {"Crypto", "Crypto.randomBytes(size)", ""},
-	"crypto.randomInt":        {"Crypto", "Crypto.randomIntBetween(min, max)", ""},
-	"crypto.getRandomValues":  {"Crypto", "Crypto.randomBytes(size)", "Crypto.randomBytes returns new bytes instead of filling an array."},
-	"crypto.createHash":       {"Crypto", `Crypto.digest("SHA-256", bytes)`, "Crypto.digest hashes all the bytes in one call; it has no incremental update."},
-	"crypto.hash":             {"Crypto", `Crypto.digest("SHA-256", bytes)`, ""},
-	"crypto.subtle.digest":    {"Crypto", `Crypto.digest("SHA-256", bytes)`, ""},
-	"crypto.subtle":           {"ExperimentalCrypto", `Experimental.Crypto.hmac("SHA-256", key, data)`, cryptoKeys},
-	"crypto.subtle.sign":      {"ExperimentalCrypto", `Experimental.Crypto.sign("Ed25519", privateKey, data)`, cryptoKeys},
-	"crypto.subtle.verify":    {"ExperimentalCrypto", `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)`, cryptoKeys},
-	"crypto.webcrypto":        {"ExperimentalCrypto", `Experimental.Crypto.hmac("SHA-256", key, data)`, cryptoKeys},
-	"crypto.createHmac":       {"ExperimentalCrypto", `Experimental.Crypto.hmac("SHA-256", key, data)`, "Experimental.Crypto.hmac takes the key as Redacted bytes and all the data in one call."},
-	"crypto.createSign":       {"ExperimentalCrypto", `Experimental.Crypto.sign("Ed25519", privateKey, data)`, cryptoKeys},
-	"crypto.createVerify":     {"ExperimentalCrypto", `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)`, cryptoKeys},
-	"crypto.sign":             {"ExperimentalCrypto", `Experimental.Crypto.sign("Ed25519", privateKey, data)`, cryptoKeys},
-	"crypto.verify":           {"ExperimentalCrypto", `Experimental.Crypto.verify("Ed25519", publicKey, signature, data)`, cryptoKeys},
-	"crypto.createCipheriv":   {note: cryptoGap},
-	"crypto.createDecipheriv": {note: cryptoGap},
-	"crypto.generateKeyPair":  {note: cryptoGap},
+	"crypto.randomUUID":       {"Crypto", "SecureRandom.uuidV4()", ""},
+	"crypto.randomBytes":      {"Crypto", "SecureRandom.randomBytes(size)", ""},
+	"crypto.randomInt":        {"Crypto", "SecureRandom.intBetween(min, max)", ""},
+	"crypto.getRandomValues":  {"Crypto", "SecureRandom.randomBytes(size)", "SecureRandom.randomBytes returns new bytes instead of filling an array."},
+	"crypto.createHash":       {"Crypto", "Digest.digest(Digest.sha256, bytes)", "Digest.digest hashes all the bytes in one call; it has no incremental update."},
+	"crypto.hash":             {"Crypto", "Digest.digest(Digest.sha256, bytes)", ""},
+	"crypto.subtle.digest":    {"Crypto", "Digest.digest(Digest.sha256, bytes)", ""},
+	"crypto.subtle":           {"Crypto", "Mac.sign(key, data)", cryptoFamilies},
+	"crypto.subtle.sign":      {"Crypto", "Signature.sign(privateKey, data)", signatureKeys},
+	"crypto.subtle.verify":    {"Crypto", "Signature.verify(publicKey, signature, data)", signatureKeys},
+	"crypto.webcrypto":        {"Crypto", "Mac.sign(key, data)", cryptoFamilies},
+	"crypto.createHmac":       {"Crypto", "Mac.sign(key, data)", "Mac.key(Mac.hmacSha256, bytes) makes the key, and Mac.sign takes all the data in one call."},
+	"crypto.createSign":       {"Crypto", "Signature.sign(privateKey, data)", signatureKeys},
+	"crypto.createVerify":     {"Crypto", "Signature.verify(publicKey, signature, data)", signatureKeys},
+	"crypto.sign":             {"Crypto", "Signature.sign(privateKey, data)", signatureKeys},
+	"crypto.verify":           {"Crypto", "Signature.verify(publicKey, signature, data)", signatureKeys},
+	"crypto.createCipheriv":   {"Crypto", "Aead.encrypt(key, plaintext, { nonce })", aeadKeys},
+	"crypto.createDecipheriv": {"Crypto", "Aead.decrypt(key, ciphertext, { nonce })", aeadKeys},
+	"crypto.generateKeyPair":  {"Crypto", "Signature.generateKeyPair(Signature.ed25519)", ""},
 
 	"http.createServer":        {"HttpServer", "", ""},
 	"http.Server":              {"HttpServer", "", ""},
@@ -352,14 +353,15 @@ var platformAPIs = map[string]platformAPI{
 }
 
 const (
-	cryptoGap     = "Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation."
-	cryptoKeys    = "It takes keys as bytes, a secret in a Redacted: raw for HMAC, PKCS#8 and SPKI DER for ECDSA P-256 and Ed25519; it has no ciphers."
-	domGap        = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
-	frameGap      = "Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file."
-	dialogGap     = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
-	runtimeGap    = "A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file."
-	processExit   = "Let main return or fail: NodeRuntime.runMain, which runs it, exits with 0 when it succeeds and 1 when it fails."
-	processEvents = "NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events."
+	cryptoFamilies = "effect/crypto has a service for each WebCrypto family: Digest, Mac, Signature, Cipher, Aead, Kdf, KeyAgreement and KeyWrap."
+	signatureKeys  = "Signature.privateKey(Signature.ed25519, bytes) and Signature.publicKey make the keys from their bytes."
+	aeadKeys       = "Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
+	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
+	frameGap       = "Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file."
+	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
+	runtimeGap     = "A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file."
+	processExit    = "Let main return or fail: NodeRuntime.runMain, which runs it, exits with 0 when it succeeds and 1 when it fails."
+	processEvents  = "NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events."
 )
 
 // fileSystemAPIs maps the functions of fs, fs/promises, and fs.promises,
@@ -442,7 +444,7 @@ type clockRead struct {
 const (
 	testClock  = "In a test, TestClock sets it."
 	testRandom = "In a test, Random.withSeed(() => program(), seed) fixes it."
-	testCrypto = `In a test, provide TestCrypto.layer(seed) from "effect/testing"; a seeded Random does not reach Crypto.`
+	testCrypto = `In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.`
 )
 
 // clockReads lists the clock and randomness reads (EK4403), by the
@@ -452,8 +454,8 @@ var clockReads = map[string]clockRead{
 	"DateConstructor":             {"String(DateTime.nowAsDate()), since Date() returns a string", "", testClock},
 	"DateConstructor.constructor": {"DateTime.nowAsDate() for a Date, or DateTime.now() for a DateTime.Utc", "", testClock}, // new Date()
 	"Math.random":                 {"Random.next(), a number from 0 up to 1", "", testRandom},
-	"Crypto.randomUUID":           {"Crypto.randomUUIDv4()", "Crypto", testCrypto},
-	"Crypto.getRandomValues":      {"Crypto.randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
+	"Crypto.randomUUID":           {"SecureRandom.uuidV4()", "Crypto", testCrypto},
+	"Crypto.getRandomValues":      {"SecureRandom.randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
 	"Performance.now":             {"Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds", "", testClock},
 	"Now.instant":                 {"DateTime.now()", "", testClock},
 	"Now.zonedDateTimeISO":        {"DateTime.nowInCurrentZone()", "", testClock},

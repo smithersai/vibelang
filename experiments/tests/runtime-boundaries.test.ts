@@ -11,7 +11,7 @@ const reasons = (exit: Exit.Exit<unknown, unknown>) => Exit.isFailure(exit)
   ? exit.cause.reasons.map(r => r._tag === "Die" ? [r._tag, String(r.defect)] : r._tag)
   : ["Success", exit.value]
 
-test("Boundary 1 Effect.catch preserves defects when the body also fails (Effect 4.0.6)", () => {
+test("Boundary 1 Effect.catch preserves defects when the body also fails (Effect 4.1.0)", () => {
   const body = Effect.ensuring(Effect.fail("expected"), Effect.die("release-defect"))
   const before = Effect.runSyncExit(body)
   const after = Effect.runSyncExit(Effect.catch(body, () => Effect.succeed("recovered")))

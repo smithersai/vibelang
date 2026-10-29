@@ -37,7 +37,7 @@ var methodModules = map[string]bool{
 
 // dataFirstParameters names effect's data-first functions whose first
 // parameter is not named self, with the name it has instead (D295): effect
-// 4.0.6 calls Cause.findErrorOption's receiver input and BigDecimal.abs's n.
+// 4.1.0 calls Cause.findErrorOption's receiver input and BigDecimal.abs's n.
 // Each takes method syntax as a self-first function does, through exactly
 // the overloads whose first parameter has that name, so the data-first
 // overload of Stream.zipLeft(left, right) is a method and its curried

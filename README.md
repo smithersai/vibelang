@@ -11,7 +11,7 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 > VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
 <!-- compatibility:start -->
-> **Compatibility.** Use exactly `effect@4.0.6`; keep `@effect/platform-node` and `@effect/vitest` at `4.0.6` when used.
+> **Compatibility.** Use exactly `effect@4.1.0`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.0` when used.
 >
 > Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
 >

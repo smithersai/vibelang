@@ -1,4 +1,4 @@
-// The part of @effect/vitest 4.0.6's declarations that runners use, so cases
+// The part of @effect/vitest 4.1.0's declarations that runners use, so cases
 // need not install vitest. The real package re-exports vitest's describe.
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"

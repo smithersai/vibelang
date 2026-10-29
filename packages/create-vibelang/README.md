@@ -47,5 +47,5 @@ The extension starts the project's own compiler as the language server.
 
 ## Requirements
 
-Node 22.22.3 (22.x) or Node 24.11.1 or later. The starter app depends on `effect@4.0.6` exactly, the
+Node 22.22.3 (22.x) or Node 24.11.1 or later. The starter app depends on `effect@4.1.0` exactly, the
 version the VibeLang runtime is built against.

@@ -44,17 +44,19 @@ test("platform installation follows the canonical exact-version setup", () => {
   const page = read("docs/user/src/platform/105-introduction.md")
   const installs = page.split("## Installing runtime-specific packages")[1]?.split(/^## /m)[0] ?? ""
   assert.ok(installs.includes("../setup/existing-project.md#2-install-the-packages"))
-  assert.ok(installs.includes('"@effect/platform-node-shared": "4.0.6"'))
-  for (const platform of ["node", "bun", "browser"]) assert.ok(installs.includes(`@effect/platform-${platform}@4.0.6`))
+  assert.ok(installs.includes('"@effect/platform-node-shared": "4.1.0"'))
+  for (const platform of ["node", "bun", "browser"]) assert.ok(installs.includes(`@effect/platform-${platform}@4.1.0`))
   assert.doesNotMatch(installs, /(?:npm install|bun add|deno add).*@effect\/platform-(?:node|bun|browser)(?!@)[\s\n]/)
 })
 
 test("the upgrade table names every DOM type that loses its bare name", () => {
   const notes = read("docs/user/src/setup/release-notes.md")
   const row = notes.split("\n").find(line => line.startsWith("| A DOM type named")) ?? ""
-  for (const name of ["Cache", "Console", "Crypto", "FileSystem", "Scheduler", "Transferable", "Worker"]) {
+  for (const name of ["Cache", "Console", "FileSystem", "Scheduler", "Transferable", "Worker"]) {
     assert.ok(row.includes("`" + name + "`"), name)
   }
+  // Effect 4.1 has no Crypto module, so the DOM's Crypto keeps its name.
+  assert.ok(!row.includes("`Crypto`"), "Crypto")
 })
 
 test("public guides explain rules without internal decision identifiers", () => {

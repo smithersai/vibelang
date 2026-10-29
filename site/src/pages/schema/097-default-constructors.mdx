@@ -69,7 +69,7 @@ true
 Construction rejected
 ```
 
-In local Effect 4.0.6, `makeEffect` fails with a raw `SchemaIssue.Issue`, not the `SchemaError` wrapper Schema decoders return. Format the issue directly or translate it to an application error. `makeOption` discards schema-validation details; `make` throws a generic validation Error with the issue in `cause`. Both synchronous APIs can also throw for non-schema causes or asynchronous work; those exceptions are defects. Use `makeEffect` for expected validation failures.
+In local Effect 4.1.0, `makeEffect` fails with a raw `SchemaIssue.Issue`, not the `SchemaError` wrapper Schema decoders return. Format the issue directly or translate it to an application error. `makeOption` discards schema-validation details; `make` throws a generic validation Error with the issue in `cause`. Both synchronous APIs can also throw for non-schema causes or asynchronous work; those exceptions are defects. Use `makeEffect` for expected validation failures.
 
 ## Setting nested and lazy defaults
 

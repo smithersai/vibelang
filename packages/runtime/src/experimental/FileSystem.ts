@@ -1,7 +1,7 @@
 /**
  * Experimental: Effect's `FileSystem` service plus `access` with
  * `executable`, `open` with `nonBlocking`, and `File.chmod` (D313). Effect
- * 4.0.6 has `lstat` itself.
+ * 4.0.6 added `lstat` itself.
  *
  * The service has its own key and identity, and its implementation,
  * `Service`, is a superset of Effect's interface. The

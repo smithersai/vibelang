@@ -72,7 +72,7 @@ var effectOperations = setOf(`all die exit forEach log logDebug logError logInfo
 	uninterruptible restore interruptible try attempt suspend handoff`)
 
 // effectModules conservatively covers modules with Effect-returning call
-// signatures in effect@4.0.6's root exports. Derived from dist/index.d.ts by
+// signatures in effect@4.1.0's root exports. Derived from dist/index.d.ts by
 // inspecting each exported module's callable exports (including curried
 // return signatures), rather than selecting only familiar Effect modules.
 // A module can also have plain members; without types we must not recommend

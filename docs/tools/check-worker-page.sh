@@ -38,7 +38,7 @@ for package in runtime unplugin compiler; do
 done
 cd "$dir"
 echo '{ "name": "greeter", "private": true, "type": "module" }' > package.json
-npm install --silent --no-audit --no-fund effect@4.0.6 ./vibelang-runtime-*.tgz
+npm install --silent --no-audit --no-fund effect@4.1.0 ./vibelang-runtime-*.tgz
 npm install --silent --no-audit --no-fund -D ./vibelang-0*.tgz ./vibelang-unplugin-*.tgz esbuild@0.28.2 wrangler@4.152.0
 port=${PORT:-8787}
 setsid npx wrangler dev --port "$port" --ip 127.0.0.1 > dev.log 2>&1 &

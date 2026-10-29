@@ -5,7 +5,7 @@ package vibelangmapper
 // lambda takes (D56), whether an argument is passed by name (D147), or what
 // a value converts to (D7, D49). It asks this
 // table instead. cmd/vibelang-forms generates it from the declarations of the
-// packages VibeLang pins (effect@4.0.6, the @effect/* packages the corpus uses,
+// packages VibeLang pins (effect@4.1.0, the @effect/* packages the corpus uses,
 // and vibelang-runtime) with the fork's own classifier, the code that makes
 // those decisions in internal/vibelang. scripts/check-forms-table.sh fails when
 // the committed table differs from a fresh one. Never edit forms_table.jsonl.

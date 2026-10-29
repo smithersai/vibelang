@@ -1,1 +1,1 @@
-{"private":true,"type":"module","dependencies":{"effect":"4.0.5","vibelang-runtime":"0.0.1","@effect/platform-node":"4.0.6"}}
+{"private":true,"type":"module","dependencies":{"effect":"4.0.5","vibelang-runtime":"0.0.1","@effect/platform-node":"4.1.0"}}

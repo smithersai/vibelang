@@ -24,7 +24,7 @@ effect function readSettings(input: unknown) {
 false
 ```
 
-Enable `strict` in the compiler options, and `exactOptionalPropertyTypes` to distinguish an absent `hint` from a present `hint: undefined`. At runtime `optionalKey` accepts the absent key and rejects explicit `undefined`, whatever the compiler option. VibeLang v0 uses the TypeScript 7.1 checker and supports exactly `effect@4.0.6`. Install `vibelang-runtime` and `effect@4.0.6` as dependencies and `vibelang` as a dev dependency. `vibelang --noEmit` checks `.vibe` and `.ts` files together; `vibelang` also emits JavaScript and declarations.
+Enable `strict` in the compiler options, and `exactOptionalPropertyTypes` to distinguish an absent `hint` from a present `hint: undefined`. At runtime `optionalKey` accepts the absent key and rejects explicit `undefined`, whatever the compiler option. VibeLang v0 uses the TypeScript 7.1 checker and supports exactly `effect@4.1.0`. Install `vibelang-runtime` and `effect@4.1.0` as dependencies and `vibelang` as a dev dependency. `vibelang --noEmit` checks `.vibe` and `.ts` files together; `vibelang` also emits JavaScript and declarations.
 
 Synchronous Schema builders, `.pipe` methods, guards, and generated helpers are plain calls when they are known not to throw. An exception escaping into Effect code is a defect that Effect catch does not handle. For typed validation failures, use an Effect-returning parser; to give a synchronous exception an expected error type, use `Effect.try`. Inside an effect function or block, a plain TypeScript function that may throw needs an `Effect.try` wrapper, and a Promise always needs `tryPromise` or `promise`.
 

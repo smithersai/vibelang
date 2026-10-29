@@ -207,7 +207,7 @@ test("abandoning yield delegation closes the delegated JavaScript generator", as
   expect(closed).toBe(1)
 })
 
-// Effect 4.0.6 gives defects precedence where it combines a body's failure
+// Effect 4.1.0 gives defects precedence where it combines a body's failure
 // with a cleanup failure (Effect-TS/effect#9433): the body's typed failure
 // becomes a defect, first, beside the cleanup's.
 test("iterable cleanup failures accompany body failures as defects, and exhausted iterators are not closed twice", async () => {

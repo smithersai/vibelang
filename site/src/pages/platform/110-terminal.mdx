@@ -67,7 +67,7 @@ effect function askNameOrQuit() {
 // Output: quit handled
 ```
 
-`QuitError` signals that terminal input ended. Handle it when end-of-input counts as normal completion, and rethrow unrelated failures. In Effect 4.0.6, the Node adapter's `readLine` raises it on end-of-input, including Ctrl+D at a terminal. `readLine` leaves the terminal out of raw mode, so Ctrl+C interrupts the program. The quit keys configured by `NodeTerminal.make` govern `readInput`.
+`QuitError` signals that terminal input ended. Handle it when end-of-input counts as normal completion, and rethrow unrelated failures. In Effect 4.1.0, the Node adapter's `readLine` raises it on end-of-input, including Ctrl+D at a terminal. `readLine` leaves the terminal out of raw mode, so Ctrl+C interrupts the program. The quit keys configured by `NodeTerminal.make` govern `readInput`.
 
 A host SIGINT or SIGTERM is a separate termination path: the runner interrupts the program, bypassing a `catch` expression, and runs cleanup. While the Node line reader holds the terminal in raw mode, Ctrl+C raises no host signal.
 

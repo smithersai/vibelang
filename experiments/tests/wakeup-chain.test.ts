@@ -1,4 +1,4 @@
-// F10: cross-fiber wake-up chains on effect@4.0.6, and the kernel's fix.
+// F10: cross-fiber wake-up chains on effect@4.1.0, and the kernel's fix.
 // Fiber i waits for its own wake-up and then wakes fiber i + 1. Effect runs a
 // woken fiber synchronously on the waker's JS stack (effect-facts F6), so a
 // long chain nests run loops.

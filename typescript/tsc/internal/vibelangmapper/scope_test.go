@@ -40,7 +40,7 @@ func mapperTestScope(t *testing.T, root string) string {
 	}
 	effectPackage := filepath.Join(mapperEffectModules(root), "effect/package.json")
 	if _, err := os.Stat(effectPackage); os.IsNotExist(err) {
-		t.Skipf("missing effect 4.0.6 prerequisite %s; run (cd experiments && bun install), or set EFFECT_NODE_MODULES to an installed node_modules directory", effectPackage)
+		t.Skipf("missing effect 4.1.0 prerequisite %s; run (cd experiments && bun install), or set EFFECT_NODE_MODULES to an installed node_modules directory", effectPackage)
 	} else if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +95,8 @@ func buildMapperTestScope(root string) error {
 	if err := json.Unmarshal(b, &pkg); err != nil {
 		return err
 	}
-	if pkg.Version != "4.0.6" {
-		return fmt.Errorf("mapper tests require effect 4.0.6, found %s", pkg.Version)
+	if pkg.Version != "4.1.0" {
+		return fmt.Errorf("mapper tests require effect 4.1.0, found %s", pkg.Version)
 	}
 	for _, name := range []string{"package.json", "prelude.d.ts"} {
 		if err := copyFile(filepath.Join(root, "packages/ts-mapper", name), filepath.Join(scope, name)); err != nil {

@@ -74,7 +74,7 @@ func TestVersionMismatchDiagnostic(t *testing.T) {
 	diagnostics := result.(contentmapper.OpenProjectResult).OptionDiagnostics
 	assert.Equal(t, len(diagnostics), 1)
 	assert.Equal(t, diagnostics[0].Code, int32(CodeVersionMismatch))
-	assert.Assert(t, strings.Contains(diagnostics[0].MessageText, "effect 3.0.0 (the table pins 4.0.6)"), diagnostics[0].MessageText)
+	assert.Assert(t, strings.Contains(diagnostics[0].MessageText, "effect 3.0.0 (the table pins 4.1.0)"), diagnostics[0].MessageText)
 }
 
 // TestTracingOption checks that the mapper entry's tracing option reaches

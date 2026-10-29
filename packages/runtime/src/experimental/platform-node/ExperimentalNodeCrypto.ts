@@ -4,19 +4,17 @@
  * @since 0.0.11
  */
 import * as EffectNodeCrypto from "@effect/platform-node/NodeCrypto"
-import type * as EffectCrypto from "effect/Crypto"
 import * as Layer from "effect/Layer"
 import type * as Crypto from "../Crypto.js"
 import * as CryptoExtension from "../internal/crypto.js"
 
 /**
- * Provides `Experimental.Crypto` and Effect's `Crypto` from one
- * implementation: `@effect/platform-node`'s, plus `hmac`, `sign` and
- * `verify` from WebCrypto.
+ * Provides `Experimental.Crypto` and `@effect/platform-node`'s Effect crypto services,
+ * such as `SecureRandom` and `Digest`.
  *
  * @since 0.0.11
  */
-export const layer: Layer.Layer<Crypto.Crypto | EffectCrypto.Crypto> = Layer.provideMerge(
+export const layer: Layer.Layer<Crypto.Crypto | Layer.Success<typeof EffectNodeCrypto.layer>> = Layer.merge(
   CryptoExtension.layer,
   EffectNodeCrypto.layer
 )

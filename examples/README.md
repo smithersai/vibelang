@@ -1,6 +1,6 @@
 # VibeLang examples
 
-Each project has exact Effect 4.0.6 dependencies, `.vibe` sources in `src`,
+Each project has exact Effect 4.1.0 dependencies, `.vibe` sources in `src`,
 and a short README. The Node examples emit ESM to `dist`; the frontend
 examples build browser bundles with Vite.
 

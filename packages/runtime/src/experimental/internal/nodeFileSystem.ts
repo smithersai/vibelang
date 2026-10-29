@@ -6,7 +6,7 @@
 //
 // The File class that a nonBlocking open returns, its makeFileInfo,
 // openFlagBits and the errno mapping are copies of
-// @effect/platform-node-shared 4.0.6's internal ones (src/NodeFileSystem.ts,
+// @effect/platform-node-shared 4.1.0's internal ones (src/NodeFileSystem.ts,
 // src/internal/utils.ts), which these members need and Effect does not
 // export. They go when Effect releases the members, as does this module.
 import * as BI from "effect/BigInt"

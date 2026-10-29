@@ -59,6 +59,6 @@ bun add vibelang-runtime@latest
 bun add -d vibelang@latest vibelang-vite@latest
 ```
 
-Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.0.6: the
+Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.0: the
 runtime requires that exact Effect version.
 

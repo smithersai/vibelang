@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Disposable one-command experiments that check Effect 4 runtime behavior and prototype the VibeLang continuation kernel.",
   "dependencies": {
-    "effect": "4.0.6"
+    "effect": "4.1.0"
   },
   "devDependencies": {
     "typescript": "5.9.3"

@@ -6,6 +6,6 @@ import versionGuard from "./version-guard.cjs"
 // this file (the merge queue picks the Effect install that matches it).
 // version-guard.cts holds the same literal for the CommonJS bridge, and
 // tests/package.test.ts checks that the two agree.
-export const PINNED_EFFECT_VERSION = "4.0.6"
+export const PINNED_EFFECT_VERSION = "4.1.0"
 
 versionGuard.checkEffectVersion(effectPackage.version)

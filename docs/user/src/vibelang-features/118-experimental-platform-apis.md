@@ -5,7 +5,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | Service | Adds | Layers |
 | --- | --- | --- |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
-| `Experimental.Crypto` | `hmac`, `sign`, `verify` | Node, Bun, browser |
+| `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 
@@ -15,7 +15,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 
 Each experimental service has its own key, such as `Experimental.FileSystem.FileSystem`. Look up its implementation with `const fs = try Experimental.FileSystem.FileSystem`, then run a member with `try fs.access(path, { executable: true })`. A contract names the key type in its requirements: `boolean!PlatformError.PlatformError!Experimental.FileSystem.FileSystem`.
 
-The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them: their implementations, `Experimental.FileSystem.Service` and `Experimental.Crypto.Service`, are Effect's interfaces plus the new members, and the services themselves are not Effect's. A layer of Effect's `FileSystem` or `Crypto` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process` and `Locks` extend nothing, so `Experimental.Process.Process` and `Experimental.Locks.Locks` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
+The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them. `Experimental.FileSystem.Service` is Effect's interface plus the new members, and the service itself is not Effect's. Effect 4.1 removed its `Crypto` service for the family services of `effect/crypto`; `Experimental.Crypto.Service` keeps the members Effect 4.0's had, such as `randomBytes`, `digest` and `randomUUIDv4`, beside `hmac`, `sign` and `verify`. A layer of Effect's `FileSystem` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process` and `Locks` extend nothing, so `Experimental.Process.Process` and `Experimental.Locks.Locks` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
 
 Provide a platform layer at the application boundary. The layers live beside Effect's platform packages. A layer of a service that extends Effect's provides the experimental service and Effect's service of the same name from one implementation, so code that uses Effect's `FileSystem` and code that uses the additions share it:
 
@@ -23,9 +23,9 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | --- | --- |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto` and `Locks`; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and `Locks`; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer` |
 
-`ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
+`ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
 ## FileSystem
 
@@ -84,7 +84,7 @@ In tests, `Experimental.FileSystem.layerNoop({ ... })` provides a stub for both 
 | `sign(algorithm, privateKey, data)` | Signs `data`; `privateKey` is a PKCS#8 DER key, `Redacted.Redacted<Uint8Array>` |
 | `verify(algorithm, publicKey, signature, data)` | `true` when `signature` signs `data`; `publicKey` is an SPKI DER key |
 
-The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 bytes, r then s, as WebCrypto writes them, and `"Ed25519"`. A key of the wrong kind fails with `BadArgument`, whose message names no key bytes. Secret keys are `Redacted`, so logs and errors print `<redacted>`. One WebCrypto implementation serves every platform.
+Effect 4.1's `Mac` and `Signature` services do the same work with opaque keys, so new code can use them; this service stays for code written against it. The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 bytes, r then s, as WebCrypto writes them, and `"Ed25519"`. A key of the wrong kind fails with `BadArgument`, whose message names no key bytes. Secret keys are `Redacted`, so logs and errors print `<redacted>`. One WebCrypto implementation serves every platform.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
@@ -98,7 +98,7 @@ effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
 // Output: 5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
 ```
 
-`Experimental.Crypto.layerTest()` provides both keys for tests: random bytes are zeros, so UUIDs repeat, and digests, HMACs and signatures are real.
+`Experimental.Crypto.layerTest()` provides the service for tests: random bytes are zeros, so UUIDs repeat, and digests, HMACs and signatures are real.
 
 ## Process
 

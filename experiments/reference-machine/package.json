@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "scripts": { "test": "bun test" },
-  "dependencies": { "effect": "4.0.6" }
+  "dependencies": { "effect": "4.1.0" }
 }

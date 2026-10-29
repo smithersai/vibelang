@@ -1,6 +1,6 @@
 # Schema to Arbitrary
 
-Effect's native `Arbitrary` module derives generators and shrinkers from schemas exactly as in Effect. Use it to explore valid inputs and check properties across many examples. The module and replay format are unstable in Effect 4.0.6. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Effect's native `Arbitrary` module derives generators and shrinkers from schemas exactly as in Effect. Use it to explore valid inputs and check properties across many examples. The module and replay format are unstable in Effect 4.1.0. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Generating schema-conforming random values
 

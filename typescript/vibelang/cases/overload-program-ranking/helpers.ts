@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 
-// Effect 4.0.6 has no Effect.orElse. Keep the two-program fallback API
+// Effect 4.1.0 has no Effect.orElse. Keep the two-program fallback API
 // here to exercise D257 without adding or changing a dependency.
 /** @vibelang trusted */
 export function orElse<B, E2, R2>(that: Effect.Effect<B, E2, R2>, options?: { readonly unused?: boolean }): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | B, E2, R | R2>

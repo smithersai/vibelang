@@ -26,7 +26,7 @@ function defect() {
   }
 }
 
-// An expected failure plus a defect from cleanup is a mixed cause. Effect 4.0.6
+// An expected failure plus a defect from cleanup is a mixed cause. Effect 4.1.0
 // makes the failure a defect beside the cleanup's (Effect-TS/effect#9433).
 function mixed() {
   try {

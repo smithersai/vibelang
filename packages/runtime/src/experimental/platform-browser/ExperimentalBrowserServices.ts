@@ -7,7 +7,6 @@
  * @experimental
  * @since 0.0.11
  */
-import type * as EffectCrypto from "effect/Crypto"
 import * as Layer from "effect/Layer"
 import type * as Crypto from "../Crypto.js"
 import type * as Locks from "../Locks.js"
@@ -15,16 +14,16 @@ import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 
 /**
- * The services of the browser bundle: the experimental `Crypto` with
- * Effect's, and `Locks`.
+ * The services of the browser bundle: the experimental `Crypto`, Effect's
+ * crypto services from `@effect/platform-browser`, and `Locks`.
  *
  * @since 0.0.11
  */
-export type ExperimentalBrowserServices = Crypto.Crypto | EffectCrypto.Crypto | Locks.Locks
+export type ExperimentalBrowserServices = Crypto.Crypto | Layer.Success<typeof ExperimentalBrowserCrypto.layer> | Locks.Locks
 
 /**
  * `ExperimentalBrowserCrypto.layer`, which provides the experimental `Crypto` and
- * Effect's from `@effect/platform-browser`'s, and `ExperimentalBrowserLocks.layer`.
+ * `@effect/platform-browser`'s Effect crypto services, and `ExperimentalBrowserLocks.layer`.
  *
  * @category layers
  * @since 0.0.11

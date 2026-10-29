@@ -9,7 +9,7 @@ This change fixes the five kernel defects found in the 2026-10-16 reviews. Each 
 | 3 | `transfer` into an inherited Scope strands the continuation after the child exits (Codex R5) | A transferred continuation never outlives its capturing fiber; transfer into a parallel Scope is a defect | K13a-K13e | `FiberExitFrame`, `TransferIntoParallelScope` |
 | 4 | `Effect.catch` recovers a cause that also holds a defect (Codex R1) | Source `catch` recovers only causes made entirely of expected failures | K14a-K14c | `catchExpected` |
 | 5 | The Chapter 6 adapter cannot be cancelled under masked acquisition (Codex R3, Fable 2) | Interruptible acquisition cancels the wait and releases late values; masked acquisition waits | K15a-K15c | None; tests only |
-| 6 | On Effect 4.0.6, the kernel's own cause handling keeps a typed failure beside a defect that Effect would make a defect (2026-10-25, D305) | Where the kernel combines or recovers causes, a `Fail` beside a `Die` becomes a `Die`, as in Effect | K14b, K16a-K16d | `electDefects`; `afterAbandon`; `catchExpected` |
+| 6 | On Effect 4.1.0, the kernel's own cause handling keeps a typed failure beside a defect that Effect would make a defect (2026-10-25, D305) | Where the kernel combines or recovers causes, a `Fail` beside a `Die` becomes a `Die`, as in Effect | K14b, K16a-K16d | `electDefects`; `afterAbandon`; `catchExpected` |
 | 7 | Source `catch` refuses a failure beside an interruption, which `Effect.catch` recovers (2026-10-25, D306) | Source `catch` follows `Effect.catch`; only an abandonment passes through | K14c, K14d | `catchExpected` |
 
 Existing exports keep their signatures. The new exports are `TailResume`, `tailResume`, `tailResumeWith`, `catchExpected`, and `TransferIntoParallelScope`.
@@ -140,7 +140,7 @@ return yield* Effect.ensuring(                      // Final: finally
 
 ## 5. `suspend` inside `Effect.acquireRelease`
 
-**Confirmed.** effect 4.0.6 takes `options?: { readonly interruptible?: boolean }` as the third argument (`src/Effect.ts:13600-13604`). With it, the acquire runs under `restore` (`internal/effect.ts:4194`). The release is still registered under the mask, after acquisition succeeds, so no leak window opens.
+**Confirmed.** effect 4.1.0 takes `options?: { readonly interruptible?: boolean }` as the third argument (`src/Effect.ts:13600-13604`). With it, the acquire runs under `restore` (`internal/effect.ts:4194`). The release is still registered under the mask, after acquisition succeeds, so no leak window opens.
 
 **Behavior (tests only; no kernel change).**
 
@@ -171,9 +171,9 @@ In the deferred race, both the registration cleanup and `release` can destroy th
 
 Which policy `using` applies to an EffectScript `acquireRelease` remains a design decision.
 
-## 6. Defect precedence on Effect 4.0.6 (2026-10-25)
+## 6. Defect precedence on Effect 4.1.0 (2026-10-25)
 
-**Change upstream.** Effect 4.0.6 gives defects precedence where its runtime combines a failure with a finalizer's or a concurrent sibling's cause: `ensuring`, `onExit`, `acquireRelease`, scope close, `callback` cleanup, concurrent `forEach` and `all`, and `raceAll` when every racer fails (Effect-TS/effect#9433). Every typed recovery operator skips a cause that holds a defect and re-fails with its failures made defects (#9516). `Fail(e) + Die(d)` becomes `Die(e) + Die(d)`, in order, and no handler runs. F11a-F11e pin this.
+**Change upstream.** Effect 4.1.0 gives defects precedence where its runtime combines a failure with a finalizer's or a concurrent sibling's cause: `ensuring`, `onExit`, `acquireRelease`, scope close, `callback` cleanup, concurrent `forEach` and `all`, and `raceAll` when every racer fails (Effect-TS/effect#9433). Every typed recovery operator skips a cause that holds a defect and re-fails with its failures made defects (#9516). `Fail(e) + Die(d)` becomes `Die(e) + Die(d)`, in order, and no handler runs. F11a-F11e pin this.
 
 **Defect.** The kernel combines causes itself in one place. `afterAbandon` joins a clause's or a fiber's exit with the cleanup failures of the continuation it abandons, using `Cause.combine`, so a producer whose cleanup dies after the loop body failed, or a handler clause that fails while abandoning, kept `Fail(e) + Die(d)`. Source `catch` re-raised a hand-built `Fail(e) + Die(d)` untouched, where `Effect.catch` now re-raises `Die(e) + Die(d)`.
 
@@ -183,7 +183,7 @@ Which policy `using` applies to an EffectScript `acquireRelease` remains a desig
 
 ## 7. Source `catch` recovers a failure beside an interruption (2026-10-25)
 
-**Change.** D13 kept a cause holding a `Fail` and an `Interrupt` from source `catch`. `Effect.catch` recovers it with the first failure and drops the interruption, on Effect 4.0.5 and 4.0.6 alike (F11c), and after the 4.0.6 bump so does `retry`. `catchExpected` now applies `Effect.catch`'s rule (D306), with one guard of the kernel's own: a cause that carries an abandonment's sentinel interrupt passes through untouched. Abandonment unwinds a segment with the continuation's own interruptibility. Interruptibly, Effect's skip loop passes every catch frame. In a masked region, a failure that a `finally` raises during the unwinding reaches the region's catch frame. Recovering it there would resume abandoned code and lose the cleanup failure, so the guard keeps it moving (K14d; without the guard the handler runs and the exit is the clause's success).
+**Change.** D13 kept a cause holding a `Fail` and an `Interrupt` from source `catch`. `Effect.catch` recovers it with the first failure and drops the interruption, on Effect 4.0.5 and 4.1.0 alike (F11c), and after the 4.1.0 bump so does `retry`. `catchExpected` now applies `Effect.catch`'s rule (D306), with one guard of the kernel's own: a cause that carries an abandonment's sentinel interrupt passes through untouched. Abandonment unwinds a segment with the continuation's own interruptibility. Interruptibly, Effect's skip loop passes every catch frame. In a masked region, a failure that a `finally` raises during the unwinding reaches the region's catch frame. Recovering it there would resume abandoned code and lose the cleanup failure, so the guard keeps it moving (K14d; without the guard the handler runs and the exit is the clause's success).
 
 **Law.** A cause with expected failures and interruptions but no defect is recovered with its first failure (K14c). A cause that carries an abandonment is never recovered (K14d).
 

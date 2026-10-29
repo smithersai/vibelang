@@ -246,7 +246,7 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 // Output: saved
 ```
 
-`NodeServices.layer` holds `FileSystem`, `Path`, `Crypto`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; Bun uses `BunServices.layer`. `HttpClient`, from `effect/http`, needs `FetchHttpClient.layer` provided inside `main`. [The platform introduction](/platform/105-introduction) lists the service for each common Node.js and web call. Don't wrap a platform API that Effect covers in a `.ts` adapter. Node's globals and the web's I/O globals are not in scope in `.vibe`, and a `.vibe` file does not import a Node.js module as a value; [Platform globals](/platform/platform-globals) answers each one. A `.ts` file imports what Effect lacks, such as the `createServer` that [Building an HTTP API](/vibelang-features/113-building-an-http-api) passes to a server layer.
+`NodeServices.layer` holds `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; Bun uses `BunServices.layer`. The crypto services of `effect/crypto`, such as `SecureRandom` and `Digest`, come from `NodeCrypto.layer`. `HttpClient`, from `effect/http`, needs `FetchHttpClient.layer` provided inside `main`. [The platform introduction](/platform/105-introduction) lists the service for each common Node.js and web call. Don't wrap a platform API that Effect covers in a `.ts` adapter. Node's globals and the web's I/O globals are not in scope in `.vibe`, and a `.vibe` file does not import a Node.js module as a value; [Platform globals](/platform/platform-globals) answers each one. A `.ts` file imports what Effect lacks, such as the `createServer` that [Building an HTTP API](/vibelang-features/113-building-an-http-api) passes to a server layer.
 
 A platform API that Effect lacks, such as `os.hostname()`, is often one of VibeLang's [experimental platform APIs](/vibelang-features/118-experimental-platform-apis): `try (try Experimental.Process.Process).hostname`. Code that needs Node.js globals or `node:*` value imports belongs in a `.ts` file. Prefixing a banned global with `globalThis` does not bypass the restriction: `globalThis.fetch` and `globalThis["setTimeout"]` are also `EK4402`.
 
@@ -262,7 +262,7 @@ Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you wou
 
 VibeLang forms compile to their Effect equivalents. They preserve the same `Exit` and finalizer order.
 
-These are single-machine observations from the 0.0.9 alpha review on Linux x64, Node 26 and Effect 4.0.6. They are not a performance guarantee. The benchmark timed sequential loops with `Clock.currentTimeMillis`, with 200,000 calls for the success-only comparison and 1,000,000 for recovery and plain functions. The step increments a number and fails every 250,000th value; recovery resets it to zero. The success-only loop ends before that failure.
+These are single-machine observations from the 0.0.9 alpha review on Linux x64, Node 26 and Effect 4.1.0. They are not a performance guarantee. The benchmark timed sequential loops with `Clock.currentTimeMillis`, with 200,000 calls for the success-only comparison and 1,000,000 for recovery and plain functions. The step increments a number and fails every 250,000th value; recovery resets it to zero. The success-only loop ends before that failure.
 
 | Loop | Observed time |
 | --- | ---: |

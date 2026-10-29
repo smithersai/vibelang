@@ -362,7 +362,7 @@ describe("K14 source catch recovers expected failures only", () => {
   test("K14b the generated try/catch/finally re-raises an expected failure that carries a cleanup defect, as defects (Codex R1)", () => {
     // Source: try { return find(id) } catch (e) { return guest } finally { log("finally") }
     // where find's own cleanup dies while find fails with UserNotFound.
-    // Effect 4.0.6 gives the defect precedence where it combines the two
+    // Effect 4.1.0 gives the defect precedence where it combines the two
     // (Effect-TS/effect#9433): UserNotFound arrives as a defect, first.
     const { events, note } = recorder()
     const find = Effect.ensuring(Effect.fail("UserNotFound"), Effect.die("release-defect"))
@@ -413,7 +413,7 @@ describe("K14 source catch recovers expected failures only", () => {
   })
 })
 
-describe("K16 the kernel gives defects precedence where it combines causes, as Effect 4.0.6 does (D305)", () => {
+describe("K16 the kernel gives defects precedence where it combines causes, as Effect 4.1.0 does (D305)", () => {
   const Ask = operation<void, void>("K16Ask")
 
   test("K16a a clause that fails while its owner abandons a continuation whose cleanup dies fails with both, as defects, in order", () => {

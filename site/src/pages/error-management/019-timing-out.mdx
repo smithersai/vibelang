@@ -46,7 +46,7 @@ Preview still unavailable
 
 The internal interruption that stops the source is separate from the typed timeout error the caller receives; a catch expression inside `buildPreview` can't consume it.
 
-> **Current limitation.** Timeout waits for the interrupted source's cleanup, but Effect 4.0.6 drops that cleanup's failures at the timeout boundary. This affects `timeout`, `timeoutOption`, and `timeoutOrElse`, including `ensuring` and scoped resource cleanup. VibeLang keeps Effect's semantics, including dropping a loser's cleanup failure.
+> **Current limitation.** Timeout waits for the interrupted source's cleanup, but Effect 4.1.0 drops that cleanup's failures at the timeout boundary. This affects `timeout`, `timeoutOption`, and `timeoutOrElse`, including `ensuring` and scoped resource cleanup. VibeLang keeps Effect's semantics, including dropping a loser's cleanup failure.
 
 ## Representing timeout as absence
 

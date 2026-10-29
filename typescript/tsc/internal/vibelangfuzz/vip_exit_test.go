@@ -64,7 +64,7 @@ func TestVIPExitEncoding(t *testing.T) {
 		// renamed to the first one the Exit names.
 		"interrupt": {`export const main = () => Effect.interrupt`, "exit", `{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}`},
 		// ensuring(fail(A), die(D)) ends with two reasons, in order. Effect
-		// 4.0.6 reports both as Die, as the host probes of opus.md and sol.md
+		// 4.1.0 reports both as Die, as the host probes of opus.md and sol.md
 		// §4 found; the encoding keeps what the runtime gives.
 		"ensuring": {`export const main = () => Effect.fail("A").pipe(Effect.ensuring(Effect.die("D")))`, "exit",
 			`{"_tag":"Failure","reasons":[{"_tag":"Die","defect":"A"},{"_tag":"Die","defect":"D"}]}`},

@@ -1,4 +1,4 @@
-// VibeLang continuation kernel prototype on effect@4.0.6.
+// VibeLang continuation kernel prototype on effect@4.1.0.
 //
 // The kernel adds multi-prompt, one-shot delimited control to Effect's own
 // fiber stack. A handler installs a Prompt frame on `fiber._stack` and an
@@ -127,7 +127,7 @@ const keep = <E = never>(cause: Cause.Cause<E> | undefined, predicate: (reason: 
   return kept.length === 0 ? undefined : (Cause.fromReasons(kept) as Cause.Cause<E>)
 }
 
-// Defect precedence (D305). Effect 4.0.6 applies it wherever it combines a
+// Defect precedence (D305). Effect 4.1.0 applies it wherever it combines a
 // failure with a finalizer's or a sibling's cause (causeElectDefects,
 // internal/effect.ts; Effect-TS/effect#9433) and in every typed recovery
 // (findRecoverableError; #9516): when a cause holds a Die, each Fail becomes a
@@ -640,7 +640,7 @@ export const handle = <A, E, R>(
 // ---------------------------------------------------------------------------
 // Source `catch`
 //
-// VibeLang's `catch` recovers as Effect 4.0.6's Effect.catch does
+// VibeLang's `catch` recovers as Effect 4.1.0's Effect.catch does
 // (findRecoverableError, Effect-TS/effect#9516; D305, D306): a cause with a
 // defect re-fails with its failures elected to defects; otherwise the
 // handler receives the first failure, and an interruption or a further
@@ -676,7 +676,7 @@ export interface Resumer<A> {
   readonly state: () => "waiting" | "resumed" | "cancelled"
 }
 
-// Effect 4.0.6 runs a woken fiber synchronously on the waker's JS stack with
+// Effect 4.1.0 runs a woken fiber synchronously on the waker's JS stack with
 // no depth guard (tests/wakeup-chain.test.ts: ~1,000 chained wake-ups on V8,
 // ~3,000 on JSC overflow and silently strand the rest of the chain). The
 // kernel bounds nesting: beyond wakeConfig.budget it enqueues the wake-up on

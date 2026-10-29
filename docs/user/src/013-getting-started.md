@@ -71,7 +71,7 @@ Read [The Effect Type](getting-started/003-the-effect-type.md) for this function
 
 ## Documentation versions
 
-These pages target Effect **4.0.6** and the language decisions recorded with this repository. Upstream, select version 4. Effect 3 examples use a different library version and do not establish which APIs exist here.
+These pages target Effect **4.1.0** and the language decisions recorded with this repository. Upstream, select version 4. Effect 3 examples use a different library version and do not establish which APIs exist here.
 
 The upstream site also documents newer changes. When a signature differs from an example on these pages, check it against your installed package.
 

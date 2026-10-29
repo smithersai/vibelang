@@ -18,7 +18,7 @@ code with the same tested behavior.
 
 ## Common facts
 
-- Effect 4.0.6 and VibeLang 0.0.11 in both. npm's latest VibeLang is 0.0.10;
+- Effect 4.1.0 and VibeLang 0.0.11 in both. npm's latest VibeLang is 0.0.10;
   every example in this repository pins 0.0.11, so until it is published the
   projects check only through `scripts/check-examples.sh` (or
   `sh scripts/setup.sh` and `file:` links), not with `bun install` from npm.
@@ -53,7 +53,7 @@ code with the same tested behavior.
 | `foldkit-app/pairs/README.md` | Three real pairs from the Foldkit migration |
 
 Versions: `foldkit` 0.169.0 (the version the Foldkit migration used, published
-2026-10-21), `effect` and `@effect/platform-browser` 4.0.6, `vite` 8.3.4,
+2026-10-21), `effect` and `@effect/platform-browser` 4.1.0, `vite` 8.3.4,
 `vitest` 5.0.5, `happy-dom` 20.14.6.
 
 ### Commands and output
@@ -79,16 +79,16 @@ dist/assets/index-BEydSQBy.js  331.73 kB │ gzip: 109.74 kB
 ✓ built in 2.71s
 ```
 
-`bun install` warns `incorrect peer dependency "effect@4.0.6"` and
-`"@effect/platform-browser@4.0.6"`: Foldkit 0.169.0 pins both peers to
-exactly 4.0.0. The suite and the build pass on 4.0.6.
+`bun install` warns `incorrect peer dependency "effect@4.1.0"` and
+`"@effect/platform-browser@4.1.0"`: Foldkit 0.169.0 pins both peers to
+exactly 4.0.0. The suite and the build pass on 4.1.0.
 
 ### Setup from an empty project
 
 ```sh
 mkdir my-app && cd my-app
 bun init -y
-bun add effect@4.0.6 @effect/platform-browser@4.0.6 foldkit@0.169.0 vibelang-runtime@0.0.11
+bun add effect@4.1.0 @effect/platform-browser@4.1.0 foldkit@0.169.0 vibelang-runtime@0.0.11
 bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vite@8.3.4 vitest@5.0.5 happy-dom@20.14.6
 ```
 
@@ -164,7 +164,7 @@ Framework-free excerpts can stay checked.
 
 Versions: `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84 (npm
 `latest`, the version the Alchemy migration used, published 2026-10-24); `effect`,
-`@effect/platform-bun`, `@effect/platform-node` and `@effect/vitest` 4.0.6;
+`@effect/platform-bun`, `@effect/platform-node` and `@effect/vitest` 4.1.0;
 `vitest` 5.0.5.
 
 ### Commands and output
@@ -195,9 +195,9 @@ Alchemy `Stack` service, then sends `PUT /todo`, `GET /todo` and
 ```sh
 mkdir my-stack && cd my-stack
 bun init -y
-bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.0.6 \
-  @effect/platform-bun@4.0.6 @effect/platform-node@4.0.6 vibelang-runtime@0.0.11
-bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.0.6
+bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.0 \
+  @effect/platform-bun@4.1.0 @effect/platform-node@4.1.0 vibelang-runtime@0.0.11
+bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.0
 ```
 
 Copy `tsconfig.json`, `vitest.config.ts` and `bunfig.toml` from

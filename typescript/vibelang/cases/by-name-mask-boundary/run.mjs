@@ -3,7 +3,7 @@ import { Effect, Fiber, Tracer } from "effect"
 import * as programs from "./out/main.js"
 import { latch, write, publish } from "./out/probe.js"
 
-// Effect 4.0.6 tracer context runs immediately before each primitive. This
+// Effect 4.1.0 tracer context runs immediately before each primitive. This
 // latch delivers interruption at the first primitive after write has returned,
 // including the erroneous Iterator continuation, without timers or scheduling.
 const tracer = Tracer.make({

@@ -95,7 +95,7 @@ effect function exportBatch(count: number) {
 NodeRuntime.runMain(exportBatch(0))
 ```
 
-A normal return is success; `main`'s return value isn't printed. An unhandled expected failure or defect is reported by default and gets a failing exit code. Effect 4.0.6's default teardown exits 0 on success, 130 for interruption-only causes, and 1 for other failures, unless a supported error-specific exit code overrides it.
+A normal return is success; `main`'s return value isn't printed. An unhandled expected failure or defect is reported by default and gets a failing exit code. Effect 4.1.0's default teardown exits 0 on success, 130 for interruption-only causes, and 1 for other failures, unless a supported error-specific exit code overrides it.
 
 On a termination signal, the platform interrupts the application and waits for registered cleanup. Finalizers registered with `ensuring`, `onExit`, and scoped acquisitions run during interruption. A `catch` expression handles typed failures and lets interruption propagate. Handle recoverable failures inside the program, and let the runner report the rest.
 

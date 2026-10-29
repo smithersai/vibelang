@@ -17,7 +17,7 @@ import (
 //   - A held child signals that it is ready from inside its ensuring, and
 //     then never ends, so its owner interrupts it and its finalizer logs.
 //     It signals from inside: Deferred.succeed resumes the waiting parent at
-//     once (probed on effect 4.0.6), and a child interrupted before it
+//     once (probed on effect 4.1.0), and a child interrupted before it
 //     reaches its ensuring registers no finalizer.
 //
 // The owner ends a held child where VIP-17 says: the parent's end for fork

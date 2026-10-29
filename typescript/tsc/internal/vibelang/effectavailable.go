@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-const supportedEffectVersion = "4.0.6"
+const supportedEffectVersion = "4.1.0"
 
 func init() { fileChecks = append(fileChecks, checkEffectAvailable) }
 

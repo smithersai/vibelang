@@ -1,4 +1,4 @@
-// F11: how Effect 4.0.6 combines and recovers a cause that holds an expected
+// F11: how Effect 4.1.0 combines and recovers a cause that holds an expected
 // failure beside a defect or an interruption (Effect-TS/effect#9433 and
 // #9516). These test Effect, not VibeLang; VibeLang's forms follow them.
 import { describe, expect, test } from "bun:test"
@@ -14,7 +14,7 @@ const reasons = (exit: Exit.Exit<unknown, unknown>) =>
 const run = (effect: Effect.Effect<unknown, unknown>) => reasons(Effect.runSyncExit(effect))
 const later = <A, E>(effect: Effect.Effect<A, E>) => Effect.andThen(Effect.sleep(5), effect)
 
-describe("F11 Effect 4.0.6 defect precedence", () => {
+describe("F11 Effect 4.1.0 defect precedence", () => {
   test("F11a where the runtime combines a failure with a cleanup or a sibling's defect, the failure becomes a defect, first", async () => {
     const elected = ["Die(E)", "Die(D)"]
     expect(run(Effect.ensuring(Effect.fail("E"), Effect.die("D")))).toEqual(elected)

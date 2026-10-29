@@ -12,7 +12,7 @@ source modules and their importers after edits.
 ```sh
 npm install --save-dev vibelang vibelang-vite vite
 # For tests:
-npm install --save-dev vitest@5.0.5 @effect/vitest@4.0.6
+npm install --save-dev vitest@5.0.5 @effect/vitest@4.1.0
 ```
 
 The plugin compiles with the `vibelang` package, a peer dependency, through its

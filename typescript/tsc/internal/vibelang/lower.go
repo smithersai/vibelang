@@ -468,7 +468,7 @@ func (tx *lowering) convert(node *ast.Node, conversion conversion) *ast.Node {
 
 // byNameProgram lowers a by-name expression (D147), evaluating it on every
 // run. A tail program is returned by suspend, never yielded by a wrapper:
-// Effect 4.0.6 internal/effect.ts:1015-1021 returns the thunk's Effect without
+// Effect 4.1.0 internal/effect.ts:1015-1021 returns the thunk's Effect without
 // pushing a continuation. In contrast, gen (1262-1284) installs an Iterator
 // (1457-1468), whose post-program step can be interrupted before restore
 // reinstates the mask (4626-4629, 4661-4681).

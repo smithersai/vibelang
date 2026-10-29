@@ -1,6 +1,6 @@
 # Alchemy
 
-[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.0.6 and VibeLang 0.0.11.
+[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.1.0 and VibeLang 0.0.11. Alchemy 2.0.0-beta.84 was built for Effect 4.0: its `Auth/OAuthFlow` module and some of its declarations import `effect/Crypto`, which Effect 4.1 removed, so its OAuth login fails to load until Alchemy publishes a build for Effect 4.1.
 
 The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) and serves (`GET /key`) them, is [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite runs against its VibeLang version and its Effect TypeScript original.
 
@@ -9,9 +9,9 @@ The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) 
 ```sh
 mkdir my-stack && cd my-stack
 bun init -y
-bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.0.6 \
-  @effect/platform-bun@4.0.6 @effect/platform-node@4.0.6 vibelang-runtime@0.0.11
-bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.0.6
+bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.0 \
+  @effect/platform-bun@4.1.0 @effect/platform-node@4.1.0 vibelang-runtime@0.0.11
+bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.0
 ```
 
 The Alchemy CLI refuses to start without `@effect/platform-bun` (`Alchemy could not load the required peer dependency`). Copy `tsconfig.json`, `vitest.config.ts` and `bunfig.toml` from the example; `bunfig.toml` lists the beta's exactly pinned `@alchemy.run/*` and `@distilled.cloud/*` packages, which are younger than the example's minimum release age.

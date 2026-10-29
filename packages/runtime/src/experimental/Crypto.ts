@@ -1,24 +1,32 @@
 /**
- * Experimental: Effect's `Crypto` service plus `hmac`, `sign` and `verify`
- * (D313).
+ * Experimental: the members of Effect 4.0's `Crypto` service plus `hmac`,
+ * `sign` and `verify` (D313).
  *
- * The service has its own key and identity, and its implementation,
- * `Service`, is a superset of Effect's interface. One
- * WebCrypto implementation (`crypto.subtle`, which Node, Bun, Deno, browsers
- * and Workers all have) serves every platform; the layers in
- * `vibelang-runtime/experimental/platform-node`, `-bun` and `-browser`
- * provide it and Effect's `Crypto` from one implementation. Secret keys are
- * `Redacted`, so logs and errors never print them. When Effect releases these
- * members, this module re-exports Effect's.
+ * Effect 4.1 replaced its `Crypto` service with the family services of
+ * `effect/crypto`: `SecureRandom`, `Digest`, `Mac`, `Signature` and the
+ * rest. This service keeps the members it had, `randomBytes`, `digest`,
+ * `randomUUIDv4` and the others, on its own key, with `hmac`, `sign` and
+ * `verify` beside them. One WebCrypto implementation (`crypto.subtle`, which
+ * Node, Bun, Deno, browsers and Workers all have) serves every platform; the
+ * layers in `vibelang-runtime/experimental/platform-node`, `-bun` and
+ * `-browser` provide it and that platform's Effect crypto services. Secret
+ * keys are `Redacted`, so logs and errors never print them.
  *
  * @since 0.0.11
  */
 import * as Context from "effect/Context"
-import * as EffectCrypto from "effect/Crypto"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
 import * as Redacted from "effect/Redacted"
+
+/**
+ * A digest algorithm, as Effect 4.0's `Crypto.DigestAlgorithm` named it.
+ *
+ * @since 0.0.12
+ */
+export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
 
 /**
  * A signature algorithm. `"ECDSA-P256-SHA256"` is ECDSA on the P-256 curve
@@ -30,16 +38,62 @@ import * as Redacted from "effect/Redacted"
 export type SignatureAlgorithm = "ECDSA-P256-SHA256" | "Ed25519"
 
 /**
- * The implementation: Effect's `Crypto` plus `hmac`, `sign` and `verify`.
+ * The implementation: the members of Effect 4.0's `Crypto` plus `hmac`,
+ * `sign` and `verify`.
  *
  * @since 0.0.11
  */
-export interface Service extends EffectCrypto.Crypto {
+export interface Service {
+  /** A random safe integer, read synchronously. */
+  nextIntUnsafe(): number
+  /** A random number from 0 up to 1, read synchronously. */
+  nextDoubleUnsafe(): number
+  /** `size` new random bytes; a size that is not a non-negative safe integer fails with `BadArgument`. */
+  randomBytes(size: number): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+  /** The digest of `data` under `algorithm`. */
+  digest(algorithm: DigestAlgorithm, data: Uint8Array): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+  /** A random number from 0 up to 1. */
+  readonly random: Effect.Effect<number>
+  /** A random boolean. */
+  readonly randomBoolean: Effect.Effect<boolean>
+  /** A random safe integer. */
+  readonly randomInt: Effect.Effect<number>
+  /** A random number from `min` up to `max`. */
+  randomBetween(min: number, max: number): Effect.Effect<number>
+  /** A random integer from `min` to `max`, or up to `max` with `halfOpen`. */
+  randomIntBetween(min: number, max: number, options?: {
+    readonly halfOpen?: boolean | undefined
+  }): Effect.Effect<number>
+  /** The elements in a random order. */
+  randomShuffle<A>(elements: Iterable<A>): Effect.Effect<Array<A>>
+  /** A random UUIDv4, as a hex string or its 16 bytes. */
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv4<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
+  /** A UUIDv7 from the Clock and random bytes, as a hex string or its 16 bytes. */
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv7<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
+  /** A ULID from the Clock and random bytes. */
+  readonly randomULID: Effect.Effect<string, PlatformError.PlatformError>
+
   /**
    * Computes the HMAC of `data` under `key`, the raw secret bytes.
    */
   hmac(
-    algorithm: EffectCrypto.DigestAlgorithm,
+    algorithm: DigestAlgorithm,
     key: Redacted.Redacted<Uint8Array>,
     data: Uint8Array
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
@@ -69,10 +123,8 @@ export interface Service extends EffectCrypto.Crypto {
 
 /**
  * The service key, declared as Effect declares a class service: the type
- * `Crypto` is the requirement, whose identity is its key, distinct from
- * Effect's `Crypto.Crypto`, and `Service` is the implementation. `Service`
- * extends Effect's interface and `Crypto` does not, so a layer of Effect's
- * `Crypto` never satisfies a requirement for this one.
+ * `Crypto` is the requirement, whose identity is its key, and `Service` is
+ * the implementation.
  *
  * @since 0.0.11
  */
@@ -129,18 +181,58 @@ const importKey = (
       })
   })
 
+// Reads 53 random bits, as Effect 4.0's Crypto did.
+const readUint53 = (bytes: Uint8Array): number =>
+  ((bytes[0]! & 0x1f) * 2 ** 48) + (bytes[1]! * 2 ** 40) + (bytes[2]! * 2 ** 32) +
+  (bytes[3]! * 2 ** 24) + (bytes[4]! * 2 ** 16) + (bytes[5]! * 2 ** 8) + bytes[6]!
+
 /**
- * Extends an Effect `Crypto` with `hmac`, `sign` and `verify` from the
+ * Makes the service from a source of random bytes and a digest, as Effect
+ * 4.0's `Crypto.make` did, with `hmac`, `sign` and `verify` from the
  * platform's WebCrypto, the `globalThis.crypto.subtle` of the moment `make`
- * runs. Without WebCrypto they fail with `Unknown`, as Effect's browser
- * `digest` does.
+ * runs. Without WebCrypto they fail with `Unknown`. UUIDs, ULIDs, integers
+ * and shuffles come from Effect's `SecureRandom.make` over the same bytes.
  *
  * @since 0.0.11
  */
-export const make = (crypto: EffectCrypto.Crypto): Service => {
+export const make = (impl: {
+  readonly randomBytes: (size: number) => Uint8Array
+  readonly digest: (algorithm: DigestAlgorithm, data: Uint8Array) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
+}): Service => {
   const subtle: SubtleCrypto | undefined = globalThis.crypto?.subtle
+  const secure = SecureRandom.make(impl.randomBytes)
+  const nextDoubleUnsafe = (): number => readUint53(impl.randomBytes(7)) / 2 ** 53
+  const nextIntUnsafe = (): number => {
+    while (true) {
+      const bytes = impl.randomBytes(7)
+      const value = readUint53(bytes)
+      if ((bytes[0]! & 0x20) === 0) return value + Number.MIN_SAFE_INTEGER
+      if (value < Number.MAX_SAFE_INTEGER) return value + 1
+    }
+  }
+  const uuid = (generate: SecureRandom.UuidGenerator) => (options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+    options?.format === "bytes" ? generate({ format: "bytes" }) : generate()
   return Crypto.of({
-    ...crypto,
+    nextIntUnsafe,
+    nextDoubleUnsafe,
+    randomBytes: (size) =>
+      Number.isSafeInteger(size) && size >= 0
+        ? Effect.sync(() => impl.randomBytes(size))
+        : Effect.fail(PlatformError.badArgument({
+          module: "Crypto",
+          method: "randomBytes",
+          description: "size must be a non-negative safe integer"
+        })),
+    digest: impl.digest,
+    random: Effect.sync(nextDoubleUnsafe),
+    randomBoolean: Effect.sync(() => nextDoubleUnsafe() > 0.5),
+    randomInt: Effect.sync(nextIntUnsafe),
+    randomBetween: (min, max) => Effect.sync(() => nextDoubleUnsafe() * (max - min) + min),
+    randomIntBetween: (min, max, options) => secure.intBetween(min, max, options),
+    randomShuffle: (elements) => secure.shuffle(elements),
+    randomUUIDv4: uuid(secure.uuidV4) as Service["randomUUIDv4"],
+    randomUUIDv7: uuid(secure.uuidV7) as Service["randomUUIDv7"],
+    randomULID: secure.ulid,
     hmac: (algorithm, key, data) =>
       Effect.flatMap(
         importKey(subtle, "hmac", "raw", Redacted.value(key), { name: "HMAC", hash: algorithm }, "sign"),
@@ -163,22 +255,28 @@ export const make = (crypto: EffectCrypto.Crypto): Service => {
   })
 }
 
+// Digests through the WebCrypto of the moment the call runs.
+const subtleDigest = (algorithm: DigestAlgorithm, data: Uint8Array) =>
+  subtleCall(globalThis.crypto?.subtle, "digest", async (subtle) => new Uint8Array(await subtle.digest(algorithm, bytes(data))))
+
 /**
- * A deterministic `Crypto` for tests that provides this service and Effect's
- * `Crypto`: random bytes are zeros, so UUIDs and shuffles repeat; digests,
- * HMACs and signatures come from WebCrypto; `crypto` replaces any member.
+ * The service from the platform's WebCrypto: `getRandomValues` for random
+ * bytes and `crypto.subtle` for digests, HMACs and signatures.
+ *
+ * @since 0.0.12
+ */
+export const layerWebCrypto: Layer.Layer<Crypto> = /* @__PURE__ */ Layer.sync(Crypto, () =>
+  make({ randomBytes: SecureRandom.randomBytesUnsafe, digest: subtleDigest }))
+
+/**
+ * A deterministic `Crypto` for tests: random bytes are zeros, so UUIDs and
+ * shuffles repeat; digests, HMACs and signatures come from WebCrypto;
+ * `crypto` replaces any member.
  *
  * @since 0.0.11
  */
-export const layerTest = (crypto: Partial<Service> = {}): Layer.Layer<Crypto | EffectCrypto.Crypto> => {
-  const test = Crypto.of({
-    ...make(EffectCrypto.make({
-      randomBytes: (size) => new Uint8Array(size),
-      digest: (algorithm, data) =>
-        subtleCall(globalThis.crypto?.subtle, "digest", async (subtle) =>
-          new Uint8Array(await subtle.digest(algorithm, bytes(data))))
-    })),
+export const layerTest = (crypto: Partial<Service> = {}): Layer.Layer<Crypto> =>
+  Layer.succeed(Crypto, Crypto.of({
+    ...make({ randomBytes: (size) => new Uint8Array(size), digest: subtleDigest }),
     ...crypto
-  })
-  return Layer.mergeAll(Layer.succeed(Crypto, test), Layer.succeed(EffectCrypto.Crypto, test))
-}
+  }))

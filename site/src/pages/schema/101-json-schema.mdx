@@ -148,7 +148,7 @@ function jsonTextDocument() {
 {"type":"string","contentMediaType":"application/json"}
 ```
 
-The external value is JSON text, so the root schema is a string with `contentMediaType: "application/json"`. Effect 4.0.6 does not add `contentSchema` for the embedded object; export `Depot` separately to describe it, or add `contentSchema` with `annotateEncoded`. Content keywords document the embedded format; validators vary in enforcing them.
+The external value is JSON text, so the root schema is a string with `contentMediaType: "application/json"`. Effect 4.1.0 does not add `contentSchema` for the embedded object; export `Depot` separately to describe it, or add `contentSchema` with `annotateEncoded`. Content keywords document the embedded format; validators vary in enforcing them.
 
 ---
 

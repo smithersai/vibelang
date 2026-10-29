@@ -9,6 +9,7 @@ const Fixed = Terminal.make({
   rows: Effect.succeed(24),
   readInput: Effect.die("no input"),
   readLine: Effect.succeed("line"),
+  size: Effect.die("no resize"),
   display: (text: string) => Effect.void
 })
 

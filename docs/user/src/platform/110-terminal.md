@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
+// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
 effect function dimensions() {
   const terminal = try Terminal
   return { columns: try terminal.columns, rows: try terminal.rows }
@@ -40,7 +40,7 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
+// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
 effect function askName() {
   const terminal = try Terminal
   try terminal.display("Your name: ")
@@ -58,7 +58,7 @@ effect function askName() {
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
+// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
 effect function askNameOrQuit() {
   return askName() catch effect (error) => match (error) {
     when { _tag: "QuitError" }: undefined
@@ -69,7 +69,7 @@ effect function askNameOrQuit() {
 // Output: quit handled
 ```
 
-`QuitError` signals that terminal input ended. Handle it when end-of-input counts as normal completion, and rethrow unrelated failures. In Effect 4.0.6, the Node adapter's `readLine` raises it on end-of-input, including Ctrl+D at a terminal. `readLine` leaves the terminal out of raw mode, so Ctrl+C interrupts the program. The quit keys configured by `NodeTerminal.make` govern `readInput`.
+`QuitError` signals that terminal input ended. Handle it when end-of-input counts as normal completion, and rethrow unrelated failures. In Effect 4.1.0, the Node adapter's `readLine` raises it on end-of-input, including Ctrl+D at a terminal. `readLine` leaves the terminal out of raw mode, so Ctrl+C interrupts the program. The quit keys configured by `NodeTerminal.make` govern `readInput`.
 
 A host SIGINT or SIGTERM is a separate termination path: the runner interrupts the program, bypassing a `catch` expression, and runs cleanup. While the Node line reader holds the terminal in raw mode, Ctrl+C raises no host signal.
 
@@ -78,7 +78,7 @@ A host SIGINT or SIGTERM is a separate termination path: the runner interrupts t
 ```vibe
 // guessing.vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
-// run: const inputs = ["no", "2", "19", "11"]; provide Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
+// run: const inputs = ["no", "2", "19", "11"]; provide Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
 function parseGuess(input: string) {
   const text = input.trim()
   const number = Number(text)

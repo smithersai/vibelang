@@ -1985,7 +1985,8 @@ typescript/vibelang/cases/module-missing-export.fail/main.vibe:17:19 lambda plai
 typescript/vibelang/cases/module-outer-binding.fail/main.vibe:23:19 lambda plain table
 typescript/vibelang/cases/module-service-values/main.vibe:10:14 byname program table
 typescript/vibelang/cases/module-service-values/main.vibe:11:13 byname program table
-typescript/vibelang/cases/module-service-values/main.vibe:12:12 lambda effectFn table
+typescript/vibelang/cases/module-service-values/main.vibe:12:9 byname program table
+typescript/vibelang/cases/module-service-values/main.vibe:13:12 lambda effectFn table
 typescript/vibelang/cases/module-service-values/main.vibe:8:12 byname program table
 typescript/vibelang/cases/module-service-values/main.vibe:9:9 byname program table
 typescript/vibelang/cases/module-services/main.vibe:18:19 lambda choice fallback

@@ -4,7 +4,7 @@
 // own POSIX Path and a FileSystem test double.
 import { FileSystem, layerNoop } from "effect/FileSystem"
 import { Path, layer as PosixPath } from "effect/Path"
-import { Crypto } from "effect/Crypto"
+import { Digest, SecureRandom } from "effect/crypto"
 import { Stdio } from "effect/Stdio"
 import { HttpClient } from "effect/http"
 import * as ChildProcess from "effect/process/ChildProcess"
@@ -16,13 +16,13 @@ function notes(directory: string) {
 }
 
 export const status = () => ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
-export const token = () => Crypto.randomBytes(16)
-export const id = () => Crypto.randomUUIDv4()
+export const token = () => SecureRandom.randomBytes(16)
+export const id = () => SecureRandom.uuidV4()
 export const page = (url: string) => HttpClient.get(url)
 export const args = () => Stdio.args()
 export const here = () => Path.resolve()
 export const scratch = () => FileSystem.makeTempDirectory()
-export const sha = (bytes: Uint8Array) => Crypto.digest("SHA-256", bytes)
+export const sha = (bytes: Uint8Array) => Digest.digest(Digest.sha256, bytes)
 
 const Files = layerNoop({ readFileString: (path) => `read ${path}` })
 

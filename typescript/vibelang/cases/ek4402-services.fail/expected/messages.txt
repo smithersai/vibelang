@@ -3,7 +3,8 @@ Provide it in main with NodeServices.layer from "@effect/platform-node", or BunS
 Use the ChildProcessSpawner service:   ChildProcessSpawner.string(ChildProcess.make(command, args))
 Use HttpClient:   HttpClient.get(url)
 Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".
-Use the Crypto service:   Crypto.randomBytes(size)
+Use Effect's crypto services:   SecureRandom.randomBytes(size)
+Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".
 Use the Path service:   Path.resolve()
 Use the FileSystem service:   FileSystem.makeTempDirectory()
 FileSystem.makeTempDirectory creates a directory in it; nothing returns its path alone.

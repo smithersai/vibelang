@@ -1,5 +1,5 @@
 /// <reference lib="esnext.disposable" />
-// Effect 4.0.6 exposes disposal protocols even when the source uses no using.
+// Effect 4.1.0 exposes disposal protocols even when the source uses no using.
 // The prelude of VibeLang's TypeScript 7 content mapper. Every file the mapper
 // projects starts with one import from this module:
 //
@@ -26,9 +26,9 @@ import type * as Runtime from "vibelang-runtime"
 // D4, D146: effect's root modules, every one in scope in a .vibe file.
 export {
   Arbitrary, Array, BigDecimal, BigInt, Boolean, Brand, ByteSize, Cache, Cause, Channel, ChannelSchema, Chunk,
-  Clock, Combiner, Config, ConfigProvider, Console, Context, Cron, Crypto, Data, DateTime, Deferred, Differ,
+  Clock, Combiner, Config, ConfigProvider, Console, Context, Cron, Data, DateTime, Deferred, Differ,
   Duration, Effect, Effectable, Equal, Equivalence, ErrorReporter, ExecutionPlan, Exit, Fiber, FiberHandle,
-  FiberMap, FiberSet, FileSystem, Filter, Formatter, Function, Graph, Hash, HashMap, HashRing, HashSet, HKT,
+  FiberMap, FiberSet, FileSystem, Filter, Formatter, Function, Glob, Graph, Hash, HashMap, HashRing, HashSet, HKT,
   Inspectable, Iterable, JsonPatch, JsonPointer, JsonSchema, Latch, Layer, LayerMap, LayerRef, Logger, LogLevel,
   ManagedRuntime, Match, Metric, MutableHashMap, MutableHashSet, MutableList, MutableRef, Newtype,
   NonEmptyIterable, Number, Optic, Option, Order, Ordering, PartitionedSemaphore, Path, Pipeable, PlatformError,
@@ -381,7 +381,7 @@ type Unresolved<T> = [T] extends [{ readonly "~vibelang-ts-mapper/unresolved": t
  */
 export type $PreludeLoaded =
   Unresolved<typeof EffectModule.gen> extends true
-    ? "vibelang-ts-mapper: the prelude cannot resolve effect from its own location; install effect 4.0.6 beside vibelang-ts-mapper"
+    ? "vibelang-ts-mapper: the prelude cannot resolve effect from its own location; install effect 4.1.0 beside vibelang-ts-mapper"
     : Unresolved<typeof Runtime.$service> extends true
       ? "vibelang-ts-mapper: the prelude cannot resolve vibelang-runtime from its own location; install vibelang-runtime beside vibelang-ts-mapper"
       : true
@@ -808,9 +808,6 @@ export declare function $dataGuard(value: $D152DateTime_DateTime & $D152DateTime
 export declare function $dataGuard(value: $D152DateTime_DateTime & $D152DateTimeModels, name: "isZoned", args: [], result: boolean): value is $D152DateTime_Zoned;
 export declare function $dataGuard<A, E>(value: $D152Exit_Exit<A, E> & $D152ExitModels, name: "isSuccess", args: [], result: boolean): value is $D152Exit_Success<A, E>;
 export declare function $dataGuard<A, E>(value: $D152Exit_Exit<A, E> & $D152ExitModels, name: "isFailure", args: [], result: boolean): value is $D152Exit_Failure<A, E>;
-export declare function $dataGuard<A, E>(value: $D152Exit_Exit<A, E> & $D152ExitModels, name: "hasFails", args: [], result: boolean): value is $D152Exit_Failure<A, E>;
-export declare function $dataGuard<A, E>(value: $D152Exit_Exit<A, E> & $D152ExitModels, name: "hasDies", args: [], result: boolean): value is $D152Exit_Failure<A, E>;
-export declare function $dataGuard<A, E>(value: $D152Exit_Exit<A, E> & $D152ExitModels, name: "hasInterrupts", args: [], result: boolean): value is $D152Exit_Failure<A, E>;
 export declare function $dataGuard<A>(value: $D152Option_Option<A> & $D152OptionModels, name: "isNone", args: [], result: boolean): value is $D152Option_None<A>;
 export declare function $dataGuard<A>(value: $D152Option_Option<A> & $D152OptionModels, name: "isSome", args: [], result: boolean): value is $D152Option_Some<A>;
 export declare function $dataGuard<A, B extends A>(value: $D152Option_Option<A> & $D152OptionModels, name: "exists", args: [refinement: $D152Option_Refinement<A, B>], result: boolean): value is $D152Option_Option<B>;
@@ -1007,7 +1004,7 @@ interface $D152Method_squash {
 }
 interface $D152Method_hasFails {
     "hasFails"<E>(this: $D152Cause_Cause<E>): boolean;
-    "hasFails"<A, E>(this: $D152Exit_Exit<A, E>): this is $D152Exit_Failure<A, E>;
+    "hasFails"<A, E>(this: $D152Exit_Exit<A, E>): boolean;
 }
 interface $D152Method_findFail {
     "findFail"<E>(this: $D152Cause_Cause<E>): $D152Cause_Result.Result<$D152Cause_Fail<E>, $D152Cause_Cause<never>>;
@@ -1022,7 +1019,7 @@ interface $D152Method_findErrorOption {
 }
 interface $D152Method_hasDies {
     "hasDies"<E>(this: $D152Cause_Cause<E>): boolean;
-    "hasDies"<A, E>(this: $D152Exit_Exit<A, E>): this is $D152Exit_Failure<A, E>;
+    "hasDies"<A, E>(this: $D152Exit_Exit<A, E>): boolean;
 }
 interface $D152Method_findDie {
     "findDie"<E>(this: $D152Cause_Cause<E>): $D152Cause_Result.Result<$D152Cause_Die, $D152Cause_Cause<E>>;
@@ -1033,7 +1030,7 @@ interface $D152Method_findDefect {
 }
 interface $D152Method_hasInterrupts {
     "hasInterrupts"<E>(this: $D152Cause_Cause<E>): boolean;
-    "hasInterrupts"<A, E>(this: $D152Exit_Exit<A, E>): this is $D152Exit_Failure<A, E>;
+    "hasInterrupts"<A, E>(this: $D152Exit_Exit<A, E>): boolean;
 }
 interface $D152Method_findInterrupt {
     "findInterrupt"<E>(this: $D152Cause_Cause<E>): $D152Cause_Result.Result<$D152Cause_Interrupt, $D152Cause_Cause<E>>;
@@ -1591,6 +1588,7 @@ interface $D152Method_formatIntl {
 }
 interface $D152Method_formatIso {
     "formatIso"(this: $D152DateTime_DateTime): string;
+    "formatIso"(this: $D152Duration_Duration): $D152Duration_Option.Option<string>;
 }
 interface $D152Method_formatIsoDate {
     "formatIsoDate"(this: $D152DateTime_DateTime): string;
@@ -1671,6 +1669,9 @@ interface $D152Method_await {
 }
 interface $D152Method_isFinite {
     "isFinite"(this: $D152Duration_Duration): boolean;
+}
+interface $D152Method_toMicros {
+    "toMicros"(this: $D152Duration_Input): number;
 }
 interface $D152Method_toMillis {
     "toMillis"(this: $D152Duration_Input): number;
@@ -1975,22 +1976,22 @@ interface $D152Method_sandbox {
 }
 interface $D152Method_ignore {
     "ignore"<Arg extends $D152Stream_Stream<any, any, any> | {
-    readonly log?: boolean | $D152Stream_Severity | undefined;
+    readonly log?: boolean | $D152Stream_Severity | "Unhandled" | undefined;
 } | undefined>(this: Arg, options?: {
-    readonly log?: boolean | $D152Stream_Severity | undefined;
+    readonly log?: boolean | $D152Stream_Severity | "Unhandled" | undefined;
 } | undefined): [
     Arg
 ] extends [
     $D152Stream_Stream<infer A, infer _E, infer R>
 ] ? $D152Stream_Stream<A, never, R> : <A, E, R>(self: $D152Stream_Stream<A, E, R>) => $D152Stream_Stream<A, never, R>;
     "ignore"<Arg extends $D152Effect_Effect<any, any, any> | {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 } | undefined = {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 }>(this: (Arg) & $D152EffectReceiver, options?: {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 } | undefined): [
     Arg
@@ -2000,22 +2001,22 @@ interface $D152Method_ignore {
 }
 interface $D152Method_ignoreCause {
     "ignoreCause"<Arg extends $D152Stream_Stream<any, any, any> | {
-    readonly log?: boolean | $D152Stream_Severity | undefined;
+    readonly log?: boolean | $D152Stream_Severity | "Unhandled" | undefined;
 } | undefined>(this: Arg, options?: {
-    readonly log?: boolean | $D152Stream_Severity | undefined;
+    readonly log?: boolean | $D152Stream_Severity | "Unhandled" | undefined;
 } | undefined): [
     Arg
 ] extends [
     $D152Stream_Stream<infer A, infer _E, infer R>
 ] ? $D152Stream_Stream<A, never, R> : <A, E, R>(self: $D152Stream_Stream<A, E, R>) => $D152Stream_Stream<A, never, R>;
     "ignoreCause"<Arg extends $D152Effect_Effect<any, any, any> | {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 } | undefined = {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 }>(this: (Arg) & $D152EffectReceiver, options?: {
-    readonly log?: boolean | $D152Effect_Severity | undefined;
+    readonly log?: boolean | $D152Effect_Severity | "Unhandled" | undefined;
     readonly message?: string | undefined;
 } | undefined): [
     Arg
@@ -3431,7 +3432,7 @@ declare module "effect/Deferred" {
 }
 
 declare module "effect/Duration" {
-  interface Duration extends $D152Method_isFinite, $D152Method_isZero, $D152Method_isNegative, $D152Method_isPositive, $D152Method_abs, $D152Method_negate, $D152Method_toMillis, $D152Method_toSeconds, $D152Method_toMinutes, $D152Method_toHours, $D152Method_toDays, $D152Method_toWeeks, $D152Method_toNanosUnsafe, $D152Method_toNanos, $D152Method_toHrTime, $D152Method_match, $D152Method_matchPair, $D152Method_between, $D152Method_min, $D152Method_max, $D152Method_clamp, $D152Method_divide, $D152Method_divideUnsafe, $D152Method_times, $D152Method_subtract, $D152Method_sum, $D152Method_isLessThan, $D152Method_isLessThanOrEqualTo, $D152Method_isGreaterThan, $D152Method_isGreaterThanOrEqualTo, $D152Method_equals, $D152Method_parts, $D152Method_format {}
+  interface Duration extends $D152Method_isFinite, $D152Method_isZero, $D152Method_isNegative, $D152Method_isPositive, $D152Method_abs, $D152Method_negate, $D152Method_toMicros, $D152Method_toMillis, $D152Method_toSeconds, $D152Method_toMinutes, $D152Method_toHours, $D152Method_toDays, $D152Method_toWeeks, $D152Method_toNanosUnsafe, $D152Method_toNanos, $D152Method_toHrTime, $D152Method_match, $D152Method_matchPair, $D152Method_between, $D152Method_min, $D152Method_max, $D152Method_clamp, $D152Method_divide, $D152Method_divideUnsafe, $D152Method_times, $D152Method_subtract, $D152Method_sum, $D152Method_isLessThan, $D152Method_isLessThanOrEqualTo, $D152Method_isGreaterThan, $D152Method_isGreaterThanOrEqualTo, $D152Method_equals, $D152Method_parts, $D152Method_format, $D152Method_formatIso {}
 }
 
 declare module "effect/Effect" {

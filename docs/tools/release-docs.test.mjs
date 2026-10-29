@@ -215,7 +215,8 @@ test("compatibility boxes and package install pins follow the runtime manifest",
 test("the 0.0.10 release owns the Effect 4.0.6 migration and upgrade instructions", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = "0.0.10"
-  const effect = JSON.parse(readFileSync(join(root, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
+  // 0.0.10 pinned effect 4.0.6; its section keeps that version after later pins move.
+  const effect = "4.0.6"
   const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
   const releases = notes.split(/^## /m).slice(1)
   const current = releases.find((release) => release.split("\n")[0] === version)

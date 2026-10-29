@@ -2,7 +2,7 @@
 
 **PROPOSED:** This is an explicit-frame reference runtime for the language contract in [independent-design.md](../../docs/research/independent-design.md). It uses public Effect APIs and keeps handler clauses and resumed computations in one Effect fiber.
 
-**VERIFIED:** Effect is pinned to exactly 4.0.6. Installation and tests run with Bun:
+**VERIFIED:** Effect is pinned to exactly 4.1.0. Installation and tests run with Bun:
 
 ```sh
 # VERIFIED: run from experiments/reference-machine/

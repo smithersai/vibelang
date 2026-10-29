@@ -1,4 +1,4 @@
-// Q9 prototype (disposable): one-shot shift/reset on an Effect 4.0.6 fiber by
+// Q9 prototype (disposable): one-shot shift/reset on an Effect 4.1.0 fiber by
 // popping frames off FiberImpl._stack up to a prompt frame and re-pushing them.
 // Uses internal property names; not a public API.
 import { Context, Effect, Exit } from "effect"

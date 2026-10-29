@@ -120,6 +120,6 @@ function formSchema() {
 
 Pass the adapter to a form library that accepts Standard Schema V1 from the UI integration's normal TypeScript module. The adapter exposes structured issues and keeps the original Schema operations; its decoding services must be `never`.
 
-For React Hook Form, pass `DispatchForm` to [`standardSchemaResolver`](https://github.com/react-hook-form/resolvers/tree/master/standard-schema) from `@hookform/resolvers/standard-schema`, which calls the Standard Schema validation interface. The separate `effectTsResolver` uses Effect 3's `ParseResult` API and does not support Effect 4.0.6.
+For React Hook Form, pass `DispatchForm` to [`standardSchemaResolver`](https://github.com/react-hook-form/resolvers/tree/master/standard-schema) from `@hookform/resolvers/standard-schema`, which calls the Standard Schema validation interface. The separate `effectTsResolver` uses Effect 3's `ParseResult` API and does not support Effect 4.1.0.
 
 [Upstream page](https://effect.website/docs/v4/schema/error-formatters)

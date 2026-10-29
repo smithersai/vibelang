@@ -1,6 +1,6 @@
 # Foldkit
 
-[Foldkit](https://github.com/foldkit/foldkit) is a UI framework for Effect in the Elm architecture: a Model schema, Messages, an `update` function, Commands for side effects, and a `view`. Write the app in VibeLang; a TypeScript entry file mounts it with Foldkit's runtime. These pages use `foldkit` 0.169.0, `effect` 4.0.6 and VibeLang 0.0.11.
+[Foldkit](https://github.com/foldkit/foldkit) is a UI framework for Effect in the Elm architecture: a Model schema, Messages, an `update` function, Commands for side effects, and a `view`. Write the app in VibeLang; a TypeScript entry file mounts it with Foldkit's runtime. These pages use `foldkit` 0.169.0, `effect` 4.1.0 and VibeLang 0.0.11.
 
 The complete app, a counter, a todo list and an HTTP command, is [`examples/foldkit-app`](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app). One Vitest suite runs against its VibeLang version and its Effect TypeScript original, so each pair below has the same tested behavior.
 
@@ -9,11 +9,11 @@ The complete app, a counter, a todo list and an HTTP command, is [`examples/fold
 ```sh
 mkdir my-app && cd my-app
 bun init -y
-bun add effect@4.0.6 @effect/platform-browser@4.0.6 foldkit@0.169.0 vibelang-runtime@0.0.11
+bun add effect@4.1.0 @effect/platform-browser@4.1.0 foldkit@0.169.0 vibelang-runtime@0.0.11
 bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vite@8.3.4 vitest@5.0.5 happy-dom@20.14.6
 ```
 
-`bun install` warns `incorrect peer dependency "effect@4.0.6"`: Foldkit 0.169.0 pins its `effect` and `@effect/platform-browser` peers to exactly 4.0.0. The example's tests and production build pass on 4.0.6.
+`bun install` warns `incorrect peer dependency "effect@4.1.0"`: Foldkit 0.169.0 pins its `effect` and `@effect/platform-browser` peers to exactly 4.0.0. The example's tests and production build pass on 4.1.0.
 
 ## Configure
 

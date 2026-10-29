@@ -69,7 +69,7 @@ test("framework recipes retain VibeLang checking and run Effects before renderin
 
 test("declaration consumers have an explicit stock TypeScript compatibility floor", () => {
   const text = read("docs/user/src/getting-started/004-installation.md")
-  for (const part of ["TypeScript 5.7 or later", "effect@4.0.6", "Uint8Array<ArrayBuffer>", "consumer requirement", "skipLibCheck"]) assert.ok(text.includes(part), part)
+  for (const part of ["TypeScript 5.7 or later", "effect@4.1.0", "Uint8Array<ArrayBuffer>", "consumer requirement", "skipLibCheck"]) assert.ok(text.includes(part), part)
 })
 
 test("every EK code the skill names is one the compiler reports", () => {

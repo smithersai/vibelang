@@ -7,7 +7,7 @@
 #   packages/ts-mapper/test/e2e.sh
 #
 # Steps:
-#   1. Install that typescript and effect 4.0.6 into test/.cache.
+#   1. Install that typescript and effect 4.1.0 into test/.cache.
 #   2. go test the projector and the protocol server, whose stock-compiler
 #      tests run that typescript and fail rather than skip without it, and
 #      check that the generated L1 forms table matches a fresh generation
@@ -32,7 +32,7 @@
 # Environment:
 #   TS7_VERSION  typescript version to test (default: devDependencies.typescript
 #                in package.json)
-#   EFFECT_DIR   an installed effect 4.0.6 to use instead of the cached one
+#   EFFECT_DIR   an installed effect 4.1.0 to use instead of the cached one
 #   VIBELANG_BINARY  a compiler from this checkout; skips the properties' Go build
 #   FC_*         property selection, run count, seed, replay path and artifact directory
 #   KEEP=1       keep the temporary project and print its path
@@ -45,11 +45,11 @@ ts7_version="${TS7_VERSION:-$(node -e 'process.stdout.write(require(process.argv
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "install typescript@$ts7_version and effect@4.0.6"
+step "install typescript@$ts7_version and effect@4.1.0"
 cache="$here/.cache/typescript-$ts7_version"
 if [ ! -x "$cache/node_modules/.bin/tsc" ] || [ ! -f "$cache/node_modules/effect/package.json" ]; then
   mkdir -p "$cache"
-  (cd "$cache" && printf '{"private":true}\n' > package.json && npm install --no-audit --no-fund --silent "typescript@$ts7_version" effect@4.0.6)
+  (cd "$cache" && printf '{"private":true}\n' > package.json && npm install --no-audit --no-fund --silent "typescript@$ts7_version" effect@4.1.0)
 fi
 tsc="$cache/node_modules/.bin/tsc"
 effect_dir="${EFFECT_DIR:-$cache/node_modules/effect}"
@@ -147,7 +147,7 @@ cp "$here/fixture/tsconfig.json" "$here/fixture/package.json" "$bare/"
 cp "$here/fixture/src/greet.vibe" "$bare/src/"
 cp -R "$package/package.json" "$package/prelude.d.ts" "$package/bin" "$bare/node_modules/vibelang-ts-mapper/"
 (cd "$bare" && "$tsc" -p . --pretty false --runExternalCode) > "$bare/tsc.txt" 2>&1 || true
-if ! grep -q '^src/greet.vibe(1,[0-9]*): error TS1360: .*the prelude cannot resolve effect from its own location; install effect 4.0.6 beside vibelang-ts-mapper' "$bare/tsc.txt"; then
+if ! grep -q '^src/greet.vibe(1,[0-9]*): error TS1360: .*the prelude cannot resolve effect from its own location; install effect 4.1.0 beside vibelang-ts-mapper' "$bare/tsc.txt"; then
   cat "$bare/tsc.txt"; echo "e2e: the prelude sentinel did not report a missing effect at line 1" >&2; exit 1
 fi
 echo "ok   TS1360 at greet.vibe line 1 names the fix"

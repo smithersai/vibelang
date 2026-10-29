@@ -1,4 +1,4 @@
-// Executable Effect 4.0.6 oracle for the VibeLang forms in main.vibe.
+// Executable Effect 4.1.0 oracle for the VibeLang forms in main.vibe.
 // Each source is rebuilt for every observation, including every retry.
 import { Cause, Effect, Exit, Queue, Stream } from "effect"
 

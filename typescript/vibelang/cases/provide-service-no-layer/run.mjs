@@ -1,6 +1,6 @@
 // What a provide block's statements see, and what one pass through a
 // one-service block costs in run-loop operations beyond
-// Effect.provideService, under Effect 4.0.6. A block that built a Layer paid
+// Effect.provideService, under Effect 4.1.0. A block that built a Layer paid
 // for a Scope, a MemoMap fork and the Layer's build on every pass.
 const { Effect } = await import("effect")
 const Scheduler = await import("effect/Scheduler")

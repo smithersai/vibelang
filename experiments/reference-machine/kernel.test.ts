@@ -290,7 +290,7 @@ describe("additional semantic probes", () => {
   })
 })
 
-describe("Effect 4.0.6 behavior probes (not language-continuation tests)", () => {
+describe("Effect 4.1.0 behavior probes (not language-continuation tests)", () => {
   test("Effect.gen drops JavaScript finally on typed failure", async () => {
     const events: string[] = []
     const p = Effect.gen(function*() {

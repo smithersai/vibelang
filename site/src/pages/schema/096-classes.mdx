@@ -44,7 +44,7 @@ function constructWithNew(reference: string) {
 Composite
 ```
 
-Construction takes decoded fields, so `pieces` is a number though decoding takes a string. `new Package(...)` and `Package.make(...)` apply defaults and type-side checks and throw on invalid input; use `makeEffect` for expected failures. In local Effect 4.0.6, `makeEffect` fails with a raw `SchemaIssue.Issue`. A class with no fields constructs without an argument.
+Construction takes decoded fields, so `pieces` is a number though decoding takes a string. `new Package(...)` and `Package.make(...)` apply defaults and type-side checks and throw on invalid input; use `makeEffect` for expected failures. In local Effect 4.1.0, `makeEffect` fails with a raw `SchemaIssue.Issue`. A class with no fields constructs without an argument.
 
 For a cross-field invariant, pass a checked `Schema.Struct` instead of a fields object; its checks apply during construction and codec use.
 

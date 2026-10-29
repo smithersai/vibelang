@@ -616,26 +616,26 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `console.table` | `try Console.table(rows)` |
 | `console.trace` | `try Console.trace(message)` |
 | `console.warn` | `try Console.warn(message)` |
-| `crypto` | `try (try Crypto).randomBytes(size)` |
-| `crypto.createCipheriv` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
-| `crypto.createDecipheriv` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
-| `crypto.createHash` | `try (try Crypto).digest("SHA-256", bytes)` |
-| `crypto.createHmac` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
-| `crypto.createSign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
-| `crypto.createVerify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
-| `crypto.generateKeyPair` | escape to TypeScript for now: Effect's Crypto has random values and digests, and VibeLang's experimental Crypto adds HMAC and signatures; neither has ciphers or key generation. |
-| `crypto.getRandomValues` | `try (try Crypto).randomBytes(size)` |
-| `crypto.hash` | `try (try Crypto).digest("SHA-256", bytes)` |
-| `crypto.randomBytes` | `try (try Crypto).randomBytes(size)` |
-| `crypto.randomInt` | `try (try Crypto).randomIntBetween(min, max)` |
-| `crypto.randomUUID` | `try (try Crypto).randomUUIDv4()` |
-| `crypto.sign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
-| `crypto.subtle` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
-| `crypto.subtle.digest` | `try (try Crypto).digest("SHA-256", bytes)` |
-| `crypto.subtle.sign` | `try (try Experimental.Crypto).sign("Ed25519", privateKey, data)` |
-| `crypto.subtle.verify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
-| `crypto.verify` | `try (try Experimental.Crypto).verify("Ed25519", publicKey, signature, data)` |
-| `crypto.webcrypto` | `try (try Experimental.Crypto).hmac("SHA-256", key, data)` |
+| `crypto` | `try (try SecureRandom).randomBytes(size)` |
+| `crypto.createCipheriv` | `try (try Aead).encrypt(key, plaintext, { nonce })` |
+| `crypto.createDecipheriv` | `try (try Aead).decrypt(key, ciphertext, { nonce })` |
+| `crypto.createHash` | `try (try Digest).digest(Digest.sha256, bytes)` |
+| `crypto.createHmac` | `try (try Mac).sign(key, data)` |
+| `crypto.createSign` | `try (try Signature).sign(privateKey, data)` |
+| `crypto.createVerify` | `try (try Signature).verify(publicKey, signature, data)` |
+| `crypto.generateKeyPair` | `try (try Signature).generateKeyPair(Signature.ed25519)` |
+| `crypto.getRandomValues` | `try (try SecureRandom).randomBytes(size)` |
+| `crypto.hash` | `try (try Digest).digest(Digest.sha256, bytes)` |
+| `crypto.randomBytes` | `try (try SecureRandom).randomBytes(size)` |
+| `crypto.randomInt` | `try (try SecureRandom).intBetween(min, max)` |
+| `crypto.randomUUID` | `try (try SecureRandom).uuidV4()` |
+| `crypto.sign` | `try (try Signature).sign(privateKey, data)` |
+| `crypto.subtle` | `try (try Mac).sign(key, data)` |
+| `crypto.subtle.digest` | `try (try Digest).digest(Digest.sha256, bytes)` |
+| `crypto.subtle.sign` | `try (try Signature).sign(privateKey, data)` |
+| `crypto.subtle.verify` | `try (try Signature).verify(publicKey, signature, data)` |
+| `crypto.verify` | `try (try Signature).verify(publicKey, signature, data)` |
+| `crypto.webcrypto` | `try (try Mac).sign(key, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
 | `document` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |

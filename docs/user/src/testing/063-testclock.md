@@ -4,7 +4,7 @@
 
 ## Configure the test runner
 
-The [starter](../getting-started/004-installation.md) includes Vitest 5.0.5, `@effect/vitest` 4.0.6, and the local `vibelang-vite` plugin. `bun run test` compiles and runs `src/**/*.test.vibe` directly, with no prior `dist/` build. Keep configuration in TypeScript:
+The [starter](../getting-started/004-installation.md) includes Vitest 5.0.5, `@effect/vitest` 4.1.0, and the local `vibelang-vite` plugin. `bun run test` compiles and runs `src/**/*.test.vibe` directly, with no prior `dist/` build. Keep configuration in TypeScript:
 
 ```ts
 // TypeScript (.ts)

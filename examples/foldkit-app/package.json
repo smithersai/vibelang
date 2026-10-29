@@ -9,8 +9,8 @@
     "test": "vibelang -p tsconfig.json --noEmit && vitest run && vite build"
   },
   "dependencies": {
-    "@effect/platform-browser": "4.0.6",
-    "effect": "4.0.6",
+    "@effect/platform-browser": "4.1.0",
+    "effect": "4.1.0",
     "foldkit": "0.169.0",
     "vibelang-runtime": "0.0.11"
   },

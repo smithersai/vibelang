@@ -19,7 +19,7 @@
 # Steps:
 #   1. Check free disk: stop below 3 GiB.
 #   2. Build the fork's tsc and vibelang-mapper once into out/bin.
-#   3. Assemble a mapper package scope under out/work, with effect 4.0.6
+#   3. Assemble a mapper package scope under out/work, with effect 4.1.0
 #      and a copy of packages/runtime built with the fork's tsc beside it.
 #   4. Find stock tsc: the typescript@$TS7_VERSION cache e2e.sh uses, else install it there.
 #   5. Run parity.ts with bun. Its runtime column (runtime.ts) compiles each
@@ -30,7 +30,7 @@
 #   TS7_VERSION          stock TypeScript version (default: devDependencies.typescript in
 #                        packages/ts-mapper/package.json, as e2e.sh)
 #   TS7_DIR              a directory whose node_modules/.bin/tsc is that version, instead of the cache
-#   EFFECT_NODE_MODULES  a node_modules that holds effect 4.0.6 (default experiments/node_modules)
+#   EFFECT_NODE_MODULES  a node_modules that holds effect 4.1.0 (default experiments/node_modules)
 #   PARITY_REVISION      revision label for the report (default current jj revision)
 set -euo pipefail
 
@@ -70,7 +70,7 @@ fi
 [ -f "$effect_modules/effect/package.json" ] || { echo "parity: no effect in $effect_modules; set EFFECT_NODE_MODULES" >&2; exit 2; }
 effect_real="$(cd "$effect_modules/effect" && pwd -P)"
 effect_version="$(bun -e 'console.log(require(process.argv[1]).version)' "$effect_real/package.json")"
-[ "$effect_version" = 4.0.6 ] || { echo "parity: effect is $effect_version, expected 4.0.6" >&2; exit 2; }
+[ "$effect_version" = 4.1.0 ] || { echo "parity: effect is $effect_version, expected 4.1.0" >&2; exit 2; }
 
 # A case without package.json inherits its enclosing package scope. In
 # NodeNext, a self-reference to vibelang-ts-mapper/prelude wins over the case's

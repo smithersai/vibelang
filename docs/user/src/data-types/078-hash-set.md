@@ -43,7 +43,7 @@ new Set([a, b]).size // 2
 true 1 2
 ```
 
-Plain objects compare structurally in Effect 4.0.6, so separately allocated records can count as one member. Every compared field matters: different request IDs make two records distinct. Custom equality uses `Equal.Equal` with a consistent `Hash.Hash`; keep members immutable after insertion so their hashes stay valid.
+Plain objects compare structurally in Effect 4.1.0, so separately allocated records can count as one member. Every compared field matters: different request IDs make two records distinct. Custom equality uses `Equal.Equal` with a consistent `Hash.Hash`; keep members immutable after insertion so their hashes stay valid.
 
 ## Constructing and changing immutable sets
 

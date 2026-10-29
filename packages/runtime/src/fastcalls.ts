@@ -30,18 +30,18 @@ const ConfigTypeId = "~effect/Config"
  * stands, `(($t = c), $isRun($t) ? (yield* $t) : $t)`. True for an Effect at
  * run time unless it is a Config, a Context key, or an Error (TaggedError
  * instances and cross-realm YieldableErrors included): the subtypes D24
- * keeps as data, told apart by keys that effect 4.0.6 puts on them, because
+ * keeps as data, told apart by keys that effect 4.1.0 puts on them, because
  * `Effect.isEffect` is true for all
  * of them. An Exit runs: `Exit.succeed(1)` and `Effect.succeed(1)` are the
  * same object at run time, so no check can keep D24's answer for it. A
  * function runs only when it is an Effect and not a Context key, which in
- * effect 4.0.6 leaves only a parameterless Effect lambda (D56). Option,
+ * effect 4.1.0 leaves only a parameterless Effect lambda (D56). Option,
  * Result, Stream, Fiber, Layer, and Schema values are not Effects.
  */
 export const $isRun = (value: unknown): boolean => {
   if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
   const v = value as { [identifier]?: unknown; sql?: unknown }
-  // Effect 4.0.6 uses a string key, including for errors from another realm.
+  // Effect 4.1.0 uses a string key, including for errors from another realm.
   // D24 SQL statements carry their query as data, including structural
   // adapters without effect/sql's nominal Statement marker.
   return EffectTypeId in v && typeof v.sql !== "string" && !("~effect/sql/Statement" in v) && !(ConfigTypeId in v) && !(ServiceTypeId in v) &&

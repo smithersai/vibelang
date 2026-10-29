@@ -9,12 +9,12 @@
     "test": "vibelang -p tsconfig.json --noEmit && vitest run && vite build"
   },
   "dependencies": {
-    "effect": "4.0.6",
+    "effect": "4.1.0",
     "vibelang-runtime": "0.0.11",
     "svelte": "5.57.2"
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.6",
+    "@effect/vitest": "4.1.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@testing-library/svelte": "5.4.2",
     "vibelang": "0.0.11",

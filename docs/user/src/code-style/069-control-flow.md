@@ -128,7 +128,7 @@ iteration 1
 iteration 2
 ```
 
-In Effect 4.0.6, `whileLoop` takes one options object and returns an Effect with success type `void`. `body` lazily supplies an Effect; `step` updates state synchronously after each successful iteration. It has no initial-state argument or result-collection option; collect results in local state and an array.
+In Effect 4.1.0, `whileLoop` takes one options object and returns an Effect with success type `void`. `body` lazily supplies an Effect; `step` updates state synchronously after each successful iteration. It has no initial-state argument or result-collection option; collect results in local state and an array.
 
 ## Traversing collections and discarding values
 

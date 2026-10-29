@@ -29,9 +29,11 @@ export type ExperimentalNodeServices =
 
 /**
  * `@effect/platform-node`'s `NodeServices.layer` plus the experimental
- * services. `FileSystem` and `Crypto` are built on the Effect service of the
- * same name in that bundle, so Effect's own users of a service and the
- * experimental one share one implementation.
+ * services. `FileSystem` is built on Effect's `FileSystem` in that bundle,
+ * so Effect's own users of it and the experimental one share one
+ * implementation; `Crypto` is built on WebCrypto. Like Effect 4.1's bundle,
+ * it provides none of Effect's crypto services: `ExperimentalNodeCrypto.layer`
+ * provides them.
  *
  * @since 0.0.11
  */

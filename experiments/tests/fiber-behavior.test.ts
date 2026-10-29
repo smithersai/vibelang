@@ -1,4 +1,4 @@
-// G2 (partial): which Effect 4.0.6 combinators run their argument on the
+// G2 (partial): which Effect 4.1.0 combinators run their argument on the
 // performing fiber? Each probe performs a control operation inside the
 // combinator, under a handler outside it. "same" means the handler was reached
 // (capture passed through the combinator); "other" means HandlerNotOnThisFiber.

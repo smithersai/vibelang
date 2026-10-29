@@ -27,7 +27,7 @@ declare var document: { title: string }`
 
 const (
 	provideNodeServices = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
-	provideCrypto       = `Provide it in main with NodeServices.layer from "@effect/platform-node", BunServices.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".`
+	provideCrypto       = `Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".`
 	provideExperimental = `Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".`
 	noServiceYet        = "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now."
 	allowEK4403         = `To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.`
@@ -118,7 +118,7 @@ export const run = () => mkdtemp("build-")`, []string{
 		}},
 		{"crypto digest", `export const run = (bytes: Uint8Array) => crypto.subtle.digest("SHA-256", bytes)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",
-			`Use the Crypto service:   Crypto.digest("SHA-256", bytes)`, provideCrypto,
+			`Use Effect's crypto services:   Digest.digest(Digest.sha256, bytes)`, provideCrypto,
 		}},
 		{"timers", `export const run = (f: () => void) => setTimeout(f, 10)`, []string{
 			"setTimeout is platform code, which VibeLang code does not use directly.",
@@ -173,18 +173,16 @@ export const run = () => constants.O_NONBLOCK`, []string{
 			"constants from node:fs is platform code, which a .vibe file does not import as a value.",
 			`Use the FileSystem service:   FileSystem.open(path, { flag: "wx" })`, provideNodeServices,
 		}},
-		{"experimental crypto", `import { createHmac } from "node:crypto"
+		{"hmac", `import { createHmac } from "node:crypto"
 export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			"createHmac from node:crypto is platform code, which a .vibe file does not import as a value.",
-			`Use the experimental Crypto service:   Experimental.Crypto.hmac("SHA-256", key, data)`,
-			`Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun", or ExperimentalBrowserCrypto.layer from "vibelang-runtime/experimental/platform-browser".`,
-			"Experimental.Crypto.hmac takes the key as Redacted bytes and all the data in one call.",
+			"Use Effect's crypto services:   Mac.sign(key, data)", provideCrypto,
+			"Mac.key(Mac.hmacSha256, bytes) makes the key, and Mac.sign takes all the data in one call.",
 		}},
-		{"experimental signatures", `export const run = (key: CryptoKey, data: Uint8Array) => crypto.subtle.sign("Ed25519", key, data)`, []string{
+		{"signatures", `export const run = (key: CryptoKey, data: Uint8Array) => crypto.subtle.sign("Ed25519", key, data)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",
-			`Use the experimental Crypto service:   Experimental.Crypto.sign("Ed25519", privateKey, data)`,
-			`Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun", or ExperimentalBrowserCrypto.layer from "vibelang-runtime/experimental/platform-browser".`,
-			"It takes keys as bytes, a secret in a Redacted: raw for HMAC, PKCS#8 and SPKI DER for ECDSA P-256 and Ed25519; it has no ciphers.",
+			"Use Effect's crypto services:   Signature.sign(privateKey, data)", provideCrypto,
+			"Signature.privateKey(Signature.ed25519, bytes) and Signature.publicKey make the keys from their bytes.",
 		}},
 		{"gap of a property", `export const run = () => process.umask()`, []string{
 			"process.umask is platform code, which VibeLang code does not use directly.",
@@ -218,8 +216,8 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"crypto", `export const run = () => crypto.randomUUID()`, []string{
 			"crypto.randomUUID() reads the clock or randomness, which a test cannot control.",
-			"Use Crypto.randomUUIDv4().", provideCrypto,
-			`In a test, provide TestCrypto.layer(seed) from "effect/testing"; a seeded Random does not reach Crypto.`, allowEK4403,
+			"Use SecureRandom.uuidV4().", provideCrypto,
+			"In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.", allowEK4403,
 		}},
 		{"pure web helpers", `export const run = (text: string, url: string) => [
   new TextEncoder().encode(text), new TextDecoder().decode(new Uint8Array()), new URL(url).host, new URLSearchParams(text).size,

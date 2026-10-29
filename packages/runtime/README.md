@@ -9,12 +9,12 @@ Effect 4's fibers, scopes, and services.
 ## Install
 
 ```sh
-npm install vibelang-runtime effect@4.0.6
+npm install vibelang-runtime effect@4.1.0
 ```
 
 JavaScript compiled by `vibelang` imports `effect` and `vibelang-runtime`, so an
 application lists both as dependencies; `create-vibelang` apps already do. The
-runtime requires **effect@4.0.6 exactly**: the kernel accesses that version's
+runtime requires **effect@4.1.0 exactly**: the kernel accesses that version's
 fiber continuation stack. Install one copy of `effect`; with two, a Scope can
 miss fibers it must stop.
 
@@ -83,7 +83,7 @@ At module load, `version.js` statically imports the public `effect/package.json`
 export with the JSON import attribute and checks its version. This works in Node
 and Bun, and bundlers inline the same metadata without a Node module loader or
 file-system access. A mismatch throws an error naming the runtime version, the
-installed and required Effect versions, and the command `npm install effect@4.0.6`.
+installed and required Effect versions, and the command `npm install effect@4.1.0`.
 Package metadata keeps module side effects, so browser tree shaking can't drop
 the guard when a caller imports only a helper. The mismatch tests cover a
 different patch version and Effect 3.
@@ -222,20 +222,22 @@ acceptance case `stack-depth` uses them to check that loops run in constant stac
 platform API (D313), one module per service, each also a subpath:
 `vibelang-runtime/experimental/FileSystem` (Effect's `FileSystem` plus
 `access` with `executable`, `open` with `nonBlocking` and `File.chmod`),
-`vibelang-runtime/experimental/Crypto` (Effect's `Crypto` plus `hmac`, `sign`
-and `verify`), `vibelang-runtime/experimental/Process` (the process id,
+`vibelang-runtime/experimental/Crypto` (the members of Effect 4.0's `Crypto`,
+which Effect 4.1 removed, plus `hmac`, `sign` and `verify`), `vibelang-runtime/experimental/Process` (the process id,
 platform, host name and other facts, `kill` and `isRunning`) and
 `vibelang-runtime/experimental/Locks` (Web Locks: `hold`, `tryHold` and
-`query`). Each service has its own key; `FileSystem` and `Crypto` are
-supersets of Effect's interfaces. The layers are in
+`query`). Each service has its own key; `FileSystem` is a superset of
+Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
 `ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`), `-bun`
 (`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`) and `-browser`
 (`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
-of the same name from one implementation. `ExperimentalNodeServices` and `ExperimentalBunServices`
+of the same name from one implementation; a `Crypto` layer provides the
+experimental `Crypto` and the platform's Effect crypto services, such as
+`SecureRandom` and `Digest`. `ExperimentalNodeServices` and `ExperimentalBunServices`
 are Effect's bundles plus `FileSystem`, `Crypto` and `Process`;
-`ExperimentalBrowserServices` provides `Crypto` and `Locks`; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
+`ExperimentalBrowserServices` provides `Crypto`, Effect's crypto services and `Locks`; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
 within one process only, is in no bundle. Install the matching
 `@effect/platform-*` package, an optional peer dependency. The
 platform-neutral modules import only `effect`, and the service keys are pure,
@@ -291,7 +293,7 @@ would be unsound because its side effects may already have run. The tests run
 100,000-deep recursion on Bun and Node, including Node bodies with 0, 80, and
 200 live locals.
 
-The run check also recognizes cross-realm YieldableErrors, whose Effect 4.0.6
+The run check also recognizes cross-realm YieldableErrors, whose Effect 4.1.0
 string key `"~effect/Effect/identifier"` is `"YieldableError"`, so they stay
 data even when `instanceof Error` is false.
 

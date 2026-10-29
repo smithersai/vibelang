@@ -115,7 +115,7 @@ export function callback(register: (...args: Array<any>) => unknown, ...args: In
     resume.fail = (error: unknown) => resumeEffect(Effect.fail(error))
     resume.exit = (exit: Exit.Exit<unknown, unknown>) => resumeEffect(exit)
     const cleanup = call(register, [...args, resume, signal])
-    // D148/S19-30: Effect 4.0.6 internal/effect.ts:1200-1245 aborts first,
+    // D148/S19-30: Effect 4.1.0 internal/effect.ts:1200-1245 aborts first,
     // then runs this finalizer uninterruptibly only on interruption. Pass an
     // Effect through (1250-1256); defer a function so synchronous cleanup keeps
     // its defect semantics and PromiseLike cleanup completes before interrupt.

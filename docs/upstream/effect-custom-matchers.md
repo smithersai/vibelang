@@ -1,11 +1,11 @@
 # Ship TC39 custom matchers for `Option`, `Exit`, `Result` and tagged errors
 
 **Status:** drafted, not filed. **Target:** Effect data types.
-**Version examined:** `effect@4.0.6`. **Kind:** API proposal.
+**Version examined:** `effect@4.1.0`. **Kind:** API proposal.
 
 ## Current behavior
 
-The TC39 pattern-matching proposal ([pinned snapshot](../design/vips/tc39-pattern-matching/README.md)) resolves every class or extractor pattern through the matcher's `Symbol.customMatcher` method. No Effect export has one in `effect@4.0.6`: `grep -rn customMatcher node_modules/effect/src` finds nothing. `Option`, `Exit` and `Result` values are plain objects built from shared prototypes (`SomeProto`, `NoneProto` in `internal/option.ts`), and their only tests are the guards `Option.isSome`, `Exit.isSuccess` and `Result.isSuccess`. There is no `Option.Some` value to name in a pattern.
+The TC39 pattern-matching proposal ([pinned snapshot](../design/vips/tc39-pattern-matching/README.md)) resolves every class or extractor pattern through the matcher's `Symbol.customMatcher` method. No Effect export has one in `effect@4.1.0`: `grep -rn customMatcher node_modules/effect/src` finds nothing. `Option`, `Exit` and `Result` values are plain objects built from shared prototypes (`SomeProto`, `NoneProto` in `internal/option.ts`), and their only tests are the guards `Option.isSome`, `Exit.isSuccess` and `Result.isSuccess`. There is no `Option.Some` value to name in a pattern.
 
 ```ts
 // Under the proposal, with no matcher on Effect's side:

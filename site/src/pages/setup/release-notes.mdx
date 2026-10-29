@@ -13,9 +13,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
-0.0.11. Keep exactly `effect@4.0.6`, matching `@effect/platform-*` and
-`@effect/vitest` when used, and the `@effect/platform-node-shared` override
-at 4.0.6. Effect's failure rules from 0.0.10 still apply.
+0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang
+now supports, with matching `@effect/platform-*` and `@effect/vitest` when
+used, and the `@effect/platform-node-shared` override at 4.1.0. Effect's
+failure rules from 0.0.10 still apply.
 
 ### Upgrade from 0.0.10
 
@@ -27,9 +28,10 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.0 is now the minimum supported version, pinned exactly: install `effect@4.1.0` and `@effect/*@4.1.0`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
 | `import { Path } from "effect"`; `Path.Path.join("a", "b")` | Every unambiguous Effect module is global; write `Path.join("a", "b")`. Existing imports still work. `--fix` removes redundant imports and shortens the module's same-named export. |
 | The type `Option.Option<number>` | Write `Option<number>`; the long form remains valid. A module's own exports still win over its same-named export. |
-| A DOM type named `Cache`, `Console`, `Crypto`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | The bare name now means Effect's same-named type. Export an alias such as `export type DomWorker = Worker` from a `.ts` file and import that type. To use the DOM constructor, put `globalThis.Worker` in a hatch or named TypeScript module. |
+| A DOM type named `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | The bare name now means Effect's same-named type. Export an alias such as `export type DomWorker = Worker` from a `.ts` file and import that type. To use the DOM constructor, put `globalThis.Worker` in a hatch or named TypeScript module. |
 | `console.log("hello")`, or holding `const logger = console` | The call was already EK4402; holding the value is newly rejected. Use `Console.log("hello")`; the map lists the Effect service for each platform global. Node/web I/O globals are out of scope outside TypeScript escapes. |
 | A value import such as `import { join } from "node:path"` | EK4402, even before a call. Use `Path.join`; for an uncovered API, import it in a named `module` block or a `.ts` file and call through a hatch. A type-only import remains allowed. |
 | An entry that manually provides `NodeServices.layer` around `FileSystem.FileSystem.readFileString(path)` | It can start with `import "vibelang/platform/node"` and call `FileSystem.readFileString(path)`; the entry provides the required platform bundle. This spelling is provisional. Existing explicit providers keep working; no import is required for a main with no platform needs. |
@@ -90,8 +92,8 @@ primitive-base declaration, effectful method under a plain annotation and
 With npm:
 
 ```sh
-npm install --save-exact vibelang-runtime@0.0.11 effect@4.0.6 @effect/platform-node@4.0.6
-npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.0.6
+npm install --save-exact vibelang-runtime@0.0.11 effect@4.1.0 @effect/platform-node@4.1.0
+npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.0
 npm run build
 npm test
 ```
@@ -99,16 +101,16 @@ npm test
 With Bun:
 
 ```sh
-bun add --exact vibelang-runtime@0.0.11 effect@4.0.6 @effect/platform-node@4.0.6
-bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.0.6
+bun add --exact vibelang-runtime@0.0.11 effect@4.1.0 @effect/platform-node@4.1.0
+bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.0
 bun run build
 bun run test
 ```
 
-Keep the existing override in `package.json`:
+Move the existing override in `package.json` to 4.1.0:
 
 ```json
-{ "overrides": { "@effect/platform-node-shared": "4.0.6" } }
+{ "overrides": { "@effect/platform-node-shared": "4.1.0" } }
 ```
 
 Projects using another bundler update `vibelang-unplugin` to 0.0.11
@@ -973,7 +975,8 @@ listed with an upgrade step.
     `open(path, { nonBlocking })` and `File.chmod` to Effect's `FileSystem`.
     `lstat` is Effect's own since 4.0.6.
   - `Experimental.Crypto` adds `hmac`, `sign` and `verify` (ECDSA P-256 and
-    Ed25519) to Effect's `Crypto`, with secret keys as `Redacted<Uint8Array>`.
+    Ed25519), with secret keys as `Redacted<Uint8Array>`, beside the members
+    of Effect 4.0's `Crypto`, which Effect 4.1 replaced with `effect/crypto`.
   - `Experimental.Process` reads the process id, platform, architecture,
     executable, versions, host name, available parallelism, time origin and
     memory use, and signals processes with `kill` and `isRunning`. The home
@@ -983,25 +986,25 @@ listed with an upgrade step.
     Node.js's `ExperimentalNodeLocks.layer` locks only within one process; Bun has no
     layer.
 - The experimental `FileSystem` and `Crypto` keys are class services, as
-  Effect declares them. Their implementations, `Experimental.FileSystem.Service`
-  and `Experimental.Crypto.Service`, are supersets of Effect's interfaces, but
-  the services are not Effect's: a layer of Effect's `FileSystem` or `Crypto`
-  does not provide them.
+  Effect declares them. `Experimental.FileSystem.Service` is a superset of
+  Effect's interface, but the service is not Effect's: a layer of Effect's
+  `FileSystem` does not provide it.
 - `vibelang-runtime/experimental/platform-node`, `-bun` and `-browser` hold
   the layers. `ExperimentalNodeServices.layer` and `ExperimentalBunServices.layer` there are the
   platform bundles plus `FileSystem`, `Crypto` and `Process`, and
-  `ExperimentalBrowserServices.layer` provides `Crypto` and `Locks`. A layer of a
-  service that extends Effect's provides the experimental service and
-  Effect's from one implementation.
+  `ExperimentalBrowserServices.layer` provides `Crypto`, Effect's crypto
+  services and `Locks`. A layer of a service that extends Effect's provides
+  the experimental service and Effect's from one implementation, and a
+  `Crypto` layer provides the platform's Effect crypto services too.
 - `vibelang-runtime` lists `@effect/platform-node`, `@effect/platform-bun` and
-  `@effect/platform-browser` 4.0.6 as optional peer dependencies.
+  `@effect/platform-browser` 4.1.0 as optional peer dependencies.
 - EK4402 names the experimental service instead of a hatch, with no import:
-  `Experimental.FileSystem` for `X_OK` and `O_NONBLOCK`, `Experimental.Crypto`
-  for HMAC and signatures, `Experimental.Process` for `os.hostname()`,
+  `Experimental.FileSystem` for `X_OK` and `O_NONBLOCK`, `Experimental.Process` for `os.hostname()`,
   `process.pid`, `process.kill` and the other calls it replaces, and
   `Experimental.Locks` for `navigator.locks`. It names Effect's own
-  `FileSystem.lstat` for `lstat` and `UserDirectories.home()` for
-  `os.homedir()`.
+  `FileSystem.lstat` for `lstat`, `UserDirectories.home()` for
+  `os.homedir()`, and `effect/crypto`'s `Mac`, `Signature`, `Aead` and
+  `Cipher` for HMAC, signatures and ciphers.
 
 ### Prelude
 
@@ -1027,7 +1030,7 @@ listed with an upgrade step.
   compiles. The same holds after `import { Prompt } from "effect/ai"`, and
   for the experimental services: `Experimental.Process.hostname()`
   calls the `Process` service with no import. In a
-  type, the DOM's `Cache`, `Console`, `Crypto`, `FileSystem`, `Scheduler`,
+  type, the DOM's `Cache`, `Console`, `FileSystem`, `Scheduler`,
   `Transferable` and `Worker` lose their bare names; alias one in a `.ts`
   file to use it.
 - An error on a name these rules settle says which meaning the name has and
@@ -1062,7 +1065,7 @@ listed with an upgrade step.
   | `process.env.NAME` | `Config.String("NAME")()` |
   | `process.argv`, `process.cwd()` | `Stdio.args()`, `Path.resolve()` |
   | `process.pid`, `os.hostname()`, `fs.lstat` | VibeLang's experimental services, such as `Experimental.Process.pid()` |
-  | `console.log`, `setTimeout`, `crypto.randomUUID()` | `Console.log`, `sleep`, `Crypto.randomUUIDv4()` |
+  | `console.log`, `setTimeout`, `crypto.randomUUID()` | `Console.log`, `sleep`, `SecureRandom.uuidV4()` |
   | `Buffer.from(text)` | `new TextEncoder().encode(text)`, or `Base64` and `Hex` |
   | a Node.js value an Effect API takes, such as `createServer` | a `module` block that imports it: `module node { export { createServer } from "node:http" }`, then `import { createServer } from node` |
   | a Node.js API nothing covers yet | the same `module` block or a `.ts` file, called through a hatch |

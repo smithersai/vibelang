@@ -4,8 +4,9 @@ In a test, TestClock sets it.
 Use DateTime.nowAsDate() for a Date, or DateTime.now() for a DateTime.Utc.
 Use Random.next(), a number from 0 up to 1.
 In a test, Random.withSeed(() => program(), seed) fixes it.
-Use Crypto.randomUUIDv4().
-In a test, provide TestCrypto.layer(seed) from "effect/testing"; a seeded Random does not reach Crypto.
+Use SecureRandom.uuidV4().
+Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".
+In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.
 Use Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds.
 Use String(DateTime.nowAsDate()), since Date() returns a string.
 To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.

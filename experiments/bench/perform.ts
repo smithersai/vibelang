@@ -1,4 +1,4 @@
-// Cost of operations on effect@4.0.6. Run: bun bench/perform.ts
+// Cost of operations on effect@4.1.0. Run: bun bench/perform.ts
 // Prints nanoseconds per operation; numbers are indicative, not a benchmark suite.
 import { Context, Effect } from "effect"
 import { type Continuation, handle, operation, provideInPlace, resume } from "../../packages/runtime/src/kernel/kernel.ts"

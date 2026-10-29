@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import * as EffectCrypto from "effect/Crypto"
+import * as Digest from "effect/crypto/Digest"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
@@ -107,17 +108,36 @@ for (const [name, layer] of layers) {
   })
 }
 
-test("ExperimentalNodeCrypto: Effect's key and the experimental key share Effect's Node implementation", async () => {
-  const [effect, experimental] = await Effect.runPromise(Effect.provide(
-    Effect.all([Effect.service(EffectCrypto.Crypto), Effect.service(Crypto.Crypto)]),
+test("ExperimentalNodeCrypto: provides the experimental Crypto and Node's Effect crypto services", async () => {
+  const [random, digest, experimental] = await Effect.runPromise(Effect.provide(
+    Effect.all([Effect.service(SecureRandom.SecureRandom), Effect.service(Digest.Digest), Effect.service(Crypto.Crypto)]),
     ExperimentalNodeCrypto.layer
   ))
-  expect(experimental.digest).toBe(effect.digest)
-  expect(experimental.randomBytes).toBe(effect.randomBytes)
-  expect(toHex(await Effect.runPromise(experimental.digest("SHA-256", utf8("abc"))))).toBe(
-    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-  )
+  const abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  expect(toHex(await Effect.runPromise(experimental.digest("SHA-256", utf8("abc"))))).toBe(abc)
+  expect(toHex(await Effect.runPromise(digest.digest(Digest.sha256, utf8("abc"))))).toBe(abc)
+  expect((await Effect.runPromise(random.randomBytes(4))).length).toBe(4)
   expect((await Effect.runPromise(experimental.randomUUIDv4())).length).toBe(36)
+})
+
+test("the members Effect 4.0's Crypto had keep their results", async () => {
+  let next = 0
+  const counter = (size: number) => Uint8Array.from({ length: size }, () => next++ % 256)
+  const crypto = Crypto.make({ randomBytes: counter, digest: () => Effect.succeed(new Uint8Array()) })
+  expect((await Effect.runPromise(crypto.randomBytes(3)))).toEqual(new Uint8Array([0, 1, 2]))
+  const bad = await Effect.runPromise(Effect.flip(crypto.randomBytes(-1)))
+  expect(bad.reason._tag).toBe("BadArgument")
+  expect(bad.message).toBe("Crypto.randomBytes: size must be a non-negative safe integer")
+  expect(await Effect.runPromise(crypto.randomUUIDv4())).toBe("03040506-0708-490a-8b0c-0d0e0f101112")
+  expect((await Effect.runPromise(crypto.randomUUIDv4({ format: "bytes" }))).length).toBe(16)
+  expect((await Effect.runPromise(crypto.randomUUIDv7({ format: "bytes" }))).length).toBe(16)
+  expect((await Effect.runPromise(crypto.randomULID)).length).toBe(26)
+  const n = await Effect.runPromise(crypto.randomIntBetween(1, 6))
+  expect(n >= 1 && n <= 6).toBe(true)
+  const x = await Effect.runPromise(crypto.random)
+  expect(x >= 0 && x < 1).toBe(true)
+  expect(Number.isSafeInteger(crypto.nextIntUnsafe())).toBe(true)
+  expect((await Effect.runPromise(crypto.randomShuffle([1, 2, 3]))).sort()).toEqual([1, 2, 3])
 })
 
 test("a secret key stays redacted when printed", () => {
@@ -131,7 +151,7 @@ test("without WebCrypto, hmac, sign and verify fail with Unknown", async () => {
   Object.defineProperty(globalThis, "crypto", { value: undefined, configurable: true, writable: true })
   let crypto: Crypto.Service
   try {
-    crypto = Crypto.make(EffectCrypto.make({ randomBytes: (size) => new Uint8Array(size), digest: () => Effect.succeed(new Uint8Array()) }))
+    crypto = Crypto.make({ randomBytes: (size) => new Uint8Array(size), digest: () => Effect.succeed(new Uint8Array()) })
   } finally {
     Object.defineProperty(globalThis, "crypto", descriptor)
   }
@@ -149,19 +169,15 @@ test("without WebCrypto, hmac, sign and verify fail with Unknown", async () => {
 
 test("a WebCrypto operation that rejects fails with Unknown and keeps its cause", async () => {
   const layer = Crypto.layerTest()
-  const error = await failure(layer, (crypto) => crypto.digest("SHA-3" as EffectCrypto.DigestAlgorithm, utf8("data")))
+  const error = await failure(layer, (crypto) => crypto.digest("SHA-3" as Crypto.DigestAlgorithm, utf8("data")))
   expect(error.reason._tag).toBe("Unknown")
   expect(error.message).toBe("Unknown: Crypto.digest: could not digest")
   expect(error.reason.cause).toBeDefined()
 })
 
-test("layerTest: zero random bytes, real digests, overrides, and both keys", async () => {
+test("layerTest: zero random bytes, real digests and overrides", async () => {
   const layer = Crypto.layerTest({ hmac: () => Effect.succeed(utf8("fixed")) })
-  const [effect, experimental] = await Effect.runPromise(Effect.provide(
-    Effect.all([Effect.service(EffectCrypto.Crypto), Effect.service(Crypto.Crypto)]),
-    layer
-  ))
-  expect(effect).toBe(experimental)
+  const experimental = await Effect.runPromise(Effect.provide(Effect.service(Crypto.Crypto), layer))
   expect(await Effect.runPromise(experimental.randomUUIDv4())).toBe("00000000-0000-4000-8000-000000000000")
   expect(toHex(await Effect.runPromise(experimental.digest("SHA-256", utf8("abc"))))).toBe(
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"

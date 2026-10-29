@@ -41,17 +41,17 @@ effect function attemptReservation(item: string, available: boolean) {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
-// run: provide NodeServices.layer { try Console.log((try token()).length) }
-import * as NodeServices from "@effect/platform-node/NodeServices"
+// run: provide NodeCrypto.layer { try Console.log((try token()).length) }
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 
 effect function token() {
-  const crypto = try Crypto
-  return try crypto.randomBytes(16)
+  const random = try SecureRandom
+  return try random.randomBytes(16)
 }
 // Output: 16
 ```
 
-Platform work goes through Effect's services, not through a wrapper of your own. Read the `Crypto` service with `const crypto = try Crypto`, then run `crypto.randomBytes(16)` with `try` instead of calling `crypto.getRandomValues`. Provide the platform layer explicitly at the application boundary, here `NodeServices.layer`. For each Node.js or web call, EK4402 names the service and its layer; [Platform globals](../platform/platform-globals.md) lists them all.
+Platform work goes through Effect's services, not through a wrapper of your own. Read the `SecureRandom` service with `const random = try SecureRandom`, then run `random.randomBytes(16)` with `try` instead of calling `crypto.getRandomValues`. Provide the platform layer explicitly at the application boundary, here `NodeCrypto.layer`. For each Node.js or web call, EK4402 names the service and its layer; [Platform globals](../platform/platform-globals.md) lists them all.
 
 ```ts
 // platform-fs.ts
@@ -131,7 +131,7 @@ effect function sign(secret: string, text: string) {
 // Output: 32
 ```
 
-Effect's `Crypto` has random values and digests but no keys or signatures, so HMAC signing calls the platform from a `.ts` module, and `tryPromise` wraps its Promise. A `.vibe` file reaches the platform only through Effect's services, inside a `tryPromise` callback too.
+This HMAC signing calls the platform from a `.ts` module to show `tryPromise` wrapping its Promise; Effect's `Mac` service signs without one. A `.vibe` file reaches the platform only through Effect's services, inside a `tryPromise` callback too.
 
 `tryPromise` waits for the callback's Promise and maps a rejection into `E`. The `catch` option gives the failure a domain type. The callback receives an `AbortSignal`; pass it to an API that supports cancellation. Otherwise interruption stops the wait but not necessarily the foreign operation.
 

@@ -2,7 +2,7 @@
  * Facts about the running process and its host, and signals to other
  * processes, as an Effect service.
  *
- * Effect 4.0.6 has no such service: `Stdio` reads the arguments,
+ * Effect 4.1.0 has no such service: `Stdio` reads the arguments,
  * `ChildProcessSpawner` signals only the children it spawned, through their
  * handles, and nothing reads the process id, the platform or the host name.
  * This module adds it in Effect's style, until Effect ships its own. The

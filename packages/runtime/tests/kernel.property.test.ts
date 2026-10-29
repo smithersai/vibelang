@@ -11,10 +11,10 @@ const regressions = new URL("./property-regressions/", import.meta.url)
 
 function effectVersion() {
   const manifest = new URL("../package.json", import.meta.resolve("effect"))
-  assert.equal(JSON.parse(readFileSync(manifest, "utf8")).version, "4.0.6", "differential oracle must be Effect 4.0.6")
+  assert.equal(JSON.parse(readFileSync(manifest, "utf8")).version, "4.1.0", "differential oracle must be Effect 4.1.0")
 }
 
-test("kernel-programs: Exit, ordered Cause and finalizer trace match Effect 4.0.6", async () => {
+test("kernel-programs: Exit, ordered Cause and finalizer trace match Effect 4.1.0", async () => {
   effectVersion()
   // Chapter 17 specifies every ordered reason, deduplication, defect election and cleanup order.
   await checkProperty(fc, {

@@ -20,7 +20,7 @@ test("calls: programs are lazy and rerunnable; bind accepts data and Effects", a
   expect(await runMain(Effect.fail("expected"))).toEqual(Exit.fail("expected"))
 })
 
-// A failure beside a defect passes as a defect, as Effect 4.0.6's typed
+// A failure beside a defect passes as a defect, as Effect 4.1.0's typed
 // recovery passes it (Effect-TS/effect#9516, D305).
 test("regions: catch handles expected failures and leaves defects alone, with a failure beside one as a defect", async () => {
   let caught = 0

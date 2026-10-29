@@ -13,7 +13,7 @@
 # Runtime build dependencies include Node types and all platform packages.
 #
 # Environment:
-#   EFFECT_NODE_MODULES    a node_modules directory that holds effect 4.0.6
+#   EFFECT_NODE_MODULES    a node_modules directory that holds effect 4.1.0
 #                          (default: ../experiments/node_modules)
 #   VIBELANG_RUNTIME   the vibelang-runtime package directory
 #                          (default: ../packages/runtime, built here with tsc)

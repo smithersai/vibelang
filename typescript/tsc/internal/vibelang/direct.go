@@ -27,13 +27,13 @@ import (
 // not the thunk's as well (thunkRole); a function declaration's or method's
 // thunk is `() => value`, which stands for its return statement.
 //
-// Effect 4.0.6 dies with a throw from either thunk, as it does with one from
+// Effect 4.1.0 dies with a throw from either thunk, as it does with one from
 // a generator (internal/effect.ts:664-709), and suspend returns its program
 // without a continuation (1015-1021). The thunk is an arrow, so this,
 // arguments, and super are the function's own, and it is the property of an
 // object literal named after the source, so a stack trace names the VibeLang
 // function (D36). Every Effect the lowering yields is an Effect at run time
-// (Context keys and Config are Effects in 4.0.6), so suspend accepts it.
+// (Context keys and Config are Effects in 4.1.0), so suspend accepts it.
 
 // thunkRole says what the thunk of a direct Effect stands for in the source,
 // which decides how it maps (generated.go).

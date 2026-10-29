@@ -1,5 +1,5 @@
 // F10 on the current host: how far a chain of synchronous Deferred wake-ups
-// gets on effect@4.0.6 before one fiber dies with RangeError.
+// gets on effect@4.1.0 before one fiber dies with RangeError.
 // Run from experiments/: node scripts/wakeup-chain-depth.ts   (or: bun scripts/wakeup-chain-depth.ts)
 import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
 

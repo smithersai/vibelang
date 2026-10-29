@@ -34,8 +34,8 @@ func TestPreludeCollisionNotes(t *testing.T) {
 		{"own Number", "const Number = { one: 1 }\nexport function add() { return Number.sum(1, 2) }", 2339, ""},
 		{"no meaning has it", "export function add() { return Number.notAMember(1) }", 2339, ""},
 		{"runtime prelude", "export function build(l: Layer) { return l }", 2707, ""},
-		{"DOM type member on a service", "export function random(c: Crypto) { return c.getRandomValues(new Uint8Array(4)) }", 2339,
-			"Crypto is Effect's Crypto type (effect/Crypto): in a .vibe file the bare type name Crypto means Effect's. The DOM's Crypto has getRandomValues"},
+		{"DOM type member on a service", "export function root(fs: FileSystem) { return fs.root }", 2339,
+			"FileSystem is Effect's FileSystem type (effect/FileSystem): in a .vibe file the bare type name FileSystem means Effect's. The DOM's FileSystem has root"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, test.source)

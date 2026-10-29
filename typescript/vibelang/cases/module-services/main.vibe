@@ -15,8 +15,8 @@ export function read(path: string) {
   return try FileSystem.readFileString(path)
 }
 
-export const id = () => Crypto.randomUUIDv4()
-export const token = () => Crypto.randomBytes(16)
+export const id = () => SecureRandom.uuidV4()
+export const token = () => SecureRandom.randomBytes(16)
 export const status = () => ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
 export const line = () => Terminal.readLine()
 

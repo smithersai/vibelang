@@ -8,7 +8,7 @@
 //
 // Environment:
 //   VIBELANG                  the vibelang binary (default: ../../typescript/built/local/vibelang)
-//   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.0.6
+//   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.1.0
 //                        (default: ../../experiments/node_modules, else
 //                        ~/vibelang/experiments/node_modules)
 //   VIBELANG_RUNTIME the built vibelang-runtime package directory

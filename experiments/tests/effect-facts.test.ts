@@ -1,4 +1,4 @@
-// Facts about the unmodified Effect 4.0.6 runtime that the design relies on.
+// Facts about the unmodified Effect 4.1.0 runtime that the design relies on.
 // These test Effect, not VibeLang; the kernel tests cover the language model.
 import { describe, expect, test } from "bun:test"
 import { Context, Effect, Exit, Fiber, Latch } from "effect"

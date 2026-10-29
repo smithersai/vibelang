@@ -26,7 +26,7 @@ effect function application() {
 
 `formatLogFmt` produces string records; `toFile` creates a scoped logger that appends them to the path. The array holds an Effect value, so the file opens when `Logger.layer` builds, not at module initialization. The layer replaces the installed loggers with its list.
 
-In Effect 4.0.6, `toFile` batches with a one-second window by default; `batchWindow` changes it. Pending entries flush when the logger's scope closes. Opening the file can fail with `PlatformError`; later flush write failures are ignored, so no log call gets a durable-write acknowledgment.
+In Effect 4.1.0, `toFile` batches with a one-second window by default; `batchWindow` changes it. Pending entries flush when the logger's scope closes. Opening the file can fail with `PlatformError`; later flush write failures are ignored, so no log call gets a durable-write acknowledgment.
 
 ## Supplying file-system dependencies
 

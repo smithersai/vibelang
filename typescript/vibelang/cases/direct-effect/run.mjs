@@ -1,5 +1,5 @@
 // Runs D274's direct Effects: their results, when their bodies run, and how
-// many run-loop operations each costs beyond Effect.void under Effect 4.0.6.
+// many run-loop operations each costs beyond Effect.void under Effect 4.1.0.
 const { Cause, Effect, Exit } = await import("effect")
 const Scheduler = await import("effect/Scheduler")
 const program = await import("./out/main.js")

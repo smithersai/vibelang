@@ -8,7 +8,7 @@
  * take a lock at once with `steal`; the context that held it learns so from
  * {@link Held.lost}. {@link Locks.tryHold} takes a lock only when it is free.
  *
- * Effect 4.0.6 has no lock service across contexts. This module ports the
+ * Effect 4.1.0 has no lock service across contexts. This module ports the
  * `WebLock` service Smithers runs its browser engine on, in Effect's style,
  * until Effect ships its own.
  *

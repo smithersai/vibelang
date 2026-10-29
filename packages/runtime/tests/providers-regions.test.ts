@@ -280,7 +280,7 @@ for (const [outer, inner, expected] of [
   })
 }
 
-// Effect 4.0.6 defect precedence (Effect-TS/effect#9433): the body's
+// Effect 4.1.0 defect precedence (Effect-TS/effect#9433): the body's
 // typed failure becomes a defect beside the Disposable's.
 test("a Disposable defect is retained beside a body failure, which becomes a defect; other finalizers still run", () => {
   const events: string[] = []
@@ -427,7 +427,7 @@ test("cause helpers preserve all reasons, distinguish undefined failures from no
 })
 
 // The finalizer sees the body's own Exit; the combined cause gives defects
-// precedence, as Effect.onExit does in Effect 4.0.6 (Effect-TS/effect#9433).
+// precedence, as Effect.onExit does in Effect 4.1.0 (Effect-TS/effect#9433).
 test("finally Exit sees void on success, preserves failure, and retains cleanup failures", () => {
   let observed: unknown
   expect(Effect.runSync($finallyExit(Effect.succeed(42), exit => Effect.sync(() => { observed = exit })))).toBe(42)

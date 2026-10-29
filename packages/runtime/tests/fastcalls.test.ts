@@ -95,7 +95,7 @@ describe("$isRun", () => {
     const crossRealm = runInNewContext('new Error("other realm")')
     const proto = Object.getPrototypeOf(new NotFound())
     for (const value of [crossRealm, {}]) {
-      // Copy Effect 4.0.6's actual YieldableError protocol without its Error
+      // Copy Effect 4.1.0's actual YieldableError protocol without its Error
       // prototype; the vm Error also belongs to another realm's Error class.
       Object.assign(value, {
         [Effect.TypeId]: proto[Effect.TypeId],

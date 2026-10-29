@@ -10,21 +10,21 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "effect": "4.0.6",
-    "@effect/platform-node": "4.0.6",
+    "effect": "4.1.0",
+    "@effect/platform-node": "4.1.0",
     "vibelang-runtime": "0.0.11"
   },
   "devDependencies": {
     "vibelang": "0.0.11",
     "vite": "8.3.5",
     "vitest": "5.0.5",
-    "@effect/vitest": "4.0.6",
+    "@effect/vitest": "4.1.0",
     "vibelang-vite": "0.0.11"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.0.6"
+    "@effect/platform-node-shared": "4.1.0"
   }
 }
