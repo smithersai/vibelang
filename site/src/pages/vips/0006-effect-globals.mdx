@@ -9,10 +9,10 @@ title: "VIP-6: Effect's functions are globals"
 ## Decision
 
 ```ts
-effect function load(url) {
-  const r = try tryPromise((signal) => fetch(url, { signal }))   // Effect.tryPromise
+effect function load(q) {
+  const r = try tryPromise((signal) => queryDb(q, { signal }))   // Effect.tryPromise
   const n = try sync(() => Date.now())                           // Effect.sync
-  try retry(tryPromise(() => fetch(url)), policy)
+  try retry(tryPromise(() => queryDb(q)), policy)
   try sleep("1 second")
   const d = try Effect.try(() => JSON.parse(s))                  // `try` is a reserved word, so it stays Effect.try
 }
@@ -26,6 +26,8 @@ effect function load(url) {
   - a VibeLang keyword.
 - If a later VIP adds a keyword with the same name as an Effect export, the global is removed. That may happen to `match`, `when`, `service` and `provide`.
 - No language feature wraps TypeScript into an Effect. You use Effect's own functions (`tryPromise`, `sync`, `callback`, `Effect.try`), and their arrows capture locals as in Effect TS.
+
+*Corrected 2026-10-29: the example calls `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
 
 ## Prior art
 

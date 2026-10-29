@@ -31,8 +31,9 @@ service Users {
 ```ts [Effect]
 // fragment
 class Users extends Context.Service<Users, {
-  find(id: string): Effect<User, NotFound>
+  find(id: string): Effect.Effect<User, NotFound>
 }>()("@acme/app/src/users#Users") {}
+declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 ```
 
 - **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name, as in the example. A service can write it explicitly instead, `static readonly key = "app/Users"`, as a migrated service does to keep its key.
@@ -48,10 +49,11 @@ class Users extends Context.Service<Users, {
 
   ```ts [Effect]
   // fragment
-  const Flags = Context.Reference<{ newCheckout: boolean }>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  const Flags = Context.Reference<Flags.Shape>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  declare namespace Flags { type Shape = { newCheckout: boolean } }
   ```
 
-- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`.
+- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as the namespace above. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. EK3001 to EK3004 apply to it unchanged.
 
 ### Using a service
 
@@ -86,6 +88,7 @@ A service is a key, not a class you use.
 | `new Users()` | EK3003 | |
 | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
 | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
+| a member with a body, `private` or `protected` on a member, or a `static` other than `key` and `defaultValue` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
 **Undecided (pending VIP):** the exact format of a derived key. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name); it doesn't say what a file outside any package, or a nested declaration, gets.
 
@@ -95,9 +98,11 @@ A service is a key, not a class you use.
 
 ```text
 ProvideStatement = "provide" Provider ("," Provider)* Block
-Provider         = Expression                 (a Layer)
-                 | Expression "=" Expression  (Key = value)
+Provider         = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
+                 | ConditionalExpression                             (a Layer)
 ```
+
+A top-level comma separates providers, and a top-level `=` always makes `Key = value`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
 
 `provide` is a contextual keyword. Its providers and the block's `{` are on one line, as with `async`. Trailing blocks don't exist ([VIP-11](/vips/0011-trailing-blocks-denied)), so `provide(x) { … }` can't be read as a call.
 
@@ -111,7 +116,7 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
 ### Meaning
 
-`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer, or `Key = value`, which means `Layer.succeed(Key, value)`.
+`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer, or `Key = value`, which means `Layer.succeed(Key, value)`. As `Effect.provide` documents in effect 4.1.0, a layer an enclosing `provide` already built is reused, and a sibling `provide` builds its own copy.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-12
@@ -154,7 +159,7 @@ A name that clashes is not a global, and is written `Effect.x` instead. A name c
 
 - a reserved word: `try`, `catch`, `void`, `let`;
 - a JavaScript global: `undefined`;
-- a VibeLang keyword. In effect 4.0.6 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
+- a VibeLang keyword. In effect 4.1.0 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
 
 When a later VIP adds a keyword with the name of an Effect export, that global is removed.
 
@@ -162,8 +167,8 @@ No language feature wraps TypeScript into an Effect. Effect's own functions do (
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-6
-effect function fetchJson(url: string, s: string) {
-  const r = try tryPromise((signal) => fetch(url, { signal }))
+effect function lookup(q: string, s: string) {
+  const r = try tryPromise((signal) => queryDb(q, { signal }))   // queryDb is from a .ts module
   const n = try sync(() => Date.now())
   try sleep("1 second")
   const d = try Effect.try(() => JSON.parse(s))
@@ -173,9 +178,9 @@ effect function fetchJson(url: string, s: string) {
 
 ```ts [Effect]
 // fragment
-function fetchJson(url: string, s: string) {
+function lookup(q: string, s: string) {
   return Effect.gen(function* () {
-    const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
+    const r = yield* Effect.tryPromise((signal) => queryDb(q, { signal }))
     const n = yield* Effect.sync(() => Date.now())
     yield* Effect.sleep("1 second")
     const d = yield* Effect.try(() => JSON.parse(s))
@@ -188,7 +193,7 @@ An option in the config's `"vibe"` section turns the globals off ([Configuration
 
 ## Effect's modules are in scope
 
-Every root export of the core `effect` package (149 in effect 4.0.6, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. An option in the config's `"vibe"` section turns this off.
+Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. An option in the config's `"vibe"` section turns this off.
 
 **Precedence.** JavaScript globals that aren't platform-specific, and TypeScript's own global types, keep their meaning. Effect's module of the same name is then written `Effect.X`, or imported.
 
@@ -198,6 +203,8 @@ Every root export of the core `effect` package (149 in effect 4.0.6, such as `Sc
 | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
 | `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
 
+**Undecided (pending VIP):** what `Crypto` names. VIP-14's table lists it, but effect 4.1.0 has no root module `Crypto`; `effect/crypto` is a subpath.
+
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-14
 const Port = Schema.Number
@@ -205,28 +212,56 @@ const first = Effect.Array.head([1, 2])        // JavaScript's Array keeps the b
 const o = Option.some(1)                       // Effect's Option: the DOM's Option is platform-specific
 ```
 
+```ts [Effect]
+// fragment
+import * as Schema from "effect/Schema"
+import * as Array$ from "effect/Array"
+import * as Option from "effect/Option"
+const Port = Schema.Number
+const first = Array$.head([1, 2])
+const o = Option.some(1)
+```
+
+`Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`.
+
 ## The platform standard library
 
-1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`). Code that needs them lives in a `.ts` file, which is the escape ([VIP-25](/vips/0025-inline-modules-denied) removed inline modules).
+1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](/vips/0025-inline-modules-denied) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
 3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with the precedence above.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-33
 effect function readConfig(path: string) {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
 }
+import { NodeServices } from "@effect/platform-node"   // a platform package: imported, not in scope
 effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
+effect function page(url: string) {
+  return try tryPromise(() => fetch(url))            // error: a platform call, even inside tryPromise
+}
 ```
 
-There is no `Path.join(…)` shorthand for a service member; write `(try Path).join(…)`. The entry point provides nothing automatically ([Functions](/spec/001-functions#modules-and-the-top-level)).
+```ts [Effect]
+// fragment
+import * as FileSystem from "effect/FileSystem"
+function readConfig(path: string) {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    return yield* fs.readFileString(path)
+  })
+}
+```
+
+A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem` runs the namespace, which is not an Effect, so it is the error for `try` on a value that is not an Effect, as `yield* FileSystem` is wrong in Effect TypeScript. There is no `Path.join(…)` shorthand for a service member; write `(try Path.Path).join(…)`. The entry point provides nothing automatically ([Functions](/spec/001-functions#modules-and-the-top-level)).
 
 | Rule | Diagnostic |
 | --- | --- |
-| a `node:*` value import in a `.vibe` file | code pending |
-| a Node global (`process`, `Buffer`) in a `.vibe` file | code pending |
+| a `node:*` value import in a `.vibe` file | EK4402 |
+| a Node global (`process`, `Buffer`) in a `.vibe` file | EK4402 |
+| a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
 
-**Undecided (pending VIP):** the full list of Node globals the rule covers, and whether `import type` from `node:*` is allowed.
+**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers; and whether `import type` from `node:*` is allowed.

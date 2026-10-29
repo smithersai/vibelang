@@ -12,7 +12,7 @@ title: "VIP-1: effect and async functions"
 effect function load(id) { return try fetchUser(id) }   // an Effect function
 effect (id) => try fetchUser(id)                        // arrow
 
-async function get(url) { return await fetch(url) }     // a Promise function, as in TypeScript
+async function get(q) { return await queryDb(q) }      // a Promise function, as in TypeScript
 
 class Users {
   effect find(id) { … }                                  // method
@@ -30,7 +30,7 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
   ```ts
   effect function load(id): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
   effect function load(id) { return try fetchUser(id) }                                  // inferred: the same type
-  async function get(url): Promise<Response> { return await fetch(url) }                 // as in TypeScript
+  async function get(q): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
   ```
 
 - A Promise used inside an `effect` function is wrapped with `tryPromise` or `promise`. An Effect used inside an `async` function goes through `runPromise`. All three are VIP-6 globals.
@@ -53,6 +53,8 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 *Updated by VIP-5 (2026-10-28): `try`, not `await`, runs an Effect, and `await` means only what it means in JavaScript.*
 
 *Corrected 2026-10-29: the return-type example uses `effect function` and `async function`, as the 2026-10-29 amendment requires.*
+
+*Corrected 2026-10-29: the examples call `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
 
 ## Alternative considered and withdrawn (2026-10-29)
 

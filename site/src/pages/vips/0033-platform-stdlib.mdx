@@ -10,7 +10,7 @@ title: "VIP-33: the platform standard library"
 
 ```ts
 effect function readConfig(path: string) {
-  const fs = try FileSystem                        // Effect's platform service, injected by a layer
+  const fs = try FileSystem.FileSystem             // Effect's platform service, injected by a layer
   return try fs.readFileString(path)
 }
 provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platform layer is chosen at the edge
@@ -20,8 +20,10 @@ provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platf
    - **Amended 2026-10-29: no exception inside `Effect.try` / `tryPromise` arrows.** A platform call there, such as `tryPromise(() => fetch(url))`, is the same error as anywhere in `.vibe`. Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`). Recorded under Will's standing approval of recommendations.
 2. **What Effect lacks goes under `Experimental.X`**, named after the Effect module it extends, and is written so it can be proposed upstream. No per-project wrappers, and nothing that Effect already provides.
 3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with VIP-14's precedence rules.
-4. Old VibeLang's alias `Path.join(…)` → `Path.Path.join(…)` (D311) was a service shorthand, which VIP-10 denied. You write `(try Path).join(…)`.
+4. Old VibeLang's alias `Path.join(…)` → `Path.Path.join(…)` (D311) was a service shorthand, which VIP-10 denied. You write `(try Path.Path).join(…)`.
 5. Old VibeLang's provisional D312, under which the entry provided NodeServices for `main`, is gone (VIP-26).
+
+*Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.0, `yield*` of the namespace is a defect.*
 
 ## Will's words (2026-10-26)
 

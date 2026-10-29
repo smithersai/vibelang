@@ -9,7 +9,7 @@ title: "VIP-5: try runs an Effect; await is only for Promises"
 ## Decision
 
 ```ts
-async function get(url) { return await fetch(url) }        // await: Promises only, exactly as in JavaScript
+async function get(q) { return await queryDb(q) }          // await: Promises only, exactly as in JavaScript
 
 effect function load(id) {
   const u = try fetchUser(id)                     // runs the Effect; a failure propagates
@@ -19,7 +19,7 @@ effect function load(id) {
     when DbError: throw e                         // fails again, typed (VIP-4): the handler is an effect function
   }
   try sleep("1 second")                           // an Effect that can't fail is still run with try
-  await fetch(url)                                // error: await belongs to async functions
+  await queryDb(q)                                // error: await belongs to async functions
 }
 ```
 
@@ -42,6 +42,8 @@ effect function load(id) {
   - `await` inside an `effect` function is an error;
   - `await` on an Effect inside an `async` function is an error.
 - An Effect that can't fail is still run with `try`, and that is fine.
+
+*Corrected 2026-10-29: the examples call `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
 
 ## Prior art
 

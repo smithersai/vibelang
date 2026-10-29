@@ -36,12 +36,11 @@ TryExpression = "try" UnaryExpression
 | --- | --- |
 | `try` outside effect code | code pending |
 | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | code pending |
-| `try x catch y` (both on one operand) | code pending |
-| a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code | code pending |
+| a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | code pending |
 
 An Effect that can't fail is still run with `try`.
 
-**Undecided (pending VIP):** the precedence of `try`. The grammar above gives it `await`'s (a unary operator), which no VIP states.
+`try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b()` and `try f() + 1` adds 1 to the success. As with `await`, the operand may start on the next line. At the start of a statement, `try {` begins a `try` statement, as in JavaScript, and that is an error in effect code.
 
 ### Meaning
 
@@ -74,13 +73,18 @@ function load(id: string) {
 ```text
 CatchExpression = CatchExpression "catch" Handler
                 | Operand "catch" Handler
+Operand         = BitwiseORExpression    (the operand of ??)
 Handler         = EffectArrow            (an effect function of the error)
                 | "effect" Block         (an effect block)
                 | ArrowFunction          (a plain function of the error)
-                | Expression             (a value)
+                | Operand                (a value)
 ```
 
-`catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result.
+`catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result. A value handler is an `Operand`, so `x catch y, z` is a comma expression whose first part is `x catch y`.
+
+An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`. So `a catch (e) => b catch c` means `a catch ((e) => (b catch c))`. Parenthesize the arrow to chain: `a catch ((e) => b) catch c`. A parenthesized `(effect { … })` is an `Operand`, so it is a value: the fallback is the unrun Effect.
+
+In `(a catch b) catch c`, the outer `catch` runs the value that `a catch b` gives, so that value must itself be an Effect. To try fallbacks in turn, nest them in the handler: `a catch effect { return b catch c }`.
 
 ### Static rules
 
@@ -88,6 +92,7 @@ Handler         = EffectArrow            (an effect function of the error)
 | --- | --- |
 | `catch` outside effect code | code pending |
 | `try x catch y`: write `try x` or `x catch y`, never both | code pending |
+| `e catch y` where `e` is not an Effect | code pending |
 | `catch` mixed with `??`, `\|\|` or `&&` without parentheses, as JavaScript requires for `??` | code pending |
 
 ### Meaning
@@ -119,15 +124,16 @@ function load(id: string) {
   return Effect.gen(function* () {
     const g = yield* Effect.catch(fetchUser(id), () => Effect.succeed(guest))
     const h = yield* Effect.catch(fetchUser(id), (e) => Effect.gen(function* () {
-      if (e._tag === "NotFound") return guest
-      return yield* Effect.fail(e)
+      if (e._tag === "NotFound") return guest              // NotFound's matcher tests _tag
+      if (e._tag === "DbError") return yield* Effect.fail(e)
+      throw new TypeError("no arm matched")                // TC39: a defect
     }))
     return [g, h]
   })
 }
 ```
 
-**Undecided (pending VIP):** whether `x catch f`, where `f` is an identifier or call whose value is a function, is a value (the fallback is the function itself) or a handler called with the error.
+**Undecided (pending VIP):** whether `x catch f`, where `f` is an identifier or call whose value is a function, is a value (the fallback is the function itself) or a handler called with the error; and whether a value fallback whose type is an Effect or a function, which is never run or called, gets a warning.
 
 ## `await`
 
@@ -173,7 +179,7 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value, like an immediately invoked function. As TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`.
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-2
@@ -187,14 +193,16 @@ const x = do { const a = 1; a + 1 }    // 2
 ### Syntax
 
 ```text
-ForkExpression = "fork" Expression
-               | "fork" "." "in" "(" Expression ")" Expression
-               | "fork" "." "scoped" Expression
-               | "fork" "." "detached" Expression
-JoinExpression = "join" Expression
+ForkExpression = "fork" ForkOperand
+               | "fork" "." "in" "(" AssignmentExpression ")" ForkOperand
+               | "fork" "." "scoped" ForkOperand
+               | "fork" "." "detached" ForkOperand
+JoinExpression = "join" ForkOperand
 ```
 
-`fork` and `join` are contextual keywords, and the operand starts on the same line. The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`.
+`fork` and `join` are contextual keywords, and the operand starts on the same line. The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`. A `ForkOperand` never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
+
+In effect code, `fork` or `join` followed on the same line by a token that can start an expression is the keyword, as `await` is in an `async` function. So `join(parts)` joins the fiber `parts`, even where a function named `join` is in scope; call such a function as `(join)(parts)`. Elsewhere, `fork` and `join` are identifiers.
 
 ### Static rules
 
@@ -204,7 +212,7 @@ JoinExpression = "join" Expression
 
 ### Meaning
 
-`fork` starts a fiber and gives its `Fiber`. The form names the owner, which interrupts the fiber when it ends. A child is not awaited at the end of a scope, as Swift's and Kotlin's structured children are; it keeps Effect's meaning.
+`fork` starts a fiber and gives its `Fiber`. The form names the owner, which interrupts the fiber when it ends. A child is not awaited at the end of a scope, as Swift's and Kotlin's structured children are; it keeps Effect's meaning. A `fork` child whose parent ends first exits with an interruption; a `fork.detached` child runs to its own end.
 
 | VibeLang | Effect TypeScript | Owner |
 | --- | --- | --- |
@@ -234,17 +242,17 @@ function both() {
 }
 ```
 
-**Undecided (pending VIP):** the precedence of `fork` and `join`, for example whether `fork a() |> f(%)` forks `a()` or the pipe.
+**Undecided (pending VIP):** the precedence of `fork` and `join`, that is, what `ForkOperand` is: a `UnaryExpression`, as for `try`, or an `AssignmentExpression`, as for `yield`. It decides, for example, whether `fork a() |> f(%)` forks `a()` or the pipe.
 
 ## Running Effects concurrently
 
 ### Syntax
 
 ```text
-TryAll = "try" "." ("all" | "race" | "any" | "allSettled") ArrayLiteralOrExpression
+TryAll = "try" "." ("all" | "race" | "any" | "allSettled") UnaryExpression
 ```
 
-`try` is a reserved word, so `try.` can't start anything else. The operand is an array of Effects.
+`try` is a reserved word, so `try.` can't start anything else. The operand has `try`'s precedence, so `try.all [a(), b()]` and `try.all ids.map(load)` each have one reading. The operand is any expression whose type is an array, readonly array or tuple of Effects, not only an array literal (VIP-18, amended).
 
 ### Static rules
 
@@ -254,14 +262,14 @@ TryAll = "try" "." ("all" | "race" | "any" | "allSettled") ArrayLiteralOrExpress
 
 ### Meaning
 
-These are TC39's await operations, run with `try` instead of `await`. The names keep JavaScript's meanings: `try.all` runs everything at once, like `Promise.all`, even though `Effect.all` defaults to one at a time.
+These are TC39's await operations, run with `try` instead of `await`. The names keep JavaScript's choice of result: `try.all` runs everything at once, like `Promise.all`, even though `Effect.all` defaults to one at a time. Unlike Promises, the Effects that lose are interrupted, and an empty operand to `try.race` or `try.any` never completes, where `Promise.any([])` rejects.
 
 | VibeLang | Effect TypeScript | Gives |
 | --- | --- | --- |
-| `try.all [a(), b()]` | `yield* Effect.all([a(), b()], { concurrency: "unbounded" })` | every success; the first failure fails the whole |
-| `try.race [a(), b()]` | `yield* Effect.raceAllFirst([a(), b()])` | the first to finish, success or failure |
-| `try.any [a(), b()]` | `yield* Effect.raceAll([a(), b()])` | the first to succeed |
-| `try.allSettled [a(), b()]` | `yield* Effect.all([a(), b()].map(Effect.exit), { concurrency: "unbounded" })` | every element's `Exit` (success, failure, defect or interruption); the whole never fails, as `Promise.allSettled` never rejects |
+| `try.all [a(), b()]` | `yield* Effect.all([a(), b()], { concurrency: "unbounded" })` | every success, in operand order; the first failure fails the whole and interrupts the rest |
+| `try.race [a(), b()]` | `yield* Effect.raceAllFirst([a(), b()])` | the first to finish, success or failure; the losers are interrupted |
+| `try.any [a(), b()]` | `yield* Effect.raceAll([a(), b()])` | the first to succeed; the losers are interrupted. If every operand fails, the whole fails with all their failures in its `Cause`, and `catch` receives the first |
+| `try.allSettled [a(), b()]` | `yield* Effect.all([a(), b()].map(Effect.exit), { concurrency: "unbounded" })` | every element's `Exit` (success, failure, defect or interruption); the whole never fails, as `Promise.allSettled` never rejects; it can still be interrupted from outside |
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-18
@@ -272,6 +280,16 @@ effect function page(id: string) {
 }
 ```
 
+```ts [Effect]
+// fragment
+function page(id: string) {
+  return Effect.gen(function* () {
+    const [u, o] = yield* Effect.all([fetchUser(id), fetchOrders(id)], { concurrency: "unbounded" })
+    const both = yield* Effect.all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })
+    return [u, o, both]
+  })
+}
+```
 
 ## `for concurrent`
 
@@ -281,7 +299,7 @@ effect function page(id: string) {
 ForConcurrent = "for" "concurrent" ("(" Expression ")")? "(" ForBinding "of" Expression ")" Statement
 ```
 
-JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading.
+JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading. After `for concurrent`, a parenthesized group followed by another `(` is the limit `n`.
 
 ### Static rules
 
@@ -291,17 +309,17 @@ JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` h
 | `break` in the body | code pending |
 | `return` in the body | code pending |
 
-`continue` ends that one item: it is `return` from the item's generator. `break` and `return` are errors when they would leave the body; a loop nested in the body keeps its own `break` and `continue`.
+`continue` ends that one item: it is `return` from the item's generator, as the example shows. `break` and `return` are errors when they would leave the body; a loop nested in the body keeps its own `break` and `continue`.
 
 ### Meaning
 
-Every item runs in its own fiber, all at once, or at most `n` at a time with `for concurrent(n)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
+Every item runs in its own fiber, all at once, or at most `n` at a time with `for concurrent(n)`; `n` is Effect's `concurrency` option. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-19
 effect function syncAll(ids: string[]) {
-  for concurrent (const id of ids) { try syncOne(id) }
-  for concurrent(4) (const id of ids) { try syncOne(id) }
+  for concurrent (const id of ids) { if (id === "") continue; try syncOne(id) }
+  for concurrent(4) (const id of ids) { if (id === "") continue; try syncOne(id) }
 }
 ```
 
@@ -309,13 +327,13 @@ effect function syncAll(ids: string[]) {
 // fragment
 function syncAll(ids: string[]) {
   return Effect.gen(function* () {
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: 4, discard: true })
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: 4, discard: true })
   })
 }
 ```
 
-**Undecided (pending VIP):** which `ForBinding`s are allowed (VIP-19 shows `const id`; `let` and destructuring are not stated), and whether the operand may be any iterable or also a Stream.
+**Undecided (pending VIP):** which values `n` may take (VIP-19 shows `4`; Effect also accepts `"unbounded"` and `"inherit"`); which `ForBinding`s are allowed (VIP-19 shows `const id`; `let` and destructuring are not stated), and whether the operand may be any iterable or also a Stream.
 
 ## `for try`
 
@@ -381,7 +399,7 @@ The shorthand `effect *name()` exists only for methods, as `async *gen()` does i
 
 ### Meaning
 
-`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects. It compiles to `Stream.callback` with one element of buffer, so the producer may run one element ahead of its consumer. Exact pull semantics are not provided.
+`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects. It compiles to `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered (VIP-21, corrected). Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`. A failure run by `try` in the body fails the stream. The return type, when written, is `Stream.Stream<A, E, R>`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-21
@@ -423,7 +441,7 @@ These are contextual keywords followed by `{` on the same line, and they are sta
 | Rule | Diagnostic |
 | --- | --- |
 | any of the three outside effect code | code pending |
-| `restore { }` outside an `uninterruptible` block | code pending |
+| `restore { }` outside an `uninterruptible` block | EK2111 |
 
 ### Meaning
 
@@ -432,7 +450,7 @@ These are contextual keywords followed by `{` on the same line, and they are sta
 effect function pay(card: Card, user: User) {
   uninterruptible {
     const receipt = try charge(card)
-    restore { try notify(user) }        // interruptible again inside
+    restore { try notify(user) }        // the interruptibility from before the mask
     try record(receipt)
   }
   interruptible { try poll() }

@@ -37,11 +37,10 @@ EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params Retur
 
 | Rule | Diagnostic |
 | --- | --- |
-| `try` used outside an `effect` function or `effect` block, including in a plain or `async` function | code pending |
 | `await` used inside an `effect` function | code pending |
 | `await` applied to an Effect inside an `async` function | code pending |
 
-"Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it.
+"Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it. That is the one rule "`try` outside effect code" of [Running Effects](/spec/002-running#static-rules).
 
 ### Meaning
 
@@ -55,7 +54,7 @@ const loadAll = (ids: string[]) => ids.map(effect function (id) { return try fet
 
 class Users {
   effect find(id: string) { return try fetchUser(id) }
-  async load(url: string) { return await fetch(url) }
+  async load(q: string) { return await queryDb(q) }
 }
 ```
 
@@ -67,7 +66,7 @@ const loadAll = (ids: string[]) => ids.map(function (id) { return Effect.gen(fun
 
 class Users {
   find(id: string) { return Effect.gen(function* () { return yield* fetchUser(id) }) }
-  async load(url: string) { return await fetch(url) }
+  async load(q: string) { return await queryDb(q) }
 }
 ```
 
@@ -122,9 +121,9 @@ An `effect` function's return type is an Effect, as an `async` function's is a P
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1
-effect function load(id: string): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+effect function load(id: string): Effect.Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
 effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
-async function get(url: string): Promise<Response> { return await fetch(url) }                 // as in TypeScript
+async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
 
 An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them.
@@ -135,8 +134,10 @@ No construct converts between the two. Effect's own functions do, as [VIP-6](/vi
 
 | From | To | Write |
 | --- | --- | --- |
-| a Promise, in an `effect` function | an Effect | `try tryPromise(() => fetch(url))` or `try promise(() => p)` |
+| a Promise, in an `effect` function | an Effect | `try tryPromise(() => queryDb(q))` or `try promise(() => p)` |
 | an Effect, in an `async` function | a Promise | `await runPromise(load(id))` |
+
+In these examples `queryDb` is a Promise-returning function imported from a `.ts` module. A platform call such as `fetch` can't appear in a `.vibe` file at all, wrapped or not ([Services](/spec/005-services#the-platform-standard-library)).
 
 ## The `A!E!R` type shorthand
 
@@ -151,7 +152,7 @@ EffectType = Type "!" Type "!" Type      (A!E!R)
 
 ### Meaning
 
-`A!E!R` is a type alias for `Effect<A, E, R>`, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written.
+`A!E!R` is a type alias for `Effect<A, E, R>`, nothing more. It means exactly what `Effect<A, E, R>` means wherever a type can be written. In a `.vibe` file the type `Effect<A, E, R>`, as VIP-1 and VIP-3 write it, is Effect's `Effect.Effect<A, E, R>`; Effect TypeScript writes `Effect.Effect`.
 
 | Written | Means exactly |
 | --- | --- |
@@ -170,8 +171,8 @@ interface UserStore { find(id: string): User!NotFound }
 
 ```ts [Effect]
 // fragment
-function load(id: string): Effect<User, NotFound, Users> { return Effect.gen(function* () { return yield* (yield* Users).find(id) }) }
-interface UserStore { find(id: string): Effect<User, NotFound> }
+function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.gen(function* () { return yield* (yield* Users).find(id) }) }
+interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
 **Undecided (pending VIP):** how `!` binds next to other type operators, for example whether `A | B!E` is `(A | B)!E` or `A | (B!E)`, and whether a union in the error slot needs parentheses.
@@ -181,11 +182,13 @@ interface UserStore { find(id: string): Effect<User, NotFound> }
 A module's top level is ordinary JavaScript (VIP-26).
 
 - `await` at the top level is ES top-level await of a Promise.
-- `try` is not allowed at the top level, because the top level is not an `effect` function. Diagnostic: code pending.
+- `try` is not allowed at the top level, because the top level is not effect code. It is the one rule "`try` outside effect code" ([Running Effects](/spec/002-running#static-rules)), not a second one.
+- A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript. Only effect code bans it (VIP-5).
 - There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-26
+import { NodeRuntime } from "@effect/platform-node"
 export effect function main() { try log("started") }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
 ```
@@ -203,7 +206,9 @@ await runPromise(main())
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc`, TypeDoc and `bun check` understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare.
-- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw ([Failures](/spec/003-failures#calls-that-may-throw)).
+- **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw. An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](/spec/003-failures#calls-that-may-throw)).
+
+**Undecided (pending VIP):** the tag of an exported function that returns a `Stream` or a `Layer` ([Failures](/spec/003-failures#calls-that-may-throw)).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-27
@@ -211,16 +216,19 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 export effect function load(id: string) { return try fetchUser(id) }
 export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export function add(a: number, b: number) { return a + b }
+export async function get(q: string) { if (!q) throw new BadInput(); return await queryDb(q) }
 ```
 
 ```ts [Effect]
 // fragment
 // load.d.vibe.ts
-export declare function load(id: string): Effect<User, NotFound, Users>   // returns an Effect: no @throws
+export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // returns an Effect: no @throws
 /** @throws {BadInput} */
 export declare function parse(s: string): string
 /** @throws {never} */
 export declare function add(a: number, b: number): number
+/** @throws {never} */
+export declare function get(q: string): Promise<Row[]>
 ```
 
 **Undecided (pending VIP):** whether exported methods, constructors and function-typed constants also carry `@throws`, and how a function's thrown type is written in a function type that has no JSDoc position (a parameter of type `(s: string) => string`, for example).

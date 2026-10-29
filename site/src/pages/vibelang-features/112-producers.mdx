@@ -32,7 +32,7 @@ effect function firstAlert() {
 // Output: 25
 ```
 
-`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run one element ahead of the consumer.
+`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.
 
 The consumer stops at 25; before `firstAlert` returns, the producer's finalizer logs `sensor closed`. `break` or a failure in the loop body closes the Stream and runs its cleanup. Iterating the Stream again starts a new run.
 

@@ -117,7 +117,7 @@ effect function printFirstReading() {
 // Output: 10
 ```
 
-An `effect function*` producer returns a Stream, so Stream operators accept it. The producer runs on its own fiber with a one-element buffer, so it may run one element ahead of the consumer. `for try` also consumes an Effect Stream, pulling batches and closing it when the loop exits. Here `break` closes the source and interrupts the producer fiber, running its cleanup.
+An `effect function*` producer returns a Stream, so Stream operators accept it. The producer runs on its own fiber with a one-element buffer, so it may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. `for try` also consumes an Effect Stream, pulling batches and closing it when the loop exits. Here `break` closes the source and interrupts the producer fiber, running its cleanup.
 
 ## Coming from Effect
 
