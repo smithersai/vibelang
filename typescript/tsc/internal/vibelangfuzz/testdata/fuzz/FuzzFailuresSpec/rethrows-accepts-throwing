@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-accepts-throwing")
+byte(0)

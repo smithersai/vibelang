@@ -1,0 +1,3 @@
+go test fuzz v1
+string("wrapper-sync-throw")
+byte(0)

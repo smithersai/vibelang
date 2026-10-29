@@ -61,7 +61,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      6,
 			Template: "Effect.tryPromise(() => ‹promise›)",
-			Quote:    "try retry(tryPromise(() => fetch(url)), policy)",
+			Quote:    "try retry(tryPromise(() => queryDb(q)), policy)",
 		}},
 		// The probe wraps a rejected Promise: its Effect fails with the
 		// UnknownError that holds the rejection.

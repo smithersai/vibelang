@@ -1,0 +1,3 @@
+go test fuzz v1
+string("class-static-joins-plain")
+byte(0)

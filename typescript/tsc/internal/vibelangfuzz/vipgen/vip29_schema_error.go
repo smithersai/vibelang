@@ -385,3 +385,46 @@ func init() {
 func init() {
 	registerWitness(29, ChapterWitness{Key: "vip29.schema-error-matcher-property-plain", Chapter: "003-failures.md", Quote: "The matcher gives `[subject]` on a match", Vibe: "schema error E { n:number };function witness():unknown[]{try{if(!Schema.is(Schema.Number)(0))return [\"bad-number\"];const symbol=(Symbol as any).customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",(e as Error).name]}}", Effect: "class E extends Schema.TaggedError()(\"E\",{n:Schema.Number}) {static [Symbol.customMatcher](subject){return subject?._tag===\"E\"?[subject]:false}};function witness(){try{if(!Schema.is(Schema.Number)(0))return [\"bad-number\"];const symbol=Symbol.customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",e.name]}}", Modules: []string{"Schema"}, Requires: []string{}, Cite: vip29Cite("static [Symbol.customMatcher]")})
 }
+
+func init() {
+	Register(&Construct{
+		Key:   "vip29.invalid-constructor-plain",
+		VIP:   29,
+		Plain: true,
+		Citations: []Citation{{
+			VIP:      29,
+			Template: "class ‹Name› extends Schema.TaggedError‹<Name>›()(‹tag›, { name: Schema.NonEmptyString }) {}",
+			Quote:    "- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.",
+			Reading:  "Chapter 3 shows exactly this constructor-validation counterpart: Invalid has name: Schema.NonEmptyString, and Effect.gen returns yield* Effect.fail(new Invalid({ name: emptyString })). The constructor's JavaScript exception is a defect rather than a typed failure. This uses VIP-29's field mapping; generic type arguments are erased for ref.mjs.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			return []Stmt{&Event{Label: g.Label()}, invalidConstructorStmt(g)}
+		},
+		Stmt: func(g *Gen, s *Scope) Stmt { return invalidConstructorStmt(g) },
+	})
+}
+
+func invalidConstructorStmt(g *Gen) Stmt {
+	g.UseEffect()
+	g.UseModule("Schema", false)
+	name := g.Name("Invalid")
+	g.AddDecl(&invalidSchemaDecl{Name: name})
+	return &invalidConstructorProbe{Name: name}
+}
+
+type invalidSchemaDecl struct{ Name string }
+
+func (d *invalidSchemaDecl) Vibe(w *Writer) {
+	w.Write("schema error " + d.Name + " { name: Schema.NonEmptyString }")
+}
+func (d *invalidSchemaDecl) Effect(w *Writer) {
+	w.Write("class " + d.Name + " extends Schema.TaggedError()(" + fmt.Sprintf("%q", d.Name) + ", { name: Schema.NonEmptyString }) {}")
+}
+
+type invalidConstructorProbe struct{ Name string }
+
+func (p *invalidConstructorProbe) Vibe(w *Writer) { p.Effect(w) }
+func (p *invalidConstructorProbe) Effect(w *Writer) {
+	w.Write("return Effect.gen(function* () { return yield* Effect.fail(new " + p.Name + "({ name: \"\" })) })")
+}
+func (*invalidConstructorProbe) Ends() bool { return true }

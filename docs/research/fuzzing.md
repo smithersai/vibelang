@@ -265,6 +265,58 @@ Two inputs reach every construct (2026-10-29, for the fz-svc and fz-fail lanes).
 
 A function may be its module's default export (`Func.Default`): both prints write `export default` and leave out the name, `export default effect function () { … }` and `export default function () { return Effect.gen(function* () { … }) }`, Chapter 1's reading. The worker runs a module's `default` export when it has no `main` export. `vip01.default-export` makes main the default export and waits on `vip01.effect-function`. The encoder also recognizes Exits and Causes nested in a value, so fz-run's `vip18.all-settled-array` can compare its whole array of Exits instead of excluding the interrupted fiber's id.
 
+## Chapter 3 static failure contracts
+
+`FuzzFailuresSpec` reads `003-failures.md` and the declaration contracts in
+`001-functions.md`. Each case quotes its rule verbatim; quote and coverage
+checks flag changed chapter bullets and static-rule rows. The target validates its
+quotes at startup even when a campaign skips ordinary tests. Rejected programs
+must report the chapter's diagnostic at the marked expression, without an
+unrelated error elsewhere. Accepted programs must compile without errors.
+Exported callable cases also check their emitted `@throws` and `@rethrows`.
+
+Mutations move helpers between modules, nest statements, and switch foreign
+declarations between `.ts` and `.d.ts`. Reproductions name their case so adding
+cases does not change an existing input. Each outstanding compiler disagreement
+has a precise `feature:` key and corpus reproduction in
+`testdata/pending/failures.txt`. Runtime behavior stays in
+`FuzzVIPDifferential`: `vip04.throw`, `vip04.throw-plain`,
+`vip04.implicit-throw-plain`, `vip04.implicit-defect-plain`,
+`vip04.ts-throw`, `vip29.invalid-constructor-plain`, the VIP-5 catch constructs,
+and the VIP-6 wrappers compare the same events and `Exit` against Effect.
+
+The failure-contract cases also check inferred declaration tags, each overload
+and returned call signature, foreign annotation precedence, effectful exemption
+from explicit annotations, and error-member diagnostic precedence. Both a
+pending feature and its corpus file must be removed from the ledger when fixed:
+the target checks each independently for `XPASS`. Constructor validation has
+its own ordinary-JavaScript differential probe, so a `schema error` constructor
+that throws is distinguished from a typed failure.
+
+The `vip04.boundary-defects` pair observes two child exits: an implicit
+static-block throw is a defect, and destructured parameters bind when the builder
+is called. An explicit static-block throw is not used: it makes the class
+evaluation `EK0403` in effect code. A failing parameter binding makes the call
+return an Effect that dies, as an `async` function rejects, so a post-call event
+runs before the defect. A written `Effect.Effect<number>` control also checks that
+the static block adds no typed error.
+
+The additional static witnesses cover service-key classification, callable
+aliases, combined callback contracts and each error-member form. The dynamic
+schema-error-key pair keeps the chapter's computed field and checks that a
+decoder requires its runtime key and strips unrelated keys.
+
+`failures_r20_spec_fuzz_test.go` covers the rules the round-20 chapter added:
+class evaluation (static blocks and static field initializers, `EK0403` and
+`EK0401`), the implicit derived constructor, catch-binding rethrows, foreign
+function-typed properties, `@throws` on effectful callables (`EK0406`), overrides,
+`implements` and service members (`EK0402`), the `EK0404` Promise test, data-last
+Effect overloads, `reduce` without an initial value, built-in argument validation
+and the match protocol's implicit throws. It also covers generic signatures
+classified before substitution, `@rethrows` default callbacks and plain `catch`
+handler parameters, overload bounds, escaping `@rethrows` parameters, overload
+signatures in both error forms, `async` contracts and computed `schema error` keys.
+
 ## How to run
 
 `FuzzCommandLine` builds its compiler with `-trimpath`, matching the build

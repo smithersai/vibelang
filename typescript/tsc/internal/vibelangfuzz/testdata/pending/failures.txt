@@ -1,0 +1,427 @@
+# Gaps between the Failures chapter (003-failures.md, and the @throws part of
+# Declaration output in 001-functions.md) and the compiler, found by
+# FuzzFailuresSpec. Each remaining feature still disagrees with its oracle
+# on post-VIP-1 main; passing feature/corpus lines are removed, while the
+# regression inputs remain. Historical diagnostic observations below name
+# their original baseline, not a current syntax limitation.
+# target            key                       owner     what is missing
+FuzzFailuresSpec  feature:throw-top  compiler  VIP-4: a throw at a module's top level is JavaScript's (003-failures.md, `throw`), but draws EK1001; lane w2-throw
+FuzzFailuresSpec  feature:direct-local  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:direct-local-const  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:direct-local-argument  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:direct-local-return  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:wrap-effect-try-block  compiler  VIP-4: 003-failures.md accepts the program for "Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:wrap-effect-try-options  compiler  VIP-4: 003-failures.md accepts the program for "Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
+FuzzFailuresSpec  feature:wrap-try-promise-async  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:wrap-promise  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:inferred-transitive  compiler  VIP-4: 003-failures.md rejects the marked call for "Otherwise, a plain, non-`async` `.vibe` function's thrown type is inferred from its body: an uncaught `thro…"; lane w2-throw
+FuzzFailuresSpec  feature:inferred-arrow-const  compiler  VIP-4: 003-failures.md rejects the marked call for "Otherwise, a plain, non-`async` `.vibe` function's thrown type is inferred from its body: an uncaught `thro…"; lane w2-throw
+FuzzFailuresSpec  feature:inferred-async-calls-throwing  compiler  VIP-1, VIP-4: an async function that calls a plain throwing function draws EK4801, because form inference still makes the plain function an Effect function; lane vip-core2
+FuzzFailuresSpec  feature:effectful-ts-stream  compiler  VIP-4: 003-failures.md accepts the program for "Stream"; lane w2-throw
+FuzzFailuresSpec  feature:effectful-ts-layer  compiler  VIP-4: 003-failures.md accepts the program for "Layer"; lane w2-throw
+FuzzFailuresSpec  feature:library-unannotated  compiler  VIP-4: 003-failures.md rejects the marked call for "Such a library or global declaration with no `@throws` is assumed to throw `unknown`."; lane w2-throw
+FuzzFailuresSpec  feature:library-tagged  compiler  VIP-4: 003-failures.md rejects the marked call for "A non-effectful library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`."; lane w2-throw
+FuzzFailuresSpec  feature:library-unknown-tag  compiler  VIP-4: 003-failures.md rejects the marked call for "Such a library or global declaration with no `@throws` is assumed to throw `unknown`."; lane w2-throw
+FuzzFailuresSpec  feature:library-plain-propagates  compiler  VIP-4: a plain function that calls a TypeScript function with no @throws or with @throws {RangeError} draws EK4401, though a plain function may propagate a JavaScript throw; lane w2-throw
+FuzzFailuresSpec  feature:global-json-parse  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known n…"; lane w2-throw
+FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.d…"; lane w2-throw
+FuzzFailuresSpec feature:interface-member compiler VIP-4 (decided detail 66): foreign interface methods default unknown, unlike a .vibe type-position member; the foreign interface call must report EK0403; lane w2-throw
+FuzzFailuresSpec  feature:interface-member-opts-in  compiler  VIP-4: 003-failures.md rejects the marked call for "A function type or interface member without `@throws` is non-throwing; `@throws` on its declaration opts in."; lane w2-throw
+FuzzFailuresSpec  feature:function-type-opts-in  compiler  VIP-4: 003-failures.md rejects the marked call for "A function type or interface member without `@throws` is non-throwing; `@throws` on its declaration opts in."; lane w2-throw
+FuzzFailuresSpec  feature:new-tracked  compiler  VIP-4: 003-failures.md rejects the marked call for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
+FuzzFailuresSpec  feature:new-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
+FuzzFailuresSpec  feature:getter-untracked  compiler  VIP-4: 003-failures.md accepts the program for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
+FuzzFailuresSpec  feature:setter-untracked  compiler  VIP-4: 003-failures.md accepts the program for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "`@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback."; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-library  compiler  VIP-4: 003-failures.md rejects the marked call for "`@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback."; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-map-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-foreach-ok  compiler  VIP-4: 003-failures.md accepts the program for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-foreach-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-filter-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-reduce-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-find-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-some-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-every-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-sort-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-array-from-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:rethrows-promise-executor  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-async-local  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-held  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-library  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-thenable  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-library-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejects the marked call for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
+FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
+FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: a constructor that throws draws EK2003 (decided detail 5 tracks new X() instead), so Id's declaration cannot carry @throws {BadInput}; lane w2-throw
+FuzzFailuresSpec  feature:declaration-async  compiler  VIP-27: an exported async function's declaration carries no @throws {never}; lane w2-throw
+FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
+FuzzFailuresSpec  feature:error-constructor  compiler  VIP-13 (decided detail 24, 003-failures.md static rules): a constructor in an error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:error-static  compiler  VIP-13 (decided detail 8): a user-written static member in an error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:error-setter  compiler  VIP-13 (decided detail 8): a setter in an error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:error-type-parameters  compiler  VIP-13 (decided detail 9): `error Invalid<T> { value: T }` draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:schema-error-constructor  compiler  VIP-29 (decided detail 24): a constructor in a schema error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:schema-error-tag  compiler  VIP-29 (decided detail 24): a `_tag` member in a schema error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:schema-error-setter  compiler  VIP-29 (decided detail 8): a setter in a schema error body draws no error; lane fix-vip-decls
+FuzzFailuresSpec  feature:error-interleaved  compiler  VIP-1, VIP-13: an error's plain method is inferred to return an Effect (TS2322), and `new NotFound(…)` at the top level draws EK1001; lane vip-core2
+FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
+FuzzFailuresSpec  feature:default-throwing  compiler  VIP-4: 003-failures.md rejects a default initializer that may throw in an effect function's parameter list; lane w2-throw
+FuzzFailuresSpec  feature:default-nonthrowing  compiler  VIP-4: 003-failures.md accepts a default initializer that cannot throw; lane w2-throw
+FuzzFailuresSpec  feature:assign-annotated-type  compiler  VIP-1, VIP-4: assigning a throwing plain function to a function type whose call signature says @throws {Error} draws TS2322, because form inference types the plain function as returning an Effect; lane vip-core2
+FuzzFailuresSpec  feature:assign-wrapped  compiler  VIP-1, VIP-4: a plain arrow that wraps a throwing call in try/catch draws EK4301, because form inference makes the throwing plain function an Effect; lane vip-core2
+FuzzFailuresSpec  feature:rethrows-accepts-throwing  compiler  VIP-1, VIP-4: passing a throwing arrow to a @rethrows parameter in plain code draws EK4301 (form inference); lane vip-core2
+FuzzFailuresSpec  feature:effectful-body-throw  compiler  VIP-4 (001-functions.md Declaration output, 003-failures.md): a plain function returning Effect.succeed(id) may not throw, but draws no error; lane w2-throw
+FuzzFailuresSpec  feature:effectful-body-call  compiler  VIP-4 (001-functions.md, 003-failures.md): a plain function returning a Stream may not make an unwrapped call that may throw, but draws no error; lane w2-throw
+FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail` that 001-functions.md's example returns is not in scope (TS2304); lane fix-vip-globals
+FuzzFailuresSpec  corpus:throw-top  compiler  the minimal reproduction of feature:throw-top
+FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
+FuzzFailuresSpec  corpus:inferred-async-calls-throwing  compiler  the minimal reproduction of feature:inferred-async-calls-throwing
+FuzzFailuresSpec  corpus:library-plain-propagates  compiler  the minimal reproduction of feature:library-plain-propagates
+FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
+FuzzFailuresSpec  corpus:declaration-async  compiler  the minimal reproduction of feature:declaration-async
+FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
+FuzzFailuresSpec  corpus:error-constructor  compiler  the minimal reproduction of feature:error-constructor
+FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
+FuzzFailuresSpec  corpus:error-static  compiler  the minimal reproduction of feature:error-static
+FuzzFailuresSpec  corpus:error-setter  compiler  the minimal reproduction of feature:error-setter
+FuzzFailuresSpec  corpus:error-type-parameters  compiler  the minimal reproduction of feature:error-type-parameters
+FuzzFailuresSpec  corpus:schema-error-constructor  compiler  the minimal reproduction of feature:schema-error-constructor
+FuzzFailuresSpec  corpus:schema-error-tag  compiler  the minimal reproduction of feature:schema-error-tag
+FuzzFailuresSpec  corpus:schema-error-setter  compiler  the minimal reproduction of feature:schema-error-setter
+FuzzFailuresSpec  corpus:error-interleaved  compiler  the minimal reproduction of feature:error-interleaved
+FuzzFailuresSpec  corpus:assign-annotated-type  compiler  the minimal reproduction of feature:assign-annotated-type
+FuzzFailuresSpec  corpus:assign-wrapped  compiler  the minimal reproduction of feature:assign-wrapped
+FuzzFailuresSpec  corpus:rethrows-accepts-throwing  compiler  the minimal reproduction of feature:rethrows-accepts-throwing
+FuzzFailuresSpec  corpus:effectful-body-throw  compiler  the minimal reproduction of feature:effectful-body-throw
+FuzzFailuresSpec  corpus:effectful-body-call  compiler  the minimal reproduction of feature:effectful-body-call
+FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction of feature:effectful-body-fail
+FuzzFailuresSpec feature:assign-throwing compiler VIP-4: 003-failures.md contract assign-throwing disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
+FuzzFailuresSpec feature:assign-throwing-argument compiler VIP-4: 003-failures.md contract assign-throwing-argument disagrees on unmodified main c9327b36 (error EK4301); lane vip-core2
+FuzzFailuresSpec feature:rethrows-not-inferred compiler VIP-4: 003-failures.md contract rethrows-not-inferred disagrees on unmodified main c9327b36 (error EK4301); lane vip-core2
+FuzzFailuresSpec feature:schema-error-static compiler VIP-29: 003-failures.md contract schema-error-static disagrees on unmodified main c9327b36 (error TS2417); lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-type-parameters compiler VIP-29: 003-failures.md contract schema-error-type-parameters disagrees on unmodified main c9327b36 (error EK2109, error TS2562); lane fix-vip-decls
+FuzzFailuresSpec feature:assign-object-member compiler VIP-4: 003-failures.md contract assign-object-member disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
+FuzzFailuresSpec feature:wrapper-catch-throw compiler VIP-4: 003-failures.md contract wrapper-catch-throw disagrees on unmodified main c9327b36 (error EK4301); lane w2-throw
+FuzzFailuresSpec feature:wrapper-sync-throw compiler VIP-4: 003-failures.md contract wrapper-sync-throw disagrees on unmodified main c9327b36 (error EK4405, error EK4801); lane vip-core2
+FuzzFailuresSpec feature:wrapper-promise-throw compiler VIP-4: 003-failures.md contract wrapper-promise-throw disagrees on unmodified main c9327b36 (error TS2552); lane w2-throw
+FuzzFailuresSpec feature:wrapper-trypromise-options compiler VIP-4: 003-failures.md contract wrapper-trypromise-options disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304, error TS2552, error TS7006); lane vip-core2
+FuzzFailuresSpec feature:catch-tracked-call compiler VIP-4: 003-failures.md contract catch-tracked-call disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2552); lane vip-core2
+FuzzFailuresSpec feature:foreign-const compiler VIP-4: 003-failures.md contract foreign-const disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:foreign-method compiler VIP-4: 003-failures.md contract foreign-method disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:foreign-overload compiler VIP-4: 003-failures.md contract foreign-overload disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dynamic-any disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:effectful-mixed-return compiler VIP-4: 003-failures.md contract effectful-mixed-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2552); lane vip-core2
+FuzzFailuresSpec feature:effectful-any-return compiler VIP-4: 003-failures.md contract effectful-any-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:recursive-throw compiler VIP-4: 003-failures.md contract recursive-throw disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:mutual-recursive-throw compiler VIP-4: 003-failures.md contract mutual-recursive-throw disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:throws-upper-bound compiler VIP-4: 003-failures.md contract throws-upper-bound disagrees on unmodified main c9327b36 (required diagnostic is missing); lane w2-throw
+FuzzFailuresSpec feature:constructor-field-throw compiler VIP-4: 003-failures.md contract constructor-field-throw disagrees on unmodified main c9327b36 (error EK1001, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:error-rejected-initializer compiler VIP-13: 003-failures.md contract error-rejected-initializer disagrees on unmodified main c9327b36 (required diagnostic is missing); lane fix-vip-decls
+FuzzFailuresSpec feature:error-rejected-private-field compiler VIP-13: 003-failures.md contract error-rejected-private-field disagrees on unmodified main c9327b36 (error TS2564); lane fix-vip-decls
+FuzzFailuresSpec feature:error-rejected-index-signature compiler VIP-13: 003-failures.md contract error-rejected-index-signature disagrees on unmodified main c9327b36 (error TS2411); lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-rejected-initializer compiler VIP-29: 003-failures.md contract schema-error-rejected-initializer disagrees on unmodified main c9327b36 (required diagnostic is missing); lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-rejected-private-field compiler VIP-29: 003-failures.md contract schema-error-rejected-private-field disagrees on unmodified main c9327b36 (error TS2564); lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-rejected-index-signature compiler VIP-29: 003-failures.md contract schema-error-rejected-index-signature disagrees on unmodified main c9327b36 (error TS2411); lane fix-vip-decls
+FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md contract tagged-template-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:written-throws-caller compiler VIP-4: 003-failures.md contract written-throws-caller disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:effectful-unknown-return compiler VIP-4: 003-failures.md contract effectful-unknown-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec feature:effectful-whole-union compiler VIP-4: 003-failures.md contract effectful-whole-union disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
+FuzzFailuresSpec corpus:direct-local-const compiler VIP-4: minimized reproduction of feature:direct-local-const; lane w2-throw
+FuzzFailuresSpec corpus:direct-local-argument compiler VIP-4: minimized reproduction of feature:direct-local-argument; lane w2-throw
+FuzzFailuresSpec corpus:direct-local-return compiler VIP-4: minimized reproduction of feature:direct-local-return; lane w2-throw
+FuzzFailuresSpec corpus:wrap-effect-try-block compiler VIP-4: minimized reproduction of feature:wrap-effect-try-block; lane w2-throw
+FuzzFailuresSpec corpus:wrap-effect-try-options compiler VIP-4: minimized reproduction of feature:wrap-effect-try-options; lane w2-throw
+FuzzFailuresSpec corpus:wrap-try-promise-async compiler VIP-4: minimized reproduction of feature:wrap-try-promise-async; lane w2-throw
+FuzzFailuresSpec corpus:wrap-promise compiler VIP-4: minimized reproduction of feature:wrap-promise; lane w2-throw
+FuzzFailuresSpec corpus:inferred-transitive compiler VIP-4: minimized reproduction of feature:inferred-transitive; lane w2-throw
+FuzzFailuresSpec corpus:inferred-arrow-const compiler VIP-4: minimized reproduction of feature:inferred-arrow-const; lane w2-throw
+FuzzFailuresSpec corpus:effectful-ts-stream compiler VIP-4: minimized reproduction of feature:effectful-ts-stream; lane w2-throw
+FuzzFailuresSpec corpus:effectful-ts-layer compiler VIP-4: minimized reproduction of feature:effectful-ts-layer; lane w2-throw
+FuzzFailuresSpec corpus:library-unannotated compiler VIP-4: minimized reproduction of feature:library-unannotated; lane w2-throw
+FuzzFailuresSpec corpus:library-tagged compiler VIP-4: minimized reproduction of feature:library-tagged; lane w2-throw
+FuzzFailuresSpec corpus:library-unknown-tag compiler VIP-4: minimized reproduction of feature:library-unknown-tag; lane w2-throw
+FuzzFailuresSpec corpus:global-json-parse compiler VIP-4: minimized reproduction of feature:global-json-parse; lane w2-throw
+FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
+FuzzFailuresSpec corpus:interface-member compiler VIP-4: minimized reproduction of feature:interface-member; lane w2-throw
+FuzzFailuresSpec corpus:interface-member-opts-in compiler VIP-4: minimized reproduction of feature:interface-member-opts-in; lane w2-throw
+FuzzFailuresSpec corpus:function-type-opts-in compiler VIP-4: minimized reproduction of feature:function-type-opts-in; lane w2-throw
+FuzzFailuresSpec corpus:new-tracked compiler VIP-4: minimized reproduction of feature:new-tracked; lane w2-throw
+FuzzFailuresSpec corpus:new-wrapped compiler VIP-4: minimized reproduction of feature:new-wrapped; lane w2-throw
+FuzzFailuresSpec corpus:getter-untracked compiler VIP-4: minimized reproduction of feature:getter-untracked; lane w2-throw
+FuzzFailuresSpec corpus:setter-untracked compiler VIP-4: minimized reproduction of feature:setter-untracked; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-throwing compiler VIP-4: minimized reproduction of feature:rethrows-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-library compiler VIP-4: minimized reproduction of feature:rethrows-library; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-map-throwing compiler VIP-4: minimized reproduction of feature:rethrows-map-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-foreach-ok compiler VIP-4: minimized reproduction of feature:rethrows-foreach-ok; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-foreach-throwing compiler VIP-4: minimized reproduction of feature:rethrows-foreach-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-filter-throwing compiler VIP-4: minimized reproduction of feature:rethrows-filter-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-reduce-throwing compiler VIP-4: minimized reproduction of feature:rethrows-reduce-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-find-throwing compiler VIP-4: minimized reproduction of feature:rethrows-find-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-some-throwing compiler VIP-4: minimized reproduction of feature:rethrows-some-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-every-throwing compiler VIP-4: minimized reproduction of feature:rethrows-every-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-sort-throwing compiler VIP-4: minimized reproduction of feature:rethrows-sort-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-array-from-throwing compiler VIP-4: minimized reproduction of feature:rethrows-array-from-throwing; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-promise-executor compiler VIP-4: minimized reproduction of feature:rethrows-promise-executor; lane w2-throw
+FuzzFailuresSpec corpus:promise-async-local compiler VIP-4: minimized reproduction of feature:promise-async-local; lane w2-throw
+FuzzFailuresSpec corpus:promise-held compiler VIP-4: minimized reproduction of feature:promise-held; lane w2-throw
+FuzzFailuresSpec corpus:promise-library compiler VIP-4: minimized reproduction of feature:promise-library; lane w2-throw
+FuzzFailuresSpec corpus:promise-thenable compiler VIP-4: minimized reproduction of feature:promise-thenable; lane w2-throw
+FuzzFailuresSpec corpus:promise-library-wrapped compiler VIP-4: minimized reproduction of feature:promise-library-wrapped; lane w2-throw
+FuzzFailuresSpec corpus:promise-reject compiler VIP-4: minimized reproduction of feature:promise-reject; lane w2-throw
+FuzzFailuresSpec corpus:promise-reject-wrapped compiler VIP-4: minimized reproduction of feature:promise-reject-wrapped; lane w2-throw
+FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
+FuzzFailuresSpec corpus:default-throwing compiler VIP-4: minimized reproduction of feature:default-throwing; lane w2-throw
+FuzzFailuresSpec corpus:default-nonthrowing compiler VIP-4: minimized reproduction of feature:default-nonthrowing; lane w2-throw
+FuzzFailuresSpec corpus:assign-throwing compiler VIP-4: minimized reproduction of feature:assign-throwing; lane w2-throw
+FuzzFailuresSpec corpus:assign-throwing-argument compiler VIP-4: minimized reproduction of feature:assign-throwing-argument; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-not-inferred compiler VIP-4: minimized reproduction of feature:rethrows-not-inferred; lane w2-throw
+FuzzFailuresSpec corpus:schema-error-static compiler VIP-4: minimized reproduction of feature:schema-error-static; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-type-parameters compiler VIP-4: minimized reproduction of feature:schema-error-type-parameters; lane fix-vip-decls
+FuzzFailuresSpec corpus:assign-object-member compiler VIP-4: minimized reproduction of feature:assign-object-member; lane w2-throw
+FuzzFailuresSpec corpus:wrapper-catch-throw compiler VIP-4: minimized reproduction of feature:wrapper-catch-throw; lane w2-throw
+FuzzFailuresSpec corpus:wrapper-sync-throw compiler VIP-4: minimized reproduction of feature:wrapper-sync-throw; lane w2-throw
+FuzzFailuresSpec corpus:wrapper-promise-throw compiler VIP-4: minimized reproduction of feature:wrapper-promise-throw; lane w2-throw
+FuzzFailuresSpec corpus:wrapper-trypromise-options compiler VIP-4: minimized reproduction of feature:wrapper-trypromise-options; lane w2-throw
+FuzzFailuresSpec corpus:catch-tracked-call compiler VIP-4: minimized reproduction of feature:catch-tracked-call; lane w2-throw
+FuzzFailuresSpec corpus:foreign-const compiler VIP-4: minimized reproduction of feature:foreign-const; lane w2-throw
+FuzzFailuresSpec corpus:foreign-method compiler VIP-4: minimized reproduction of feature:foreign-method; lane w2-throw
+FuzzFailuresSpec corpus:foreign-overload compiler VIP-4: minimized reproduction of feature:foreign-overload; lane w2-throw
+FuzzFailuresSpec corpus:dynamic-any compiler VIP-4: minimized reproduction of feature:dynamic-any; lane w2-throw
+FuzzFailuresSpec corpus:dynamic-function compiler VIP-4: minimized reproduction of feature:dynamic-function; lane w2-throw
+FuzzFailuresSpec corpus:effectful-mixed-return compiler VIP-4: minimized reproduction of feature:effectful-mixed-return; lane w2-throw
+FuzzFailuresSpec corpus:effectful-any-return compiler VIP-4: minimized reproduction of feature:effectful-any-return; lane w2-throw
+FuzzFailuresSpec corpus:recursive-throw compiler VIP-4: minimized reproduction of feature:recursive-throw; lane w2-throw
+FuzzFailuresSpec corpus:mutual-recursive-throw compiler VIP-4: minimized reproduction of feature:mutual-recursive-throw; lane w2-throw
+FuzzFailuresSpec corpus:throws-upper-bound compiler VIP-4: minimized reproduction of feature:throws-upper-bound; lane w2-throw
+FuzzFailuresSpec corpus:constructor-field-throw compiler VIP-4: minimized reproduction of feature:constructor-field-throw; lane w2-throw
+FuzzFailuresSpec corpus:error-rejected-initializer compiler VIP-4: minimized reproduction of feature:error-rejected-initializer; lane fix-vip-decls
+FuzzFailuresSpec corpus:error-rejected-private-field compiler VIP-4: minimized reproduction of feature:error-rejected-private-field; lane fix-vip-decls
+FuzzFailuresSpec corpus:error-rejected-index-signature compiler VIP-4: minimized reproduction of feature:error-rejected-index-signature; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-initializer compiler VIP-4: minimized reproduction of feature:schema-error-rejected-initializer; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-private-field compiler VIP-4: minimized reproduction of feature:schema-error-rejected-private-field; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-index-signature compiler VIP-4: minimized reproduction of feature:schema-error-rejected-index-signature; lane fix-vip-decls
+FuzzFailuresSpec corpus:tagged-template-throw compiler VIP-4: minimized reproduction of feature:tagged-template-throw; lane w2-throw
+FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduction of feature:callable-union-throw; lane w2-throw
+FuzzFailuresSpec corpus:written-throws-caller compiler VIP-4: minimized reproduction of feature:written-throws-caller; lane w2-throw
+FuzzFailuresSpec corpus:effectful-unknown-return compiler VIP-4: minimized reproduction of feature:effectful-unknown-return; lane w2-throw
+FuzzFailuresSpec corpus:effectful-whole-union compiler VIP-4: minimized reproduction of feature:effectful-whole-union; lane w2-throw
+FuzzFailuresSpec feature:never-return-throw compiler VIP-4: never return types remain throw-tracked; effect function marker currently draws TS1434 before EK0403 can be checked; lane vip-core2
+FuzzFailuresSpec corpus:never-return-throw compiler VIP-4: minimized reproduction of feature:never-return-throw; lane vip-core2
+FuzzFailuresSpec feature:declaration-global-throws compiler VIP-4: 003-failures.md contract declaration-global-throws disagrees on main 84f966a6 (required metadata or diagnostic missing); lane w2-throw
+FuzzFailuresSpec corpus:declaration-global-throws compiler VIP-4: minimized reproduction of feature:declaration-global-throws; lane w2-throw
+FuzzFailuresSpec feature:declaration-transitive-throws compiler VIP-4: 003-failures.md contract declaration-transitive-throws disagrees on main 84f966a6 (required metadata or diagnostic missing); lane w2-throw
+FuzzFailuresSpec corpus:declaration-transitive-throws compiler VIP-4: minimized reproduction of feature:declaration-transitive-throws; lane w2-throw
+FuzzFailuresSpec feature:declaration-recursive-throws compiler VIP-4: 003-failures.md contract declaration-recursive-throws disagrees on main 84f966a6 (error EK2003); lane w2-throw
+FuzzFailuresSpec corpus:declaration-recursive-throws compiler VIP-4: minimized reproduction of feature:declaration-recursive-throws; lane w2-throw
+FuzzFailuresSpec feature:foreign-own-throw-over-type compiler VIP-4: 003-failures.md contract foreign-own-throw-over-type disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
+FuzzFailuresSpec corpus:foreign-own-throw-over-type compiler VIP-4: minimized reproduction of feature:foreign-own-throw-over-type; lane vip-core2
+FuzzFailuresSpec feature:foreign-returned-signature compiler VIP-4: 003-failures.md contract foreign-returned-signature disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
+FuzzFailuresSpec corpus:foreign-returned-signature compiler VIP-4: minimized reproduction of feature:foreign-returned-signature; lane vip-core2
+FuzzFailuresSpec feature:foreign-overload-number compiler VIP-4: 003-failures.md contract foreign-overload-number disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
+FuzzFailuresSpec corpus:foreign-overload-number compiler VIP-4: minimized reproduction of feature:foreign-overload-number; lane vip-core2
+FuzzFailuresSpec feature:rethrows-own-throw compiler VIP-4: 003-failures.md contract rethrows-own-throw disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2552); lane vip-core2
+FuzzFailuresSpec corpus:rethrows-own-throw compiler VIP-4: minimized reproduction of feature:rethrows-own-throw; lane vip-core2
+FuzzFailuresSpec feature:effectful-rethrows-exempt compiler VIP-4: 003-failures.md contract effectful-rethrows-exempt disagrees on main 84f966a6 (error EK4301; error TS1128; error TS1434; error TS2304); lane vip-core2
+FuzzFailuresSpec corpus:effectful-rethrows-exempt compiler VIP-4: minimized reproduction of feature:effectful-rethrows-exempt; lane vip-core2
+FuzzFailuresSpec feature:assign-unknown-admits compiler VIP-4: 003-failures.md contract assign-unknown-admits disagrees on main 84f966a6 (error TS2322); lane vip-core2
+FuzzFailuresSpec corpus:assign-unknown-admits compiler VIP-4: minimized reproduction of feature:assign-unknown-admits; lane vip-core2
+FuzzFailuresSpec feature:error-priority-tag-initializer compiler VIP-13: 003-failures.md contract error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-priority-tag-initializer compiler VIP-13: minimized reproduction of feature:error-priority-tag-initializer; lane fix-vip-decls
+FuzzFailuresSpec feature:error-priority-static-initializer compiler VIP-13: 003-failures.md contract error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-priority-static-initializer compiler VIP-13: minimized reproduction of feature:error-priority-static-initializer; lane fix-vip-decls
+FuzzFailuresSpec feature:error-implements compiler VIP-13: 003-failures.md contract error-implements disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-implements compiler VIP-13: minimized reproduction of feature:error-implements; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-priority-tag-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-priority-tag-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-tag-initializer; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-priority-static-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-priority-static-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-static-initializer; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-implements compiler VIP-29: 003-failures.md contract schema-error-implements disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-implements compiler VIP-29: minimized reproduction of feature:schema-error-implements; lane fix-vip-decls
+FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
+FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
+
+# Additional chapter-3 boundaries on post-VIP-1 main.
+FuzzFailuresSpec feature:effectful-service-key-throw compiler VIP-4: chapter 3 contract effectful-service-key-throw fails on main 405bac96 (initial probe: EK2003); lane w2-throw
+FuzzFailuresSpec corpus:effectful-service-key-throw compiler VIP-4: minimized reproduction of feature:effectful-service-key-throw; lane w2-throw
+FuzzFailuresSpec feature:effectful-service-reference-throw compiler VIP-4: chapter 3 contract effectful-service-reference-throw fails on main 405bac96 (initial probe: EK2003); lane w2-throw
+FuzzFailuresSpec corpus:effectful-service-reference-throw compiler VIP-4: minimized reproduction of feature:effectful-service-reference-throw; lane w2-throw
+FuzzFailuresSpec feature:error-rejected-private-modifier compiler VIP-13: chapter 3 contract error-rejected-private-modifier fails on main 405bac96 (initial probe: TS2564); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-rejected-private-modifier compiler VIP-13: minimized reproduction of feature:error-rejected-private-modifier; lane fix-vip-decls
+FuzzFailuresSpec feature:error-rejected-declare-field compiler VIP-13: chapter 3 contract error-rejected-declare-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-rejected-declare-field compiler VIP-13: minimized reproduction of feature:error-rejected-declare-field; lane fix-vip-decls
+FuzzFailuresSpec feature:error-rejected-accessor-field compiler VIP-13: chapter 3 contract error-rejected-accessor-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
+FuzzFailuresSpec corpus:error-rejected-accessor-field compiler VIP-13: minimized reproduction of feature:error-rejected-accessor-field; lane fix-vip-decls
+FuzzFailuresSpec feature:error-effect-getter-priority compiler VIP-13: chapter 3 contract error-effect-getter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
+FuzzFailuresSpec corpus:error-effect-getter-priority compiler VIP-13: minimized reproduction of feature:error-effect-getter-priority; lane core-land
+FuzzFailuresSpec feature:error-effect-setter-priority compiler VIP-13: chapter 3 contract error-effect-setter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
+FuzzFailuresSpec corpus:error-effect-setter-priority compiler VIP-13: minimized reproduction of feature:error-effect-setter-priority; lane core-land
+FuzzFailuresSpec feature:error-effect-constructor-priority compiler VIP-13: chapter 3 contract error-effect-constructor-priority fails on main 405bac96 (initial probe: TS2337); lane core-land
+FuzzFailuresSpec corpus:error-effect-constructor-priority compiler VIP-13: minimized reproduction of feature:error-effect-constructor-priority; lane core-land
+FuzzFailuresSpec feature:error-literal-computed-keys compiler VIP-13: chapter 3 contract error-literal-computed-keys fails on main 405bac96 (initial probe: TS2353, TS2564); lane fix-fz-fail
+FuzzFailuresSpec corpus:error-literal-computed-keys compiler VIP-13: minimized reproduction of feature:error-literal-computed-keys; lane fix-fz-fail
+FuzzFailuresSpec feature:schema-error-rejected-private-modifier compiler VIP-29: chapter 3 contract schema-error-rejected-private-modifier fails on main 405bac96 (initial probe: TS2564); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-private-modifier compiler VIP-29: minimized reproduction of feature:schema-error-rejected-private-modifier; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-rejected-declare-field compiler VIP-29: chapter 3 contract schema-error-rejected-declare-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-declare-field compiler VIP-29: minimized reproduction of feature:schema-error-rejected-declare-field; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-rejected-accessor-field compiler VIP-29: chapter 3 contract schema-error-rejected-accessor-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-rejected-accessor-field compiler VIP-29: minimized reproduction of feature:schema-error-rejected-accessor-field; lane fix-vip-decls
+FuzzFailuresSpec feature:schema-error-effect-getter-priority compiler VIP-29: chapter 3 contract schema-error-effect-getter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
+FuzzFailuresSpec corpus:schema-error-effect-getter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-getter-priority; lane core-land
+FuzzFailuresSpec feature:schema-error-effect-setter-priority compiler VIP-29: chapter 3 contract schema-error-effect-setter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
+FuzzFailuresSpec corpus:schema-error-effect-setter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-setter-priority; lane core-land
+FuzzFailuresSpec feature:schema-error-effect-constructor-priority compiler VIP-29: chapter 3 contract schema-error-effect-constructor-priority fails on main 405bac96 (initial probe: TS2337); lane core-land
+FuzzFailuresSpec corpus:schema-error-effect-constructor-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-constructor-priority; lane core-land
+FuzzFailuresSpec feature:schema-error-literal-computed-keys compiler VIP-29: chapter 3 contract schema-error-literal-computed-keys fails on main 405bac96 (initial probe: TS2353, TS2564); lane fix-fz-fail
+FuzzFailuresSpec corpus:schema-error-literal-computed-keys compiler VIP-29: minimized reproduction of feature:schema-error-literal-computed-keys; lane fix-fz-fail
+FuzzFailuresSpec feature:wrapper-callback-throw compiler VIP-4: chapter 3 contract wrapper-callback-throw fails on main 405bac96 (initial probe: EK4405, EK4801); lane w2-throw
+FuzzFailuresSpec corpus:wrapper-callback-throw compiler VIP-4: minimized reproduction of feature:wrapper-callback-throw; lane w2-throw
+FuzzFailuresSpec feature:wrapper-suspend-throw compiler VIP-4: chapter 3 contract wrapper-suspend-throw fails on main 405bac96 (initial probe: TS2552); lane w2-throw
+FuzzFailuresSpec corpus:wrapper-suspend-throw compiler VIP-4: minimized reproduction of feature:wrapper-suspend-throw; lane w2-throw
+FuzzFailuresSpec feature:catch-tracked-new compiler VIP-4: chapter 3 contract catch-tracked-new fails on main 405bac96 (initial probe: EK2003, TS2304); lane w2-throw
+FuzzFailuresSpec corpus:catch-tracked-new compiler VIP-4: minimized reproduction of feature:catch-tracked-new; lane w2-throw
+FuzzFailuresSpec feature:catch-tracked-template compiler VIP-4: chapter 3 contract catch-tracked-template fails on main 405bac96 (initial probe: TS2304); lane w2-throw
+FuzzFailuresSpec corpus:catch-tracked-template compiler VIP-4: minimized reproduction of feature:catch-tracked-template; lane w2-throw
+FuzzFailuresSpec feature:promise-new compiler VIP-4: chapter 3 contract promise-new fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
+FuzzFailuresSpec corpus:promise-new compiler VIP-4: minimized reproduction of feature:promise-new; lane w2-throw
+FuzzFailuresSpec feature:inferred-callable-alias compiler VIP-4: chapter 3 contract inferred-callable-alias fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
+FuzzFailuresSpec corpus:inferred-callable-alias compiler VIP-4: minimized reproduction of feature:inferred-callable-alias; lane w2-throw
+FuzzFailuresSpec feature:foreign-callable-alias compiler VIP-4: chapter 3 contract foreign-callable-alias fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
+FuzzFailuresSpec corpus:foreign-callable-alias compiler VIP-4: minimized reproduction of feature:foreign-callable-alias; lane w2-throw
+FuzzFailuresSpec feature:alias-declaration-tag-not-admitted compiler VIP-4: chapter 3 contract alias-declaration-tag-not-admitted fails on main 405bac96 (initial probe: TS2322); lane w2-throw
+FuzzFailuresSpec corpus:alias-declaration-tag-not-admitted compiler VIP-4: minimized reproduction of feature:alias-declaration-tag-not-admitted; lane w2-throw
+FuzzFailuresSpec feature:rethrows-multiple-parameters compiler VIP-4: chapter 3 contract rethrows-multiple-parameters fails on main 405bac96 (initial probe: EK4301); lane w2-throw
+FuzzFailuresSpec corpus:rethrows-multiple-parameters compiler VIP-4: minimized reproduction of feature:rethrows-multiple-parameters; lane w2-throw
+FuzzFailuresSpec feature:rethrows-foreign-own-unknown compiler VIP-4: chapter 3 contract rethrows-foreign-own-unknown fails on main 405bac96 (initial probe: EK4401); lane w2-throw
+FuzzFailuresSpec corpus:rethrows-foreign-own-unknown compiler VIP-4: minimized reproduction of feature:rethrows-foreign-own-unknown; lane w2-throw
+FuzzFailuresSpec feature:rethrows-own-never-callback-error compiler VIP-4: chapter 3 contract rethrows-own-never-callback-error fails on main 405bac96 (initial probe: EK4301); lane w2-throw
+FuzzFailuresSpec corpus:rethrows-own-never-callback-error compiler VIP-4: minimized reproduction of feature:rethrows-own-never-callback-error; lane w2-throw
+FuzzFailuresSpec feature:assign-incompatible-contract compiler VIP-4: chapter 3 contract assign-incompatible-contract fails on main 405bac96 (initial probe: TS2322); lane w2-throw
+FuzzFailuresSpec corpus:assign-incompatible-contract compiler VIP-4: minimized reproduction of feature:assign-incompatible-contract; lane w2-throw
+FuzzFailuresSpec feature:effectful-error-value-throw compiler VIP-4: chapter 3 contract effectful-error-value-throw fails on main 405bac96 (initial probe: EK2003); lane w2-throw
+FuzzFailuresSpec corpus:effectful-error-value-throw compiler VIP-4: minimized reproduction of feature:effectful-error-value-throw; lane w2-throw
+FuzzFailuresSpec feature:assign-class-override compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws TS2416 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:assign-class-override compiler VIP-4: minimized reproduction of feature:assign-class-override; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:assign-dts-callback compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301 there and EK4401 elsewhere on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:assign-dts-callback compiler VIP-4: minimized reproduction of feature:assign-dts-callback; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:assign-implements compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK2003 there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:assign-implements compiler VIP-4: minimized reproduction of feature:assign-implements; lane w2-throw
+FuzzFailuresSpec feature:assign-lazyarg compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:assign-lazyarg compiler VIP-4: minimized reproduction of feature:assign-lazyarg; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:assign-override-admitted compiler VIP-4: the chapter accepts the program, which draws EK2003 on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:assign-override-admitted compiler VIP-4: minimized reproduction of feature:assign-override-admitted; lane w2-throw
+FuzzFailuresSpec feature:assign-return-written-type compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws TS2322 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:assign-return-written-type compiler VIP-4: minimized reproduction of feature:assign-return-written-type; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:assign-service-layer compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301 there and EK2101 elsewhere on main 90a26cf8; lane fix-vip-decls (EK2101), then lane vip-core2 (form inference), then lane w2-throw
+FuzzFailuresSpec corpus:assign-service-layer compiler VIP-4: minimized reproduction of feature:assign-service-layer; lane fix-vip-decls (EK2101), then lane vip-core2 (form inference), then lane w2-throw
+FuzzFailuresSpec feature:assign-service-member compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301 there and EK2101 elsewhere on main 90a26cf8; lane fix-vip-decls (EK2101), then lane vip-core2 (form inference), then lane w2-throw
+FuzzFailuresSpec corpus:assign-service-member compiler VIP-4: minimized reproduction of feature:assign-service-member; lane fix-vip-decls (EK2101), then lane vip-core2 (form inference), then lane w2-throw
+FuzzFailuresSpec feature:assign-service-member-never compiler VIP-4: the chapter accepts the program, which draws EK2101 on main 90a26cf8; lane fix-vip-decls (EK2101: non-Effect service members)
+FuzzFailuresSpec corpus:assign-service-member-never compiler VIP-4: minimized reproduction of feature:assign-service-member-never; lane fix-vip-decls (EK2101: non-Effect service members)
+FuzzFailuresSpec feature:builtin-json-stringify compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:builtin-json-stringify compiler VIP-4: minimized reproduction of feature:builtin-json-stringify; lane w2-throw
+FuzzFailuresSpec feature:builtin-repeat compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:builtin-repeat compiler VIP-4: minimized reproduction of feature:builtin-repeat; lane w2-throw
+FuzzFailuresSpec feature:class-expression-static-effect compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK1001 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-expression-static-effect compiler VIP-4: minimized reproduction of feature:class-expression-static-effect; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-instance-field-unevaluated compiler VIP-4: the chapter accepts the program, which draws EK1001 on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-instance-field-unevaluated compiler VIP-4: minimized reproduction of feature:class-instance-field-unevaluated; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-static-block-effect compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK1001, EK4801 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-static-block-effect compiler VIP-4: minimized reproduction of feature:class-static-block-effect; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-static-caught compiler VIP-4: the chapter accepts the program, which draws EK1001, EK4801 on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-static-caught compiler VIP-4: minimized reproduction of feature:class-static-caught; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-static-effectful-plain compiler VIP-4: the chapter reports EK0401 at the marked code; the compiler draws EK1001 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-static-effectful-plain compiler VIP-4: minimized reproduction of feature:class-static-effectful-plain; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-static-field-effect compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK1001 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-static-field-effect compiler VIP-4: minimized reproduction of feature:class-static-field-effect; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:class-static-joins-plain compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK1001 elsewhere on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:class-static-joins-plain compiler VIP-4: minimized reproduction of feature:class-static-joins-plain; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:declaration-catch-binding-unknown compiler VIP-4: declaration output tags again with @throws '', the chapter requires '{unknown}' on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:declaration-catch-binding-unknown compiler VIP-4: minimized reproduction of feature:declaration-catch-binding-unknown; lane w2-throw
+FuzzFailuresSpec feature:declaration-interface-member compiler VIP-4: declaration output tags read with @throws '', the chapter requires '{never}' on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:declaration-interface-member compiler VIP-4: minimized reproduction of feature:declaration-interface-member; lane w2-throw
+FuzzFailuresSpec feature:declaration-throw-parameter-type compiler VIP-4: the declaration-output program draws EK2003 on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:declaration-throw-parameter-type compiler VIP-4: minimized reproduction of feature:declaration-throw-parameter-type; lane w2-throw
+FuzzFailuresSpec feature:derived-implicit-super compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK1001 elsewhere on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:derived-implicit-super compiler VIP-4: minimized reproduction of feature:derived-implicit-super; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:effect-data-last-callback-throw compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301, TS2345 there and EK4502 elsewhere on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:effect-data-last-callback-throw compiler VIP-4: minimized reproduction of feature:effect-data-last-callback-throw; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:effect-data-last-pipe compiler VIP-4: the chapter accepts the program, which draws EK4502, TS18046 on main 90a26cf8; lane vip-core2 (EK4502 types a call's receiver of .pipe as its success value)
+FuzzFailuresSpec corpus:effect-data-last-pipe compiler VIP-4: minimized reproduction of feature:effect-data-last-pipe; lane vip-core2 (EK4502 types a call's receiver of .pipe as its success value)
+FuzzFailuresSpec feature:error-default-export compiler VIP-13: the chapter reports EK1305 at the marked code; the compiler draws TS1005, TS2304, TS2552 there on main 90a26cf8; lane fix-vip-decls
+FuzzFailuresSpec corpus:error-default-export compiler VIP-13: minimized reproduction of feature:error-default-export; lane fix-vip-decls
+FuzzFailuresSpec feature:foreign-function-field compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:foreign-function-field compiler VIP-4: minimized reproduction of feature:foreign-function-field; lane w2-throw
+FuzzFailuresSpec feature:foreign-function-property compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:foreign-function-property compiler VIP-4: minimized reproduction of feature:foreign-function-property; lane w2-throw
+FuzzFailuresSpec feature:inferred-catch-binding-rethrow compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:inferred-catch-binding-rethrow compiler VIP-4: minimized reproduction of feature:inferred-catch-binding-rethrow; lane w2-throw
+FuzzFailuresSpec feature:match-guard-call compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:match-guard-call compiler VIP-4: minimized reproduction of feature:match-guard-call; lane w2-throw
+FuzzFailuresSpec feature:match-no-match-implicit compiler VIP-4: the chapter accepts the program, which draws EK4701 on main 90a26cf8; lane fix-vip-match (EK4701 on an open subject), then lane w2-throw
+FuzzFailuresSpec corpus:match-no-match-implicit compiler VIP-4: minimized reproduction of feature:match-no-match-implicit; lane fix-vip-match (EK4701 on an open subject), then lane w2-throw
+FuzzFailuresSpec feature:promise-union compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:promise-union compiler VIP-4: minimized reproduction of feature:promise-union; lane w2-throw
+FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
+FuzzFailuresSpec feature:rethrows-tag-effect-function compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-tag-effect-function compiler VIP-4: minimized reproduction of feature:rethrows-tag-effect-function; lane w2-throw
+FuzzFailuresSpec feature:schema-error-default-export compiler VIP-29: the chapter reports EK1305 at the marked code; the compiler draws TS1005, TS2552 there on main 90a26cf8; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-default-export compiler VIP-29: minimized reproduction of feature:schema-error-default-export; lane fix-vip-decls
+FuzzFailuresSpec feature:throws-tag-effect-function compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:throws-tag-effect-function compiler VIP-4: minimized reproduction of feature:throws-tag-effect-function; lane w2-throw
+FuzzFailuresSpec feature:throws-tag-effect-returner compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
+FuzzFailuresSpec corpus:throws-tag-effect-returner compiler VIP-4: minimized reproduction of feature:throws-tag-effect-returner; lane w2-throw
+FuzzFailuresSpec feature:catch-effect-bridged compiler VIP-4: the chapter accepts the program, which draws EK9203 on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:catch-effect-bridged compiler VIP-4: minimized reproduction of feature:catch-effect-bridged; lane w2-throw
+FuzzFailuresSpec feature:catch-effect-param-default compiler VIP-4: the chapter reports EK0401 at the marked code; the compiler reports no error there and EK9203 elsewhere on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:catch-effect-param-default compiler VIP-4: minimized reproduction of feature:catch-effect-param-default; lane w2-throw
+FuzzFailuresSpec feature:catch-param-computed-key compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK9203 elsewhere on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:catch-param-computed-key compiler VIP-4: minimized reproduction of feature:catch-param-computed-key; lane w2-throw
+FuzzFailuresSpec feature:catch-param-default compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK9203 elsewhere on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:catch-param-default compiler VIP-4: minimized reproduction of feature:catch-param-default; lane w2-throw
+FuzzFailuresSpec feature:catch-param-lazy-default compiler VIP-4: the chapter accepts the program, which draws EK9203 on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:catch-param-lazy-default compiler VIP-4: minimized reproduction of feature:catch-param-lazy-default; lane w2-throw
+FuzzFailuresSpec feature:declaration-rethrows-default compiler VIP-4: the declaration-output program draws EK0405, EK4301 on main c080051a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:declaration-rethrows-default compiler VIP-4: minimized reproduction of feature:declaration-rethrows-default; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:generic-unconstrained-substitution compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK9203 elsewhere on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:generic-unconstrained-substitution compiler VIP-4: minimized reproduction of feature:generic-unconstrained-substitution; lane w2-throw
+FuzzFailuresSpec feature:generic-unconstrained-wrapped compiler VIP-4: the chapter accepts the program, which draws EK9203 on main c080051a; lane w2-throw
+FuzzFailuresSpec corpus:generic-unconstrained-wrapped compiler VIP-4: minimized reproduction of feature:generic-unconstrained-wrapped; lane w2-throw
+FuzzFailuresSpec feature:rethrows-default-omitted compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK4301 elsewhere on main c080051a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:rethrows-default-omitted compiler VIP-4: minimized reproduction of feature:rethrows-default-omitted; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:rethrows-default-supplied compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK4301 elsewhere on main c080051a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:rethrows-default-supplied compiler VIP-4: minimized reproduction of feature:rethrows-default-supplied; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:rethrows-default-undefined compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there and EK4301 elsewhere on main c080051a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:rethrows-default-undefined compiler VIP-4: minimized reproduction of feature:rethrows-default-undefined; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:rethrows-default-wrapped compiler VIP-4: the chapter accepts the program, which draws EK4301 on main c080051a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:rethrows-default-wrapped compiler VIP-4: minimized reproduction of feature:rethrows-default-wrapped; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:error-method-overloads compiler VIP-13: the chapter accepts the program, which draws TS2394 on main 695576ac; lane fix-vip-decls (TS2394 on error-body overload signatures)
+FuzzFailuresSpec corpus:error-method-overloads compiler VIP-13: minimized reproduction of feature:error-method-overloads; lane fix-vip-decls (TS2394 on error-body overload signatures)
+FuzzFailuresSpec feature:overload-effect-bound-ok compiler VIP-4: the chapter accepts the program, which draws EK9203, TS2322 on main 695576ac; lane vip-core2 (EK9203: a plain Effect-returning implementation may not build an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:overload-effect-bound-ok compiler VIP-4: minimized reproduction of feature:overload-effect-bound-ok; lane vip-core2 (EK9203: a plain Effect-returning implementation may not build an Effect), then lane w2-throw
+FuzzFailuresSpec feature:overload-effect-bound-throw compiler VIP-4: the chapter reports EK0401 at the marked code; the compiler draws EK9203, TS2322 there on main 695576ac; lane vip-core2 (EK9203: a plain Effect-returning implementation may not build an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:overload-effect-bound-throw compiler VIP-4: minimized reproduction of feature:overload-effect-bound-throw; lane vip-core2 (EK9203: a plain Effect-returning implementation may not build an Effect), then lane w2-throw
+FuzzFailuresSpec feature:rethrows-escape-nested compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 695576ac; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-escape-nested compiler VIP-4: minimized reproduction of feature:rethrows-escape-nested; lane w2-throw
+FuzzFailuresSpec feature:rethrows-escape-return compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 695576ac; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-escape-return compiler VIP-4: minimized reproduction of feature:rethrows-escape-return; lane w2-throw
+FuzzFailuresSpec feature:rethrows-escape-store compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler reports no error there on main 695576ac; lane w2-throw
+FuzzFailuresSpec corpus:rethrows-escape-store compiler VIP-4: minimized reproduction of feature:rethrows-escape-store; lane w2-throw
+FuzzFailuresSpec feature:schema-error-method-overloads compiler VIP-29: the chapter accepts the program, which draws TS2394 on main 695576ac; lane fix-vip-decls (TS2394 on error-body overload signatures)
+FuzzFailuresSpec corpus:schema-error-method-overloads compiler VIP-29: minimized reproduction of feature:schema-error-method-overloads; lane fix-vip-decls (TS2394 on error-body overload signatures)
+FuzzFailuresSpec feature:assign-async-default-throw compiler VIP-4: the chapter accepts the program, which draws EK1001 on main d0cdbe5a; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec corpus:assign-async-default-throw compiler VIP-4: minimized reproduction of feature:assign-async-default-throw; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
+FuzzFailuresSpec feature:assign-promise-plain-throws compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler reports no error there and EK9203 elsewhere on main d0cdbe5a; lane w2-throw
+FuzzFailuresSpec corpus:assign-promise-plain-throws compiler VIP-4: minimized reproduction of feature:assign-promise-plain-throws; lane w2-throw
+FuzzFailuresSpec feature:declaration-async-rethrows compiler VIP-4: declaration output tags each with @throws ' @rethrows f', the chapter requires '{never}' on main d0cdbe5a; lane w2-throw
+FuzzFailuresSpec corpus:declaration-async-rethrows compiler VIP-4: minimized reproduction of feature:declaration-async-rethrows; lane w2-throw
+FuzzFailuresSpec feature:error-async-effect-getter-priority compiler VIP-13: the chapter reports EK0104 at the marked code; the compiler draws TS1434, TS7008 there on main d0cdbe5a; lane core-land (TS1434: async effect get does not parse)
+FuzzFailuresSpec corpus:error-async-effect-getter-priority compiler VIP-13: minimized reproduction of feature:error-async-effect-getter-priority; lane core-land (TS1434: async effect get does not parse)
+FuzzFailuresSpec feature:promise-tagged-template compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main d0cdbe5a; lane w2-throw
+FuzzFailuresSpec corpus:promise-tagged-template compiler VIP-4: minimized reproduction of feature:promise-tagged-template; lane w2-throw
+FuzzFailuresSpec feature:schema-error-async-effect-getter-priority compiler VIP-29: the chapter reports EK0104 at the marked code; the compiler draws TS1434, TS7008 there on main d0cdbe5a; lane core-land (TS1434: async effect get does not parse)
+FuzzFailuresSpec corpus:schema-error-async-effect-getter-priority compiler VIP-29: minimized reproduction of feature:schema-error-async-effect-getter-priority; lane core-land (TS1434: async effect get does not parse)
+FuzzFailuresSpec feature:schema-error-computed-key-broad compiler VIP-29: the chapter reports EK2117 at the marked code; the compiler draws TS2564 there on main d0cdbe5a; lane fix-vip-decls
+FuzzFailuresSpec corpus:schema-error-computed-key-broad compiler VIP-29: minimized reproduction of feature:schema-error-computed-key-broad; lane fix-vip-decls

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("assign-return-written-type")
+byte(0)
