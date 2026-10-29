@@ -25,7 +25,7 @@ func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 }
 
 // checkSyntaxDiagnostics mirrors EK1003 (for await and await using outside an
-// async function), EK1004/EK1010, D15's finally exits
+// async function), EK1010, D15's finally exits
 // (EK2006), D1's bodiless service contracts (EK2101), D129's setup order
 // (EK2104), and D229's lexical hatch captures (EK4405). Alias/type identity
 // and unresolved types remain native. A type argument left out of an Effect
@@ -65,22 +65,6 @@ func (p *projector) checkSyntaxDiagnostics() {
 			flags := n.Flags & ast.NodeFlagsBlockScoped
 			if flags == ast.NodeFlagsAwaitUsing && !inAsyncFunction(n) {
 				p.syntaxToken(n, 1003, "await using is not part of VibeLang: a call already waits.")
-			}
-			if flags == ast.NodeFlagsUsing || flags == ast.NodeFlagsAwaitUsing {
-				top := true
-				for parent := n.Parent; parent != nil; parent = parent.Parent {
-					if ast.IsFunctionLikeDeclaration(parent) {
-						top = false
-						break
-					}
-				}
-				if top {
-					r := scanner.GetRangeOfTokenAtPosition(p.file, n.Pos())
-					if flags == ast.NodeFlagsAwaitUsing {
-						r = scanner.GetRangeOfTokenAtPosition(p.file, r.End())
-					}
-					p.diagnostics = append(p.diagnostics, Diagnostic{Start: r.Pos(), Length: r.Len(), Code: 1004, Message: "using needs a block that a program runs, but a module's top level is not inside one."})
-				}
 			}
 		case ast.KindTryStatement:
 			if block := n.AsTryStatement().FinallyBlock; block != nil && syntaxInLowerableBody(n) {

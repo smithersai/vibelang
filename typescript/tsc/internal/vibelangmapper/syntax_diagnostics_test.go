@@ -75,12 +75,16 @@ func TestSyntaxEK1003(t *testing.T) {
 	checkSyntaxDiagnostic(t, 1003, `for await (const x of xs) {}`, "await", "for await is not part of VibeLang: a call already waits.", `const load = async (xs: AsyncIterable<number>) => { for await (const x of xs) {} }`)
 }
 
-// TestSyntaxEK1004 includes module blocks and class static initialization.
-func TestSyntaxEK1004(t *testing.T) {
-	checkSyntaxFixture(t, "ek1004-await-using", 1004, 1)
-	checkSyntaxFixture(t, "ek1004-using", 1004, 3)
-	for _, source := range []string{`using log = open()`, `await using log = open()`, `{ using log = open() }`, `class Registry { static { using log = open() } }`} {
-		checkSyntaxDiagnostic(t, 1004, source, "using", "using needs a block that a program runs, but a module's top level is not inside one.", `function f() { using log = open() }`)
+// Module resources retain TypeScript placement in the mapper (VIP-8/26).
+func TestSyntaxModuleUsing(t *testing.T) {
+	for _, source := range []string{
+		`using log = { [Symbol.dispose]() {} }; export {}`,
+		`{ using log = { [Symbol.dispose]() {} } } export {}`,
+		`class Registry { static { using log = { [Symbol.dispose]() {} } } } export {}`,
+	} {
+		for _, d := range Project(source, testContext).Diagnostics {
+			t.Errorf("%s: unexpected diagnostic: %+v", source, d)
+		}
 	}
 }
 

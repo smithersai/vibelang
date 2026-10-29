@@ -20,7 +20,6 @@ export function diagnosticCodes(sources: string[]): string[] {
 // describe the VIP language, so these have no reference until the compiler retires
 // or respells them; delete an entry when its code goes.
 export const retiredByVips: Record<string, string> = {
-  EK1004: "VIP-8: using keeps TypeScript's meaning",
   EK1008: "VIP-23: the topic is the Effect value, with no by-name operand",
   EK1022: "VIP-11: no block params",
   EK2005: "VIP-35: handlers are open",

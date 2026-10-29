@@ -2001,6 +2001,7 @@ typescript/vibelang/cases/module-services/main.vibe:21:21 lambda choice fallback
 typescript/vibelang/cases/module-services/main.vibe:24:19 lambda effectFn table
 typescript/vibelang/cases/module-services/main.vibe:25:11 lambda effectFn table
 typescript/vibelang/cases/module-services/main.vibe:27:38 byname program table
+typescript/vibelang/cases/module-using/main.vibe:4:12 lambda plain protocol
 typescript/vibelang/cases/module-vibelang-syntax.fail/main.vibe:15:19 lambda plain table
 typescript/vibelang/cases/named-expression-self-reference/self.vibe:10:21 lambda effectFn annotation
 typescript/vibelang/cases/named-expression-self-reference/self.vibe:16:25 lambda factory annotation

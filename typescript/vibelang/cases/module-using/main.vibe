@@ -1,0 +1,9 @@
+const events: string[] = []
+function open(name: string): Disposable {
+  events.push("open:" + name)
+  return { [Symbol.dispose]() { events.push("close:" + name) } }
+}
+using moduleResource = open("module");
+{ using blockResource = open("block") }
+class Registry { static { using staticResource = open("static") } }
+export { events }

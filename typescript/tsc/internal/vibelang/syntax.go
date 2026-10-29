@@ -14,8 +14,7 @@ import (
 // (VIP-5). Outside an async function a call already waits, so for await and
 // await using are EK1003 (Chapter 10). The parser writes await outside an
 // async function as $await (fibers.go), so an AwaitExpression here is inside
-// an async function. A module's top level is not inside a program, so using
-// there has no block to release it in: EK1004 (Chapter 6). D271 exempts
+// an async function. D271 exempts
 // explicit JavaScript iterator generators and their own body syntax.
 
 var EK1017 = message(1017, errorCategory, "provide is a statement; write provide layer { statements } and return from inside its block.")
@@ -70,13 +69,6 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				}
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1003, "await using"), "Write using: it already waits for the acquisition and the release.")
 				cover(c, node)
-				if isAtModuleTopLevel(node) {
-					reportUsingAtTopLevel(c, file, node)
-				}
-			case ast.NodeFlagsUsing:
-				if isAtModuleTopLevel(node) {
-					reportUsingAtTopLevel(c, file, node)
-				}
 			}
 		}
 		return node.ForEachChild(visit)
@@ -89,15 +81,6 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 func inAsyncFunction(node *ast.Node) bool {
 	fn := ast.GetContainingFunction(node)
 	return fn != nil && ast.GetFunctionFlags(fn)&ast.FunctionFlagsAsync != 0
-}
-
-// reportUsingAtTopLevel reports EK1004 at the using keyword of list.
-func reportUsingAtTopLevel(c *checker.Checker, file *ast.SourceFile, list *ast.Node) {
-	pos := list.Pos()
-	if list.Flags&ast.NodeFlagsBlockScoped == ast.NodeFlagsAwaitUsing {
-		pos = scanner.GetRangeOfTokenAtPosition(file, pos).End() // skip await
-	}
-	note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, pos), EK1004), "Move it into a function.")
 }
 
 // isAtModuleTopLevel reports whether node runs as part of its module's top

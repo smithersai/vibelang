@@ -1,5 +1,5 @@
-// expect: EK1003 EK1004
-// await using at a module's top level is both EK1003 and EK1004.
+// expect: EK1003
+// The remaining async-context restriction is owned by vip-core2.
 declare function open(path: string): AsyncDisposable
 
 await using log = open("/var/log/app.log")
