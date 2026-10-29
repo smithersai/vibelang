@@ -291,7 +291,7 @@ Three things can happen in a default:
 | plain function, arrow, method | the call gives `7` |
 | `async` | the Promise fulfills with `7` |
 | `effect` | the call gives an Effect that succeeds with `7` |
-| `effect function*` | a bare `return` gives an empty `Stream`; `return 7` is `EK2101` |
+| `effect function*` | a bare `return` gives an empty `Stream`; `return 7` is `EK2128` |
 | `function*`, `async function*` | the default runs at the call and the body never starts: the call gives a generator that finishes with `7`, so its first `next()` gives `{ done: true, value: 7 }` |
 
 Parameters are bound at the call, left to right, so earlier defaults have run, later ones don't run, and `length` is unchanged. A default sees the parameter scope, not the body's bindings: in `function g(a = do { return 0 }, b = () => y) { const y = "body"; return b() }`, `b` reads the outer `y`. The `return` adds the type of `7` to the function's result, as any `return` does. A throw in a default follows the kind of function: a plain function throws, an `async` function rejects, and an `effect` function gives an Effect that dies ([Code outside the generator](/spec/003-failures#code-outside-the-generator)).
@@ -661,7 +661,7 @@ function first() {
 
 | Rule | Diagnostic |
 | --- | --- |
-| `return value` in a producer, `effect function* p() { return 1 }` (a bare `return` is allowed and ends the stream) | `EK2101` |
+| `return value` in a producer, `effect function* p() { return 1 }` (a bare `return` is allowed and ends the stream) | `EK2128` |
 | a written return type that is not a `Stream.Stream<A, E, R>`, `effect function* p(): number[] { }`, as TypeScript requires an `AsyncGenerator` type for `async function*` | `EK2102` |
 | `yield*` in a producer, `effect function* p() { yield* other() }`: no VIP specifies delegation | `EK2103` |
 | `yield` in an `effect` block, arrow or `effect function` nested in a producer, where no generator encloses it | `EK2104` |

@@ -35,7 +35,7 @@ The consumer stops at 25; before `firstAlert` returns, the producer's finalizer 
 
 In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`.
 
-A bare `return` ends a producer. `return value` is an error because a Stream has no return value. A `return` inside a `for try` body is also an error. Save the result and use `break` instead.
+A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. A `return` inside a `for try` body is also an error. Save the result and use `break` instead.
 
 ## Call services between yields
 

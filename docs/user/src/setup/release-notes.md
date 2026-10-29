@@ -50,6 +50,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | `return x ?? throw c ? a : b` | EK1010: it previously parsed as `(x ?? throw c) ? a : b`, throwing only `c`. Write `return x ?? throw (c ? a : b)`. |
 | `throw cause` where `cause` is a `Cause`, as in `when Exit.Failure(let cause): throw cause` | EK2140: `throw` fails with the value it is given, so this would make the Cause object an expected failure. It previously rethrew every reason the cause held. Write `return Effect.failCause(cause)`, as Effect code does. A `throw` of an `unknown` that holds a Cause still fails with that value. |
 | A Stream that needs a control operation, such as a producer that performs one, held in a binding or used with a Stream method, as in `const s = asks(); Stream.runCollect(s)` or `s.take(1)` | EK4201, as passing the producer call itself already was: a Stream consumer pulls it on a fiber of its own, where the operation's handler cannot be reached. Loop over it with `for...of`, or handle the operation inside the producer. |
+| `return value` in a producer, as in `function* upTo(n) { …; return n }` | `EK2128` (VIP-21): a Stream has no return value, and the value was dropped. `--fix` writes `return`, or `{ value; return }` where evaluating the value runs code. |
 | A member access, element access or call after a parenthesized await operation, as in `await.all(batch).jobs` | It now applies to the operation's value, as after any call: `await.all([a(), b()]).length` counts the results. It previously applied inside the operand, running `batch.jobs`; write `await.all(batch.jobs)` for that. |
 | `error Sub extends Base { path: string }` when Base's constructor takes a primitive or list | EK2118 at the declaration; before, construction usually failed later with TS2345. Write a constructor that calls `super` with the arguments Base expects. |
 | `module { export const value = 1 }` | EK4408 replaces misleading platform/call errors. Name it: `module helpers { export const value = 1 }`. |
@@ -131,6 +132,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 ### Bugs fixed since 0.0.10
+
+- A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 

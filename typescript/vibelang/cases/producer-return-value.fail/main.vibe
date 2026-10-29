@@ -1,0 +1,31 @@
+// expect: EK2128 EK2128
+// VIP-21: a producer returns a Stream, which has no return value, so
+// `return value` in one is EK2128, and a bare return ends the stream. Before
+// VIP-21 the value was evaluated and dropped; vibelang --fix keeps that
+// evaluation (producer-return-value-fixed).
+let evaluated = 0
+
+function note() {
+  evaluated++
+  return evaluated
+}
+
+function* upTo(n: number) {
+  let i = 0
+  while (true) {
+    if (i >= n) return try note()
+    yield i
+    i++
+  }
+}
+
+function* one() {
+  yield 1
+  return 0
+}
+
+export function main() {
+  const values = try Stream.runCollect(upTo(3))
+  const ones = try Stream.runCollect(one())
+  return { values, ones, evaluated }
+}
