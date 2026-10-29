@@ -2,7 +2,7 @@
 
 A lazy producer supplies sensor readings to `Stream.filter`, `Stream.map`,
 and `Stream.take`. A `for...of` loop consumes the resulting Stream.
-The producer closes after the second matching reading, before reading 30 C.
+The producer closes once `Stream.take` has its second matching reading.
 Its finalizer logs closure, including when downstream stops early.
 
 From this directory, with `vibelang` on `PATH`:
@@ -21,7 +21,8 @@ const consume = Stream.runForEach(alerts, (alert) =>
 ```
 
 A producer is a Stream, so `Stream.filter` takes it directly. The producer
-hands over each reading only when the stream pulls it, so it never reads
-ahead. After the second alert, the loop's next pull ends `Stream.take`, which
-closes the stream and runs the producer's finalizer, so the closure message
-follows the final alert in the output fixture.
+runs on its own fiber and may run up to two elements ahead of its consumer
+(VIP-21). When `Stream.take` receives the second alert it ends the stream,
+which closes the producer and runs its finalizer before the loop body handles
+that alert, so the closure message comes between the two alerts in the output
+fixture.
