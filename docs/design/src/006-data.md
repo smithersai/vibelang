@@ -9,14 +9,15 @@ Sources: [VIP-15](../vips/0015-schema-declarations.md), [VIP-16](../vips/0016-da
 ```text
 SchemaDeclaration = "export"? "schema" Name "{" SchemaFields "}"
                   | "export"? "schema" Name "=" Type
-SchemaFields      = (PropertyName "?"? ":" Type ";"?)*
+SchemaFields      = ("readonly"? PropertyName "?"? ":" Type Separator?)*
+Separator         = ";" | LineTerminator   (as between interface members)
 ```
 
 `schema` is a contextual keyword on the same line as its name.
 
 ### Meaning
 
-`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name.
+`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name. Mappings preserve TypeScript mutability: properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.
 
 ```vibe es
 // compiler-gap: pending VIP-15
@@ -27,38 +28,83 @@ schema Code = "root_missing" | "read_failed"
 
 ```ts effect
 // fragment
-const Address = Schema.Struct({ city: Schema.String })
+const Address = Schema.Struct({ city: Schema.mutableKey(Schema.String) })
 type Address = typeof Address.Type
 const User = Schema.Struct({
-  id: Schema.String,
-  nickname: Schema.optional(Schema.String),
-  role: Schema.Literals(["admin", "member"]),
-  home: Address,
+  id: Schema.mutableKey(Schema.String),
+  nickname: Schema.mutableKey(Schema.optional(Schema.String)),
+  role: Schema.mutableKey(Schema.Literals(["admin", "member"])),
+  home: Schema.mutableKey(Address),
 })
 type User = typeof User.Type
 const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
-Each field's schema is written from its TypeScript type:
+In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding types.
 
-| Field type | Schema |
+| Type or field | Effect 4.1.0 schema |
 | --- | --- |
 | `string`, `number`, `boolean`, `bigint` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt` |
-| a union of literals, `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
-| another schema's name, `Address` | that schema |
-| `name?: T` | `Schema.optional(…)`: a missing key or `undefined`, as TypeScript's default |
-| unions, arrays, tuples, `Record`, nested object types | Effect's combinator for each, applied to the mapped parts |
+| single literal `"a"` | `Schema.Literal("a")` (likewise numeric, boolean and bigint literals) |
+| union of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
+| other union `A \| B` | `Schema.Union([A, B])`, in source order |
+| `null`, `undefined` | `Schema.Null`, `Schema.Undefined` |
+| another schema name `Address` | `Address` |
+| `T[]`, `Array<T>` | `Schema.mutable(Schema.Array(S))` |
+| `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |
+| `[A, B]` | `Schema.mutable(Schema.Tuple([A, B]))` |
+| `readonly [A, B]` | `Schema.Tuple([A, B])` |
+| `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
+| `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
+| nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |
+| writable field `name: T` | `name: Schema.mutableKey(S)` |
+| writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
+| readonly field `readonly name: T` | `name: S` |
+| readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |
 
-Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`.
+`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint.
+
+```vibe es
+// compiler-gap: pending VIP-15
+schema Sample {
+  kind: "sample";
+  value: string | null;
+  absent: undefined;
+  items: number[];
+  readonly pair: readonly [string, number];
+  counts: Record<string, number>;
+  nested: { active: boolean };
+}
+```
+
+```ts effect
+// fragment
+const Sample = Schema.Struct({
+  kind: Schema.mutableKey(Schema.Literal("sample")),
+  value: Schema.mutableKey(Schema.Union([Schema.String, Schema.Null])),
+  absent: Schema.mutableKey(Schema.Undefined),
+  items: Schema.mutableKey(Schema.mutable(Schema.Array(Schema.Number))),
+  pair: Schema.Tuple([Schema.String, Schema.Number]),
+  counts: Schema.mutableKey(Schema.Record(Schema.String, Schema.mutableKey(Schema.Number))),
+  nested: Schema.mutableKey(Schema.Struct({ active: Schema.mutableKey(Schema.Boolean) })),
+})
+type Sample = typeof Sample.Type
+const sample = Schema.decodeUnknownSync(Sample)({
+  kind: "sample", value: null, absent: undefined, items: [1],
+  pair: ["a", 2], counts: { a: 1 }, nested: { active: true },
+})
+sample.items.push(2)
+sample.counts.a = 2
+```
+
+Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`. `typeof Name.Type` is the declared type.
 
 The generated constants keep TypeScript declaration order and temporal dead zone: declare `Address` before a schema that reads it. There is no implicit reordering or `Schema.suspend`; a forward or cyclic value reference has the same initialization behavior as the shown TypeScript.
 
 | Rule | Diagnostic |
 | --- | --- |
 | a field type outside the mapping | EK2109 |
-
-**Undecided (pending VIP):** exact mappings beyond the concrete rows above: single literals, mixed unions, `null`, `undefined`, arrays, tuples, `Record` and nested objects. The broad combinator row identifies supported type families, not their exact signatures. In particular, whether mutable TypeScript members and arrays produce mutable decoded types (using `Schema.mutableKey` / `Schema.mutable`) or retain Schema readonly defaults needs a VIP; `typeof Name.Type` remains the declared type.
 
 ## `data` declarations
 
@@ -68,6 +114,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
 Separator       = ";" | LineTerminator   (as between interface members)
 Variant         = Name ("{" Fields "}")?
+Fields          = (PropertyName "?"? ":" Type Separator?)*
 ```
 
 `data` is a contextual keyword on the same line as its name, so `const data = …` still works.

@@ -10,7 +10,6 @@ Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-pr
 ServiceDeclaration = "export"? "service" Name "{" (Member | KeyMember | DefaultMember)* "}"
 KeyMember          = "static" "readonly" "key" "=" StringLiteral
 DefaultMember      = "static" "readonly" "defaultValue" "=" Expression
-Member             = PropertySignature | MethodSignature              (TypeScript's)
 ```
 
 `service Name { members }` is the only way to declare a service. An `abstract class` is not a service. Members are written out with their types, because they have no bodies to infer from.
@@ -87,7 +86,7 @@ A service is a key, not a class you use.
 | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
 | a member with a body, `private` or `protected` on a member, or a `static` other than `key` and `defaultValue` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
-**Undecided (pending VIP):** the derived key of a service in a file outside any package, or declared inside a function or block. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name). Write `static readonly key` there until it is decided.
+**Undecided (pending VIP):** the exact format of a derived key. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name); it doesn't say what a file outside any package, or a nested declaration, gets.
 
 ## `provide` blocks
 
@@ -146,11 +145,11 @@ Layers are composed with Effect's own Layer API; there is no `wire` ([VIP-24](..
 const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
 ```
 
-A `provide` block is an ordinary block, as in TypeScript: `return` leaves the function, `break` reaches the innermost loop or `switch` or its label, `continue` the innermost loop or its label, and a `var` inside it belongs to the enclosing function. [Leaving a block](002-running.md#leaving-a-block) gives the Effect TypeScript.
+A `provide` block is an ordinary block: `return`, `break` and `continue` inside it reach the enclosing function or loop, as in any TypeScript block. [Leaving a block](002-running.md#leaving-a-block) gives the Effect TypeScript.
 
 ## Effect's functions are globals
 
-Every value export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. A local declaration or import shadows one, as with any global. Type exports are not global types: write `Effect.Effect<A, E, R>`, or `A!E!R`.
+Every export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. A local declaration or import shadows one, as with any global.
 
 A name that clashes is not a global, and is written `Effect.x` instead. A name clashes if it is:
 
@@ -198,9 +197,9 @@ Every root export of the core `effect` package (149 in effect 4.1.0, such as `Sc
 | --- | --- | --- |
 | `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp` | JavaScript's | `Effect.Array`, `Effect.String`, … |
 | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
-| `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
+| `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
 
-`Crypto` is the DOM's: effect 4.1.0 has no root module `Crypto` (decided 2026-10-29). Import `effect/crypto` to use Effect's.
+**Undecided (pending VIP):** what `Crypto` names. VIP-14's table lists it, but effect 4.1.0 has no root module `Crypto`; `effect/crypto` is a subpath.
 
 ```vibe es
 // compiler-gap: pending VIP-14
@@ -225,9 +224,7 @@ const o = Option.some(1)
 
 1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
-3. **Subpath namespaces are in scope:** the namespaces exported by `effect`'s subpaths (22 in 4.1.0, such as `HttpClient` from `effect/http` and `ChildProcess` from `effect/process`), with the precedence above, so `Headers`, `Response` and `Event`, which are web platform globals, name Effect's. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
-
-   **Undecided (pending VIP):** a name two subpaths export, or a subpath and a root (`Model`, `Prompt`, `Utils` in 4.1.0).
+3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with the precedence above.
 
 ```vibe es
 // compiler-gap: pending VIP-33
@@ -263,6 +260,4 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | a Node global (`process`, `Buffer`) in a `.vibe` file | EK4402 |
 | a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
 
-`import type` from `node:*` is allowed: VIP-33 bans value imports, and a type import is erased.
-
-**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers.
+**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers; and whether `import type` from `node:*` is allowed.
