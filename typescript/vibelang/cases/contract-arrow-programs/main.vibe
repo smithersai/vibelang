@@ -1,3 +1,4 @@
+import * as $effectPrograms from "effect/Effect"
 // expect-result: [0,1,2,3,4,5,6,"bad",6]
 import { Effect } from "effect"
 error Bad { reason: string }
@@ -5,15 +6,15 @@ effect function wrap<A, R>(effect: Effect.Effect<A, Bad, R>): Effect.Effect<A, B
   return try effect()
 }
 let runs = 0
-const fields: { read: Effect.Effect<number, Bad, never> } = { read: (): number!Bad => ++runs }
+const fields: { read: Effect.Effect<number, Bad, never> } = { read: $effectPrograms.suspend(effect (): number!Bad => ++runs) }
 export effect function main() {
   const before = runs
   const plain = try wrap(effect { return ++runs })
-  const annotated = try wrap((): number!Bad => ++runs)
-  const literal = try wrap((): number!Bad => { return ++runs })
-  const explicit = try wrap((): Effect.Effect<number, Bad, never> => ++runs)
-  const fn = try wrap(function(): number!Bad { return ++runs })
+  const annotated = try wrap($effectPrograms.suspend(effect (): number!Bad => ++runs))
+  const literal = try wrap($effectPrograms.suspend(effect (): number!Bad => { return ++runs }))
+  const explicit = try wrap($effectPrograms.suspend(effect (): Effect.Effect<number, Bad, never> => ++runs))
+  const fn = try wrap($effectPrograms.suspend(effect function(): number!Bad { return ++runs }))
   const field = try fields.read()
-  const failed = wrap((): number!Bad => { throw new Bad({ reason: "bad" }) }) catch (e) => e.reason
+  const failed = wrap($effectPrograms.suspend(effect (): number!Bad => { throw new Bad({ reason: "bad" }) })) catch (e) => e.reason
   return [before, plain, annotated, literal, explicit, fn, field, failed, runs]
 }

@@ -40,7 +40,22 @@ const effectLabel = "effect"
 // effectEdits returns the edits that write effect where file's functions
 // compile to Effects, and the number of functions marked.
 func effectEdits(c *checker.Checker, file *ast.SourceFile) ([]sourceEdit, int) {
-	return analyzerFor(c).effectEditsIn(file, file.AsNode())
+	edits, marked := analyzerFor(c).effectEditsIn(file, file.AsNode())
+	name := (&freshNames{file: file}).freshName("$effectPrograms")
+	if slices.ContainsFunc(edits, func(e sourceEdit) bool { return strings.Contains(e.text, name+".suspend(") }) {
+		// Keep shebangs first and diagnostic directives beside their target.
+		at := 0
+		if strings.HasPrefix(file.Text(), "\ufeff") {
+			at = len("\ufeff")
+		}
+		if strings.HasPrefix(file.Text()[at:], "#!") {
+			if end := strings.IndexByte(file.Text()[at:], '\n'); end >= 0 {
+				at += end + 1
+			}
+		}
+		edits = append([]sourceEdit{{at, at, "import * as " + name + " from \"effect/Effect\"\n"}}, edits...)
+	}
+	return edits, marked
 }
 
 // effectEditsIn returns the effect edits of the nodes under node.
@@ -51,6 +66,27 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		switch {
+		case isLambda(node) && node.Body() != nil && !isProgramArrow(node) && !isForkOperand(node) && a.literalProgramOperand(node):
+			if len(node.Parameters()) == 0 && node.Type() == nil && (!ast.IsFunctionExpression(node) || node.Name() == nil) {
+				if !ast.IsBlock(node.Body()) {
+					inner, n := a.effectEditsIn(file, node.Body())
+					edits = append(edits, a.effectBlockEdits(file, node, inner)...)
+					marked += n + 1
+					return false
+				}
+				edits = append(edits, a.effectBlockEdits(file, node, nil)...)
+			} else {
+				// Keep annotations and delay optional/default parameters just
+				// as the old Effect.suspend conversion did.
+				start := scanner.SkipTrivia(text, node.Pos())
+				name := (&freshNames{file: file}).freshName("$effectPrograms")
+				edits = append(edits, sourceEdit{start, start, name + ".suspend("}, sourceEdit{node.End(), node.End(), ")"})
+				if !isMarkedEffect(node) {
+					edits = append(edits, sourceEdit{effectPosition(file, node), effectPosition(file, node), "effect "})
+				}
+				edits = append(edits, a.returnTries(file, node)...)
+			}
+			marked++
 		case ast.IsCallExpression(node) && node.Flags&(ast.NodeFlagsVibeLangTry|ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0 && !tried(node) && a.directToMarked(node):
 			edits = append(edits, tryEditsAt(file, node)...)
 		case node.Flags&ast.NodeFlagsVibeLangTry != 0 && isInvocation(node):
@@ -68,22 +104,69 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				edits = append(edits, sourceEdit{effectPosition(file, node), effectPosition(file, node), "effect "})
 				edits = append(edits, a.returnTries(file, node)...)
 				marked++
-			case formProgram:
-				if body := node.Body(); !ast.IsBlock(body) {
-					// The block's text is the body's, with the edits inside it.
-					inner, n := a.effectEditsIn(file, body)
-					edits = append(edits, a.effectBlockEdits(file, node, inner)...)
-					marked += n + 1
-					return false
-				}
-				edits = append(edits, a.effectBlockEdits(file, node, nil)...)
-				marked++
 			}
 		}
 		return node.ForEachChild(visit)
 	}
 	node.ForEachChild(visit)
 	return edits, marked
+}
+
+// literalProgramOperand recognizes the old program conversion at a literal's
+// selected destination, including generic collection arguments (Effect.all,
+// raceAll, etc.). It deliberately does not enumerate combinator names: callback
+// positions such as forEach and suspend must remain functions.
+func (a *analyzer) literalProgramOperand(fn *ast.Node) bool {
+	if requiredParameterCount(fn) != 0 {
+		return false
+	}
+	switch a.finalForm(fn) {
+	case formProgram:
+		return true
+	case formEffect:
+	default:
+		return false
+	}
+	n := fn
+	for n.Parent != nil && ast.SkipOuterExpressions(n.Parent, ast.OEKParentheses|ast.OEKAssertions) == fn {
+		n = n.Parent
+	}
+	parent := n.Parent
+	if parent != nil && ast.IsPropertyAssignment(parent) && parent.Initializer() == n {
+		n = parent
+		parent = parent.Parent
+	}
+	if parent != nil && (ast.IsArrayLiteralExpression(parent) || ast.IsObjectLiteralExpression(parent)) {
+		// A tuple assertion (as const), satisfies or parentheses can own
+		// the collection conversion instead of the literal itself.
+		for collection := parent; collection != nil; collection = collection.Parent {
+			if a.finalConversion(collection) == convertPrograms {
+				return true
+			}
+			next := collection.Parent
+			if next == nil {
+				break
+			}
+			if ast.SkipOuterExpressions(next, ast.OEKParentheses|ast.OEKAssertions) == ast.SkipOuterExpressions(collection, ast.OEKParentheses|ast.OEKAssertions) {
+				continue
+			}
+			// Spreading a literal contributes its entries to the outer
+			// collection whose program conversion runs those elements.
+			if next.Parent != nil && (ast.IsSpreadElement(next) && ast.IsArrayLiteralExpression(next.Parent) ||
+				ast.IsSpreadAssignment(next) && ast.IsObjectLiteralExpression(next.Parent)) {
+				collection = next
+				continue
+			}
+			break
+		}
+	}
+	if call, path := ownerCall(fn); call != nil {
+		if sig := a.candidateOf(call); sig != nil {
+			e := a.expectationAt(call, sig, path, fn)
+			return e.program && !e.effectFn && !e.plainFn
+		}
+	}
+	return false
 }
 
 // effectRewriteOf is the form fn's rewrite writes: formEffect to mark it

@@ -38,7 +38,7 @@ ${rules}
 
 ## The language
 
-The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Where it passes a call by name, the call rule above wins.
+The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
 
 ${skillBody()}
 

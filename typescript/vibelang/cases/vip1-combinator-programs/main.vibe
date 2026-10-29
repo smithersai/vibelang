@@ -1,0 +1,17 @@
+import { Effect } from "effect"
+
+let runs = 0
+
+// expect-result: {"cold":0,"array":[1,2],"record":{"value":3},"raced":4,"retried":5,"callbacks":[6,7],"runs":7}
+export effect function main() {
+  const cold = runs
+  const array = try Effect.all([...([
+    effect { runs++; try Effect.yieldNow(); return 1 },
+    effect { runs++; return 2 }
+  ] as const)])
+  const record = try Effect.all({ ...{ value: effect { runs++; return 3 } } })
+  const raced = try Effect.raceAll([...[effect { runs++; return 4 }]])
+  const retried = try Effect.retry(effect { runs++; return 5 }, { times: 1 })
+  const callbacks = try Effect.forEach([6, 7], effect (n) => { runs++; return n })
+  return { cold, array, record, raced, retried, callbacks, runs }
+}

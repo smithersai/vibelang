@@ -327,6 +327,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The fuzz suite could miss regressions in running Effects; new checks cover handler syntax, suspended fallbacks, `effect` boundaries, concurrent operations, producer buffering and interruption block completions.
 - Effect tagged-error patterns rejected branded copies and namespace aliases; they now use the resolved module's guard, including in extractor patterns.
+- The VIP migration left function literals in collections passed to `Effect.all` and racing combinators, so marking functions could leave their work unrun. `vibelang --fix --fix-vip-only` now writes explicit Effects at those program positions and keeps callback arguments as functions.
+
 - The `alchemy-stack` example failed on `effect@4.1.0`: importing `@alchemy.run/cloudflare` failed with `Cannot find module .../effect/dist/Crypto.js`, because `alchemy@2.0.0-beta.84` imports the removed `effect/Crypto`. The example now patches `alchemy` with Alchemy's own Effect 4.1 port on install, and the Alchemy page shows how to apply the patch.
 
 - Global throw annotations could not be inspected as data; a generated snapshot now lists their overloads, shipped own-throw contracts and exact declaration inputs, and checks when they become stale.

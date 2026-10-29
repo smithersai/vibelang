@@ -240,3 +240,11 @@ typescript/vibelang/cases/held-binding-retry/main.vibe:3:21 lambda: factory anno
 typescript/vibelang/cases/held-binding-retry/main.vibe:5:10 lambda: program annotation -> choice fallback # VIP-2 codemod: this returned program literal is now an effect block, which the text-only projector does not model; it runs as before
 typescript/vibelang/cases/rerun-parameter-readonly/main.vibe:16:75 lambda: program annotation -> plain fallback # VIP-2 codemod: this returned program literal is now an effect block, which the text-only projector does not model; it runs as before
 typescript/vibelang/cases/vibelang-infer/main.vibe:22:52 lambda: effectFn table -> program table # VIP-2 codemod: the thunk passed to Effect.runPromise is now an effect block, a program; it runs as before
+
+# VIP-1/2 combinator migration: reviewed literal-to-suspend callback sites.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:9:93 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 8:69 is now an explicit effect callback to suspend; its outer argument remains a cold program.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:13:54 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 12:30 is now an explicit effect callback to suspend; its outer argument remains a cold program.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:14:52 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 13:28 is now an explicit effect callback to suspend; its outer argument remains a cold program.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:15:53 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 14:29 is now an explicit effect callback to suspend; its outer argument remains a cold program.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:16:47 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 15:23 is now an explicit effect callback to suspend; its outer argument remains a cold program.
+typescript/vibelang/cases/contract-arrow-programs/main.vibe:18:47 lambda: program annotation -> effectFn table # VIP-1/2: former program literal at 17:23 is now an explicit effect callback to suspend; its outer argument remains a cold program.
