@@ -20,17 +20,22 @@ const bun = S.Host.bin("bun")
 const node = S.Host.bin("node")
 const go = S.Host.bin("go")
 
-const check = (summary: string, shell: string, data: ReadonlyArray<unknown>, tools: ReadonlyArray<typeof bun>) =>
-  S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout: "30m" })
+const check = (
+  summary: string,
+  shell: string,
+  data: ReadonlyArray<unknown>,
+  tools: ReadonlyArray<typeof bun>,
+  timeout = "30m"
+) => S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout })
 
 // The VibeLang Go packages' tests read cases, docs and installs through the
 // repository root, so they take `tree` too.
-const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown> = []) =>
+const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown> = [], timeout?: string) =>
   check(summary, `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs ${shell}`, [
     Tsc.srcs,
     Packages["runtime-dist"],
     ...data
-  ], [go, node])
+  ], [go, node], timeout)
 
 const targets = {
   release: check(
@@ -89,7 +94,11 @@ const targets = {
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       "go test -short -timeout=20m -trimpath ./internal/vibelangfuzz/...",
-    [Tsc["vibelangfuzz-files"]]
+    [Tsc["vibelangfuzz-files"]],
+    // go test bounds the run at 20m and names a stuck test; the budget
+    // adds the build of the test binaries. Under the post-merge suite's
+    // load the target took 17m to 29m, and 30m killed it with no output.
+    "45m"
   )
 }
 
