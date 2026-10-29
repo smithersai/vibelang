@@ -1,0 +1,41 @@
+# Chapter-backed match/data/schema gaps. Delete feature and corpus lines when XPASS.
+FuzzDataSpecRules feature:final-semicolon compiler VIP-7: match accepts a missing final semicolon; lane vip-match
+FuzzDataSpecRules corpus:data-final-semicolon compiler VIP-7: match accepts a missing final semicolon; lane vip-match; reproduction of feature:final-semicolon
+FuzzDataSpecRules feature:newline-separator compiler VIP-7: match accepts a newline instead of an arm semicolon; lane vip-match
+FuzzDataSpecRules corpus:data-newline-separator compiler VIP-7: match accepts a newline instead of an arm semicolon; lane vip-match; reproduction of feature:newline-separator
+FuzzDataSpecRules feature:empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2
+FuzzDataSpecRules corpus:data-empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2; reproduction of feature:empty-data
+FuzzDataSpecRules feature:schema-writable compiler VIP-15: writable fields, arrays, tuples and records are inferred readonly; lane ifix-data-r3
+FuzzDataSpecRules corpus:data-schema-writable compiler VIP-15: writable fields, arrays, tuples and records are inferred readonly; lane ifix-data-r3; reproduction of feature:schema-writable
+FuzzDataSpecRules feature:schema-error-tag compiler VIP-29: schema error permits a user _tag member; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-tag compiler VIP-29: schema error permits a user _tag member; lane vip-decls; reproduction of feature:schema-error-tag
+FuzzDataSpecRules feature:schema-error-static compiler VIP-29: schema error permits user static members; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-static compiler VIP-29: schema error permits user static members; lane vip-decls; reproduction of feature:schema-error-static
+FuzzDataSpecRules feature:schema-error-setter compiler VIP-29: schema error permits a setter; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-setter compiler VIP-29: schema error permits a setter; lane vip-decls; reproduction of feature:schema-error-setter
+FuzzDataSpecRules feature:schema-error-method-getter compiler VIP-29: a plain schema-error method is inferred Effectful and its call gets EK2003; lane vip-core2
+FuzzDataSpecRules corpus:data-schema-error-method-getter compiler VIP-29: a plain schema-error method is inferred Effectful and its call gets EK2003; lane vip-core2; reproduction of feature:schema-error-method-getter
+FuzzDataSpecRules feature:generic-limit compiler VIP-28: generic-limit requires EK2801, got 2126; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-limit compiler VIP-28: generic-limit requires EK2801, got 2126; lane vip-core2; reproduction of feature:generic-limit
+FuzzDataSpecRules feature:schema-error-constructor compiler VIP-29: schema-error-constructor requires EK1301, got 2377; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-constructor compiler VIP-29: schema-error-constructor requires EK1301, got 2377; lane vip-decls; reproduction of feature:schema-error-constructor
+FuzzDataSpecRules feature:schema-error-generics compiler VIP-29: schema-error-generics requires EK1303, got 2109,2562; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-generics compiler VIP-29: schema-error-generics requires EK1303, got 2109,2562; lane vip-decls; reproduction of feature:schema-error-generics
+FuzzDataSpecRules feature:generic-default compiler VIP-28: generic-default requires EK2803, got no error; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-default compiler VIP-28: generic-default requires EK2803, got no error; lane vip-core2; reproduction of feature:generic-default
+FuzzDataSpecRules feature:data-body-required-as compiler VIP-16: data-body-required-as requires error, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-data-body-required-as compiler VIP-16: data-body-required-as requires error, got no error; lane vip-decls; reproduction of feature:data-body-required-as
+FuzzDataSpecRules feature:data-body-required-satisfies compiler VIP-16: data-body-required-satisfies requires error, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-data-body-required-satisfies compiler VIP-16: data-body-required-satisfies requires error, got no error; lane vip-decls; reproduction of feature:data-body-required-satisfies
+FuzzDataSpecRules feature:schema-error-member-initializer compiler VIP-29: schema-error-member-initializer requires EK1304, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-initializer compiler VIP-29: schema-error-member-initializer requires EK1304, got no error; lane vip-decls; reproduction of feature:schema-error-member-initializer
+FuzzDataSpecRules feature:schema-error-member-private compiler VIP-29: schema-error-member-private requires EK1304, got 2564; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-private compiler VIP-29: schema-error-member-private requires EK1304, got 2564; lane vip-decls; reproduction of feature:schema-error-member-private
+FuzzDataSpecRules feature:schema-error-member-private-name compiler VIP-29: schema-error-member-private-name requires EK1304, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-private-name compiler VIP-29: schema-error-member-private-name requires EK1304, got no error; lane vip-decls; reproduction of feature:schema-error-member-private-name
+FuzzDataSpecRules feature:schema-error-member-declare compiler VIP-29: schema-error-member-declare requires EK1304, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-declare compiler VIP-29: schema-error-member-declare requires EK1304, got no error; lane vip-decls; reproduction of feature:schema-error-member-declare
+FuzzDataSpecRules feature:schema-error-member-accessor compiler VIP-29: schema-error-member-accessor requires EK1304, got no error; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-accessor compiler VIP-29: schema-error-member-accessor requires EK1304, got no error; lane vip-decls; reproduction of feature:schema-error-member-accessor
+FuzzDataSpecRules feature:schema-error-member-index compiler VIP-29: schema-error-member-index requires EK1304, got 2411; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-member-index compiler VIP-29: schema-error-member-index requires EK1304, got 2411; lane vip-decls; reproduction of feature:schema-error-member-index

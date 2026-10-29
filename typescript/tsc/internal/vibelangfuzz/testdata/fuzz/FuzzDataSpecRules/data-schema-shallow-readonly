@@ -1,0 +1,3 @@
+go test fuzz v1
+string("schema-shallow-readonly")
+byte('\x00')

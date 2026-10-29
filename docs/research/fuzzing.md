@@ -345,4 +345,8 @@ Campaign caps remain unchanged; full-seed nightly runs retain every seed.
 `campaign.sh` also runs the ordinary short selection, saves `short-budget.log`,
 and lists every target above `120` in `summary.txt`, even for a full-seed nightly.
 
+## Match, data and schema chapter coverage
+
+`FuzzDataSpecRules` selects a named static witness from chapters 3, 4 and 6 and checks its diagnostic or acceptance. Each witness quotes its chapter verbatim, checked at test time; `TestDataSpecRulesQuoted` also runs in the documentation gate. Its named corpus files preserve each pending reproduction as the witness list grows. Known disagreements live under precise `feature:` keys in `testdata/pending/data.txt` and fail as `XPASS` once the compiler implements them.
+
 `TestDataGeneratedMatchSeparators` checks the match printer against the arm separator rule in the match chapter. Generated programs put `;` between arms and after the final arm, and a lone `default` starts directly with its arm. The fast spec gate runs this regression.
