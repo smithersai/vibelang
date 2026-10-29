@@ -21,14 +21,14 @@ const pages = {
   "/setup/release-notes": `<h1>Release notes</h1><h2 id="latest">${version}</h2><p>Changed from 0.0.2</p><h2>0.0.2</h2><p>vibelang@0.0.2</p>`,
   "/setup/release-notes.md": `# Release notes\n\n## ${version}\nChanges from 0.0.2\n\n## 0.0.2\nvibelang@0.0.2\n`
 }
-function fixture(overrides = {}, npm = latest) {
+function fixture(overrides = {}, npm = latest, checkout = manifest) {
   const calls = []
   const fetchImpl = async (url, options) => {
     calls.push([String(url), options])
     const body = String(url) === registryUrl ? JSON.stringify(npm) : { ...pages, ...overrides }[new URL(url).pathname]
     return new Response(body ?? "missing", { status: body === undefined ? 404 : 200 })
   }
-  return { calls, check: () => deployedReleaseProblems({ baseUrl, registryUrl, manifest, typescriptVersion: "7.1.0-dev", fetchImpl }) }
+  return { calls, check: () => deployedReleaseProblems({ baseUrl, registryUrl, manifest: checkout, typescriptVersion: "7.1.0-dev", fetchImpl }) }
 }
 test("checks every served surface and npm latest, ignoring historical releases and HTML metadata", async () => {
   const { check, calls } = fixture()
@@ -98,4 +98,16 @@ test("direct npm deploy and the release docs wrapper both use the postdeploy che
 test("a stale homepage badge cannot hide behind correct release prose", async () => {
   const bad = pages["/"].replace("<strong>9.8.7</strong>", "<strong>0.0.1</strong>") + " Version 9.8.7"
   assert.ok((await fixture({ "/": bad }).check()).some(p => p.includes("release label version 0.0.1")))
+})
+
+
+test("scoped Windows packages are recognized only when published", async () => {
+  const windows = ["@vibelang/cli-win32-arm64", "@vibelang/cli-win32-x64"]
+  const npm = { ...latest, optionalDependencies: { ...latest.optionalDependencies, ...Object.fromEntries(windows.map(p => [p, version])) } }
+  const updated = Object.fromEntries(Object.entries(pages).map(([path, text]) => [path,
+    text.replace(support, "macOS, Linux and native Windows on arm64 and x64.") +
+      (path.startsWith("/getting-started/") ? windows.map(p => `\n| Windows | ${p} |`).join("") : "")
+  ]))
+  assert.deepEqual(await fixture(updated, npm, npm).check(), [])
+  assert.ok((await fixture({ "/setup.md": pages["/setup.md"] + "\n@vibelang/cli-win32-x64" }).check()).some(p => p.includes("absent from npm latest")))
 })

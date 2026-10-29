@@ -133,7 +133,7 @@ test("all current repository release references match the compiler manifest", ()
   assert.deepEqual(releaseDocsProblems(fileURLToPath(new URL("../../", import.meta.url))), [])
 })
 
-test("install docs and the launcher describe the four published platforms and WSL", () => {
+test("install docs describe published platforms; the next launcher supports scoped Windows packages", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   for (const path of ["docs/user/src/getting-started/004-installation.md", "docs/user/src/setup.md",
     "docs/design/src/428-part4-ch28-tooling.md", ".smithers/instructions/app.md", "packages/compiler/README.md"]) {
@@ -143,7 +143,8 @@ test("install docs and the launcher describe the four published platforms and WS
     assert.doesNotMatch(text, /ships all six|one of six/, path)
   }
   const launcher = readFileSync(join(root, "packages/compiler/bin/vibelang"), "utf8")
-  assert.doesNotMatch(launcher, /const platforms = .*win32/)
+  assert.match(launcher, /const platforms = .*win32-arm64.*win32-x64/)
+  assert.match(launcher, /@vibelang\/cli-/)
 })
 
 test("the starter and existing-project instructions pin the transitive Effect peer", () => {

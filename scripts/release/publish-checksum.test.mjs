@@ -8,7 +8,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
-const names = ["vibelang-linux-x64", "vibelang-win32-x64", "vibelang-win32-arm64", "vibelang"]
+const names = ["vibelang-linux-x64", "@vibelang/cli-win32-x64", "@vibelang/cli-win32-arm64", "vibelang"]
 
 function fixture(t, mode, target = names[0]) {
   const root = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "vibelang-publish-test-"))
@@ -20,7 +20,7 @@ function fixture(t, mode, target = names[0]) {
   for (const file of ["publish.sh", "repack.mjs"]) cpSync(join(repo, "scripts/release", file), join(scripts, file))
   const packages = names.map(name => {
     writeFileSync(join(root, "source/package/package.json"), JSON.stringify({ name, version: "0.0.6" }))
-    const file = name + "-0.0.6.tgz"
+    const file = name.replace("@", "").replace("/", "-") + "-0.0.6.tgz"
     execFileSync("tar", ["-czf", join(tarballs, file), "-C", join(root, "source"), "package"])
     return { name, version: "0.0.6", file }
   })
@@ -33,12 +33,12 @@ const args = process.argv.slice(2)
 appendFileSync(process.env.CALLS, JSON.stringify(args) + "\\n")
 if (args[0] === "whoami") console.log("fixture-owner")
 else if (args[0] === "view") {
-  const name = args[1].split("@")[0]
+  const name = args[1].slice(0, args[1].lastIndexOf("@"))
   if (process.env.MODE === "missing" || (process.env.MODE === "later-mismatch" && name !== process.env.TARGET)) process.exit(1)
   if (args[2] === "version") console.log("0.0.6")
   else if (name === process.env.TARGET && ["mismatch", "later-mismatch"].includes(process.env.MODE)) console.log("0".repeat(40))
   else if (name === process.env.TARGET && process.env.MODE === "empty") {}
-  else console.log(createHash("sha1").update(readFileSync(join(process.env.TARBALLS, name + "-0.0.6.tgz"))).digest("hex"))
+  else console.log(createHash("sha1").update(readFileSync(join(process.env.TARBALLS, name.replace("@", "").replace("/", "-") + "-0.0.6.tgz"))).digest("hex"))
 } else if (args[0] !== "publish") process.exit(2)
 `, { mode: 0o755 })
   return {

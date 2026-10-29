@@ -41,7 +41,7 @@ test("explains how to supply a missing native compiler", () => {
   assert.match(result.stderr, /VIBELANG_BINARY/)
 })
 
-test("says Windows binaries are not published yet, without a stack trace", () => {
+test("names the scoped Windows package when its optional dependency is missing", () => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-win32-"))
   try {
     // A copy outside the checkout finds neither native/vibelang nor a platform package.
@@ -55,8 +55,8 @@ test("says Windows binaries are not published yet, without a stack trace", () =>
       env, encoding: "utf8"
     })
     assert.equal(result.status, 1)
-    assert.match(result.stderr, /Windows binaries are not published yet/)
-    assert.match(result.stderr, /Use WSL/)
+    assert.match(result.stderr, /no native compiler is installed for win32-/)
+    assert.match(result.stderr, /@vibelang\/cli-win32-/)
     assert.match(result.stderr, /VIBELANG_BINARY/)
     assert.doesNotMatch(result.stderr, /\n\s+at /)
   } finally {
@@ -162,10 +162,20 @@ test("names the supported platforms when no compiler is installed", () => {
     const result = spawnSync(process.execPath, [installed(scratch)], { env: withoutOverride(), encoding: "utf8" })
     assert.equal(result.status, 1)
     assert.match(result.stderr, /no native compiler is installed for /)
-    assert.match(result.stderr, /darwin-arm64, darwin-x64, linux-arm64, linux-x64\./)
-    assert.doesNotMatch(result.stderr, /win32-(?:arm64|x64)/)
+    assert.match(result.stderr, /darwin-arm64, darwin-x64, linux-arm64, linux-x64, win32-arm64, win32-x64\./)
     assert.match(result.stderr, /VIBELANG_BINARY/)
   } finally {
     rmSync(scratch, { recursive: true, force: true })
   }
+})
+
+
+test("native executable paths and arguments need no shell quoting", () => {
+  // Node is a real executable on Windows too; shebang stand-ins are POSIX only.
+  const args = ["a b", '$literal', 'a"b', "C:\\trailing\\", "#% & value"]
+  const result = spawnSync(process.execPath, [launcher, "--eval", "console.log(JSON.stringify(process.argv.slice(1)))", "--", ...args], {
+    env: { ...process.env, VIBELANG_BINARY: process.execPath }, encoding: "utf8"
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), args)
 })

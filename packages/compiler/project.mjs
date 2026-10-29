@@ -14,6 +14,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
+import { pathToFileURL } from "node:url"
 import { launcherBinary, projectCache } from "./cache.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
@@ -230,7 +231,7 @@ function collect({ status, signal, output }, root, out) {
   // Bundlers ask by the listed path; Node asks by the real path.
   const record = (source, emitted, name = basename(source)) => {
     const map = JSON.parse(readFileSync(emitted + ".map", "utf8"))
-    map.sources = map.sources.map((entry) => slash(resolve(dirname(emitted), map.sourceRoot || "", entry)))
+    map.sources = map.sources.map((entry) => pathToFileURL(resolve(dirname(emitted), map.sourceRoot || "", entry)).href)
     map.sourceRoot = ""
     const result = { code: readFileSync(emitted, "utf8").replace(/\/\/# sourceMappingURL=.*$/m, ""), map }
     outputs.set(join(dirname(source), name), result)
@@ -428,7 +429,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
   const states = new Map()
   let revision = 0
 
-  const projectOf = (file) => workspaceProject(file, root, project)
+  const projectOf = (file) => workspaceProject(resolve(file), root, project)
 
   function stateOf(tsconfig) {
     let state = states.get(tsconfig)
@@ -478,6 +479,8 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
       revision++
     },
     async load(file) {
+      // Vite uses forward slashes on Windows; compiler output keys use native paths.
+      file = resolve(file)
       const state = stateOf(projectOf(file))
       const result = await compiled(state)
       const { outputs, inputs } = result

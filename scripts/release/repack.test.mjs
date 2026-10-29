@@ -21,7 +21,7 @@ function fixture(t, options = {}) {
     name: "vibelang", version: "0.0.1", bin: { vibelang: "bin/vibelang" },
     files: ["bin", "editor", "LICENSE", "NOTICE", "README.md", ...(options.plugin ? ["dprint-plugin.json"] : [])],
     scripts: { prepack: "node -e 'process.exit(80)'" },
-    optionalDependencies: Object.fromEntries(platforms.map((p) => [`vibelang-${p}`, "0.0.1"]))
+    optionalDependencies: Object.fromEntries(platforms.map((p) => [(p.startsWith("win32-") ? `@vibelang/cli-${p}` : `vibelang-${p}`), "0.0.1"]))
   }
   writeFileSync(join(source, "package.json"), JSON.stringify(pkg, null, 2) + "\n")
   for (const [path, content] of Object.entries({ "bin/vibelang": "#!/usr/bin/env node\nconsole.log('unchanged launcher')\n", "editor/vibelang.vsix": Buffer.from([0, 255, 1, 128]), LICENSE: "license\n", NOTICE: "notice\n", "README.md": "readme\n" })) {
@@ -31,12 +31,12 @@ function fixture(t, options = {}) {
   if (options.plugin) {
     const dprintNames = { "darwin-arm64": "darwin-aarch64", "darwin-x64": "darwin-x86_64", "linux-arm64": "linux-aarch64", "linux-x64": "linux-x86_64", "win32-arm64": "windows-aarch64", "win32-x64": "windows-x86_64" }
     const plugin = { schemaVersion: 2, kind: "process", name: "dprint-plugin-vibelang", version: "0.0.1" }
-    for (const p of platforms) plugin[dprintNames[p]] = { reference: `npm:vibelang-${p}@0.0.1/bin/${p.startsWith("win32") ? "vibelang.exe" : "vibelang"}`, checksum: "0".repeat(64) }
+    for (const p of platforms) plugin[dprintNames[p]] = { reference: `npm:${p.startsWith("win32-") ? `@vibelang/cli-${p}` : `vibelang-${p}`}@0.0.1/bin/${p.startsWith("win32") ? "vibelang.exe" : "vibelang"}`, checksum: "0".repeat(64) }
     writeFileSync(join(source, "dprint-plugin.json"), JSON.stringify(plugin, null, 2) + "\n")
   }
   const [packed] = JSON.parse(execFileSync("npm", ["pack", source, "--pack-destination", tarballs, "--ignore-scripts", "--json", "--silent"], { encoding: "utf8" }))
-  const packages = platforms.map((p) => `vibelang-${p}`).concat("vibelang-runtime", "vibelang-vite", "create-vibelang").map((name) => {
-    const file = `${name}-0.0.1.tgz`
+  const packages = platforms.map((p) => (p.startsWith("win32-") ? `@vibelang/cli-${p}` : `vibelang-${p}`)).concat("vibelang-runtime", "vibelang-vite", "create-vibelang").map((name) => {
+    const file = `${name.replace("@", "").replace("/", "-")}-0.0.1.tgz`
     writeFileSync(join(tarballs, file), `unchanged ${name}`)
     return { name, version: "0.0.1", file, sha256: `existing-${name}` }
   })
@@ -55,8 +55,8 @@ test("win32 repack changes only package.json, records sha256, and preserves the 
   const before = files.map((path) => [path, archiveFile(tarballs, path)])
   repack(tarballs, "win32")
   const result = JSON.parse(archiveFile(tarballs, "package.json"))
-  delete pkg.optionalDependencies["vibelang-win32-arm64"]
-  delete pkg.optionalDependencies["vibelang-win32-x64"]
+  delete pkg.optionalDependencies["@vibelang/cli-win32-arm64"]
+  delete pkg.optionalDependencies["@vibelang/cli-win32-x64"]
   assert.deepEqual(result, pkg)
   assert.equal(Object.keys(result.optionalDependencies).length, 4)
   for (const [path, content] of before) assert.deepEqual(archiveFile(tarballs, path), content, path)

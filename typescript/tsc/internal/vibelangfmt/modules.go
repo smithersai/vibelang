@@ -99,13 +99,21 @@ func formatModules(source string, modules []moduleBody, formatter TypeScriptForm
 		// here, so its own leading line breaks go: a formatter that answers
 		// "unchanged", as a dprint host without a TypeScript plugin does,
 		// returns them as written.
+		newline := "\n"
+		lineText := formatted
+		if !strings.Contains(lineText, "\n") {
+			lineText = source
+		}
+		if first := strings.IndexByte(lineText, '\n'); first > 0 && lineText[first-1] == '\r' {
+			newline = "\r\n"
+		}
 		formatted = strings.TrimLeft(formatted, "\r\n")
 		out.WriteString(source[cursor:module.body.Pos()])
 		if strings.TrimSpace(formatted) != "" {
-			out.WriteString("\n")
+			out.WriteString(newline)
 			out.WriteString(formatted)
 			if !strings.HasSuffix(formatted, "\n") {
-				out.WriteString("\n")
+				out.WriteString(newline)
 			}
 		}
 		cursor = module.body.End()

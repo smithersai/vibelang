@@ -20,6 +20,7 @@ const out = join(root, "dist-npm")
 const staging = join(out, "pkg")
 const tarballs = join(out, "tarballs")
 const skipBuild = process.argv.includes("--skip-build")
+const platformPackage = (platform) => platform.startsWith("win32-") ? `@vibelang/cli-${platform}` : `vibelang-${platform}`
 const platforms = {
   "darwin-arm64": ["darwin", "arm64"],
   "darwin-x64": ["darwin", "x64"],
@@ -60,7 +61,7 @@ for (const [name, pkg] of [["vibelang", compiler], ["vibelang-runtime", runtime]
 }
 expect(template.engines?.node === nodeEngine, "template: engines.node " + template.engines?.node + ", expected >=26 (matching vibelang-runtime)")
 const optional = compiler.optionalDependencies ?? {}
-expect(JSON.stringify(Object.keys(optional).sort()) === JSON.stringify(Object.keys(platforms).map((p) => `vibelang-${p}`).sort()),
+expect(JSON.stringify(Object.keys(optional).sort()) === JSON.stringify(Object.keys(platforms).map((p) => platformPackage(p)).sort()),
   `vibelang: optionalDependencies must list exactly ${Object.keys(platforms).join(", ")}`)
 for (const [name, pin] of Object.entries(optional)) expect(pin === version, `vibelang: ${name} pinned to ${pin}, expected ${version}`)
 expect(vite.peerDependencies?.vibelang === version, `vibelang-vite: peer vibelang ${vite.peerDependencies?.vibelang}, expected ${version}`)
@@ -128,7 +129,7 @@ function stage(name, sources, files) {
 const order = []
 for (const [platform, [os, cpu]] of Object.entries(platforms)) {
   const exe = os === "win32" ? "vibelang.exe" : "vibelang"
-  const name = `vibelang-${platform}`
+  const name = platformPackage(platform)
   const dir = stage(name, [], {
     "package.json": JSON.stringify({
       name,
@@ -207,10 +208,10 @@ order.push({
 function writeDprintPlugin(dir, packed) {
   const plugin = { schemaVersion: 2, kind: "process", name: "dprint-plugin-vibelang", version }
   for (const [platform, [os]] of Object.entries(platforms)) {
-    const tarball = packed.find((p) => p.name === `vibelang-${platform}`)
+    const tarball = packed.find((p) => p.name === platformPackage(platform))
     const exe = os === "win32" ? "vibelang.exe" : "vibelang"
     const checksum = createHash("sha256").update(readFileSync(join(tarballs, tarball.file))).digest("hex")
-    plugin[dprintPlatforms[platform]] = { reference: `npm:vibelang-${platform}@${version}/bin/${exe}`, checksum }
+    plugin[dprintPlatforms[platform]] = { reference: `npm:${platformPackage(platform)}@${version}/bin/${exe}`, checksum }
   }
   writeFileSync(join(dir, "dprint-plugin.json"), JSON.stringify(plugin, null, 2) + "\n")
 }

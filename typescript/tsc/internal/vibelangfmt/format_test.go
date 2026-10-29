@@ -724,3 +724,32 @@ func TestFormatModuleBodiesTheHostLeavesUnchanged(t *testing.T) {
 		}
 	}
 }
+
+// Windows formatters may return CRLF while protected VibeLang text retains LF.
+func TestWindowsLineEndings(t *testing.T) {
+	for name, input := range forms {
+		t.Run(name, func(t *testing.T) {
+			source := strings.ReplaceAll(input, "\n", "\r\n")
+			got, err := Format("windows.vibe", source, func(text string) (string, error) {
+				return text, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
+				t.Fatalf("mixed line endings: %q", got)
+			}
+		})
+	}
+}
+
+func TestWindowsSingleLineModule(t *testing.T) {
+	source := "module text { export const n = 1 }\r\n"
+	got, err := Format("windows.vibe", source, func(text string) (string, error) { return text, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
+		t.Fatalf("mixed line endings: %q", got)
+	}
+}

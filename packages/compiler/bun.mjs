@@ -32,6 +32,7 @@ function projectOf(file) {
 }
 
 function emitted(file) {
+  file = resolve(file)
   const project = projectOf(file)
   let result = results.get(project)
   if (result === undefined) {
@@ -71,7 +72,7 @@ Bun.plugin({
     build.onResolve({ filter: /^\.\.?\/.*\.js$/ }, ({ path, importer }) => {
       const fromModule = importer?.startsWith(`${moduleNamespace}:`)
       importer = pathOf(importer)
-      if (importer === undefined || importer.includes("/node_modules/")) return undefined
+      if (importer === undefined || /[\\/]node_modules[\\/]/.test(importer)) return undefined
       const target = resolve(dirname(importer), path)
       if (existsSync(target)) return fromModule ? { path: target } : undefined
       if (isModuleOutput(target)) return { path: target, namespace: moduleNamespace }

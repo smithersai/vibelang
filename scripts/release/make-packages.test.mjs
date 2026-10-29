@@ -9,6 +9,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
+const platformPackage = (platform) => platform.startsWith("win32-") ? `@vibelang/cli-${platform}` : `vibelang-${platform}`
 const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"]
 const json = (file) => JSON.parse(readFileSync(file, "utf8"))
 // The compiler package's own files; make-packages writes the others.
@@ -40,7 +41,7 @@ function assemble(root) {
 }
 function archive(root, name, path) {
   const version = json(join(root, "packages/compiler/package.json")).version
-  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", `${name}-${version}.tgz`), `package/${path}`])
+  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", `${name.replace("@", "").replace("/", "-")}-${version}.tgz`), `package/${path}`])
 }
 
 test("packs every file the compiler package lists and every target its exports name", { timeout: 120_000 }, (t) => {
@@ -59,7 +60,7 @@ test("assembles every package in publish order with pinned versions, platform bi
   const result = assemble(root)
   assert.equal(result.status, 0, result.stderr)
   const manifest = json(join(root, "dist-npm/tarballs/manifest.json"))
-  const names = [...platforms.map((p) => `vibelang-${p}`), "vibelang", "vibelang-runtime", "vibelang-vite", "create-vibelang", "vibelang-unplugin"]
+  const names = [...platforms.map((p) => platformPackage(p)), "vibelang", "vibelang-runtime", "vibelang-vite", "create-vibelang", "vibelang-unplugin"]
   assert.deepEqual(manifest.packages.map((p) => p.name), names)
   for (const pkg of manifest.packages) {
     assert.equal(pkg.version, manifest.version)
@@ -71,7 +72,7 @@ test("assembles every package in publish order with pinned versions, platform bi
   }
   for (const platform of platforms) {
     const [os, cpu] = platform.split("-")
-    const name = `vibelang-${platform}`
+    const name = platformPackage(platform)
     const pkg = JSON.parse(archive(root, name, "package.json"))
     assert.deepEqual(pkg.os, [os])
     const compiler = json(join(root, "packages/compiler/package.json"))
@@ -79,7 +80,7 @@ test("assembles every package in publish order with pinned versions, platform bi
     assert.deepEqual(pkg.cpu, [cpu])
     const exe = os === "win32" ? "vibelang.exe" : "vibelang"
     assert.deepEqual(archive(root, name, `bin/${exe}`), readFileSync(join(root, "dist-npm/bin", platform, exe)))
-    const mode = execFileSync("tar", ["-tvzf", join(root, "dist-npm/tarballs", `${name}-${manifest.version}.tgz`)], { encoding: "utf8" })
+    const mode = execFileSync("tar", ["-tvzf", join(root, "dist-npm/tarballs", `${name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`)], { encoding: "utf8" })
     assert.match(mode, /-rwxr-xr-x/)
   }
   for (const path of ["src/options.d.ts", "src/index.d.ts", "src/deferred.d.ts"]) {
@@ -92,9 +93,9 @@ test("assembles every package in publish order with pinned versions, platform bi
   const dprintNames = { "darwin-arm64": "darwin-aarch64", "darwin-x64": "darwin-x86_64", "linux-arm64": "linux-aarch64", "linux-x64": "linux-x86_64", "win32-arm64": "windows-aarch64", "win32-x64": "windows-x86_64" }
   for (const platform of platforms) {
     const exe = platform.startsWith("win32") ? "vibelang.exe" : "vibelang"
-    const tarball = readFileSync(join(root, "dist-npm/tarballs", `vibelang-${platform}-${manifest.version}.tgz`))
+    const tarball = readFileSync(join(root, "dist-npm/tarballs", `${platformPackage(platform).replace("@", "").replace("/", "-")}-${manifest.version}.tgz`))
     assert.deepEqual(plugin[dprintNames[platform]], {
-      reference: `npm:vibelang-${platform}@${manifest.version}/bin/${exe}`,
+      reference: `npm:${platformPackage(platform)}@${manifest.version}/bin/${exe}`,
       checksum: createHash("sha256").update(tarball).digest("hex")
     })
   }
@@ -107,7 +108,7 @@ test("assembles every package in publish order with pinned versions, platform bi
   assert.equal(app.devDependencies["vibelang-vite"], manifest.version)
   assert.ok(archive(root, "create-vibelang", "template/gitignore").length)
   assert.ok(archive(root, "create-vibelang", "template/gitattributes").length)
-  for (const name of ["vibelang", ...platforms.map(p => `vibelang-${p}`)]) {
+  for (const name of ["vibelang", ...platforms.map(p => platformPackage(p))]) {
     const notice = archive(root, name, "NOTICE").toString()
     const own = notice.slice(0, notice.indexOf("NOTICES AND INFORMATION"))
     assert.match(own, /microsoft\/TypeScript/, name + ": name the repository that owns the upstream commit")
@@ -130,7 +131,7 @@ test("reports inconsistent versions, pins and missing binaries together before r
   const compilerPath = join(root, "packages/compiler/package.json")
   const compiler = json(compilerPath)
   compiler.optionalDependencies["vibelang-linux-x64"] = "99.0.0"
-  delete compiler.optionalDependencies["vibelang-win32-x64"]
+  delete compiler.optionalDependencies["@vibelang/cli-win32-x64"]
   writeFileSync(compilerPath, JSON.stringify(compiler))
   rmSync(join(root, "dist-npm/bin/darwin-arm64"), { recursive: true })
   mkdirSync(join(root, "dist-npm/tarballs"))

@@ -5,8 +5,8 @@ import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-// Platforms with a published native compiler package, vibelang-<platform>-<arch>.
-const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64"]
+// Supported native compiler platforms; Windows uses @vibelang/cli-<platform>.
+const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"]
 const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
 
 // findBinary returns the native compiler: VIBELANG_BINARY, else native/vibelang
@@ -16,20 +16,15 @@ function findBinary() {
   const local = fileURLToPath(new URL(`../native/${executable}`, import.meta.url))
   if (existsSync(local)) return local
   const target = `${process.platform}-${process.arch}`
+  const name = process.platform === "win32" ? `@vibelang/cli-${target}` : `vibelang-${target}`
   try {
-    const manifest = createRequire(import.meta.url).resolve(`vibelang-${target}/package.json`)
+    const manifest = createRequire(import.meta.url).resolve(`${name}/package.json`)
     return join(dirname(manifest), "bin", executable)
   } catch {
-    if (process.platform === "win32") {
-      // Native Windows packages are not published yet; WSL uses the Linux package.
-      console.error("vibelang: Windows binaries are not published yet.")
-      console.error(`vibelang-${target} is not on npm for this version. Use WSL, or build the compiler from the VibeLang repository and set VIBELANG_BINARY.`)
-      process.exit(1)
-    }
     console.error(`vibelang: no native compiler is installed for ${target}.`)
     console.error(`vibelang ships native compilers for ${platforms.join(", ")}.`)
     if (platforms.includes(target)) {
-      console.error(`Reinstall without omitting optional dependencies so vibelang-${target} installs.`)
+      console.error(`Reinstall without omitting optional dependencies so ${name} installs.`)
     }
     console.error("In a VibeLang checkout, run sh scripts/build-vibelang.sh, or set VIBELANG_BINARY.")
     process.exit(1)

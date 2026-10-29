@@ -49,8 +49,9 @@ function nativeCompiler() {
   const local = fileURLToPath(new URL(`./native/${executable}`, import.meta.url))
   if (existsSync(local)) return local
   const target = `${process.platform}-${process.arch}`
+  const name = process.platform === "win32" ? `@vibelang/cli-${target}` : `vibelang-${target}`
   try {
-    const platform = createRequire(import.meta.url).resolve(`vibelang-${target}/package.json`)
+    const platform = createRequire(import.meta.url).resolve(`${name}/package.json`)
     return join(dirname(platform), "bin", executable)
   } catch {
     throw new Error(`vibelang/eslint: no native compiler is installed for ${target}. Reinstall vibelang without omitting optional dependencies, or set VIBELANG_BINARY.`)
