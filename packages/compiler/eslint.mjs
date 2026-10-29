@@ -104,24 +104,36 @@ function tryLoad(require) {
 }
 
 /**
- * Parses a .vibe file for ESLint.
+ * The compiler's ESTree Program for a .vibe file (`vibelang --estree`), each
+ * node with its range and without loc: what vibelang/eslint and vibelang/knip
+ * read. A syntax error throws a SyntaxError at its position.
  *
  * @param {string} code The file's text.
- * @param {{ filePath?: string, sourceType?: "module" | "script", lib?: string[] }} [options]
+ * @param {string} filePath Its path, for the compiler's messages.
  */
-export function parseForESLint(code, options = {}) {
-  const filePath = options.filePath ?? "file.vibe"
+export function parseESTree(code, filePath) {
   const result = spawnSync(nativeCompiler(), ["--estree", filePath], {
     input: code, encoding: "utf8", maxBuffer: 1024 * 1024 * 1024
   })
-  if (result.error) throw new Error(`vibelang/eslint: cannot run the compiler: ${result.error.message}`)
-  if (result.status !== 0) throw new Error(`vibelang/eslint: the compiler failed on ${filePath}: ${result.stderr.trim()}`)
+  if (result.error) throw new Error(`vibelang: cannot run the compiler: ${result.error.message}`)
+  if (result.status !== 0) throw new Error(`vibelang: the compiler failed on ${filePath}: ${result.stderr.trim()}`)
   const { ast, error } = JSON.parse(result.stdout)
   if (error) {
     const failure = new SyntaxError(error.message)
     Object.assign(failure, { index: error.index, lineNumber: error.lineNumber, column: error.column })
     throw failure
   }
+  return ast
+}
+
+/**
+ * Parses a .vibe file for ESLint.
+ *
+ * @param {string} code The file's text.
+ * @param {{ filePath?: string, sourceType?: "module" | "script", lib?: string[] }} [options]
+ */
+export function parseForESLint(code, options = {}) {
+  const ast = parseESTree(code, options.filePath ?? "file.vibe")
   finish(ast, code)
   ast.sourceType = options.sourceType ?? "module"
   const { analyze, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)

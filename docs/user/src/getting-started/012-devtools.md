@@ -359,6 +359,21 @@ export default tseslint.config({
 
 Reports, fixes, and `// eslint-disable-next-line` comments land on the `.vibe` text. Rules that need type information, such as `@typescript-eslint/no-unnecessary-type-assertion`, cannot run on a `.vibe` file, since no TypeScript program loads one: enable them for `.ts` files only and check types with `vibelang --noEmit`. EK4801-EK4825 stay in the compiler and the language server. To see the tree a rule reads, run `vibelang --estree main.vibe < main.vibe`.
 
+Find unused files, exports and dependencies in `.vibe` files with [Knip](https://knip.dev) through `vibelang/knip`, a Knip [compiler](https://knip.dev/features/compilers). It gives Knip each `.vibe` module's imports, re-exports, dynamic imports and exports, and the members it reads through a namespace import, from the compiler's ESTree. Knip takes compilers only from a configuration that is code:
+
+```js
+// knip.config.js
+import vibelang from "vibelang/knip"
+
+export default {
+  compilers: { vibe: vibelang },
+  // The declaration sidecars vibelang writes beside .vibe files are its output.
+  ignore: ["**/*.d.vibe.ts"]
+}
+```
+
+Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. The migrate flow writes this configuration, moving the settings of a `knip.json` into a `knip.config.ts`.
+
 Typed lint of `.ts` files needs the types of the `.vibe` modules they import. typescript-eslint builds its program with the `typescript` it installs, which cannot read a `.vibe` file, so a type from one, imported directly or through a `.ts` barrel, is unresolved there, and type-aware rules report code that `vibelang -p` accepts, such as a non-null assertion the compiler needs. Give typescript-eslint the program `typedProgram` builds instead of `project` or `projectService`:
 
 ```js

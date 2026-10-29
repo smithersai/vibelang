@@ -317,11 +317,15 @@ async function wireTarget(config, log) {
   const apps = Wire.wireViteApps({ root: t, packages: config.packages, ts, specsFor, wired: vite.configs })
   changed.push(...apps.changed.filter((file) => !changed.includes(file)))
   warnings.push(...apps.warnings)
+  // Knip reads .vibe files through vibelang/knip.
+  const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
+  changed.push(...knip.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...knip.warnings)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager)
   await must(install, { cwd: t, log: join(log, "install.log") })
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
-  return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, changed, warnings, install }
+  return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, changed, warnings, install }
 }
 
 /** setup: on the Effect upgrade's commit, wire the toolchain, install, record the baseline tests, compile, declarations and inventory, and commit. */

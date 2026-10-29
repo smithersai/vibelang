@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -243,6 +243,44 @@ test("bun test gets vibelang/bun in the [test] preload, which is the one it appl
   assert.equal(runsBunTest("bun run test", { test: "bun test --timeout 30000" }), true)
   assert.equal(runsBunTest("pnpm test", { test: "vitest run" }), false)
   assert.equal(runsBunTest("bun run test", { test: "bunx vitest" }), false)
+})
+
+test("wireKnip moves a JSON Knip configuration to knip.config.ts with VibeLang's compiler", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-knip-"))
+  try {
+    const knipJson = '{\n  // dead code\n  "$schema": "https://unpkg.com/knip@6/schema.json",\n  "ignore": "scripts/**",\n}\n'
+    writeFileSync(join(root, "knip.jsonc"), knipJson)
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "repo", scripts: { knip: "knip --config knip.jsonc" }, devDependencies: { knip: "^6" } }, null, 2) + "\n")
+    const wired = wireKnip({ root, specs: { vibelang: "0.0.12" } })
+    assert.deepEqual(wired.changed, ["knip.jsonc", "knip.config.ts", "package.json"])
+    assert.deepEqual(wired.warnings, ["package.json script knip names knip.jsonc, which is now knip.config.ts"])
+    assert.equal(existsSync(join(root, "knip.jsonc")), false)
+    const text = readFileSync(join(root, "knip.config.ts"), "utf8")
+    assert.ok(text.startsWith('import vibelang from "vibelang/knip"\n'))
+    assert.ok(text.includes(`const config = ${knipJson.trim()} as { ignore?: string | string[] }`))
+    assert.ok(text.includes('  compilers: { vibe: vibelang },\n  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts"],\n'))
+    // The configuration is TypeScript, and its value keeps the JSON's settings.
+    const out = ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.CommonJS }, reportDiagnostics: true })
+    assert.deepEqual(out.diagnostics, [])
+    const module = { exports: {} }
+    new Function("module", "exports", "require", out.outputText)(module, module.exports, () => ({ default: "compiler" }))
+    assert.deepEqual(module.exports.default, { $schema: "https://unpkg.com/knip@6/schema.json", ignore: ["scripts/**", "**/*.d.vibe.ts"], compilers: { vibe: "compiler" } })
+    assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies.vibelang, "0.0.12")
+
+    // A package.json key moves too; a configuration that is code is named, not rewritten.
+    rmSync(join(root, "knip.config.ts"))
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "repo", knip: { entry: ["src/main.ts"] } }, null, 2) + "\n")
+    assert.deepEqual(wireKnip({ root, specs: { vibelang: "0.0.12" } }).changed, ["knip.config.ts", "package.json"])
+    assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).knip, undefined)
+    writeFileSync(join(root, "knip.config.ts"), "export default {}\n")
+    assert.match(wireKnip({ root, specs: { vibelang: "0.0.12" } }).warnings[0], /^knip\.config\.ts: add compilers/)
+    // A repository without Knip is left alone.
+    rmSync(join(root, "knip.config.ts"))
+    writeFileSync(join(root, "package.json"), '{ "name": "repo" }\n')
+    assert.deepEqual(wireKnip({ root, specs: { vibelang: "0.0.12" } }), { changed: [], warnings: [], config: null })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test("packageManager reads the lockfile", () => {

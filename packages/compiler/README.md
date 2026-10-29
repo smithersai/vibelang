@@ -251,6 +251,21 @@ The
 [Devtools page](https://vibelang.sh/getting-started/012-devtools) lists the node types of VibeLang's own forms
 and shows the whole configuration.
 
+## Find unused code with Knip
+
+`vibelang/knip` is a [Knip compiler](https://knip.dev/features/compilers) for
+`.vibe` files. It gives Knip a module's imports, re-exports, dynamic imports,
+export names and namespace member reads, from the compiler's ESTree, and the
+`vibelang-runtime` import its JavaScript has. Knip takes a compiler only from a
+configuration that is code:
+
+```js
+// knip.config.js
+import vibelang from "vibelang/knip"
+
+export default { compilers: { vibe: vibelang }, ignore: ["**/*.d.vibe.ts"] }
+```
+
 ## How the package finds the native compiler
 
 `vibelang` is a small Node launcher. In 0.0.11, the native compiler comes from one of four

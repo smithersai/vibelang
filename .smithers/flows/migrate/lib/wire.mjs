@@ -8,7 +8,7 @@
 // wireVite applies the plugin edit to the config files the tests load. The
 // Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
 // coding agents up with the vibelang it installed.
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { must, quote } from "./util.mjs"
 
@@ -391,6 +391,74 @@ export function addBunTestPreload(text) {
   const items = single[2] !== undefined ? single[2].trim().replace(/,\s*$/, "") : single[3]
   lines[at] = `${single[1]}[${entry}${items ? `, ${items}` : ""}]`
   return lines.join("\n")
+}
+
+// Where Knip looks for its configuration, in its order (knip 6, KNIP_CONFIG_LOCATIONS).
+const knipConfigs = ["knip.json", "knip.jsonc", ".knip.json", ".knip.jsonc", "knip.ts", "knip.js", "knip.config.ts", "knip.config.js"]
+
+/** The TypeScript Knip configuration that gives `config`, a JSON text, VibeLang's compiler for .vibe files. */
+export function knipConfigText(config) {
+  return `import vibelang from "vibelang/knip"
+
+// Knip reads .vibe files through VibeLang's compiler. The declaration
+// sidecars vibelang writes beside them, x.d.vibe.ts, are its output.
+const config = ${config.trim()} as { ignore?: string | string[] }
+
+export default {
+  ...config,
+  compilers: { vibe: vibelang },
+  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts"],
+}
+`
+}
+
+/**
+ * Gives the repository's Knip VibeLang's compiler for .vibe files
+ * (vibelang/knip), and keeps it off the declaration sidecars. Knip takes a
+ * compiler only from a JavaScript or TypeScript configuration, so a JSON one
+ * (knip.json, knip.jsonc, or the `knip` key of package.json) becomes
+ * knip.config.ts with the same settings. A repository that installs Knip
+ * without a configuration gets one with only these settings; one whose
+ * configuration is already code is named in the warnings. The root package
+ * gets the compiler as a dev dependency, so the import resolves. Returns the
+ * files changed, the warnings and the configuration written, or null.
+ */
+export function wireKnip({ root, specs }) {
+  const changed = []
+  const warnings = []
+  const manifestPath = join(root, "package.json")
+  if (!existsSync(manifestPath)) return { changed, warnings, config: null }
+  const manifestText = readFileSync(manifestPath, "utf8")
+  const manifest = JSON.parse(manifestText)
+  const found = knipConfigs.find((file) => existsSync(join(root, file)))
+  let config
+  if (found && /\.jsonc?$/.test(found)) {
+    config = readFileSync(join(root, found), "utf8")
+    rmSync(join(root, found))
+    changed.push(found)
+  } else if (found) {
+    if (!/vibelang\/knip/.test(readFileSync(join(root, found), "utf8"))) warnings.push(`${found}: add compilers: { vibe } from "vibelang/knip" and ignore "**/*.d.vibe.ts" by hand; this edit does not rewrite a Knip configuration that is code`)
+    return { changed, warnings, config: null }
+  } else if (manifest.knip !== undefined) {
+    config = JSON.stringify(manifest.knip, null, 2)
+    delete manifest.knip
+  } else if (manifest.devDependencies?.knip || manifest.dependencies?.knip) {
+    config = "{}"
+  } else {
+    return { changed, warnings, config: null }
+  }
+  writeFileSync(join(root, "knip.config.ts"), knipConfigText(config))
+  changed.push("knip.config.ts")
+  manifest.devDependencies = { ...manifest.devDependencies, vibelang: specs.vibelang }
+  const next = JSON.stringify(manifest, null, 2) + "\n"
+  if (next !== manifestText) {
+    writeFileSync(manifestPath, next)
+    changed.push("package.json")
+  }
+  for (const [name, command] of Object.entries(manifest.scripts ?? {})) {
+    if (found && /\bknip\b/.test(command) && command.includes(found)) warnings.push(`package.json script ${name} names ${found}, which is now knip.config.ts`)
+  }
+  return { changed, warnings, config: "knip.config.ts" }
 }
 
 /** The package manager a repository uses, from its lockfile. */
