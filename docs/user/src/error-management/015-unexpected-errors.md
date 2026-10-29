@@ -38,7 +38,7 @@ one
 No label
 ```
 
-`Option.getOrThrow` and `Schema.decodeUnknownSync` may throw. An effect function must wrap those calls: `sync` turns their exceptions into defects, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
+`Option.getOrThrow`, and the decoder that `Schema.decodeUnknownSync(schema)` returns, may throw; building the decoder doesn't. An effect function must wrap those calls: `sync` turns their exceptions into defects, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
 
 ## Promoting typed failures to defects
 
