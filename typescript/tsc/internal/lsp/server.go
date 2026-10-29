@@ -259,6 +259,10 @@ type Server struct {
 	progressDelay   time.Duration
 	projectProgress *projectLoadingProgress
 
+	// VibeLang: open documents whose diagnostics are pushed to a client that
+	// cannot pull them (pushdiagnostics.go).
+	filePush filePush
+
 	startWatchdog func(parentPID int)
 
 	flakeLogging lsproto.DiagnosticFlakeLogLevel
@@ -1861,26 +1865,31 @@ func (s *Server) handleDidChangeWorkspaceConfiguration(ctx context.Context, para
 
 func (s *Server) handleDidOpen(ctx context.Context, params *lsproto.DidOpenTextDocumentParams) error {
 	s.session.DidOpenFile(ctx, params.TextDocument.Uri, params.TextDocument.Version, params.TextDocument.Text, params.TextDocument.LanguageId)
+	s.documentOpened(params.TextDocument.Uri)
 	return nil
 }
 
 func (s *Server) handleDidChange(ctx context.Context, params *lsproto.DidChangeTextDocumentParams) error {
 	s.session.DidChangeFile(ctx, params.TextDocument.Uri, params.TextDocument.Version, params.ContentChanges)
+	s.pushFileDiagnostics()
 	return nil
 }
 
 func (s *Server) handleDidSave(ctx context.Context, params *lsproto.DidSaveTextDocumentParams) error {
 	s.session.DidSaveFile(ctx, params.TextDocument.Uri)
+	s.pushFileDiagnostics()
 	return nil
 }
 
 func (s *Server) handleDidClose(ctx context.Context, params *lsproto.DidCloseTextDocumentParams) error {
 	s.session.DidCloseFile(ctx, params.TextDocument.Uri)
+	s.documentClosed(params.TextDocument.Uri)
 	return nil
 }
 
 func (s *Server) handleDidChangeWatchedFiles(ctx context.Context, params *lsproto.DidChangeWatchedFilesParams) error {
 	s.session.DidChangeWatchedFiles(ctx, params.Changes)
+	s.pushFileDiagnostics()
 	return nil
 }
 

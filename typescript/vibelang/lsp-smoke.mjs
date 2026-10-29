@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Headless language server test. Starts `vibelang --lsp --stdio` on
 // vibelang/lsp-fixture, a project with .vibe and .ts files, and checks
-// what an editor shows: pulled diagnostics, hovers with inferred contracts,
+// what an editor shows: pulled (and, for a client that cannot pull, pushed) diagnostics, hovers with inferred contracts,
 // definitions, references, rename, completions, and file watching across
 // .vibe and .ts files.
 //
@@ -1113,6 +1113,42 @@ try {
     assert(code === 0, `exit status ${code}, signal ${signal}`)
   })
 }
+
+// A client that accepts pushed diagnostics and cannot pull them, as Claude
+// Code's does, gets each open document's diagnostics published.
+await check("diagnostics: a client that cannot pull gets broken.vibe's TS2322 pushed", async () => {
+  const push = new Connection(server, ["--lsp", "--stdio"], fixture)
+  const published = []
+  const dispatch = push.dispatch.bind(push)
+  push.dispatch = (message) => {
+    if (message.method === "textDocument/publishDiagnostics") published.push(message.params)
+    dispatch(message)
+  }
+  try {
+    const rootUri = pathToFileURL(fixture).href
+    await push.request("initialize", {
+      processId: process.pid,
+      rootUri,
+      workspaceFolders: [{ uri: rootUri, name: "lsp-fixture" }],
+      capabilities: { textDocument: { synchronization: { didSave: true }, publishDiagnostics: { relatedInformation: true } }, workspace: { configuration: true } }
+    })
+    push.notify("initialized", {})
+    const uri = fileUri("src/broken.vibe")
+    push.notify("textDocument/didOpen", { textDocument: { uri, languageId: "vibe", version: 1, text: text("src/broken.vibe") } })
+    const deadline = Date.now() + 30_000
+    for (;;) {
+      const report = published.find((params) => params.uri === uri)
+      if (report) {
+        assert(report.diagnostics.length === 1 && report.diagnostics[0].code === 2322, `got ${JSON.stringify(report.diagnostics.map((d) => d.code))}`)
+        break
+      }
+      assert(Date.now() < deadline, `nothing published for broken.vibe; published ${JSON.stringify(published.map((params) => params.uri))}`)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  } finally {
+    await push.close()
+  }
+})
 
 if (failures > 0) {
   console.log(`\n${failures} check(s) failed. Last server log lines:`)
