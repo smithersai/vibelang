@@ -1,21 +1,14 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
     "types": [],
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true,
-    "outDir": "out",
-    "declaration": true
+    "outDir": "out"
   },
-  "include": [
-    "*.vibe",
-    "*.ts"
-  ]
+  "include": ["*.vibe", "*.ts"]
 }

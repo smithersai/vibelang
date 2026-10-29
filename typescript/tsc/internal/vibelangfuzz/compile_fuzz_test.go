@@ -359,7 +359,7 @@ func TestSpecFacts(t *testing.T) {
 		t.Errorf("tracing values %v", facts.Tracing)
 	}
 	// The defaults column of the diagnostics option agrees with the derived
-	// defaults: `EK1012, EK1016, EK2004, and EK4406 "warning"; EK3205, EK4403,
+	// defaults: `EK1012, EK2004, and EK4406 "warning"; EK3205, EK4403,
 	// and EK4409 "error"`.
 	row := diagnostics[strings.Index(diagnostics, "| `diagnostics` |"):]
 	row = row[:strings.Index(row, "\n")]

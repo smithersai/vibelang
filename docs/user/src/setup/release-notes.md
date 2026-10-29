@@ -171,6 +171,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema declarations inferred mutable arrays, tuples, and records as readonly; they now preserve the collection type's mutability, support `Readonly<Record<K, V>>`, and keep the same types through `vibelang --fix`.
 
+- An unused local `main` previously warned that it should be exported; it now compiles without that warning (VIP-26).
+
 - Coding agents initialized with `vibelang agents init` missed Effect lint checks; their instructions now include `vibelang lint` and its Oxlint configuration.
 
 - Agent instructions taught retired call and function forms; the shipped skill and starter essentials now follow the accepted syntax, distinguish Promise `await` from Effect `try`, and explain failure handlers and cleanup.
@@ -203,7 +205,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The experimental TypeScript mapper required a `$plain` member on exported functions with an Effect return contract, rejecting valid assignments to `typeof f`. Their projected types now keep only the Effect contract.
 - In JavaScript that the experimental TypeScript mapper emits, passing an imported plain function with a written return type as a callback, as in `[1, 2].map(square)`, failed with `Plain call of square found no plain form`. The callback now receives the function as written.
 
-- The specification assigned the exported `const main` warning to `EK1016`; it now uses `EK4843`, matching the compiler warning and quick fix.
 
 - A nested module type such as `Layer<HttpClient>` could emit a declaration with an unqualified inner type. Declarations now qualify nested module types too, such as `Layer.Layer<HttpClient.HttpClient>`.
 
@@ -1276,14 +1277,11 @@ Changes to previously accepted code:
   annotation never filtered failures. Write an untyped `catch (e)` and
   test `e` with `match` or `is`, rethrowing unhandled failures.
   The editor and `vibelang --fix` can make that rewrite.
-- An unused, unexported zero-argument `main` now warns with EK1016.
-  Write `export function main()` to run it when the module starts.
 - EK4409 now also warns when a primitive-success contract returns a call
   through `any` whose local initializer proves it returns a cold program.
   Give the callee an Effect-returning type so its call runs the program.
   With EK4409 configured as an error, previously accepted code in this case
-  stops compiling until fixed. EK1016 can also be configured as an error
-  in 0.0.10. Ordinary dynamic value calls keep their existing behavior.
+  stops compiling until fixed. Ordinary dynamic value calls keep their existing behavior.
 - The data-pattern work budget above can stop a formerly accepted, oversized
   body with TS2563. Split it into smaller functions.
 
