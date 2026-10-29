@@ -32,12 +32,11 @@ TryExpression = "try" UnaryExpression
 | --- | --- |
 | `try` outside effect code | code pending |
 | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | code pending |
-| `try x catch y` (both on one operand) | code pending |
 | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | code pending |
 
 An Effect that can't fail is still run with `try`.
 
-`try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b()` and `try f() + 1` adds 1 to the success. At the start of a statement, `try {` begins a `try` statement, as in JavaScript, and that is an error in effect code.
+`try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b()` and `try f() + 1` adds 1 to the success. As with `await`, the operand may start on the next line. At the start of a statement, `try {` begins a `try` statement, as in JavaScript, and that is an error in effect code.
 
 ### Meaning
 
@@ -79,7 +78,9 @@ Handler         = EffectArrow            (an effect function of the error)
 
 `catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result. A value handler is an `Operand`, so `x catch y, z` is a comma expression whose first part is `x catch y`.
 
-An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`. So `a catch (e) => b catch c` means `a catch ((e) => (b catch c))`. Parenthesize the arrow to chain: `a catch ((e) => b) catch c`.
+An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`. So `a catch (e) => b catch c` means `a catch ((e) => (b catch c))`. Parenthesize the arrow to chain: `a catch ((e) => b) catch c`. A parenthesized `(effect { … })` is an `Operand`, so it is a value: the fallback is the unrun Effect.
+
+In `(a catch b) catch c`, the outer `catch` runs the value that `a catch b` gives, so that value must itself be an Effect. To try fallbacks in turn, nest them in the handler: `a catch effect { return b catch c }`.
 
 ### Static rules
 
@@ -87,6 +88,7 @@ An arrow handler's body is TypeScript's concise body, which extends as far as an
 | --- | --- |
 | `catch` outside effect code | code pending |
 | `try x catch y`: write `try x` or `x catch y`, never both | code pending |
+| `e catch y` where `e` is not an Effect | code pending |
 | `catch` mixed with `??`, `\|\|` or `&&` without parentheses, as JavaScript requires for `??` | code pending |
 
 ### Meaning
@@ -173,7 +175,7 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value, like an immediately invoked function. As TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator.
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator.
 
 ```vibe es
 // compiler-gap: pending VIP-2
@@ -246,7 +248,7 @@ function both() {
 TryAll = "try" "." ("all" | "race" | "any" | "allSettled") UnaryExpression
 ```
 
-`try` is a reserved word, so `try.` can't start anything else. The operand has `try`'s precedence, so `try.all [a(), b()]` and `try.all ids.map(load)` each have one reading. Its type is an array or tuple of Effects.
+`try` is a reserved word, so `try.` can't start anything else. The operand has `try`'s precedence, so `try.all [a(), b()]` and `try.all ids.map(load)` each have one reading. The operand is any expression whose type is an array, readonly array or tuple of Effects, not only an array literal (VIP-18, amended).
 
 ### Static rules
 
@@ -283,7 +285,7 @@ effect function page(id: string) {
 ForConcurrent = "for" "concurrent" ("(" Expression ")")? "(" ForBinding "of" Expression ")" Statement
 ```
 
-JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading.
+JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` has one reading. After `for concurrent`, a parenthesized group followed by another `(` is the limit `n`.
 
 ### Static rules
 
@@ -293,17 +295,17 @@ JavaScript's `for` can only be followed by `(` or `await`, so `for concurrent` h
 | `break` in the body | code pending |
 | `return` in the body | code pending |
 
-`continue` ends that one item: it is `return` from the item's generator. `break` and `return` are errors when they would leave the body; a loop nested in the body keeps its own `break` and `continue`.
+`continue` ends that one item: it is `return` from the item's generator, as the example shows. `break` and `return` are errors when they would leave the body; a loop nested in the body keeps its own `break` and `continue`.
 
 ### Meaning
 
-Every item runs in its own fiber, all at once, or at most `n` at a time with `for concurrent(n)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
+Every item runs in its own fiber, all at once, or at most `n` at a time with `for concurrent(n)`; `n` is Effect's `concurrency` option. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
 
 ```vibe es
 // compiler-gap: pending VIP-19
 effect function syncAll(ids: string[]) {
-  for concurrent (const id of ids) { try syncOne(id) }
-  for concurrent(4) (const id of ids) { try syncOne(id) }
+  for concurrent (const id of ids) { if (id === "") continue; try syncOne(id) }
+  for concurrent(4) (const id of ids) { if (id === "") continue; try syncOne(id) }
 }
 ```
 
@@ -311,13 +313,13 @@ effect function syncAll(ids: string[]) {
 // fragment
 function syncAll(ids: string[]) {
   return Effect.gen(function* () {
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: 4, discard: true })
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: 4, discard: true })
   })
 }
 ```
 
-**Undecided (pending VIP):** which `ForBinding`s are allowed (VIP-19 shows `const id`; `let` and destructuring are not stated), and whether the operand may be any iterable or also a Stream.
+**Undecided (pending VIP):** which values `n` may take (VIP-19 shows `4`; Effect also accepts `"unbounded"` and `"inherit"`); which `ForBinding`s are allowed (VIP-19 shows `const id`; `let` and destructuring are not stated), and whether the operand may be any iterable or also a Stream.
 
 ## `for try`
 
