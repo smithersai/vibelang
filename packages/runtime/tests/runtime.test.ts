@@ -356,10 +356,10 @@ test("producers: yieldAll yields another producer, a Stream, and an iterable", a
   expect(await Effect.runPromise(Stream.runCollect(all))).toEqual([1, 2, 3, 4, 5, 6])
 })
 
-test("producers: a producer used as a Stream never runs ahead of its pulls", async () => {
+test("producers: a producer used as a Stream runs at most two elements ahead (VIP-21)", async () => {
   const events: string[] = []
   const counting = $produce(() => Effect.gen(function* () {
-    for (let n = 1; n <= 3; n++) {
+    for (let n = 1; n <= 4; n++) {
       events.push(`produce ${n}`)
       yield* $yield(n)
     }
@@ -369,9 +369,9 @@ test("producers: a producer used as a Stream never runs ahead of its pulls", asy
     events.push(`pulled ${(yield* pull)[0]}`)
     yield* Effect.sleep("20 millis")
     events.push("waited")
-    events.push(`pulled ${(yield* pull)[0]}`)
   })))
-  expect(events).toEqual(["produce 1", "pulled 1", "waited", "produce 2", "pulled 2"])
+  // After the first pull, 2 is in the buffer and 3 waits to be offered; 4 never starts.
+  expect(events).toEqual(["produce 1", "produce 2", "produce 3", "pulled 1", "waited"])
 })
 
 test("producers: a producer's failure fails the Stream that runs it", async () => {

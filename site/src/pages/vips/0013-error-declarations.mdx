@@ -28,6 +28,8 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest }
 - The base is `Data.TaggedError`, which can't be decoded from JSON. Serializable, Schema-based errors are left to the `schema` VIP.
 - Two packages that both declare `error NotFound` match each other, as with Effect's `catchTag`, because VIP-7's matcher tests `_tag`.
 - **Ambiguity: none.** `error` is a contextual keyword on the same line as its name, so `const error = …` and `catch (error)` still work.
+- **Amended 2026-10-29: no user-written `static` members or setters** in `error` or `schema error` bodies, for now. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: no type parameters.** `error Invalid<T> { value: T }` is a compile error, for now. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## History
 

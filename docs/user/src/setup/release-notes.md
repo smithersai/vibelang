@@ -117,6 +117,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Lower the Node.js floor from 26 to 22.22.3 (22.x) or 24.11.1 across packages, starter, build and release checks; Node 22.22.3 supplies main-module detection, synchronous import hooks and the imported-CommonJS ESM cache fix (Node.js #59679).
 
+- VIP-21: a producer ran its body only when its consumer pulled, through a continuation handoff that VIP-21 replaced. A producer is now Effect's `Stream.callback` with a one-element buffer, ended by `Queue.end`: its body runs on a fiber of its own and may run up to two elements ahead of the consumer. A `for...of` or `yield*` over a Stream that needs a control operation is now EK4201, as other Stream consumers were, and a failure in a producer's cleanup after its consumer stops is no longer reported.
+
 - Migration now includes `.vibe` in formatter, lint and ast-grep commands: the compiler ships a Prettier plugin and formatter companion using its own dprint formatter, ESLint checks VibeLang beside Oxlint, and ast-grep loads the shipped tree-sitter grammar.
 
 - VIP-30: project discovery checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory; explicit config paths still select that file.

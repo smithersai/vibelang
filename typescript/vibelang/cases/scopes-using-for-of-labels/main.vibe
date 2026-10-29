@@ -104,7 +104,7 @@ function nested() {
   return events
 }
 
-// expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["body","dispose","body","dispose","closed"],"producerReverse":["body","dispose","body","dispose","closed"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
+// expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["closed","body","dispose"],"producerReverse":["closed","body","dispose"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
 export function main() {
   return {
     array: try array(false), arrayReverse: try array(true),

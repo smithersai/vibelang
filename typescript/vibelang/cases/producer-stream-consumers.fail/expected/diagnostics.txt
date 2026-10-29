@@ -1,3 +1,4 @@
 main.vibe(18,32): error EK4201
 main.vibe(23,10): error EK4201
 main.vibe(27,32): error EK4201
+main.vibe(32,19): error EK4201

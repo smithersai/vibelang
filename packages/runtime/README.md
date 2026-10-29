@@ -184,10 +184,10 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$clause` | Type a handle statement's clause bindings for the checker; compiled code never calls it | D132 |
 | `YieldOf` (type) | Type a producer body's yields until a loop or a Stream handles them | D26 |
 | `Producer` (type) | A producer: a `Stream` that also carries its body | D26 |
-| `$produce` | Turn a generated producer body into a cold `Stream` that hands over one element per pull | D26 |
+| `$produce` | Turn a generated producer body into a cold `Stream`: `Stream.callback` with a one-element buffer, ended by `Queue.end` | VIP-21 |
 | `$yield` | Perform the built-in yield operation | D26 |
 | `$yieldAll` | Yield every element of another producer, a Stream, or an iterable (`yield*`) | D26 |
-| `$forOf` | Iterate a producer under a `Yield` handler, pull a Stream, or iterate a JavaScript iterable with IteratorClose, and lower loop completion records | D18, D26 |
+| `$forOf` | Pull a Stream, a producer included, or iterate a JavaScript iterable with IteratorClose, and lower loop completion records | D18, D26 |
 | `$iteratorFrame` | Internal compiler adapter: unwind the native loops and array destructuring of an abandoned generator so JavaScript runs IteratorClose; a throwing `return()` is a defect beside the original cause | D26, D305 |
 | `$forStream`, `$toStream` | Kept for the prototype compiler's output: `$forOf`, and the identity | D26 |
 | `trusted` | Wrap a synchronous implementation as one plain function that carries its expected-failure classes | D249, D514 |
@@ -378,12 +378,10 @@ exact when no clause that returns a value of another type resumes; with
 `onReturn`, `H` is `never`, so a clause's tail `resume` adds nothing to the
 `handle`'s result (D97).
 
-A producer is a `Stream`. `for...of` over it runs its body under a `Yield`
-handler on the loop's fiber and resumes it in tail position, so a long producer
-runs in constant stack; a loop that ends early abandons it, which runs its
-cleanup. Anything else that runs it as a `Stream` starts its body on its own
-fiber at the first pull; the `Yield` clause completes the pending pull and waits
-for the next before resuming the body: an unbuffered handoff, so the producer
-never runs ahead of its consumer (D26; the prototype's adapter used a
-one-element buffer). Closing the stream interrupts that fiber, which runs the
-producer's cleanup.
+A producer is a `Stream`: Effect's `Stream.callback` with a one-element
+buffer and the `suspend` strategy (VIP-21). Each run starts its body on a fiber
+of its own; `yield v` offers `v` to the stream's queue, and `Queue.end` ends the
+stream when the body returns. The producer may run up to two elements ahead of
+its consumer, one in the buffer and one waiting to be offered. Closing the
+stream, as a loop that ends early does, interrupts that fiber, which runs the
+producer's cleanup; a failure of that cleanup reaches no one, as in Effect.

@@ -1,10 +1,10 @@
-// expect: EK4201 EK4201 EK4201
+// expect: EK4201 EK4201 EK4201 EK4201
 // A producer is one value, a Stream (D402): whatever binding or type it
-// reaches a consumer through, a consumer other than for...of pulls it on a
-// fiber of its own, so a Stream whose requirements hold a control operation
-// is EK4201 where it reaches one: an argument of a Stream runner or operator,
-// or the receiver of a Stream method. for...of runs it on the loop's fiber,
-// and a .vibe function it is passed to only passes it on.
+// reaches a consumer through, the consumer runs it on a fiber of its own
+// (VIP-21), so a Stream whose requirements hold a control operation is
+// EK4201 where it reaches one: an argument of a Stream runner or operator,
+// the receiver of a Stream method, or a for...of. A .vibe function it is
+// passed to only passes it on.
 control Ask {
   ask(): number!!
 }

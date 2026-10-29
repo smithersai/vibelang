@@ -1,6 +1,6 @@
 // Executable Effect 4.0.6 oracle for the VibeLang forms in main.vibe.
 // Each source is rebuilt for every observation, including every retry.
-import { Cause, Effect, Exit, Stream } from "effect"
+import { Cause, Effect, Exit, Queue, Stream } from "effect"
 
 const E = { _tag: "E" }, E2 = { _tag: "E2" }
 type Program = Effect.Effect<unknown, unknown>
@@ -31,7 +31,12 @@ const asyncDisposed = () => Effect.scoped(Effect.gen(function*() {
 }))
 const later = () => Effect.andThen(Effect.sleep(5), fail())
 const interrupted = () => Effect.ensuring(Effect.never, cleanup())
-const stream = () => Stream.runForEach(Stream.ensuring(Stream.make(1, 2), cleanup()), fail)
+// A producer is Stream.callback with one element of buffer (VIP-21). The
+// consumer's failure interrupts the producer's own fiber, so the cleanup's
+// defect reaches no one and the loop fails with E alone.
+const producer = () => Stream.runForEach(Stream.callback<number>((queue) =>
+  Effect.ensuring(Effect.andThen(Queue.offer(queue, 1), Queue.offer(queue, 2)), cleanup()).pipe(Effect.andThen(Queue.end(queue))),
+  { bufferSize: 1, strategy: "suspend" }), fail)
 
 export const sources: Record<string, () => Program> = {
   r0_fail: fail,
@@ -41,8 +46,8 @@ export const sources: Record<string, () => Program> = {
   r1_dieThenFinallyThrows: () => Effect.onExit(cleanup(), () => Effect.fail(E2)),
   r2_usingReleaseDies: resource,
   r2_usingDisposeThrows: () => disposed(),
-  r3_producerCleanupDies: stream,
-  r3_producerIteratorCloseThrows: stream,
+  r3_producerCleanupDies: producer,
+  r3_producerIteratorCloseThrows: producer,
   r4_awaitAll: () => Effect.all([later(), interrupted()], { concurrency: "unbounded" }),
   r4_forConcurrent: () => Effect.forEach([0, 1], i => i === 0 ? later() : interrupted(), { concurrency: "unbounded", discard: true }),
   r5_awaitRace: () => Effect.raceFirst(fail(), cleanup()),

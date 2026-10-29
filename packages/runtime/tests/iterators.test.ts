@@ -162,7 +162,7 @@ test("nested destructuring closes inner before outer for defects and interruptio
   }
 })
 
-test("a producer that delegates to a JavaScript iterator reports its close error on break, and beside a body failure", async () => {
+test("a producer that delegates to a JavaScript iterator closes it when the consumer leaves", async () => {
   const values = {
     *[Symbol.iterator]() {
       try {
@@ -183,12 +183,13 @@ test("a producer that delegates to a JavaScript iterator reports its close error
     native = error
   }
   expect(native).toBe("close failed")
+  // VIP-21: the producer runs ahead of the loop and its close error fails a
+  // Stream whose consumer has already left, as Stream.callback does.
   const producer = () => $produce(() => $yieldAll(values))
   const onBreak = await Effect.runPromiseExit($forOf(producer(), () => Effect.succeed({ kind: "break", label: "" })))
-  expect(tags(onBreak)).toEqual(["Die"])
-  expect(defects(onBreak)).toEqual(["close failed"])
+  expect(onBreak).toEqual(Exit.succeed({ kind: "normal" }))
   const onFailure = await Effect.runPromiseExit($forOf(producer(), () => Effect.fail("body failed")))
-  expectDefectBeside(onFailure, "body failed", "close failed")
+  expect(onFailure).toEqual(Exit.fail("body failed"))
 })
 
 test("a JavaScript finally block that yields while the frame is unwound is a defect", async () => {

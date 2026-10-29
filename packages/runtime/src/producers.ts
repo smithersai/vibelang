@@ -1,55 +1,53 @@
-import { Cause, Channel, Deferred, Effect, Exit, Pull, Stream } from "effect"
-import type { NonEmptyReadonlyArray } from "effect/Array"
-import * as K from "./kernel/kernel.js"
+import { Context, Effect, Exit, Pull, Queue, Stream } from "effect"
 import { $normal } from "./regions.js"
 import { $iteratorFrame } from "./iterators.js"
 
 // ---------------------------------------------------------------------------
-// Producers (D26, design chapters 8 and 26)
+// Producers (VIP-21)
 //
-// `function*` in a .vibe file declares a producer, and `yield v` performs the
-// built-in Yield operation. Calling the producer runs none of its body: it
-// returns a Stream that carries the body. `for...of` over that Stream runs the
-// body under a Yield handler on the loop's own fiber (internal iteration);
-// anything else that consumes it as a Stream runs the body on a fiber of its
-// own and hands over one element per pull.
+// A producer is a generator function in a .vibe file that returns a Stream,
+// as `async function*` returns an AsyncIterable. Calling it runs none of its
+// body. Its Stream is Effect's Stream.callback with one element of buffer:
+// each run starts the body on a fiber of its own, `yield v` offers v to the
+// stream's queue, and Queue.end ends the stream when the body returns. The
+// producer may run up to two elements ahead of its consumer, one in the
+// buffer and one waiting to be offered; exact pull semantics, which would
+// need a continuation runtime, are not provided.
 // ---------------------------------------------------------------------------
 
-/** The built-in Yield operation that `yield` performs. */
-const YieldOp = K.operation<unknown, void>("vibelang/Yield")
-
-/** The requirement a producer body has until a loop or a Stream handles its yields. */
+/** The requirement a producer body has until $produce gives it a queue. */
 export interface YieldOf<T> {
   readonly "~vibelang/Yield": T
 }
 
 type ElementOf<R> = R extends YieldOf<infer T> ? T : never
 
-/** `yield value` in a producer. */
-export const $yield = <T>(value: T): Effect.Effect<void, never, YieldOf<T>> => YieldOp(value) as any
+/** The queue of the producer whose body is running. */
+class ProducerQueue extends Context.Service<ProducerQueue, Queue.Queue<unknown, unknown>>()("vibelang-runtime/ProducerQueue") {}
 
-const producerBody: unique symbol = Symbol.for("vibelang-runtime/producer") as any
+/** `yield value` in a producer: offer it to the producer's queue. */
+export const $yield = <T>(value: T): Effect.Effect<void, never, YieldOf<T>> =>
+  Effect.flatMap(Effect.service(ProducerQueue), (queue) => Queue.offer(queue, value)) as any
 
-/** A producer: a Stream that also carries its body for internal iteration. */
+/** A producer: the Stream its call returns. */
 export type Producer<T, E = never, R = never> = Stream.Stream<T, E, R>
 
-type Body = () => Effect.Effect<unknown, any, any>
-
-const bodyOf = (u: unknown): Body | undefined =>
-  typeof u === "object" && u !== null ? (u as { [producerBody]?: Body })[producerBody] : undefined
+/** VIP-21's buffer: one element, and an offer to a full buffer waits. */
+const producerBuffer = { bufferSize: 1, strategy: "suspend" } as const
 
 /**
- * A `function*` body becomes a producer: `function lines(path) { return
- * $produce(Effect.fnUntraced(function* lines() { … })) }`. Each run of the
- * producer calls `body` again, so iterating it twice runs it twice.
+ * A generator function's body becomes a producer: `function lines(path) {
+ * return $produce(Effect.fnUntraced(function* lines() { … })) }`. Each run of
+ * the Stream calls `body` again, so iterating it twice runs it twice.
  */
 export const $produce = <E, R>(
   body: () => Effect.Effect<unknown, E, R>
-): Producer<ElementOf<R>, E, Exclude<R, YieldOf<any>>> => {
-  const stream = handoff<ElementOf<R>, E, Exclude<R, YieldOf<any>>>(body as any)
-  Object.defineProperty(stream, producerBody, { value: body })
-  return stream
-}
+): Producer<ElementOf<R>, E, Exclude<R, YieldOf<any>>> =>
+  Stream.callback<unknown, E, any>((queue) =>
+    Effect.andThen(
+      Effect.provideService(Effect.suspend(body), ProducerQueue, queue as Queue.Queue<unknown, unknown>),
+      Queue.end(queue)
+    ), producerBuffer) as any
 
 /** A completion record of a loop body, as the compiler's regions produce. */
 type Completion = { readonly kind: string; readonly label?: string; readonly value?: unknown }
@@ -62,12 +60,8 @@ type Completion = { readonly kind: string; readonly label?: string; readonly val
  * that targets this loop ends it normally; anything else ends the loop and is
  * returned for the enclosing code to dispatch.
  *
- * Over a producer, the body runs as the clause of a Yield handler on this
- * fiber, and resumes the producer in tail position, so a long producer runs in
- * constant stack (D18). A loop that ends early returns from the clause
- * without resuming, so the producer's cleanup runs before the loop exits.
- * Over any other Stream, the loop pulls it with Stream.toPull and closes it
- * when the loop exits.
+ * Over a Stream, a producer included, the loop pulls it with Stream.toPull
+ * and closes it when the loop exits.
  */
 export function $forOf<T, E, R, E2, R2>(
   iterable: Stream.Stream<T, E, R>,
@@ -88,13 +82,6 @@ export function $forOf(
   const own = (c: Completion) => c.label === "" || c.label === label
   const next = (c: Completion | void) => c === undefined || c.kind === "normal" || (c.kind === "continue" && own(c))
   const exit = (c: Completion | void): Completion => (c === undefined || c.kind === "break" && own(c) ? $normal : c)
-  const producer = bodyOf(iterable)
-  if (producer) {
-    return K.handle("for-of", [YieldOp], producer(), {
-      [YieldOp.name]: (value: unknown, k: K.Continuation) =>
-        Effect.map(body(value), (c) => (next(c) ? K.tailResume(k, undefined) : exit(c)))
-    }, () => Effect.succeed($normal))
-  }
   if (Stream.isStream(iterable)) {
     return Effect.scoped(Effect.gen(function*() {
       const pull = yield* Stream.toPull(iterable)
@@ -125,68 +112,12 @@ export function $forOf(
 
 /**
  * `yield* iterable` in a producer: yields each element of another producer,
- * a Stream, or an iterable. Another producer's body runs in place, so its
- * yields reach the same handler.
+ * a Stream, or an iterable.
  */
 export const $yieldAll = <T, E = never, R = never>(
   iterable: Stream.Stream<T, E, R> | Iterable<T>
-): Effect.Effect<void, E, R | YieldOf<T>> => {
-  const producer = bodyOf(iterable)
-  if (producer) return Effect.asVoid(producer())
-  return Effect.asVoid($forOf(iterable as Iterable<unknown>, (value) => Effect.as($yield(value), $normal))) as any
-}
-
-/**
- * The Stream a producer is. Each run starts the producer on a fiber of its
- * own, in the stream's Scope, when the stream is first pulled. The producer's
- * Yield clause completes the pending pull and waits for the next one before it
- * resumes the producer: a handoff with no buffer, so the producer never runs
- * ahead of its consumer, and a pull from any fiber works (D26). Closing the
- * stream interrupts the producer's fiber, which abandons the producer, so its
- * cleanup runs before the close completes.
- */
-const handoff = <T, E, R>(body: () => Effect.Effect<unknown, E, R>): Stream.Stream<T, E, R> =>
-  Stream.fromChannel(Channel.fromTransform((_upstream, scope) =>
-    Effect.sync(() => {
-      let wanted = Deferred.makeUnsafe<void>() // completed by a pull: produce the next element
-      let pending: Deferred.Deferred<T, E | Cause.Done> | undefined // the pull waiting for an element
-      let started = false
-      let finished = false
-      const deliver = (effect: Effect.Effect<T, E | Cause.Done>) => {
-        const response = pending
-        pending = undefined
-        if (response !== undefined) Deferred.doneUnsafe(response, effect)
-      }
-      const produce = Effect.andThen(
-        Deferred.await(wanted),
-        K.handle("stream", [YieldOp], Effect.suspend(body), {
-          [YieldOp.name]: (value: unknown, k: K.Continuation) =>
-            Effect.suspend(() => {
-              wanted = Deferred.makeUnsafe<void>()
-              deliver(Effect.succeed(value as T))
-              return Effect.as(Deferred.await(wanted), K.tailResume(k, undefined))
-            })
-        })
-      )
-      const run = Effect.onExit(produce, (exit) =>
-        Effect.sync(() => {
-          finished = true
-          deliver(Exit.isSuccess(exit) ? Cause.done() : Effect.failCause(exit.cause as Cause.Cause<E>))
-        }))
-      const pull: Pull.Pull<NonEmptyReadonlyArray<T>, E> = Effect.suspend(() => {
-        if (finished) return Cause.done()
-        const response = Deferred.makeUnsafe<T, E | Cause.Done>()
-        pending = response
-        const start = started ? Effect.void : Effect.asVoid(Effect.forkIn(run as Effect.Effect<void>, scope))
-        started = true
-        return Effect.andThen(start, () => {
-          Deferred.doneUnsafe(wanted, Effect.void)
-          return Effect.map(Deferred.await(response), (value): NonEmptyReadonlyArray<T> => [value])
-        })
-      })
-      return pull
-    })
-  )) as Stream.Stream<T, E, R>
+): Effect.Effect<void, E, R | YieldOf<T>> =>
+  Effect.asVoid($forOf(iterable as Iterable<unknown>, (value) => Effect.as($yield(value), $normal))) as any
 
 /** Kept for code generated by the prototype compiler: a producer is a Stream already. */
 export const $toStream = <T, E, R>(producer: Producer<T, E, R>): Stream.Stream<T, E, R> => producer

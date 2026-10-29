@@ -92,7 +92,7 @@ function scenario() {
   return { openedByCall, found, readForFirst, traced: traced.length, passes, events }
 }
 
-// expect-result: {"openedByCall":0,"found":["ERROR one","ERROR two","ERROR three"],"readForFirst":5,"traced":3,"passes":[7,7],"events":["open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log","loop exited","open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log"]}
+// expect-result: {"openedByCall":0,"found":["ERROR one","ERROR two","ERROR three"],"readForFirst":7,"traced":3,"passes":[7,7],"events":["open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log","loop exited","open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log"]}
 export function main() {
   return try Effect.provide(() => scenario(), FilesTest)
 }

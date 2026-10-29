@@ -26,9 +26,11 @@ import (
 // A function* declaration or function expression in a .vibe file is a
 // producer unless it has a JavaScript iterator return annotation (D271).
 // Its body is an Effect body, as any .vibe function's is, so its calls
-// run; `yield v` performs the built-in Yield operation, and `yield* p` yields
+// run; `yield v` offers v to the producer's queue, and `yield* p` yields
 // every element of p. Calling a producer runs none of its body: it returns a
-// Stream that carries the body (the runtime's $produce). To TypeScript, and to
+// Stream, the runtime's $produce, which is Effect's Stream.callback with one
+// element of buffer, so the body runs on a fiber of its own and may run up to
+// two elements ahead of its consumer (VIP-21). To TypeScript, and to
 // every caller, a producer is therefore a function that returns
 // Stream<T, E, R>: T joins the types of its yields, and E and R are what its
 // body can fail with and needs. Generator methods stay JavaScript's.
@@ -36,9 +38,7 @@ import (
 // for...of over a value whose type is a Stream, a producer or any other, is
 // a loop over its elements (D26). The loop body is a region (regions.go)
 // whose closure takes the element, and the runtime's $forOf runs the closure
-// once per element: over a producer, as the clause of a Yield handler on the
-// loop's fiber, resuming the producer in tail position; over any other
-// Stream, by pulling it. $forOf handles the body's break and continue of its
+// once per element, pulling the Stream. $forOf handles the body's break and continue of its
 // own loop, and the enclosing generator dispatches every other jump:
 //
 //	for (const line of lines(path)) {      const completion = yield* runtime.$forOf(lines(path),

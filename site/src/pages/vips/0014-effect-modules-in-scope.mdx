@@ -24,6 +24,7 @@ const o = Option.some(1)                         // Effect's Option: the DOM's O
   | `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp` | JavaScript's | `Effect.Array`, `Effect.String`, … |
   | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
   | `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
+- **Amended 2026-10-29: no `Crypto` row.** effect 4.1.0 has no root `Crypto` module, so bare `Crypto` is the DOM's. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## History
 

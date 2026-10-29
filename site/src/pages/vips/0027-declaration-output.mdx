@@ -15,7 +15,7 @@ export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export function add(a: number, b: number) { return a + b }
 
 // load.d.vibe.ts, written next to load.vibe
-export declare const load: (id: string) => Effect<User, NotFound, Users>
+export declare function load(id: string): Effect.Effect<User, NotFound, Users>
 /** @throws {BadInput} */
 export declare function parse(s: string): string
 /** @throws {never} */
@@ -27,6 +27,8 @@ export declare function add(a: number, b: number): number
 - **`@throws`.** Every exported function carries `@throws`: its inferred thrown type, or `@throws {never}` when it can't throw. Under VIP-4, a function with no `@throws` throws `unknown`.
 - *Updated by VIP-4's 2026-10-29 amendment:* `@throws` applies only to functions that don't return an Effect, so the effect function `load` carries none.
 - The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.
+
+*Corrected 2026-10-29: `load` is declared with `export declare function`, because a declaration keeps its source form (VIP-1: `effect` goes exactly where TypeScript allows `async`) and idiomatic TypeScript declares a function declaration that way. The type is `Effect.Effect<…>`, as Effect TypeScript writes it.*
 
 ## Prior art
 

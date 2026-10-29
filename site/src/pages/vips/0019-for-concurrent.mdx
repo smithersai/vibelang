@@ -21,6 +21,7 @@ yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* sync(id) }),
 - `continue` ends that one item. `break` and `return` are compile errors, because no loop runs on the body's fiber.
 - Results are discarded; `try.all ids.map(…)` (VIP-18) keeps them.
 - **Ambiguity: none.** JavaScript's `for` can only be followed by `(` or `await`.
+- **Amended 2026-10-29: the limit.** In `for concurrent(n)`, `n` is any Effect `Concurrency`, passed straight to `concurrency`. In effect 4.1.0, `Concurrency` is a number or `"unbounded"` (`Types.d.ts`); the decision as sent also listed `"inherit"`, which 4.1.0 doesn't have. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## History
 
