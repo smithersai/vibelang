@@ -15,6 +15,43 @@ export function replaceTsc(scripts = {}) {
   return next
 }
 
+// Oxlint options that take a value, so a path after one is not a lint target.
+const oxlintValueOptions = new Set(["-c", "--config", "--tsconfig", "-A", "--allow", "-W", "--warn", "-D", "--deny", "--ignore-path", "--ignore-pattern", "-f", "--format", "--max-warnings", "--threads", "--import-plugin"])
+
+/**
+ * Runs Effect's lint rules on .vibe files where a script runs them on .ts files
+ * (VIP-38): after each oxlint command whose configuration enables effecttsgo/*
+ * rules, adds error TS6231: Could not resolve the path 'lint' with the extensions: '.ts', '.tsx', '.d.ts', '.vibe', '.cts', '.d.cts', '.mts', '.d.mts'.
+  The file is in the program because:
+    Root file specified for compilation with the same configuration, --deny-warnings and
+ * paths. readConfig(path) returns a configuration file's text, or undefined.
+ */
+export function addEffectLint(scripts = {}, readConfig) {
+  const next = {}
+  for (const [name, command] of Object.entries(scripts)) {
+    if (/\bvibelang lint\b/.test(command)) { next[name] = command; continue }
+    next[name] = command.split(/(&&|\|\||;)/).map((part) => {
+      const words = part.trim().split(/\s+/)
+      if (words[0] !== "oxlint") return part
+      let config = ".oxlintrc.json"
+      let deny = false
+      const paths = []
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i]
+        if (word === "-c" || word === "--config") config = words[++i]
+        else if (word.startsWith("--config=")) config = word.slice("--config=".length)
+        else if (word === "--deny-warnings") deny = true
+        else if (oxlintValueOptions.has(word)) i++
+        else if (!word.startsWith("-")) paths.push(word)
+      }
+      if (!readConfig(config)?.includes("effecttsgo/")) return part
+      const lint = ["vibelang lint -c", config, ...(deny ? ["--deny-warnings"] : []), ...paths].join(" ")
+      return part.replace(/\s*$/, (end) => ` && ${lint}${end}`)
+    }).join("")
+  }
+  return next
+}
+
 /** Adds the VibeLang packages: the runtime as a dependency, the compiler and plugin as dev dependencies. */
 export function addVibeLang(pkg, specs) {
   const next = addVibeLangPlugin(pkg, specs)

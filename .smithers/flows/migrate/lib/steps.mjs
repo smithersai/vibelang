@@ -277,6 +277,15 @@ async function wireTarget(config, log) {
       writeIfChanged(file, readFileSync(file, "utf8"), Wire.addCompilerOptions(readFileSync(file, "utf8"), { rewriteRelativeImportExtensions: true }))
     }
   }
+  // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
+  const rootPackage = join(t, "package.json")
+  if (existsSync(rootPackage)) {
+    const before = readFileSync(rootPackage, "utf8")
+    const root = JSON.parse(before)
+    const readConfig = (file) => existsSync(join(t, file)) ? readFileSync(join(t, file), "utf8") : undefined
+    const scripts = Wire.addEffectLint(root.scripts, readConfig)
+    if (JSON.stringify(scripts) !== JSON.stringify(root.scripts ?? {})) writeIfChanged(rootPackage, before, JSON.stringify({ ...root, scripts }, null, 2) + "\n")
+  }
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
   const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts: typeScriptOf(config), specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))

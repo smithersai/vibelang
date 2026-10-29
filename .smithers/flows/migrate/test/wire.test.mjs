@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addCompilerOptions, addVibeLang, addVitePlugin, installCommand, packageManager, replaceTsc, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
+import { addCompilerOptions, addEffectLint, addVibeLang, addVitePlugin, installCommand, packageManager, replaceTsc, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -18,6 +18,24 @@ test("package.json edits: VibeLang packages and tsc in scripts", () => {
   assert.equal(pkg.dependencies["vibelang-runtime"], undefined)
   assert.deepEqual(replaceTsc({ build: "pnpm run clean && tsc -b tsconfig.build.json", typecheck: "tsc -p tsconfig.json --noEmit", test: "vitest run", other: "tscx" }), {
     build: "pnpm run clean && vibelang -b tsconfig.build.json", typecheck: "vibelang -p tsconfig.json --noEmit", test: "vitest run", other: "tscx"
+  })
+})
+
+test("lint scripts: vibelang lint follows each oxlint run whose config enables effecttsgo rules (VIP-38)", () => {
+  const configs = { "oxlint.config.ts": 'rules: { "effecttsgo/floating-effect": "error" }', ".oxlintrc.effect.json": '{ "rules": { "effecttsgo/effect-in-failure": "warn" } }', ".oxlintrc.json": '{ "rules": { "eqeqeq": "error" } }' }
+  const scripts = {
+    lint: "oxlint -c oxlint.config.ts",
+    "lint:effect": "effect-tsgo patch --no-typescript --oxlint && oxlint --config .oxlintrc.effect.json --disable-nested-config --deny-warnings packages examples scripts",
+    "lint:ci": "oxlint --disable-nested-config && pnpm lint:effect",
+    done: "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
+    test: "vitest run"
+  }
+  assert.deepEqual(addEffectLint(scripts, (path) => configs[path]), {
+    lint: "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
+    "lint:effect": "effect-tsgo patch --no-typescript --oxlint && oxlint --config .oxlintrc.effect.json --disable-nested-config --deny-warnings packages examples scripts && vibelang lint -c .oxlintrc.effect.json --deny-warnings packages examples scripts",
+    "lint:ci": "oxlint --disable-nested-config && pnpm lint:effect",
+    done: "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
+    test: "vitest run"
   })
 })
 
