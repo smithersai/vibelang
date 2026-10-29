@@ -251,11 +251,22 @@ export async function checkSiteContrast() {
               }
             }
             if (status !== 'idle') {
+              // The button resets its feedback after 2 s (CopyPromptButton), and
+              // axe can take longer on a loaded host. Hold that one timer until
+              // the audit ends; axe's own timers run.
+              await page.evaluate(() => {
+                const setTimeout = window.setTimeout
+                const held = []
+                window.setTimeout = (callback, delay, ...args) =>
+                  delay === 2_000 ? held.push(() => callback(...args)) : setTimeout(callback, delay, ...args)
+                window.releaseFeedbackReset = () => { window.setTimeout = setTimeout; held.forEach(run => run()) }
+              })
               await button.click()
               await page.mouse.move(1360, 895)
               await page.waitForTimeout(180)
               await audit(status)
               assert.equal(await button.innerText(), label, 'feedback must stay visible during axe')
+              await page.evaluate(() => window.releaseFeedbackReset())
             }
           }
         }
