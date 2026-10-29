@@ -557,13 +557,20 @@ func TestVIPNamedInputs(t *testing.T) {
 			t.Errorf("Seed(%s) is %q, not the named form", c.Key, seed)
 		}
 		named := vipgen.Generate(append(slices.Clone(seed), rest...), nil)
-		byIndex := vipgen.Generate(append([]byte{byte(i)}, rest...), nil)
-		if named.Focus != c.Key || byIndex.Focus != c.Key {
-			t.Errorf("%s: the named input focuses %s and the index input %s", c.Key, named.Focus, byIndex.Focus)
+		if named.Focus != c.Key {
+			t.Errorf("%s: the named input focuses %s", c.Key, named.Focus)
 			continue
 		}
-		if vipgen.PrintVibe(named) != vipgen.PrintVibe(byIndex) || vipgen.PrintEffect(named) != vipgen.PrintEffect(byIndex) {
-			t.Errorf("%s: the named input and the index input generate different programs:\n%s\n%s", c.Key, vipgen.PrintVibe(named), vipgen.PrintVibe(byIndex))
+		// An index input's one byte reaches the first 256 constructs; the rest are reached by name (generate.go).
+		if i < 256 {
+			byIndex := vipgen.Generate(append([]byte{byte(i)}, rest...), nil)
+			if byIndex.Focus != c.Key {
+				t.Errorf("%s: the named input focuses %s and the index input %s", c.Key, named.Focus, byIndex.Focus)
+				continue
+			}
+			if vipgen.PrintVibe(named) != vipgen.PrintVibe(byIndex) || vipgen.PrintEffect(named) != vipgen.PrintEffect(byIndex) {
+				t.Errorf("%s: the named input and the index input generate different programs:\n%s\n%s", c.Key, vipgen.PrintVibe(named), vipgen.PrintVibe(byIndex))
+			}
 		}
 		// Leaving the construct out turns its named input off; an index
 		// input chooses among the constructs left.

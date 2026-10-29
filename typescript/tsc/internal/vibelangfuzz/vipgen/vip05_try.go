@@ -122,3 +122,17 @@ func (a *AsyncFormsReturn) Vibe(w *Writer) {
 	w.Write("return Effect.all([Effect.promise(() => " + a.Name + "()), Effect.exit(Effect.promise(() => " + strings.TrimSuffix(a.Name, "Run") + "Reject()))])")
 }
 func (a *AsyncFormsReturn) Effect(w *Writer) { a.Vibe(w) }
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.try-composition", VIP: 5,
+		Requires: []string{"vip01.effect-function"},
+		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
+			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "const obj = { run: () => Effect.succeed(3) }; const a = try\n obj.run() + 4; return a", ref: "const obj = { run: () => Effect.succeed(3) }; const a = (yield* obj.run()) + 4; return a"}}
+		},
+	})
+}

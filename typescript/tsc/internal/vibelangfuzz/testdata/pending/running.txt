@@ -1,0 +1,87 @@
+# Chapter 2 static-rule controls and rejections; each named corpus selects its rule.
+FuzzRunningRules reject:try-plain compiler VIP-5: plain functions still infer an Effect body and accept this effect-only construct; lane vip-core2
+FuzzRunningRules corpus:try-plain compiler VIP-5: minimal reproduction of reject:try-plain; lane vip-core2
+FuzzRunningRules reject:catch-plain compiler VIP-5: plain functions still infer an Effect body and accept this effect-only construct; lane vip-core2
+FuzzRunningRules corpus:catch-plain compiler VIP-5: minimal reproduction of reject:catch-plain; lane vip-core2
+FuzzRunningRules control:all-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:all-object compiler VIP-18: minimal reproduction of control:all-object; lane vip-core2
+FuzzRunningRules control:stream-return compiler VIP-20: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:stream-return compiler VIP-20: minimal reproduction of control:stream-return; lane vip-core2
+FuzzRunningRules control:stream-plain compiler VIP-20: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:stream-plain compiler VIP-20: minimal reproduction of control:stream-plain; lane vip-core2
+FuzzRunningRules control:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules control:any-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:any-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules control:allSettled-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules corpus:allSettled-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
+FuzzRunningRules control:contextual-conversion compiler VIP-2: the valid plain Effect-returning function call is rejected; lane vip-core2
+FuzzRunningRules corpus:contextual-conversion compiler VIP-2: minimal reproduction of control:contextual-conversion; lane vip-core2
+FuzzRunningRules diagnostic:concurrent-continue-outer compiler VIP-19: the rejection does not report the diagnostic assigned to this rule; lane d-diag
+FuzzRunningRules corpus:concurrent-continue-outer compiler VIP-19: minimized reproduction of diagnostic:concurrent-continue-outer; lane d-diag
+FuzzRunningRules diagnostic:join-plain compiler VIP-17: the rejection does not report the diagnostic assigned to this rule; lane vip-core2
+FuzzRunningRules corpus:join-plain compiler VIP-17: minimized reproduction of diagnostic:join-plain; lane vip-core2
+FuzzRunningRules diagnostic:restore-plain compiler VIP-22: the rejection does not report the diagnostic assigned to this rule; lane vip-core2
+FuzzRunningRules corpus:restore-plain compiler VIP-22: minimized reproduction of diagnostic:restore-plain; lane vip-core2
+FuzzRunningRules reject:catch-bare-call compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-bare-call compiler VIP-5: minimized reproduction of reject:catch-bare-call; lane core-catch
+FuzzRunningRules reject:catch-bare-name compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-bare-name compiler VIP-5: minimized reproduction of reject:catch-bare-name; lane core-catch
+FuzzRunningRules reject:catch-bare-value compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-bare-value compiler VIP-5: minimized reproduction of reject:catch-bare-value; lane core-catch
+FuzzRunningRules reject:catch-class compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-class compiler VIP-5: minimized reproduction of reject:catch-class; lane core-catch
+FuzzRunningRules reject:catch-effect-block compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-effect-block compiler VIP-5: minimized reproduction of reject:catch-effect-block; lane core-catch
+FuzzRunningRules reject:catch-number compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:catch-number compiler VIP-5: minimized reproduction of reject:catch-number; lane core-catch
+FuzzRunningRules reject:concurrent-plain compiler VIP-19: the forbidden form is accepted; lane vip-core2
+FuzzRunningRules corpus:concurrent-plain compiler VIP-19: minimized reproduction of reject:concurrent-plain; lane vip-core2
+FuzzRunningRules reject:fork-plain compiler VIP-17: the forbidden form is accepted; lane w2-fork
+FuzzRunningRules corpus:fork-plain compiler VIP-17: minimized reproduction of reject:fork-plain; lane w2-fork
+FuzzRunningRules reject:interruptible-plain compiler VIP-22: the forbidden form is accepted; lane vip-core2
+FuzzRunningRules corpus:interruptible-plain compiler VIP-22: minimized reproduction of reject:interruptible-plain; lane vip-core2
+FuzzRunningRules reject:mask-plain compiler VIP-22: the forbidden form is accepted; lane vip-core2
+FuzzRunningRules corpus:mask-plain compiler VIP-22: minimized reproduction of reject:mask-plain; lane vip-core2
+FuzzRunningRules reject:nested-plain compiler VIP-5: the forbidden form is accepted; lane vip-core2
+FuzzRunningRules corpus:nested-plain compiler VIP-5: minimized reproduction of reject:nested-plain; lane vip-core2
+FuzzRunningRules reject:try-catch compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:try-catch compiler VIP-5: minimized reproduction of reject:try-catch; lane core-catch
+FuzzRunningRules reject:try-finally compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:try-finally compiler VIP-5: minimized reproduction of reject:try-finally; lane core-catch
+FuzzRunningRules reject:try-statement compiler VIP-5: the forbidden form is accepted; lane core-catch
+FuzzRunningRules corpus:try-statement compiler VIP-5: minimized reproduction of reject:try-statement; lane core-catch
+FuzzVIPDifferential compile:EK1019/vip02.do-enclosing compiler VIP-2: a program of accepted constructs does not compile: main.vibe 1019: continue cannot leave or hoist out of a do expression. Use let instead of var, and keep break and continue inside the do expression. (line 5: { ev("0"); let sum = 0, seen = 0; outer: for (const x of [1, 2, 3]) { const v = do { seen = x; if (x === 1) continue outer; if (x === 3) break outer; try Effect.succeed(x + 5) }; sum += v }; return sum + seen }); lane del-1
+FuzzVIPDifferential corpus:fz-run-vip02-do-enclosing compiler VIP-2: minimal named probe reproduces compile:EK1019/vip02.do-enclosing; lane del-1
+FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
+FuzzVIPDifferential corpus:fz-run-vip02-lexical-receiver compiler VIP-2: minimal named probe reproduces exit:value/vip02.lexical-receiver; lane vip-core2
+FuzzVIPDifferential exit:value/vip05.catch-comma compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":16}; lane core-catch
+FuzzVIPDifferential corpus:fz-run-vip05-catch-comma compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-comma; lane core-catch
+FuzzVIPDifferential exit:value/vip05.catch-left-associative compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
+FuzzVIPDifferential corpus:fz-run-vip05-catch-left-associative compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-left-associative; lane core-catch
+FuzzVIPDifferential exit:value/vip05.catch-nested-effect-arrow compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
+FuzzVIPDifferential corpus:fz-run-vip05-catch-nested-effect-arrow compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-nested-effect-arrow; lane core-catch
+FuzzVIPDifferential exit:value/vip05.catch-parenthesized-arrow compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
+FuzzVIPDifferential corpus:fz-run-vip05-catch-parenthesized-arrow compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-parenthesized-arrow; lane core-catch
+FuzzVIPDifferential feature:vip05.try-composition compiler VIP-5: a newline after `try`, or `try` on a member call inside `+`, does not parse (TS1005, TS1109), and parse recovery reports unrelated codes elsewhere in the program; lane core-catch
+FuzzVIPDifferential corpus:fz-run-vip05-try-composition compiler VIP-5: minimal named probe reproduces feature:vip05.try-composition; lane core-catch
+FuzzVIPDifferential compile:TS2345/vip19.limit-unbounded compiler VIP-19: a program of accepted constructs does not compile: main.vibe 2345: Argument of type 'string' is not assignable to parameter of type 'number'. (line 5: { ev("0"); for concurrent((ev("limit"), "unbounded")) (const x of (ev("items"), [1, 2])) { for (let i = 0; i < 3; i++) { if (i === 0) continue; ev("inner" + x); break }; try Effect.sleep(x); ev("done" + x) }; ev("joined"); return 1 }); lane vip-core2
+FuzzVIPDifferential corpus:fz-run-vip19-limit-unbounded compiler VIP-19: minimal named probe reproduces compile:TS2345/vip19.limit-unbounded; lane vip-core2
+FuzzVIPDifferential compile:TS2739/vip21.member-modifiers compiler VIP-21: a program of accepted constructs does not compile: main.vibe 2739: Type 'Generator<number, void, unknown>' is missing the following properties from type 'Stream<unknown, unknown, unknown>': channel, pipe, [TypeId] (line 6: { ev("0"); class Base { protected effect *values<T>(v: T) { yield v } }; class C extends Base { protected override effect *values<T>(v: T) { yield v }; private effect *hidden() { yield 2 }; run() { return Stream.concat(this.values(1), this.hidden()) } }; return try Stream.runCollect(new C().run()) }); lane w2-genpipe
+FuzzVIPDifferential corpus:fz-run-vip21-member-modifiers compiler VIP-21: minimal named probe reproduces compile:TS2739/vip21.member-modifiers; lane w2-genpipe
+FuzzVIPDifferential compile:TS2739/vip21.method compiler VIP-21: a program of accepted constructs does not compile: main.vibe 2739: Type 'Generator<any, any, unknown>' is missing the following properties from type 'Stream<T, never, never>': channel, pipe, [TypeId] (line 6: { ev("0"); class C { public static effect *values<T>(value: T): Stream.Stream<T> { yield value; return } }; return try Stream.runCollect(C.values<number>(7)) }); lane w2-genpipe
+FuzzVIPDifferential corpus:fz-run-vip21-method compiler VIP-21: minimal named probe reproduces compile:TS2739/vip21.method; lane w2-genpipe
+FuzzVIPDifferential compile:TS7057/vip21.yield-value compiler VIP-21: a program of accepted constructs does not compile: main.vibe 7057: 'yield' expression implicitly results in an 'any' type because its containing generator lacks a return-type annotation. (line 6: { ev("0"); effect function* p() { const a = yield 1; ev(a === undefined ? "undefined" : "wrong"); yield 2; return; yield 99 }; const xs = try Stream.runCollect(p()); return xs }); lane w2-genpipe
+FuzzVIPDifferential corpus:fz-run-vip21-yield-value compiler VIP-21: minimal named probe reproduces compile:TS7057/vip21.yield-value; lane w2-genpipe
+FuzzVIPDifferential feature:vip18.all-array compiler VIP-18: a named readonly tuple is a permitted operand, but this operation is not parsed (TS1005, TS1109, TS1434), and parse recovery reports unrelated codes elsewhere in the program; lane core-tryall
+FuzzVIPDifferential corpus:fz-run-vip18-all-array compiler VIP-18: minimal named probe reproduces feature:vip18.all-array; lane core-tryall
+FuzzVIPDifferential feature:vip18.all-settled-array compiler VIP-18: a named readonly tuple is a permitted operand, but this operation is not parsed (TS1005, TS1109, TS1434), and parse recovery reports unrelated codes elsewhere in the program; lane core-tryall
+FuzzVIPDifferential corpus:fz-run-vip18-all-settled-array compiler VIP-18: minimal named probe reproduces feature:vip18.all-settled-array; lane core-tryall
+FuzzVIPDifferential feature:vip18.any-array compiler VIP-18: a named readonly tuple is a permitted operand, but this operation is not parsed (TS1005, TS1109, TS1434), and parse recovery reports unrelated codes elsewhere in the program; lane core-tryall
+FuzzVIPDifferential corpus:fz-run-vip18-any-array compiler VIP-18: minimal named probe reproduces feature:vip18.any-array; lane core-tryall
+FuzzVIPDifferential feature:vip18.race-array compiler VIP-18: a named readonly tuple is a permitted operand, but this operation is not parsed (TS1005, TS1109, TS1434), and parse recovery reports unrelated codes elsewhere in the program; lane core-tryall
+FuzzVIPDifferential corpus:fz-run-vip18-race-array compiler VIP-18: minimal named probe reproduces feature:vip18.race-array; lane core-tryall
+FuzzRunningRules diagnostic:class-field compiler VIP-5: outside-effect-code try must report EK0501, but the compiler reports EK1001; lane vip-core2
+FuzzRunningRules corpus:class-field compiler VIP-5: minimal reproduction of diagnostic:class-field; lane vip-core2
+FuzzRunningRules diagnostic:class-static compiler VIP-5: outside-effect-code try must report EK0501, but the compiler reports EK1001; lane vip-core2
+FuzzRunningRules corpus:class-static compiler VIP-5: minimal reproduction of diagnostic:class-static; lane vip-core2

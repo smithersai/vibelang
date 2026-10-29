@@ -131,6 +131,7 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 		if len(enabled) == 0 {
 			return nil
 		}
+		// An index input's first byte picks among the first 256 enabled constructs, as corpus files written before names encode it; a construct past 256 is reached only by a named input, as every seed is.
 		focus = enabled[g.c.intn(len(enabled))]
 	}
 	// The focus chooses the program's form, and the swarm chooses among the

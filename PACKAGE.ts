@@ -63,6 +63,7 @@ const specTests = [
   "TestRuntimeFeatureCitations",
   "TestToolsHelpers",
   "TestVIPTemplatesCited",
+  "TestRunningRulesQuoted",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",
   "TestSpecCitedProductionsExist",

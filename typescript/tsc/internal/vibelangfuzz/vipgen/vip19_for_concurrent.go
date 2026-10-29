@@ -136,3 +136,29 @@ type EvItem struct{ Label, Item string }
 func (e *EvItem) Vibe(w *Writer)   { w.Write(fmt.Sprintf("ev(%q + %s)", e.Label+":", e.Item)) }
 func (e *EvItem) Effect(w *Writer) { e.Vibe(w) }
 func (e *EvItem) Ends() bool       { return false }
+
+func init() {
+	for _, bound := range []string{"1", "\"unbounded\""} {
+		key := "vip19.limit-number"
+		if bound != "1" {
+			key = "vip19.limit-unbounded"
+		}
+		Register(&Construct{
+			Key: key, VIP: 19,
+			Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+			Citations: []Citation{{
+				VIP: 19, Template: "yield* Effect.forEach(‹xs›, (‹x›) => Effect.gen(function* () { ‹body› }), { concurrency: ‹n›, discard: true })",
+				Quote:   "In `for concurrent(n)`, `n` is any Effect `Concurrency`, passed straight to `concurrency`.",
+				Reading: "Evaluate the written limit before the collection, once each, then pass temporaries to the VIP's Effect.forEach. Inner loop jumps retain JavaScript targets.",
+			}},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				g.UseEffect()
+				body := "for (let i = 0; i < 3; i++) { if (i === 0) continue; ev(\"inner\" + x); break };"
+				return []Stmt{&catchEdge{
+					vibe: "for concurrent((ev(\"limit\"), " + bound + ")) (const x of (ev(\"items\"), [1, 2])) { " + body + " try Effect.sleep(x); ev(\"done\" + x) }; ev(\"joined\"); return 1",
+					ref:  "const n = (ev(\"limit\"), " + bound + "); const xs = (ev(\"items\"), [1, 2]); yield* Effect.forEach(xs, (x) => Effect.gen(function* () { " + body + " yield* Effect.sleep(x); ev(\"done\" + x) }), { concurrency: n, discard: true }); ev(\"joined\"); return 1",
+				}}
+			},
+		})
+	}
+}
