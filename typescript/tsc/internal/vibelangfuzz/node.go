@@ -77,8 +77,14 @@ import { pathToFileURL } from "node:url";
 const { Effect, Exit, Cause } = await import("effect");
 const json = (v) => JSON.stringify(v, (k, x) => x === undefined ? { $undefined: true } : typeof x === "bigint" ? { $bigint: String(x) } : x);
 const tag = (e) => e && typeof e === "object" ? (e._tag ?? e.constructor?.name) : typeof e;
+` + vipWorker + `
 for await (const line of createInterface({ input: process.stdin })) {
-  const { entry, name, args, observe } = JSON.parse(line);
+  const request = JSON.parse(line);
+  if (request.vip) {
+    writeSync(3, json(await vip(request.entry, request.maxSteps)) + "\n");
+    continue;
+  }
+  const { entry, name, args, observe } = request;
   let out, module, beforeCall, afterCall;
   try {
     module = await import(pathToFileURL(entry).href);
@@ -214,30 +220,70 @@ func (n *Node) RunObserved(result *Result, file, name string, args ...any) Outco
 }
 
 func (n *Node) run(result *Result, file, name string, observe bool, args ...any) Outcome {
+	if crash := writeOutputs(result); crash != "" {
+		return Outcome{Kind: "crash", Log: crash}
+	}
+	request, _ := json.Marshal(map[string]any{"entry": filepath.Join(result.Dir, filepath.FromSlash(file)), "name": name, "args": args, "observe": observe})
+	line, failed := n.ask(request, file)
+	if failed != nil {
+		return *failed
+	}
+	var outcome Outcome
+	if err := json.Unmarshal([]byte(line), &outcome); err != nil {
+		return n.invalid(line)
+	}
+	if outcome.Kind == "crash" {
+		outcome.Log += "\n" + n.printedText()
+	}
+	return outcome
+}
+
+// invalid restarts a worker whose answer is not JSON.
+func (n *Node) invalid(line string) Outcome {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.restart("crash", "invalid worker response: "+line)
+}
+
+// printedText is the last of what the worker printed.
+func (n *Node) printedText() string {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.printed.String()
+}
+
+// writeOutputs writes a result's outputs to its directory, and says why
+// when it cannot.
+func writeOutputs(result *Result) string {
 	for path, text := range result.Outputs {
 		if !filepath.IsLocal(filepath.FromSlash(path)) {
-			return Outcome{Kind: "crash", Log: "an output outside the project: " + path}
+			return "an output outside the project: " + path
 		}
 		target := filepath.Join(result.Dir, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return Outcome{Kind: "crash", Log: err.Error()}
+			return err.Error()
 		}
 		if err := os.WriteFile(target, []byte(text), 0o600); err != nil {
-			return Outcome{Kind: "crash", Log: err.Error()}
+			return err.Error()
 		}
 	}
-	request, _ := json.Marshal(map[string]any{"entry": filepath.Join(result.Dir, filepath.FromSlash(file)), "name": name, "args": args, "observe": observe})
+	return ""
+}
+
+// ask sends one request to the worker and returns its answer line, or the
+// Outcome of a worker that crashed or did not answer within RunLimit.
+func (n *Node) ask(request []byte, file string) (string, *Outcome) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.closed {
-		return Outcome{Kind: "crash", Log: "Node is closed"}
+		return "", &Outcome{Kind: "crash", Log: "Node is closed"}
 	}
 	if n.runs >= workerRunLimit {
 		n.stop()
 	}
 	if n.cmd == nil {
 		if err := n.start(); err != nil {
-			return Outcome{Kind: "crash", Log: "start: " + err.Error()}
+			return "", &Outcome{Kind: "crash", Log: "start: " + err.Error()}
 		}
 	}
 	n.runs++
@@ -247,7 +293,8 @@ func (n *Node) run(result *Result, file, name string, observe bool, args ...any)
 	}
 	replies := make(chan reply, 1)
 	if _, err := n.stdin.Write(append(request, '\n')); err != nil {
-		return n.restart("crash", err.Error())
+		failed := n.restart("crash", err.Error())
+		return "", &failed
 	}
 	answers := n.answers
 	go func() {
@@ -257,18 +304,13 @@ func (n *Node) run(result *Result, file, name string, observe bool, args ...any)
 	select {
 	case r := <-replies:
 		if r.err != nil {
-			return n.restart("crash", r.err.Error())
+			failed := n.restart("crash", r.err.Error())
+			return "", &failed
 		}
-		var outcome Outcome
-		if err := json.Unmarshal([]byte(r.line), &outcome); err != nil {
-			return n.restart("crash", "invalid worker response: "+r.line)
-		}
-		if outcome.Kind == "crash" {
-			outcome.Log += "\n" + n.printed.String()
-		}
-		return outcome
+		return r.line, nil
 	case <-time.After(RunLimit):
-		return n.restart("timeout", fmt.Sprintf("%s did not finish in %v", file, RunLimit))
+		failed := n.restart("timeout", fmt.Sprintf("%s did not finish in %v", file, RunLimit))
+		return "", &failed
 	}
 }
 

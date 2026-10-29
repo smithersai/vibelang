@@ -1,0 +1,43 @@
+# Pending lines of FuzzVIPDifferential (vip_differential_fuzz_test.go), the
+# differential test of VIP-31.
+#
+# One line per construct of vipgen the compiler does not implement yet,
+# keyed feature:<construct>, owned by compiler, naming its VIP and the lane
+# that implements it. TestVIPConstructs runs every construct's probe, also
+# under -short: a pending probe that passes fails as XPASS, so the lane that
+# lands the construct deletes its line. Campaigns leave pending constructs out
+# unless VIBELANG_FUZZ_PENDING=1. A generated program's gaps are keyed
+# compile:<code>/<construct> and exit:<aspect>/<construct>.
+FuzzVIPDifferential  feature:vip01.effect-function  compiler  VIP-1: `effect function f(p) { … }` is not parsed and lowered as a function returning its body's Effect unrun yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip05.try              compiler  VIP-5: `try e` inside an effect function does not run the Effect e and give its success value yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip04.throw            compiler  VIP-4: `throw e` inside an effect function does not fail the Effect with e, as Effect.fail(e) does, yet; lane vip-core implements it
+#
+# Accepted VIPs no construct covers (TestVIPCoverage reads these). A
+# not-runtime line names a VIP with nothing to run. A feature line owned by
+# vip, whose reason starts "not generated", names a VIP whose construct file
+# is not written yet: it is this target's debt, not the compiler's.
+FuzzVIPDifferential  not-runtime:vip03              vip       VIP-3: A!E!R is a type alias for Effect<A, E, R>; it changes no Exit
+FuzzVIPDifferential  feature:vip02.effect-block     vip       not generated: VIP-2's effect { } blocks need their construct file, vip02_effect_block.go
+FuzzVIPDifferential  feature:vip06.globals          vip       not generated: VIP-6's global Effect functions need their construct file; the skeleton writes Effect.x
+FuzzVIPDifferential  feature:vip07.match            vip       not generated: VIP-7's match needs its construct file and an Effect reading, which VIP-7 does not show
+FuzzVIPDifferential  feature:vip09.service          vip       not generated: VIP-9's service declarations need their construct file
+FuzzVIPDifferential  feature:vip12.provide          vip       not generated: VIP-12's provide blocks need their construct file
+FuzzVIPDifferential  not-runtime:vip27              vip       VIP-27: declaration output and @throws are checked by declaration identity, not by an Exit
+FuzzVIPDifferential  not-runtime:vip30              vip       VIP-30: config files change no Exit; FuzzConfig checks them
+FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned Effect version; NewWorkspace refuses any other
+FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
+FuzzVIPDifferential  feature:vip13.error            vip       not generated: VIP-13's error declarations need their construct file
+FuzzVIPDifferential  feature:vip14.modules          vip       not generated: VIP-14's Effect modules in scope need their construct file
+FuzzVIPDifferential  feature:vip15.schema           vip       not generated: VIP-15's schema declarations need their construct file and decoding oracles
+FuzzVIPDifferential  feature:vip16.data             vip       not generated: VIP-16's data declarations need their construct file
+FuzzVIPDifferential  feature:vip17.fork             vip       not generated: VIP-17's fork and join need their construct file
+FuzzVIPDifferential  feature:vip18.concurrent       vip       not generated: VIP-18's try.all, try.race, try.any and try.allSettled need their construct file
+FuzzVIPDifferential  feature:vip19.for-concurrent   vip       not generated: VIP-19's for concurrent needs its construct file
+FuzzVIPDifferential  feature:vip20.for-try          vip       not generated: VIP-20's for try over a Stream needs its construct file
+FuzzVIPDifferential  feature:vip21.producer         vip       not generated: VIP-21's producers need their construct file
+FuzzVIPDifferential  feature:vip22.interruption     vip       not generated: VIP-22's interruption blocks need their construct file
+FuzzVIPDifferential  feature:vip23.pipe             vip       not generated: VIP-23's pipe operator needs its construct file
+FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP-26's top-level await of a runner needs its construct file; runMain exits the worker
+FuzzVIPDifferential  feature:vip28.generic-data     vip       not generated: VIP-28's generic data unions need their construct file
+FuzzVIPDifferential  feature:vip29.schema-error     vip       not generated: VIP-29's schema errors need their construct file
+FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file

@@ -218,6 +218,44 @@ Claude Fable then reviewed the result. It confirmed the race fix: each transform
 
 Left on purpose: ESTree token parity with `typescript-estree` (not installed in the repository, and dependency changes need approval); the installation, scaffold, loader, Vite and editor-extension packages, which are TypeScript, not the compiler (fuzz them with fast-check); the "exactly once" reading of a rule's report, which the specification implies but does not state.
 
+## FuzzVIPDifferential: the VIPs' differential test
+
+Added 2026-10-29. VIP-31: "Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s. The fuzz suite generates more pairs." `FuzzVIPDifferential` is that test. Its oracles come from the accepted VIPs in `docs/design/vips/`, not from the old specification, and it will replace `FuzzSpecPrograms` and `FuzzSpecVariants` once it covers their constructs.
+
+```
+ fuzz bytes ─► vipgen: focus construct + swarm mask ─► one program tree
+                                  │
+              ┌───────────────────┴───────────────────┐
+         PrintVibe: main.vibe                 PrintEffect: ref.mjs (each VIP's Effect TS,
+              │                                untyped JS, never through the compiler)
+   Workspace.Compile (no error)                       │
+              │                                       │  run twice: must agree, or the
+   Node worker, vip mode ◄────────────────────────────┘  generator has a bug
+     main() logs nothing when called (VIP-1)
+     TestClock.layer(), MaxOpsBeforeYield at its maximum, +1 ms per step, ≤ 10,000 steps
+              │
+   VIPCompare: Exit (Success value, or Failure reasons in order with payloads) and event log
+```
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| Construct registry | `vipgen/model.go` | A construct is `vipNN.<name>` with its VIP, `Requires`, citations, and hooks: `Focus` (its probe), `Stmt`, `Operand` (an Effect for `try`), `Declare` (a function form). One file per VIP registers its constructs from `init`, so a new construct never touches the core |
+| Constructs | `vipgen/vip01_effect_function.go`, `vip04_throw.go`, `vip05_try.go` | `effect function` as `function f(p) { return Effect.gen(function* () { … }) }`; `throw e` as `return yield* Effect.fail(e)`; `try e` as `yield* e`. The core (`core.go`) writes events, `if`, `return`, numbers and `Effect.succeed`/`sync`/`fail`/`die`, written `Effect.x` so VIP-6 is not needed |
+| Worker | `vip.go`, the `vip` mode of `node.go` | Each print imports `ev` from `vip-events` (`testdata/vip`, `@throws {never}`). The encoding tags `undefined`, `bigint`, `NaN`, the infinities, `-0`, classes and errors (class, name, message, own fields, cause), drops stacks and annotations, and renames fiber ids by first appearance. Reasons and events are never sorted |
+| Gating | `testdata/pending/vip.txt` | One `feature:<construct>` line per construct the compiler lacks, owned by `compiler`, naming the VIP and the lane. Campaigns leave pending constructs out unless `VIBELANG_FUZZ_PENDING=1`. A gap is keyed `compile:<code>/<construct>` or `exit:<aspect>/<construct>`; a compile gap of a program holding a pending construct is that construct's line, an Exit gap never is |
+
+| Test | Fails when |
+| --- | --- |
+| `TestVIPConstructs` | A construct's key, VIP or `Requires` is malformed; a probe fails with no pending line for it or what it requires; or a pending probe passes (XPASS). It runs every probe under `-short` too |
+| `TestVIPTemplatesCited` | A citation's quote is not verbatim in its VIP; a template is neither in a code block of its VIP nor given a `Reading`; a reading the VIP now shows in code is still there; or a probe's reference print lacks its template. It lists every reading |
+| `TestVIPCoverage` | An accepted VIP in the README has no construct, `not-runtime` line or `not generated` line, or a pending line names a construct or VIP that does not exist |
+| `TestVIPExitEncoding`, `TestVIPCanonicalExit` | Hand-written Exits (success, typed failure, defect, interruption, `ensuring(fail(A), die(D))`, a sleep, `never`, a hot and a plain `main`) encode wrongly, or the comparison names the wrong aspect |
+| `TestVIPReferenceDeterminism` | A reference whose two runs differ is not reported as a generator bug |
+
+On 2026-10-29 the compiler implements none of the three constructs (lane vip-core is landing them), so all three are pending and each probe skips with its line. With `VIBELANG_FUZZ_PENDING=1` the reference side of every generated program runs and encodes, and the VibeLang side fails to compile (`effect function` is TS1434). Today's compiler also reports EK4401 for `ev`, though its declaration says `@throws {never}` (VIP-4: "Library and global functions say what they throw with the JSDoc tag `@throws {ErrorType}`"); once vip-core lands, that would fail as `compile:EK4401/<construct>`.
+
+Two VIP readings are blocked on the VIPs, not the compiler, so their construct files must leave these inputs out until the VIPs change: VIP-21's `Stream.callback` never ends its queue when the body returns, and VIP-18 does not state `allSettled`'s lowering. VIP-5 (`catch`), VIP-7 (`match`) and VIP-23 (`|>`) show no Effect TS, so their constructs will carry a `Reading`, as VIPs 1, 4 and 5's do now.
+
 ## How to run
 
 ```sh

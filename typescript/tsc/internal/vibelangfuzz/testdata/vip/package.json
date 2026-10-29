@@ -1,0 +1,11 @@
+{
+  "name": "vip-events",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./events.d.mts",
+      "default": "./events.mjs"
+    }
+  }
+}

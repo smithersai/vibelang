@@ -17,6 +17,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -85,6 +86,11 @@ func NewWorkspace(tb testing.TB) *Workspace {
 	}
 	if _, err := os.Stat(filepath.Join(effect, "package.json")); err != nil {
 		Missing(tb, "effect is not installed at %s: run (cd experiments && bun install) or set EFFECT_NODE_MODULES", effect)
+	}
+	// VIP-32: one pinned Effect version. A compiled program and the Effect
+	// TS a VIP shows must run the same Effect.
+	if want, got := PinnedEffectVersion(), packageVersion(effect); got != want {
+		Missing(tb, "effect %s is installed at %s, but VibeLang pins %s (VIP-32): run (cd experiments && bun install) or set EFFECT_NODE_MODULES to an install of effect %s", got, effect, want, want)
 	}
 	runtime := filepath.Join(root, "packages/runtime")
 	if _, err := os.Stat(filepath.Join(runtime, "dist/index.d.ts")); err != nil {
@@ -352,4 +358,34 @@ func (h *sharingHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.Source
 	}
 	actual, _ := h.files.LoadOrStore(opts, file)
 	return actual.(*ast.SourceFile)
+}
+
+// pinnedEffect reads the Effect version VibeLang pins, a string literal in
+// packages/runtime/src/version.ts that the merge queue reads too.
+var pinnedEffect = regexp.MustCompile(`PINNED_EFFECT_VERSION = "([^"]+)"`)
+
+// PinnedEffectVersion returns the Effect version VibeLang pins (VIP-32), or
+// "" when the pin cannot be read.
+func PinnedEffectVersion() string {
+	text, err := os.ReadFile(filepath.Join(Root(), "packages/runtime/src/version.ts"))
+	if err != nil {
+		return ""
+	}
+	if m := pinnedEffect.FindSubmatch(text); m != nil {
+		return string(m[1])
+	}
+	return ""
+}
+
+// packageVersion returns the version in a package's package.json.
+func packageVersion(dir string) string {
+	text, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return ""
+	}
+	var manifest struct{ Version string }
+	if json.Unmarshal(text, &manifest) != nil {
+		return ""
+	}
+	return manifest.Version
 }

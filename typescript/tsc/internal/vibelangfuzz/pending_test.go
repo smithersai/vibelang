@@ -17,7 +17,9 @@ import (
 // test does not reach a part of the specification yet.
 var productOwners = map[string]bool{"compiler": true, "projector": true}
 
-var specCitation = regexp.MustCompile(`\bD\d{1,3}\b|Chapter \d+|\bCh \d+|Appendix|LSP`)
+// An accepted VIP in docs/design/vips/ is a decision too: where it
+// disagrees with the specification, the VIP wins.
+var specCitation = regexp.MustCompile(`\bD\d{1,3}\b|Chapter \d+|\bCh \d+|Appendix|LSP|\bVIP-\d+\b`)
 
 // TestPendingLines keeps testdata/pending/ honest: each line names a target
 // the package defines, a reproduction that exists, and the part of the
