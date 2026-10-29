@@ -29,7 +29,9 @@ const check = (
 ) => S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout })
 
 // The VibeLang Go packages' tests read cases, docs and installs through the
-// repository root, so they take `tree` too.
+// repository root, so they take `tree` too. They run with -count=1: the graph
+// caches their results, and Go's own test cache would first hash every file
+// the tests opened (the fuzz suite opens about 25 million).
 const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown> = [], timeout?: string) =>
   check(summary, `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs ${shell}`, [
     Tsc.srcs,
@@ -100,7 +102,7 @@ const targets = {
   "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node]),
   "go-vibelang": goVibelang(
     "Go tests of internal/vibelang and its subpackages.",
-    `CGO_ENABLED=0 ${effect} go test -p 8 -timeout 25m -trimpath ./internal/vibelang/...`,
+    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelang/...`,
     [Tsc["vibelang-files"]]
   ),
   "go-vibelang-race": goVibelang(
@@ -110,17 +112,19 @@ const targets = {
   ),
   "go-vibelangmapper": goVibelang(
     "Go tests of internal/vibelangmapper.",
-    `CGO_ENABLED=0 ${effect} go test -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...`,
+    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...`,
     [Tsc["vibelangmapper-files"]]
   ),
   "go-vibelangfuzz": goVibelang(
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -timeout=20m -trimpath ./internal/vibelangfuzz/...",
+      "go test -short -count=1 -timeout=20m -trimpath ./internal/vibelangfuzz/...",
     [Tsc["vibelangfuzz-files"]],
     // go test bounds the run at 20m and names a stuck test; the budget
     // adds the build of the test binaries. Under the post-merge suite's
-    // load the target took 17m to 29m, and 30m killed it with no output.
+    // load the target took 17m to 29m, and 30m killed it with no output;
+    // most of that was Go's test cache hashing the files the tests opened,
+    // which -count=1 skips (18m to 4m on an idle 48-core host).
     "45m"
   ),
   "spec-tests": S.Shell.Test({
