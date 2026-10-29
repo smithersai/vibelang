@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,829 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 14,161 |
-| The skill and the user guide (138 pages) | 285,515 |
-| The user guide alone | 281,686 |
+| The skill and the user guide (138 pages) | 285,572 |
+| The user guide alone | 281,743 |
 | The specification (10 chapters) | 29,396 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,159** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,616 |
-| **Build and test** | **4,721** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 3,119 |
+| **Build and test** | **4,745** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 3,143 |
 | [Vite and Vitest](../setup/vite.md) | 1,602 |
 | **Format and lint** | **2,094** |
 | [Format with dprint](../setup/formatting.md) | 1,259 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 401 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **36,640** |
-| [Release notes](../setup/release-notes.md) | 36,640 |
-| **All 18 pages** | **61,249** |
+| **Upgrade** | **36,673** |
+| [Release notes](../setup/release-notes.md) | 36,673 |
+| **All 18 pages** | **61,306** |
 
 ### Guides
 

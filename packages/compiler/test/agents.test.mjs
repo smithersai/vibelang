@@ -49,6 +49,8 @@ test("init wires each agent through its own configuration", (t) => {
   assert.equal(read(root, ".claude/skills/vibelang/SKILL.md"), skill)
   assert.match(read(root, "AGENTS.md"), /## VibeLang[\s\S]*`npx vibelang agents check <file>\.\.\.`/)
 
+  assert.match(read(root, "AGENTS.md"), /`npx vibelang lint`/)
+
   const claudeHook = readJson(root, ".claude/settings.json").hooks.PostToolUse
   assert.deepEqual(claudeHook.map((group) => [group.matcher, group.hooks[0].command]), [["Edit|Write|MultiEdit", "npx --no -- vibelang agents hook"]])
   const codexHook = readJson(root, ".codex/hooks.json").hooks.PostToolUse
