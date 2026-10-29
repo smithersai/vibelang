@@ -5,8 +5,8 @@ Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 - **No independent Effect runtime semantics.** Every accepted construct is sugar for its specified counterpart. Failures, defects, interruption, finalizer order and the combination of causes are those of the pinned `effect` 4.1.0 ([Configuration](007-tooling.md#the-effect-version)). [Pattern matching](004-match.md#class-patterns) follows VIP-7’s pinned TC39 snapshot and its explicit Effect-pattern adaptations.
 - **The guarantee.** Compiled output gives the same `Exit` as the accepted VIP’s Effect TypeScript counterpart: success, failure, defect or interruption, with finalizers run in the same order. This specification spells out that counterpart without changing its operand evaluation order. Compare the `Cause` structure as well as success values, and record finalizer traces separately.
 - **How it is checked.** Each VIP’s VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s and finalizer traces. The fuzz suite generates more pairs. Checking only the Effect TypeScript validates the counterpart, not compiler conformance; skipped pairs establish no conformance.
-- **Runtime helpers** implement only the specified adaptations: defining `Symbol.customMatcher` where absent; `$is`/`$extract` for the snapshot’s built-in constructor matchers (`Array`, `Error`, `Map`, `Set`, `Date`, `Promise`, etc.) without modifying those globals; generated error matchers; and fixed checks for Effect’s `Option`, `Exit` and `Result`. These checks follow resolved bindings, not identifier spelling; their tests and extracted fields are specified in [Pattern matching](004-match.md#class-patterns).
-- **Source bindings and control flow survive lowering.** Resolve bindings and jump targets before introducing callbacks. Function translations preserve TypeScript’s [activation semantics](001-functions.md#meaning). In a source block translated to a callback (a `provide` or interruption block, a `for concurrent` or `for try` body), each `var` still belongs to its source function, as in TypeScript: allocate it there and leave initializer assignments at their original positions. `this`, `arguments`, `super` and `new.target` in such a block are the source function's. Preserve redeclarations, destructuring order and closure identity; keep `let`/`const` block scopes and strict-module function-declaration rules. A nested source function keeps its own bindings. Outward jumps use [completion records](002-running.md#leaving-a-block) carrying the resolved target (including a `switch` or labeled statement), not a continuation runtime.
+- **Runtime helpers** implement only the specified adaptations: defining `Symbol.customMatcher` where absent; `$is`/`$extract` for the snapshot’s inherited `Function.prototype` matcher and built-in constructor matchers (`Array`, `Error`, `Map`, `Set`, `Date`, `Promise`, etc.) without modifying those globals; generated error matchers; and the retained fixed checks for Effect’s `Option`, `Exit`, `Result` and tagged errors (VIP-7). These checks follow resolved bindings, including aliases, not identifier spelling. The six `Option`/`Exit`/`Result` tests and extracted fields are specified in [Pattern matching](004-match.md#class-patterns). Existing Effect tagged errors must not be silently replaced with inherited instance matching. **Undecided (pending VIP):** the complete retained tagged-error inventory, each subject test, extracted list and arity; VIP-7 requires preservation but does not enumerate them. Recover the historical checks before specifying their ordered TypeScript counterpart.
+- **Source bindings and control flow survive lowering.** Resolve bindings and jump targets before introducing callbacks. Function translations preserve TypeScript’s [activation semantics](001-functions.md#meaning). In a source block translated to a callback (a `provide` or interruption block, a `for concurrent` or `for try` body, or a suspending `catch` value fallback), each `var` still belongs to its source function, as in TypeScript: allocate it there and leave initializer assignments at their original positions. `this`, `arguments`, `super` and `new.target` in such a block are the source function's. Preserve redeclarations, destructuring order and closure identity; keep `let`/`const` block scopes and strict-module function-declaration rules. A nested source function keeps its own bindings. Outward jumps use [completion records](002-running.md#leaving-a-block) carrying the resolved target (including a `switch` or labeled statement), not a continuation runtime.
 - Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](../vips/0035-handlers-open.md)), not part of the language.
 
 ```vibe es
@@ -26,8 +26,29 @@ function binding() {
   return Effect.gen(function* () {
     var x = 0
     const read = () => x
-    yield* Effect.uninterruptible(Effect.gen(function* () { x = 1 }))
+    yield* Effect.uninterruptibleMask((_restore) => Effect.gen(function* () { x = 1 }))
     return read()
+  })
+}
+```
+
+A value fallback stays in its source effect context: parentheses introduce no boundary. Evaluate it only after typed failure, in a generated `Effect.gen` if it suspends; preserve the bindings and outward jump targets above. `Effect.succeed(value)` is the non-suspending specialization. Returning an Effect as a value does not run it ([`catch`](002-running.md#catch)).
+
+```vibe es
+// compiler-gap: pending VIP-5
+effect function fallback() {
+  return fail("first") catch (try succeed(7))
+}
+```
+
+```ts
+import { Effect } from "effect"
+
+function fallback() {
+  return Effect.gen(function* () {
+    return yield* Effect.catch(Effect.fail("first"), () => Effect.gen(function* () {
+      return yield* Effect.succeed(7)
+    }))
   })
 }
 ```
