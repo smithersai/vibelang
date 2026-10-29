@@ -11,7 +11,8 @@
 # Before the campaigns it runs every seed once, as the campaigns add them, and
 # the report lists the seeds that fail first.
 #
-# Install it once, as the build host's ubuntu user:
+# It runs on nyc-02 as the lane user, which has the cores to spare. Install it
+# once there:
 #
 #   mkdir -p ~/es-nightly
 #   scp typescript/tsc/internal/vibelangfuzz/nightly.sh <host>:es-nightly/nightly.sh
@@ -27,14 +28,21 @@
 # days are deleted.
 #
 # NIGHTLY_TARGET_TIME (default 20m) is each target's campaign, and
-# NIGHTLY_PARALLEL (default 8) its workers. A night with less than
+# NIGHTLY_PARALLEL (default 16) its workers, on NIGHTLY_GOMAXPROCS (default
+# 24) threads. A night with less than
 # NIGHTLY_MIN_FREE_GB (default 40) free on the disk is skipped. To test this
 # script, NIGHTLY_SRC names a checkout to run instead of main, and
 # NIGHTLY_ROOT a directory to use instead of ~/es-nightly.
 set -eu
 
 root=${NIGHTLY_ROOT:-$HOME/es-nightly}
+# The lane user's tools; on nyc-01, ubuntu's es-tools.
+if [ -f "$HOME/lanes/env.sh" ]; then
+	. "$HOME/lanes/env.sh"
+fi
 export PATH=$HOME/es-tools/go/bin:$HOME/es-tools/node/bin:$HOME/es-tools/bun/bin:$PATH
+# lanes/env.sh pins GOMAXPROCS for interactive lanes; a campaign wants more.
+export GOMAXPROCS=${NIGHTLY_GOMAXPROCS:-24}
 export GOFLAGS=-trimpath CGO_ENABLED=0
 # A hang is a stage that never ends; on a loaded shared host an ordinary
 # compile can take longer than the 10 s default.
@@ -96,7 +104,7 @@ status=0
 seeds=passed
 (cd "$src/typescript/tsc" && VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_SEEDS=all nice -n 15 go test -count=1 -timeout 3h ./internal/vibelangfuzz/) > "$out/seeds.log" 2>&1 || { seeds=failed; status=1; }
 
-CAMPAIGN_OUT=$out CAMPAIGN_PARALLEL=${NIGHTLY_PARALLEL:-8} \
+CAMPAIGN_OUT=$out CAMPAIGN_PARALLEL=${NIGHTLY_PARALLEL:-16} \
 	nice -n 15 sh "$src/typescript/tsc/internal/vibelangfuzz/campaign.sh" "${NIGHTLY_TARGET_TIME:-20m}" > "$out/campaign.txt" 2>&1 || status=$?
 
 race=skipped
