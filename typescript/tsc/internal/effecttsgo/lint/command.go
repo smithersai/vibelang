@@ -22,16 +22,19 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-const usage = `Usage: vibelang lint [-c <oxlint config>] [-p <tsconfig.json>] [--deny-warnings] [<path>...]
+const usage = `Usage: vibelang lint [-c <oxlint config>] [-p <project>] [--deny-warnings] [<path>...]
 
 Runs Effect's type-aware lint rules (effect-tsgo's effecttsgo/* rules) on the
 .vibe files under each path (default: the current directory). The Oxlint
 configuration selects the rules, their severities, overrides and
 ignorePatterns, as it does for Oxlint on .ts files; the default is
 .oxlintrc.json, then oxlint.config.ts, in the current directory. Each file is
-checked in the nearest tsconfig.json that includes it, unless -p names one.
+checked in the nearest project that includes it. Each directory prefers
+vibe.config.json, then tsconfig.json, then jsconfig.json; -p selects a file
+or directory.
 The status is 1 when an error is reported, a warning with --deny-warnings,
-or a .vibe file no tsconfig.json includes, since it would go unchecked.
+or a .vibe file no project includes, since it would go unchecked. Invalid
+project settings return status 2.
 `
 
 // Command runs `vibelang lint`.
@@ -107,10 +110,10 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 			p = filepath.Join(cwd, p)
 		}
 		if info, err := os.Stat(p); err == nil && info.IsDir() {
-			p = filepath.Join(p, "tsconfig.json")
+			p = projectInDirectory(p)
 		}
 		if p == "" {
-			fmt.Fprintf(errOut, "vibelang lint: %s: no tsconfig.json above it includes it; not linted.\n", relative(cwd, file))
+			fmt.Fprintf(errOut, "vibelang lint: %s: no project config above it includes it; not linted.\n", relative(cwd, file))
 			unchecked++
 			continue
 		}
@@ -164,6 +167,11 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 			return nil, nil, fmt.Errorf("%s", errs[0].MessageText())
 		}
 		return nil, nil, fmt.Errorf("cannot read it")
+	}
+	for _, d := range append(errs, parsed.Errors...) {
+		if d.Category() == diagnostics.CategoryError {
+			return nil, nil, fmt.Errorf("TS%d: %s", d.Code(), d.MessageText())
+		}
 	}
 	enableVibePorts(parsed.CompilerOptions(), config)
 	program := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(sys.FS(), sys.DefaultLibraryPath(), nil, nil, nil)})
@@ -233,10 +241,10 @@ func vibeFiles(cwd string, paths []string, config *Config) ([]string, error) {
 	return slices.Compact(files), nil
 }
 
-// nearestProject returns the closest tsconfig.json above file whose program includes it.
+// nearestProject uses the same per-directory config precedence as the compiler.
 func nearestProject(file string) string {
 	for dir := filepath.Dir(file); ; dir = filepath.Dir(dir) {
-		candidate := filepath.Join(dir, "tsconfig.json")
+		candidate := projectInDirectory(dir)
 		if _, err := os.Stat(candidate); err == nil && includes(candidate, file) {
 			return candidate
 		}
@@ -244,6 +252,13 @@ func nearestProject(file string) string {
 			return ""
 		}
 	}
+}
+
+func projectInDirectory(dir string) string {
+	return tsoptions.ConfigFileInDirectory(tspath.RootedDirectoryPathFromAbsolute(dir), func(name tspath.RootedFilePath) bool {
+		info, err := os.Stat(name.AsString())
+		return err == nil && !info.IsDir()
+	}).AsString()
 }
 
 func includes(configFile string, file string) bool {

@@ -106,4 +106,55 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 	if !strings.Contains(sys.err.String(), "scripts/stray.vibe: tsconfig.json does not include it; not linted.") {
 		t.Errorf("stray.vibe is not reported as unchecked:\n%s", sys.err.String())
 	}
+	// VIP-30 config names work for automatic discovery and -p directories.
+	for _, name := range []string{"vibe.config.json", "jsconfig.json"} {
+		if err := os.Rename(filepath.Join(dir, "tsconfig.json"), filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+		for _, args := range [][]string{{"src"}, {"-p", ".", "src"}} {
+			sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
+			if status := Command(context.Background(), sys, args); status != 1 || !strings.Contains(sys.out.String(), "error TS377142:") {
+				t.Errorf("%s %v: status %d; want the built-in rule diagnostic\n%s%s", name, args, status, sys.out.String(), sys.err.String())
+			}
+		}
+		if err := os.Rename(filepath.Join(dir, name), filepath.Join(dir, "tsconfig.json")); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+}
+
+func TestNearestProjectUsesConfigPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "main.vibe")
+	for _, name := range []string{"vibe.config.json", "tsconfig.json", "jsconfig.json"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(`{"include":["*.vibe"]}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"vibe.config.json", "tsconfig.json", "jsconfig.json"} {
+		if got := nearestProject(file); got != filepath.Join(dir, name) {
+			t.Errorf("got %s; want %s", got, name)
+		}
+		if err := os.Remove(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestCommandRejectsInvalidProjectOptions(t *testing.T) {
+	dir := t.TempDir()
+	for name, text := range map[string]string{
+		"tsconfig.json":  `{"compilerOptions":{"strict":"invalid"},"include":["*.vibe"]}`,
+		".oxlintrc.json": `{}`,
+		"main.vibe":      `export const value = 1`,
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
+	if status := Command(context.Background(), sys, nil); status != 2 || !strings.Contains(sys.err.String(), "TS5024") {
+		t.Fatalf("status %d; want config error TS5024\n%s%s", status, sys.out.String(), sys.err.String())
+	}
 }

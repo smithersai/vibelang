@@ -80,7 +80,7 @@ vibelang -b -w packages/app
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
-`vibelang lint [-c <config>] [-p <tsconfig.json>] [--deny-warnings] [<path>...]` checks the `.vibe` files under each path (default: the current directory) in the nearest `tsconfig.json` that includes them. It reads `.oxlintrc.json` or `oxlint.config.ts` when `-c` is left out, with their `extends` presets, `overrides` and `ignorePatterns`; a `.ts` configuration is loaded with `node`. It exits with status 1 on an error, or on a warning with `--deny-warnings`.
+`vibelang lint [-c <config>] [-p <project>] [--deny-warnings] [<path>...]` checks the `.vibe` files under each path (default: the current directory) in the nearest project that includes them. Each directory prefers `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`; `-p` selects a config file or directory. It reads `.oxlintrc.json` or `oxlint.config.ts` when `-c` is left out, with their `extends` presets, `overrides` and `ignorePatterns`; a `.ts` configuration is loaded with `node`. It exits with status 1 on an error, or on a warning with `--deny-warnings`. Invalid project settings report their compiler diagnostic and exit with status `2`.
 
 In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity: `effecttsgo/floating-effect` reports EK4801. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
 
