@@ -11,14 +11,20 @@
 FuzzVIPDifferential  feature:vip01.effect-function  compiler  VIP-1: `effect function f(p) { … }` is not parsed and lowered as a function returning its body's Effect unrun yet; lane vip-core implements it
 FuzzVIPDifferential  feature:vip05.try              compiler  VIP-5: `try e` inside an effect function does not run the Effect e and give its success value yet; lane vip-core implements it
 FuzzVIPDifferential  feature:vip04.throw            compiler  VIP-4: `throw e` inside an effect function does not fail the Effect with e, as Effect.fail(e) does, yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip02.effect-block     compiler  VIP-2: `effect { … }` is not lowered to an Effect that reruns the block each time it runs (Effect.gen) yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip05.catch-value      compiler  VIP-5: `x catch v` does not run x and give v on a failure (Effect.catch(x, () => Effect.succeed(v))) yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip05.catch-function   compiler  VIP-5: `x catch (e) => f(e)` does not run x and give f(e) on a failure, a throw in f a defect (Effect.catch(x, (e) => Effect.succeed(f(e)))) yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip05.catch-effect-function  compiler  VIP-5: `x catch effect (e) => { … }` does not run the handler's Effect on a failure, a throw in it typed (Effect.catch(x, (e) => Effect.gen(…))) yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip05.catch-effect-block  compiler  VIP-5: `x catch effect { … }` does not run the fallback block's Effect on a failure (Effect.catch(x, () => Effect.gen(…))) yet; lane vip-core implements it
+FuzzVIPDifferential  feature:vip06.globals          compiler  VIP-6: succeed, fail, die and sync are not globals that name Effect.succeed, Effect.fail, Effect.die and Effect.sync yet; lane vip-globals implements it
+FuzzVIPDifferential  feature:vip06.try-promise      compiler  VIP-6: tryPromise is not a global that names Effect.tryPromise yet; lane vip-globals implements it
+FuzzVIPDifferential  feature:vip06.effect-try       compiler  VIP-6: Effect.try of a throwing arrow, run with try in an effect function, does not fail with Effect.try's error yet; lane vip-globals implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
 # vip, whose reason starts "not generated", names a VIP whose construct file
 # is not written yet: it is this target's debt, not the compiler's.
 FuzzVIPDifferential  not-runtime:vip03              vip       VIP-3: A!E!R is a type alias for Effect<A, E, R>; it changes no Exit
-FuzzVIPDifferential  feature:vip02.effect-block     vip       not generated: VIP-2's effect { } blocks need their construct file, vip02_effect_block.go
-FuzzVIPDifferential  feature:vip06.globals          vip       not generated: VIP-6's global Effect functions need their construct file; the skeleton writes Effect.x
 FuzzVIPDifferential  feature:vip07.match            vip       not generated: VIP-7's match needs its construct file and an Effect reading, which VIP-7 does not show
 FuzzVIPDifferential  feature:vip09.service          vip       not generated: VIP-9's service declarations need their construct file
 FuzzVIPDifferential  feature:vip12.provide          vip       not generated: VIP-12's provide blocks need their construct file
