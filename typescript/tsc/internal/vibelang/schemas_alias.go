@@ -65,6 +65,9 @@ func checkSchemaAliasValue(c *checker.Checker, file *ast.SourceFile, value *ast.
 			}
 		}
 	case (ast.IsIdentifier(value) || ast.IsPropertyAccessExpression(value)) && value.Flags&ast.NodeFlagsReparsed == 0:
+		if isDeclaredSchemaReference(c, value) {
+			return
+		}
 		if t := c.GetTypeAtLocation(value); t == nil || c.GetPropertyOfType(c.GetApparentType(t), schemaTypeID) == nil {
 			d := report(c, value, EK2109.With("{0} is not a schema: a schema's type names a schema declaration or a schema constant."), entityText(value))
 			note(d, "Declare {0} with schema, or name a schema constant, such as const When = Schema.DateTimeUtc.", entityText(value))

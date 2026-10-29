@@ -1,0 +1,2 @@
+// expect: TS7022 TS2448
+schema Cycle { readonly self: Cycle }

@@ -155,11 +155,39 @@ func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node,
 			}
 		}
 	case (ast.IsIdentifier(value) || ast.IsPropertyAccessExpression(value)) && value.Flags&ast.NodeFlagsReparsed == 0:
-		// A field whose type names another schema refers to it as a value.
+		// A schema declaration remains a schema when cyclic inference gives it
+		// any. Leave its initialization diagnostics to TypeScript.
+		if isDeclaredSchemaReference(c, value) {
+			return
+		}
 		if t := c.GetTypeAtLocation(value); t == nil || c.GetPropertyOfType(c.GetApparentType(t), schemaTypeID) == nil {
 			d := report(c, value, EK2109.With("{0} is not a schema: a field's type names a schema declaration or a schema constant."), entityText(value))
 			note(d, "Declare {0} with schema, or name a schema constant, such as const When = Schema.DateTimeUtc.", entityText(value))
 			cover(c, declaration) // TypeScript's errors about the struct's argument
 		}
 	}
+}
+
+// isDeclaredSchemaReference recognizes schema declarations without relying on
+// their inferred type, which may be any while resolving an initialization cycle.
+func isDeclaredSchemaReference(c *checker.Checker, value *ast.Node) bool {
+	symbol := c.GetSymbolAtLocation(value)
+	if symbol == nil {
+		return false
+	}
+	if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations() {
+		if declaration.Kind != ast.KindVariableDeclaration {
+			continue
+		}
+		if isSchemaAlias(declaration) || declaration.Initializer() != nil && isSchemaStruct(declaration.Initializer()) {
+			return true
+		}
+	}
+	return false
 }
