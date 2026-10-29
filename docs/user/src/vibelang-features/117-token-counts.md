@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,876 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 14,208 |
-| The skill and the user guide (138 pages) | 290,559 |
-| The user guide alone | 286,683 |
+| The skill and the user guide (138 pages) | 290,593 |
+| The user guide alone | 286,717 |
 | The specification (10 chapters) | 58,337 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 401 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **39,442** |
-| [Release notes](../setup/release-notes.md) | 39,442 |
-| **All 18 pages** | **64,664** |
+| **Upgrade** | **39,468** |
+| [Release notes](../setup/release-notes.md) | 39,468 |
+| **All 18 pages** | **64,690** |
 
 ### Guides
 
@@ -207,11 +207,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,800 |
 | [Excessive Nesting](../code-style/068-do.md) | 1,137 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 1,953 |
-| **Data Types** | **18,874** |
+| **Data Types** | **18,882** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,488 |
 | [Cause](../data-types/071-cause.md) | 1,278 |
 | [Chunk](../data-types/072-chunk.md) | 961 |
-| [Data](../data-types/073-data.md) | 2,873 |
+| [Data](../data-types/073-data.md) | 2,881 |
 | [DateTime](../data-types/074-datetime.md) | 3,205 |
 | [Duration](../data-types/075-duration.md) | 1,378 |
 | [Result](../data-types/076-result.md) | 1,620 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 4,547 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 788 |
 | [Alchemy](../platform/alchemy.md) | 2,512 |
-| **All 101 pages** | **164,136** |
+| **All 101 pages** | **164,144** |
 
 ### VibeLang features
 

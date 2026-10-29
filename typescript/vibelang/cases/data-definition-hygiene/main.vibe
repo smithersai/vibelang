@@ -1,0 +1,6 @@
+interface BoxDefinition { readonly untouched: string }
+interface BoxDefinition1 { readonly alsoUntouched: number }
+data Box<A> { Full { value: A }; Empty }
+const box: Box<number> = Box.Full({ value: 3 })
+const own: BoxDefinition = { untouched: "yes" }
+export const result = [box.value, own.untouched]

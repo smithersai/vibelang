@@ -571,8 +571,6 @@ var ruleInjections = []*ruleInjection{
 		Text: "control Ask$$ {\n  ask(question: string): string!! {\n    return question;\n  }\n}"},
 	{Code: 2117, Name: "error-extends-schema-error", Quote: "or an `error` that extends a `schema error`", Slots: top,
 		Text: "schema error Base$$ { code: string }\nerror Child$$ extends Base$$ { extra: number }"},
-	{Code: 2124, Name: "name-definition", Quote: "or another declaration in scope of a generic data type's `NameDefinition`", Slots: top,
-		Text: "data Box$$<A> {\n  Full { a: A }\n}\ninterface Box$$Definition { other: string }"},
 	{Code: 2125, Name: "untyped-field", Quote: "a field without a type", Slots: top,
 		Text: "data Members$$ {\n  Untyped { untyped }\n}"},
 	{Code: 2127, Name: "unknown-variant-pattern", Quote: "in a call, a pattern, or anywhere else", Slots: top,

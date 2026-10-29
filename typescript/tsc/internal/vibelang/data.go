@@ -60,7 +60,6 @@ var (
 	EK4707 = message(4707, errorCategory, "{0} has no case {1}, so this pattern never matches.")
 
 	ek2124Tag        = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
-	ek2124Definition = EK2124.With("{0} is the interface that data {1} declares for its type parameters, so nothing else in its scope can be named {0}.")
 	ek2125Mutable    = EK2125.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
 	ek2125Untyped    = EK2125.With("{0} has no type: write {0}: Type.")
 	ek2126Constraint = EK2126.With("{0} cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.")
@@ -369,13 +368,6 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 		if len(parameters) > 4 || slices.ContainsFunc(parameters, func(p *ast.Node) bool { return p.AsTypeParameterDeclaration().Constraint != nil }) {
 			cover(c, definition)
 		}
-		if symbol := c.GetSymbolOfDeclaration(definition); symbol != nil {
-			for _, other := range symbol.Declarations() {
-				if other != definition && other.Name() != nil {
-					report(c, other.Name(), ek2124Definition, definition.Name().Text(), name)
-				}
-			}
-		}
 	}
 }
 
@@ -385,7 +377,6 @@ func dataDefinitionOf(alias *ast.Node) *ast.Node {
 	if len(alias.TypeParameters()) == 0 || alias.Parent == nil {
 		return nil
 	}
-	want := parser.DataDefinitionName(alias.Name().Text())
 	var statements []*ast.Node
 	switch {
 	case ast.IsSourceFile(alias.Parent):
@@ -395,7 +386,7 @@ func dataDefinitionOf(alias *ast.Node) *ast.Node {
 	}
 	i := slices.Index(statements, alias)
 	for j := i - 1; j >= 0 && j >= i-2; j-- {
-		if s := statements[j]; s.Kind == ast.KindInterfaceDeclaration && s.Flags&ast.NodeFlagsReparsed != 0 && s.Name().Text() == want {
+		if s := statements[j]; s.Kind == ast.KindInterfaceDeclaration && s.Flags&ast.NodeFlagsReparsed != 0 {
 			return s
 		}
 	}

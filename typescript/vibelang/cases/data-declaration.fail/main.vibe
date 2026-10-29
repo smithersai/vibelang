@@ -35,6 +35,6 @@ data Commas {
 data Five<A, B, C, D, E> { Five { a: A; e: E } }
 data Bound<A extends string> { Bound { a: A } }
 
-// EK2124: a generic data type declares NameDefinition for Data.taggedEnum.
+// A user NameDefinition remains independent from the generated helper.
 data Box<A> { Full { a: A } }
 interface BoxDefinition { other: string }

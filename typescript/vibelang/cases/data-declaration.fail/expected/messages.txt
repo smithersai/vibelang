@@ -1,7 +1,6 @@
 $is cannot name a variant: Data.taggedEnum gives every data type its own $is.
 $match cannot name a variant: Data.taggedEnum gives every data type its own $match.
 A cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.
-BoxDefinition is the interface that data Box declares for its type parameters, so nothing else in its scope can be named BoxDefinition.
 count cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.
 data Empty has no variants: a data type lists at least one.
 data Five has 5 type parameters, and Data.TaggedEnum.WithGenerics passes at most four.

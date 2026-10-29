@@ -83,7 +83,7 @@ type Delivery = Data.TaggedEnum<{
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named for the type: `LoadStateDefinition`, which `export data` exports with the type and the constructors.
+Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, given a free name such as `LoadStateDefinition`, which `export data` exports with the type and the constructors. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name.
 
 ```ts [Effect]
 import { Data } from "effect"
@@ -209,7 +209,7 @@ const idle = LoadState.Idle()
 | --- | --- | --- |
 | EK2122 | A `data` declaration without variants | Write at least one variant |
 | EK2123 | A variant declared twice | Rename one, or remove the second |
-| EK2124 | A variant named `$is` or `$match`, a field named `_tag`, or another declaration of a generic data type's `NameDefinition` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
+| EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
 | EK2125 | A variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write `name: Type` or `name?: Type` |
 | EK2126 | More than four type parameters, or a constrained one | Use at most four unconstrained type parameters |
 | EK2127 | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
