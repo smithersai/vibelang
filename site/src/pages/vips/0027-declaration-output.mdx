@@ -25,6 +25,7 @@ export declare function add(a: number, b: number): number
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare, per Will's earlier ruling (D501).
 - **Location.** `x.d.vibe.ts` is written next to each `x.vibe`, which TypeScript's `allowArbitraryExtensions` resolves, so plain `tsc`, TypeDoc and `bun check` understand `.vibe` imports. A package build also writes ordinary `.d.ts` files to its output directory.
 - **`@throws`.** Every exported function carries `@throws`: its inferred thrown type, or `@throws {never}` when it can't throw. Under VIP-4, a function with no `@throws` throws `unknown`.
+- *Updated by VIP-4's 2026-10-29 amendment:* `@throws` applies only to functions that don't return an Effect, so the effect function `load` carries none.
 - The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.
 
 ## Prior art

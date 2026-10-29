@@ -28,9 +28,9 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 - An `effect` function's return type is an Effect, just as an `async` function's is a Promise. Like any function's return type, it can be written or left out, in which case it is inferred. An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, as `Effect.gen` infers them.
 
   ```ts
-  effect load(id): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
-  effect load(id) { return try fetchUser(id) }                                  // inferred: the same type
-  async get(url): Promise<Response> { return await fetch(url) }                 // as in TypeScript
+  effect function load(id): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+  effect function load(id) { return try fetchUser(id) }                                  // inferred: the same type
+  async function get(url): Promise<Response> { return await fetch(url) }                 // as in TypeScript
   ```
 
 - A Promise used inside an `effect` function is wrapped with `tryPromise` or `promise`. An Effect used inside an `async` function goes through `runPromise`. All three are VIP-6 globals.
@@ -51,6 +51,8 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 > "obviously the return type of an effect function is an Effect. Just update VIP-1 to include this detail. Mention also that like any other function it can be inferred" (added 2026-10-28)
 
 *Updated by VIP-5 (2026-10-28): `try`, not `await`, runs an Effect, and `await` means only what it means in JavaScript.*
+
+*Corrected 2026-10-29: the return-type example uses `effect function` and `async function`, as the 2026-10-29 amendment requires.*
 
 ## Alternative considered and withdrawn (2026-10-29)
 

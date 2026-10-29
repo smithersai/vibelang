@@ -59,7 +59,7 @@ There is no `Users.find(id)` shorthand ([VIP-10](/vips/0010-service-call-shortha
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-9
-effect load(id: string) {
+effect function load(id: string) {
   const users = try Users
   return try users.find(id)
 }
@@ -67,10 +67,12 @@ effect load(id: string) {
 
 ```ts [Effect]
 // fragment
-const load = (id: string) => Effect.gen(function* () {
-  const users = yield* Users
-  return yield* users.find(id)
-})
+function load(id: string) {
+  return Effect.gen(function* () {
+    const users = yield* Users
+    return yield* users.find(id)
+  })
+}
 ```
 
 ### Static rules
@@ -113,7 +115,7 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-12
-effect test() {
+effect function test() {
   provide AppLive, Users = testUsers {
     try a()
     try b()
@@ -123,12 +125,14 @@ effect test() {
 
 ```ts [Effect]
 // fragment
-const test = () => Effect.gen(function* () {
-  yield* Effect.provide(
-    Effect.gen(function* () { yield* a(); yield* b() }),
-    [AppLive, Layer.succeed(Users, testUsers)]
-  )
-})
+function test() {
+  return Effect.gen(function* () {
+    yield* Effect.provide(
+      Effect.gen(function* () { yield* a(); yield* b() }),
+      [AppLive, Layer.succeed(Users, testUsers)]
+    )
+  })
+}
 ```
 
 The keyword removes the global of the same name, so Effect's function is written `Effect.provide`.
@@ -140,7 +144,7 @@ Layers are composed with Effect's own Layer API; there is no `wire` ([VIP-24](/v
 const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
 ```
 
-A `provide` block is an ordinary block: `return`, `break` and `continue` inside it reach the enclosing function or loop, as in any TypeScript block.
+A `provide` block is an ordinary block: `return`, `break` and `continue` inside it reach the enclosing function or loop, as in any TypeScript block. [Leaving a block](/spec/002-running#leaving-a-block) gives the Effect TypeScript.
 
 ## Effect's functions are globals
 
@@ -158,7 +162,7 @@ No language feature wraps TypeScript into an Effect. Effect's own functions do (
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-6
-effect fetchJson(url: string, s: string) {
+effect function fetchJson(url: string, s: string) {
   const r = try tryPromise((signal) => fetch(url, { signal }))
   const n = try sync(() => Date.now())
   try sleep("1 second")
@@ -169,13 +173,15 @@ effect fetchJson(url: string, s: string) {
 
 ```ts [Effect]
 // fragment
-const fetchJson = (url: string, s: string) => Effect.gen(function* () {
-  const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
-  const n = yield* Effect.sync(() => Date.now())
-  yield* Effect.sleep("1 second")
-  const d = yield* Effect.try(() => JSON.parse(s))
-  return [r, n, d]
-})
+function fetchJson(url: string, s: string) {
+  return Effect.gen(function* () {
+    const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
+    const n = yield* Effect.sync(() => Date.now())
+    yield* Effect.sleep("1 second")
+    const d = yield* Effect.try(() => JSON.parse(s))
+    return [r, n, d]
+  })
+}
 ```
 
 An option in the config's `"vibe"` section turns the globals off ([Configuration](/spec/007-tooling#config-files)).
@@ -207,11 +213,11 @@ const o = Option.some(1)                       // Effect's Option: the DOM's Opt
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-33
-effect readConfig(path: string) {
+effect function readConfig(path: string) {
   const fs = try FileSystem
   return try fs.readFileString(path)
 }
-effect main() {
+effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
 ```

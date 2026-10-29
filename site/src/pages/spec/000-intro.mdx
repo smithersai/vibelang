@@ -21,7 +21,7 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 
 | Construct | Means exactly | VIP | Chapter |
 | --- | --- | --- | --- |
-| `effect function f() { }`, `effect f() { }`, `effect () => …` | a function returning `Effect.gen(function* () { … })` | 1 | [Functions](/spec/001-functions) |
+| `effect function f() { }`, `effect () => …`, `effect m() { }` (a method) | a function returning `Effect.gen(function* () { … })` | 1 | [Functions](/spec/001-functions) |
 | `A!E!R` | `Effect<A, E, R>` | 3 | [Functions](/spec/001-functions) |
 | `try e` | `yield* e` | 5 | [Running Effects](/spec/002-running) |
 | `e catch y` | `yield* Effect.catch(e, …)` | 5 | [Running Effects](/spec/002-running) |
