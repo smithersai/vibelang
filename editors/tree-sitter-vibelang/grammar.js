@@ -76,7 +76,6 @@ const VibeLang = grammar(TypeScript, {
   ]),
 
   conflicts: ($, previous) => previous.concat([
-    [$.layer_value, $.primary_expression],
     [$.primary_expression, $.await_expression],
     [$.primary_expression, $._property_name, $.await_expression],
     [$._property_name, $.provide_statement],
@@ -228,7 +227,6 @@ const VibeLang = grammar(TypeScript, {
       $.control_declaration,
       $.schema_declaration,
       $.data_declaration,
-      $.layer_declaration,
     ),
 
     // error NotFound { id: string }, error Timeout (D126). An error is a
@@ -251,13 +249,11 @@ const VibeLang = grammar(TypeScript, {
     // An error's field may be written mutable (D134).
     public_field_definition: ($, previous) => seq(optional('mutable'), previous),
 
-    // service Users { find(id: string): User!NotFound } (D128, D223), the
-    // older spelling service class Users { ... } (D220), and a service of any
-    // shape, service Prefix: string or service Search: SearchApi { static
+    // service Users { find(id: string): User!NotFound } (D128, D223), and a
+    // service of any shape, service Prefix: string or service Search: SearchApi { static
     // members } (D281), whose body is optional.
     service_declaration: $ => prec.right(seq(
       'service',
-      optional('class'),
       field('name', $._type_identifier),
       field('type_parameters', optional($.type_parameters)),
       choice(
@@ -269,7 +265,6 @@ const VibeLang = grammar(TypeScript, {
     // control Approval { approve(request: string): boolean!! } (D128, D223).
     control_declaration: $ => seq(
       'control',
-      optional('class'),
       field('name', $._type_identifier),
       field('type_parameters', optional($.type_parameters)),
       field('body', $.class_body),
@@ -303,27 +298,6 @@ const VibeLang = grammar(TypeScript, {
       field('name', alias($.identifier, $.property_identifier)),
       field('fields', optional($.object_type)),
     )),
-
-    // layer UsersLive: Users { setup; find(id) { ... } readonly region = "eu" },
-    // the spelling before Layer.effect(Users) { ... } (D221).
-    layer_declaration: $ => seq(
-      'layer',
-      field('name', $.identifier),
-      ':',
-      field('service', choice($.identifier, $.nested_identifier)),
-      field('body', $.layer_body),
-    ),
-
-    // Its methods, name(params) { ... }, read as block params.
-    layer_body: $ => seq('{', repeat(choice($.statement, $.layer_value)), '}'),
-
-    layer_value: $ => seq(
-      'readonly',
-      field('name', alias($.identifier, $.property_identifier)),
-      '=',
-      field('value', $.expression),
-      $._semicolon,
-    ),
 
     // ------------------------------------------------------- Statements
 
@@ -671,7 +645,6 @@ const VibeLang = grammar(TypeScript, {
       'control',
       'schema',
       'data',
-      'layer',
       'provide',
       'fork',
       'join',

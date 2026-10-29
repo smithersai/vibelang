@@ -9,7 +9,6 @@
 //   data Delivery { Waiting; Sent { tracking: string } }   (D307, read as an enum)
 //   service Users { find(id: string): User!NotFound }
 //   control Approval { approve(request: string): boolean }
-//   layer UsersLive: Users { find(id) { ... } }   (the old spelling, D221)
 //   try { ... } handle Approval.approve(request) { ... }
 //   getUser(id) catch (e) => match (e) { when NotFound: guest; }
 //   function find(id: string): User!NotFound!Db { ... }
@@ -109,7 +108,7 @@ export function addVibeLangSyntax(grammar) {
   // type: its = and type are the alias's, and it ends where the alias does
   // or at a line that starts another VibeLang declaration.
   const alias = JSON.parse(
-    JSON.stringify(repository["type-alias-declaration"]).replaceAll("(?:abstract|", "(?:error|service|control|schema|layer|abstract|")
+    JSON.stringify(repository["type-alias-declaration"]).replaceAll("(?:abstract|", "(?:error|service|control|schema|abstract|")
   )
   repository["vibelang-schema-alias"] = {
     ...alias,
@@ -181,21 +180,8 @@ export function addVibeLangSyntax(grammar) {
       }
     ]
   }
-  // service and control (D128, D223); the older spelling with class
-  // (D220) matches too.
-  repository["vibelang-member-declaration"] = {
-    name: "meta.class.ts",
-    begin: `${start}\\b(service|control)\\s+(?:(class)\\s+)?(${name})`,
-    beginCaptures: {
-      1: { name: "keyword.control.export.ts" },
-      2: { name: "storage.modifier.ts" },
-      3: { name: "storage.type.class.ts" },
-      4: { name: "entity.name.type.class.ts" }
-    },
-    end,
-    patterns: [{ include: "#comment" }, { include: "#type-parameters" }, { include: "#class-or-interface-body" }]
-  }
-  repository["vibelang-layer-declaration"] = declaration("layer", "#class-or-interface-body", `\\s*:\\s*(${name}(?:\\.${name})*)`)
+  // service and control (D128, D223).
+  repository["vibelang-member-declaration"] = declaration("service|control", "#class-or-interface-body")
   repository["vibelang-handle-clause"] = {
     match: `\\b(handle)\\s+(?=${name}\\s*\\.\\s*${name}\\s*\\()`,
     captures: { 1: { name: "keyword.control.trycatch.ts" } }
@@ -290,7 +276,7 @@ export function addVibeLangSyntax(grammar) {
     match: `(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))\\b(import)\\s+${specifier}`,
     captures: { 1: { name: "keyword.control.import.ts" }, 2: { name: "entity.name.type.module.ts" } }
   }
-  const vibelangIncludes = ["#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-layer-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
+  const vibelangIncludes = ["#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
   const statements = repository.statements.patterns.filter((pattern) => !vibelangIncludes.includes(pattern.include))
   repository.statements.patterns = [...vibelangIncludes.map((include) => ({ include })), ...statements]
   const vibelangExpressions = ["#vibelang-try-operation", "#vibelang-try-expression", "#vibelang-effect-block", "#vibelang-fork-form", "#vibelang-pipe", "#vibelang-await-operation", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]

@@ -38,9 +38,6 @@ service Users {
   find(id: string): User!NotFound
   region: string
 }
-export service class Legacy {
-  load(): string!!
-}
 
 --------------------------------------------------------------------------------
 
@@ -62,17 +59,7 @@ export service class Legacy {
       (public_field_definition
         name: (property_identifier)
         type: (type_annotation
-          (predefined_type)))))
-  (export_statement
-    declaration: (service_declaration
-      name: (type_identifier)
-      body: (class_body
-        (method_signature
-          name: (property_identifier)
-          parameters: (formal_parameters)
-          return_type: (type_annotation
-            (effect_type
-              success: (predefined_type))))))))
+          (predefined_type))))))
 
 ================================================================================
 Service declarations of any shape
@@ -217,46 +204,6 @@ const after = 1
     (variable_declarator
       name: (identifier)
       value: (number))))
-
-================================================================================
-Layer declarations, the old spelling
-================================================================================
-
-layer GreeterLive: Greeter {
-  const prefix = "hi"
-  greet(name) { return `${prefix} ${name}` }
-  readonly region = "eu"
-}
-
---------------------------------------------------------------------------------
-
-(program
-  (layer_declaration
-    name: (identifier)
-    service: (identifier)
-    body: (layer_body
-      (lexical_declaration
-        (variable_declarator
-          name: (identifier)
-          value: (string
-            (string_fragment))))
-      (expression_statement
-        (call_expression
-          function: (identifier)
-          arguments: (arguments
-            (identifier))
-          block: (statement_block
-            (return_statement
-              (template_string
-                (template_substitution
-                  (identifier))
-                (string_fragment)
-                (template_substitution
-                  (identifier)))))))
-      (layer_value
-        name: (property_identifier)
-        value: (string
-          (string_fragment))))))
 
 ================================================================================
 Layers with block params

@@ -56,9 +56,6 @@
 					"include": "#vibelang-member-declaration"
 				},
 				{
-					"include": "#vibelang-layer-declaration"
-				},
-				{
 					"include": "#vibelang-handle-clause"
 				},
 				{
@@ -5912,7 +5909,7 @@
 					"name": "entity.name.type.alias.ts"
 				}
 			},
-			"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|layer|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+			"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 			"patterns": [
 				{
 					"include": "#comment"
@@ -5930,7 +5927,7 @@
 							"name": "keyword.control.intrinsic.ts"
 						}
 					},
-					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|layer|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 					"patterns": [
 						{
 							"include": "#type"
@@ -5944,7 +5941,7 @@
 							"name": "keyword.operator.assignment.ts"
 						}
 					},
-					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|layer|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 					"patterns": [
 						{
 							"include": "#type"
@@ -6125,37 +6122,7 @@
 		},
 		"vibelang-member-declaration": {
 			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(service|control)\\s+(?:(class)\\s+)?([_$[:alpha:]][_$[:alnum:]]*)",
-			"beginCaptures": {
-				"1": {
-					"name": "keyword.control.export.ts"
-				},
-				"2": {
-					"name": "storage.modifier.ts"
-				},
-				"3": {
-					"name": "storage.type.class.ts"
-				},
-				"4": {
-					"name": "entity.name.type.class.ts"
-				}
-			},
-			"end": "(?<=\\})|(?<=[_$[:alnum:]>])(?=\\s*(?:$|;|//))",
-			"patterns": [
-				{
-					"include": "#comment"
-				},
-				{
-					"include": "#type-parameters"
-				},
-				{
-					"include": "#class-or-interface-body"
-				}
-			]
-		},
-		"vibelang-layer-declaration": {
-			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(layer)\\s+([_$[:alpha:]][_$[:alnum:]]*)\\s*:\\s*([_$[:alpha:]][_$[:alnum:]]*(?:\\.[_$[:alpha:]][_$[:alnum:]]*)*)",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(service|control)\\s+([_$[:alpha:]][_$[:alnum:]]*)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.export.ts"

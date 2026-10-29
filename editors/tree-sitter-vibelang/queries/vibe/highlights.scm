@@ -16,18 +16,11 @@
   "control"
   "schema"
   "data"
-  "layer"
 ] @keyword.type
 
 ; A data declaration's variants (D307), as TypeScript colors enum members.
 (data_variant
   name: (property_identifier) @constant)
-
-(service_declaration
-  "class" @keyword.modifier)
-
-(control_declaration
-  "class" @keyword.modifier)
 
 ; Module declarations (D283): module as TypeScript colors its module keyword,
 ; and the name and an identifier module specifier as module names. The body
@@ -41,12 +34,6 @@
 
 (export_statement
   source: (identifier) @module)
-
-(layer_declaration
-  service: (identifier) @type)
-
-(layer_value
-  "readonly" @keyword.modifier)
 
 ; Members are readonly unless written mutable (D134).
 "mutable" @keyword.modifier

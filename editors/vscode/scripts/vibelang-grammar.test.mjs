@@ -109,6 +109,9 @@ test("the Hack pipe and its topic (VIP-23)", () => {
 test("provide lists layers and bindings, and declarations name their types (VIP-9, VIP-12, VIP-13, VIP-15, VIP-16, VIP-29)", () => {
   assert.ok(has("provide AppLive, Users = testUsers { try main() }", "provide", "keyword.control.with.ts"))
   assert.ok(has("service Users { find(id: string): User!NotFound }", "Users", "entity.name.type.class.ts"))
+  // No VIP adds layer declarations or the service class spelling.
+  assert.ok(!has("layer UsersLive: Users { }", "layer", "storage.type.class.ts"))
+  assert.ok(!has("service class Users { }", "class", "storage.type.class.ts"))
   assert.ok(has("error NotFound { id: string }", "NotFound", "entity.name.type.class.ts"))
   assert.ok(has("schema error FsError { method: string }", "FsError", "entity.name.type.class.ts"))
   assert.ok(has("schema User { id: string }", "User", "entity.name.type.class.ts"))

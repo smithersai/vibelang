@@ -56,10 +56,6 @@
         "named": true
       },
       {
-        "type": "layer_declaration",
-        "named": true
-      },
-      {
         "type": "lexical_declaration",
         "named": true
       },
@@ -5033,91 +5029,6 @@
     }
   },
   {
-    "type": "layer_body",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "layer_value",
-          "named": true
-        },
-        {
-          "type": "statement",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "layer_declaration",
-    "named": true,
-    "fields": {
-      "body": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "layer_body",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "service": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          },
-          {
-            "type": "nested_identifier",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "layer_value",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "property_identifier",
-            "named": true
-          }
-        ]
-      },
-      "value": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "expression",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
     "type": "lexical_declaration",
     "named": true,
     "fields": {
@@ -9144,10 +9055,6 @@
   },
   {
     "type": "keyof",
-    "named": false
-  },
-  {
-    "type": "layer",
     "named": false
   },
   {

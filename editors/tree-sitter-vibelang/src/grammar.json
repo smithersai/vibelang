@@ -507,10 +507,6 @@
         {
           "type": "SYMBOL",
           "name": "data_declaration"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "layer_declaration"
         }
       ]
     },
@@ -7952,10 +7948,6 @@
         },
         {
           "type": "STRING",
-          "value": "layer"
-        },
-        {
-          "type": "STRING",
           "value": "provide"
         },
         {
@@ -12385,18 +12377,6 @@
             "value": "service"
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "STRING",
-                "value": "class"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          },
-          {
             "type": "FIELD",
             "name": "name",
             "content": {
@@ -12475,18 +12455,6 @@
         {
           "type": "STRING",
           "value": "control"
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "STRING",
-              "value": "class"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
         },
         {
           "type": "FIELD",
@@ -12705,128 +12673,6 @@
           }
         ]
       }
-    },
-    "layer_declaration": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "layer"
-        },
-        {
-          "type": "FIELD",
-          "name": "name",
-          "content": {
-            "type": "SYMBOL",
-            "name": "identifier"
-          }
-        },
-        {
-          "type": "STRING",
-          "value": ":"
-        },
-        {
-          "type": "FIELD",
-          "name": "service",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "identifier"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "nested_identifier"
-              }
-            ]
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "body",
-          "content": {
-            "type": "SYMBOL",
-            "name": "layer_body"
-          }
-        }
-      ]
-    },
-    "layer_body": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "{"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "statement"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "layer_value"
-              }
-            ]
-          }
-        },
-        {
-          "type": "STRING",
-          "value": "}"
-        }
-      ]
-    },
-    "layer_value": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "readonly"
-        },
-        {
-          "type": "FIELD",
-          "name": "name",
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "identifier"
-                },
-                {
-                  "type": "STRING",
-                  "value": "catch"
-                }
-              ]
-            },
-            "named": true,
-            "value": "property_identifier"
-          }
-        },
-        {
-          "type": "STRING",
-          "value": "="
-        },
-        {
-          "type": "FIELD",
-          "name": "value",
-          "content": {
-            "type": "SYMBOL",
-            "name": "expression"
-          }
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_semicolon"
-        }
-      ]
     },
     "provide_statement": {
       "type": "PREC_DYNAMIC",
@@ -17623,19 +17469,6 @@
     [
       "primary_type",
       "type_parameter"
-    ],
-    [
-      "layer_value",
-      "primary_expression"
-    ],
-    [
-      "layer_value",
-      "_statement_primary_expression"
-    ],
-    [
-      "layer_value",
-      "primary_expression",
-      "_statement_primary_expression"
     ],
     [
       "primary_expression",
