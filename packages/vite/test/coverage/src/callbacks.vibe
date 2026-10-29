@@ -5,8 +5,8 @@ export function step(base: number, payload: number): number!Oops! {
   return base + payload
 }
 
-export const handler = (base: number) => (payload: number) => step(base, payload)
+export const handler = (base: number): infer _ => (payload: number) => step(base, payload)
 
-export const unusedHandler = (base: number) => (payload: number) => step(base, payload)
+export const unusedHandler = (base: number): infer _ => (payload: number) => step(base, payload)
 
-export const lazyHandler = (base: number) => (payload: number) => step(base, payload)
+export const lazyHandler = (base: number): infer _ => (payload: number) => step(base, payload)
