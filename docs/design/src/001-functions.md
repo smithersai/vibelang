@@ -37,8 +37,13 @@ EffectMethod      = Modifiers? "effect" PropertyName TypeParameters? Params Retu
 | --- | --- |
 | `await`, `for await` or `await using` inside an `effect` function | code pending |
 | `await` applied to an Effect inside an `async` function | code pending |
+| `effect` on a getter, setter or constructor | code pending |
+| A written return type of an `effect` function that is not an Effect (TypeScript's TS1064 for `async`) | code pending |
+| `try`, `catch`, `fork`, `join`, `provide` or an interruption block in an `effect` function's parameters, or in a class field initializer or `static` block inside effect code | code pending |
 
 "Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it. That is the one rule "`try` outside effect code" of [Running Effects](002-running.md#static-rules).
+
+`try` works like `await`, so the parameter list is not effect code, as `await` is a syntax error in an `async` function's parameters. A class field initializer or `static` block runs at construction, so it is not effect code either. A parameter default runs when the function is called, before the Effect exists; throw tracking treats it as a call in effect code, so a default that may throw is an error. Destructuring a parameter can still throw a `TypeError`, an implicit throw, which surfaces as a defect where the call is run.
 
 ### Meaning
 
@@ -218,9 +223,22 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 - **Effectful functions carry no `@throws`.** A function that returns an `Effect`, a `Stream` or a `Layer` can't throw, so it carries none (VIP-4).
 - **Every other exported callable carries `@throws`:** a function, a method, a constructor (`new X()` is throw-tracked) and a function-typed `const`. The tag is its inferred thrown type, or `@throws {never}` when it can't throw. Getters and setters carry none: they are not throw-tracked.
 - **`async`.** An `async` function carries `@throws {never}`: calling it returns a Promise, as in TypeScript, and a throw in its body rejects that Promise ([Failures](003-failures.md#calls-that-may-throw)).
-- **Function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. A function that calls a parameter it was given, and throws what that parameter throws, says so with `@rethrows <param>`.
+- **Function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. As in Swift, a function that may throw `T` is assignable to a function type only when that type's `@throws` admits `T`; otherwise it is an error (code pending): wrap it, or annotate the parameter `@throws`. An exported callable is a declaration, not a function type, so the output always tags it.
+- **`@rethrows` is written, not inferred.** A function that calls a parameter it was given, and throws what that parameter throws, says so in its source with `/** @rethrows <param> */` (VIP-4), and the output copies the tag.
+- **A function that returns an Effect can't throw.** A plain `.vibe` function whose return type is an `Effect`, a `Stream` or a `Layer` is effectful, so a `throw`, or a call that may throw, in its body is an error (code pending): make it an `effect` function, or return `fail(e)`.
 
-**Undecided (pending VIP):** a plain, non-`async` `.vibe` function whose return type is an Effect and whose body may `throw` before returning it. It returns an Effect, so it carries no `@throws`, yet calling it can throw.
+```vibe es
+// compiler-gap: pending VIP-4
+export function bad(id: string) { if (!id) throw new BadInput(); return fetchUser(id) }   // error: can't throw
+export function load(id: string): Effect.Effect<User, NotFound | BadInput> { return id ? fetchUser(id) : fail(new BadInput()) }
+```
+
+```ts effect
+// fragment
+export function load(id: string): Effect.Effect<User, NotFound | BadInput> { return id ? fetchUser(id) : Effect.fail(new BadInput()) }
+```
+
+`load("")` fails with `BadInput`; `load("u")` runs `fetchUser("u")`.
 
 ```vibe es
 // compiler-gap: pending VIP-27
@@ -234,6 +252,7 @@ export class Id {
   constructor(readonly s: string) { if (!s) throw new BadInput() }
   get size() { return this.s.length }
 }
+/** @rethrows f */
 export function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
 ```
 
