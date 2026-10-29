@@ -16,6 +16,8 @@ A call never runs anything. Calling an `effect` function, or any function that r
 
 In this chapter, "effect code" means the body of an `effect` function or an `effect` block, not counting functions nested inside it.
 
+Every operand is evaluated once, left to right as written. Where Effect's argument order differs from the source order (`fork.in(scope) e`, `for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, or uses Effect's data-last form.
+
 ## `try`
 
 ### Syntax
@@ -52,11 +54,13 @@ effect function load(id: string) {
 
 ```ts effect
 // fragment
-const load = (id: string) => Effect.gen(function* () {
-  const u = yield* fetchUser(id)
-  yield* Effect.sleep("1 second")
-  return u
-})
+function load(id: string) {
+  return Effect.gen(function* () {
+    const u = yield* fetchUser(id)
+    yield* Effect.sleep("1 second")
+    return u
+  })
+}
 ```
 
 ## `catch`
@@ -107,14 +111,16 @@ effect function load(id: string) {
 
 ```ts effect
 // fragment
-const load = (id: string) => Effect.gen(function* () {
-  const g = yield* Effect.catch(fetchUser(id), () => Effect.succeed(guest))
-  const h = yield* Effect.catch(fetchUser(id), (e) => Effect.gen(function* () {
-    if (e._tag === "NotFound") return guest
-    return yield* Effect.fail(e)
-  }))
-  return [g, h]
-})
+function load(id: string) {
+  return Effect.gen(function* () {
+    const g = yield* Effect.catch(fetchUser(id), () => Effect.succeed(guest))
+    const h = yield* Effect.catch(fetchUser(id), (e) => Effect.gen(function* () {
+      if (e._tag === "NotFound") return guest
+      return yield* Effect.fail(e)
+    }))
+    return [g, h]
+  })
+}
 ```
 
 **Undecided (pending VIP):** whether `x catch f`, where `f` is an identifier or call whose value is a function, is a value (the fallback is the function itself) or a handler called with the error.
@@ -133,7 +139,7 @@ EffectBlock = "effect" Block          (an expression)
 
 ### Meaning
 
-`effect { … }` is an expression. It builds an Effect from the block without running it. Each time the Effect runs, the block runs again. It is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`. Inside it, `try` runs Effects.
+`effect { … }` is an expression. It builds an Effect from the block without running it. Each time the Effect runs, the block runs again. It is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`. Inside it, `try` runs Effects. Its `this`, `arguments`, `super` and `new.target` are the enclosing function's, passed in as for an `effect` arrow ([Functions](001-functions.md#meaning)).
 
 ```vibe es
 // compiler-gap: pending VIP-2
@@ -148,12 +154,14 @@ const UsersLive = Layer.effect(Users, effect { return makeUsers() })
 
 ```ts effect
 // fragment
-const demo = () => Effect.gen(function* () {
-  const p = Effect.gen(function* () { console.log("hi"); return 1 })
-  yield* p
-  yield* p
-  return yield* Effect.retry(Effect.gen(function* () { yield* save(yield* fetchUser("1")) }), policy)
-})
+function demo() {
+  return Effect.gen(function* () {
+    const p = Effect.gen(function* () { console.log("hi"); return 1 })
+    yield* p
+    yield* p
+    return yield* Effect.retry(Effect.gen(function* () { yield* save(yield* fetchUser("1")) }), policy)
+  })
+}
 const UsersLive = Layer.effect(Users, Effect.gen(function* () { return makeUsers() }))
 ```
 
@@ -197,7 +205,7 @@ JoinExpression = "join" Expression
 | VibeLang | Effect TypeScript | Owner |
 | --- | --- | --- |
 | `fork worker()` | `yield* Effect.forkChild(worker())` | the current fiber |
-| `fork.in(scope) worker()` | `yield* Effect.forkIn(worker(), scope)` | the given scope |
+| `fork.in(scope) worker()` | `yield* Effect.forkIn(scope)(worker())` | the given scope |
 | `fork.scoped worker()` | `yield* Effect.forkScoped(worker())` | the current `Scope`; adds `Scope` to R |
 | `fork.detached worker()` | `yield* Effect.forkDetach(worker())` | none |
 | `join f` | `yield* Fiber.join(f)` | |
@@ -213,11 +221,13 @@ effect function both() {
 
 ```ts effect
 // fragment
-const both = () => Effect.gen(function* () {
-  const f = yield* Effect.forkChild(worker())
-  const mine = yield* other()
-  return [mine, yield* Fiber.join(f)]
-})
+function both() {
+  return Effect.gen(function* () {
+    const f = yield* Effect.forkChild(worker())
+    const mine = yield* other()
+    return [mine, yield* Fiber.join(f)]
+  })
+}
 ```
 
 **Undecided (pending VIP):** the precedence of `fork` and `join`, for example whether `fork a() |> f(%)` forks `a()` or the pipe.
@@ -293,10 +303,12 @@ effect function syncAll(ids: string[]) {
 
 ```ts effect
 // fragment
-const syncAll = (ids: string[]) => Effect.gen(function* () {
-  yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
-  yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: 4, discard: true })
-})
+function syncAll(ids: string[]) {
+  return Effect.gen(function* () {
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
+    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: 4, discard: true })
+  })
+}
 ```
 
 **Undecided (pending VIP):** which `ForBinding`s are allowed (VIP-19 shows `const id`; `let` and destructuring are not stated), and whether the operand may be any iterable or also a Stream.
@@ -333,13 +345,15 @@ effect function saveAll(rows: Stream.Stream<Row>) {
 
 ```ts effect
 // fragment
-const saveAll = (rows: Stream.Stream<Row>) => Effect.gen(function* () {
-  yield* Stream.runForEachWhile(rows, (row) => Effect.gen(function* () {
-    if (row.skip) return true
-    if (row.last) return false
-    yield* save(row); return true
-  }))
-})
+function saveAll(rows: Stream.Stream<Row>) {
+  return Effect.gen(function* () {
+    yield* Stream.runForEachWhile(rows, (row) => Effect.gen(function* () {
+      if (row.skip) return true
+      if (row.last) return false
+      yield* save(row); return true
+    }))
+  })
+}
 ```
 
 **Undecided (pending VIP):** labeled `break` and `continue` that target a loop outside the `for try` body; which `ForBinding`s are allowed (VIP-20 shows `const row`); and what an operand that is not a Stream does (a compile error, or an AsyncIterable or Iterable consumed some other way).
@@ -377,11 +391,13 @@ effect function consume() { for try (const t of ticks()) { try log(t) } }
 
 ```ts effect
 // fragment
-const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
-  yield* Queue.offer(queue, 1)
-  yield* Effect.sleep("1 second")
-  yield* Queue.offer(queue, 2)
-}).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })
+function ticks() {
+  return Stream.callback<number>((queue) => Effect.gen(function* () {
+    yield* Queue.offer(queue, 1)
+    yield* Effect.sleep("1 second")
+    yield* Queue.offer(queue, 2)
+  }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })
+}
 ```
 
 **Undecided (pending VIP):** what `yield*` (delegation) means in a producer.
@@ -421,14 +437,16 @@ effect function pay(card: Card, user: User) {
 
 ```ts effect
 // fragment
-const pay = (card: Card, user: User) => Effect.gen(function* () {
-  yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () {
-    const receipt = yield* charge(card)
-    yield* restore(Effect.gen(function* () { yield* notify(user) }))
-    yield* record(receipt)
-  }))
-  yield* Effect.interruptible(Effect.gen(function* () { yield* poll() }))
-})
+function pay(card: Card, user: User) {
+  return Effect.gen(function* () {
+    yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () {
+      const receipt = yield* charge(card)
+      yield* restore(Effect.gen(function* () { yield* notify(user) }))
+      yield* record(receipt)
+    }))
+    yield* Effect.interruptible(Effect.gen(function* () { yield* poll() }))
+  })
+}
 ```
 
 The keywords remove the globals of the same name ([VIP-6](../vips/0006-effect-globals.md)), so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
@@ -451,10 +469,12 @@ effect function run(id: string) {
 
 ```ts effect
 // fragment
-const run = (id: string) => Effect.gen(function* () {
-  const t1 = fetchUser(id); const t2 = Effect.retry(t1, policy); const n = Effect.timeout(t2, "1 second")
-  return yield* n
-})
+function run(id: string) {
+  return Effect.gen(function* () {
+    const t1 = fetchUser(id); const t2 = Effect.retry(t1, policy); const n = Effect.timeout(t2, "1 second")
+    return yield* n
+  })
+}
 ```
 
 Effect's `pipe(x, f, g)` function stays available ([VIP-14](../vips/0014-effect-modules-in-scope.md)).

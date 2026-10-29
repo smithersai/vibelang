@@ -57,7 +57,7 @@ class Users {
 
 ```ts effect
 // fragment
-const load = (id: string) => Effect.gen(function* () { return yield* fetchUser(id) })
+function load(id: string) { return Effect.gen(function* () { return yield* fetchUser(id) }) }
 const loadArrow = (id: string) => Effect.gen(function* () { return yield* fetchUser(id) })
 const loadAll = (ids: string[]) => ids.map(function (id) { return Effect.gen(function* () { return yield* fetchUser(id) }) })
 
@@ -67,7 +67,50 @@ class Users {
 }
 ```
 
-VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
+Each form keeps the form it is written in, as `async` does. A declaration stays a hoisted function declaration, so a call above it works:
+
+| VibeLang | Effect TypeScript |
+| --- | --- |
+| `effect function f(p) { B }` | `function f(p) { return Effect.gen(function* () { B }) }` |
+| `effect function (p) { B }` | `function (p) { return Effect.gen(function* () { B }) }` |
+| `effect (p) => B` | `(p) => Effect.gen(function* () { B })` |
+| `effect m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }` |
+
+Parameters, defaults included, are bound when the function is called. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
+
+**Bindings.** The body sees the bindings of the function it is written in, as an `async` body does. The generator `Effect.gen` takes would have its own, so the compiler passes them in, with fresh names:
+
+| In the body | Effect TypeScript |
+| --- | --- |
+| `this` | `Effect.gen({ self: this }, function* () { … })`; the generator's `this` is `self` |
+| `arguments`, `new.target` | read once into a temporary before `Effect.gen`: `const $arguments = arguments` |
+| `super.m` | read through an arrow made in the method, `const $super_m = () => super.m`; `super.m(a)` is `$super_m().call(this, a)` |
+
+In an `effect` arrow and an `effect` block these are the enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript.
+
+```vibe es
+// compiler-gap: pending VIP-1
+class Counter extends Base {
+  n = 7
+  effect value() { return this.n + super.offset() }
+}
+effect function count(x: number) { return arguments.length }
+```
+
+```ts effect
+// fragment
+class Counter extends Base {
+  n = 7
+  value() {
+    const $super_offset = () => super.offset
+    return Effect.gen({ self: this }, function* () { return this.n + $super_offset().call(this) })
+  }
+}
+function count(x: number) {
+  const $arguments = arguments
+  return Effect.gen(function* () { return $arguments.length })
+}
+```
 
 ### Return types
 
@@ -123,7 +166,7 @@ interface UserStore { find(id: string): User!NotFound }
 
 ```ts effect
 // fragment
-const load = (id: string): Effect<User, NotFound, Users> => Effect.gen(function* () { return yield* (yield* Users).find(id) })
+function load(id: string): Effect<User, NotFound, Users> { return Effect.gen(function* () { return yield* (yield* Users).find(id) }) }
 interface UserStore { find(id: string): Effect<User, NotFound> }
 ```
 

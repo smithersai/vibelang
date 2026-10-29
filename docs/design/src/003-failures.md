@@ -24,11 +24,13 @@ effect function load(id: string) {
 
 ```ts effect
 // fragment
-const load = (id: string) => Effect.gen(function* () {
-  const user = yield* findUser(id)
-  if (!user) return yield* Effect.fail(new NotFound({ id }))
-  return user
-})
+function load(id: string) {
+  return Effect.gen(function* () {
+    const user = yield* findUser(id)
+    if (!user) return yield* Effect.fail(new NotFound({ id }))
+    return user
+  })
+}
 ```
 
 ## Calls that may throw

@@ -63,10 +63,12 @@ effect function load(id: string) {
 
 ```ts effect
 // fragment
-const load = (id: string) => Effect.gen(function* () {
-  const users = yield* Users
-  return yield* users.find(id)
-})
+function load(id: string) {
+  return Effect.gen(function* () {
+    const users = yield* Users
+    return yield* users.find(id)
+  })
+}
 ```
 
 ### Static rules
@@ -119,12 +121,14 @@ effect function test() {
 
 ```ts effect
 // fragment
-const test = () => Effect.gen(function* () {
-  yield* Effect.provide(
-    Effect.gen(function* () { yield* a(); yield* b() }),
-    [AppLive, Layer.succeed(Users, testUsers)]
-  )
-})
+function test() {
+  return Effect.gen(function* () {
+    yield* Effect.provide(
+      Effect.gen(function* () { yield* a(); yield* b() }),
+      [AppLive, Layer.succeed(Users, testUsers)]
+    )
+  })
+}
 ```
 
 The keyword removes the global of the same name, so Effect's function is written `Effect.provide`.
@@ -165,13 +169,15 @@ effect function fetchJson(url: string, s: string) {
 
 ```ts effect
 // fragment
-const fetchJson = (url: string, s: string) => Effect.gen(function* () {
-  const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
-  const n = yield* Effect.sync(() => Date.now())
-  yield* Effect.sleep("1 second")
-  const d = yield* Effect.try(() => JSON.parse(s))
-  return [r, n, d]
-})
+function fetchJson(url: string, s: string) {
+  return Effect.gen(function* () {
+    const r = yield* Effect.tryPromise((signal) => fetch(url, { signal }))
+    const n = yield* Effect.sync(() => Date.now())
+    yield* Effect.sleep("1 second")
+    const d = yield* Effect.try(() => JSON.parse(s))
+    return [r, n, d]
+  })
+}
 ```
 
 An option in the config's `"vibe"` section turns the globals off ([Configuration](007-tooling.md#config-files)).
