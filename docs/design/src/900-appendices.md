@@ -36,14 +36,15 @@ ProducerMethod    = "static"? "effect" "*" PropertyName Params ReturnType? Block
 EffectType        = Type "!" Type "!" Type | Type "!" Type | Type "!" "!" Type | Type "!" "!"
 
 TryExpression     = "try" UnaryExpression
-CatchExpression   = (CatchExpression | Operand) "catch" (EffectArrow | "effect" Block | ArrowFunction | Expression)
+CatchExpression   = (CatchExpression | Operand) "catch" (EffectArrow | "effect" Block | ArrowFunction | Operand)
+Operand           = BitwiseORExpression
 EffectBlock       = "effect" Block
-ForkExpression    = "fork" Expression
-                  | "fork" "." "in" "(" Expression ")" Expression
-                  | "fork" "." "scoped" Expression
-                  | "fork" "." "detached" Expression
-JoinExpression    = "join" Expression
-TryAll            = "try" "." ("all" | "race" | "any" | "allSettled") Expression
+ForkExpression    = "fork" ForkOperand
+                  | "fork" "." "in" "(" AssignmentExpression ")" ForkOperand
+                  | "fork" "." "scoped" ForkOperand
+                  | "fork" "." "detached" ForkOperand
+JoinExpression    = "join" ForkOperand
+TryAll            = "try" "." ("all" | "race" | "any" | "allSettled") UnaryExpression
 
 ForConcurrent     = "for" "concurrent" ("(" Expression ")")? "(" ForBinding "of" Expression ")" Statement
 ForTry            = "for" "try" "(" ForBinding "of" Expression ")" Statement
@@ -51,7 +52,7 @@ Uninterruptible   = "uninterruptible" Block
 Restore           = "restore" Block
 Interruptible     = "interruptible" Block
 ProvideStatement  = "provide" Provider ("," Provider)* Block
-Provider          = Expression | Expression "=" Expression
+Provider          = LeftHandSideExpression "=" AssignmentExpression | ConditionalExpression
 
 ServiceDecl       = "export"? "service" Name "{" ServiceMember* "}"
 ErrorDecl         = "export"? "error" Name ("{" (Field | Method | Getter)* "}")?
@@ -63,7 +64,7 @@ Variant           = Name ("{" Fields "}")?
 
 `catch` has the precedence of `??` and is left-associative (VIP-5).
 
-**Undecided (pending VIP):** the precedence of `try`, `fork` and `join` among TypeScript's operators, and of `!` among type operators. The productions above place `try` with `await`; no VIP states it.
+`try` has `await`'s precedence, because `try` works like `await`. **Undecided (pending VIP):** `ForkOperand`, the precedence of `fork` and `join` (a `UnaryExpression` or an `AssignmentExpression`), and the precedence of `!` among type operators.
 
 ## Appendix B. Diagnostics
 

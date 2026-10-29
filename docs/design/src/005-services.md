@@ -91,9 +91,11 @@ A service is a key, not a class you use.
 
 ```text
 ProvideStatement = "provide" Provider ("," Provider)* Block
-Provider         = Expression                 (a Layer)
-                 | Expression "=" Expression  (Key = value)
+Provider         = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
+                 | ConditionalExpression                             (a Layer)
 ```
+
+A top-level comma separates providers, and a top-level `=` always makes `Key = value`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
 
 `provide` is a contextual keyword. Its providers and the block's `{` are on one line, as with `async`. Trailing blocks don't exist ([VIP-11](../vips/0011-trailing-blocks-denied.md)), so `provide(x) { … }` can't be read as a call.
 

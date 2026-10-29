@@ -37,7 +37,7 @@ TryExpression = "try" UnaryExpression
 
 An Effect that can't fail is still run with `try`.
 
-**Undecided (pending VIP):** the precedence of `try`. The grammar above gives it `await`'s (a unary operator), which no VIP states.
+`try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b()` and `try f() + 1` adds 1 to the success. At the start of a statement, `try {` begins a `try` statement, as in JavaScript, and that is an error in effect code.
 
 ### Meaning
 
@@ -70,13 +70,16 @@ function load(id: string) {
 ```text
 CatchExpression = CatchExpression "catch" Handler
                 | Operand "catch" Handler
+Operand         = BitwiseORExpression    (the operand of ??)
 Handler         = EffectArrow            (an effect function of the error)
                 | "effect" Block         (an effect block)
                 | ArrowFunction          (a plain function of the error)
-                | Expression             (a value)
+                | Operand                (a value)
 ```
 
-`catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result.
+`catch` has the precedence of `??` and is left-associative: `a catch b catch c` means `(a catch b) catch c`, and `x = a catch b` assigns the result. A value handler is an `Operand`, so `x catch y, z` is a comma expression whose first part is `x catch y`.
+
+An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`. So `a catch (e) => b catch c` means `a catch ((e) => (b catch c))`. Parenthesize the arrow to chain: `a catch ((e) => b) catch c`.
 
 ### Static rules
 
@@ -184,14 +187,16 @@ const x = do { const a = 1; a + 1 }    // 2
 ### Syntax
 
 ```text
-ForkExpression = "fork" Expression
-               | "fork" "." "in" "(" Expression ")" Expression
-               | "fork" "." "scoped" Expression
-               | "fork" "." "detached" Expression
-JoinExpression = "join" Expression
+ForkExpression = "fork" ForkOperand
+               | "fork" "." "in" "(" AssignmentExpression ")" ForkOperand
+               | "fork" "." "scoped" ForkOperand
+               | "fork" "." "detached" ForkOperand
+JoinExpression = "join" ForkOperand
 ```
 
-`fork` and `join` are contextual keywords, and the operand starts on the same line. The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`.
+`fork` and `join` are contextual keywords, and the operand starts on the same line. The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`. A `ForkOperand` never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
+
+In effect code, `fork` or `join` followed on the same line by a token that can start an expression is the keyword, as `await` is in an `async` function. So `join(parts)` joins the fiber `parts`, even where a function named `join` is in scope; call such a function as `(join)(parts)`. Elsewhere, `fork` and `join` are identifiers.
 
 ### Static rules
 
@@ -231,17 +236,17 @@ function both() {
 }
 ```
 
-**Undecided (pending VIP):** the precedence of `fork` and `join`, for example whether `fork a() |> f(%)` forks `a()` or the pipe.
+**Undecided (pending VIP):** the precedence of `fork` and `join`, that is, what `ForkOperand` is: a `UnaryExpression`, as for `try`, or an `AssignmentExpression`, as for `yield`. It decides, for example, whether `fork a() |> f(%)` forks `a()` or the pipe.
 
 ## Running Effects concurrently
 
 ### Syntax
 
 ```text
-TryAll = "try" "." ("all" | "race" | "any" | "allSettled") ArrayLiteralOrExpression
+TryAll = "try" "." ("all" | "race" | "any" | "allSettled") UnaryExpression
 ```
 
-`try` is a reserved word, so `try.` can't start anything else. The operand is an array of Effects.
+`try` is a reserved word, so `try.` can't start anything else. The operand has `try`'s precedence, so `try.all [a(), b()]` and `try.all ids.map(load)` each have one reading. Its type is an array or tuple of Effects.
 
 ### Static rules
 
