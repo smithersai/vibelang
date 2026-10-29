@@ -25,6 +25,12 @@ const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
+Using one is Effect's own Schema API (VIP-14), for example:
+
+```ts
+const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a SchemaError
+```
+
 - `schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name.
 - Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error.
 - `name?: T` means `Schema.optional`, which accepts a missing key or `undefined`, matching TypeScript's default.

@@ -9,9 +9,9 @@ title: "VIP-5: try runs an Effect; await is only for Promises"
 ## Decision
 
 ```ts
-async get(url) { return await fetch(url) }        // await: Promises only, exactly as in JavaScript
+async function get(url) { return await fetch(url) }        // await: Promises only, exactly as in JavaScript
 
-effect load(id) {
+effect function load(id) {
   const u = try fetchUser(id)                     // runs the Effect; a failure propagates
   const g = fetchUser(id) catch guest             // runs it; on a failure, gives guest
   const h = fetchUser(id) catch effect (e) => match (e) {

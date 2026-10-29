@@ -7,7 +7,7 @@ title: "VIP-8: special syntax for Effect resources (using and a scoped keyword),
 **Status:** denied by Will, 2026-10-28. VibeLang has no special syntax for Effect resources. `using` keeps exactly TypeScript's meaning, and Effect resources use Effect's own `scoped` (a VIP-6 global).
 
 ```ts
-effect load(p, q) {
+effect function load(p, q) {
   using f = openFile(p)            // TypeScript's using: f[Symbol.dispose]() at the end of the block
   return try scoped(effect {       // Effect resources: Effect's own scoped
     const db = try openDb()
@@ -28,7 +28,7 @@ const load = (p, q) => Effect.scoped(Effect.gen(function* () {
 
 **B. `try` in the initializer marks an Effect resource, owned by the block.**
 ```ts
-effect load(q) {
+effect function load(q) {
   using db = try openDb()          // Effect.scoped around the block + yield* openDb()
   using f = openFile(p)            // Effect.acquireDisposable
   return try db.query(q)

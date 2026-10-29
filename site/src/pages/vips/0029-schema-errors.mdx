@@ -15,6 +15,13 @@ schema error NotFound { id: string }
 class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {}
 ```
 
+Crossing JSON uses Effect's Schema API (VIP-14), for example:
+
+```ts
+const json = try Schema.encodeEffect(NotFound)(err)
+const back = try Schema.decodeUnknownEffect(NotFound)(json)
+```
+
 - `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.
 - The body rules are VIP-13's: methods and getters are allowed, and a constructor or a `_tag` override is not.
 - **Ambiguity: none.** `schema error NotFound {` and the alias form `schema error = …` differ at the next token.

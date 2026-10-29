@@ -9,7 +9,7 @@ title: "VIP-26: top-level await, and no magic main"
 ## Decision
 
 ```ts
-export effect main() { … }
+export effect function main() { … }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
 await runPromise(main())        // or ES top-level await of a Promise (VIP-5); runPromise is a VIP-6 global
 ```

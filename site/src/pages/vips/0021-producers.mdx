@@ -26,7 +26,7 @@ const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
 
 - `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects (VIP-5).
 - A plain `function*` stays a JavaScript generator.
-- It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run one element ahead of the consumer. Exact pull semantics, which would need a continuation runtime, are not provided.
+- It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. Exact pull semantics, which would need a continuation runtime, are not provided.
 - `return value` in a producer is a compile error, because a Stream has no return value. A bare `return` ends the stream.
 - **Ambiguity: none** for `effect function* name()`. The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript. At top level it could parse as multiplication.
 
@@ -42,4 +42,4 @@ JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async gene
 
 > "Accept"
 
-*Corrected 2026-10-29: the Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*
+*Corrected 2026-10-29: the producer can run up to two elements ahead (one buffered, one waiting), not one. The Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*

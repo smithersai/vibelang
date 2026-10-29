@@ -11,9 +11,9 @@ title: "VIP-4: throw, and calls that may throw"
 ```ts
 function parse(s) { if (!s) throw new Error("empty"); return s }   // may throw Error (inferred)
 function add(a, b) { return a + b }                                 // doesn't throw
-async get(url) { return Promise.reject(new Error("no")) }           // allowed, as in TypeScript
+async function get(url) { return Promise.reject(new Error("no")) }           // allowed, as in TypeScript
 
-effect load(id) {
+effect function load(id) {
   if (!user) throw new NotFound(id)            // the same as failing with Effect.fail(new NotFound(id))
   add(1, 2)                                    // ok: doesn't throw
   parse(s)                                     // error: may throw, so wrap it and run it with try

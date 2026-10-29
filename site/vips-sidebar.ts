@@ -133,6 +133,10 @@ export const vipsSidebar = [
           {
             "text": "38. Effect's type-aware lint is built into VibeLang",
             "link": "/vips/0038-effect-lint-built-in"
+          },
+          {
+            "text": "39. effect goes exactly where async goes",
+            "link": "/vips/0039-effect-goes-where-async-goes"
           }
         ]
       },
