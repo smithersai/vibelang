@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, wireVite } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireVite, wireViteApps } from "../lib/wire.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -143,6 +143,45 @@ test("wireVite wires the shared config the test command names, and gives its pac
     assert.deepEqual(own.changed, ["packages/contracts/vitest.config.ts", "packages/contracts/package.json"])
     assert.match(own.warnings[0], /^packages\/other: no Vite or Vitest config/)
     assert.equal(JSON.parse(readFileSync(join(root, "packages/contracts/package.json"), "utf8")).devDependencies.vibelang, "file:../../.vibelang-toolchain/vibelang-0.0.11.tgz")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("wireViteApps adds the plugin to every config that bundles migrated sources, through workspace dependencies", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vite-apps-"))
+  try {
+    const files = {
+      "packages/core/package.json": { name: "core" },
+      "packages/core/vitest.config.ts": vitestConfig,
+      "packages/core/test/fixtures/app/vite.config.ts": vitestConfig,
+      "packages/mid/package.json": { name: "mid", dependencies: { core: "workspace:^" } },
+      "apps/web/package.json": { name: "web", dependencies: { core: "workspace:*" } },
+      "apps/web/vite.config.ts": vitestConfig,
+      "apps/deep/package.json": { name: "deep", dependencies: { mid: "workspace:*" } },
+      "apps/deep/vite.config.mts": vitestConfig,
+      "apps/function/package.json": { name: "function", devDependencies: { core: "workspace:*" } },
+      "apps/function/vite.config.ts": "import { defineConfig } from 'vite'\n\nexport default defineConfig(() => ({}))\n",
+      "apps/published/package.json": { name: "published", dependencies: { core: "^1.0.0" } },
+      "apps/published/vite.config.ts": vitestConfig,
+      "apps/other/package.json": { name: "other" },
+      "apps/other/vite.config.ts": vitestConfig,
+      "templates/base/package.json": { name: "template", dependencies: { core: "workspace:*" } },
+      "templates/base/vite.config.ts": vitestConfig
+    }
+    for (const [file, content] of Object.entries(files)) {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), typeof content === "string" ? content : JSON.stringify(content, null, 2) + "\n")
+    }
+    assert.deepEqual(viteAppConfigs(root, ["packages/core"]).sort(), ["apps/deep/vite.config.mts", "apps/function/vite.config.ts", "apps/web/vite.config.ts", "packages/core/vitest.config.ts"])
+    const specsFor = () => ({ vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
+    const wired = wireViteApps({ root, packages: [{ dir: "packages/core" }], ts, specsFor, wired: ["packages/core/vitest.config.ts"] })
+    assert.deepEqual(wired.configs.sort(), ["apps/deep/vite.config.mts", "apps/web/vite.config.ts"])
+    assert.match(wired.warnings[0], /^apps\/function\/vite\.config\.ts: the config does not call defineConfig/)
+    assert.ok(readFileSync(join(root, "apps/web/vite.config.ts"), "utf8").includes("import vibelang from 'vibelang-vite'"))
+    assert.deepEqual(JSON.parse(readFileSync(join(root, "apps/web/package.json"), "utf8")).devDependencies, { vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
+    assert.equal(readFileSync(join(root, "apps/other/vite.config.ts"), "utf8"), vitestConfig)
+    assert.equal(readFileSync(join(root, "packages/core/vitest.config.ts"), "utf8"), vitestConfig)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

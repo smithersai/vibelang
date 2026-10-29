@@ -140,20 +140,7 @@ export function testConfigArgument(command, scripts = {}) {
 export function wireVite({ root, packages, test, ts, specsFor }) {
   const changed = []
   const warnings = []
-  const write = (file, before, after) => {
-    if (before === after) return
-    writeFileSync(join(root, file), after)
-    changed.push(file)
-  }
-  const wire = (file) => {
-    const text = readFileSync(join(root, file), "utf8")
-    write(file, text, addVitePlugin(text, ts))
-    let owner = posix.dirname(file)
-    while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
-    const manifest = posix.join(owner, "package.json")
-    const before = readFileSync(join(root, manifest), "utf8")
-    write(manifest, before, JSON.stringify(addVibeLangPlugin(JSON.parse(before), specsFor(owner)), null, 2) + "\n")
-  }
+  const wire = (file) => wireViteConfig({ root, file, ts, specsFor, changed })
   const testCwd = join(root, test.cwd)
   const scripts = existsSync(join(testCwd, "package.json")) ? JSON.parse(readFileSync(join(testCwd, "package.json"), "utf8")).scripts : undefined
   const named = testConfigArgument(test.command, scripts)
@@ -172,6 +159,115 @@ export function wireVite({ root, packages, test, ts, specsFor }) {
     }
     configs.push(posix.join(pkg.dir, name))
     wire(posix.join(pkg.dir, name))
+  }
+  return { changed, warnings, configs }
+}
+
+// Adds the plugin to one config, and the compiler and the plugin to the
+// package that owns it, the nearest one above it; records the files changed.
+function wireViteConfig({ root, file, ts, specsFor, changed }) {
+  const write = (path, before, after) => {
+    if (before === after) return
+    writeFileSync(join(root, path), after)
+    if (!changed.includes(path)) changed.push(path)
+  }
+  const text = readFileSync(join(root, file), "utf8")
+  write(file, text, addVitePlugin(text, ts))
+  let owner = posix.dirname(file)
+  while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
+  const manifest = posix.join(owner, "package.json")
+  const before = readFileSync(join(root, manifest), "utf8")
+  write(manifest, before, JSON.stringify(addVibeLangPlugin(JSON.parse(before), specsFor(owner)), null, 2) + "\n")
+}
+
+// Directories a repository walk skips: dependencies, hidden directories, and
+// the fixtures and templates a package ships rather than builds.
+const skippedDirectory = (name) => name === "node_modules" || name.startsWith(".") || name === "fixtures" || name === "__fixtures__" || name === "templates"
+
+/** The repository's workspace packages: { dir, manifest } for each package.json outside skipped directories. */
+export function repositoryPackages(root) {
+  const found = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const path = dir ? posix.join(dir, entry.name) : entry.name
+      if (entry.isDirectory()) {
+        if (!skippedDirectory(entry.name)) walk(path)
+      } else if (entry.name === "package.json") {
+        try {
+          found.push({ dir: dir || ".", manifest: JSON.parse(readFileSync(join(root, path), "utf8")) })
+        } catch {
+          // Not a manifest this walk can read.
+        }
+      }
+    }
+  }
+  walk("")
+  return found
+}
+
+// A dependency on a workspace package by its source: workspace:, file:, link: or *.
+const localSpec = /^(?:workspace:|file:|link:|\*$)/
+
+/**
+ * The Vite and Vitest configs that bundle migrated sources, as
+ * repository-relative paths: each config in a migrated package, or in a
+ * package that depends on one through workspace packages
+ * (`"foldkit": "workspace:*"`), outside fixtures and templates. migrated holds
+ * the migrated packages' directories.
+ */
+export function viteAppConfigs(root, migrated) {
+  const all = repositoryPackages(root)
+  const byName = new Map(all.filter((pkg) => pkg.manifest.name).map((pkg) => [pkg.manifest.name, pkg]))
+  const local = (pkg) => Object.entries({ ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies, ...pkg.manifest.peerDependencies })
+    .filter(([name, spec]) => typeof spec === "string" && localSpec.test(spec) && byName.has(name)).map(([name]) => byName.get(name))
+  const reaches = new Map()
+  const reachesMigrated = (pkg) => {
+    if (reaches.has(pkg.dir)) return reaches.get(pkg.dir)
+    reaches.set(pkg.dir, migrated.includes(pkg.dir))
+    const result = migrated.includes(pkg.dir) || local(pkg).some(reachesMigrated)
+    reaches.set(pkg.dir, result)
+    return result
+  }
+  const configs = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const path = dir ? posix.join(dir, entry.name) : entry.name
+      if (entry.isDirectory()) {
+        if (!skippedDirectory(entry.name)) walk(path)
+      } else if (viteConfigNames.includes(entry.name)) configs.push(path)
+    }
+  }
+  walk("")
+  const ownerOf = (file) => {
+    let owner = posix.dirname(file)
+    while (owner !== "." && !all.some((pkg) => pkg.dir === owner)) owner = posix.dirname(owner)
+    return all.find((pkg) => pkg.dir === owner)
+  }
+  return configs.filter((file) => {
+    const owner = ownerOf(file)
+    return owner !== undefined && reachesMigrated(owner)
+  })
+}
+
+/**
+ * Adds the vibelang-vite plugin to every Vite and Vitest config that bundles
+ * migrated sources (viteAppConfigs): an app's, an example's or a website's
+ * build and dev server, not only the tests'. wired holds the configs already
+ * wired. A config whose shape addVitePlugin does not know is left as it is,
+ * with a warning. Returns the files changed, the warnings and the configs.
+ */
+export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
+  const changed = []
+  const warnings = []
+  const configs = []
+  for (const file of viteAppConfigs(root, packages.map((pkg) => pkg.dir))) {
+    if (wired.includes(file)) continue
+    try {
+      wireViteConfig({ root, file, ts, specsFor, changed })
+      configs.push(file)
+    } catch (error) {
+      warnings.push(`${file}: ${error.message}`)
+    }
   }
   return { changed, warnings, configs }
 }
