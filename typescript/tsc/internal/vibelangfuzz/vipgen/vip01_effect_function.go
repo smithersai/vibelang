@@ -47,10 +47,35 @@ func init() {
 		},
 		Declare: func(f *Func) Node { return &EffectFunction{Func: f} },
 	})
+	// Chapter 1 (docs/design/src/001-functions.md) gives the default export's
+	// reading in its table: "`export default effect function (p) { B }` |
+	// `export default function (p) { return Effect.gen(function* () { B })
+	// }`". The focus makes main the module's default export, which the
+	// worker runs when the module has no main export.
+	Register(&Construct{
+		Key:      "vip01.default-export",
+		VIP:      1,
+		Requires: []string{"vip01.effect-function"},
+		Citations: []Citation{
+			{
+				VIP:      1,
+				Template: "export default function (‹params›) { return Effect.gen(function* () { ‹body› }) }",
+				Quote:    "`effect` goes exactly where TypeScript allows `async`",
+				Reading:  "VIP-1 shows no default export. TypeScript allows `export default async function () { }`, so `export default effect function () { }` is allowed too, and Chapter 1's table reads it as `export default function (p) { return Effect.gen(function* () { B }) }`.",
+			},
+		},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			s.Fn.Default = true
+			s.Fn.Form = Lookup("vip01.effect-function")
+			return []Stmt{&Event{Label: g.Label()}}
+		},
+	})
 }
 
 // An EffectFunction is `effect function f(p0: number) { … }`, read as
-// `function f(p0) { return Effect.gen(function* () { … }) }`.
+// `function f(p0) { return Effect.gen(function* () { … }) }`; with Default
+// set, `export default effect function (p0: number) { … }`, read as
+// `export default function (p0) { return Effect.gen(function* () { … }) }`.
 type EffectFunction struct{ *Func }
 
 func (d *EffectFunction) Vibe(w *Writer) {
@@ -70,14 +95,19 @@ func (d *EffectFunction) Effect(w *Writer) {
 }
 
 func (d *EffectFunction) head(w *Writer, keyword string, param func(string) string) {
-	if d.Export {
+	name := d.Name
+	switch {
+	case d.Default:
+		w.Write("export default ")
+		name = ""
+	case d.Export:
 		w.Write("export ")
 	}
 	params := make([]string, len(d.Params))
 	for i, p := range d.Params {
 		params[i] = param(p)
 	}
-	w.Write(keyword + d.Name + "(" + strings.Join(params, ", ") + ") ")
+	w.Write(keyword + name + "(" + strings.Join(params, ", ") + ") ")
 }
 
 // A Call calls an effect function, which gives its Effect unrun.

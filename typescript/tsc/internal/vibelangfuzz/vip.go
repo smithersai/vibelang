@@ -15,7 +15,10 @@ import (
 // each VIP: success, failure, defect or interruption, with finalizers in the
 // same order." The worker's vip mode runs a module's main() under a virtual
 // clock and answers its Exit and event log in a canonical encoding;
-// VIPCompare compares two answers exactly, after renaming fiber ids.
+// VIPCompare compares two answers exactly, after renaming fiber ids. A
+// module with no main export runs its default export instead (Chapter 1:
+// "`export default effect function (p) { B }` | `export default function
+// (p) { return Effect.gen(function* () { B }) }`").
 
 // vipMaxSteps bounds how many 1 ms steps of virtual time a program may
 // take before the worker reports it stuck.
@@ -32,6 +35,16 @@ const vipMaxSteps = 10000
 // cause in order, with its kind and payload; it drops only stacks and
 // annotations, and tags what JSON cannot say: undefined, bigint, NaN, the
 // infinities, -0, classes, errors and fiber ids.
+//
+// An Exit, Cause or cause reason anywhere inside a success value or a
+// failure's payload is encoded like the top-level Exit, as {"$exit": …},
+// {"$cause": [reasons]} or {"$reason": …}, so its fiber ids are tagged and
+// renamed with the top-level ones (CanonicalVIPExit). It is recognized by
+// Effect's own type ids, the properties "~effect/Exit", "~effect/Cause" and
+// "~effect/Cause/Reason" in effect 4.0.6 (strings, not symbols), through
+// Exit.isExit, Cause.isCause and Cause.isReason; an object that only has a
+// _tag of "Success" stays an object. Events are labels, which ev turns into
+// strings, so they hold no Exit.
 const vipWorker = `
 const vipEncode = (value, depth = 0, seen = new Set()) => {
   switch (typeof value) {
@@ -52,6 +65,9 @@ const vipEncode = (value, depth = 0, seen = new Set()) => {
   seen.add(value);
   try {
     const next = (v) => vipEncode(v, depth + 1, seen);
+    if (Exit.isExit(value)) return { $exit: vipExit(value, next) };
+    if (Cause.isCause(value)) return { $cause: value.reasons.map((r) => vipReason(r, next)) };
+    if (Cause.isReason(value)) return { $reason: vipReason(value, next) };
     if (Array.isArray(value)) return { $array: value.map(next) };
     if (value instanceof Map) return { $map: [...value].map(([k, v]) => [next(k), next(v)]) };
     if (value instanceof Set) return { $set: [...value].map(next) };
@@ -72,12 +88,13 @@ const vipEncode = (value, depth = 0, seen = new Set()) => {
     seen.delete(value);
   }
 };
-const vipExit = (exit) => Exit.isSuccess(exit)
-  ? { _tag: "Success", value: vipEncode(exit.value) }
-  : { _tag: "Failure", reasons: exit.cause.reasons.map((r) =>
-      Cause.isFailReason(r) ? { _tag: "Fail", error: vipEncode(r.error) }
-      : Cause.isDieReason(r) ? { _tag: "Die", defect: vipEncode(r.defect) }
-      : { _tag: "Interrupt", fiberId: r.fiberId === undefined ? { $undefined: true } : { $fiber: r.fiberId } }) };
+const vipReason = (r, encode) =>
+  Cause.isFailReason(r) ? { _tag: "Fail", error: encode(r.error) }
+  : Cause.isDieReason(r) ? { _tag: "Die", defect: encode(r.defect) }
+  : { _tag: "Interrupt", fiberId: r.fiberId === undefined ? { $undefined: true } : { $fiber: r.fiberId } };
+const vipExit = (exit, encode = vipEncode) => Exit.isSuccess(exit)
+  ? { _tag: "Success", value: encode(exit.value) }
+  : { _tag: "Failure", reasons: exit.cause.reasons.map((r) => vipReason(r, encode)) };
 async function vip(entry, maxSteps) {
   try {
     const { References } = await import("effect");
@@ -85,7 +102,8 @@ async function vip(entry, maxSteps) {
     const events = await import("vip-events");
     const module = await import(pathToFileURL(entry).href);
     events.reset();
-    const program = module.main();
+    const main = "main" in module ? module.main : module.default;
+    const program = main();
     const called = events.events();
     if (!Effect.isEffect(program)) return { kind: "plain", called, events: called, exit: { _tag: "Success", value: vipEncode(program) } };
     const driven = Effect.gen(function* () {
@@ -124,8 +142,9 @@ type VIPOutcome struct {
 	Log    string   `json:"log,omitempty"`
 }
 
-// RunVIP runs the export main of a module in the result's directory, after
-// writing the result's outputs there.
+// RunVIP runs the export main of a module, or its default export when it
+// has no main, in the result's directory, after writing the result's
+// outputs there.
 func (n *Node) RunVIP(result *Result, file string) VIPOutcome {
 	if crash := writeOutputs(result); crash != "" {
 		return VIPOutcome{Kind: "crash", Log: crash}
@@ -150,7 +169,10 @@ func (n *Node) RunVIP(result *Result, file string) VIPOutcome {
 // order, and each fiber id renamed to the order of its first appearance,
 // which keeps which reasons name the same fiber and nothing else (fiber ids
 // count every fiber the runtime started, the driver's too). Nothing is
-// sorted, so the order of reasons stays as the cause has it.
+// sorted, so the order of reasons stays as the cause has it. An Exit, Cause
+// or reason nested in a payload ($exit, $cause, $reason) must have the
+// top-level shapes, and its fiber ids share the top-level Exit's renaming,
+// so a fiber keeps one name across the whole value.
 func CanonicalVIPExit(raw json.RawMessage) (string, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
@@ -158,35 +180,28 @@ func CanonicalVIPExit(raw json.RawMessage) (string, error) {
 	if err := decoder.Decode(&value); err != nil {
 		return "", fmt.Errorf("an Exit that is not JSON: %w: %s", err, raw)
 	}
-	exit, ok := value.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("an Exit that is not an object: %s", raw)
-	}
-	switch exit["_tag"] {
-	case "Success":
-		if _, ok := exit["value"]; !ok || len(exit) != 2 {
-			return "", fmt.Errorf("a Success needs exactly _tag and value: %s", raw)
-		}
-	case "Failure":
-		reasons, ok := exit["reasons"].([]any)
-		if !ok || len(exit) != 2 {
-			return "", fmt.Errorf("a Failure needs exactly _tag and reasons: %s", raw)
-		}
-		for _, r := range reasons {
-			reason, _ := r.(map[string]any)
-			payload := map[any]string{"Fail": "error", "Die": "defect", "Interrupt": "fiberId"}[reason["_tag"]]
-			if _, ok := reason[payload]; payload == "" || !ok || len(reason) != 2 {
-				return "", fmt.Errorf("a reason that is not Fail(error), Die(defect) or Interrupt(fiberId): %s", raw)
-			}
-		}
-	default:
-		return "", fmt.Errorf("an Exit that is neither Success nor Failure: %s", raw)
+	if err := checkVIPExit(value); err != nil {
+		return "", fmt.Errorf("%w: %s", err, raw)
 	}
 	fibers := map[string]int{}
+	var malformed error
 	var rename func(any) any
 	rename = func(v any) any {
 		switch v := v.(type) {
 		case map[string]any:
+			if len(v) == 1 {
+				var err error
+				if x, ok := v["$exit"]; ok {
+					err = checkVIPExit(x)
+				} else if x, ok := v["$cause"]; ok {
+					err = checkVIPReasons(x)
+				} else if x, ok := v["$reason"]; ok {
+					err = checkVIPReasons([]any{x})
+				}
+				if err != nil && malformed == nil {
+					malformed = fmt.Errorf("nested: %w", err)
+				}
+			}
 			if id, ok := v["$fiber"]; ok && len(v) == 1 {
 				key := fmt.Sprint(id)
 				if _, seen := fibers[key]; !seen {
@@ -210,8 +225,52 @@ func CanonicalVIPExit(raw json.RawMessage) (string, error) {
 		}
 		return v
 	}
-	data, err := json.Marshal(rename(value))
+	canonical := rename(value)
+	if malformed != nil {
+		return "", fmt.Errorf("%w: %s", malformed, raw)
+	}
+	data, err := json.Marshal(canonical)
 	return string(data), err
+}
+
+// checkVIPExit checks an encoded Exit's shape: a Success with exactly _tag
+// and value, or a Failure with exactly _tag and reasons.
+func checkVIPExit(value any) error {
+	exit, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("an Exit that is not an object")
+	}
+	switch exit["_tag"] {
+	case "Success":
+		if _, ok := exit["value"]; !ok || len(exit) != 2 {
+			return fmt.Errorf("a Success needs exactly _tag and value")
+		}
+	case "Failure":
+		if _, ok := exit["reasons"]; !ok || len(exit) != 2 {
+			return fmt.Errorf("a Failure needs exactly _tag and reasons")
+		}
+		return checkVIPReasons(exit["reasons"])
+	default:
+		return fmt.Errorf("an Exit that is neither Success nor Failure")
+	}
+	return nil
+}
+
+// checkVIPReasons checks an encoded cause's reasons: each is Fail(error),
+// Die(defect) or Interrupt(fiberId), with nothing else.
+func checkVIPReasons(value any) error {
+	reasons, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("reasons that are not an array")
+	}
+	for _, r := range reasons {
+		reason, _ := r.(map[string]any)
+		payload := map[any]string{"Fail": "error", "Die": "defect", "Interrupt": "fiberId"}[reason["_tag"]]
+		if _, ok := reason[payload]; payload == "" || !ok || len(reason) != 2 {
+			return fmt.Errorf("a reason that is not Fail(error), Die(defect) or Interrupt(fiberId)")
+		}
+	}
+	return nil
 }
 
 // VIPCompare compares two runs of programs VIP-31 says end alike. It

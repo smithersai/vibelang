@@ -27,6 +27,17 @@ func (e *vipEnv) runVIPModule(t *testing.T, name, body string) VIPOutcome {
 	return e.node.RunVIP(&Result{Dir: dir, Outputs: map[string]string{}}, "main.mjs")
 }
 
+// allExits settles one Effect of each kind concurrently, so the
+// interruption's fiber id is a child's, which differs from run to run
+// (fz-run's vip18.all-settled-array).
+const allExits = `export const main = () => Effect.all([Effect.succeed(1), Effect.fail(2), Effect.die(3), Effect.interrupt].map(Effect.exit), { concurrency: "unbounded" })`
+
+const allExitsEncoded = `{"_tag":"Success","value":{"$array":[` +
+	`{"$exit":{"_tag":"Success","value":1}},` +
+	`{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Fail","error":2}]}},` +
+	`{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Die","defect":3}]}},` +
+	`{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}}]}}`
+
 // TestVIPExitEncoding runs hand-written Exits of each kind through the
 // worker and checks their canonical encoding and the comparison's verdict
 // on pairs that agree and pairs that do not (VIP-31: "the same `Exit` ...:
@@ -65,6 +76,29 @@ func TestVIPExitEncoding(t *testing.T) {
 		"hot-later": {`export const main = () => { ev("hot"); return Effect.sync(() => ev("later")) }`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
 		"later":     {`export const main = () => Effect.sync(() => { ev("hot"); ev("later") })`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
 		"plain":     {`export const main = () => 1`, "plain", `{"_tag":"Success","value":1}`},
+		// A module with no main export runs its default export (Chapter 1:
+		// "`export default effect function (p) { B }`").
+		"default": {`export default () => Effect.sync(() => { ev("d"); return 1 })`, "exit", `{"_tag":"Success","value":1}`},
+		// Exits nested in a success value are encoded like the top-level
+		// one, so the interrupted child's fiber id is renamed and two runs,
+		// whose fibers have other ids, encode alike.
+		"all-exits":       {allExits, "exit", allExitsEncoded},
+		"all-exits-again": {allExits, "exit", allExitsEncoded},
+		// The fiber that interrupts itself is named once, in the nested Exit
+		// and in the top-level reason alike; a child fiber gets its own name.
+		"nested-same-fiber": {"import { Cause } from \"effect\"\n" +
+			`export const main = () => Effect.exit(Effect.interrupt).pipe(Effect.flatMap((e) => Effect.failCause(Cause.combine(Cause.fail(e), e.cause))))`, "exit",
+			`{"_tag":"Failure","reasons":[{"_tag":"Fail","error":{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}}},{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}`},
+		"nested-other-fiber": {"import { Cause, Fiber } from \"effect\"\n" +
+			`export const main = () => Effect.forkChild(Effect.exit(Effect.interrupt)).pipe(Effect.flatMap(Fiber.join), Effect.flatMap((e) => Effect.exit(Effect.interrupt).pipe(Effect.flatMap((own) => Effect.failCause(Cause.combine(Cause.fail(e), own.cause))))))`, "exit",
+			`{"_tag":"Failure","reasons":[{"_tag":"Fail","error":{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}}},{"_tag":"Interrupt","fiberId":{"$fiber":1}}]}`},
+		// A Cause in a failure's payload is encoded as its reasons.
+		"nested-cause": {"import { Cause } from \"effect\"\n" + `export const main = () => Effect.fail(Cause.die("D"))`, "exit",
+			`{"_tag":"Failure","reasons":[{"_tag":"Fail","error":{"$cause":[{"_tag":"Die","defect":"D"}]}}]}`},
+		// Only Effect's type id makes an Exit: a plain object with the tag
+		// of one stays an object.
+		"exit-lookalike": {`export const main = () => Effect.succeed({ _tag: "Success", value: 1 })`, "exit",
+			`{"_tag":"Success","value":{"$class":"Object","fields":{"_tag":"Success","value":1}}}`},
 	}
 	got := map[string]VIPOutcome{}
 	for name, m := range modules {
@@ -87,6 +121,9 @@ func TestVIPExitEncoding(t *testing.T) {
 	if s := got["sleep"]; s.Steps != 5 || strings.Join(s.Events, ",") != "late" {
 		t.Errorf("sleep(5) took %d steps and logged %q; want 5 steps and [late]", s.Steps, s.Events)
 	}
+	if d := got["default"]; strings.Join(d.Events, ",") != "d" {
+		t.Errorf("a module's default export logged %q, want [d]", d.Events)
+	}
 	if h := got["hot"]; strings.Join(h.Called, ",") != "hot" {
 		t.Errorf("a main() that logs when called reports Called %q", h.Called)
 	}
@@ -107,6 +144,8 @@ func TestVIPExitEncoding(t *testing.T) {
 		{"hot-later", "later", "called"},
 		{"success", "never", "kind"},
 		{"plain", "success", "kind"},
+		{"all-exits", "all-exits-again", ""},
+		{"nested-same-fiber", "nested-other-fiber", "payload"},
 	} {
 		if aspect, diff := VIPCompare(got[c.want], got[c.got]); aspect != c.aspect {
 			t.Errorf("VIPCompare(%s, %s) = %q, want %q: %s", c.want, c.got, aspect, c.aspect, diff)
@@ -145,6 +184,16 @@ func TestVIPCanonicalExit(t *testing.T) {
 	if canonical(interrupts("17", "4", "17")) == canonical(interrupts("5", "9", "9")) {
 		t.Error("renaming fibers equates different identities")
 	}
+	// A nested Exit's fiber ids share the top-level renaming.
+	nested := func(inner, outer string) string {
+		return `{"_tag":"Failure","reasons":[{"_tag":"Fail","error":{"$exit":{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":` + inner + `}}]}}},{"_tag":"Interrupt","fiberId":{"$fiber":` + outer + `}}]}`
+	}
+	if got, want := canonical(nested("31", "31")), nested("0", "0"); got != want {
+		t.Errorf("nested fiber ids:\n got %s\nwant %s", got, want)
+	}
+	if canonical(nested("31", "31")) == canonical(nested("31", "7")) {
+		t.Error("a nested fiber and another top-level fiber get one name")
+	}
 	if canonical(`{"_tag":"Failure","reasons":[{"_tag":"Fail","error":"A"},{"_tag":"Die","defect":"D"}]}`) == canonical(`{"_tag":"Failure","reasons":[{"_tag":"Die","defect":"D"},{"_tag":"Fail","error":"A"}]}`) {
 		t.Error("reasons in another order compare equal")
 	}
@@ -155,6 +204,9 @@ func TestVIPCanonicalExit(t *testing.T) {
 		`{"_tag":"Failure","reasons":[{"_tag":"Fail","error":1,"annotations":{}}]}`,
 		`{"_tag":"Failure","reasons":[{"_tag":"Sequential","error":1}]}`,
 		`{"_tag":"Exit","value":1}`,
+		`{"_tag":"Success","value":{"$exit":{"_tag":"Exit","value":1}}}`,
+		`{"_tag":"Success","value":{"$cause":[{"_tag":"Fail"}]}}`,
+		`{"_tag":"Success","value":{"$array":[{"$reason":{"_tag":"Sequential","error":1}}]}}`,
 	} {
 		if _, err := CanonicalVIPExit(json.RawMessage(bad)); err == nil {
 			t.Errorf("%s encodes", bad)

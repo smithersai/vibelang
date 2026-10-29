@@ -161,7 +161,11 @@ type Func struct {
 	Params []string
 	Body   []Stmt
 	Export bool
-	Void   bool
+	// Default makes the function its module's default export: both prints
+	// write `export default` and leave out the name. The worker runs a
+	// module's default export when it has no main export.
+	Default bool
+	Void    bool
 	// Form is the construct that declares the function, or nil for a plain
 	// program's plain main.
 	Form *Construct

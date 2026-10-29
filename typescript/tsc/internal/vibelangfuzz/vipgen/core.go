@@ -58,10 +58,15 @@ func (d *PlainFunction) Vibe(w *Writer) {
 func (d *PlainFunction) Effect(w *Writer) { d.Vibe(w) }
 
 func (d *PlainFunction) head(w *Writer) {
-	if d.Export {
+	name := d.Name
+	switch {
+	case d.Default:
+		w.Write("export default ")
+		name = ""
+	case d.Export:
 		w.Write("export ")
 	}
-	w.Write("function " + d.Name + "(" + strings.Join(d.Params, ", ") + ") ")
+	w.Write("function " + name + "(" + strings.Join(d.Params, ", ") + ") ")
 }
 
 // An If runs Then when Cond holds.
