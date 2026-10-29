@@ -9,11 +9,12 @@ Sources: [VIP-15](../vips/0015-schema-declarations.md), [VIP-16](../vips/0016-da
 ```text
 SchemaDeclaration = "export"? "schema" Name "{" SchemaFields "}"
                   | "export"? "schema" Name "=" Type
-SchemaFields      = ("readonly"? PropertyName "?"? ":" Type Separator?)*
-Separator         = ";" | LineTerminator   (as between interface members)
+SchemaFields      = (Field TypeMemberSeparator)* Field?
+Field             = "readonly"? PropertyName "?"? ":" Type
+TypeMemberSeparator = ";" | "," | LineTerminator
 ```
 
-`schema` is a contextual keyword on the same line as its name.
+`schema` is a contextual keyword on the same line as its name. Fields use TypeScript type-member separators: `;`, `,` or a line terminator between members; the last separator is optional. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
 
 ### Meaning
 
@@ -47,8 +48,8 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | --- | --- |
 | `string`, `number`, `boolean`, `bigint` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt` |
 | single literal `"a"` | `Schema.Literal("a")` (likewise numeric, boolean and bigint literals) |
-| union of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
-| other union `A \| B` | `Schema.Union([A, B])`, in source order |
+| union consisting entirely of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
+| other union `A \| B` | `Schema.Union([A, B])`, each member mapped separately in source order |
 | `null`, `undefined` | `Schema.Null`, `Schema.Undefined` |
 | another schema name `Address` | `Address` |
 | `T[]`, `Array<T>` | `Schema.mutable(Schema.Array(S))` |
@@ -62,6 +63,8 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
 | readonly field `readonly name: T` | `name: S` |
 | readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |
+
+For example, `"a" | "b" | null` maps to `Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.
 
 `Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint.
 
@@ -114,10 +117,12 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
 Separator       = ";" | LineTerminator   (as between interface members)
 Variant         = Name ("{" Fields "}")?
-Fields          = (PropertyName "?"? ":" Type Separator?)*
+Fields          = (Field TypeMemberSeparator)* Field?
+Field           = "readonly"? PropertyName "?"? ":" Type
+TypeMemberSeparator = ";" | "," | LineTerminator
 ```
 
-`data` is a contextual keyword on the same line as its name, so `const data = …` still works.
+`data` is a contextual keyword on the same line as its name, so `const data = …` still works. Variant fields use the same TypeScript type-member separators and optional `readonly` modifier as schema fields; variants themselves are separated by `;` or a line terminator.
 
 ### Meaning
 
@@ -128,7 +133,7 @@ Fields          = (PropertyName "?"? ":" Type Separator?)*
 data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
 const tracking = "outer"
 const d = Delivery.Sent({ tracking: "1Z" })
-const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none" }
+const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none"; }
 ```
 
 ```ts effect
