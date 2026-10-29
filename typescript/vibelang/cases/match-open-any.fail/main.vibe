@@ -1,7 +1,0 @@
-// expect: EK4701
-// any is open (D346), so literal arms cannot cover it. It compiled before.
-export function describe(x: any): number {
-  return match (x) {
-    when "a": 1;
-  }
-}

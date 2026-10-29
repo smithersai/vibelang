@@ -72,24 +72,18 @@ func checkPatterns(c *checker.Checker, file *ast.SourceFile) {
 
 // checkExhaustive reports a match whose subject still has cases at the
 // $noMatch call that ends its arms. A subject that is a finite union is
-// covered when its arms leave nothing of it. Any other subject is open
-// (D346, D428): string or number without a literal type, unknown, any,
-// object, a type parameter, or a class that is not closed. No literal or
-// open class arm covers it, so it needs a default arm, an arm that matches
-// every value its type has, such as `when String:` over a string or a closed
-// class's arm over an open family's base, or an arm that always matches, as
-// a bind-only arm `when let other:` does.
+// covered when its arms leave nothing of it. Any other member, such as
+// string, number, an untagged object or class instance, unknown or any,
+// turns the check off for that match, which keeps TC39's run-time TypeError
+// (VIP-7 amended; decided details 78 and 102; foldkit-71: slider's
+// { orientation, alignment } object over four arms).
 func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	if afterIrrefutableArm(call) {
 		return
 	}
 	declared, left := matchRemainder(c, call)
-	open := false
 	if declared == nil {
-		if declared, left = matchSubjectTypes(c, call); declared == nil || hasUnconditionalArm(call) {
-			return
-		}
-		open = true
+		return
 	}
 	// Flow analysis already reported its complexity limit. Its error sentinel
 	// is neither evidence of a missing case nor a proof of exhaustiveness.
@@ -110,18 +104,11 @@ func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		leftText = nested
 	}
 	d := reportAt(c, file, call.Expression().Loc, EK4701, declaredText, leftText)
-	if open {
-		note(d, "{0} is open: it is not a finite union of literals, data variants, and closed classes, so arms over its cases cannot cover it.", declaredText)
-	}
 	for _, why := range uncountedArmNotes(c, file, call) {
 		note(d, why)
 	}
 	if why := signedZeroArmNote(c, file, call, left); why != "" {
 		note(d, why)
-	}
-	if open {
-		note(d, "Add a default arm, or narrow the subject's declared type to the cases the match handles.")
-		return
 	}
 	note(d, "Add an arm for each case that is left, or a default arm.")
 }
@@ -170,43 +157,6 @@ func signedZeroArmNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return ""
 	}
 	return "when " + written + ": covers no zero case: it matches by SameValue, which tells -0 from +0, and the type 0 admits both. Write when 0:, which matches both, or a default arm."
-}
-
-// hasUnconditionalArm reports whether an arm of the match that call, its
-// $noMatch call, ends leaves the match whatever the subject is: an arm with
-// no test, such as a bind-only arm `when let other:`, which covers every
-// case as default does.
-func hasUnconditionalArm(call *ast.Node) bool {
-	statement := call.Parent
-	for statement != nil && !ast.IsStatement(statement) {
-		statement = statement.Parent
-	}
-	if statement == nil || statement.Parent == nil || !ast.IsBlock(statement.Parent) {
-		return false
-	}
-	for _, arm := range statement.Parent.AsBlock().Statements.Nodes {
-		if arm == statement {
-			break
-		}
-		if ast.IsBlock(arm) && endsInJump(arm) {
-			return true
-		}
-	}
-	return false
-}
-
-// endsInJump reports whether block's last statement leaves it: a return,
-// throw, break, or continue that no test guards.
-func endsInJump(block *ast.Node) bool {
-	statements := block.AsBlock().Statements.Nodes
-	if len(statements) == 0 {
-		return false
-	}
-	switch statements[len(statements)-1].Kind {
-	case ast.KindReturnStatement, ast.KindThrowStatement, ast.KindBreakStatement, ast.KindContinueStatement:
-		return true
-	}
-	return false
 }
 
 // provenExhaustive reports whether D209 proves that call, the $noMatch call
@@ -286,9 +236,11 @@ func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *chec
 }
 
 // isFiniteMatchType reports whether t is a finite union a match can cover:
-// each member a literal, an enum member, null, undefined, or void, or an
-// object type whose _tag is a string literal (tagged errors, Option, Exit,
-// Result).
+// each member a literal, an enum member, null, undefined, or void, or a
+// tagged member, an object type whose _tag is what TypeScript calls a
+// literal type, or a union of those (chapter 4, Tagged members: "a string,
+// number, bigint, boolean, enum, `null` or `undefined` literal, a `unique
+// symbol`, or a union of those"; tagged errors, Option, Exit, Result).
 func isFiniteMatchType(c *checker.Checker, t *checker.Type) bool {
 	members := []*checker.Type{t}
 	if t.Flags()&checker.TypeFlagsUnion != 0 {
@@ -300,13 +252,29 @@ func isFiniteMatchType(c *checker.Checker, t *checker.Type) bool {
 			continue
 		}
 		if flags&checker.TypeFlagsObject != 0 {
-			if tag := c.GetPropertyOfType(m, "_tag"); tag != nil && c.GetTypeOfSymbol(tag).Flags()&checker.TypeFlagsStringLiteral != 0 {
+			if tag := c.GetPropertyOfType(m, "_tag"); tag != nil && isLiteralTagType(c.GetTypeOfSymbol(tag)) {
 				continue
 			}
 		}
 		return false
 	}
 	return true
+}
+
+// isLiteralTagType reports whether t, a member's _tag type, is a literal
+// type a switch (s._tag) checks: a string, number, bigint, boolean or enum
+// literal, null, undefined, a unique symbol, or a union of those.
+func isLiteralTagType(t *checker.Type) bool {
+	members := []*checker.Type{t}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		members = t.Types()
+	}
+	for _, m := range members {
+		if m.Flags()&(checker.TypeFlagsStringLiteral|checker.TypeFlagsNumberLiteral|checker.TypeFlagsBigIntLiteral|checker.TypeFlagsBooleanLiteral|checker.TypeFlagsEnumLiteral|checker.TypeFlagsNull|checker.TypeFlagsUndefined|checker.TypeFlagsUniqueESSymbol) == 0 {
+			return false
+		}
+	}
+	return len(members) > 0
 }
 
 // reportPatternError reports the pattern a $patternError call stands for, at

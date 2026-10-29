@@ -1,9 +1,0 @@
-// expect: EK4701
-// A string without a literal type is open (D346): literal arms cannot cover
-// it, so the match needs a default arm. It compiled before and threw at run
-// time for any other string.
-export function describe(x: string): number {
-  return match (x) {
-    when "a": 1;
-  }
-}

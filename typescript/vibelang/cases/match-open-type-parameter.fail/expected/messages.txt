@@ -1,3 +1,0 @@
-This match does not handle every case of T: T is left.
-T is open: it is not a finite union of literals, data variants, and closed classes, so arms over its cases cannot cover it.
-Add a default arm, or narrow the subject's declared type to the cases the match handles.

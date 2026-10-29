@@ -333,8 +333,6 @@ FuzzFailuresSpec feature:inferred-catch-binding-rethrow compiler VIP-4: the chap
 FuzzFailuresSpec corpus:inferred-catch-binding-rethrow compiler VIP-4: minimized reproduction of feature:inferred-catch-binding-rethrow; lane w2-throw
 FuzzFailuresSpec feature:match-guard-call compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:match-guard-call compiler VIP-4: minimized reproduction of feature:match-guard-call; lane w2-throw
-FuzzFailuresSpec feature:match-no-match-implicit compiler VIP-4: the chapter accepts the program, which draws EK4701 on main 90a26cf8; lane fix-vip-match (EK4701 on an open subject), then lane w2-throw
-FuzzFailuresSpec corpus:match-no-match-implicit compiler VIP-4: minimized reproduction of feature:match-no-match-implicit; lane fix-vip-match (EK4701 on an open subject), then lane w2-throw
 FuzzFailuresSpec feature:promise-union compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:promise-union compiler VIP-4: minimized reproduction of feature:promise-union; lane w2-throw
 FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw

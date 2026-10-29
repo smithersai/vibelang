@@ -1,8 +1,0 @@
-// expect: EK4701
-// object is open (D346): an arm over one class of it cannot cover it. It
-// compiled before.
-export function describe(x: object): number {
-  return match (x) {
-    when Date: 1;
-  }
-}

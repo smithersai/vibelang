@@ -35,18 +35,6 @@ FuzzDataSpecRules feature:schema-error-priority-constructor compiler VIP-29: sch
 FuzzDataSpecRules corpus:data-schema-error-priority-constructor compiler VIP-29: schema-error-priority-constructor does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-constructor
 FuzzDataSpecRules feature:declaration-schema compiler VIP-15: exported schema declarations omit Schema.mutableKey wrappers for writable fields, changing instance and constructor types; lane vip-decls
 FuzzDataSpecRules corpus:data-declaration-schema compiler VIP-15: minimized exported writable schema contract; lane vip-decls; reproduction of feature:declaration-schema
-FuzzDataSpecRules feature:exhaustive-open-number compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-number compiler VIP-7: minimized exhaustive-open-number witness; lane vip-match; reproduction of feature:exhaustive-open-number
-FuzzDataSpecRules feature:exhaustive-open-string compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-string compiler VIP-7: minimized exhaustive-open-string witness; lane vip-match; reproduction of feature:exhaustive-open-string
-FuzzDataSpecRules feature:exhaustive-open-unknown compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-unknown compiler VIP-7: minimized exhaustive-open-unknown witness; lane vip-match; reproduction of feature:exhaustive-open-unknown
-FuzzDataSpecRules feature:exhaustive-open-any compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-any compiler VIP-7: minimized exhaustive-open-any witness; lane vip-match; reproduction of feature:exhaustive-open-any
-FuzzDataSpecRules feature:exhaustive-open-object compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-object compiler VIP-7: minimized exhaustive-open-object witness; lane vip-match; reproduction of feature:exhaustive-open-object
-FuzzDataSpecRules feature:exhaustive-open-class compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-open-class compiler VIP-7: minimized exhaustive-open-class witness; lane vip-match; reproduction of feature:exhaustive-open-class
 FuzzDataSpecRules feature:exhaustive-and-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
 FuzzDataSpecRules corpus:data-exhaustive-and-does-not-cover compiler VIP-7: minimized exhaustive-and-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-and-does-not-cover
 FuzzDataSpecRules feature:exhaustive-not-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
@@ -65,12 +53,6 @@ FuzzDataSpecRules feature:tagged-shared-bare compiler VIP-7: the documented tagg
 FuzzDataSpecRules corpus:data-tagged-shared-bare compiler VIP-7: minimized tagged-shared-bare witness; lane vip-match
 FuzzDataSpecRules feature:tagged-union-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
 FuzzDataSpecRules corpus:data-tagged-union-complete compiler VIP-7: minimized tagged-union-complete witness; lane vip-match
-FuzzDataSpecRules feature:tagged-wide-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
-FuzzDataSpecRules corpus:data-tagged-wide-disabled compiler VIP-7: minimized tagged-wide-disabled witness; lane vip-match
-FuzzDataSpecRules feature:tagged-template-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
-FuzzDataSpecRules corpus:data-tagged-template-disabled compiler VIP-7: minimized tagged-template-disabled witness; lane vip-match
-FuzzDataSpecRules feature:tagged-other-discriminant-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
-FuzzDataSpecRules corpus:data-tagged-other-discriminant-disabled compiler VIP-7: minimized tagged-other-discriminant-disabled witness; lane vip-match
 FuzzVIPDifferential compile:TS2339/vip07.custom-match-type-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-custom-match-type-plain compiler VIP-7: minimized vip07.custom-match-type-plain probe; lane vip-match
 FuzzVIPDifferential exit:exit-tag/vip07.exhaustive-runtime-plain compiler VIP-7: ordinary try/catch does not catch the no-match TypeError; match must stay in its enclosing plain activation; lane vip-core2
@@ -85,7 +67,7 @@ FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-failure-plain compiler
 FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-success-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
 FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-local-option-plain compiler VIP-7: minimized vip07.local-option-plain probe; lane vip-match
-FuzzVIPDifferential compile:EK4701/vip07.no-match-plain compiler VIP-7: an unknown subject incorrectly draws EK4701; exhaustiveness applies only to the specified finite subject kinds; lane vip-match
+FuzzVIPDifferential exit:exit-tag/vip07.no-match-plain compiler VIP-7: with the open-subject EK4701 gone (foldkit-71), the probe runs into the vip07.exhaustive-runtime-plain gap: ordinary try/catch does not catch the no-match TypeError (EK9204, runtime.$caught), and $noMatch throws TypeError("No match arm matched …") where chapter 004 throws new TypeError(); lane vip-core2
 FuzzVIPDifferential corpus:data-vip07-no-match-plain compiler VIP-7: minimized vip07.no-match-plain probe; lane vip-match
 FuzzVIPDifferential compile:EK4704/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match

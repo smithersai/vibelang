@@ -1,9 +1,0 @@
-// expect: EK4701
-// Error is not a closed class: code anywhere may extend it or make a value
-// of its type that is no instance (D428), so `when Error:` removes nothing.
-// It compiled before.
-export function describe(e: Error): string {
-  return match (e) {
-    when Error: e.message;
-  }
-}

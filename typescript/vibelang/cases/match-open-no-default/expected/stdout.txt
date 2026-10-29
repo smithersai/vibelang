@@ -1,0 +1,14 @@
+any: 1 | TypeError: No match arm matched "b"
+error: boom | TypeError: No match arm matched [object Object]
+number: one | TypeError: No match arm matched 2
+object: 1 | TypeError: No match arm matched [object Object]
+string: 1 | TypeError: No match arm matched "b"
+mixed: 2 | TypeError: No match arm matched [object Object]
+ts class: 1 | TypeError: No match arm matched [object Object]
+type parameter: 1 | TypeError: No match arm matched 3
+unknown: 1 | TypeError: No match arm matched null
+vibe class: point | TypeError: No match arm matched [object Object]
+slider: ve | TypeError: No match arm matched [object Object]
+optional field: 1 | TypeError: No match arm matched [object Object]
+mixed union: 1 | TypeError: No match arm matched [object Object]
+error tag: 1

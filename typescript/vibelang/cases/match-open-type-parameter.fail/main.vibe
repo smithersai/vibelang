@@ -1,8 +1,0 @@
-// expect: EK4701
-// A type parameter is open (D346): any type may stand for it, so literal
-// arms cannot cover it. It compiled before.
-export function describe<T>(x: T): number {
-  return match (x) {
-    when "a": 1;
-  }
-}

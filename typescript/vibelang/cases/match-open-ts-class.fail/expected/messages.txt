@@ -1,3 +1,0 @@
-This match does not handle every case of NotFound | Plain: Plain is left.
-Plain does not extend effect's error base, YieldableError, so a value of its type need not pass its instanceof test, and its arm removes nothing.
-This match does not handle every case of Plain: Plain is left.

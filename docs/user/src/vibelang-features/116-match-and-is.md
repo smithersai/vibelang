@@ -265,7 +265,7 @@ An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case o
 
 `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules.
 
-Any subject member outside these checked kinds turns the check off. Examples include `string` or `number` without a literal type, `unknown`, `any`, `object`, an untagged array or class instance, or a type parameter that does not normalize to checked cases. Use a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`, which matches whatever is left.
+Any subject member outside these checked kinds turns the check off. Examples include `string` or `number` without a literal type, `unknown`, `any`, `object`, an untagged array or class instance, or a type parameter that does not normalize to checked cases. Such a match compiles without a `default` arm, and a value that no arm matches throws the proposal's `TypeError` at run time. To handle the rest, add a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`.
 
 A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeScript `0` case (`EK4701`), because its test distinguishes the two signs. Use unsigned `0` or `default`; ordinary negative nonzero literals still cover their cases.
 

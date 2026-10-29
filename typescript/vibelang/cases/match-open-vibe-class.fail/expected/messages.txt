@@ -1,1 +1,0 @@
-Point does not extend effect's error base, YieldableError, so a value of its type need not pass its instanceof test, and its arm removes nothing.

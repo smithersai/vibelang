@@ -1,0 +1,106 @@
+// VIP-7 checks exhaustiveness only over a finite union: literals, boolean,
+// data variants, error classes and enums. A match over any other subject
+// compiles without a default arm, and a value that no arm matches throws the
+// proposal's TypeError at run time. Before, each of these was EK4701.
+import { Plain } from "./ext.ts"
+
+error NotFound { id: string }
+
+class Point {
+  constructor(readonly x: number) {}
+}
+
+export function anyValue(x: any): number {
+  return match (x) {
+    when "a": 1;
+  }
+}
+
+export function errorValue(e: Error): string {
+  return match (e) {
+    when Error: e.message;
+  }
+}
+
+export function numberValue(x: number): string {
+  return match (x) {
+    when 0: "zero";
+    when 1: "one";
+  }
+}
+
+export function objectValue(x: object): number {
+  return match (x) {
+    when Date: 1;
+  }
+}
+
+export function stringValue(x: string): number {
+  return match (x) {
+    when "a": 1;
+  }
+}
+
+export function mixedClasses(x: NotFound | Plain): number {
+  return match (x) {
+    when NotFound: 1;
+    when Plain: 2;
+  }
+}
+
+export function tsClass(x: Plain): number {
+  return match (x) {
+    when Plain: 1;
+  }
+}
+
+export function typeParameter<T>(x: T): number {
+  return match (x) {
+    when "a": 1;
+  }
+}
+
+export function unknownValue(x: unknown): number {
+  return match (x) {
+    when "a": 1;
+  }
+}
+
+export function vibeClass(p: Point): string {
+  return match (p) {
+    when Point: "point";
+  }
+}
+
+type Input = { orientation: "Horizontal" | "Vertical"; alignment: "Center" | "Edge" }
+
+// foldkit-71: slider's style, four arms over an untagged object of two
+// finite fields. The object is open, so the check is off.
+export function slider(input: Input): string {
+  return match (input) {
+    when { orientation: "Vertical", alignment: "Center" }: "vc";
+    when { orientation: "Vertical", alignment: "Edge" }: "ve";
+    when { orientation: "Horizontal", alignment: "Center" }: "hc";
+    when { orientation: "Horizontal", alignment: "Edge" }: "he";
+  }
+}
+
+export function optionalField(x: { mode?: "on" | "off" }): number {
+  return match (x) {
+    when { mode: "on" }: 1;
+  }
+}
+
+export function mixedUnion(x: "a" | { n: number }): number {
+  return match (x) {
+    when "a": 1;
+  }
+}
+
+export function point(x: number): Point {
+  return new Point(x)
+}
+
+export function notFound(id: string): NotFound {
+  return new NotFound({ id })
+}

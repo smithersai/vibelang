@@ -16,6 +16,15 @@ func dataExhaustivenessRules() []dataRule {
 		{name: "exhaustive-open-object", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "function f(x:object){return match(x){when {x}:1;}}", code: "", owner: "vip-match"},
 		// Ordinary class turns finite check off
 		{name: "exhaustive-open-class", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "class C{};function f(x:C){return match(x){when C:1;}}", code: "", owner: "vip-match"},
+		// foldkit-71: an untagged object of finite fields stays open, all arms or some
+		{name: "exhaustive-open-object-literal-fields", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "type I={o:\"H\"|\"V\";a:\"C\"|\"E\"};function f(x:I){return match(x){when {o:\"V\",a:\"C\"}:1;when {o:\"V\",a:\"E\"}:2;when {o:\"H\",a:\"C\"}:3;when {o:\"H\",a:\"E\"}:4;}}", code: "", owner: "migfix-foldkit"},
+		{name: "exhaustive-open-object-partial-arms", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "type I={o:\"H\"|\"V\"};function f(x:I){return match(x){when {o:\"V\"}:1;}}", code: "", owner: "migfix-foldkit"},
+		{name: "exhaustive-open-object-optional-field", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "function f(x:{m?:\"on\"|\"off\"}){return match(x){when {m:\"on\"}:1;}}", code: "", owner: "migfix-foldkit"},
+		// One open member turns the check off for a union of checked and open members
+		{name: "exhaustive-open-mixed-literal-object", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "function f(x:\"a\"|{n:number}){return match(x){when \"a\":1;}}", code: "", owner: "migfix-foldkit"},
+		{name: "exhaustive-open-mixed-tagged-untagged", chapter: "004-match.md", quote: "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source: "type T={_tag:\"A\"}|{x:number};function f(v:T){return match(v){when {_tag:\"A\"}:1;}}", code: "", owner: "migfix-foldkit"},
+		// Tagged members alone stay checked
+		{name: "exhaustive-tagged-objects-missing", chapter: "004-match.md", quote: "Only `_tag` is a discriminant", source: "type T={_tag:\"A\"}|{_tag:\"B\"};function f(v:T){return match(v){when {_tag:\"A\"}:1;}}", code: "EK4701", owner: "migfix-foldkit"},
 		// Option expands to Some and None
 		{name: "exhaustive-finite-option-missing", chapter: "004-match.md", quote: "`Option.Option<A>` to `None | Some`", source: "function f(x:Option.Option<number>){return match(x){when Option.None:0;}}", code: "EK4701", owner: "vip-match"},
 		// Each fixed Option pattern covers its case
