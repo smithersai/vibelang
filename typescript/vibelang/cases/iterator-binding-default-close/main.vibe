@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { pairs, events } from "./helper.js"
-function boom(): number!string! { throw "boom" }
-function main() {
+effect function boom(): number!string! { throw "boom" }
+effect function main() {
  try { for (const [n = try boom()] of pairs()) { events.push("body:"+n) } } catch { events.push("caught") }
  try Console.log("binding", events.join(","))
  events.length = 0

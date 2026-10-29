@@ -16,60 +16,60 @@ export abstract class Audit {
 }
 
 // using: the block's Scope; Pool and Down remain.
-export function query() {
+export effect function query() {
   using conn = try Pool.acquire()
   return conn.id
 }
 
 // No using: the caller's Scope owns the connection.
-export function lease() {
+export effect function lease() {
   const conn = try Pool.acquire()
   return conn.id
 }
 
 // An acquisition without using and one with using in the same block.
-export function both() {
+export effect function both() {
   const kept = try Pool.acquire()
   using held = try Pool.acquire()
   return kept.id + held.id
 }
 
 // A block-owned fork adds its program's requirements, not Scope.
-export function audited() {
+export effect function audited() {
   fork Audit.record("start")
   return "audited"
 }
 
 // A forked program that acquires without using still needs the caller's Scope.
-export function forkedLease() {
+export effect function forkedLease() {
   fork lease()
   return "forked"
 }
 
 // An arrow's expression body owns its fork too (D353): Scope leaves R.
-export const background = () => join fork(Audit.record("background"))
+export const background = effect () => join fork(Audit.record("background"))
 
 // Effect.forkScoped keeps Effect's contract inside a region too.
-export function scopedFork() {
+export effect function scopedFork() {
   using conn = try Pool.acquire()
-  try Effect.forkScoped(() => Audit.record(`conn ${conn.id}`))
+  try Effect.forkScoped(effect { return try Audit.record(`conn ${conn.id}`) })
   return conn.id
 }
 
 let next = 0
 const PoolTest = Layer.succeed(Pool, {
-  acquire: () => Effect.acquireRelease(() => ({ id: ++next }), () => {})
+  acquire: effect () => try Effect.acquireRelease(effect { return ({ id: ++next }) }, effect () => {})
 })
-const AuditTest = Layer.succeed(Audit, { record: () => {} })
+const AuditTest = Layer.succeed(Audit, { record: effect () => {} })
 
-function all() {
+effect function all() {
   const q = try query()
-  const b = try Effect.scoped(() => both())
+  const b = try Effect.scoped(effect { return try both() })
   const a = try audited()
   return [q, b, a]
 }
 
 // expect-result: [1,5,"audited"]
-export function main() {
-  return try Effect.provide(() => all(), Layer.mergeAll(PoolTest, AuditTest))
+export effect function main() {
+  return try Effect.provide(effect { return try all() }, Layer.mergeAll(PoolTest, AuditTest))
 }

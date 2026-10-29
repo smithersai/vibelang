@@ -1,7 +1,7 @@
 // expect: EK2103 EK2103
 export service Users {
   find(id: string): string!!
-  describe(id: string) {
+  effect describe(id: string) {
     return `user ${id}`
   }
   region = "eu"

@@ -2,7 +2,7 @@
 // docs/design/src/213-part2-ch13-calls.md: Blocks as values (D187),
 // docs/design/src/900-appendices.md: Grammar, Expressions.
 // A match expression may be the completion value of a do block.
-export function main() {
+export effect function main() {
   try sleep("0 millis")
   return do { match (0) { default: 2; } }
 }

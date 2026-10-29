@@ -1,16 +1,16 @@
 // A hatch is the prelude's sync, try, or callback (D148). A declaration in a
 // scope around the call shadows the name, so this callback is the parameter
 // and its lambda is VibeLang: the call in it runs.
-function double(n: number) {
+effect function double(n: number) {
   try Effect.sleep("1 millis")
   return n * 2
 }
 
-function withCallback(callback: (n: number) => Effect<number, never, never>) {
+effect function withCallback(callback: (n: number) => Effect<number, never, never>) {
   return try callback(20) + 2
 }
 
 // expect-result: 42
-export function main() {
-  return try withCallback((n) => double(n))
+export effect function main() {
+  return try withCallback(effect (n) => try double(n))
 }

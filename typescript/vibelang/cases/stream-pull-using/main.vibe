@@ -1,19 +1,19 @@
 // A method call in a using initializer must lower before $using supplies Scope.
 // Acquiring the pull eagerly would leave its resource outside that Scope.
 // expect-result: {"batches":[[30,31],[32,33],[34]],"events":["open","close"],"partitioned":[[2,4],[1,3]],"broadcast":[10,[1,2,3,4]]}
-export function main() {
+export effect function main() {
   const events: string[] = []
   const batches: number[][] = []
   {
     using pull = try Stream.fromEffect(Effect.acquireRelease(
-      () => {
+      effect {
         events.push("open")
         return [30, 31, 32, 33, 34]
       },
-      () => { events.push("close") }
+      effect () => { events.push("close") }
     )).flatMap((numbers) => Stream.fromArray(numbers)).rechunk(2).toPull()
     while (true) {
-      const batch = try Pull.catchDone(() => pull(), () => undefined)
+      const batch = try Pull.catchDone(effect { return try pull() }, effect () => undefined)
       if (batch === undefined) break
       batches.push([...batch])
     }

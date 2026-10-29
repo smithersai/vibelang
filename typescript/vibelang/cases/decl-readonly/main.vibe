@@ -42,9 +42,9 @@ function edit() {
 
 export function main() {
   return {
-    a: try bump({ label: "c", count: 1 }),
-    b: try tally(["x", "y", "x"]),
-    c: try describe({ mutable: false, tags: ["a"] }),
-    e: try edit()
+    a: bump({ label: "c", count: 1 }),
+    b: tally(["x", "y", "x"]),
+    c: describe({ mutable: false, tags: ["a"] }),
+    e: edit()
   }
 }

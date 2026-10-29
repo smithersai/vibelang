@@ -13,7 +13,7 @@ export const forwarded = (state: { mutable runs: number }): number!! => {
 }
 
 // expect-result: [[0,0],[11,21,11,21],[2,2]]
-export function main() {
+export effect function main() {
   const local = { runs: 0 }
   const viaForward = { runs: 0 }
   const program: number!! = make(local) |> Effect.map(%, (n) => n * 10) |> Effect.map(%, (n) => n + 1)

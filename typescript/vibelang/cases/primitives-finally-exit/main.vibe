@@ -1,7 +1,7 @@
 // expect-result: {"ok":"Success","failing":"Failure:Boom","returned":"value"}
 error Boom
 
-function ok() {
+effect function ok() {
   let tag = ""
   try {
     try sleep("1 millis")
@@ -12,7 +12,7 @@ function ok() {
 }
 
 // The finally block sees the failure; the failure still propagates.
-function failing() {
+effect function failing() {
   let tag = ""
   try {
     try {
@@ -26,7 +26,7 @@ function failing() {
   return tag
 }
 
-function returned() {
+effect function returned() {
   try {
     return "value"
   } finally (exit) {
@@ -34,6 +34,6 @@ function returned() {
   }
 }
 
-export function main() {
+export effect function main() {
   return { ok: try ok(), failing: try failing(), returned: try returned() }
 }

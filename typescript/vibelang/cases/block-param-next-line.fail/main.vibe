@@ -1,5 +1,5 @@
 // expect: EK1022 EK1022
-function once(program: () => string!!) {
+effect function once(program: () => string!!) {
   return try program()
 }
 

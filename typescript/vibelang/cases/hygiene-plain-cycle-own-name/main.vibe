@@ -4,17 +4,17 @@
 // Effect form. That call stands in a body that binds the function's
 // parameters and declarations, so one spelled like the function, such as
 // the parameter even of function even, must not replace the function.
-function even(even: number): boolean!! { return even === 0 ? true : try odd(even - 1) }
-function odd(n: number): boolean!! { return n === 0 ? false : try even(n - 1) }
+effect function even(even: number): boolean!! { return even === 0 ? true : try odd(even - 1) }
+effect function odd(n: number): boolean!! { return n === 0 ? false : try even(n - 1) }
 
-function down(down: number): number!! { return down <= 0 ? 0 : 1 + try up(down - 1) }
-function up(n: number): number!! { return n <= 0 ? 0 : 1 + try down(n - 1) }
+effect function down(down: number): number!! { return down <= 0 ? 0 : 1 + try up(down - 1) }
+effect function up(n: number): number!! { return n <= 0 ? 0 : 1 + try down(n - 1) }
 
-function ping(n: number): string!! {
+effect function ping(n: number): string!! {
   const ping = "ok"
   return n <= 0 ? ping : try pong(n - 1)
 }
-function pong(n: number): string!! { return try ping(n - 1) }
+effect function pong(n: number): string!! { return try ping(n - 1) }
 
 export function main() {
   return [try even(200001), try odd(200001), try down(200000), try ping(200000)]

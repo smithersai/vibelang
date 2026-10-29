@@ -7,12 +7,12 @@ export class Box {
   control: () => (string | undefined)!!
   constructor() {
     const target = new.target
-    this.fast = () => new.target?.name
-    this.slow = () => {
+    this.fast = effect () => new.target?.name
+    this.slow = effect () => {
       const tick = try Effect.sync(() => 0)
       return new.target?.name
     }
-    this.control = () => {
+    this.control = effect () => {
       const tick = try Effect.sync(() => 0)
       return target?.name
     }

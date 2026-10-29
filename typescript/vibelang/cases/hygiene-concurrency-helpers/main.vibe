@@ -5,12 +5,12 @@
 function $awaitAll(xs: unknown[]) { return "hijacked" }
 function $forConcurrent(xs: number[], n: number, f: (n: number) => void) { return 999 }
 
-function work() {
+effect function work() {
   try sleep("1 millis")
   return 42
 }
 
-export function main() {
+export effect function main() {
   const result = await.all [work()]
   const seen: number[] = []
   for concurrent(2) (const n of [1, 2]) seen.push(n)

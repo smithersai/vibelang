@@ -13,11 +13,11 @@ export interface CounterApi {
 }
 
 export class Counter {
-  count(): number!! {
+  effect count(): number!! {
     try sleep("1 millis")
     return 42
   }
-  read(): number!!Count {
+  effect read(): number!!Count {
     return (try Count()).n
   }
   label(): string {
@@ -25,7 +25,7 @@ export class Counter {
   }
 }
 
-export function total() {
+export effect function total() {
   const counter: CounterApi = new Counter()
   return `${counter.label()} ${try counter.count() + try counter.read()}`
 }

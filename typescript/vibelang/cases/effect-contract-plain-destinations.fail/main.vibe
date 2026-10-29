@@ -1,11 +1,11 @@
 // expect: EK4301 TS2322 TS2740
 import { Schema, SchemaTransformation } from "effect"
-function double(n: number): number!! { return n * 2 }
+effect function double(n: number): number!! { return n * 2 }
 export function main() {
   [1, 2].map(double)
-  Schema.suspend((): Schema.Codec<string, string>!! => Schema.String)
+  Schema.suspend(effect (): Schema.Codec<string, string>!! => Schema.String)
   return SchemaTransformation.transform({
-    decode: (text: string): ReadonlyArray<string>!! => text.split(";"),
+    decode: effect (text: string): ReadonlyArray<string>!! => text.split(";"),
     encode: (items: ReadonlyArray<string>) => items.join(";")
   })
 }

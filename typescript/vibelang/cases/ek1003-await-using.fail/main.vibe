@@ -2,7 +2,7 @@
 // await using is not part of VibeLang: using already waits.
 declare function open(path: string): AsyncDisposable
 
-export function read() {
+export effect function read() {
   await using file = open("/tmp/a")
   return 1
 }

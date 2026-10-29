@@ -20,6 +20,6 @@ export function mapAll<A, B>(items: ReadonlyArray<A>, f: (a: A) => B) {
 export const size: number = encoder.encode("vibe").length
 
 // expect-result: 4
-export function main(): number!! {
+export effect function main(): number!! {
   return size
 }

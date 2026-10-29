@@ -2,40 +2,40 @@
 type Read = () => Effect.Effect<number, string, never>
 interface Source { readonly read?: Read }
 
-export function ternary(source: Source): number!! {
+export effect function ternary(source: Source): number!! {
   return source.read === undefined ? 0 : (source.read() catch -1)
 }
 
-export function and(source: Source): number | false!! {
+export effect function and(source: Source): number | false!! {
   return source.read !== undefined && (source.read() catch -1)
 }
 
-export function guardedIf(source: Source): number!! {
+export effect function guardedIf(source: Source): number!! {
   if (source.read !== undefined) return source.read() catch -1
   return 0
 }
 
-export function guardedTypeof(source: Source): number!! {
+export effect function guardedTypeof(source: Source): number!! {
   return typeof source.read === "function" ? (source.read() catch -1) : 0
 }
 
-export function bracket(source: Source): number!! {
+export effect function bracket(source: Source): number!! {
   return source["read"] === undefined ? 0 : (source["read"]() catch -1)
 }
 
-export function nested(source: Source): number!! {
-  return source.read === undefined ? 0 : ((source.read() catch (error) => (throw error)) catch -1)
+export effect function nested(source: Source): number!! {
+  return source.read === undefined ? 0 : ((source.read() catch effect (error) => (throw error)) catch -1)
 }
 
 // The original Smithers repro uses an arrow and a rethrowing handler.
-export const rethrow = (source: Source): Effect.Effect<number, string, never> => {
-  return source.read === undefined ? 0 : (source.read() catch (error) => (throw error))
+export const rethrow = effect (source: Source): Effect.Effect<number, string, never> => {
+  return source.read === undefined ? 0 : (source.read() catch effect (error) => (throw error))
 }
 
-function read(): number!string! { return 7 }
-function failed(): number!string! { throw "failed" }
+effect function read(): number!string! { return 7 }
+effect function failed(): number!string! { throw "failed" }
 
-export function main() {
+export effect function main() {
   const absent: Source = {}
   const present: Source = { read }
   const failure: Source = { read: failed }

@@ -8,7 +8,7 @@ export function host() {
   return Process.hostname()
 }
 
-export function pid() {
+export effect function pid() {
   return try sync(() => proces.pid)
 }
 

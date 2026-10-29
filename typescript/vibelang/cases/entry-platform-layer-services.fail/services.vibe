@@ -3,4 +3,4 @@ export service Users {
   find(id: string): string!!
 }
 
-export const UsersLive = Layer.succeed(Users, { find: (id) => `user ${id}` })
+export const UsersLive = Layer.succeed(Users, { find: effect (id) => `user ${id}` })

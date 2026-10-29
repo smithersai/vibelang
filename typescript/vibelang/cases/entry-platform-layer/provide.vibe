@@ -4,9 +4,9 @@ import "vibelang/platform/node"
 import { FileSystem, layerNoop } from "effect/FileSystem"
 import { Path } from "effect/Path"
 
-export function main() {
+export effect function main() {
   const file = try Path.join("data", "config.json")
-  provide layerNoop({ readFileString: () => "read through main's own layer" }) {
+  provide layerNoop({ readFileString: effect () => "read through main's own layer" }) {
     try Console.log(try FileSystem.readFileString(file))
   }
 }

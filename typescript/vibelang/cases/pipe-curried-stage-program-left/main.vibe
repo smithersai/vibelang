@@ -2,16 +2,16 @@
 // name to a curried stage `f(args)(%)`, as D154 passes any program. D272's
 // method-pipe form `x.pipe(f(args))` reads the left side as a value, and a
 // function literal has no pipe method.
-const twice = (label: string) => <A, E, R>(self: A!E!R): Array<A | string>!E!R => {
+const twice = effect (label: string) => effect <A, E, R>(self: A!E!R): Array<A | string>!E!R => {
   const first = try self()
   const second = try self()
   return [label, first, second]
 }
 
 // expect-result: ["runs",1,2]
-export function main() {
+export effect function main() {
   let runs = 0
-  return (() => {
+  return (effect () => {
     runs++
     return runs
   }) |> try (try twice("runs"))(%)

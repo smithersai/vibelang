@@ -1,4 +1,4 @@
 // expect: TS2322 EK2001
 error Bad {}
 export const invalid = (): Effect.Effect<number, never, never> => "wrong"
-export const throws = (): Effect.Effect<number, never, never> => { throw new Bad() }
+export const throws = effect (): Effect.Effect<number, never, never> => { throw new Bad() }

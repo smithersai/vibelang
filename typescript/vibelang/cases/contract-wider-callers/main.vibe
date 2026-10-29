@@ -7,31 +7,31 @@ service Needed {
   id: string
 }
 
-export function longForm(): Effect<number, Gone, Needed> {
+export effect function longForm(): Effect<number, Gone, Needed> {
   return 1
 }
 
-export function shortForm(): number!Gone!Needed {
+export effect function shortForm(): number!Gone!Needed {
   return 2
 }
 
 // No failures and no requirements: callers see Effect<number, never, never>.
-export function plain(): number!! {
+export effect function plain(): number!! {
   return 3
 }
 
 const box = {
-  get(): number!Gone!Needed {
+  effect get(): number!Gone!Needed {
     return 4
   }
 }
 
-export function callerOfLong() {
+export effect function callerOfLong() {
   const n = try longForm()
   return n
 }
 
-export function callerOfShort() {
+export effect function callerOfShort() {
   return try shortForm() + 1
 }
 
@@ -39,13 +39,13 @@ export function callerOfPlain() {
   return try plain() + 1
 }
 
-export function callerOfMethod() {
+export effect function callerOfMethod() {
   return try box.get()
 }
 
 // expect-result: [1,3,4,4]
-export function main() {
+export effect function main() {
   provide Needed = { id: "x" } {
-    return [try callerOfLong(), try callerOfShort(), try callerOfPlain(), try callerOfMethod()]
+    return [try callerOfLong(), try callerOfShort(), callerOfPlain(), try callerOfMethod()]
   }
 }

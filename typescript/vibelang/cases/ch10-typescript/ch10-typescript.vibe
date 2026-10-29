@@ -27,13 +27,13 @@ abstract class Users {
 
 // Using TypeScript Effect code from VibeLang
 
-export function title(id: string) {
+export effect function title(id: string) {
   return (try findUser(id)).name.toUpperCase()
 }
 // Effect<string, UserNotFound | DbError, Database>
 
 // Services written as Context.Service classes in TypeScript are used like .vibe services.
-function rowCount(id: string) {
+effect function rowCount(id: string) {
   return (try Database.query("select * from users where id = $1", [id])).length
 }
 
@@ -41,7 +41,7 @@ function rowCount(id: string) {
 
 // Plain functions
 
-function parseConfig(text: string) {
+effect function parseConfig(text: string) {
   return try Effect.try({
     try: () => JSON.parse(text) as Config,
     catch: (cause) => new ConfigError({ cause })
@@ -52,7 +52,7 @@ function parseConfig(text: string) {
 // Chapter 2's profileCard. NOTE: D5 makes the proposal's bare `formatName(user)` an error (EK4401,
 // see ch02-plain-ts-call.fail.vibe), so the plain call is wrapped in Effect.try; the claim below is the
 // proposal's, from before D5.
-function profileCard(id: string) {
+effect function profileCard(id: string) {
   const user = try Users.find(id)
   return {
     title: try Effect.try(() => formatName(user)),   // a plain call behind a boundary
@@ -62,7 +62,7 @@ function profileCard(id: string) {
 // Effect<{ title: string; avatar: Avatar }, UserNotFound | AvatarError, Users | Storage>
 
 // A throwing plain function behind a boundary, with the typed failure caught.
-function portOrDefault(text: string) {
+effect function portOrDefault(text: string) {
   try {
     return try Effect.try({ try: () => parsePort(text), catch: (cause) => new ConfigError({ cause }) })
   } catch (e) {
@@ -72,7 +72,7 @@ function portOrDefault(text: string) {
 
 // D249: a TypeScript function with a trusted contract, a trusted(impl, [PortError]) value, is
 // called bare; its listed class joins E.
-function portFrom(text: string) {
+effect function portFrom(text: string) {
   return parsePortTrusted(text)
 }
 // Effect<number, PortError, never>
@@ -80,7 +80,7 @@ function portFrom(text: string) {
 // Promises
 // NOTE: the proposal calls fetch, a platform API (D5: EK4402, see ch10-fetch.fail.vibe); a local
 // Promise-returning helper stands in for it.
-function fetchJson(url: string) {
+effect function fetchJson(url: string) {
   const response = try Effect.tryPromise({
     try: () => fetchGreeting(url),
     catch: (cause) => new HttpError({ url, cause })
@@ -96,10 +96,10 @@ function trimAll(ids: ReadonlyArray<string>) {
 }
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: "Ada", email: "ada@example.com" })
+  find: effect (id) => ({ id, name: "Ada", email: "ada@example.com" })
 })
 
-function scenario() {
+effect function scenario() {
   const upper = try title("1")
   let missing = "none"
   try {
@@ -125,11 +125,11 @@ function scenario() {
     badPort = e._tag
   }
   const greeting = try fetchJson("ada")
-  const trimmed = try trimAll([" a ", "b "])
+  const trimmed = trimAll([" a ", "b "])
   return { upper, missing, rows, port: config.port, badConfig, card, defaultPort, trustedPort, badPort, greeting, trimmed }
 }
 
 // expect-result: {"upper":"ADA","missing":"UserNotFound","rows":1,"port":8080,"badConfig":"ConfigError","card":{"title":"Ada <ada@example.com>","avatar":{"userId":"1","url":"https://img.example.com/1.png"}},"defaultPort":80,"trustedPort":9090,"badPort":"PortError","greeting":"hello ada","trimmed":["a","b"]}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(DatabaseTest, StorageTest, UsersTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(DatabaseTest, StorageTest, UsersTest))
 }

@@ -6,7 +6,7 @@ import { Effect } from "effect"
 // the const is run.
 const make = (state: { mutable calls: number, mutable runs: number }): Effect.Effect<number, never, never> => {
   state.calls++
-  return () => {
+  return effect {
     state.runs++
     return state.runs
   }
@@ -24,7 +24,7 @@ const moduleState = { calls: 0, runs: 0 }
 const atModule: number!! = make(moduleState) satisfies number!!
 
 // expect-result: [[1,1,1,1,1,1,1],[0,0,0,0,0,0,0],[2,2,2,2,2,2,2]]
-export function main() {
+export effect function main() {
   const states = [0, 1, 2, 3, 4, 5].map(() => ({ calls: 0, runs: 0 }))
   const asAny: number!! = make(states[0]!) as any
   const asEffect: number!! = make(states[1]!) as Effect.Effect<number, never, never>

@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
 export class Failure extends Schema.TaggedError<Failure>()("Failure", { message: Schema.String }) {}
-export const run = (): Effect.Effect<number, Failure, never> => { throw new Failure({ message: "failed" }) }
+export const run = effect (): Effect.Effect<number, Failure, never> => { throw new Failure({ message: "failed" }) }
 type RunError = Effect.Error<ReturnType<typeof run>>
 export const message = (error: RunError): string => error.message

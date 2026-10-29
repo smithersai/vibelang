@@ -72,7 +72,7 @@ function plainOk(): number {
   return sum
 }
 
-function framed() {
+effect function framed() {
   try yieldNow()
   for (const n of new Counted(true)) crash("body")
   return 0
@@ -88,7 +88,7 @@ function reasons(outcome: Exit<unknown, unknown>): string {
 }
 
 // expect-result: {"body":"Die(body)+Die(close)","head":"Die(type)+Die(close)","late":"Die(body)+Die(close)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)+Die(close)","lookups":5}
-export function main() {
+export effect function main() {
   const result = {
     body: reasons(try exit(plainBody())),
     head: reasons(try exit(plainHead())),

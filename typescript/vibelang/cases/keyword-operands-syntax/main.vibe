@@ -5,7 +5,7 @@
 // never where it is written. fork(e) with parentheses is the same keyword
 // while fork is the prelude's (D391). Each element runs on its own fiber,
 // in the order written, after the literal is built.
-export function main() {
+export effect function main() {
   const events: string[] = []
   const forked = fork events.push("fork operand")
   events.push("after fork")

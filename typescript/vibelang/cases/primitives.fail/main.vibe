@@ -1,13 +1,13 @@
 // expect: EK2111 EK2106
 error Boom
 
-function outside() {
+effect function outside() {
   restore {
     try sleep("1 millis")
   }
 }
 
-function after() {
+effect function after() {
   try {
     throw new Boom()
   } catch (cause: Cause) {

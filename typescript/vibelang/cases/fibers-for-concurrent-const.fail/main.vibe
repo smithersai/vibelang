@@ -2,7 +2,7 @@
 // A for concurrent loop's head declares its binding as a for...of loop's
 // does (D169): a const binding, destructured or not, cannot be assigned, and
 // a let binding can.
-export function main() {
+export effect function main() {
   for concurrent(1) (const n of [1, 2]) {
     n = 99
   }

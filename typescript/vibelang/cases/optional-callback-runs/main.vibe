@@ -4,45 +4,45 @@
 // channels (D500).
 error Late { label: string }
 
-const coalesced = <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
+const coalesced = effect <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
   return try label?.(2) ?? new Late({ label: "default" })
 }
 
-const bound = <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
+const bound = effect <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
   const value = try label?.(2)
   return value
 }
 
-const scaled = <E = never, R = never>(scale?: (n: number) => number!E!R) => scale?.(2)
+const scaled = effect <E = never, R = never>(scale?: (n: number) => number!E!R) => try scale?.(2)
 
-const announced = <E = never, R = never>(log?: (n: number) => void!E!R) => {
+const announced = effect <E = never, R = never>(log?: (n: number) => void!E!R) => {
   try log?.(2)
   return true
 }
 
 // An omitted callback adds no failure and needs nothing: E and R default to never.
-function defaulted(): Late!! {
+effect function defaulted(): Late!! {
   return try coalesced()
 }
 
-function unscaled(): number!! {
+effect function unscaled(): number!! {
   return try scaled() ?? -1
 }
 
-export function main() {
+export effect function main() {
   const ran: Array<string> = []
-  const a = try coalesced((s) => new Late({ label: "custom " + s }))
-  const b = try bound((s) => new Late({ label: "custom " + s }))
+  const a = try coalesced(effect (s) => new Late({ label: "custom " + s }))
+  const b = try bound(effect (s) => new Late({ label: "custom " + s }))
   const c = try coalesced()
   const d = try bound()
-  const n = try scaled((n) => {
+  const n = try scaled(effect (n) => {
     try sleep("1 millis")
     return n * 10
   })
-  const caught = coalesced((s) => {
+  const caught = coalesced(effect (s) => {
     throw new Late({ label: "thrown" })
   }) catch (e) => new Late({ label: "caught " + e.label })
-  const announcedOk = try announced((n) => {
+  const announcedOk = try announced(effect (n) => {
     ran.push("ran " + n)
   })
   return [a.label, b?.label, c.label, d === undefined, n, caught.label, announcedOk, ran[0], (try defaulted()).label, try unscaled()]

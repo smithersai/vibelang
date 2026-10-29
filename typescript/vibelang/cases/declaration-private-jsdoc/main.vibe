@@ -4,4 +4,4 @@ const hidden = 1
 /** An elided private helper's documentation. */
 function hiddenFunction(): number { return hidden }
 /** The public program's documentation. */
-export function main(): number!! { return 2 }
+export effect function main(): number!! { return 2 }

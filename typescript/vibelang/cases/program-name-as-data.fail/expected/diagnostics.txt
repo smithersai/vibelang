@@ -1,6 +1,6 @@
-main.vibe(16,39): error EK4802
-main.vibe(17,48): error EK4802
+main.vibe(16,46): error EK4802
+main.vibe(17,55): error EK4802
 main.vibe(20,41): error EK4802
-main.vibe(23,49): error EK4802
-main.vibe(24,67): error EK4802
-main.vibe(27,70): error EK4802
+main.vibe(23,67): error EK4802
+main.vibe(24,85): error EK4802
+main.vibe(27,88): error EK4802

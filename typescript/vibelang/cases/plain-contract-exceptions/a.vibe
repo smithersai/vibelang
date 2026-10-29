@@ -37,19 +37,19 @@ export const recover = (): string => {
 
 // A throw that can escape needs an Effect contract.
 export class Validator {
-  validate(text: string): string!Empty! {
+  effect validate(text: string): string!Empty! {
     if (!text) throw new Empty({ value: text })
     return text
   }
 }
 
-export const half = (n: number): number!string! => {
+export const half = effect (n: number): number!string! => {
   if (n < 0) throw "negative"
   return n / 2
 }
 
 // A JavaScript exception that escapes into an Effect function is a defect.
-export function effectful(): Effect<string, never, never> {
+export effect function effectful(): Effect<string, never, never> {
   try Effect.succeed(0)
   return callForeign("")
 }

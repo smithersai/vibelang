@@ -6,7 +6,7 @@ service Counter {
 }
 
 export layer CounterLive: Counter {
-  next() {
+  effect next() {
     return 1
   }
   const start = 0

@@ -7,13 +7,13 @@ function fork(x: number) {
   return x + 1
 }
 
-function slow(): number!! {
+effect function slow(): number!! {
   try sleep("1 millis")
   return 7
 }
 
-export function main() {
-  const a = try fork(1)
+export effect function main() {
+  const a = fork(1)
   const f = fork slow()
   const g = fork {
     try sleep("1 millis")

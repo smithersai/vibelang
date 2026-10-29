@@ -1200,6 +1200,9 @@ func (p *Parser) parseDeclaration() *ast.Statement {
 }
 
 func (p *Parser) parseDeclarationWorker(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Statement {
+	if p.isStartOfAsyncShorthand(modifiers) {
+		return p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers) // async get(url) { … } (vibelang_effect.go)
+	}
 	switch p.token {
 	case ast.KindVarKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindUsingKeyword:
 		return p.parseVariableStatement(pos, jsdoc, modifiers)
@@ -2012,6 +2015,10 @@ func (p *Parser) parseClassElement() *ast.Node {
 	}
 	if p.isIndexSignature() {
 		return p.checkJSSyntax(p.parseIndexSignatureDeclaration(pos, jsdoc, modifiers))
+	}
+	if p.isStartOfVibeLangEffectMember() {
+		word := p.parseVibeLangEffectMember()
+		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers), word) // effect m() { … } (vibelang_effect.go)
 	}
 	// It is very important that we check this *after* checking indexers because
 	// the [ token can start an index signature or a computed property name
@@ -4200,6 +4207,8 @@ func (p *Parser) nextTokenCanFollowDefaultKeyword() bool {
 		return p.lookAhead((*Parser).nextTokenIsClassKeywordOnSameLine)
 	case ast.KindAsyncKeyword:
 		return p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine)
+	case ast.KindIdentifier:
+		return p.isVibeLangEffectWord() && p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) // export default effect function (vibelang_effect.go)
 	}
 	return false
 }
@@ -4314,6 +4323,9 @@ func (p *Parser) parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowF
 	// If we do successfully parse arrow-function, we must *not* recurse for productions 1, 2 or 3. An ArrowFunction is
 	// not a LeftHandSideExpression, nor does it start a ConditionalExpression.  So we are done
 	// with AssignmentExpression if we see one.
+	if arrow := p.tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction); arrow != nil {
+		return arrow // effect (x) => … (vibelang_effect.go)
+	}
 	arrowExpression := p.tryParseParenthesizedArrowFunctionExpression(allowReturnTypeInArrowFunction)
 	if arrowExpression != nil {
 		return arrowExpression
@@ -5825,6 +5837,9 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 	if p.isStartOfVibeLangMatch() {
 		return p.parseVibeLangMatch() // match (subject) { when ...: ...; } (vibelang_match.go)
 	}
+	if p.isStartOfVibeLangEffectExpression() {
+		return p.parseVibeLangEffectExpression() // effect function () { … }, effect { … } (vibelang_effect.go)
+	}
 	switch p.token {
 	case ast.KindNoSubstitutionTemplateLiteral:
 		if p.scanner.TokenFlags()&ast.TokenFlagsIsInvalid != 0 {
@@ -5923,6 +5938,12 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 	}
 	if p.parseContextualModifier(ast.KindSetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
+	}
+	if p.isStartOfVibeLangEffectMember() {
+		word := p.parseVibeLangEffectMember()
+		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
+		name := p.parsePropertyName()
+		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, nil /*questionToken*/, nil /*diagnosticMessage*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	tokenIsIdentifier := p.isIdentifier()
@@ -6362,6 +6383,12 @@ func (p *Parser) isStartOfDeclaration() bool {
 
 func (p *Parser) scanStartOfDeclaration() bool {
 	for {
+		if p.token == ast.KindAsyncKeyword && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
+			p.nextToken()
+			return p.scanStartOfShorthandFunction()
+		}) {
+			return true // async get(url) { … } (vibelang_effect.go)
+		}
 		switch p.token {
 		case ast.KindVarKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindFunctionKeyword, ast.KindClassKeyword,
 			ast.KindEnumKeyword:

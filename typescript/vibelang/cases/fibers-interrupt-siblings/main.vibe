@@ -7,7 +7,7 @@
 // fibers forked earlier.
 error Bad
 
-function joined(log: string[]) {
+effect function joined(log: string[]) {
   const startedA = try Deferred.make<void>()
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
@@ -27,7 +27,7 @@ function joined(log: string[]) {
 
 // await.all's elements are programs (D394): when one fails, the operation
 // interrupts the others, and every one is signalled before any is waited for.
-function all(log: string[]) {
+effect function all(log: string[]) {
   const startedA = try Deferred.make<void>()
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
@@ -50,7 +50,7 @@ function all(log: string[]) {
   } catch (e) { log.push("caught " + e._tag) }
 }
 
-function racePrograms(log: string[]) {
+effect function racePrograms(log: string[]) {
   const releasedB = try Deferred.make<void>()
   log.push(await.race [
     do {
@@ -66,7 +66,7 @@ function racePrograms(log: string[]) {
 }
 
 // expect-result: {"joined":["A waits","B done","A done","caught Bad"],"all":["A waits","B done","A done","caught Bad"],"racePrograms":["A waits","B done","A done","winner"]}
-export function main() {
+export effect function main() {
   const logs = { joined: [] as string[], all: [] as string[], racePrograms: [] as string[] }
   try joined(logs.joined)
   try all(logs.all)

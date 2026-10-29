@@ -1,19 +1,19 @@
 // expect-result: [["X","X","X","X","X","X","X","X","fallback","fallback","fallback","fallback","fallback","fallback","fallback","fallback"],[10,10],"X","fallback",true]
 import { Effect } from "effect"
 import { decoder, counts, plain, type Decode, type Flow, type RequiredFlow } from "./callbacks.js"
-function named(f: Decode | undefined, input: string) { return try f?.(input) ?? "fallback" }
-function method(o: Flow, input: string) { return try o.decode?.(input) ?? "fallback" }
-function receiver(o: RequiredFlow | undefined, input: string) { return try o?.decode(input) ?? "fallback" }
-function both(o: Flow | undefined, input: string) { return try o?.decode?.(input) ?? "fallback" }
-function namedOr(f: Decode | undefined) { return try f?.("x") || "fallback" }
-function methodOr(o: Flow) { return try o.decode?.("x") || "fallback" }
-function receiverOr(o: RequiredFlow | undefined) { return try o?.decode("x") || "fallback" }
-function bothOr(o: Flow | undefined) { return try o?.decode?.("x") || "fallback" }
-function statement(f: Decode | undefined) { try f?.("x") }
-function raw(f: Decode | undefined) { return try f?.("x") }
+effect function named(f: Decode | undefined, input: string) { return try f?.(input) ?? "fallback" }
+effect function method(o: Flow, input: string) { return try o.decode?.(input) ?? "fallback" }
+effect function receiver(o: RequiredFlow | undefined, input: string) { return try o?.decode(input) ?? "fallback" }
+effect function both(o: Flow | undefined, input: string) { return try o?.decode?.(input) ?? "fallback" }
+effect function namedOr(f: Decode | undefined) { return try f?.("x") || "fallback" }
+effect function methodOr(o: Flow) { return try o.decode?.("x") || "fallback" }
+effect function receiverOr(o: RequiredFlow | undefined) { return try o?.decode("x") || "fallback" }
+effect function bothOr(o: Flow | undefined) { return try o?.decode?.("x") || "fallback" }
+effect function statement(f: Decode | undefined) { try f?.("x") }
+effect function raw(f: Decode | undefined) { return try f?.("x") }
 function plainCall(f: ((s: string) => string) | undefined): string { return f?.("x") ?? "fallback" }
 function readCounts(): number[] { return counts() }
-export function main() {
+export effect function main() {
  const results = [try named(decoder,"x"),try method({decode:decoder},"x"),try receiver({decode:decoder},"x"),try both({decode:decoder},"x"),try namedOr(decoder),try methodOr({decode:decoder}),try receiverOr({decode:decoder}),try bothOr({decode:decoder}),try named(undefined,"x"),try method({},"x"),try receiver(undefined,"x"),try both(undefined,"x"),try namedOr(undefined),try methodOr({}),try receiverOr(undefined),try bothOr(undefined)]
  try statement(decoder)
  try statement(undefined)

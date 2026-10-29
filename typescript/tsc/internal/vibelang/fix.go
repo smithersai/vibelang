@@ -205,7 +205,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, diagnosticSource+strconv.Itoa(int(code))+" ×"+strconv.Itoa(fixed.Counts[code]))
 		}
-		for _, kind := range []string{tryLabel, preludeImportLabel, preludeKeyLabel} {
+		for _, kind := range []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel} {
 			if n := fixed.Rewrites[kind]; n > 0 {
 				parts = append(parts, kind+" ×"+strconv.Itoa(n))
 				count += n
@@ -320,6 +320,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// try before each call that runs where it stands (VIP-5, fix_try.go).
 	if done.Err() == nil && options.VIPOnly {
 		rewriteTries(g, fs, build(texts), texts, result)
+	}
+	// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
+	if done.Err() == nil && options.VIPOnly {
+		rewriteEffects(g, fs, build(texts), texts, result)
 	}
 	if options.MigrationOnly || options.VIPOnly {
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)

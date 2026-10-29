@@ -4,6 +4,6 @@
 // says it started the module runs it, as Bun does.
 import "vibelang/platform/browser"
 
-export function main() {
+export effect function main() {
   try Console.log("browser main ran")
 }

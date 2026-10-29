@@ -18,7 +18,7 @@ function* countdown(from: number) {
 }
 
 // for...of over a Stream
-function sumStream() {
+effect function sumStream() {
   let total = 0
   for (const n of Stream.make(1, 2, 3, 4)) {
     total += n
@@ -28,12 +28,12 @@ function sumStream() {
 }
 
 // A producer where a Stream is expected: taking three elements closes the producer early.
-function firstThree() {
+effect function firstThree() {
   return try Stream.runCollect(Stream.take(countdown(10), 3))
 }
 
 // expect-result: {"sum":6,"collected":[10,9,8],"events":["countdown closed"]}
-export function main() {
+export effect function main() {
   const sum = try sumStream()
   const collected = try firstThree()
   return { sum, collected, events }

@@ -3,12 +3,12 @@
 // Effect.void for an empty body. The body runs each time the Effect runs and
 // never when the function is called, and a throw in it is a defect.
 // A program result.
-export function step(n: number) {
+export effect function step(n: number) {
   return try Effect.succeed(n + 1)
 }
 
 // A program result whose argument records each time the body runs.
-export function record(runs: string[], n: number) {
+export effect function record(runs: string[], n: number) {
   return try Effect.succeed((runs.push("record"), n))
 }
 
@@ -16,7 +16,7 @@ export function record(runs: string[], n: number) {
 export const ignore = (event: string): Effect<void, never, never> => {}
 
 // A value beside a program becomes Effect.succeed(value).
-export const resolve = (cached: string | undefined, load: () => Effect<string, never, never>): Effect<string, never, never> =>
+export const resolve = effect (cached: string | undefined, load: () => Effect<string, never, never>): Effect<string, never, never> =>
   cached === undefined ? try load() : cached
 
 // A throw while building the result.
@@ -26,7 +26,7 @@ export const first = (items: string[]): Effect<string, never, never> => items[0]
 export class Greeter {
   constructor(readonly name: string) {}
 
-  greet(): Effect<string, never, never> {
+  effect greet(): Effect<string, never, never> {
     return `hello ${this.name}`
   }
 }

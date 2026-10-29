@@ -138,7 +138,7 @@ export async function verifyOutputs(dir: string, blocks: Result[], compiler: str
   }
 }
 
-export async function fixPage(markdown: string, dir: string, compiler: string, timeout = 10000, allFixes = false) {
+export async function fixPage(markdown: string, dir: string, compiler: string, timeout = 10000, allFixes = false, vip = false) {
   mkdirSync(dir, { recursive: true })
   const blocks = extract(markdown)
   if (!blocks.some(block => block.language === "vibe" && !block.fragment)) return { markdown, changed: 0, blocks: blocks.length }
@@ -165,7 +165,7 @@ export async function fixPage(markdown: string, dir: string, compiler: string, t
     writeFileSync(path, fixedText)
     markers.set(block.number, { start, end })
   }
-  const fixed = await command([compiler, "--fix", ...(allFixes ? [] : ["--fix-migration-only"]), "--noEmit", "--pretty", "false", "-p", join(dir, "fix/tsconfig.json")], join(dir, "fix"), 120000)
+  const fixed = await command([compiler, "--fix", ...(vip ? ["--fix-vip-only"] : allFixes ? [] : ["--fix-migration-only"]), "--noEmit", "--pretty", "false", "-p", join(dir, "fix/tsconfig.json")], join(dir, "fix"), 120000)
   if (fixed.timedOut) throw new Error("--fix timed out")
   if (/EK(?:1023|4609|4610|4613) not fixed:/.test(fixed.stdout + fixed.stderr)) throw new Error(`migration refused: ${fixed.stdout}${fixed.stderr}`)
   if (fixed.exitCode !== 0 && !parseDiagnostics(fixed.stdout + "\n" + fixed.stderr).length) {
@@ -229,7 +229,7 @@ async function main() {
     return args.splice(i, 2)[1]
   }
   if (args.includes("--help")) {
-    console.log("bun docs/tools/fix-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--check] [--all-fixes] [--timeout milliseconds]")
+    console.log("bun docs/tools/fix-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--check] [--all-fixes] [--vip] [--timeout milliseconds]")
     return
   }
   const selected = option("--compiler", defaultCompiler())!
@@ -240,7 +240,8 @@ async function main() {
   if (!Number.isSafeInteger(timeout) || timeout <= 0) throw new Error("--timeout must be a positive integer")
   const check = args.includes("--check")
   const allFixes = args.includes("--all-fixes")
-  if (args.some(arg => arg !== "--check" && arg !== "--all-fixes")) throw new Error(`Unknown argument: ${args.join(" ")}`)
+  const vip = args.includes("--vip") // the VIP rewrites alone: vibelang --fix-vip-only
+  if (args.some(arg => arg !== "--check" && arg !== "--all-fixes" && arg !== "--vip")) throw new Error(`Unknown argument: ${args.join(" ")}`)
   const temp = mkdtempSync(join(tmpdir(), "vibelang-fix-snippets-"))
   let changed = 0, refused = 0, blocks = 0
   try {
@@ -251,7 +252,7 @@ async function main() {
       const dir = join(temp, String(index))
       mkdirSync(dir)
       try {
-        const result = await fixPage(markdown, dir, compiler, timeout, allFixes)
+        const result = await fixPage(markdown, dir, compiler, timeout, allFixes, vip)
         blocks += result.blocks
         if (result.changed) {
           changed += result.changed

@@ -21,18 +21,18 @@ abstract class Users {
 }
 
 const DatabaseLive = Layer.succeed(Database, {
-  lookup: (id: string) => Effect.succeed(id === "1" ? { id, name: "Ada" } : undefined)
+  lookup: effect (id: string) => try Effect.succeed(id === "1" ? { id, name: "Ada" } : undefined)
 })
 
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       const user = try db.lookup(id)
       if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
       return try Effect.succeed(user)
     },
-    count: () => 1
+    count: effect () => 1
   }
 })
 
@@ -40,11 +40,11 @@ type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B
 export const inferred: Equals<typeof UsersLive, Layer.Layer<Users, never, Database>> = true
 
 // expect-result: {"name":"Ada","count":1,"missing":"UserNotFound"}
-export function main() {
-  return try Effect.provide(() => {
+export effect function main() {
+  return try Effect.provide(effect {
     const name = (try Users.find("1")).name
     const count = try Users.count()
-    const missing = (try Effect.flip(() => Users.find("9")))._tag
+    const missing = (try Effect.flip(effect { return try Users.find("9") }))._tag
     return { name, count, missing }
   }, Layer.provide(UsersLive, DatabaseLive))
 }

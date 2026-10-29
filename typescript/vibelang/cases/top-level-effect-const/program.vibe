@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 export let runs = 0
-export const migrate: Effect.Effect<void, never, never> = Effect.suspend(() => {
+export const migrate: Effect.Effect<void, never, never> = Effect.suspend(effect () => {
   runs++
 })
 export const parenthesized: Effect.Effect<number, never, never> = (Effect.succeed(42))

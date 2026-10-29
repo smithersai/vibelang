@@ -18,7 +18,7 @@ function phase(value: "draft" | "published") {
   }
 }
 
-function outcome(program: unknown!unknown) {
+effect function outcome(program: unknown!unknown) {
   return match (try exit(program)) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): cause.reasons.map((reason) => reason._tag).join("+");
@@ -26,7 +26,7 @@ function outcome(program: unknown!unknown) {
 }
 
 // expect-result: {"only":"one","reads":1,"published":"Published","outside":"Die"}
-export function main() {
-  const result = try only(counted)
-  return { only: result, reads, published: try phase("published"), outside: try outcome(phase("archived" as any)) }
+export effect function main() {
+  const result = only(counted)
+  return { only: result, reads, published: phase("published"), outside: try outcome(phase("archived" as any)) }
 }

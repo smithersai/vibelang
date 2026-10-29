@@ -14,33 +14,33 @@ export interface User {
 
 const users = new Map<string, User>([["42", { id: "42", name: "Ada" }]])
 
-export function find(id: string): Effect<User, UserNotFound, never> {
+export effect function find(id: string): Effect<User, UserNotFound, never> {
   const user = users.get(id)
   if (user === undefined) throw new UserNotFound({ id })
   return user
 }
 
 // Wider than the body: Invalid can never happen here.
-export function wide(id: string): Effect<string, UserNotFound | Invalid, never> {
+export effect function wide(id: string): Effect<string, UserNotFound | Invalid, never> {
   return (try find(id)).name
 }
 
 // A contract makes a function an Effect even when its body runs nothing.
-export function answer(): Effect<number, never, never> {
+export effect function answer(): Effect<number, never, never> {
   return 42
 }
 
 // The returned object literal is checked against A.
-export function point(): Effect<{ x: number; kind: "point" }, never, never> {
+export effect function point(): Effect<{ x: number; kind: "point" }, never, never> {
   return { x: 1, kind: "point" }
 }
 
 // Partial annotations: infer E, infer R, and infer A.
-export function greeting(id: string): Effect<string, infer E, infer R> {
+export effect function greeting(id: string): Effect<string, infer E, infer R> {
   return `Hello, ${(try find(id)).name}`
 }
 
-export function safe(id: string): Effect<string, never, infer R> {
+export effect function safe(id: string): Effect<string, never, infer R> {
   try {
     return (try find(id)).name
   } catch (e) {
@@ -48,11 +48,11 @@ export function safe(id: string): Effect<string, never, infer R> {
   }
 }
 
-export function named(id: string): Effect<infer A, UserNotFound, never> {
+export effect function named(id: string): Effect<infer A, UserNotFound, never> {
   return { id, name: (try find(id)).name }
 }
 
-export function everything(id: string): Effect<infer _, infer _, infer _> {
+export effect function everything(id: string): Effect<infer _, infer _, infer _> {
   return try find(id)
 }
 
@@ -60,7 +60,7 @@ export function everything(id: string): Effect<infer _, infer _, infer _> {
 export const twice = (n: number): number => n * 2
 
 // expect-result: {"find":"Ada","wide":"Ada","answer":42,"point":"point","greeting":"Hello, Ada","safe":"missing 7","named":"Ada","everything":"42","twice":8}
-export function main() {
+export effect function main() {
   return {
     find: (try find("42")).name,
     wide: try wide("42"),

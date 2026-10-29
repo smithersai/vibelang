@@ -2,6 +2,6 @@
 // platform import, which loads nothing, leaves no trace in the JavaScript.
 import "vibelang/platform/node"
 
-export function main() {
+export effect function main() {
   try Console.log("needs no service")
 }

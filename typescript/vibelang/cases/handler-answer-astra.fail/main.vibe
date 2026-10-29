@@ -2,7 +2,7 @@
 // astra-2: the second clause's string reaches the first clause's number.
 control Steps { first(): void!!; second(): void!! }
 
-export function probe() {
+export effect function probe() {
   try {
     try Steps.first()
     try Steps.second()

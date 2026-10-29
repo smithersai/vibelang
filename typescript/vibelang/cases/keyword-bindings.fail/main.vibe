@@ -11,7 +11,7 @@ const start = fork
 const wait = join
 const hatch = { callback }
 
-export function main() {
+export effect function main() {
   const fiber = fork Effect.succeed(1)
   const value = try Runtime.sync(() => 2)
   return [try join(fiber), value]

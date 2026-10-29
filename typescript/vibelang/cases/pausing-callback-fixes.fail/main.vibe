@@ -3,7 +3,7 @@
 // its Effects run first; a VibeLang function that calls its callback as a
 // plain function needs a contract that runs it (D12).
 let count = 0
-function tick(): number!! { try sleep("0 millis"); count++; return count }
+effect function tick(): number!! { try sleep("0 millis"); count++; return count }
 
 function twice<A>(f: () => A): [A, A] { return [f(), f()] }
 

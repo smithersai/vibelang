@@ -7,7 +7,7 @@
 function twice(n: number) {
   return n * 2
 }
-function cmp(a: number, b: number): number!! {
+effect function cmp(a: number, b: number): number!! {
   return a - b
 }
 

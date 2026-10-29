@@ -1,6 +1,6 @@
 // expect: EK2001
 import * as Effect from "effect/Effect"
-export function invalid(choose: boolean): number!! {
-  const held: Effect.Effect<number, string> = () => { throw "held" }
+export effect function invalid(choose: boolean): number!! {
+  const held: Effect.Effect<number, string> = effect { throw "held" }
   return try Effect.uninterruptible(choose ? held : Effect.fail("call"))
 }

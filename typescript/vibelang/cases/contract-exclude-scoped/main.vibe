@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect"
 service Host { field: string }
-export function run<A, E, R>(body: Effect.Effect<A, E, R>): A!E!(Exclude<R, Host>) {
+export effect function run<A, E, R>(body: Effect.Effect<A, E, R>): A!E!(Exclude<R, Host>) {
   return try Effect.scoped(Effect.provideService(body, Host, { field: "host" }))
 }

@@ -12,7 +12,7 @@ export interface SearchApi {
 
 export service Search: SearchApi {
   static readonly layer = Layer.succeed(Search, {
-    find: (query: string) => {
+    find: effect (query: string) => {
       if (query === "") throw new NotFound({ query })
       return `hit:${query}`
     },
@@ -31,7 +31,7 @@ service Replica: string
 type Collapsed = [Primary] extends [Replica] ? true : [Replica] extends [Primary] ? true : false
 const collapsed: Collapsed = false
 
-function lookup(query: string) {
+effect function lookup(query: string) {
   try {
     return `${try Prefix()}${try Search.find(query)}`
   } catch (error) {
@@ -39,7 +39,7 @@ function lookup(query: string) {
   }
 }
 
-function format(value: string) {
+effect function format(value: string) {
   return try (try Format())(value)
 }
 
@@ -47,7 +47,7 @@ function upper(value: string) {
   return value.toUpperCase()
 }
 
-export function main() {
+export effect function main() {
   provide Search.layer, Prefix = "> ", Format = upper {
     return { hit: try lookup("a"), miss: try lookup(""), index: (try Search()).index, formatted: try format("x"), collapsed }
   }

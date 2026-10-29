@@ -8,8 +8,8 @@ class Base {
 }
 
 export class Counter extends Base {
-  fast(): number!! { return super.count++ }
-  general(): number!! {
+  effect fast(): number!! { return super.count++ }
+  effect general(): number!! {
     const before = super.count++
     return before
   }

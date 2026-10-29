@@ -3,7 +3,7 @@
 // captures it, even in an object literal that a const of the region holds
 // and only join reads (D409). The literal itself may hold the fiber: join
 // of such a const is allowed (fibers-join-record).
-export function main() {
+export effect function main() {
   const fiber = fork { return "A" }
   const tasks = {
     get task() {

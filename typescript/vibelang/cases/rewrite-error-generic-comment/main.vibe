@@ -1,5 +1,5 @@
 import "vibelang/platform/node"
 class Bad<T /* extends */> extends Data.TaggedError("Bad")<{ readonly n: T }> {}
-export function main() {
+export effect function main() {
   try Console.log(new Bad({ n: "ok" }).n)
 }

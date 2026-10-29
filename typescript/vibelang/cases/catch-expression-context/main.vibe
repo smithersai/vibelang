@@ -5,22 +5,22 @@ type Outcome = { _tag: "Found"; value: number } | { _tag: "Error"; error: Missin
 type Maybe = { _tag: "Some"; value: number } | { _tag: "None" }
 type Mode = "fast" | "slow"
 
-function find(n: number): number!Missing {
+effect function find(n: number): number!Missing {
   if (n < 0) throw new Missing({ code: "negative" })
   return n
 }
 
 // D293: both sides of a catch expression take the expression's contextual
 // type, as both branches of a conditional do, so literal tags stay literal.
-function select(n: number): Outcome!! {
+effect function select(n: number): Outcome!! {
   return { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Error", error })
 }
 
-function fallback(n: number): Maybe!! {
+effect function fallback(n: number): Maybe!! {
   return { _tag: "Some", value: find(n) } catch ({ _tag: "None" })
 }
 
-function declared(n: number) {
+effect function declared(n: number) {
   const outcome: Outcome = { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Error", error })
   return outcome._tag
 }
@@ -29,27 +29,27 @@ function report(outcome: Outcome): string {
   return outcome._tag
 }
 
-function block(n: number): Outcome!! {
+effect function block(n: number): Outcome!! {
   return { _tag: "Found", value: find(n) } catch (error) => {
     const failed: Missing = error
     return { _tag: "Error", error: failed }
   }
 }
 
-function step(label: "first" | "second", n: number): "first" | "second"!Missing {
+effect function step(label: "first" | "second", n: number): "first" | "second"!Missing {
   if (n < 0) throw new Missing({ code: label })
   return label
 }
 
-function chained(a: number, b: number): "first" | "second" | "last"!! {
+effect function chained(a: number, b: number): "first" | "second" | "last"!! {
   return step("first", a) catch step("second", b) catch "last"
 }
 
-function mode(n: number): Mode!! {
+effect function mode(n: number): Mode!! {
   return (find(n) > 10 ? "fast" : "slow") catch "slow"
 }
 
-export function main() {
+export effect function main() {
   return {
     select: [(try select(1))._tag, (try select(-1))._tag],
     fallback: [(try fallback(1))._tag, (try fallback(-1))._tag],

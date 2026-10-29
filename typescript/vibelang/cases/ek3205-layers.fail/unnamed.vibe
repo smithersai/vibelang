@@ -1,5 +1,5 @@
 // Without a platform import, EK3205 names every service the node import's
 // entry would provide: Effect's FileSystem and the experimental Process.
-export function main() {
+export effect function main() {
   try Console.log(try Experimental.Process.pid(), try FileSystem.exists("package.json"))
 }

@@ -1,6 +1,6 @@
 // expect: EK1019
 import "vibelang/platform/node"
-export function main() {
+export effect function main() {
   const n = do { var leaked = 42; leaked }
   try Console.log(n)
   const nestedBlock = do { { var inner = 1; } 2 }

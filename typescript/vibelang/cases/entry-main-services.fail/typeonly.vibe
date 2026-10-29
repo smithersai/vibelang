@@ -5,6 +5,6 @@ export interface Shape {
   id: string
 }
 
-export function main() {
+export effect function main() {
   try Console.log(try Users.find("4"))
 }

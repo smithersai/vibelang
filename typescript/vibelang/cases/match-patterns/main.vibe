@@ -5,7 +5,7 @@ error Denied { user: string; reason: string }
 
 type Failure = NotFound | Timeout | Denied
 
-function getUser(id: string): string!NotFound {
+effect function getUser(id: string): string!NotFound {
   if (id === "7") throw new NotFound({ id })
   return "Ada"
 }
@@ -37,7 +37,7 @@ function option(o: Option.Option<number>) {
   }
 }
 
-function exitOf(id: string) {
+effect function exitOf(id: string) {
   const outcome = try Effect.exit(getUser(id))
   return match (outcome) {
     when Exit.Success(let v): `value ${v.length - 2}`;
@@ -112,7 +112,7 @@ function isChecks(e: Failure) {
   return [e is NotFound, e is Timeout or Denied, [1, 2] is [1, Number]]
 }
 
-function ifBind(id: string) {
+effect function ifBind(id: string) {
   const outcome = try Effect.exit(getUser(id))
   if (outcome is Exit.Failure(let cause) && cause.reasons.length > 0) {
     return `cause ${(cause.reasons[0] as any).error._tag}`
@@ -137,7 +137,7 @@ function positions() {
     when "s": out.push("stmt");
     default: out.push("other");
   }
-  out.push(try returned())
+  out.push(returned())
   out.push(`expr ${match (3) { when 3: 6; default: 0; }}`)
   return out
 }
@@ -149,7 +149,7 @@ function returned() {
   }
 }
 
-function effectful() {
+effect function effectful() {
   return match ("1") {
     when "1": try getUser("1");
     default: "no";
@@ -171,7 +171,7 @@ function source() {
 }
 
 function subjectCall() {
-  return match (try source()) {
+  return match (source()) {
     when { kind: "call" }: "from call";
     default: "other";
   }
@@ -185,26 +185,26 @@ function keys(headers: { "content-type"?: string; [k: string]: unknown }, name: 
   }
 }
 
-export function main() {
+export effect function main() {
   return {
-    errors: [try describe(new NotFound({ id: "7" })), try describe(new Timeout()), try describe(new Denied({ user: "root", reason: "root" }))],
-    literals: [try literal(1), try literal(2), try literal(9), try literal(-1), try literal(null)],
-    option: [try option(Option.some(5)), try option(Option.none())],
+    errors: [describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "root", reason: "root" }))],
+    literals: [literal(1), literal(2), literal(9), literal(-1), literal(null)],
+    option: [option(Option.some(5)), option(Option.none())],
     exit: [try exitOf("1"), try exitOf("7")],
-    result: [try result(Result.succeed(3)), try result(Result.fail("bad"))],
-    arrays: [try arrays([]), try arrays([1]), try arrays([1, 2, 3])],
-    objects: [try objects({ role: "admin", name: "ada" }), try objects({ role: "guest" }), try objects({ role: "x", b: 1, c: 2 })],
-    combinators: [try combinators("e"), try combinators("q"), try combinators("long")],
-    types: [try types("hi"), try types(4), try types(true)],
-    custom: [try custom(4), try custom(3)],
-    extract: try extract(new NotFound({ id: "9" })),
-    is: (try isChecks(new NotFound({ id: "1" }))).slice(0, 2).concat([(try isChecks(new Timeout()))[1]]),
+    result: [result(Result.succeed(3)), result(Result.fail("bad"))],
+    arrays: [arrays([]), arrays([1]), arrays([1, 2, 3])],
+    objects: [objects({ role: "admin", name: "ada" }), objects({ role: "guest" }), objects({ role: "x", b: 1, c: 2 })],
+    combinators: [combinators("e"), combinators("q"), combinators("long")],
+    types: [types("hi"), types(4), types(true)],
+    custom: [custom(4), custom(3)],
+    extract: extract(new NotFound({ id: "9" })),
+    is: (isChecks(new NotFound({ id: "1" }))).slice(0, 2).concat([(isChecks(new Timeout()))[1]]),
     ifBind: [try ifBind("7"), try ifBind("1")],
-    whileBind: try whileBind(),
-    position: try positions(),
+    whileBind: whileBind(),
+    position: positions(),
     effectful: try effectful(),
-    nested: try nested("a", "b"),
-    subjectCall: try subjectCall(),
-    keys: [try keys({ "content-type": "json", x: 1, y: 2 }, "x"), try keys({ "content-type": "text" }, "x"), try keys({}, "x")]
+    nested: nested("a", "b"),
+    subjectCall: subjectCall(),
+    keys: [keys({ "content-type": "json", x: 1, y: 2 }, "x"), keys({ "content-type": "text" }, "x"), keys({}, "x")]
   }
 }

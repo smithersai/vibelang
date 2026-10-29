@@ -15,20 +15,20 @@ control class Approval {
 }
 
 layer NamesLive: Names {
-  name() { return "Ada" }
+  effect name() { return "Ada" }
 }
 
 layer GreeterLive: Greeter {
   const prefix = "hi"
-  greet(name) { return `${prefix} ${name}` }
+  effect greet(name) { return `${prefix} ${name}` }
 }
 
-function release(version: string) {
+effect function release(version: string) {
   if (!try Approval.approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
-function approveAll(version: string) {
+effect function approveAll(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(_request) {
@@ -36,13 +36,13 @@ function approveAll(version: string) {
   }
 }
 
-function names() {
+effect function names() {
   provide NamesLive, GreeterLive {
     const name = try Names.name()
     return { name, greeting: try Greeter.greet(name) }
   }
 }
 
-export function main() {
+export effect function main() {
   return { ...try names(), approved: try approveAll("v1") }
 }

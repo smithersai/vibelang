@@ -4,23 +4,23 @@
 // file's expectations ("without changing E or R"), not contracts printed in the proposal.
 import { fetchUser, findBy, getUser, loadUser, lookup, UserRepo, UserRepoLive } from "./ref1-users-repo.ts"
 
-function teamOf(id: string) {
+effect function teamOf(id: string) {
   return (try lookup(id)).team                     // overloaded: the single-id signature
 }
 // Effect<string, UserNotFound | DbError, UserRepo>
 
-function teamNames(ids: ReadonlyArray<string>) {
+effect function teamNames(ids: ReadonlyArray<string>) {
   const members = try lookup(ids)                // overloaded: the many-ids signature
   return (members as ReadonlyArray<(typeof members)[number]>).map((member) => member.name)
 }
 // Effect<string[], UserNotFound | DbError, UserRepo>
 
-function coreLead() {
+effect function coreLead() {
   return (try findBy("team", "core")).name         // generic: K = "team"
 }
 // Effect<string, UserNotFound | DbError, UserRepo>
 
-function aliases(id: string) {
+effect function aliases(id: string) {
   const a = (try fetchUser(id)).name
   const b = (try getUser(id)).name
   const c = (try loadUser(id)).name
@@ -31,14 +31,14 @@ function aliases(id: string) {
 // The TypeScript-authored Context.Service class is used like a .vibe service.
 // NOTE: UserRepo.all is an Effect-valued member, not a method; calling it runs it (Chapter 11's
 // "a value of type Effect, called as p()"). Whether `UserRepo.all()` is the right spelling is open.
-function directly(id: string) {
+effect function directly(id: string) {
   const user = try UserRepo.byId(id)
   const everyone = try UserRepo.all()
   return `${user.name} of ${everyone.length}`
 }
 // Effect<string, UserNotFound | DbError, UserRepo>
 
-function scenario() {
+effect function scenario() {
   let missing = "none"
   try {
     try teamOf("9")
@@ -56,6 +56,6 @@ function scenario() {
 }
 
 // expect-result: {"team":"compilers","names":["Ada","Edsger"],"lead":"Ada","aliases":["Grace","Grace","Grace"],"direct":"Edsger of 3","missing":"UserNotFound"}
-export function main() {
-  return try Effect.provide(() => scenario(), UserRepoLive)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, UserRepoLive)
 }

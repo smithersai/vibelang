@@ -5,7 +5,7 @@
 // () => call would be, including a pipe's left side.
 control Ask { ask(): number!! }
 
-export function forked() {
+export effect function forked() {
   try {
     const f = try Effect.forkChild(Ask.ask())
     return try Fiber.join(f)
@@ -14,7 +14,7 @@ export function forked() {
   }
 }
 
-export function detached() {
+export effect function detached() {
   try {
     const f = try Effect.forkDetach(Ask.ask())
     return try Fiber.join(f)
@@ -23,7 +23,7 @@ export function detached() {
   }
 }
 
-export function piped() {
+export effect function piped() {
   try {
     const f = Ask.ask() |> try Effect.forkChild(%)
     return try Fiber.join(f)
@@ -32,7 +32,7 @@ export function piped() {
   }
 }
 
-export function timed() {
+export effect function timed() {
   try {
     return try Effect.timeout(Ask.ask(), "1 second")
   } handle Ask.ask() {
@@ -40,7 +40,7 @@ export function timed() {
   }
 }
 
-export function raced() {
+export effect function raced() {
   try {
     return try Effect.race(Ask.ask(), sleep("1 second"))
   } handle Ask.ask() {
@@ -48,7 +48,7 @@ export function raced() {
   }
 }
 
-export function keyed() {
+export effect function keyed() {
   try {
     return try Effect.all({ x: Ask.ask(), y: sleep("1 second") }, { concurrency: 2 })
   } handle Ask.ask() {
@@ -57,7 +57,7 @@ export function keyed() {
 }
 
 // retry runs its program on this fiber, so the handler is reached.
-export function retried() {
+export effect function retried() {
   try {
     return try retry(Ask.ask(), { times: 1 })
   } handle Ask.ask() {

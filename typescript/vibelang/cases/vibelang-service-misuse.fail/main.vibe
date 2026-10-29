@@ -8,7 +8,7 @@ import { Effect } from "effect"
 abstract class Users {
   abstract find(id: string): Effect.Effect<string, never, never>
 
-  static find(id: string) {
+  static effect find(id: string) {
     return id
   }
 }

@@ -10,15 +10,15 @@ import "node:http"
 import type { Server } from "node:http"
 import { hostOf } from "./host.ts"
 
-export const bytes = (text: string) => Buffer.from(text)
-export const load = (id: string) => require(id)
-export const here = () => __dirname
+export const bytes = effect (text: string) => Buffer.from(text)
+export const load = effect (id: string) => require(id)
+export const here = effect () => __dirname
 export const logger = console
 export const timer = setTimeout
-export const server = (s: Server) => s
+export const server = effect (s: Server) => s
 
 // Allowed: TypeScript's escapes.
-export const pid = () => sync(() => process.pid)
+export const pid = effect () => try sync(() => process.pid)
 module host {
   export const cwd = () => process.cwd()
 }

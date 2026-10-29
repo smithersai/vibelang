@@ -9,7 +9,7 @@ function double(n: number): number {
 
 // Console.log returns an Effect, so calling it runs it, and greet becomes
 // an Effect itself.
-function greet(name: string) {
+effect function greet(name: string) {
   try Console.log(`hello, ${name}`)
   return name.length
 }
@@ -17,9 +17,9 @@ function greet(name: string) {
 // An arrow function that runs an Effect becomes one too. Its body is a single
 // call, so it returns that call's Effect, suspended until it runs, without a
 // generator.
-const shout = (text: string) => Console.log(text.toUpperCase())
+const shout = effect (text: string) => try Console.log(text.toUpperCase())
 
-export function main() {
+export effect function main() {
   for (const id of [0, 1]) {
     const length = try greet(`user ${id}`) // a .vibe Effect: runs
     try Console.log(`greeted with ${length} letters`)

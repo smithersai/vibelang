@@ -26,6 +26,6 @@ const two = checkWith((): infer _ => labeled("two", 2), "with a message")
 const names = [one().label, two().label]
 
 // expect-result: ["one","two",2]
-export function main() {
+export effect function main() {
   return [...names, try two()()]
 }

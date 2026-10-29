@@ -4,7 +4,7 @@
 // (D229).
 schema Item { kind: string; extra?: string }
 
-export function main() {
+export effect function main() {
   const extra = "outside"
   const item: Item = { kind: "a", extra: "b" }
   const { rest, picked } = try sync((item: Item) => {

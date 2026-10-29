@@ -1,7 +1,7 @@
-mixed.vibe(7,17): warning EK3205: main needs Users, which nothing provides when the host starts this module.
+mixed.vibe(7,24): warning EK3205: main needs Users, which nothing provides when the host starts this module.
 platform.test.vibe(7,31): error EK3201: Nothing provides FileSystem, Path, which this program needs.
-uninstalled.vibe(6,17): warning EK3205: main needs FileSystem, which nothing provides when the host starts this module.
+uninstalled.vibe(6,24): warning EK3205: main needs FileSystem, which nothing provides when the host starts this module.
 import "vibelang/platform/bun" names @effect/platform-bun, which is not installed.
-unnamed.vibe(6,17): warning EK3205: main needs FileSystem, Path, which nothing provides when the host starts this module.
+unnamed.vibe(6,24): warning EK3205: main needs FileSystem, Path, which nothing provides when the host starts this module.
 Name the platform at the top of this file, and the entry provides FileSystem, Path: import "vibelang/platform/node"
-users.vibe(6,17): warning EK3205: main needs Users, which nothing provides when the host starts this module.
+users.vibe(6,24): warning EK3205: main needs Users, which nothing provides when the host starts this module.

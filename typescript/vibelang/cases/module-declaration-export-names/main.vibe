@@ -7,7 +7,7 @@ module impl {
 }
 import * as ns from impl
 export { "__proto__" as protoValue, "two words" as "two words" } from impl
-export function main() {
+export effect function main() {
   return [ns["__proto__"], ns.constructor, ns["two words"], ns['quote"name'], ns["re-export"],
     try sync(() => Object.prototype.toString.call(ns)), try sync(() => Object.getPrototypeOf(ns) === null)]
 }

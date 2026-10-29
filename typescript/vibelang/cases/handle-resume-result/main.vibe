@@ -7,7 +7,7 @@ control Steps {
   second(): void!!
 }
 
-function work() {
+effect function work() {
   try Steps.first()
   try Steps.second()
   return 42
@@ -16,7 +16,7 @@ function work() {
 const log: string[] = []
 
 // resume returns number | string: the second clause's "early" reaches it.
-function early() {
+effect function early() {
   try {
     return try work()
   } handle Steps.first() {
@@ -29,7 +29,7 @@ function early() {
 
 // A clause that works after resume adds nothing: the statement ends as the
 // block did.
-function after() {
+effect function after() {
   try {
     return try work()
   } handle Steps.first() {
@@ -41,7 +41,7 @@ function after() {
 }
 
 // A written success type covers a return computed from resume's result.
-function written(): number | string!! {
+effect function written(): number | string!! {
   try {
     return try work()
   } handle Steps.first() {
@@ -52,7 +52,7 @@ function written(): number | string!! {
 }
 
 // A try block that ends without returning gives resume undefined.
-function falls() {
+effect function falls() {
   const seen: string[] = []
   try {
     try work()
@@ -66,13 +66,13 @@ function falls() {
 }
 
 // handle's clauses that return the program's type may read resume's result.
-function agreed() {
-  return try handle(() => work(), Steps, {
-    first(k) {
+effect function agreed() {
+  return try handle(effect { return try work() }, Steps, {
+    effect first(k) {
       const n = try resume(k, undefined)
       return n + 1
     },
-    second(k) {
+    effect second(k) {
       return try resume(k, undefined)
     }
   })
@@ -80,19 +80,19 @@ function agreed() {
 
 // A result held in a const and returned unread is never read, even with
 // onReturn.
-function held() {
-  return try handle(() => work(), Steps, {
-    first(k) {
+effect function held() {
+  return try handle(effect { return try work() }, Steps, {
+    effect first(k) {
       const n = try resume(k, undefined)
       return n
     },
-    second(k) {
+    effect second(k) {
       return try resume(k, undefined)
     }
-  }, (n) => n * 2)
+  }, effect (n) => n * 2)
 }
 
-export function main() {
+export effect function main() {
   return {
     early: try early(),
     after: try after(),

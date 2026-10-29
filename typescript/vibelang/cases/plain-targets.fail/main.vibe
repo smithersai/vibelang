@@ -5,10 +5,10 @@
 // the caller of the plain type drops the program unrun.
 import { runAll, register, resetAll } from "./helpers.ts"
 
-function tick() {
+effect function tick() {
   try Console.log("tick")
 }
-function logged(n: number) {
+effect function logged(n: number) {
   try Console.log(n)
 }
 interface Resettable {
@@ -16,7 +16,7 @@ interface Resettable {
 }
 class Counter {
   n = 5
-  reset() {
+  effect reset() {
     try Console.log("reset")
     this.n = 0
   }
@@ -30,7 +30,7 @@ export function held() {
   runAll([...fs])
 }
 export function handlers() {
-  const handlers = { onSave(doc: string) { try Console.log(doc) } }
+  const handlers = { effect onSave(doc: string) { try Console.log(doc) } }
   register(handlers)
   register({ ...handlers })
 }
@@ -39,7 +39,7 @@ export function handlers() {
 export function members() {
   const r: Resettable = new Counter()
   resetAll([new Counter()])
-  const o = { run() { try Console.log("run") } }
+  const o = { effect run() { try Console.log("run") } }
   const p: { run(): void } = o
   return [r, p]
 }

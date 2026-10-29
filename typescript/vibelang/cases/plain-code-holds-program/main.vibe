@@ -1,22 +1,22 @@
 // Plain JavaScript code can hold a function that delays a running call.
-function seven(): number!! { try sleep("0 millis"); return 7 }
+effect function seven(): number!! { try sleep("0 millis"); return 7 }
 
 class Counter {
-  get next() { return () => seven() }
+  get next() { return effect () => try seven() }
 }
 
-function later(program = () => seven()) {
+effect function later(program = effect () => try seven()) {
   return try program()
 }
 
-function typed(program: number!! = () => seven()) {
+effect function typed(program: number!! = effect { return try seven() }) {
   return try program()
 }
 
 // expect-result: [7,7,7,7]
-export function main() {
+export effect function main() {
   class Job {
-    program = () => seven()
+    program = effect () => try seven()
   }
   return [try new Counter().next(), try later(), try typed(), try new Job().program()]
 }

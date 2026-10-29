@@ -7,11 +7,11 @@ import { Scope } from "effect"
 
 control Ask { ask(): number!! }
 
-function asks() {
+effect function asks() {
   return try Ask.ask() + 1
 }
 
-export function byName() {
+export effect function byName() {
   try {
     const f = fork Ask.ask()
     return join f
@@ -20,7 +20,7 @@ export function byName() {
   }
 }
 
-export function block() {
+export effect function block() {
   try {
     const f = fork { return try Ask.ask() }
     return join f
@@ -29,7 +29,7 @@ export function block() {
   }
 }
 
-export function called() {
+export effect function called() {
   try {
     const f = fork asks()
     return join f
@@ -38,7 +38,7 @@ export function called() {
   }
 }
 
-export function detached() {
+export effect function detached() {
   try {
     const f = try detach(Ask.ask())
     return join f
@@ -47,7 +47,7 @@ export function detached() {
   }
 }
 
-export function inScope(scope: Scope.Scope) {
+export effect function inScope(scope: Scope.Scope) {
   try {
     const f = try forkIn(scope, Ask.ask())
     return join f

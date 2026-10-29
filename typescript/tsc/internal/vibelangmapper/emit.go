@@ -100,7 +100,7 @@ func Executable(text string, ctx FileContext) Projection {
 		})
 		return Projection{Diagnostics: diagnostics}
 	}
-	return Projection{Text: exec, Segments: withoutTries(segments, p.tries), Diagnostics: diagnostics}
+	return Projection{Text: exec, Segments: withoutKeywords(segments, p.keywords), Diagnostics: diagnostics}
 }
 
 // originalPosition maps pos, a position in a rendering, to the original

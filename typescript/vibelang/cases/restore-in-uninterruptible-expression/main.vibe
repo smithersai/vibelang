@@ -3,7 +3,7 @@
 // A restore block inside an uninterruptible block written as an expression,
 // `return uninterruptible { … }`, restores the interruptibility the region
 // began with, as it does inside the statement form (D180).
-function restored() {
+effect function restored() {
   const started = try Deferred.make<string>()
   const fiber = fork {
     return try uninterruptible {
@@ -20,7 +20,7 @@ function restored() {
 }
 
 // The restore block runs where it stands, inside the region.
-function value(): number!! {
+effect function value(): number!! {
   let ran = 0
   return try uninterruptible {
     restore {
@@ -30,6 +30,6 @@ function value(): number!! {
   }
 }
 
-export function main() {
+export effect function main() {
   return { restored: try restored(), value: try value() }
 }

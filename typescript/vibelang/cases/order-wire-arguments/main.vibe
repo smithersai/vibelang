@@ -16,7 +16,7 @@ function b(): Layer.Layer<B, never, A> {
   return Layer.effect(B) { return { value: (try A()).value + "b" } }
 }
 
-export function main() {
+export effect function main() {
   const layer = wire(a(), b())
   let value = ""
   provide layer {

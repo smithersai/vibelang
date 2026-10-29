@@ -6,5 +6,5 @@ main.vibe(30,11): error EK4838
 main.vibe(34,17): error EK4838
 main.vibe(41,19): error EK4838
 main.vibe(50,19): error EK4838
-main.vibe(59,30): error EK4838
-main.vibe(60,34): error EK4838
+main.vibe(59,37): error EK4838
+main.vibe(60,45): error EK4838

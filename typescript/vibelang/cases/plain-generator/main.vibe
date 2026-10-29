@@ -37,7 +37,7 @@ export function* effectSteps(): Generator<Effect.Effect<number>, number, number>
   return yield* Effect.succeed(7)
 }
 
-export function main() {
+export effect function main() {
   try Effect.succeed(undefined)
   const work = steps()
   const first = work.next().value

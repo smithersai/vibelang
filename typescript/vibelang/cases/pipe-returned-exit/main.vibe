@@ -3,22 +3,22 @@
 // under a by-name restore, a pipe of two stages, and a body that does not run
 // under a written number success. A pipe's value is its body's (D154): an
 // Exit a running body succeeds with is data, as for the call without the pipe.
-const settled = (effect: number!string!): Exit.Exit<number, string>!! =>
-  Effect.suspend(() => Effect.exit(effect) |> try Effect.ensuring(%, Effect.void))
+const settled = effect (effect: number!string!): Exit.Exit<number, string>!! =>
+  try Effect.suspend(effect () => Effect.exit(effect) |> try Effect.ensuring(%, Effect.void))
 
-const masked = (effect: number!string!): Exit.Exit<number, string>!! =>
-  Effect.uninterruptibleMask((restore) => {
+const masked = effect (effect: number!string!): Exit.Exit<number, string>!! =>
+  try Effect.uninterruptibleMask(effect (restore) => {
     return restore(Effect.exit(effect)) |> try Effect.ensuring(%, Effect.void)
   })
 
-const chained = (effect: number!string!): Exit.Exit<number, string>!! =>
-  Effect.suspend(() => Effect.exit(effect) |> Effect.ensuring(%, Effect.void) |> try Effect.tap(%, () => Console.log("settled")))
+const chained = effect (effect: number!string!): Exit.Exit<number, string>!! =>
+  try Effect.suspend(effect () => Effect.exit(effect) |> Effect.ensuring(%, Effect.void) |> try Effect.tap(%, effect () => try Console.log("settled")))
 
 // A body that does not run, such as a call that returns an Exit, stays the
 // program the callback returns, as Effect.suspend(() => Exit.succeed(n)) does.
-const fromValue = (n: number): number!! => Effect.suspend(() => n |> Exit.succeed(%))
+const fromValue = effect (n: number): number!! => try Effect.suspend(effect () => n |> Exit.succeed(%))
 
-export function main() {
+export effect function main() {
   const failed = try settled(Effect.fail("boom"))
   const ok = try masked(Effect.succeed(7))
   const tapped = try chained(Effect.succeed(9))

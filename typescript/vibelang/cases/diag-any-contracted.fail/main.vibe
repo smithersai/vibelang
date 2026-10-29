@@ -1,27 +1,27 @@
 // expect: EK4409
 error A
-export function run(): number!! {
-  const h: any = () => { throw new A() }
+export effect function run(): number!! {
+  const h: any = effect () => { throw new A() }
   return h()
 }
 
 // Ordinary dynamic values do not produce this new warning.
-export function numeric(): number!! {
-  const h: any = () => 1
+export effect function numeric(): number!! {
+  const h: any = effect () => 1
   return h()
 }
 export function ordinary(h: any): unknown { return h() }
 
 // Permissive success types may intentionally keep a cold program.
-export function unknownProgram(): unknown!! {
-  const h: any = () => { throw new A() }
+export effect function unknownProgram(): unknown!! {
+  const h: any = effect () => { throw new A() }
   return h()
 }
-export function objectProgram(): object!! {
-  const h: any = () => { throw new A() }
+export effect function objectProgram(): object!! {
+  const h: any = effect () => { throw new A() }
   return h()
 }
-export function nestedProgram(): (number!!)!! {
-  const h: any = () => { return 1 }
+export effect function nestedProgram(): (number!!)!! {
+  const h: any = effect () => { return 1 }
   return h()
 }

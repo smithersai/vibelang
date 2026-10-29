@@ -3,9 +3,9 @@
 // with its Effect type holds it (D269), and a function stores it.
 error Missing { id: string }
 
-export function main() {
+export effect function main() {
   const missing: never!Missing! = Effect.fail(new Missing({ id: "a" }))
-  const stored = { fail: () => throw new Missing({ id: "b" }) }
+  const stored = { fail: effect () => throw new Missing({ id: "b" }) }
   const first = missing() catch "held"
   const second = stored.fail() catch (e) => e.id.length
   return [first, second, Effect.isEffect(missing)]

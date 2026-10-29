@@ -1,6 +1,6 @@
 // expect: EK4613 EK4838
 import "vibelang/platform/node"
-export function main() {
+export effect function main() {
   const f = fork sleep("1 minute")
   const g = fork (() => { try Fiber.interrupt(f) })
   join g

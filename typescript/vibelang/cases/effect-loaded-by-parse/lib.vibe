@@ -3,6 +3,6 @@
 // because it calls a built-in whose failures are expected (D101). The program
 // still loads effect, so each one's type and declaration are the Effect its
 // JavaScript returns.
-export const line = (asked: string) => JSON.parse(asked)
-export const component = (text: string) => decodeURIComponent(text)
-export const global = (text: string) => globalThis.JSON.parse(text) as unknown
+export const line = effect (asked: string) => JSON.parse(asked)
+export const component = effect (text: string) => decodeURIComponent(text)
+export const global = effect (text: string) => globalThis.JSON.parse(text) as unknown

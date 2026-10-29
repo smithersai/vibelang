@@ -4,7 +4,7 @@ export const expanded = (n: number): Effect<number, never, never> => {
   const result = ++n
   return result
 }
-export function declared(n: number): Effect<number, never, never> { return ++n }
-export const expression = function (n: number): Effect<number, never, never> { return ++n }
-export function declaredProgram(n: number): Effect<number, never, never> { return try Effect.succeed(++n) }
+export effect function declared(n: number): Effect<number, never, never> { return ++n }
+export const expression = effect function (n: number): Effect<number, never, never> { return ++n }
+export effect function declaredProgram(n: number): Effect<number, never, never> { return try Effect.succeed(++n) }
 export const closure = (n: number): Effect<() => number, never, never> => () => ++n

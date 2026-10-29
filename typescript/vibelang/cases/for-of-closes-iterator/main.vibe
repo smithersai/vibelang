@@ -26,14 +26,14 @@ function counting(name: string): Iterable<number> {
   }
 }
 
-function throwing(): number!Stop {
+effect function throwing(): number!Stop {
   for (const x of counting("throw")) {
     if (x === 2) throw new Stop({ at: x })
   }
   return 0
 }
 
-function throwingAfterEffect(): number!Stop {
+effect function throwingAfterEffect(): number!Stop {
   for (const x of counting("throw after an effect")) {
     try sleep("0 millis")
     if (x === 2) throw new Stop({ at: x })
@@ -41,14 +41,14 @@ function throwingAfterEffect(): number!Stop {
   return 0
 }
 
-function failingCall(): number!Stop {
+effect function failingCall(): number!Stop {
   for (const x of counting("failing call")) {
     if (x === 2) try throwing()
   }
   return 0
 }
 
-function breaking(): number!! {
+effect function breaking(): number!! {
   for (const x of counting("break")) {
     try sleep("0 millis")
     if (x === 2) break
@@ -56,7 +56,7 @@ function breaking(): number!! {
   return 1
 }
 
-function returning(): number!! {
+effect function returning(): number!! {
   outer: for (const x of counting("return")) {
     try sleep("0 millis")
     if (x === 1) continue outer
@@ -65,7 +65,7 @@ function returning(): number!! {
   return 0
 }
 
-function exhausted(): number!! {
+effect function exhausted(): number!! {
   let sum = 0
   for (const x of counting("exhausted")) {
     try sleep("0 millis")
@@ -74,7 +74,7 @@ function exhausted(): number!! {
   return sum
 }
 
-function slow(): number!! {
+effect function slow(): number!! {
   for (const x of counting("interrupted")) {
     try sleep("1 second")
   }
@@ -82,7 +82,7 @@ function slow(): number!! {
 }
 
 // expect-result: {"results":[-1,-1,-1,1,2,15,-1],"events":["throw","throw after an effect","throw","failing call","break","return","interrupted"]}
-export function main() {
+export effect function main() {
   const results = [
     throwing() catch -1,
     throwingAfterEffect() catch -1,

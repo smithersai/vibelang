@@ -2,10 +2,10 @@ import { Effect, Schedule } from "effect"
 error Again {}
 export const make = (state: { mutable setups: number, mutable runs: number }): Effect.Effect<number, Again, never> => {
   state.setups++
-  return () => { state.runs++; throw new Again() }
+  return effect { state.runs++; throw new Again() }
 }
 // expect-result: [1,4,4,4]
-export function main() {
+export effect function main() {
   const heldState = { setups: 0, runs: 0 }
   const namedState = { setups: 0, runs: 0 }
   const held: Effect.Effect<number, Again, never> = make(heldState)

@@ -1,6 +1,6 @@
 // expect: EK4405
 const parse = (text: string): number => Number(text)
 // Type queries are exempt; the actual value capture is not.
-export function invalid(text: string) {
+export effect function invalid(text: string) {
   return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
 }

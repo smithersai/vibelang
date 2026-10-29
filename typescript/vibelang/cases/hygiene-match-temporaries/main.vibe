@@ -12,5 +12,5 @@ import { label } from "./label.vibe"
 error NotFound { id: string }
 
 export function main() {
-  return [try subject(1), [try isFunction(1), try isFunction(2)], try extractor(new NotFound({ id: "a" })), try label({ a: 1 })]
+  return [subject(1), [isFunction(1), isFunction(2)], extractor(new NotFound({ id: "a" })), label({ a: 1 })]
 }

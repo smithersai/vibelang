@@ -17,7 +17,7 @@ export class Repo {
   }
 }
 
-export function main() {
+export effect function main() {
   const [a, b] = try Effect.tryPromise(() => loadAll())
   const c = try Effect.tryPromise(() => new Repo().find("a"))
   return [a, b, c]

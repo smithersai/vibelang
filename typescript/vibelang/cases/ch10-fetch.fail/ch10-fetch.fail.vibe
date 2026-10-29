@@ -6,7 +6,7 @@
 
 class HttpError extends TaggedError("HttpError")<{ readonly url: string; readonly cause: unknown }> {}
 
-function fetchJson(url: string) {
+effect function fetchJson(url: string) {
   const pending = fetch(url)
   return try Effect.tryPromise({
     try: () => pending.then((response) => response.json()),

@@ -2,13 +2,13 @@
 // opus-5: a value computed from a saved resume result changes the answer.
 control Ask { ask(): number!! }
 
-function prog() {
+effect function prog() {
   const a = try Ask.ask()
   const b = try Ask.ask()
   return a + b
 }
 
-function run() {
+effect function run() {
   try {
     return try prog()
   } handle Ask.ask() {
@@ -17,4 +17,4 @@ function run() {
   }
 }
 
-export function main() { try log(`result: ${try run()}`) }
+export effect function main() { try log(`result: ${try run()}`) }

@@ -34,26 +34,26 @@ export error Gone extends HttpError {
   }
 }
 
-function failWith(error: NotFound | Timeout): never!(NotFound | Timeout) {
+effect function failWith(error: NotFound | Timeout): never!(NotFound | Timeout) {
   throw error
 }
 
 // Routing by tag: each subclass's own tag reaches its own handler, and
 // nothing escapes.
-function route(error: NotFound | Timeout): string!! {
+effect function route(error: NotFound | Timeout): string!! {
   return failWith(error)
-    |> Effect.catchTag(%, "NotFound", (caught) => `not found ${caught.path}`)
-    |> try Effect.catchTag(%, "Timeout", (caught) => `timeout ${caught.code}`)
+    |> Effect.catchTag(%, "NotFound", effect (caught) => `not found ${caught.path}`)
+    |> try Effect.catchTag(%, "Timeout", effect (caught) => `timeout ${caught.code}`)
 }
 
-function failBase(error: AppError): never!AppError {
+effect function failBase(error: AppError): never!AppError {
   throw error
 }
 
 // catchTag("AppError") matches only an instance of the base itself.
-function routeBase(error: AppError): string!! {
+effect function routeBase(error: AppError): string!! {
   return failBase(error)
-    |> Effect.catchTag(%, "AppError", (caught) => `base ${caught.code}`)
+    |> Effect.catchTag(%, "AppError", effect (caught) => `base ${caught.code}`)
     catch (caught) => `subclass ${caught._tag}`
 }
 
@@ -69,7 +69,7 @@ function codeOf(error: AppError): string {
   return error.code
 }
 
-export function main() {
+export effect function main() {
   const base = new AppError({ code: "b" })
   const notFound = new NotFound({ code: "n", path: "/a" })
   const timeout = new Timeout({ code: "t" })

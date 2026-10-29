@@ -1,16 +1,16 @@
 import { checkNested } from "./caller.js"
 import { Effect } from "effect"
-function functionValue(): (() => number)!! { return () => 3 }
-function objectValue(): object!! { return () => 4 }
-function unionValue(): (number | (() => number))!! { return () => 5 }
+effect function functionValue(): (() => number)!! { return () => 3 }
+effect function objectValue(): object!! { return effect () => 4 }
+effect function unionValue(): (number | (() => number))!! { return () => 5 }
 export let setups = 0
-export function nested(): Effect.Effect<Effect.Effect<number>, never, never> {
+export effect function nested(): Effect.Effect<Effect.Effect<number>, never, never> {
   setups++
-  return () => 6
+  return effect { return 6 }
 }
 // expect-result: [1,2,3,"function","function",true]
-export function main() {
-  const a = try Effect.suspend(() => () => 1)
-  const b = try Effect.flatMap(Effect.succeed(0), () => () => 2)
+export effect function main() {
+  const a = try Effect.suspend(effect () => effect () => 1)
+  const b = try Effect.flatMap(Effect.succeed(0), effect () => effect () => 2)
   return [try a(), try b(), (try functionValue())(), typeof try objectValue(), typeof try unionValue(), try sync((run: () => boolean) => run(), checkNested)]
 }

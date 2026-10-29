@@ -11,14 +11,14 @@ interface Store {
 }
 
 const layerNoop = (overrides: Partial<Store> = {}): Store => ({
-  heartbeat: () => ({ _tag: "Updated" as const }),
+  heartbeat: effect () => ({ _tag: "Updated" as const }),
   ...overrides
 })
 
 const hanging = layerNoop({ heartbeat: () => Effect.never })
-const answering = layerNoop({ heartbeat: () => Effect.succeed({ _tag: "Updated" as const }) })
+const answering = layerNoop({ heartbeat: effect () => try Effect.succeed({ _tag: "Updated" as const }) })
 
-export function main() {
+export effect function main() {
   const answered = try layerNoop().heartbeat("run")
   const overridden = try answering.heartbeat("run")
   const hung = hanging.heartbeat("run") |> try Effect.timeoutOption(%, "20 millis")

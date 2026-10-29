@@ -1,9 +1,9 @@
 // expect: TS2345 TS2322
 import { Context, Effect, Stream } from "effect"
 const Timings = Context.Reference<(timing: number) => Effect.Effect<void>>("probe/Timings", {
-  defaultValue: () => () => {}
+  defaultValue: () => effect () => {}
 })
-export function main() {
-  try Effect.provideService(Effect.void, Timings, (heard: string) => {})
-  try Effect.provideService(Effect.void, Timings, (heard): void!! => { return "wrong" })
+export effect function main() {
+  try Effect.provideService(Effect.void, Timings, effect (heard: string) => {})
+  try Effect.provideService(Effect.void, Timings, effect (heard): void!! => { return "wrong" })
 }

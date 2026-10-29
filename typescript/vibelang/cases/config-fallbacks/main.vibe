@@ -12,11 +12,11 @@ function withFallback(name: string) {
   return Config.orElse(Config.String(name), () => Config.succeed(`no ${name}`))
 }
 
-function read() {
-  return { host: try host(), missing: try (try withFallback("MISSING"))() }
+effect function read() {
+  return { host: try host(), missing: try (withFallback("MISSING"))() }
 }
 
 // expect-result: {"host":"backup.example.com","missing":"no MISSING"}
-export function main() {
-  return try Effect.provide(() => read(), ConfigProvider.layer(ConfigProvider.fromEnvRecord({ BACKUP_HOST: "backup.example.com" })))
+export effect function main() {
+  return try Effect.provide(effect { return try read() }, ConfigProvider.layer(ConfigProvider.fromEnvRecord({ BACKUP_HOST: "backup.example.com" })))
 }

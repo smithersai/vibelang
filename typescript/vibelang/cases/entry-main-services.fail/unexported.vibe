@@ -1,7 +1,7 @@
 // A main the module does not export gets no entry statement either.
 import { Users } from "./services.vibe"
 
-function main() {
+effect function main() {
   try Console.log(try Users.find("1"))
 }
 

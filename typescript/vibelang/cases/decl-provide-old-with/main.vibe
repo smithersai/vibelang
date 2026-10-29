@@ -7,10 +7,10 @@ service Names {
 }
 
 const NamesLive = Layer.succeed(Names, {
-  name() { return "Ada" }
+  effect name() { return "Ada" }
 })
 
-function old() {
+effect function old() {
   with NamesLive {
     return try Names.name()
   }
@@ -21,8 +21,8 @@ function provide(n: number) {
 }
 
 function called() {
-  try provide(1)
-  return try provide(2)
+  provide(1)
+  return provide(2)
 }
 
 function indexed() {
@@ -37,6 +37,6 @@ function shadowed() {
   return provide
 }
 
-export function main() {
-  return { old: try old(), called: try called(), indexed: try indexed(), shadowed: try shadowed() }
+export effect function main() {
+  return { old: try old(), called: called(), indexed: indexed(), shadowed: shadowed() }
 }

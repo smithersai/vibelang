@@ -3,4 +3,4 @@ main.vibe(26,13): error EK1020
 main.vibe(28,13): error EK1020
 main.vibe(29,13): error EK1020
 main.vibe(29,22): error TS2554
-main.vibe(29,31): error TS2554
+main.vibe(29,27): error TS2554

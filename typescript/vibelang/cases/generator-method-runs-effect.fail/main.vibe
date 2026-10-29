@@ -3,7 +3,7 @@
 // (Chapter 8): a call that runs an Effect there is EK2003, where the method
 // yielded the program unrun. Data, plain calls, a program the method yields
 // as a function, and a call yield* delegates to are fine.
-function work(n: number): number!! {
+effect function work(n: number): number!! {
   try sleep("1 millis")
   return n
 }
@@ -21,7 +21,7 @@ const literal = {
 class Bag {
   *[Symbol.iterator]() {
     yield double(4)
-    yield () => work(4)
+    yield effect () => try work(4)
     yield work(5)
   }
 

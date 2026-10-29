@@ -6,26 +6,26 @@ export type Digest = typeof Digest.Type
 
 export error Empty
 
-export const parse = (input: string): Digest!Empty! => {
+export const parse = effect (input: string): Digest!Empty! => {
   if (input.length === 0) throw new Empty()
   return input as Digest
 }
 
-export const parseExpression = function (input: string): Digest!Empty! {
+export const parseExpression = effect function (input: string): Digest!Empty! {
   return try parse(input)
 }
 
 export const codec = {
-  parse(input: string): Digest!Empty! {
+  effect parse(input: string): Digest!Empty! {
     return try parse(input)
   }
 }
 
-export function parseDeclaration(input: string): Digest!Empty! {
+export effect function parseDeclaration(input: string): Digest!Empty! {
   return try parse(input)
 }
 
 // expect-result: "abc abc abc abc"
-export function main(): string!Empty! {
+export effect function main(): string!Empty! {
   return `${try parse("abc")} ${try parseExpression("abc")} ${try codec.parse("abc")} ${try parseDeclaration("abc")}`
 }

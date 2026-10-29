@@ -3,6 +3,6 @@
 import { labelled } from "./values.ts"
 
 // expect-result: {"value":42,"label":"answer"}
-export function main() {
+export effect function main() {
   return { value: try labelled() + 1, label: labelled.label }
 }

@@ -9,17 +9,17 @@ import * as Listed from "./listed.vibe"
 import { multiplied, forwarded } from "./barrel.vibe"
 
 function quadruple(n: number) {
-  return try double(try double(n))
+  return double(double(n))
 }
 
 // expect-result: {"quadruple":12,"squares":[1,4,9],"renamed":16,"namespace":[14,25],"viaEffect":[2,4],"listed":[6,9,12],"mapped":[3,6],"barrel":[15,18]}
-export function main() {
+export effect function main() {
   try Effect.sleep("1 millis")
   return {
-    quadruple: try quadruple(3),
+    quadruple: quadruple(3),
     squares: [1, 2, 3].map(sq),
     renamed: sq(4),
-    namespace: [try M.double(7), M.square(5)],
+    namespace: [M.double(7), M.square(5)],
     viaEffect: try Effect.forEach([1, 2], double),
     listed: [triple(2), threeTimes(3), Listed.threeTimes(4)],
     mapped: [1, 2].map(threeTimes),

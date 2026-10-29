@@ -15,7 +15,7 @@ const atModule: number!! = make(moduleState) |> Effect.map(%, (n) => n * 10)
 const chainedAtModule: number!! = make(moduleState) |> Effect.map(%, (n) => n * 5) |> Effect.map(%, (n) => n * 2)
 
 // expect-result: [[0,0,0],[2,2,4],[20,20,20,40]]
-export function main() {
+export effect function main() {
   const states = [0, 1].map(() => ({ runs: 0 }))
   const piped: number!! = make(states[0]!) |> Effect.map(%, (n) => n * 10)
   const chained: number!! = make(states[1]!) |> Effect.map(%, (n) => n * 5) |> Effect.map(%, (n) => n * 2)

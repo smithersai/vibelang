@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 export class Failure extends Schema.TaggedError<Failure>()("Failure", { message: Schema.String }) {}
-export const run = (): Effect.Effect<number, Failure, never> => { throw new Failure({ message: "failed" }) }
+export const run = effect (): Effect.Effect<number, Failure, never> => { throw new Failure({ message: "failed" }) }
 type RunError = Effect.Error<ReturnType<typeof run>>
 export const message = (error: RunError): string => error.message
 
@@ -13,7 +13,7 @@ export const chainSuccess: Equal<Effect.Success<ReturnType<typeof Chain.run>>, n
 export const chainContext: Equal<Effect.Services<ReturnType<typeof Chain.run>>, never> = true
 
 // TypeScript consumers and VibeLang type queries must agree.
-export function inferred(fail: boolean) {
+export effect function inferred(fail: boolean) {
   if (fail) throw new Failure({ message: "inferred" })
   return 7
 }

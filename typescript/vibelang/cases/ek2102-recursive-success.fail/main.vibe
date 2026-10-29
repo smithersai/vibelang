@@ -4,18 +4,18 @@
 // they are Effects; a plain annotation such as : boolean would be EK2003.
 class Negative extends TaggedError("Negative")<{ readonly n: number }> {}
 
-export function isEven(n: number) {
+export effect function isEven(n: number) {
   if (n < 0) throw new Negative({ n })
   if (n === 0) return true
   return try isOdd(n - 1)
 }
 
-export function isOdd(n: number) {
+export effect function isOdd(n: number) {
   if (n === 0) return false
   return try isEven(n - 1)
 }
 
-export function countDown(n: number) {
+export effect function countDown(n: number) {
   if (n < 0) throw new Negative({ n })
   if (n === 0) return 0
   return try countDown(n - 1) + 1

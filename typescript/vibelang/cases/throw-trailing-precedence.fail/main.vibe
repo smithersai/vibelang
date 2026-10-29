@@ -2,12 +2,12 @@
 error Missing { id: string }
 // D186: a throw that ends an operator's left operand or a conditional's
 // condition throws only its unary operand, as one that starts it does.
-export function conditional(c: boolean, x: number | undefined): number!Missing {
+export effect function conditional(c: boolean, x: number | undefined): number!Missing {
   return x ?? throw c ? new Missing({ id: "a" }) : new Missing({ id: "b" })
 }
-export function logical(x: unknown) {
+export effect function logical(x: unknown) {
   return x || throw x || 1
 }
-export function nested(x: unknown) {
+export effect function nested(x: unknown) {
   return x && throw x ? 1 : 2
 }

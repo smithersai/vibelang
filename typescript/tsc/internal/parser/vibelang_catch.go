@@ -50,9 +50,12 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 	return left
 }
 
-// parseVibeLangCatchHandler parses the handler of `catch (e) => …` or
-// `catch e => …`, or returns nil when what follows catch is a fallback.
+// parseVibeLangCatchHandler parses the handler of `catch (e) => …`,
+// `catch e => …`, or `catch effect (e) => …`, or returns nil when what follows catch is a fallback.
 func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
+	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
+		return arrow // catch effect (e) => … (VIP-5)
+	}
 	if p.token == ast.KindIdentifier && p.lookAhead((*Parser).nextTokenIsEqualsGreaterThanToken) {
 		return p.parseAssignmentExpressionOrHigher()
 	}

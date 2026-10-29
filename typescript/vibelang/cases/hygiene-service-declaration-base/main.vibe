@@ -5,4 +5,4 @@
 export const Users_base = 123
 export service Users { name: string }
 
-export function name() { return (try Users()).name }
+export effect function name() { return (try Users()).name }

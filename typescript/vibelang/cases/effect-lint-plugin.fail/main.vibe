@@ -6,8 +6,8 @@
 // syntax rules out does not run: this try is Effect's catch, so
 // tryCatchInEffectGen stays quiet, and extendsNativeError leaves Legacy to
 // VibeLang's own EK4805.
-export function pause() {
-  Effect.sleep(0)
+export effect function pause() {
+  try Effect.sleep(0)
   return 1
 }
 

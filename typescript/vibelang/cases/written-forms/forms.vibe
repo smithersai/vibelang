@@ -8,8 +8,8 @@ export function bump() {
   bumps++
   return bumps
 }
-export const arrow = (n: number) => n + 1
-export const api = { triple(n: number) { return n * 3 } }
+export const arrow = effect (n: number) => n + 1
+export const api = { effect triple(n: number) { return n * 3 } }
 
 // Plain: a plain return annotation, or `: infer _`.
 export function double(n: number): number {
@@ -31,8 +31,8 @@ export const madeThird = makeApi().nested.third(3)
 export const label = { toString() { return "ok" }, toJSON: () => 1 }
 
 // Effect code runs an Effect function where it calls it.
-export function main() {
-  const first = try bump()
-  const second = try bump()
+export effect function main() {
+  const first = bump()
+  const second = bump()
   return [first, second, try arrow(1), try api.triple(2), double(4)]
 }

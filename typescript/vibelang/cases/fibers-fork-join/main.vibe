@@ -1,40 +1,40 @@
 // expect-result: {"pair":["Ada",3],"tuple":["Ada",3],"record":{"user":"Ada","count":3},"block":"done","old":"Ada","deferred":7,"failed":"NotFound","interrupted":true,"detached":"background","scoped":"scoped"}
 error NotFound { id: string }
 
-function getUser(id: string): string!NotFound! {
+effect function getUser(id: string): string!NotFound! {
   try sleep("5 millis")
   if (id === "missing") throw new NotFound({ id })
   return "Ada"
 }
 
-function count(): number!! {
+effect function count(): number!! {
   try sleep("2 millis")
   return 3
 }
 
-function label(): string!! {
+effect function label(): string!! {
   return "scoped"
 }
 
 // fork starts a fiber; join joins it, and its failure joins E.
-function pair() {
+effect function pair() {
   const user = fork getUser("42")
   const n = fork count()
   return [join user, join n]
 }
 
 // join on an array joins every fiber and keeps the shape.
-function tuple() {
+effect function tuple() {
   const [user, n] = join [fork getUser("42"), fork count()]
   return [user, n]
 }
 
-function record() {
+effect function record() {
   return join { user: fork getUser("42"), count: fork count() }
 }
 
 // fork { ... } forks a block.
-function block() {
+effect function block() {
   const done = try Deferred.make<string>()
   fork {
     try sleep("1 millis")
@@ -44,18 +44,18 @@ function block() {
 }
 
 // The call form still works.
-function old() {
+effect function old() {
   const fiber = fork(getUser("42"))
   return join fiber
 }
 
-function deferred() {
+effect function deferred() {
   const d = try Deferred.make<number>()
   try Deferred.succeed(d, 7)
   return try d.await()
 }
 
-function failed() {
+effect function failed() {
   try {
     const user = fork getUser("missing")
     return join user
@@ -65,7 +65,7 @@ function failed() {
 }
 
 // When one fiber fails, join interrupts the others.
-function interrupted() {
+effect function interrupted() {
   const slow = fork {
     try sleep("1 second")
     return "slow"
@@ -83,13 +83,13 @@ function interrupted() {
   }
 }
 
-function detached() {
+effect function detached() {
   const d = try Deferred.make<string>()
   try detach(Deferred.succeed(d, "background"))
   return try d.await()
 }
 
-function scoped() {
+effect function scoped() {
   const scope = try Scope.make()
   const fiber = try forkIn(scope, label())
   const value = join fiber
@@ -97,7 +97,7 @@ function scoped() {
   return value
 }
 
-export function main() {
+export effect function main() {
   return {
     pair: try pair(),
     tuple: try tuple(),

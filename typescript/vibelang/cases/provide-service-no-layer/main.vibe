@@ -10,19 +10,19 @@ service Names {
 }
 
 const NamesLive = Layer.succeed(Names, {
-  name() { return "Ada" }
+  effect name() { return "Ada" }
 })
 
 const events: string[] = []
 
-function scope(): string!! {
+effect function scope(): string!! {
   const memo = try Effect.serviceOption(Layer.CurrentMemoMap)
   return Option.isSome(memo) ? "layer" : "no layer"
 }
 
 function greeting(text: string): Greeting.Shape {
   events.push(text)
-  return { text: () => text }
+  return { text: effect () => text }
 }
 
 function names() {
@@ -30,52 +30,52 @@ function names() {
   return NamesLive
 }
 
-export function single(): string!! {
-  provide Greeting = { text: () => "hi" } {
+export effect function single(): string!! {
+  provide Greeting = { text: effect () => "hi" } {
     return `${try Greeting.text()}, ${try scope()}`
   }
 }
 
-export function two(): string!! {
-  provide Greeting = { text: () => "hi" }, Names = { name: () => "Bo" } {
+export effect function two(): string!! {
+  provide Greeting = { text: effect () => "hi" }, Names = { name: effect () => "Bo" } {
     return `${try Names.name()} ${try Greeting.text()}, ${try scope()}`
   }
 }
 
 // A Layer the source writes still builds one.
-export function layer(): string!! {
+export effect function layer(): string!! {
   provide NamesLive {
     return `${try Names.name()}, ${try scope()}`
   }
 }
 
 // Providers evaluate in source order, Layers and services alike.
-export function mixed(): string!! {
+export effect function mixed(): string!! {
   events.length = 0
-  provide Greeting = greeting("first"), try names() {
-    provide try names(), Greeting = greeting("last") {
+  provide Greeting = greeting("first"), names() {
+    provide names(), Greeting = greeting("last") {
       return `${try Names.name()} ${try Greeting.text()}, ${try scope()}, ${events.join(" ")}`
     }
   }
 }
 
 // The innermost block wins, and the later of two entries for one key.
-export function nested(): string!! {
-  provide Greeting = { text: () => "outer" } {
-    provide Greeting = { text: () => "early" }, Greeting = { text: () => "inner" } {
+export effect function nested(): string!! {
+  provide Greeting = { text: effect () => "outer" } {
+    provide Greeting = { text: effect () => "early" }, Greeting = { text: effect () => "inner" } {
       return try Greeting.text()
     }
   }
 }
 
 // One pass through a one-service block, for the run-loop count.
-export function once(): number!! {
-  provide Greeting = { text: () => "hi" } {
+export effect function once(): number!! {
+  provide Greeting = { text: effect () => "hi" } {
     return (try Greeting.text()).length
   }
 }
 
 // The same statements, for Effect.provideService to provide.
-export function bare() {
+export effect function bare() {
   return (try Greeting.text()).length
 }

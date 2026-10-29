@@ -3,6 +3,6 @@
 import { Effect } from "effect"
 
 // expect-result: 3
-export function main() {
+export effect function main() {
   return try Effect.succeed(1 + 2)
 }

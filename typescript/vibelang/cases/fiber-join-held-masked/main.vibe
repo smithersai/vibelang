@@ -5,13 +5,13 @@
 // is masked, but the fibers it waits for are interrupted all the same.
 error Bad {}
 
-function bad(n: number) {
+effect function bad(n: number) {
   if (n > 0) throw new Bad()
   return n
 }
 
 // A fiber that waits until something interrupts it, and traces its finally.
-function hold(ready: Deferred.Deferred<void>, trace: string[]) {
+effect function hold(ready: Deferred.Deferred<void>, trace: string[]) {
   try {
     try Deferred.succeed(ready, undefined)
     try Effect.never()
@@ -20,7 +20,7 @@ function hold(ready: Deferred.Deferred<void>, trace: string[]) {
   }
 }
 
-function masked() {
+effect function masked() {
   const trace: string[] = []
   uninterruptible {
     const ready = try Deferred.make<void>()
@@ -36,7 +36,7 @@ function masked() {
   return trace
 }
 
-function record() {
+effect function record() {
   const trace: string[] = []
   uninterruptible {
     const ready = try Deferred.make<void>()
@@ -53,7 +53,7 @@ function record() {
 }
 
 // The same join outside a mask, with the held fiber waiting in its own restore.
-function held() {
+effect function held() {
   const trace: string[] = []
   const ready = try Deferred.make<void>()
   const fiber = fork {
@@ -77,6 +77,6 @@ function held() {
   return trace
 }
 
-export function main() {
+export effect function main() {
   return { masked: try masked(), record: try record(), held: try held() }
 }

@@ -20,10 +20,10 @@ abstract class Database {
   abstract query(sql: string): Effect.Effect<ReadonlyArray<User>, DbError, never>
 }
 
-export const UsersLive = Layer.effect(Users, () => {
+export const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       const rows = try db.query(`select ${id}`)
       if (rows.length === 0) return try Effect.fail(new UserNotFound({ id }))
       return try Effect.succeed(rows[0])
@@ -32,7 +32,7 @@ export const UsersLive = Layer.effect(Users, () => {
 })
 
 export class UsersFlaky implements Users {
-  find(id: string) {
+  effect find(id: string) {
     return try Effect.fail(new DbError({ reason: `no connection for ${id}` }))
   }
 }

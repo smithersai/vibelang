@@ -8,6 +8,6 @@ function handle(n: number) {
 }
 
 // expect-result: 40
-export function main() {
-  return try Effect.succeed(try handle(4))
+export effect function main() {
+  return try Effect.succeed(handle(4))
 }

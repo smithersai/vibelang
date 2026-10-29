@@ -21,6 +21,23 @@ var update = flag.Bool("update", false, "rewrite the golden files of TestFormatG
 // forms holds one source per VibeLang form, written as an author might, so
 // a test sees each form's TypeScript form and its round trip.
 var forms = map[string]string{
+	"effect": `effect function load(id: string) {   return try find(id) }
+export effect function save(user: User) { try write(user) }
+export default effect function () { return 1 }
+async function get(url: string) { return await fetch(url) }
+class Users {
+  effect find(id: string) { return try lookup(id) }
+  async load() { return 1 }
+}
+const tools = { effect five() { return 5 }, effect: 1 }
+const each = effect (n: number) => try double(n)
+const one = effect n => n
+const run = effect {
+  try yieldNow()
+  return 1
+}
+const later = Effect.retry(effect { try save(user) }, policy)
+`,
 	"effect types": `type Find = (id: string) => User!NotFound
 type Release = (version: string) => string!!Approval
 type Load = () => string!!

@@ -2,5 +2,5 @@
 // Returning an Effect function is plain; actually running one is not.
 export const invalid = (): () => Effect.Effect<number, never, never> => {
   Effect.succeed(1)
-  return (): Effect.Effect<number, never, never> => 1
+  return effect (): Effect.Effect<number, never, never> => 1
 }

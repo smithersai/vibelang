@@ -3,26 +3,26 @@ error Boom
 type Run = <A>(effect: Effect.Effect<A, Boom>) => Promise<A>
 
 export let attempts = 0
-function work(): number!Boom {
+effect function work(): number!Boom {
   attempts++
   return 1
 }
 
 // A plain object method that only hands a program to a runner callback.
-export const methodShorthand = (run: Run) => ({
+export const methodShorthand = effect (run: Run) => ({
   go(): Promise<number> {
     return run(work())
   }
 })
 
 // The same body as an annotated arrow property.
-export const arrowProperty = (run: Run) => ({
+export const arrowProperty = effect (run: Run) => ({
   go: (): Promise<number> => run(work())
 })
 
 // The same body as an unannotated method.
-export const unannotated = (run: Run) => ({
-  go() {
+export const unannotated = effect (run: Run) => ({
+  effect go() {
     return run(work())
   }
 })

@@ -4,7 +4,7 @@
 // fiber already running is waited for, not started again.
 control Ask { ask(): number!! }
 
-function answered(n: number) {
+effect function answered(n: number) {
   try {
     return try Ask.ask()
   } handle Ask.ask() {
@@ -12,7 +12,7 @@ function answered(n: number) {
   }
 }
 
-export function main() {
+export effect function main() {
   const running = fork answered(5)
   return {
     all: await.all [answered(1), answered(2)],

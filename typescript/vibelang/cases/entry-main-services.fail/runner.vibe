@@ -3,7 +3,7 @@
 // reports the error EK3201, and EK3205 is not reported.
 import { Users } from "./services.vibe"
 
-export function main() {
+export effect function main() {
   try Console.log(try Users.find("1"))
 }
 

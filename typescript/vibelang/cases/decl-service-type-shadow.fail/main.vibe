@@ -6,7 +6,7 @@ interface SearchApi {
 }
 
 export service Search: SearchApi {
-  static find(query: string) {
+  static effect find(query: string) {
     return query
   }
 }

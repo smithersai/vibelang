@@ -14,7 +14,7 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-function mapAll<A, B, E, R>(items: ReadonlyArray<A>, f: (a: A) => B!E!R) {
+effect function mapAll<A, B, E, R>(items: ReadonlyArray<A>, f: (a: A) => B!E!R) {
   const out: B[] = []
   for (const item of items) out.push(try f(item))
   return out
@@ -23,36 +23,36 @@ function mapAll<A, B, E, R>(items: ReadonlyArray<A>, f: (a: A) => B!E!R) {
 
 // NOTE: the proposal shows these two calls at a module's top level, where a call may not run a
 // program (EK1001); they are moved into a function.
-function namesAndSizes(ids: ReadonlyArray<string>, words: ReadonlyArray<string>) {
-  const names = try mapAll(ids, (id) => (try Users.find(id)).name)   // Effect<string[], UserNotFound, Users>
-  const sizes = try mapAll(words, (w) => w.length)             // Effect<number[], never, never>
+effect function namesAndSizes(ids: ReadonlyArray<string>, words: ReadonlyArray<string>) {
+  const names = try mapAll(ids, effect (id) => (try Users.find(id)).name)   // Effect<string[], UserNotFound, Users>
+  const sizes = try mapAll(words, effect (w) => w.length)             // Effect<number[], never, never>
   return { names, sizes }
 }
 
-function withRetry<A, E, R>(times: number, program: () => A!E!R) {
+effect function withRetry<A, E, R>(times: number, program: () => A!E!R) {
   return try Effect.retry(program, Schedule.recurs(times))
 }
 // <A, E, R>(times: number, program: () => Effect<A, E, R>) => Effect<A, E, R>
 
 let attempts = 0
 
-function flaky() {
+effect function flaky() {
   attempts++
   if (attempts < 3) throw new Flaky({ attempt: attempts })
   return attempts
 }
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: `user-${id}` })
+  find: effect (id) => ({ id, name: `user-${id}` })
 })
 
-function scenario() {
+effect function scenario() {
   const both = try namesAndSizes(["1", "2"], ["a", "bcd"])
-  const retried = try withRetry(5, () => flaky())
+  const retried = try withRetry(5, effect () => try flaky())
   return { names: both.names, sizes: both.sizes, retried, attempts }
 }
 
 // expect-result: {"names":["user-1","user-2"],"sizes":[1,3],"retried":3,"attempts":3}
-export function main() {
-  return try Effect.provide(() => scenario(), UsersTest)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, UsersTest)
 }

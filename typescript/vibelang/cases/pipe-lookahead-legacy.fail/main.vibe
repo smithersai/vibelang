@@ -7,5 +7,5 @@ function inspect(value: unknown): string {
 }
 
 export function main() {
-  return pipe(() => 5, inspect)
+  return pipe(effect () => 5, inspect)
 }

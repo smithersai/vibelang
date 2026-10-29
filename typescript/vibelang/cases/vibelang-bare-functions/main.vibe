@@ -5,29 +5,29 @@ error Flaky {}
 
 let attempts = 0
 
-function flaky() {
+effect function flaky() {
   attempts++
   if (attempts < 3) throw new Flaky()
   return attempts
 }
 
-function after(ms: number, value: string) {
+effect function after(ms: number, value: string) {
   try sleep(`${ms} millis`)
   return value
 }
 
-function shadowed() {
-  const log = (text: string) => text.toUpperCase()
+effect function shadowed() {
+  const log = effect (text: string) => text.toUpperCase()
   return try log("local")
 }
 
 // expect-result: {"retried":3,"both":["one","two"],"each":[2,4],"timed":"ok","raced":"fast","traced":"ok","local":"LOCAL"}
-export function main() {
+export effect function main() {
   try log("bare log")
   try logInfo("bare logInfo")
   const retried = try retry(flaky(), { times: 5 })
   const both = try all([after(2, "one"), after(1, "two")])
-  const each = try forEach([1, 2], (n) => n * 2)
+  const each = try forEach([1, 2], effect (n) => n * 2)
   const timed = try timeout(after(1, "ok"), "1 second")
   const raced = try race(after(1, "fast"), after(200, "slow"))
   const traced = try withSpan(after(1, "ok"), "traced")

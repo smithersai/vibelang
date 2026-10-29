@@ -40,7 +40,7 @@ export const parseOr = (text: string): string => {
 export const parse = (text: string): string => tagged(text)
 
 // The same throws under an Effect contract fail the Effect, in every form.
-export function pick(tag: string): number!Invalid {
+export effect function pick(tag: string): number!Invalid {
   return match (tag) {
     when "a": 1;
     when "b": do {
@@ -51,4 +51,4 @@ export function pick(tag: string): number!Invalid {
   }
 }
 
-export const validate = (value: string): string!Invalid! => value === "" ? throw new Invalid({ value }) : value
+export const validate = effect (value: string): string!Invalid! => value === "" ? throw new Invalid({ value }) : value

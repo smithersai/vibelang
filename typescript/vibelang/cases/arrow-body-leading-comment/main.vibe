@@ -3,37 +3,37 @@
 // lowering keeps the expression on the line of its return.
 error Bad { message: string }
 
-const later = (n: number): number!! => {
+const later = effect (n: number): number!! => {
   try sleep("1 millis")
   return n
 }
 
-const both = (): readonly [number, number]!! =>
+const both = effect (): readonly [number, number]!! =>
   // Both run at once.
-  Effect.all([later(1), later(2)], { concurrency: "unbounded" })
+  try Effect.all([later(1), later(2)], { concurrency: "unbounded" })
 
-const joined = (): string!! =>
+const joined = effect (): string!! =>
   /* the parts, in order */
-  Effect.map(Effect.all([later(1), later(2)]), () => "ab")
+  try Effect.map(Effect.all([later(1), later(2)]), () => "ab")
 
-const traced = (n: number): number!! =>
+const traced = effect (n: number): number!! =>
   // first line
   // second line
-  later(n)
+  try later(n)
 
-const parse = (text: string) =>
+const parse = effect (text: string) =>
   // The comment sits between the arrow and its body.
   try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
 
-const step = (n: number) =>
+const step = effect (n: number) =>
   // A comment before a sync hatch.
-  sync((n) => n + 1, n)
+  try sync((n) => n + 1, n)
 
-const stepped = (n: number) =>
+const stepped = effect (n: number) =>
   /* A block comment
      over two lines. */
-  step(n)
+  try step(n)
 
-export function main() {
+export effect function main() {
   return [try both(), try joined(), try traced(3), try parse("[1]"), try step(2), try stepped(4)]
 }

@@ -21,7 +21,7 @@ module counter {
 import { bump, count, seen } from counter
 
 // expect-result: {"before":0,"after":1,"first":"start","second":"changed"}
-export function main() {
+export effect function main() {
   const before = count
   try sync(() => bump())
   const after = count

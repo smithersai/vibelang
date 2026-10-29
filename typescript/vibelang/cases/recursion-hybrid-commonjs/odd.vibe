@@ -1,5 +1,5 @@
 import { even } from "./lib.vibe"
-export function odd(n: number): Effect<boolean> {
+export effect function odd(n: number): Effect<boolean> {
   return n === 0 ? false : try even(n - 1)
 }
 

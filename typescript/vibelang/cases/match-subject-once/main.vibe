@@ -59,7 +59,7 @@ function statement(box: Turns<"a" | "b" | "c">): number {
 }
 
 // In an Effect function, whose arms can run Effects.
-function effectful(box: Turns<"a" | "b" | "c">) {
+effect function effectful(box: Turns<"a" | "b" | "c">) {
   try yieldNow()
   return match (box.value) {
     when "a": 1;
@@ -192,7 +192,7 @@ function variantAfterIs(d: Delivery): number {
   }
 }
 
-export function main() {
+export effect function main() {
   const a = abc(), b = abc(), c = abc(), d = abc(), e = abc(), f = abc()
   const some = new Turns<Option.Option<number>>([Option.some(1), Option.none()])
   const loop = new Turns<Option.Option<number>>([Option.some(1), Option.some(2), Option.none()])

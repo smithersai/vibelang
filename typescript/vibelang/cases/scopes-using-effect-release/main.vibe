@@ -14,35 +14,35 @@ function handle(name: string) {
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
-function unscoped(name: string) {
+effect function unscoped(name: string) {
   try yieldNow()
-  return try handle(name)
+  return handle(name)
 }
 
-function lease(name: string): Disposable!!Scope {
+effect function lease(name: string): Disposable!!Scope {
   try yieldNow()
-  return try handle(name)
+  return handle(name)
 }
 
-function open(name: string) {
-  return try Effect.acquireRelease(() => handle(name), (h) => { h[Symbol.dispose]() })
+effect function open(name: string) {
+  return try Effect.acquireRelease(effect { return try handle(name) }, effect (h) => { h[Symbol.dispose]() })
 }
 
-function openDisposable(name: string) {
-  return try Effect.acquireDisposable(() => handle(name))
+effect function openDisposable(name: string) {
+  return try Effect.acquireDisposable(effect { return try handle(name) })
 }
 
-const leasedValue: Disposable!!Scope = Effect.acquireRelease(() => handle("value"), (h) => { h[Symbol.dispose]() })
+const leasedValue: Disposable!!Scope = Effect.acquireRelease(effect { return try handle("value") }, effect (h) => { h[Symbol.dispose]() })
 
 function closes(name: string) {
   return events.filter((event) => event === `dispose ${name}`).length
 }
 
-function work() {
-  using plain = try handle("plain")
+effect function work() {
+  using plain = handle("plain")
   using fromEffect = try unscoped("unscoped")
   using leased = try lease("lease")
-  using released = try Effect.acquireRelease(() => handle("released"), (h) => { h[Symbol.dispose]() })
+  using released = try Effect.acquireRelease(effect { return try handle("released") }, effect (h) => { h[Symbol.dispose]() })
   using wrapped = try open("wrapped")
   using value = try leasedValue()
   using disposable = try openDisposable("disposable")
@@ -50,16 +50,16 @@ function work() {
 }
 
 // expect-result: {"released":1,"wrapped":1,"value":1,"disposable":1,"plain":1,"unscoped":1,"lease":1,"events":["body","dispose disposable","dispose value","dispose wrapped","dispose released","dispose lease","dispose unscoped","dispose plain"]}
-export function main() {
+export effect function main() {
   try work()
   return {
-    released: try closes("released"),
-    wrapped: try closes("wrapped"),
-    value: try closes("value"),
-    disposable: try closes("disposable"),
-    plain: try closes("plain"),
-    unscoped: try closes("unscoped"),
-    lease: try closes("lease"),
+    released: closes("released"),
+    wrapped: closes("wrapped"),
+    value: closes("value"),
+    disposable: closes("disposable"),
+    plain: closes("plain"),
+    unscoped: closes("unscoped"),
+    lease: closes("lease"),
     events
   }
 }

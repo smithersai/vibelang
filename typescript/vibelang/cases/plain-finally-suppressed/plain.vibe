@@ -38,7 +38,7 @@ function mixed() {
 }
 
 // The same code in frames.
-function framed() {
+effect function framed() {
   try yieldNow()
   try { return crash("first") }
   finally { crash("second") }
@@ -54,7 +54,7 @@ export function reasons(outcome: Exit<unknown, unknown>): string {
   return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? `Die(${name(reason.defect)})` : reason._tag).join("+")
 }
 
-export function report() {
+export effect function report() {
   return {
     both: reasons(try exit(both())),
     nested: reasons(try exit(nested())),

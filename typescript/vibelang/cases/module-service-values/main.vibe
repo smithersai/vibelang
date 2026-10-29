@@ -14,7 +14,7 @@ const Fixed = Terminal.make({
 })
 
 // expect-result: ["/",true,80,80]
-export function main() {
+export effect function main() {
   provide Path.layer, Layer.succeed(Terminal.Terminal, Fixed) {
     const columns = (try Terminal()).columns
     return [(try Path()).sep, Effect.isEffect(columns), try Terminal.columns(), try (try Terminal()).columns()]

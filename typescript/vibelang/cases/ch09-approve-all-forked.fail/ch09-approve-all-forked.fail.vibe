@@ -8,6 +8,6 @@ abstract class Approval extends Control {
   abstract approve(request: string): Effect<boolean, ReviewBusy, never>
 }
 
-function approveAll(ids: ReadonlyArray<string>) {
-  return try Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 4 })
+effect function approveAll(ids: ReadonlyArray<string>) {
+  return try Effect.forEach(ids, effect (id) => try Approval.approve(id), { concurrency: 4 })
 }

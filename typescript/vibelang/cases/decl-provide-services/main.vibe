@@ -11,50 +11,50 @@ service Names {
 }
 
 const NamesLive = Layer.succeed(Names, {
-  name() { return "Ada" }
+  effect name() { return "Ada" }
 })
 
 const fixedRandom = { nextIntUnsafe: (): number => 7, nextDoubleUnsafe: (): number => 0.25 }
 
-function single(): string!! {
-  provide Greeting = { text: () => "hi" } {
+effect function single(): string!! {
+  provide Greeting = { text: effect () => "hi" } {
     return try Greeting.text()
   }
 }
 
 // Layers and services mix in one list.
-function mixed(): string!! {
-  provide NamesLive, Greeting = { text: () => "hi" } {
+effect function mixed(): string!! {
+  provide NamesLive, Greeting = { text: effect () => "hi" } {
     return `${try Names.name()} ${try Greeting.text()}`
   }
 }
 
 // An effect module stands for its key of the same name: Random is Random.Random.
-function module(): number!! {
+effect function module(): number!! {
   provide Random = fixedRandom {
     return try Random.nextInt()
   }
 }
 
-function qualified(): number!! {
+effect function qualified(): number!! {
   provide Random.Random = fixedRandom {
     return try Random.nextInt()
   }
 }
 
-function both(): string!! {
+effect function both(): string!! {
   provide NamesLive, Random = fixedRandom {
     return `${try Names.name()} ${try Random.nextInt()}`
   }
 }
 
 // The call shape means the same: provide(...) { ... } is provide ... { ... }.
-function called(): string!! {
-  provide(NamesLive, Greeting = { text: () => "hi" }) {
+effect function called(): string!! {
+  provide(NamesLive, Greeting = { text: effect () => "hi" }) {
     return `${try Names.name()} ${try Greeting.text()}`
   }
 }
 
-export function main() {
+export effect function main() {
   return { single: try single(), mixed: try mixed(), module: try module(), qualified: try qualified(), both: try both(), called: try called() }
 }

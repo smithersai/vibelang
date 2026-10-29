@@ -4,7 +4,7 @@
 // drop the program it returns.
 import { each } from "./helpers.ts"
 
-function tick(n: number) {
+effect function tick(n: number) {
   try Console.log(n)
 }
 

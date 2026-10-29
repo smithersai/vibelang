@@ -3,7 +3,7 @@ import * as Math from "./math.vibe"
 import { renamed, forwarded } from "./barrel.vibe"
 
 // expect-result: {"direct":4,"aliased":6,"namespace":8,"renamed":10,"forwarded":12,"mapped":[2,4]}
-export function main() {
+export effect function main() {
   try sleep("1 millis")
   return {
     direct: double(2),

@@ -1,5 +1,5 @@
 import { Users } from "./services.vibe"
 
-export function main() {
+export effect function main() {
   try Console.log(try Users.find("3"))
 }

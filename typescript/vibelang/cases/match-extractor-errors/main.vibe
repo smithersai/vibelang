@@ -2,58 +2,58 @@ export error A { id: string }
 export error B { code: string }
 export error Out { code: string }
 export service S { get(id: string): string!A | B }
-export function viaLet(id: string) {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaLet(id: string) {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B(let b): throw new Out({ code: b.code });
   }
 }
 // Pins the inferred failure channel of viaLet, not just exhaustiveness.
-export function inferredContract(id: string): string!Out!S {
+export effect function inferredContract(id: string): string!Out!S {
   return try viaLet(id)
 }
-export function viaDefault(id: string) {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaDefault(id: string) {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B(let b): throw new Out({ code: b.code });
     default: throw error;
   }
 }
-export function viaBare(id: string): string!Out!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaBare(id: string): string!Out!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B: throw new Out({ code: error.code });
   }
 }
 // A structural sub-pattern that accepts every B also covers B.
-export function viaObject(id: string): string!Out!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaObject(id: string): string!Out!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B({ let code }): throw new Out({ code });
   }
 }
-export function viaConst(id: string): string!Out!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaConst(id: string): string!Out!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B(const b): throw new Out({ code: b.code });
   }
 }
-export function viaVar(id: string): string!Out!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaVar(id: string): string!Out!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B(var b): throw new Out({ code: b.code });
   }
 }
 // A refutable payload keeps B in the default branch.
-export function partial(id: string): string!Out | B!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function partial(id: string): string!Out | B!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B({ code: "only" }): throw new Out({ code: "only" });
     default: throw error;
   }
 }
-export function viaTypedField(id: string): string!Out!S {
-  return S.get(id) catch (error) => match (error) {
+export effect function viaTypedField(id: string): string!Out!S {
+  return S.get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B({ code: String }): throw new Out({ code: "b" });
   }

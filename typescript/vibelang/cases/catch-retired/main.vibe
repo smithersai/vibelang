@@ -3,13 +3,13 @@
 error NotFound { id: string }
 error Timeout
 
-function find(id: string): string!NotFound | Timeout! {
+effect function find(id: string): string!NotFound | Timeout! {
   if (id === "7") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
 }
 
-function typed(id: string) {
+effect function typed(id: string) {
   try {
     return try find(id)
   } catch (e: NotFound) {
@@ -19,7 +19,7 @@ function typed(id: string) {
   }
 }
 
-function caused(id: string) {
+effect function caused(id: string) {
   try {
     return try find(id)
   } catch (cause: Cause) {
@@ -27,7 +27,7 @@ function caused(id: string) {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     typed: [try typed("7"), try typed("slow"), try typed("1")],
     caused: [try caused("1"), try caused("7")]

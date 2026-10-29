@@ -14,7 +14,7 @@ function helper() {
   return 1
 }
 
-export function label(text: string) {
+export effect function label(text: string) {
   const suffix = "!"
   // Allowed: an import, a global, a type, an error declaration, its own names.
   const ok = try sync((value: Label) => {

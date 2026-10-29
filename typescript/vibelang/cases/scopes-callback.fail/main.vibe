@@ -25,7 +25,7 @@ export function connections(ids: string[]) {
   })
 }
 
-export function synced() {
+export effect function synced() {
   return try Effect.sync(() => {
     using t = timer("sync")
     return t.name

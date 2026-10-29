@@ -1,22 +1,22 @@
 import { Effect } from "effect"
 let runs = 0
-function load(n: number): Effect.Effect<unknown, never, never> {
+effect function load(n: number): Effect.Effect<unknown, never, never> {
   runs++
   return n
 }
 function known(n: number) { runs++; return n }
-function failing(): Effect.Effect<unknown, string, never> { throw "failed" }
-export function piped(n: number): Effect.Effect<number, never, never> {
+effect function failing(): Effect.Effect<unknown, string, never> { throw "failed" }
+export effect function piped(n: number): Effect.Effect<number, never, never> {
   return (load(n) as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
 }
-export function typed(): Effect.Effect<number, never, never> {
+export effect function typed(): Effect.Effect<number, never, never> {
   return (known(2) as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
 }
-export function erased(): Effect.Effect<number, never, never> {
+export effect function erased(): Effect.Effect<number, never, never> {
   return (failing() as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
 }
 // expect-result: {"value":2,"typed":3,"direct":4,"repeated":[4,4],"compound":7,"failure":"failed","runs":6}
-export function main() {
+export effect function main() {
   const value = try piped(1)
   const typedValue = try typed()
   const direct = try Effect.map(known(3) as Effect.Effect<number>, (x) => x + 1)

@@ -1,13 +1,13 @@
 // expect: EK1010
 error Failure { code: string }
-function fail() { throw new Failure({ code: "unknown" }) }
+effect function fail() { throw new Failure({ code: "unknown" }) }
 // S10-12: the string operand fits the failure contract, but is not the intended failure.
-export function conditional(): unknown!string! {
-  return fail() catch (f) => throw f.code === "unknown" ? "a" : "b"
+export effect function conditional(): unknown!string! {
+  return fail() catch effect (f) => throw f.code === "unknown" ? "a" : "b"
 }
-export function nullish() {
-  return fail() catch (f) => throw f.code ?? "fallback"
+export effect function nullish() {
+  return fail() catch effect (f) => throw f.code ?? "fallback"
 }
-export function equality() {
-  return fail() catch (f) => throw f.code === "unknown"
+export effect function equality() {
+  return fail() catch effect (f) => throw f.code === "unknown"
 }

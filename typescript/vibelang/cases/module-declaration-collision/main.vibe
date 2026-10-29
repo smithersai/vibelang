@@ -6,7 +6,7 @@ module text { export const n = 2 }
 schema text = "a"
 import { n } from text
 module callable { export const n = 3 }
-function callable() { return 4 }
+effect function callable() { return 4 }
 import { n as other } from callable
 const { Bound } = { Bound: 4 }
 module Bound { export const value = 4 }

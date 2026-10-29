@@ -98,7 +98,7 @@ function shapeExpression(s: Circle | Square) {
   return label
 }
 
-function shapeEffect(s: Circle | Square) {
+effect function shapeEffect(s: Circle | Square) {
   match (s) {
     when Circle: try Effect.log("circle");
     when Square: try Effect.log(`square ${s.side}`);
@@ -107,25 +107,25 @@ function shapeEffect(s: Circle | Square) {
 }
 
 // The program's value, or the message of the defect it dies with.
-function settle<A>(program: A!!) {
+effect function settle<A>(program: A!!) {
   return match (try exit(program)) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): (Cause.squash(cause) as Error).message;
   }
 }
 
-export function main() {
+export effect function main() {
   const circle = { _tag: "Circle", r: 1 } as unknown as Circle
   return {
-    sameName: [try sameName(new A.NotFound({ id: "a" })), try sameName(new Timeout({ ms: 5 })), try sameName(new B.NotFound({ id: "b" }))],
-    sameNameIs: [try sameNameIs(new A.NotFound({ id: "a" })), try sameNameIs(new Timeout({ ms: 5 })), try sameNameIs(new B.NotFound({ id: "b" }))],
-    family: [try family(new Missing({ code: "m", path: "/p" })), try family(new Other({ code: "o" }))],
-    shape: [try shape(new Circle({ r: 1 })), try shape(new Square({ side: 2 })), try settle(shape(circle))],
-    parity: [try parity(new Even(2)), try parity(new Odd(3)), try settle(parity(new Odd(2)))],
-    shapeOrCount: [try shapeOrCount(new Circle({ r: 1 })), try shapeOrCount(Option.none()), try shapeOrCount(Option.some(4)), try settle(shapeOrCount(circle))],
+    sameName: [sameName(new A.NotFound({ id: "a" })), sameName(new Timeout({ ms: 5 })), sameName(new B.NotFound({ id: "b" }))],
+    sameNameIs: [sameNameIs(new A.NotFound({ id: "a" })), sameNameIs(new Timeout({ ms: 5 })), sameNameIs(new B.NotFound({ id: "b" }))],
+    family: [family(new Missing({ code: "m", path: "/p" })), family(new Other({ code: "o" }))],
+    shape: [shape(new Circle({ r: 1 })), shape(new Square({ side: 2 })), try settle(shape(circle))],
+    parity: [parity(new Even(2)), parity(new Odd(3)), try settle(parity(new Odd(2)))],
+    shapeOrCount: [shapeOrCount(new Circle({ r: 1 })), shapeOrCount(Option.none()), shapeOrCount(Option.some(4)), try settle(shapeOrCount(circle))],
     positions: [
-      try shapeStatement(new Square({ side: 2 }), []), try settle(shapeStatement(circle, [])),
-      try shapeExpression(new Square({ side: 2 })), try settle(shapeExpression(circle)),
+      shapeStatement(new Square({ side: 2 }), []), try settle(shapeStatement(circle, [])),
+      shapeExpression(new Square({ side: 2 })), try settle(shapeExpression(circle)),
       try shapeEffect(new Square({ side: 2 })), try settle(shapeEffect(circle))
     ]
   }

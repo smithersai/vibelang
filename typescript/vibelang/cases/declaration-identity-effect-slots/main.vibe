@@ -9,22 +9,22 @@ export type Lookup = (key: string) => string!TypeError
 export type Scoped = string!!Scope
 export type Explicit = number!never!never
 
-export function count(): number!! {
+export effect function count(): number!! {
   return 3
 }
 
-export function parse(text: string): number!TypeError {
+export effect function parse(text: string): number!TypeError {
   const n = Number(text)
   if (Number.isNaN(n)) throw new TypeError(text)
   return n
 }
 
-export const half = (n: number): number!RangeError => {
+export const half = effect (n: number): number!RangeError => {
   if (n % 2 === 1) throw new RangeError("odd")
   return n / 2
 }
 
-export function within(): number!never {
+export effect function within(): number!never {
   try Effect.addFinalizer(() => Effect.void)
   return 1
 }

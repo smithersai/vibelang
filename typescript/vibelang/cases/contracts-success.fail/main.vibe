@@ -1,6 +1,6 @@
 // expect: TS2322
 // What a function with a contract returns is checked against the contract's
 // A, as what an async function returns is checked against its Promise's type.
-export function count(): Effect<number, never, never> {
+export effect function count(): Effect<number, never, never> {
   return "three"
 }

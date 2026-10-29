@@ -1,5 +1,5 @@
 // An imported module's main does not run: import.meta.main is false there.
-export function main() {
+export effect function main() {
   try Console.log("lib main ran")
 }
 

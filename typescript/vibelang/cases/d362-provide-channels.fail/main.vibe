@@ -9,14 +9,14 @@ declare const first: Layer.Layer<Output, First, InputA>
 declare const second: Layer.Layer<Output, Second, InputB>
 
 // Both possible construction errors and inputs must survive the union.
-export function union(flag: boolean): number!! {
+export effect function union(flag: boolean): number!! {
   provide (flag ? first : second) { return (try Output()).value }
 }
 
 // Optional/rest elements can run, adding E/R, but promise no outputs.
-export function optional(providers: [Layer.Layer<Output>, Layer.Layer<Optional, First, InputA>?]): number!! {
+export effect function optional(providers: [Layer.Layer<Output>, Layer.Layer<Optional, First, InputA>?]): number!! {
   provide providers { return (try Optional()).extra }
 }
-export function rest(providers: [Layer.Layer<Output>, ...Layer.Layer<Optional, Second, InputB>[]]): number!! {
+export effect function rest(providers: [Layer.Layer<Output>, ...Layer.Layer<Optional, Second, InputB>[]]): number!! {
   provide providers { return (try Optional()).extra }
 }

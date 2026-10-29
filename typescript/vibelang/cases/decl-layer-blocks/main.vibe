@@ -19,7 +19,7 @@ service Stats {
 }
 
 const DirectoryLive = Layer.succeed(Directory, {
-  lookup(id) {
+  effect lookup(id) {
     return id === "42" ? "Ada" : undefined
   }
 })
@@ -28,7 +28,7 @@ export const UsersLive = Layer.effect(Users) {
   const directory = try Directory()
   const stats = try Stats()
   return {
-    find(id) {
+    effect find(id) {
       try stats.record()
       const name = try directory.lookup(id)
       if (name === undefined) throw new UserNotFound({ id })
@@ -43,10 +43,10 @@ const log: string[] = []
 const StatsLive = Layer.effect(Stats) {
   const lookups = try Ref.make(0)
   return {
-    count() {
+    effect count() {
       return try Ref.get(lookups)
     },
-    record() {
+    effect record() {
       try Ref.update(lookups, (n) => n + 1)
     }
   }
@@ -59,17 +59,17 @@ service Session {
 // Setup that acquires a resource with using: the layer releases it when its scope closes.
 const SessionLive = Layer.effect(Session) {
   using _ = try Effect.acquireRelease(
-    () => { log.push("open"); return "session" },
-    () => { log.push("close") }
+    effect { log.push("open"); return "session" },
+    effect () => { log.push("close") }
   )
   return {
-    name() {
+    effect name() {
       return "session"
     }
   }
 }
 
-function greet(id: string) {
+effect function greet(id: string) {
   try {
     return try Users.find(id)
   } catch (error) {
@@ -77,7 +77,7 @@ function greet(id: string) {
   }
 }
 
-function lookups() {
+effect function lookups() {
   provide wire(UsersLive, DirectoryLive, StatsLive) {
     const found = try greet("42")
     const missing = try greet("7")
@@ -85,13 +85,13 @@ function lookups() {
   }
 }
 
-function session() {
+effect function session() {
   provide SessionLive {
     return try Session.name()
   }
 }
 
-export function main() {
+export effect function main() {
   const result = try lookups()
   try session()
   return { ...result, log }

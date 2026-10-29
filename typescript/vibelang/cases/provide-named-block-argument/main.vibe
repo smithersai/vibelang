@@ -1,3 +1,3 @@
 // expect-result: 1
-function provide(name: string, program: number!!): number!! { return try program() }
-export function main() { return try provide("label") { return 1 } }
+effect function provide(name: string, program: number!!): number!! { return try program() }
+export effect function main() { return try provide("label") { return 1 } }

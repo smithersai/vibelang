@@ -15,7 +15,7 @@ export class Registry {
   using block = open("/tmp/block")
 }
 
-export function read() {
+export effect function read() {
   using file = open("/tmp/a")
   return 1
 }

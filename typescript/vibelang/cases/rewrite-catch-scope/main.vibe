@@ -2,23 +2,23 @@ import "vibelang/platform/node"
 error A { n: number }
 error B { n: number }
 const e = { n: 100 }
-function fail(n: number): number!A | B {
+effect function fail(n: number): number!A | B {
   if (n === 1) throw new A({ n: 1 })
   throw new B({ n: 2 })
 }
-function recover(n: number) {
+effect function recover(n: number) {
   return try Effect.catchTags(fail(n), {
-    A: (e) => e.n,
-    B: () => e.n
+    A: effect (e) => e.n,
+    B: effect () => e.n
   })
 }
-function nested(n: number) {
+effect function nested(n: number) {
   return try Effect.catchTags(fail(n), {
-    A: (problem) => ({ problem }).problem.n + try ((problem: number) => problem)(10),
-    B: (other) => e.n + other.n - other.n
+    A: effect (problem) => ({ problem }).problem.n + try (effect (problem: number) => problem)(10),
+    B: effect (other) => e.n + other.n - other.n
   })
 }
-export function main() {
+export effect function main() {
   try Console.log(try recover(1), try recover(2))
   try Console.log(try nested(1), try nested(2))
 }

@@ -19,7 +19,7 @@ abstract class Mailer {
 }
 
 // welcome from Chapter 1, used by notifyAll and welcomeTraced.
-function welcome(id: string) {
+effect function welcome(id: string) {
   const user = try Users.find(id)
   try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
@@ -33,7 +33,7 @@ function add(a: number, b: number) {
 }
 // Effect<number, never, never>
 
-function greeting(id: string) {
+effect function greeting(id: string) {
   const user = try Users.find(id)
   return `Hello, ${user.name}`
 }
@@ -41,7 +41,7 @@ function greeting(id: string) {
 
 // Calling runs the function
 
-function userName(id: string) {
+effect function userName(id: string) {
   const name = (try Users.find(id)).name.trim()
   try Effect.log(`found ${name}`)
   return name
@@ -49,7 +49,7 @@ function userName(id: string) {
 
 // Control flow is ordinary JavaScript
 
-function notifyAll(ids: ReadonlyArray<string>) {
+effect function notifyAll(ids: ReadonlyArray<string>) {
   let sent = 0
   for (const id of ids) {
     const user = try Users.find(id)
@@ -63,15 +63,15 @@ function notifyAll(ids: ReadonlyArray<string>) {
 
 // Tracing
 
-function welcomeTraced(id: string) {
-  return try Effect.withSpan(() => welcome(id), "welcome")
+effect function welcomeTraced(id: string) {
+  return try Effect.withSpan(effect { return try welcome(id) }, "welcome")
 }
 
 // Writing the contract yourself
 // NOTE: renamed from `greeting`; the proposal reuses that name for the annotated variant.
 // The narrower contract from the same section is ch02-contract-narrower.fail.vibe.
 
-export function greetingChecked(id: string): Effect<string, UserNotFound, Users> {
+export effect function greetingChecked(id: string): Effect<string, UserNotFound, Users> {
   const user = try Users.find(id)
   return `Hello, ${user.name}`
 }
@@ -86,7 +86,7 @@ const people: ReadonlyArray<User> = [
 ]
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => {
+  find: effect (id) => {
     const user = people.find((person) => person.id === id)
     if (user === undefined) throw new UserNotFound({ id })
     return user
@@ -96,13 +96,13 @@ const UsersTest = Layer.succeed(Users, {
 const outbox: string[] = []
 
 const MailerTest = Layer.succeed(Mailer, {
-  send: (to, body) => {
+  send: effect (to, body) => {
     outbox.push(`${to}: ${body}`)
   }
 })
 
-function scenario() {
-  const sum = try add(1, 2)
+effect function scenario() {
+  const sum = add(1, 2)
   const hello = try greeting("1")
   const trimmed = try userName("2")
   const sent = try notifyAll(["1", "2", "3"])
@@ -112,6 +112,6 @@ function scenario() {
 }
 
 // expect-result: {"sum":3,"greeting":"Hello, Ada","userName":"Grace","sent":2,"traced":"Ada","checked":"Hello, Edsger","outbox":["ada@example.com: Welcome, Ada!","edsger@example.com: Welcome, Edsger!","ada@example.com: Welcome, Ada!"]}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(UsersTest, MailerTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(UsersTest, MailerTest))
 }

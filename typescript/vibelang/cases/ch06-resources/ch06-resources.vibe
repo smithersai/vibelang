@@ -55,12 +55,12 @@ const disk = new Map<string, string>([
 function memoryFile(path: string) {
   const file: FileHandle = {
     path,
-    readAll: () => {
+    readAll: effect () => {
       const text = disk.get(path)
       if (text === undefined) throw new IOError({ path })
       return text
     },
-    close: () => {
+    close: effect () => {
       events.push(`close ${path}`)
     }
   }
@@ -69,14 +69,14 @@ function memoryFile(path: string) {
 
 // using
 
-function parseReport(text: string) {
+effect function parseReport(text: string) {
   const lines = text.split("\n")
   if (lines[0].length === 0) throw new ParseError({ text })
   const report: Report = { title: lines[0], lines: lines.length }
   return report
 }
 
-function readReport(path: string) {
+effect function readReport(path: string) {
   using file = try Files.open(path)
   return try parseReport(try file.readAll())
 }
@@ -84,15 +84,15 @@ function readReport(path: string) {
 
 // Defining a resource
 
-function openFile(path: string) {
+effect function openFile(path: string) {
   return try Effect.acquireRelease(
-    () => FileSystem.open(path),      // acquire
-    (file) => file.close()            // release: always runs, exactly once
+    effect { return try FileSystem.open(path) },      // acquire
+    effect (file) => try file.close()            // release: always runs, exactly once
   )
 }
 // Effect<FileHandle, IOError, FileSystem | Scope>
 
-function openLog(day: string) {
+effect function openLog(day: string) {
   return try Files.open(`/var/log/app-${day}.log`)    // no `using`: the caller owns the file
 }
 // Effect<FileHandle, IOError, Files | Scope>
@@ -102,24 +102,24 @@ function diffLines(left: string, right: string) {
   return diff
 }
 
-function compareLogs(a: string, b: string) {
+effect function compareLogs(a: string, b: string) {
   using left = try openLog(a)
   using right = try openLog(b)
-  return try diffLines(try left.readAll(), try right.readAll())
+  return diffLines(try left.readAll(), try right.readAll())
 }
 // Effect<Diff, IOError, Files>; both files close when compareLogs returns
 
 // D14 (Codex review R8): only `using` acquisitions belong to the block. The connection is acquired
 // without `using`, so it belongs to the caller and must still be open when openAndLog returns.
 
-function openAndLog() {
+effect function openAndLog() {
   const connection = try Database.connect() // caller-owned: no `using`
   using log = try Logs.open()
   return connection
 }
 
-function connectionOutlivesBlock() {
-  return try Effect.scoped(() => {
+effect function connectionOutlivesBlock() {
+  return try Effect.scoped(effect {
     const connection = try openAndLog()
     events.push(`after openAndLog: open=${connection.open}`)
     return connection.open
@@ -129,30 +129,30 @@ function connectionOutlivesBlock() {
 // "Adapting a callback API" with suspend is reference program 4 (ref4-adapter.ts).
 
 const FilesTest = Layer.succeed(Files, {
-  open: (path) => Effect.acquireRelease(
-    () => {
+  open: effect (path) => try Effect.acquireRelease(
+    effect {
       events.push(`open ${path}`)
-      return try memoryFile(path)
+      return memoryFile(path)
     },
-    (file) => file.close()
+    effect (file) => try file.close()
   )
 })
 
 const FileSystemTest = Layer.succeed(FileSystem, {
-  open: (path) => {
+  open: effect (path) => {
     events.push(`open ${path}`)
-    return try memoryFile(path)
+    return memoryFile(path)
   }
 })
 
 const DatabaseTest = Layer.succeed(Database, {
-  connect: () => Effect.acquireRelease(
-    () => {
+  connect: effect () => try Effect.acquireRelease(
+    effect {
       events.push("connect")
       const connection: Connection = { id: 1, open: true }
       return connection
     },
-    (connection) => {
+    effect (connection) => {
       connection.open = false
       events.push("disconnect")
     }
@@ -160,26 +160,26 @@ const DatabaseTest = Layer.succeed(Database, {
 })
 
 const LogsTest = Layer.succeed(Logs, {
-  open: () => Effect.acquireRelease(
-    () => {
+  open: effect () => try Effect.acquireRelease(
+    effect {
       events.push("open log")
-      return try memoryFile("/var/log/app.log")
+      return memoryFile("/var/log/app.log")
     },
-    () => {
+    effect () => {
       events.push("close log")
     }
   )
 })
 
-function scenario() {
+effect function scenario() {
   const report = try readReport("/reports/q3.txt")
-  const opened = try Effect.scoped(() => (try openFile("/reports/q3.txt")).path)
+  const opened = try Effect.scoped(effect { return (try openFile("/reports/q3.txt")).path })
   const diff = try compareLogs("mon", "tue")
   const outlived = try connectionOutlivesBlock()
   return { report, opened, diff, outlived, events }
 }
 
 // expect-result: {"report":{"title":"Q3 report","lines":3},"opened":"/reports/q3.txt","diff":{"same":false,"left":3,"right":3},"outlived":true,"events":["open /reports/q3.txt","close /reports/q3.txt","open /reports/q3.txt","close /reports/q3.txt","open /var/log/app-mon.log","open /var/log/app-tue.log","close /var/log/app-tue.log","close /var/log/app-mon.log","connect","open log","close log","after openAndLog: open=true","disconnect"]}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(FilesTest, FileSystemTest, DatabaseTest, LogsTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(FilesTest, FileSystemTest, DatabaseTest, LogsTest))
 }

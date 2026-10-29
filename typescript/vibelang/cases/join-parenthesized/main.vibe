@@ -4,12 +4,12 @@
 // fork(e) is fork e: it joins a fiber, or every fiber of an array or object,
 // keeping the shape. A join the program declares is an ordinary call
 // (fibers-join-identifiers).
-function work(n: number) {
+effect function work(n: number) {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
+export effect function main() {
   const a = fork work(1)
   const b = fork work(2)
   const c = fork(work(3))

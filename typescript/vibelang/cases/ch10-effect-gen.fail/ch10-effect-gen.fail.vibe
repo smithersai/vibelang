@@ -13,7 +13,7 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-const findName = (id: string) => Effect.gen(function* () {
+const findName = effect (id: string) => try Effect.gen(function* () {
   const users = yield* Users
   const user = yield* try users.find(id)
   return user.name

@@ -1,41 +1,41 @@
 export class Counter {
   constructor(readonly offset: number) {}
-  compact(n: number): Effect<number, never, never> { return ++n + this.offset }
-  expanded(n: number): Effect<number, never, never> {
+  effect compact(n: number): Effect<number, never, never> { return ++n + this.offset }
+  effect expanded(n: number): Effect<number, never, never> {
     const result = ++n
     return result + this.offset
   }
-  static compound(n: number): Effect<number, never, never> {
+  static effect compound(n: number): Effect<number, never, never> {
     n += 1
     return n
   }
-  assignment(n: number): Effect<number, never, never> {
+  effect assignment(n: number): Effect<number, never, never> {
     n = n + 1
     return n + this.offset
   }
-  destructured({ n }: { n: number }): Effect<number, never, never> {
+  effect destructured({ n }: { n: number }): Effect<number, never, never> {
     const result = ++n
     return result
   }
-  redeclared(n: number): Effect<number, never, never> {
+  effect redeclared(n: number): Effect<number, never, never> {
     var n = n + 1
     return n
   }
-  argumentsRead(n: number): Effect<number, never, never> {
+  effect argumentsRead(n: number): Effect<number, never, never> {
     n += 1
     return n + arguments.length
   }
-  #increment(n: number): Effect<number, never, never> { return ++n }
+  effect #increment(n: number): Effect<number, never, never> { return ++n }
   get operation() { return this.#increment }
-  privateRead(n: number): Effect<number, never, never> { return try this.#increment(n) }
-  loop(n: number): Effect<number, never, never> {
+  effect privateRead(n: number): Effect<number, never, never> { return try this.#increment(n) }
+  effect loop(n: number): Effect<number, never, never> {
     let before = n
     for (n of [2]) {}
     return before + n
   }
 }
 export const object = {
-  read(n: number): Effect<number, never, never> {
+  effect read(n: number): Effect<number, never, never> {
     const result = ++n
     return result
   }
@@ -46,10 +46,10 @@ export const objectAssignment = (n: number): Effect<number, never, never> => ({ 
 export const postfix = (n: number): Effect<number, never, never> => n++
 export const logical = (n: number): Effect<number, never, never> => (n ||= 2, n++)
 export class Base {
-  read(n: number): Effect<number, never, never> { return n }
+  effect read(n: number): Effect<number, never, never> { return n }
 }
 export class Derived extends Base {
-  read(n: number): Effect<number, never, never> {
+  effect read(n: number): Effect<number, never, never> {
     n += 1
     return try super.read(n)
   }

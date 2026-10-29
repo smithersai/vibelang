@@ -3,13 +3,13 @@ service Left { left: number }
 service Right { right: number }
 const LeftLive = Layer.succeed(Left, { left: 1 })
 
-function tuple(providers: [Layer.Layer<Left>, ...Layer.Layer<Right>[]]) {
+effect function tuple(providers: [Layer.Layer<Left>, ...Layer.Layer<Right>[]]) {
   provide providers { return (try Left()).left + (try Right()).right }
 }
 
-function spread(providers: Layer.Layer<Right>[]) {
+effect function spread(providers: Layer.Layer<Right>[]) {
   provide [LeftLive, ...providers] { return (try Left()).left + (try Right()).right }
 }
 
-Effect.runFork(() => tuple([LeftLive]))
-Effect.runFork(() => spread([]))
+Effect.runFork(effect { return try tuple([LeftLive]) })
+Effect.runFork(effect { return try spread([]) })

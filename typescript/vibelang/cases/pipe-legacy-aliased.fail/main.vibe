@@ -6,7 +6,7 @@
 import { pipe as flow } from "effect"
 import * as Fn from "effect/Function"
 
-function task() {
+effect function task() {
   try yieldNow()
   return 7
 }
@@ -19,8 +19,8 @@ function inspect(value: unknown): string {
 
 export function main() {
   return [
-    flow(() => task(), Effect.retry({ times: 0 })),
-    Fn.pipe(() => task(), Effect.retry({ times: 0 })),
-    flow(() => 5, inspect)
+    flow(effect () => try task(), Effect.retry({ times: 0 })),
+    Fn.pipe(effect () => try task(), Effect.retry({ times: 0 })),
+    flow(effect () => 5, inspect)
   ]
 }

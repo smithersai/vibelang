@@ -7,7 +7,7 @@ export function* numbers() {
   yield 2
 }
 
-export function main() {
+export effect function main() {
   const stream: Stream.Stream<number, never, never> = numbers()
   return [Stream.isStream(stream), try Stream.runCollect(stream)]
 }

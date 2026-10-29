@@ -4,6 +4,6 @@ export const expanded = (n: number): Effect<number, never, never> => {
   const result = n = n + 1
   return result
 }
-export function declared(n: number): Effect<number, never, never> { return n = n + 1 }
-export const expression = function (n: number): Effect<number, never, never> { return n = n + 1 }
-export function declaredProgram(n: number): Effect<number, never, never> { return try Effect.succeed(n = n + 1) }
+export effect function declared(n: number): Effect<number, never, never> { return n = n + 1 }
+export const expression = effect function (n: number): Effect<number, never, never> { return n = n + 1 }
+export effect function declaredProgram(n: number): Effect<number, never, never> { return try Effect.succeed(n = n + 1) }

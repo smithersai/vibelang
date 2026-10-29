@@ -1,2 +1,2 @@
-main.vibe(4,38): warning EK4833
+main.vibe(4,45): warning EK4833
 main.vibe(7,18): error TS2322

@@ -2,41 +2,41 @@
 // A region interrupts the fibers it owns when it exits (D353, D408), so a
 // fiber returned from it, alone or in an object or array, is already
 // interrupted when the caller gets it (D409).
-function heartbeat() {
+effect function heartbeat() {
   try sleep("1 minute")
 }
 
-export function startHeartbeat() {
+export effect function startHeartbeat() {
   return fork heartbeat()
 }
 
-export function held() {
+export effect function held() {
   const fiber = fork heartbeat()
   return fiber
 }
 
-export function aliased() {
+export effect function aliased() {
   let fiber = fork heartbeat()
   const alias = fiber
   return alias
 }
 
-export function boxed() {
+export effect function boxed() {
   const fiber = fork heartbeat()
   return { fiber }
 }
 
-export function listed() {
+export effect function listed() {
   return [fork heartbeat(), "listed"]
 }
 
-export function chosen(early: boolean) {
+export effect function chosen(early: boolean) {
   const fiber = fork heartbeat()
   return early ? fiber : undefined
 }
 
 // An if branch owns nothing (D408): the function's body owns this fiber.
-export function inner(ready: boolean) {
+export effect function inner(ready: boolean) {
   if (ready) {
     const fiber = fork heartbeat()
     return fiber
@@ -45,7 +45,7 @@ export function inner(ready: boolean) {
 }
 
 // A try block is a region, and the return leaves it.
-export function guarded() {
+export effect function guarded() {
   try {
     const fiber = fork heartbeat()
     return fiber
@@ -56,5 +56,5 @@ export function guarded() {
 
 // An arrow's expression body is a function body: () => fork p() means
 // () => { return fork p() }.
-export const concise = () => fork heartbeat()
-export const conciseCall = () => fork(heartbeat())
+export const concise = effect () => fork heartbeat()
+export const conciseCall = effect () => try fork(heartbeat())

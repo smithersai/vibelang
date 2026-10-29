@@ -10,15 +10,15 @@ abstract class Todos {
   abstract shelf(): Effect<Shelf, never, never>
 }
 
-export function sorted() {
+export effect function sorted() {
   return sortTitles(Todos.list())
 }
 
-export function shelved() {
+export effect function shelved() {
   return Todos.shelf().titles()
 }
 
-export function plain(titles: ReadonlyArray<{ title: string }>) {
+export effect function plain(titles: ReadonlyArray<{ title: string }>) {
   Effect.sleep("1 millis")
   return sortTitles(titles)
 }

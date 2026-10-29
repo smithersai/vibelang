@@ -7,24 +7,24 @@ class Unavailable extends TaggedError("Unavailable")<{ readonly attempt: number 
 let attempts = 0
 let fastRuns = 0
 
-function fetchReport() {
+effect function fetchReport() {
   attempts++
   if (attempts < 3) throw new Unavailable({ attempt: attempts })
   return `report after ${attempts} attempts`
 }
 
-function slow() {
+effect function slow() {
   try Effect.sleep("1 second")
   return "slow"
 }
 
-function fast() {
+effect function fast() {
   fastRuns++
   try Effect.sleep("5 millis")
   return "fast"
 }
 
-function deadline() {
+effect function deadline() {
   try {
     return try Effect.timeout(slow(), "20 millis")
   } catch (error) {
@@ -41,7 +41,7 @@ function subtotal() {
 const total = Effect.runSync(subtotal())
 
 // expect-result: {"report":"report after 3 attempts","winner":"fast","timed":"TimeoutError","joined":"fast","both":["fast","fast"],"logged":true,"attempts":3,"fastRuns":5,"total":56}
-export function main() {
+export effect function main() {
   const report = try Effect.retry(fetchReport(), { times: 5 })
   const winner = try Effect.race(fast(), slow())
   const timed = try deadline()

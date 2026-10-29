@@ -11,9 +11,9 @@ const work = (): void!! => {
   ran++
 }
 
-const hook: Hook = (n) => n > 0 ? (work() |> try Effect.orDie(%)) : Effect.void
+const hook: Hook = effect (n) => n > 0 ? (work() |> try Effect.orDie(%)) : Effect.void
 
-export function main() {
+export effect function main() {
   try hook(0)
   const skipped = ran
   try hook(1)

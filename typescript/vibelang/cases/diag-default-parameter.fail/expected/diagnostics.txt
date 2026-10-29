@@ -1,4 +1,4 @@
 main.vibe(3,23): error EK1001
 main.vibe(3,41): error TS2365
-main.vibe(4,49): error TS2345
-main.vibe(9,62): error TS2345
+main.vibe(4,41): error TS2345
+main.vibe(9,69): error TS2345

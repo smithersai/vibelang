@@ -8,7 +8,7 @@ import { Console, Data, Effect, Option } from "effect"
 
 class Missing extends Data.TaggedError("Missing")<{}> {}
 
-function firstAdmin(names: ReadonlyArray<string>) {
+effect function firstAdmin(names: ReadonlyArray<string>) {
   try {
     try Effect.succeed(0)
     return Option.getOrThrow(Option.fromNullishOr(names.find((name) => name.startsWith("admin"))))
@@ -27,7 +27,7 @@ function parse(text: string) {
 }
 
 // These catches can run: the try blocks fail with Missing.
-function live(names: ReadonlyArray<string>) {
+effect function live(names: ReadonlyArray<string>) {
   try {
     if (names.length === 0) throw new Missing()
     try Console.log(names[0])
@@ -38,10 +38,10 @@ function live(names: ReadonlyArray<string>) {
 }
 
 // A written contract's E and R are never, but its call still runs an Effect.
-function infallible(): Effect.Effect<number, never, never> {
+effect function infallible(): Effect.Effect<number, never, never> {
   return try Effect.succeed(1)
 }
-function annotatedCall() {
+effect function annotatedCall() {
   try {
     return try infallible()
   } catch (e) {
@@ -50,7 +50,7 @@ function annotatedCall() {
 }
 
 // In an Effect function, a try block that fails with nothing is dead as well.
-function plainBlock() {
+effect function plainBlock() {
   try Effect.succeed(0)
   try { return "ok" } catch { return "fallback" }
 }

@@ -17,20 +17,20 @@ abstract class Database {
   abstract query(sql: string): Effect.Effect<string, never, never>
 }
 
-const UsersLive = Layer.succeed(Users, { find: (id: string) => Effect.succeed(`live-${id}`) })
-const UsersTest = Layer.succeed(Users, { find: (id: string) => Effect.succeed(`test-${id}`) })
+const UsersLive = Layer.succeed(Users, { find: effect (id: string) => try Effect.succeed(`live-${id}`) })
+const UsersTest = Layer.succeed(Users, { find: effect (id: string) => try Effect.succeed(`test-${id}`) })
 
-const CacheLive = Layer.effect(Cache, () => {
+const CacheLive = Layer.effect(Cache, effect {
   const db = try Database()
-  return { get: (key: string) => db.query(key) }
+  return { get: effect (key: string) => try db.query(key) }
 })
 
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const cache = try Cache()
-  return { query: (sql: string) => cache.get(sql) }
+  return { query: effect (sql: string) => try cache.get(sql) }
 })
 
-const UsersOpaque: Layer.Any = Layer.succeed(Users, { find: (id: string) => Effect.succeed(id) })
+const UsersOpaque: Layer.Any = Layer.succeed(Users, { find: effect (id: string) => try Effect.succeed(id) })
 
 export const Ambiguous = wire(UsersLive, UsersTest)
 export const Cyclic = wire(CacheLive, DatabaseLive)

@@ -3,16 +3,16 @@
 // on the same service.
 import { FileSystem } from "vibelang-runtime/experimental/FileSystem"
 
-export function isLink(path: string) {
+export effect function isLink(path: string) {
   return (try FileSystem.lstat(path)).type === "SymbolicLink"
 }
 
-export function size(path: string) {
+export effect function size(path: string) {
   return (try FileSystem.stat(path)).size
 }
 
 // A parameter of the prelude namespace's implementation type: the declaration file
 // imports Experimental from vibelang-runtime.
-export function kind(fs: Experimental.FileSystem.Service, path: string) {
+export effect function kind(fs: Experimental.FileSystem.Service, path: string) {
   return (try fs.lstat(path)).type
 }

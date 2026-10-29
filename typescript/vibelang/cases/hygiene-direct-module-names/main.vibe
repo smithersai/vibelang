@@ -5,14 +5,14 @@
 function answer() { return 42 }
 const answer$direct = 9
 
-function sum(n: number): number!! { return n === 0 ? 0 : n + try sum(n - 1) }
+effect function sum(n: number): number!! { return n === 0 ? 0 : n + try sum(n - 1) }
 const sum$recur = 19
 
 function shadowed() {
-  const answer$direct = () => 9
-  return try answer()
+  const answer$direct = effect () => 9
+  return answer()
 }
 
 export function main() {
-  return [try answer(), answer$direct, try shadowed(), try sum(5), sum$recur]
+  return [answer(), answer$direct, shadowed(), try sum(5), sum$recur]
 }

@@ -4,7 +4,7 @@
 // concurrency"). EK4201 reports each element that performs the operation.
 control Ask { ask(): number!! }
 
-export function race() {
+export effect function race() {
   try {
     return await.race [Ask.ask(), Ask.ask()]
   } handle Ask.ask() {
@@ -12,7 +12,7 @@ export function race() {
   }
 }
 
-export function any() {
+export effect function any() {
   try {
     return await.any [sleep("1 second"), Ask.ask()]
   } handle Ask.ask() {

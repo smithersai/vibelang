@@ -3,19 +3,19 @@ error NotFound { id: string }
 error Timeout
 
 // Success, errors, and no dependencies.
-export function find(id: string): string!NotFound! {
+export effect function find(id: string): string!NotFound! {
   if (id === "42") return "Ada"
   throw new NotFound({ id })
 }
 
 // Dependencies left out: the body supplies them. The union is the error slot.
-export function lookup(id: string): string!NotFound | Timeout {
+export effect function lookup(id: string): string!NotFound | Timeout {
   if (id === "slow") throw new Timeout()
   return try find(id)
 }
 
 // Neither errors nor dependencies.
-export function count(): number!! {
+export effect function count(): number!! {
   return 3
 }
 
@@ -24,7 +24,7 @@ export type Finder = (id: string) => string!NotFound!
 export type Scoped = string!NotFound!Scope
 export type Values = ReadonlyArray<number!!>
 
-function tryFind(f: Finder, id: string) {
+effect function tryFind(f: Finder, id: string) {
   try {
     return try f(id)
   } catch (error) {
@@ -32,7 +32,7 @@ function tryFind(f: Finder, id: string) {
   }
 }
 
-function describe(id: string) {
+effect function describe(id: string) {
   try {
     return try lookup(id)
   } catch (error) {
@@ -40,6 +40,6 @@ function describe(id: string) {
   }
 }
 
-export function main() {
+export effect function main() {
   return { found: try lookup("42"), slow: try describe("slow"), missing: try tryFind(find, "7"), count: try count(), plain: "ok" }
 }

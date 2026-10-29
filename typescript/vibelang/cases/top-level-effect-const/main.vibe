@@ -1,6 +1,6 @@
 // expect-result: [0,1,2,42,9,3]
 import { migrate, parenthesized, stored, runs } from "./program.vibe"
-export function main() {
+export effect function main() {
   const atImport = runs
   try migrate()
   const afterOnce = runs

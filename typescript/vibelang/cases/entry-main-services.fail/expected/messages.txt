@@ -1,5 +1,5 @@
-main.vibe(7,17): warning EK3205: main needs Users, which nothing provides when the host starts this module.
+main.vibe(7,24): warning EK3205: main needs Users, which nothing provides when the host starts this module.
 Provide it inside main with provide layer { … }.
-through.vibe(8,17): warning EK3205: main needs Stamp, Users, which nothing provides when the host starts this module.
-partial.vibe(4,17): warning EK3205: main needs Stamp, which nothing provides when the host starts this module.
+through.vibe(8,24): warning EK3205: main needs Stamp, Users, which nothing provides when the host starts this module.
+partial.vibe(4,24): warning EK3205: main needs Stamp, which nothing provides when the host starts this module.
 runner.vibe(10,19): error EK3201: Nothing provides Users, which this program needs.

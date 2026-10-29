@@ -2,7 +2,7 @@
 // Storing an owned fiber in a collection, or passing it to any call but
 // join, interrupt, and a Fiber function whose result holds no Fiber, lets
 // it outlive its region (D409).
-function heartbeat() {
+effect function heartbeat() {
   try sleep("1 minute")
 }
 
@@ -10,29 +10,29 @@ function track(fiber: Fiber<void>) {
   return fiber.id
 }
 
-export function passed() {
-  return try track(fork heartbeat())
+export effect function passed() {
+  return track(fork heartbeat())
 }
 
-export function offered(queue: Queue.Queue<Fiber<void>>) {
+export effect function offered(queue: Queue.Queue<Fiber<void>>) {
   const fiber = fork heartbeat()
   try queue.offer(fiber)
 }
 
-export function listed() {
+export effect function listed() {
   const fiber = fork heartbeat()
   const all = [fiber]
   return all.length
 }
 
-export function boxed() {
+export effect function boxed() {
   const fiber = fork heartbeat()
   const box = { fiber }
   return "boxed"
 }
 
 // Fiber.runIn's result holds a Fiber, so the fiber leaves through it.
-export function rescoped() {
+export effect function rescoped() {
   const scope = try Scope.make()
   const fiber = fork heartbeat()
   Fiber.runIn(fiber, scope)

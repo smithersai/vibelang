@@ -17,5 +17,5 @@ function mixedSubject(x: string | Option<number>) {
 }
 
 export function main() {
-  return [try unknownSubject(null), try mixedSubject("a")]
+  return [unknownSubject(null), mixedSubject("a")]
 }

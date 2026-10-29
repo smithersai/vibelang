@@ -20,7 +20,7 @@ let attempts = 0
 let slowAttempts = 0
 
 // Fails on the first two attempts. Each attempt holds a connection and starts with fresh locals.
-function attempt() {
+effect function attempt() {
   using conn = try Pool.acquire()
   let local = 0
   local++
@@ -31,7 +31,7 @@ function attempt() {
 }
 
 // Fails on the first attempt; the second hangs until it is cancelled.
-function slowAttempt() {
+effect function slowAttempt() {
   using conn = try Pool.acquire()
   slowAttempts++
   if (slowAttempts === 1) throw new Flaky({ attempt: slowAttempts })
@@ -40,25 +40,25 @@ function slowAttempt() {
 }
 
 const PoolTest = Layer.succeed(Pool, {
-  acquire: () => Effect.acquireRelease(
-    () => {
+  acquire: effect () => try Effect.acquireRelease(
+    effect {
       acquired++
       const conn: Conn = { id: acquired }
       events.push(`acquire ${conn.id}`)
       return conn
     },
-    (conn) => {
+    effect (conn) => {
       released++
       events.push(`release ${conn.id}`)
     }
   )
 })
 
-function scenario() {
-  const result = try Effect.retry(() => attempt(), Schedule.recurs(5))
+effect function scenario() {
+  const result = try Effect.retry(effect { return try attempt() }, Schedule.recurs(5))
   let cancelled = "none"
   try {
-    try Effect.timeout(() => Effect.retry(() => slowAttempt(), Schedule.recurs(5)), "20 millis")
+    try Effect.timeout(effect { return try Effect.retry(effect { return try slowAttempt() }, Schedule.recurs(5)) }, "20 millis")
   } catch (e) {
     cancelled = e._tag
   }
@@ -66,6 +66,6 @@ function scenario() {
 }
 
 // expect-result: {"result":"ok on 3","attempts":3,"localsSeen":[1,1,1],"cancelled":"TimeoutError","slowAttempts":2,"acquired":5,"released":5,"events":["acquire 1","release 1","acquire 2","release 2","acquire 3","release 3","acquire 4","release 4","acquire 5","release 5"]}
-export function main() {
-  return try Effect.provide(() => scenario(), PoolTest)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, PoolTest)
 }

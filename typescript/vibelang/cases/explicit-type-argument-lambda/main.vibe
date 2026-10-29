@@ -5,8 +5,8 @@ import { hold } from "./holder.ts"
 
 type Make = () => Effect.Effect<string, never, never>
 
-const make = hold<Make>(() => "x")
+const make = hold<Make>(effect () => "x")
 
-export function main() {
+export effect function main() {
   return try make()
 }

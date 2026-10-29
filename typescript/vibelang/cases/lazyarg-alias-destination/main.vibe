@@ -2,17 +2,17 @@
 // A literal at a member typed through a generic function-type alias, Effect's
 // LazyArg<Effect<A, E, R>>, takes the Effect form the instantiated alias gives
 // it: whileLoop's body and timeoutOrElse's orElse run their Effects.
-export function main() {
+export effect function main() {
   let index = 0
   let runs = 0
   try Effect.whileLoop({
     while: () => index < 3,
-    body: () => Console.log(`iteration ${index}`),
+    body: effect () => try Console.log(`iteration ${index}`),
     step: () => { index++; runs++ }
   })
-  const value = try Effect.timeoutOrElse(() => sleep("1 minute"), {
+  const value = try Effect.timeoutOrElse(effect { return try sleep("1 minute") }, {
     duration: "1 millis",
-    orElse: () => "fallback"
+    orElse: effect () => "fallback"
   })
   return [value, runs]
 }

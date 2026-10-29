@@ -1,2 +1,2 @@
 // expect: TS1109
-export function main() { return 1 catch }
+export effect function main() { return 1 catch }

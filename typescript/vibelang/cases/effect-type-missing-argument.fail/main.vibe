@@ -9,13 +9,13 @@ import { Effect, Schema } from "effect"
 
 error Plain { code: number }
 
-export function count(n: number): Effect.Effect<number, , never> {
+export effect function count(n: number): Effect.Effect<number, , never> {
   return n
 }
 
 export const Shape = Schema.Struct({ id: Schema.String, note: })
 
-export function recover(fail: boolean) {
-  return (() => { if (fail) throw new Plain({ code: 1 }); return "ok" })
-    |> try Effect.catchTag(%, "Plain", (caught) => )
+export effect function recover(fail: boolean) {
+  return (effect () => { if (fail) throw new Plain({ code: 1 }); return "ok" })
+    |> try Effect.catchTag(%, "Plain", effect (caught) => )
 }

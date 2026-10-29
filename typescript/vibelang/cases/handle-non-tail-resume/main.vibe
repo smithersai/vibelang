@@ -9,20 +9,20 @@ control Approval {
 
 const log: string[] = []
 
-function step(name: string) {
+effect function step(name: string) {
   log.push(`before ${name}`)
   const ok = try Approval.approve(name)
   log.push(`after ${name} ${ok}`)
   return ok ? name : `[${name} declined]`
 }
 
-function pipeline() {
+effect function pipeline() {
   const a = try step("staging")
   const b = try step("production")
   return `${a} ${b}`
 }
 
-function nonTail() {
+effect function nonTail() {
   try {
     return try pipeline()
   } handle Approval.approve(request) {
@@ -33,7 +33,7 @@ function nonTail() {
   }
 }
 
-function depth(n: number): number!! {
+effect function depth(n: number): number!! {
   if (n === 0) {
     try Effect.sleep("1 millis")
     return 0
@@ -41,7 +41,7 @@ function depth(n: number): number!! {
   return try depth(n - 1) + 1
 }
 
-export function twice() {
+export effect function twice() {
   try {
     return try step("x")
   } handle Approval.approve(request) {
@@ -50,7 +50,7 @@ export function twice() {
   }
 }
 
-export function main() {
+export effect function main() {
   const r1 = try nonTail()
   const deep = try depth(20000)
   return { r1, log, deep }

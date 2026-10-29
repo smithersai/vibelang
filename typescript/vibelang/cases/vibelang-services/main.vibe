@@ -23,22 +23,22 @@ abstract class Settings {
 
   static readonly layer = Layer.succeed(Settings, {
     greeting: "Welcome",
-    shout: (text: string) => Effect.succeed(`${text}!`)
+    shout: effect (text: string) => try Effect.succeed(`${text}!`)
   })
 }
 
 const users = new Map<string, User>([["1", { id: "1", name: "Ada" }]])
 
 const DirectoryLive = Layer.succeed(Directory, {
-  lookup: (id: string) => Effect.succeed(users.get(id))
+  lookup: effect (id: string) => try Effect.succeed(users.get(id))
 })
 
 // The provider captures Directory when the layer is built, so Directory is a
 // requirement of the layer, not of Users.find.
-function makeUsers() {
+effect function makeUsers() {
   const directory = try Directory()
   const impl: Users.Shape = {
-    find(id) {
+    effect find(id) {
       const user = try directory.lookup(id)
       if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
       return try Effect.succeed(user)
@@ -47,13 +47,13 @@ function makeUsers() {
   return impl
 }
 
-const UsersLive = Layer.effect(Users, () => makeUsers())
+const UsersLive = Layer.effect(Users, effect { return try makeUsers() })
 
 // An implementation can be a class that implements the service.
 class UsersInMemory implements Users {
   readonly rows = new Map<string, User>([["7", { id: "7", name: "Grace" }]])
 
-  find(id: string) {
+  effect find(id: string) {
     const user = this.rows.get(id)
     if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
     return try Effect.succeed(user)
@@ -63,23 +63,23 @@ class UsersInMemory implements Users {
 // A method that implements a service member compiles to an Effect even when
 // its body runs nothing, in a class and in an object literal.
 class UsersFake implements Users {
-  find(id: string) {
+  effect find(id: string) {
     return { id, name: `fake ${id}` }
   }
 }
 
 const UsersGrace = Layer.succeed(Users, {
-  find(id) {
+  effect find(id) {
     return { id, name: "Grace" }
   }
 })
 
-export function greet(id: string) {
+export effect function greet(id: string) {
   const user = try Users.find(id)
   return try Settings.shout(`${(try Settings()).greeting}, ${user.name}`)
 }
 
-export function lookupBoth(id: string) {
+export effect function lookupBoth(id: string) {
   const first = try (try Users()).find(id)
   return first.name
 }
@@ -87,13 +87,13 @@ export function lookupBoth(id: string) {
 const Memory = Layer.mergeAll(Layer.succeed(Users, new UsersInMemory()), Settings.layer)
 
 // expect-result: {"live":"Welcome, Ada!","memory":"Welcome, Grace!","direct":"Grace","missing":"UserNotFound","fake":"fake 3","grace":"Grace"}
-export function main() {
+export effect function main() {
   return {
-    live: try Effect.provide(() => greet("1"), Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), Settings.layer)),
-    memory: try Effect.provide(() => greet("7"), Memory),
-    direct: try Effect.provide(() => lookupBoth("7"), Layer.succeed(Users, new UsersInMemory())),
-    missing: (try Effect.flip(() => Effect.provide(() => greet("9"), Memory)))._tag,
-    fake: try Effect.provide(() => lookupBoth("3"), Layer.succeed(Users, new UsersFake())),
-    grace: try Effect.provide(() => lookupBoth("4"), UsersGrace)
+    live: try Effect.provide(effect { return try greet("1") }, Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), Settings.layer)),
+    memory: try Effect.provide(effect { return try greet("7") }, Memory),
+    direct: try Effect.provide(effect { return try lookupBoth("7") }, Layer.succeed(Users, new UsersInMemory())),
+    missing: (try Effect.flip(effect { return try Effect.provide(effect { return try greet("9") }, Memory) }))._tag,
+    fake: try Effect.provide(effect { return try lookupBoth("3") }, Layer.succeed(Users, new UsersFake())),
+    grace: try Effect.provide(effect { return try lookupBoth("4") }, UsersGrace)
   }
 }

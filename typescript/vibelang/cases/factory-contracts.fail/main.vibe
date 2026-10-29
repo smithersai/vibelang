@@ -2,6 +2,6 @@
 import { Effect } from "effect"
 error Gone {}
 service Needed { value(): number!! }
-export function fails(): number!! { return () => { throw new Gone() } }
-export function needs(): number!! { return () => Needed.value() }
-export function wrong(): number!! { return () => "wrong" }
+export function fails(): number!! { return effect { throw new Gone() } }
+export function needs(): number!! { return effect { return try Needed.value() } }
+export function wrong(): number!! { return effect { return "wrong" } }

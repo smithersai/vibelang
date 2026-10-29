@@ -21,9 +21,9 @@ function disposable(events: string[], name: string) {
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
-function iterator(fail: boolean) {
+effect function iterator(fail: boolean) {
   const events: string[] = []
-  const outcome = try exit(() => {
+  const outcome = try exit(effect {
     for (using x of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
       try sleep("1 millis")
@@ -33,10 +33,10 @@ function iterator(fail: boolean) {
   return [Exit.isFailure(outcome), events]
 }
 
-function iteratorInterrupted() {
+effect function iteratorInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function child() {
+  effect function child() {
     for (using x of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
       try Deferred.succeed(started, undefined)
@@ -51,16 +51,16 @@ function iteratorInterrupted() {
 
 function* produce(events: string[]) {
   try {
-    yield try disposable(events, "p1")
-    yield try disposable(events, "p2")
+    yield disposable(events, "p1")
+    yield disposable(events, "p2")
   } finally {
     events.push("producer done")
   }
 }
 
-function producer(fail: boolean) {
+effect function producer(fail: boolean) {
   const events: string[] = []
-  const outcome = try exit(() => {
+  const outcome = try exit(effect {
     for (using x of produce(events)) {
       events.push("body")
       try sleep("1 millis")
@@ -70,10 +70,10 @@ function producer(fail: boolean) {
   return [Exit.isFailure(outcome), events]
 }
 
-function stream(fail: boolean) {
+effect function stream(fail: boolean) {
   const events: string[] = []
-  const values = Stream.fromIterable([try disposable(events, "s1"), try disposable(events, "s2")])
-  const outcome = try exit(() => {
+  const values = Stream.fromIterable([disposable(events, "s1"), disposable(events, "s2")])
+  const outcome = try exit(effect {
     for (using x of values) {
       events.push("body")
       try sleep("1 millis")
@@ -83,7 +83,7 @@ function stream(fail: boolean) {
   return [Exit.isFailure(outcome), events]
 }
 
-function labeled() {
+effect function labeled() {
   const events: string[] = []
   outer: for (const i of [1, 2]) {
     for (using x of try sync((e: string[]) => elements(e), events)) {
@@ -97,7 +97,7 @@ function labeled() {
 }
 
 // expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body","dispose g1","iterator closed"]],"iteratorInterrupted":["body","dispose g1","iterator closed"],"producer":[false,["producer done","body","dispose p1","body","dispose p2"]],"producerFails":[true,["producer done","body","dispose p1"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body","dispose s1"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
-export function main() {
+export effect function main() {
   return {
     iterator: try iterator(false),
     iteratorFails: try iterator(true),

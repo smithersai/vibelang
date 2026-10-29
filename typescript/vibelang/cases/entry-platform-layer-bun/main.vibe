@@ -5,6 +5,6 @@ import "vibelang/platform/bun"
 import { FileSystem } from "effect/FileSystem"
 import { Path } from "effect/Path"
 
-export function main() {
+export effect function main() {
   try Console.log(try FileSystem.readFileString(try Path.join("data", "config.json")))
 }

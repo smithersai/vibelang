@@ -25,7 +25,7 @@ class Box<T> {
     return this.value
   }
 }
-function work() {
+effect function work() {
   try Console.log("work")
 }
 const both: () => number | Effect<void> = work
@@ -41,7 +41,7 @@ export function main() {
   resetAll([r])
   // A member declared to return its container's type parameter is plain,
   // whatever the type argument (D485).
-  const program: number!! = () => 1
+  const program: number!! = effect { return 1 }
   const b: Getter<unknown> = new Box(program)
   const g: { get(): unknown } = new Box(program)
   const a: Box<unknown> = new Box(program)

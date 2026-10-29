@@ -15,7 +15,7 @@ abstract class Tick extends Control {
   abstract tick(n: number): Effect<void, never, never>
 }
 
-function ticks(n: number) {
+effect function ticks(n: number) {
   let i = 0
   while (i < n) {
     try Tick.tick(i)
@@ -28,7 +28,7 @@ const events: string[] = []
 let maxDepth = 0
 
 // A loop body with its own regions: cleanup runs per element, still in constant stack.
-function sumWithFinally(n: number) {
+effect function sumWithFinally(n: number) {
   let sum = 0
   for (const x of count(n)) {
     try {
@@ -41,7 +41,7 @@ function sumWithFinally(n: number) {
 }
 
 // expect-result: {"sum":4999950000,"loopDepthBounded":true,"seen":100000,"ticked":100000,"handlerDepthBounded":true,"withFinally":4999950000,"finallyDepthBounded":true,"events":["last finally"]}
-export function main() {
+export effect function main() {
   hooks.onResume = (fiber): void => {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
   }
@@ -50,8 +50,8 @@ export function main() {
   const loopDepth = maxDepth
   maxDepth = 0
   let seen = 0
-  const ticked = try handle(() => ticks(100000), Tick, {
-    tick(n, k) {
+  const ticked = try handle(effect { return try ticks(100000) }, Tick, {
+    effect tick(n, k) {
       seen++
       return try resume(k, undefined)
     }

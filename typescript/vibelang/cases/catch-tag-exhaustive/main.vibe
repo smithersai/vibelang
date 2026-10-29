@@ -3,29 +3,29 @@ import { Effect, Schema, Data } from "effect"
 class ProbeFailure extends Schema.TaggedError<ProbeFailure>()("ProbeFailure", { message: Schema.String }) {}
 class DataFailure extends Data.TaggedError("DataFailure")<{}> {}
 error DeclFailure
-const failed = (): Effect.Effect<never, ProbeFailure, never> => { throw new ProbeFailure({ message: "failed" }) }
-export const recovered = (): Effect.Effect<number, never, never> =>
-  failed() catch (error) => match (error) {
+const failed = effect (): Effect.Effect<never, ProbeFailure, never> => { throw new ProbeFailure({ message: "failed" }) }
+export const recovered = effect (): Effect.Effect<number, never, never> =>
+  failed() catch effect (error) => match (error) {
     when { _tag: "ProbeFailure" }: 1;
     default: throw error;
   }
-function dataFail(): never!DataFailure! { throw new DataFailure() }
-function declFail(): never!DeclFailure! { throw new DeclFailure() }
-export function dataRecovered(): number!! {
+effect function dataFail(): never!DataFailure! { throw new DataFailure() }
+effect function declFail(): never!DeclFailure! { throw new DeclFailure() }
+export effect function dataRecovered(): number!! {
   try { return try dataFail() } catch (e) {
     return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
   }
 }
-export function declRecovered(): number!! {
+export effect function declRecovered(): number!! {
   try { return try declFail() } catch (e) {
     return match (e) { when { _tag: "DeclFailure" }: 3; default: throw e; }
   }
 }
-function both(data: boolean): never!ProbeFailure | DataFailure! {
+effect function both(data: boolean): never!ProbeFailure | DataFailure! {
   if (data) try dataFail()
   return try failed()
 }
-export function allRecovered(): number!! {
+export effect function allRecovered(): number!! {
   try { return try both(true) } catch (e) {
     return match (e) {
       when { _tag: "ProbeFailure" }: 0;
@@ -34,22 +34,22 @@ export function allRecovered(): number!! {
     }
   }
 }
-export function partial(data: boolean): number!DataFailure! {
+export effect function partial(data: boolean): number!DataFailure! {
   try { return try both(data) } catch (e) {
     return match (e) { when { _tag: "ProbeFailure" }: 0; default: throw e; }
   }
 }
 // These functions have no written error contract: check their inferred E too.
-export const inferredSchema = () => failed() catch (e) => match (e) {
+export const inferredSchema = effect () => failed() catch effect (e) => match (e) {
   when { _tag: "ProbeFailure" }: 1;
   default: throw e;
 }
-export function inferredData() {
+export effect function inferredData() {
   try { return try dataFail() } catch (e) {
     return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
   }
 }
-export function inferredDecl() {
+export effect function inferredDecl() {
   try { return try declFail() } catch (e) {
     return match (e) { when { _tag: "DeclFailure" }: 3; }
   }
@@ -57,7 +57,7 @@ export function inferredDecl() {
 const schemaCheck: () => Effect.Effect<number, never, never> = inferredSchema
 const dataCheck: () => Effect.Effect<number, never, never> = inferredData
 const declCheck: () => Effect.Effect<number, never, never> = inferredDecl
-export function main() {
+export effect function main() {
   let tag = "none"
   try { try partial(true) } catch (e) { tag = e._tag }
   return [try recovered(), try dataRecovered(), try declRecovered(), try allRecovered(), tag]

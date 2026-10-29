@@ -9,7 +9,7 @@ abstract class Audit {
 }
 
 export const literal: { exists: (path: string) => boolean!! } = {
-  exists: (path) => {
+  exists: effect (path) => {
     if (path === "") throw new Gone({ path })
     return true
   }
@@ -18,14 +18,14 @@ export const literal: { exists: (path: string) => boolean!! } = {
 type Probe = { exists: (path: string) => boolean!! }
 
 export const aliased: Probe = {
-  exists: (path) => {
+  exists: effect (path) => {
     if (path === "") throw new Gone({ path })
     return true
   }
 }
 
 export const audited: { exists: (path: string) => boolean!! } = {
-  exists: (path) => {
+  exists: effect (path) => {
     try Audit.record(path)
     return true
   }

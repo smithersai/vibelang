@@ -11,9 +11,9 @@ module helpers {
 
 import { twice } from helpers
 
-export const pair = () => twice(Effect.succeed(1))
+export const pair = effect () => try twice(Effect.succeed(1))
 
 // expect-result: [1,1]
-export function main() {
+export effect function main() {
   return try pair()
 }

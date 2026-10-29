@@ -5,7 +5,7 @@
 import { Effect, Option } from "effect"
 import { fromTypeScript } from "./helpers.ts"
 
-export const findName = (id: string) => Effect.gen(function* () {
+export const findName = effect (id: string) => try Effect.gen(function* () {
   const n = yield* try Effect.succeed(id.length)
   return n
 })
@@ -24,5 +24,5 @@ function* body() {
   return 2
 }
 
-export const named = () => Effect.gen(body)
+export const named = effect () => try Effect.gen(body)
 export const fromTs = fromTypeScript

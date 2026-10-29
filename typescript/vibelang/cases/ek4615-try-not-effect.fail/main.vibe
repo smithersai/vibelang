@@ -5,9 +5,9 @@ function plain(n: number) {
   return n + 1
 }
 
-export function main() {
+export effect function main() {
   try yieldNow()
-  const a = try plain(1)
+  const a = plain(1)
   const b = try 42
   const c = try retry(try sleep("1 millis"), Schedule.recurs(1))
   return [a, b, c]

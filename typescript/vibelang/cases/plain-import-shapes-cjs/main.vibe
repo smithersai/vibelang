@@ -9,34 +9,34 @@ import empty, {} from "./named.vibe"
 import { default as named } from "./named.vibe"
 import reexported, { forwarded, forwardedOther, early } from "./barrel.vibe"
 
-function logged(s: string) {
+effect function logged(s: string) {
   try Console.log(s)
   return other(s)
 }
 
-export function program() {
-  const a: string = try solo("solo")
-  const b: string = try mixed("mixed")
-  const c: string = try withNamespace("namespace")
-  const d: string = try empty("empty")
-  const e: string = try named("named")
-  const f: string = try reexported("reexported")
+export effect function program() {
+  const a: string = solo("solo")
+  const b: string = mixed("mixed")
+  const c: string = withNamespace("namespace")
+  const d: string = empty("empty")
+  const e: string = named("named")
+  const f: string = reexported("reexported")
   return {
     solo: a,
     mixed: b,
     other: other("other"),
     renamed: renamed("renamed"),
-    quoted: try quoted("quoted"),
+    quoted: quoted("quoted"),
     tagged: try tag`a${"b"}c`,
     mapped: ["mapped"].map(other),
     logged: try logged("logged"),
     withNamespace: c,
     namespace: ns.other("ns"),
-    namespaceDefault: try ns.default("ns-default"),
+    namespaceDefault: ns.default("ns-default"),
     empty: d,
     named: e,
     reexported: f,
-    forwarded: try forwarded("forwarded"),
+    forwarded: forwarded("forwarded"),
     forwardedOther: forwardedOther("forwarded"),
     early: early("early")
   }

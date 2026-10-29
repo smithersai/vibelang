@@ -1,27 +1,27 @@
 // expect-result: [10,20,30,40,50,60,70]
 import { Context, Effect, Stream } from "effect"
 export const Timings = Context.Reference<(timing: number) => Effect.Effect<void>>("probe/Timings", {
-  defaultValue: () => () => {}
+  defaultValue: () => effect () => {}
 })
-function report(timing: number) {
+effect function report(timing: number) {
   const hear = try Timings()
   try hear(timing)
   return timing
 }
-export function main() {
+export effect function main() {
   let reported = 0
-  try Effect.provideService(report(10), Timings, (heard) => { reported = heard })
+  try Effect.provideService(report(10), Timings, effect (heard) => { reported = heard })
   const bare = reported
-  try Effect.provideService(report(20), Timings, (heard): void!! => { reported = heard })
+  try Effect.provideService(report(20), Timings, effect (heard): void!! => { reported = heard })
   const annotated = reported
-  try Effect.provideService(Timings, (heard) => { reported = heard })(() => report(30))
+  try Effect.provideService(Timings, effect (heard) => { reported = heard })(effect { return try report(30) })
   const curried = reported
-  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(40)), Timings, (heard) => { reported = heard }))
+  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(40)), Timings, effect (heard) => { reported = heard }))
   const stream = reported
-  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(50)), Timings, (heard): void!! => { reported = heard }))
+  try Stream.runCollect(Stream.provideService(Stream.fromEffect(report(50)), Timings, effect (heard): void!! => { reported = heard }))
   const streamAnnotated = reported
-  provide Timings = (heard) => { reported = heard } { try report(60) }
+  provide Timings = effect (heard) => { reported = heard } { try report(60) }
   const block = reported
-  provide Timings = (heard): void!! => { reported = heard } { try report(70) }
+  provide Timings = effect (heard): void!! => { reported = heard } { try report(70) }
   return [bare, annotated, curried, stream, streamAnnotated, block, reported]
 }

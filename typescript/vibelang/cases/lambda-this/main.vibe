@@ -7,31 +7,31 @@ class Counter {
   count = 0
   label = "counter"
 
-  bump() {
+  effect bump() {
     try Effect.sleep("1 millis")
     this.count++
     return this.count
   }
 
   // A program, passed to Effect.retry.
-  retried() {
-    return try Effect.retry(() => this.bump(), { times: 1 })
+  effect retried() {
+    return try Effect.retry(effect { return try this.bump() }, { times: 1 })
   }
 
   // An Effect function, passed to Effect.forEach.
-  each(names: string[]) {
-    return try Effect.forEach(names, (name) => `${this.label}:${name}:${try this.bump()}`)
+  effect each(names: string[]) {
+    return try Effect.forEach(names, effect (name) => `${this.label}:${name}:${try this.bump()}`)
   }
 
   // A forked program.
-  forked() {
+  effect forked() {
     const fiber = fork this.bump()
     return try Fiber.join(fiber)
   }
 }
 
 // expect-result: {"retried":1,"each":["counter:a:2","counter:b:3"],"forked":4}
-export function main() {
+export effect function main() {
   const counter = new Counter()
   const retried = try counter.retried()
   const each = try counter.each(["a", "b"])

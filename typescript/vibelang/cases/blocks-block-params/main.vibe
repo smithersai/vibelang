@@ -1,49 +1,49 @@
 // expect-result: {"spanned":"ADA","timed":"in time","guarded":"guarded","appended":42,"method":"job:done","bare":"once","nested":"outer:inner"}
-function getName(): string!! {
+effect function getName(): string!! {
   return "Ada"
 }
 
 // An Effect dual takes its program first, or returns a function that takes
 // it, so its program is an arrow: a block is the call's last argument (D376).
-function spanned() {
-  return try withSpan(() => {
+effect function spanned() {
+  return try withSpan(effect {
     const name = try getName()
     return name.toUpperCase()
   }, "load")
 }
 
-function timed() {
-  return try timeout(() => {
+effect function timed() {
+  return try timeout(effect {
     try sleep("1 millis")
     return "in time"
   }, "1 second")
 }
 
-function guarded() {
+effect function guarded() {
   const semaphore = try Semaphore.make(1)
-  return try semaphore.withPermits(1)(() => {
+  return try semaphore.withPermits(1)(effect {
     return "guarded"
   })
 }
 
 // A function that takes the program as its last argument gets the block there.
-function twice(label: string, program: () => number!!) {
+effect function twice(label: string, program: () => number!!) {
   return label.length + try program() + try program()
 }
 
-function appended() {
+effect function appended() {
   return try twice("abcd") {
     return 19
   }
 }
 
 class Runner {
-  run(name: string, program: () => string!!) {
+  effect run(name: string, program: () => string!!) {
     return `${name}:${try program()}`
   }
 }
 
-function method() {
+effect function method() {
   const runner = new Runner()
   return try runner.run("job") {
     return "done"
@@ -51,18 +51,18 @@ function method() {
 }
 
 // A name followed by a block passes the block as the only argument.
-function once(program: () => string!!) {
+effect function once(program: () => string!!) {
   return try program()
 }
 
-function bare() {
+effect function bare() {
   return try once {
     return "once"
   }
 }
 
-function nested() {
-  return try (try runnerOf()).run("outer") {
+effect function nested() {
+  return try (runnerOf()).run("outer") {
     return try once { return "inner" }
   }
 }
@@ -71,6 +71,6 @@ function runnerOf() {
   return new Runner()
 }
 
-export function main() {
+export effect function main() {
   return { spanned: try spanned(), timed: try timed(), guarded: try guarded(), appended: try appended(), method: try method(), bare: try bare(), nested: try nested() }
 }

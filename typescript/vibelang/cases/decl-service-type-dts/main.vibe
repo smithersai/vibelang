@@ -8,7 +8,7 @@ export interface SearchApi {
 
 export service Search: SearchApi {
   static readonly layer = Layer.succeed(Search, {
-    find: (query: string) => `hit:${query}`
+    find: effect (query: string) => `hit:${query}`
   })
 }
 
@@ -18,6 +18,6 @@ export service Version: number {
   static readonly default: number = 4
 }
 
-export function greet(query: string) {
+export effect function greet(query: string) {
   return `${try Prefix()}${try Search.find(query)} v${try Version()}`
 }

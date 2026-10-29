@@ -4,7 +4,7 @@
 // source can see: locals spelled like it keep their values.
 error Oops
 
-function work() {
+effect function work() {
   const work$try = 17
   const work$catch = 19
   const work$finally = 23
@@ -21,6 +21,6 @@ function work() {
   return seen
 }
 
-export function main() {
+export effect function main() {
   return try work()
 }

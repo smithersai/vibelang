@@ -10,24 +10,24 @@ import { HttpClient } from "effect/http"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 
-function notes(directory: string) {
+effect function notes(directory: string) {
   const file = try Path.join(directory, "notes.txt")
   return [file, try FileSystem.readFileString(file)]
 }
 
-export const status = () => ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
-export const token = () => SecureRandom.randomBytes(16)
-export const id = () => SecureRandom.uuidV4()
-export const page = (url: string) => HttpClient.get(url)
-export const args = () => Stdio.args()
-export const here = () => Path.resolve()
-export const scratch = () => FileSystem.makeTempDirectory()
-export const sha = (bytes: Uint8Array) => Digest.digest(Digest.sha256, bytes)
+export const status = effect () => try ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
+export const token = effect () => try SecureRandom.randomBytes(16)
+export const id = effect () => try SecureRandom.uuidV4()
+export const page = effect (url: string) => try HttpClient.get(url)
+export const args = effect () => try Stdio.args()
+export const here = effect () => try Path.resolve()
+export const scratch = effect () => try FileSystem.makeTempDirectory()
+export const sha = effect (bytes: Uint8Array) => try Digest.digest(Digest.sha256, bytes)
 
-const Files = layerNoop({ readFileString: (path) => `read ${path}` })
+const Files = layerNoop({ readFileString: effect (path) => `read ${path}` })
 
 // expect-result: ["/srv/notes.txt","read /srv/notes.txt"]
-export function main() {
+export effect function main() {
   provide PosixPath, Files {
     return try notes("/srv")
   }

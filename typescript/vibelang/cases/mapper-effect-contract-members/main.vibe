@@ -1,2 +1,2 @@
 // D421 (Chapter 13): an Effect annotation fixes the own form even for a pure body.
-export function f(n: number): number!! { return n }
+export effect function f(n: number): number!! { return n }

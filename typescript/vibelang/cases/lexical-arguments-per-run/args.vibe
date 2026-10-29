@@ -2,17 +2,17 @@
 // it, on the same run. The arrow's generator binds its own arguments, so the
 // lowering declares the enclosing function's arguments where its body runs:
 // in the generator that runs again each time the Effect runs.
-export function nested(a: number): number!! {
-  const bump = () => {
+export effect function nested(a: number): number!! {
+  const bump = effect () => {
     const tick = try Effect.sync(() => 0)
     return arguments[0]++
   }
   return try bump()
 }
 
-export function identity(a: number) {
+export effect function identity(a: number) {
   const tick = try Effect.sync(() => 0)
-  const read = () => {
+  const read = effect () => {
     const step = try Effect.sync(() => 0)
     return arguments
   }
@@ -20,9 +20,9 @@ export function identity(a: number) {
 }
 
 // A shorthand property names the same arguments object.
-export function shorthand(a: number) {
+export effect function shorthand(a: number) {
   const tick = try Effect.sync(() => 0)
-  const read = () => {
+  const read = effect () => {
     const step = try Effect.sync(() => 0)
     return { arguments }
   }
@@ -31,9 +31,9 @@ export function shorthand(a: number) {
 
 // An anonymous function expression that refers to the variable it
 // initializes runs as a method-form generator.
-export const anonymous = function (a: number): number!! {
+export const anonymous = effect function (a: number): number!! {
   const tick = try Effect.sync(() => 0)
-  const read = () => {
+  const read = effect () => {
     const step = try Effect.sync(() => 0)
     return arguments[0] as number
   }
@@ -42,7 +42,7 @@ export const anonymous = function (a: number): number!! {
 
 // A plain function's body runs in its $direct variant.
 export function plain(a: number) {
-  return () => {
+  return effect () => {
     const tick = try Effect.sync(() => 0)
     return arguments[0] as number
   }

@@ -2,7 +2,7 @@
 import { plainCaller } from "./lib.js"
 import { consumerSeesRecord } from "./consumer.js"
 
-export function main() {
+export effect function main() {
   const value = try plainCaller().changes()
   const record = try sync(() => consumerSeesRecord())
   return { value, record }

@@ -1,15 +1,15 @@
 // Effectful callbacks can take their debug names from reserved or quoted keys.
 error Busy { attempt: number }
 
-function retryWhileBusy() {
+effect function retryWhileBusy() {
   let attempts = 0
   try {
-    return try retry(() => {
+    return try retry(effect {
       attempts++
       throw new Busy({ attempt: attempts })
     }, {
       times: 5,
-      while: (error): boolean!! => {
+      while: effect (error): boolean!! => {
         try sleep("1 millis")
         return error.attempt < 3
       }
@@ -20,16 +20,16 @@ function retryWhileBusy() {
 }
 
 // expect-result: {"attempts":3,"reserved":2,"quoted":3,"strict":4,"generator":5,"named":"async"}
-export function main() {
-  const named = function async() {
+export effect function main() {
+  const named = effect function async() {
     try sleep("1 millis")
     return async.name
   }
   const handlers = {
-    default: (n: number) => { try sleep("1 millis"); return n + 1 },
-    "not-an-identifier": (n: number) => { try sleep("1 millis"); return n + 2 },
-    arguments: (n: number) => { try sleep("1 millis"); return n + 3 },
-    yield: (n: number) => { try sleep("1 millis"); return n + 4 }
+    default: effect (n: number) => { try sleep("1 millis"); return n + 1 },
+    "not-an-identifier": effect (n: number) => { try sleep("1 millis"); return n + 2 },
+    arguments: effect (n: number) => { try sleep("1 millis"); return n + 3 },
+    yield: effect (n: number) => { try sleep("1 millis"); return n + 4 }
   }
   return {
     attempts: try retryWhileBusy(),

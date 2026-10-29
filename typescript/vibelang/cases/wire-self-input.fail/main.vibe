@@ -10,7 +10,7 @@ const Decorated = Layer.effect(S) {
 const Wrapped = wire(Decorated)
 const kept: Layer.Layer<S, never, S> = Wrapped
 
-export function broken(): string!! {
+export effect function broken(): string!! {
   provide kept {
     return (try S()).value
   }

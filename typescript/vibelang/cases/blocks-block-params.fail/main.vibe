@@ -1,5 +1,5 @@
 // expect: TS2554
-function getName(): string!! {
+effect function getName(): string!! {
   return "Ada"
 }
 
@@ -11,5 +11,5 @@ function wrong() {
 }
 
 export function main() {
-  return try wrong()
+  return wrong()
 }

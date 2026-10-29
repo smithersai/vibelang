@@ -3,7 +3,7 @@
 // build values, but a call that runs a program is EK1001.
 import { Config, Effect, Schedule } from "effect"
 
-function loadConfig() {
+effect function loadConfig() {
   try Effect.sleep("1 millis")
   return { port: 8080 }
 }
@@ -24,11 +24,11 @@ export const ready = Effect.void()
 
 // Values: none of these runs a program.
 export const port = Config.withDefault(Config.Port("PORT"), 3000)
-export const portNow = () => port()
+export const portNow = effect () => try port()
 export const policy = Schedule.recurs(3)
-export const later = () => loadConfig()
+export const later = effect () => try loadConfig()
 export const names = ["a", "b"].map((name) => name.toUpperCase())
-Effect.runPromise(() => loadConfig())
+Effect.runPromise(effect { return try loadConfig() })
 
 class Cache {
   static readonly hits = [1, 2].length

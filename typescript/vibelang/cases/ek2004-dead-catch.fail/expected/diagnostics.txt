@@ -1,7 +1,7 @@
 main.vibe(9,7): warning EK4830
 main.vibe(15,5): error EK2004
 main.vibe(24,5): error EK2004
-main.vibe(41,24): warning EK4833
+main.vibe(41,31): warning EK4833
 main.vibe(42,10): warning EK4834
 main.vibe(47,5): error EK2004
 main.vibe(55,23): error EK2004

@@ -8,24 +8,24 @@ export function floating(program: Effect.Effect<number>) {
   return 1
 }
 
-export function negative(n: number) {
+export effect function negative(n: number) {
   if (n < 0) throw new Error("negative")
   return n
 }
 
 export class Legacy extends Error {}
 
-export function parsed(text: string) {
+export effect function parsed(text: string) {
   return JSON.parse(text) as number
 }
 
 // @vibelang-diagnostics EK4818:warning
-export function parsedAgain(text: string) {
+export effect function parsedAgain(text: string) {
   return JSON.parse(text) as number
 }
 
 // @vibelang-diagnostics *:off EK4801:error
-export function discarded(program: Effect.Effect<number>) {
+export effect function discarded(program: Effect.Effect<number>) {
   program
   if (Number.isNaN(0)) throw new Error("never")
   return JSON.stringify(1)

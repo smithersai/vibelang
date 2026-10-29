@@ -1,9 +1,9 @@
 // expect: TS2345 TS2322 EK2001
 import { Effect } from "effect"
 error Bad { reason: string }
-function wrap(effect: Effect.Effect<number, Bad, never>) { return try effect() }
-export function main() {
-  try wrap((value: number): number!Bad => { return value })
+effect function wrap(effect: Effect.Effect<number, Bad, never>) { return try effect() }
+export effect function main() {
+  try wrap(effect (value: number): number!Bad => { return value })
   try wrap((): string!Bad => "wrong")
   try wrap((): number!Bad => "wrong")
   try wrap((): number!Bad => { throw "wrong" })

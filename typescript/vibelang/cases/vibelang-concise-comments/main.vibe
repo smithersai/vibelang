@@ -6,12 +6,12 @@ abstract class Settings {
   abstract readonly greeting: string
 }
 
-function findName(id: number) {
+effect function findName(id: number) {
   return id === 1 ? try Effect.succeed("ada") : try Effect.succeed("grace")
 }
 
-export const greeting = () => (try Settings()).greeting
+export const greeting = effect () => (try Settings()).greeting
 // Effect<string, never, Settings>
 
-export const nameLength = () => (try findName(1)).length
+export const nameLength = effect () => (try findName(1)).length
 // Effect<number, never, never>

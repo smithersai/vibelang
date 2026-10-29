@@ -7,11 +7,11 @@ abstract class Ask extends Control {
   abstract ask(question: string): Effect<number, never, never>
 }
 
-function forked() {
-  return try handle(() => {
+effect function forked() {
+  return try handle(effect {
     const child = fork Ask.ask("in a child fiber")
     return try Fiber.join(child)
   }, Ask, {
-    ask(question, k) { return try resume(k, question.length) }
+    effect ask(question, k) { return try resume(k, question.length) }
   })
 }

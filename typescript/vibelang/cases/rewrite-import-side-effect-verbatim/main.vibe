@@ -4,4 +4,4 @@ import { Effect } from "./type-adapter.ts"
 class Extra extends Context.Service<Extra, { read(): Effect.Effect<number> }>()("app/Extra") {}
 import { events } from "./events.ts"
 class Gone extends Data.TaggedError("Gone")<{ readonly n: number }> {}
-export function main() { try Console.log(JSON.stringify(events), new Gone({n:1}).n) }
+export effect function main() { try Console.log(JSON.stringify(events), new Gone({n:1}).n) }

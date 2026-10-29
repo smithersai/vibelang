@@ -1,0 +1,17 @@
+// expect: EK4618
+// effect goes exactly where TypeScript allows async (VIP-39): a declaration
+// keeps function. The shorthand VIP-1 had is EK4618, whose quick fix writes
+// function before the name.
+effect double(n: number) {
+  try yieldNow()
+  return n * 2
+}
+
+async later(n: number) {
+  return n
+}
+
+export effect function main() {
+  later(1)
+  return try double(1)
+}

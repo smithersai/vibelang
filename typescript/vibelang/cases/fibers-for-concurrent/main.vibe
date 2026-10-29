@@ -1,7 +1,7 @@
 // expect-result: {"total":6,"maxRunning":2,"evens":[2,4],"failed":"Boom","stopped":true}
 error Boom
 
-function total() {
+effect function total() {
   let sum = 0
   for concurrent (const n of [1, 2, 3]) {
     try sleep("1 millis")
@@ -11,7 +11,7 @@ function total() {
 }
 
 // At most two items run at once.
-function limited() {
+effect function limited() {
   let running = 0
   let maxRunning = 0
   for concurrent(2) (const n of [1, 2, 3, 4, 5]) {
@@ -24,7 +24,7 @@ function limited() {
 }
 
 // continue ends one item.
-function evens() {
+effect function evens() {
   const found: number[] = []
   for concurrent (const n of [1, 2, 3, 4]) {
     if (n % 2 === 1) continue
@@ -34,7 +34,7 @@ function evens() {
   return found.sort()
 }
 
-function failed() {
+effect function failed() {
   try {
     for concurrent (const n of [1, 2]) {
       if (n === 1) throw new Boom()
@@ -47,7 +47,7 @@ function failed() {
 }
 
 // A failure interrupts the items still running.
-function stopped() {
+effect function stopped() {
   let finished = false
   try {
     for concurrent (const n of [1, 2]) {
@@ -63,6 +63,6 @@ function stopped() {
   return !finished
 }
 
-export function main() {
+export effect function main() {
   return { total: try total(), maxRunning: try limited(), evens: try evens(), failed: try failed(), stopped: try stopped() }
 }

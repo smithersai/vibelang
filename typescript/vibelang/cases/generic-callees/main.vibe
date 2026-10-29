@@ -2,22 +2,22 @@
 // instantiates them: run's E is whatever its argument fails with.
 class Missing extends TaggedError("Missing")<{ readonly key: string }> {}
 
-function run<A, E, R>(program: () => Effect<A, E, R>) {
+effect function run<A, E, R>(program: () => Effect<A, E, R>) {
   try Effect.sleep("1 millis")
   return try program()
 }
 
-function lookup(key: string) {
+effect function lookup(key: string) {
   if (key !== "a") throw new Missing({ key })
   return 1
 }
 
 // expect-result: {"found":1,"caught":"Missing b"}
-export function main() {
-  const found = try run(() => lookup("a"))
+export effect function main() {
+  const found = try run(effect () => try lookup("a"))
   let caught = "none"
   try {
-    try run(() => lookup("b"))
+    try run(effect () => try lookup("b"))
   } catch (e) {
     caught = `${e._tag} ${e.key}`
   }

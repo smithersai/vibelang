@@ -16,17 +16,17 @@
 // inside its mask, so the same interruption lands after that, and the value
 // is disposed once ("acquireDisposable").
 // expect-result: {"ending":["acquired"],"acquireDisposable":["acquired","disposed"],"waiting":[],"nested":[],"scoped":[],"interruptible":[]}
-export function main() {
+export effect function main() {
   return { ending: try endingInMask(), acquireDisposable: try acquireDisposable(), waiting: try waiting(), nested: try nested(), scoped: try scoped(), interruptible: try interruptible() }
 }
 
-function endingInMask() {
+effect function endingInMask() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function work() {
-    using resource = try Effect.uninterruptible(() => {
+  effect function work() {
+    using resource = try Effect.uninterruptible(effect {
       try Deferred.succeed(entered, undefined)
       try Deferred.await(gate)
       events.push("acquired")
@@ -43,13 +43,13 @@ function endingInMask() {
   return events
 }
 
-function acquireDisposable() {
+effect function acquireDisposable() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function work() {
-    using resource = try Effect.acquireDisposable(() => {
+  effect function work() {
+    using resource = try Effect.acquireDisposable(effect {
       try Deferred.succeed(entered, undefined)
       try Deferred.await(gate)
       events.push("acquired")
@@ -66,19 +66,19 @@ function acquireDisposable() {
   return events
 }
 
-function waiting() {
+effect function waiting() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function open() {
+  effect function open() {
     try Deferred.succeed(entered, undefined)
     try Deferred.await(gate)
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
-  function work() {
+  effect function work() {
     using resource = try open()
     events.push("body")
   }
@@ -91,20 +91,20 @@ function waiting() {
   return events
 }
 
-function nested() {
+effect function nested() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function lock() {
+  effect function lock() {
     return try Effect.acquireRelease(
-      () => {
+      effect {
         try Deferred.succeed(entered, undefined)
         try Deferred.await(gate)
         events.push("locked")
         return { held: true }
       },
-      () => {
+      effect () => {
         events.push("unlocked")
       },
       { interruptible: true }
@@ -112,13 +112,13 @@ function nested() {
   }
 
   // Its using supplies the lock's Scope, so open requires no Scope.
-  function open() {
+  effect function open() {
     using held = try lock()
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
-  function work() {
+  effect function work() {
     using resource = try open()
     events.push("body")
   }
@@ -131,19 +131,19 @@ function nested() {
   return events
 }
 
-function scoped() {
+effect function scoped() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function open(): object!!Scope {
+  effect function open(): object!!Scope {
     try Deferred.succeed(entered, undefined)
     try Deferred.await(gate)
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
 
-  function work() {
+  effect function work() {
     using resource = try open()
     events.push("body")
   }
@@ -156,27 +156,27 @@ function scoped() {
   return events
 }
 
-function interruptible() {
+effect function interruptible() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
 
-  function connect() {
+  effect function connect() {
     return try Effect.acquireRelease(
-      () => {
+      effect {
         try Deferred.succeed(entered, undefined)
         try Deferred.await(gate)
         events.push("acquired")
         return { socket: "open" }
       },
-      () => {
+      effect () => {
         events.push("released")
       },
       { interruptible: true }
     )
   }
 
-  function work() {
+  effect function work() {
     using resource = try connect()
     events.push("body")
   }

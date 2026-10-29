@@ -1,10 +1,10 @@
 main.vibe(7,21): warning EK4833
 main.vibe(7,57): warning EK4833
-main.vibe(8,42): warning EK4833
+main.vibe(8,49): warning EK4833
 main.vibe(9,10): error EK2001
-main.vibe(11,48): warning EK4833
+main.vibe(11,55): warning EK4833
 main.vibe(12,10): error EK2002
-main.vibe(14,43): warning EK4833
+main.vibe(14,50): warning EK4833
 main.vibe(15,10): error EK2001
 main.vibe(15,10): error EK2002
 main.vibe(17,38): warning EK4833

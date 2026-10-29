@@ -1,7 +1,7 @@
 // A main that provides every service it needs is not reported.
 import { Users, UsersLive } from "./services.vibe"
 
-export function main() {
+export effect function main() {
   provide UsersLive {
     try Console.log(try Users.find("1"))
   }

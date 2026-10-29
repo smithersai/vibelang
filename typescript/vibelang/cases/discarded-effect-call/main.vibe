@@ -1,7 +1,7 @@
 import { Effect, Exit } from "effect"
 import { sql, events } from "./sql.js"
 // expect-result: {"events":["CREATE TABLE example (id TEXT)"],"failure":"SqlError","data":true}
-export function main() {
+export effect function main() {
   try sql.unsafe("CREATE TABLE example (id TEXT)")()
   const data = sql.unsafe("kept as data")
   const failed = try Effect.flip(sql.unsafe("fail")())

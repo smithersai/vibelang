@@ -13,7 +13,7 @@ module inputs {
 import { values } from inputs
 
 // expect-result: {"all":[3,7],"settled":[3,7],"race":3,"any":3}
-export function main() {
+export effect function main() {
   const input = try sync(() => values())
   const all = await.all input
   const settled = await.allSettled input

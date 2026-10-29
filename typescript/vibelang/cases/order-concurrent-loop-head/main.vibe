@@ -1,7 +1,7 @@
 // expect-result: {"order":["limit","items","1","2"],"seen":[1,2]}
 // for concurrent(limit) (const x of items) evaluates its head in the order
 // written (chapter 13): the limit, then the items it iterates.
-export function main() {
+export effect function main() {
   const order: string[] = []
   const seen: number[] = []
   let xs: number[] = []
@@ -14,7 +14,7 @@ export function main() {
     order.push("items")
     return xs
   }
-  for concurrent(try limit()) (const x of try items()) {
+  for concurrent(limit()) (const x of items()) {
     order.push(String(x))
     seen.push(x)
   }

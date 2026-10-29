@@ -6,27 +6,27 @@ control Log {
   write(message: string, level?: string): string!!
 }
 
-function program(level?: string) {
+effect function program(level?: string) {
   return level === undefined ? try Log.write("hi") : try Log.write("hi", level)
 }
 
-function run(level?: string) {
-  return try handle(() => program(level), Log, {
-    write(message, given, k) {
+effect function run(level?: string) {
+  return try handle(effect { return try program(level) }, Log, {
+    effect write(message, given, k) {
       return try resume(k, `${message}/${given ?? "default"}`)
     }
   })
 }
 
-function runWithDefault() {
-  return try handle(() => Log.write("hi"), Log, {
-    write(message, level = "info", k) {
+effect function runWithDefault() {
+  return try handle(effect { return try Log.write("hi") }, Log, {
+    effect write(message, level = "info", k) {
       return try resume(k, `${message}/${level}`)
     }
   })
 }
 
 // expect-result: {"omitted":"hi/default","given":"hi/warn","withDefault":"hi/info"}
-export function main() {
+export effect function main() {
   return { omitted: try run(), given: try run("warn"), withDefault: try runWithDefault() }
 }

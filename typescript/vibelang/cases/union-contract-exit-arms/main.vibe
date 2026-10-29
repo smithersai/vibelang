@@ -3,14 +3,14 @@ import { Effect, Exit } from "effect"
 error Refused { reason: string }
 // The twins' D-9 recipe: a union of Effects contract whose arms are decided
 // Exits. Each returned arm runs (S5-1), so a call runs the chosen Exit (D270).
-const decide = (flag: boolean): Effect.Effect<string, never, never> | Effect.Effect<never, Refused, never> =>
+const decide = effect (flag: boolean): Effect.Effect<string, never, never> | Effect.Effect<never, Refused, never> =>
   flag ? Exit.succeed("ok") : Exit.fail(new Refused({ reason: "no" }))
-const curried = <A>(value: A) => (flag: boolean): Effect.Effect<A, never, never> | Effect.Effect<never, Refused, never> =>
+const curried = effect <A>(value: A) => effect (flag: boolean): Effect.Effect<A, never, never> | Effect.Effect<never, Refused, never> =>
   flag ? Exit.succeed(value) : Exit.fail(new Refused({ reason: "curried" }))
 // A plain arm returns its value; a nested conditional's arms still run.
-const nested = (n: number): Effect.Effect<number, never, never> | Effect.Effect<never, Refused, never> =>
+const nested = effect (n: number): Effect.Effect<number, never, never> | Effect.Effect<never, Refused, never> =>
   n > 1 ? (n > 5 ? Exit.succeed(n) : Exit.succeed(2)) : Exit.fail(new Refused({ reason: "small" }))
-export function main() {
+export effect function main() {
   const a = try decide(true)
   const b = decide(false) catch (_) => "failed"
   const c = try (try curried(3))(true)

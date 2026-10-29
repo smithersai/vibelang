@@ -2,12 +2,12 @@
 
 // An uninterruptible block that owns a using resource finishes when its fiber
 // is interrupted, and releases the resource when the block ends.
-function masked() {
+effect function masked() {
   const done = try Deferred.make<string>()
   const released = try Deferred.make<boolean>()
   const fiber = fork {
     uninterruptible {
-      using lease = try Effect.acquireRelease(Effect.succeed("lease"), () => Deferred.succeed(released, true))
+      using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => try Deferred.succeed(released, true))
       try sleep("20 millis")
       try Deferred.succeed(done, lease)
     }
@@ -18,11 +18,11 @@ function masked() {
 }
 
 // restore inside such a block brings back the interruptibility the block began with.
-function restored() {
+effect function restored() {
   const started = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
-      using lease = try Effect.acquireRelease(Effect.succeed("lease"), () => Effect.void)
+      using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => Effect.void)
       restore {
         try Deferred.succeed(started, lease)
         try sleep("1 second")
@@ -35,13 +35,13 @@ function restored() {
 }
 
 // A return inside the block returns from the function, after the release.
-function returned() {
+effect function returned() {
   uninterruptible {
-    using lease = try Effect.acquireRelease(Effect.succeed("lease"), () => Effect.void)
+    using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => Effect.void)
     return lease
   }
 }
 
-export function main() {
+export effect function main() {
   return { ...try masked(), restored: try restored(), returned: try returned() }
 }

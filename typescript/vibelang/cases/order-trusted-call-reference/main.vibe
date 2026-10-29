@@ -3,7 +3,7 @@
 // reads that function before it evaluates the arguments, as JavaScript does,
 // also when an argument runs an Effect (chapter 13): the getter runs first,
 // and an argument that replaces the function does not change the one called.
-function getter() {
+effect function getter() {
   const trace: string[] = []
   const codec = {
     get parse(): typeof JSON.parse {
@@ -11,7 +11,7 @@ function getter() {
       return JSON.parse
     }
   }
-  function input() {
+  effect function input() {
     try Effect.yieldNow()
     trace.push("argument")
     return "7"
@@ -20,14 +20,14 @@ function getter() {
   return [value, trace]
 }
 
-function replaced() {
+effect function replaced() {
   const trace: string[] = []
   let current: typeof JSON.parse = (text: string): any => {
     trace.push("first")
     return 7
   }
   const codec = { get parse(): typeof JSON.parse { return current } }
-  function input() {
+  effect function input() {
     try Effect.yieldNow()
     current = (text: string): any => {
       trace.push("replacement")
@@ -39,13 +39,13 @@ function replaced() {
   return [value, trace]
 }
 
-function rebound() {
+effect function rebound() {
   const trace: string[] = []
   let parse: typeof JSON.parse = (text: string): any => {
     trace.push("first")
     return 7
   }
-  function input() {
+  effect function input() {
     try Effect.yieldNow()
     parse = (text: string): any => {
       trace.push("replacement")
@@ -57,6 +57,6 @@ function rebound() {
   return [value, trace]
 }
 
-export function main() {
+export effect function main() {
   return { getter: try getter(), replaced: try replaced(), rebound: try rebound() }
 }

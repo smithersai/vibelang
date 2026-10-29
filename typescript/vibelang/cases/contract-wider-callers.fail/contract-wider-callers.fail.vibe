@@ -7,16 +7,16 @@ service Needed {
   id: string
 }
 
-function longForm(): number!Gone!Needed {
+effect function longForm(): number!Gone!Needed {
   return 1
 }
 
 // R = never, but the call needs Needed.
-export function needsNothing(): number!Gone! {
+export effect function needsNothing(): number!Gone! {
   return try longForm()
 }
 
 // E = never, but the call can fail with Gone.
-export function failsNever(): number!!Needed {
+export effect function failsNever(): number!!Needed {
   return try longForm()
 }

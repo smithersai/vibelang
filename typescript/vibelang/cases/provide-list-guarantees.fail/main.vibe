@@ -9,27 +9,27 @@ service B { value: string }
 const LA = Layer.succeed(A, { value: "a" })
 const LB = Layer.succeed(B, { value: "b" })
 
-export function empty(): string!! {
+export effect function empty(): string!! {
   const layers: Layer.Layer<A>[] = []
   provide layers {
     return (try A()).value
   }
 }
 
-export function rest(more: Layer.Layer<B>[]): string!! {
+export effect function rest(more: Layer.Layer<B>[]): string!! {
   provide [LA, ...more] {
     return (try A()).value + (try B()).value
   }
 }
 
-export function tuple(): string!! {
+export effect function tuple(): string!! {
   const pair = [LA, LB] as const
   provide pair {
     return (try A()).value + (try B()).value
   }
 }
 
-export function literal(): string!! {
+export effect function literal(): string!! {
   provide [LA, LB] {
     return (try A()).value + (try B()).value
   }

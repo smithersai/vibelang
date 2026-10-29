@@ -16,24 +16,24 @@ abstract class Secret {
   abstract read(): Effect.Effect<boolean, never, never>
 }
 
-export function needsService() {
-  return try handle(() => Approval.approve("x"), Approval, {
-    approve(_request, k) { return try resumeWith(k, () => Secret.read()) }
+export effect function needsService() {
+  return try handle(effect { return try Approval.approve("x") }, Approval, {
+    effect approve(_request, k) { return try resumeWith(k, effect { return try Secret.read() }) }
   })
 }
 
-export function undeclaredError() {
-  return try handle(() => Approval.approve("x"), Approval, {
-    approve(_request, k) { return try resumeWith(k, () => { throw new Other() }) }
+export effect function undeclaredError() {
+  return try handle(effect { return try Approval.approve("x") }, Approval, {
+    effect approve(_request, k) { return try resumeWith(k, effect { throw new Other() }) }
   })
 }
 
-export function allowed() {
-  return try handle(() => Approval.approve("x"), Approval, {
-    approve(_request, k) {
+export effect function allowed() {
+  return try handle(effect { return try Approval.approve("x") }, Approval, {
+    effect approve(_request, k) {
       const secret = try Secret.read()
-      if (secret) return try resumeWith(k, () => { throw new Busy() })
-      return try resumeWith(k, () => secret)
+      if (secret) return try resumeWith(k, effect { throw new Busy() })
+      return try resumeWith(k, effect { return secret })
     }
   })
 }

@@ -3,12 +3,12 @@
 // its static type (D394). An Exit is data under rule R, though Effect also
 // types it as an Effect, so an Exit element type is EK4603 and never runs.
 // Through 0.0.10 this compiled and ran each Exit, giving [4].
-function slow(n: number): number!! {
+effect function slow(n: number): number!! {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
-  const exits = [try exit(() => slow(4))]
+export effect function main() {
+  const exits = [try exit(effect { return try slow(4) })]
   return await.all exits
 }

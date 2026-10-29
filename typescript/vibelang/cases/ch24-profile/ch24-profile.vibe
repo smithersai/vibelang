@@ -18,12 +18,12 @@ abstract class Metrics {
 
 const guest: User = { id: "0", name: "guest" }
 
-function parseId(raw: string) {
+effect function parseId(raw: string) {
   if (!/^\d+$/.test(raw)) throw new InvalidId({ raw })
   return Number(raw)
 }
 
-function profile(raw: string) {
+effect function profile(raw: string) {
   const id = try parseId(raw)                 // may throw InvalidId
   try {
     return try Users.find(String(id))
@@ -38,25 +38,25 @@ function profile(raw: string) {
 const counts: string[] = []
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => {
+  find: effect (id) => {
     if (id !== "42") throw new UserNotFound({ id })
     return { id, name: "Ada" }
   }
 })
 
 const MetricsTest = Layer.succeed(Metrics, {
-  increment: (name) => {
+  increment: effect (name) => {
     counts.push(name)
   }
 })
 
 // expect-result: {"found":"Ada","missing":"guest","invalid":"InvalidId","counts":["profile","profile"]}
-export function main() {
-  const found = try Effect.provide(() => profile("42"), Layer.mergeAll(UsersTest, MetricsTest))
-  const missing = try Effect.provide(() => profile("7"), Layer.mergeAll(UsersTest, MetricsTest))
+export effect function main() {
+  const found = try Effect.provide(effect { return try profile("42") }, Layer.mergeAll(UsersTest, MetricsTest))
+  const missing = try Effect.provide(effect { return try profile("7") }, Layer.mergeAll(UsersTest, MetricsTest))
   let invalid = "none"
   try {
-    try Effect.provide(() => profile("x"), Layer.mergeAll(UsersTest, MetricsTest))
+    try Effect.provide(effect { return try profile("x") }, Layer.mergeAll(UsersTest, MetricsTest))
   } catch (e) {
     invalid = e._tag
   }

@@ -1,7 +1,7 @@
 // expect: EK2001
 error NotFound { id: string }
 
-export function find(id: string): string!! {
+export effect function find(id: string): string!! {
   if (id === "") throw new NotFound({ id })
   return id
 }

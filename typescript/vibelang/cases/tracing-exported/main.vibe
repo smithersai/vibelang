@@ -1,16 +1,16 @@
 // "tracing": "exported" compiles each exported function with an Effect.fn
 // span named after it (D34). inner is not exported, so it runs in the span
 // of the exported function that calls it.
-function inner() {
+effect function inner() {
   return (try Effect.currentSpan()).name
 }
 
-export function outer() {
+export effect function outer() {
   return try inner()
 }
 
 // expect-result: ["outer","main"]
-export function main() {
+export effect function main() {
   const fromOuter = try outer()
   return [fromOuter, (try Effect.currentSpan()).name]
 }

@@ -16,5 +16,5 @@ function helper(x: number) {
 }
 
 export function main() {
-  return [try captured("a"), [try helper(42), try helper(7)]]
+  return [captured("a"), [helper(42), helper(7)]]
 }

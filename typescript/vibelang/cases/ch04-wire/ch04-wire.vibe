@@ -35,45 +35,45 @@ const outbox: string[] = []
 const env = new Map<string, string>([["DATABASE_URL", "postgres://wired"]])
 const rows: ReadonlyArray<User> = [{ id: "1", name: "Ada", email: "ada@example.com" }]
 
-function welcome(id: string) {
+effect function welcome(id: string) {
   const user = try Users.find(id)
   try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
 
-function readEnv(key: string) {
+effect function readEnv(key: string) {
   const value = env.get(key)
   if (value === undefined) throw new ConfigError({ key })
   return value
 }
 
-const ConfigLive = Layer.effect(Config, () => {
+const ConfigLive = Layer.effect(Config, effect {
   const url = try readEnv("DATABASE_URL")
   return { url }
 })
 
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const url = (try Config()).url
   if (url.length === 0) throw new ConnectError({ url })
   try Effect.acquireRelease(
-    () => {
+    effect {
       events.push(`open ${url}`)
     },
-    () => {
+    effect () => {
       events.push(`close ${url}`)
     }
   )
   return {
-    query: (sql, params) => rows.filter((row) => row.id === params[0])
+    query: effect (sql, params) => rows.filter((row) => row.id === params[0])
   }
 })
 
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
-      const found = try Effect.orDie(() => db.query("select * from users where id = $1", [id]))
+    effect find(id) {
+      const found = try Effect.orDie(effect { return try db.query("select * from users where id = $1", [id]) })
       if (found.length === 0) throw new UserNotFound({ id })
       return found[0]
     }
@@ -81,21 +81,21 @@ const UsersLive = Layer.effect(Users, () => {
 })
 
 const MailerLive = Layer.succeed(Mailer, {
-  send: (to, body) => {
+  send: effect (to, body) => {
     outbox.push(`${to}: ${body}`)
   }
 })
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: "Grace", email: "grace@example.com" })
+  find: effect (id) => ({ id, name: "Grace", email: "grace@example.com" })
 })
 
 const AppLive = wire(UsersLive, MailerLive, DatabaseLive, ConfigLive)
 // Layer<Users | Mailer | Database | Config, ConfigError | ConnectError, never>
 
 // expect-result: {"live":"Ada","test":"Grace","events":["open postgres://wired","close postgres://wired"],"outbox":["ada@example.com: Welcome, Ada!","grace@example.com: Welcome, Grace!"]}
-export function main() {
-  const live = try Effect.provide(() => welcome("1"), AppLive)
-  const test = try Effect.provide(() => welcome("1"), wire(UsersTest, MailerLive))
+export effect function main() {
+  const live = try Effect.provide(effect { return try welcome("1") }, AppLive)
+  const test = try Effect.provide(effect { return try welcome("1") }, wire(UsersTest, MailerLive))
   return { live, test, events, outbox }
 }

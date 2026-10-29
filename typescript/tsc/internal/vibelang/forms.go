@@ -250,6 +250,9 @@ func (a *analyzer) provisionalForm(fn *ast.Node) form {
 // Where a function or an Effect is expected (D39), a function with parameters
 // is a function, and one without is a program when it can pause.
 func (a *analyzer) decide(fn *ast.Node, e expectation) form {
+	if f := markedForm(fn); f != formNone {
+		return f
+	}
 	if outer := returnedBy(fn); len(fn.Parameters()) == 0 && outer != nil && a.isFactory(outer) {
 		return formProgram
 	}

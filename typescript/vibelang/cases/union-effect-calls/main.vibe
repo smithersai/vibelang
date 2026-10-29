@@ -2,15 +2,15 @@
 import { Effect } from "effect"
 import { choose, bootstrap, counts } from "./callbacks.js"
 
-export function direct(flag: boolean) {
+export effect function direct(flag: boolean) {
   const value = try choose(flag)
   return value
 }
-export function byName(flag: boolean) {
+export effect function byName(flag: boolean) {
   return try Effect.map(choose(flag), (value) => value)
 }
 function readCounts(): number { return counts() }
-export function main() {
+export effect function main() {
   const a = try direct(true)
   const b = try direct(false)
   const c = try byName(true)

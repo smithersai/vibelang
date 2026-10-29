@@ -295,6 +295,9 @@ func analyzerFor(c *checker.Checker) *analyzer {
 }
 
 func (a *analyzer) isEffect(fn *ast.Node) bool {
+	if isMarkedEffect(fn) {
+		return true
+	}
 	if a.isFactory(fn) {
 		return false
 	}

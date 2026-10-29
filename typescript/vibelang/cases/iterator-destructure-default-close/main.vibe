@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { values, events } from "./helper.js"
-function boom(): number!string! { throw "boom" }
-function main() {
+effect function boom(): number!string! { throw "boom" }
+effect function main() {
  try { const [n = try boom()] = values(); events.push("body:"+n) } catch { events.push("caught") }
  try Console.log(events.join(","))
 }

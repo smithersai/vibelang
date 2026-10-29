@@ -19,6 +19,6 @@ export namespace Outer.Inner {
   }
 }
 
-export function greet() {
+export effect function greet() {
   return `${N.greeting} ${(try N.Users()).name} at ${try Outer.Inner.Clock.now()}`
 }

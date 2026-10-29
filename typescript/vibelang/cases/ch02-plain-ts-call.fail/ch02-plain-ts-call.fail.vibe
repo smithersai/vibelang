@@ -9,7 +9,7 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-function profileCard(id: string) {
+effect function profileCard(id: string) {
   const user = try Users.find(id)
   return {
     title: formatName(user),                 // a plain call

@@ -22,39 +22,39 @@ function phase(value: "draft" | "published") {
 
 class Reports extends Context.Service<Reports, { readonly title: string }>()("Reports") {}
 
-const ReportsUnavailable = Layer.effect(Reports, () => {
+const ReportsUnavailable = Layer.effect(Reports, effect {
   throw new Missing({ name: "reports" })
 })
 
 const Observed = pipe(
   ReportsUnavailable,
-  Layer.tapError((error) => Effect.log(`unavailable: ${error.name}`))
+  Layer.tapError(effect (error) => try Effect.log(`unavailable: ${error.name}`))
 )
 
 const Resilient = Layer.catch(Observed, () => Layer.succeed(Reports, { title: "offline" }))
 
-function requireSetting(name: string) {
+effect function requireSetting(name: string) {
   throw new Missing({ name })
 }
 
-function startup() {
+effect function startup() {
   return do {
-    const $pipe0: void!Missing! = () => requireSetting("region")
-    try Effect.catch(() => Effect.mapError($pipe0, (error) => `needs ${error.name}`), (message) => Effect.succeed(message))
+    const $pipe0: void!Missing! = effect { return try requireSetting("region") }
+    try Effect.catch(effect { return try Effect.mapError($pipe0, (error) => `needs ${error.name}`) }, effect (message) => try Effect.succeed(message))
   }
 }
 
-function title() {
+effect function title() {
   return (try Reports()).title
 }
 
 // expect-result: {"numbers":"count 1","strings":"label a","phase":["Draft","other published"],"startup":"needs region","title":"offline"}
-export function main() {
+export effect function main() {
   return {
     numbers: describe(1),
     strings: describe("a"),
-    phase: [try phase("draft"), try phase("published")],
+    phase: [phase("draft"), phase("published")],
     startup: try startup(),
-    title: try Effect.provide(() => title(), Resilient)
+    title: try Effect.provide(effect { return try title() }, Resilient)
   }
 }

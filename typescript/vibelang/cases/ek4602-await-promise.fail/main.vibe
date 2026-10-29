@@ -3,7 +3,7 @@
 // hatch, where await keeps its JavaScript meaning.
 declare const pending: Promise<number>
 
-export function total() {
+export effect function total() {
   const n = await pending
   return n + 1
 }

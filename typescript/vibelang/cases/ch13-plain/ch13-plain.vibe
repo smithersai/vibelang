@@ -10,7 +10,7 @@ function double(n: number): number {
   return n * 2
 }
 
-function area(w: number, h: number) {
+effect function area(w: number, h: number) {
   return double(w) * double(h) * try Settings.scale()
 }
 
@@ -21,18 +21,18 @@ function tracedDouble(n: number) {
   return n * 2
 }
 
-function tracedArea(w: number, h: number) {
-  return try tracedDouble(w) * try tracedDouble(h) * try Settings.scale()
+effect function tracedArea(w: number, h: number) {
+  return tracedDouble(w) * tracedDouble(h) * try Settings.scale()
 }
 
 // Recursion
 // NOTE: D10 runs pure recursion on the JavaScript stack, so sumTo stays well under the host limit here.
 
-function sumTo(n: number): Effect<number, never, never> {
+effect function sumTo(n: number): Effect<number, never, never> {
   return n === 0 ? 0 : n + try sumTo(n - 1)
 }
 
-function gcd(a: number, b: number): Effect<number, never, never> {
+effect function gcd(a: number, b: number): Effect<number, never, never> {
   return b === 0 ? a : try gcd(b, a % b)        // a call to itself in tail position: compiled to a loop
 }
 
@@ -42,13 +42,13 @@ function doubleAll(xs: ReadonlyArray<number>) {
 }
 
 const SettingsTest = Layer.succeed(Settings, {
-  scale: () => {
+  scale: effect () => {
     order.push("scale")
     return 10
   }
 })
 
-function scenario() {
+effect function scenario() {
   const plain = try area(2, 3)
   const traced = try tracedArea(2, 3)
   return {
@@ -58,11 +58,11 @@ function scenario() {
     order,
     sumTo: try sumTo(1000),
     gcd: try gcd(48, 18),
-    doubled: try doubleAll([1, 2, 3])
+    doubled: doubleAll([1, 2, 3])
   }
 }
 
 // expect-result: {"double":8,"area":240,"traced":240,"order":["scale","double 2","double 3","scale"],"sumTo":500500,"gcd":6,"doubled":[2,4,6]}
-export function main() {
-  return try Effect.provide(() => scenario(), SettingsTest)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, SettingsTest)
 }

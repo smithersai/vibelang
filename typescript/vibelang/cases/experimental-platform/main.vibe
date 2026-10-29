@@ -9,7 +9,7 @@ function hex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
-export function inspect(dir: string) {
+export effect function inspect(dir: string) {
   const fs = try Experimental.FileSystem.FileSystem()
   try fs.writeFileString(`${dir}/data`, "1234")
   try fs.chmod(`${dir}/data`, 0o644)
@@ -30,12 +30,12 @@ export function inspect(dir: string) {
     size: Number(try size(`${dir}/moved`)),
     denied,
     mode: ((try fs.stat(`${dir}/moved`)).mode & 0o777).toString(8),
-    mac: try hex(mac)
+    mac: hex(mac)
   }
 }
 
 // expect-result: {"link":"SymbolicLink","isLink":true,"kind":"SymbolicLink","followed":false,"size":4,"denied":"PermissionDenied","mode":"600","mac":"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"}
-export function main() {
+export effect function main() {
   provide ExperimentalNodeServices.layer {
     using dir = try Experimental.FileSystem.FileSystem.makeTempDirectoryScoped()
     return try inspect(dir)

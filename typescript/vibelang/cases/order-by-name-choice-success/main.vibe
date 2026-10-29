@@ -5,24 +5,24 @@
 // that runs the call, which is always truthy, and never ran the right side.
 const log: string[] = []
 
-function value(name: string, n: number | undefined) {
+effect function value(name: string, n: number | undefined) {
   try Effect.yieldNow()
   log.push(name)
   return n
 }
 
-export function main() {
+export effect function main() {
   const or = [
     try retry(value("or-left", 0) || value("or-right", 7), { times: 0 }),
-    try retry(() => try value("or-left", 0) || try value("or-right", 7), { times: 0 })
+    try retry(effect { return try value("or-left", 0) || try value("or-right", 7) }, { times: 0 })
   ]
   const nullish = [
     try retry(value("nullish-left", undefined) ?? value("nullish-right", 8), { times: 0 }),
-    try retry(() => try value("nullish-left", undefined) ?? try value("nullish-right", 8), { times: 0 })
+    try retry(effect { return try value("nullish-left", undefined) ?? try value("nullish-right", 8) }, { times: 0 })
   ]
   const and = [
     try retry(value("and-left", 0) && value("and-right", 9), { times: 0 }),
-    try retry(() => try value("and-left", 0) && try value("and-right", 9), { times: 0 })
+    try retry(effect { return try value("and-left", 0) && try value("and-right", 9) }, { times: 0 })
   ]
   return { or, nullish, and, log }
 }

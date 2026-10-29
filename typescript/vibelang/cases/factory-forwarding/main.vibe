@@ -9,4 +9,4 @@ export const wrap = (base: Port): Port => ({
 })
 
 // expect-result: "delegate: call time; program: twice"
-export function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try sync((run: () => string) => run(), check) }

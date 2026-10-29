@@ -24,7 +24,7 @@ abstract class Mailer {
   abstract send(to: string, body: string): Effect<void, MailError, never>
 }
 
-export function welcome(id: string) {
+export effect function welcome(id: string) {
   const user = try Users.find(id)
   try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
@@ -33,13 +33,13 @@ export function welcome(id: string) {
 
 // Test providers in the style of Chapter 4: an object literal implements each service.
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: "Ada", email: "ada@example.com" })
+  find: effect (id) => ({ id, name: "Ada", email: "ada@example.com" })
 })
 
 const outbox: string[] = []
 
 const MailerTest = Layer.succeed(Mailer, {
-  send: (to, body) => {
+  send: effect (to, body) => {
     outbox.push(`${to}: ${body}`)
   }
 })
@@ -49,8 +49,8 @@ const AppLive = Layer.mergeAll(UsersTest, MailerTest)
 // NOTE: the proposal ends with `NodeRuntime.runMain(() => main())`; @effect/platform-node is not
 // installed here, so the example runner runs main instead.
 // expect-result: {"name":"Ada","outbox":["ada@example.com: Welcome, Ada!"]}
-export function main() {
-  const name = try Effect.provide(() => welcome("42"), AppLive)
+export effect function main() {
+  const name = try Effect.provide(effect { return try welcome("42") }, AppLive)
   try Effect.log(`sent a welcome email to ${name}`)
   return { name, outbox }
 }

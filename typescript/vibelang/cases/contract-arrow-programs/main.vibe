@@ -1,14 +1,14 @@
 // expect-result: [0,1,2,3,4,5,6,"bad",6]
 import { Effect } from "effect"
 error Bad { reason: string }
-function wrap<A, R>(effect: Effect.Effect<A, Bad, R>): Effect.Effect<A, Bad, R> {
+effect function wrap<A, R>(effect: Effect.Effect<A, Bad, R>): Effect.Effect<A, Bad, R> {
   return try effect()
 }
 let runs = 0
 const fields: { read: Effect.Effect<number, Bad, never> } = { read: (): number!Bad => ++runs }
-export function main() {
+export effect function main() {
   const before = runs
-  const plain = try wrap(() => ++runs)
+  const plain = try wrap(effect { return ++runs })
   const annotated = try wrap((): number!Bad => ++runs)
   const literal = try wrap((): number!Bad => { return ++runs })
   const explicit = try wrap((): Effect.Effect<number, Bad, never> => ++runs)

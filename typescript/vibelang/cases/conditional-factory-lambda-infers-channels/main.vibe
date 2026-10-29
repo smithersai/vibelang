@@ -2,12 +2,12 @@
 // keeps TypeScript's type as it does when it is the argument itself, so the
 // callee's channels E2 and R2 infer from both branches rather than from
 // themselves.
-const run = <E2, R2>(record: (n: number) => void!E2!R2): void!E2!R2 => {
+const run = effect <E2, R2>(record: (n: number) => void!E2!R2): void!E2!R2 => {
   try record(1)
   try record(2)
 }
 
-const watch = (seen: Array<number>, watching: boolean): void!! => {
+const watch = effect (seen: Array<number>, watching: boolean): void!! => {
   const observe = (n: number): void!! => {
     seen.push(n)
   }
@@ -15,7 +15,7 @@ const watch = (seen: Array<number>, watching: boolean): void!! => {
 }
 
 // expect-result: [[1,2],[]]
-export function main() {
+export effect function main() {
   const watched: Array<number> = []
   const ignored: Array<number> = []
   try watch(watched, true)

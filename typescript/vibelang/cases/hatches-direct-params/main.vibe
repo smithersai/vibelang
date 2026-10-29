@@ -30,7 +30,7 @@ module foreign {
 import { count, anyCount, second, defaulted, echo, untilAborted } from foreign
 
 // expect-result: {"rest":2,"triedRest":2,"mappedRest":2,"unknownRest":2,"optional":"undefined","triedOptional":"undefined","defaulted":6,"input":{"value":42,"signal":true},"tried":{"value":7,"signal":true},"literalRest":2,"literalOptional":"undefined","literalSignal":true,"literalNone":1,"timedOut":"timed out","events":["aborted"]}
-export function main() {
+export effect function main() {
   const events: string[] = []
   const rest = try sync(count, 1, 2)
   const triedRest = try Effect.tryPromise(() => count(1, 2))

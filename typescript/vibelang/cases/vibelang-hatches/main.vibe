@@ -5,35 +5,35 @@
 // (D229): values reach it as inputs (D230).
 error BadJson { error: unknown }
 
-function parse(text: string) {
+effect function parse(text: string) {
   return try Effect.try({ try: () => ((text) => JSON.parse(text))(text), catch: (error) => new BadJson({ error }) })
 }
 
-function lengthOf(text: string) {
+effect function lengthOf(text: string) {
   return try Effect.try(() => ((text) => {
     if (text === "") throw new Error("empty")
     return text.length
   })(text))
 }
 
-function later() {
+effect function later() {
   try Effect.sleep("1 millis")
   return "later"
 }
 
-function tick() {
+effect function tick() {
   return try callback<number>((resume) => {
     const timer = setTimeout(() => resume(7), 1)
     return () => clearTimeout(timer)
   })
 }
 
-function refuse() {
+effect function refuse() {
   return try callback<number, BadJson>((resume) => resume.fail(new BadJson({ error: "refused" })))
 }
 
 // expect-result: {"id":"id-42","doubled":[2,4,6],"awaited":"awaited","fetched":"fetched","parsed":{"a":1},"bad":"BadJson","unknown":"UnknownError","ticked":7,"refused":"BadJson","inert":"object","viaRunner":"later"}
-export function main() {
+export effect function main() {
   const id = try sync("id-" + String(40 + 2))
   const doubled = try sync(() => [1, 2, 3].map((n) => n * 2))
   const awaited = try sync(async () => {

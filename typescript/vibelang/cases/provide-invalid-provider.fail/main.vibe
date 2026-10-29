@@ -9,25 +9,25 @@ service A { value: string }
 const LA = Layer.succeed(A, { value: "a" })
 const CA = Context.make(A, { value: "a" })
 
-export function number(): string!! {
+export effect function number(): string!! {
   provide 123 {
     return "inside"
   }
 }
 
-export function maybe(layer: Layer.Layer<A> | undefined): string!! {
+export effect function maybe(layer: Layer.Layer<A> | undefined): string!! {
   provide layer {
     return (try A()).value
   }
 }
 
-export function contextInList(): string!! {
+export effect function contextInList(): string!! {
   provide [LA, CA] {
     return (try A()).value
   }
 }
 
-export function context(): string!! {
+export effect function context(): string!! {
   provide CA {
     return (try A()).value
   }

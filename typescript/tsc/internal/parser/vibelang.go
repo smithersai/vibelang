@@ -45,6 +45,9 @@ func (p *Parser) scanStartOfVibeLangDeclaration() bool {
 		return false
 	}
 	word := p.scanner.TokenValue()
+	if word == "effect" {
+		return p.scanStartOfEffectDeclaration() // effect function f(), effect f() (vibelang_effect.go)
+	}
 	if !isVibeLangDeclarationWord(word) {
 		return false
 	}
@@ -74,6 +77,8 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		return nil
 	}
 	switch p.scanner.TokenValue() {
+	case "effect":
+		return p.parseEffectDeclaration(pos, jsdoc, modifiers) // vibelang_effect.go
 	case "error":
 		return p.parseErrorDeclaration(pos, jsdoc, modifiers, false /*schema*/)
 	case "service":
@@ -432,6 +437,13 @@ func (p *Parser) parseLayerDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 			switch {
 			case p.lookAhead((*Parser).scanLayerValueStart):
 				members = append(members, p.parseLayerValue())
+			case p.isStartOfVibeLangEffectMember():
+				memberPos := p.nodePos()
+				memberJSDoc := p.jsdocScannerInfo()
+				effectWord := p.parseVibeLangEffectMember()
+				asterisk := p.parseOptionalToken(ast.KindAsteriskToken)
+				memberName := p.parsePropertyName()
+				members = append(members, p.vibelangEffectMember(p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/), effectWord))
 			case p.lookAhead((*Parser).scanLayerMethodStart):
 				memberPos := p.nodePos()
 				memberJSDoc := p.jsdocScannerInfo()

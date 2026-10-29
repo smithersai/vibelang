@@ -20,17 +20,17 @@ export schema error Locked {
   }
 }
 
-function fail(error: NotFound | Locked): never!(NotFound | Locked) {
+effect function fail(error: NotFound | Locked): never!(NotFound | Locked) {
   throw error
 }
 
-function route(error: NotFound | Locked): string!! {
+effect function route(error: NotFound | Locked): string!! {
   return fail(error)
-    |> Effect.catchTag(%, "NotFound", (caught) => `not found ${caught.attempts}`)
-    |> try Effect.catchTag(%, "Locked", (caught) => caught.describe())
+    |> Effect.catchTag(%, "NotFound", effect (caught) => `not found ${caught.attempts}`)
+    |> try Effect.catchTag(%, "Locked", effect (caught) => caught.describe())
 }
 
-export function main() {
+export effect function main() {
   const notFound = new NotFound({ method: "read", attempts: 2 })
   const decoded = Schema.decodeUnknownSync(NotFound)({ _tag: "NotFound", method: "stat", attempts: 1 })
   const base = new FsError({ method: "open", path: "/x" })

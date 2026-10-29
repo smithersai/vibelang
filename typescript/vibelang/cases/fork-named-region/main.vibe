@@ -5,7 +5,7 @@
 // owns its fibers with or without braces; a try block owns its own.
 const events: string[] = []
 
-function ticker(name: string) {
+effect function ticker(name: string) {
   try {
     while (true) try sleep("1 millis")
   } finally {
@@ -13,7 +13,7 @@ function ticker(name: string) {
   }
 }
 
-function branch(flag: boolean) {
+effect function branch(flag: boolean) {
   if (flag) {
     fork ticker("if")
   }
@@ -21,13 +21,13 @@ function branch(flag: boolean) {
   events.push("if: after")
 }
 
-function branchWithoutBraces(flag: boolean) {
+effect function branchWithoutBraces(flag: boolean) {
   if (flag) fork ticker("if without braces")
   try sleep("3 millis")
   events.push("if without braces: after")
 }
 
-function bare() {
+effect function bare() {
   {
     fork ticker("bare")
     try sleep("3 millis")
@@ -35,12 +35,12 @@ function bare() {
   events.push("bare: after")
 }
 
-function loop() {
+effect function loop() {
   for (const n of [1, 2]) (fork ticker(`loop ${n}`), try sleep("3 millis"))
   events.push("loop: after")
 }
 
-function doBlock() {
+effect function doBlock() {
   const marked = do {
     fork ticker("do")
     try sleep("3 millis")
@@ -50,7 +50,7 @@ function doBlock() {
   return marked
 }
 
-function guarded() {
+effect function guarded() {
   try {
     fork ticker("try")
     try sleep("3 millis")
@@ -59,7 +59,7 @@ function guarded() {
   }
 }
 
-export function main() {
+export effect function main() {
   try branch(true)
   try branchWithoutBraces(true)
   try bare()

@@ -33,7 +33,7 @@ schema Envelope { id: string; error: StoreError }
 
 export schema error Late extends StoreError
 
-function fail(error: StoreError): never!StoreError {
+effect function fail(error: StoreError): never!StoreError {
   throw error
 }
 
@@ -44,7 +44,7 @@ function describe(value: StoreError): string {
   }
 }
 
-export function main() {
+export effect function main() {
   const notStored = new NotStored({ key: "a", attempts: 2 })
   const evicted = new Evicted({ key: "b", at: 3, by: "lru" })
   const encode = Schema.encodeSync(StoreError)

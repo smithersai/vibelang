@@ -1,5 +1,5 @@
 // A skipped generic call in runner inference must stay an Effect value.
-function work() {
+effect function work() {
   try Console.log("ran")
   return 42
 }

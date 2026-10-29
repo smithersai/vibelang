@@ -5,9 +5,9 @@ import { events, shout, welcome } from "./welcome.vibe"
 import { greetTwice } from "./greeter.ts"
 
 // expect-result: {"one":"Welcome, ADA!","two":"Welcome, GRACE! Welcome, GRACE!","loud":"HI","events":["welcome Ada","welcome Grace","welcome Grace"]}
-export function main() {
+export effect function main() {
   const one = try welcome("Ada")
   const two = try greetTwice("Grace")
-  const loud = try shout("hi")
+  const loud = shout("hi")
   return { one, two, loud, events }
 }

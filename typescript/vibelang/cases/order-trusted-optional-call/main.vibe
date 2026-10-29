@@ -2,7 +2,7 @@
 // An optional call skips its arguments when its function or its receiver is
 // absent (chapter 13), also when the function has expected failures and an
 // argument runs an Effect, which the call's thunk cannot hold.
-function method() {
+effect function method() {
   const trace: string[] = []
   const codec = {
     get parse(): typeof JSON.parse | undefined {
@@ -10,7 +10,7 @@ function method() {
       return undefined
     }
   }
-  function input() {
+  effect function input() {
     trace.push("argument")
     try Effect.yieldNow()
     return "7"
@@ -19,9 +19,9 @@ function method() {
   return [value ?? null, trace]
 }
 
-function receiver(codec: { parse: typeof JSON.parse } | undefined) {
+effect function receiver(codec: { parse: typeof JSON.parse } | undefined) {
   const trace: string[] = []
-  function input() {
+  effect function input() {
     trace.push("argument")
     try Effect.yieldNow()
     return "7"
@@ -30,6 +30,6 @@ function receiver(codec: { parse: typeof JSON.parse } | undefined) {
   return [value ?? null, trace]
 }
 
-export function main() {
+export effect function main() {
   return { method: try method(), receiver: try receiver(undefined), present: try receiver(JSON) }
 }

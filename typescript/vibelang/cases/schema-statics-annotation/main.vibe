@@ -18,11 +18,11 @@ export type TextPart = typeof TextPart.Type
 // With an Effect contract, the type TypeScript gave the lambda returns the
 // Effect, so the lambda is an Effect function, never plain.
 export const Counter = withStatics(Schema.Struct({ n: Schema.Number }), {
-  make: (n: number): Effect.Effect<typeof Counter.Type, never, never> => ({ n })
+  make: effect (n: number): Effect.Effect<typeof Counter.Type, never, never> => ({ n })
 })
 
 // expect-result: {"part":{"type":"text","text":"hi"},"counter":2}
-export function main() {
+export effect function main() {
   const part = TextPart.make({ text: "hi" })
   const counter = try Counter.make(2)
   return { part, counter: counter.n }

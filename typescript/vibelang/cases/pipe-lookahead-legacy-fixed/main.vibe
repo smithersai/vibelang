@@ -8,7 +8,7 @@ function inspect(value: unknown): string {
 
 export function main() {
   return do {
-    const $pipe0: (number)!! = () => 5
+    const $pipe0: (number)!! = effect { return 5 }
     const $pipe1 = inspect
     $pipe1($pipe0)
   }

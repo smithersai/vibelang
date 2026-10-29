@@ -1,9 +1,9 @@
 import { odd } from "./odd.vibe"
 
-export default function down(n: number): Effect<number> {
+export default effect function down(n: number): Effect<number> {
   return n === 0 ? 0 : try down(n - 1)
 }
-export function even(n: number): Effect<boolean> {
+export effect function even(n: number): Effect<boolean> {
   return n === 0 ? true : try odd(n - 1)
 }
 export function tree(n: number): number {
@@ -11,7 +11,7 @@ export function tree(n: number): number {
   if (n % 2 === 0) return tree(n - 1)
   return [n - 1].map(x => tree(x))[0]
 }
-export function guarded(n: number): Effect<number> {
+export effect function guarded(n: number): Effect<number> {
   try {
     if (n === 0) return JSON.parse("7")
     return try guarded(n - 1)
@@ -20,7 +20,7 @@ export function guarded(n: number): Effect<number> {
   }
 }
 error Stop { value: number }
-export function caught(n: number): Effect<number> {
+export effect function caught(n: number): Effect<number> {
   try {
     if (n === 0) throw new Stop({ value: 7 })
     return try caught(n - 1)
@@ -28,24 +28,24 @@ export function caught(n: number): Effect<number> {
     return 7
   }
 }
-export function typed(n: number): Effect<number, Stop> {
+export effect function typed(n: number): Effect<number, Stop> {
   if (n === 0) throw new Stop({ value: 9 })
   return try typed(n - 1)
 }
-export function catchTyped(n: number) {
+export effect function catchTyped(n: number) {
   try { return try typed(n) } catch (e) { return e.value }
 }
-export function boom(n: number): Effect<number> {
+export effect function boom(n: number): Effect<number> {
   if (n === 0) return (null as any).x
   return try boom(n - 1)
 }
 let defaults = 0
 function nextDefault(): number { defaults++; return 3 }
-export function complex(n: number, { value } = { value: nextDefault() }, ...rest: number[]): Effect<number> {
+export effect function complex(n: number, { value } = { value: nextDefault() }, ...rest: number[]): Effect<number> {
   return n === 0 ? value + rest.length : try complex(n - 1, { value }, ...rest)
 }
 export function defaultCount(): number { return defaults }
-export function args(n: number, ...rest: number[]): Effect<number> {
+export effect function args(n: number, ...rest: number[]): Effect<number> {
   if (n === 0) return arguments.length + rest.length
   return try args(n - 1, ...rest)
 }

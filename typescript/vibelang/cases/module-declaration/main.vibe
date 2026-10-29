@@ -54,12 +54,12 @@ module text {
 
 import Counter, { clean, greet, later, safeLength, separator, type Cleaned, type Mode } from text
 
-function cleaned(input: string, mode: Mode): Cleaned!Unclean {
+effect function cleaned(input: string, mode: Mode): Cleaned!Unclean {
   return try Effect.try({ try: () => ((input, mode) => clean(input, mode))(input, mode), catch: (error) => new Unclean({ reason: String(error) }) })
 }
 
 // expect-result: {"cleaned":{"value":"HI","length":2},"failed":"Error: empty","length":-1,"later":"X.txt!","greeting":"hello, Ada!","joined":"a-b!","counted":2}
-export function main() {
+export effect function main() {
   const value = try cleaned("  hi ", "upper")
   let failed = "none"
   try {

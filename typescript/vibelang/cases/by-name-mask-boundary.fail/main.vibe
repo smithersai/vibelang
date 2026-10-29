@@ -1,8 +1,8 @@
 // expect: EK2001
 class WriteError extends Data.TaggedError("WriteError")<{}> {}
-function write() { throw new WriteError() }
-export function invalid(): void!! {
-  try Effect.uninterruptibleMask((restore) => {
+effect function write() { throw new WriteError() }
+export effect function invalid(): void!! {
+  try Effect.uninterruptibleMask(effect (restore) => {
     try restore(write())
   })
 }

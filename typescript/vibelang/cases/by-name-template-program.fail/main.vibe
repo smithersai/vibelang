@@ -1,6 +1,6 @@
 // expect: EK2001
 import { sql, write } from "./sql.js"
-function encode(n: number) { throw "encoding" }
-export function invalid(): void!! {
+effect function encode(n: number) { throw "encoding" }
+export effect function invalid(): void!! {
   try write(sql`INSERT INTO invalid VALUES (${encode(1)})`)
 }

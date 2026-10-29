@@ -4,7 +4,7 @@
 // of 1 the items run one at a time on this fiber, and the handler is reached.
 control Ask { ask(): number!! }
 
-export function limited() {
+export effect function limited() {
   let total = 0
   try {
     for concurrent(2) (const n of [1, 2]) total += try Ask.ask()
@@ -14,7 +14,7 @@ export function limited() {
   return total
 }
 
-export function unlimited() {
+export effect function unlimited() {
   let total = 0
   try {
     for concurrent (const n of [1, 2]) {
@@ -26,7 +26,7 @@ export function unlimited() {
   return total
 }
 
-export function one() {
+export effect function one() {
   let total = 0
   try {
     for concurrent(1) (const n of [1, 2]) total += try Ask.ask()

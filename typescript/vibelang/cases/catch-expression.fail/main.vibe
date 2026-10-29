@@ -2,32 +2,32 @@
 error NotFound { id: string }
 error Timeout
 
-function find(id: string): string!NotFound | Timeout! {
+effect function find(id: string): string!NotFound | Timeout! {
   if (id === "missing") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
 }
 
 // A match without default must handle every failure (EK4701).
-export function partial(id: string) {
+export effect function partial(id: string) {
   return find(id) catch (e) => match (e) {
     when NotFound: "missing";
   }
 }
 
 // A hatch body is plain TypeScript (EK2114).
-export function parsed() {
+export effect function parsed() {
   return try sync(() => JSON.parse("{}") catch null)
 }
 
 // The left side cannot fail, so the catch never runs (EK2004, a warning).
-export function constant() {
+export effect function constant() {
   return 1 catch 2
 }
 
 // default: throw e keeps Timeout in E, which the contract leaves out.
-export function strict(id: string): string!! {
-  return find(id) catch (e) => match (e) {
+export effect function strict(id: string): string!! {
+  return find(id) catch effect (e) => match (e) {
     when NotFound: "missing";
     default: throw e;
   }

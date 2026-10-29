@@ -5,7 +5,7 @@ import { Effect, Schedule } from "effect"
 
 let runs = 0
 
-function work(name: string) {
+effect function work(name: string) {
   runs++
   try Effect.sleep("1 millis")
   return name.toUpperCase()
@@ -13,12 +13,12 @@ function work(name: string) {
 
 // Returns a program; calling makeJob runs nothing.
 function makeJob(name: string): () => Effect.Effect<string> {
-  return () => work(name)
+  return effect () => try work(name)
 }
 
 let failuresLeft = 2
 
-function flakyWork() {
+effect function flakyWork() {
   if (failuresLeft > 0) {
     failuresLeft--
     try Effect.fail("not yet")
@@ -26,10 +26,10 @@ function flakyWork() {
   return "FLAKY"
 }
 
-function stored() {
-  const job = () => work("stored")
+effect function stored() {
+  const job = effect () => try work("stored")
   const returned = makeJob("returned")
-  const flaky = () => flakyWork()
+  const flaky = effect () => try flakyWork()
   const before = runs
   const once = try job()
   const retried = try Effect.retry(flaky, Schedule.recurs(3))
@@ -39,14 +39,14 @@ function stored() {
 }
 
 // Arrays and records of programs built at run time convert element by element.
-function built() {
+effect function built() {
   const jobs = ["x", "y"].map(makeJob)
   const table: Record<string, () => Effect.Effect<string>> = { p: makeJob("p"), q: makeJob("q") }
   return { jobs: try Effect.all(jobs), table: try Effect.all(table) }
 }
 
 // expect-result: {"stored":{"before":0,"once":"STORED","retried":"FLAKY","pair":["STORED","RETURNED"],"record":{"a":"STORED","b":"RETURNED"}},"built":{"jobs":["X","Y"],"table":{"p":"P","q":"Q"}},"runs":9}
-export function main() {
+export effect function main() {
   const s = try stored()
   const b = try built()
   return { stored: s, built: b, runs }

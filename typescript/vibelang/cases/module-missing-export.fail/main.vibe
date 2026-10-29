@@ -13,6 +13,6 @@ module text {
 
 import { clean, missing, hidden } from text
 
-export function main() {
+export effect function main() {
   return try sync((value) => clean(value) + missing + hidden, " a ")
 }

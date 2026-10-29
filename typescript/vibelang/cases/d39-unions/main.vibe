@@ -4,18 +4,18 @@
 // program (L1).
 import { route } from "./helpers.ts"
 
-function health() {
+effect function health() {
   try Effect.sleep("1 millis")
   return "healthy"
 }
 
-const healthyProgram: string!! = () => health()
+const healthyProgram: string!! = effect { return try health() }
 
 // expect-result: {"withParameter":"function: got req","pausing":"program: healthy","plain":"function: static"}
-export function main() {
+export effect function main() {
   return {
-    withParameter: try route((request): string!! => `got ${request}`),
+    withParameter: try route(effect (request): string!! => `got ${request}`),
     pausing: try route(healthyProgram),
-    plain: try route((): string!! => "static")
+    plain: try route(effect (): string!! => "static")
   }
 }

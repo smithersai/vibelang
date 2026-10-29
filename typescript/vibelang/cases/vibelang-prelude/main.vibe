@@ -6,7 +6,7 @@ class NotFound extends TaggedError("NotFound")<{ readonly id: number }> {}
 
 const names = ["ada", "grace"]
 
-function lookup(id: number) {
+effect function lookup(id: number) {
   if (id >= names.length) try Effect.fail(new NotFound({ id }))
   return names[id]
 }
@@ -17,16 +17,16 @@ const double = (n: number): number => n * 2
 
 // The top level may not run a program (EK1001), so the Effect<number> value
 // arrives as a program, a function with no parameters (D7).
-function first(one: Effect<number>) {
+effect function first(one: Effect<number>) {
   return try Effect.map(one, (x) => x)
 }
 
 // expect-result: {"found":"ada","tag":"NotFound","piped":8,"one":1}
-export function main() {
+export effect function main() {
   const found = try lookup(0)
   const tag = new NotFound({ id: 9 })._tag
   const piped = pipe(2, double, double)
-  return { found, tag, piped, one: try first(() => Effect.succeed(1)) }
+  return { found, tag, piped, one: try first(effect { return try Effect.succeed(1) }) }
 }
 
 export const unused = both

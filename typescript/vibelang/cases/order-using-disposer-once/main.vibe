@@ -2,7 +2,7 @@
 // using reads its value's dispose method once, when it acquires the value,
 // and calls that method at block exit, as JavaScript's using does: replacing
 // the method or a getter that returns another one changes nothing.
-function replaced() {
+effect function replaced() {
   const seen: string[] = []
   {
     using r = { [Symbol.dispose]() { seen.push("original") } }
@@ -11,7 +11,7 @@ function replaced() {
   return seen
 }
 
-function getter() {
+effect function getter() {
   const seen: string[] = []
   let reads = 0
   {
@@ -27,6 +27,6 @@ function getter() {
   return seen
 }
 
-export function main() {
+export effect function main() {
   return { replaced: try replaced(), getter: try getter() }
 }

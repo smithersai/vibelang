@@ -2,11 +2,11 @@
 // A pipe passes its left side by name or evaluates it, not both (D155): race
 // expects programs, so the first % is a program that runs work(), while
 // Effect.succeed takes a value.
-function work() {
+effect function work() {
   try sleep("1 millis")
   return 1
 }
 
-export function main() {
+export effect function main() {
   return work() |> try race(%, Effect.succeed(%))
 }

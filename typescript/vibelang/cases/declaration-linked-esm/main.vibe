@@ -1,3 +1,3 @@
 import { work } from "./host.js";
-export const fn = (x: number) => { const y = try work(x); return y };
-export const obj = { f: (x: number) => { try work(x); return x } };
+export const fn = effect (x: number) => { const y = try work(x); return y };
+export const obj = { f: effect (x: number) => { try work(x); return x } };

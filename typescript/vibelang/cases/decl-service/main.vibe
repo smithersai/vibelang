@@ -6,7 +6,7 @@ export service Users {
   readonly region: string
 
   static readonly layer = Layer.succeed(Users, {
-    find: (id: string) => {
+    find: effect (id: string) => {
       if (id === "42") return "Ada"
       throw new UserNotFound({ id })
     },
@@ -18,12 +18,12 @@ export control Approval {
   approve(request: string): boolean!!
 }
 
-function release(version: string) {
+effect function release(version: string) {
   if (!try Approval.approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
-function greet(id: string) {
+effect function greet(id: string) {
   try {
     return try Users.find(id)
   } catch (error) {
@@ -31,11 +31,11 @@ function greet(id: string) {
   }
 }
 
-export function main() {
-  const approved = try handle(() => release("v1"), Approval, {
-    approve(_request, continuation) {
+export effect function main() {
+  const approved = try handle(effect { return try release("v1") }, Approval, {
+    effect approve(_request, continuation) {
       return try resume(continuation, true)
     }
   })
-  return try Effect.provide(() => ({ name: try greet("42"), missing: try greet("7"), region: (try Users()).region, approved }), Users.layer)
+  return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users()).region, approved }) }, Users.layer)
 }

@@ -2,14 +2,14 @@
 error NotFound { id: string }
 error Timeout
 
-function find(id: string): string!NotFound | Timeout! {
+effect function find(id: string): string!NotFound | Timeout! {
   if (id === "missing") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
 }
 
 // A complete match over the caught failure needs no rethrow.
-function describe(id: string): string!! {
+effect function describe(id: string): string!! {
   try {
     return try find(id)
   } catch (e) {
@@ -21,7 +21,7 @@ function describe(id: string): string!! {
 }
 
 // Partial handling rethrows the rest with a throw expression.
-function partial(id: string): string!Timeout! {
+effect function partial(id: string): string!Timeout! {
   try {
     return try find(id)
   } catch (e) {
@@ -33,7 +33,7 @@ function partial(id: string): string!Timeout! {
 }
 
 // An is chain narrows statement bodies.
-function chain(id: string): string!! {
+effect function chain(id: string): string!! {
   try {
     return try find(id)
   } catch (e) {
@@ -45,14 +45,14 @@ function chain(id: string): string!! {
 }
 
 // A whole cause: match on the exit.
-function outcome(id: string): string!! {
+effect function outcome(id: string): string!! {
   return match (try exit(find(id))) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasFails(cause) ? "failed" : "other";
   }
 }
 
-export function main() {
+export effect function main() {
   let partialSlow = "none"
   try {
     try partial("slow")

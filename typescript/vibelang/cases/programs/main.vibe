@@ -7,46 +7,46 @@ class Greeter extends Context.Service<Greeter, { readonly greet: (name: string) 
 
 let attempts = 0
 
-function flaky() {
+effect function flaky() {
   attempts++
   if (attempts < 3) try Effect.fail("not yet")
   return `ok after ${attempts}`
 }
 
-function slow(label: string) {
+effect function slow(label: string) {
   try Effect.sleep("200 millis")
   return label
 }
 
-function fast(label: string) {
+effect function fast(label: string) {
   try Effect.sleep("1 millis")
   return label
 }
 
-function retried() {
-  return try Effect.retry(() => flaky(), Schedule.recurs(5))
+effect function retried() {
+  return try Effect.retry(effect { return try flaky() }, Schedule.recurs(5))
 }
 
-function raced() {
-  return try Effect.race(() => slow("slow"), () => fast("fast"))
+effect function raced() {
+  return try Effect.race(effect { return try slow("slow") }, effect { return try fast("fast") })
 }
 
-function timedOut() {
-  return try Effect.catch(() => Effect.timeout(() => slow("slow"), "5 millis"), (e) => e._tag)
+effect function timedOut() {
+  return try Effect.catch(effect { return try Effect.timeout(effect { return try slow("slow") }, "5 millis") }, effect (e) => e._tag)
 }
 
 // An array and a record of programs where Effect.all expects Effects.
-function both() {
-  const list = try Effect.all([() => fast("a"), () => fast("b")])
-  const record = try Effect.all({ c: () => fast("c"), d: () => fast("d") })
+effect function both() {
+  const list = try Effect.all([effect { return try fast("a") }, effect { return try fast("b") }])
+  const record = try Effect.all({ c: effect { return try fast("c") }, d: effect { return try fast("d") } })
   return `${list.join("")}${record.c}${record.d}`
 }
 
 // A lambda stored in a variable is an Effect function: calling it runs it,
 // from scratch, each time.
-function stored() {
+effect function stored() {
   let runs = 0
-  const job = (): string!! => {
+  const job = effect (): string!! => {
     runs++
     return try fast(`run ${runs}`)
   }
@@ -56,22 +56,22 @@ function stored() {
 }
 
 // An Effect function nested in another, each decided by its own position.
-function grid(xs: ReadonlyArray<number>, ys: ReadonlyArray<number>) {
-  return (try Effect.forEach(xs, (x) => (try Effect.forEach(ys, (y) => fast(`${x}${y}`))).join(" "))).join(" | ")
+effect function grid(xs: ReadonlyArray<number>, ys: ReadonlyArray<number>) {
+  return (try Effect.forEach(xs, effect (x) => (try Effect.forEach(ys, effect (y) => try fast(`${x}${y}`))).join(" "))).join(" | ")
 }
 
 // The object literal's property is expected to be a function returning an
 // Effect, through Layer.succeed's NoInfer<S>: the lambda is an Effect function.
 const GreeterLive = Layer.succeed(Greeter, {
-  greet: (name) => `hello ${name}`
+  greet: effect (name) => `hello ${name}`
 })
 
-function greeted() {
-  return try Effect.flatMap(Greeter, (greeter) => greeter.greet("ada"))
+effect function greeted() {
+  return try Effect.flatMap(Greeter, effect (greeter) => try greeter.greet("ada"))
 }
 
 // expect-result: {"retried":"ok after 3","raced":"fast","timedOut":"TimeoutError","both":"abcd","stored":"run 1, run 2","grid":"13 14 | 23 24","greeted":"hello ada"}
-export function main() {
+export effect function main() {
   return {
     retried: try retried(),
     raced: try raced(),
@@ -79,6 +79,6 @@ export function main() {
     both: try both(),
     stored: try stored(),
     grid: try grid([1, 2], [3, 4]),
-    greeted: try Effect.provide(() => greeted(), GreeterLive)
+    greeted: try Effect.provide(effect { return try greeted() }, GreeterLive)
   }
 }

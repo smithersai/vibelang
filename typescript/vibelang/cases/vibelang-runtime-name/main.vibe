@@ -7,13 +7,13 @@ const runtime = "node"
 const Effect_1 = 1
 const settings: Record<string, string> = { mode: "fast" }
 
-function read(key: string) {
+effect function read(key: string) {
   const value = settings[key]
   if (value === undefined) throw new Missing({ key })
   return value
 }
 
-function readOr(key: string, fallback: string) {
+effect function readOr(key: string, fallback: string) {
   try {
     return try read(key)
   } catch (e) {
@@ -22,6 +22,6 @@ function readOr(key: string, fallback: string) {
 }
 
 // expect-result: {"runtime":"node","one":1,"mode":"fast","level":"info (Missing)"}
-export function main() {
+export effect function main() {
   return { runtime, one: Effect_1, mode: try readOr("mode", "slow"), level: try readOr("level", "info") }
 }

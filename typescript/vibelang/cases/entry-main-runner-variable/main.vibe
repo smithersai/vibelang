@@ -1,5 +1,5 @@
 // A runner in an initializer suppresses automatic main execution too (D135).
-export function main() {
+export effect function main() {
   try Console.log("ran once")
 }
 

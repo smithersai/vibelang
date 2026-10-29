@@ -13,7 +13,7 @@ function reasons(exit: Exit.Exit<unknown, unknown>) {
 }
 
 // A JavaScript TypeError is a defect: the catch does not run, the finally does.
-function defect() {
+effect function defect() {
   try {
     try Effect.sleep("1 millis")
     const broken: any = undefined
@@ -28,7 +28,7 @@ function defect() {
 
 // An expected failure plus a defect from cleanup is a mixed cause. Effect 4.1.0
 // makes the failure a defect beside the cleanup's (Effect-TS/effect#9433).
-function mixed() {
+effect function mixed() {
   try {
     try {
       throw new Expected()
@@ -42,7 +42,7 @@ function mixed() {
 }
 
 // A failure inside finally is kept; when the body failed too, both are.
-function failingFinally(bodyFails: boolean) {
+effect function failingFinally(bodyFails: boolean) {
   try {
     if (bodyFails) throw new Expected()
     return "body"
@@ -52,7 +52,7 @@ function failingFinally(bodyFails: boolean) {
 }
 
 // Interruption runs finally and skips catch.
-function slow() {
+effect function slow() {
   try {
     try Effect.sleep("1 second")
     return "finished"
@@ -65,13 +65,13 @@ function slow() {
 }
 
 // expect-result: {"defect":["Die"],"mixed":["Die","Die"],"cleanup":["Fail"],"both":["Fail","Fail"],"timeout":["Fail"],"events":["finally after a defect","finally after interruption"]}
-export function main() {
+export effect function main() {
   return {
-    defect: try reasons(try Effect.exit(() => defect())),
-    mixed: try reasons(try Effect.exit(() => mixed())),
-    cleanup: try reasons(try Effect.exit(() => failingFinally(false))),
-    both: try reasons(try Effect.exit(() => failingFinally(true))),
-    timeout: try reasons(try Effect.exit(() => Effect.timeout(() => slow(), "10 millis"))),
+    defect: reasons(try Effect.exit(effect { return try defect() })),
+    mixed: reasons(try Effect.exit(effect { return try mixed() })),
+    cleanup: reasons(try Effect.exit(effect { return try failingFinally(false) })),
+    both: reasons(try Effect.exit(effect { return try failingFinally(true) })),
+    timeout: reasons(try Effect.exit(effect { return try Effect.timeout(effect { return try slow() }, "10 millis") })),
     events
   }
 }

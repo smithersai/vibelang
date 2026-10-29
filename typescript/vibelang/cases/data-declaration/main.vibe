@@ -48,24 +48,24 @@ function trackingOf(value: object) {
   return "none"
 }
 
-export function main() {
+export effect function main() {
   const waiting = Delivery.Waiting()
   const sent = Delivery.Sent({ tracking: "parcel-8" })
   const rejected = Delivery.Rejected({ reason: "no address" })
-  for (const delivery of [waiting, sent, rejected]) try Console.log(try describe(delivery))
+  for (const delivery of [waiting, sent, rejected]) try Console.log(describe(delivery))
   let matched = ""
   // is narrows: sent.tracking is a string in the branch.
   if (sent is Delivery.Sent) matched = sent.tracking
   const isRejected = Delivery.$is("Rejected")
   return {
-    described: [try describe(waiting), try describe(sent), try describe(rejected)],
-    loads: [try size(LoadState.Idle()), try size(LoadState.Loaded({ value: ["a", "b", "c"] })), try size(LoadState.Failed({ error: "offline" }))],
+    described: [describe(waiting), describe(sent), describe(rejected)],
+    loads: [size(LoadState.Idle()), size(LoadState.Loaded({ value: ["a", "b", "c"] })), size(LoadState.Failed({ error: "offline" }))],
     sent: sent is Delivery.Sent,
     same: Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })),
     different: Equal.equals(sent, Delivery.Sent({ tracking: "parcel-9" })),
     matched,
     guard: [isRejected(sent), isRejected(rejected)],
-    note: try noted(Delivery.Rejected({ reason: "absent", note: "left at the door" })),
-    fromObject: [try trackingOf(sent), try trackingOf({ tracking: "unsent" })]
+    note: noted(Delivery.Rejected({ reason: "absent", note: "left at the door" })),
+    fromObject: [trackingOf(sent), trackingOf({ tracking: "unsent" })]
   }
 }

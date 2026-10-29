@@ -12,7 +12,7 @@ service Users {
 }
 
 const DirectoryLive = Layer.succeed(Directory, {
-  lookup(id) {
+  effect lookup(id) {
     return id
   }
 })
@@ -20,7 +20,7 @@ const DirectoryLive = Layer.succeed(Directory, {
 const UsersLive = Layer.effect(Users) {
   const directory = try Directory()
   return {
-    find(id) {
+    effect find(id) {
       return try directory.lookup(id)
     }
   }
@@ -32,7 +32,7 @@ export function floating(program: Effect.Effect<number>) {
   return 1
 }
 
-export function hatched() {
+export effect function hatched() {
   return try sync(() => {
     Effect.log("lost")
     return 1
@@ -40,13 +40,13 @@ export function hatched() {
 }
 
 // EK4802: an Effect function that returns an Effect value.
-export function nested(program: Effect.Effect<number>) {
+export effect function nested(program: Effect.Effect<number>) {
   try Directory.lookup("1")
   return program
 }
 
 // EK4804: a global Error as an expected failure.
-export function negative(n: number) {
+export effect function negative(n: number) {
   if (n < 0) throw new Error("negative")
   return n
 }
@@ -55,7 +55,7 @@ export function negative(n: number) {
 export class Legacy extends Error {}
 
 // EK4806: an Effect.try mapping that returns unknown.
-export function decoded(text: string) {
+export effect function decoded(text: string) {
   return try Effect.try({ try: () => Number(text), catch: (cause) => cause })
 }
 
@@ -63,7 +63,7 @@ export function decoded(text: string) {
 export const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)
 
 // EK4808 and EK4816: a provide block that is all of another, outside main.
-export function lookUp() {
+export effect function lookUp() {
   provide DirectoryLive {
     provide UsersLive {
       return try Users.find("1")
@@ -83,7 +83,7 @@ export function dropped(program: Effect.Effect<number, NotFound>): infer _ {
 }
 
 // EK4811: a throw of unknown.
-export function rethrow(cause: unknown) {
+export effect function rethrow(cause: unknown) {
   throw cause
 }
 
@@ -108,11 +108,11 @@ export function isPerson(value: unknown) {
 }
 
 // EK4815: a throw of an Effect value.
-export function thrown(program: Effect.Effect<number, NotFound>) {
+export effect function thrown(program: Effect.Effect<number, NotFound>) {
   throw program
 }
 
 // EK4818: JSON.parse.
-export function parsed(text: string) {
+export effect function parsed(text: string) {
   return JSON.parse(text) as number
 }

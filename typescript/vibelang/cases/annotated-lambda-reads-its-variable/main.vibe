@@ -29,7 +29,7 @@ const Countdown = declare("countdown", {
 const counted = Countdown.body({ n: 3 }).value
 
 // expect-result: ["countdown",3]
-export function main() {
+export effect function main() {
   try yieldNow()
   return [Countdown.name, counted]
 }

@@ -6,10 +6,10 @@ class Journal extends Context.Service<Journal, JournalShape>()("Journal") {}
 const makeNoop = (): JournalShape => ({ read: Effect.sync(() => ++runs) })
 const layer = Layer.sync(Journal, () => ({ read: Effect.sync(() => ++runs) }))
 const make = (value: JournalShape): JournalShape => value
-function read() { return try Effect.sync(() => ++runs) }
+effect function read() { return try Effect.sync(() => ++runs) }
 function plainRead() { runs++; return runs }
 const atTop: JournalShape = { read: Effect.sync(() => ++runs) }
-export function main() {
+export effect function main() {
   const before = runs
   const noop = makeNoop()
   const afterNoop = runs
@@ -20,7 +20,7 @@ export function main() {
   const a = try noop.read()
   const b = try passed.read()
   const c = try declared.read()
-  const d = try Effect.provide(() => Journal.read(), layer)
+  const d = try Effect.provide(effect { return try Journal.read() }, layer)
   const eager: { read: number } = { read: try Effect.sync(() => ++runs) }
   const top = try atTop.read()
   return [before, afterNoop, afterPassed, afterDeclared, a, b, c, d, eager.read, top, runs]

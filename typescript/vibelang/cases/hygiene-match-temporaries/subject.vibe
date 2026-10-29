@@ -8,5 +8,5 @@ function local(x: "a" | "b") {
 }
 
 export function subject(n: number) {
-  return [match (n) { when 1: $match1; default: "?" }, try local("a")]
+  return [match (n) { when 1: $match1; default: "?" }, local("a")]
 }

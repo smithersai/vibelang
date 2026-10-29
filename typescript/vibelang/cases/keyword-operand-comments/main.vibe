@@ -6,35 +6,35 @@
 // or yield, or before ++, -- or =>, would change the program (ASI).
 error Bad { message: string }
 
-const later = (n: number): number!! => {
+const later = effect (n: number): number!! => {
   try sleep("1 millis")
   return n
 }
 
-const failing = (): string!Bad => {
+const failing = effect (): string!Bad => {
   try sleep("1 millis")
   throw new Bad({ message: "failed" })
 }
 
 // return: an arrow's concise body, a direct Effect
-const arrowLine = (): number!! =>
+const arrowLine = effect (): number!! =>
   // line
-  later(1)
+  try later(1)
 
-const arrowBlock = (): number!! =>
+const arrowBlock = effect (): number!! =>
   /* block */
-  later(2)
+  try later(2)
 
 // return: a parenthesized value of a block-bodied arrow, a function
 // expression and methods
-const blockArrow = (): number!! => {
+const blockArrow = effect (): number!! => {
   return (
     // line
     try later(3)
   )
 }
 
-const expression = function (): number!! {
+const expression = effect function (): number!! {
   return (
     /* block */
     try later(4)
@@ -42,7 +42,7 @@ const expression = function (): number!! {
 }
 
 const box = {
-  read(): number!! {
+  effect read(): number!! {
     return (
       // line
       try later(5)
@@ -51,7 +51,7 @@ const box = {
 }
 
 class Holder {
-  read(): number!! {
+  effect read(): number!! {
     return (
       /* block */
       try later(6)
@@ -60,42 +60,42 @@ class Holder {
 }
 
 // return: a catch handler's value
-function handlerLine(): string!! {
+effect function handlerLine(): string!! {
   return failing() catch (e) =>
     // line
     "line " + e.message
 }
 
-function handlerBlock(): string!! {
+effect function handlerBlock(): string!! {
   return failing() catch (e) =>
     /* block */
     "block " + e.message
 }
 
 // return: a closure in a pipe stage that reads the topic
-function topicLine(): number!! {
+effect function topicLine(): number!! {
   return try later(1) |> try Effect.map(Effect.succeed(7),
     // line
     (n) => n + %)
 }
 
-function topicBlock(): number!! {
+effect function topicBlock(): number!! {
   return try later(1) |> try Effect.map(Effect.succeed(8),
     /* block */
     (n) => n + %)
 }
 
 // return: hatches as an arrow's body
-const parsed = (text: string) =>
+const parsed = effect (text: string) =>
   // line
   try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
 
-const stepped = (n: number) =>
+const stepped = effect (n: number) =>
   /* block */
-  sync((n) => n + 1, n)
+  try sync((n) => n + 1, n)
 
 // return: match arms, in an Effect function and a plain function
-function matchEffect(x: string): number!! {
+effect function matchEffect(x: string): number!! {
   try later(0)
   return match (x) {
     when "a":
@@ -119,7 +119,7 @@ function matchPlain(x: string): number {
 }
 
 // return: a do block's value
-function doValue(): number!! {
+effect function doValue(): number!! {
   const v = do {
     const a = try later(13)
     // line
@@ -129,7 +129,7 @@ function doValue(): number!! {
 }
 
 // throw: a statement and an expression
-function throwLine(): string!Bad {
+effect function throwLine(): string!Bad {
   try later(0)
   throw (
     // line
@@ -137,7 +137,7 @@ function throwLine(): string!Bad {
   )
 }
 
-function throwBlock(flag: boolean): string!Bad {
+effect function throwBlock(flag: boolean): string!Bad {
   const v = flag ? "kept" : throw (
     /* block */
     new Bad({ message: "throw block" })
@@ -157,7 +157,7 @@ function* produced() {
   )
 }
 
-function produce(): number[]!! {
+effect function produce(): number[]!! {
   const values: number[] = []
   for (const x of produced()) values.push(x)
   return values
@@ -190,12 +190,12 @@ module text {
 
 import { loaded } from text
 
-function awaited(): number!! {
+effect function awaited(): number!! {
   return try sync(async () => loaded())
 }
 
 // break and continue with a label, across a finally region
-function jumps(): number!! {
+effect function jumps(): number!! {
   let total = 0
   outer: for (const i of [1, 2, 3]) {
     for (const j of [1, 2, 3]) {
@@ -214,7 +214,7 @@ function jumps(): number!! {
 }
 
 // postfix ++ and --
-function counted(): number!! {
+effect function counted(): number!! {
   let up = 0
   let down = 10
   for (const x of [1, 2, 3]) {
@@ -227,15 +227,15 @@ function counted(): number!! {
 }
 
 // =>: arrow parameters with comments
-const sum = (
+const sum = effect (
   // line
   a: number,
   /* block */
   b: number
-): number!! => later(a + b)
+): number!! => try later(a + b)
 
 // by-name arguments
-function byName(): number!! {
+effect function byName(): number!! {
   return try retry(
     // line
     later(22),
@@ -244,7 +244,7 @@ function byName(): number!! {
   )
 }
 
-export function main() {
+export effect function main() {
   return {
     arrowLine: try arrowLine(),
     arrowBlock: try arrowBlock(),

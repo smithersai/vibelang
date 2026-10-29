@@ -4,31 +4,31 @@
 // Effect: the access after the call is skipped too.
 class Box {
   size = 5
-  read() {
+  effect read() {
     try Effect.yieldNow()
     return { value: this.size, items: [this.size + 1] }
   }
 }
 
-function value(box: Box | undefined) {
+effect function value(box: Box | undefined) {
   return box?.read().value ?? null
 }
 
-function element(box: Box | undefined) {
+effect function element(box: Box | undefined) {
   return box?.read().items[0] ?? null
 }
 
-function call(make: (() => { value: number }!!) | undefined) {
+effect function call(make: (() => { value: number }!!) | undefined) {
   return make?.().value ?? null
 }
 
-export function main() {
+export effect function main() {
   return {
     absent: try value(undefined),
     present: try value(new Box()),
     element: try element(undefined),
     "present element": try element(new Box()),
     call: try call(undefined),
-    "present call": try call(() => ({ value: 3 }))
+    "present call": try call(effect () => ({ value: 3 }))
   }
 }

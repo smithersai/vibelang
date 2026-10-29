@@ -9,7 +9,7 @@ service Users {
 }
 
 // EK2108: Approval.note has no clause.
-function partial() {
+effect function partial() {
   try {
     return try Approval.approve("x")
   } handle Approval.approve(request) {
@@ -18,7 +18,7 @@ function partial() {
 }
 
 // EK2108: Approval.approve already has a clause.
-function twice() {
+effect function twice() {
   try {
     return try Approval.approve("x")
   } handle Approval.approve(request) {
@@ -31,7 +31,7 @@ function twice() {
 }
 
 // EK2107: Users is a service.
-function service() {
+effect function service() {
   try {
     return try Users.find("1")
   } handle Users.find(id) {
@@ -49,11 +49,11 @@ control Ask {
 
 // EK2005: the program passed to resumeWith needs Secret, which the try block
 // does not provide.
-function secret() {
+effect function secret() {
   try {
     return try Ask.ask("password")
   } handle Ask.ask(question) {
-    try resumeWith(() => Secret.read())
+    try resumeWith(effect { return try Secret.read() })
   }
 }
 

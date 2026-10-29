@@ -36,6 +36,6 @@ module cycle {
 }
 
 // expect-result: {"order":["before","cycle","after"],"early":"<early> ReferenceError","late":"<late> 3"}
-export function main() {
+export effect function main() {
   return { order, early, late: try sync(() => late()) }
 }

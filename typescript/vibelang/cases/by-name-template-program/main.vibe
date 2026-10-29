@@ -3,22 +3,22 @@ import { sql, write, type Statement } from "./sql.ts"
 const encode = (n: number): string => String(n)
 
 // No call in the template: write receives the statement and runs it.
-export function literal(): void!! {
+export effect function literal(): void!! {
   try write(sql`INSERT INTO literal VALUES (${1})`)
 }
 
 // RecallSemantic.upsert: database.write(sql`... ${vectorBytes(vector.vector)} ...`).
 // A call in an interpolation must preserve the statement as the tail program.
-export function interpolatedCall(): void!! {
+export effect function interpolatedCall(): void!! {
   try write(sql`INSERT INTO interpolated_call VALUES (${encode(1)})`)
 }
 
-function encoded(n: number) {
+effect function encoded(n: number) {
   try Effect.sleep("1 millis")
   return String(n)
 }
 
-export function effectfulOperand(): void!! {
+export effect function effectfulOperand(): void!! {
   try write(sql`INSERT INTO operand VALUES (${encoded(2)})`)
 }
 
@@ -27,6 +27,6 @@ function localSql(parts: TemplateStringsArray, ...values: ReadonlyArray<unknown>
   return sql(parts, ...values)
 }
 
-export function localTemplate(): void!! {
+export effect function localTemplate(): void!! {
   try write(localSql`INSERT INTO local VALUES (${encode(3)})`)
 }

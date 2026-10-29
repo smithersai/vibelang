@@ -4,12 +4,12 @@
 // its 0.0.10 meaning as a program by syntax (D394). It leaves join fiber,
 // the repair EK4609's note names, to the author: the operation no longer
 // interrupts a fiber it waits for when another element fails or wins.
-function work(n: number) {
+effect function work(n: number) {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
+export effect function main() {
   const program: number!! = Effect.succeed(1)
   const fiber = fork work(2)
   const ready = try Deferred.make<number>()

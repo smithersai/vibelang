@@ -12,7 +12,7 @@ control Once {
 
 const events: string[] = []
 
-function statement() {
+effect function statement() {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
@@ -22,7 +22,7 @@ function statement() {
 }
 
 // The expression sees the body's value and fallthrough keeps its return.
-function expression() {
+effect function expression() {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
@@ -32,7 +32,7 @@ function expression() {
 }
 
 // A clause return replaces the pending return, as in finally.
-function override(): Effect<number | string, infer E, infer R> {
+effect function override(): Effect<number | string, infer E, infer R> {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
@@ -41,7 +41,7 @@ function override(): Effect<number | string, infer E, infer R> {
 }
 
 // Normal completion may have no record at all when no jump leaves the try.
-function normal() {
+effect function normal() {
   const steps: string[] = []
   try {
     steps.push(`body ${try Ask.answer()}`)
@@ -53,7 +53,7 @@ function normal() {
   return steps
 }
 
-function breaks() {
+effect function breaks() {
   const steps: string[] = []
   outer: for (;;) {
     try {
@@ -69,7 +69,7 @@ function breaks() {
   return steps
 }
 
-function continues() {
+effect function continues() {
   const steps: string[] = []
   outer: for (let i = 1; i <= 2; i++) {
     try {
@@ -84,13 +84,13 @@ function continues() {
   return steps
 }
 
-function scoped() {
+effect function scoped() {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
-    using held = try Effect.acquireRelease(() => {
+    using held = try Effect.acquireRelease(effect {
       events.push("scoped acquire")
-    }, () => {
+    }, effect () => {
       events.push("scoped release")
     })
     const value = try resume(41)
@@ -98,7 +98,7 @@ function scoped() {
   }
 }
 
-function inFinally() {
+effect function inFinally() {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
@@ -111,16 +111,16 @@ function inFinally() {
   }
 }
 
-function withValue() {
+effect function withValue() {
   try {
     return try Ask.answer() + 1
   } handle Ask.answer() {
-    const value = try resumeWith(() => 41)
+    const value = try resumeWith(effect { return 41 })
     events.push(`with ${value}`)
   }
 }
 
-function withError() {
+effect function withError() {
   try {
     try {
       return String(try Ask.answer())
@@ -128,13 +128,13 @@ function withError() {
       return `caught ${e.message}`
     }
   } handle Ask.answer() {
-    const value = try resumeWith(() => { throw new Busy({ message: "busy" }) })
+    const value = try resumeWith(effect { throw new Busy({ message: "busy" }) })
     events.push(`error ${value}`)
   }
 }
 
 // User data that resembles a completion is unwrapped only once.
-function record() {
+effect function record() {
   try {
     try Ask.answer()
     return { kind: "return", value: "data" }
@@ -144,7 +144,7 @@ function record() {
   }
 }
 
-function twiceStatements() {
+effect function twiceStatements() {
   try {
     const value = try Once.answer()
     events.push(`twice body ${value}`)
@@ -156,7 +156,7 @@ function twiceStatements() {
   }
 }
 
-function twiceExpressions() {
+effect function twiceExpressions() {
   try {
     const value = try Once.answer()
     events.push(`twice body ${value}`)
@@ -177,7 +177,7 @@ function defects(result: Exit.Exit<unknown, unknown>) {
     : ["Success"]
 }
 
-export function main() {
+export effect function main() {
   return {
     statement: try statement(),
     expression: try expression(),
@@ -190,8 +190,8 @@ export function main() {
     withValue: try withValue(),
     withError: try withError(),
     record: try record(),
-    twiceStatements: try defects(try Effect.exit(() => twiceStatements())),
-    twiceExpressions: try defects(try Effect.exit(() => twiceExpressions())),
+    twiceStatements: defects(try Effect.exit(effect { return try twiceStatements() })),
+    twiceExpressions: defects(try Effect.exit(effect { return try twiceExpressions() })),
     events
   }
 }

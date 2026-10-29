@@ -2,18 +2,18 @@
 // A function or block param that refers to an owned fiber captures it, and
 // nothing in the source shows that the function finishes before the region
 // does, so every such capture is an error (D409).
-function heartbeat() {
+effect function heartbeat() {
   try sleep("1 minute")
 }
 
 let saved: unknown
 
-export function returned() {
+export effect function returned() {
   const fiber = fork heartbeat()
-  return () => fiber
+  return effect () => fiber
 }
 
-export function declared() {
+export effect function declared() {
   const fiber = fork heartbeat()
   function current() {
     return fiber
@@ -21,28 +21,28 @@ export function declared() {
   return current
 }
 
-export function method() {
+export effect function method() {
   const fiber = fork heartbeat()
   return {
-    current() {
+    effect current() {
       return fiber
     }
   }
 }
 
-export function stored() {
+export effect function stored() {
   const fiber = fork heartbeat()
-  saved = () => fiber
+  saved = effect () => fiber
 }
 
 // The function never leaves the region, but it still captures the fiber.
-export function local() {
+export effect function local() {
   const fiber = fork heartbeat()
-  const stop = () => Fiber.interrupt(fiber)
+  const stop = effect () => try Fiber.interrupt(fiber)
   try stop()
 }
 
-export function blockParam() {
+export effect function blockParam() {
   const fiber = fork heartbeat()
   return try within("watch") {
     return try Fiber.interrupt(fiber)
@@ -51,7 +51,7 @@ export function blockParam() {
 
 // A block param is its call's last argument (S2); this callee takes its
 // program last, so the block still captures the owned fiber.
-function within(name: string, body: () => void!!) {
+effect function within(name: string, body: () => void!!) {
   try log(name)
   return try body()
 }

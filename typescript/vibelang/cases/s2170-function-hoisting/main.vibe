@@ -4,27 +4,27 @@ import { getEarly } from "./cycle.js"
 
 // Module bindings must be available even before the declaration is reached.
 const top = atTop
-function atTop(n: number) {
+effect function atTop(n: number) {
   try sleep("1 millis")
   return n * 2
 }
 
-function inBody(n: number) {
+effect function inBody(n: number) {
   "use strict"
   return try twice(n)
   // This declaration is unreachable as a statement, but its binding hoists.
-  function twice(x: number) {
+  effect function twice(x: number) {
     try sleep("1 millis")
     return x * 2
   }
 }
 
-function inBlock(n: number) {
+effect function inBlock(n: number) {
   let result = 0
   {
     const offset = 1
     result = try twice(n)
-    function twice(x: number) {
+    effect function twice(x: number) {
       try sleep("1 millis")
       return x * 2 + offset
     }
@@ -32,7 +32,7 @@ function inBlock(n: number) {
   // A sibling block gets its own binding.
   {
     result += try twice(n)
-    function twice(x: number) {
+    effect function twice(x: number) {
       try sleep("1 millis")
       return x * 3
     }
@@ -40,13 +40,13 @@ function inBlock(n: number) {
   return result
 }
 
-function mutual(n: number) {
+effect function mutual(n: number) {
   const result = try even(n)
-  function even(x: number): boolean!! {
+  effect function even(x: number): boolean!! {
     try sleep("1 millis")
     return x === 0 ? true : try odd(x - 1)
   }
-  function odd(x: number): boolean!! {
+  effect function odd(x: number): boolean!! {
     try sleep("1 millis")
     return x === 0 ? false : try even(x - 1)
   }
@@ -60,12 +60,12 @@ function plain(n: number): number {
   }
 }
 
-function inSwitch(n: number) {
+effect function inSwitch(n: number) {
   switch (n) {
     case 0:
       return try twice(3)
     default:
-      function twice(x: number) {
+      effect function twice(x: number) {
         try sleep("1 millis")
         return x * 2
       }
@@ -76,9 +76,9 @@ function inSwitch(n: number) {
 // Calls stay cold: source defaults and destructuring run only in the Effect.
 const order: string[] = []
 const seed = (): number => { order.push("default"); return 5 }
-function forwarded() {
+effect function forwarded() {
   const result = try later()
-  function later({ n } = { n: seed() }, ...rest: number[]) {
+  effect function later({ n } = { n: seed() }, ...rest: number[]) {
     try sleep("1 millis")
     return n + rest.length
   }
@@ -86,6 +86,6 @@ function forwarded() {
 }
 
 // expect-result: {"top":4,"body":6,"block":11,"mutual":[true,false],"plain":8,"switch":6,"forwarded":5,"order":["default"],"named":9,"anonymous":5,"early":6}
-export function main() {
+export effect function main() {
   return { top: try top(2), body: try inBody(3), block: try inBlock(2), mutual: [try mutual(4), try mutual(3)], plain: plain(4), switch: try inSwitch(0), forwarded: try forwarded(), order, named: try named(3), anonymous: try anonymous(2), early: try getEarly() }
 }

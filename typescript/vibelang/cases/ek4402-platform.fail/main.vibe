@@ -11,15 +11,15 @@ import { createServer, type Server } from "node:http"
 import { Effect } from "effect"
 import { setup } from "./setup.ts"
 
-export function load(path: string) {
+export effect function load(path: string) {
   return try Effect.tryPromise(() => readFile(path, "utf8"))
 }
 
-export function exists(path: string) {
+export effect function exists(path: string) {
   return try Effect.sync(() => fs.existsSync(path))
 }
 
-export function cores() {
+export effect function cores() {
   return try Effect.sync(() => os.cpus().length)
 }
 
@@ -27,11 +27,11 @@ export function signals() {
   return Object.keys(os.constants.signals)
 }
 
-export function get(url: string) {
+export effect function get(url: string) {
   return try Effect.tryPromise(() => fetch(url))
 }
 
-export function later() {
+export effect function later() {
   return try Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
 }
 

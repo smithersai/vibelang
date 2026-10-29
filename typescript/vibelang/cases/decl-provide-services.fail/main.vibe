@@ -7,18 +7,18 @@ service Greeting {
 
 const answer = 42
 
-function notAKey() {
+effect function notAKey() {
   provide answer = 1 {
     return 0
   }
 }
 
-function wrongShape() {
+effect function wrongShape() {
   provide Greeting = { words: 1 } {
     return try Greeting.text()
   }
 }
 
-export function main() {
+export effect function main() {
   return [try notAKey(), try wrongShape()]
 }

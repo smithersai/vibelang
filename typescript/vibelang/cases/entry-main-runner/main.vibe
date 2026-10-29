@@ -1,6 +1,6 @@
 // A module that calls a runner at its top level starts its program itself,
 // so main runs once.
-export function main() {
+export effect function main() {
   try Console.log("ran once")
 }
 

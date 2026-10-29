@@ -5,24 +5,24 @@
 // EK1012 is an error here (tsconfig.json).
 error Missing { id: string }
 
-const followUntil = () => {
+const followUntil = effect () => {
   while (true) {
     try sleep("1 second")
   }
 }
-const lookup = (id: number) => {
+const lookup = effect (id: number) => {
   try sleep("1 millis")
   return id
 }
 
-export const make = (ok: boolean) => {
+export const make = effect (ok: boolean) => {
   const missing = try Effect.fail(new Missing({ id: "a" }))
   let retried = try Effect.fail(new Missing({ id: "b" }))
   const programs = [try followUntil()]
-  return { follow: try followUntil(), check: () => ok ? 1 : missing, retried, programs }
+  return { follow: try followUntil(), check: effect () => ok ? 1 : missing, retried, programs }
 }
 
-export const reassigned = () => {
+export const reassigned = effect () => {
   let current = try lookup(0)
   current = try Effect.fail(new Missing({ id: "c" }))
   return current
@@ -36,10 +36,10 @@ interface Follower {
 }
 export const kept = (ok: boolean): Follower => {
   const missing: never!Missing! = Effect.fail(new Missing({ id: "d" }))
-  return { follow: followUntil(), check: () => ok ? 1 : try missing() }
+  return { follow: followUntil(), check: effect () => ok ? 1 : try missing() }
 }
-export const later = () => ({ follow: () => followUntil(), id: try lookup(1) })
-export const statement = () => {
+export const later = effect () => ({ follow: effect () => try followUntil(), id: try lookup(1) })
+export const statement = effect () => {
   try lookup(2)
   try followUntil()
 }

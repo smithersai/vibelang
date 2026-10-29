@@ -1,11 +1,11 @@
 // expect: EK4301 TS2322
 class Counter {
   n = 5
-  reset() { try log("reset ran"); this.n = 0 }
+  effect reset() { try log("reset ran"); this.n = 0 }
 }
 interface Resettable { reset(): void }
 interface Source<T> { get(): T }
-class EffectSource { get() { try sleep("1 millis") } }
+class EffectSource { effect get() { try sleep("1 millis") } }
 function get(): Resettable { return new Counter() }
 function resetAll(rs: ReadonlyArray<Resettable>) { for (const r of rs) r.reset() }
 export function main() {
@@ -17,8 +17,8 @@ export function main() {
   holder.r = c
   const rs: ReadonlyArray<Resettable> = [c]
   const nested: { r: Resettable } = { r: c }
-  try resetAll([c])
-  const o = { run() { try sleep("1 millis") } }
+  resetAll([c])
+  const o = { effect run() { try sleep("1 millis") } }
   const p: { run(): void } = o
   const source: Source<void!!> = new EffectSource()
   r.reset(); assigned.reset(); holder.r.reset(); get().reset()
@@ -26,7 +26,7 @@ export function main() {
 }
 interface Slot<T> { mutable run: () => T }
 export function genericTargets(slot: Slot<void!!>) {
-  slot.run = () => { try sleep("1 millis") }
+  slot.run = effect () => { try sleep("1 millis") }
   const literal: Source<void!!> = { get() { sleep("1 millis") } }
   const field: Source<void!!> = { get: () => { sleep("1 millis") } }
   return [literal, field]

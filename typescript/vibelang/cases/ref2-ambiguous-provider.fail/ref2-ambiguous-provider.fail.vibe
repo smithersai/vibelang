@@ -6,11 +6,11 @@ abstract class Users {
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find: (id) => `live-${id}`
+  find: effect (id) => `live-${id}`
 })
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => `test-${id}`
+  find: effect (id) => `test-${id}`
 })
 
 const AppLive = wire(UsersLive, UsersTest)

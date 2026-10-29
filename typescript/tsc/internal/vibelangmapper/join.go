@@ -5,6 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"strings"
 )
 
 // isFiberHelper recognizes parser-generated calls without claiming written
@@ -206,15 +207,41 @@ func (p *projector) tryValue(call *ast.Node, e env) {
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
 
-// triedKeywords returns the offset of the try of each call the parser
-// flagged NodeFlagsVibeLangTry. try f() means f() where the call runs
-// (VIP-5), so lower projects the program with each such try blanked.
-func triedKeywords(file *ast.SourceFile, text string) []int {
-	var keywords []int
+// keyword is a VibeLang keyword lower writes over before it walks the
+// program: at is its offset, and with, as long as the keyword, is the text
+// written there.
+type keyword struct {
+	at   int
+	with string
+}
+
+// vipKeywords returns the keywords of VIP-1, VIP-2 and VIP-5 that lower
+// writes over. try f() means f() where the call runs (VIP-5), so the try of
+// each call the parser flagged NodeFlagsVibeLangTry becomes spaces. effect
+// before a function (VIP-1) changes nothing yet, so it becomes spaces too.
+// effect { … } (VIP-2) is the program that () => { … } builds where an
+// Effect is expected, and a return in it returns from the block, so its
+// effect becomes ()=> and spaces.
+func vipKeywords(file *ast.SourceFile, text string) []keyword {
+	var keywords []keyword
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
-			keywords = append(keywords, scanner.SkipTrivia(text, node.Pos()))
+			keywords = append(keywords, keyword{scanner.SkipTrivia(text, node.Pos()), "   "})
+		}
+		if node.Flags&ast.NodeFlagsVibeLangEffect != 0 && ast.IsFunctionLike(node) {
+			at := node.Pos()
+			if modifiers := node.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
+				at = modifiers.Nodes[len(modifiers.Nodes)-1].End()
+			}
+			at = scanner.SkipTrivia(text, at)
+			if strings.HasPrefix(text[at:], "effect") {
+				with := "      "
+				if body := node.Body(); ast.IsArrowFunction(node) && body != nil && ast.IsBlock(body) && len(node.Parameters()) == 0 && scanner.SkipTrivia(text, at+len("effect")) == scanner.SkipTrivia(text, body.Pos()) {
+					with = "()=>  " // effect { … }: the parser's arrow has no => of its own
+				}
+				keywords = append(keywords, keyword{at, with})
+			}
 		}
 		return node.ForEachChild(visit)
 	}
@@ -222,21 +249,21 @@ func triedKeywords(file *ast.SourceFile, text string) []int {
 	return keywords
 }
 
-// blank returns text with the try at each of keywords written as spaces,
-// which keep every position.
-func blank(text string, keywords []int) string {
+// blank returns text with each of keywords written over, which keeps every
+// position.
+func blank(text string, keywords []keyword) string {
 	b := []byte(text)
-	for _, at := range keywords {
-		copy(b[at:at+len("try")], "   ")
+	for _, k := range keywords {
+		copy(b[k.at:k.at+len(k.with)], k.with)
 	}
 	return string(b)
 }
 
-// withoutTries returns segments without the blanked try keywords: a verbatim
-// segment that holds one is split around it, so the spaces that stand for
-// the keyword map to no original text, and every verbatim segment still
-// matches the original text.
-func withoutTries(segments []spanmap.Segment, keywords []int) []spanmap.Segment {
+// withoutKeywords returns segments without the keywords lower wrote over: a
+// verbatim segment that holds one is split around it, so the text that
+// stands for the keyword maps to no original text, and every verbatim
+// segment still matches the original text.
+func withoutKeywords(segments []spanmap.Segment, keywords []keyword) []spanmap.Segment {
 	if len(keywords) == 0 {
 		return segments
 	}
@@ -246,8 +273,8 @@ func withoutTries(segments []spanmap.Segment, keywords []int) []spanmap.Segment 
 			out = append(out, segment)
 			continue
 		}
-		for _, at := range keywords {
-			start, end := core.TextPos(at), core.TextPos(at+len("try"))
+		for _, k := range keywords {
+			start, end := core.TextPos(k.at), core.TextPos(k.at+len(k.with))
 			if start < segment.OriginalStart || end > segment.OriginalEnd {
 				continue
 			}

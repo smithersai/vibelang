@@ -47,5 +47,5 @@ function element() {
 }
 
 export function main() {
-  return { bound: try bound(), option: try option(), element: try element() }
+  return { bound: bound(), option: option(), element: element() }
 }

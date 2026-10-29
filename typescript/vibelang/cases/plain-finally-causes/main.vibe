@@ -15,7 +15,7 @@ function joined() {
   } catch (e) { return e._tag }
 }
 
-function framed() {
+effect function framed() {
   try yieldNow()
   try {
     try { throw new First() }
@@ -72,14 +72,14 @@ function described(outcome: Exit<string, never>): string {
 }
 
 // expect-result: {"joined":"First","framed":"First","catchRaises":"Second","cleanupOnly":"Cleanup","defect":"Die:First","jumps":["body 1","finally 1","continue 2","finally 3","returned"]}
-export function main() {
+export effect function main() {
   const steps: string[] = []
-  try jumps(steps)
+  jumps(steps)
   return {
-    joined: try joined(),
+    joined: joined(),
     framed: try framed(),
-    catchRaises: try catchRaises(),
-    cleanupOnly: try cleanupOnly(),
+    catchRaises: catchRaises(),
+    cleanupOnly: cleanupOnly(),
     defect: described(try exit(defect())),
     jumps: steps
   }

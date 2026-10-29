@@ -8,9 +8,9 @@ export const fromString = Option.liftPredicate((s: string) => s.length > 0)
 export const ModelID = Schema.String.pipe(Schema.brand("ModelID"))
 export type ModelID = typeof ModelID.Type
 
-export const withoutParentSpan = <A, E>(effect: A!E!Scope) =>
-  effect.pipe(Effect.updateContext((context: Context<Scope>) => Context.omit(Tracer.ParentSpan)(context)))
+export const withoutParentSpan = effect <A, E>(effect: A!E!Scope) =>
+  try effect.pipe(Effect.updateContext((context: Context<Scope>) => Context.omit(Tracer.ParentSpan)(context)))
 
 export class Gone extends Data.TaggedError("Gone")<{}> {}
 
-export const pause = (ms: number) => Effect.sleep(ms)
+export const pause = effect (ms: number) => try Effect.sleep(ms)

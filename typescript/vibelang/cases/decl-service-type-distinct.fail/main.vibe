@@ -4,7 +4,7 @@
 service Primary: string
 service Replica: string
 
-function read() {
+effect function read() {
   return try Primary()
 }
 

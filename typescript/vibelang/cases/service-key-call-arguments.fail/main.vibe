@@ -8,7 +8,7 @@ service Users {
   find(id: string): string!!
 }
 
-export function lookups() {
+export effect function lookups() {
   const a = Fn(3)
   const b = Users("ada")
   const c = (try Fn())(3)

@@ -1,9 +1,9 @@
 // expect: TS2322 EK2001
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-export function wrongSuccess(): number!! {
-  return try Effect.orDie(Effect.succeed(Exit.succeed(1)) |> (Effect.tap(%, () => Effect.sleep("1 millis"))))
+export effect function wrongSuccess(): number!! {
+  return try Effect.orDie(Effect.succeed(Exit.succeed(1)) |> (Effect.tap(%, effect () => try Effect.sleep("1 millis"))))
 }
-export function wrongFailure(): Exit.Exit<number, never>!! {
-  return try Effect.map(Effect.fail("bad") |> Effect.tap(%, () => Effect.sleep("1 millis")), () => Exit.succeed(1))
+export effect function wrongFailure(): Exit.Exit<number, never>!! {
+  return try Effect.map(Effect.fail("bad") |> Effect.tap(%, effect () => try Effect.sleep("1 millis")), () => Exit.succeed(1))
 }

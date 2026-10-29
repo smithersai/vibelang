@@ -75,6 +75,14 @@ const (
 	// VibeSyntaxStatement is a statement with no other record that only
 	// VibeLang parses, select { ... }: Range.
 	VibeSyntaxStatement
+	// VibeSyntaxEffect is effect before a function (VIP-1): Word, and Range
+	// through the function's end; or an effect block, effect { … } (VIP-2):
+	// Word, Open, Close.
+	VibeSyntaxEffect
+	// VibeSyntaxShorthand is a function declaration written without its
+	// function keyword, effect load() or async get() (VIP-1): Word is the
+	// declared name.
+	VibeSyntaxShorthand
 )
 
 // VibeSyntax is one recorded VibeLang form. Which fields are set depends on

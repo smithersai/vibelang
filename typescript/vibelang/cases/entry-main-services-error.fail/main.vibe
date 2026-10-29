@@ -4,6 +4,6 @@ service Users {
   find(id: string): string!!
 }
 
-export function main() {
+export effect function main() {
   try Console.log(try Users.find("1"))
 }

@@ -6,7 +6,7 @@ interface Named {
 }
 
 // expect-result: {"record":{"first":42,"second":7},"named":{"first":42,"second":7}}
-export function main() {
+export effect function main() {
   const first = fork { return 42 }
   const second = fork { return 7 }
   const record: Record<string, Fiber.Fiber<number>> = { first, second }

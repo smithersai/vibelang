@@ -1,3 +1,3 @@
 main.vibe(4,24): error EK1001
-main.vibe(6,28): error EK1001
-main.vibe(11,35): error EK1001
+main.vibe(6,35): error EK1001
+main.vibe(11,42): error EK1001

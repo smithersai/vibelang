@@ -32,16 +32,16 @@ function toUser(row: Row) {
   return user
 }
 
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       const rows = try db.query("select * from users where id = $1", [id])
       if (rows.length === 0) throw new UserNotFound({ id })
-      return try toUser(rows[0])
+      return toUser(rows[0])
     },
-    rename(id, name) {
-      try Effect.orDie(() => db.execute("update users set name = $1 where id = $2", [name, id]))
+    effect rename(id, name) {
+      try Effect.orDie(effect { return try db.execute("update users set name = $1 where id = $2", [name, id]) })
     }
   }
 })

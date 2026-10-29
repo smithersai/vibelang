@@ -9,17 +9,17 @@ abstract class Database {
   abstract query(sql: string): Effect<string, never, never>
 }
 
-const CacheLive = Layer.effect(Cache, () => {
+const CacheLive = Layer.effect(Cache, effect {
   const db = try Database()
   return {
-    get: (key) => db.query(key)
+    get: effect (key) => try db.query(key)
   }
 })
 
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const cache = try Cache()
   return {
-    query: (sql) => cache.get(sql)
+    query: effect (sql) => try cache.get(sql)
   }
 })
 

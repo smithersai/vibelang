@@ -2,6 +2,6 @@
 import "vibelang/platform/node"
 import { FileSystem } from "effect/FileSystem"
 
-export function main() {
+export effect function main() {
   try Console.log(try FileSystem.readFileString("effect.txt"))
 }

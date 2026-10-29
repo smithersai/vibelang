@@ -7,16 +7,16 @@ error E1 { n: number }
 
 function bump(n: number) { return n + 1 }
 
-function bumped(p0: number): number!! {
+effect function bumped(p0: number): number!! {
   try {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = try bump(p0); 0 }
+    return do { const v: number = bump(p0); 0 }
   } catch (e) {
     return e._tag.length
   }
 }
 
-function plain(p0: number): number!! {
+effect function plain(p0: number): number!! {
   try {
     if (p0 > 0) throw new E1({ n: 0 })
     return do { 0 }
@@ -25,15 +25,15 @@ function plain(p0: number): number!! {
   }
 }
 
-function thrown(p0: number): number!! {
+effect function thrown(p0: number): number!! {
   try {
-    return do { if (p0 > 0) throw new E1({ n: 2 }); try bump(p0) }
+    return do { if (p0 > 0) throw new E1({ n: 2 }); bump(p0) }
   } catch (e) {
     return e.n
   }
 }
 
-function beside(p0: number): number!! {
+effect function beside(p0: number): number!! {
   try {
     return p0 < 0 ? throw new E1({ n: 0 }) : match (p0) { when 0: 1; default: 2 }
   } catch (e) {
@@ -41,16 +41,16 @@ function beside(p0: number): number!! {
   }
 }
 
-function unwritten(p0: number) {
+effect function unwritten(p0: number) {
   try {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = try bump(p0); 0 }
+    return do { const v: number = bump(p0); 0 }
   } catch (e) {
     return e._tag.length
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     bumped: [try bumped(1), try bumped(0)],
     plain: [try plain(1), try plain(0)],

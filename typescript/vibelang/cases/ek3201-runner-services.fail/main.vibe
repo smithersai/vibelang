@@ -15,36 +15,36 @@ abstract class Clock2 {
   abstract now(): Effect.Effect<number, never, never>
 }
 
-const TodosTest = Layer.succeed(Todos, { list: () => ["a"] })
+const TodosTest = Layer.succeed(Todos, { list: effect () => ["a"] })
 
-function count() {
+effect function count() {
   return (try Todos.list()).length
 }
 
-function stamped() {
+effect function stamped() {
   return `${try count()} at ${try Clock2.now()}`
 }
 
-NodeRuntime.runMain(() => {
+NodeRuntime.runMain(effect () => {
   try Effect.log(try count())
 })
 
-Effect.runPromise(() => stamped())
+Effect.runPromise(effect { return try stamped() })
 
-it.effect("counts", () => {
+it.effect("counts", effect () => {
   try count()
 })
 
 layer(TodosTest)("with todos", (it) => {
-  it.effect("counts", () => {
+  it.effect("counts", effect () => {
     try count()
   })
 })
 
-it.effect("provides its own", () => {
-  try Effect.provide(() => count(), TodosTest)
+it.effect("provides its own", effect () => {
+  try Effect.provide(effect { return try count() }, TodosTest)
 })
 
-it.effect("keeps the errors in its body", () => {
+it.effect("keeps the errors in its body", effect () => {
   const total: string = try count()
 })

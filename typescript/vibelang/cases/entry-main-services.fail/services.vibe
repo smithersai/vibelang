@@ -7,4 +7,4 @@ export service Stamp {
   now(): number!!
 }
 
-export const UsersLive = Layer.succeed(Users, { find: (id) => `user ${id}` })
+export const UsersLive = Layer.succeed(Users, { find: effect (id) => `user ${id}` })

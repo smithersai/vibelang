@@ -21,13 +21,13 @@ function shadowed(maybe: Option.Option<number>) {
   return maybe.map((n) => `${Option} ${n}`).getOrElse(() => Option)
 }
 
-function after() {
+effect function after() {
   try sleep("1 millis")
   return "done"
 }
 
 // expect-result: {"alerts":["25 C","28 C"],"some":4,"none":0,"millis":1500,"size":3,"piped":3,"doubled":[2,4],"joined":"done","counter":2,"described":"some 5","shadowed":"local 7"}
-export function main() {
+export effect function main() {
   const alerts = readings().filter((v) => v >= 25).map((v) => `${v} C`).take(2)
   const collected: string[] = []
   for (const alert of alerts) collected.push(alert)
@@ -41,5 +41,5 @@ export function main() {
   const joined = try fiber.join()
   const counter = try Ref.make(1)
   try counter.update((n) => n + 1)
-  return { alerts: collected, some, none, millis, size, piped, doubled, joined, counter: try counter.get(), described: try describe(Option.some(5)), shadowed: try shadowed(Option.some(7)) }
+  return { alerts: collected, some, none, millis, size, piped, doubled, joined, counter: try counter.get(), described: describe(Option.some(5)), shadowed: shadowed(Option.some(7)) }
 }

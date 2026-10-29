@@ -6,7 +6,7 @@ import { UsersLive } from "./services.vibe"
 
 export { main as reexported } from "./reexported.vibe"
 
-Effect.runPromise(() => {
+Effect.runPromise(effect {
   provide UsersLive {
     try main()
     try namespaced.main()

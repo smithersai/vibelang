@@ -10,7 +10,7 @@ export service Mode {
 export service Greeter {
   greet(name: string): string!!
   static readonly default = {
-    greet(name) {
+    effect greet(name) {
       return `hello ${name}`
     }
   }
@@ -21,6 +21,6 @@ export service Prefix: string {
 }
 
 // expect-result: ["fast","hello ada","> "]
-export function main() {
+export effect function main() {
   return [(try Mode()).speed, try Greeter.greet("ada"), try Prefix()]
 }

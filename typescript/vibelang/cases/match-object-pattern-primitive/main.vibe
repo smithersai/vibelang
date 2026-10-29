@@ -13,7 +13,7 @@ function size(value: unknown) {
 
 // expect-result: {"string":-1,"number":-1,"null":-1,"object":2,"function":4,"reads":0}
 export function main() {
-  const sized = (() => 0) as unknown as { mutable size: number }
+  const sized = (effect () => 0) as unknown as { mutable size: number }
   sized.size = 4
-  return { string: try size("abc"), number: try size(5), null: try size(null), object: try size({ size: 2 }), function: try size(sized), reads }
+  return { string: size("abc"), number: size(5), null: size(null), object: size({ size: 2 }), function: size(sized), reads }
 }

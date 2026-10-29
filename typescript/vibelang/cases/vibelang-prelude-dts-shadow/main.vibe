@@ -11,16 +11,16 @@ export abstract class Names {
 }
 
 export const NamesLive = Layer.succeed(Names, {
-  lookup(id) {
+  effect lookup(id) {
     if (id !== 1) throw new Missing({ id })
     return "Ada"
   }
 })
 
-export function fallback(): Effect<string, never, never> {
+export effect function fallback(): Effect<string, never, never> {
   return "nobody"
 }
 
-export function greet(id: number) {
+export effect function greet(id: number) {
   return `Hello, ${try Names.lookup(id)}`
 }

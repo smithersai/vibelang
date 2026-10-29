@@ -4,28 +4,28 @@
 // that runs its body, for a reference in its body or in a parameter default.
 type Self = () => Self!!
 
-const named = function inner(): Self!! {
+const named = effect function inner(): Self!! {
   try sleep("1 millis")
   return inner
 }
 
-function declaration(f: Self = declaration): Self!! {
+effect function declaration(f: Self = declaration): Self!! {
   try sleep("1 millis")
   return f
 }
 
 // Recursion through the name runs on Effect's frames, by name too.
-const byName = function self(n: number): number!! {
+const byName = effect function self(n: number): number!! {
   if (n === 0) return 7
   return try Effect.retry(self(n - 1), { times: 0 })
 }
 
-const deep = function count(n: number): number!! {
+const deep = effect function count(n: number): number!! {
   const tick = try Effect.sync(() => 0)
   return n === 0 ? 0 : try count(n - 1) + 1
 }
 
-export function main() {
+export effect function main() {
   const fromNamed = try named()
   const fromDeclaration = try declaration()
   // Calling a Self in TypeScript builds an Effect.

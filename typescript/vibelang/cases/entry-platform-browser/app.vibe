@@ -5,8 +5,8 @@ function hex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
-export function main() {
+export effect function main() {
   const key = Redacted.make(new TextEncoder().encode("Jefe"))
   const mac = try Experimental.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
-  try Console.log(`page main ran ${try hex(mac)}`)
+  try Console.log(`page main ran ${hex(mac)}`)
 }

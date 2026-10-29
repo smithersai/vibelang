@@ -1,35 +1,35 @@
 error Missing
 
-function leaf() {
+effect function leaf() {
   try yieldNow()
   throw new Missing()
 }
 
-function middle() {
+effect function middle() {
   try yieldNow()
   return try leaf()
 }
 
-export function main() {
+export effect function main() {
   try yieldNow()
   return try middle()
 }
 
 export const beforeRead = read
 
-export function read(this: { value: number }, add: number, unused = 1) {
+export effect function read(this: { value: number }, add: number, unused = 1) {
   try yieldNow()
   return [this.value + add, arguments.length, unused]
 }
 
 import { defaults } from "./defaults.ts"
 
-export function defaulted(value = ++defaults.count) {
+export effect function defaulted(value = ++defaults.count) {
   try yieldNow()
   return value
 }
 
-export function recursive(n: number, value: { ok: number } | undefined): Effect<number> {
+export effect function recursive(n: number, value: { ok: number } | undefined): Effect<number> {
   if (n > 0) return try recursive(n - 1, value)
   return value!.ok
 }

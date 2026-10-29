@@ -28,21 +28,21 @@ export error Integration extends Failure {
 
 export error Plain extends Failure
 
-function fail(error: Integration | Plain): never!(Integration | Plain) {
+effect function fail(error: Integration | Plain): never!(Integration | Plain) {
   throw error
 }
 
-function route(error: Integration | Plain): string!! {
+effect function route(error: Integration | Plain): string!! {
   return fail(error)
-    |> Effect.catchTag(%, "Integration", (caught) => `integration ${caught.reason}`)
-    |> try Effect.catchTag(%, "Plain", (caught) => `plain ${caught.code}`)
+    |> Effect.catchTag(%, "Integration", effect (caught) => `integration ${caught.reason}`)
+    |> try Effect.catchTag(%, "Plain", effect (caught) => `plain ${caught.code}`)
 }
 
 function codeOf(failure: Failure): string {
   return failure.code
 }
 
-export function main() {
+export effect function main() {
   const failure = new Failure("BASE", "  ")
   const integration = new Integration("timeout", " slow ")
   const plain = new Plain("PLAIN", "x")

@@ -4,7 +4,7 @@ error Busy
 error Offline
 error Broken
 
-function fail(kind: string) {
+effect function fail(kind: string) {
   if (kind === "missing") throw new NotFound({ id: "7" })
   if (kind === "busy") throw new Busy()
   if (kind === "offline") throw new Offline()
@@ -12,7 +12,7 @@ function fail(kind: string) {
   throw new Broken()
 }
 
-function describe(kind: string) {
+effect function describe(kind: string) {
   try {
     return try fail(kind)
   } catch (e) {
@@ -26,7 +26,7 @@ function describe(kind: string) {
 }
 
 // The default rethrows failures this match does not handle.
-function partial(kind: string): string!Broken! {
+effect function partial(kind: string): string!Broken! {
   try {
     return try fail(kind)
   } catch (e) {
@@ -38,7 +38,7 @@ function partial(kind: string): string!Broken! {
 }
 
 // A failure raised inside a clause is not tested by the clauses after it.
-function rethrow() {
+effect function rethrow() {
   try {
     try {
       try fail("missing")
@@ -58,7 +58,7 @@ function rethrow() {
 
 const Port = Schema.Struct({ port: Schema.Number })
 
-function parsePort(input: unknown) {
+effect function parsePort(input: unknown) {
   try {
     return `${(try Schema.decodeUnknownEffect(Port)(input)).port}`
   } catch (e) {
@@ -67,7 +67,7 @@ function parsePort(input: unknown) {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     a: try describe("missing"),
     b: try describe("busy"),

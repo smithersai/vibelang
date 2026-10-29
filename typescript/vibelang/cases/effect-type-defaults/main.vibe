@@ -15,53 +15,53 @@ service Users {
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "42") throw new Gone({ id })
     return "Ada"
   },
-  count() {
+  effect count() {
     return 2
   },
-  all() {
+  effect all() {
     return ["Ada"]
   }
 })
 
-export function plain(): Effect<number> {
+export effect function plain(): Effect<number> {
   return 3
 }
 
-export function failing(id: string): Effect<string, Gone> {
+export effect function failing(id: string): Effect<string, Gone> {
   if (id === "") throw new Gone({ id })
   return id
 }
 
-export function found(id: string): Effect<string, Gone, Users> {
+export effect function found(id: string): Effect<string, Gone, Users> {
   return try Users.find(id)
 }
 
-export function guest(id: string): Effect<string, never, Users> {
+export effect function guest(id: string): Effect<string, never, Users> {
   return Users.find(id) catch "guest"
 }
 
-export function inferred(id: string): Effect<string, Gone, infer R> {
+export effect function inferred(id: string): Effect<string, Gone, infer R> {
   return try Users.find(id)
 }
 
-export function onlyErrors(id: string): Effect<string, infer E> {
+export effect function onlyErrors(id: string): Effect<string, infer E> {
   if (id === "") throw new Gone({ id })
   return id
 }
 
-export function partial(id: string): Effect<string, infer E, infer R> {
+export effect function partial(id: string): Effect<string, infer E, infer R> {
   return try Users.find(id)
 }
 
-export function run(program: Effect<number>): Effect<number> {
+export effect function run(program: Effect<number>): Effect<number> {
   return try program()
 }
 
-export function main() {
+export effect function main() {
   provide UsersLive {
     return {
       plain: try plain(),

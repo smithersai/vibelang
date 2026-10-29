@@ -3,7 +3,7 @@
 // platform import that would provide it.
 import { NodeServices } from "@effect/platform-node"
 
-export function main() {
+export effect function main() {
   provide NodeServices.layer {
     try Console.log(try Experimental.Process.hostname())
   }

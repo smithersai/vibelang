@@ -4,13 +4,13 @@
 // inference, that read cannot be exact, so the contract must write it.
 declare const guarded: (body: number!unknown) => number!unknown
 
-export function healthy(index: number): number!unknown {
+export effect function healthy(index: number): number!unknown {
   if (index < 0) return 1
   return try guarded(healthy(index - 1))
 }
 
-export function wrap(body: number!unknown): number!unknown {
-  const layer = (index: number): number!unknown => {
+export effect function wrap(body: number!unknown): number!unknown {
+  const layer = effect (index: number): number!unknown => {
     if (index < 0) return try body()
     return try guarded(layer(index - 1))
   }
@@ -18,7 +18,7 @@ export function wrap(body: number!unknown): number!unknown {
 }
 
 // With every channel written, the self-call is typed from the contract.
-export function written(index: number): number!unknown! {
+export effect function written(index: number): number!unknown! {
   if (index < 0) return 1
   return try guarded(written(index - 1))
 }

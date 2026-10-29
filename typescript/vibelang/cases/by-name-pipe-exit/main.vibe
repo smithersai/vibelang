@@ -4,14 +4,14 @@ import * as Exit from "effect/Exit"
 import * as Schema from "effect/Schema"
 import * as Cause from "effect/Cause"
 const exitSchema = Schema.Exit(Schema.Number, Schema.String, Schema.Unknown)
-function decode(value: Exit.Exit<number, string>) {
+effect function decode(value: Exit.Exit<number, string>) {
   const exit = try Effect.orDie(
     Schema.decodeEffect(exitSchema)(value) |>
-      (Effect.tapError(%, () => Effect.logDebug("invalid exit")))
+      (Effect.tapError(%, effect () => try Effect.logDebug("invalid exit")))
   )
   return exit
 }
-export function main() {
+export effect function main() {
   const success = try decode(Exit.succeed(7))
   const failure = try decode(Exit.fail("bad"))
   const errors: Array<string> = []
@@ -20,6 +20,6 @@ export function main() {
       if (Cause.isFailReason(reason)) errors.push(reason.error)
     }
   }
-  const nested = try Effect.orDie(Effect.succeed(Exit.succeed(9)) |> Effect.tap(%, () => Effect.sleep("1 millis")))
+  const nested = try Effect.orDie(Effect.succeed(Exit.succeed(9)) |> Effect.tap(%, effect () => try Effect.sleep("1 millis")))
   return { success: success._tag, failure: failure._tag, errors, nested: nested._tag }
 }

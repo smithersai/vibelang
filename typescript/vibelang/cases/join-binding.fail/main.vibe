@@ -8,7 +8,7 @@ import * as Runtime from "vibelang-runtime"
 
 const joiner = join
 
-export function main() {
+export effect function main() {
   const fiber = fork Effect.succeed(1)
   return try Runtime.join(fiber)
 }

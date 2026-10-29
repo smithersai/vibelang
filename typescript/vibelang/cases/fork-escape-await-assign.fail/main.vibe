@@ -1,12 +1,12 @@
 // expect: EK4838
 import "vibelang/platform/node"
 let escaped: Fiber<void> | undefined
-function work() { try sleep("1 minute") }
-function leak() {
+effect function work() { try sleep("1 minute") }
+effect function leak() {
   const f = fork work()
   await.all [do { escaped = f; 1 }]
 }
-export function main() {
+export effect function main() {
   try leak()
   try Console.log(escaped !== undefined)
 }

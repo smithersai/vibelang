@@ -1,7 +1,7 @@
 // No node or bun entry provides Experimental.Locks: EK3205 names its layers.
 import "vibelang/platform/node"
 
-export function main() {
+export effect function main() {
   using held = try Experimental.Locks.hold("a")
   try Console.log("held")
 }

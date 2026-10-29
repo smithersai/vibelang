@@ -54,12 +54,12 @@ module text {
 
 import Counter, { clean, greet, later, safeLength, separator, type Cleaned, type Mode } from text
 
-function cleaned(input: string, mode: Mode): Cleaned!Error {
+effect function cleaned(input: string, mode: Mode): Cleaned!Error {
   return try Effect.try({ try: () => ((input, mode) => clean(input, mode))(input, mode), catch: (error) => new Error(String(error)) })
 }
 
 // run.mjs requires out/main.js and runs program().
-export function program() {
+export effect function program() {
   const value = try cleaned("  hi ", "upper")
   let failed = "none"
   try {

@@ -1,6 +1,6 @@
 // expect: EK1001 EK2001 EK2002 EK2003
 const makeRuntime = (n: number): infer _ => {
-  const p: Effect.Effect<{ n: number }, never, never> = () => { return { n } }
+  const p: Effect.Effect<{ n: number }, never, never> = effect { return { n } }
   return p
 }
 export const unannotated = makeRuntime(7)
@@ -16,6 +16,6 @@ const makeProgram = (input: Effect.Effect<number, Unavailable, Needed>): infer _
   return p
 }
 // The returned program's channels must survive the plain factory too.
-export function missingChannels(input: Effect.Effect<number, Unavailable, Needed>): number!! {
-  return try makeProgram(input)
+export effect function missingChannels(input: Effect.Effect<number, Unavailable, Needed>): number!! {
+  return makeProgram(input)
 }

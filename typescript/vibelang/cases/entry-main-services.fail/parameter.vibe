@@ -2,6 +2,6 @@
 // nothing is reported.
 import { Users } from "./services.vibe"
 
-export function main(id: string) {
+export effect function main(id: string) {
   try Console.log(try Users.find(id))
 }

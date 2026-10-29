@@ -13,10 +13,10 @@ import (
 )
 
 // tokens are the positions of the tokens decoding matches by order: void
-// keywords, || operators, for keywords, and finally keywords; orNodes are
-// the binary expressions of ors.
+// keywords, || operators, for keywords, finally keywords, and async
+// modifiers; orNodes are the binary expressions of ors.
 type tokens struct {
-	voids, ors, fors, finallys []int
+	voids, ors, fors, finallys, asyncs, functions []int
 	orNodes                    map[int]*ast.Node
 }
 
@@ -26,6 +26,20 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 	t := tokens{orNodes: map[int]*ast.Node{}}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if modifiers := node.Modifiers(); modifiers != nil {
+			for _, m := range modifiers.Nodes {
+				if m.Kind == ast.KindAsyncKeyword {
+					t.asyncs = append(t.asyncs, scanner.SkipTrivia(text, m.Pos()))
+				}
+			}
+		}
+		if node.Kind == ast.KindFunctionDeclaration {
+			start := scanner.SkipTrivia(text, node.Pos())
+			if modifiers := node.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
+				start = scanner.SkipTrivia(text, modifiers.Nodes[len(modifiers.Nodes)-1].End())
+			}
+			t.functions = append(t.functions, start)
+		}
 		switch node.Kind {
 		case ast.KindVoidExpression:
 			t.voids = append(t.voids, scanner.SkipTrivia(text, node.Pos()))
@@ -50,6 +64,8 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 	slices.Sort(t.ors)
 	slices.Sort(t.fors)
 	slices.Sort(t.finallys)
+	slices.Sort(t.asyncs)
+	slices.Sort(t.functions)
 	return t
 }
 
@@ -106,8 +122,15 @@ func (enc *encoding) decode(formatted string) (string, error) {
 // ordered decodes the tokens matched by order.
 func (d *decoder) ordered() error {
 	t := collectTokens(d.file, d.text)
-	if len(t.voids) != len(d.enc.voids) || len(t.ors) != len(d.enc.pipes) || len(t.fors) != len(d.enc.fors) || len(t.finallys) != len(d.enc.finallys) {
-		return fmt.Errorf("vibelang format: internal error: the formatter changed the number of void, ||, for, or finally tokens")
+	if len(t.voids) != len(d.enc.voids) || len(t.ors) != len(d.enc.pipes) || len(t.fors) != len(d.enc.fors) || len(t.finallys) != len(d.enc.finallys) || len(t.asyncs) != len(d.enc.asyncs) || len(t.functions) != len(d.enc.functions) {
+		return fmt.Errorf("vibelang format: internal error: the formatter changed the number of void, ||, for, finally, async, or function tokens")
+	}
+	// A shorthand declaration keeps the function keyword encode wrote: VIP-39
+	// removed the shorthand, and EK4618 reports it.
+	for i, pos := range t.asyncs {
+		if word := d.enc.asyncs[i]; word != "" {
+			d.replace(pos, pos+len("async"), word)
+		}
 	}
 	for i, pos := range t.voids {
 		if word := d.enc.voids[i]; word != "" {

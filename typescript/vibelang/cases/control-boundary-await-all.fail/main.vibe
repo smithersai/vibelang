@@ -4,11 +4,11 @@
 // concurrency"). EK4201 reports each element that performs the operation.
 control Ask { ask(): number!! }
 
-function asks() {
+effect function asks() {
   return try Ask.ask() + 1
 }
 
-export function all() {
+export effect function all() {
   try {
     return await.all [Ask.ask(), Ask.ask()]
   } handle Ask.ask() {
@@ -16,7 +16,7 @@ export function all() {
   }
 }
 
-export function keyed() {
+export effect function keyed() {
   try {
     return await.all { first: asks(), second: Ask.ask() }
   } handle Ask.ask() {
@@ -24,7 +24,7 @@ export function keyed() {
   }
 }
 
-export function settled() {
+export effect function settled() {
   try {
     return await.allSettled [Ask.ask()]
   } handle Ask.ask() {

@@ -1,2 +1,2 @@
 function main() { return 1 }
-export function start() { return try main() }
+export function start() { return main() }

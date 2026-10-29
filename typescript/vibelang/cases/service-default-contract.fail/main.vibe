@@ -19,24 +19,24 @@ export service Version: number {
 export service Reader {
   read(): string!!
   static readonly default = {
-    read() {
+    effect read() {
       throw "hidden"
     }
   }
 }
 
-export function flag(): boolean!! {
+export effect function flag(): boolean!! {
   return (try Flags()).enabled
 }
 
-export function prefix(): string!! {
+export effect function prefix(): string!! {
   return try Prefix()
 }
 
-export function version(): number!! {
+export effect function version(): number!! {
   return try Version()
 }
 
-export function read(): string!! {
+export effect function read(): string!! {
   return try Reader.read()
 }

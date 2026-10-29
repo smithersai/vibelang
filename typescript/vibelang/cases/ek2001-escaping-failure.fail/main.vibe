@@ -4,24 +4,24 @@
 class UserNotFound extends TaggedError("UserNotFound")<{ readonly id: string }> {}
 class Invalid extends TaggedError("Invalid")<{ readonly raw: string }> {}
 
-function find(id: string) {
+effect function find(id: string) {
   if (id !== "42") throw new UserNotFound({ id })
   return { id, name: "Ada" }
 }
 
 // UserNotFound escapes from the call.
-export function greeting(id: string): Effect<string, never, never> {
+export effect function greeting(id: string): Effect<string, never, never> {
   return `Hello, ${(try find(id)).name}`
 }
 
 // Invalid escapes from the throw; UserNotFound is declared.
-export function parse(raw: string): Effect<number, UserNotFound, never> {
+export effect function parse(raw: string): Effect<number, UserNotFound, never> {
   if (!/^\d+$/.test(raw)) throw new Invalid({ raw })
   return (try find(raw)).name.length
 }
 
 // A catch handles what it can, so nothing escapes here.
-export function safe(id: string): Effect<string, never, never> {
+export effect function safe(id: string): Effect<string, never, never> {
   try {
     return (try find(id)).name
   } catch (e) {

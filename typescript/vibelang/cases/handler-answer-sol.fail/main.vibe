@@ -2,7 +2,7 @@
 // sol-2: the outer resume receives the inner clause's toFixed string.
 control Step { go(): void!! }
 
-export function unsound() {
+export effect function unsound() {
   try {
     try Step.go()
     try Step.go()

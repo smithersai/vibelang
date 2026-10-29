@@ -1,7 +1,7 @@
 import { Effect, Fiber } from "effect"
 
 // S19-30's original repro: abort resolves pending only after cleanup finishes.
-export function waitWithAsyncCleanup(log: Array<string>) {
+export effect function waitWithAsyncCleanup(log: Array<string>) {
   return try callback((log: Array<string>, resume: Resume<string, never>, signal: AbortSignal) => {
     const pending = new Promise<string>((resolve) => {
       signal.addEventListener("abort", () => setTimeout(() => {
@@ -14,7 +14,7 @@ export function waitWithAsyncCleanup(log: Array<string>) {
   }, log)
 }
 
-export function waitWithEffectCleanup(log: Array<string>) {
+export effect function waitWithEffectCleanup(log: Array<string>) {
   return try callback((log: Array<string>, _resume: Resume<string, never>, signal: AbortSignal) => {
     // The finalizer runs after abort and is awaited, just as Effect.callback.
     return Effect.promise(() => new Promise<void>((resolve) => setTimeout(() => {
@@ -24,7 +24,7 @@ export function waitWithEffectCleanup(log: Array<string>) {
   }, log)
 }
 
-export function waitWithSyncCleanup(log: Array<string>) {
+export effect function waitWithSyncCleanup(log: Array<string>) {
   return try callback((log: Array<string>, _resume: Resume<string, never>) => {
     // Sync cleanup retains the original void callback assignability.
     return () => log.push("cleanup finished")
@@ -32,7 +32,7 @@ export function waitWithSyncCleanup(log: Array<string>) {
 }
 
 // expect-result: [["cleanup finished","interrupt returned"],["cleanup finished","interrupt returned"],["cleanup finished","interrupt returned"]]
-export function main() {
+export effect function main() {
   const promise: Array<string> = []
   const effect: Array<string> = []
   const sync: Array<string> = []

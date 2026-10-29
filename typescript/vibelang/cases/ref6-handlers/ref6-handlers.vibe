@@ -15,7 +15,7 @@ const events: string[] = []
 
 // Nested prompts: the inner handler answers Ask, the outer one answers Emit.
 
-function conversation() {
+effect function conversation() {
   const a = try Ask.ask("first")
   try Emit.emit(`got ${a}`)
   const b = try Ask.ask("second")
@@ -23,11 +23,11 @@ function conversation() {
   return a + b
 }
 
-function nested() {
-  return try handle(() => handle(() => conversation(), Ask, {
-    ask(question, k) { return try resume(k, question.length) }       // one resumption per operation
-  }), Emit, {
-    emit(message, k) {
+effect function nested() {
+  return try handle(effect { return try handle(effect { return try conversation() }, Ask, {
+    effect ask(question, k) { return try resume(k, question.length) }       // one resumption per operation
+  }) }, Emit, {
+    effect emit(message, k) {
       events.push(message)
       return try resume(k, undefined)
     }
@@ -35,22 +35,22 @@ function nested() {
 }
 
 // Nested prompts for the same operation: the innermost handler answers.
-function shadowed() {
-  return try handle(() => {
+effect function shadowed() {
+  return try handle(effect {
     const outer = try Ask.ask("x")
-    const inner = try handle(() => Ask.ask("y"), Ask, {
-      ask(question, k) { return try resume(k, 100) }
+    const inner = try handle(effect { return try Ask.ask("y") }, Ask, {
+      effect ask(question, k) { return try resume(k, 100) }
     })
     return outer + inner
   }, Ask, {
-    ask(question, k) { return try resume(k, 1) }
+    effect ask(question, k) { return try resume(k, 1) }
   })
 }
 
 // A rejected double resumption: the second resume is a defect (ContinuationAlreadyConsumed).
-function doubleResume() {
-  return try handle(() => Ask.ask("twice"), Ask, {
-    ask(question, k) {
+effect function doubleResume() {
+  return try handle(effect { return try Ask.ask("twice") }, Ask, {
+    effect ask(question, k) {
       const first = try resume(k, 1)
       const second = try resume(k, 2)
       return first + second
@@ -60,8 +60,8 @@ function doubleResume() {
 
 // Abandonment with finalization: a clause that returns without resuming; the body's finally runs
 // before handle returns, and the body's code after the operation never runs.
-function abandoning() {
-  const result = try handle(() => {
+effect function abandoning() {
+  const result = try handle(effect {
     try {
       try Ask.ask("stop")
       events.push("continued")
@@ -70,15 +70,15 @@ function abandoning() {
       events.push("finalizer ran")
     }
   }, Ask, {
-    ask(question, _k) { return `abandoned at ${question}` }
+    effect ask(question, _k) { return `abandoned at ${question}` }
   })
   events.push("handle returned")
   return result
 }
 
 // The same with an explicit abandon(k).
-function explicitAbandon() {
-  return try handle(() => {
+effect function explicitAbandon() {
+  return try handle(effect {
     try {
       try Ask.ask("drop")
       return "finished"
@@ -86,7 +86,7 @@ function explicitAbandon() {
       events.push("abandon finalizer ran")
     }
   }, Ask, {
-    ask(question, k) {
+    effect ask(question, k) {
       try abandon(k)
       return "dropped"
     }
@@ -107,7 +107,7 @@ function* naturals() {
   }
 }
 
-function firstSquaresOver(limit: number) {
+effect function firstSquaresOver(limit: number) {
   const out: number[] = []
   for (const n of naturals()) {
     if (n * n > limit) {
@@ -120,7 +120,7 @@ function firstSquaresOver(limit: number) {
 }
 
 // D18: a long iteration must run in constant stack (the tail-resume shape).
-function sumBelow(count: number) {
+effect function sumBelow(count: number) {
   let total = 0
   for (const n of naturals()) {
     if (n >= count) break
@@ -129,10 +129,10 @@ function sumBelow(count: number) {
   return total
 }
 
-function scenario() {
+effect function scenario() {
   const sum = try nested()
   const shadow = try shadowed()
-  const doubled = try Effect.exit(() => doubleResume())
+  const doubled = try Effect.exit(effect { return try doubleResume() })
   const abandoned = try abandoning()
   const dropped = try explicitAbandon()
   const squares = try firstSquaresOver(10)
@@ -152,6 +152,6 @@ function scenario() {
 }
 
 // expect-result: {"sum":11,"shadow":101,"doubleResume":["ContinuationAlreadyConsumed"],"abandoned":"abandoned at stop","dropped":"dropped","squares":[16,25,36],"total":49995000,"events":["got 5","got 6","finalizer ran","handle returned","abandon finalizer ran","naturals closed","loop exited","naturals closed"]}
-export function main() {
+export effect function main() {
   return try scenario()
 }

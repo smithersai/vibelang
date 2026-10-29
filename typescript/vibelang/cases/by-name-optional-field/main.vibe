@@ -5,12 +5,12 @@ const decodeTags = (text: string): Effect.Effect<ReadonlyArray<string>, never, n
   runs += 1
   return [text]
 }
-const decode = (tags: string | null): Effect.Effect<{ value: number; tags: ReadonlyArray<string> | undefined }, never, never> =>
-  Effect.map(Effect.all({
+const decode = effect (tags: string | null): Effect.Effect<{ value: number; tags: ReadonlyArray<string> | undefined }, never, never> =>
+  try Effect.map(Effect.all({
     value: (Effect.succeed(7)),
     tags: (tags === null ? undefined : decodeTags(tags))
   }), (row) => row)
-export function main() {
+export effect function main() {
   const missing = try decode(null)
   const present = try decode("branch:main")
   return { missing, present, runs }

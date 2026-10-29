@@ -3,65 +3,65 @@
 // region and reads of it, join with an array or object literal operand,
 // the Fiber functions whose result holds no Fiber and their methods, and a
 // fork operand, await element, or for concurrent body in the region.
-function slow(): number!! {
+effect function slow(): number!! {
   try sleep("5 millis")
   return 7
 }
 
-function forever(): number!! {
+effect function forever(): number!! {
   try sleep("1 minute")
   return 0
 }
 
-function joined() {
+effect function joined() {
   const fiber = fork slow()
   const alias = fiber
   return join alias
 }
 
-function pair() {
+effect function pair() {
   const a = fork slow()
   const b = fork slow()
   return join [a, b]
 }
 
-function record() {
+effect function record() {
   const a = fork slow()
   return join { a }
 }
 
-function interrupted() {
+effect function interrupted() {
   const fiber = fork forever()
   try Fiber.interrupt(fiber)
   const exit = try Fiber.await(fiber)
   return Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)
 }
 
-function method() {
+effect function method() {
   const fiber = fork forever()
   try fiber.interrupt()
   return Exit.isFailure(try fiber.await())
 }
 
-function all() {
+effect function all() {
   const a = fork forever()
   const b = fork forever()
   try Fiber.interruptAll([a, b])
   return Exit.isFailure(try Fiber.await(a)) && Exit.isFailure(try Fiber.await(b))
 }
 
-function operand() {
+effect function operand() {
   const fiber = fork slow()
   const waiter = fork { return join fiber }
   return join waiter
 }
 
-function raced() {
+effect function raced() {
   const fiber = fork slow()
   return await.race [join fiber, do { try sleep("1 second"); 0 }]
 }
 
-function loop() {
+effect function loop() {
   const fiber = fork slow()
   const seen: number[] = []
   for concurrent (const n of [1, 2]) {
@@ -70,17 +70,17 @@ function loop() {
   return seen
 }
 
-function chosen(first: boolean) {
+effect function chosen(first: boolean) {
   let fiber = first ? fork slow() : fork forever()
   return join fiber
 }
 
-function done() {
+effect function done() {
   const fiber = do { fork slow() }
   return join fiber
 }
 
-export function main() {
+export effect function main() {
   return {
     joined: try joined(),
     pair: try pair(),

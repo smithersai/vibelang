@@ -3,19 +3,19 @@
 // its static type: an Effect runs, and a function with no required
 // parameters becomes a program. Any other element type is EK4603, and a
 // fiber or a Deferred EK4609 or EK4610; no run-time test decides (D394).
-export function exits() {
+export effect function exits() {
   const results = [Exit.succeed(1), Exit.succeed(2)]
   return await.all results
 }
 
-export function fibers(started: ReadonlyArray<Fiber<number>>) {
+export effect function fibers(started: ReadonlyArray<Fiber<number>>) {
   return await.all started
 }
 
-export function deferreds(ready: ReadonlyArray<Deferred<number>>) {
+export effect function deferreds(ready: ReadonlyArray<Deferred<number>>) {
   return await.race ready
 }
 
-export function programs(jobs: ReadonlyArray<() => number!!>, effects: ReadonlyArray<number!!>) {
+export effect function programs(jobs: ReadonlyArray<() => number!!>, effects: ReadonlyArray<number!!>) {
   return [await.all jobs, await.all effects]
 }

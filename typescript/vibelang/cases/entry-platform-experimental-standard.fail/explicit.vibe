@@ -3,7 +3,7 @@
 // Crypto, and EK3205 says so.
 import { NodeServices } from "@effect/platform-node"
 
-export function main() {
+export effect function main() {
   provide NodeServices.layer {
     try Console.log((try Experimental.Crypto.hmac("SHA-256", Redacted.make(new Uint8Array([1])), new Uint8Array([2]))).length)
   }

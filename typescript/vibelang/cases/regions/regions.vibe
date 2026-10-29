@@ -4,13 +4,13 @@ class Boom extends TaggedError("Boom")<{ readonly n: number }> {}
 
 const events: string[] = []
 
-function risky(n: number) {
+effect function risky(n: number) {
   if (n % 3 === 0) throw new Boom({ n })
   return n
 }
 // Effect<number, Boom, never>
 
-function loop(stopAt: number) {
+effect function loop(stopAt: number) {
   let total = 0
   outer: for (let i = 1; i <= 10; i++) {
     for (let j = 0; j < 2; j++) {
@@ -35,20 +35,20 @@ abstract class Pool extends Control {
   abstract unused(): Effect<void, never, never>
 }
 
-function lease(name: string) {
+effect function lease(name: string) {
   return try Effect.acquireRelease(
-    () => {
+    effect {
       events.push(`open ${name}`)
       return name
     },
-    () => {
+    effect () => {
       events.push(`close ${name}`)
     }
   )
 }
 
 // `using` in a loop body: released every iteration, including on break and return.
-function leases() {
+effect function leases() {
   for (const name of ["a", "b", "c", "d"]) {
     using held = try lease(name)
     if (held === "b") continue
@@ -62,7 +62,7 @@ function leases() {
 }
 
 // expect-result: {"stop8":13,"stop11":-13,"held":"e","events":["finally 1.0","finally 1.1","finally 2.0","finally 2.1","caught 3","finally 3.0","finally 3.1","finally 4.0","finally 4.1","finally 5.0","finally 5.1","finally 6.0","finally 6.1","finally 7.0","finally 7.1","finally 8.0","finally 1.0","finally 1.1","finally 2.0","finally 2.1","caught 3","finally 3.0","finally 3.1","finally 4.0","finally 4.1","finally 5.0","finally 5.1","finally 6.0","finally 6.1","finally 7.0","finally 7.1","finally 8.0","finally 8.1","caught 9","finally 9.0","open a","use a","close a","open b","close b","open c","close c","open e","close e"]}
-export function main() {
+export effect function main() {
   const stop8 = try loop(8)
   const stop11 = try loop(11)
   const held = try leases()

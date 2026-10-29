@@ -1,11 +1,11 @@
 // expect-result: {"all":[1,2],"record":{"f":1,"g":2},"settled":true,"raced":1,"any":1,"forked":1,"interrupted":true,"looped":true}
 // Direct reads in concurrent operands stay with the owning region.
-function work(n: number) {
+effect function work(n: number) {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
+export effect function main() {
   const f = fork work(1)
   const g = fork work(2)
   const all = await.all [join f, join g]

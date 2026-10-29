@@ -2,7 +2,7 @@
 // join checks the values an index signature admits as it checks properties
 // (D225): this object's index signature admits a number, which join cannot
 // join, so it is rejected though its one named property is a fiber.
-export function main() {
+export effect function main() {
   const first = fork { return 42 }
   const tasks: { [key: string]: Fiber.Fiber<number> | number; first: Fiber.Fiber<number> } = { first, bad: 7 }
   return join tasks

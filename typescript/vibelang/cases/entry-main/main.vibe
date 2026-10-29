@@ -1,5 +1,5 @@
 // Running out/main.js runs main, which the module exports (D135). Without
 // @effect/platform-node, runtime.$runMain runs it.
-export function main() {
+export effect function main() {
   try Console.log("entry ran")
 }

@@ -6,7 +6,7 @@
 interface Journal { emit: (input: { value: number }) => number!string }
 const recorded: Array<number> = []
 const journal: Journal = {
-  emit: (input) => {
+  emit: effect (input) => {
     recorded.push(input.value)
     return recorded.length
   }
@@ -17,7 +17,7 @@ const make = (state: { mutable runs: number }): number!! => {
 }
 
 // expect-result: [[10,20],2]
-export function main() {
+export effect function main() {
   const state = { runs: 0 }
   // A comment on the statement: the left side runs a call, so the program is a generator.
   journal.emit({ value: make(state) }) |> try Effect.orDie(%)

@@ -2,7 +2,7 @@
 // A for...of over a Stream whose declaration names no variable is a syntax
 // error, and the file still emits: the loop is emitted as written instead of
 // crashing the lowering, which read the declaration's first variable.
-export function main() {
+export effect function main() {
   const seen: string[] = []
   const words = Stream.make("a", "b")
   for (const of words) seen.push("x")

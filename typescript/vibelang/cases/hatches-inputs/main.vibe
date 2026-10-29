@@ -10,13 +10,13 @@ error Rejected { reason: string }
 
 type Pair = readonly [number, number]
 
-function readName() {
+effect function readName() {
   try Effect.sleep("1 millis")
   return "ada"
 }
 
 // expect-result: {"sum":5,"shouted":"ADA","awaited":"hi!","pair":7,"most":2,"parsed":{"n":1},"mapped":"Rejected","asyncMapped":"Rejected","waited":2,"read":40,"listed":3}
-export function main() {
+export effect function main() {
   const sum = try sync((a, b) => a + b, 2, 3)
   const shouted = try sync((name) => name.toUpperCase(), try readName())
   const awaited = try sync(async (word, signal) => (signal.aborted ? "aborted" : `${word}!`), "hi")

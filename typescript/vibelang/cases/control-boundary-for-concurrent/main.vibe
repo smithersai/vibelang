@@ -5,7 +5,7 @@
 // not a return that leaves the loop (EK4606).
 control Ask { ask(name: string): number!! }
 
-function limited() {
+effect function limited() {
   let total = 0
   for concurrent(2) (const n of [1, 2, 3]) {
     try {
@@ -17,7 +17,7 @@ function limited() {
   return total
 }
 
-function unlimited() {
+effect function unlimited() {
   const seen: Array<string> = []
   for concurrent (const name of ["a", "b"]) {
     try {
@@ -33,6 +33,6 @@ function unlimited() {
   return seen.sort()
 }
 
-export function main() {
+export effect function main() {
   return { limited: try limited(), unlimited: try unlimited() }
 }

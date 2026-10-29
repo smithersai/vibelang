@@ -7,8 +7,8 @@ export type RunError = Failure | OtherFailure
 
 // Resolving suspend's lambda reaches ChildRunError's type query while run's
 // free form is still being decided.
-export const run = (fail: boolean): Effect.Effect<number, RunError, never> =>
-  Effect.suspend(() => {
+export const run = effect (fail: boolean): Effect.Effect<number, RunError, never> =>
+  try Effect.suspend(effect () => {
     if (fail) {
       const child = new ChildRunError(new Failure({ message: "failed" }))
       throw child.error

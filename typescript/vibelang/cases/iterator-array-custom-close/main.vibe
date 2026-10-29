@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { customArray, subclassArray, proxyArray, events } from "./helper.js"
-function boom(): never!string! { throw "boom" }
-function main() {
+effect function boom(): never!string! { throw "boom" }
+effect function main() {
  try { for (const n of customArray()) { try boom() } } catch { events.push("caught") }
  try Console.log("array", events.join(","))
  events.length = 0

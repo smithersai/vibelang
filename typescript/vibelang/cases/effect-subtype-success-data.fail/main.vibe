@@ -3,6 +3,6 @@ import * as Exit from "effect/Exit"
 
 // S22-3 must not accept an incompatible subtype as the declared data.
 // S5-1 delegates it, and its string success still fails the contract.
-export function wrong(): Exit.Exit<number>!! {
+export effect function wrong(): Exit.Exit<number>!! {
   return Exit.succeed("wrong")
 }

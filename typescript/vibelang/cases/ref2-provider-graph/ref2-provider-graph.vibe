@@ -46,31 +46,31 @@ const data = new Map<string, ReadonlyArray<string>>([
 ])
 
 // The shared database: one connection per provide, released when the provided program ends.
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const url = (try Config()).url
   if (url.startsWith("broken:")) throw new ConnectError({ url })   // a failing acquisition
   try Effect.acquireRelease(
-    () => {
+    effect {
       connections++
       events.push(`connect ${url}`)
     },
-    () => {
+    effect () => {
       events.push(`disconnect ${url}`)
     }
   )
   return {
-    query: (table, key) => data.get(`${table}/${key}`) ?? []
+    query: effect (table, key) => data.get(`${table}/${key}`) ?? []
   }
 })
 // Layer<Database, ConnectError, Config>
 
 // Two services that depend on the database. Each captures Database when its layer is built, so
 // callers of Users.find and Orders.forUser need only Users and Orders.
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
-      const rows = try Effect.orDie(() => db.query("users", id))
+    effect find(id) {
+      const rows = try Effect.orDie(effect { return try db.query("users", id) })
       if (rows.length === 0) throw new UserNotFound({ id })
       return { id, name: rows[0] }
     }
@@ -78,11 +78,11 @@ const UsersLive = Layer.effect(Users, () => {
 })
 // Layer<Users, never, Database>
 
-const OrdersLive = Layer.effect(Orders, () => {
+const OrdersLive = Layer.effect(Orders, effect {
   const db = try Database()
   return {
-    forUser(userId) {
-      const rows = try Effect.orDie(() => db.query("orders", userId))
+    effect forUser(userId) {
+      const rows = try Effect.orDie(effect { return try db.query("orders", userId) })
       return (rows as ReadonlyArray<(typeof rows)[number]>).map((row): Order => {
         const [id, total] = row.split(":")
         return { id, userId, total: Number(total) }
@@ -93,7 +93,7 @@ const OrdersLive = Layer.effect(Orders, () => {
 // Layer<Orders, never, Database>
 
 // A caller: R is Users | Orders, never Database.
-function summary(userId: string) {
+effect function summary(userId: string) {
   const user = try Users.find(userId)
   const orders = try Orders.forUser(userId)
   let total = 0
@@ -105,7 +105,7 @@ function summary(userId: string) {
 // A test override implemented by a class (D1: a class that `implements Users`).
 // NOTE: the method's parameter is annotated because `implements` gives no contextual types.
 class UsersFake implements Users {
-  find(id: string) {
+  effect find(id: string) {
     return { id, name: `fake-${id}` }
   }
 }
@@ -136,12 +136,12 @@ const AppBroken = pipe(
 
 // The database is shared by Users and Orders within one provide: two provides, two connections.
 // expect-result: {"live":"Ada: 2 orders, 42","fake":"fake-1: 2 orders, 42","broken":"ConnectError","connections":2,"events":["connect postgres://shared","disconnect postgres://shared","connect postgres://shared","disconnect postgres://shared"]}
-export function main() {
-  const live = try Effect.provide(() => summary("1"), AppLive)
-  const fake = try Effect.provide(() => summary("1"), AppWithFakeUsers)
+export effect function main() {
+  const live = try Effect.provide(effect { return try summary("1") }, AppLive)
+  const fake = try Effect.provide(effect { return try summary("1") }, AppWithFakeUsers)
   let broken = "none"
   try {
-    try Effect.provide(() => summary("1"), AppBroken)
+    try Effect.provide(effect { return try summary("1") }, AppBroken)
   } catch (e) {
     broken = e._tag
   }

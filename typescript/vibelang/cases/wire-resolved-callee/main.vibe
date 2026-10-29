@@ -21,13 +21,13 @@ const Namespaced = Runtime.wire(LA, LB)
 const SpreadLiteral = wire(...[LA, LB] as const)
 const SpreadTuple = wire(...pair)
 
-function read(layer: Layer.Layer<B>): string!! {
+effect function read(layer: Layer.Layer<B>): string!! {
   provide layer {
     return (try B()).value
   }
 }
 
 // expect-result: ["ab","ab","ab","ab","ab"]
-export function main() {
+export effect function main() {
   return [try read(Direct), try read(Aliased), try read(Namespaced), try read(SpreadLiteral), try read(SpreadTuple)]
 }

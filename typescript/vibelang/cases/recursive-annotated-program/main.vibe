@@ -1,13 +1,13 @@
 // expect-result: [["a","b","c"],null]
 import { Effect } from "effect"
 
-const find = (
+const find = effect (
   target: string,
   start: string,
   parentsOf: (id: string) => Effect.Effect<ReadonlyArray<string>, never, never>
 ): Effect.Effect<ReadonlyArray<string> | undefined, never, never> =>
-  Effect.suspend(() => {
-    const walk = (
+  try Effect.suspend(effect () => {
+    const walk = effect (
       current: string,
       chain: ReadonlyArray<string>
     ): Effect.Effect<ReadonlyArray<string> | undefined, never, never> => {
@@ -22,8 +22,8 @@ const find = (
     return try walk(start, [start])
   })
 
-export function main() {
-  const parentsOf = (id: string): Effect.Effect<ReadonlyArray<string>, never, never> =>
-    Effect.succeed(id === "a" ? ["b"] : id === "b" ? ["c"] : [])
+export effect function main() {
+  const parentsOf = effect (id: string): Effect.Effect<ReadonlyArray<string>, never, never> =>
+    try Effect.succeed(id === "a" ? ["b"] : id === "b" ? ["c"] : [])
   return [try find("c", "a", parentsOf), try find("missing", "a", parentsOf)]
 }

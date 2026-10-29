@@ -1,5 +1,5 @@
 // expect: EK1001 EK1001
-function work() { try sleep("1 millis"); return 1 }
+effect function work() { try sleep("1 millis"); return 1 }
 
 class Getter {
   get value() { return work() }

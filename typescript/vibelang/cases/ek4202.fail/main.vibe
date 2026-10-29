@@ -6,10 +6,10 @@
 import { Approval } from "./approval.vibe"
 import { retryApproval, twice } from "./helpers.ts"
 
-export function release() {
+export effect function release() {
   return try retryApproval("deploy")
 }
 
-export function allowed() {
-  return try twice(() => Approval.approve("deploy"))
+export effect function allowed() {
+  return try twice(effect { return try Approval.approve("deploy") })
 }

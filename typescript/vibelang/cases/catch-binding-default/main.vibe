@@ -3,14 +3,14 @@
 // (D13), as a failure of the catch block does. Its declaration says so.
 export error Fallback
 
-function fallback(): number!Fallback! { throw new Fallback() }
+effect function fallback(): number!Fallback! { throw new Fallback() }
 
-export function read(found?: number) {
+export effect function read(found?: number) {
   try { throw { id: found } as { id?: number } }
   catch ({ id = try fallback() }) { return id }
 }
 
 // expect-result: {"missing":"Fallback","found":7}
-export function main() {
+export effect function main() {
   return { missing: read() catch (e) => e._tag, found: try read(7) }
 }

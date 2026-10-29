@@ -18,7 +18,7 @@ import { counted } from inputs
 // program reads nothing. Through 0.0.10 it drained the iterable where the
 // program was built and reused that reading on every run, so made held one
 // "iterate" and every run gave [1] (audit concurrency §5).
-export function main() {
+export effect function main() {
   const seen: string[] = []
   const xs = try sync((s: string[]) => counted(s), seen)
   const held: number[]!! = await.all xs

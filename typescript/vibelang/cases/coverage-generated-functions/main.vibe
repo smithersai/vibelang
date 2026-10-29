@@ -9,46 +9,46 @@ service Users {
 }
 
 export const UsersLive = Layer.succeed(Users, {
-  find(id) {
+  effect find(id) {
     if (id !== "42") throw new Bad({ code: id })
     return "Ada"
   }
 })
 
-export function step(n: number): number!Oops! {
+export effect function step(n: number): number!Oops! {
   if (n < 0) throw new Oops({ n })
   return n
 }
 
-export function direct(n: number): number!Oops! {
+export effect function direct(n: number): number!Oops! {
   return try step(n)
 }
 
-export const handler = (base: number): infer _ => (n: number) => step(base + n)
+export const handler = (base: number): infer _ => effect (n: number) => try step(base + n)
 
 function mapped(cause: Oops): Bad {
   return new Bad({ code: String(cause.n) })
 }
 
-export function load(n: number): number!Bad! {
-  const a = step(n) catch (cause) => throw mapped(cause)
+export effect function load(n: number): number!Bad! {
+  const a = step(n) catch effect (cause) => throw mapped(cause)
   return a + 1
 }
 
-export function orZero(n: number): number!! {
+export effect function orZero(n: number): number!! {
   return step(n) catch 0
 }
 
-export function timed(n: number) {
+export effect function timed(n: number) {
   return try timeout(step(n), "1 second")
 }
 
-export function pair(n: number): number!Oops! {
+export effect function pair(n: number): number!Oops! {
   const [x, y] = try Effect.all([step(n), step(n + 1)])
   return x + y
 }
 
-export function nameOf(id: string): string!!Users {
+export effect function nameOf(id: string): string!!Users {
   return Users.find(id) catch "missing"
 }
 
@@ -57,7 +57,7 @@ export function label(n: number): string {
   return kind
 }
 
-export function guarded(n: number): number!! {
+export effect function guarded(n: number): number!! {
   try {
     return try step(n)
   } catch (e) {
@@ -65,20 +65,20 @@ export function guarded(n: number): number!! {
   }
 }
 
-export function block(n: number): number!Oops! {
+export effect function block(n: number): number!Oops! {
   const v = do { const a = try step(n); a + 1 }
   return v
 }
 
-export function traced(n: number): number!Oops! {
-  return try withSpan(() => {
+export effect function traced(n: number): number!Oops! {
+  return try withSpan(effect {
     const v = try step(n)
     return v
   }, "traced")
 }
 
-export function unused(n: number): number!Bad! {
-  return step(n) catch (cause) => throw mapped(cause)
+export effect function unused(n: number): number!Bad! {
+  return step(n) catch effect (cause) => throw mapped(cause)
 }
 
 export function double(n: number) {

@@ -1,47 +1,47 @@
 // expect: EK4601 EK4602 EK4603 EK4604 EK4609 EK4610 EK4611 EK4612
-function load(): number!! {
+effect function load(): number!! {
   return 1
 }
 
-export function alreadyRuns() {
+export effect function alreadyRuns() {
   return await try load()
 }
 
-export function promise(p: Promise<number>) {
+export effect function promise(p: Promise<number>) {
   return await p
 }
 
-export function plain() {
+export effect function plain() {
   return await 42
 }
 
-export function inHatch() {
+export effect function inHatch() {
   return try sync(() => {
     await Promise.resolve(1)
   })
 }
 
 // await on a fiber: join it (D226).
-export function fiber() {
+export effect function fiber() {
   const f = fork load()
   return await f
 }
 
 // await on a Deferred: wait with d.await() (D226).
-export function deferred() {
+export effect function deferred() {
   const d = try Deferred.make<number>()
   try Deferred.succeed(d, 1)
   return await d
 }
 
 // join takes fibers only (D225).
-export function joinDeferred() {
+export effect function joinDeferred() {
   const d = try Deferred.make<number>()
   return join d
 }
 
 // A hatch body is plain TypeScript.
-export function joinInHatch() {
+export effect function joinInHatch() {
   return try sync(() => {
     const x: any = 1
     join x

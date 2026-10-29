@@ -24,10 +24,10 @@ abstract class Audit {
   abstract record(entry: string): Effect.Effect<void, never, never>
 }
 
-export const UsersAudited = Layer.effect(Users, () => {
+export const UsersAudited = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       try Audit.record(`users.find ${id}`)
       const user = try db.query(`select ${id}`)
       if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
@@ -37,7 +37,7 @@ export const UsersAudited = Layer.effect(Users, () => {
 })
 
 export class UsersLogged implements Users {
-  find(id: string) {
+  effect find(id: string) {
     try Audit.record(`find ${id}`)
     return try Effect.fail(new UserNotFound({ id }))
   }

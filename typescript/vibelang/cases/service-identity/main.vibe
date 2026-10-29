@@ -28,13 +28,13 @@ service Prefix: string
 
 class UsersInMemory implements Users {
   readonly region = "memory"
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "1") throw new NotFound({ id })
     return "Ada"
   }
 }
 
-const fake: Users.Shape = { region: "fake", find: (id: string) => `fake ${id}` }
+const fake: Users.Shape = { region: "fake", find: effect (id: string) => `fake ${id}` }
 const shaped: Context.Service.Shape<typeof Users> = fake
 
 // A plain object has the shape, so a parameter that takes one has that type.
@@ -46,12 +46,12 @@ function regionOf(users: Users.Shape) {
   return users.region
 }
 
-function lookup(id: string) {
+effect function lookup(id: string) {
   const users = try Users()
-  return `${try Users.find(id)} in ${try regionOf(users)}, beta ${(try Flags()).beta}`
+  return `${try Users.find(id)} in ${regionOf(users)}, beta ${(try Flags()).beta}`
 }
 
-function search(query: string) {
+effect function search(query: string) {
   const engine: SearchApi = try Search()
   const prefix: string = try Prefix()
   return `${prefix}${try engine.find(query)}`
@@ -60,30 +60,30 @@ function search(query: string) {
 const UsersLive = Layer.succeed(Users, new UsersInMemory())
 
 const UsersEffect = Layer.effect(Users) {
-  return { region: "effect", find: (id) => `effect ${id}` }
+  return { region: "effect", find: effect (id) => `effect ${id}` }
 }
 
-function provided(id: string) {
+effect function provided(id: string) {
   provide Users = shaped {
     return try lookup(id)
   }
 }
 
-function searched(query: string) {
-  provide Search = { find: (q: string) => `hit:${q}` }, Prefix = "> " {
+effect function searched(query: string) {
+  provide Search = { find: effect (q: string) => `hit:${q}` }, Prefix = "> " {
     return try search(query)
   }
 }
 
 // expect-result: {"live":"Ada in memory, beta true","effect":"effect 2 in effect, beta true","service":"fake 3 in fake, beta false","block":"fake 4 in fake, beta true","missing":"NotFound","shape":"fake","search":"> hit:q"}
-export function main() {
+export effect function main() {
   return {
-    live: try Effect.provide(() => lookup("1"), UsersLive),
-    effect: try Effect.provide(() => lookup("2"), UsersEffect),
-    service: try Effect.provideService(() => Effect.provideService(() => lookup("3"), Flags, { beta: false }), Users, fake),
+    live: try Effect.provide(effect { return try lookup("1") }, UsersLive),
+    effect: try Effect.provide(effect { return try lookup("2") }, UsersEffect),
+    service: try Effect.provideService(effect { return try Effect.provideService(effect { return try lookup("3") }, Flags, { beta: false }) }, Users, fake),
     block: try provided("4"),
-    missing: (try Effect.flip(() => Effect.provide(() => lookup("9"), UsersLive)))._tag,
-    shape: try regionOfShape(fake),
+    missing: (try Effect.flip(effect { return try Effect.provide(effect { return try lookup("9") }, UsersLive) }))._tag,
+    shape: regionOfShape(fake),
     search: try searched("q")
   }
 }

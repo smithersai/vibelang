@@ -1,15 +1,15 @@
 // expect: TS2322 TS2741
 import { Effect } from "effect"
 interface Service { version: Effect.Effect<number, never, never> }
-const needsArgument = (value: number) => value
-const wrongResult = () => "wrong"
+const needsArgument = effect (value: number) => value
+const wrongResult = effect () => "wrong"
 const a: Service = { version: needsArgument }
 const b: Service = { version: wrongResult }
-const c = (): Service => Object.freeze({ version: (value: number) => value })
-const d = (): Service => Object.freeze({ version: () => "wrong" })
+const c = (): Service => Object.freeze({ version: effect (value: number) => value })
+const d = (): Service => Object.freeze({ version: effect { return "wrong" } })
 // D44: a bare generic argument has no declared program position.
 const identity = <T>(value: T): T => value
-const direct: Effect.Effect<number, never, never> = identity(() => 1)
+const direct: Effect.Effect<number, never, never> = identity(effect () => 1)
 // A contextual hint does not waive the generic parameter's constraint.
 const constrained = <T extends { version: object; flag: true }>(value: T): T => value
-const missing = (): Service => constrained({ version: () => 1 })
+const missing = (): Service => constrained({ version: effect { return 1 } })

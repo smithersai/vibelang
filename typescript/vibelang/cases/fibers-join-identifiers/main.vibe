@@ -10,18 +10,18 @@ function indexed() {
   return join[0]
 }
 
-function count(): number!! {
+effect function count(): number!! {
   return 3
 }
 
-export function main() {
+export effect function main() {
   const words = ["x", "y"]
-  const obj = { join: () => "m" }
+  const obj = { join: effect () => "m" }
   const f = fork count()
   return {
     call: join("a", "b"),
     method: words.join(","),
-    indexed: try indexed(),
+    indexed: indexed(),
     member: try obj.join(),
     fiber: join f
   }

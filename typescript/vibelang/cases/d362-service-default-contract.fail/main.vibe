@@ -5,15 +5,15 @@ service Audit { record(): void!! }
 service Flaky {
   read(): number!!
   static readonly default = {
-    read() { throw new Failed() }
+    effect read() { throw new Failed() }
   }
 }
 
 service Leaky {
   read(): number!!
   static readonly default = {
-    read() { try Audit.record(); return 1 }
+    effect read() { try Audit.record(); return 1 }
   }
 }
 
-export function example() { return try Flaky.read() + try Leaky.read() }
+export effect function example() { return try Flaky.read() + try Leaky.read() }

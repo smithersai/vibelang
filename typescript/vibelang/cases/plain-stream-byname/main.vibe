@@ -1,12 +1,12 @@
 import { Effect, Stream } from "effect"
 error IdleFailure
 let attempts = 0
-const failed = (): Effect.Effect<never, IdleFailure, never> => { attempts++; throw new IdleFailure() }
+const failed = effect (): Effect.Effect<never, IdleFailure, never> => { attempts++; throw new IdleFailure() }
 type IdleStream = () => Stream.Stream<never, IdleFailure, never>
 export const fallback: IdleStream = () => Stream.fromEffect(failed())
 export function named(): Stream.Stream<never, IdleFailure, never> { return Stream.fromEffect(failed()) }
 // expect-result: {"cold":0,"after":2,"caught":"IdleFailure"}
-export function main() {
+export effect function main() {
   const stream = fallback()
   const other = named()
   const cold = attempts

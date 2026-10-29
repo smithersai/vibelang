@@ -4,19 +4,19 @@
 export abstract class Counter {
   abstract increment(): void!!
 
-  static readonly layer = Layer.effect(Counter, () => {
+  static readonly layer = Layer.effect(Counter, effect {
     const count = try Ref.make(0)
     return {
-      increment: () => Ref.update(count, (n) => n + 1),
-      read: () => Ref.get(count)
+      increment: effect () => try Ref.update(count, (n) => n + 1),
+      read: effect () => try Ref.get(count)
     }
   })
 
   abstract read(): number!!
 }
 
-export function main() {
-  return try Effect.provide(() => {
+export effect function main() {
+  return try Effect.provide(effect {
     try Counter.increment()
     try Counter.increment()
     return { count: try Counter.read() }

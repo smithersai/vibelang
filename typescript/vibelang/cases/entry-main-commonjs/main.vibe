@@ -3,6 +3,6 @@
 // which it requires, does not run (D135).
 import { helper } from "./lib.vibe"
 
-export function main() {
+export effect function main() {
   try Console.log(`app main uses ${helper}`)
 }

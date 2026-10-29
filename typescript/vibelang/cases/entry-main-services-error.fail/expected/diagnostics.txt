@@ -1,1 +1,1 @@
-main.vibe(7,17): error EK3205
+main.vibe(7,24): error EK3205

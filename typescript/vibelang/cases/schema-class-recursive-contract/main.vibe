@@ -16,7 +16,7 @@ export class Crate extends Schema.Class<Crate>("Crate")({
   )
 }) {}
 
-export function main() {
+export effect function main() {
   const value = try Schema.decodeUnknownEffect(Crate)({ count: "2", children: [{ count: "1", children: [] }] })
   const wire = try Schema.encodeEffect(Crate)(value)
   return [value instanceof Crate, value.children[0] instanceof Crate, wire]

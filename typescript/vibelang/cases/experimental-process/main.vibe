@@ -2,7 +2,7 @@
 import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
 import { layerTest, Process } from "vibelang-runtime/experimental/Process"
 
-function observe() {
+effect function observe() {
   const pid = try Process.pid()
   return {
     pid: pid > 0,
@@ -13,13 +13,13 @@ function observe() {
   }
 }
 
-function fakePlatform() {
+effect function fakePlatform() {
   provide layerTest({ platform: Effect.succeed("win32") }) {
     return try Process.platform()
   }
 }
 
-export function main() {
+export effect function main() {
   provide ExperimentalNodeProcess.layer {
     return { ...try observe(), fake: try fakePlatform() }
   }

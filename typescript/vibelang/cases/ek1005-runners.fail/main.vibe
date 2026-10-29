@@ -7,27 +7,27 @@ import { NodeRuntime } from "@effect/platform-node"
 import { describe, it, layer } from "@effect/vitest"
 import { onRequest } from "./server.ts"
 
-function refresh(id: string) {
+effect function refresh(id: string) {
   try Effect.sleep("1 millis")
   return id
 }
 
 function refreshAll(ids: ReadonlyArray<string>) {
-  for (const id of ids) Effect.runFork(() => refresh(id))
+  for (const id of ids) Effect.runFork(effect { return try refresh(id) })
 }
 
 const runtime = ManagedRuntime.make(Layer.empty)
 
 function viaRuntime() {
-  return runtime.runPromise(() => refresh("r"))
+  return runtime.runPromise(effect { return try refresh("r") })
 }
 
 function withContext() {
-  return Effect.runSyncWith(Context.empty())(() => refresh("w"))
+  return Effect.runSyncWith(Context.empty())(effect { return try refresh("w") })
 }
 
 function nestedMain() {
-  NodeRuntime.runMain(() => refresh("m"))
+  NodeRuntime.runMain(effect { return try refresh("m") })
 }
 
 const handlers: unknown[] = []
@@ -37,37 +37,37 @@ function register(f: () => void): void {
 }
 
 register(() => {
-  Effect.runFork(() => refresh("e"))
+  Effect.runFork(effect { return try refresh("e") })
 })
 
-it.effect("a test", () => {
-  it.effect("nested", () => refresh("n"))
+it.effect("a test", effect () => {
+  it.effect("nested", effect () => try refresh("n"))
   return try refresh("t")
 })
 
 // A runner bound to the fiber's services is a value: building one starts
 // nothing, so a fiber may hand it to a callback host. Applying it starts a
 // root.
-function bridge() {
+effect function bridge() {
   return Effect.runPromiseWith(try Effect.context<never>())
 }
 
-function boundRunner() {
+effect function boundRunner() {
   const run = Effect.runPromiseWith(try Effect.context<never>())
-  return run(() => refresh("b"))
+  return run(effect { return try refresh("b") })
 }
 
 // Allowed: the module's top level, and plain callbacks passed from there to
 // TypeScript functions.
-Effect.runFork(() => refresh("top"))
-NodeRuntime.runMain(() => refresh("main"))
+Effect.runFork(effect { return try refresh("top") })
+NodeRuntime.runMain(effect { return try refresh("main") })
 onRequest(() => {
-  Effect.runFork(() => refresh("request"))
+  Effect.runFork(effect { return try refresh("request") })
 })
 describe("suite", () => {
-  it.effect("works", () => refresh("ok"))
-  it.effect.each([1, 2])("each", (n) => refresh(String(n)))
+  it.effect("works", effect () => try refresh("ok"))
+  it.effect.each([1, 2])("each", effect (n) => try refresh(String(n)))
 })
 layer(Layer.empty)("with a layer", (it) => {
-  it.effect("works", () => refresh("layer"))
+  it.effect("works", effect () => try refresh("layer"))
 })

@@ -17,7 +17,7 @@ function describe(code: Code): string {
   return code === "root_missing" ? "missing" : "failed"
 }
 
-function decode(input: unknown) {
+effect function decode(input: unknown) {
   try {
     return try Schema.decodeUnknownEffect(Code)(input)
   } catch (e) {
@@ -28,7 +28,7 @@ function decode(input: unknown) {
 // schema stays an ordinary name where no declaration starts.
 const schema = { version: 1 }
 
-export function main() {
+export effect function main() {
   const origin: Point = { x: 1 }
   return {
     code: try decode("read_failed"),

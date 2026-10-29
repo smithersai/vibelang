@@ -3,6 +3,6 @@
 // EK4402 does: UserDirectories.layer.
 import "vibelang/platform/node"
 
-export function main() {
+export effect function main() {
   try Console.log(try UserDirectories.home())
 }

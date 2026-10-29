@@ -11,21 +11,21 @@ export class Box {
   Base = Base
 
   fromDefault(): infer _ {
-    return (n = this.value) => {
+    return effect (n = this.value) => {
       const tick = try Effect.sync(() => 0)
       return n
     }
   }
 
   fromExtends(): infer _ {
-    return () => {
+    return effect () => {
       const tick = try Effect.sync(() => 0)
       const C = class extends this.Base {}
       return new C().value
     }
   }
 
-  method() {
+  effect method() {
     const tick = try Effect.sync(() => 0)
     const C = class extends this.Base {}
     return new C().value

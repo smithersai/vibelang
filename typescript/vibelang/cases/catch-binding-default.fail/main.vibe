@@ -5,14 +5,14 @@
 error Fallback
 service Lookup { value: number }
 
-function fallback(): number!Fallback! { throw new Fallback() }
+effect function fallback(): number!Fallback! { throw new Fallback() }
 
-export function failing(): number!! {
+export effect function failing(): number!! {
   try { throw {} as { id?: number } }
   catch ({ id = try fallback() }) { return id }
 }
 
-export function needing(): number!! {
+export effect function needing(): number!! {
   try { throw {} as { id?: number } }
   catch ({ id = (try Lookup()).value }) { return id }
 }

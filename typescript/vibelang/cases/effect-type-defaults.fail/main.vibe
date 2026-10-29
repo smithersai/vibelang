@@ -10,10 +10,10 @@ service Users {
   count(): number
 }
 
-export function find(id: string): Effect<string> {
+export effect function find(id: string): Effect<string> {
   return try Users.find(id)
 }
 
-export function lookup(id: string): Effect<string, Gone> {
+export effect function lookup(id: string): Effect<string, Gone> {
   return try Users.find(id)
 }

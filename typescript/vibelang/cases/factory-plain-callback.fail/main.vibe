@@ -1,4 +1,4 @@
 // expect: EK4301
 import { Effect } from "effect"
-export function make(n: number): number!! { return () => n }
+export function make(n: number): number!! { return effect { return n } }
 export function main() { return [1].map(make) }

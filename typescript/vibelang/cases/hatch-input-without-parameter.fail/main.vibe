@@ -2,8 +2,8 @@
 // An input passed to a hatch whose function declares no parameter for it is
 // EK4405 alone: TypeScript's report that the function fits no overload of
 // sync, naming the async one, is hidden.
-function size(r: { name: string }) {
+effect function size(r: { name: string }) {
   return try sync(() => { return r.name.length }, r)
 }
 
-export function main() { return try size({ name: "a" }) }
+export effect function main() { return try size({ name: "a" }) }

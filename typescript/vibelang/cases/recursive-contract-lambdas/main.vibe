@@ -11,7 +11,7 @@ type Step =
   | { readonly kind: "leaf"; readonly value: number }
   | { readonly kind: "race"; readonly branches: ReadonlyArray<Step> }
 
-const runBranch = (branch: Step, index: number): Effect.Effect<number, never, never> => {
+const runBranch = effect (branch: Step, index: number): Effect.Effect<number, never, never> => {
   if (branch.kind === "slow") {
     try Effect.sleep(3_600_000)
     return -1
@@ -20,27 +20,27 @@ const runBranch = (branch: Step, index: number): Effect.Effect<number, never, ne
   return try runRace(branch.branches)
 }
 
-const runRace = (branches: ReadonlyArray<Step>): Effect.Effect<number, never, never> =>
-  Effect.raceAll(try sync(({ branches, execute }) => branches.map(execute), {
+const runRace = effect (branches: ReadonlyArray<Step>): Effect.Effect<number, never, never> =>
+  try Effect.raceAll(try sync(({ branches, execute }) => branches.map(execute), {
     branches,
-    execute: (branch: Step, index: number): Effect.Effect<number, never, never> => runBranch(branch, index)
+    execute: effect (branch: Step, index: number): Effect.Effect<number, never, never> => try runBranch(branch, index)
   }))
 
 // A-7 (registry Executable, reserveSibling): the recursive call is in a catch
 // handler, and a caller passes a call by name.
-const attempt = (n: number): Effect.Effect<string, string, never> => {
+const attempt = effect (n: number): Effect.Effect<string, string, never> => {
   if (n > 1) throw `busy ${n}`
   return `slot ${n}`
 }
 
-export const reserve = (attempts: number): Effect.Effect<string, string, never> =>
-  Effect.catch(attempt(attempts), (cause) => attempts > 1 ? try reserve(attempts - 1) : (throw cause))
+export const reserve = effect (attempts: number): Effect.Effect<string, string, never> =>
+  try Effect.catch(attempt(attempts), effect (cause) => attempts > 1 ? try reserve(attempts - 1) : (throw cause))
 
-export const load = (): Effect.Effect<string, never, never> => Effect.orElseSucceed(reserve(3), () => "none")
+export const load = effect (): Effect.Effect<string, never, never> => try Effect.orElseSucceed(reserve(3), () => "none")
 
 // A-7 (flows patterns, Supervisor): the recursive call comes before the
 // body's first Effect operation.
-export const depth = (n: number): Effect.Effect<number, never, never> => {
+export const depth = effect (n: number): Effect.Effect<number, never, never> => {
   if (n === 0) return 0
   const below = try depth(n - 1)
   try Effect.logDebug(`depth ${n}`)
@@ -54,10 +54,10 @@ interface Tree {
   readonly children: ReadonlyArray<Tree>
 }
 
-export const holds = (tree: Tree, name: string): Effect.Effect<boolean, never, never> =>
-  Effect.suspend(() => {
-    const visit = (node: Tree, level: number): Effect.Effect<boolean, never, never> =>
-      Effect.suspend(() => {
+export const holds = effect (tree: Tree, name: string): Effect.Effect<boolean, never, never> =>
+  try Effect.suspend(effect () => {
+    const visit = effect (node: Tree, level: number): Effect.Effect<boolean, never, never> =>
+      try Effect.suspend(effect () => {
         if (node.name === name) return true
         for (const child of node.children) {
           if (try visit(child, level + 1)) return true
@@ -68,8 +68,8 @@ export const holds = (tree: Tree, name: string): Effect.Effect<boolean, never, n
   })
 
 // A lambda reaches the recursion through another lambda, used as a value.
-export const walk = (n: number): Effect.Effect<number, never, never> => {
-  const step = (m: number): Effect.Effect<number, never, never> => walk(m)
+export const walk = effect (n: number): Effect.Effect<number, never, never> => {
+  const step = effect (m: number): Effect.Effect<number, never, never> => try walk(m)
   if (n === 0) return 0
   const below = try Effect.forEach([n - 1], step)
   return below[0] + 1
@@ -77,22 +77,22 @@ export const walk = (n: number): Effect.Effect<number, never, never> => {
 
 // A recursive lambda with an Effect contract is an Effect function even when
 // it runs nothing else; with a plain contract it stays plain (D263).
-export const count = (n: number): number!! => n === 0 ? 0 : try count(n - 1) + 1
+export const count = effect (n: number): number!! => n === 0 ? 0 : try count(n - 1) + 1
 export const plainCount = (n: number): number => n === 0 ? 0 : plainCount(n - 1) + 1
 
 // S11-1 (flows sandbox RemoteChildProcessSpawner, validateCommand): a
 // self-recursive arrow with a full contract that throws.
 error Rejected { message: string }
 
-export const validate = (depth: number): Effect.Effect<void, Rejected, never> => {
+export const validate = effect (depth: number): Effect.Effect<void, Rejected, never> => {
   if (depth > 0) return try validate(depth - 1)
   throw new Rejected({ message: `rejected at ${depth}` })
 }
 
 // S11-1 (agent/triggers Scheduler, processTrigger): the recursive call sits in
 // the body of withSpan's program.
-export const processTrigger = (n: number): number!! =>
-  withSpan(() => {
+export const processTrigger = effect (n: number): number!! =>
+  try withSpan(effect {
     if (n > 0) return try processTrigger(n - 1) + 1
     return 0
   }, "processTrigger")
@@ -100,7 +100,7 @@ export const processTrigger = (n: number): number!! =>
 const tree: Tree = { name: "a", children: [{ name: "b", children: [] }, { name: "c", children: [{ name: "d", children: [] }] }] }
 
 // expect-result: {"race":9,"reserve":"slot 1","depth":3,"holds":[true,false],"walk":2,"count":4,"plainCounts":[1,2,3],"validate":"rejected at 0","processTrigger":2}
-export function main() {
+export effect function main() {
   let rejected = ""
   try {
     try validate(2)
@@ -112,7 +112,7 @@ export function main() {
     race,
     reserve: try load(),
     depth: try depth(3),
-    holds: try Effect.forEach(["d", "z"], (name) => holds(tree, name)),
+    holds: try Effect.forEach(["d", "z"], effect (name) => try holds(tree, name)),
     walk: try walk(2),
     count: try count(4),
     plainCounts: [1, 2, 3].map(plainCount),

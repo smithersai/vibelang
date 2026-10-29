@@ -11,11 +11,11 @@ service Users {
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "42") throw new NotFound({ id })
     return "Ada"
   },
-  count() {
+  effect count() {
     return 2
   }
 })
@@ -23,23 +23,23 @@ const UsersLive = Layer.succeed(Users, {
 type Lookup = (id: string) => Effect<string, NotFound, Users>
 type Counted = number!!
 
-export function terse(id: string): string!NotFound!Users {
+export effect function terse(id: string): string!NotFound!Users {
   return try Users.find(id)
 }
 
-export function spelled(id: string): Effect<string, NotFound, Users> {
+export effect function spelled(id: string): Effect<string, NotFound, Users> {
   return try terse(id)
 }
 
-export function guest(lookup: Lookup, id: string): string!!Users {
+export effect function guest(lookup: Lookup, id: string): string!!Users {
   return lookup(id) catch "guest"
 }
 
-export function add(program: Counted, extra: Effect<number>): Effect<number, never, Users> {
+export effect function add(program: Counted, extra: Effect<number>): Effect<number, never, Users> {
   return try program() + try extra() + try Users.count()
 }
 
-export function main() {
+export effect function main() {
   provide UsersLive {
     return {
       terse: try terse("42"),

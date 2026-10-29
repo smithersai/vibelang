@@ -15,7 +15,7 @@ function make() {
   return 1
 }
 
-const build = (n: number) => n
+const build = effect (n: number) => n
 
 class Box {
   constructor(readonly n: number) {}
@@ -26,7 +26,7 @@ export function main() {
   const b = new (make as any)()
   // @ts-ignore
   const c = new build(1)
-  const d = new make(try make(2))
+  const d = new make(make(2))
   const e = new Box(1)
   const f = new (Point as any)(2)
   return [a, b, c, d, e.n, f.x]

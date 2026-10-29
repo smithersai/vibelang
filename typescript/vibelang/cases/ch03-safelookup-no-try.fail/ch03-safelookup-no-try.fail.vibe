@@ -16,12 +16,12 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-function parseId(raw: string) {
+effect function parseId(raw: string) {
   if (!/^\d+$/.test(raw)) throw new InvalidId({ raw })
   return Number(raw)
 }
 
-function lookupOrGuest(raw: string) {
+effect function lookupOrGuest(raw: string) {
   try {
     return try Users.find(String(try parseId(raw)))
   } catch (e) {
@@ -30,6 +30,6 @@ function lookupOrGuest(raw: string) {
   }
 }
 
-export function safeLookup(raw: string): Effect<User, never, Users> {
+export effect function safeLookup(raw: string): Effect<User, never, Users> {
   return try lookupOrGuest(raw)
 }

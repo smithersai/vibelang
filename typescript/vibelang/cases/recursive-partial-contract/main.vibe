@@ -6,33 +6,33 @@
 error Neg { n: number }
 service Audit { note(n: number): void!! }
 
-function fact(n: number): number!Neg {
+effect function fact(n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   return n * try fact(n - 1)
 }
 
-function factVia(n: number): number!Neg {
+effect function factVia(n: number): number!Neg {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   const rest = try factVia(n - 1)
   return n * rest
 }
 
-function audited(n: number): number!Neg {
+effect function audited(n: number): number!Neg {
   try Audit.note(n)
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   return n * try audited(n - 1)
 }
 
-function inferred(n: number): Effect<number, infer E, infer R> {
+effect function inferred(n: number): Effect<number, infer E, infer R> {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   return n * try inferred(n - 1)
 }
 
-function label(n: number): string!Neg {
+effect function label(n: number): string!Neg {
   if (n < 0) throw new Neg({ n })
   if (n === 0) return "0"
   if ((try label(n - 1)).length > 3) return "long"
@@ -40,11 +40,11 @@ function label(n: number): string!Neg {
 }
 
 // R reaches isEven through isOdd.
-function isEven(n: number): boolean!never {
+effect function isEven(n: number): boolean!never {
   return n === 0 ? true : !try isOdd(n - 1)
 }
 
-function isOdd(n: number): boolean!never {
+effect function isOdd(n: number): boolean!never {
   try Audit.note(n)
   return n === 0 ? false : !try isEven(n - 1)
 }
@@ -52,8 +52,8 @@ function isOdd(n: number): boolean!never {
 const notes: number[] = []
 
 // expect-result: {"fact":120,"factVia":120,"audited":6,"inferred":24,"label":"long","even":true,"failed":"Neg","notes":[3,2,1,3,1]}
-export function main() {
-  provide Audit = { note(n) { notes.push(n) } } {
+export effect function main() {
+  provide Audit = { effect note(n) { notes.push(n) } } {
     const failed = fact(-1) catch (e) => e._tag
     return { fact: try fact(5), factVia: try factVia(5), audited: try audited(3), inferred: try inferred(4), label: try label(4), even: try isEven(4), failed, notes }
   }

@@ -4,7 +4,7 @@
 // concurrency").
 control Ask { ask(): number!! }
 
-function answered(n: number) {
+effect function answered(n: number) {
   try {
     return try Ask.ask()
   } handle Ask.ask() {
@@ -12,12 +12,12 @@ function answered(n: number) {
   }
 }
 
-function late() {
+effect function late() {
   try sleep("1 second")
   return 0
 }
 
-export function main() {
+export effect function main() {
   return {
     race: await.race [answered(1), late()],
     any: await.any [late(), answered(2)]

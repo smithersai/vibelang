@@ -1,0 +1,42 @@
+// expect-result: {"a":2,"b":3,"c":[2,4],"d":"hi!","e":5,"f":1,"g":7,"runs":2,"h":"Layer"}
+// effect marks an Effect function (VIP-1) exactly where TypeScript allows
+// async (VIP-39); effect { … } builds an Effect from a block, not yet run,
+// that reruns each time it runs (VIP-2). Outside those positions effect is
+// an identifier.
+effect function double(n: number) {
+  try yieldNow()
+  return n * 2
+}
+
+effect function triple(n: number) {
+  return (try double(n)) + n
+}
+
+class Greeter {
+  effect greet(name: string) {
+    try yieldNow()
+    return name + "!"
+  }
+}
+
+const tools = {
+  effect: 1,
+  effect five() { return try Effect.succeed(5) },
+}
+
+let runs = 0
+const counted = effect { runs += 1; return runs }
+
+export effect function main() {
+  const a = try double(1)
+  const b = try triple(1)
+  const c = try forEach([1, 2], effect n => try double(n))
+  const d = try new Greeter().greet("hi")
+  const e = try tools.five()
+  const f = try counted
+  const inc = effect (n: number) => try Effect.succeed(n + 1)
+  const g = try inc(6)
+  try counted
+  const effect = { kind: "Layer" }
+  return { a, b, c, d, e, f, g, runs, h: effect.kind }
+}

@@ -1,7 +1,7 @@
 // expect-result: {"masked":"done","restored":"Failure","forced":"Failure","returned":7,"call":"work"}
 
 // An uninterruptible block finishes even when its fiber is interrupted.
-function masked() {
+effect function masked() {
   const done = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
@@ -15,7 +15,7 @@ function masked() {
 }
 
 // restore brings back the interruptibility the block began with.
-function restored() {
+effect function restored() {
   const started = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
@@ -31,7 +31,7 @@ function restored() {
 }
 
 // interruptible makes code interruptible inside an uninterruptible block.
-function forced() {
+effect function forced() {
   const started = try Deferred.make<string>()
   const fiber = fork {
     uninterruptible {
@@ -47,7 +47,7 @@ function forced() {
 }
 
 // A return inside the block returns from the function.
-function returned() {
+effect function returned() {
   uninterruptible {
     return 7
   }
@@ -58,10 +58,10 @@ function work() {
 }
 
 // The call form runs a program the same way.
-function call() {
+effect function call() {
   return try uninterruptible(work())
 }
 
-export function main() {
+export effect function main() {
   return { masked: try masked(), restored: try restored(), forced: try forced(), returned: try returned(), call: try call() }
 }

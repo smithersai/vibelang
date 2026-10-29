@@ -1,7 +1,7 @@
 // expect: EK2105
 error Busy
 
-export function attempt() {
+export effect function attempt() {
   try {
     throw new Busy()
   } catch (e: Error) {

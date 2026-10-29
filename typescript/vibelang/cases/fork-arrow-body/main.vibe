@@ -5,7 +5,7 @@
 // them. Each body discards the fork's value, which D409 allows.
 const events: string[] = []
 
-function ticker(name: string) {
+effect function ticker(name: string) {
   try {
     while (true) try sleep("1 millis")
   } finally {
@@ -13,26 +13,26 @@ function ticker(name: string) {
   }
 }
 
-function step() {
+effect function step() {
   try sleep("5 millis")
   events.push("step")
   return "stepped"
 }
 
-const concise = (name: string) => (fork ticker(name), try step())
+const concise = effect (name: string) => (fork ticker(name), try step())
 
-function nested() {
-  const inner = () => (fork ticker("nested"), try step())
+effect function nested() {
+  const inner = effect () => (fork ticker("nested"), try step())
   return try inner()
 }
 
-function block(name: string) {
+effect function block(name: string) {
   fork ticker(name)
   return try step()
 }
 
-export function main() {
-  return try Effect.scoped(() => {
+export effect function main() {
+  return try Effect.scoped(effect {
     const a = try concise("concise")
     events.push("after concise")
     const b = try nested()

@@ -2,7 +2,7 @@
 // D351: the written success type is H even without a dependent return.
 control Step { next(): void!! }
 
-export function resumeWritten(): number | string!! {
+export effect function resumeWritten(): number | string!! {
   try {
     try Step.next()
     return 1
@@ -12,18 +12,18 @@ export function resumeWritten(): number | string!! {
   }
 }
 
-export function resumeWithWritten(): number | string!! {
+export effect function resumeWithWritten(): number | string!! {
   try {
     try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = try resumeWith(() => undefined)
+    const n: number = try resumeWith(effect { return undefined })
     return n
   }
 }
 
 // Every ordinary return still has to fit the written success type.
-export function invalidTry(): number!! {
+export effect function invalidTry(): number!! {
   try {
     try Step.next()
     return "bad"
@@ -32,7 +32,7 @@ export function invalidTry(): number!! {
   }
 }
 
-export function invalidClause(): number!! {
+export effect function invalidClause(): number!! {
   try {
     try Step.next()
     return 1
@@ -42,7 +42,7 @@ export function invalidClause(): number!! {
 }
 
 // Normal completion of the try block adds undefined to the written H.
-export function fallthroughWritten(): number!! {
+export effect function fallthroughWritten(): number!! {
   try {
     try Step.next()
   } handle Step.next() {
@@ -53,7 +53,7 @@ export function fallthroughWritten(): number!! {
 }
 
 // A clause that can stop without resuming also adds undefined to H.
-export function stopWritten(stop: boolean): number!! {
+export effect function stopWritten(stop: boolean): number!! {
   try {
     try Step.next()
     return 1
@@ -67,13 +67,13 @@ export function stopWritten(stop: boolean): number!! {
 }
 
 // Non-return jumps from the try block have the same rule.
-export function breakWritten(): number!! {
+export effect function breakWritten(): number!! {
   for (const round of [1, 2]) {
     try {
       try Step.next()
       break
     } handle Step.next() {
-      const n: number = try resumeWith(() => undefined)
+      const n: number = try resumeWith(effect { return undefined })
       n.toFixed(0)
     }
   }

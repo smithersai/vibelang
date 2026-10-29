@@ -4,21 +4,21 @@ export const expanded = (...values: number[]): Effect<number | undefined, never,
   const last = values.pop()
   return last
 }
-export function declared(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
-export const expression = function (...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
+export effect function declared(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
+export const expression = effect function (...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
 export class Counter {
-  compact(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
-  expanded(...values: number[]): Effect<number | undefined, never, never> {
+  effect compact(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
+  effect expanded(...values: number[]): Effect<number | undefined, never, never> {
     const last = values.pop()
     return last
   }
 }
 export const object = {
-  read(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
+  effect read(...values: number[]): Effect<number | undefined, never, never> { return values.pop() }
 }
 export class Defaults {
-  read(values: number[] = [1, 2]): Effect<number | undefined, never, never> { return values.pop() }
-  destructured({ values = [1, 2] }: { values?: number[] } = {}): Effect<number | undefined, never, never> { return values.pop() }
+  effect read(values: number[] = [1, 2]): Effect<number | undefined, never, never> { return values.pop() }
+  effect destructured({ values = [1, 2] }: { values?: number[] } = {}): Effect<number | undefined, never, never> { return values.pop() }
 }
-export function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return try Effect.succeed(values.pop()) }
+export effect function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return try Effect.succeed(values.pop()) }
 export const fresh = (...values: number[]): Effect<number[], never, never> => values

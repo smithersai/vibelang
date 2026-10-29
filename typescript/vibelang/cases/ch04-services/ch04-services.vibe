@@ -31,7 +31,7 @@ abstract class Mailer {
   abstract send(to: string, body: string): Effect<void, MailError, never>
 
   static readonly layer = Layer.succeed(Mailer, {
-    send: (to, body) => {
+    send: effect (to, body) => {
       outbox.push(`${to}: ${body}`)
     }
   })
@@ -53,12 +53,12 @@ abstract class Settings {
   abstract scale(): Effect<number, never, never>
 }
 
-function apiUrl(path: string) {
+effect function apiUrl(path: string) {
   return `${(try Settings()).baseUrl}/${path}`
 }
 // Effect<string, never, Settings>
 
-function welcome(id: string) {
+effect function welcome(id: string) {
   const user = try Users.find(id)
   try Mailer.send(user.email, `Welcome, ${user.name}!`)
   return user.name
@@ -72,16 +72,16 @@ function toUser(row: Row) {
 
 // Writing a provider (the version without Effect.orDie is ch04-provider-escapes.fail.vibe)
 
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()              // runs once, when the layer is built
   return {
-    find(id) {
-      const rows = try Effect.orDie(() => db.query("select * from users where id = $1", [id]))
+    effect find(id) {
+      const rows = try Effect.orDie(effect { return try db.query("select * from users where id = $1", [id]) })
       if (rows.length === 0) throw new UserNotFound({ id })
-      return try toUser(rows[0])
+      return toUser(rows[0])
     },
-    rename(id, name) {
-      try Effect.orDie(() => db.execute("update users set name = $1 where id = $2", [name, id]))
+    effect rename(id, name) {
+      try Effect.orDie(effect { return try db.execute("update users set name = $1 where id = $2", [name, id]) })
     }
   }
 })
@@ -99,11 +99,11 @@ const poolEvents: string[] = []
 
 function memoryPool() {
   const pool: Pool = {
-    query: (sql, params) => {
+    query: effect (sql, params) => {
       const row = table.get(params[0])
       return row === undefined ? [] : [row]
     },
-    execute: (sql, params) => {
+    execute: effect (sql, params) => {
       const row = table.get(params[1])
       if (row !== undefined) table.set(row.id, { ...row, name: params[0] })
     }
@@ -113,14 +113,14 @@ function memoryPool() {
 
 // NOTE: the proposal's `Postgres.connect` is an unspecified library function returning
 // Effect<Pool, ConnectError, Scope>; it is modeled as an object holding a .vibe function.
-function connect(url: string) {
+effect function connect(url: string) {
   if (url.length === 0) throw new ConnectError({ url })
   return try Effect.acquireRelease(
-    () => {
+    effect {
       poolEvents.push(`open ${url}`)
-      return try memoryPool()
+      return memoryPool()
     },
-    () => {
+    effect () => {
       poolEvents.push(`close ${url}`)
     }
   )
@@ -128,11 +128,11 @@ function connect(url: string) {
 
 const Postgres = { connect }
 
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const pool = try Postgres.connect((try Config()).url)    // no `using`: the pool lives as long as the layer
   return {
-    query: (sql, params) => pool.query(sql, params),
-    execute: (sql, params) => pool.execute(sql, params)
+    query: effect (sql, params) => try pool.query(sql, params),
+    execute: effect (sql, params) => try pool.execute(sql, params)
   }
 })
 // Layer<Database, ConnectError, Config>
@@ -154,15 +154,15 @@ const AppLive = pipe(
 // Testing with fake services
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: "Ada", email: "ada@example.com" }),
-  rename: () => {}
+  find: effect (id) => ({ id, name: "Ada", email: "ada@example.com" }),
+  rename: effect () => {}
 })
 
-function welcomeQuietly(id: string) {
-  return try Effect.provideService(() => welcome(id), Mailer, { send: () => {} })
+effect function welcomeQuietly(id: string) {
+  return try Effect.provideService(effect { return try welcome(id) }, Mailer, { send: effect () => {} })
 }
 
-function renameAndWelcomeQuietly() {
+effect function renameAndWelcomeQuietly() {
   try Users.rename("1", "Augusta")
   const renamed = (try Users.find("1")).name
   const quiet = try welcomeQuietly("1")
@@ -172,14 +172,14 @@ function renameAndWelcomeQuietly() {
 // Running with providers: each Effect.provide builds its layers once (D21), so the pool opens
 // and closes once per provide.
 // expect-result: {"name":"Ada","renamed":"Augusta","quiet":"Augusta","test":"Ada","url":"https://api.example.com/users","scale":3,"outbox":["ada@example.com: Welcome, Ada!","ada@example.com: Welcome, Ada!"],"poolEvents":["open postgres://test","close postgres://test","open postgres://test","close postgres://test"]}
-export function main() {
-  const name = try Effect.provide(() => welcome("1"), AppLive)
-  const after = try Effect.provide(() => renameAndWelcomeQuietly(), AppLive)
-  const test = try Effect.provide(() => welcome("42"), Layer.mergeAll(UsersTest, Mailer.layer))
-  const url = try Effect.provideService(() => apiUrl("users"), Settings, {
+export effect function main() {
+  const name = try Effect.provide(effect { return try welcome("1") }, AppLive)
+  const after = try Effect.provide(effect { return try renameAndWelcomeQuietly() }, AppLive)
+  const test = try Effect.provide(effect { return try welcome("42") }, Layer.mergeAll(UsersTest, Mailer.layer))
+  const url = try Effect.provideService(effect { return try apiUrl("users") }, Settings, {
     baseUrl: "https://api.example.com",
-    scale: () => 3
+    scale: effect () => 3
   })
-  const scale = try Effect.provideService(() => Settings.scale(), Settings, { baseUrl: "unused", scale: () => 3 })
+  const scale = try Effect.provideService(effect { return try Settings.scale() }, Settings, { baseUrl: "unused", scale: effect () => 3 })
   return { name, renamed: after.renamed, quiet: after.quiet, test, url, scale, outbox, poolEvents }
 }

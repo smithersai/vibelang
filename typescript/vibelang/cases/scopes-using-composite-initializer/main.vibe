@@ -17,26 +17,26 @@ type Never<T extends never> = T
 
 type Left = Never<Effect.Services<ReturnType<typeof conditionalGeneric<Resource, Scope>>>>
 
-export function main() {
+export effect function main() {
   const left: Left[] = []
   const result = {
-    conditional: try run((events) => conditional(events, true)),
-    comma: try run((events) => comma(events)),
-    argument: try run((events) => argument(events)),
-    plain: try run((events) => plain(events)),
-    method: try run((events) => new Holder(events, true).hold()),
-    forHead: try run((events) => forHead(events)),
-    generic: try run((events) => { try conditionalGeneric(() => acquire(events), true) }),
-    order: try run((events) => order(events))
+    conditional: try run(effect (events) => try conditional(events, true)),
+    comma: try run(effect (events) => try comma(events)),
+    argument: try run(effect (events) => try argument(events)),
+    plain: try run(effect (events) => try plain(events)),
+    method: try run(effect (events) => try new Holder(events, true).hold()),
+    forHead: try run(effect (events) => try forHead(events)),
+    generic: try run(effect (events) => { try conditionalGeneric(effect () => try acquire(events), true) }),
+    order: try run(effect (events) => try order(events))
   }
   return [result, ...left][0]
 }
 
 // Runs work in a Scope of the caller's, which would also own an acquisition
 // that ran outside the block's Scope, and returns what it recorded.
-function run(work: (events: string[]) => void!!) {
+effect function run(work: (events: string[]) => void!!) {
   const events: string[] = []
-  try Effect.scoped(() => {
+  try Effect.scoped(effect {
     try work(events)
     events.push("after work")
   })
@@ -50,11 +50,11 @@ function handle(events: string[]): Resource {
 }
 
 // Its release disposes the value it recorded.
-function acquire(events: string[]) {
-  return try Effect.acquireRelease(() => handle(events), (r) => { r[Symbol.dispose]() })
+effect function acquire(events: string[]) {
+  return try Effect.acquireRelease(effect { return handle(events) }, effect (r) => { r[Symbol.dispose]() })
 }
 
-function keep<A>(value: A) {
+effect function keep<A>(value: A) {
   try yieldNow()
   return value
 }
@@ -63,22 +63,22 @@ function same<A>(value: A): A {
   return value
 }
 
-function conditional(events: string[], flag: boolean): void!! {
+effect function conditional(events: string[], flag: boolean): void!! {
   using r = flag ? try acquire(events) : try acquire(events)
   events.push("body")
 }
 
-function comma(events: string[]): void!! {
-  using h = (try Effect.acquireRelease(() => "lease", () => { events.push("released") }), handle(events))
+effect function comma(events: string[]): void!! {
+  using h = (try Effect.acquireRelease(effect { return "lease" }, effect () => { events.push("released") }), handle(events))
   events.push("body")
 }
 
-function argument(events: string[]): void!! {
+effect function argument(events: string[]): void!! {
   using r = try keep(try acquire(events))
   events.push("body")
 }
 
-function plain(events: string[]): void!! {
+effect function plain(events: string[]): void!! {
   using r = same(try acquire(events))
   events.push("body")
 }
@@ -90,34 +90,34 @@ class Holder {
     this.events = events
     this.flag = flag
   }
-  hold(): void!! {
+  effect hold(): void!! {
     using r = this.flag ? try acquire(this.events) : try acquire(this.events)
     this.events.push("body")
   }
 }
 
-function forHead(events: string[]): void!! {
+effect function forHead(events: string[]): void!! {
   for (using r = try keep(try acquire(events)); ; ) {
     events.push("body")
     break
   }
 }
 
-function step<A>(events: string[], name: string, value: A) {
+effect function step<A>(events: string[], name: string, value: A) {
   try yieldNow()
   events.push(name)
   return value
 }
 
-function pick<A>(first: unknown, value: A, last: unknown) {
+effect function pick<A>(first: unknown, value: A, last: unknown) {
   try yieldNow()
   return value
 }
 
-function order(events: string[]): void!! {
-  using r = try pick(try step(events, "a", 1), try Effect.acquireRelease(() => {
+effect function order(events: string[]): void!! {
+  using r = try pick(try step(events, "a", 1), try Effect.acquireRelease(effect {
     events.push("acquired")
     return handle(events)
-  }, (h) => { h[Symbol.dispose]() }), try step(events, "b", 2))
+  }, effect (h) => { h[Symbol.dispose]() }), try step(events, "b", 2))
   events.push("body")
 }

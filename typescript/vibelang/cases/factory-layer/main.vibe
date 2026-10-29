@@ -4,15 +4,15 @@ export class Registry extends Context.Service<Registry, { readonly value: number
 type Made = Effect.Effect<{ readonly value: number }, never, never>
 export const make = (config: { mutable value: number }): Made => {
   const snapshot = config.value
-  return () => ({ value: snapshot })
+  return effect { return ({ value: snapshot }) }
 }
 export const layer = (config: { mutable value: number }): Layer.Layer<Registry> => {
   const built: Made = make(config)
   return Layer.effect(Registry)(built)
 }
-export function read(config: { mutable value: number }) {
-  return try Effect.provide(() => Registry(), layer(config))
+export effect function read(config: { mutable value: number }) {
+  return try Effect.provide(effect { return try Registry() }, layer(config))
 }
 
 // expect-result: "layer snapshot: 1"
-export function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try sync((run: () => string) => run(), check) }

@@ -3,19 +3,19 @@
 // and an Exit, and converted a function to its program. fork's operand is
 // now a program by syntax whose result is its value (D322, D433);
 // fork-operand-legacy-fixed is what vibelang --fix writes.
-function work(n: number) {
+effect function work(n: number) {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
+export effect function main() {
   const program: number!! = Effect.succeed(1)
-  const job = () => work(2)
+  const job = effect () => try work(2)
   const exited = Exit.succeed(5)
   const a = fork program
   const b = fork job
-  const c = fork(() => work(3))
-  const d = fork(() => {
+  const c = fork(effect { return try work(3) })
+  const d = fork(effect {
     try sleep("1 millis")
     return 4
   })

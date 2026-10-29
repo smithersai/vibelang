@@ -5,18 +5,18 @@
 // form, never becomes a method.
 error Boom { n: number }
 
-function failing() {
+effect function failing() {
   throw new Boom({ n: 1 })
 }
 
 // expect-result: {"errorOption":true,"error":1,"pretty":true,"found":"Success","defect":"Failure","abs":"2.5","zero":true,"sign":-1,"rounded":"3","hrTime":[2,0],"span":1,"annotated":2,"zipped":[1,2],"channel":"object"}
-export function main() {
+export effect function main() {
   const outcome = try exit(failing())
   if (outcome is Exit.Failure(let cause)) return try describe(outcome, cause)
   return "succeeded"
 }
 
-function describe(outcome: Exit.Exit<void, Boom>, cause: Cause.Cause<Boom>) {
+effect function describe(outcome: Exit.Exit<void, Boom>, cause: Cause.Cause<Boom>) {
   const errorOption = cause.findErrorOption().isSome()
   const error = cause.findErrorOption().getOrElse(() => new Boom({ n: 0 })).n
   const pretty = cause.pretty().includes("Boom")

@@ -5,52 +5,52 @@
 import { Parent, key, rhs, trace } from "./base.vibe"
 
 export class Child extends Parent {
-  keyMethod() {
+  effect keyMethod() {
     const tick = try Effect.sync(() => 0)
     trace.push("key")
     return "count" as const
   }
-  rhsMethod() {
+  effect rhsMethod() {
     const tick = try Effect.sync(() => 0)
     trace.push("rhs")
     return 2
   }
-  update() {
+  effect update() {
     try sync(() => {})
     super.count++
     return this.value
   }
-  computed() {
+  effect computed() {
     super[try this.keyMethod()] += try this.rhsMethod()
     return this.value
   }
-  post() { const t = try Effect.sync(() => 0); const r = super.count++; return [r, this.value] }
-  pre() { const t = try Effect.sync(() => 0); const r = --super.count; return [r, this.value] }
-  computedPost() { const t = try Effect.sync(() => 0); const r = super[try key()]++; return [r, this.value] }
-  computedAdd() { const t = try Effect.sync(() => 0); const r = super[try key()] += try rhs(); return [r, this.value] }
-  computedPower() { const t = try Effect.sync(() => 0); const r = super[try key()] **= try rhs(); return [r, this.value] }
-  computedNullish() { const t = try Effect.sync(() => 0); const r = super[try key()] ??= try rhs(); return [r, this.value] }
-  computedOr() {
+  effect post() { const t = try Effect.sync(() => 0); const r = super.count++; return [r, this.value] }
+  effect pre() { const t = try Effect.sync(() => 0); const r = --super.count; return [r, this.value] }
+  effect computedPost() { const t = try Effect.sync(() => 0); const r = super[key()]++; return [r, this.value] }
+  effect computedAdd() { const t = try Effect.sync(() => 0); const r = super[key()] += rhs(); return [r, this.value] }
+  effect computedPower() { const t = try Effect.sync(() => 0); const r = super[key()] **= rhs(); return [r, this.value] }
+  effect computedNullish() { const t = try Effect.sync(() => 0); const r = super[key()] ??= rhs(); return [r, this.value] }
+  effect computedOr() {
     const t = try Effect.sync(() => 0)
     this.value = 0
-    const r = super[try key()] ||= try rhs()
+    const r = super[key()] ||= rhs()
     return [r, this.value]
   }
-  computedAnd() { const t = try Effect.sync(() => 0); const r = super[try key()] &&= try rhs(); return [r, this.value] }
-  destructure() { const t = try Effect.sync(() => 0); [super.count, super[try key()]] = [7, 8]; return [this.value] }
-  destructureObject() { const t = try Effect.sync(() => 0); ({ x: super.count } = { x: 9 }); return [this.value] }
-  destructureDefault() { const t = try Effect.sync(() => 0); [super.count = 5] = []; return [this.value] }
-  forOf() {
+  effect computedAnd() { const t = try Effect.sync(() => 0); const r = super[key()] &&= rhs(); return [r, this.value] }
+  effect destructure() { const t = try Effect.sync(() => 0); [super.count, super[key()]] = [7, 8]; return [this.value] }
+  effect destructureObject() { const t = try Effect.sync(() => 0); ({ x: super.count } = { x: 9 }); return [this.value] }
+  effect destructureDefault() { const t = try Effect.sync(() => 0); [super.count = 5] = []; return [this.value] }
+  effect forOf() {
     const t = try Effect.sync(() => 0)
     const seen: number[] = []
     for (super.count of [1, 2]) seen.push(this.value)
     return seen
   }
-  tagged() { const t = try Effect.sync(() => 0); return [super.tag`a${1}b`] }
-  bigint() { const t = try Effect.sync(() => 0); const r = super.big++; return [String(r), String(this.bigValue)] }
-  static staticPost() { const t = try Effect.sync(() => 0); const r = super.counter++; return [r, Parent.counterValue] }
+  effect tagged() { const t = try Effect.sync(() => 0); return [super.tag`a${1}b`] }
+  effect bigint() { const t = try Effect.sync(() => 0); const r = super.big++; return [String(r), String(this.bigValue)] }
+  static effect staticPost() { const t = try Effect.sync(() => 0); const r = super.counter++; return [r, Parent.counterValue] }
   arrow(): infer _ {
-    return () => { const t = try Effect.sync(() => 0); const r = super.count++; return [r, this.value] }
+    return effect () => { const t = try Effect.sync(() => 0); const r = super.count++; return [r, this.value] }
   }
-  field = () => { const t = try Effect.sync(() => 0); const r = super.count--; return [r, this.value] }
+  field = effect () => { const t = try Effect.sync(() => 0); const r = super.count--; return [r, this.value] }
 }

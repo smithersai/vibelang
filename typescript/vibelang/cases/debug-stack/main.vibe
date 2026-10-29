@@ -7,17 +7,17 @@ interface Account {
   owner: { name: string } | undefined
 }
 
-function ownerName(account: Account) {
+effect function ownerName(account: Account) {
   try Effect.yieldNow()
   return account.owner!.name
 }
 
-function lookup(id: number) {
+effect function lookup(id: number) {
   try Effect.yieldNow()
   throw new NotFound({ id })
 }
 
-function audited(account: Account) {
+effect function audited(account: Account) {
   try {
     try Effect.yieldNow()
     return account.owner!.name.length
@@ -29,7 +29,7 @@ function audited(account: Account) {
 // A recursive function refers to itself, so its generator is an object
 // literal's method, which binds no name: countdown(n - 1, seen) still calls
 // the Effect function.
-function countdown(n: number, seen: number[]): Effect<number[], never, never> {
+effect function countdown(n: number, seen: number[]): Effect<number[], never, never> {
   try Effect.yieldNow()
   seen.push(n)
   if (n > 0) try countdown(n - 1, seen)
@@ -39,26 +39,26 @@ function countdown(n: number, seen: number[]): Effect<number[], never, never> {
 // A body that is one expression returns its Effect without a generator. The
 // thunk that evaluates it is still named after the function; Effect calls it
 // as a method, so the frame also names the receiver's class, PrimitiveImpl.
-function logOwner(account: Account) {
+effect function logOwner(account: Account) {
   return try Console.log(account.owner!.name)
 }
 
-export function crash() {
+export effect function crash() {
   return try ownerName({ owner: undefined })
 }
 
-export function missing() {
+export effect function missing() {
   return try lookup(7)
 }
 
-export function region() {
+export effect function region() {
   return try audited({ owner: undefined })
 }
 
-export function counted() {
+export effect function counted() {
   return try countdown(3, [])
 }
 
-export function direct() {
+export effect function direct() {
   return try logOwner({ owner: undefined })
 }

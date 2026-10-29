@@ -3,6 +3,6 @@
 const helper = { runSync: (n: number): number => n + 1 }
 const result = helper.runSync(1)
 
-export function main() {
+export effect function main() {
   try Console.log("ran", result)
 }

@@ -2,7 +2,7 @@
 // compiles as a trusted sync call: no EK4402 for crypto, no boundary needed.
 import { Effect } from "effect"
 
-function stamp() {
+effect function stamp() {
   try Effect.sleep("1 millis")
   return Date.now()
 }
@@ -12,6 +12,6 @@ function uuid() {
 }
 
 // expect-result: [true,36]
-export function main() {
-  return [try stamp() > 0, (try uuid()).length]
+export effect function main() {
+  return [try stamp() > 0, (uuid()).length]
 }

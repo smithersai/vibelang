@@ -4,7 +4,7 @@
 // Effect function passed there (D430).
 import { once, useCallback } from "./helpers.ts"
 
-function fetchUser() {
+effect function fetchUser() {
   try Console.log("fetch")
 }
 

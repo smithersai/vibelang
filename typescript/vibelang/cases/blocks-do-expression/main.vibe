@@ -1,21 +1,21 @@
 // expect-result: {"value":"ADA","branch":"big","caught":"recovered","plain":7,"raced":"fast","exit":"Success"}
 error Boom
 
-function getName(): string!! {
+effect function getName(): string!! {
   return "Ada"
 }
 
-function fail(): number!Boom {
+effect function fail(): number!Boom {
   throw new Boom()
 }
 
-function slow(): string!! {
+effect function slow(): string!! {
   try sleep("1 second")
   return "slow"
 }
 
 // The value of a do expression is the completion value of its last statement.
-function value() {
+effect function value() {
   return do {
     const name = try getName()
     name.toUpperCase()
@@ -33,7 +33,7 @@ function branch(n: number) {
   return size
 }
 
-function caught() {
+effect function caught() {
   return do {
     try {
       try fail()
@@ -49,14 +49,14 @@ function plain() {
 }
 
 // Where a parameter expects a program, a do expression is passed, not run.
-function raced() {
+effect function raced() {
   return try race(do { try sleep("1 millis"); "fast" }, slow())
 }
 
-function exited() {
+effect function exited() {
   return (try Effect.exit(do { try getName() }))._tag
 }
 
-export function main() {
-  return { value: try value(), branch: try branch(42), caught: try caught(), plain: try plain(), raced: try raced(), exit: try exited() }
+export effect function main() {
+  return { value: try value(), branch: branch(42), caught: try caught(), plain: plain(), raced: try raced(), exit: try exited() }
 }

@@ -1,12 +1,12 @@
 // expect: TS2375
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-export function guard(): Effect.Effect<Effect.Effect<void, string>, string, never> {
+export effect function guard(): Effect.Effect<Effect.Effect<void, string>, string, never> {
   try Effect.sleep("1 millis")
-  const check: Effect.Effect<void, string> = () => { throw "inner" }
+  const check: Effect.Effect<void, string> = effect { throw "inner" }
   return check
 }
-export function invalid() {
+export effect function invalid() {
   const checked: Option.Option<void> = try Effect.option(guard())
   return checked
 }

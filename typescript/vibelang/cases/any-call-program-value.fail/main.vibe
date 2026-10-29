@@ -3,19 +3,19 @@
 // it is a program. Where that value is what a program or an Effect function
 // returns, a program the callee returns would never run. EK4409 is an error
 // here (tsconfig.json).
-export const register = (execute: any) => Effect.updateContext(() => execute(), (context) => context)
+export const register = effect (execute: any) => try Effect.updateContext(effect { return execute() }, (context) => context)
 
-export const each = (handler: any, items: Array<number>) => Effect.forEach(items, (item) => handler.run(item))
+export const each = effect (handler: any, items: Array<number>) => try Effect.forEach(items, effect (item) => handler.run(item))
 
-export function load(loader: any) {
+export effect function load(loader: any) {
   try sleep("1 millis")
   return (loader as any)()
 }
 
 // A typed callee says which it returns, so these are not reported.
-export const typed = (execute: () => number!!) => Effect.updateContext(() => execute(), (context) => context)
+export const typed = effect (execute: () => number!!) => try Effect.updateContext(effect { return try execute() }, (context) => context)
 
-export function parse(text: string) {
+export effect function parse(text: string) {
   try sleep("1 millis")
   return JSON.parse(text)
 }

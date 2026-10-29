@@ -2,5 +2,5 @@
 // Method syntax does not apply in an optional chain (D152): the lowering
 // would have to stop the whole chain at a nullish receiver, not only the call.
 export function next(maybe: Option.Option<number> | undefined) {
-  return maybe?.map((n: number) => n + 1)
+  return maybe?.map(effect (n: number) => n + 1)
 }

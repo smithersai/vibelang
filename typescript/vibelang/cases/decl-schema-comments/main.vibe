@@ -30,7 +30,7 @@ export schema Nothing = null
 export const after = 1
 
 // expect-result: {"code":"b","user":{"id":"1","home":{"city":"Paris"}}}
-export function main() {
+export effect function main() {
   const code = try Schema.decodeUnknownEffect(Code)("b")
   const user = try Schema.decodeUnknownEffect(User)({ id: "1", home: { city: "Paris" } })
   return { code, user }

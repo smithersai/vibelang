@@ -7,8 +7,8 @@ export function shout(text: string) {
   return text.toUpperCase()
 }
 
-export function welcome(name: string) {
+export effect function welcome(name: string) {
   if (name.length === 0) try Effect.fail(new EmptyName())
   try Effect.sync(() => events.push(`welcome ${name}`))
-  return `Welcome, ${try shout(name)}!`
+  return `Welcome, ${shout(name)}!`
 }

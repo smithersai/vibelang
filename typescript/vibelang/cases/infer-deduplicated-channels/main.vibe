@@ -2,30 +2,30 @@
 export error Missing
 export service Need { value(): number!! }
 
-export function base(x: number) {
+export effect function base(x: number) {
   if (x < 0) throw new Missing()
   return try Need.value()
 }
 
-export function twice(x: number) {
+export effect function twice(x: number) {
   const a = try base(x)
   return a > 0 ? a : try base(x + 1)
 }
 
-export function contracted(x: number): number!Missing {
+export effect function contracted(x: number): number!Missing {
   try { return try twice(x) } finally { try twice(x) }
 }
 
 export class Chain {
-  base(x: number) { return try base(x) }
-  top(x: number) {
+  effect base(x: number) { return try base(x) }
+  effect top(x: number) {
     const a = try this.base(x)
     return a > 0 ? a : try this.base(x + 1)
   }
 }
 
-export function main() {
-  provide Layer.succeed(Need, { value: () => 7 }) {
+export effect function main() {
+  provide Layer.succeed(Need, { value: effect () => 7 }) {
     return try contracted(1) + try new Chain().top(1)
   }
 }

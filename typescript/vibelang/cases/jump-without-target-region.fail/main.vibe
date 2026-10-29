@@ -6,19 +6,19 @@
 // emits the jump as written instead of crashing.
 error Missing { key: string }
 
-function find(key: string): number!Missing {
+effect function find(key: string): number!Missing {
   if (key === "") throw new Missing({ key })
   return key.length
 }
 
-export function owned() {
+export effect function owned() {
   {
-    using r = try Effect.acquireRelease(() => 1, () => {})
+    using r = try Effect.acquireRelease(effect { return 1 }, effect () => {})
     break
   }
 }
 
-export function caught(keys: ReadonlyArray<string>) {
+export effect function caught(keys: ReadonlyArray<string>) {
   const kept: number[] = []
   try {
     kept.push(try find(keys[0]))
@@ -28,7 +28,7 @@ export function caught(keys: ReadonlyArray<string>) {
   return kept
 }
 
-export function labeled() {
+export effect function labeled() {
   try {
     try find("a")
     break outer
@@ -37,7 +37,7 @@ export function labeled() {
   }
 }
 
-export function looped() {
+export effect function looped() {
   for (const key of ["a", ""]) {
     try {
       try find(key)

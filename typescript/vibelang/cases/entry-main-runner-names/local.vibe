@@ -4,6 +4,6 @@ function runPromise(n: number): number {
 }
 const started = runPromise(3)
 
-export function main() {
+export effect function main() {
   try Console.log("local runner", started)
 }

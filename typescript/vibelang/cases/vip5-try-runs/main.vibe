@@ -6,21 +6,21 @@
 error NotFound { id: string }
 error Bad { cause: unknown }
 
-function find(id: string) {
+effect function find(id: string) {
   try yieldNow()
   if (id === "missing") throw new NotFound({ id })
   return id
 }
 
-function double(n: number) {
+effect function double(n: number) {
   try yieldNow()
   return n * 2
 }
 
-export function main() {
+export effect function main() {
   const a = try double(1)
   const b = find("missing") catch "guest"
-  const program: number!! = () => double(1.5)
+  const program: number!! = effect { return try double(1.5) }
   const c = try program
   const parsed = try Effect.try(() => JSON.parse("{\"x\":1}"))
   const bad = Effect.try({ try: () => JSON.parse("{"), catch: (cause) => new Bad({ cause }) }) catch (e) => e._tag

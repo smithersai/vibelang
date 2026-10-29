@@ -13,7 +13,7 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-function findName(id: string) {
+effect function findName(id: string) {
   return (try Users.find(id)).name
 }
 

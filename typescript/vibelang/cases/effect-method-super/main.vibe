@@ -7,13 +7,13 @@
 error Base {
   _tag: string
   code: number
-  describe() {
+  effect describe() {
     try Console.log("base describe")
     return `code ${this.code}`
   }
 }
 error Sub extends Base {
-  describe() {
+  effect describe() {
     const text = try super.describe()
     try Console.log("sub describe")
     return `sub ${text}`
@@ -21,7 +21,7 @@ error Sub extends Base {
 }
 
 class Shape {
-  name() {
+  effect name() {
     try Console.log("shape name")
     return "shape"
   }
@@ -29,31 +29,31 @@ class Shape {
   sizeValue = 1
   get size() { return this.sizeValue }
   set size(value: number) { this.sizeValue = value }
-  static make() {
+  static effect make() {
     try Console.log("shape make")
     return "made"
   }
 }
 
 class Square extends Shape {
-  name() {
+  effect name() {
     const base = try super.name()
     try Console.log("square name")
     return `${base}/square/${super.kind}/${super["kind"]}`
   }
-  static make() {
+  static effect make() {
     try Console.log("square make")
     return `${try super.make()}+square`
   }
   // super in an Effect arrow inside a plain method.
-  later() {
-    return () => {
+  effect later() {
+    return effect () => {
       try Console.log("later")
       return try super.name()
     }
   }
   // Assignments to a super accessor: plain, compound and logical.
-  grow() {
+  effect grow() {
     try Console.log("grow")
     super.size = 2
     super.size += 3
@@ -61,7 +61,7 @@ class Square extends Shape {
     return this.size
   }
   // super in try and finally regions.
-  guarded() {
+  effect guarded() {
     try {
       try Console.log("guarded")
       return try super.name()
@@ -72,11 +72,11 @@ class Square extends Shape {
 }
 
 class Counter {
-  count(a: number, b?: number) {
+  effect count(a: number, b?: number) {
     try Console.log("count")
     return arguments.length
   }
-  counted(a: number) {
+  effect counted(a: number) {
     try {
       try Console.log("counted")
       return arguments.length
@@ -87,8 +87,8 @@ class Counter {
 }
 
 // arguments in an Effect arrow inside a function expression.
-const outer = function (a: number, b: number) {
-  const inner = () => {
+const outer = effect function (a: number, b: number) {
+  const inner = effect () => {
     try Console.log("inner")
     return arguments.length
   }
@@ -96,13 +96,13 @@ const outer = function (a: number, b: number) {
 }
 
 // An Effect function declaration's generator already gets its arguments.
-function declared(a: number, b: number, c: number) {
+effect function declared(a: number, b: number, c: number) {
   try Console.log("declared")
   return arguments.length
 }
 
 // expect-result: {"sub":"sub code 7","square":"shape/square/plain/plain","make":"made+square","later":"shape","grow":5,"guarded":"shape","count":2,"counted":1,"outer":2,"declared":3}
-export function main() {
+export effect function main() {
   const square = new Square()
   const later = try square.later()
   return {

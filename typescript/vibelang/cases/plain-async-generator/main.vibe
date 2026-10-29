@@ -9,7 +9,7 @@ export async function* iterator(): AsyncIterator<number> { yield 4 }
 export async function* iterableIterator(): AsyncIterableIterator<number> { yield 5 }
 export async function* iterable(): AsyncIterable<number> { yield 6 }
 
-export function main() {
+export effect function main() {
   return try sync(async (steps, iterator, iterableIterator, iterable) => {
     const values: number[] = []
     for await (const value of steps()) values.push(value)

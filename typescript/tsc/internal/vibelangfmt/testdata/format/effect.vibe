@@ -1,0 +1,10 @@
+effect function load(id: string) {   return try find(id) }
+export effect save(user: User) { try write(user) }
+async get(url: string) { return await fetch(url) }
+class Users {
+  effect   find(id: string) { return try lookup(id) }
+  async load() { return 1 }
+}
+const each = effect (n: number) =>   try double(n)
+const run = effect {   try yieldNow()
+  return 1 }

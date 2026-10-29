@@ -9,9 +9,9 @@ function disposable(events: string[], name: string) {
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
-function completes() {
+effect function completes() {
   const events: string[] = []
-  for (using a = try disposable(events, "a"), b = try disposable(events, "b"); events.length < 2; events.push("step")) {
+  for (using a = disposable(events, "a"), b = disposable(events, "b"); events.length < 2; events.push("step")) {
     events.push("body")
     try sleep("1 millis")
   }
@@ -19,10 +19,10 @@ function completes() {
   return events
 }
 
-function fails() {
+effect function fails() {
   const events: string[] = []
-  const outcome = try exit(() => {
-    for (using h = try disposable(events, "h"); events.length < 5;) {
+  const outcome = try exit(effect {
+    for (using h = disposable(events, "h"); events.length < 5;) {
       events.push("body")
       try sleep("1 millis")
       throw new Bad()
@@ -31,10 +31,10 @@ function fails() {
   return [Exit.isFailure(outcome), events]
 }
 
-function dies() {
+effect function dies() {
   const events: string[] = []
-  const outcome = try exit(() => {
-    for (using h = try disposable(events, "h"); events.length < 5;) {
+  const outcome = try exit(effect {
+    for (using h = disposable(events, "h"); events.length < 5;) {
       events.push("body")
       try sleep("1 millis")
       try Effect.die("boom")
@@ -43,11 +43,11 @@ function dies() {
   return [Exit.isFailure(outcome), events]
 }
 
-function interrupted() {
+effect function interrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function child() {
-    for (using h = try disposable(events, "h"); ;) {
+  effect function child() {
+    for (using h = disposable(events, "h"); ;) {
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -61,11 +61,11 @@ function interrupted() {
 
 // A labeled jump leaves the inner loop, whose value is disposed, and keeps
 // the outer loop, whose head does not run again.
-function jumps(limit: number) {
+effect function jumps(limit: number) {
   const events: string[] = []
-  function run() {
-    outer: for (using a = try disposable(events, "a"); ;) {
-      for (using b = try disposable(events, "b"); ;) {
+  effect function run() {
+    outer: for (using a = disposable(events, "a"); ;) {
+      for (using b = disposable(events, "b"); ;) {
         events.push("inner")
         try sleep("1 millis")
         if (events.length > limit) return "returned"
@@ -79,10 +79,10 @@ function jumps(limit: number) {
   return [result, events]
 }
 
-function acquires(fail: boolean) {
+effect function acquires(fail: boolean) {
   const events: string[] = []
-  const outcome = try exit(() => {
-    for (using conn = try Effect.acquireRelease(() => { events.push("acquire"); return "c" }, () => { events.push("release") }); events.length < 3;) {
+  const outcome = try exit(effect {
+    for (using conn = try Effect.acquireRelease(effect { events.push("acquire"); return "c" }, effect () => { events.push("release") }); events.length < 3;) {
       events.push(`use ${conn}`)
       try sleep("1 millis")
       if (fail) throw new Bad()
@@ -92,7 +92,7 @@ function acquires(fail: boolean) {
 }
 
 // expect-result: {"completes":["body","step","dispose b","dispose a","after"],"fails":[true,["body","dispose h"]],"dies":[true,["body","dispose h"]],"interrupted":["body","dispose h"],"breaks":["broke",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"returns":["returned",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"acquires":[false,["acquire","use c","use c","release"]],"acquireFails":[true,["acquire","use c","release"]]}
-export function main() {
+export effect function main() {
   return {
     completes: try completes(),
     fails: try fails(),

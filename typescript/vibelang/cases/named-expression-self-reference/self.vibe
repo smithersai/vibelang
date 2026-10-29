@@ -1,24 +1,24 @@
 // A named function expression's name refers to the function itself, an
 // Effect function, in its body and parameters, though the body runs in a
 // generator named after it for stack traces.
-export const retried = function self(n: number): number!! {
+export const retried = effect function self(n: number): number!! {
   if (n === 0) return 7
   return try Effect.retry(self(n - 1), { times: 0 })
 }
 
 // Recursion makes Effect calls, so it stays off the JavaScript stack.
-export const deep = function self(n: number): number!! {
+export const deep = effect function self(n: number): number!! {
   if (n === 0) return 0
   return 1 + try self(n - 1)
 }
 
 type Self = () => Self!!
-export const identity = function inner(): Self!! {
+export const identity = effect function inner(): Self!! {
   const tick = try Effect.sync(() => 0)
   return inner
 }
 
-export const viaDefault = function self(n: number, next: (n: number) => number!! = self): number!! {
+export const viaDefault = effect function self(n: number, next: (n: number) => number!! = self): number!! {
   if (n === 0) return 3
   return try next(n - 1)
 }

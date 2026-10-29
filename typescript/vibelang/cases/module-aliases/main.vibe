@@ -11,7 +11,7 @@ export function firstOr(values: Chunk<number>, fallback: number): Option<number>
 
 export const spelled = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
 
-export const promptAst = () => Prompt.ast._tag
+export const promptAst = effect () => Prompt.ast._tag
 
 export function prompt(text: string): Prompt {
   return Prompt.make(text)
@@ -22,7 +22,7 @@ export function implementation(files: FileSystem) {
 }
 
 // expect-result: [1,7,0,"Declaration","user"]
-export function main() {
+export effect function main() {
   return [
     Option.getOrElse(firstOr(Chunk.make(1, 2), 7), () => 0),
     Option.getOrElse(firstOr(Chunk.empty(), 7), () => 0),

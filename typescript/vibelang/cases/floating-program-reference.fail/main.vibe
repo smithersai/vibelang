@@ -3,21 +3,21 @@
 // program went on past `interrupt` and exited 0. Data stays data (D24), so
 // a Config, a call that returns a function, and a function that needs
 // arguments stay quiet.
-function work() {
+effect function work() {
   try Console.log("work")
 }
 
-function greet(name: string) {
+effect function greet(name: string) {
   try Console.log(name)
 }
 
 const Port = Config.Number("PORT")
 
 function unsubscribe(): () => void!! {
-  return () => Console.log("unsubscribed")
+  return effect () => try Console.log("unsubscribed")
 }
 
-export function main() {
+export effect function main() {
   try Console.log("before")
   interrupt
   work

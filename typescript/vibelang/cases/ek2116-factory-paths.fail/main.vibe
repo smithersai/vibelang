@@ -1,4 +1,4 @@
 // expect: EK2116 EK2116
 import { Effect } from "effect"
-export function mixed(flag: boolean): number!! { if (flag) return () => 1; return 2 }
-export function missing(flag: boolean): number!! { if (flag) return () => 1 }
+export function mixed(flag: boolean): number!! { if (flag) return effect { return 1 }; return 2 }
+export function missing(flag: boolean): number!! { if (flag) return effect { return 1 } }

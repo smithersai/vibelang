@@ -11,20 +11,20 @@ class Boom extends Data.TaggedError("Boom")<{}> {}
 
 const events: string[] = []
 
-function resource(name: string) {
+effect function resource(name: string) {
   return try Effect.acquireRelease(
-    () => {
+    effect {
       events.push(`acquire ${name}`)
       return name
     },
-    () => {
+    effect () => {
       events.push(`release ${name}`)
     }
   )
 }
 
 // Runs until it is interrupted.
-function ticker(name: string) {
+effect function ticker(name: string) {
   try {
     while (true) {
       try Effect.sleep("1 millis")
@@ -34,19 +34,19 @@ function ticker(name: string) {
   }
 }
 
-function compute(n: number) {
+effect function compute(n: number) {
   try Effect.sleep("1 millis")
   events.push(`computed ${n}`)
   return n * 2
 }
 
-function boom() {
+effect function boom() {
   try Effect.sleep("1 millis")
   throw new Boom()
 }
 
 // The ticker stops before the server, acquired earlier, is released.
-function serve() {
+effect function serve() {
   using server = try resource("server")
   fork ticker("ticker")
   try Effect.sleep("5 millis")
@@ -54,7 +54,7 @@ function serve() {
 }
 
 // Fiber.join waits for the child and returns its result.
-function joined() {
+effect function joined() {
   const child = fork compute(21)
   events.push("parent goes on")
   return try Fiber.join(child)
@@ -62,7 +62,7 @@ function joined() {
 
 // A bare block owns nothing (D408): the function's body owns the fiber, so
 // it stops when the body exits, after the block.
-function inner() {
+effect function inner() {
   {
     fork ticker("inner")
     try Effect.sleep("2 millis")
@@ -72,7 +72,7 @@ function inner() {
 }
 
 // A fork in a loop body stops at the end of its iteration.
-function perIteration() {
+effect function perIteration() {
   for (const n of [1, 2]) {
     fork ticker(`loop ${n}`)
     try Effect.sleep("2 millis")
@@ -82,7 +82,7 @@ function perIteration() {
 }
 
 // The child's failure reaches the parent only through Fiber.join.
-function failingChild() {
+effect function failingChild() {
   const child = fork boom()
   try {
     try Fiber.join(child)
@@ -93,7 +93,7 @@ function failingChild() {
 }
 
 // A block that fails still stops its fibers.
-function failingBlock() {
+effect function failingBlock() {
   fork ticker("doomed")
   try Effect.sleep("2 millis")
   throw new Boom()
@@ -101,10 +101,10 @@ function failingBlock() {
 
 // Effect.forkScoped: the caller's Scope owns the fiber. An arrow's body owns
 // a fork in it (D353), so returning that fiber would be EK4838 (D409).
-const background = (name: string) => Effect.forkScoped(() => ticker(name))
+const background = effect (name: string) => try Effect.forkScoped(effect { return try ticker(name) })
 
-function scopedBackground() {
-  return try Effect.scoped(() => {
+effect function scopedBackground() {
+  return try Effect.scoped(effect {
     try background("background")
     try Effect.sleep("2 millis")
     events.push("scope closing")
@@ -114,14 +114,14 @@ function scopedBackground() {
 
 // Effect.forkScoped keeps Effect's meaning: the caller's Scope owns the
 // fiber, so it outlives the block that forked it.
-function outlives() {
+effect function outlives() {
   using block = try resource("block")
-  try Effect.forkScoped(() => ticker("forkScoped"))
+  try Effect.forkScoped(effect { return try ticker("forkScoped") })
   return block
 }
 
-function scopedCaller() {
-  return try Effect.scoped(() => {
+effect function scopedCaller() {
+  return try Effect.scoped(effect {
     const result = try outlives()
     events.push("block exited")
     try Effect.sleep("2 millis")
@@ -130,8 +130,8 @@ function scopedCaller() {
 }
 
 // Effect.forkDetach keeps Effect's meaning: the fiber outlives the block.
-function detached() {
-  const fiber = try Effect.forkDetach(() => compute(1))
+effect function detached() {
+  const fiber = try Effect.forkDetach(effect { return try compute(1) })
   return fiber
 }
 
@@ -141,23 +141,23 @@ function phase<A>(name: string, result: A) {
 }
 
 // expect-result: {"served":"served by server","joined":42,"inner":"inner done","loop":"loop done","failing":"joined Boom","failedBlock":"Boom","scoped":"scoped done","outlives":"block","detached":2,"events":["acquire server","stop ticker","release server","-- served","parent goes on","computed 21","-- joined","after inner block","stop inner","-- inner","end of iteration 1","stop loop 1","end of iteration 2","stop loop 2","-- loop","-- failing","stop doomed","-- failedBlock","scope closing","stop background","-- scoped","acquire block","release block","block exited","stop forkScoped","-- outlives","computed 1","-- detached"]}
-export function main() {
-  const served = try phase("served", try serve())
-  const j = try phase("joined", try joined())
-  const i = try phase("inner", try inner())
-  const l = try phase("loop", try perIteration())
-  const f = try phase("failing", try failingChild())
+export effect function main() {
+  const served = phase("served", try serve())
+  const j = phase("joined", try joined())
+  const i = phase("inner", try inner())
+  const l = phase("loop", try perIteration())
+  const f = phase("failing", try failingChild())
   let failedBlock = "none"
   try {
     try failingBlock()
   } catch (e) {
     failedBlock = e._tag
   }
-  try phase("failedBlock", failedBlock)
-  const s = try phase("scoped", try scopedBackground())
-  const o = try phase("outlives", try scopedCaller())
+  phase("failedBlock", failedBlock)
+  const s = phase("scoped", try scopedBackground())
+  const o = phase("outlives", try scopedCaller())
   const fiber = try detached()
   const d = try Fiber.join(fiber)
-  try phase("detached", d)
+  phase("detached", d)
   return { served, joined: j, inner: i, loop: l, failing: f, failedBlock, scoped: s, outlives: o, detached: d, events }
 }

@@ -16,7 +16,7 @@ export function cards(users: ReadonlyArray<User>) {
   return users.map((user) => formatName(user))
 }
 
-export function hidden(text: string) {
+export effect function hidden(text: string) {
   return parseHidden(text)
 }
 
@@ -25,7 +25,7 @@ export function loud(text: string) {
   return shout(text)
 }
 
-export function bounded(user: User) {
+export effect function bounded(user: User) {
   return try Effect.try(() => formatName(user))
 }
 

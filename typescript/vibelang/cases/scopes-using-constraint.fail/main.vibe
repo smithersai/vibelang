@@ -7,32 +7,32 @@
 // Disposable, as TypeScript's TS2850 requires.
 service Users { name: string }
 
-export function scoped<A, R extends Scope>(open: () => A!!R) {
+export effect function scoped<A, R extends Scope>(open: () => A!!R) {
   using r = try open()
   return "scoped"
 }
 
-export function scopedUnion<A, R extends Scope | Users>(open: () => A!!R) {
+export effect function scopedUnion<A, R extends Scope | Users>(open: () => A!!R) {
   using r = try open()
   return "scoped union"
 }
 
-export function bare<A, R>(open: () => A!!R) {
+export effect function bare<A, R>(open: () => A!!R) {
   using r = try open()
   return "bare"
 }
 
-export function unknownBound<A, R extends unknown>(open: () => A!!R) {
+export effect function unknownBound<A, R extends unknown>(open: () => A!!R) {
   using r = try open()
   return "unknown bound"
 }
 
-export function anyR<A>(open: () => A!!any) {
+export effect function anyR<A>(open: () => A!!any) {
   using r = try open()
   return "any"
 }
 
-export function unknownR<A>(open: () => A!!unknown) {
+export effect function unknownR<A>(open: () => A!!unknown) {
   using r = try open()
   return "unknown"
 }

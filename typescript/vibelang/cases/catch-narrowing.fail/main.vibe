@@ -2,19 +2,19 @@
 type Read = () => Effect.Effect<number, string, never>
 interface Source { readonly read?: Read }
 
-export function unguarded(source: Source): number!! {
+export effect function unguarded(source: Source): number!! {
   return source.read() catch 0
 }
 
-export function wrongBranch(source: Source): number!! {
+export effect function wrongBranch(source: Source): number!! {
   return source.read === undefined ? (source.read() catch 0) : 1
 }
 
 // An actual callback remains a closure boundary, even inside a catch operand.
-export function nested(source: Source): number!! {
+export effect function nested(source: Source): number!! {
   if (source.read !== undefined) {
     return (do {
-      const later = (): Effect.Effect<number, string, never> => source.read()
+      const later = effect (): Effect.Effect<number, string, never> => try source.read()
       try later()
     }) catch 0
   }
@@ -22,16 +22,16 @@ export function nested(source: Source): number!! {
 }
 
 // Failure can change a property; neither fallback nor handler inherits it.
-function failed(): number!string! { throw "failed" }
-export function fallback(source: Source): number!string! {
+effect function failed(): number!string! { throw "failed" }
+export effect function fallback(source: Source): number!string! {
   return source.read === undefined ? 0 : (failed() catch source.read())
 }
-export function handler(source: Source): number!string! {
-  return source.read === undefined ? 0 : (failed() catch (error) => source.read())
+export effect function handler(source: Source): number!string! {
+  return source.read === undefined ? 0 : (failed() catch effect (error) => try source.read())
 }
 
 // A property assigned undefined inside the operand must not reuse its guard.
 interface MutableSource { mutable read?: Read }
-export function reassigned(source: MutableSource): number!! {
+export effect function reassigned(source: MutableSource): number!! {
   return source.read === undefined ? 0 : ((source.read = undefined, source.read()) catch 0)
 }

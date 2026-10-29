@@ -4,27 +4,27 @@ import { Array as Arr, Schedule } from "effect"
 
 let attempts = 0
 
-function flaky() {
+effect function flaky() {
   attempts++
   if (attempts < 3) throw new Error(`attempt ${attempts}`)
   return `ok after ${attempts}`
 }
 
-function piped() {
+effect function piped() {
   return do {
-    const $pipe0: string!Error! = () => flaky()
+    const $pipe0: string!Error! = effect { return try flaky() }
     const $pipe1 = { times: 3 }
     const $pipe2 = Effect.withSpan("flaky")
-    try $pipe2(() => Effect.timeout(() => Effect.retry($pipe0, $pipe1), "1 second"))
+    try $pipe2(effect { return try Effect.timeout(effect { return try Effect.retry($pipe0, $pipe1) }, "1 second") })
   }
 }
 
 // A stored program works the same way.
-function stored() {
-  const job = () => flaky()
+effect function stored() {
+  const job = effect () => try flaky()
   return do {
     const $pipe3 = job
-    const $pipe4: string!Error! = () => $pipe3()
+    const $pipe4: string!Error! = effect { return try $pipe3() }
     const $pipe5 = Schedule.recurs(1)
     try Effect.retry($pipe4, $pipe5)
   }
@@ -36,6 +36,6 @@ function data() {
 }
 
 // expect-result: {"piped":"ok after 3","stored":"ok after 4","data":12}
-export function main() {
-  return { piped: try piped(), stored: try stored(), data: try data() }
+export effect function main() {
+  return { piped: try piped(), stored: try stored(), data: data() }
 }

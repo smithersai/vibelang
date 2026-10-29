@@ -1,6 +1,6 @@
-main.vibe(7,17): warning EK3205
-partial.vibe(4,17): warning EK3205
+main.vibe(7,24): warning EK3205
+partial.vibe(4,24): warning EK3205
 runner.vibe(10,19): error EK3201
-sideeffect.vibe(3,17): warning EK3205
-through.vibe(8,17): warning EK3205
-typeonly.vibe(8,17): warning EK3205
+sideeffect.vibe(3,24): warning EK3205
+through.vibe(8,24): warning EK3205
+typeonly.vibe(8,24): warning EK3205

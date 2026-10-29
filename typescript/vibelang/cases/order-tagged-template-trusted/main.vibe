@@ -4,12 +4,12 @@
 // a substitution runs an Effect (chapter 13).
 import { tag } from "./helper.js"
 
-function number(n: number) {
+effect function number(n: number) {
   try Effect.yieldNow()
   return n
 }
 
-export function main() {
+export effect function main() {
   let call = ""
   let tagged = ""
   let effect = ""

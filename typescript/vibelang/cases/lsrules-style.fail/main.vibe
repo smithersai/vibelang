@@ -18,7 +18,7 @@ export function check(count: number) {
 }
 
 // EK4823: an arrow function whose block only returns.
-export const increment = (n: number) => { return n + 1 }
+export const increment = effect (n: number) => { return n + 1 }
 
 // EK4824: a pipe with no functions. EK4825: a pipe of a pipe.
 export const same = pipe(1)

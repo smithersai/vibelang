@@ -28,12 +28,12 @@ function pureMaps(ids: ReadonlyArray<string>, xs: ReadonlyArray<number>) {
 }
 
 // Effect-aware traversals: Effect.forEach takes callbacks that return Effects; so does a for...of loop.
-function names(ids: ReadonlyArray<string>) {
-  return try Effect.forEach(ids, (id) => (try Users.find(id)).name)
+effect function names(ids: ReadonlyArray<string>) {
+  return try Effect.forEach(ids, effect (id) => (try Users.find(id)).name)
 }
 // Effect<string[], UserNotFound, Users>
 
-function namesLoop(ids: ReadonlyArray<string>) {
+effect function namesLoop(ids: ReadonlyArray<string>) {
   const out: string[] = []
   for (const id of ids) out.push((try Users.find(id)).name)
   return out
@@ -45,23 +45,23 @@ function handshake(socket: FakeSocket) {
   return `hello ${socket.url}`
 }
 
-function session(url: string, delayMs: number) {
+effect function session(url: string, delayMs: number) {
   using socket = try connect(url, delayMs)
-  return try handshake(socket)
+  return handshake(socket)
 }
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: `user-${id}` })
+  find: effect (id) => ({ id, name: `user-${id}` })
 })
 
-function scenario() {
-  const maps = try pureMaps([" a", "b "], [1, 2, 3])
+effect function scenario() {
+  const maps = pureMaps([" a", "b "], [1, 2, 3])
   const viaForEach = try names(["1", "2"])
   const viaLoop = try namesLoop(["2", "1"])
   const fast = try session("tcp://fast", 1)
   let slow = "none"
   try {
-    try Effect.timeout(() => session("tcp://slow", 50), "5 millis")
+    try Effect.timeout(effect { return try session("tcp://slow", 50) }, "5 millis")
   } catch (e) {
     slow = e._tag
   }
@@ -69,6 +69,6 @@ function scenario() {
 }
 
 // expect-result: {"trimmed":["a","b"],"doubled":[2,4,6],"viaForEach":["user-1","user-2"],"viaLoop":["user-2","user-1"],"fast":"hello tcp://fast","slow":"TimeoutError","log":["dial tcp://fast","destroy tcp://fast","dial tcp://slow","destroy tcp://slow"]}
-export function main() {
-  return try Effect.provide(() => scenario(), UsersTest)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, UsersTest)
 }

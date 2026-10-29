@@ -38,7 +38,7 @@ module foreign {
 import { hasSignal, value, input, rest, sum, waiting } from foreign
 
 // expect-result: {"direct":true,"value":true,"input":{"value":42,"signal":true},"rest":2,"defaulted":6,"timedOut":"timed out","events":["aborted"]}
-export function main() {
+export effect function main() {
   const events: string[] = []
   const direct = try sync(hasSignal)
   const timedOut = timeout(waiting(events), "10 millis") catch "timed out"

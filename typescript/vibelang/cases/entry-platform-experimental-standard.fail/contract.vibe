@@ -3,7 +3,7 @@
 // experimental one (D313), so a contract that needs nothing is wrong.
 import { NodeServices } from "@effect/platform-node"
 
-export function executable(path: string): void!PlatformError! {
+export effect function executable(path: string): void!PlatformError! {
   provide NodeServices.layer {
     try Experimental.FileSystem.access(path, { executable: true })
   }

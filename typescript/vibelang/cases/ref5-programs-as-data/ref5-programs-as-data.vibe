@@ -9,7 +9,7 @@ class Flaky extends TaggedError("Flaky")<{ readonly name: string }> {}
 const runs = new Map<string, number>()
 const failuresLeft = new Map<string, number>([["flaky", 2]])
 
-function work(name: string) {
+effect function work(name: string) {
   runs.set(name, (runs.get(name) ?? 0) + 1)
   const left = failuresLeft.get(name) ?? 0
   if (left > 0) {
@@ -22,7 +22,7 @@ function work(name: string) {
 
 // Return a program from a function: nothing runs.
 function makeJob(name: string) {
-  return () => work(name)
+  return effect () => try work(name)
 }
 // Effect<() => Effect<string, Flaky, never>, never, never>
 
@@ -32,11 +32,11 @@ function countRuns() {
   return total
 }
 
-function scenario() {
-  const stored = () => work("stored")                               // store a program
-  const returned = try makeJob("returned")                              // return a program
-  const flaky = try makeJob("flaky")
-  const builtButNotRun = try countRuns()                                // nothing ran yet
+effect function scenario() {
+  const stored = effect () => try work("stored")                               // store a program
+  const returned = makeJob("returned")                              // return a program
+  const flaky = makeJob("flaky")
+  const builtButNotRun = countRuns()                                // nothing ran yet
 
   const once = try stored()                                             // calling runs it
   const retried = try Effect.retry(flaky, Schedule.recurs(3))           // retry a stored program
@@ -54,6 +54,6 @@ function scenario() {
 }
 
 // expect-result: {"builtButNotRun":0,"once":"STORED","retried":"FLAKY","both":["STORED","RETURNED"],"twice":["RETURNED","RETURNED"],"runs":{"stored":2,"returned":3,"flaky":3}}
-export function main() {
+export effect function main() {
   return try scenario()
 }

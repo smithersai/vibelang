@@ -9,14 +9,14 @@ interface Hooks {
 }
 
 export const hooks: Hooks = {
-  emit: (n) => {
+  emit: effect (n) => {
     return n === 0 ? Effect.interrupt : try Console.log("emit", n)
   },
-  sleep: (n) => n <= 2 ? try Console.log("sleep", n) : (Effect.never),
-  cached: (n) => n ?? Effect.interrupt,
+  sleep: effect (n) => n <= 2 ? try Console.log("sleep", n) : (Effect.never),
+  cached: effect (n) => n ?? Effect.interrupt,
 }
 
-export function unannotated(n: number) {
+export effect function unannotated(n: number) {
   return n === 0 ? Effect.interrupt : n === 1 ? Effect.never : try Console.log("call", n)
 }
 
@@ -24,4 +24,4 @@ export function unannotated(n: number) {
 export const both = (n: number): void!! => n === 0 ? Effect.interrupt : Effect.void
 
 // A called arm runs, as EK4802's quick fix writes it.
-export const called = (n: number): void!! => n === 0 ? try Effect.interrupt() : try Console.log("emit", n)
+export const called = effect (n: number): void!! => n === 0 ? try Effect.interrupt() : try Console.log("emit", n)

@@ -7,11 +7,11 @@ interface Hooks {
 }
 
 const hooks: Hooks = {
-  emit: (n) => n === 0 ? try Effect.interrupt() : try Console.log("emit", n),
-  cached: (n) => n ?? try Effect.interrupt(),
+  emit: effect (n) => n === 0 ? try Effect.interrupt() : try Console.log("emit", n),
+  cached: effect (n) => n ?? try Effect.interrupt(),
 }
 
-export function main() {
+export effect function main() {
   return [
     Exit.isFailure(try exit(hooks.emit(0))),
     Exit.isSuccess(try exit(hooks.emit(1))),

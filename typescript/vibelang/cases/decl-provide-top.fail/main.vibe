@@ -4,7 +4,7 @@ service Names {
 }
 
 const NamesLive = Layer.succeed(Names, {
-  name() {
+  effect name() {
     return "Ada"
   }
 })

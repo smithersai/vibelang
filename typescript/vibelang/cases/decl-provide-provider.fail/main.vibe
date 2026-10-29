@@ -1,5 +1,5 @@
 // expect: EK3207
-export function main() {
+export effect function main() {
   const notALayer = "x"
   provide notALayer {
     try log("inside block")

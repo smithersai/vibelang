@@ -14,7 +14,7 @@ export service Users {
   readonly source: string
 
   static readonly layer = Layer.succeed(Users, {
-    find: (id: string) => ({ id, name: "Ada" }),
+    find: effect (id: string) => ({ id, name: "Ada" }),
     source: "memory"
   })
 }
@@ -44,7 +44,7 @@ export service Geometry {
 // `implements Users` checks the shape, so the declaration writes Users.Shape.
 export class UsersInMemory implements Users {
   readonly source = "in-memory"
-  find(id: string) {
+  effect find(id: string) {
     return { id, name: `user ${id}` }
   }
 }
@@ -53,11 +53,11 @@ export function sourceOf(users: Users.Shape) {
   return users.source
 }
 
-export function current() {
+export effect function current() {
   return try Users()
 }
 
-export function greet(id: string) {
+export effect function greet(id: string) {
   const user = try Users.find(id)
   return `${user.name} via ${(try Users()).source}, beta ${(try Flags()).beta}`
 }

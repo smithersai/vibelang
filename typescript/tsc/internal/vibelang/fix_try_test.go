@@ -20,7 +20,8 @@ import (
 // await operation's element, fork's operand, a held const, a function
 // literal's expression body, the left side of catch, a plain function's
 // call, or a call that already has try. It rewrites the retired try(…)
-// hatch as Effect.try (EK4616). A second run finds nothing to write.
+// hatch as Effect.try (EK4616), and marks the Effect functions effect
+// (fix_effect.go). A second run finds nothing to write.
 func TestFixVIPWritesTryWhereCallsRun(t *testing.T) {
 	source := `error Bad { cause: unknown }
 
@@ -60,13 +61,13 @@ export function main() {
 `
 	want := `error Bad { cause: unknown }
 
-function load(n: number) {
+effect function load(n: number) {
   try yieldNow()
   return { n }
 }
 
 class Box {
-  get(n: number) {
+  effect get(n: number) {
     try yieldNow()
     return n
   }
@@ -76,7 +77,7 @@ function plainDouble(n: number): number {
   return n * 2
 }
 
-export function main() {
+export effect function main() {
   const box = new Box()
   const a = try load(1)
   try box.get(2)
@@ -84,7 +85,7 @@ export function main() {
   const all = await.all [load(4), load(5)]
   const f = fork load(6)
   const p: { n: number }!! = load(7)
-  const later = () => load(8)
+  const later = effect () => try load(8)
   const d = plainDouble(1)
   ;(try load(11)).n
   const c = try load(9)
@@ -119,7 +120,7 @@ export function main() {
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 8 fixes (EK4616 ×1, try ×7)") {
+	if !strings.Contains(report.String(), "main.vibe: 12 fixes (EK4616 ×1, try ×7, effect ×4)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 

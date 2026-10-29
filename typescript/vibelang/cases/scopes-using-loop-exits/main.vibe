@@ -16,16 +16,16 @@ module iterators {
 import { elements } from iterators
 function* produce(events: string[]) {
   try {
-    yield try disposable(events, "x1")
-    yield try disposable(events, "x2")
+    yield disposable(events, "x1")
+    yield disposable(events, "x2")
   } finally { events.push("source closed") }
 }
 
-function array(ending: string) {
+effect function array(ending: string) {
   const events: string[] = []
-  function work() {
-    for (using x of [try disposable(events, "x1"), try disposable(events, "x2")]) {
-      using local = try disposable(events, "local")
+  effect function work() {
+    for (using x of [disposable(events, "x1"), disposable(events, "x2")]) {
+      using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
@@ -38,12 +38,12 @@ function array(ending: string) {
   const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
-function arrayInterrupted() {
+effect function arrayInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function work() {
-    for (using x of [try disposable(events, "x1"), try disposable(events, "x2")]) {
-      using local = try disposable(events, "local")
+  effect function work() {
+    for (using x of [disposable(events, "x1"), disposable(events, "x2")]) {
+      using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -55,11 +55,11 @@ function arrayInterrupted() {
   return events
 }
 
-function iterator(ending: string) {
+effect function iterator(ending: string) {
   const events: string[] = []
-  function work() {
+  effect function work() {
     for (using x of try sync((e: string[]) => elements(e), events)) {
-      using local = try disposable(events, "local")
+      using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
@@ -72,12 +72,12 @@ function iterator(ending: string) {
   const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
-function iteratorInterrupted() {
+effect function iteratorInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function work() {
+  effect function work() {
     for (using x of try sync((e: string[]) => elements(e), events)) {
-      using local = try disposable(events, "local")
+      using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -89,11 +89,11 @@ function iteratorInterrupted() {
   return events
 }
 
-function producer(ending: string) {
+effect function producer(ending: string) {
   const events: string[] = []
-  function work() {
+  effect function work() {
     for (using x of produce(events)) {
-      using local = try disposable(events, "local")
+      using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
@@ -106,12 +106,12 @@ function producer(ending: string) {
   const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
-function producerInterrupted() {
+effect function producerInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function work() {
+  effect function work() {
     for (using x of produce(events)) {
-      using local = try disposable(events, "local")
+      using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -123,11 +123,11 @@ function producerInterrupted() {
   return events
 }
 
-function stream(ending: string) {
+effect function stream(ending: string) {
   const events: string[] = []
-  function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events, "x1"), try disposable(events, "x2")]), () => { events.push("source closed") })) {
-      using local = try disposable(events, "local")
+  effect function work() {
+    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+      using local = disposable(events, "local")
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
@@ -140,12 +140,12 @@ function stream(ending: string) {
   const outcome = try exit(work())
   return [Exit.isFailure(outcome), events]
 }
-function streamInterrupted() {
+effect function streamInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function work() {
-    for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events, "x1"), try disposable(events, "x2")]), () => { events.push("source closed") })) {
-      using local = try disposable(events, "local")
+  effect function work() {
+    for (using x of Stream.ensuring(Stream.fromIterable([disposable(events, "x1"), disposable(events, "x2")]), effect { events.push("source closed") })) {
+      using local = disposable(events, "local")
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -157,11 +157,11 @@ function streamInterrupted() {
   return events
 }
 
-function concurrent(ending: string) {
+effect function concurrent(ending: string) {
   const events: string[] = []
-  const outcome = try exit(() => {
+  const outcome = try exit(effect {
     for concurrent(1) (const i of [1, 2]) {
-      using item = try disposable(events, "x" + i)
+      using item = disposable(events, "x" + i)
       events.push("body")
       try yieldNow()
       if (ending === "failure") throw new Bad()
@@ -171,12 +171,12 @@ function concurrent(ending: string) {
   })
   return [Exit.isFailure(outcome), events]
 }
-function concurrentInterrupted() {
+effect function concurrentInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
-  function work() {
+  effect function work() {
     for concurrent(1) (const i of [1, 2]) {
-      using item = try disposable(events, "x" + i)
+      using item = disposable(events, "x" + i)
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -189,7 +189,7 @@ function concurrentInterrupted() {
 }
 
 // expect-result: {"arraysuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2"]],"arrayfailure":[true,["body","dispose local","dispose x1"]],"arraydefect":[true,["body","dispose local","dispose x1"]],"arraybreak":[false,["body","dispose local","dispose x1"]],"arrayreturn":[false,["body","dispose local","dispose x1"]],"arraycontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2"]],"arrayInterrupted":["body","dispose local","dispose x1"],"iteratorsuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"iteratorfailure":[true,["body","dispose local","dispose x1","source closed"]],"iteratordefect":[true,["body","dispose local","dispose x1","source closed"]],"iteratorbreak":[false,["body","dispose local","dispose x1","source closed"]],"iteratorreturn":[false,["body","dispose local","dispose x1","source closed"]],"iteratorcontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"iteratorInterrupted":["body","dispose local","dispose x1","source closed"],"producersuccess":[false,["source closed","body","dispose local","dispose x1","body","dispose local","dispose x2"]],"producerfailure":[true,["source closed","body","dispose local","dispose x1"]],"producerdefect":[true,["source closed","body","dispose local","dispose x1"]],"producerbreak":[false,["source closed","body","dispose local","dispose x1"]],"producerreturn":[false,["source closed","body","dispose local","dispose x1"]],"producercontinue":[false,["source closed","body","dispose local","dispose x1","body","dispose local","dispose x2"]],"producerInterrupted":["source closed","body","dispose local","dispose x1"],"streamsuccess":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"streamfailure":[true,["body","dispose local","dispose x1","source closed"]],"streamdefect":[true,["body","dispose local","dispose x1","source closed"]],"streambreak":[false,["body","dispose local","dispose x1","source closed"]],"streamreturn":[false,["body","dispose local","dispose x1","source closed"]],"streamcontinue":[false,["body","dispose local","dispose x1","body","dispose local","dispose x2","source closed"]],"streamInterrupted":["body","dispose local","dispose x1","source closed"],"concurrentsuccess":[false,["body","dispose x1","body","dispose x2"]],"concurrentfailure":[true,["body","dispose x1"]],"concurrentdefect":[true,["body","dispose x1"]],"concurrentcontinue":[false,["body","dispose x1","body","dispose x2"]],"concurrentInterrupted":["body","dispose x1"]}
-export function main() {
+export effect function main() {
   return {
     arraysuccess: try array("success"),
     arrayfailure: try array("failure"),

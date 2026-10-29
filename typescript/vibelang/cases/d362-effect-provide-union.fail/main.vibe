@@ -3,15 +3,15 @@ service Left { left: number }
 service Right { right: number }
 const LeftLive = Layer.succeed(Left, { left: 1 })
 const RightLive = Layer.succeed(Right, { right: 2 })
-function read() { return (try Left()).left + (try Right()).right }
-function direct(flag: boolean) {
+effect function read() { return (try Left()).left + (try Right()).right }
+effect function direct(flag: boolean) {
   const providers: [Layer.Layer<Left>] | [Layer.Layer<Right>] = flag ? [LeftLive] : [RightLive]
-  return try Effect.provide(() => read(), providers)
+  return try Effect.provide(effect { return try read() }, providers)
 }
-function curried(flag: boolean) {
+effect function curried(flag: boolean) {
   const providers: [Layer.Layer<Left>] | [Layer.Layer<Right>] = flag ? [LeftLive] : [RightLive]
   const provide = Effect.provide(providers)
-  return try provide(() => read())
+  return try provide(effect { return try read() })
 }
-Effect.runFork(() => direct(true))
-Effect.runFork(() => curried(true))
+Effect.runFork(effect { return try direct(true) })
+Effect.runFork(effect { return try curried(true) })

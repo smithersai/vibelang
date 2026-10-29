@@ -1,6 +1,6 @@
 // A generic acquisition in a branch of the initializer gets the block's
 // Scope too, so the function's R omits it: Exclude<R, Scope> (D490).
-export function conditionalGeneric<A extends Disposable, R>(open: () => A!!R, flag: boolean) {
+export effect function conditionalGeneric<A extends Disposable, R>(open: () => A!!R, flag: boolean) {
   using r = flag ? try open() : try open()
   return "used"
 }

@@ -4,25 +4,25 @@ import * as Exit from "effect/Exit"
 import * as Config from "effect/Config"
 import { Action, implement, implementNumber, implementFailure, runCount } from "./host.js"
 
-function annotated(): Effect.Effect<number, never, never> {
+effect function annotated(): Effect.Effect<number, never, never> {
   return Action.make(5)
 }
-const named: (n: number) => Effect.Effect<number> = (n) => Exit.succeed(n + 5)
-function region(): Effect.Effect<number, never, never> {
+const named: (n: number) => Effect.Effect<number> = effect (n) => Exit.succeed(n + 5)
+effect function region(): Effect.Effect<number, never, never> {
   try { return Action.make(7) } finally { const unused = 0 }
 }
 // A call already running an Effect may succeed with subtype data.
-function successData(): Effect.Effect<Exit.Exit<number>, never, never> {
+effect function successData(): Effect.Effect<Exit.Exit<number>, never, never> {
   return try Effect.succeed(Exit.succeed(8))
 }
-function failed(): Effect.Effect<unknown, never, never> {
-  try { return try implementFailure((n) => Exit.fail("failure")) }
+effect function failed(): Effect.Effect<unknown, never, never> {
+  try { return try implementFailure(effect (n) => Exit.fail("failure")) }
   catch (error) { return error }
 }
-export function main() {
-  const exit = try implement((n) => Exit.succeed(n + 1))
-  const action = try implement((n) => Action.make(n + 2))
-  const stored = try implement((n) => {
+export effect function main() {
+  const exit = try implement(effect (n) => Exit.succeed(n + 1))
+  const action = try implement(effect (n) => Action.make(n + 2))
+  const stored = try implement(effect (n) => {
     const program = Action.make(n + 3)
     return program
   })
@@ -34,6 +34,6 @@ export function main() {
   const typed = try annotated()
   const callback = try implementNumber(named)
   const nested = try region()
-  const expression = try implementNumber(function (n) { return (Exit.succeed(n + 7)) })
+  const expression = try implementNumber(effect function (n) { return (Exit.succeed(n + 7)) })
   return [exit, action, stored, data.value === 99, Config.isConfig(config), count, typed, callback, nested, expression, Exit.isExit(try successData()), try failed()]
 }

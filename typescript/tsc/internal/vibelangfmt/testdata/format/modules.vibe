@@ -46,7 +46,7 @@ export * from config
 error Unclean { reason: string }
 
 export function cleaned(input: string): Cleaned!Unclean {
-    return try((input) => clean(input), (error) => new Unclean({ reason: String(error) + suffix }), input)
+    return try Effect.try({ try: () => clean(input), catch: (error) => new Unclean({ reason: String(error) + suffix }) })
 }
 
 export function retried(input: string) {

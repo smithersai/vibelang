@@ -1,10 +1,10 @@
 // expect: TS2322 EK2001
 import * as Effect from "effect/Effect"
-const decode = (text: string): Effect.Effect<number, string, never> => {
+const decode = effect (text: string): Effect.Effect<number, string, never> => {
   if (text === "bad") throw "invalid"
   return text.length
 }
-export const wrongSuccess = (text: string | null): Effect.Effect<{ tags: string | undefined }, string, never> =>
-  Effect.all({ tags: text === null ? undefined : decode(text) })
-export const wrongFailure = (text: string | null): Effect.Effect<{ tags: number | undefined }, never, never> =>
-  Effect.all({ tags: text === null ? undefined : decode(text) })
+export const wrongSuccess = effect (text: string | null): Effect.Effect<{ tags: string | undefined }, string, never> =>
+  try Effect.all({ tags: text === null ? undefined : decode(text) })
+export const wrongFailure = effect (text: string | null): Effect.Effect<{ tags: number | undefined }, never, never> =>
+  try Effect.all({ tags: text === null ? undefined : decode(text) })

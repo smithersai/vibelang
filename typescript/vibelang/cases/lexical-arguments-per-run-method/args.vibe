@@ -3,34 +3,34 @@
 // that fnUntraced calls on each run. A nested Effect arrow that reads
 // arguments reads that run's arguments object, not one shared by every run.
 export class Counter {
-  defaulted(a: number, step = 1): number!! {
-    const bump = () => {
+  effect defaulted(a: number, step = 1): number!! {
+    const bump = effect () => {
       const tick = try Effect.sync(() => step)
       return arguments[0]++
     }
     return try bump()
   }
 
-  rest(...values: number[]): number!! {
-    const bump = () => {
+  effect rest(...values: number[]): number!! {
+    const bump = effect () => {
       const tick = try Effect.sync(() => values.length)
       return arguments[0]++
     }
     return try bump()
   }
 
-  written(a: number): number!! {
+  effect written(a: number): number!! {
     a += 0
-    const bump = () => {
+    const bump = effect () => {
       const tick = try Effect.sync(() => a)
       return arguments[0]++
     }
     return try bump()
   }
 
-  identity(a: number, step = 1) {
+  effect identity(a: number, step = 1) {
     const tick = try Effect.sync(() => step)
-    const read = () => {
+    const read = effect () => {
       const next = try Effect.sync(() => 0)
       return arguments
     }

@@ -6,5 +6,5 @@ export error Missing { reason: string }
 
 export const refuse = (reason: string): Effect.Effect<never, Missing, never> => {
   if (reason === "") throw new Missing({ reason })
-  return () => { throw new Missing({ reason }) }
+  return effect { throw new Missing({ reason }) }
 }

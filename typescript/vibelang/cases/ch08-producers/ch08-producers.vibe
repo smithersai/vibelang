@@ -27,7 +27,7 @@ function* lines(path: string) {
   }
 }
 
-function firstErrors(path: string) {
+effect function firstErrors(path: string) {
   const found: string[] = []
   for (const line of lines(path)) {
     if (line.startsWith("ERROR")) found.push(line)
@@ -38,7 +38,7 @@ function firstErrors(path: string) {
 // Effect<string[], IOError, Files>
 
 // The same loop, recording when it exits: the file must close before "loop exited".
-function firstErrorsTraced(path: string) {
+effect function firstErrorsTraced(path: string) {
   const found: string[] = []
   for (const line of lines(path)) {
     if (line.startsWith("ERROR")) found.push(line)
@@ -49,7 +49,7 @@ function firstErrorsTraced(path: string) {
 }
 
 // One pass per run: iterating the same producer again starts it from the beginning.
-function twoPasses(path: string) {
+effect function twoPasses(path: string) {
   const producer = lines(path)
   let first = 0
   for (const line of producer) first++
@@ -59,13 +59,13 @@ function twoPasses(path: string) {
 }
 
 const FilesTest = Layer.succeed(Files, {
-  open: (path) => Effect.acquireRelease(
-    () => {
+  open: effect (path) => try Effect.acquireRelease(
+    effect {
       events.push(`open ${path}`)
       const all = contents.get(path) ?? []
       let next = 0
       const file: LineFile = {
-        readLine: () => {
+        readLine: effect () => {
           if (next >= all.length) return undefined
           const line = all[next]
           next++
@@ -75,13 +75,13 @@ const FilesTest = Layer.succeed(Files, {
       }
       return file
     },
-    () => {
+    effect () => {
       events.push(`close ${path}`)
     }
   )
 })
 
-function scenario() {
+effect function scenario() {
   const before = events.length
   const producer = lines("/var/log/app.log")     // lazy: runs none of its body
   const openedByCall = events.length - before
@@ -93,6 +93,6 @@ function scenario() {
 }
 
 // expect-result: {"openedByCall":0,"found":["ERROR one","ERROR two","ERROR three"],"readForFirst":7,"traced":3,"passes":[7,7],"events":["open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log","loop exited","open /var/log/app.log","close /var/log/app.log","open /var/log/app.log","close /var/log/app.log"]}
-export function main() {
-  return try Effect.provide(() => scenario(), FilesTest)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, FilesTest)
 }

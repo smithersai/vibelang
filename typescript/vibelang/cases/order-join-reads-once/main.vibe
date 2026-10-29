@@ -4,9 +4,9 @@
 // returns fibers that this body does not own, which detach gives: a getter
 // is a function literal, so one that returned an owned fiber would capture
 // it (EK4838, D409; fork-escape-getter.fail).
-export function main() {
-  const a = try detach(() => "A")
-  const b = try detach(() => "B")
+export effect function main() {
+  const a = try detach(effect { return "A" })
+  const b = try detach(effect { return "B" })
   let reads = 0
   const tasks = {
     get task() {

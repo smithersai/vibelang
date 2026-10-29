@@ -2,7 +2,7 @@ export error Empty { value: string }
 
 // A-1 under D282: a validator that throws is an Effect function, because a
 // plain function never fails.
-export const validate = (value: string): string!Empty! => {
+export const validate = effect (value: string): string!Empty! => {
   if (value === "") throw new Empty({ value })
   return value
 }

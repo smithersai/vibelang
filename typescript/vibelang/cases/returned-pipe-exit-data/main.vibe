@@ -11,20 +11,20 @@ import * as Exit from "effect/Exit"
 
 error Lost { code: string }
 
-const work = (): number!Lost! => {
+const work = effect (): number!Lost! => {
   throw new Lost({ code: "lost" })
 }
 
-const held = <A, E>(effect: A!E!) => Effect.map(effect, (value) => value)
+const held = effect <A, E>(effect: A!E!) => try Effect.map(effect, (value) => value)
 
-export function main() {
-  const suspended = try Effect.suspend(() => work() |> Effect.exit(%) |> try Effect.ensuring(%, Effect.void))
-  const block = try held(() => {
+export effect function main() {
+  const suspended = try Effect.suspend(effect () => work() |> Effect.exit(%) |> try Effect.ensuring(%, Effect.void))
+  const block = try held(effect {
     const before = 1
     return work() |> try Effect.exit(%)
   })
-  const concise = try held(() => work() |> try Effect.exit(%))
-  const subtype = try held(() => 7 |> Exit.succeed(%))
+  const concise = try held(effect { return work() |> try Effect.exit(%) })
+  const subtype = try held(effect { return 7 |> Exit.succeed(%) })
   const failure = Exit.isFailure(block) ? Cause.squash(block.cause) : undefined
   return {
     suspended: suspended._tag,

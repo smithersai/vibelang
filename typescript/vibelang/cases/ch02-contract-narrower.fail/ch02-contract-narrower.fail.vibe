@@ -13,6 +13,6 @@ abstract class Users {
   abstract find(id: string): Effect<User, UserNotFound, never>
 }
 
-export function greeting(id: string): Effect<string, never, Users> {
+export effect function greeting(id: string): Effect<string, never, Users> {
   return `Hello, ${(try Users.find(id)).name}`
 }

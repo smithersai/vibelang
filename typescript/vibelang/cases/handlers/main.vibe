@@ -17,7 +17,7 @@ abstract class Log extends Control {
 
 const events: string[] = []
 
-function conversation() {
+effect function conversation() {
   const a = try Ask.ask("first")
   try Log.log(`got ${a}`)
   const b = try Ask.ask("second")
@@ -26,11 +26,11 @@ function conversation() {
 }
 
 // Two handlers for one program: Ask inside, Log outside.
-function twoHandlers() {
-  return try handle(() => handle(() => conversation(), Ask, {
-    ask(question, k) { return try resume(k, question.length) }
-  }), Log, {
-    log: (message, k) => {
+effect function twoHandlers() {
+  return try handle(effect { return try handle(effect { return try conversation() }, Ask, {
+    effect ask(question, k) { return try resume(k, question.length) }
+  }) }, Log, {
+    log: effect (message, k) => {
       events.push(message)
       return try resume(k, undefined)
     }
@@ -39,8 +39,8 @@ function twoHandlers() {
 
 // A clause that returns without resuming: the program's cleanup runs before
 // handle returns, and the code after the operation never runs.
-function stopEarly() {
-  const result = try handle(() => {
+effect function stopEarly() {
+  const result = try handle(effect {
     try {
       try Ask.ask("stop")
       events.push("not reached")
@@ -49,22 +49,22 @@ function stopEarly() {
       events.push("cleanup ran")
     }
   }, Ask, {
-    ask(question, _k) { return `stopped at ${question}` }
+    effect ask(question, _k) { return `stopped at ${question}` }
   })
   events.push("handle returned")
   return result
 }
 
 // abandon(k) runs the program's cleanup inside the clause.
-function abandonInClause() {
-  return try handle(() => {
+effect function abandonInClause() {
+  return try handle(effect {
     try {
       return try Ask.ask("drop")
     } finally {
       events.push("abandoned cleanup")
     }
   }, Ask, {
-    ask(_question, k) {
+    effect ask(_question, k) {
       try abandon(k)
       events.push("after abandon")
       return -1
@@ -74,29 +74,29 @@ function abandonInClause() {
 
 // resumeWith raises the operation's declared error at the perform site, where
 // the program catches it.
-function busyAnswer() {
-  return try handle(() => {
+effect function busyAnswer() {
+  return try handle(effect {
     try {
       return try Ask.ask("now")
     } catch (e) {
       return e._tag === "Busy" ? -2 : -3
     }
   }, Ask, {
-    ask(request, k) { return try resumeWith(k, () => { throw new Busy({ request }) }) }
+    effect ask(request, k) { return try resumeWith(k, effect { throw new Busy({ request }) }) }
   })
 }
 
 // onReturn transforms what the program returns.
-function doubled() {
-  return try handle(() => Ask.ask("four"), Ask, {
-    ask(question, k) { return try resume(k, question.length) }
-  }, (n) => n * 2)
+effect function doubled() {
+  return try handle(effect { return try Ask.ask("four") }, Ask, {
+    effect ask(question, k) { return try resume(k, question.length) }
+  }, effect (n) => n * 2)
 }
 
 // A second resume of the same continuation is a defect.
-function resumeTwice() {
-  return try handle(() => Ask.ask("twice"), Ask, {
-    ask(_question, k) {
+effect function resumeTwice() {
+  return try handle(effect { return try Ask.ask("twice") }, Ask, {
+    effect ask(_question, k) {
       const first = try resume(k, 1)
       const second = try resume(k, 2)
       return first + second
@@ -106,17 +106,17 @@ function resumeTwice() {
 
 // A clause that holds a resource with using releases it after the resumed
 // program finishes, so its resume is not a tail resume.
-function leaseWhileResuming() {
+effect function leaseWhileResuming() {
   const log: string[] = []
-  const answer = try handle(() => {
+  const answer = try handle(effect {
     const n = try Ask.ask("lease")
     log.push(`program got ${n}`)
     return n
   }, Ask, {
-    ask(_question, k) {
-      using lease = try Effect.acquireRelease(() => {
+    effect ask(_question, k) {
+      using lease = try Effect.acquireRelease(effect {
         log.push("acquire")
-      }, () => {
+      }, effect () => {
         log.push("release")
       })
       return try resume(k, 7)
@@ -125,7 +125,7 @@ function leaseWhileResuming() {
   return { answer, log }
 }
 
-function count(n: number) {
+effect function count(n: number) {
   let i = 0
   while (i < n) {
     try Log.log("tick")
@@ -135,14 +135,14 @@ function count(n: number) {
 }
 
 // A clause whose last step is resume runs in constant stack (D18).
-function manyTicks() {
+effect function manyTicks() {
   let maxDepth = 0
   let seen = 0
   hooks.onResume = (fiber): void => {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
   }
-  const total = try handle(() => count(100000), Log, {
-    log(_message, k) {
+  const total = try handle(effect { return try count(100000) }, Log, {
+    effect log(_message, k) {
       seen++
       return try resume(k, undefined)
     }
@@ -152,13 +152,13 @@ function manyTicks() {
 }
 
 // expect-result: {"sum":11,"stopped":"stopped at stop","dropped":-1,"busy":-2,"twice":8,"again":["ContinuationAlreadyConsumed"],"leased":{"answer":7,"log":["acquire","program got 7","release"]},"many":{"total":100000,"seen":100000,"bounded":true},"events":["got 5","got 6","cleanup ran","handle returned","abandoned cleanup","after abandon"]}
-export function main() {
+export effect function main() {
   const sum = try twoHandlers()
   const stopped = try stopEarly()
   const dropped = try abandonInClause()
   const busy = try busyAnswer()
   const twice = try doubled()
-  const exit = try Effect.exit(() => resumeTwice())
+  const exit = try Effect.exit(effect { return try resumeTwice() })
   const again = Exit.isFailure(exit)
     ? (exit.cause.reasons as ReadonlyArray<(typeof exit.cause.reasons)[number]>).map((reason) => (reason._tag === "Die" ? (reason.defect as { _tag?: string })._tag : reason._tag))
     : ["Success"]

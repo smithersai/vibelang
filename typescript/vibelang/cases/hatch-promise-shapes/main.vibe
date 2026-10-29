@@ -12,7 +12,7 @@ module helpers {
 import { pick } from helpers
 
 // expect-result: [1,2,5,6,7,42]
-export function main() {
+export effect function main() {
   const resolved: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, true)
   const plain: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, false)
   const value: number = try sync([1].length > 1 ? 0 : Promise.resolve(5))

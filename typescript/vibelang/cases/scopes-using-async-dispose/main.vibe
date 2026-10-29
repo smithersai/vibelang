@@ -17,28 +17,28 @@ import { asyncResource } from resources
 
 const events: string[] = []
 
-function openSync(name: string) {
+effect function openSync(name: string) {
   try yieldNow()
   events.push(`open ${name}`)
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
-function openAsync(name: string) {
+effect function openAsync(name: string) {
   try yieldNow()
   events.push(`open ${name}`)
   return try sync((n: string, log: string[]) => asyncResource(n, log), name, events)
 }
 
-function releasing(name: string) {
+effect function releasing(name: string) {
   return try Effect.acquireRelease(
-    () => openAsync(name),
-    () => {
+    effect { return try openAsync(name) },
+    effect () => {
       events.push(`release ${name}`)
     }
   )
 }
 
-function work() {
+effect function work() {
   using a = try openSync("a")
   using b = try openAsync("b")
   using c = try releasing("c")
@@ -46,7 +46,7 @@ function work() {
 }
 
 // expect-result: ["open a","open b","open c","work","release c","async dispose b","dispose a"]
-export function main() {
+export effect function main() {
   try work()
   return events
 }

@@ -5,7 +5,7 @@
 import { Console } from "effect"
 import { find } from "./helpers.ts"
 
-function findId(id: string) {
+effect function findId(id: string) {
   return (try find(id)).id
 }
 

@@ -3,7 +3,7 @@ import { events, tag, plain, SqlClient } from "./tags.js"
 // expect-result: {"value":"expression|7","plainValue":"plain-expression|9","events":["statement","expression|7","plain-statement","plain-expression|9","CREATE TABLE example (id TEXT)","deferred","local"],"topPlain":"native-top","nativePlain":"native-body"}
 function nativePlain(parts: TemplateStringsArray): string { return parts[0] }
 const topPlain = nativePlain`native-top`
-export function main() {
+export effect function main() {
   try tag`statement`
   const value = try tag`expression${7}`
   plain`plain-statement`
@@ -13,7 +13,7 @@ export function main() {
     try sql`CREATE TABLE example (id TEXT)`
   }
   const deferred = try Effect.as(tag`deferred`, "ignored")
-  function local(parts: TemplateStringsArray) {
+  effect function local(parts: TemplateStringsArray) {
     return try tag`local`
   }
   try local`ignored`

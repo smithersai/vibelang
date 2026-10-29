@@ -89,7 +89,7 @@ function handled(version: string) {
 }
 
 function hatches(text: string) {
-  const parsed = try((text) => JSON.parse(text), (error) => new BadJson({ error }), text)
+  const parsed = try Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
   return parsed ?? throw new BadJson({ error: "empty" })
 }
 

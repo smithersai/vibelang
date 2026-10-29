@@ -14,14 +14,14 @@ module iterators {
 import { elements } from iterators
 function* produce(events: string[]) {
   try {
-    yield try disposable(events)
-    yield try disposable(events)
+    yield disposable(events)
+    yield disposable(events)
   } finally { events.push("closed") }
 }
 
-function array(reverse: boolean) {
+effect function array(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of [try disposable(events), try disposable(events)]) {
+  outer: inner: for (using x of [disposable(events), disposable(events)]) {
     events.push("body")
     try yieldNow()
     if (events.length < 2) {
@@ -34,7 +34,7 @@ function array(reverse: boolean) {
   return events
 }
 
-function iterator(reverse: boolean) {
+effect function iterator(reverse: boolean) {
   const events: string[] = []
   outer: inner: for (using x of try sync((e: string[]) => elements(e), events)) {
     events.push("body")
@@ -49,7 +49,7 @@ function iterator(reverse: boolean) {
   return events
 }
 
-function producer(reverse: boolean) {
+effect function producer(reverse: boolean) {
   const events: string[] = []
   outer: inner: for (using x of produce(events)) {
     events.push("body")
@@ -64,9 +64,9 @@ function producer(reverse: boolean) {
   return events
 }
 
-function stream(reverse: boolean) {
+effect function stream(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of Stream.ensuring(Stream.fromIterable([try disposable(events), try disposable(events)]), () => { events.push("closed") })) {
+  outer: inner: for (using x of Stream.ensuring(Stream.fromIterable([disposable(events), disposable(events)]), effect { events.push("closed") })) {
     events.push("body")
     try yieldNow()
     if (events.length < 2) {
@@ -79,9 +79,9 @@ function stream(reverse: boolean) {
   return events
 }
 
-function cStyle() {
+effect function cStyle() {
   const events: string[] = []
-  outer: inner: for (using h = try disposable(events); ;) {
+  outer: inner: for (using h = disposable(events); ;) {
     events.push("body")
     try yieldNow()
     if (events.length < 2) continue outer
@@ -89,7 +89,7 @@ function cStyle() {
   }
   return events
 }
-function nested() {
+effect function nested() {
   const events: string[] = []
   let i = 0
   outer: alias: for (using x of try sync((e: string[]) => elements(e), events)) {
@@ -105,7 +105,7 @@ function nested() {
 }
 
 // expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["closed","body","dispose"],"producerReverse":["closed","body","dispose"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
-export function main() {
+export effect function main() {
   return {
     array: try array(false), arrayReverse: try array(true),
     iterator: try iterator(false), iteratorReverse: try iterator(true),

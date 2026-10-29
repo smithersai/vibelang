@@ -2,7 +2,7 @@
 // program itself, so main runs once.
 import { runMain } from "./runner.ts"
 
-export function main() {
+export effect function main() {
   try Console.log("made runner ran once")
 }
 

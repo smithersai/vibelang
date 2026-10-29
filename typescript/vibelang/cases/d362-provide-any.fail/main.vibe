@@ -1,12 +1,12 @@
 // expect: EK3207
-export function anyProvider(provider: any) {
+export effect function anyProvider(provider: any) {
   provide provider { return 0 }
 }
 
-export function unknownProvider(provider: unknown) {
+export effect function unknownProvider(provider: unknown) {
   provide provider { return 0 }
 }
 
-export function effectProvider(provider: any) {
-  return try Effect.provide(() => 0, provider)
+export effect function effectProvider(provider: any) {
+  return try Effect.provide(effect { return 0 }, provider)
 }

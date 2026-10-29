@@ -4,19 +4,19 @@
 // itself the expected failure (D406).
 error Expected
 
-function fail() {
+effect function fail() {
   try Effect.failCause(Cause.fail(new Expected()))
 }
 
-function defect() {
+effect function defect() {
   try Effect.failCause(Cause.die("defect"))
 }
 
-function combined() {
+effect function combined() {
   try Effect.failCause(Cause.combine(Cause.fail(new Expected()), Cause.die("combined defect")))
 }
 
-function caught() {
+effect function caught() {
   try {
     try fail()
     return "missing"
@@ -44,12 +44,12 @@ function reasons(outcome: Exit.Exit<unknown, Expected>) {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     caught: try caught(),
-    defect: try reasons(try exit(defect())),
-    combined: try reasons(try exit(combined())),
-    escaped: try reasons(try exit(fail())),
-    value: try value()
+    defect: reasons(try exit(defect())),
+    combined: reasons(try exit(combined())),
+    escaped: reasons(try exit(fail())),
+    value: value()
   }
 }

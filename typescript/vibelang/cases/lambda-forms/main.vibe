@@ -17,18 +17,18 @@ function plainCall() {
 
 // The body runs an Effect, which a plain function cannot do, so overload 1
 // rejects the lambda and overload 2 accepts it as an Effect function.
-function effectCall() {
-  return try register((x): number!! => (try find(String(x))).id.length)
+effect function effectCall() {
+  return try register(effect (x): number!! => (try find(String(x))).id.length)
 }
 
 // The Effect callback comes first, so it wins even for a body with no call.
-function effectFirst() {
-  return try attach((x): number!! => x + 1)
+effect function effectFirst() {
+  return try attach(effect (x): number!! => x + 1)
 }
 
 // A program comes first: firstProgram, a lambda with no parameters, is a
 // program because its annotation is an Effect.
-function programFirst() {
+effect function programFirst() {
   return try start(firstProgram)
 }
 
@@ -39,36 +39,36 @@ function bare() {
 }
 
 // No expected type and a body that runs an Effect: an Effect function.
-function bareEffect() {
-  const f = apply((id: string): string!! => (try find(id)).id)
+effect function bareEffect() {
+  const f = apply(effect (id: string): string!! => (try find(id)).id)
   return try f("z")
 }
 
 // A lambda a function returns has no expected type: an Effect function (D500),
 // which the caller runs where it calls it.
-function returned(n: number) {
+effect function returned(n: number) {
   try Effect.sleep("1 millis")
-  return (x: number) => Math.max(x, n)
+  return effect (x: number) => Math.max(x, n)
 }
 
 // Array.prototype.map declares a plain callback; Effect.forEach an Effect one.
-function traversals(ids: ReadonlyArray<string>) {
+effect function traversals(ids: ReadonlyArray<string>) {
   const trimmed = ids.map((id) => id.trim())
-  const found = try Effect.forEach(trimmed, (id) => (try find(id)).id)
+  const found = try Effect.forEach(trimmed, effect (id) => (try find(id)).id)
   return found.join("")
 }
 
-const firstProgram: number!! = () => Math.max(1, 2)
+const firstProgram: number!! = effect { return Math.max(1, 2) }
 
 // expect-result: {"plainBody":"plain 2","plainCall":"plain 1","effectCall":"effect 1","effectFirst":"effect 2","programFirst":"program 2","bare":0,"bareEffect":"z","traversals":"ab","returned":5}
-export function main() {
+export effect function main() {
   return {
-    plainBody: try plainBody(),
-    plainCall: try plainCall(),
+    plainBody: plainBody(),
+    plainCall: plainCall(),
     effectCall: try effectCall(),
     effectFirst: try effectFirst(),
     programFirst: try programFirst(),
-    bare: try bare(),
+    bare: bare(),
     bareEffect: try bareEffect(),
     traversals: try traversals([" a", "b "]),
     returned: try (try returned(5))(3)

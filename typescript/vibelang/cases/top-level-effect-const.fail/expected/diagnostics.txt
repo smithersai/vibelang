@@ -3,4 +3,4 @@ main.vibe(4,21): warning EK4833
 main.vibe(4,57): error EK1001
 main.vibe(5,37): error EK1001
 main.vibe(6,25): error EK1001
-main.vibe(6,53): warning EK4833
+main.vibe(6,60): warning EK4833

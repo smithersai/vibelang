@@ -25,7 +25,7 @@ abstract class Metrics {
 
 // Throwing a typed error
 
-function parseId(raw: string) {
+effect function parseId(raw: string) {
   if (!/^\d+$/.test(raw)) throw new InvalidId({ raw })
   return Number(raw)
 }
@@ -33,7 +33,7 @@ function parseId(raw: string) {
 
 // Catching
 
-function lookup(raw: string) {
+effect function lookup(raw: string) {
   const id = try parseId(raw)
   try {
     return try Users.find(String(id))
@@ -43,7 +43,7 @@ function lookup(raw: string) {
 }
 // Effect<User, InvalidId, Users>
 
-function lookupOrGuest(raw: string) {
+effect function lookupOrGuest(raw: string) {
   try {
     return try Users.find(String(try parseId(raw)))
   } catch (e) {                          // e: InvalidId | UserNotFound
@@ -54,14 +54,14 @@ function lookupOrGuest(raw: string) {
 // Effect<User, InvalidId, Users>
 
 // NOTE: the proposal shows this line inside an unnamed function; it is wrapped in findOrGuest.
-function findOrGuest(id: string) {
-  const user = try Effect.catchTag(() => Users.find(id), "UserNotFound", () => guest)
+effect function findOrGuest(id: string) {
+  const user = try Effect.catchTag(effect { return try Users.find(id) }, "UserNotFound", effect () => guest)
   return user
 }
 
 // Promising that nothing escapes (the version without try is ch03-safelookup-no-try.fail.vibe)
 
-export function safeLookup(raw: string): Effect<User, never, Users> {
+export effect function safeLookup(raw: string): Effect<User, never, Users> {
   try {
     return try lookupOrGuest(raw)
   } catch (e) {                // e: InvalidId
@@ -71,7 +71,7 @@ export function safeLookup(raw: string): Effect<User, never, Users> {
 
 // Cleanup with finally
 
-function report(id: string) {
+effect function report(id: string) {
   try {
     return try Reports.build(id)
   } finally {
@@ -83,13 +83,13 @@ function report(id: string) {
 // NOTE: the proposal shows `Effect.orDie(() => parseId(raw))` and `Effect.catchDefect(() => risky(), …)`
 // as fragments; strictId and describeDefect wrap them in functions.
 
-function strictId(raw: string) {
-  const id = try Effect.orDie(() => parseId(raw))
+effect function strictId(raw: string) {
+  const id = try Effect.orDie(effect { return try parseId(raw) })
   return id
 }
 
-function describeDefect(raw: string) {
-  return try Effect.catchDefect(() => strictId(raw), (defect) => (defect instanceof InvalidId ? "defect: InvalidId" : "defect: other"))
+effect function describeDefect(raw: string) {
+  return try Effect.catchDefect(effect { return try strictId(raw) }, effect (defect) => (defect instanceof InvalidId ? "defect: InvalidId" : "defect: other"))
 }
 
 // D24: a call runs its result only when the call's type is Effect<A, E, R> itself. A tagged error
@@ -99,14 +99,14 @@ function makeNotFound(id: string) {
 }
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => {
+  find: effect (id) => {
     if (id !== "42") throw new UserNotFound({ id })
     return { id, name: "Ada" }
   }
 })
 
 const ReportsTest = Layer.succeed(Reports, {
-  build: (id) => {
+  build: effect (id) => {
     if (id === "bad") throw new ReportError({ id })
     return `report ${id}`
   }
@@ -115,12 +115,12 @@ const ReportsTest = Layer.succeed(Reports, {
 const counts = new Map<string, number>()
 
 const MetricsTest = Layer.succeed(Metrics, {
-  increment: (name) => {
+  increment: effect (name) => {
     counts.set(name, (counts.get(name) ?? 0) + 1)
   }
 })
 
-function scenario() {
+effect function scenario() {
   const found = (try lookup("42")).name
   const missing = (try lookup("7")).name
   const orGuest = (try lookupOrGuest("7")).name
@@ -141,7 +141,7 @@ function scenario() {
   }
   const strict = try strictId("12")
   const defect = try describeDefect("x")
-  const made = (try makeNotFound("7"))._tag
+  const made = (makeNotFound("7"))._tag
   return {
     found,
     missing,
@@ -159,6 +159,6 @@ function scenario() {
 }
 
 // expect-result: {"found":"Ada","missing":"Guest","orGuest":"Guest","invalid":"InvalidId","safe":"Guest","tagged":"Guest","built":"report r1","failedReport":"ReportError","reportsCounted":2,"strict":12,"defect":"defect: InvalidId","made":"UserNotFound"}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(UsersTest, ReportsTest, MetricsTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(UsersTest, ReportsTest, MetricsTest))
 }

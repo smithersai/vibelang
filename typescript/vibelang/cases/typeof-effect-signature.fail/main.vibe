@@ -1,7 +1,7 @@
 // expect: TS2322 TS2339
 import { Effect, Schema } from "effect"
 class Failure extends Schema.TaggedError<Failure>()("Failure", { message: Schema.String }) {}
-function run(): Effect.Effect<number, Failure, never> { throw new Failure({ message: "failed" }) }
+effect function run(): Effect.Effect<number, Failure, never> { throw new Failure({ message: "failed" }) }
 type RunError = Effect.Error<ReturnType<typeof run>>
 const invalid: RunError = 42
 export const missing = (error: RunError): string => error.missing

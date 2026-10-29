@@ -12,14 +12,14 @@ abstract class Replica {
   abstract query(sql: string): Effect<string, never, never>
 }
 
-function both() {
+effect function both() {
   return `${try Primary.query("select 1")} / ${try Replica.query("select 1")}`
 }
 
 const PrimaryLive = Layer.succeed(Primary, {
-  query: (sql) => `primary ${sql}`
+  query: effect (sql) => `primary ${sql}`
 })
 
-export function onlyPrimary(): Effect<string, never, never> {
-  return try Effect.provide(() => both(), PrimaryLive)
+export effect function onlyPrimary(): Effect<string, never, never> {
+  return try Effect.provide(effect { return try both() }, PrimaryLive)
 }

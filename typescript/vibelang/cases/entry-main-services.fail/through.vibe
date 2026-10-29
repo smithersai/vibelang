@@ -1,10 +1,10 @@
 // A service that main needs through the functions it calls counts too.
 import { Stamp, Users } from "./services.vibe"
 
-function stamped() {
+effect function stamped() {
   return `${try Users.find("1")} at ${try Stamp.now()}`
 }
 
-export function main() {
+export effect function main() {
   try Console.log(try stamped())
 }

@@ -5,7 +5,7 @@
 // type and ran it on the new fiber, after "after spawn".
 const events: string[] = []
 
-function work(): number!! {
+effect function work(): number!! {
   try sleep("1 millis")
   events.push("work ran")
   return 1

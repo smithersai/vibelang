@@ -11,16 +11,16 @@ abstract class Approval extends Control {
   abstract approve(request: string): Effect.Effect<boolean, Busy, never>
 }
 
-export function concurrent(ids: ReadonlyArray<string>) {
-  return try Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 4 })
+export effect function concurrent(ids: ReadonlyArray<string>) {
+  return try Effect.forEach(ids, effect (id) => try Approval.approve(id), { concurrency: 4 })
 }
 
-export function raced() {
-  return try Effect.race(() => Approval.approve("a"), () => Approval.approve("b"))
+export effect function raced() {
+  return try Effect.race(effect { return try Approval.approve("a") }, effect { return try Approval.approve("b") })
 }
 
-export function timed() {
-  return try Effect.timeout(() => Approval.approve("slow"), "1 second")
+export effect function timed() {
+  return try Effect.timeout(effect { return try Approval.approve("slow") }, "1 second")
 }
 
 // A producer runs on a fiber of its own (VIP-21), whatever consumes it.
@@ -28,22 +28,22 @@ function* approvals(ids: ReadonlyArray<string>) {
   for (const id of ids) yield try Approval.approve(id)
 }
 
-export function collected(ids: ReadonlyArray<string>) {
+export effect function collected(ids: ReadonlyArray<string>) {
   return try Stream.runCollect(approvals(ids))
 }
 
-export function looped(ids: ReadonlyArray<string>) {
+export effect function looped(ids: ReadonlyArray<string>) {
   let approved = 0
   for (const ok of approvals(ids)) if (ok) approved++
   return approved
 }
 
-export function allowed(ids: ReadonlyArray<string>) {
-  const sequential = try Effect.forEach(ids, (id) => Approval.approve(id))
-  const one = try Effect.forEach(ids, (id) => Approval.approve(id), { concurrency: 1 })
-  const inside = try Effect.forEach(ids, (id) =>
-    handle(() => Approval.approve(id), Approval, {
-      approve: (_request, k) => resume(k, true)
+export effect function allowed(ids: ReadonlyArray<string>) {
+  const sequential = try Effect.forEach(ids, effect (id) => try Approval.approve(id))
+  const one = try Effect.forEach(ids, effect (id) => try Approval.approve(id), { concurrency: 1 })
+  const inside = try Effect.forEach(ids, effect (id) =>
+    try handle(effect { return try Approval.approve(id) }, Approval, {
+      approve: effect (_request, k) => try resume(k, true)
     }),
     { concurrency: 4 })
   return [sequential, one, inside]

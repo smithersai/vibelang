@@ -32,8 +32,8 @@ function effects(e: Cause.NoSuchElementError | Gone) {
 // expect-result: {"closed":["gone","missing /p","expired","bad"],"family":["m","x"],"effects":["none","gone"]}
 export function main() {
   return {
-    closed: [try closed(new Gone({ id: "1" })), try closed(new Missing({ code: "m", path: "/p" })), try closed(new Expired({ code: "x" })), try closed(new Bad({ reason: "r" }))],
-    family: [try family(new Missing({ code: "m", path: "/p" })), try family(new Expired({ code: "x" }))],
-    effects: [try effects(new Cause.NoSuchElementError()), try effects(new Gone({ id: "2" }))]
+    closed: [closed(new Gone({ id: "1" })), closed(new Missing({ code: "m", path: "/p" })), closed(new Expired({ code: "x" })), closed(new Bad({ reason: "r" }))],
+    family: [family(new Missing({ code: "m", path: "/p" })), family(new Expired({ code: "x" }))],
+    effects: [effects(new Cause.NoSuchElementError()), effects(new Gone({ id: "2" }))]
   }
 }

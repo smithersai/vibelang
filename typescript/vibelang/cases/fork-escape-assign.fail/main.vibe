@@ -1,7 +1,7 @@
 // expect: EK4838
 // A fiber assigned to a binding or property declared outside the region
 // that owns it outlives that region, which interrupts it on exit (D409).
-function heartbeat() {
+effect function heartbeat() {
   try sleep("1 minute")
 }
 
@@ -11,16 +11,16 @@ interface Monitor {
 
 let current: Fiber<void> | undefined
 
-export function global() {
+export effect function global() {
   current = fork heartbeat()
 }
 
-export function property(monitor: Monitor) {
+export effect function property(monitor: Monitor) {
   monitor.fiber = fork heartbeat()
 }
 
 // Each iteration of a loop body is a region; last is declared outside it.
-export function lastOfLoop() {
+export effect function lastOfLoop() {
   let last: Fiber<void> | undefined
   for (const n of [1, 2]) {
     last = fork heartbeat()
@@ -28,13 +28,13 @@ export function lastOfLoop() {
   return "loop"
 }
 
-export function throughBinding(monitor: Monitor) {
+export effect function throughBinding(monitor: Monitor) {
   const fiber = fork heartbeat()
   monitor.fiber = fiber
 }
 
 // Only a const or let of the region may hold the fiber.
-export function inVar() {
+export effect function inVar() {
   var fiber = fork heartbeat()
   try Fiber.interrupt(fiber)
 }
@@ -42,7 +42,7 @@ export function inVar() {
 export class Worker {
   fiber: Fiber<void> | undefined = undefined
 
-  start() {
+  effect start() {
     this.fiber = fork heartbeat()
   }
 }

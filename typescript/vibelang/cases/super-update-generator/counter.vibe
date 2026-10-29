@@ -7,7 +7,7 @@ class Base {
 }
 
 export class Counter extends Base {
-  bump() {
+  effect bump() {
     const tick = try Effect.sync(() => 0)
     return super.count++
   }

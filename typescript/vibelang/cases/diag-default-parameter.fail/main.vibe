@@ -1,9 +1,9 @@
 // expect: EK1001 TS2365 TS2345
-function value() { try sleep("1 millis"); return 7 }
+effect function value() { try sleep("1 millis"); return 7 }
 export function f(x = value()) { return x + 1 }
-export function test() { return [try f(), try f(10)] }
+export function test() { return [f(), f(10)] }
 
 // A function delays the default's call; calling the program runs it.
-export function inferred(program = () => value()) { return try program() }
-export function explicit(program: number!! = () => value()) { return try program() }
-export function wrongProgramArgument() { return try inferred(10) }
+export effect function inferred(program = effect () => try value()) { return try program() }
+export effect function explicit(program: number!! = effect { return try value() }) { return try program() }
+export effect function wrongProgramArgument() { return try inferred(10) }

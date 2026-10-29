@@ -6,6 +6,6 @@ import { formatName } from "./format.ts"
 export { fullName } from "./names.vibe"
 
 // expect-result: ["Lovelace, Ada","Hopper, Grace"]
-export function main() {
+export effect function main() {
   return [try fullName("Ada", "Lovelace"), formatName("Grace", "Hopper")]
 }

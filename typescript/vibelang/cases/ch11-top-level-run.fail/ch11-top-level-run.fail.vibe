@@ -6,7 +6,7 @@ interface AppConfig {
   port: number
 }
 
-function loadConfig() {
+effect function loadConfig() {
   try Effect.sleep("1 millis")
   const config: AppConfig = { port: 8080 }
   return config

@@ -2,41 +2,41 @@ import { fault } from "./fault.ts"
 import { inner, remoteBridge } from "./inner.vibe"
 function localInner(n: number): number { return n === 0 ? 1 : localInner(n - 1) }
 function bridge(n: number) { return localInner(n) }
-export function outer(n: number): number!! {
-  return n === 0 ? 0 : try bridge(3) + try outer(n - 1)
+export effect function outer(n: number): number!! {
+  return n === 0 ? 0 : bridge(3) + try outer(n - 1)
 }
-export function remote(n: number): number!! {
-  return n === 0 ? 0 : try remoteBridge(3) + try remote(n - 1)
+export effect function remote(n: number): number!! {
+  return n === 0 ? 0 : remoteBridge(3) + try remote(n - 1)
 }
 class Bridge {
   get value(): number { return localInner(3) }
 }
 const holder = new Bridge()
-export function getter(n: number): number!! {
+export effect function getter(n: number): number!! {
   return n === 0 ? 0 : holder.value + try getter(n - 1)
 }
-export function mapped(n: number): number!! {
+export effect function mapped(n: number): number!! {
   return n === 0 ? 0 : [3].map(x => localInner(x))[0] + try mapped(n - 1)
 }
-export function dataMethod(n: number): number!! {
+export effect function dataMethod(n: number): number!! {
   return n === 0 ? 0 : Option.some(3).map(x => localInner(x)).getOrElse(() => 0) + try dataMethod(n - 1)
 }
-export function sequential(n: number): number!! {
+export effect function sequential(n: number): number!! {
   return n === 0 ? 0 : localInner(3) + try inner(3) + try sequential(n - 1)
 }
 function complexBridge(n = 3) { return localInner(n) }
-export function complex(n: number): number!! {
-  return n === 0 ? 0 : try complexBridge() + try complex(n - 1)
+export effect function complex(n: number): number!! {
+  return n === 0 ? 0 : complexBridge() + try complex(n - 1)
 }
-export function concurrent() {
+export effect function concurrent() {
   const a = fork { try yieldNow(); return try outer(100000) }
   const b = fork { try yieldNow(); return try remote(100000) }
   return join [a, b]
 }
 export function main() { return try outer(100000) }
 
-export function broken(n: number): number!! {
-  return n === 0 ? fault.value : try bridge(3) + try broken(n - 1)
+export effect function broken(n: number): number!! {
+  return n === 0 ? fault.value : bridge(3) + try broken(n - 1)
 }
 class Sink {
   count = 0
@@ -44,7 +44,7 @@ class Sink {
   get value(): number { return this.count }
 }
 const sink = new Sink()
-export function writes(n: number): number!! {
+export effect function writes(n: number): number!! {
   if (n === 0) return 0
   sink.value = 3
   const value = sink.value++
@@ -55,12 +55,12 @@ const receiver = {
   value: 1,
   getValue(): number { return this.value + localInner(3) - 1 }
 }
-export function references(n: number): number!! {
+export effect function references(n: number): number!! {
   if (n === 0) return 0
   const object: { mutable value?: number } = { value: 1 }
   delete object.value
   function nested() { return localInner(3) }
-  return (receiver.getValue)() + (object.value ?? 0) + try nested() - 1 + try references(n - 1)
+  return (receiver.getValue)() + (object.value ?? 0) + nested() - 1 + try references(n - 1)
 }
 
 export function after(n: number) { return localInner(n) + try inner(n) }

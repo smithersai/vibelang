@@ -19,7 +19,7 @@ module resources {
 }
 import { disposable, asyncDisposable } from resources
 
-function block() {
+effect function block() {
   const events: string[] = []
   {
     using syncResource = try sync((e: string[]) => disposable("sync", e), events)
@@ -31,7 +31,7 @@ function block() {
   return events
 }
 
-function loops() {
+effect function loops() {
   const events: string[] = []
   for (using resource of try sync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
     events.push("sync body")
@@ -46,6 +46,6 @@ function loops() {
 }
 
 // expect-result: {"block":["body","disposing async","disposed async","dispose sync","after"],"loops":["sync body","dispose s1","sync body","dispose s2","async body","disposing a1","disposed a1","async body","disposing a2","disposed a2","after"]}
-export function main() {
+export effect function main() {
   return { block: try block(), loops: try loops() }
 }

@@ -1,7 +1,7 @@
 // expect: EK4301 EK4301
 import { Effect } from "effect"
 const visit = <A>(callback: () => A): A => callback()
-function work() { return try Effect.succeed(1) }
+effect function work() { return try Effect.succeed(1) }
 export function main() {
   const used = visit(() => work())
   ;[1].map(() => work())

@@ -1,6 +1,6 @@
 // B-4 under D282: JavaScript's throw stays inside a hatch. sync runs the
 // TypeScript and makes its exception a defect, so the function never fails.
-export const render = (valid: boolean): string!! => sync((ok: boolean) => {
+export const render = effect (valid: boolean): string!! => try sync((ok: boolean) => {
   if (!ok) throw new TypeError("invalid")
   return "valid"
 }, valid)

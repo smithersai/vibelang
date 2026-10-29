@@ -10,7 +10,7 @@ service Counter {
 }
 
 const NamesLive = Layer.succeed(Names, {
-  name(id) {
+  effect name(id) {
     if (id === "42") return "Ada"
     throw new NotFound({ id })
   }
@@ -19,7 +19,7 @@ const NamesLive = Layer.succeed(Names, {
 const CounterLive = Layer.effect(Counter) {
   const count = try Ref.make(0)
   return {
-    next() {
+    effect next() {
       try Ref.update(count, (n) => n + 1)
       return try Ref.get(count)
     }
@@ -27,14 +27,14 @@ const CounterLive = Layer.effect(Counter) {
 }
 
 // The block provides Names, so the function needs no services.
-function greeting(id: string): string!NotFound! {
+effect function greeting(id: string): string!NotFound! {
   provide NamesLive {
     return `Hello, ${try Names.name(id)}`
   }
 }
 
 // A return inside a provide block returns from the enclosing function.
-function early() {
+effect function early() {
   for (const step of [1, 2, 3]) {
     provide CounterLive {
       if (step === 1) return "early"
@@ -44,7 +44,7 @@ function early() {
 }
 
 // One layer instance serves the whole block.
-function counted() {
+effect function counted() {
   provide CounterLive {
     try Counter.next()
     return try Counter.next()
@@ -52,20 +52,20 @@ function counted() {
 }
 
 // An array of layers provides all of their services.
-function both(): string!NotFound! {
+effect function both(): string!NotFound! {
   provide [NamesLive, CounterLive] {
     return `${try Names.name("42")} ${try Counter.next()}`
   }
 }
 
 // A Context provides its services just as Effect.provide does.
-function context(): string!NotFound! {
-  const names = Context.make(Names, { name: () => "Context" })
+effect function context(): string!NotFound! {
+  const names = Context.make(Names, { name: effect () => "Context" })
   provide names {
     return try Names.name("42")
   }
 }
 
-export function main() {
+export effect function main() {
   return { greeting: try greeting("42"), early: try early(), count: try counted(), both: try both(), context: try context() }
 }

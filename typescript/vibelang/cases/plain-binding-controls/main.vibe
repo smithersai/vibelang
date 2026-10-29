@@ -10,15 +10,15 @@ class ValueBox<T> {
   get(): T { return this.value }
 }
 function plain(): void {}
-class EffectCounter { reset() { try sleep("1 millis") } }
+class EffectCounter { effect reset() { try sleep("1 millis") } }
 function select(value: Resettable): "plain"
 function select(value: { reset(): void!! }): "effect"
 function select(value: unknown): "plain" | "effect" { return "effect" }
 function cold(): void {}
-function logged(n: number) { try sleep("1 millis"); return n + 1 }
+effect function logged(n: number) { try sleep("1 millis"); return n + 1 }
 function resetAll(rs: ReadonlyArray<Resettable>) { for (const r of rs) r.reset() }
 function get(): Resettable { return new Counter() }
-export function main() {
+export effect function main() {
   const selected: "effect" = select(new EffectCounter())
   const coldFunctions = [cold]
   const spreadFunctions: ReadonlyArray<() => void> = [...coldFunctions]
@@ -29,7 +29,7 @@ export function main() {
   const c = new Counter()
   const r: Resettable = c
   r.reset()
-  try resetAll([c])
+  resetAll([c])
   const holder: { mutable r: Resettable } = { r: get() }
   holder.r = c
   const effect: (n: number) => number!! = logged
@@ -42,7 +42,7 @@ export function main() {
   acceptedObject.run()
   const fn: () => void = () => {}
   const literal: { reset(): void } = { reset() { c.n = 0 } }
-  const box: Box<unknown> = new ValueBox(() => logged(1))
+  const box: Box<unknown> = new ValueBox(effect () => try logged(1))
   const accepted: { get(): unknown } = box
   literal.reset(); fn()
   return [c.n, c.n, c.n, try effect(try inferred(4))]

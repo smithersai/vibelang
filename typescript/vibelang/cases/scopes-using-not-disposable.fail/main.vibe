@@ -3,16 +3,16 @@
 // an AsyncDisposable, null, or undefined, as TypeScript's TS2850 requires
 // (D401): using owns its value's disposal. Scope in the requirements lets
 // using bind a value it cannot dispose, which the acquisition releases.
-function count() {
+effect function count() {
   try yieldNow()
   return 5
 }
 
-function lease() {
-  return try Effect.acquireRelease(() => 5, () => {})
+effect function lease() {
+  return try Effect.acquireRelease(effect { return 5 }, effect () => {})
 }
 
-export function main() {
+export effect function main() {
   using leased = try lease()
   using counted = try count()
   return leased + counted

@@ -5,13 +5,13 @@ class NotFound extends Data.TaggedError("NotFound")<{ readonly id: number }> {}
 const names = ["ada", "grace", "barbara"]
 
 // No annotations: lookup is Effect<string, NotFound, never>.
-function lookup(id: number) {
+effect function lookup(id: number) {
   if (id >= names.length) try Effect.fail(new NotFound({ id }))
   return names[id]
 }
 
 // main is Effect<void, NotFound, never>: lookup's error flows into it.
-export function main() {
+export effect function main() {
   try Console.log(`found ${try lookup(1)}`)
   const missing = try lookup(7) // fails, so main stops here
   try Console.log(`not printed: ${missing}`)
@@ -19,4 +19,4 @@ export function main() {
 
 // The module top level is not inside a program, so a runner starts one: it
 // receives a program, a function with no parameters (D7, D38).
-Effect.runPromise(() => Effect.catch(() => main(), (e) => Console.log(`caught ${e._tag} ${e.id}`)))
+Effect.runPromise(effect { return try Effect.catch(effect { return try main() }, effect (e) => try Console.log(`caught ${e._tag} ${e.id}`)) })

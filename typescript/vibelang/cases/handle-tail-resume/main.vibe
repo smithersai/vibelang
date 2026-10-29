@@ -9,19 +9,19 @@ control Notes {
   note(text: string): void!!
 }
 
-function release(version: string) {
+effect function release(version: string) {
   if (!try Approval.approve(`deploy ${version}`)) return "no"
   return "yes"
 }
 
-function releaseAndNote(version: string) {
+effect function releaseAndNote(version: string) {
   if (!try Approval.approve(`deploy ${version}`)) return "no"
   try Notes.note(`released ${version}`)
   return "yes"
 }
 
 // One clause.
-export function one(version: string) {
+export effect function one(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(request) {
@@ -30,7 +30,7 @@ export function one(version: string) {
 }
 
 // Two clauses for two controls, read as an if-else chain.
-export function two(version: string) {
+export effect function two(version: string) {
   try {
     return try releaseAndNote(version)
   } handle Approval.approve(request) {
@@ -41,7 +41,7 @@ export function two(version: string) {
 }
 
 // A clause that returns instead of resuming.
-export function three(version: string) {
+export effect function three(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(request) {
@@ -49,6 +49,6 @@ export function three(version: string) {
   }
 }
 
-export function main() {
+export effect function main() {
   return { one: try one("v1"), two: try two("v2"), three: try three("v3") }
 }

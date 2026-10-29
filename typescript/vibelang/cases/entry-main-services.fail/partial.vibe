@@ -1,7 +1,7 @@
 // A provide block inside main supplies its services; EK3201 names the rest.
 import { Stamp, Users, UsersLive } from "./services.vibe"
 
-export function main() {
+export effect function main() {
   provide UsersLive {
     try Console.log(`${try Users.find("1")} at ${try Stamp.now()}`)
   }

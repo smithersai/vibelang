@@ -4,6 +4,6 @@
 import "vibelang/platform/node"
 import { Extended } from "vibelang-runtime/experimental/Extended"
 
-export function main() {
+export effect function main() {
   try Console.log(try Extended.readFileString("extended.txt"))
 }

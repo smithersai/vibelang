@@ -44,12 +44,12 @@ function codeOf(coded: Coded): string {
   return coded.code
 }
 
-function fail(code: string): never!Validated {
+effect function fail(code: string): never!Validated {
   throw new Validated(code)
 }
 
-function recover(): string!! {
-  return fail("X") |> try Effect.catchTag(%, "Validated", (error) => error.code)
+effect function recover(): string!! {
+  return fail("X") |> try Effect.catchTag(%, "Validated", effect (error) => error.code)
 }
 
 function classify(value: unknown): string {
@@ -59,7 +59,7 @@ function classify(value: unknown): string {
   }
 }
 
-export function main() {
+export effect function main() {
   const error = new Validated("  NotFound ")
 
   return {

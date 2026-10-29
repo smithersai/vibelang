@@ -3,12 +3,12 @@ error Timeout
 export error NotFound { id: string }
 error Wrapped<T> { value: T; note?: string }
 
-function find(id: string) {
+effect function find(id: string) {
   if (id === "slow") throw new Timeout()
   throw new NotFound({ id })
 }
 
-function describe(id: string) {
+effect function describe(id: string) {
   try {
     return try find(id)
   } catch (error) {
@@ -30,6 +30,6 @@ function label(error: string) {
   return copy
 }
 
-export function main() {
-  return { timeout: try describe("slow"), missing: try describe("42"), wrapped: try unwrap(), label: try label("plain") }
+export effect function main() {
+  return { timeout: try describe("slow"), missing: try describe("42"), wrapped: unwrap(), label: label("plain") }
 }

@@ -3,7 +3,7 @@
 // continue there discards the failure in flight.
 class Boom extends TaggedError("Boom")<{}> {}
 
-export function swallow(n: number) {
+export effect function swallow(n: number) {
   try {
     if (n > 0) throw new Boom()
     return n
@@ -12,7 +12,7 @@ export function swallow(n: number) {
   }
 }
 
-export function loop(items: ReadonlyArray<number>) {
+export effect function loop(items: ReadonlyArray<number>) {
   let total = 0
   for (const item of items) {
     try {

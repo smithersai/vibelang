@@ -21,12 +21,9 @@ FuzzVIPDifferential  feature:vip05.catch-effect-function  compiler  VIP-5: `x ca
 FuzzVIPDifferential  feature:vip05.catch-effect-block  compiler  VIP-5: `x catch effect { … }` does not run the fallback block's Effect on a failure (Effect.catch(x, () => Effect.gen(…))) yet; lane vip-core implements it
 FuzzVIPDifferential  feature:vip06.globals          compiler  VIP-6: succeed, fail, die and sync are not globals that name Effect.succeed, Effect.fail, Effect.die and Effect.sync yet; lane vip-globals implements it
 FuzzVIPDifferential  feature:vip06.try-promise      compiler  VIP-6: tryPromise is not a global that names Effect.tryPromise yet; lane vip-globals implements it
-FuzzVIPDifferential  feature:vip06.effect-try       compiler  VIP-6: Effect.try of a throwing arrow, run with try in an effect function, does not fail with Effect.try's error yet; lane vip-globals implements it
 FuzzVIPDifferential  feature:vip13.error          compiler  VIP-13: `error Name { n: number }` is not lowered to a Data.TaggedError class, thrown and caught with `x catch (e) => f(e)` (VIP-5's table), yet; lane vip-decls implements it
 FuzzVIPDifferential  feature:vip16.data           compiler  VIP-16: `data Name { V0; V1 { n: number } }` is not lowered to Data.taggedEnum constructors yet; lane vip-decls implements it
 FuzzVIPDifferential  feature:vip28.generic-data   compiler  VIP-28: generic `data Name<A, B> { … }` with up to 4 type parameters is not lowered to Data.taggedEnum yet; lane vip-decls implements it
-FuzzVIPDifferential  feature:vip07.match-data     compiler  VIP-7: `match` on a data value by TC39 object patterns on _tag is not lowered to ordered tests with the subject evaluated once yet; lane vip-match implements it
-FuzzVIPDifferential  feature:vip07.match-error    compiler  VIP-7: `match` on a caught error by class arms (a matcher that tests _tag) and object patterns is not lowered to ordered tests with the subject evaluated once yet; lane vip-match implements it
 FuzzVIPDifferential  feature:vip17.fork                   compiler  VIP-17: `const f = fork e` is not lowered to `yield* Effect.forkChild(e)` yet; lane unassigned
 FuzzVIPDifferential  feature:vip17.fork-in                compiler  VIP-17: `const f = fork.in(scope) e` is not lowered to `yield* Effect.forkIn(e, scope)` yet; lane unassigned
 FuzzVIPDifferential  feature:vip17.fork-scoped            compiler  VIP-17: `const f = fork.scoped e` is not lowered to `yield* Effect.forkScoped(e)` yet; lane unassigned

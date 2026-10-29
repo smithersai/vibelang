@@ -3,19 +3,19 @@ error NotFound { id: string }
 error Timeout
 error Wrapped { reason: string }
 
-function find(id: string): string!NotFound | Timeout! {
+effect function find(id: string): string!NotFound | Timeout! {
   if (id === "missing") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
 }
 
 // A fallback value, as Effect.orElseSucceed.
-function orGuest(id: string): string!! {
+effect function orGuest(id: string): string!! {
   return find(id) catch "guest"
 }
 
 // A handler whose match handles every failure removes them all from E.
-function describe(id: string): string!! {
+effect function describe(id: string): string!! {
   return find(id) catch (e) => match (e) {
     when NotFound: `no user ${e.id}`;
     when Timeout: "retry";
@@ -23,44 +23,44 @@ function describe(id: string): string!! {
 }
 
 // default: throw e passes the other failures on.
-function partial(id: string): string!Timeout! {
-  return find(id) catch (e) => match (e) {
+effect function partial(id: string): string!Timeout! {
+  return find(id) catch effect (e) => match (e) {
     when NotFound: "missing";
     default: throw e;
   }
 }
 
 // catch associates to the left: try b after a fails, then fall back.
-function firstOf(a: string, b: string): string!! {
+effect function firstOf(a: string, b: string): string!! {
   return find(a) catch find(b) catch "none"
 }
 
 // A throw expression replaces the failure.
-function wrapped(id: string): string!Wrapped! {
-  return find(id) catch (e) => throw new Wrapped({ reason: e._tag })
+effect function wrapped(id: string): string!Wrapped! {
+  return find(id) catch effect (e) => throw new Wrapped({ reason: e._tag })
 }
 
 // catch binds tighter than ? :.
-function precedence(id: string, quick: boolean): string!! {
+effect function precedence(id: string, quick: boolean): string!! {
   return quick ? find(id) catch "fast" : "slow"
 }
 
-function lookupNickname(id: string) {
+effect function lookupNickname(id: string) {
   if (id === "missing") throw new NotFound({ id })
   return id === "anon" ? undefined : id
 }
 
 // catch binds looser than ??, so the default is inside the catch.
-function nickname(id: string): string!! {
+effect function nickname(id: string): string!! {
   return lookupNickname(id) ?? "unknown" catch "failed"
 }
 
-function crash(): string!Timeout! {
+effect function crash(): string!Timeout! {
   return try Effect.die("boom")
 }
 
 // Defects pass through a catch expression.
-function defect(): string!! {
+effect function defect(): string!! {
   return match (try exit(crash() catch "caught")) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasDies(cause) ? "died" : "other";
@@ -68,11 +68,11 @@ function defect(): string!! {
 }
 
 // A pipe's body holds the catch.
-function piped(id: string): string!! {
+effect function piped(id: string): string!! {
   return id |> find(%) catch "none"
 }
 
-export function main() {
+export effect function main() {
   let ran = false
   const quick = find("1") catch do { ran = true; "guest" }
   return {

@@ -1,20 +1,20 @@
 // expect-result: [42,43,44]
-function throughUsing(value: number): number!! {
-  using resource = try Effect.acquireRelease(() => 1, () => {})
+effect function throughUsing(value: number): number!! {
+  using resource = try Effect.acquireRelease(effect { return 1 }, effect () => {})
   return arguments[0] as number
 }
-function throughArrow(value: number): number!! {
-  const inspect = () => {
+effect function throughArrow(value: number): number!! {
+  const inspect = effect () => {
     try sleep("1 millis")
     return arguments[0] as number
   }
   return try inspect()
 }
-function throughFork(value: number): number!! {
+effect function throughFork(value: number): number!! {
   const child = fork sleep("1 millis")
   join child
   return arguments[0] as number
 }
-export function main() {
+export effect function main() {
   return [try throughUsing(42), try throughArrow(43), try throughFork(44)]
 }

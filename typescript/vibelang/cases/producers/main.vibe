@@ -64,7 +64,7 @@ function lazy() {
   return log.length
 }
 
-function returnInside() {
+effect function returnInside() {
   const log: string[] = []
   for (const n of numbers(100, log)) {
     if (n > 1) return { n, log }
@@ -72,7 +72,7 @@ function returnInside() {
   return { n: -1, log }
 }
 
-function breakInside() {
+effect function breakInside() {
   const log: string[] = []
   let sum = 0
   for (const n of numbers(10, log)) {
@@ -83,7 +83,7 @@ function breakInside() {
   return { sum, log }
 }
 
-function continueOuter() {
+effect function continueOuter() {
   const log: string[] = []
   const pairs: string[] = []
   outer: for (const a of numbers(3, log)) {
@@ -95,7 +95,7 @@ function continueOuter() {
   return { pairs, closed: log.filter((line) => line === "closed").length }
 }
 
-function twoPasses() {
+effect function twoPasses() {
   const log: string[] = []
   const producer = numbers(2, log)
   let count = 0
@@ -104,25 +104,25 @@ function twoPasses() {
   return count
 }
 
-function services() {
+effect function services() {
   let total = 0
   for (const value of lookups(["a", "b", "c"])) total += value
   return total
 }
 
-function delegated() {
+effect function delegated() {
   const values: number[] = []
   for (const n of withTen([])) values.push(n)
   return values
 }
 
-function taken() {
+effect function taken() {
   const log: string[] = []
   const values = try Stream.runCollect(Stream.take(numbers(100, log), 2))
   return { values, log }
 }
 
-function overStream() {
+effect function overStream() {
   let sum = 0
   for (const n of Stream.make(1, 2, 3, 4)) {
     if (n === 4) break
@@ -132,7 +132,7 @@ function overStream() {
 }
 
 // A loop's binding can be a pattern, an existing variable, or a var.
-function bindings() {
+effect function bindings() {
   const names: string[] = []
   for (const [n, name] of pairs()) names.push(`${n}:${name}`)
   let last = 0
@@ -143,7 +143,7 @@ function bindings() {
 
 // A failing producer's error reaches the catch around its loop, after the
 // elements before it.
-function caught() {
+effect function caught() {
   const seen: number[] = []
   try {
     for (const n of failing()) seen.push(n)
@@ -154,7 +154,7 @@ function caught() {
 }
 
 // break to a label of an enclosing JavaScript loop leaves the producer loop.
-function outerBreak() {
+effect function outerBreak() {
   const seen: string[] = []
   rows: for (let row = 0; row < 3; row++) {
     for (const n of count(5)) {
@@ -166,7 +166,7 @@ function outerBreak() {
   return seen
 }
 
-function big() {
+effect function big() {
   let maxDepth = 0
   hooks.onResume = (fiber): void => {
     maxDepth = Math.max(maxDepth, fiber._stack.length)
@@ -178,12 +178,12 @@ function big() {
 }
 
 const StoreLive = Layer.succeed(Store, {
-  get: (key) => key.charCodeAt(0) - 96
+  get: effect (key) => key.charCodeAt(0) - 96
 })
 
-function scenario() {
+effect function scenario() {
   return {
-    lazy: try lazy(),
+    lazy: lazy(),
     returned: try returnInside(),
     broke: try breakInside(),
     labeled: try continueOuter(),
@@ -200,6 +200,6 @@ function scenario() {
 }
 
 // expect-result: {"lazy":0,"returned":{"n":2,"log":["yield 0","yield 1","yield 2","yield 3","yield 4","closed"]},"broke":{"sum":3,"log":["yield 0","yield 1","yield 2","yield 3","yield 4","yield 5","closed","after loop"]},"labeled":{"pairs":["00","10","11","20","21","22"],"closed":4},"passes":4,"services":6,"delegated":[0,1,10],"taken":{"values":[0,1],"log":["yield 0","yield 1","yield 2","yield 3","closed"]},"stream":6,"bindings":{"names":["1:one","2:two","last 0","last 1","last 2","var 0","var 1"],"last":2},"caught":{"seen":[1,2],"error":"Broken","at":3},"outerBreak":["00","01","10","11"],"big":{"sum":4999950000,"bounded":true}}
-export function main() {
-  return try Effect.provide(() => scenario(), StoreLive)
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, StoreLive)
 }

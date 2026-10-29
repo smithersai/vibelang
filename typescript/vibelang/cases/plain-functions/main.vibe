@@ -36,26 +36,26 @@ function parity(n: number) {
 
 // Calls pure helpers and an Effect, so it is an Effect itself; the helper
 // calls run in source order, before the Effect runs.
-function area(w: number, h: number) {
-  const scaled = try traced("w", double(w)) * try traced("h", double(h))
+effect function area(w: number, h: number) {
+  const scaled = traced("w", double(w)) * traced("h", double(h))
   try Effect.sleep("1 millis")
   return scaled
 }
 
 // D9: a pure function passed where JavaScript expects a plain function is its
 // $direct variant; where Effect expects an Effect function, its Effect form.
-function maps(xs: ReadonlyArray<number>) {
+effect function maps(xs: ReadonlyArray<number>) {
   const doubled = xs.map(double)
   const viaLambda = xs.map((x) => double(x) + 1)
-  const viaEffect = try Effect.forEach(xs, (x) => double(x))
+  const viaEffect = try Effect.forEach(xs, effect (x) => double(x))
   return { doubled, viaLambda, viaEffect }
 }
 
 // expect-result: {"sum":500500,"parity":["even","odd"],"area":24,"order":["w","h"],"maps":{"doubled":[2,4],"viaLambda":[3,5],"viaEffect":[2,4]}}
-export function main() {
+export effect function main() {
   return {
     sum: sumTo(1000),
-    parity: [try parity(10), try parity(7)],
+    parity: [parity(10), parity(7)],
     area: try area(2, 3),
     order,
     maps: try maps([1, 2])

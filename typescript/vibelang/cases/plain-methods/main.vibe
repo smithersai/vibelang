@@ -17,7 +17,7 @@ class Money implements Equal.Equal {
 }
 
 // expect-result: {"equal":true,"different":false,"size":2}
-export function main() {
+export effect function main() {
   const a = new Money(500, "EUR")
   const b = new Money(500, "EUR")
   const c = new Money(700, "EUR")

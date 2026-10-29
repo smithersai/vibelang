@@ -9,14 +9,14 @@ import { withRollback } from "./rollbacks.ts"
 /** Fails to compile unless T is never. */
 type Never<T extends never> = T
 
-export const inferred = () => withRollback(Effect.succeed(1), () => Effect.void)
+export const inferred = effect () => try withRollback(Effect.succeed(1), () => Effect.void)
 
 type InferredServices = Never<Effect.Services<ReturnType<typeof inferred>>>
 
-export const declared = (): number!! => withRollback(Effect.succeed(2), () => Effect.void)
+export const declared = effect (): number!! => try withRollback(Effect.succeed(2), () => Effect.void)
 
 // expect-result: [1,2]
-export function main() {
+export effect function main() {
   const services: InferredServices[] = []
   return [try inferred(), try declared(), ...services]
 }

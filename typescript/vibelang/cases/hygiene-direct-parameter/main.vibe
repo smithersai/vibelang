@@ -5,12 +5,12 @@
 type Getter = () => number
 
 function original() { return 7 }
-function plain(f: Getter) { return try original() }
-function shadowed(original$direct: Getter) { return try original() }
+function plain(f: Getter) { return original() }
+function shadowed(original$direct: Getter) { return original() }
 
 function ordinary() { return 1 }
 function ordinary$direct() { return 2 }
 
 export function main() {
-  return [[try plain(() => 99), try shadowed(() => 99)], [try ordinary(), try ordinary$direct()]]
+  return [[plain(() => 99), shadowed(() => 99)], [ordinary(), ordinary$direct()]]
 }

@@ -3,7 +3,7 @@
 control Step { next(): void!! }
 
 // The example from Chapter 9, with the owner's corrected type for n.
-function written(): number | string!! {
+effect function written(): number | string!! {
   try {
     try Step.next()
     try Step.next()
@@ -15,7 +15,7 @@ function written(): number | string!! {
 }
 
 // A resumed clause's fallthrough adds no undefined when the try returns.
-function after(): number!! {
+effect function after(): number!! {
   try {
     try Step.next()
     return 1
@@ -27,7 +27,7 @@ function after(): number!! {
 }
 
 // A dependent return already within H is accepted without an annotation.
-function same() {
+effect function same() {
   try {
     try Step.next()
     try Step.next()
@@ -38,7 +38,7 @@ function same() {
   }
 }
 
-function held() {
+effect function held() {
   try {
     try Step.next()
     return 1
@@ -48,18 +48,18 @@ function held() {
   }
 }
 
-function withValue(): number!! {
+effect function withValue(): number!! {
   try {
     try Step.next()
     return 1
   } handle Step.next() {
-    const n: number = try resumeWith(() => undefined)
+    const n: number = try resumeWith(effect { return undefined })
     return n + 1
   }
 }
 
 // A resumed clause's normal completion preserves the block's completion.
-function falls(): string[]!! {
+effect function falls(): string[]!! {
   const seen: string[] = []
   try {
     try Step.next()
@@ -72,7 +72,7 @@ function falls(): string[]!! {
 }
 
 // A clause that does not resume can add normal completion to H.
-function stops(): string[]!! {
+effect function stops(): string[]!! {
   const seen: string[] = []
   let count = 0
   try {
@@ -90,7 +90,7 @@ function stops(): string[]!! {
   return seen
 }
 
-function breaks(): string[]!! {
+effect function breaks(): string[]!! {
   const seen: string[] = []
   for (const round of [1, 2]) {
     try {
@@ -105,7 +105,7 @@ function breaks(): string[]!! {
   return seen
 }
 
-function continues(): string[]!! {
+effect function continues(): string[]!! {
   const seen: string[] = []
   for (const round of [1, 2]) {
     try {
@@ -120,6 +120,6 @@ function continues(): string[]!! {
   return seen
 }
 
-export function main() {
+export effect function main() {
   return { written: try written(), after: try after(), same: try same(), held: try held(), withValue: try withValue(), falls: try falls(), stops: try stops(), breaks: try breaks(), continues: try continues() }
 }

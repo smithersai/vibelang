@@ -1,12 +1,12 @@
 import { Console } from "effect"
 
 // Each function that runs an Effect becomes one. Calling Console.log runs it.
-export function answer() {
+export effect function answer() {
   try Console.log("computing the answer")
   return 42
 }
 
-export const half = (n: number) => {
+export const half = effect (n: number) => {
   try Console.log(`halving ${n}`)
   return n / 2
 }

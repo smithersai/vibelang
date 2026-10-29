@@ -1,7 +1,7 @@
 // expect: EK1001 EK1002
 import { Effect } from "effect"
 
-const onLapse = (_unconfirmedMs: number) => Effect.void
+const onLapse = effect (_unconfirmedMs: number) => Effect.void
 export const expire = Effect.gen(function* () {
   yield* (try Effect.logWarning("run lease lapsed; interrupting owned work")).pipe(
     Effect.annotateLogs({ runId: "run", unconfirmedMs: 100 }),

@@ -1,5 +1,5 @@
 // expect: EK4301
-function logged(n: number) { try sleep("1 millis"); try log(n) }
+effect function logged(n: number) { try sleep("1 millis"); try log(n) }
 function get(): (n: number) => void { return logged }
 function runAll(fs: ReadonlyArray<(n: number) => void>) { for (const f of fs) f(1) }
 export function main() {
@@ -10,14 +10,14 @@ export function main() {
   holder.run = logged
   const fs: ReadonlyArray<(n: number) => void> = [logged]
   const object: { run: (n: number) => void } = { run: logged }
-  try runAll([logged])
+  runAll([logged])
   cb(1); assigned(2); holder.run(3); get()(4)
   return [fs, object]
 }
-function annotated(): void!! {}
+effect function annotated(): void!! {}
 export function declaredForms() {
   const cb: () => void = annotated
-  const inline: () => void = (): void!! => {}
-  const object: { run(): void } = { run(): void!! {} }
+  const inline: () => void = effect (): void!! => {}
+  const object: { run(): void } = { effect run(): void!! {} }
   return [cb, inline, object]
 }

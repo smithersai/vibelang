@@ -4,14 +4,14 @@
 // give it back unrun, and a Fiber or a Deferred element is EK4609 or EK4610.
 // Through 0.0.10 each of these elements ran its program or waited for its
 // fiber or Deferred; write job(), held(), join f and ready.await().
-function slow(n: number): number!! {
+effect function slow(n: number): number!! {
   try sleep("1 millis")
   return n
 }
 
-export function main() {
-  const job = () => slow(1)
-  const held: number!! = () => {
+export effect function main() {
+  const job = effect () => try slow(1)
+  const held: number!! = effect {
     try Console.log("ran")
     return 42
   }

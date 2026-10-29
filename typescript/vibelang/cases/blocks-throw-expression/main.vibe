@@ -7,11 +7,11 @@ function find(id: string): string | undefined {
 }
 
 // throw in expression position fails as the throw statement does.
-function lookup(id: string) {
+effect function lookup(id: string) {
   return find(id) ?? throw new NotFound({ id })
 }
 
-function missing() {
+effect function missing() {
   try {
     return try lookup("9")
   } catch (e) {
@@ -20,17 +20,17 @@ function missing() {
 }
 
 // The right side of ?? runs only when the left side is nullish.
-function lazy() {
+effect function lazy() {
   let ran = false
   const name = find("1") ?? throw (ran = true, new NotFound({ id: "never" }))
   return ran ? "ran" : name
 }
 
-function label(text: string) {
+effect function label(text: string) {
   return text.length < 6 ? "short" : throw new TooLong({ length: text.length })
 }
 
-function tooLong() {
+effect function tooLong() {
   try {
     return try label("much too long")
   } catch (e) {
@@ -38,11 +38,11 @@ function tooLong() {
   }
 }
 
-function arrow() {
-  const get = (id: string): string!NotFound! => find(id) ?? throw new NotFound({ id })
+effect function arrow() {
+  const get = effect (id: string): string!NotFound! => find(id) ?? throw new NotFound({ id })
   return try get("2")
 }
 
-export function main() {
+export effect function main() {
   return { found: try lookup("1"), missing: try missing(), lazy: try lazy(), picked: try label("abc"), tooLong: try tooLong(), arrow: try arrow() }
 }

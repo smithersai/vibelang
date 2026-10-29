@@ -33,18 +33,18 @@ const data = new Map<string, ReadonlyArray<string>>([["users/1", ["Ada"]], ["ord
 
 const ConfigLive = Layer.succeed(Config, { url: "memory://shop" })
 
-const DatabaseLive = Layer.effect(Database, () => {
+const DatabaseLive = Layer.effect(Database, effect {
   const url = (try Config()).url
   try Effect.sync(() => events.push(`connect ${url}`))
   return {
-    query: (table: string, key: string) => Effect.succeed(data.get(`${table}/${key}`) ?? [])
+    query: effect (table: string, key: string) => try Effect.succeed(data.get(`${table}/${key}`) ?? [])
   }
 })
 
-const UsersLive = Layer.effect(Users, () => {
+const UsersLive = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       const rows = try db.query("users", id)
       if (rows.length === 0) return try Effect.fail(new UserNotFound({ id }))
       return try Effect.succeed({ id, name: rows[0] })
@@ -52,10 +52,10 @@ const UsersLive = Layer.effect(Users, () => {
   }
 })
 
-const OrdersLive = Layer.effect(Orders, () => {
+const OrdersLive = Layer.effect(Orders, effect {
   const db = try Database()
   return {
-    count(userId) {
+    effect count(userId) {
       return (try db.query("orders", userId)).length
     }
   }
@@ -63,13 +63,13 @@ const OrdersLive = Layer.effect(Orders, () => {
 
 const AppLive = wire(OrdersLive, UsersLive, DatabaseLive, ConfigLive)
 
-function summary(id: string) {
+effect function summary(id: string) {
   const user = try Users.find(id)
   return `${user.name}: ${try Orders.count(id)} orders`
 }
 
 // expect-result: {"summary":"Ada: 2 orders","events":["connect memory://shop"]}
-export function main() {
-  const text = try Effect.provide(() => summary("1"), AppLive)
+export effect function main() {
+  const text = try Effect.provide(effect { return try summary("1") }, AppLive)
   return { summary: text, events }
 }

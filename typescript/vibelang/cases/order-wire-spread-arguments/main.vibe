@@ -18,13 +18,13 @@ function b(): Layer.Layer<B, never, A> {
   return Layer.effect(B) { return { value: (try A()).value + "b" } }
 }
 
-function read(layer: Layer.Layer<B>): string!! {
+effect function read(layer: Layer.Layer<B>): string!! {
   provide layer {
     return (try B()).value
   }
 }
 
-export function main() {
+export effect function main() {
   const layer = wire(...[a(), b()] as const)
   const pair = [a(), b()] as const
   const fromTuple = wire(...pair)

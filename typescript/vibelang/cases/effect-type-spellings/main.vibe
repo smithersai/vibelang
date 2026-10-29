@@ -12,58 +12,58 @@ service Users {
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id: string) {
+  effect find(id: string) {
     if (id !== "42") throw new NotFound({ id })
     return "Ada"
   },
-  count() {
+  effect count() {
     return 2
   }
 })
 
-function full(id: string): Effect<string, NotFound, Users> {
+effect function full(id: string): Effect<string, NotFound, Users> {
   return try Users.find(id)
 }
 
-function noDependencies(n: number): Effect<number, Timeout> {
+effect function noDependencies(n: number): Effect<number, Timeout> {
   if (n < 0) throw new Timeout()
   return n
 }
 
-function inferred(id: string): Effect<string, NotFound, infer R> {
+effect function inferred(id: string): Effect<string, NotFound, infer R> {
   return try Users.find(id)
 }
 
-function neither(): Effect<number> {
+effect function neither(): Effect<number> {
   return 3
 }
 
-function onlyDependencies(): Effect<number, never, Users> {
+effect function onlyDependencies(): Effect<number, never, Users> {
   return try Users.count()
 }
 
-const arrow = (n: number): Effect<number, Timeout, infer R> => try noDependencies(n) + 1
+const arrow = effect (n: number): Effect<number, Timeout, infer R> => try noDependencies(n) + 1
 
 type Finder = (id: string) => Effect<string, NotFound>
 type Maybe = Effect<number> | undefined
 type Nested = Effect<Effect<number>, NotFound>
 
-function find(finder: Finder, id: string): Effect<string> {
+effect function find(finder: Finder, id: string): Effect<string> {
   return finder(id) catch "none"
 }
 
-function either(program: Maybe): Effect<number> {
+effect function either(program: Maybe): Effect<number> {
   return program === undefined ? 0 : try program()
 }
 
 const five: Effect<number> = Effect.sync(() => 5)
 
-function unwrap(program: Nested): Effect<number, NotFound> {
+effect function unwrap(program: Nested): Effect<number, NotFound> {
   const inner = try program()
   return try inner()
 }
 
-export function main() {
+export effect function main() {
   provide UsersLive {
     return {
       full: try full("42"),
@@ -72,7 +72,7 @@ export function main() {
       neither: try neither(),
       onlyDependencies: try onlyDependencies(),
       arrow: try arrow(1),
-      find: try find((id) => { if (id === "7") throw new NotFound({ id }); return id }, "7"),
+      find: try find(effect (id) => { if (id === "7") throw new NotFound({ id }); return id }, "7"),
       either: try either(Effect.succeed(4)),
       unwrap: try unwrap(Effect.succeed(five))
     }

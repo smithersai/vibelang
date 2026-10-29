@@ -6,28 +6,28 @@
 // (tsconfig.json).
 service Status { set(code: number): void!! }
 
-const listFlows = () => {
+const listFlows = effect () => {
   try Console.log("listing")
 }
 const handlers = { list: listFlows }
 
 // A command handler whose contract is void!!.
 const command = (name: string, handler: (n: number) => void!!): infer _ => handler
-export const ls = command("ls", () => listFlows)
-export const fromField = command("list", () => handlers.list)
+export const ls = command("ls", effect () => listFlows)
+export const fromField = command("list", effect () => handlers.list)
 
 // A written unknown success.
 export const written = (): unknown!! => listFlows
 
 // A callback whose success is a type parameter, and a parameter by name.
-export const thunk = () => Effect.suspend(() => listFlows)
-export const param = (body: () => void!!) => Effect.suspend(() => body)
+export const thunk = effect () => try Effect.suspend(effect () => listFlows)
+export const param = effect (body: () => void!!) => try Effect.suspend(effect () => body)
 
 // An arm of a conditional whose other arm runs.
-export const arm = (code: number) => Effect.suspend(() => code > 0 ? listFlows : try Status.set(code))
+export const arm = effect (code: number) => try Effect.suspend(effect () => code > 0 ? listFlows : try Status.set(code))
 
 // Not reported: the call runs, the success type names the function, or no
 // Effect is expected.
-export const called = command("ls", () => listFlows())
+export const called = command("ls", effect () => try listFlows())
 export const kept = (): (() => void!!)!! => listFlows
-export const plain = (n: number) => listFlows
+export const plain = effect (n: number) => listFlows

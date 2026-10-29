@@ -5,47 +5,47 @@ const Tag = Context.Reference<number>("S10-2/Tag", { defaultValue: () => 0 })
 type Wrap = (body: Effect.Effect<number, never, never>) => Effect.Effect<number, never, never>
 
 // Both branches produce the program that provision must run.
-export const bare = (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
-  const body: Effect.Effect<number, never, never> = () => 41 + try Tag()
+export const bare = effect (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
+  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag() }
   return try Effect.provideService(wrap === undefined ? body : wrap(body), Tag, 1)
 }
 
 // Control: calling the held program in its arm runs it.
-export const called = (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
-  const body: Effect.Effect<number, never, never> = () => 41 + try Tag()
+export const called = effect (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
+  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag() }
   return try Effect.provideService(wrap === undefined ? body() : wrap(body), Tag, 1)
 }
 
-export function orChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
-  return try Effect.provideService(body || wrap(() => 41 + try Tag()), Tag, 1)
+export effect function orChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
+  return try Effect.provideService(body || wrap(effect { return 41 + try Tag() }), Tag, 1)
 }
 
-export function nullishChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
-  return try Effect.provideService(body ?? wrap(() => 41 + try Tag()), Tag, 1)
+export effect function nullishChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
+  return try Effect.provideService(body ?? wrap(effect { return 41 + try Tag() }), Tag, 1)
 }
 
-export function commaChoice(wrap: Wrap): number!! {
-  const body: Effect.Effect<number> = () => 41 + try Tag()
+export effect function commaChoice(wrap: Wrap): number!! {
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return try Effect.provideService((Effect.sleep("1 millis"), wrap(body)), Tag, 1)
 }
 
-export function withCondition(wrap: Wrap): number!! {
-  const body: Effect.Effect<number> = () => 41 + try Tag()
+export effect function withCondition(wrap: Wrap): number!! {
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return try Effect.provideService(Effect.succeed(true) ? body : wrap(body), Tag, 1)
 }
 
-export function withPipe(wrap: Wrap | undefined): number!! {
-  const body: Effect.Effect<number> = () => 41 + try Tag()
+export effect function withPipe(wrap: Wrap | undefined): number!! {
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return (wrap === undefined ? body : wrap(body)) |> try Effect.provideService(%, Tag, 1)
 }
 
 function pureNumber() { return 42 }
 
-export function plainFallback(body: Effect.Effect<number> | undefined): number!! {
+export effect function plainFallback(body: Effect.Effect<number> | undefined): number!! {
   return try Effect.uninterruptible(body ?? pureNumber())
 }
 
-export function plainConditional(choose: boolean): number!! {
-  const body: Effect.Effect<number> = () => 42
+export effect function plainConditional(choose: boolean): number!! {
+  const body: Effect.Effect<number> = effect { return 42 }
   return try Effect.uninterruptible(choose ? body : pureNumber())
 }

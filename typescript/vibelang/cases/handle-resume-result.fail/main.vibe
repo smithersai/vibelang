@@ -9,7 +9,7 @@ control Steps {
   second(): void!!
 }
 
-function work() {
+effect function work() {
   try Steps.first()
   try Steps.second()
   return 42
@@ -17,7 +17,7 @@ function work() {
 
 // TS2322: the second clause ends the statement with "early", which the first
 // clause's resume then returns.
-export function early() {
+export effect function early() {
   try {
     return try work()
   } handle Steps.first() {
@@ -33,11 +33,11 @@ function half(n: number) {
 }
 
 // TS2345: the same result, passed where a number is expected.
-export function passed() {
+export effect function passed() {
   try {
     return try work()
   } handle Steps.first() {
-    return try half(try resume())
+    return half(try resume())
   } handle Steps.second() {
     return "early"
   }
@@ -47,7 +47,7 @@ control Once {
   step(): void!!
 }
 
-function twice() {
+effect function twice() {
   try Once.step()
   try Once.step()
   return 42
@@ -55,7 +55,7 @@ function twice() {
 
 // TS2322: the clause answers the second step first, and its string reaches
 // the resume that answers the first.
-export function nested() {
+export effect function nested() {
   try {
     return try twice()
   } handle Once.step() {
@@ -66,7 +66,7 @@ export function nested() {
 
 // TS2322: a try block that ends without returning ends the statement with
 // undefined.
-export function falls() {
+export effect function falls() {
   try {
     try twice()
   } handle Once.step() {
@@ -76,7 +76,7 @@ export function falls() {
 }
 
 // TS2322: a break out of the statement ends it with undefined too.
-export function breaks() {
+export effect function breaks() {
   for (const round of [1, 2]) {
     try {
       try twice()
@@ -92,7 +92,7 @@ let calls = 0
 
 // TS2322: a clause that ends without resuming ends the statement with
 // undefined, which the first step's resume then returns.
-export function stops() {
+export effect function stops() {
   try {
     return try twice()
   } handle Once.step() {
@@ -108,34 +108,34 @@ export function stops() {
 
 // EK2110: handle types resume's result with the program's, number, but the
 // second clause can end the handle with "early" first.
-export function expression() {
-  return try handle(() => work(), Steps, {
-    first(k) {
+export effect function expression() {
+  return try handle(effect { return try work() }, Steps, {
+    effect first(k) {
       const n: number = try resume(k, undefined)
       return n.toFixed(1)
     },
-    second(k) {
+    effect second(k) {
       return "early"
     }
   })
 }
 
 // EK2110: with onReturn, resume's result is typed never.
-export function transformed() {
-  return try handle(() => work(), Steps, {
-    first(k) {
+export effect function transformed() {
+  return try handle(effect { return try work() }, Steps, {
+    effect first(k) {
       const n: number = try resume(k, undefined)
       return n + 1
     },
-    second(k) {
+    effect second(k) {
       return try resume(k, undefined)
     }
-  }, (n) => `${n}`)
+  }, effect (n) => `${n}`)
 }
 
 // D351: the inferred answer type excludes this resume-dependent return.
 // This used to run in handle-resume-result with only an EK2119 warning.
-export function unwritten() {
+export effect function unwritten() {
   try {
     return try work()
   } handle Steps.first() {

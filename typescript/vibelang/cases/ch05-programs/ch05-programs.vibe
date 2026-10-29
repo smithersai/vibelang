@@ -32,52 +32,52 @@ let syncRuns = 0
 let configLoads = 0
 
 // Fails on the first two calls, then succeeds.
-function fetchUser(id: string) {
+effect function fetchUser(id: string) {
   fetchCalls++
   if (fetchCalls < 3) throw new FetchError({ attempt: fetchCalls })
   const user: User = { id, name: "Ada" }
   return user
 }
 
-function fromCache(id: string) {
+effect function fromCache(id: string) {
   try Effect.sleep("1 millis")
   return "cache"
 }
 
-function fromNetwork(id: string) {
+effect function fromNetwork(id: string) {
   try Effect.sleep("50 millis")
   return "network"
 }
 
-function slowQuery(id: string) {
+effect function slowQuery(id: string) {
   try Effect.sleep("50 millis")
   return "slow"
 }
 
-function syncInventory(store: Store) {
+effect function syncInventory(store: Store) {
   syncRuns++
   return try Inventory.sync(store)
 }
 
 // The one rule
 
-function oneRule(store: Store) {
+effect function oneRule(store: Store) {
   try syncInventory(store)                    // runs now
 
-  const job = () => syncInventory(store)  // a program: nothing has run
+  const job = effect () => try syncInventory(store)  // a program: nothing has run
   const before = syncRuns
   try job()                                   // runs it
   try job()                                   // runs it again, from scratch
   return { before, after: syncRuns }
 }
 
-function combinators(id: string) {
-  const user = try Effect.retry(() => fetchUser(id), Schedule.exponential("1 millis"))
-  const fresh = try Effect.timeout(() => fetchUser(id), "1 second")
-  const fastest = try Effect.race(() => fromCache(id), () => fromNetwork(id))
+effect function combinators(id: string) {
+  const user = try Effect.retry(effect { return try fetchUser(id) }, Schedule.exponential("1 millis"))
+  const fresh = try Effect.timeout(effect { return try fetchUser(id) }, "1 second")
+  const fastest = try Effect.race(effect { return try fromCache(id) }, effect { return try fromNetwork(id) })
   let timedOut = "no"
   try {
-    try Effect.timeout(() => slowQuery(id), "5 millis")
+    try Effect.timeout(effect { return try slowQuery(id) }, "5 millis")
   } catch (e) {
     timedOut = e._tag
   }
@@ -86,12 +86,12 @@ function combinators(id: string) {
 
 // Pipe
 
-function piped(id: string) {
+effect function piped(id: string) {
   const user = do {
-    const $pipe0: User!FetchError! = () => fetchUser(id)
+    const $pipe0: User!FetchError! = effect { return try fetchUser(id) }
     const $pipe1 = { times: 3 }
     const $pipe2 = Effect.withSpan("load-user")
-    try $pipe2(() => Effect.timeout(() => Effect.retry($pipe0, $pipe1), "2 seconds"))
+    try $pipe2(effect { return try Effect.timeout(effect { return try Effect.retry($pipe0, $pipe1) }, "2 seconds") })
   }
   // user: User;  E gains TimeoutError from Effect.timeout
   return user.name
@@ -100,13 +100,13 @@ function piped(id: string) {
 // Storing, returning, and composing programs
 
 function makeSync(store: Store): () => Effect<SyncReport, SyncError, Inventory> {
-  return () => syncInventory(store)            // returns a program
+  return effect () => try syncInventory(store)            // returns a program
 }
 // A plain function (D9): calling makeSync runs nothing.
 
 // NOTE: stores.map(makeSync) passes the plain makeSync to Array.prototype.map (D9), so
 // syncAll is an array of program functions; Effect.all must then convert each element to an Effect.
-function syncEverything(stores: ReadonlyArray<Store>) {
+effect function syncEverything(stores: ReadonlyArray<Store>) {
   const syncAll = stores.map(makeSync)                    // an array of programs; nothing ran
   return try Effect.all(syncAll, { concurrency: 4 })          // now they run
 }
@@ -116,15 +116,15 @@ function loadConfig() {
   return { port: 8080 }
 }
 
-function startServer() {
-  const cachedConfig = try Effect.cached(() => loadConfig())  // Effect.cached returns a program
+effect function startServer() {
+  const cachedConfig = try Effect.cached(effect { return try loadConfig() })  // Effect.cached returns a program
   const config = try cachedConfig()                           // loads once
   const again = try cachedConfig()                            // returns the cached value
   return try Http.listen(config.port)
 }
 
 // An Effect value from TypeScript is a program: calling it runs it.
-function clockKind() {
+effect function clockKind() {
   const millis = try Clock.currentTimeMillis()
   return typeof millis
 }
@@ -132,14 +132,14 @@ function clockKind() {
 const stores: ReadonlyArray<Store> = [{ name: "north" }, { name: "south" }, { name: "east" }]
 
 const InventoryTest = Layer.succeed(Inventory, {
-  sync: (store) => ({ store: store.name, items: store.name.length })
+  sync: effect (store) => ({ store: store.name, items: store.name.length })
 })
 
 const HttpTest = Layer.succeed(Http, {
-  listen: (port) => `listening on ${port}`
+  listen: effect (port) => `listening on ${port}`
 })
 
-function scenario() {
+effect function scenario() {
   const rule = try oneRule(stores[0])
   const combined = try combinators("42")
   const pipedName = try piped("42")
@@ -160,6 +160,6 @@ function scenario() {
 }
 
 // expect-result: {"rule":{"before":1,"after":3},"combined":{"user":"Ada","fresh":"Ada","fastest":"cache","timedOut":"TimeoutError"},"piped":"Ada","reports":["north","south","east"],"syncRuns":6,"server":"listening on 8080","configLoads":1,"clock":"number","fetchCalls":5}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(InventoryTest, HttpTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(InventoryTest, HttpTest))
 }

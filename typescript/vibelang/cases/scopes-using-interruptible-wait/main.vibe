@@ -3,18 +3,18 @@
 // where the using stands, so an interruption that arrives while it waits
 // ends the wait, and using registers and disposes nothing.
 // expect-result: []
-export function main() {
+export effect function main() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
-  function open() {
+  effect function open() {
     try Deferred.succeed(entered, undefined)
     try Deferred.await(gate)
     events.push("acquired")
     return { [Symbol.dispose](): void { events.push("disposed") } }
   }
-  function work() { using resource = try open() }
-  const child = try Effect.forkChild(() => work())
+  effect function work() { using resource = try open() }
+  const child = try Effect.forkChild(effect { return try work() })
   try Deferred.await(entered)
   child.interruptUnsafe(98765)
   try Deferred.succeed(gate, undefined)

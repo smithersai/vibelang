@@ -7,16 +7,16 @@ import * as Effect from "effect/Effect"
 
 type Hook = (n: number) => void!!
 
-const concise: Hook = (n) => n > 0 ? () => die("crash") : Effect.void
+const concise: Hook = (n) => n > 0 ? effect { return try die("crash") } : Effect.void
 
 const block: Hook = (n) => {
-  if (n > 0) return () => die("crash")
+  if (n > 0) return effect { return try die("crash") }
   return Effect.void
 }
 
-const nested: Hook = (n) => n > 1 ? Effect.void : n > 0 ? () => die("crash") : Effect.void
+const nested: Hook = (n) => n > 1 ? Effect.void : n > 0 ? effect { return try die("crash") } : Effect.void
 
-export function main() {
+export effect function main() {
   return {
     concise: (try exit(concise(1)))._tag,
     passes: (try exit(concise(0)))._tag,

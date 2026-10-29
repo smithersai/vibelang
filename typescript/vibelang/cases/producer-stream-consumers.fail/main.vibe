@@ -13,7 +13,7 @@ function* asks() {
   yield try Ask.ask()
 }
 
-function viaBinding() {
+effect function viaBinding() {
   const stream: Stream.Stream<number, never, Ask> = asks()
   return try Stream.runCollect(stream)
 }
@@ -23,17 +23,17 @@ function viaMethod() {
   return stream.take(1)
 }
 
-function viaCall() {
+effect function viaCall() {
   return try Stream.runCollect(asks())
 }
 
-function loop(stream: Stream.Stream<number, never, Ask>) {
+effect function loop(stream: Stream.Stream<number, never, Ask>) {
   let total = 0
   for (const n of stream) total += n
   return total
 }
 
-function passedOn() {
+effect function passedOn() {
   const stream: Stream.Stream<number, never, Ask> = asks()
   return try loop(stream)
 }

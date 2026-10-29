@@ -5,34 +5,34 @@
 // EK4802 is an error here (tsconfig.json).
 service Status { set(code: number): void!! }
 
-const listFlows = () => {
+const listFlows = effect () => {
   try Console.log("listing")
 }
 
 // A local that a conditional between an Effect value and a running call
 // initialized: the call runs at the const, and Effect.void is the value.
-export const report = (code: number | undefined) =>
-  Effect.suspend(() => {
+export const report = effect (code: number | undefined) =>
+  try Effect.suspend(effect () => {
     const chosen = code === undefined ? Effect.void : try Status.set(code)
     return chosen
   })
 
 // A program by name or a value, under a void!! contract.
 const command = (name: string, handler: (n: number) => void!!): infer _ => handler
-export const ls = command("ls", (n) => {
+export const ls = command("ls", effect (n) => {
   const chosen = n > 0 ? listFlows : undefined
   return chosen
 })
 
 // Every member a program: an Effect value or a program by name.
-export const programs = (code: number) => Effect.suspend(() => {
+export const programs = effect (code: number) => try Effect.suspend(effect () => {
   const chosen = code > 0 ? Effect.void : listFlows
   return chosen
 })
 
 // Not reported: the chosen program runs where it is chosen.
-export const ran = (code: number | undefined) =>
-  Effect.suspend(() => {
+export const ran = effect (code: number | undefined) =>
+  try Effect.suspend(effect () => {
     if (code === undefined) return try Effect.void()
     return try Status.set(code)
   })

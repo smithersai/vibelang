@@ -1,9 +1,9 @@
 import { Effect } from "effect"
 export class Failure extends TaggedError("Failure")<{}> {}
-export const run = (n: number): Effect.Effect<number, Failure, never> => { if (n < 0) throw new Failure(); return n }
-export const generic = <A>(value: A): Effect.Effect<A, Failure, never> => { if (!value) throw new Failure(); return value }
-export function inferred(n: number) { if (n < 0) throw new Failure(); return n }
-export function inferredGeneric<A>(value: A) { if (try plain(0) < 0) throw new Failure(); return value }
+export const run = effect (n: number): Effect.Effect<number, Failure, never> => { if (n < 0) throw new Failure(); return n }
+export const generic = effect <A>(value: A): Effect.Effect<A, Failure, never> => { if (!value) throw new Failure(); return value }
+export effect function inferred(n: number) { if (n < 0) throw new Failure(); return n }
+export effect function inferredGeneric<A>(value: A) { if (plain(0) < 0) throw new Failure(); return value }
 export function plain(n: number) { return n + 1 }
 type Eq<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
@@ -27,4 +27,4 @@ export type Checks = [
   Assert<Eq<ReturnType<typeof plain>, Effect.Effect<number, never, never>>>
 ]
 // expect-result: 4
-export function main() { const n: number = try run(1); const s: string = try generic("ok"); return try plain(n) + s.length }
+export effect function main() { const n: number = try run(1); const s: string = try generic("ok"); return plain(n) + s.length }

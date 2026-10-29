@@ -1,0 +1,106 @@
+package vibelang
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
+)
+
+// vibelang --fix-vip-only marks effect each function the analyzer compiles
+// to an Effect (VIP-1): a declaration, a method, and a literal in the Effect
+// form, with try before an arrow's body that the function runs. A literal in
+// the program form becomes an effect block (VIP-2). A function that compiles
+// to plain JavaScript stays unmarked and loses the try its calls had, and a
+// catch handler that runs nothing stays plain. A second run writes nothing.
+func TestFixVIPWritesEffect(t *testing.T) {
+	source := `function load(n: number) {
+  try yieldNow()
+  return { n }
+}
+
+function double(n: number) {
+  return n * 2
+}
+
+class Box {
+  get(n: number) {
+    return n
+  }
+}
+
+export function main() {
+  const box = new Box()
+  const a = try load(1)
+  const twice = try forEach([1, 2], (n) => load(n))
+  const again = try Effect.retry(() => load(3), { times: 1 })
+  const block = try Effect.retry(() => { try yieldNow(); return 4 }, { times: 1 })
+  const d = double(2)
+  const g = try box.get(5)
+  const h = load(6) catch (e) => ({ n: 0 })
+  return a.n + twice.length + again.n + block + d + g + h.n
+}
+`
+	want := `effect function load(n: number) {
+  try yieldNow()
+  return { n }
+}
+
+function double(n: number) {
+  return n * 2
+}
+
+class Box {
+  effect get(n: number) {
+    return n
+  }
+}
+
+export effect function main() {
+  const box = new Box()
+  const a = try load(1)
+  const twice = try forEach([1, 2], effect (n) => try load(n))
+  const again = try Effect.retry(effect { return try load(3) }, { times: 1 })
+  const block = try Effect.retry(effect { try yieldNow(); return 4 }, { times: 1 })
+  const d = double(2)
+  const g = try box.get(5)
+  const h = load(6) catch (e) => ({ n: 0 })
+  return a.n + twice.length + again.n + block + d + g + h.n
+}
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+	if fixed.Rewrites[effectLabel] != 6 {
+		t.Errorf("rewrites %v; want 6 effect rewrites: load, get, main, the literal, and the two blocks", fixed.Rewrites)
+	}
+	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	if len(again.Files) != 0 {
+		t.Errorf("a second run wrote %+v", again.Files[file.FileName()])
+	}
+}

@@ -1,8 +1,8 @@
 // expect-result: ["Sub","x","Sub","x","Sub","y"]
 error Base { _tag: string }
 error Sub extends Base { who: string }
-function fail(): never!Sub { throw new Sub({ who: "x" }) }
-export function main() {
+effect function fail(): never!Sub { throw new Sub({ who: "x" }) }
+export effect function main() {
   const sub = new Sub({ who: "x" })
   const input = { who: "y", _tag: "spoof" }
   const extra = new Sub(input)

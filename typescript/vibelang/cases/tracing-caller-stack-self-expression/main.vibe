@@ -2,18 +2,18 @@ error Missing
 
 // A named function expression that calls itself forwards to its generator,
 // as a declaration does; tracing still reports each call where it was made.
-const leaf = function leaf(n: number): Effect<number, Missing> {
+const leaf = effect function leaf(n: number): Effect<number, Missing> {
   try yieldNow()
   if (n > 0) return try leaf(n - 1)
   throw new Missing()
 }
 
-export function main() {
+export effect function main() {
   try yieldNow()
   return try leaf(1)
 }
 
-export const counted = function counted(this: { value: number }, add: number, unused = 1): Effect<number[]> {
+export const counted = effect function counted(this: { value: number }, add: number, unused = 1): Effect<number[]> {
   try yieldNow()
   if (add > 0) return try counted.call(this, add - 1)
   return [this.value, arguments.length, unused]

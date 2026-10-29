@@ -16,29 +16,29 @@ type Left = Never<Effect.Services<ReturnType<typeof withResource<Socket, Scope>>
 type LeftTyped = Never<Effect.Services<ReturnType<typeof withResourceTyped<Socket, Scope>>>>
 type LeftCallback = Never<Effect.Services<ReturnType<typeof withAnyResource<never, Scope>>>>
 
-export function main(): object!! {
+export effect function main(): object!! {
   const left: Array<Left | LeftTyped | LeftCallback> = []
   return {
     socket: {
-      inline: try deadline((seen) => holdSocket(seen)),
-      generic: try deadline((seen) => { try withResource(() => connect(seen)) }),
-      typed: try deadline((seen) => { try withResourceTyped(() => connect(seen)) })
+      inline: try deadline(effect (seen) => try holdSocket(seen)),
+      generic: try deadline(effect (seen) => { try withResource(effect () => try connect(seen)) }),
+      typed: try deadline(effect (seen) => { try withResourceTyped(effect () => try connect(seen)) })
     },
     db: {
-      inline: try deadline((seen) => holdDb(seen)),
-      generic: try deadline((seen) => { try withResource(() => openDb(seen)) }),
-      callback: try deadline((seen) => { try withAnyResource(() => openDb(seen)) })
+      inline: try deadline(effect (seen) => try holdDb(seen)),
+      generic: try deadline(effect (seen) => { try withResource(effect () => try openDb(seen)) }),
+      callback: try deadline(effect (seen) => { try withAnyResource(effect () => try openDb(seen)) })
     },
-    scoped: [try withScoped(() => plainScoped()), ...left][0]
+    scoped: [try withScoped(effect () => try plainScoped()), ...left][0]
   }
 }
 
 // Runs work under a 100 ms deadline and returns what it recorded, then how
 // the deadline ended.
-function deadline(work: (seen: string[]) => void!!) {
+effect function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
   try {
-    try Effect.timeout(() => work(seen), "100 millis")
+    try Effect.timeout(effect { return try work(seen) }, "100 millis")
     seen.push("finished")
   } catch (e) {
     seen.push(e._tag)
@@ -50,36 +50,36 @@ class Socket {
   [Symbol.dispose](): void {}
 }
 
-function connect(seen: string[]) {
+effect function connect(seen: string[]) {
   return try Effect.acquireRelease(
-    () => {
+    effect {
       try sleep("2 seconds")
       seen.push("connected")
       return new Socket()
     },
-    () => {
+    effect () => {
       seen.push("released")
     },
     { interruptible: true }
   )
 }
 
-function openDb(seen: string[]) {
+effect function openDb(seen: string[]) {
   try sleep("2 seconds")
   seen.push("opened")
   return { [Symbol.dispose](): void { seen.push("disposed") } }
 }
 
-function plainScoped(): { name: string }!!Scope {
+effect function plainScoped(): { name: string }!!Scope {
   return { name: "plain" }
 }
 
-function holdSocket(seen: string[]) {
+effect function holdSocket(seen: string[]) {
   using socket = try connect(seen)
   seen.push("body")
 }
 
-function holdDb(seen: string[]) {
+effect function holdDb(seen: string[]) {
   using db = try openDb(seen)
   seen.push("body")
 }

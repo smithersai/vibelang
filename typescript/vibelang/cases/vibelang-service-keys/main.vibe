@@ -22,12 +22,12 @@ export abstract class Settings {
 }
 
 export const UsersLive = Layer.succeed(Users, {
-  find: (id: string) => Effect.succeed({ id, name: "Ada" })
+  find: effect (id: string) => try Effect.succeed({ id, name: "Ada" })
 })
 
 // An implementation can be a class that implements the service.
 export class UsersInMemory implements Users {
-  find(id: string) {
+  effect find(id: string) {
     return id === "7" ? try Effect.succeed({ id, name: "Grace" }) : try Effect.fail(new UserNotFound({ id }))
   }
 }

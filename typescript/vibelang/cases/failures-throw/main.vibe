@@ -15,19 +15,19 @@ const guest: User = { id: "0", name: "Guest" }
 const users = new Map<string, User>([["42", { id: "42", name: "Ada" }]])
 
 // A throw is enough to make a function an Effect: Effect<number, InvalidId, never>.
-export function parseId(raw: string) {
+export effect function parseId(raw: string) {
   if (!/^\d+$/.test(raw)) throw new InvalidId({ raw })
   return Number(raw)
 }
 
-export function find(id: string) {
+export effect function find(id: string) {
   const user = users.get(id)
   if (user === undefined) throw new UserNotFound({ id })
   return user
 }
 
 // The catch handles UserNotFound; InvalidId escapes from before the try.
-export function lookup(raw: string) {
+export effect function lookup(raw: string) {
   const id = try parseId(raw)
   try {
     return try find(String(id))
@@ -38,7 +38,7 @@ export function lookup(raw: string) {
 
 // e is InvalidId | UserNotFound; after the instanceof test it is InvalidId,
 // which the rethrow adds to E.
-export function lookupOrGuest(raw: string) {
+export effect function lookupOrGuest(raw: string) {
   try {
     return try find(String(try parseId(raw)))
   } catch (e) {
@@ -48,14 +48,14 @@ export function lookupOrGuest(raw: string) {
 }
 
 // Any value can be thrown; a fresh literal widens as in a return type.
-export function oops(n: number) {
+export effect function oops(n: number) {
   if (n > 1) throw "bad"
   if (n > 0) throw new Error("worse")
   return n
 }
 
 // _tag narrows the caught union too.
-export function describe(raw: string) {
+export effect function describe(raw: string) {
   try {
     return (try find(String(try parseId(raw)))).name
   } catch (e) {
@@ -69,13 +69,13 @@ export function describe(raw: string) {
 }
 
 // A lambda that can throw is an Effect function too.
-const doubled = (n: number): number!InvalidId! => {
+const doubled = effect (n: number): number!InvalidId! => {
   if (n < 0) throw new InvalidId({ raw: String(n) })
   return n * 2
 }
 
 // expect-result: {"found":"Ada","missing":"Guest","orGuest":"Guest","invalid":"InvalidId","oops":["bad","worse",0],"describe":["Ada","invalid x","missing 7"],"lambda":[42,"InvalidId"]}
-export function main() {
+export effect function main() {
   let invalid = "none"
   try {
     try lookupOrGuest("x")
@@ -97,6 +97,6 @@ export function main() {
     invalid,
     oops: failures,
     describe: [try describe("42"), try describe("x"), try describe("7")],
-    lambda: [try doubled(21), try Effect.catch(() => doubled(-1), (e) => e._tag)]
+    lambda: [try doubled(21), try Effect.catch(effect { return try doubled(-1) }, effect (e) => e._tag)]
   }
 }

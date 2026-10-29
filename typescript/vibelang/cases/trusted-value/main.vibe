@@ -6,12 +6,12 @@ function port(text: string) {
 }
 
 // expect-result: {"port":"PortError","defect":true,"loaded":8443,"argument":true,"calls":3}
-export function main() {
-  const failure = try port("x")
-  const defect = try Effect.exit(() => parsePort("boom"))
+export effect function main() {
+  const failure = port("x")
+  const defect = try Effect.exit(effect { return parsePort("boom") })
   const loaded = parsePort(try Effect.succeed("8443"))
   // Argument evaluation fails before parsePort's implementation can run.
-  const argument = try Effect.exit(() => parsePort(throwingArgument()))
+  const argument = try Effect.exit(effect { return parsePort(throwingArgument()) })
   return {
     port: failure,
     defect: Exit.isFailure(defect) && Cause.hasDies(defect.cause),

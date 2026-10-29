@@ -1,5 +1,5 @@
 main.vibe(5,14): error EK4301
 main.vibe(6,18): error EK4301
-main.vibe(6,56): error TS2740
+main.vibe(6,63): error TS2740
 main.vibe(8,5): error TS2322
 main.vibe(8,13): error EK4301

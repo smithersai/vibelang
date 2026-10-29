@@ -11,21 +11,21 @@ abstract class Mailer {
   abstract send(to: string): Effect<void, never, never>
 }
 
-const MailerLive = Layer.effect(Mailer, () => {
+const MailerLive = Layer.effect(Mailer, effect {
   const smtp = try Smtp()
   return {
-    send: (to) => smtp.deliver(to)
+    send: effect (to) => try smtp.deliver(to)
   }
 })
 
 const AppLive = wire(MailerLive)
 
-function welcome() {
+effect function welcome() {
   try Mailer.send("ada@example.com")
 }
 
-function main() {
-  try Effect.provide(() => welcome(), AppLive)
+effect function main() {
+  try Effect.provide(effect { return try welcome() }, AppLive)
 }
 
-Effect.runFork(() => main())
+Effect.runFork(effect { return try main() })

@@ -5,7 +5,7 @@
 // The same calls inside the function are allowed.
 import { legacyParse } from "./legacy.ts"
 
-export function inputs(text: string) {
+export effect function inputs(text: string) {
   const inside = try sync((text) => legacyParse(text) + Date.now(), text)
   const parsed = try sync((n) => n + 1, legacyParse(text))
   const stamped = try sync((t) => t, Date.now())

@@ -3,77 +3,77 @@
 let escaped: Fiber<void> | undefined
 
 function keep(fiber: Fiber<void>) {}
-function within(body: () => void!!) { try body() }
+effect function within(body: () => void!!) { try body() }
 
-export function settledAssignment() {
+export effect function settledAssignment() {
   const f = fork sleep("1 minute")
   await.allSettled [do { escaped = f; 1 }]
 }
 
-export function racedStore(box: { mutable fiber?: Fiber<void> }) {
+export effect function racedStore(box: { mutable fiber?: Fiber<void> }) {
   const f = fork sleep("1 minute")
   await.race [do { box.fiber = f; 1 }]
 }
 
-export function anyCall() {
+export effect function anyCall() {
   const f = fork sleep("1 minute")
   await.any [keep(f)]
 }
 
-export function awaitCapture() {
+export effect function awaitCapture() {
   const f = fork sleep("1 minute")
-  await.all [within(() => { try Fiber.interrupt(f) })]
+  await.all [within(effect () => { try Fiber.interrupt(f) })]
 }
 
-export function forkAssignment() {
+export effect function forkAssignment() {
   const f = fork sleep("1 minute")
   const g = fork { escaped = f }
   join g
 }
 
-export function forkReturn() {
+export effect function forkReturn() {
   const f = fork sleep("1 minute")
   const g = fork { return f }
   join g
 }
 
-export function forkObject() {
+export effect function forkObject() {
   const f = fork sleep("1 minute")
   const g = fork { return { f } }
   join g
 }
 
-export function forkArray() {
+export effect function forkArray() {
   const f = fork sleep("1 minute")
   const g = fork { return [f] }
   join g
 }
 
-export function forkBlockParam() {
+export effect function forkBlockParam() {
   const f = fork sleep("1 minute")
   const g = fork within { try Fiber.interrupt(f) }
   join g
 }
 
-export function concurrentAssignment() {
+export effect function concurrentAssignment() {
   const f = fork sleep("1 minute")
   for concurrent (const n of [1]) { escaped = f }
 }
 
-export function concurrentCall() {
+export effect function concurrentCall() {
   const f = fork sleep("1 minute")
-  for concurrent (const n of [1]) { try keep(f) }
+  for concurrent (const n of [1]) { keep(f) }
 }
 
-export function concurrentCapture() {
+export effect function concurrentCapture() {
   const f = fork sleep("1 minute")
   for concurrent (const n of [1]) {
-    const stop = () => { try Fiber.interrupt(f) }
+    const stop = effect () => { try Fiber.interrupt(f) }
     try stop()
   }
 }
 
-export function concurrentBlockParam() {
+export effect function concurrentBlockParam() {
   const f = fork sleep("1 minute")
   for concurrent (const n of [1]) { try within { try Fiber.interrupt(f) } }
 }

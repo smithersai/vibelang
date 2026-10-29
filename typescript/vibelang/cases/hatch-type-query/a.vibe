@@ -4,16 +4,16 @@ error Bad { cause: unknown }
 import { parseSync } from "./parse.ts"
 
 // A type query reads no value; the function reaches the hatch as an input.
-export function viaTypeQuery(text: string) {
+export effect function viaTypeQuery(text: string) {
   return try Effect.try({ try: () => ((parse: typeof parseSync, text: string) => parse(text))(parseSync, text), catch: (cause) => new Bad({ cause }) })
 }
 
 // A spelled-out function type has the same behavior.
-export function viaSpelledType(text: string) {
+export effect function viaSpelledType(text: string) {
   return try Effect.try({ try: () => ((parse: (text: string) => number, text: string) => parse(text))(parseSync, text), catch: (cause) => new Bad({ cause }) })
 }
 
 const parsers = { parse: parseSync }
-export function viaQualifiedQuery(text: string) {
+export effect function viaQualifiedQuery(text: string) {
   return try Effect.try({ try: () => ((parse: typeof parsers.parse, text: string): ReturnType<typeof parsers.parse> => parse(text))(parseSync, text), catch: (cause) => new Bad({ cause }) })
 }

@@ -2,32 +2,32 @@
 // that the module does not export is the service's, M() is the
 // implementation, and the type M is the service. The module's exports keep
 // their meaning: FileSystem.layerNoop and Path.layer.
-function notes(directory: string) {
+effect function notes(directory: string) {
   const file = try Path.join(directory, "notes.txt")
   return [file, try FileSystem.readFileString(file)]
 }
 
-export function exists(fs: FileSystem, path: string) {
+export effect function exists(fs: FileSystem, path: string) {
   return try fs.exists(path)
 }
 
-export function read(path: string) {
+export effect function read(path: string) {
   return try FileSystem.readFileString(path)
 }
 
-export const id = () => SecureRandom.uuidV4()
-export const token = () => SecureRandom.randomBytes(16)
-export const status = () => ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
-export const line = () => Terminal.readLine()
+export const id = effect () => try SecureRandom.uuidV4()
+export const token = effect () => try SecureRandom.randomBytes(16)
+export const status = effect () => try ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
+export const line = effect () => try Terminal.readLine()
 
 const Files = FileSystem.layerNoop({
-  readFileString: (path) => `read ${path}`,
-  exists: (path) => path === "/srv/notes.txt",
+  readFileString: effect (path) => `read ${path}`,
+  exists: effect (path) => path === "/srv/notes.txt",
 })
 const Args = Stdio.layerTest({ args: Effect.succeed(["--verbose"]) })
 
 // expect-result: ["/srv/notes.txt","read /srv/notes.txt",true,["--verbose"]]
-export function main() {
+export effect function main() {
   provide Path.layer, Files, Args {
     const [file, text] = try notes("/srv")
     const fs = try FileSystem()

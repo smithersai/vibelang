@@ -27,23 +27,23 @@ abstract class Audit {
   abstract record(entry: string): Effect<void, never, never>
 }
 
-function findIn(db: Database.Shape, id: string) {
-  const rows = try Effect.orDie(() => db.query("select * from users where id = $1", [id]))
+effect function findIn(db: Database.Shape, id: string) {
+  const rows = try Effect.orDie(effect { return try db.query("select * from users where id = $1", [id]) })
   if (rows.length === 0) throw new UserNotFound({ id })
   return rows[0]
 }
 
-function renameIn(db: Database.Shape, id: string, name: string) {
-  try Effect.orDie(() => db.execute("update users set name = $1 where id = $2", [name, id]))
+effect function renameIn(db: Database.Shape, id: string, name: string) {
+  try Effect.orDie(effect { return try db.execute("update users set name = $1 where id = $2", [name, id]) })
 }
 
-const UsersAudited = Layer.effect(Users, () => {
+const UsersAudited = Layer.effect(Users, effect {
   const db = try Database()
   return {
-    find(id) {
+    effect find(id) {
       try Audit.record(`users.find ${id}`)    // looked up on every call
       return try findIn(db, id)
     },
-    rename(id, name) { try renameIn(db, id, name) }
+    effect rename(id, name) { try renameIn(db, id, name) }
   }
 })

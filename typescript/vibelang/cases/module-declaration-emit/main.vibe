@@ -72,11 +72,11 @@ module extras {
   export default "not re-exported"
 }
 
-export function describe(shape: Shape): string!! {
+export effect function describe(shape: Shape): string!! {
   return `${shape.width}x${shape.height}`
 }
 
-export function main() {
+export effect function main() {
   const counter = try sync(() => new Counter())
   const counted = try sync((counter) => counter.increment(), counter)
   try Console.log(JSON.stringify({

@@ -3,16 +3,16 @@ error Missing { code: string }
 
 type Outcome = { _tag: "Found"; value: number } | { _tag: "Error"; error: Missing }
 
-function find(n: number): number!Missing {
+effect function find(n: number): number!Missing {
   if (n < 0) throw new Missing({ code: "negative" })
   return n
 }
 
 // The contextual type keeps literals literal; a side outside it still fails.
-function wrongHandler(n: number): Outcome!! {
+effect function wrongHandler(n: number): Outcome!! {
   return { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Lost", error })
 }
 
-function wrongFallback(n: number): "fast" | "slow"!! {
+effect function wrongFallback(n: number): "fast" | "slow"!! {
   return (find(n) > 10 ? "fast" : "slow") catch "stopped"
 }

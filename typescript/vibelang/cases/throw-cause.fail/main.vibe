@@ -5,17 +5,17 @@
 // fails with every reason the cause holds; a throw of unknown is allowed.
 error Missing
 
-function rethrown() {
+effect function rethrown() {
   const outcome = try exit(Effect.die("boom"))
   if (outcome is Exit.Failure(let cause)) throw cause
   return 1
 }
 
-function either(cause: Cause<string> | Missing) {
+effect function either(cause: Cause<string> | Missing) {
   throw cause
 }
 
-function inExpression(cause: Cause<never>, value: number | undefined) {
+effect function inExpression(cause: Cause<never>, value: number | undefined) {
   return value ?? throw cause
 }
 
@@ -23,11 +23,11 @@ function plain(cause: Cause<never>) {
   try { throw cause } catch { return 0 }
 }
 
-function widened(cause: Cause<never>) {
+effect function widened(cause: Cause<never>) {
   const value: unknown = cause
   throw value
 }
 
-function restored(cause: Cause<string>) {
+effect function restored(cause: Cause<string>) {
   try Effect.failCause(cause)
 }

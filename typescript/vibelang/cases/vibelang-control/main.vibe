@@ -8,27 +8,27 @@ abstract class Approval extends Control {
   abstract approve(request: string): Effect.Effect<boolean, never, never>
 }
 
-export function checkout(cartId: string) {
+export effect function checkout(cartId: string) {
   const ok = try Approval.approve(`charge cart ${cartId}`)
   return ok ? `charged ${cartId}` : `declined ${cartId}`
 }
 
 const requests: string[] = []
 
-function approved() {
-  return try handle(() => checkout("c42"), Approval, {
-    approve: (request: string, k) => {
+effect function approved() {
+  return try handle(effect { return try checkout("c42") }, Approval, {
+    approve: effect (request: string, k) => {
       requests.push(request)
       return try resume(k, true)
     }
   })
 }
 
-function declined() {
-  return try handle(() => checkout("c7"), Approval, { approve: (_request: string, k) => resume(k, false) })
+effect function declined() {
+  return try handle(effect { return try checkout("c7") }, Approval, { approve: effect (_request: string, k) => try resume(k, false) })
 }
 
 // expect-result: {"approved":"charged c42","declined":"declined c7","requests":["charge cart c42"]}
-export function main() {
+export effect function main() {
   return { approved: try approved(), declined: try declined(), requests }
 }

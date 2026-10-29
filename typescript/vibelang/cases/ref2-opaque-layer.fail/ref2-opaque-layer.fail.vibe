@@ -7,7 +7,7 @@ abstract class Users {
 }
 
 const UsersOpaque: Layer.Any = Layer.succeed(Users, {
-  find: (id) => `user-${id}`
+  find: effect (id) => `user-${id}`
 })
 
 const AppLive = wire(UsersOpaque)

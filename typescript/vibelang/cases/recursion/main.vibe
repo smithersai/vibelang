@@ -4,20 +4,20 @@
 export class Even extends TaggedError("Even")<{ readonly n: number }> {}
 export class Odd extends TaggedError("Odd")<{ readonly n: number }> {}
 
-export function isOdd(n: number): Effect<boolean, Even | Odd, never> {
+export effect function isOdd(n: number): Effect<boolean, Even | Odd, never> {
   if (n === 7) throw new Odd({ n })
   if (n === 0) return false
   return try isEven(n - 1)
 }
 
-export function isEven(n: number): Effect<boolean, Even | Odd, never> {
+export effect function isEven(n: number): Effect<boolean, Even | Odd, never> {
   if (n === 100) throw new Even({ n })
   if (n === 0) return true
   return try isOdd(n - 1)
 }
 
 // A caller outside the cycle reads the written contracts.
-export function parity(n: number) {
+export effect function parity(n: number) {
   try {
     return try isEven(n) ? "even" : "odd"
   } catch (e) {
@@ -41,13 +41,13 @@ const tree = new Map<string, Entry>([
   ["/b/c", { size: 32, children: [] }]
 ])
 
-function stat(path: string) {
+effect function stat(path: string) {
   const entry = tree.get(path)
   if (entry === undefined) throw new Missing({ path })
   return entry
 }
 
-export function totalSize(path: string): Effect<number, Missing, never> {
+export effect function totalSize(path: string): Effect<number, Missing, never> {
   const entry: Entry = try stat(path)
   let total = entry.size
   for (const child of entry.children) total += try totalSize(path === "/" ? `/${child}` : `${path}/${child}`)
@@ -55,6 +55,6 @@ export function totalSize(path: string): Effect<number, Missing, never> {
 }
 
 // expect-result: {"parity":["even","odd","Odd","Even"],"size":42}
-export function main() {
+export effect function main() {
   return { parity: [try parity(4), try parity(3), try parity(8), try parity(100)], size: try totalSize("/") }
 }

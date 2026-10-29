@@ -1,11 +1,11 @@
 // expect: EK4605 EK4606
-export function leaves() {
+export effect function leaves() {
   for concurrent (const n of [1, 2]) {
     if (n === 1) break
   }
 }
 
-export function returns() {
+export effect function returns() {
   for concurrent (const n of [1, 2]) {
     if (n === 2) return
   }

@@ -1,4 +1,4 @@
 import "vibelang/platform/node"
 const keys = ["user-key"]
 class Users extends Context.Service<Users, { name: string }>()(keys.pop()!) {}
-export function main() { try Console.log("remaining", keys.length) }
+export effect function main() { try Console.log("remaining", keys.length) }

@@ -2,7 +2,7 @@
 error Busy
 error Offline
 
-export function attempt(flag: boolean) {
+export effect function attempt(flag: boolean) {
   try {
     if (flag) throw new Busy()
     throw new Offline()

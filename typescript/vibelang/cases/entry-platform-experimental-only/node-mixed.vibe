@@ -3,7 +3,7 @@
 // platform's services are built once.
 import "vibelang/platform/node"
 
-export function main() {
+export effect function main() {
   const pid = try Experimental.Process.pid()
   try Console.log(`node mixed ${try FileSystem.exists("package.json")} ${pid > 0}`)
 }

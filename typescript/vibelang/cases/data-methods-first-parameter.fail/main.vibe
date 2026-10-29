@@ -7,6 +7,6 @@
 export function misuse(value: BigDecimal.BigDecimal, program: Effect.Effect<number>) {
   const made = value.fromNumberUnsafe()
   const promised = program.runPromise()
-  const acquired = program.acquireRelease(() => Effect.void)
+  const acquired = program.acquireRelease(effect () => Effect.void)
   return [made, promised, acquired]
 }

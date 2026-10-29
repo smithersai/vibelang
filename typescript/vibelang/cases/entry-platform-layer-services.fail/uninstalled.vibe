@@ -3,6 +3,6 @@
 import "vibelang/platform/bun"
 import { FileSystem } from "effect/FileSystem"
 
-export function main() {
+export effect function main() {
   try Console.log(try FileSystem.readFileString("config.json"))
 }

@@ -3,17 +3,17 @@ import { Effect } from "effect"
 error Gone {}
 service Needed { id: string }
 type Decode = () => Effect.Effect<number, Gone, Needed>
-export function failsNever(f: Decode | undefined): Effect.Effect<number | undefined, never, Needed> {
+export effect function failsNever(f: Decode | undefined): Effect.Effect<number | undefined, never, Needed> {
  return try f?.()
 }
-export function needsNothing(o: { readonly decode?: Decode }): Effect.Effect<number | undefined, Gone, never> {
+export effect function needsNothing(o: { readonly decode?: Decode }): Effect.Effect<number | undefined, Gone, never> {
  return try o.decode?.()
 }
 
-function declared(): Effect.Effect<number, Gone, Needed> { return 1 }
-export function declaredFailsNever(): Effect.Effect<number | undefined, never, Needed> {
+effect function declared(): Effect.Effect<number, Gone, Needed> { return 1 }
+export effect function declaredFailsNever(): Effect.Effect<number | undefined, never, Needed> {
  return try declared?.()
 }
-export function declaredNeedsNothing(): Effect.Effect<number | undefined, Gone, never> {
+export effect function declaredNeedsNothing(): Effect.Effect<number | undefined, Gone, never> {
  return try declared?.()
 }

@@ -1,10 +1,10 @@
 // expect-result: [42,3,4,5]
-export function main() {
+export effect function main() {
   const n = do {
     function own() { var local = 42; return local }
-    try own()
+    own()
   }
-  const arrow = do { const f = () => { var local = 3; return local }; try f() }
+  const arrow = do { const f = effect () => { var local = 3; return local }; try f() }
   const loop = do {
     local: for (let i = 0; i < 2; i++) {
       if (i === 0) continue local

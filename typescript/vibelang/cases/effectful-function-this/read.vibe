@@ -1,4 +1,4 @@
-export function read(this: { value: number }, add: number) {
+export effect function read(this: { value: number }, add: number) {
   try yieldNow()
   return this.value + add
 }

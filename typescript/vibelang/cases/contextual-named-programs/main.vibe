@@ -3,36 +3,36 @@ import { Config, Effect, Exit } from "effect"
 error Refused { reason: string }
 interface Service { version: Effect.Effect<number, Refused, never> }
 let runs = 0
-const shared = () => ++runs
+const shared = effect () => ++runs
 const sharedRecord: Service = { version: shared }
 const named = (): Service => {
-  const version = () => ++runs
+  const version = effect () => ++runs
   return { version }
 }
 const explicit = (): Service => {
-  const version = () => ++runs
+  const version = effect () => ++runs
   return { version: version }
 }
-const frozenInline = (): Service => Object.freeze({ version: () => ++runs })
+const frozenInline = (): Service => Object.freeze({ version: effect { return ++runs } })
 const frozenNamed = (): Service => {
-  const version = () => ++runs
+  const version = effect () => ++runs
   return Object.freeze({ version })
 }
 const satisfies = (): Service => {
-  const version = () => ++runs
+  const version = effect () => ++runs
   return { version } satisfies Service
 }
-function effectful() { return try Effect.sync(() => ++runs) }
+effect function effectful() { return try Effect.sync(() => ++runs) }
 function plainDeclaration() { return ++runs }
 const annotated: Service = { version: effectful }
 const declared: Service = { version: plainDeclaration }
 const generic = <T>(value: T): T => value
-const identity = (): Service => generic({ version: () => ++runs })
+const identity = (): Service => generic({ version: effect { return ++runs } })
 const frozenCall = (): Service => Object.freeze({ version: Effect.sync(() => ++runs) })
 const identityCall = (): Service => generic({ version: effectful() })
 const passed = (value: Service): Service => value
 const constrained = <T extends { version: object; flag: true }>(value: T): T => value
-const constrainedRecord = (): Service => constrained({ version: () => ++runs, flag: true })
+const constrainedRecord = (): Service => constrained({ version: effect { return ++runs }, flag: true })
 interface DataPrograms {
   config: Effect.Effect<Config.Config<number>, never, never>
   snapshot: Effect.Effect<Exit.Exit<number, never>, never, never>
@@ -42,14 +42,14 @@ const dataPrograms = (): DataPrograms => {
   const readExit = (): Exit.Exit<number, never> => Exit.succeed(9)
   return Object.freeze({ config: readConfig, snapshot: readExit })
 }
-export function main() {
+export effect function main() {
   const a = named()
   const b = explicit()
   const c = frozenInline()
   const d = frozenNamed()
   const e = satisfies()
   const f = identity()
-  const g = passed({ version: () => ++runs })
+  const g = passed({ version: effect { return ++runs } })
   const h = frozenCall()
   const i = identityCall()
   const constrainedValue = constrainedRecord()

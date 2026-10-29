@@ -64,13 +64,13 @@ function estimate(cart: Cart) {
   return quote
 }
 
-function quoteCart(cartId: string) {
+effect function quoteCart(cartId: string) {
   const cart = try Carts.load(cartId)              // E: CartNotFound   R: Carts
   if (cart.items.length === 0) throw new EmptyCart({ cartId })
   try {
     return try Pricing.quote(cart)                 // E: PricingDown    R: Pricing
   } catch (e) {                                // e: PricingDown
-    return try estimate(cart)                      // a plain function
+    return estimate(cart)                      // a plain function
   }
 }
 // Effect<Quote, CartNotFound | EmptyCart, Carts | Pricing>
@@ -79,7 +79,7 @@ function quoteCart(cartId: string) {
 // NOTE: the proposal's example omits Mailer from R to show EK2002 (ch12-welcome-missing-mailer.fail.vibe);
 // this version states the full contract, which must check.
 
-export function welcome(id: string): Effect<string, UserNotFound | MailError, Users | Mailer> {
+export effect function welcome(id: string): Effect<string, UserNotFound | MailError, Users | Mailer> {
   const user = try Users.find(id)
   try Mailer.send(user.email, "Welcome")
   return user.name
@@ -89,7 +89,7 @@ export function welcome(id: string): Effect<string, UserNotFound | MailError, Us
 
 // Recursion
 
-function totalSize(path: string): Effect<number, IOError, Files> {
+effect function totalSize(path: string): Effect<number, IOError, Files> {
   const entry: Entry = try Files.stat(path)
   if (!entry.isDirectory) return entry.size
   let total = 0
@@ -105,7 +105,7 @@ const carts = new Map<string, Cart>([
 ])
 
 const CartsTest = Layer.succeed(Carts, {
-  load: (cartId) => {
+  load: effect (cartId) => {
     const cart = carts.get(cartId)
     if (cart === undefined) throw new CartNotFound({ cartId })
     return cart
@@ -113,7 +113,7 @@ const CartsTest = Layer.succeed(Carts, {
 })
 
 const PricingTest = Layer.succeed(Pricing, {
-  quote: (cart) => {
+  quote: effect (cart) => {
     if (cart.id === "down") throw new PricingDown({ reason: "maintenance" })
     let total = 0
     for (const item of cart.items) total += item.price * 2
@@ -123,13 +123,13 @@ const PricingTest = Layer.succeed(Pricing, {
 })
 
 const UsersTest = Layer.succeed(Users, {
-  find: (id) => ({ id, name: "Ada", email: "ada@example.com" })
+  find: effect (id) => ({ id, name: "Ada", email: "ada@example.com" })
 })
 
 const outbox: string[] = []
 
 const MailerTest = Layer.succeed(Mailer, {
-  send: (to, body) => {
+  send: effect (to, body) => {
     outbox.push(`${to}: ${body}`)
   }
 })
@@ -148,15 +148,15 @@ const children = new Map<string, ReadonlyArray<string>>([
 ])
 
 const FilesTest = Layer.succeed(Files, {
-  stat: (path) => {
+  stat: effect (path) => {
     const entry = tree.get(path)
     if (entry === undefined) throw new IOError({ path })
     return entry
   },
-  list: (path) => children.get(path) ?? []
+  list: effect (path) => children.get(path) ?? []
 })
 
-function scenario() {
+effect function scenario() {
   const full = try quoteCart("full")
   const down = try quoteCart("down")
   let empty = "none"
@@ -177,6 +177,6 @@ function scenario() {
 }
 
 // expect-result: {"full":{"total":14,"estimated":false},"down":{"total":5,"estimated":true},"empty":"EmptyCart","missing":"CartNotFound","name":"Ada","size":42,"outbox":["ada@example.com: Welcome"]}
-export function main() {
-  return try Effect.provide(() => scenario(), Layer.mergeAll(CartsTest, PricingTest, UsersTest, MailerTest, FilesTest))
+export effect function main() {
+  return try Effect.provide(effect { return try scenario() }, Layer.mergeAll(CartsTest, PricingTest, UsersTest, MailerTest, FilesTest))
 }

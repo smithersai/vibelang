@@ -2,12 +2,12 @@
 // declaration has a plain variant: each function below is an Effect only
 // because it throws or produces. The program still loads effect, so each
 // one's type and declaration are the Effect or Stream its JavaScript returns.
-export const make = (name: string) => {
+export const make = effect (name: string) => {
   if (name === "") throw new TypeError("empty")
   return { name }
 }
 
-export const pick = (name: string) => name === "" ? throw new TypeError("empty") : name
+export const pick = effect (name: string) => name === "" ? throw new TypeError("empty") : name
 
 export const count = function* () {
   yield 1

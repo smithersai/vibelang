@@ -17,7 +17,7 @@ export abstract class Users {
   abstract readonly source: string
 
   static readonly layer = Layer.succeed(Users, {
-    find: (id: string) => Effect.succeed({ id, name: "Ada" }),
+    find: effect (id: string) => try Effect.succeed({ id, name: "Ada" }),
     source: "memory"
   })
 }
@@ -27,7 +27,7 @@ export abstract class Flags {
   static readonly default: Flags.Shape = { beta: true }
 }
 
-export function greet(id: string) {
+export effect function greet(id: string) {
   const user = try Users.find(id)
   return `${user.name} via ${(try Users()).source}, beta ${(try Flags()).beta}`
 }

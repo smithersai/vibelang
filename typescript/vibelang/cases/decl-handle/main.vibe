@@ -14,7 +14,7 @@ control Stop {
   stop(reason: string): never!!
 }
 
-function release(version: string) {
+effect function release(version: string) {
   if (!try Approval.approve(`deploy ${version}`)) return "declined"
   try Approval.note(`released ${version}`)
   return `released ${version}`
@@ -22,7 +22,7 @@ function release(version: string) {
 
 // A tail resume continues the try block, whose return returns from the
 // function.
-function autoApprove(version: string) {
+effect function autoApprove(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(request) {
@@ -32,7 +32,7 @@ function autoApprove(version: string) {
   }
 }
 
-function decline(version: string) {
+effect function decline(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(request) {
@@ -44,7 +44,7 @@ function decline(version: string) {
 
 // A clause that returns without resuming returns from the function, and the
 // try block stops.
-function search(limit: number) {
+effect function search(limit: number) {
   let total = 0
   try {
     for (let i = 0; ; i++) {
@@ -58,7 +58,7 @@ function search(limit: number) {
 
 // After a resume, the clause goes on once the try block finishes, and the
 // block's return then returns from the function.
-function audit(version: string) {
+effect function audit(version: string) {
   const events: Array<string> = []
   try {
     events.push(try release(version))
@@ -74,7 +74,7 @@ function audit(version: string) {
 
 // abandon() runs the try block's cleanup; then the clause goes on, and the
 // statement completes.
-function cancel() {
+effect function cancel() {
   const steps: Array<string> = []
   try {
     try {
@@ -94,11 +94,11 @@ function cancel() {
 
 // resumeWith raises the operation's error at the call; catch clauses after
 // the handle clauses see it.
-function busy(version: string) {
+effect function busy(version: string) {
   try {
     return try release(version)
   } handle Approval.approve(request) {
-    try resumeWith(() => { throw new ReviewBusy({ request }) })
+    try resumeWith(effect { throw new ReviewBusy({ request }) })
   } handle Approval.note(text) {
     try resume()
   } catch (e) {
@@ -107,7 +107,7 @@ function busy(version: string) {
 }
 
 // A continue in a clause continues the enclosing loop.
-function skipEven(items: ReadonlyArray<number>) {
+effect function skipEven(items: ReadonlyArray<number>) {
   const kept: Array<number> = []
   for (const item of items) {
     try {
@@ -124,7 +124,7 @@ function skipEven(items: ReadonlyArray<number>) {
 }
 
 // A parameter may have a default; an optional argument left out gets it.
-function logs() {
+effect function logs() {
   const lines: Array<string> = []
   try {
     try Log.write("hi", "info")
@@ -137,7 +137,7 @@ function logs() {
 }
 
 // One statement can handle several controls.
-function both() {
+effect function both() {
   try {
     try Log.write("x")
     return try Approval.approve("y") ? "two controls" : "no"
@@ -150,13 +150,13 @@ function both() {
   }
 }
 
-function resource(name: string, events: Array<string>) {
+effect function resource(name: string, events: Array<string>) {
   return try Effect.acquireRelease(
-    () => {
+    effect {
       events.push(`acquire ${name}`)
       return name
     },
-    () => {
+    effect () => {
       events.push(`release ${name}`)
     }
   )
@@ -164,7 +164,7 @@ function resource(name: string, events: Array<string>) {
 
 // A resume inside a block with using releases the block's resources after
 // the resumed try block finishes.
-function scoped() {
+effect function scoped() {
   const events: Array<string> = []
   try {
     events.push(`answer ${try Approval.approve("scoped")}`)
@@ -181,7 +181,7 @@ function scoped() {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     a: try autoApprove("v1"),
     b: try decline("v1"),

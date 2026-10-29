@@ -1,9 +1,9 @@
 import "vibelang/platform/node"
 error Gone { n: number }
-function fail(): number!Gone {
+effect function fail(): number!Gone {
   throw Object.assign({}, new Gone({ n: 7 }))
 }
-function recover() {
-  return try Effect.catchTag(fail(), "Gone", (e) => e.n)
+effect function recover() {
+  return try Effect.catchTag(fail(), "Gone", effect (e) => e.n)
 }
-export function main() { try Console.log(try recover()) }
+export effect function main() { try Console.log(try recover()) }

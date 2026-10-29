@@ -1,4 +1,4 @@
 // expect: 
 error NotFound
-function load(): string!NotFound { throw new NotFound() }
-export function main() { return load() catch (e: NotFound) => "missing" }
+effect function load(): string!NotFound { throw new NotFound() }
+export effect function main() { return load() catch (e: NotFound) => "missing" }

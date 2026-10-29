@@ -32,7 +32,7 @@ function show(cause: Cause.Cause<unknown>): string {
   return cause.reasons.map((r) => r._tag === "Fail" ? `Fail(${name(r.error)})` : r._tag === "Die" ? `Die(${name(r.defect)})` : "Interrupt").join("+")
 }
 
-function outcome(program: unknown!unknown) {
+effect function outcome(program: unknown!unknown) {
   return match (try exit(program)) {
     when Exit.Success(let value): `ok(${name(value)})`;
     when Exit.Failure(let cause): show(cause);
@@ -40,20 +40,20 @@ function outcome(program: unknown!unknown) {
 }
 
 // Sources.
-function failNow() {
+effect function failNow() {
   throw new E()
 }
 
-function dieNow() {
+effect function dieNow() {
   try die("D")
 }
 
-function failLater() {
+effect function failLater() {
   try sleep("5 millis")
   throw new E()
 }
 
-function dieOnInterrupt() {
+effect function dieOnInterrupt() {
   try {
     try sleep("1 hour")
   } finally {
@@ -61,7 +61,7 @@ function dieOnInterrupt() {
   }
 }
 
-function finallyDies() {
+effect function finallyDies() {
   try {
     throw new E()
   } finally {
@@ -69,7 +69,7 @@ function finallyDies() {
   }
 }
 
-function finallyThrows() {
+effect function finallyThrows() {
   try {
     throw new E()
   } finally {
@@ -77,7 +77,7 @@ function finallyThrows() {
   }
 }
 
-function dieThenFinallyThrows() {
+effect function dieThenFinallyThrows() {
   try {
     try die("D")
   } finally {
@@ -87,7 +87,7 @@ function dieThenFinallyThrows() {
 
 let seenExit = ""
 
-function finallyExitDies() {
+effect function finallyExitDies() {
   try {
     throw new E()
   } finally (outcome) {
@@ -96,12 +96,12 @@ function finallyExitDies() {
   }
 }
 
-function usingReleaseDies() {
-  using resource = try Effect.acquireRelease(() => 1, (_) => die("D"))
+effect function usingReleaseDies() {
+  using resource = try Effect.acquireRelease(effect { return 1 }, effect (_) => try die("D"))
   throw new E()
 }
 
-function usingDisposeThrows() {
+effect function usingDisposeThrows() {
   using resource = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } }))
   throw new E()
 }
@@ -124,38 +124,38 @@ function* closingItems() {
   yield* items
 }
 
-function producerIteratorCloseThrows() {
+effect function producerIteratorCloseThrows() {
   for (const n of closingItems()) {
     throw new E()
   }
 }
 
-function producerCleanupDies() {
+effect function producerCleanupDies() {
   for (const n of numbers()) {
     throw new E()
   }
 }
 
-function awaitAllMixed() {
+effect function awaitAllMixed() {
   return await.all [failLater(), dieOnInterrupt()]
 }
 
-function forConcurrentMixed() {
+effect function forConcurrentMixed() {
   for concurrent (const i of [0, 1]) {
     if (i === 0) try failLater()
     else try dieOnInterrupt()
   }
 }
 
-function awaitRaceMixed() {
+effect function awaitRaceMixed() {
   return await.race [failNow(), dieNow()]
 }
 
-function awaitAnyMixed() {
+effect function awaitAnyMixed() {
   return await.any [failNow(), dieNow()]
 }
 
-function interruptThenFinallyThrows() {
+effect function interruptThenFinallyThrows() {
   try {
     try interrupt()
   } finally {
@@ -163,7 +163,7 @@ function interruptThenFinallyThrows() {
   }
 }
 
-function asksWithCleanup() {
+effect function asksWithCleanup() {
   try {
     return try Ask.ask()
   } finally {
@@ -171,7 +171,7 @@ function asksWithCleanup() {
   }
 }
 
-function abandonMixed() {
+effect function abandonMixed() {
   try {
     return try asksWithCleanup()
   } handle Ask.ask() {
@@ -179,42 +179,42 @@ function abandonMixed() {
   }
 }
 
-function allSettledMixed() {
+effect function allSettledMixed() {
   const [settled] = await.allSettled [finallyDies()]
   return settled._tag
 }
 
-function forUsingHead() {
+effect function forUsingHead() {
   for (using r = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })); ;) {
     throw new E()
   }
 }
-function forUsingOf() {
+effect function forUsingOf() {
   for (using r of try sync(() => [{ [Symbol.dispose]() { throw new Error("D") } }])) {
     throw new E()
   }
 }
-function callableDispose() {
+effect function callableDispose() {
   using r = try sync(() => Object.assign(() => {}, { [Symbol.dispose]() { throw new Error("D") } }))
   throw new E()
 }
-function callableAsyncDispose() {
+effect function callableAsyncDispose() {
   using r = try sync(() => Object.assign(() => {}, { async [Symbol.asyncDispose]() { throw new Error("D") } }))
   throw new E()
 }
-function holderDispose() {
+effect function holderDispose() {
   using holder = try Effect.acquireRelease(
-    () => ({ value: try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })) }),
-    (h) => sync((holder) => holder.value[Symbol.dispose](), h)
+    effect { return ({ value: try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })) }) },
+    effect (h) => try sync((holder) => holder.value[Symbol.dispose](), h)
   )
   throw new E()
 }
-function handBuiltMixed() {
+effect function handBuiltMixed() {
   try Effect.failCause(Cause.combine(Cause.fail(new E()), Cause.die("D")))
 }
 
 // Recovery forms.
-function viaCatch(src: () => unknown!E | E2) {
+effect function viaCatch(src: () => unknown!E | E2) {
   try {
     try src()
     return "no failure"
@@ -223,31 +223,31 @@ function viaCatch(src: () => unknown!E | E2) {
   }
 }
 
-function viaCatchMatch(src: () => unknown!E | E2) {
+effect function viaCatchMatch(src: () => unknown!E | E2) {
   return src() catch (e) => match (e) { when E: "matched E"; when E2: "matched E2"; }
 }
 
-function viaCatchValue(src: () => unknown!E | E2) {
+effect function viaCatchValue(src: () => unknown!E | E2) {
   return src() catch "fallback"
 }
 
-function viaRetry(src: () => unknown!E | E2) {
+effect function viaRetry(src: () => unknown!E | E2) {
   attempts = 0
-  return try retry(() => {
+  return try retry(effect {
     attempts++
     return try src()
   }, { times: 2 })
 }
 
-function viaMapError(src: () => unknown!E | E2) {
+effect function viaMapError(src: () => unknown!E | E2) {
   return try Effect.mapError(src(), (e) => new M({ of: e._tag }))
 }
 
-function viaCatchDefect(src: () => unknown!E | E2) {
-  return try Effect.catchDefect(src(), (d) => `defect ${name(d)}`)
+effect function viaCatchDefect(src: () => unknown!E | E2) {
+  return try Effect.catchDefect(src(), effect (d) => `defect ${name(d)}`)
 }
 
-function forms(src: () => unknown!E | E2) {
+effect function forms(src: () => unknown!E | E2) {
   const raw = try outcome(src())
   const caught = try outcome(viaCatch(src))
   const matched = try outcome(viaCatchMatch(src))
@@ -259,7 +259,7 @@ function forms(src: () => unknown!E | E2) {
   return { exit: raw, catch: caught, catchMatch: matched, catchValue: fallback, retry: `${retried} x${tries}`, mapError: mapped, catchDefect: defect }
 }
 
-export function main() {
+export effect function main() {
   const rows = {
     r0_fail: try forms(failNow),
     r1_finallyDies: try forms(finallyDies),

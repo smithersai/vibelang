@@ -4,4 +4,4 @@ module text {
   export const result = value
 }
 import { result } from text
-export function main(): number!! { return result }
+export effect function main(): number!! { return result }

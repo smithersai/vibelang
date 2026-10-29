@@ -4,7 +4,7 @@ const Depth: Context.Reference<number> = Context.Reference<number>("S1-1/Depth",
 export const nested = (
   step: number
 ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
-<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+effect <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   const parent = try Depth()
   provide Depth = parent + step {
     return try effect()
@@ -15,17 +15,17 @@ export const nested = (
 export const nestedTyped: (
   step: number
 ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = (step) =>
-<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+effect <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   const parent = try Depth()
   provide Depth = parent + step {
     return try effect()
   }
 }
 
-export function currentDepth() { return try Depth() }
+export effect function currentDepth() { return try Depth() }
 
 // Interruption blocks obey the same function boundary as provider blocks.
 export const nestedMask = (): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
-<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+effect <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   uninterruptible { return try effect() }
 }

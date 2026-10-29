@@ -1,7 +1,7 @@
 // A callback that may run Effects writes its channels as type parameters
 // (D500, which withdrew D68's contract-less channels), so a using of its call
 // leaves Exclude<R, Scope> in R (D490).
-export function withAnyResource<E, R>(open: () => Disposable!E!R) {
+export effect function withAnyResource<E, R>(open: () => Disposable!E!R) {
   using r = try open()
   return "used"
 }

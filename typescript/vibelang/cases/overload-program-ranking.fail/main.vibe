@@ -7,6 +7,6 @@ export function invalid() {
 }
 
 // A running call cannot make either value overload applicable by never.
-export function noValueCandidate() {
+export effect function noValueCandidate() {
   return valueOnly(try Effect.fail("failed"))
 }

@@ -29,7 +29,7 @@ export const tally = {
   }
 }
 
-export function main() {
+export effect function main() {
   const counter: CounterApi = new Counter()
   try Console.log(counter.count() + 1)
 }

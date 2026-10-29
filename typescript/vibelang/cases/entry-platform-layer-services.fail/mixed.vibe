@@ -4,6 +4,6 @@ import "vibelang/platform/node"
 import { FileSystem } from "effect/FileSystem"
 import { Users } from "./services.vibe"
 
-export function main() {
+export effect function main() {
   try Console.log(`${try Users.find("1")}: ${try FileSystem.readFileString("users.json")}`)
 }

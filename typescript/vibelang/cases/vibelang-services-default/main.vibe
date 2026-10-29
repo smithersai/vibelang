@@ -15,8 +15,8 @@ abstract class Sessions {
   static make(): Sessions.Shape {
     const entries = new Map<string, Session>()
     const impl: Sessions.Shape = {
-      get: (token: string) => Effect.succeed(entries.get(token)),
-      set: (token: string, session: Session) => Effect.sync(() => { entries.set(token, session) })
+      get: effect (token: string) => try Effect.succeed(entries.get(token)),
+      set: effect (token: string, session: Session) => try Effect.sync(() => { entries.set(token, session) })
     }
     return impl
   }
@@ -29,21 +29,21 @@ abstract class FeatureFlags {
   static readonly default: FeatureFlags.Shape = { newCheckout: false }
 }
 
-export function checkoutPage(cartId: string) {
+export effect function checkoutPage(cartId: string) {
   return (try FeatureFlags()).newCheckout ? `new ${cartId}` : `classic ${cartId}`
 }
 
-export function login(user: string) {
+export effect function login(user: string) {
   try Sessions.set("t1", { user })
   const session = try Sessions.get("t1")
   return session?.user ?? "nobody"
 }
 
 // expect-result: {"classic":"classic c1","fresh":"new c2","session":"ada"}
-export function main() {
+export effect function main() {
   return {
     classic: try checkoutPage("c1"),
-    fresh: try Effect.provideService(() => checkoutPage("c2"), FeatureFlags, { newCheckout: true }),
-    session: try Effect.provide(() => login("ada"), Sessions.layer)
+    fresh: try Effect.provideService(effect { return try checkoutPage("c2") }, FeatureFlags, { newCheckout: true }),
+    session: try Effect.provide(effect { return try login("ada") }, Sessions.layer)
   }
 }

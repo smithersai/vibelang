@@ -7,7 +7,7 @@ interface SearchApi {
 
 export service Search: SearchApi {
   find(query: string): string!!
-  describe() {
+  effect describe() {
     return "search"
   }
   region = "eu"

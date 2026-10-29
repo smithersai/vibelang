@@ -2,19 +2,19 @@ import { check } from "./caller.js"
 import { Effect } from "effect"
 export const capture = (input: { mutable value: number }): Effect.Effect<number, never, never> => {
   const captured = input.value
-  return () => { try Effect.succeed(0); return captured }
+  return effect { try Effect.succeed(0); return captured }
 }
 export function declared(input: { mutable value: number }): number!! {
   const captured = input.value
-  return () => captured
+  return effect { return captured }
 }
 export const generic = <A>(input: { mutable value: A }): Effect.Effect<A, never, never> => {
   const captured = input.value
-  return () => captured
+  return effect { return captured }
 }
 export const bound: (input: { mutable value: number }) => Effect.Effect<number> = input => {
   const captured = input.value
-  return () => captured
+  return effect { return captured }
 }
 
 const apply = (build: () => Effect.Effect<number, never, never>): Effect.Effect<number, never, never> => {
@@ -24,7 +24,7 @@ const apply = (build: () => Effect.Effect<number, never, never>): Effect.Effect<
 export const parameter = (input: { mutable value: number }): Effect.Effect<number, never, never> => {
   const program: Effect.Effect<number, never, never> = apply(() => {
     const snapshot = input.value
-    return () => snapshot
+    return effect { return snapshot }
   })
   return program
 }
@@ -36,20 +36,20 @@ export const parameterGeneric = <A>(input: { mutable value: A }): Effect.Effect<
   }
   const program: Effect.Effect<A, never, never> = applyFixed(() => {
     const snapshot = input.value
-    return () => snapshot
+    return effect { return snapshot }
   })
   return program
 }
 
 export const inferred = (input: { mutable value: number }, reason: string | null): number!infer E!infer R => {
   const snapshot = input.value
-  return () => { if (reason !== null) throw reason; return snapshot }
+  return effect { if (reason !== null) throw reason; return snapshot }
 }
 
 // A factory's body never fails (D282): its program fails when it runs.
 export const refuse = (reason: string): Effect.Effect<never, string, never> => {
-  return () => { throw reason }
+  return effect { throw reason }
 }
 
 // expect-result: "snapshot: 1 (seven forms, twice)"
-export function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try sync((run: () => string) => run(), check) }

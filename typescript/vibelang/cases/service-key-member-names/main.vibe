@@ -6,7 +6,7 @@ service Person { name: string; length: number; prototype: string; call: string; 
 
 export const className = Person.name
 
-export function main() {
+export effect function main() {
   provide Person = { name: "Ada", length: 3, prototype: "p", call: "c", toString: "t", key: "k", pipe: "|" } {
     const person = try Person()
     return { name: person.name, length: person.length, prototype: person.prototype, call: person.call, toString: person.toString, key: person.key, pipe: person.pipe, className }

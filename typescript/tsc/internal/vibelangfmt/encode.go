@@ -10,6 +10,9 @@
 //
 //	A!E!R, mutable x, try, %, a pattern    an identifier of the same width
 //	f(args) { ... }, do { ... }, fork { }  f(args)(($v) => { ... })
+//	effect { ... }                         $v(($v) => { ... })
+//	effect function f(), effect m()        async function f(), async m()
+//	effect f(), async f()                  async function f()
 //	match (x) { when P: v; default: w; }   ({ $v1: x, $v2: v, default: w })
 //	x catch y                              x.$v3(y)
 //	x |> f(%)                              x || f($v4)
@@ -127,6 +130,14 @@ type encoding struct {
 	pipes    []string
 	fors     []string
 	finallys []string
+	// asyncs holds one entry for each async modifier of text, in order:
+	// effect for one that stands for effect (VIP-1), empty for one of the
+	// source.
+	asyncs []string
+	// functions holds one entry for each function keyword of a function
+	// declaration of text, in order: non-empty for one the encoding wrote
+	// before a shorthand declaration's name, empty for one of the source.
+	functions []string
 	// modules are the file's module bodies, and references the number of
 	// identifier module specifiers text writes as strings.
 	modules    []moduleBody
@@ -299,6 +310,18 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 	case parser.VibeSyntaxBlockParam:
 		e.replace(form.Head.End(), form.Open.End(), block)
 		e.replace(form.Close.Pos(), form.Close.End(), "})")
+	case parser.VibeSyntaxEffect:
+		if form.Open.End() == 0 {
+			// effect before a function: async, which TypeScript allows in each
+			// of effect's positions, matched by order.
+			e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "async", token: "async", stands: e.text(form.Word)})
+			break
+		}
+		name := e.hold(placeholderText, e.text(form.Word), form.Word.Pos(), 0)
+		e.replace(form.Word.Pos(), form.Open.End(), name+block)
+		e.replace(form.Close.Pos(), form.Close.End(), "})")
+	case parser.VibeSyntaxShorthand:
+		e.add(edit{pos: form.Word.Pos(), end: form.Word.Pos(), text: "function ", token: "function", stands: "shorthand"})
 	case parser.VibeSyntaxDo, parser.VibeSyntaxForkBlock:
 		name := e.hold(placeholderText, e.text(form.Word), form.Word.Pos(), 0)
 		e.replace(form.Word.Pos(), form.Open.End(), name+block)
@@ -616,7 +639,7 @@ func (e *encoder) finish() (*encoding, error) {
 	var out strings.Builder
 	// marks holds, for each kind of token matched by order, the TypeScript
 	// offset of each token an edit wrote or kept and what it stands for.
-	marks := map[string]map[int]string{"void": {}, "||": {}, "for": {}, "finally": {}}
+	marks := map[string]map[int]string{"void": {}, "||": {}, "for": {}, "finally": {}, "async": {}, "function": {}}
 	written := map[string]int{}
 	var keywords []edit // for and finally keywords, by source position
 	for _, ed := range edits {
@@ -650,7 +673,7 @@ func (e *encoder) finish() (*encoding, error) {
 		if ed.token != "" {
 			written[ed.token]++
 		}
-		if ed.token == "void" || ed.token == "||" {
+		if ed.token == "void" || ed.token == "||" || ed.token == "async" || ed.token == "function" {
 			marks[ed.token][out.Len()] = ed.stands
 		}
 		out.WriteString(ed.text)
@@ -680,7 +703,9 @@ func (e *encoder) finish() (*encoding, error) {
 	result.pipes = match("||", tokens.ors)
 	result.fors = match("for", tokens.fors)
 	result.finallys = match("finally", tokens.finallys)
-	for _, token := range []string{"void", "||", "for", "finally"} {
+	result.asyncs = match("async", tokens.asyncs)
+	result.functions = match("function", tokens.functions)
+	for _, token := range []string{"void", "||", "for", "finally", "async", "function"} {
 		if written[token] != found[token] {
 			return nil, fmt.Errorf("vibelang format: internal error: wrote %d %s tokens, found %d", written[token], token, found[token])
 		}

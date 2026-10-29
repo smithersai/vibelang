@@ -17,7 +17,7 @@ export schema User {
   login: { at: number }
 }
 
-function decode(input: unknown) {
+effect function decode(input: unknown) {
   try {
     return try Schema.decodeUnknownEffect(User)(input)
   } catch (e) {
@@ -30,7 +30,7 @@ function guest(): User {
   return { id: "2", name: "Bo", role: "member", tags: [], home: { city: "Rome" }, score: [2, "b"], counts: {}, verified: true, login: { at: 0 } }
 }
 
-export function main() {
+export effect function main() {
   return {
     a: try decode({ id: "1", name: "Ada", role: "admin", tags: ["x"], home: { city: "Paris" }, score: [1, "a"], counts: { a: 1 }, verified: null, login: { at: 3 } }),
     b: try decode({ id: 1 }),

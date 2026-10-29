@@ -133,11 +133,11 @@ type env struct {
 type projector struct {
 	file *ast.SourceFile
 	text string
-	// tries are the offsets of the try keywords lower blanks (triedKeywords).
-	tries []int
-	ctx   FileContext
-	names *names
-	plan  plan
+	// keywords are the VIP keywords lower writes over (vipKeywords).
+	keywords []keyword
+	ctx      FileContext
+	names    *names
+	plan     plan
 	// plainBuiltinBodies carries proven synchronous D54 bodies for execution.
 	plainBuiltinBodies map[*ast.Node][]edit
 	plainBuiltin       bool
@@ -189,7 +189,7 @@ func Project(text string, ctx FileContext) Projection {
 			Message: "The TypeScript 7 mapper produced invalid or overlapping edits here; the file is passed through unchanged.",
 		})
 	}
-	return Projection{Text: out, Segments: withoutTries(segments, p.tries), Diagnostics: p.diagnostics, Purity: p.purity()}
+	return Projection{Text: out, Segments: withoutKeywords(segments, p.keywords), Diagnostics: p.diagnostics, Purity: p.purity()}
 }
 
 // lower parses text and walks it in context ctx, recording the lowering
@@ -198,15 +198,15 @@ func Project(text string, ctx FileContext) Projection {
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
-	tries := triedKeywords(file, text)
-	if len(tries) > 0 {
-		text = blank(text, tries)
+	keywords := vipKeywords(file, text)
+	if len(keywords) > 0 {
+		text = blank(text, keywords)
 		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
 	}
 	p := &projector{
 		file:            file,
 		text:            text,
-		tries:           tries,
+		keywords:        keywords,
 		ctx:             ctx,
 		names:           newNames(file, text),
 		forms:           newFormResolver(file),

@@ -3,12 +3,12 @@ import { Effect } from "effect"
 
 // An Effect function that lets the SyntaxError escape fails with it: the
 // contract makes it an expected failure, so it joins E.
-function parse(text: string) {
+effect function parse(text: string) {
   return JSON.parse(text) as { port: number }
 }
 
 // A catch in an Effect function receives the typed SyntaxError.
-function config(text: string) {
+effect function config(text: string) {
   try {
     return (try parse(text)).port
   } catch (e) {
@@ -28,11 +28,11 @@ function parseOr(text: string, fallback: number): number {
 }
 
 // expect-result: {"parsed":{"port":8080},"config":[8080,-1],"failure":"SyntaxError","plain":[1,0]}
-export function main() {
+export effect function main() {
   return {
     parsed: try parse(`{"port":8080}`),
     config: [try config(`{"port":8080}`), try config("{")],
-    failure: (try Effect.flip(() => parse("{"))).name,
+    failure: (try Effect.flip(effect { return try parse("{") })).name,
     plain: ["1", "{"].map((text) => parseOr(text, 0))
   }
 }

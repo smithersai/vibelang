@@ -1,6 +1,6 @@
 // expect: EK1001
 import { Effect } from "effect"
-export const unannotated = Effect.suspend(() => {})
-export let mutable: Effect.Effect<void, never, never> = Effect.suspend(() => {})
-export const unknownType: unknown = Effect.suspend(() => {})
-export const asserted = Effect.suspend(() => {}) as Effect.Effect<void, never, never>
+export const unannotated = Effect.suspend(effect () => {})
+export let mutable: Effect.Effect<void, never, never> = Effect.suspend(effect () => {})
+export const unknownType: unknown = Effect.suspend(effect () => {})
+export const asserted = Effect.suspend(effect () => {}) as Effect.Effect<void, never, never>
