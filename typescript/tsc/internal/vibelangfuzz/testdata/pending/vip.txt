@@ -43,6 +43,8 @@ FuzzVIPDifferential  feature:vip14.modules            compiler  VIP-14: Effect's
 FuzzVIPDifferential  feature:vip20.for-try              compiler  VIP-20: `for try (const x of s) { … }` is not lowered to `yield* Stream.runForEachWhile(s, (x) => Effect.gen(…))`, continue as return true and break as return false, yet; lane unassigned
 FuzzVIPDifferential  feature:vip21.producer             compiler  VIP-21: `effect function* p() { yield x … }` is not lowered to `Stream.callback((queue) => Effect.gen(…).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })`, yield as Queue.offer, yet; lane unassigned
 FuzzVIPDifferential  feature:vip23.pipe                 compiler  VIP-23: `a |> f(%) |> g(%)` is not lowered to nested calls with each topic evaluated once into a temporary yet; lane unassigned
+FuzzVIPDifferential  feature:vip15.schema           compiler  VIP-15: `schema S1 { f0: string; f1?: string; f2: "l0" | "l1"; f3: S0 }` and the alias form `schema S0 = "k0" | "k1"` are not lowered to `const S1 = Schema.Struct({ … })` and `const S0 = Schema.Literals([…])`, decoded with Schema.decodeUnknownEffect, yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip29.schema-error     compiler  VIP-29: `schema error E0 { f0: number; f1: string }` is not lowered to `class E0 extends Schema.TaggedError<E0>()("E0", { f0: Schema.Number, f1: Schema.String }) {}`, thrown, caught, encoded and decoded again, yet; lane vip-decls implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
@@ -53,7 +55,5 @@ FuzzVIPDifferential  not-runtime:vip27              vip       VIP-27: declaratio
 FuzzVIPDifferential  not-runtime:vip30              vip       VIP-30: config files change no Exit; FuzzConfig checks them
 FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned Effect version; NewWorkspace refuses any other
 FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
-FuzzVIPDifferential  feature:vip15.schema           vip       not generated: VIP-15's schema declarations need their construct file and decoding oracles
 FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP-26's top-level await of a runner needs its construct file; runMain exits the worker
-FuzzVIPDifferential  feature:vip29.schema-error     vip       not generated: VIP-29's schema errors need their construct file
 FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file
