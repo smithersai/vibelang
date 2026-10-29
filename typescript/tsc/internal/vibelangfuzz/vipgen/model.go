@@ -205,6 +205,13 @@ func PrintVibe(p *Program) string {
 	w.Line(fmt.Sprintf("import { ev } from %q", eventsModule))
 	if p.Effect {
 		w.Line(`import { Effect } from "effect"`)
+		w.importsEffect = true
+		// VIP-6: "A local declaration or import shadows one, as with any
+		// global." effect's Effect module has no Array, so a program that
+		// imports Effect names Effect's Array module by its own import.
+		if _, ok := p.Modules[effectArrayImport]; ok {
+			w.Line(fmt.Sprintf("import { %s } from \"effect\"", effectArrayImport))
+		}
 	}
 	importModules(w, p, true)
 	printFuncs(w, p)
@@ -266,7 +273,15 @@ type Writer struct {
 	b      strings.Builder
 	indent int
 	fresh  bool
+	// importsEffect is set when the VibeLang print imports Effect from
+	// effect, which shadows the global Effect (VIP-6).
+	importsEffect bool
 }
+
+// ImportsEffect reports whether the VibeLang print imports Effect from
+// effect, so that the global Effect and its members, such as Effect.Array,
+// are shadowed by effect's own module.
+func (w *Writer) ImportsEffect() bool { return w.importsEffect }
 
 // IsVibe reports whether this is the VibeLang print.
 func (w *Writer) IsVibe() bool { return w.mode == modeVibe }

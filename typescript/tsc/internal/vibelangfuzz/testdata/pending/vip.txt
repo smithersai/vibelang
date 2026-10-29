@@ -36,19 +36,20 @@ FuzzVIPDifferential  feature:vip18.all-settled            compiler  VIP-18: `try
 FuzzVIPDifferential  feature:vip19.for-concurrent         compiler  VIP-19: `for concurrent (const x of xs) { … }` is not lowered to `yield* Effect.forEach(xs, (x) => Effect.gen(…), { concurrency, discard: true })` yet; lane unassigned
 FuzzVIPDifferential  feature:vip22.uninterruptible        compiler  VIP-22: `uninterruptible { … restore { … } … }` is not lowered to `yield* Effect.uninterruptibleMask((restore) => …)` yet; lane unassigned
 FuzzVIPDifferential  feature:vip22.interruptible          compiler  VIP-22: `interruptible { … }` is not lowered to `yield* Effect.interruptible(Effect.gen(…))` yet; lane unassigned
+FuzzVIPDifferential  feature:vip09.service            compiler  VIP-9: `service Svc0 { static readonly key = "app/Svc0"; base: number; get(n: number): number!! }` is not lowered to `class Svc0 extends Context.Service()("app/Svc0") {}`, got with `try Svc0` and called as `(try Svc0).get(n)` (VIP-10), yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip09.service-default    compiler  VIP-9: a service with `static readonly defaultValue` is not lowered to `Context.Reference(key, { defaultValue })`, usable with nothing providing it, yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip12.provide            compiler  VIP-12: `provide L, Svc0 = testSvc0 { … }` is not lowered to `yield* Effect.provide(Effect.gen(…), [L, Layer.succeed(Svc0, testSvc0)])` yet; lane vip-decls implements it
+FuzzVIPDifferential  feature:vip14.modules            compiler  VIP-14: Effect's root modules (Option, Duration, Schedule, Schema, Stream, Effect) are not in scope without an import, nor Effect's Array module as `Effect.Array`, yet; lane vip-globals implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by
 # vip, whose reason starts "not generated", names a VIP whose construct file
 # is not written yet: it is this target's debt, not the compiler's.
 FuzzVIPDifferential  not-runtime:vip03              vip       VIP-3: A!E!R is a type alias for Effect<A, E, R>; it changes no Exit
-FuzzVIPDifferential  feature:vip09.service          vip       not generated: VIP-9's service declarations need their construct file
-FuzzVIPDifferential  feature:vip12.provide          vip       not generated: VIP-12's provide blocks need their construct file
 FuzzVIPDifferential  not-runtime:vip27              vip       VIP-27: declaration output and @throws are checked by declaration identity, not by an Exit
 FuzzVIPDifferential  not-runtime:vip30              vip       VIP-30: config files change no Exit; FuzzConfig checks them
 FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned Effect version; NewWorkspace refuses any other
 FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
-FuzzVIPDifferential  feature:vip14.modules          vip       not generated: VIP-14's Effect modules in scope need their construct file
 FuzzVIPDifferential  feature:vip15.schema           vip       not generated: VIP-15's schema declarations need their construct file and decoding oracles
 FuzzVIPDifferential  feature:vip20.for-try          vip       not generated: VIP-20's for try over a Stream needs its construct file
 FuzzVIPDifferential  feature:vip21.producer         vip       not generated: VIP-21's producers need their construct file

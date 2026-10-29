@@ -179,3 +179,38 @@ func (q *Seq) print(w *Writer) {
 		w.Node(st)
 	}
 }
+
+// A List is an array literal: [a, b].
+type List struct{ Elems []Expr }
+
+func (l *List) Vibe(w *Writer) {
+	w.Write("[")
+	for i, e := range l.Elems {
+		if i > 0 {
+			w.Write(", ")
+		}
+		w.Node(e)
+	}
+	w.Write("]")
+}
+func (l *List) Effect(w *Writer) { l.Vibe(w) }
+
+// An Apply calls the function an expression gives: <F>(a, b), as in
+// Schema.decodeUnknownEffect(Schema.Number)(v).
+type Apply struct {
+	F    Expr
+	Args []Expr
+}
+
+func (a *Apply) Vibe(w *Writer) {
+	w.Node(a.F)
+	w.Write("(")
+	for i, x := range a.Args {
+		if i > 0 {
+			w.Write(", ")
+		}
+		w.Node(x)
+	}
+	w.Write(")")
+}
+func (a *Apply) Effect(w *Writer) { a.Vibe(w) }
