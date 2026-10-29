@@ -1282,11 +1282,15 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(typeNode.Loc, schemas), false /*multiLine*/), typeNode.Loc)
 		return p.vibelangSchemaCall("Union", typeNode.Loc, array)
 	case ast.KindArrayType:
-		return p.vibelangSchemaCall("Array", typeNode.Loc, p.vibelangSchemaOf(typeNode.AsArrayTypeNode().ElementType))
+		return p.vibelangSchemaCall("mutable", typeNode.Loc, p.vibelangSchemaCall("Array", typeNode.Loc, p.vibelangSchemaOf(typeNode.AsArrayTypeNode().ElementType)))
 	case ast.KindTypeOperator:
 		if operator := typeNode.AsTypeOperatorNode(); operator.Operator == ast.KindReadonlyKeyword &&
 			(operator.Type.Kind == ast.KindArrayType || operator.Type.Kind == ast.KindTupleType) {
-			return p.vibelangSchemaOf(operator.Type)
+			value := p.vibelangSchemaOf(operator.Type)
+			if value.Kind == ast.KindCallExpression {
+				return value.Arguments()[0] // remove only the collection's mutable wrapper
+			}
+			return value // unsupported tuple forms still report EK2109
 		}
 	case ast.KindTupleType:
 		elements := typeNode.AsTupleTypeNode().Elements.Nodes
@@ -1298,7 +1302,7 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 			schemas[i] = p.vibelangSchemaOf(element)
 		}
 		array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(typeNode.Loc, schemas), false /*multiLine*/), typeNode.Loc)
-		return p.vibelangSchemaCall("Tuple", typeNode.Loc, array)
+		return p.vibelangSchemaCall("mutable", typeNode.Loc, p.vibelangSchemaCall("Tuple", typeNode.Loc, array))
 	case ast.KindTypeLiteral:
 		return p.vibelangSchemaFields(typeNode.AsTypeLiteralNode().Members.Nodes, typeNode.Loc)
 	case ast.KindTypeReference:
@@ -1312,9 +1316,19 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		case len(arguments) == 0:
 			return p.vibelangEntityExpression(name)
 		case ast.IsIdentifier(name) && (name.Text() == "Array" || name.Text() == "ReadonlyArray") && len(arguments) == 1:
-			return p.vibelangSchemaCall("Array", name.Loc, p.vibelangSchemaOf(arguments[0]))
+			value := p.vibelangSchemaCall("Array", name.Loc, p.vibelangSchemaOf(arguments[0]))
+			if name.Text() == "Array" {
+				value = p.vibelangSchemaCall("mutable", name.Loc, value)
+			}
+			return value
+		case ast.IsIdentifier(name) && name.Text() == "Readonly" && len(arguments) == 1 && arguments[0].Kind == ast.KindTypeReference:
+			inner := arguments[0].AsTypeReferenceNode()
+			if ast.IsIdentifier(inner.TypeName) && inner.TypeName.Text() == "Record" && inner.TypeArguments != nil && len(inner.TypeArguments.Nodes) == 2 {
+				parts := inner.TypeArguments.Nodes
+				return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(parts[0]), p.vibelangSchemaOf(parts[1]))
+			}
 		case ast.IsIdentifier(name) && name.Text() == "Record" && len(arguments) == 2:
-			return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(arguments[0]), p.vibelangSchemaOf(arguments[1]))
+			return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(arguments[0]), p.vibelangSchemaCall("mutableKey", arguments[1].Loc, p.vibelangSchemaOf(arguments[1])))
 		}
 	}
 	return p.vibelangUnsupportedSchema(typeNode.Loc)

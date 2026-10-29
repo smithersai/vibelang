@@ -1,0 +1,4 @@
+// expect: TS2542
+schema Counts = Readonly<Record<string, number>>
+const counts: Counts = { a: 1 }
+counts.a = 2

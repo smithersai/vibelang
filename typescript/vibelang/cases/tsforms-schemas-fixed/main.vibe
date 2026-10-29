@@ -7,10 +7,10 @@
 export schema User { id: string; nickname?: string; role: "admin" | "member" }
 
 schema Order {
-  items: string[]
+  items: ReadonlyArray<string>
   total: number
-  pair: [string, boolean]
-  tags: Record<string, number>
+  pair: readonly [string, boolean]
+  tags: Readonly<Record<string, number>>
   owner: User
   mutable status: "open"
   note: string | null

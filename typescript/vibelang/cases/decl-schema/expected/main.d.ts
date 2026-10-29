@@ -15,7 +15,7 @@ export declare const User: Schema.Struct<{
         readonly zip: Schema.optional<Schema.String>;
     }>;
     readonly score: Schema.Tuple<readonly [Schema.Number, Schema.String]>;
-    readonly counts: Schema.$Record<Schema.String, Schema.Number>;
+    readonly counts: Schema.$Record<Schema.String, Schema.mutableKey<Schema.Number>>;
     readonly verified: Schema.Union<readonly [Schema.Boolean, Schema.Null]>;
     readonly login: Schema.Struct<{
         readonly at: Schema.Number;
@@ -35,7 +35,7 @@ export declare function main(): Effect.Effect<{
         };
         readonly score: readonly [number, string];
         readonly counts: {
-            readonly [x: string]: number;
+            [x: string]: number;
         };
         readonly verified: boolean | null;
         readonly login: {
@@ -54,7 +54,7 @@ export declare function main(): Effect.Effect<{
         };
         readonly score: readonly [number, string];
         readonly counts: {
-            readonly [x: string]: number;
+            [x: string]: number;
         };
         readonly verified: boolean | null;
         readonly login: {

@@ -211,7 +211,7 @@ func explicitSchemaValue(node *ast.Node) bool {
 	name := node.Name().Text()
 	if call {
 		switch name {
-		case "Struct", "Array", "Tuple", "Record", "Union", "Literal", "Literals", "optional", "mutableKey":
+		case "Struct", "Array", "Tuple", "Record", "Union", "Literal", "Literals", "optional", "mutableKey", "mutable":
 			return true
 		}
 	} else {

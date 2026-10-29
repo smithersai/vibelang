@@ -1,0 +1,1 @@
+{"array":[1],"generic":[2],"tuple":["b",1],"record":{"a":3},"nested":{"values":[4]}}

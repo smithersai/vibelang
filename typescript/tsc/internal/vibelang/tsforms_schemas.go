@@ -318,6 +318,18 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 			return "", false // the parser would write Schema.Literals
 		}
 		return strings.Join(members, " | "), true
+	case "mutable":
+		if len(arguments) != 1 || !(isSchemaCall(c, arguments[0], "Array", 1) || isSchemaCall(c, arguments[0], "Tuple", 1)) {
+			return "", false
+		}
+		inner, ok := schemaTypeText(c, file, arguments[0], indent)
+		if !ok {
+			return "", false
+		}
+		if strings.HasPrefix(inner, "ReadonlyArray<") {
+			return "Array<" + strings.TrimPrefix(inner, "ReadonlyArray<"), true
+		}
+		return strings.TrimPrefix(inner, "readonly "), true
 	case "Array":
 		if len(arguments) != 1 {
 			return "", false
@@ -326,7 +338,7 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		if !ok {
 			return "", false
 		}
-		return unionMemberText(element) + "[]", true
+		return "ReadonlyArray<" + element + ">", true
 	case "Tuple":
 		if len(arguments) != 1 || !ast.IsArrayLiteralExpression(arguments[0]) {
 			return "", false
@@ -339,7 +351,7 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 			}
 			elements = append(elements, text)
 		}
-		return "[" + strings.Join(elements, ", ") + "]", true
+		return "readonly [" + strings.Join(elements, ", ") + "]", true
 	case "Record":
 		if len(arguments) != 2 {
 			return "", false
@@ -348,11 +360,20 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		if !ok {
 			return "", false
 		}
-		value, ok := schemaTypeText(c, file, arguments[1], indent)
+		valueSchema := arguments[1]
+		mutable := isSchemaCall(c, valueSchema, "mutableKey", 1)
+		if mutable {
+			valueSchema = valueSchema.Arguments()[0]
+		}
+		value, ok := schemaTypeText(c, file, valueSchema, indent)
 		if !ok {
 			return "", false
 		}
-		return "Record<" + key + ", " + value + ">", true
+		result := "Record<" + key + ", " + value + ">"
+		if !mutable {
+			result = "Readonly<" + result + ">"
+		}
+		return result, true
 	case "Struct":
 		return structFieldsType(c, file, schema, indent)
 	}

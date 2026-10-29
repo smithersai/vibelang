@@ -1,0 +1,6 @@
+// expect: TS2339 TS2339 TS2540
+schema Frozen { readonly array: readonly number[]; readonly generic: ReadonlyArray<number>; readonly tuple: readonly [number] }
+declare const frozen: Frozen
+frozen.array.push(1)
+frozen.generic.push(1)
+frozen.tuple[0] = 1

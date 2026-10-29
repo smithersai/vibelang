@@ -13,7 +13,7 @@ export declare function main(): Effect.Effect<{
     names: boolean;
     pair: readonly [string, number];
     counts: {
-        readonly [x: string]: number;
+        [x: string]: number;
     };
     point: {
         readonly x: number;

@@ -215,7 +215,7 @@ var projectionCases = []struct {
 	{
 		name:    "schema primitives optional literals arrays and readonly",
 		source:  "export schema User { readonly id: string; home?: number; role: \"a\" | \"b\"; tags: string[]; mutable active: boolean }\n",
-		virtual: "export interface User extends Schema.Schema.Type<typeof User> {}\nexport const User = Schema.Struct({ id: Schema.String, home: Schema.optional(Schema.Number), role: Schema.Literals([\"a\", \"b\"]), tags: Schema.Array(Schema.String), active: Schema.mutableKey(Schema.Boolean) });\n",
+		virtual: "export interface User extends Schema.Schema.Type<typeof User> {}\nexport const User = Schema.Struct({ id: Schema.String, home: Schema.optional(Schema.Number), role: Schema.Literals([\"a\", \"b\"]), tags: Schema.mutable(Schema.Array(Schema.String)), active: Schema.mutableKey(Schema.Boolean) });\n",
 	},
 	{
 		name:    "schema alias of a literal union (D280)",
@@ -225,7 +225,7 @@ var projectionCases = []struct {
 	{
 		name:    "schema alias of other forms (D280)",
 		source:  "schema Address { city: string }\nschema Home = Address | null;\nschema Pairs = ReadonlyArray<[string, number]>\nschema Point = { x: number }\n",
-		virtual: "interface Address extends Schema.Schema.Type<typeof Address> {}\nconst Address = Schema.Struct({ city: Schema.String });\ntype Home = typeof Home.Type;\nconst Home = Schema.Union([Address, Schema.Null]);\ntype Pairs = typeof Pairs.Type;\nconst Pairs = Schema.Array(Schema.Tuple([Schema.String, Schema.Number]));\ntype Point = typeof Point.Type;\nconst Point = Schema.Struct({ x: Schema.Number });\n",
+		virtual: "interface Address extends Schema.Schema.Type<typeof Address> {}\nconst Address = Schema.Struct({ city: Schema.String });\ntype Home = typeof Home.Type;\nconst Home = Schema.Union([Address, Schema.Null]);\ntype Pairs = typeof Pairs.Type;\nconst Pairs = Schema.Array(Schema.mutable(Schema.Tuple([Schema.String, Schema.Number])));\ntype Point = typeof Point.Type;\nconst Point = Schema.Struct({ x: Schema.Number });\n",
 	},
 	{
 		name:    "schema nested reference",
@@ -1086,7 +1086,7 @@ func TestSchemaExecutable(t *testing.T) {
 	source := "export schema Draft { mutable title: string; tags?: readonly string[]; pair: readonly [number, string]; counts: Record<string, number> }\n"
 	projection := Executable(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
-	assert.Assert(t, strings.HasSuffix(projection.Text, "export const Draft = Schema.Struct({ title: Schema.mutableKey(Schema.String), tags: Schema.optional(Schema.Array(Schema.String)), pair: Schema.Tuple([Schema.Number, Schema.String]), counts: Schema.Record(Schema.String, Schema.Number) });\n"), projection.Text)
+	assert.Assert(t, strings.HasSuffix(projection.Text, "export const Draft = Schema.Struct({ title: Schema.mutableKey(Schema.String), tags: Schema.optional(Schema.Array(Schema.String)), pair: Schema.Tuple([Schema.Number, Schema.String]), counts: Schema.Record(Schema.String, Schema.mutableKey(Schema.Number)) });\n"), projection.Text)
 	assert.Assert(t, !strings.Contains(projection.Text, "interface Draft"), projection.Text)
 	assertParses(t, projection.Text)
 }

@@ -1,0 +1,2 @@
+schema Counts = Readonly<Record<string, number>>
+export const value = Schema.decodeUnknownSync(Counts)({ a: 1 })

@@ -1,0 +1,11 @@
+schema Numbers = number[]
+schema Generic = Array<number>
+schema Pair = [string, number]
+schema Counts = Record<string, number>
+schema Nested = { readonly values: number[] }
+export const value: { readonly array: Numbers; readonly generic: Generic; readonly tuple: Pair; readonly record: Counts; readonly nested: Nested } = { array: [], generic: [], tuple: ["a", 1], record: {}, nested: { values: [] } }
+value.array.push(1)
+value.generic.push(2)
+value.tuple[0] = "b"
+value.record.a = 3
+value.nested.values.push(4)
