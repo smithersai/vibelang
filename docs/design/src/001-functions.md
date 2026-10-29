@@ -179,7 +179,8 @@ interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 A module's top level is ordinary JavaScript (VIP-26).
 
 - `await` at the top level is ES top-level await of a Promise.
-- `try` is not allowed at the top level, because the top level is not an `effect` function. Diagnostic: code pending.
+- `try` is not allowed at the top level, because the top level is not effect code. It is the one rule "`try` outside effect code" ([Running Effects](002-running.md#static-rules)), not a second one.
+- A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript. Only effect code bans it (VIP-5).
 - There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript.
 
 ```vibe es
@@ -203,6 +204,8 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare.
 - **`@throws`.** Every exported function that doesn't return an Effect carries a JSDoc `@throws` tag: its inferred thrown type, or `@throws {never}` when it can't throw. A function that returns an Effect carries none, because it can't throw ([Failures](003-failures.md#calls-that-may-throw)).
+
+**Undecided (pending VIP):** the tag of an exported `async` function, and of one that returns a `Stream` or `Layer` (NEEDS-WILL #1 and #3; [Failures](003-failures.md#calls-that-may-throw)).
 
 ```vibe es
 // compiler-gap: pending VIP-27
