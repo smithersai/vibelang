@@ -15,7 +15,7 @@ Sources: [VIP-4](../vips/0004-throw.md), [VIP-13](../vips/0013-error-declaration
 
 ```vibe es
 // compiler-gap: pending VIP-4
-effect load(id: string) {
+effect function load(id: string) {
   const user = try findUser(id)
   if (!user) throw new NotFound({ id })
   return user
@@ -55,7 +55,7 @@ A plain or `async` function may call a function that may throw, and then may thr
 function parse(s: string) { if (!s) throw new Error("empty"); return s }   // may throw Error (inferred)
 function add(a: number, b: number) { return a + b }                         // doesn't throw
 
-effect load(s: string, url: string) {
+effect function load(s: string, url: string) {
   add(1, 2)                                      // ok: doesn't throw
   parse(s)                                       // error: may throw
   const p = try Effect.try(() => parse(s))       // ok

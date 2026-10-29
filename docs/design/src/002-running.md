@@ -43,7 +43,7 @@ An Effect that can't fail is still run with `try`.
 
 ```vibe es
 // compiler-gap: pending VIP-5
-effect load(id: string) {
+effect function load(id: string) {
   const u = try fetchUser(id)
   try sleep("1 second")
   return u
@@ -95,7 +95,7 @@ Handler         = EffectArrow            (an effect function of the error)
 
 ```vibe es
 // compiler-gap: pending VIP-5
-effect load(id: string) {
+effect function load(id: string) {
   const g = fetchUser(id) catch guest
   const h = fetchUser(id) catch effect (e) => match (e) {
     when NotFound: guest
@@ -137,7 +137,7 @@ EffectBlock = "effect" Block          (an expression)
 
 ```vibe es
 // compiler-gap: pending VIP-2
-effect demo() {
+effect function demo() {
   const p = effect { console.log("hi"); return 1 }   // an Effect, not yet run
   try p                                              // prints "hi", gives 1
   try p                                              // prints "hi" again
@@ -204,7 +204,7 @@ JoinExpression = "join" Expression
 
 ```vibe es
 // compiler-gap: pending VIP-17
-effect both() {
+effect function both() {
   const f = fork worker()
   const mine = try other()
   return [mine, join f]
@@ -251,7 +251,7 @@ These are TC39's await operations, run with `try` instead of `await`. The names 
 
 ```vibe es
 // compiler-gap: pending VIP-18
-effect page(id: string) {
+effect function page(id: string) {
   const [u, o] = try.all [fetchUser(id), fetchOrders(id)]
   const both = try all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })   // an object: the all global
   return [u, o, both]
@@ -285,7 +285,7 @@ Every item runs in its own fiber, all at once, or at most `n` at a time with `fo
 
 ```vibe es
 // compiler-gap: pending VIP-19
-effect syncAll(ids: string[]) {
+effect function syncAll(ids: string[]) {
   for concurrent (const id of ids) { try syncOne(id) }
   for concurrent(4) (const id of ids) { try syncOne(id) }
 }
@@ -322,7 +322,7 @@ ForTry = "for" "try" "(" ForBinding "of" Expression ")" Statement
 
 ```vibe es
 // compiler-gap: pending VIP-20
-effect saveAll(rows: Stream.Stream<Row>) {
+effect function saveAll(rows: Stream.Stream<Row>) {
   for try (const row of rows) {
     if (row.skip) continue
     if (row.last) break
@@ -349,8 +349,8 @@ const saveAll = (rows: Stream.Stream<Row>) => Effect.gen(function* () {
 ### Syntax
 
 ```text
-Producer       = "effect" "function" "*" Name Params ReturnType? Block
-ProducerMethod = "effect" "*" PropertyName Params ReturnType? Block     (methods only)
+Producer       = "effect" "function" "*" Name? Params ReturnType? Block
+ProducerMethod = "static"? "effect" "*" PropertyName Params ReturnType? Block     (methods only)
 ```
 
 The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript; at top level it could parse as multiplication. A plain `function*` stays a JavaScript generator.
@@ -372,7 +372,7 @@ effect function* ticks() {
   try sleep("1 second")
   yield 2
 }
-effect consume() { for try (const t of ticks()) { try log(t) } }
+effect function consume() { for try (const t of ticks()) { try log(t) } }
 ```
 
 ```ts effect
@@ -409,7 +409,7 @@ These are contextual keywords followed by `{` on the same line, and they are sta
 
 ```vibe es
 // compiler-gap: pending VIP-22
-effect pay(card: Card, user: User) {
+effect function pay(card: Card, user: User) {
   uninterruptible {
     const receipt = try charge(card)
     restore { try notify(user) }        // interruptible again inside
@@ -443,7 +443,7 @@ These are ordinary blocks: `return`, `break` and `continue` inside them reach th
 
 ```vibe es
 // compiler-gap: pending VIP-23
-effect run(id: string) {
+effect function run(id: string) {
   const n = fetchUser(id) |> retry(%, policy) |> timeout(%, "1 second")
   return try n
 }

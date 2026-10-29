@@ -12,7 +12,7 @@ Resources follow from this. `using` keeps TypeScript's meaning, and Effect resou
 
 ```vibe es
 // compiler-gap: pending VIP-8
-effect query(p: string, q: string) {
+effect function query(p: string, q: string) {
   using f = openFile(p)                // TypeScript's using: f[Symbol.dispose]() at the end of the block
   return try scoped(effect {           // an Effect resource: Effect's own scoped
     const db = try openDb()

@@ -55,7 +55,7 @@ There is no `Users.find(id)` shorthand ([VIP-10](../vips/0010-service-call-short
 
 ```vibe es
 // compiler-gap: pending VIP-9
-effect load(id: string) {
+effect function load(id: string) {
   const users = try Users
   return try users.find(id)
 }
@@ -109,7 +109,7 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
 ```vibe es
 // compiler-gap: pending VIP-12
-effect test() {
+effect function test() {
   provide AppLive, Users = testUsers {
     try a()
     try b()
@@ -154,7 +154,7 @@ No language feature wraps TypeScript into an Effect. Effect's own functions do (
 
 ```vibe es
 // compiler-gap: pending VIP-6
-effect fetchJson(url: string, s: string) {
+effect function fetchJson(url: string, s: string) {
   const r = try tryPromise((signal) => fetch(url, { signal }))
   const n = try sync(() => Date.now())
   try sleep("1 second")
@@ -203,11 +203,11 @@ const o = Option.some(1)                       // Effect's Option: the DOM's Opt
 
 ```vibe es
 // compiler-gap: pending VIP-33
-effect readConfig(path: string) {
+effect function readConfig(path: string) {
   const fs = try FileSystem
   return try fs.readFileString(path)
 }
-effect main() {
+effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
 ```

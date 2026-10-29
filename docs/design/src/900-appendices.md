@@ -10,8 +10,7 @@ Every VibeLang keyword is contextual: it is a keyword only in the positions belo
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`, a name and `(`, `(` of an arrow's parameters, `{`, `*` (methods) | [Functions](001-functions.md) |
-| `async` | a name and `(`, in the declaration shorthand (otherwise TypeScript's) | [Functions](001-functions.md) |
+| `effect` | `function`, `(` or `<` of an arrow's parameters, a method name, `*` (methods), `{` | [Functions](001-functions.md) |
 | `fork` | an expression, or `.in(…)`, `.scoped`, `.detached` | [Running Effects](002-running.md#fork-and-join) |
 | `join` | an expression | [Running Effects](002-running.md#fork-and-join) |
 | `concurrent` | after `for`, then `(` | [Running Effects](002-running.md#for-concurrent) |
@@ -28,13 +27,11 @@ Every VibeLang keyword is contextual: it is a keyword only in the positions belo
 ### Productions
 
 ```text
-EffectFunction    = "effect" "function" Name Params ReturnType? Block
-                  | "effect" Name Params ReturnType? Block
-EffectArrow       = "effect" ArrowParams ReturnType? "=>" ConciseBody
-EffectMethod      = "effect" PropertyName Params ReturnType? Block
-AsyncShorthand    = "async" Name Params ReturnType? Block
-Producer          = "effect" "function" "*" Name Params ReturnType? Block
-ProducerMethod    = "effect" "*" PropertyName Params ReturnType? Block
+EffectFunction    = "effect" "function" Name? TypeParameters? Params ReturnType? Block
+EffectArrow       = "effect" TypeParameters? ArrowParams ReturnType? "=>" ConciseBody
+EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params ReturnType? Block
+Producer          = "effect" "function" "*" Name? Params ReturnType? Block
+ProducerMethod    = "static"? "effect" "*" PropertyName Params ReturnType? Block
 
 EffectType        = Type "!" Type "!" Type | Type "!" Type | Type "!" "!" Type | Type "!" "!"
 
@@ -85,7 +82,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | Rule | Chapter |
 | --- | --- |
 | `try` outside effect code; `try` on a value that is not an Effect; `try x catch y`; a `try` statement in effect code | [Running Effects](002-running.md#try) |
-| `await` in effect code; `await` on an Effect in an `async` function; `try` at the top level | [Functions](001-functions.md#static-rules) |
+| `effect f() { }` or `async f() { }` outside a class or object literal; `await` in effect code; `await` on an Effect in an `async` function; `try` at the top level | [Functions](001-functions.md#static-rules) |
 | `catch` outside effect code; `catch` mixed with `??`, `\|\|` or `&&` without parentheses | [Running Effects](002-running.md#catch) |
 | `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](002-running.md), [Services](005-services.md#provide-blocks) |
 | a `try.all` operand that is not an array of Effects | [Running Effects](002-running.md#running-effects-concurrently) |

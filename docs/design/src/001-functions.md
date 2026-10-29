@@ -7,22 +7,22 @@ A function's kind is decided by a keyword on the function, never by its body or 
 | Kind | Written | Calling it gives | Inside it |
 | --- | --- | --- | --- |
 | plain | `function f() { }`, `() => …` | its result, as in TypeScript | TypeScript |
-| `async` | `async function f() { }`, `async f() { }`, `async () => …` | a Promise, as in TypeScript | `await` waits for a Promise |
-| `effect` | `effect function f() { }`, `effect f() { }`, `effect () => …` | an Effect, not yet run | `try` runs an Effect |
+| `async` | `async function f() { }`, `async () => …`, `async m() { }` (a method) | a Promise, as in TypeScript | `await` waits for a Promise |
+| `effect` | `effect function f() { }`, `effect () => …`, `effect m() { }` (a method) | an Effect, not yet run | `try` runs an Effect |
 
 ## `effect` functions
 
 ### Syntax
 
 ```text
-EffectFunction    = "effect" "function" Name Params ReturnType? Block
-                  | "effect" Name Params ReturnType? Block            (declaration shorthand)
-EffectArrow       = "effect" ArrowParams ReturnType? "=>" ConciseBody
-EffectMethod      = "effect" PropertyName Params ReturnType? Block    (in a class or object literal)
-AsyncShorthand    = "async" Name Params ReturnType? Block             (declaration shorthand)
+EffectFunction    = "effect" "function" Name? TypeParameters? Params ReturnType? Block
+EffectArrow       = "effect" TypeParameters? ArrowParams ReturnType? "=>" ConciseBody
+EffectMethod      = "static"? "effect" PropertyName TypeParameters? Params ReturnType? Block   (in a class or object literal)
 ```
 
-- `effect` may appear wherever TypeScript allows `async`, and also in the declaration shorthand `effect load() { }`. The shorthand `async get() { }` is added for `async` in the same way.
+- `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1). `Name` is optional where it is optional for `async function`: required in a declaration, optional in an expression.
+- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. Diagnostic: code pending.
+- As for `async`: `static effect m()` is allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
 - `effect` and the function, name or parameters it modifies are on one line, as with `async`.
 - Anywhere else, `effect` is an ordinary identifier, so `Layer.effect(…)` and `const effect = …` keep working.
 - `effect function*` declares a producer ([Running Effects](002-running.md#producers)).
@@ -46,8 +46,8 @@ Calling an `effect` function returns its Effect unrun, as calling an `async` fun
 ```vibe es
 // compiler-gap: pending VIP-1
 effect function load(id: string) { return try fetchUser(id) }
-effect load(id: string) { return try fetchUser(id) }
 const loadArrow = effect (id: string) => try fetchUser(id)
+const loadAll = (ids: string[]) => ids.map(effect function (id) { return try fetchUser(id) })
 
 class Users {
   effect find(id: string) { return try fetchUser(id) }
@@ -59,6 +59,7 @@ class Users {
 // fragment
 const load = (id: string) => Effect.gen(function* () { return yield* fetchUser(id) })
 const loadArrow = (id: string) => Effect.gen(function* () { return yield* fetchUser(id) })
+const loadAll = (ids: string[]) => ids.map(function (id) { return Effect.gen(function* () { return yield* fetchUser(id) }) })
 
 class Users {
   find(id: string) { return Effect.gen(function* () { return yield* fetchUser(id) }) }
@@ -74,9 +75,9 @@ An `effect` function's return type is an Effect, as an `async` function's is a P
 
 ```vibe es
 // compiler-gap: pending VIP-1
-effect load(id: string): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
-effect load2(id: string) { return try fetchUser(id) }                                // inferred: the same type
-async get(url: string): Promise<Response> { return await fetch(url) }               // as in TypeScript
+effect function load(id: string): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
+async function get(url: string): Promise<Response> { return await fetch(url) }                 // as in TypeScript
 ```
 
 An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them.
@@ -116,7 +117,7 @@ EffectType = Type "!" Type "!" Type      (A!E!R)
 
 ```vibe es
 // compiler-gap: pending VIP-3
-effect load(id: string): User!NotFound!Users { return try (try Users).find(id) }
+effect function load(id: string): User!NotFound!Users { return try (try Users).find(id) }
 interface UserStore { find(id: string): User!NotFound }
 ```
 
@@ -138,7 +139,7 @@ A module's top level is ordinary JavaScript (VIP-26).
 
 ```vibe es
 // compiler-gap: pending VIP-26
-export effect main() { try log("started") }
+export effect function main() { try log("started") }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
 ```
 
@@ -146,7 +147,7 @@ or, with top-level await:
 
 ```vibe es
 // compiler-gap: pending VIP-26
-export effect main() { try log("started") }
+export effect function main() { try log("started") }
 await runPromise(main())
 ```
 
@@ -160,7 +161,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 ```vibe es
 // compiler-gap: pending VIP-27
 // load.vibe
-export effect load(id: string) { return try fetchUser(id) }
+export effect function load(id: string) { return try fetchUser(id) }
 export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export function add(a: number, b: number) { return a + b }
 ```

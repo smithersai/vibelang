@@ -10,7 +10,7 @@ Source: [VIP-7](../vips/0007-match.md).
 
 ```vibe es
 // compiler-gap: pending VIP-7
-effect recover(e: NotFound | DbError, retryable: boolean) {
+effect function recover(e: NotFound | DbError, retryable: boolean) {
   return match (e) {
     when NotFound: guest                     // NotFound's Symbol.customMatcher decides
     when DbError and if (retryable): try retry(load(), policy)
