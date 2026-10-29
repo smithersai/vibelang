@@ -1,0 +1,27 @@
+---
+title: "VIP-24: wire, automatic layer composition (denied)"
+---
+
+# VIP-24: `wire`, automatic layer composition (denied)
+
+**Status:** denied, 2026-10-28, under Will's standing approval of recommendations ("assume I accept now. I will interrupt you if I need to").
+
+## Decision
+
+There is no `wire`. Layers are composed with Effect's own Layer API:
+
+```ts
+const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
+```
+
+## What was proposed
+
+Old VibeLang's `wire(UsersLive, DbLive, ConfigLive)` was a compiler intrinsic. It read each layer's `Layer<Out, E, In>` type, built the dependency order, and reported missing inputs (EK3201), duplicate outputs (EK3202) and cycles (EK3203). Prior art: ZIO's `ZLayer.make`.
+
+## Why it was denied
+
+- The generated code is chosen by types.
+- It looks like a function call but is an intrinsic, so renaming or storing it needs a ban (EK3208), and as it stands `wire(…)` is ambiguous with a call.
+- Effect has no equivalent.
+
+Adding it later is non-breaking, while removing it after release would break code.

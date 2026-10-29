@@ -1,0 +1,45 @@
+---
+title: "VIP-21: producers: effect function* returns a Stream"
+---
+
+# VIP-21: producers: `effect function*` returns a Stream
+
+**Status:** accepted by Will, 2026-10-28.
+
+## Decision
+
+```ts
+effect function* ticks() {
+  yield 1
+  try sleep("1 second")
+  yield 2
+}
+for try (const t of ticks()) { … }       // VIP-20
+
+// compiles to Effect's Stream.callback
+const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
+  yield* Queue.offer(queue, 1)
+  yield* Effect.sleep("1 second")
+  yield* Queue.offer(queue, 2)
+}).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })   // ends the stream when the body returns
+```
+
+- `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects (VIP-5).
+- A plain `function*` stays a JavaScript generator.
+- It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run one element ahead of the consumer. Exact pull semantics, which would need a continuation runtime, are not provided.
+- `return value` in a producer is a compile error, because a Stream has no return value. A bare `return` ends the stream.
+- **Ambiguity: none** for `effect function* name()`. The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript. At top level it could parse as multiplication.
+
+## History
+
+About 9 findings, on the old design (a type decided a producer's fiber; a runtime built on continuations). Neither applies to this design.
+
+## Prior art
+
+JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async generators.
+
+## Will's words
+
+> "Accept"
+
+*Corrected 2026-10-29: the Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*

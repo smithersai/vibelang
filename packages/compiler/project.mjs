@@ -353,11 +353,13 @@ export function compileProjectSync({ project, root = dirname(project), compiler 
   })
 }
 
-/** Returns the nearest tsconfig.json above file, or undefined. */
+/** Returns the preferred config in the nearest directory above file, or undefined. */
 export function nearestProject(file) {
   for (let directory = dirname(file); ; directory = dirname(directory)) {
-    const candidate = join(directory, "tsconfig.json")
-    if (existsSync(candidate)) return candidate
+    for (const name of ["vibe.config.json", "tsconfig.json", "jsconfig.json"]) {
+      const candidate = join(directory, name)
+      if (existsSync(candidate)) return candidate
+    }
     if (dirname(directory) === directory) return undefined
   }
 }

@@ -142,18 +142,11 @@ func fixConfigFile(sys tsc.System, commandLine *tsoptions.ParsedCommandLine) tsp
 	if project := commandLine.CompilerOptions().Project; project != "" {
 		directory := tspath.RootedDirectoryPathFromPath(project)
 		if sys.FS().DirectoryExists(directory) {
-			return directory.ResolveFile("tsconfig.json")
+			return tsoptions.ConfigFileInDirectory(directory, sys.FS().FileExists)
 		}
 		return tspath.RootedFilePathFromPath(project)
 	}
-	found, ok := sys.GetCurrentDirectory().ForEachAncestorDirectory(func(ancestor tspath.RootedDirectoryPath) (tspath.RootedFilePath, bool) {
-		name := ancestor.ResolveFile("tsconfig.json")
-		return name, sys.FS().FileExists(name)
-	})
-	if !ok {
-		return ""
-	}
-	return found
+	return tsoptions.FindConfigFile(sys.GetCurrentDirectory(), sys.FS().FileExists)
 }
 
 // relativeName returns name relative to sys's current directory.

@@ -17,6 +17,27 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [7](/vips/0007-match) | `match` is TC39 pattern matching, plus a compile-time exhaustiveness check | accepted 2026-10-28 |
 | [9](/vips/0009-service-declarations) | `service` declarations | accepted 2026-10-28 |
 | [12](/vips/0012-provide) | `provide` blocks | accepted 2026-10-28 |
+| [13](/vips/0013-error-declarations) | `error` declarations | accepted 2026-10-28 |
+| [14](/vips/0014-effect-modules-in-scope) | Effect's modules are in scope without an import | accepted 2026-10-28 |
+| [15](/vips/0015-schema-declarations) | `schema` declarations | accepted 2026-10-28 |
+| [16](/vips/0016-data-declarations) | `data` declarations (tagged unions) | accepted 2026-10-28 |
+| [17](/vips/0017-fork) | `fork` and `join` | accepted 2026-10-28 |
+| [18](/vips/0018-concurrent) | Running Effects concurrently: `try.all`, `try.race`, `try.any`, `try.allSettled` | accepted 2026-10-28 |
+| [19](/vips/0019-for-concurrent) | `for concurrent` | accepted 2026-10-28 |
+| [20](/vips/0020-for-try) | Iterating a Stream with `for try` | accepted 2026-10-28 |
+| [21](/vips/0021-producers) | Producers: `effect function*` returns a Stream | accepted 2026-10-28 |
+| [22](/vips/0022-interruption-blocks) | Interruption blocks | accepted 2026-10-28 |
+| [23](/vips/0023-pipe) | The pipe operator `\|>` | accepted 2026-10-28 |
+| [26](/vips/0026-top-level-and-main) | Top-level `await`, and no magic `main` | accepted 2026-10-29 |
+| [27](/vips/0027-declaration-output) | Declaration output and `@throws` | accepted 2026-10-29 |
+| [28](/vips/0028-generic-data) | Generic `data` unions | accepted 2026-10-29 |
+| [29](/vips/0029-schema-errors) | Serializable errors: `schema error` | accepted 2026-10-29 |
+| [30](/vips/0030-config-files) | Config files: `vibe.config.json`, `tsconfig.json`, `jsconfig.json` | accepted 2026-10-29 |
+| [31](/vips/0031-runtime-guarantees) | Runtime guarantees | accepted 2026-10-29 |
+| [32](/vips/0032-effect-version) | One pinned Effect version during alpha | accepted 2026-10-29 |
+| [33](/vips/0033-platform-stdlib) | The platform standard library | accepted 2026-10-29 |
+| [34](/vips/0034-compiler-and-tooling) | Compiler and tooling requirements | accepted 2026-10-29 |
+| [38](/vips/0038-effect-lint-built-in) | Effect's type-aware lint is built into VibeLang | accepted 2026-10-29 |
 
 
 ## Denied
@@ -26,3 +47,16 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [8](/vips/0008-using-denied) | Special syntax for Effect resources (`using`, a `scoped` keyword) | denied 2026-10-28 |
 | [10](/vips/0010-service-call-shorthand-denied) | The `Users.find(id)` shorthand | denied 2026-10-28 |
 | [11](/vips/0011-trailing-blocks-denied) | Trailing blocks | denied 2026-10-28 |
+| [24](/vips/0024-wire-denied) | `wire`, automatic layer composition | denied 2026-10-28 |
+| [25](/vips/0025-inline-modules-denied) | Inline `module` declarations as a TypeScript escape | denied 2026-10-29 |
+
+## Open
+
+Listed for a future decision; not part of the language.
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [35](/vips/0035-handlers-open) | Effect handlers (`control`, `handle`, `resume`, `abandon`) | open 2026-10-29 |
+| [36](/vips/0036-manifest-open) | The declaration manifest | open 2026-10-29 |
+| [37](/vips/0037-effectify-the-universe-open) | Effectify the universe | open 2026-10-29 |
+| — | From the proposals page (`site/src/pages/proposals.mdx`), each to get its own VIP: [Durable execution](/proposals#durable-execution), [Compile-time evaluation (`comptime`)](/proposals#compile-time-evaluation), [Build-time host selection](/proposals#build-time-host-selection), [Validators derived from types](/proposals#validators-derived-from-types), [Typed asset imports](/proposals#typed-asset-imports), [Custom loaders](/proposals#custom-loaders), [Rust and Zig source imports](/proposals#rust-and-zig-source-imports), [Coding-agent library](/proposals#coding-agent-library), [Typed workers](/proposals#typed-workers), [Shared structs](/proposals#shared-structs), [Declarations in conditionals](/proposals#declarations-in-conditionals), [Toolchain commands](/proposals#toolchain-commands), [Bundler plugins](/proposals#bundler-plugins), [Mandatory compiler options](/proposals#mandatory-compiler-options), [JSX source files](/proposals#jsx-source-files), [TC39 adopt-early list](/proposals#tc39-adopt-early-list) | open 2026-10-29 |

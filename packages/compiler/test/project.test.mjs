@@ -560,3 +560,15 @@ process.exit(1)
     assert.equal(Number(readFileSync(calls, "utf8")), change === "absent" ? 1 : 2)
   })
 }
+
+test("config discovery uses VIP-30 precedence in the nearest directory", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "vibe-config-precedence-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  mkdirSync(join(root, "src"), { recursive: true })
+  for (const name of ["jsconfig.json", "tsconfig.json", "vibe.config.json"]) {
+    writeFileSync(join(root, name), "{}")
+    assert.equal(nearestProject(join(root, "src/main.vibe")), join(root, name))
+  }
+  writeFileSync(join(root, "src/jsconfig.json"), "{}")
+  assert.equal(nearestProject(join(root, "src/main.vibe")), join(root, "src/jsconfig.json"))
+})

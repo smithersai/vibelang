@@ -1,0 +1,34 @@
+---
+title: "VIP-33: the platform standard library"
+---
+
+# VIP-33: the platform standard library
+
+**Status:** accepted, 2026-10-29: Will's 10-26 rulings, re-presented against VIP-1 to VIP-32 and recorded under his standing approval of recommendations.
+
+## Decision
+
+```ts
+effect readConfig(path: string) {
+  const fs = try FileSystem                        // Effect's platform service, injected by a layer
+  return try fs.readFileString(path)
+}
+provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platform layer is chosen at the edge
+```
+
+1. **Platform access only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`). Code that needs them lives in a `.ts` file; VIP-25 removed inline modules, so a `.ts` file is the escape.
+   - **Amended 2026-10-29: no exception inside `Effect.try` / `tryPromise` arrows.** A platform call there, such as `tryPromise(() => fetch(url))`, is the same error as anywhere in `.vibe`. Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`). Recorded under Will's standing approval of recommendations.
+2. **What Effect lacks goes under `Experimental.X`**, named after the Effect module it extends, and is written so it can be proposed upstream. No per-project wrappers, and nothing that Effect already provides.
+3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with VIP-14's precedence rules.
+4. Old VibeLang's alias `Path.join(…)` → `Path.Path.join(…)` (D311) was a service shorthand, which VIP-10 denied. You write `(try Path).join(…)`.
+5. Old VibeLang's provisional D312, under which the entry provided NodeServices for `main`, is gone (VIP-26).
+
+## Will's words (2026-10-26)
+
+> "All web apis and all node.js apis should be wrapped and effectful. In fact, a lot of this is ALREADY wrapped and effectful. Platform should always be dependency injected. Effect has a platform package. If it doesn't support something we should extend it to support it."
+
+> "Make sure you do NOT implement anything that is already in effect."
+
+> "make Effect namespace global and every namespace below Effect global and if we were forced to add something because Effect doesn't already have a namespace for it it should be under Experimental."
+
+> "Node.js should only even be available via dependency injection or via escaping to normal typescript"

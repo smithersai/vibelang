@@ -49,6 +49,90 @@ export const vipsSidebar = [
           {
             "text": "12. provide blocks",
             "link": "/vips/0012-provide"
+          },
+          {
+            "text": "13. error declarations",
+            "link": "/vips/0013-error-declarations"
+          },
+          {
+            "text": "14. Effect's modules are in scope without an import",
+            "link": "/vips/0014-effect-modules-in-scope"
+          },
+          {
+            "text": "15. schema declarations",
+            "link": "/vips/0015-schema-declarations"
+          },
+          {
+            "text": "16. data declarations (tagged unions)",
+            "link": "/vips/0016-data-declarations"
+          },
+          {
+            "text": "17. fork and join",
+            "link": "/vips/0017-fork"
+          },
+          {
+            "text": "18. Running Effects concurrently: try.all, try.race, try.any, try.allSettled",
+            "link": "/vips/0018-concurrent"
+          },
+          {
+            "text": "19. for concurrent",
+            "link": "/vips/0019-for-concurrent"
+          },
+          {
+            "text": "20. Iterating a Stream with for try",
+            "link": "/vips/0020-for-try"
+          },
+          {
+            "text": "21. Producers: effect function* returns a Stream",
+            "link": "/vips/0021-producers"
+          },
+          {
+            "text": "22. Interruption blocks",
+            "link": "/vips/0022-interruption-blocks"
+          },
+          {
+            "text": "23. The pipe operator |>",
+            "link": "/vips/0023-pipe"
+          },
+          {
+            "text": "26. Top-level await, and no magic main",
+            "link": "/vips/0026-top-level-and-main"
+          },
+          {
+            "text": "27. Declaration output and @throws",
+            "link": "/vips/0027-declaration-output"
+          },
+          {
+            "text": "28. Generic data unions",
+            "link": "/vips/0028-generic-data"
+          },
+          {
+            "text": "29. Serializable errors: schema error",
+            "link": "/vips/0029-schema-errors"
+          },
+          {
+            "text": "30. Config files: vibe.config.json, tsconfig.json, jsconfig.json",
+            "link": "/vips/0030-config-files"
+          },
+          {
+            "text": "31. Runtime guarantees",
+            "link": "/vips/0031-runtime-guarantees"
+          },
+          {
+            "text": "32. One pinned Effect version during alpha",
+            "link": "/vips/0032-effect-version"
+          },
+          {
+            "text": "33. The platform standard library",
+            "link": "/vips/0033-platform-stdlib"
+          },
+          {
+            "text": "34. Compiler and tooling requirements",
+            "link": "/vips/0034-compiler-and-tooling"
+          },
+          {
+            "text": "38. Effect's type-aware lint is built into VibeLang",
+            "link": "/vips/0038-effect-lint-built-in"
           }
         ]
       },
@@ -67,6 +151,32 @@ export const vipsSidebar = [
           {
             "text": "11. Trailing blocks",
             "link": "/vips/0011-trailing-blocks-denied"
+          },
+          {
+            "text": "24. wire, automatic layer composition",
+            "link": "/vips/0024-wire-denied"
+          },
+          {
+            "text": "25. Inline module declarations as a TypeScript escape",
+            "link": "/vips/0025-inline-modules-denied"
+          }
+        ]
+      },
+      {
+        "text": "Open",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "35. Effect handlers (control, handle, resume, abandon)",
+            "link": "/vips/0035-handlers-open"
+          },
+          {
+            "text": "36. The declaration manifest",
+            "link": "/vips/0036-manifest-open"
+          },
+          {
+            "text": "37. Effectify the universe",
+            "link": "/vips/0037-effectify-the-universe-open"
           }
         ]
       }

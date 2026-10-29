@@ -31,7 +31,7 @@ also need the `@effect/platform-node-shared` override. Follow
 before adding those packages.
 
 Generated JavaScript imports `effect` and `vibelang-runtime`, so both are runtime
-dependencies. Point `tsconfig.json` at your `.vibe` sources:
+dependencies. Point `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` at your `.vibe` sources. Automatic discovery checks those names in that order in each directory before searching its parent; `-p path/to/config.json` selects an explicit file:
 
 ```json
 {

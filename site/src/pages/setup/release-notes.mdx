@@ -74,6 +74,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | `fork job`, `fork(() => work())` or `await.all [job]`, where `job` is an Effect or a function with no required parameters | EK4613: the operand is a program by syntax whose result is its value, so the new fiber or the element would give `job` back unrun; it previously ran it. Write `fork job()`, `fork work()` or `await.all [job()]`; `vibelang --fix` writes these. |
 | `await.all [fiber]` or `await.race [ready]`, an element that is a `Fiber` or a `Deferred` | EK4609 or EK4610: an element's result is its value, never waited for again. Write `join fiber` or `ready.await()` as the element. The operation no longer interrupts a fiber you hand it when another element fails or wins; the fiber's region interrupts it when the region ends. |
 | `await.all exits`, an operand that is not a literal whose element type is an `Exit`, a `Config`, or a union with a member that is not a program | EK4603: such an operand runs each element by its static type, and an `Exit` is data. It previously ran each `Exit` as an Effect. Give the elements a program type, or write an array literal, whose elements are programs by syntax. |
+| A `schema` field typed `unknown`, `any`, `never`, `object` or `void`, such as `schema Event { payload: unknown }` | EK2109 (VIP-15): among keyword types only primitives map to a schema. Name the schema instead, `payload: Schema.Unknown`; `--fix` writes it. |
 
 Direct platform calls such as `console.log` and `process.env.NAME` were
 already EK4402 in 0.0.10; holding their values and importing Node values
@@ -114,6 +115,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 ### Bugs fixed since 0.0.10
+
+- VIP-30: project discovery checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory; explicit config paths still select that file.
 
 - In a project that emits declarations, `vibelang --fix` changed the declaration files: it removed an import such as `import * as Schema from "effect/Schema"` that an export's type used, and rewrote `Effect.Effect<void, never, never>` as `void!!`, which dropped the `never` arguments. It now keeps such an import and writes `void!never!never` in an exported statement, so the declarations stay the TypeScript's.
 - In a project that emits declarations, `vibelang --fix` rewrote an exported `Schema.Struct` constant that had no type of its name as a `schema` declaration, which added `export type Name = typeof Name.Type` to the declaration file. EK4832 now leaves such a constant; with its type written beside it, the pair still becomes `export schema Name { … }`.

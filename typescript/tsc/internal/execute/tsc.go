@@ -167,7 +167,7 @@ func tscCompilation(ctx context.Context, sys tsc.System, commandLine *tsoptions.
 		fileOrDirectory := commandLine.CompilerOptions().Project
 		directory := tspath.RootedDirectoryPathFromPath(fileOrDirectory)
 		if sys.FS().DirectoryExists(directory) {
-			configFileName = directory.ResolveFile("tsconfig.json")
+			configFileName = tsoptions.ConfigFileInDirectory(directory, sys.FS().FileExists)
 			if !sys.FS().FileExists(configFileName) {
 				reportDiagnostic(ast.NewCompilerDiagnostic(diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, configFileName))
 				return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
@@ -180,7 +180,7 @@ func tscCompilation(ctx context.Context, sys tsc.System, commandLine *tsoptions.
 			}
 		}
 	} else if !commandLine.CompilerOptions().IgnoreConfig.IsTrue() || len(commandLine.FileNames()) == 0 {
-		foundConfigFileName := findConfigFile(sys.GetCurrentDirectory(), sys.FS().FileExists, "tsconfig.json")
+		foundConfigFileName := tsoptions.FindConfigFile(sys.GetCurrentDirectory(), sys.FS().FileExists)
 		if foundConfigFileName != "" {
 			configFileName = foundConfigFileName
 		}

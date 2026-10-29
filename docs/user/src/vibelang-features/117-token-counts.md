@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,886 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,184 |
-| The skill and the user guide (136 pages) | 283,054 |
-| The user guide alone | 277,168 |
+| The skill and the user guide (136 pages) | 283,287 |
+| The user guide alone | 277,401 |
 | The specification (33 chapters) | 200,801 |
 | The decision log, `docs/design/DECISIONS.md` | 141,477 |
 
@@ -128,9 +128,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Neovim](../setup/neovim.md) | 1,023 |
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 369 |
-| **Upgrade** | **35,561** |
-| [Release notes](../setup/release-notes.md) | 35,561 |
-| **All 16 pages** | **57,660** |
+| **Upgrade** | **35,670** |
+| [Release notes](../setup/release-notes.md) | 35,670 |
+| **All 16 pages** | **57,769** |
 
 ### Guides
 
@@ -223,9 +223,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Behaviour** | **2,137** |
 | [Equivalence](../behaviour/083-equivalence.md) | 685 |
 | [Order](../behaviour/084-order.md) | 1,452 |
-| **Schema** | **34,767** |
+| **Schema** | **34,891** |
 | [Introduction](../schema/085-introduction.md) | 1,468 |
-| [Getting Started](../schema/086-getting-started.md) | 2,475 |
+| [Getting Started](../schema/086-getting-started.md) | 2,599 |
 | [Basic Usage](../schema/087-basic-usage.md) | 2,915 |
 | [Filters](../schema/088-filters.md) | 1,626 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,151 |
@@ -254,7 +254,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 4,633 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 787 |
 | [Alchemy](../platform/alchemy.md) | 2,292 |
-| **All 101 pages** | **163,103** |
+| **All 101 pages** | **163,227** |
 
 ### VibeLang features
 

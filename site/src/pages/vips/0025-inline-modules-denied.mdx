@@ -1,0 +1,19 @@
+---
+title: "VIP-25: inline module declarations as a TypeScript escape (denied)"
+---
+
+# VIP-25: inline `module` declarations as a TypeScript escape (denied)
+
+**Status:** denied, 2026-10-29, under Will's standing approval of recommendations ("assume I accept now. I will interrupt you if I need to").
+
+## Decision
+
+There are no inline `module` declarations.
+
+## What was proposed
+
+Old VibeLang (D283) used TC39's module-declaration syntax, `module text { export function clean(v: string): string { … } }`, as an escape: a body of plain TypeScript inside a `.vibe` file.
+
+## Why it was denied
+
+The escape existed because old VibeLang changed what `throw`, `try`/`catch`, `await` and `async` meant. VIP-1, VIP-4 and VIP-5 gave plain and `async` functions in `.vibe` exactly TypeScript's meaning, so nothing is left to escape from. TC39's module declarations (stage 2) can be added later as exact TC39 if they prove useful; adding them later breaks nothing.

@@ -1,0 +1,19 @@
+---
+title: "VIP-36: the declaration manifest (vibelang.manifest.json) (open)"
+---
+
+# VIP-36: the declaration manifest (`vibelang.manifest.json`) (open)
+
+**Status:** open, 2026-10-29. Not part of the first release. Will: "Yup open vip for that".
+
+## What it was
+
+A file listing which exports were compiled from `.vibe`, so other VibeLang code could "trust" them: a trusted export's failures were known, and any other TypeScript call was suspected of throwing (D500, D516, D530, D556).
+
+## Why it is not needed now
+
+VIP-27 writes `@throws` on every exported function, `@throws {never}` included, and VIP-4 says a function without `@throws` throws `unknown`. What an import may throw now travels in its declaration file, the same for VibeLang and hand-written TypeScript.
+
+## History
+
+The loop: Astra raised it three rounds running (round 9 M2, round 10 M3, round 11 M3). Each round blocked one way to replace a certified export, and the next round found another (a write through a mutable alias, for example).
