@@ -113,6 +113,12 @@ export function recover(flag: boolean) { return fail() catch (flag ? 1 : 2) }`},
 // applied, through the language service's public code action request.
 func applyQuickFix(t *testing.T, source string, code int32) string {
 	t.Helper()
+	return applyQuickFixOf(t, source, code, diagnostics.CategoryWarning)
+}
+
+// applyQuickFixOf is applyQuickFix for a diagnostic of category.
+func applyQuickFixOf(t *testing.T, source string, code int32, category diagnostics.Category) string {
+	t.Helper()
 	program, file, service, converters := editorProgram(t, source)
 	var diagnostic *ast.Diagnostic
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
@@ -124,8 +130,8 @@ func applyQuickFix(t *testing.T, source string, code int32) string {
 	if diagnostic == nil {
 		t.Fatalf("missing EK%d in:\n%s", code, source)
 	}
-	if diagnostic.Category() != diagnostics.CategoryWarning {
-		t.Fatalf("EK%d is %v, want a warning", code, diagnostic.Category())
+	if diagnostic.Category() != category {
+		t.Fatalf("EK%d is %v, want %v", code, diagnostic.Category(), category)
 	}
 	d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
 	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}

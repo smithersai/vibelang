@@ -1125,8 +1125,9 @@ func (p *Parser) vibelangClauseResumes(block *ast.Node, anchor core.TextRange) b
 //
 // A field written mutable gets Schema.mutableKey (D134).
 //
-// A field's type becomes the schema of its values: a primitive, a literal, a
-// union, an array, a tuple, a record, an object type, or the name of another
+// A field's type becomes the schema of its values (VIP-15): a primitive
+// (string, number, boolean, bigint, symbol, undefined or null), a literal, a
+// union, an array, a tuple, a Record, an object type, or the name of another
 // schema, which the struct refers to as a value. Any other type becomes
 // Schema.Unknown flagged NodeFlagsVibeLang, which the checker reports as EK2109
 // (schemas.go). The struct call is flagged NodeFlagsVibeLang too. The type
@@ -1266,8 +1267,7 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 	switch typeNode.Kind {
 	case ast.KindParenthesizedType:
 		return p.vibelangSchemaOf(typeNode.AsParenthesizedTypeNode().Type)
-	case ast.KindStringKeyword, ast.KindNumberKeyword, ast.KindBooleanKeyword, ast.KindBigIntKeyword, ast.KindSymbolKeyword,
-		ast.KindUndefinedKeyword, ast.KindUnknownKeyword, ast.KindAnyKeyword, ast.KindNeverKeyword, ast.KindObjectKeyword, ast.KindVoidKeyword:
+	case ast.KindStringKeyword, ast.KindNumberKeyword, ast.KindBooleanKeyword, ast.KindBigIntKeyword, ast.KindSymbolKeyword, ast.KindUndefinedKeyword:
 		return p.vibelangSchemaMember(nil, vibelangSchemaKeywords[typeNode.Kind], p.vibelangCalleeAnchor(typeNode.Loc))
 	case ast.KindLiteralType:
 		literal := typeNode.AsLiteralTypeNode().Literal
@@ -1330,7 +1330,10 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 	return p.vibelangUnsupportedSchema(typeNode.Loc)
 }
 
-// vibelangSchemaKeywords names the schema of each keyword type.
+// vibelangSchemaKeywords names the schema of each primitive keyword type
+// (VIP-15). unknown, any, never, object and void are not primitives, so they
+// have no schema form; a field names their Schema constant instead, such as
+// Schema.Unknown.
 var vibelangSchemaKeywords = map[ast.Kind]string{
 	ast.KindStringKeyword:    "String",
 	ast.KindNumberKeyword:    "Number",
@@ -1338,11 +1341,6 @@ var vibelangSchemaKeywords = map[ast.Kind]string{
 	ast.KindBigIntKeyword:    "BigInt",
 	ast.KindSymbolKeyword:    "Symbol",
 	ast.KindUndefinedKeyword: "Undefined",
-	ast.KindUnknownKeyword:   "Unknown",
-	ast.KindAnyKeyword:       "Any",
-	ast.KindNeverKeyword:     "Never",
-	ast.KindObjectKeyword:    "ObjectKeyword",
-	ast.KindVoidKeyword:      "Void",
 }
 
 // isVibeLangSchemaLiteral reports whether typeNode is a literal type other than

@@ -6,4 +6,6 @@ schema Event {
   run(): void
   // EK2109: a generic type other than an array or a record.
   parts: Partial<{ a: string }>
+  // EK2109: unknown is not a primitive; the field names Schema.Unknown.
+  payload: unknown
 }

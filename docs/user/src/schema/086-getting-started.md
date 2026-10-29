@@ -55,7 +55,7 @@ schema Batch {
 {"shipments":[{"tracking":"box-76","pieces":2}]}
 ```
 
-`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. Struct fields, arrays, records, and tuples are readonly by default in their TypeScript types; JavaScript objects are not frozen. When mutation is part of the model, use explicit mutable schema combinators.
+`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and `name?: T` is `Schema.optional`. Any other type is EK2109. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`, which `vibelang --fix` writes. Struct fields, arrays, records, and tuples are readonly by default in their TypeScript types; JavaScript objects are not frozen. When mutation is part of the model, use explicit mutable schema combinators.
 
 ## Declaring a schema for any type
 

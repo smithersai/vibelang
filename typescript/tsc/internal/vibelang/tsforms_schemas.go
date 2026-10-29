@@ -54,15 +54,14 @@ func isSchemaConstantName(node *ast.Node) bool {
 	return ast.IsIdentifier(node) && node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && node.Parent.Name() == node
 }
 
-// schemaKeywordTypes maps each keyword schema of Schema to the type a schema
-// declaration writes for it.
+// schemaKeywordTypes maps each primitive schema of Schema to the type a
+// schema declaration writes for it (VIP-15). Any other schema, Schema.Unknown
+// included, keeps its name.
 var schemaKeywordTypes = func() map[string]string {
 	types := map[string]string{"Null": "null"}
 	for kind, schema := range map[ast.Kind]string{
 		ast.KindStringKeyword: "String", ast.KindNumberKeyword: "Number", ast.KindBooleanKeyword: "Boolean",
 		ast.KindBigIntKeyword: "BigInt", ast.KindSymbolKeyword: "Symbol", ast.KindUndefinedKeyword: "Undefined",
-		ast.KindUnknownKeyword: "Unknown", ast.KindAnyKeyword: "Any", ast.KindNeverKeyword: "Never",
-		ast.KindObjectKeyword: "ObjectKeyword", ast.KindVoidKeyword: "Void",
 	} {
 		types[schema] = scanner.TokenToString(kind)
 	}

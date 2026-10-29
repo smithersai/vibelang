@@ -1,9 +1,13 @@
 package vibelang
 
 import (
+	"context"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -17,8 +21,62 @@ import (
 // no schema form, which the parser wrote as Schema.Unknown flagged
 // NodeFlagsVibeLang, and at a field whose type names a value that is not a
 // schema, such as Date.
+//
+// VIP-15 maps only primitives among the keyword types. unknown, any, never,
+// object and void have no schema form; their quick fix, which vibelang --fix
+// applies, writes the Schema constant the field meant, which the struct
+// refers to by name:
+//
+//	schema Event { payload: unknown }
+//	schema Event { payload: Schema.Unknown }
 
-func init() { fileChecks = append(fileChecks, checkSchemaDeclarations) }
+func init() {
+	fileChecks = append(fileChecks, checkSchemaDeclarations)
+	tsFormFixCodes = append(tsFormFixCodes, EK2109.Code)
+	ls.RegisterCodeFixProvider(schemaKeywordFix)
+}
+
+// schemaKeywordConstants names the Schema constant of each keyword type that
+// VIP-15's mapping leaves out.
+var schemaKeywordConstants = map[string]string{
+	"unknown": "Schema.Unknown",
+	"any":     "Schema.Any",
+	"never":   "Schema.Never",
+	"object":  "Schema.ObjectKeyword",
+	"void":    "Schema.Void",
+}
+
+// noteSchemaKeyword adds to d, EK2109 at text, the Schema constant that the
+// quick fix writes, when text is a keyword type the mapping leaves out, and
+// reports whether it did.
+func noteSchemaKeyword(d *ast.Diagnostic, text string) bool {
+	constant, ok := schemaKeywordConstants[text]
+	if ok {
+		note(d, "{0} is not a primitive; name its schema instead: {1}.", text, constant)
+	}
+	return ok
+}
+
+// schemaKeywordFix is EK2109's quick fix at a keyword type that the mapping
+// leaves out: it writes the keyword's Schema constant.
+var schemaKeywordFix = &ls.CodeFixProvider{
+	Source:     diagnosticSource,
+	ErrorCodes: []int32{EK2109.Code},
+	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		text := fix.SourceFile.Text()
+		if fix.Diagnostic == nil || fix.Span.End() > len(text) {
+			return nil, nil
+		}
+		constant, ok := schemaKeywordConstants[text[fix.Span.Pos():fix.Span.End()]]
+		if !ok {
+			return nil, nil
+		}
+		return []*ls.CodeAction{{
+			Description: "Write " + constant,
+			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: constant}},
+		}}, nil
+	},
+}
 
 // schemaTypeID names the property that every Effect 4 schema has.
 const schemaTypeID = "~effect/Schema/Schema"
@@ -79,7 +137,9 @@ func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node,
 	case isUnsupportedSchema(value):
 		loc := core.NewTextRange(scanner.SkipTrivia(file.Text(), value.Pos()), value.End())
 		d := reportAt(c, file, loc, EK2109, file.Text()[loc.Pos():loc.End()])
-		note(d, "Declare the schema with Schema.Struct, which takes any schema, such as Schema.DateTimeUtc.")
+		if !noteSchemaKeyword(d, file.Text()[loc.Pos():loc.End()]) {
+			note(d, "Declare the schema with Schema.Struct, which takes any schema, such as Schema.DateTimeUtc.")
+		}
 	case isSchemaStruct(value):
 		checkSchemaFields(c, file, value, declaration)
 	case value.Kind == ast.KindCallExpression && value.Flags&ast.NodeFlagsReparsed == 0 && value.Expression().Flags&ast.NodeFlagsReparsed != 0:

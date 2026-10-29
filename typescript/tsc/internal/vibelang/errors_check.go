@@ -326,8 +326,10 @@ func checkSchemaErrorFields(c *checker.Checker, file *ast.SourceFile, fields *as
 		value := property.Initializer()
 		if isUnsupportedSchema(value) {
 			loc := core.NewTextRange(scanner.SkipTrivia(file.Text(), value.Pos()), value.End())
-			d := reportAt(c, file, loc, EK2109.With("The field {1} has the type {0}, which has no schema form: a schema error's field is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema."), file.Text()[loc.Pos():loc.End()], property.Name().Text())
-			note(d, "Declare the error with error instead of schema error when it is never encoded, or give the field a type with a schema.")
+			d := reportAt(c, file, loc, EK2109.With("The field {1} has the type {0}, which has no schema form: a schema error's field is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name."), file.Text()[loc.Pos():loc.End()], property.Name().Text())
+			if !noteSchemaKeyword(d, file.Text()[loc.Pos():loc.End()]) {
+				note(d, "Declare the error with error instead of schema error when it is never encoded, or give the field a type with a schema.")
+			}
 			continue
 		}
 		checkSchemaValue(c, file, value, fields)

@@ -1,4 +1,4 @@
-() => void has no schema form: a schema's type is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema.
+() => void has no schema form: a schema's type is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.
 Date is not a schema: a schema's type names a schema declaration or a schema constant.
-Partial<{ a: string }> has no schema form: a schema's type is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema.
-run(): void has no schema form: a schema declaration's field is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema.
+Partial<{ a: string }> has no schema form: a schema's type is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.
+run(): void has no schema form: a schema declaration's field is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.

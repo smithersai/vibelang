@@ -21,7 +21,7 @@ import (
 func init() { fileChecks = append(fileChecks, checkSchemaAliases) }
 
 // ek2109Alias is EK2109 for the type of a schema alias.
-var ek2109Alias = EK2109.With("{0} has no schema form: a schema's type is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema.")
+var ek2109Alias = EK2109.With("{0} has no schema form: a schema's type is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.")
 
 func checkSchemaAliases(c *checker.Checker, file *ast.SourceFile) {
 	for _, statement := range file.Statements.Nodes {
@@ -49,7 +49,9 @@ func checkSchemaAliasValue(c *checker.Checker, file *ast.SourceFile, value *ast.
 	case isUnsupportedSchema(value):
 		loc := core.NewTextRange(scanner.SkipTrivia(file.Text(), value.Pos()), value.End())
 		d := reportAt(c, file, loc, ek2109Alias, file.Text()[loc.Pos():loc.End()])
-		note(d, "Declare the schema with a Schema constant, such as const When = Schema.DateTimeUtc.")
+		if !noteSchemaKeyword(d, file.Text()[loc.Pos():loc.End()]) {
+			note(d, "Declare the schema with a Schema constant, such as const When = Schema.DateTimeUtc.")
+		}
 	case isSchemaStruct(value):
 		// schemas.go checks the struct's fields.
 	case value.Kind == ast.KindCallExpression && value.Flags&ast.NodeFlagsReparsed == 0 && value.Expression().Flags&ast.NodeFlagsReparsed != 0:

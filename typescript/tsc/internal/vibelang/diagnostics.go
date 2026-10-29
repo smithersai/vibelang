@@ -128,7 +128,7 @@ var (
 	EK2113 = message(2113, warningCategory, "A catch clause no longer catches a whole Cause; match on exit(…) with Exit.Success and Exit.Failure arms.")
 	// EK2111: a restore block that no uninterruptible block encloses (D180).
 	EK2111 = message(2111, errorCategory, "This restore block is not inside an uninterruptible block, so it has no interruptibility to restore.")
-	EK2109 = message(2109, errorCategory, "{0} has no schema form: a schema declaration's field is a primitive, a literal, a union, an array, a tuple, a record, an object type, or another schema.")
+	EK2109 = message(2109, errorCategory, "{0} has no schema form: a schema declaration's field is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.")
 	// EK2117: an error whose tag does not fit (D278, D304): a subclass's tag and its base's tag type,
 	// or a concrete error's name and its _tag field; also an error that extends what is not an error
 	// of its kind. {0} is the error, {1} its base, {2} the base's tag type, {3} the subclass's tag.
