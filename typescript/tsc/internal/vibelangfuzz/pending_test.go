@@ -2,10 +2,12 @@ package vibelangfuzz
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +30,7 @@ func TestPendingLines(t *testing.T) {
 	}
 	targets := fuzzTargets(t)
 	seen := map[string]bool{}
-	debt := 0
+	debt, superseded := 0, 0
 	for _, e := range entries {
 		id := e.Target + " " + e.Key
 		if seen[id] {
@@ -46,6 +48,16 @@ func TestPendingLines(t *testing.T) {
 		if problem := deadKey(e); problem != "" {
 			t.Errorf("%s: %s, so the line skips nothing and never fails as XPASS", id, problem)
 		}
+		if e.Owner == Superseded {
+			if problem := supersededProblem(e); problem != "" {
+				t.Errorf("%s: %s", id, problem)
+			}
+			superseded++
+			continue
+		}
+		if strings.HasSuffix(e.Key, "*") {
+			t.Errorf("%s: only a superseded key may end in *; a pending key names one gap", id)
+		}
 		if !productOwners[e.Owner] {
 			debt++
 			continue
@@ -57,7 +69,74 @@ func TestPendingLines(t *testing.T) {
 		}
 		t.Errorf("%s: name the chapter or decision the compiler does not meet: %s", id, e.Reason)
 	}
-	t.Logf("%d pending lines, %d of them parts of the specification no test reaches yet", len(entries), debt)
+	t.Logf("%d pending lines, %d of them parts of the specification no test reaches yet, %d superseded by a VIP", len(entries), debt, superseded)
+}
+
+// vipReason is a superseded line's reason: the VIP that replaced the rule.
+var vipReason = regexp.MustCompile(`^VIP-(\d+): \S`)
+
+// supersededProblem names what is wrong with a superseded line: its reason
+// must start with an accepted VIP in docs/design/vips/.
+func supersededProblem(e PendingEntry) string {
+	m := vipReason.FindStringSubmatch(e.Reason)
+	if m == nil {
+		return "a superseded line's reason starts with the VIP that replaced the rule, as \"VIP-6: ...\""
+	}
+	n, _ := strconv.Atoi(m[1])
+	vips := filepath.Join(Root(), "docs/design/vips")
+	if files, _ := filepath.Glob(filepath.Join(vips, fmt.Sprintf("%04d-*.md", n))); len(files) == 0 {
+		return fmt.Sprintf("VIP-%d is not in docs/design/vips", n)
+	}
+	readme, err := os.ReadFile(filepath.Join(vips, "README.md"))
+	if err != nil {
+		return err.Error()
+	}
+	accepted := regexp.MustCompile(fmt.Sprintf(`(?m)^\| \[%d\]\(.*\| accepted `, n))
+	if !accepted.Match(readme) {
+		return fmt.Sprintf("VIP-%d is not accepted in docs/design/vips/README.md", n)
+	}
+	return ""
+}
+
+// TestSuperseded checks the superseded owner: a "*" key matches only on a
+// superseded line, a superseded gap skips, and a superseded input that meets
+// every oracle never fails as XPASS.
+func TestSuperseded(t *testing.T) {
+	entries := []PendingEntry{
+		{Target: "FuzzX", Key: "ek:EK48*", Owner: Superseded, Reason: "VIP-6: the globals changed"},
+		{Target: "FuzzX", Key: "ek:EK44*", Owner: "compiler", Reason: "D1: not a wildcard"},
+		{Target: "FuzzX", Key: "corpus:old", Owner: Superseded, Reason: "VIP-6: the globals changed"},
+	}
+	if _, ok := findPending(entries, "FuzzX", "ek:EK4834/running-succeed"); !ok {
+		t.Error("a superseded ek:EK48* line does not match ek:EK4834/running-succeed")
+	}
+	if _, ok := findPending(entries, "FuzzX", "ek:EK4401"); ok {
+		t.Error("a compiler line's * matched a key; only a superseded key is a prefix")
+	}
+	if _, ok := findPending(entries, "FuzzY", "ek:EK4834"); ok {
+		t.Error("a superseded line matched another target")
+	}
+	var skipped *testing.T
+	t.Run("gap", func(t *testing.T) {
+		skipped = t
+		gapIn(t, entries, "FuzzX", "ek:EK4834", "the old rule disagrees")
+	})
+	if !skipped.Skipped() {
+		t.Error("a superseded gap did not skip")
+	}
+	t.Run("no-xpass", func(t *testing.T) {
+		expectPending(t, entries, "FuzzX", "corpus:old")
+	})
+	for reason, want := range map[string]bool{
+		"VIP-6: effectGlobals turns the globals off": true,
+		"VIP-8: using was denied":                    false,
+		"VIP-999: no such proposal":                  false,
+		"the globals changed":                        false,
+	} {
+		if got := supersededProblem(PendingEntry{Reason: reason}) == ""; got != want {
+			t.Errorf("supersededProblem(%q) accepts it: %v, want %v", reason, got, want)
+		}
+	}
 }
 
 var ekKey = regexp.MustCompile(`^ek:EK(\d{4})(/.+)?$`)

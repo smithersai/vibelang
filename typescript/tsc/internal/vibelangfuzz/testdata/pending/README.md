@@ -22,4 +22,16 @@ that part of the specification yet. See `pending.go`.
 - A hang's reproduction (a reason that starts with `hang`) is skipped by its
   target. `TestPendingHangs` runs it in a child process with a deadline and
   fails as XPASS when it finishes.
+- A VIP can replace the rule an oracle checks. Then the owner is
+  `superseded` and the reason starts with that VIP:
+
+  ```text
+  FuzzConfig  ek:EK4834  superseded  VIP-6: effectGlobals turns the Effect globals off
+  ```
+
+  The oracle skips for good and never fails as XPASS. A superseded key, and
+  only a superseded key, may end in `*` to cover every key with that prefix,
+  such as `ek:EK48*`. The VIP must be accepted in `docs/design/vips/`. Retiring
+  an oracle whose rule a VIP replaced is not weakening it; rewrite or delete
+  the oracle once its new rule is in the specification, and delete the line.
 - `TestPendingLines` checks all of this.

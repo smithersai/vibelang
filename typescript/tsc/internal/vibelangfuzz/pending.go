@@ -27,6 +27,16 @@ import (
 // line in the commit that fixes it. A generator leaves pending features out
 // unless VIBELANG_FUZZ_PENDING=1, so a campaign finds new bugs instead of the
 // known ones.
+//
+// A VIP can replace the rule an oracle checks. The owner "superseded" turns
+// such an oracle off for good, with the VIP that replaced its rule:
+//
+//	FuzzConfig  ek:EK4834  superseded  VIP-6: effectGlobals turns the globals off
+//
+// A superseded key skips like a pending one but never fails as XPASS, since
+// the old rule no longer says what should happen. Only a superseded key may
+// end in "*", which matches every key with that prefix. Rewrite or delete the
+// oracle when its new rule is in the specification, and delete the line then.
 
 // A PendingEntry is one line of a file in testdata/pending/.
 type PendingEntry struct {
@@ -69,14 +79,28 @@ func repoTestdata() string {
 	return filepath.Join(Root(), "typescript/tsc/internal/vibelangfuzz/testdata")
 }
 
+// Superseded is the owner of a line whose oracle a VIP replaced.
+const Superseded = "superseded"
+
 // Pending returns the pending entry of a target's key.
 func Pending(target, key string) (PendingEntry, bool) {
 	entries, err := pendingEntries()
 	if err != nil {
 		panic(err)
 	}
+	return findPending(entries, target, key)
+}
+
+// findPending returns the entry of a target's key: its own line, or else a
+// superseded line whose key ends in "*" and prefixes it.
+func findPending(entries []PendingEntry, target, key string) (PendingEntry, bool) {
 	for _, entry := range entries {
 		if entry.Target == target && entry.Key == key {
+			return entry, true
+		}
+	}
+	for _, entry := range entries {
+		if prefix, ok := strings.CutSuffix(entry.Key, "*"); ok && entry.Owner == Superseded && entry.Target == target && strings.HasPrefix(key, prefix) {
 			return entry, true
 		}
 	}
@@ -103,21 +127,43 @@ func PendingFeatures(target string) map[string]PendingEntry {
 }
 
 // Gap reports that the compiler disagrees with the specification. A pending
-// key skips with its owner; any other key fails.
+// key skips with its owner, a superseded key with its VIP; any other key
+// fails.
 func Gap(t testing.TB, target, key, format string, args ...any) {
 	t.Helper()
-	failure := fmt.Sprintf(format, args...)
-	if entry, ok := Pending(target, key); ok {
+	entries, err := pendingEntries()
+	if err != nil {
+		panic(err)
+	}
+	gapIn(t, entries, target, key, fmt.Sprintf(format, args...))
+}
+
+func gapIn(t testing.TB, entries []PendingEntry, target, key, failure string) {
+	t.Helper()
+	if entry, ok := findPending(entries, target, key); ok {
+		if entry.Owner == Superseded {
+			t.Skipf("superseded by %s\n%s", entry.Reason, failure)
+		}
 		t.Skipf("pending (%s): %s\n%s", entry.Owner, entry.Reason, failure)
 	}
 	t.Fatalf("%s %s: %s", target, key, failure)
 }
 
 // ExpectPending fails a pending corpus input that now passes. Call it after
-// every oracle of the input held.
+// every oracle of the input held. A superseded input never fails here: the
+// rule it was pending on is gone.
 func ExpectPending(t testing.TB, target, key string) {
 	t.Helper()
-	if entry, ok := Pending(target, key); ok {
+	entries, err := pendingEntries()
+	if err != nil {
+		panic(err)
+	}
+	expectPending(t, entries, target, key)
+}
+
+func expectPending(t testing.TB, entries []PendingEntry, target, key string) {
+	t.Helper()
+	if entry, ok := findPending(entries, target, key); ok && entry.Owner != Superseded {
 		t.Fatalf("XPASS %s %s: it now meets the specification; delete its line in testdata/pending/ (%s: %s)", target, key, entry.Owner, entry.Reason)
 	}
 }
