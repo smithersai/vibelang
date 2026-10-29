@@ -7,7 +7,7 @@ A `PubSub` broadcasts values to independent subscribers: each active subscriber 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try broadcast()))
-effect broadcast() {
+effect function broadcast() {
   const hub = try PubSub.bounded<string>(4)
   return try ensuring(scoped(effect {
     const display = try PubSub.subscribe(hub)
@@ -18,7 +18,7 @@ effect broadcast() {
 }
 // Returns ["deployment complete", "deployment complete"].
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: ["deployment complete","deployment complete"]
@@ -31,7 +31,7 @@ Subscribe before publishing a message that must be received: without replay conf
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: const hubs = try makeHubs(); try Console.log(PubSub.capacity(hubs.reliable), PubSub.capacity(hubs.bestEffort), PubSub.capacity(hubs.latest), PubSub.capacity(hubs.unlimited)); for (const hub of Object.values(hubs)) { try PubSub.shutdown(hub) }
-effect makeHubs() {
+effect function makeHubs() {
   return {
     reliable: try PubSub.bounded<string>(64),
     bestEffort: try PubSub.dropping<string>(64),
@@ -49,7 +49,7 @@ When the buffer is full, a bounded hub backpressures publishers, so a slow subsc
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const hub = try PubSub.bounded<string>(2); const listener = try forkChild(listen(hub), { startImmediately: true }); try PubSub.publish(hub, "ready"); try Fiber.join(listener); try PubSub.shutdown(hub)
-effect listen(hub: PubSub.PubSub<string>) {
+effect function listen(hub: PubSub.PubSub<string>) {
   try scoped(effect {
     const subscription = try PubSub.subscribe(hub)
     const message = try PubSub.take(subscription)
@@ -68,7 +68,7 @@ In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and t
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try batch()))
-effect batch() {
+effect function batch() {
   const hub = try PubSub.bounded<string>(3)
   return try ensuring(scoped(effect {
     const subscription = try PubSub.subscribe(hub)
@@ -87,7 +87,7 @@ effect batch() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try inspect()))
-effect inspect() {
+effect function inspect() {
   const hub = try PubSub.bounded<number>(5)
   return try ensuring(scoped(effect {
     const subscriber = try PubSub.subscribe(hub)
@@ -110,7 +110,7 @@ Capacity is a plain value; size and fullness queries return Effects that run wit
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try ownHub())
-effect ownHub() {
+effect function ownHub() {
   const hub = try PubSub.bounded<string>(8)
   try ensuring(scoped(effect {
     const subscriber = try PubSub.subscribe(hub)

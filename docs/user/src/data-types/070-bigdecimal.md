@@ -50,7 +50,7 @@ error InvalidPrice {
   input: string
 }
 
-effect parsePrice(input: string) {
+effect function parsePrice(input: string) {
   return match (BigDecimal.fromString(input)) {
     when Option.Some(let price): price;
     when Option.None: throw new InvalidPrice({ input });

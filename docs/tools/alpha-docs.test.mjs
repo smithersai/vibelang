@@ -16,7 +16,7 @@ test("1: onboarding explains calls into local TypeScript and npm at the boundary
     assert.match(text, /114-vibelang-for-effect-users/)
     assert.match(text, /012-devtools/)
     // A function that may throw is wrapped with Effect's own Effect.try and run with try (VIP-4, VIP-5).
-    assert.match(text, /import \{ parseSettings \} from "\.\/settings\.ts"\nerror BadSettings \{ cause: unknown \}\n\neffect settings\(text: string\) \{\n  return try Effect\.try\(/)
+    assert.match(text, /import \{ parseSettings \} from "\.\/settings\.ts"\nerror BadSettings \{ cause: unknown \}\n\neffect function settings\(text: string\) \{\n  return try Effect\.try\(/)
   }
 })
 

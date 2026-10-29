@@ -15,7 +15,7 @@ service Products {
   price(sku: string): number!MissingProduct
 }
 
-effect makePrices() {
+effect function makePrices() {
   const products = try Products
   return try Cache.make({
     capacity: 200,
@@ -34,7 +34,7 @@ The default cache captures lookup services when created. `try Cache.get(cache, s
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(JSON.stringify(try concurrentLookup()))
-effect concurrentLookup() {
+effect function concurrentLookup() {
   let calls = 0
   const cache = try Cache.make({
     capacity: 10,
@@ -62,7 +62,7 @@ Requests for the same missing key wait on one computation without blocking the J
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: const names = try makePermanentNames(); try Console.log(try Cache.get(names, "ink")); try Console.log(try Cache.get(names, "blue"))
-effect makePermanentNames() {
+effect function makePermanentNames() {
   return try Cache.make({
     capacity: 50,
     timeToLive: Duration.infinity,
@@ -80,7 +80,7 @@ Capacity bounds entries, not bytes; eviction keeps recently used entries over ol
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try inspect()))
-effect inspect() {
+effect function inspect() {
   const cache = try Cache.make({ capacity: 5, lookup: (key: string) => succeed(key.length) })
   try Cache.get(cache, "paper")
   return {
@@ -100,7 +100,7 @@ effect inspect() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try refreshExample()))
-effect refreshExample() {
+effect function refreshExample() {
   let version = 0
   const cache = try Cache.make({
     capacity: 5,

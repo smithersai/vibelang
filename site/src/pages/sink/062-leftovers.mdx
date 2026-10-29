@@ -10,7 +10,7 @@ Leftovers are elements of a batch that a sink received but had not consumed when
 ## Collecting leftover elements
 
 ```vibe
-effect inspectRemainder() {
+effect function inspectRemainder() {
   const source = Stream.fromArray([21, 34, 55, 89])
   const sink = Sink.mapEnd(Sink.take<number>(2), ([selected, leftover]) => [
     { selected, leftover: leftover ?? [] }
@@ -24,7 +24,7 @@ effect inspectRemainder() {
 `Sink.mapEnd` receives `[result, optionalLeftoverBatch]` and returns another such tuple. A one-element tuple moves the leftovers into the success result, leaving no separate leftover batch; `try Stream.run(source, sink)` returns that result.
 
 ```vibe
-effect inspectSmallBatches() {
+effect function inspectSmallBatches() {
   const source = Stream.rechunk(Stream.fromArray([21, 34, 55, 89]), 2)
   const sink = Sink.mapEnd(Sink.head<number>(), ([first, leftover]) => [
     { first, leftover: leftover ?? [] }
@@ -40,7 +40,7 @@ Here `55` and `89` are in a batch the sink never requests, so the leftovers you 
 ## Explicitly discarding leftovers
 
 ```vibe
-effect discardRemainder() {
+effect function discardRemainder() {
   const sink = Sink.take<number>(2).pipe(
     Sink.ignoreLeftover,
     Sink.mapEnd(([selected, leftover]) => [

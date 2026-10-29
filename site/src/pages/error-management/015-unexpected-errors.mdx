@@ -11,7 +11,7 @@ Defects report bugs and broken invariants, outside the typed error contract. Dom
 ## Creating defects
 
 ```vibe
-effect decodeOpcode(opcode: number) {
+effect function decodeOpcode(opcode: number) {
   if (opcode !== 1) try die(new Error("unknown internal opcode"))
   return "start"
 }
@@ -28,7 +28,7 @@ true
 An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. In a plain or async function, `throw` is JavaScript's. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure, or with `sync` to make it a defect.
 
 ```vibe
-effect firstLabel(labels: ReadonlyArray<string>) {
+effect function firstLabel(labels: ReadonlyArray<string>) {
   return fromOption(Option.fromNullishOr(labels[0])) catch "No label"
 }
 ```
@@ -47,16 +47,16 @@ error MissingSetting {
   name: string
 }
 
-effect requireSetting(name: string) {
+effect function requireSetting(name: string) {
   throw new MissingSetting({ name })
 }
 
-effect startup() {
+effect function startup() {
   return try orDie(requireSetting("region"))
 }
 // never!!
 
-effect startupWithMessage() {
+effect function startupWithMessage() {
   return try orDie(
     mapError(requireSetting("region"), (error) => new Error(`Startup needs ${error.name}`))
   )
@@ -73,7 +73,7 @@ true
 ## Examining complete execution results
 
 ```vibe
-effect inspectStartup() {
+effect function inspectStartup() {
   const outcome = try exit(startup())
   if (Exit.isFailure(outcome)) {
     return Cause.hasDies(outcome.cause) ? "startup defect" : "startup stopped"
@@ -93,7 +93,7 @@ An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs on
 ## Recovering defects at a boundary
 
 ```vibe
-effect isolateDecoder(opcode: number) {
+effect function isolateDecoder(opcode: number) {
   return try catchDefect(decodeOpcode(opcode), effect (defect) => {
     if (defect instanceof Error && defect.message === "unknown internal opcode") {
       try Console.log("Decoder disabled after an invariant failure")
@@ -115,7 +115,7 @@ disabled
 ## Recovering a complete cause
 
 ```vibe
-effect decoderBoundary(opcode: number) {
+effect function decoderBoundary(opcode: number) {
   const outcome = try exit(decodeOpcode(opcode))
   if (outcome is Exit.Success(let value)) return value
   const cause = outcome.cause

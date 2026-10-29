@@ -10,7 +10,7 @@
 const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
 
-effect reportConfiguration() {
+effect function reportConfiguration() {
   try Console.log(JSON.stringify({ apiKey: exampleKey }))
 }
 ```
@@ -32,7 +32,7 @@ service CredentialsClient {
   authenticate(token: string): boolean!!
 }
 
-effect authenticate(token: Redacted.Redacted<string>) {
+effect function authenticate(token: Redacted.Redacted<string>) {
   const client = try CredentialsClient
   const raw = try Effect.try(() => Redacted.value(token))
   return try client.authenticate(raw)
@@ -51,7 +51,7 @@ true false
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }; const wiped = Redacted.make("example-token"); Redacted.wipeUnsafe(wiped); const failed = try exit(Effect.try(() => Redacted.value(wiped))); try Console.log(Exit.isFailure(failed), String(wiped))
-effect useOnce(raw: string) {
+effect function useOnce(raw: string) {
   const token = Redacted.make(raw)
   return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
 }

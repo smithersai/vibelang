@@ -10,7 +10,7 @@ VibeLang reaches files, paths, processes, HTTP, randomness, and terminals throug
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
-export effect main() {
+export effect function main() {
   try scoped(effect {
     const fs = try FileSystem
     const path = try Path
@@ -73,14 +73,14 @@ All three module names below are in scope without imports.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
-effect requestJson(url: string) {
+effect function requestJson(url: string) {
   provide FetchHttpClient.layer {
     const response = try HttpClient.get(url)
     return try response.json
   }
 }
 
-export effect main() {
+export effect function main() {
   try Console.log(try requestJson("https://jsonplaceholder.typicode.com/todos/1"))
 }
 
@@ -117,7 +117,7 @@ TypeScript runner.
 // greeting.vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed("  Hello, VibeLang!\n") }) { try greet() }
-export effect greet() {
+export effect function greet() {
   const fs = try FileSystem
   const greeting = try fs.readFileString("./greeting.txt")
   try Console.log(greeting.trim())
@@ -136,7 +136,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { greet } from "./greeting.vibe"
 
-effect main() {
+effect function main() {
   const fs = try FileSystem
   try fs.writeFileString("./greeting.txt", "Hello, VibeLang!")
   try greet()
@@ -159,7 +159,7 @@ import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
 import { greet } from "./greeting.vibe"
 
-effect main() {
+effect function main() {
   const fs = try FileSystem
   try fs.writeFileString("./greeting.txt", "Hello, VibeLang!")
   try greet()
@@ -178,7 +178,7 @@ Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser p
 ```vibe
 // app.vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
-export effect main() {
+export effect function main() {
   const crypto = try Experimental.Crypto
   const encoder = new TextEncoder()
   const mac = try crypto.hmac("SHA-256", Redacted.make(encoder.encode("key")), encoder.encode("hello"))

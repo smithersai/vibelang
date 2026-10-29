@@ -15,12 +15,12 @@ error InvalidQuantity {
   value: number
 }
 
-effect quantity(value: number) {
+effect function quantity(value: number) {
   if (value < 1) throw new InvalidQuantity({ value })
   return value
 }
 
-effect publicQuantity(value: number) {
+effect function publicQuantity(value: number) {
   return try mapError(
     quantity(value),
     (error) => `Quantity must be positive: ${error.value}`
@@ -28,7 +28,7 @@ effect publicQuantity(value: number) {
 }
 // number!string!
 
-effect quantityMessage(value: number) {
+effect function quantityMessage(value: number) {
   return try mapBoth(quantity(value), {
     onFailure: (error) => `Rejected quantity ${error.value}`,
     onSuccess: (count) => `${count} units`
@@ -53,7 +53,7 @@ These combinators keep Effect's own policy: `mapError` maps every expected failu
 ## Rejecting successes with a predicate
 
 ```vibe
-effect boundedQuantity(value: number) {
+effect function boundedQuantity(value: number) {
   return try filterOrFail(
     quantity(value),
     (count) => count <= 20,
@@ -61,7 +61,7 @@ effect boundedQuantity(value: number) {
   )
 }
 
-effect cappedQuantity(value: number) {
+effect function cappedQuantity(value: number) {
   return try filterOrElse(
     quantity(value),
     (count) => count <= 20,
@@ -84,14 +84,14 @@ The statement form is an `if` followed by `throw`. Neither form changes the sour
 ## Observing errors, tags, causes, and defects
 
 ```vibe
-effect observeQuantity(value: number) {
+effect function observeQuantity(value: number) {
   const logged = tapError(quantity(value), (error) => Console.log(`Rejected quantity ${error.value}`))
   const tagged = tapErrorTag(logged, "InvalidQuantity", () => Console.log("Quantity validation failed"))
   return try tapCause(tagged, (cause) =>
     Console.log("Failure kinds", JSON.stringify(cause.reasons.map((reason) => reason._tag))))
 }
 
-effect observeDefect() {
+effect function observeDefect() {
   return try tapDefect(
     die(new Error("inventory invariant")),
     () => Console.log("Inventory defect recorded")
@@ -116,7 +116,7 @@ A failing observation can change the resulting cause, so observe with code that 
 ## Exposing failures as successes
 
 ```vibe
-effect inspectQuantity(value: number) {
+effect function inspectQuantity(value: number) {
   const outcome = try result(quantity(value))
   const summary = Result.match(outcome, {
     onFailure: () => "Rejected",
@@ -126,7 +126,7 @@ effect inspectQuantity(value: number) {
   return { summary, completed: Exit.isSuccess(completed) }
 }
 
-effect quantityOrErrorValue(value: number) {
+effect function quantityOrErrorValue(value: number) {
   return quantity(value) catch (error) => error
 }
 // (number | InvalidQuantity)!!
@@ -144,7 +144,7 @@ InvalidQuantity
 ## Swapping channels
 
 ```vibe
-effect rejectedQuantity() {
+effect function rejectedQuantity() {
   return try flip(quantity(0))
 }
 // InvalidQuantity!number!

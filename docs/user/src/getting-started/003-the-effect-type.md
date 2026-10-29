@@ -15,7 +15,7 @@ service Rates {
   lookup(currency: string): number!MissingRate
 }
 
-effect convert(amount: number, currency: string) {
+effect function convert(amount: number, currency: string) {
   const rates = try Rates
   return amount * (try rates.lookup(currency))
 }
@@ -40,17 +40,17 @@ Inferred errors and services are unions: running the same Effect more than once 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(safeRate("EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
-effect rateOf(currency: string): number!MissingRate!Rates {
+effect function rateOf(currency: string): number!MissingRate!Rates {
   const rates = try Rates
   return try rates.lookup(currency)
 }
 
-effect safeRate(currency: string): number!!Rates {
+effect function safeRate(currency: string): number!!Rates {
   const rates = try Rates
   return try orDie(rates.lookup(currency))
 }
 
-effect anyRate(currency: string) {
+effect function anyRate(currency: string) {
   const rates = try Rates
   return try rates.lookup(currency)
 }
@@ -67,25 +67,25 @@ Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(checkedConversion(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
-effect rate(currency: string): Effect<number, MissingRate, Rates> {
+effect function rate(currency: string): Effect<number, MissingRate, Rates> {
   const rates = try Rates
   return try rates.lookup(currency)
 }
 // Checks number, MissingRate, and Rates.
 
-effect rateOrDie(currency: string): Effect<number, never, Rates> {
+effect function rateOrDie(currency: string): Effect<number, never, Rates> {
   const rates = try Rates
   return try orDie(rates.lookup(currency))
 }
 // Checks number, never, and Rates.
 
-effect label(currency: string): Effect<string, MissingRate, Rates> {
+effect function label(currency: string): Effect<string, MissingRate, Rates> {
   const rates = try Rates
   return (try rates.lookup(currency)).toFixed(2)
 }
 // Checks string, MissingRate, and Rates.
 
-effect checkedConversion(amount: number, currency: string) {
+effect function checkedConversion(amount: number, currency: string) {
   return try convert(amount, currency)
 }
 // Infers number, MissingRate, and Rates.
@@ -96,7 +96,7 @@ A return annotation checks the complete Effect type. Leave it out to infer all t
 
 The `effect` keyword decides the function's kind. Plain functions and `async` functions keep TypeScript's meaning, regardless of their return annotations. A plain callback can return an Effect without running it, so `xs.map((x) => work(x))` builds an array of Effects. A callback that must run Effects uses `effect`, as in `forEach(xs, effect (x) => { return try work(x) })`.
 
-Recursion is as stack-safe as it is with `Effect.gen`. `effect sumTo(n: number): number!! { return n === 0 ? 0 : n + (try sumTo(n - 1)) }` runs each recursive Effect with `try`; `try sumTo(100000)` succeeds. Plain JavaScript recursion retains JavaScript's stack limit. Recursion through a synchronous callback recurses as JavaScript does: past roughly 10,000 calls on Node it fails with a `RangeError` defect.
+Recursion is as stack-safe as it is with `Effect.gen`. `effect function sumTo(n: number): number!! { return n === 0 ? 0 : n + (try sumTo(n - 1)) }` runs each recursive Effect with `try`; `try sumTo(100000)` succeeds. Plain JavaScript recursion retains JavaScript's stack limit. Recursion through a synchronous callback recurses as JavaScript does: past roughly 10,000 calls on Node it fails with a `RangeError` defect.
 
 The shorthand has the same meaning in parameter types, aliases, service members, and return annotations. A callback parameter type means what TypeScript means: `(n: number) => string` is a plain callback, and one returning an Effect is `(n: number) => string!E!R`, with `E` and `R` declared as the function's type parameters.
 
@@ -107,7 +107,7 @@ The shorthand has the same meaning in parameter types, aliases, service members,
 // run: try Console.log(try Effect.provide(displayedPrice(), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 const conversion = convert(30, "EUR")
 
-effect displayedPrice() {
+effect function displayedPrice() {
   const amount = try conversion
   return amount.toFixed(2)
 }
@@ -126,7 +126,7 @@ An Effect value such as `Clock.currentTimeMillis` is a description; `try Clock.c
 // convert.vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try double(30))
-export effect double(amount: number) {
+export effect function double(amount: number) {
   return amount * 2
 }
 // number!!

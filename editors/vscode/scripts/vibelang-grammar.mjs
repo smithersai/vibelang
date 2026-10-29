@@ -16,7 +16,7 @@
 //   module text { ...TypeScript... }       import { clean } from text
 //
 // The VIP forms (docs/design/vips/):
-//   export effect load(id) { ... }   effect function* ticks() { ... }   async get(url) { ... }
+//   export effect function load(id) { ... }   effect function* ticks() { ... }   (VIP-39: effect goes where async goes)
 //   { effect find(id) { ... } }      effect (x) => ...                  effect { ... }
 //   const user = try getUser(id)     try.all [a(), b()]                 x catch effect (e) => ...
 //   fork.in(scope) w()   fork.scoped w()   fork.detached w()            for try (const x of s) { ... }
@@ -62,20 +62,9 @@ function addEffectModifier(rule) {
 
 export function addVibeLangSyntax(grammar) {
   const { repository } = grammar
+  // VIP-39 removed the top-level shorthand declaration.
+  delete repository["vibelang-function-shorthand"]
   for (const key of Object.keys(repository)) if (!key.startsWith("vibelang-")) repository[key] = addEffectModifier(repository[key])
-  // The shorthand declaration, effect load(id) { ... } or async get(url) { ... },
-  // is TypeScript's function declaration without the function keyword.
-  const declarationRule = repository["function-declaration"]
-  repository["vibelang-function-shorthand"] = {
-    ...declarationRule,
-    begin: `${start}(?:(\\bdefault)\\s+)?(async|effect)\\s+(?!function\\b)(${name})(?=\\s*[<(])`,
-    beginCaptures: {
-      1: { name: "keyword.control.export.ts" },
-      2: { name: "keyword.control.default.ts" },
-      3: { name: "storage.modifier.async.ts" },
-      4: { name: "meta.definition.function.ts entity.name.function.ts" }
-    }
-  }
   // effect { ... } builds an Effect from statements (VIP-2).
   repository["vibelang-effect-block"] = {
     match: "(?<![_$[:alnum:].])(effect)(?=[ \t]*\\{)",
@@ -301,7 +290,7 @@ export function addVibeLangSyntax(grammar) {
     match: `(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))\\b(import)\\s+${specifier}`,
     captures: { 1: { name: "keyword.control.import.ts" }, 2: { name: "entity.name.type.module.ts" } }
   }
-  const vibelangIncludes = ["#vibelang-function-shorthand", "#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-layer-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
+  const vibelangIncludes = ["#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-layer-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
   const statements = repository.statements.patterns.filter((pattern) => !vibelangIncludes.includes(pattern.include))
   repository.statements.patterns = [...vibelangIncludes.map((include) => ({ include })), ...statements]
   const vibelangExpressions = ["#vibelang-try-operation", "#vibelang-try-expression", "#vibelang-effect-block", "#vibelang-fork-form", "#vibelang-pipe", "#vibelang-await-operation", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]

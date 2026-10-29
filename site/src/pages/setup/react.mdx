@@ -77,7 +77,7 @@ export const UsersLive = Layer.succeed(Users, {
   }
 })
 
-export effect greet(id: string) {
+export effect function greet(id: string) {
   const users = try Users
   return effect {
     const user = try users.find(id)

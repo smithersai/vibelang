@@ -12,7 +12,7 @@ const CountFromText = Schema.FiniteFromString.check(
 )
 const CountValue = Schema.toType(CountFromText)
 
-effect inspectCount(input: unknown) {
+effect function inspectCount(input: unknown) {
   return try Schema.decodeUnknownEffect(CountValue)(input)
 }
 // Accepts 4. Rejects "4", 0, and 1.5.
@@ -37,7 +37,7 @@ const Name = Schema.String.check(Schema.isMinLength(3)).pipe(
 )
 const NameInput = Schema.toEncoded(Name)
 
-effect inspectWireName(input: unknown) {
+effect function inspectWireName(input: unknown) {
   return try Schema.decodeUnknownEffect(NameInput)(input)
 }
 // " x " passes unchanged: it has length 3 before trimming.
@@ -61,7 +61,7 @@ const ParcelCount = Schema.String.check(Schema.isMinLength(2)).pipe(
 const TextOnly = Schema.toEncoded(ParcelCount)
 const NumberOnly = Schema.toType(ParcelCount)
 
-effect compareViews() {
+effect function compareViews() {
   const text = try Schema.decodeUnknownEffect(TextOnly)("00") // "00"
   const count = try Schema.decodeUnknownEffect(NumberOnly)(8) // 8
   return { text, count }

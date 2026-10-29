@@ -15,7 +15,7 @@ The core package supplies Effect's data types, schedules, concurrency tools, and
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(Number.isFinite(try pauseBeforeRetry()))
-effect pauseBeforeRetry() {
+effect function pauseBeforeRetry() {
   const started = try Clock.currentTimeMillis
   try sleep(Duration.millis(25))
   return started
@@ -92,13 +92,13 @@ Assigning a module stores its namespace: `const fs = FileSystem`. To call implem
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) { try Console.log(try readConfig("/srv")); try Console.log(firstOr(Chunk.empty(), 7)) }
-effect readConfig(dir: string) {
+effect function readConfig(dir: string) {
   const fs = try FileSystem
   const path = try Path
   return try fs.readFileString(path.join(dir, "config.json"))
 }
 
-effect hasConfig(fs: FileSystem.FileSystem, dir: string) {
+effect function hasConfig(fs: FileSystem.FileSystem, dir: string) {
   const path = try Path
   return try fs.exists(path.join(dir, "config.json"))
 }
@@ -153,11 +153,11 @@ VibeLang's global names are source conveniences: they refer to Effect and langua
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try example())
-effect withinSecond<A, E, R>(program: A!E!R) {
+effect function withinSecond<A, E, R>(program: A!E!R) {
   return try timeout(program, "1 second")
 }
 
-effect example() {
+effect function example() {
   return try withinSecond(effect {
     try sleep("10 millis")
     return "ready"

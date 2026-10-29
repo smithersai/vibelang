@@ -13,7 +13,7 @@ const signal = Stream.succeed(void 0)
 const pages = Stream.range(4, 7)
 const powers = Stream.take(Stream.iterate(2, (n) => n * 2), 4)
 
-effect readPowers() {
+effect function readPowers() {
   return try Stream.runCollect(powers) // [2, 4, 8, 16]
 }
 // Output: [["queued","running","complete"],[],1,[4,5,6,7],[2,4,8,16]]
@@ -31,7 +31,7 @@ error SourceClosed
 const ready = Stream.succeed("ready")
 const closed = Stream.fail(new SourceClosed())
 
-effect readClosed() {
+effect function readClosed() {
   return Stream.runCollect(closed) catch (error) => match (error) {
     when SourceClosed: ["source unavailable"]
   }
@@ -114,7 +114,7 @@ const notices = Stream.callback<string>(effect (queue) => {
   try Queue.end(queue)
 })
 
-effect readNotices() {
+effect function readNotices() {
   return try Stream.runCollect(notices) // ["connected", "ready"]
 }
 // Output: [[123],["connected","ready"]]
@@ -129,7 +129,7 @@ For a foreign event API, register the raw callback in a TypeScript adapter and r
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Stream.runCollect(sessionNames); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect openSession() {
+effect function openSession() {
   try Console.log("open session")
   return try acquireRelease(
     succeed({ name: "metrics" }),
@@ -157,7 +157,7 @@ const pings = Stream.forever(Stream.succeed("ping"))
 const rounds = Stream.repeat(Stream.make("start", "finish"), Schedule.recurs(2))
 const times = Stream.fromEffectRepeat(Clock.currentTimeMillis)
 
-effect countdown() {
+effect function countdown() {
   let remaining = 3
   const source = Stream.fromEffectRepeat(effect {
     if (remaining === 0) try Cause.done()
@@ -179,7 +179,7 @@ Keep mutable per-run state inside a function, as in `countdown`, so consumptions
 // run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { { const jsonValue = try collectSamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const samples = Stream.mapEffect(Stream.tick("250 millis"), () => Clock.currentTimeMillis)
 
-effect collectSamples() {
+effect function collectSamples() {
   return try Stream.runCollect(Stream.take(samples, 4))
 }
 // Output: [123,123,123,123]
@@ -219,7 +219,7 @@ const names = Stream.paginate(0, effect (cursor) => {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try queuedNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const bus = try PubSub.unbounded<string>({ replay: 1 }); try PubSub.publish(bus, "broadcast"); { const jsonValue = try Stream.runCollect(Stream.take(fromBroadcast(bus), 1)); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect queuedNumbers() {
+effect function queuedNumbers() {
   const queue = try Queue.unbounded<number, Cause.Done>()
   try Queue.offer(queue, 8)
   try Queue.offer(queue, 13)
@@ -244,7 +244,7 @@ function fromBroadcast(bus: PubSub.PubSub<string>) {
 const policy = Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 3 }))
 const pulses = Stream.fromSchedule(policy)
 
-effect readPulses() {
+effect function readPulses() {
   return try Stream.runCollect(pulses) // [0, 1, 2]
 }
 // Output: [0,1,2]

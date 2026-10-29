@@ -10,7 +10,7 @@ A schedule decides when work runs again and when it stops. `Schedule` values wor
 ## Repeating successful computations
 
 ```vibe
-effect heartbeat() {
+effect function heartbeat() {
   try repeat(
     Console.log("worker available"),
     Schedule.spaced("15 seconds")
@@ -27,7 +27,7 @@ effect heartbeat() {
 ## Stopping based on a result
 
 ```vibe
-effect waitForBuild() {
+effect function waitForBuild() {
   let checks = 0
   const status = try repeat(effect {
     checks++
@@ -48,7 +48,7 @@ The initial check is separate from the seven permitted repetitions, so the loop 
 ## Delaying the initial run
 
 ```vibe
-effect delayedCleanup() {
+effect function delayedCleanup() {
   try schedule(
     Console.log("sweeping expired sessions"),
     Schedule.spaced("30 minutes")
@@ -66,7 +66,7 @@ effect delayedCleanup() {
 ```vibe
 error Busy
 
-effect reserveSlot() {
+effect function reserveSlot() {
   let attempts = 0
   return try retry(effect {
     attempts++
@@ -89,7 +89,7 @@ service Sensor {
   read(): number!SensorOffline
 }
 
-effect sampleContinuously() {
+effect function sampleContinuously() {
   try repeat(effect {
     const sample = effect {
       const sensor = try Sensor

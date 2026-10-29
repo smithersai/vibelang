@@ -7,7 +7,7 @@ A `Queue` passes values between fibers, delivering each offered value to one con
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const queues = try chooseQueues(); try Console.log(queues.jobs.capacity, queues.optionalEvents.capacity, queues.recentPositions.capacity, queues.unrestricted.capacity)
-effect chooseQueues() {
+effect function chooseQueues() {
   const jobs = try Queue.bounded<string>(32)
   const optionalEvents = try Queue.dropping<string>(32)
   const recentPositions = try Queue.sliding<number>(32)
@@ -15,7 +15,7 @@ effect chooseQueues() {
   return { jobs, optionalEvents, recentPositions, unrestricted }
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: 32 32 32 Infinity
@@ -28,7 +28,7 @@ When full, a bounded queue suspends offers until consumers free space, a droppin
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-17
 // run: try Console.log(try stringify([try offerWithBackpressure(), try rejectedBatch()]))
-effect offerWithBackpressure() {
+effect function offerWithBackpressure() {
   const queue = try Queue.bounded<number>(1)
   try Queue.offer(queue, 10)
   const secondOffer = fork Queue.offer(queue, 20)
@@ -38,7 +38,7 @@ effect offerWithBackpressure() {
   return [first, second] // [10, 20]
 }
 
-effect rejectedBatch() {
+effect function rejectedBatch() {
   const queue = try Queue.dropping<number>(2)
   return try Queue.offerAll(queue, [10, 20, 30]) // [30]
 }
@@ -52,7 +52,7 @@ effect rejectedBatch() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: const result = try consumeBatches(); try Console.log(try stringify([result.first, Option.getOrElse(result.optional, () => 0), result.pair, result.batch, result.empty]))
-effect consumeBatches() {
+effect function consumeBatches() {
   const queue = try Queue.bounded<number>(8)
   try Queue.offerAll(queue, [1, 2, 3, 4, 5, 6])
   const first = try Queue.take(queue)            // 1
@@ -72,7 +72,7 @@ effect consumeBatches() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try stringify(try inspectQueue()))
-effect inspectQueue() {
+effect function inspectQueue() {
   const queue = try Queue.bounded<string>(2)
   try Queue.offer(queue, "task")
   return {
@@ -92,7 +92,7 @@ Size counts buffered messages; capacity is the configured limit. Both are observ
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try stringify(try finishNormally())); const stopped = try stopImmediately(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
-effect finishNormally() {
+effect function finishNormally() {
   const queue = try Queue.bounded<number, Cause.Done>(4)
   try Queue.offerAll(queue, [7, 8])
   try Queue.end(queue)
@@ -101,7 +101,7 @@ effect finishNormally() {
   return values // [7, 8]
 }
 
-effect stopImmediately() {
+effect function stopImmediately() {
   const queue = try Queue.bounded<number>(4)
   const waiter = fork ensuring(
     Queue.await(queue),
@@ -124,15 +124,15 @@ Ordinary block exit doesn't close a queue. When consumers and producers must sto
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try handoff())
-effect send(outbox: Queue.Enqueue<string>, message: string) {
+effect function send(outbox: Queue.Enqueue<string>, message: string) {
   return try Queue.offer(outbox, message)
 }
 
-effect receive(inbox: Queue.Dequeue<string>) {
+effect function receive(inbox: Queue.Dequeue<string>) {
   return try Queue.take(inbox)
 }
 
-effect handoff() {
+effect function handoff() {
   const queue = try Queue.bounded<string>(2)
   try send(Queue.asEnqueue(queue), "ready")
   return try receive(Queue.asDequeue(queue))

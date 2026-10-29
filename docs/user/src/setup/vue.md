@@ -98,7 +98,7 @@ export const TodosLive = Layer.effect(Todos, effect {
   }
 })
 
-export effect completeTodo(id: number) {
+export effect function completeTodo(id: number) {
   const todos = try Todos
   return effect {
     const todo = try todos.complete(id)
@@ -113,7 +113,7 @@ export interface Board {
   messages: ReadonlyArray<string>
 }
 
-export effect loadBoard(): Board!!Todos {
+export effect function loadBoard(): Board!!Todos {
   const messages = [try completeTodo(2), try completeTodo(99)]
   const todos = try Todos
   return { todos: try todos.list(), messages }

@@ -20,7 +20,7 @@ Sink constructors and operators that return Sinks build values; wrap any call th
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try parseHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect parseHeader() {
+effect function parseHeader() {
   const source = Stream.make("format-v2", "length-64", "payload")
   const header = Sink.take<string>(2)
   return try Stream.run(source, header)
@@ -37,7 +37,7 @@ effect parseHeader() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try headerWithLeftovers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect headerWithLeftovers() {
+effect function headerWithLeftovers() {
   const sink = Sink.mapEnd(Sink.take<string>(1), ([header, rest]) => [
     { header, rest: rest ?? [] }
   ] as const)

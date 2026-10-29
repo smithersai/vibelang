@@ -14,7 +14,7 @@ error ExportRejected {
   reason: string
 }
 
-effect inspectExport() {
+effect function inspectExport() {
   const outcome = try exit(effect {
     throw new ExportRejected({ reason: "empty selection" })
   })
@@ -91,7 +91,7 @@ An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a
 ## Relating exits to effects
 
 ```vibe
-effect replay<A, E>(outcome: Exit.Exit<A, E>) {
+effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome
 }
 // A!E!

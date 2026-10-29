@@ -37,7 +37,7 @@ Create `src/greet.vibe`:
 
 ```vibe
 // src/greet.vibe
-export effect greet(name: string) {
+export effect function greet(name: string) {
   return `Hello, ${name}!`
 }
 // Output: Hello, Vite!

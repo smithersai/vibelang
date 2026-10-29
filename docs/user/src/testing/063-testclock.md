@@ -28,7 +28,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-33
 import { assert, it } from "@effect/vitest"
 
-effect check(condition: boolean, message: string) {
+effect function check(condition: boolean, message: string) {
   try sync(() => assert.isTrue(condition, message))
 }
 
@@ -53,7 +53,7 @@ it.effect("a deadline returns the fallback", () => effect {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: try Console.log(try standaloneClockExample())
-effect standaloneClockExample() {
+effect function standaloneClockExample() {
   provide TestClock.layer() {
     try TestClock.setTime(5_000)
     try TestClock.adjust("2 seconds")
@@ -105,7 +105,7 @@ Use the `check` helper from the first example. Advancing to each boundary lets t
 // pending: VIP-1, VIP-2, VIP-5, VIP-14, VIP-33
 import { it } from "@effect/vitest"
 
-effect isExpired(createdAt: number, lifetimeMillis: number) {
+effect function isExpired(createdAt: number, lifetimeMillis: number) {
   return (try Clock.currentTimeMillis) - createdAt >= lifetimeMillis
 }
 

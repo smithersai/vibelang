@@ -57,7 +57,7 @@ for source maps, named spans and a debugging entry.
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])))
-effect main() {
+effect function main() {
   const label = "first program"
   try log(label)
   return label.length

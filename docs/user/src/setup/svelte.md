@@ -81,7 +81,7 @@ export const InventoryLive = Layer.succeed(Inventory, {
   }
 })
 
-export effect quote(sku: string, quantity: number) {
+export effect function quote(sku: string, quantity: number) {
   const inventory = try Inventory
   return effect {
     const product = try inventory.reserve(sku, quantity)
@@ -92,7 +92,7 @@ export effect quote(sku: string, quantity: number) {
   }
 }
 
-export effect quoteCart() {
+export effect function quoteCart() {
   return try.all [quote("tea", 2), quote("coffee", 3)]
 }
 ```

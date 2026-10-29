@@ -53,7 +53,7 @@ const serialized = DateTime.makeZonedFromString(
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide TestClock.layer() { try TestClock.setTime(0); try Console.log(try timestamp()) }
-effect timestamp() {
+effect function timestamp() {
   const now = try DateTime.now
   return DateTime.formatIso(now)
 }
@@ -98,7 +98,7 @@ const parsed = DateTime.zoneFromString("+09:00")
 const fixed = DateTime.zoneMakeOffset(9 * 60 * 60 * 1000)
 DateTime.zoneToString(fixed) // "+09:00"
 
-effect inTokyo() {
+effect function inTokyo() {
   const zone = try DateTime.zoneMakeNamedEffect("Asia/Tokyo")
   const now = try DateTime.now
   return DateTime.setZone(now, zone)
@@ -201,12 +201,12 @@ Calendar `add` and `subtract` change parts in the value's zone; duration arithme
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide TestClock.layer() { try TestClock.setTime(0); try Console.log(try main()) }
-effect localDate() {
+effect function localDate() {
   return DateTime.formatIsoDate(try DateTime.nowInCurrentZone)
 }
 // string!!DateTime.CurrentTimeZone
 
-effect main() {
+effect function main() {
   provide DateTime.layerCurrentZoneNamed("Asia/Tokyo") { return try localDate() }
 }
 ```

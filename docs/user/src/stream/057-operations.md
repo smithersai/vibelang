@@ -13,7 +13,7 @@ const below = Stream.takeWhile(observed, (n) => n < 13)
 const through = Stream.takeUntil(observed, (n) => n === 13)
 const last = Stream.takeRight(observed, 2)
 
-effect readFirst() {
+effect function readFirst() {
   return try Stream.runCollect(first) // [10, 11, 12]
 }
 // Output: reading 10
@@ -58,7 +58,7 @@ service Exporter {
   write(rows: AsyncIterable<string>): number!Error
 }
 
-effect exportRows(source: Stream.Stream<string>) {
+effect function exportRows(source: Stream.Stream<string>) {
   const rows = try Stream.toAsyncIterableEffect(source)
   const exporter = try Exporter
   return try exporter.write(rows)
@@ -71,7 +71,7 @@ effect exportRows(source: Stream.Stream<string>) {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try printBatches()
-effect printBatches() {
+effect function printBatches() {
   try scoped(effect {
     const pull = try Stream.toPull(Stream.rechunk(Stream.range(30, 34), 2))
     while (true) {
@@ -93,7 +93,7 @@ effect printBatches() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(upper), try Stream.runCollect(signals), try Stream.runCollect(words), try Stream.runCollect(totals)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect loadLabel(id: number) {
+effect function loadLabel(id: number) {
   try sleep("10 millis")
   return `item-${id}`
 }
@@ -126,7 +126,7 @@ const large = Stream.filter(readings, (n) => n >= 5)
 const changes = Stream.changes(readings)
 const running = Stream.scan(readings, () => 0, (total, n) => total + n)
 
-effect inspect() {
+effect function inspect() {
   return {
     large: try Stream.runCollect(large),     // [5, 5]
     changes: try Stream.runCollect(changes), // [2, 5, 2]
@@ -150,7 +150,7 @@ const descriptions = Stream.zipWith(sizes, names, (size, name) => `${name}: ${si
 const indexed = Stream.zipWithIndex(names)
 const neighbors = Stream.zipWithPreviousAndNext(sizes)
 
-effect readPairs() {
+effect function readPairs() {
   return try Stream.runCollect(pairs) // [[5, "small"], [8, "large"]]
 }
 // Output: [[[5,"small"],[8,"large"]],["small: 5","large: 8"],[["small",0],["large",1]],[[null,5,8],[5,8,13],[8,13,null]]]
@@ -181,7 +181,7 @@ const names = Stream.crossWith(
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try partitionReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect partitionReadings() {
+effect function partitionReadings() {
   return try scoped(effect {
     const [even, odd] = try Stream.partition(
       Stream.range(10, 19),
@@ -248,7 +248,7 @@ const fields = Stream.make("name", "email", "role")
 const separated = Stream.intersperse(fields, ",")
 const bracketed = Stream.intersperseAffixes(fields, { start: "[", middle: ",", end: "]" })
 
-effect formatFields() {
+effect function formatFields() {
   return try Stream.mkString(bracketed) // "[name,email,role]"
 }
 // Output: name,email,role
@@ -262,7 +262,7 @@ effect formatFields() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try shareReadings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try Stream.runCollect(buffered); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect shareReadings() {
+effect function shareReadings() {
   return try scoped(effect {
     const [totals, audit] = try Stream.broadcastN(Stream.range(1, 12), { n: 2, capacity: 3 })
     return try.all [
@@ -331,7 +331,7 @@ const announcements = Stream.schedule(
   Schedule.spaced("500 millis")
 )
 
-effect announce() {
+effect function announce() {
   try Stream.runForEach(announcements, (message) => Console.log(message))
 }
 // Output: prepare

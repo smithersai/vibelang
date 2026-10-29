@@ -10,7 +10,7 @@ A `Queue` passes values between fibers, delivering each offered value to one con
 ## Choosing an overflow strategy
 
 ```vibe
-effect chooseQueues() {
+effect function chooseQueues() {
   const jobs = try Queue.bounded<string>(32)
   const optionalEvents = try Queue.dropping<string>(32)
   const recentPositions = try Queue.sliding<number>(32)
@@ -18,7 +18,7 @@ effect chooseQueues() {
   return { jobs, optionalEvents, recentPositions, unrestricted }
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: 32 32 32 Infinity
@@ -29,7 +29,7 @@ When full, a bounded queue suspends offers until consumers free space, a droppin
 ## Offering values and batches
 
 ```vibe
-effect offerWithBackpressure() {
+effect function offerWithBackpressure() {
   const queue = try Queue.bounded<number>(1)
   try Queue.offer(queue, 10)
   const secondOffer = fork Queue.offer(queue, 20)
@@ -39,7 +39,7 @@ effect offerWithBackpressure() {
   return [first, second] // [10, 20]
 }
 
-effect rejectedBatch() {
+effect function rejectedBatch() {
   const queue = try Queue.dropping<number>(2)
   return try Queue.offerAll(queue, [10, 20, 30]) // [30]
 }
@@ -51,7 +51,7 @@ effect rejectedBatch() {
 ## Taking, polling, and draining values
 
 ```vibe
-effect consumeBatches() {
+effect function consumeBatches() {
   const queue = try Queue.bounded<number>(8)
   try Queue.offerAll(queue, [1, 2, 3, 4, 5, 6])
   const first = try Queue.take(queue)            // 1
@@ -69,7 +69,7 @@ effect consumeBatches() {
 ## Querying queue state
 
 ```vibe
-effect inspectQueue() {
+effect function inspectQueue() {
   const queue = try Queue.bounded<string>(2)
   try Queue.offer(queue, "task")
   return {
@@ -87,7 +87,7 @@ Size counts buffered messages; capacity is the configured limit. Both are observ
 ## Shutting down and awaiting closure
 
 ```vibe
-effect finishNormally() {
+effect function finishNormally() {
   const queue = try Queue.bounded<number, Cause.Done>(4)
   try Queue.offerAll(queue, [7, 8])
   try Queue.end(queue)
@@ -96,7 +96,7 @@ effect finishNormally() {
   return values // [7, 8]
 }
 
-effect stopImmediately() {
+effect function stopImmediately() {
   const queue = try Queue.bounded<number>(4)
   const waiter = fork ensuring(
     Queue.await(queue),
@@ -117,15 +117,15 @@ Ordinary block exit doesn't close a queue. When consumers and producers must sto
 ## Restricting producer and consumer capabilities
 
 ```vibe
-effect send(outbox: Queue.Enqueue<string>, message: string) {
+effect function send(outbox: Queue.Enqueue<string>, message: string) {
   return try Queue.offer(outbox, message)
 }
 
-effect receive(inbox: Queue.Dequeue<string>) {
+effect function receive(inbox: Queue.Dequeue<string>) {
   return try Queue.take(inbox)
 }
 
-effect handoff() {
+effect function handoff() {
   const queue = try Queue.bounded<string>(2)
   try send(Queue.asEnqueue(queue), "ready")
   return try receive(Queue.asDequeue(queue))

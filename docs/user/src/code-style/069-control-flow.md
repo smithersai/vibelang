@@ -16,13 +16,13 @@ function optionalSize(size: number) {
   return Option.some(size)
 }
 
-effect requiredSize(size: number) {
+effect function requiredSize(size: number) {
   if (size < 0) throw new InvalidSize({ size })
   return size
 }
 // number!InvalidSize!
 
-effect announceIfEnabled(enabled: boolean) {
+effect function announceIfEnabled(enabled: boolean) {
   return try Effect.when(effect {
     try Console.log("notifications enabled")
     return "announced"
@@ -45,27 +45,27 @@ announced
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(JSON.stringify([try sequentialPair(), try concurrentPair(), try formattedPair()]))
-effect amount() {
+effect function amount() {
   try sleep("30 millis")
   return 18
 }
 
-effect currency() {
+effect function currency() {
   try sleep("10 millis")
   return "USD"
 }
 
-effect sequentialPair() {
+effect function sequentialPair() {
   const value = try amount()
   const unit = try currency()
   return [value, unit] as const
 }
 
-effect concurrentPair() {
+effect function concurrentPair() {
   return try Effect.zip(amount(), currency(), { concurrent: true })
 }
 
-effect formattedPair() {
+effect function formattedPair() {
   return try Effect.zipWith(
     amount(),
     currency(),
@@ -85,7 +85,7 @@ effect formattedPair() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try inspectPages())); try logAttempts()
-effect inspectPages() {
+effect function inspectPages() {
   const inspected: number[] = []
   let page = 1
   while (page <= 3) {
@@ -96,7 +96,7 @@ effect inspectPages() {
   return inspected // [1, 2, 3]
 }
 
-effect logAttempts() {
+effect function logAttempts() {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try Console.log(`attempt ${attempt}`)
   }
@@ -112,7 +112,7 @@ A loop can call services, pause, fail, and use `break` or `continue`. Accumulate
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try operatorLoop()
-effect operatorLoop() {
+effect function operatorLoop() {
   let index = 0
   try Effect.whileLoop({
     while: () => index < 3,
@@ -135,19 +135,19 @@ In Effect 4.0.6, `whileLoop` takes one options object and returns an Effect with
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try prepareAll())); try logAll()
-effect prepare(id: number) {
+effect function prepare(id: number) {
   try sleep("10 millis")
   return `prepared-${id}`
 }
 
-effect prepareAll() {
+effect function prepareAll() {
   return try forEach([3, 5, 8], effect (id, index) => {
     try Console.log(`preparing position ${index}`)
     return try prepare(id)
   }, { concurrency: 2 })
 }
 
-effect logAll() {
+effect function logAll() {
   try forEach([3, 5, 8], (id) => Console.log(`id ${id}`), { discard: true })
 }
 ```
@@ -169,7 +169,7 @@ id 8
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try collected()))
-effect collected() {
+effect function collected() {
   const tuple = try all([succeed(12), succeed("ready")] as const)
   const object = try all({ count: succeed(12), status: succeed("ready") })
   const iterable = new Set([prepare(3), prepare(5)])
@@ -193,18 +193,18 @@ error Unavailable {
   id: number
 }
 
-effect load(id: number) {
+effect function load(id: number) {
   if (id === 5) throw new Unavailable({ id })
   try Console.log(`loaded ${id}`)
   return `item-${id}`
 }
 
-effect stopAtFailure() {
+effect function stopAtFailure() {
   return try all([load(3), load(5), load(8)])
 }
 // Sequentially loads 3, then fails with Unavailable; 8 is not started.
 
-effect collectOutcomes() {
+effect function collectOutcomes() {
   return try all([load(3), load(5), load(8)], { mode: "result" })
 }
 // [Result.succeed("item-3"), Result.fail(Unavailable), Result.succeed("item-8")]

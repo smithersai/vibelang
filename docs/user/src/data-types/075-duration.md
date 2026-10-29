@@ -93,7 +93,7 @@ const total = Duration.sum(attempt, overhead)
 const doubled = Duration.times(total, 2)
 Duration.toMillis(doubled) // 9000
 
-effect waitBeforeRetry() {
+effect function waitBeforeRetry() {
   try sleep(doubled)
 }
 ```

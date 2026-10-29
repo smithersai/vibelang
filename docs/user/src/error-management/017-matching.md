@@ -11,12 +11,12 @@ Matching turns an outcome into one value or selects the next computation. Use ty
 // run: try Console.log(try countLabel(3)); try Console.log(try countLabel(-1))
 error InvalidCount
 
-effect itemCount(raw: number) {
+effect function itemCount(raw: number) {
   if (raw < 0) throw new InvalidCount()
   return raw
 }
 
-effect countLabel(raw: number) {
+effect function countLabel(raw: number) {
   return try Effect.match(itemCount(raw), {
     onFailure: () => "Count unavailable",
     onSuccess: (count) => `${count} items`
@@ -37,7 +37,7 @@ Count unavailable
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try reportCount(3)); try Console.log(try reportCount(-1))
-effect reportCount(raw: number) {
+effect function reportCount(raw: number) {
   return try matchEffect(itemCount(raw), {
     onFailure: effect () => {
       try Console.log("Invalid count received")
@@ -65,14 +65,14 @@ Count unavailable
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try outcomeLabel()); try Console.log(try reportOutcome())
-effect outcomeLabel() {
+effect function outcomeLabel() {
   return try matchCause(die(new Error("index invariant")), {
     onFailure: (cause) => Cause.hasDies(cause) ? "Index defect" : "Index stopped",
     onSuccess: () => "Index ready"
   })
 }
 
-effect reportOutcome() {
+effect function reportOutcome() {
   return try matchCauseEffect(die(new Error("index invariant")), {
     onFailure: effect (cause) => {
       try Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
@@ -96,12 +96,12 @@ Unavailable
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6
 // run: try ignoreRejectedCount(); try discardBoundaryOutcome()
-effect ignoreRejectedCount() {
+effect function ignoreRejectedCount() {
   try ignore(itemCount(-2))
 }
 // void!!
 
-effect discardBoundaryOutcome() {
+effect function discardBoundaryOutcome() {
   try ignoreCause(die(new Error("isolated task failed")))
 }
 // Output:

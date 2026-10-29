@@ -7,7 +7,7 @@ A `SynchronizedRef` serializes updates that run Effects. Use it when the next va
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
 // run: try Console.log(JSON.stringify((try recordRevisions()).toSorted((a, b) => a - b)))
-effect recordRevisions() {
+effect function recordRevisions() {
   const revisions = try SynchronizedRef.make<ReadonlyArray<number>>([])
   for concurrent(3) (const id of [1, 2, 3]) {
     try SynchronizedRef.updateEffect(revisions, effect (current) => {
@@ -27,7 +27,7 @@ Three fibers call the callbacks concurrently, but they acquire the reference's u
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try inspect()))
-effect inspect() {
+effect function inspect() {
   const state = try SynchronizedRef.make({ version: 0, ready: false })
   const before = try SynchronizedRef.get(state)
   try SynchronizedRef.set(state, { version: 1, ready: true })
@@ -50,10 +50,10 @@ service Versions {
   loadAfter(version: number): number!RefreshFailed
 }
 
-effect refreshTwice() {
+effect function refreshTwice() {
   const version = try SynchronizedRef.make(0)
   const versions = try Versions
-  effect refresh() {
+  effect function refresh() {
     return try SynchronizedRef.updateAndGetEffect(version, (current) =>
       versions.loadAfter(current))
   }

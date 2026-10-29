@@ -10,7 +10,7 @@
 const Host = Config.NonEmptyString("HOST")
 const Port = Config.Port("PORT")
 
-effect serverSettings() {
+effect function serverSettings() {
   const host = try Host
   const port = try Port
   return { host, port }
@@ -40,7 +40,7 @@ Prefer `Finite` to `Number` for ordinary numeric settings: `Number` also accepts
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TEAM_NAME: "search" })) { try Console.log(try teamName()) }; provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TEAM_NAME: "ab" })) { teamName() catch effect (error) => { try Console.log(error._tag) } }
-effect teamName() {
+effect function teamName() {
   return try Config.schema(
     Schema.String.check(Schema.isMinLength(3)),
     "TEAM_NAME"
@@ -69,7 +69,7 @@ export const server = Config.schema(Schema.Struct({
 // run: try Console.log(JSON.stringify(try localServer()))
 import { server } from "./descriptors.vibe"
 
-effect localServer() {
+effect function localServer() {
   return try server.parse(ConfigProvider.fromUnknown({
     server: { host: "127.0.0.1", port: 9091 }
   }))
@@ -84,7 +84,7 @@ Use `descriptor.parse(provider)` for an explicit source, especially in tests; it
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ REGIONS: "north,south", LABELS: "team=search,tier=internal" })) { try Console.log(JSON.stringify(try routingSettings())) }
-effect routingSettings() {
+effect function routingSettings() {
   const regions = try Config.Array(Schema.String, "REGIONS")
   const labels = try Config.Record(Schema.String, Schema.String, "LABELS")
   return { regions, labels }
@@ -112,7 +112,7 @@ export const database = Config.nested(Config.all({
 // run: try Console.log(JSON.stringify(try testDatabaseSettings()))
 import { database } from "./database-config.vibe"
 
-effect testDatabaseSettings() {
+effect function testDatabaseSettings() {
   return try database.parse(ConfigProvider.fromEnv({
     env: { DATABASE_HOST: "db.internal", DATABASE_PORT: "5433" }
   }))
@@ -143,7 +143,7 @@ export const host = Config.orElse(
 // run: const result = try defaultsExample(); try Console.log(result.port, Option.isNone(result.apiKey), result.host)
 import { port, apiKey, host } from "./optional-config.vibe"
 
-effect defaultsExample() {
+effect function defaultsExample() {
   const provider = ConfigProvider.fromUnknown({ BACKUP_HOST: "standby.internal" })
   return {
     port: try port.parse(provider),
@@ -176,7 +176,7 @@ export const origin = Config.map(Config.all({
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ HOST: "example.test", PORT: 9091 })) { try reportOrigin() }
 import { origin } from "./origin-config.vibe"
 
-effect reportOrigin() {
+effect function reportOrigin() {
   const value = try origin
   try Console.log(value)
   return value
@@ -191,7 +191,7 @@ Use `Config.map` for a transformation that can't fail, a schema for validation, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ ACCESS_TOKEN: "documentation-placeholder" })) { try Console.log(String(try secretSetting())) }
-effect secretSetting() {
+effect function secretSetting() {
   const token = try Config.Redacted("ACCESS_TOKEN")
   try Console.log(String(token))
   return token
@@ -211,11 +211,11 @@ const TestProvider = ConfigProvider.fromUnknown({ PORT: 9091 })
 const EnvProvider = ConfigProvider.fromEnv({ env: { PORT: "9092" } })
 const DotEnvProvider = ConfigProvider.fromDotEnvContents("PORT=9093")
 
-effect testPort() {
+effect function testPort() {
   provide ConfigProvider.layer(TestProvider) { return try Config.Port("PORT") }
 }
 
-effect fileProvider() {
+effect function fileProvider() {
   return try ConfigProvider.fromDotEnv({ path: ".env.local" })
 }
 // Output: 9091 9092 9093
@@ -236,7 +236,7 @@ const DeploymentProvider = ConfigProvider.constantCase(
   ConfigProvider.fromEnv({ env: { SERVICE_PORT: "9094" } })
 )
 
-effect deploymentPort() {
+effect function deploymentPort() {
   provide ConfigProvider.layer(DeploymentProvider) { return try Config.Port("servicePort") }
 }
 // Output: 9094
@@ -254,7 +254,7 @@ const Combined = ConfigProvider.orElse(
   ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })
 )
 
-effect configuredServer() {
+effect function configuredServer() {
   provide ConfigProvider.layer(Combined) {
     return { host: try Config.String("HOST"), port: try Config.Port("PORT") }
   }

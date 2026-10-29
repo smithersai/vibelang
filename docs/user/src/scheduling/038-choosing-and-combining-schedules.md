@@ -36,7 +36,7 @@ These declarations build reusable values and run no work. Choose a rule by requi
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork runChecks(); try TestClock.adjust("18 seconds"); join worker }
-effect runChecks() {
+effect function runChecks() {
   try repeat(effect {
     try Console.log("checking", try Clock.currentTimeMillis)
     try sleep("2 seconds")

@@ -27,14 +27,14 @@ A `Cause.Cause<E>` holds a readonly array of `Cause.Reason<E>`, each `Fail` with
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try inspectDelivery()))
-effect operationWithBrokenCleanup() {
+effect function operationWithBrokenCleanup() {
   return try ensuring(
     effect { throw "delivery rejected" },
     die(new Error("release invariant failed"))
   )
 }
 
-effect inspectDelivery() {
+effect function inspectDelivery() {
   const outcome = try exit(operationWithBrokenCleanup())
   if (Exit.isFailure(outcome)) {
     return {
@@ -64,7 +64,7 @@ When every reason is an expected failure, ordinary catch receives the first and 
 // run: try Console.log(JSON.stringify((try flip(validatePorts())).map((error) => error.port)))
 error InvalidPort { port: number }
 
-effect validatePorts() {
+effect function validatePorts() {
   return try validate([8080, -1, 70000], effect (port) => {
     if (port < 1 || port > 65535) throw new InvalidPort({ port })
     return port

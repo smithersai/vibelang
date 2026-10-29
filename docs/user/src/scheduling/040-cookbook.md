@@ -11,7 +11,7 @@ error Throttled {
   retryAfter: Duration.Duration
 }
 
-effect download() {
+effect function download() {
   let calls = 0
   const policy = pipe(
     Schedule.exponential("500 millis"),
@@ -45,9 +45,9 @@ type Status =
 
 error PollLimit
 
-effect waitForArchive() {
+effect function waitForArchive() {
   let checks = 0
-  effect check(): Status!! {
+  effect function check(): Status!! {
     checks++
     return checks < 3
       ? { _tag: "Pending", pollAfter: Duration.millis(checks * 300) }
@@ -79,7 +79,7 @@ A pending response is a success, so it feeds `repeat`, not `retry`. This simulat
 // run: provide TestClock.layer() { const worker = fork result(readWithDeadline()); try TestClock.adjust("1 second"); const outcome = join worker; if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
 error Offline
 
-effect readWithDeadline() {
+effect function readWithDeadline() {
   return try timeout(
     retry(effect { throw new Offline() }, Schedule.exponential("80 millis").pipe(Schedule.upTo({ times: 5 }))),
     "350 millis"
@@ -97,7 +97,7 @@ The outer timeout covers the first attempt, every wait, and every retry; a timeo
 // run: provide TestClock.layer() { const worker = fork reconnect(); try TestClock.adjust("5 seconds"); try Console.log(join worker) }
 error Disconnected
 
-effect reconnect() {
+effect function reconnect() {
   let attempts = 0
   const phases = Schedule.spaced("200 millis").pipe(
     Schedule.upTo({ times: 2 }),
@@ -123,7 +123,7 @@ error Unavailable {
   status: number
 }
 
-effect observedRequest() {
+effect function observedRequest() {
   let attempts = 0
   const policy = pipe(
     Schedule.exponential("250 millis"),

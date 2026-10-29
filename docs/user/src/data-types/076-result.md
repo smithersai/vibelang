@@ -82,7 +82,7 @@ error InvalidCount {
   input: string
 }
 
-effect requireCount(input: string) {
+effect function requireCount(input: string) {
   const count = Number(input)
   const result = input.trim() !== "" && Number.isInteger(count) && count >= 0
     ? Result.succeed(count)
@@ -91,7 +91,7 @@ effect requireCount(input: string) {
 }
 // number!InvalidCount!
 
-effect validatePair() {
+effect function validatePair() {
   return try all([
     requireCount("6"),
     fromResult(Result.succeed("ready"))

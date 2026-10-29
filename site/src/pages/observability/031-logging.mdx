@@ -10,12 +10,12 @@ Effect's structured logging records progress, failures, and diagnostic context. 
 ## Emitting structured records
 
 ```vibe
-effect reportProgress() {
+effect function reportProgress() {
   try log("export started", { format: "csv", stage: "prepare" })
   try logInfo("export completed", { rows: 240 })
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
@@ -30,7 +30,7 @@ effect stringify(value: unknown) {
 ## Selecting severity thresholds
 
 ```vibe
-effect diagnostics() {
+effect function diagnostics() {
   provide References.MinimumLogLevel = "Debug" {
     try logTrace("entered parser")
     try logDebug("parsed header")
@@ -51,7 +51,7 @@ The default threshold, Info, filters Debug and Trace. Providing Debug enables De
 ## Annotating logs and scoped regions
 
 ```vibe
-effect annotatedExport() {
+effect function annotatedExport() {
   try annotateLogs(effect {
     try logInfo("preparing")
     try annotateLogs(logInfo("writing"), "stage", "write")
@@ -59,7 +59,7 @@ effect annotatedExport() {
   try logInfo("outside annotated operation")
 }
 
-effect scopedAnnotations() {
+effect function scopedAnnotations() {
   try scoped(effect {
     try annotateLogsScoped({ component: "importer" })
     try logInfo("reading input")
@@ -78,7 +78,7 @@ effect scopedAnnotations() {
 ## Measuring log spans
 
 ```vibe
-effect timedExport() {
+effect function timedExport() {
   try withLogSpan(effect {
     try logInfo("opening output")
     try sleep("30 millis")
@@ -104,11 +104,11 @@ const ConfiguredLevel = Layer.unwrap(effect {
   return Layer.succeed(References.MinimumLogLevel, minimum)
 })
 
-effect quiet() {
+effect function quiet() {
   provide Silent { try logInfo("suppressed") }
 }
 
-effect configured() {
+effect function configured() {
   provide ConfiguredLevel { try logDebug("configuration loaded") }
 }
 ```
@@ -122,7 +122,7 @@ The None threshold silences the provided region. `Config.LogLevel` builds a conf
 ## Defining a custom output handler
 
 ```vibe
-effect captureLogs() {
+effect function captureLogs() {
   const records: Array<{ level: string; message: unknown }> = []
   const capture = Logger.make(({ logLevel, message }) => {
     records.push({ level: logLevel, message })
@@ -149,7 +149,7 @@ const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])
 const JsonLogs = Logger.layer([Logger.consoleJson, Logger.tracerLogger])
 
-effect jsonExample() {
+effect function jsonExample() {
   provide JsonLogs { try logInfo("started", { workers: 4 }) }
 }
 ```
@@ -163,7 +163,7 @@ The default logger emits readable text, LogFmt compact key/value pairs, and Pret
 ## Sending records to multiple destinations
 
 ```vibe
-effect consoleAndCapture() {
+effect function consoleAndCapture() {
   const auditMessages: unknown[] = []
   const audit = Logger.make(({ message }) => { auditMessages.push(message) })
   const destinations = Logger.layer([

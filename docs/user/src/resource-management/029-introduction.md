@@ -11,7 +11,7 @@ Resources need cleanup on success, failure, and cancellation. Use `ensuring` for
 // run: try Console.log(try exportRows(true)); try Effect.catch(exportRows(false), (error) => Console.log(error._tag))
 error ExportRejected
 
-effect exportRows(accepted: boolean) {
+effect function exportRows(accepted: boolean) {
   return try ensuring(effect {
     try Console.log("Export started")
     if (!accepted) throw new ExportRejected()
@@ -38,7 +38,7 @@ effect exportRows(accepted: boolean) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try observedExport(true)); try Effect.catch(observedExport(false), (error) => Console.log(error._tag))
-effect observedExport(accepted: boolean) {
+effect function observedExport(accepted: boolean) {
   return try onExit(exportRows(accepted), effect (outcome) => {
     if (Exit.isSuccess(outcome)) {
       try Console.log("Export succeeded")
@@ -64,7 +64,7 @@ effect observedExport(accepted: boolean) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try reportFailedExport(true)); try Effect.catch(reportFailedExport(false), (error) => Console.log(error._tag))
-effect reportFailedExport(accepted: boolean) {
+effect function reportFailedExport(accepted: boolean) {
   return try onError(exportRows(accepted), effect (cause) => {
     if (Cause.hasInterrupts(cause)) {
       try Console.log("Export cancelled; cleanup complete")
@@ -98,7 +98,7 @@ service LeaseStore {
   release(lease: Lease): void!!
 }
 
-effect withLease() {
+effect function withLease() {
   const store = try LeaseStore
   return try acquireUseRelease(
     store.acquire(),
@@ -128,7 +128,7 @@ Release receives the resource and the use phase's `Exit`. The combined contract 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try example()); provide LeaseStore = { acquire: () => succeed({ id: "owned" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try leaseId()) }
-effect acquireLease() {
+effect function acquireLease() {
   const store = try LeaseStore
   return try acquireRelease(
     store.acquire(),
@@ -137,7 +137,7 @@ effect acquireLease() {
 }
 // Lease!!LeaseStore | Scope.Scope
 
-effect leaseId() {
+effect function leaseId() {
   return try scoped(effect {
     const lease = try acquireLease()
     return lease.id
@@ -150,7 +150,7 @@ const LeaseStoreTest = Layer.succeed(LeaseStore, {
   release: (_lease) => succeed(undefined)
 })
 
-effect example() {
+effect function example() {
   provide LeaseStoreTest { return try leaseId() }
 }
 // Output: test-lease

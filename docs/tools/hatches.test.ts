@@ -9,7 +9,7 @@ const compiler = defaultCompiler()
 
 test.skipIf(!existsSync(compiler))("the rendered Promise adapter forwards cancellation, maps rejection, and retries before fallback", async () => {
   const example = (path: string) => extract(readFileSync(join(repo, path), "utf8"))
-    .find(block => block.source.includes("effect getTodo("))
+    .find(block => block.source.includes("effect function getTodo("))
   // The home page shows the adapter without the checker's lines.
   const program = (source: string) => source.replace(/^\s*\/\/ (?:run|pending|pending-decision):.*\n/gm, "")
   const onboarding = example("docs/user/src/001-onboarding.md")

@@ -15,7 +15,7 @@ const Shipment = Schema.Struct({
   pieces: Schema.FiniteFromString
 })
 
-effect receive(input: unknown) {
+effect function receive(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 ```
@@ -75,7 +75,7 @@ false
 ## Choosing synchronous, result, or effect decoding
 
 ```vibe
-effect decodeWithEffects(input: unknown) {
+effect function decodeWithEffects(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 
@@ -85,7 +85,7 @@ function decodeAsData(input: unknown) {
   return `received ${result.success.tracking}`
 }
 
-effect decodeWithDomainError(input: unknown) {
+effect function decodeWithDomainError(input: unknown) {
   return Schema.decodeUnknownEffect(Shipment)(input) catch effect (cause) => { throw new InvalidShipment({ cause }) }
 }
 
@@ -110,12 +110,12 @@ Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding servic
 ## Encoding values
 
 ```vibe
-effect send(shipment: Shipment) {
+effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
 // ShipmentWire!Schema.SchemaError!
 
-effect sendUntrusted(input: unknown) {
+effect function sendUntrusted(input: unknown) {
   return try Schema.encodeUnknownEffect(Shipment)(input)
 }
 ```
@@ -130,7 +130,7 @@ Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` acce
 ## Handling schema failures
 
 ```vibe
-effect receiveOrExplain(input: unknown) {
+effect function receiveOrExplain(input: unknown) {
   return effect {
     const shipment = try receive(input)
     return `accepted ${shipment.tracking}`
@@ -150,7 +150,7 @@ The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its
 ## Configuring excess properties and error collection
 
 ```vibe
-effect receiveStrict(input: unknown) {
+effect function receiveStrict(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input, {
     onExcessProperty: "error",
     errors: "all"

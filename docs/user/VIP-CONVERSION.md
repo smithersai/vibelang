@@ -4,7 +4,7 @@ This is the working guide for rewriting `docs/user`, the README, SKILL.md, the t
 
 ## The model in five lines
 
-1. `effect name() { … }` (or `effect function name()`, `effect (x) => …`, a method `effect m() { … }`) is an Effect function. Calling it returns its Effect **unrun**, as calling an `async` function returns a Promise (VIP-1).
+1. `effect` goes exactly where `async` goes (VIP-39): `effect function name() { … }`, `effect function (x) { … }`, `effect (x) => …`, and a method `effect m() { … }` in a class or object literal each declare an Effect function. A function with no modifier is plain. Calling an Effect function returns its Effect **unrun**, as calling an `async` function returns a Promise (VIP-1).
 2. Inside an `effect` function or an `effect { }` block, `try e` runs the Effect `e` and gives its success value; a failure propagates. `e catch y` runs `e` and, on a failure, gives `y` or `y(error)` (VIP-5). You write `try x` or `x catch y`, never both.
 3. A call never runs anything by itself, so a program is passed as the Effect value: `try retry(fetchUser(id), policy)`. `effect { … }` builds an Effect from statements (VIP-2).
 4. Plain functions and `async` functions mean exactly what they mean in TypeScript. `await` is only for Promises, only in `async` functions (VIP-5). A Promise in Effect code is wrapped: `try tryPromise((signal) => fetchJson(url, signal))`, with `fetchJson` in a `.ts` module, since a platform call inside the wrapper is still a platform call (VIP-33).
@@ -14,8 +14,8 @@ This is the working guide for rewriting `docs/user`, the README, SKILL.md, the t
 
 | Old docs | New (VIP) |
 | --- | --- |
-| `function load(id) { const u = Users.find(id); … }` with Effects in the body | `effect load(id) { const users = try Users; const u = try users.find(id); … }` |
-| `export function main() { … }` running Effects | `export effect main() { … }`, and the module calls a runner itself: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))` or `await runPromise(main())` (VIP-26). There is no magic `main` and no `import "vibelang/platform/node"`. |
+| `function load(id) { const u = Users.find(id); … }` with Effects in the body | `effect function load(id) { const users = try Users; const u = try users.find(id); … }` |
+| `export function main() { … }` running Effects | `export effect function main() { … }`, and the module calls a runner itself: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))` or `await runPromise(main())` (VIP-26). There is no magic `main` and no `import "vibelang/platform/node"`. |
 | a statement call `Console.log("x")`, `log("x")`, `sleep("1 second")` | `try Console.log("x")`, `try log("x")`, `try sleep("1 second")` |
 | `const user = getUser(id)` (it ran) | `const user = try getUser(id)` |
 | `Users.find(id)` (service shorthand), `Users()` | `const users = try Users` then `try users.find(id)`, or `try (try Users).find(id)` (VIP-10) |
@@ -67,7 +67,7 @@ The compiler doesn't implement the VIP forms yet. Every converted `vibe` block g
 
 ```vibe
 // pending: VIP-1, VIP-5
-effect load(id: string) {
+effect function load(id: string) {
   return try fetchUser(id)
 }
 ```

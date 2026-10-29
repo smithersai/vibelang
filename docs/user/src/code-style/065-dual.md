@@ -12,7 +12,7 @@ const direct = Stream.map(source, (n) => n / 5)
 const stage = Stream.map((n: number) => n / 5)
 const piped = pipe(source, stage)
 
-effect compare() {
+effect function compare() {
   return [try Stream.runCollect(direct), try Stream.runCollect(piped)]
 }
 // Both arrays are [1, 2, 3].
@@ -31,7 +31,7 @@ The direct form supplies `source` in the first call; the data-last form builds a
 // run: try Console.log(JSON.stringify(try methods()))
 const missing = Cause.fail("missing port")
 
-effect methods() {
+effect function methods() {
   const amount = try Effect.try(() => BigDecimal.fromNumberUnsafe(-2.5))
   return {
     error: Option.getOrElse(Cause.findErrorOption(missing), () => "none"),
@@ -64,16 +64,16 @@ A data-last overload such as `Stream.zipLeft(other)` returns a function for `pip
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try directLookup(), try nestedLookup())
-effect lookup() {
+effect function lookup() {
   try sleep("10 millis")
   return "found"
 }
 
-effect directLookup() {
+effect function directLookup() {
   return try timeout(lookup(), "1 second")
 }
 
-effect nestedLookup() {
+effect function nestedLookup() {
   return try timeout(retry(lookup(), { times: 2 }), "1 second")
 }
 ```
@@ -89,7 +89,7 @@ found found
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-23
 // run: try Console.log(try boundedLookup(), try reusableLookup)
-effect boundedLookup() {
+effect function boundedLookup() {
   return try retry(lookup(), { times: 2 })
 }
 

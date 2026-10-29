@@ -13,12 +13,12 @@ error InvalidQuantity {
   value: number
 }
 
-effect quantity(value: number) {
+effect function quantity(value: number) {
   if (value < 1) throw new InvalidQuantity({ value })
   return value
 }
 
-effect publicQuantity(value: number) {
+effect function publicQuantity(value: number) {
   return try mapError(
     quantity(value),
     (error) => `Quantity must be positive: ${error.value}`
@@ -26,7 +26,7 @@ effect publicQuantity(value: number) {
 }
 // number!string!
 
-effect quantityMessage(value: number) {
+effect function quantityMessage(value: number) {
   return try mapBoth(quantity(value), {
     onFailure: (error) => `Rejected quantity ${error.value}`,
     onSuccess: (count) => `${count} units`
@@ -53,7 +53,7 @@ These combinators keep Effect's own policy: `mapError` maps every expected failu
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try boundedQuantity(20)); try Console.log(try flip(boundedQuantity(21))); try Console.log(try cappedQuantity(21)); try Console.log((try flip(cappedQuantity(0)))._tag)
-effect boundedQuantity(value: number) {
+effect function boundedQuantity(value: number) {
   return try filterOrFail(
     quantity(value),
     (count) => count <= 20,
@@ -61,7 +61,7 @@ effect boundedQuantity(value: number) {
   )
 }
 
-effect cappedQuantity(value: number) {
+effect function cappedQuantity(value: number) {
   return try filterOrElse(
     quantity(value),
     (count) => count <= 20,
@@ -86,14 +86,14 @@ The statement form is an `if` followed by `throw`. Neither form changes the sour
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try observeQuantity(2)); try Console.log((try flip(observeQuantity(0)))._tag); try Console.log(try matchCause(observeDefect(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
-effect observeQuantity(value: number) {
+effect function observeQuantity(value: number) {
   const logged = tapError(quantity(value), (error) => Console.log(`Rejected quantity ${error.value}`))
   const tagged = tapErrorTag(logged, "InvalidQuantity", () => Console.log("Quantity validation failed"))
   return try tapCause(tagged, (cause) =>
     Console.log("Failure kinds", JSON.stringify(cause.reasons.map((reason) => reason._tag))))
 }
 
-effect observeDefect() {
+effect function observeDefect() {
   return try tapDefect(
     die(new Error("inventory invariant")),
     () => Console.log("Inventory defect recorded")
@@ -120,7 +120,7 @@ A failing observation can change the resulting cause, so observe with code that 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try inspectQuantity(2))); try Console.log(JSON.stringify(try inspectQuantity(0))); try Console.log(try quantityOrErrorValue(2)); const value = try quantityOrErrorValue(0); try Console.log(typeof value === "number" ? value : value._tag)
-effect inspectQuantity(value: number) {
+effect function inspectQuantity(value: number) {
   const outcome = try result(quantity(value))
   const summary = Result.match(outcome, {
     onFailure: () => "Rejected",
@@ -130,7 +130,7 @@ effect inspectQuantity(value: number) {
   return { summary, completed: Exit.isSuccess(completed) }
 }
 
-effect quantityOrErrorValue(value: number) {
+effect function quantityOrErrorValue(value: number) {
   return quantity(value) catch (error) => error
 }
 // (number | InvalidQuantity)!!
@@ -150,7 +150,7 @@ InvalidQuantity
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try rejectedQuantity())._tag)
-effect rejectedQuantity() {
+effect function rejectedQuantity() {
   return try flip(quantity(0))
 }
 // InvalidQuantity!number!

@@ -19,13 +19,13 @@ service Reports {
   render(title: string): string!!
 }
 
-effect report(title: string) {
+effect function report(title: string) {
   const reports = try Reports
   return try reports.render(title)
 }
 // string!!Reports
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: report/Inventory
@@ -52,7 +52,7 @@ const PrinterLive = Layer.effect(Printer, effect {
 // Output: test: ready
 ```
 
-`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
+`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect function print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 
@@ -137,7 +137,7 @@ Reuse one layer value when several paths need a shared instance: equivalent reco
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try stringify(try main())); try Console.log(try withBuiltContext())
-effect main() {
+effect function main() {
   provide AppLive {
     const first = try report("Inventory")
     const second = try report("Forecast")
@@ -146,7 +146,7 @@ effect main() {
 }
 // string[]!!
 
-effect withBuiltContext() {
+effect function withBuiltContext() {
   return try scoped(effect {
     const context = try Layer.build(AppLive)
     provide context { return try report("Inventory") }
@@ -226,19 +226,19 @@ const BannerTest = Layer.succeed(Banner, {
   effect text(title) { return `fixture/${title}` }
 })
 
-effect testBannerDependency() {
+effect function testBannerDependency() {
   provide BannerWithTestSettings {
     return try (try Banner).text("Orders")
   }
 }
 
-effect testBannerDirectly() {
+effect function testBannerDirectly() {
   provide BannerTest {
     return try (try Banner).text("Orders")
   }
 }
 
-effect testBannerWithInlineSettings() {
+effect function testBannerWithInlineSettings() {
   provide Settings = { prefix: "inline" } {
     provide Banner.layerWithoutDependencies {
       const banner = try Banner

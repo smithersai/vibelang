@@ -9,7 +9,7 @@
 // run: provide NodePath.layer { try Console.log(try pathSeparator()) }
 import * as NodePath from "@effect/platform-node/NodePath"
 
-effect pathSeparator() {
+effect function pathSeparator() {
   const path = try Path
   return path.sep
 }
@@ -25,7 +25,7 @@ effect pathSeparator() {
 // run: provide NodePath.layer { try Console.log(JSON.stringify(try describeReport())) }
 import * as NodePath from "@effect/platform-node/NodePath"
 
-effect describeReport() {
+effect function describeReport() {
   const path = try Path
   const joined = path.join("reports", "weekly.txt")
   const normalized = path.normalize("reports/./draft/../weekly.txt")
@@ -61,7 +61,7 @@ Most `Path` methods are plain synchronous TypeScript functions. Getting the serv
 // run: provide NodePath.layer { try Console.log(try asFileUrl("/reports/weekly.txt")) }
 import * as NodePath from "@effect/platform-node/NodePath"
 
-effect asFileUrl(file: string) {
+effect function asFileUrl(file: string) {
   const path = try Path
   const absolute = path.resolve(file)
   const url = try path.toFileUrl(absolute)
@@ -80,7 +80,7 @@ URL conversions return Effects, run with `try`, and report `BadArgument` on inva
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodePath from "@effect/platform-node/NodePath"
 
-effect main() {
+effect function main() {
   const path = try Path
   try Console.log(path.join("reports", "weekly.txt"))
 }

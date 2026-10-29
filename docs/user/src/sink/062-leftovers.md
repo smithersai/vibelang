@@ -7,7 +7,7 @@ Leftovers are elements of a batch that a sink received but had not consumed when
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect inspectRemainder() {
+effect function inspectRemainder() {
   const source = Stream.fromArray([21, 34, 55, 89])
   const sink = Sink.mapEnd(Sink.take<number>(2), ([selected, leftover]) => [
     { selected, leftover: leftover ?? [] }
@@ -23,7 +23,7 @@ effect inspectRemainder() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const remainder = try inspectSmallBatches(); { const jsonValue = { first: Option.getOrElse(remainder.first, () => 0), leftover: remainder.leftover }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect inspectSmallBatches() {
+effect function inspectSmallBatches() {
   const source = Stream.rechunk(Stream.fromArray([21, 34, 55, 89]), 2)
   const sink = Sink.mapEnd(Sink.head<number>(), ([first, leftover]) => [
     { first, leftover: leftover ?? [] }
@@ -41,7 +41,7 @@ Here `55` and `89` are in a batch the sink never requests, so the leftovers you 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try discardRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect discardRemainder() {
+effect function discardRemainder() {
   const sink = Sink.take<number>(2).pipe(
     Sink.ignoreLeftover,
     Sink.mapEnd(([selected, leftover]) => [

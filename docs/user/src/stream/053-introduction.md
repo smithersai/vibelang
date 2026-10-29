@@ -19,7 +19,7 @@ const messages = Stream.fromEffectRepeat(effect {
 })
 // Stream.Stream<string, FeedUnavailable, Feed>
 
-effect preview() {
+effect function preview() {
   return try Stream.runCollect(Stream.take(messages, 4))
 }
 // Array<string>!FeedUnavailable!Feed
@@ -35,7 +35,7 @@ Wrap calls that may throw with `Effect.try` and run them with `try`. Synchronous
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try firstFiveTickets(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect firstFiveTickets() {
+effect function firstFiveTickets() {
   const tickets = Stream.iterate(100, (n) => n + 1)
   return try Stream.runCollect(Stream.take(tickets, 5))
 }
@@ -50,7 +50,7 @@ The source never ends; the consumer takes only five elements. Log tails, paginat
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try oneResult(), try Stream.runCollect(noReadings), try Stream.runCollect(oneReading), ...(try compare())]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect oneResult() {
+effect function oneResult() {
   return [12, 24, 36]
 }
 // Array<number>!!
@@ -60,7 +60,7 @@ const oneReading = Stream.succeed(12)
 const readings = Stream.fromArray([12, 24, 36])
 const oneBatch = Stream.succeed([12, 24, 36])
 
-effect compare() {
+effect function compare() {
   return [
     try Stream.runCollect(readings), // [12, 24, 36]
     try Stream.runCollect(oneBatch)  // [[12, 24, 36]]
@@ -76,7 +76,7 @@ A successful Effect run returns one result, even an array. A stream emits zero o
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try printReadings()
-effect printReadings() {
+effect function printReadings() {
   const source = Stream.mapEffect(Stream.range(20, 25), effect (n) => {
     try Console.log(`prepare ${n}`)
     return n
@@ -112,7 +112,7 @@ effect function* readings() {
   }
 }
 
-effect printFirstReading() {
+effect function printFirstReading() {
   const source = Stream.map(readings(), (n) => n * 10)
   for try (const n of source) {
     try log(n) // 10

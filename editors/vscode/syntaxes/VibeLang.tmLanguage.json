@@ -35,9 +35,6 @@
 		"statements": {
 			"patterns": [
 				{
-					"include": "#vibelang-function-shorthand"
-				},
-				{
 					"include": "#vibelang-for-try"
 				},
 				{
@@ -5831,33 +5828,6 @@
 							"include": "#brackets"
 						}
 					]
-				}
-			]
-		},
-		"vibelang-function-shorthand": {
-			"name": "meta.function.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(\\bdefault)\\s+)?(async|effect)\\s+(?!function\\b)([_$[:alpha:]][_$[:alnum:]]*)(?=\\s*[<(])",
-			"beginCaptures": {
-				"1": {
-					"name": "keyword.control.export.ts"
-				},
-				"2": {
-					"name": "keyword.control.default.ts"
-				},
-				"3": {
-					"name": "storage.modifier.async.ts"
-				},
-				"4": {
-					"name": "meta.definition.function.ts entity.name.function.ts"
-				}
-			},
-			"end": "(?=;|^\\s*$|(?:^\\s*(?:abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))|(?<=\\})",
-			"patterns": [
-				{
-					"include": "#function-name"
-				},
-				{
-					"include": "#function-body"
 				}
 			]
 		},

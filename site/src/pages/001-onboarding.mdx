@@ -18,7 +18,7 @@ service Users {
   find(id: string): User!UserNotFound
 }
 
-effect greet(id: string) {
+effect function greet(id: string) {
   const users = try Users
   const user = users.find(id) catch (_e) => ({ name: "guest" })
   const name = user.name
@@ -76,12 +76,12 @@ import { fetchTodo } from "./todos.ts" // (id: number, signal: AbortSignal) => P
 
 error TodoFailed { cause: unknown }
 
-effect getTodo(id: number) {
+effect function getTodo(id: number) {
   return try tryPromise({ try: (signal) => fetchTodo(id, signal), catch: (cause) => new TodoFailed({ cause }) })
 }
 // (id: number) => string!TodoFailed
 
-effect todoOrFallback(id: number) {
+effect function todoOrFallback(id: number) {
   return retry(getTodo(id), Schedule.recurs(2)) catch "Todo unavailable"
 }
 ```

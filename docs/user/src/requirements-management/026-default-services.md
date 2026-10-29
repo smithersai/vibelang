@@ -9,14 +9,14 @@ Effect gives the clock, random generation, console output, configuration sources
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const liveClock = try Clock.Clock; provide Random.Random = { nextDoubleUnsafe: () => 0.25, nextIntUnsafe: () => 12 }, Clock.Clock = { ...liveClock, currentTimeMillis: succeed(1000), currentTimeMillisUnsafe: () => 1000 } { try startupMessage() }
-effect startupMessage() {
+effect function startupMessage() {
   const started = try Clock.currentTimeMillis
   const sample = try Random.next
   try Console.log(`Started at ${started}; sample=${sample}`)
 }
 // void!!
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: Started at 1000; sample=0.25
@@ -31,7 +31,7 @@ Default references include `Clock.Clock`, `ConfigProvider.ConfigProvider`, `Cons
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({})) { try Console.log(try configuredPort()) }
 const Port = Config.withDefault(Config.Port("PORT"), 3000)
 
-effect configuredPort() {
+effect function configuredPort() {
   return try Port
 }
 // number!Config.ConfigError!
@@ -45,7 +45,7 @@ effect configuredPort() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try fixedRandomSample())
-effect fixedRandomSample() {
+effect function fixedRandomSample() {
   return try provideService(Random.next, Random.Random, {
     nextDoubleUnsafe: () => 0.25,
     nextIntUnsafe: () => 12
@@ -66,7 +66,7 @@ service DisplaySettings {
   static readonly defaultValue = () => ({ prefix: "Ticket" })
 }
 
-effect defaultLabel(id: number) {
+effect function defaultLabel(id: number) {
   const settings = try DisplaySettings
   return `${settings.prefix} ${id}`
 }
@@ -82,11 +82,11 @@ A service with `static readonly defaultValue = () => implementation` compiles to
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: const pairs = try reproduciblePairs(); try Console.log(try stringify(pairs.first) === try stringify(pairs.second), pairs.first[0] !== pairs.first[1])
-effect pair() {
+effect function pair() {
   return [try Random.next, try Random.next]
 }
 
-effect reproduciblePairs() {
+effect function reproduciblePairs() {
   const first = try Random.withSeed(pair(), "documentation-seed")
   const second = try Random.withSeed(pair(), "documentation-seed")
   return { first, second }

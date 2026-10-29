@@ -707,5 +707,5 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 
 A numeric return value from `main` does not set the exit status:
-`effect main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
+`effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

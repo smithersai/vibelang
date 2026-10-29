@@ -52,7 +52,7 @@ const serialized = DateTime.makeZonedFromString(
 ## Reading current time
 
 ```vibe
-effect timestamp() {
+effect function timestamp() {
   const now = try DateTime.now
   return DateTime.formatIso(now)
 }
@@ -93,7 +93,7 @@ const parsed = DateTime.zoneFromString("+09:00")
 const fixed = DateTime.zoneMakeOffset(9 * 60 * 60 * 1000)
 DateTime.zoneToString(fixed) // "+09:00"
 
-effect inTokyo() {
+effect function inTokyo() {
   const zone = try DateTime.zoneMakeNamedEffect("Asia/Tokyo")
   const now = try DateTime.now
   return DateTime.setZone(now, zone)
@@ -188,12 +188,12 @@ Calendar `add` and `subtract` change parts in the value's zone; duration arithme
 ## Providing a default time zone
 
 ```vibe
-effect localDate() {
+effect function localDate() {
   return DateTime.formatIsoDate(try DateTime.nowInCurrentZone)
 }
 // string!!DateTime.CurrentTimeZone
 
-effect main() {
+effect function main() {
   provide DateTime.layerCurrentZoneNamed("Asia/Tokyo") { return try localDate() }
 }
 ```

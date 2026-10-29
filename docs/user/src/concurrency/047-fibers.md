@@ -7,7 +7,7 @@ A fiber is a running computation with a result and a lifetime. Effect's lightwei
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try buildDashboard())
-effect buildDashboard() {
+effect function buildDashboard() {
   const chart = fork effect {
     try sleep("30 millis")
     return "chart"
@@ -29,7 +29,7 @@ effect buildDashboard() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-14, VIP-17
 // run: try Console.log(Exit.isFailure(try inspectChild()))
-effect inspectChild() {
+effect function inspectChild() {
   const child = fork effect { throw "render failed" }
   const outcome = try Fiber.await(child)
   if (Exit.isFailure(outcome)) {
@@ -48,7 +48,7 @@ effect inspectChild() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try stopWorker()
-effect stopWorker() {
+effect function stopWorker() {
   const worker = fork ensuring(
     sleep("1 minute"),
     Console.log("worker finalizer")
@@ -70,7 +70,7 @@ To continue during cleanup, fork the interruption (`const stopping = fork Fiber.
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-22
 // run: try saveReport(); try pollStatus(false); const stopped = try exit(pollStatus(true)); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
-effect saveReport() {
+effect function saveReport() {
   uninterruptible {
     try Console.log("saving; an interruption waits until the block ends")
     restore {
@@ -80,7 +80,7 @@ effect saveReport() {
   }
 }
 
-effect pollStatus(cancelled: boolean) {
+effect function pollStatus(cancelled: boolean) {
   interruptible {
     try sleep("1 second")
   }
@@ -103,16 +103,16 @@ Statements in these blocks stay code of the enclosing function, so `return` retu
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try combine())
-effect title() {
+effect function title() {
   return "Inventory"
 }
 
-effect rowCount() {
+effect function rowCount() {
   try sleep("20 millis")
   return 18
 }
 
-effect combine() {
+effect function combine() {
   const [name, count] = try.all [title(), rowCount()]
   return `${name}: ${count}`
 }
@@ -131,7 +131,7 @@ For fibers you already hold, join each handle or use `try all([Fiber.join(titleF
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-18
 // run: provide TestClock.layer() { const jobs = try Queue.unbounded<string>(); const shutdown = try Deferred.make<void>(); try Queue.offer(jobs, "build"); try Console.log(try nextEvent(jobs, shutdown)); try Deferred.succeed(shutdown, undefined); try Console.log(try nextEvent(jobs, shutdown)); const neverShutdown = try Deferred.make<void>(); const idle = fork nextEvent(jobs, neverShutdown); try TestClock.adjust("30 seconds"); try Console.log(join idle) }
-effect nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred<void>) {
+effect function nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred<void>) {
   return try.race [
     effect { return `job: ${try Queue.take(jobs)}` },
     effect {
@@ -157,12 +157,12 @@ effect nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred<void>) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
 // run: try printAll(["a", "", "b"])
-effect fetchPage(id: string) {
+effect function fetchPage(id: string) {
   try sleep("5 millis")
   return `page ${id}`
 }
 
-effect printAll(ids: ReadonlyArray<string>) {
+effect function printAll(ids: ReadonlyArray<string>) {
   for concurrent(8) (const id of ids) {
     if (id === "") continue
     try Console.log(try fetchPage(id))
@@ -179,7 +179,7 @@ effect printAll(ids: ReadonlyArray<string>) {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try request()
-effect request() {
+effect function request() {
   try ensuring(scoped(effect {
     const progress = fork.scoped ensuring(
       sleep("1 minute"),
@@ -201,14 +201,14 @@ Forked fibers inherit the current services and tracing context.
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: const owner = try Scope.make(); const background = try inCallerScope(owner); try Scope.close(owner, Exit.succeed(undefined)); const stopped = try Fiber.await(background); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause)); try detachedExample(); try Console.log("detached finished")
-effect inCallerScope(owner: Scope.Scope) {
+effect function inCallerScope(owner: Scope.Scope) {
   const background = fork.in(owner) sleep("1 minute")
   try sleep("20 millis")
   // Closing owner interrupts background.
   return background
 }
 
-effect detachedExample() {
+effect function detachedExample() {
   const independent = fork.detached sleep("50 millis")
   join independent
 }
@@ -225,7 +225,7 @@ Start a fiber that must outlive its parent with `fork.scoped work()` for the cal
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try waitForReady()
-effect waitForReady() {
+effect function waitForReady() {
   const ready = try Deferred.make<void>()
   const worker = fork effect {
     try Console.log("worker initialized")

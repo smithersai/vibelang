@@ -235,13 +235,13 @@ error DocumentMissing {
   id: string
 }
 
-effect requireDocument(id: string) {
+effect function requireDocument(id: string) {
   if (id === "") throw new DocumentMissing({ id })
   return { id }
 }
 // { id: string }!DocumentMissing!
 
-effect documentOrDraft(id: string) {
+effect function documentOrDraft(id: string) {
   return requireDocument(id) catch (error) => match (error) {
     when DocumentMissing: ({ id: "draft" });
   }
@@ -265,7 +265,7 @@ error DocumentDecodeError {
   cause: unknown
 }
 
-effect decodeDocument(text: string) {
+effect function decodeDocument(text: string) {
   return try Effect.try({
     try: () => JSON.parse(text),
     catch: (cause) => new DocumentDecodeError({ cause })

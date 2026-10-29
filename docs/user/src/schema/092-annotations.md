@@ -52,7 +52,7 @@ const ReviewedLabel = Schema.String.pipe(Schema.decode({
 }))
 const Labels = Schema.Array(ReviewedLabel)
 
-effect reviewLabels(input: unknown) {
+effect function reviewLabels(input: unknown) {
   return try Schema.decodeUnknownEffect(Labels)(input, { concurrency: 3 })
 }
 ```
@@ -77,7 +77,7 @@ const OptionalLabel = Schema.String.pipe(
   })
 )
 
-effect readLabel(input: unknown) {
+effect function readLabel(input: unknown) {
   return try Schema.decodeUnknownEffect(OptionalLabel)(input)
 }
 ```

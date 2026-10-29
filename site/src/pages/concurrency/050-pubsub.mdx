@@ -10,7 +10,7 @@ A `PubSub` broadcasts values to independent subscribers: each active subscriber 
 ## Broadcasting to independent subscribers
 
 ```vibe
-effect broadcast() {
+effect function broadcast() {
   const hub = try PubSub.bounded<string>(4)
   return try ensuring(scoped(effect {
     const display = try PubSub.subscribe(hub)
@@ -21,7 +21,7 @@ effect broadcast() {
 }
 // Returns ["deployment complete", "deployment complete"].
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: ["deployment complete","deployment complete"]
@@ -32,7 +32,7 @@ Subscribe before publishing a message that must be received: without replay conf
 ## Selecting capacity and overflow behavior
 
 ```vibe
-effect makeHubs() {
+effect function makeHubs() {
   return {
     reliable: try PubSub.bounded<string>(64),
     bestEffort: try PubSub.dropping<string>(64),
@@ -48,7 +48,7 @@ When the buffer is full, a bounded hub backpressures publishers, so a slow subsc
 ## Managing scoped subscriptions
 
 ```vibe
-effect listen(hub: PubSub.PubSub<string>) {
+effect function listen(hub: PubSub.PubSub<string>) {
   try scoped(effect {
     const subscription = try PubSub.subscribe(hub)
     const message = try PubSub.take(subscription)
@@ -65,7 +65,7 @@ In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and t
 ## Publishing batches
 
 ```vibe
-effect batch() {
+effect function batch() {
   const hub = try PubSub.bounded<string>(3)
   return try ensuring(scoped(effect {
     const subscription = try PubSub.subscribe(hub)
@@ -82,7 +82,7 @@ effect batch() {
 ## Inspecting size and capacity
 
 ```vibe
-effect inspect() {
+effect function inspect() {
   const hub = try PubSub.bounded<number>(5)
   return try ensuring(scoped(effect {
     const subscriber = try PubSub.subscribe(hub)
@@ -103,7 +103,7 @@ Capacity is a plain value; size and fullness queries return Effects that run wit
 ## Ending subscriptions and shutting down
 
 ```vibe
-effect ownHub() {
+effect function ownHub() {
   const hub = try PubSub.bounded<string>(8)
   try ensuring(scoped(effect {
     const subscriber = try PubSub.subscribe(hub)

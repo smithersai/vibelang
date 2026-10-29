@@ -12,7 +12,7 @@ const DispatchConfig = Config.schema(Schema.Struct({
   capacity: Schema.Finite
 }), "dispatch")
 
-effect configurationExample() {
+effect function configurationExample() {
   const provider = ConfigProvider.fromUnknown({
     dispatch: { depot: "north", capacity: 24 }
   })
@@ -35,7 +35,7 @@ const OptionalCount = Schema.Option(Schema.FiniteFromString)
 const CountResult = Schema.Result(Schema.FiniteFromString, Schema.Trim)
 const CountExit = Schema.Exit(Schema.FiniteFromString, Schema.String, Schema.Defect())
 
-effect decodeContainers() {
+effect function decodeContainers() {
   const option = try Schema.decodeUnknownEffect(OptionalCount)(Option.some("9"))
   const result = try Schema.decodeUnknownEffect(CountResult)(Result.fail(" delayed "))
   const exit = try Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
@@ -55,7 +55,7 @@ Success
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(JSON.stringify(try encodeResult())) })
-effect encodeResult() {
+effect function encodeResult() {
   const codec = Schema.toCodecJson(CountResult)
   return try Schema.encodeEffect(codec)(Result.succeed(9))
 }
@@ -89,7 +89,7 @@ const NativeMap = Schema.ReadonlyMap(Schema.String, Schema.FiniteFromString)
 const PersistentSet = Schema.HashSet(Schema.FiniteFromString)
 const PersistentMap = Schema.HashMap(Schema.String, Schema.FiniteFromString)
 
-effect collectionsFromJson() {
+effect function collectionsFromJson() {
   const setCodec = Schema.toCodecJson(PersistentSet)
   const mapCodec = Schema.toCodecJson(PersistentMap)
   const set = try Schema.decodeUnknownEffect(setCodec)(["4", "7"])
@@ -112,7 +112,7 @@ effect collectionsFromJson() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { const value = try durations(); try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); try Console.log(JSON.stringify(value.json)) })
-effect durations() {
+effect function durations() {
   const hold = try Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
   const milliseconds = try Schema.encodeEffect(Schema.DurationFromMillis)(hold)
   const nanoseconds = try Schema.decodeEffect(Schema.DurationFromNanos)(3_000_000_000n)
@@ -139,7 +139,7 @@ const NonSerializableToken = Schema.Redacted(Schema.String, {
   disallowJsonEncode: true
 })
 
-effect readToken(input: unknown) {
+effect function readToken(input: unknown) {
   return try Schema.decodeUnknownEffect(AccessToken)(input)
 }
 ```

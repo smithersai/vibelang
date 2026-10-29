@@ -15,7 +15,7 @@ const Dispatch = Schema.Struct({
   packages: Schema.Int
 })
 
-effect readableFailure(input: unknown) {
+effect function readableFailure(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input)
     return "Accepted"
@@ -34,7 +34,7 @@ Accepted
 ## Reporting several issues
 
 ```vibe
-effect allFailures(input: unknown) {
+effect function allFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return "Accepted"
@@ -55,7 +55,7 @@ Formatting shows only the issues parsing collected; set `errors: "all"` on the p
 ## Formatting Standard Schema validation errors
 
 ```vibe
-effect formFailures(input: unknown) {
+effect function formFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
@@ -79,7 +79,7 @@ const formFormatter = SchemaIssue.makeFormatterStandardSchemaV1({
     : SchemaIssue.defaultLeafHook(issue)
 })
 
-effect localizedFailures(input: unknown) {
+effect function localizedFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []

@@ -16,7 +16,7 @@ const AuditRecord = Schema.Struct({
   labels: Schema.Array(Schema.String)
 })
 
-effect encodeAudit(input: unknown) {
+effect function encodeAudit(input: unknown) {
   const value = try Schema.decodeUnknownEffect(AuditRecord)(input)
   const jsonCodec = Schema.toCodecJson(AuditRecord)
   return try Schema.encodeEffect(jsonCodec)(value)
@@ -37,7 +37,7 @@ const Search = Schema.Struct({
   labels: Schema.Array(Schema.String)
 })
 
-effect encodeSearch() {
+effect function encodeSearch() {
   const codec = try sync(() => Schema.toCodecStringTree(Search))
   return try Schema.encodeEffect(codec)({ offset: 20, archived: false, labels: ["large"] })
 }
@@ -56,7 +56,7 @@ class Slot extends Schema.Class<Slot>("Slot")({
   column: Schema.Int
 }) {}
 
-effect slotRepresentation(input: unknown) {
+effect function slotRepresentation(input: unknown) {
   const slot = try Schema.decodeUnknownEffect(Slot)(input)
   const codec = Schema.toCodecIso(Slot)
   const structural = try Schema.encodeEffect(codec)(slot)
@@ -87,7 +87,7 @@ const DepotRefSchema = Schema.instanceOf(DepotRef, {
   )
 })
 
-effect encodeDepot() {
+effect function encodeDepot() {
   const codec = try sync(() => Schema.toCodecStringTree(DepotRefSchema))
   return try Schema.encodeEffect(codec)(new DepotRef("nw", 14))
 }

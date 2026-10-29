@@ -7,14 +7,14 @@ Tracing records an operation's duration and its relation to other operations. Vi
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(requestTrace(), tracer)); try Console.log(spans[0].name, spans[0].status._tag, Option.isNone(spans[0].parent))
-effect requestTrace() {
+effect function requestTrace() {
   return try withSpan(effect {
     try sleep("10 millis")
     return "response"
   }, "report-request")
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
@@ -32,7 +32,7 @@ A span describes one operation: name, identifiers, timestamps, status, and attri
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try withTracer(renderReport("csv"), tracer)); try Console.log(spans[0].name, spans[0].attributes.get("report.format"), spans[0].status._tag)
-effect renderReport(format: string) {
+effect function renderReport(format: string) {
   return try withSpan(effect {
     try sleep("20 millis")
     return `report.${format}`
@@ -78,7 +78,7 @@ const Tracing = OtlpTracer.layer({
   |> Layer.provide(%, OtlpSerialization.layerJson)
   |> Layer.provide(%, FetchHttpClient.layer)
 
-effect exportedReport() {
+effect function exportedReport() {
   provide Tracing { return try renderReport("csv") }
 }
 ```
@@ -101,7 +101,7 @@ error RenderFailed {
   format: string
 }
 
-effect failingRender() {
+effect function failingRender() {
   const outcome = try exit(withSpan(effect {
     try annotateCurrentSpan("report.format", "unknown")
     throw new RenderFailed({ format: "unknown" })
@@ -123,7 +123,7 @@ An exported failure carries error status and failure details; attributes identif
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); const original = try Console.Console; try withTracer(provideService(tracedLogs(), Console.Console, { ...original, log: () => {} }), tracer); try Console.log(try stringify(spans[0].events.map(([name]) => name)), spans[0].status._tag)
-effect tracedLogs() {
+effect function tracedLogs() {
   provide Logger.layer([Logger.defaultLogger, Logger.tracerLogger]) {
     try withSpan(effect {
       try logInfo("input validated")
@@ -145,14 +145,14 @@ The tracer logger records logs inside an active span as timestamped events, a ti
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try stringify(try withTracer(generate(), tracer))); try Console.log(try stringify(spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag])))
-effect loadTemplate() {
+effect function loadTemplate() {
   return try withSpan(effect {
     try sleep("10 millis")
     return "weekly-template"
   }, "load-template")
 }
 
-effect generate() {
+effect function generate() {
   return try withSpan(effect {
     const template = try loadTemplate()
     const output = try renderReport("csv")
@@ -175,7 +175,7 @@ The inner spans take the outer span as parent and share its trace ID; each has i
 // run: const { requests, collector } = collectorFixture(); try provideService(demonstration(), FetchHttpClient.Fetch, collector); try Console.log(requests.length, (try stringify(requests)).includes("generate-report"), (try stringify(requests)).includes("load-template"), (try stringify(requests)).includes("render-report"))
 import { collectorFixture } from "./collector.ts"
 
-effect demonstration() {
+effect function demonstration() {
   provide Tracing { try generate() }
 }
 ```
@@ -206,7 +206,7 @@ const VendorTracing = Layer.unwrap(effect {
     |> Layer.provide(%, FetchHttpClient.layer)
 })
 
-effect productionReport() {
+effect function productionReport() {
   provide VendorTracing { return try generate() }
 }
 ```

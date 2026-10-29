@@ -7,7 +7,7 @@ Caching shares a computation's outcome across callers instead of repeating the w
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try memoizeLengths()))
-effect memoizeLengths() {
+effect function memoizeLengths() {
   let lookups = 0
   const cache = try Cache.make({
     capacity: 64,
@@ -34,7 +34,7 @@ Each key stores its own outcome: repeated calls for the key reuse it, and concur
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try cachedSettings()))
-effect cachedSettings() {
+effect function cachedSettings() {
   let loads = 0
   const settings = try cached(effect {
     loads++
@@ -56,7 +56,7 @@ effect cachedSettings() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try expiringSnapshot()))
-effect expiringSnapshot() {
+effect function expiringSnapshot() {
   let revision = 0
   const snapshot = try cachedWithTTL(effect { return ++revision }, "100 millis")
   const first = try snapshot
@@ -75,7 +75,7 @@ The TTL bounds how long an outcome is reused. Expiration starts no background re
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try reloadableSnapshot()))
-effect reloadableSnapshot() {
+effect function reloadableSnapshot() {
   let revision = 0
   const [snapshot, invalidate] = try cachedInvalidateWithTTL(
     effect { return ++revision },

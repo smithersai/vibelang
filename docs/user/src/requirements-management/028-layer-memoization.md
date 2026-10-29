@@ -43,13 +43,13 @@ const Shared = Layer.merge(
   Layer.provide(FooterLive, PrefixLive)
 )
 
-effect documentLabels() {
+effect function documentLabels() {
   provide Shared {
     return [(try Heading).value, (try Footer).value]
   }
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: Prefix initialized
@@ -70,7 +70,7 @@ const Separate = Layer.merge(
   Layer.provide(FooterLive, Layer.fresh(PrefixLive))
 )
 
-effect isolatedLabels() {
+effect function isolatedLabels() {
   provide Separate {
     return [(try Heading).value, (try Footer).value]
   }
@@ -87,17 +87,17 @@ effect isolatedLabels() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
 // run: try Console.log(try stringify(try twoLocalReads())); try Console.log(try stringify(try oneSharedReadBoundary()))
-effect readPrefix() {
+effect function readPrefix() {
   return (try Prefix).value
 }
 
-effect twoLocalReads() {
+effect function twoLocalReads() {
   const first = try Effect.provide(readPrefix(), PrefixLive)
   const second = try Effect.provide(readPrefix(), PrefixLive)
   return [first, second]
 }
 
-effect oneSharedReadBoundary() {
+effect function oneSharedReadBoundary() {
   provide PrefixLive {
     const first = try readPrefix()
     const second = try readPrefix()
@@ -118,7 +118,7 @@ Each `Effect.provide` starts its own build boundary, so `twoLocalReads` builds t
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try manualSharing()))
-effect manualSharing() {
+effect function manualSharing() {
   return try scoped(effect {
     const memoMap = try Layer.makeMemoMap
     const owner = try scope

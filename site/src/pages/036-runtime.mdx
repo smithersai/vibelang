@@ -10,7 +10,7 @@ Effect's runtime executes computations, carries service implementations, schedul
 ## Execution infrastructure
 
 ```vibe
-effect operation() {
+effect function operation() {
   try sleep("10 millis")
   return "complete"
 }
@@ -35,7 +35,7 @@ const context = Context.make(Labels, {
   format: effect (value) => `[${value}]`
 })
 
-effect label() {
+effect function label() {
   const labels = try Labels
   return try labels.format("queued")
 }
@@ -55,7 +55,7 @@ Most applications build their context from layers. Use an explicit context when 
 ```vibe
 const Quiet = Logger.layer([])
 
-effect startup() {
+effect function startup() {
   try log("visible before")
   provide Quiet {
     try log("suppressed in this region")
@@ -75,7 +75,7 @@ For another format, supply a logger such as `Logger.consoleJson` through `Logger
 ```vibe
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
-effect roll(): number!! {
+effect function roll(): number!! {
   provide Random.Random = seeded {
     return try Random.nextInt
   }
@@ -97,7 +97,7 @@ export service Notifications {
   })
 }
 
-export effect notify(message: string) {
+export effect function notify(message: string) {
   const notifications = try Notifications
   try notifications.send(message)
 }

@@ -50,13 +50,13 @@ export error MissingNote { key: string }
 
 const notes = new Map<string, string>([["todo", "milk"]])
 
-effect read(key: string) {
+effect function read(key: string) {
   const note = notes.get(key)
   if (note === undefined) throw new MissingNote({ key })
   return note
 }
 
-export effect handle() {
+export effect function handle() {
   const request = try HttpServerRequest
   const url = try sync(() => new URL(request.url, "http://worker"))
   const key = url.pathname.slice(1)
@@ -133,16 +133,16 @@ export const Notes = Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
 export error MissingNote { key: string }
 
 // Initialization binds the bucket and builds the request Effect.
-export effect makeApi() {
+export effect function makeApi() {
   const bucket = try Cloudflare.R2.ReadWriteBucket(Notes)
 
-  effect read(key: string) {
+  effect function read(key: string) {
     const note = try bucket.get(key)
     if (note === null) throw new MissingNote({ key })
     return try note.text()
   }
 
-  effect handle() {
+  effect function handle() {
     const request = try HttpServerRequest
     const url = try sync(() => new URL(request.url, "http://worker"))
     const key = url.pathname.slice(1)

@@ -7,11 +7,11 @@ A `SubscriptionRef` combines shared state with a stream of changes. Use it for o
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: const progress = try makeProgress(); try advance(progress); try Console.log(JSON.stringify(try SubscriptionRef.get(progress)))
-effect makeProgress() {
+effect function makeProgress() {
   return try SubscriptionRef.make({ completed: 0, total: 12 })
 }
 
-effect advance(progress: SubscriptionRef.SubscriptionRef<{
+effect function advance(progress: SubscriptionRef.SubscriptionRef<{
   completed: number
   total: number
 }>) {
@@ -30,7 +30,7 @@ Running the creation Effect sets the reference's initial state. An update throug
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try renameStatus()))
-effect renameStatus() {
+effect function renameStatus() {
   const status = try SubscriptionRef.make("starting")
   const before = try SubscriptionRef.get(status)
   try SubscriptionRef.set(status, "running")
@@ -48,7 +48,7 @@ effect renameStatus() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try currentSnapshot()))
-effect currentSnapshot() {
+effect function currentSnapshot() {
   const count = try SubscriptionRef.make(7)
   const changes = SubscriptionRef.changes(count)
   return try Stream.runCollect(Stream.take(changes, 1)) // [7]
@@ -63,12 +63,12 @@ effect currentSnapshot() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-17, VIP-20
 // run: try observeTwoClients()
-effect observeTwoClients() {
+effect function observeTwoClients() {
   const count = try SubscriptionRef.make(0)
   const firstReady = try Deferred.make<void>()
   const secondReady = try Deferred.make<void>()
 
-  effect client(ready: Deferred.Deferred<void>) {
+  effect function client(ready: Deferred.Deferred<void>) {
     for try (const value of Stream.take(SubscriptionRef.changes(count), 2)) {
       try Console.log("observed", value)
       try Deferred.succeed(ready, undefined)

@@ -59,7 +59,7 @@ error InvalidAmount {
   cause: unknown
 }
 
-effect parseAmount(raw: number) {
+effect function parseAmount(raw: number) {
   return fromResult(WholeCents.result(raw)) catch effect (cause) => { throw new InvalidAmount({ cause }) }
 }
 // WholeCents!InvalidAmount!
@@ -110,7 +110,7 @@ error InvalidCharge {
   cause: unknown
 }
 
-effect chargeAmount(raw: number) {
+effect function chargeAmount(raw: number) {
   return fromResult(Charge.result(raw)) catch effect (cause) => { throw new InvalidCharge({ cause }) }
 }
 // chargeAmount(125) succeeds; -5 and 1.5 fail with InvalidCharge.

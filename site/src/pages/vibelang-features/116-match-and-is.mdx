@@ -34,7 +34,7 @@ Each arm, `when pattern: expression;`, is tried in order; the first match gives 
 An arm is one expression. Use `do { }` for several statements; its value is its last statement's. Inside `do`, declare variables with `const` or `let`: `var` is `EK1019`, with a quick fix to `let`. A `break` or `continue` must target a loop or label inside the same `do` expression (`EK1019` otherwise); `return` is `TS1108`. These rules also apply in nested blocks; a nested function keeps its own declarations and control flow. For example:
 
 ```vibe
-effect retryDelay(failure: Failure) {
+effect function retryDelay(failure: Failure) {
   return match (failure) {
     when Timeout: do {
       try Console.log("timed out")
@@ -99,7 +99,7 @@ function greeting(name: Option.Option<string>) {
   }
 }
 
-effect report(id: string) {
+effect function report(id: string) {
   const outcome = try exit(getUser(id))
   return match (outcome) {
     when Exit.Success(let user): user.name;
@@ -107,7 +107,7 @@ effect report(id: string) {
   }
 }
 
-effect getUser(id: string): { name: string }!NotFound!never {
+effect function getUser(id: string): { name: string }!NotFound!never {
   if (id === "") throw new NotFound({ id })
   return { name: "Ada" }
 }
@@ -202,7 +202,7 @@ function isRetryable(failure: Failure) {
 In an `if` or `while` condition, joined by `&&`, the pattern can bind names, scoped to the rest of the condition and the `if`'s first branch or the loop's body:
 
 ```vibe
-effect firstFailure(id: string) {
+effect function firstFailure(id: string) {
   const outcome = try exit(getUser(id))
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) {
     return Cause.pretty(cause)

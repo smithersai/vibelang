@@ -34,7 +34,7 @@ Create `src/greet.vibe`:
 // src/greet.vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try greet("Vite"))
-export effect greet(name: string) {
+export effect function greet(name: string) {
   return `Hello, ${name}!`
 }
 // Output: Hello, Vite!

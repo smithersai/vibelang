@@ -9,7 +9,7 @@ Defects report bugs and broken invariants, outside the typed error contract. Dom
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try decodeOpcode(1)); try Console.log(try matchCause(decodeOpcode(2), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
-effect decodeOpcode(opcode: number) {
+effect function decodeOpcode(opcode: number) {
   if (opcode !== 1) try die(new Error("unknown internal opcode"))
   return "start"
 }
@@ -28,7 +28,7 @@ An explicit `throw` in an effect function, even `throw new Error(...)`, is a typ
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
-effect firstLabel(labels: ReadonlyArray<string>) {
+effect function firstLabel(labels: ReadonlyArray<string>) {
   return fromOption(Option.fromNullishOr(labels[0])) catch "No label"
 }
 ```
@@ -49,16 +49,16 @@ error MissingSetting {
   name: string
 }
 
-effect requireSetting(name: string) {
+effect function requireSetting(name: string) {
   throw new MissingSetting({ name })
 }
 
-effect startup() {
+effect function startup() {
   return try orDie(requireSetting("region"))
 }
 // never!!
 
-effect startupWithMessage() {
+effect function startupWithMessage() {
   return try orDie(
     mapError(requireSetting("region"), (error) => new Error(`Startup needs ${error.name}`))
   )
@@ -77,7 +77,7 @@ true
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try inspectStartup())
-effect inspectStartup() {
+effect function inspectStartup() {
   const outcome = try exit(startup())
   if (Exit.isFailure(outcome)) {
     return Cause.hasDies(outcome.cause) ? "startup defect" : "startup stopped"
@@ -99,7 +99,7 @@ An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs on
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try isolateDecoder(1)); try Console.log(try isolateDecoder(2))
-effect isolateDecoder(opcode: number) {
+effect function isolateDecoder(opcode: number) {
   return try catchDefect(decodeOpcode(opcode), effect (defect) => {
     if (defect instanceof Error && defect.message === "unknown internal opcode") {
       try Console.log("Decoder disabled after an invariant failure")
@@ -123,7 +123,7 @@ disabled
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(try decoderBoundary(1)); try Console.log(try decoderBoundary(2))
-effect decoderBoundary(opcode: number) {
+effect function decoderBoundary(opcode: number) {
   const outcome = try exit(decodeOpcode(opcode))
   if (outcome is Exit.Success(let value)) return value
   const cause = outcome.cause

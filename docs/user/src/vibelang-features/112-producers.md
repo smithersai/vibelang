@@ -14,7 +14,7 @@ effect function* readings() {
   }
 }
 
-effect firstAlert() {
+effect function firstAlert() {
   let alert: number | undefined
   for try (const celsius of readings()) {
     if (celsius >= 25) {
@@ -57,7 +57,7 @@ effect function* fileTexts(directory: string) {
   }
 }
 
-effect firstLargeFile(directory: string) {
+effect function firstLargeFile(directory: string) {
   let found: string | undefined
   for try (const file of fileTexts(directory)) {
     if (file.text.length > 1000) {
@@ -79,7 +79,7 @@ Resources a producer acquires in its Effect Scope stay open between yields and c
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-20
 // run: try Console.log(JSON.stringify(try alerts()))
-effect alerts() {
+effect function alerts() {
   const selected = readings().pipe(
     Stream.filter((value) => value >= 25),
     Stream.map((value) => `${value} C`),
@@ -102,7 +102,7 @@ When Stream operators consume a producer, `Stream.callback` runs it on its own f
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-20
 // run: try Console.log(try sumStream())
-effect sumStream() {
+effect function sumStream() {
   let total = 0
   for try (const value of Stream.fromIterable([1, 2, 3])) {
     total += value

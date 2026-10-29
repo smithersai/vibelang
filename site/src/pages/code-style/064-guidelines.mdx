@@ -13,7 +13,7 @@ Run a VibeLang application through its platform runtime, keep its lifetime in `m
 // main.vibe
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-export effect main() {
+export effect function main() {
   try ensuring(effect {
     try Console.log("worker started")
     while (true) {
@@ -44,7 +44,7 @@ A runner also works in a plain framework callback registered from the module's t
 // main.vibe
 import { BunRuntime } from "@effect/platform-bun"
 
-effect main() {
+effect function main() {
   try Console.log("running on Bun")
 }
 
@@ -71,7 +71,7 @@ function parseDecimalTokens(tokens: ReadonlyArray<string>) {
 }
 // parseDecimalTokens(["10", "10", "10"]) returns [10, 10, 10].
 
-effect printValues(values: ReadonlyArray<number>) {
+effect function printValues(values: ReadonlyArray<number>) {
   try forEach(values, (value) => Console.log(value), { discard: true })
 }
 // Output: [10,10,10]

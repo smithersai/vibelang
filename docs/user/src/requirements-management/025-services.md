@@ -17,7 +17,7 @@ service Reporter {
   write(message: string): void!!
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: ticket-17
@@ -39,7 +39,7 @@ interface SearchApi {
 class Search extends Context.Service<Search, SearchApi>()("app/Search") {}
 class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 
-effect lookup(query: string) {
+effect function lookup(query: string) {
   const prefix = try Prefix
   const search = try Search
   return `${prefix}${try search.find(query)}`
@@ -54,20 +54,20 @@ Use Effect's `Context.Service` class for a service whose implementation has any 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try fixedLabel()); provide Sequence = { next: effect () => 23 } { try Console.log(try nextLabel(), try readImplementation()) }
-effect nextLabel() {
+effect function nextLabel() {
   const sequence = try Sequence
   return `ticket-${try sequence.next()}`
 }
 // string!!Sequence
 
-effect fixedLabel() {
+effect function fixedLabel() {
   return try provideService(nextLabel(), Sequence, {
     next: effect () => 17
   })
 }
 // string!!
 
-effect readImplementation() {
+effect function readImplementation() {
   const sequence = try Sequence
   return try sequence.next()
 }
@@ -87,7 +87,7 @@ service Settings {
   baseUrl: string
 }
 
-effect endpoint(path: string) {
+effect function endpoint(path: string) {
   const settings = try Settings
   return `${settings.baseUrl}/${path}`
 }
@@ -118,7 +118,7 @@ Providers infer and check the implementation from the key argument, so most laye
 ```vibe
 // pending: VIP-1, VIP-5, VIP-9, VIP-12, VIP-14
 // run: try Console.log(try stringify(try testAnnouncement()))
-effect announceTicket() {
+effect function announceTicket() {
   const label = try nextLabel()
   const reporter = try Reporter
   try reporter.write(`Created ${label}`)
@@ -133,7 +133,7 @@ const ReporterTest = Layer.succeed(Reporter, {
   effect write(_message) {}
 })
 
-effect testAnnouncement() {
+effect function testAnnouncement() {
   provide Layer.merge(SequenceTest, ReporterTest) { return try announceTicket() }
 }
 // Output: "ticket-17"
@@ -150,7 +150,7 @@ const testContext = Context.add(
   { write: effect (_message) => {} }
 )
 
-effect testWithContext() {
+effect function testWithContext() {
   provide testContext { return try announceTicket() }
 }
 // Output: ticket-17
@@ -163,7 +163,7 @@ A `Context` holds existing implementations; a `Layer` describes how to build the
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try optionalAnnouncement("hello")); provide Reporter = { write: (message) => Console.log(message) } { try Console.log(try optionalAnnouncement("hello")) }
-effect optionalAnnouncement(message: string) {
+effect function optionalAnnouncement(message: string) {
   const reporter = try serviceOption(Reporter)
   if (Option.isNone(reporter)) return false
   try reporter.value.write(message)

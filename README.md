@@ -33,7 +33,7 @@ Plain and `async` functions are TypeScript's, so your `.ts` code and npm package
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 
-effect settings(text: string) {
+effect function settings(text: string) {
   return try Effect.try({ try: () => parseSettings(text), catch: (cause) => new BadSettings({ cause }) })
 }
 ```
@@ -58,7 +58,7 @@ const UsersLive = Layer.succeed(Users, {
   }
 })
 
-export effect main() {
+export effect function main() {
   provide UsersLive {
     const users = try Users
     const [name, fallback] = try.all [
@@ -102,7 +102,7 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**8.9% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 17 pairs.** The example above uses **133 vs 202 tokens (34.2% fewer)**.
+**7.6% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **134 vs 202 tokens (33.7% fewer)**.
 
 <!-- token-headline:end -->
 
@@ -148,12 +148,12 @@ Replace `src/main.vibe` with this program and run `npm run start` again:
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error EmptyName
-effect greet(name: string): string!EmptyName {
+effect function greet(name: string): string!EmptyName {
   if (name === "") throw new EmptyName()
   return `Hello, ${name}!`
 }
 
-export effect main() {
+export effect function main() {
   try Console.log(try greet("VibeLang"))
   const recovered = greet("") catch "Hello, stranger!"
   try Console.log(recovered)
@@ -195,4 +195,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,237 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,241 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

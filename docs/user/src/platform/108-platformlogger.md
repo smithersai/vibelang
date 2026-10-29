@@ -14,7 +14,7 @@ const FileLogger = Logger.layer([
   })
 ])
 
-effect application() {
+effect function application() {
   try log("Index build started")
   try log("Index build completed")
 }
@@ -39,7 +39,7 @@ const LoggerLive = Layer.provide(
   NodeFileSystem.layer
 )
 
-effect main() {
+effect function main() {
   provide LoggerLive {
     try log("Report generated")
   }
@@ -73,7 +73,7 @@ const LoggerLive = Layer.provide(
   NodeFileSystem.layer
 )
 
-effect main() {
+effect function main() {
   try log("Worker ready")
 }
 

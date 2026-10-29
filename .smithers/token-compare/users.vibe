@@ -10,7 +10,7 @@ const UsersLive = Layer.succeed(Users, {
   }
 })
 
-export effect main() {
+export effect function main() {
   provide UsersLive {
     const users = try Users
     const [name, fallback] = try.all [

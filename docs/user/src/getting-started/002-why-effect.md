@@ -11,7 +11,7 @@ error InvalidQuantity {
   quantity: number
 }
 
-effect unitPrice(total: number, quantity: number) {
+effect function unitPrice(total: number, quantity: number) {
   if (quantity <= 0) throw new InvalidQuantity({ quantity })
   return total / quantity
 }
@@ -32,7 +32,7 @@ service Prices {
   total(sku: string): number!InvalidQuantity
 }
 
-effect receipt(sku: string) {
+effect function receipt(sku: string) {
   const prices = try Prices
   const amount = try prices.total(sku)
   return `Total: ${amount}`
@@ -43,7 +43,7 @@ const PricesTest = Layer.succeed(Prices, {
   effect total(_sku) { return 18 }
 })
 
-effect preview() {
+effect function preview() {
   provide PricesTest { return try receipt("pencil-box") }
 }
 // Output: Total: 18
@@ -56,7 +56,7 @@ Services carry dependencies in the same contract as errors and successes. Layers
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(resilientReceipt("pencil-box"), PricesTest))
-effect resilientReceipt(sku: string) {
+effect function resilientReceipt(sku: string) {
   return try withSpan(
     timeout(retry(receipt(sku), { times: 2 }), "800 millis"),
     "receipt"

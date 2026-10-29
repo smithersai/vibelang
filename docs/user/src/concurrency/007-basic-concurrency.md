@@ -7,13 +7,13 @@ Effect functions return Effect values without running them. Inside an effect fun
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try stringify(try runTasks()))
-effect task(id: number) {
+effect function task(id: number) {
   try Console.log("starting", id)
   try sleep("40 millis")
   return id * 2
 }
 
-effect runTasks() {
+effect function runTasks() {
   const sequential = try all([task(1), task(2)])
   const bounded = try forEach([1, 2, 3, 4], (id) => task(id), {
     concurrency: 2
@@ -22,7 +22,7 @@ effect runTasks() {
   return { sequential, bounded, unbounded }
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: starting 1
@@ -44,7 +44,7 @@ effect stringify(value: unknown) {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: const stopped = try cancelWork(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
-effect cancelWork() {
+effect function cancelWork() {
   const worker = fork effect {
     try sleep("1 minute")
     return "finished"
@@ -62,7 +62,7 @@ effect cancelWork() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try cancelWithCleanup(); try Console.log("interrupt returned")
-effect cancelWithCleanup() {
+effect function cancelWithCleanup() {
   const worker = fork onInterrupt(
     ensuring(sleep("1 minute"), Console.log("released worker resources")),
     () => Console.log("worker cancelled")
@@ -82,7 +82,7 @@ effect cancelWithCleanup() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-19
 // run: const stopped = try exit(cancelBatch()); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
-effect cancelBatch() {
+effect function cancelBatch() {
   for concurrent (const id of [1, 2, 3]) {
     try ensuring(effect {
       if (id === 2) {
@@ -106,12 +106,12 @@ effect cancelBatch() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try stringify(try raceExamples()))
-effect answer(label: string, delay: Duration.Input) {
+effect function answer(label: string, delay: Duration.Input) {
   try sleep(delay)
   return label
 }
 
-effect raceExamples() {
+effect function raceExamples() {
   const firstSuccess = try race(
     effect { throw "unavailable" },
     answer("replica", "20 millis")
@@ -137,7 +137,7 @@ The `try` operations (TC39 await operations proposal) behave as the same-named `
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const result = try inspectRace(); try Console.log(Result.isFailure(result.outcome)); try Console.log(try stringify(result.winners))
-effect inspectRace() {
+effect function inspectRace() {
   const winners: number[] = []
   const outcome = try result(raceFirst(
     effect { throw "primary offline" },

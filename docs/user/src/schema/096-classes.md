@@ -12,7 +12,7 @@ class Package extends Schema.Class<Package>("Package")({
   pieces: Schema.FiniteFromString
 }) {}
 
-effect readPackage(input: unknown) {
+effect function readPackage(input: unknown) {
   return try Schema.decodeUnknownEffect(Package)(input)
 }
 // Package!Schema.SchemaError!
@@ -29,7 +29,7 @@ Pass the class itself as the `Self` type, a stable identifier, and its fields. T
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log((try constructPackage("pkg-94", 2)).pieces, (try Effect.try(() => constructWithNew("pkg-94"))).pieces); try Effect.catch(constructPackage("", 2), (issue) => Console.log(issue._tag)) })
-effect constructPackage(reference: string, pieces: number) {
+effect function constructPackage(reference: string, pieces: number) {
   return try Package.makeEffect({ reference, pieces })
 }
 
@@ -72,7 +72,7 @@ class Container extends Schema.Class<Container>("Container")({
   labels: Schema.Array(Schema.String)
 }) {}
 
-effect sameContainer() {
+effect function sameContainer() {
   const first = try Container.makeEffect({ labels: ["cold", "sealed"] })
   const second = try Container.makeEffect({ labels: ["cold", "sealed"] })
   return Equal.equals(first, second) // true
@@ -101,12 +101,12 @@ class LabeledPackage extends Schema.Class<LabeledPackage>("LabeledPackage")({
     return `Package ${this.reference}`
   }
 
-  effect announce() {
+  effect function announce() {
     try Console.log(this.describe())
   }
 }
 
-effect announcePackage() {
+effect function announcePackage() {
   const item = try LabeledPackage.makeEffect({ reference: "pkg-94" })
   try item.announce()
   return item.displayReference
@@ -127,7 +127,7 @@ Getters derive synchronous values from fields; keep them pure so formatting, che
 // run: await runPromise(effect { try Console.log(JSON.stringify(try packageWireRoundTrip([{ reference: "pkg-94", pieces: "2" }]))) })
 const Packages = Schema.Array(Package)
 
-effect packageWireRoundTrip(input: unknown) {
+effect function packageWireRoundTrip(input: unknown) {
   const packages = try Schema.decodeUnknownEffect(Packages)(input)
   return try Schema.encodeEffect(Packages)(packages)
 }
@@ -175,7 +175,7 @@ class Crate extends Schema.Class<Crate>("Crate")({
   )
 }) {}
 
-effect readCrate(input: unknown) {
+effect function readCrate(input: unknown) {
   return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```
@@ -208,7 +208,7 @@ class InsuredPackage extends Package.extend<InsuredPackage>("InsuredPackage")({
   }
 }
 
-effect reportMissing(reference: string) {
+effect function reportMissing(reference: string) {
   throw (try MissingPackage.makeEffect({ reference }))
 }
 // void!MissingPackage | SchemaIssue.Issue!

@@ -40,13 +40,13 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 // run: provide ExperimentalNodeServices.layer { try Console.log(JSON.stringify(try runnable())) }
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect canRun(path: string) {
+effect function canRun(path: string) {
   const fs = try Experimental.FileSystem.FileSystem
   try fs.access(path, { executable: true })
   return true
 }
 
-effect runnable() {
+effect function runnable() {
   return try scoped(effect {
     const fs = try FileSystem
     const dir = try fs.makeTempDirectoryScoped()
@@ -65,7 +65,7 @@ effect runnable() {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-33
-effect restrict(path: string) {
+effect function restrict(path: string) {
   try scoped(effect {
     const fs = try Experimental.FileSystem.FileSystem
     const file = try fs.open(path, { flag: "r+", noFollow: true, nonBlocking: true })
@@ -91,7 +91,7 @@ The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 byte
 // run: provide ExperimentalNodeServices.layer { try Console.log(try signature(Redacted.make(new TextEncoder().encode("Jefe")), "what do ya want for nothing?")) }
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
+effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
   const crypto = try Experimental.Crypto.Crypto
   return Hex.encode(try crypto.hmac("SHA-256", secret, new TextEncoder().encode(body)))
 }
@@ -107,7 +107,7 @@ effect signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-export effect main() {
+export effect function main() {
   provide ExperimentalNodeServices.layer {
     const process = try Experimental.Process.Process
     const pid = try process.pid
@@ -141,14 +141,14 @@ The user's home directory is Effect's own, `try (try UserDirectories.UserDirecto
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect stop(pid: number) {
+effect function stop(pid: number) {
   const process = try Experimental.Process.Process
   if (!(try process.isRunning(pid))) return "already stopped"
   try process.kill(pid, { killSignal: "SIGTERM" })
   return "stopped"
 }
 
-export effect main() {
+export effect function main() {
   provide ExperimentalNodeServices.layer {
     try scoped(effect {
       const spawner = try ChildProcessSpawner.ChildProcessSpawner
@@ -181,7 +181,7 @@ Both fail with a `PlatformError` whose reason says why:
 // platform-name.vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Experimental.Process.layerTest({ platform: succeed("win32") }) { try Console.log(try platformName()) }
-export effect platformName() {
+export effect function platformName() {
   const process = try Experimental.Process.Process
   return (try process.platform) === "win32" ? "Windows" : "POSIX"
 }
@@ -196,7 +196,7 @@ export effect platformName() {
 // leader.vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Experimental.Locks.layerTest({ hold: () => succeed({ lost: Effect.void }) }) { try lead("engine") }
-export effect lead(name: string) {
+export effect function lead(name: string) {
   try scoped(effect {
     const locks = try Experimental.Locks.Locks
     const held = try locks.hold(name, { steal: true })

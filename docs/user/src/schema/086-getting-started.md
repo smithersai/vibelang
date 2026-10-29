@@ -12,7 +12,7 @@ const Shipment = Schema.Struct({
   pieces: Schema.FiniteFromString
 })
 
-effect receive(input: unknown) {
+effect function receive(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 ```
@@ -79,7 +79,7 @@ false
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log((try decodeWithEffects({ tracking: "box-76", pieces: "2" })).pieces); try Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); try Console.log((try decodeWithDomainError({ tracking: "box-76", pieces: "2" })).pieces); try Effect.catch(decodeWithDomainError({}), (error) => Console.log(error._tag)); try Console.log(decodeAsData({})) })
-effect decodeWithEffects(input: unknown) {
+effect function decodeWithEffects(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input)
 }
 
@@ -89,7 +89,7 @@ function decodeAsData(input: unknown) {
   return `received ${result.success.tracking}`
 }
 
-effect decodeWithDomainError(input: unknown) {
+effect function decodeWithDomainError(input: unknown) {
   return Schema.decodeUnknownEffect(Shipment)(input) catch effect (cause) => { throw new InvalidShipment({ cause }) }
 }
 
@@ -116,12 +116,12 @@ Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding servic
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(JSON.stringify(try send({ tracking: "box-76", pieces: 2 }))); try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag)) })
-effect send(shipment: Shipment) {
+effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
 // ShipmentWire!Schema.SchemaError!
 
-effect sendUntrusted(input: unknown) {
+effect function sendUntrusted(input: unknown) {
   return try Schema.encodeUnknownEffect(Shipment)(input)
 }
 ```
@@ -138,7 +138,7 @@ Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` acce
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({})) })
-effect receiveOrExplain(input: unknown) {
+effect function receiveOrExplain(input: unknown) {
   return effect {
     const shipment = try receive(input)
     return `accepted ${shipment.tracking}`
@@ -160,7 +160,7 @@ The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }))) })
-effect receiveStrict(input: unknown) {
+effect function receiveStrict(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input, {
     onExcessProperty: "error",
     errors: "all"

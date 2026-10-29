@@ -13,11 +13,11 @@ error InvalidRow {
   line: number
 }
 
-effect readRow() {
+effect function readRow() {
   throw new InvalidRow({ line: 8 })
 }
 
-effect sandboxedRow() {
+effect function sandboxedRow() {
   return try sandbox(readRow())
 }
 // never!Cause.Cause<InvalidRow>!
@@ -35,7 +35,7 @@ effect sandboxedRow() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try rowFailureKinds()))
-effect rowFailureKinds() {
+effect function rowFailureKinds() {
   return sandboxedRow() catch (cause) => cause.reasons.map((reason) => {
     if (Cause.isFailReason(reason)) return `row ${reason.error.line}`
     if (Cause.isDieReason(reason)) return "defect"
@@ -55,7 +55,7 @@ Effect 4 stores reasons in a flat readonly array; one outcome can hold several, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try rowOrPlaceholder())
-effect rowOrPlaceholder() {
+effect function rowOrPlaceholder() {
   return try Effect.catch(sandboxedRow(), effect (cause) => {
     if (!Cause.hasDies(cause) && !Cause.hasInterrupts(cause)) {
       return "Malformed row omitted"
@@ -76,7 +76,7 @@ This boundary recovers only causes made entirely of domain failures; checking on
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try flip(readWithInspection())).line)
-effect readWithInspection() {
+effect function readWithInspection() {
   return try Effect.catch(sandboxedRow(), effect (cause) => {
     try Console.log("Row computation stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
     return try failCause(cause)

@@ -18,7 +18,7 @@ service Products {
   price(sku: string): number!MissingProduct
 }
 
-effect makePrices() {
+effect function makePrices() {
   const products = try Products
   return try Cache.make({
     capacity: 200,
@@ -35,7 +35,7 @@ The default cache captures lookup services when created. `try Cache.get(cache, s
 ## Sharing concurrent requests
 
 ```vibe
-effect concurrentLookup() {
+effect function concurrentLookup() {
   let calls = 0
   const cache = try Cache.make({
     capacity: 10,
@@ -61,7 +61,7 @@ Requests for the same missing key wait on one computation without blocking the J
 ## Setting capacity and expiration
 
 ```vibe
-effect makePermanentNames() {
+effect function makePermanentNames() {
   return try Cache.make({
     capacity: 50,
     timeToLive: Duration.infinity,
@@ -77,7 +77,7 @@ Capacity bounds entries, not bytes; eviction keeps recently used entries over ol
 ## Inspecting cache state
 
 ```vibe
-effect inspect() {
+effect function inspect() {
   const cache = try Cache.make({ capacity: 5, lookup: (key: string) => succeed(key.length) })
   try Cache.get(cache, "paper")
   return {
@@ -95,7 +95,7 @@ effect inspect() {
 ## Invalidating and refreshing entries
 
 ```vibe
-effect refreshExample() {
+effect function refreshExample() {
   let version = 0
   const cache = try Cache.make({
     capacity: 5,

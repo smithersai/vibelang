@@ -5,14 +5,14 @@ Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try main())
-effect greet(name: string) {
+effect function greet(name: string) {
   try sleep("10 millis")
   const message = `Hello, ${name}`
   try Console.log(message)
   return message
 }
 
-effect main() {
+effect function main() {
   return try retry(greet("Ada"), Schedule.recurs(2))
 }
 // Output: Hello, Ada
@@ -28,7 +28,7 @@ Compile both files with `vibelang`, rather than ordinary `tsc`. In a `.ts` sourc
 ```vibe
 // t5.vibe
 // pending: VIP-1, VIP-5, VIP-6
-export effect clampAll(values: ReadonlyArray<number>) {
+export effect function clampAll(values: ReadonlyArray<number>) {
   return try forEach(values, (value) => succeed(Math.min(10, Math.max(0, value))))
 }
 ```
@@ -162,13 +162,13 @@ Effect declarations and combinator calls ported from TypeScript compile in a `.v
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-18
 // run: try Console.log(JSON.stringify([try sequential(), try concurrent()]))
-effect sequential() {
+effect function sequential() {
   const first = try greet("Ada")
   const second = try greet("Grace")
   return [first, second]
 }
 
-effect concurrent() {
+effect function concurrent() {
   return try.all [greet("Ada"), greet("Grace")]
 }
 // Output: Hello, Ada
@@ -205,7 +205,7 @@ A synchronous visitor that must return a program keeps its callback type unchang
 ```vibe
 // start.vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
-export effect main() {
+export effect function main() {
   try Console.log("started")
 }
 await runPromise(main())
@@ -221,7 +221,7 @@ Every export of Effect's `Effect` module is global unless its name clashes with 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { try Console.log(try reportTime()) }
-effect reportTime() {
+effect function reportTime() {
   const now = try Clock.currentTimeMillis
   try Console.log(now)
   return now
@@ -238,7 +238,7 @@ effect reportTime() {
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-export effect main() {
+export effect function main() {
   try scoped(effect {
     const fs = try FileSystem
     const path = try Path
@@ -287,12 +287,12 @@ Effect-contracted calls were in the same order of cost as `Effect.fn` generators
 // run: try Console.log(JSON.stringify([try displayName("ada"), try displayName("missing")]))
 error Missing { id: string }
 
-effect lookup(id: string) {
+effect function lookup(id: string) {
   if (id !== "ada") throw new Missing({ id })
   return { id, name: "Ada" }
 }
 
-effect displayName(id: string) {
+effect function displayName(id: string) {
   return effect {
     return (try lookup(id)).name
   } catch (error) => match (error) {

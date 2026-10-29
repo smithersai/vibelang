@@ -33,7 +33,7 @@ An arm is one expression. Use `do { }` for several statements; its value is its 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
 // run: try Console.log(try retryDelay(new Timeout())); try Console.log(try retryDelay(new NotFound({ id: "7" })))
-effect retryDelay(failure: Failure) {
+effect function retryDelay(failure: Failure) {
   return match (failure) {
     when Timeout: do {
       try Console.log("timed out")
@@ -102,7 +102,7 @@ function greeting(name: Option.Option<string>) {
   }
 }
 
-effect report(id: string) {
+effect function report(id: string) {
   const outcome = try exit(getUser(id))
   return match (outcome) {
     when Exit.Success(let user): user.name;
@@ -110,7 +110,7 @@ effect report(id: string) {
   }
 }
 
-effect getUser(id: string): { name: string }!NotFound!never {
+effect function getUser(id: string): { name: string }!NotFound!never {
   if (id === "") throw new NotFound({ id })
   return { name: "Ada" }
 }
@@ -215,7 +215,7 @@ In an `if` or `while` condition, joined by `&&`, the pattern can bind names, sco
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(try firstFailure("ada")); try Console.log((try firstFailure("")).includes("NotFound"))
-effect firstFailure(id: string) {
+effect function firstFailure(id: string) {
   const outcome = try exit(getUser(id))
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) {
     return Cause.pretty(cause)

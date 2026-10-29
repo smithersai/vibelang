@@ -14,7 +14,7 @@ const Availability = Schema.Literals(["ready", "held"]).pipe(
   }))
 )
 
-effect readAvailability(input: unknown) {
+effect function readAvailability(input: unknown) {
   return try Schema.decodeUnknownEffect(Availability)(input)
 }
 ```
@@ -38,7 +38,7 @@ const NumericAvailability = Schema.FiniteFromString.pipe(
   }))
 )
 
-effect readNumericAvailability() {
+effect function readNumericAvailability() {
   return try Schema.decodeEffect(NumericAvailability)("12") // true
 }
 ```
@@ -104,7 +104,7 @@ const RouteCode = Schema.String.pipe(
   })
 )
 
-effect readRoute(input: unknown) {
+effect function readRoute(input: unknown) {
   return try Schema.decodeUnknownEffect(RouteCode)(input)
 }
 // string!Schema.SchemaError!Routes
@@ -113,7 +113,7 @@ const TestRoutes = Layer.succeed(Routes, {
   effect check(_code) {}
 })
 
-effect previewRoute() {
+effect function previewRoute() {
   provide TestRoutes { return try readRoute("coastal") }
 }
 ```
@@ -137,7 +137,7 @@ const Initial = Schema.NonEmptyString.pipe(
   })
 )
 
-effect readInitial(input: unknown) {
+effect function readInitial(input: unknown) {
   return try Schema.decodeUnknownEffect(Initial)(input)
 }
 ```
@@ -172,7 +172,7 @@ const DeferredLabel = Schema.String.pipe(
   })
 )
 
-effect readNumbers() {
+effect function readNumbers() {
   return try Schema.decodeEffect(SemicolonNumbers)("2;5;8")
 }
 ```
@@ -200,7 +200,7 @@ const LowerLabel = Schema.String.pipe(
 )
 const JsonLabel = Schema.fromJsonString(Schema.Struct({ label: Schema.String }))
 
-effect decodeTextFormats() {
+effect function decodeTextFormats() {
   const trimmed = try Schema.decodeEffect(Schema.Trim)("  crate  ")
   const lower = try Schema.decodeEffect(LowerLabel)("CRATE")
   const data = try Schema.decodeEffect(JsonLabel)('{"label":"crate"}')
@@ -230,7 +230,7 @@ const Manifest = Schema.Struct({
   price: Schema.BigDecimalFromString
 })
 
-effect readManifest(input: unknown) {
+effect function readManifest(input: unknown) {
   return try Schema.decodeUnknownEffect(Manifest)(input)
 }
 ```

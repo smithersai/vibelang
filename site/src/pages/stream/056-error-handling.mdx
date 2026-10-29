@@ -15,7 +15,7 @@ error Disconnected
 const primary = Stream.concat(Stream.make("live-a", "live-b"), Stream.fail(new Disconnected()))
 const recovered = Stream.catch(primary, () => Stream.succeed("cached"))
 
-effect readRecovered() {
+effect function readRecovered() {
   return try Stream.runCollect(recovered) // ["live-a", "live-b", "cached"]
 }
 
@@ -64,7 +64,7 @@ const defectOnly = Stream.catchCauseFilter(Stream.die("corrupt frame"), Cause.fi
 ## Cleanup after failure
 
 ```vibe
-effect consumeChecked() {
+effect function consumeChecked() {
   const source = Stream.succeed("accepted").pipe(
     Stream.concat(Stream.fail("read failed")),
     Stream.onError(() => Console.log("input failed; closing reader"))

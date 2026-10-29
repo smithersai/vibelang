@@ -12,7 +12,7 @@ schema Shipment {
   stops: ReadonlyArray<string>
 }
 
-effect sameShipment(left: unknown, right: unknown) {
+effect function sameShipment(left: unknown, right: unknown) {
   const a = try Schema.decodeUnknownEffect(Shipment)(left)
   const b = try Schema.decodeUnknownEffect(Shipment)(right)
   return Schema.toEquivalence(Shipment)(a, b)

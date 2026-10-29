@@ -12,7 +12,7 @@ const Package = Schema.Struct({
   pieces: Schema.Finite
 })
 
-effect explainPackage(input: unknown) {
+effect function explainPackage(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Package)(input, { errors: "all" })
     return "Accepted"
@@ -108,7 +108,7 @@ const Orders = Schema.Struct({
   delivery: Delivery
 })
 
-effect explainOrders(input: unknown) {
+effect function explainOrders(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Orders)(input, { errors: "all" })
     return "Accepted"
@@ -142,7 +142,7 @@ const Coordinates = Schema.Tuple([
   Schema.Finite.annotateKey({ messageMissingKey: "Supply latitude" })
 ])
 
-effect readCoordinates(input: unknown) {
+effect function readCoordinates(input: unknown) {
   return try Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
 }
 ```

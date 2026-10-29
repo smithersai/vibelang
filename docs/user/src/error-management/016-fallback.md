@@ -11,16 +11,16 @@ A fallback runs another computation after an expected failure; a catch expressio
 // run: try Console.log(try title())
 error SourceOffline
 
-effect latestTitle(): string!SourceOffline! {
+effect function latestTitle(): string!SourceOffline! {
   throw new SourceOffline()
 }
 
-effect cachedTitle() {
+effect function cachedTitle() {
   try Console.log("Reading saved title")
   return "Saved issue"
 }
 
-effect title() {
+effect function title() {
   return latestTitle() catch effect { return try cachedTitle() }
 }
 // string!!
@@ -36,7 +36,7 @@ The cache is read only if the primary computation fails. The fallback's errors b
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try titleInline())
-effect titleInline() {
+effect function titleInline() {
   return latestTitle() catch effect () => {
     return try cachedTitle()
   }
@@ -58,7 +58,7 @@ Saved issue
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try titleOrPlaceholder())
-effect titleOrPlaceholder() {
+effect function titleOrPlaceholder() {
   return latestTitle() catch "No title available"
 }
 // string!!
@@ -77,7 +77,7 @@ No title available
 // run: try Console.log(JSON.stringify(try lookup()))
 type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
 
-effect lookup(): Lookup!! {
+effect function lookup(): Lookup!! {
   return effect {
     return { _tag: "Found" as const, title: try latestTitle() }
   } catch { _tag: "Offline" as const }
@@ -95,7 +95,7 @@ The return annotation checks that the successful object and the fallback both pr
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try bestTitle())
-effect bestTitle() {
+effect function bestTitle() {
   return try firstSuccessOf([
     latestTitle(),
     cachedTitle(),

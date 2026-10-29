@@ -9,13 +9,13 @@ A timeout limits how long a caller waits for work. Effect interrupts the timed c
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try buildPreview()); try Console.log((try flip(previewWithDeadline()))._tag)
-effect buildPreview() {
+effect function buildPreview() {
   try sleep("3 seconds")
   try Console.log("Preview rendered")
   return "Rendered preview"
 }
 
-effect previewWithDeadline() {
+effect function previewWithDeadline() {
   return try timeout(buildPreview(), "500 millis")
 }
 // string!Cause.TimeoutError!
@@ -32,7 +32,7 @@ TimeoutError
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try previewLabel())
-effect previewLabel() {
+effect function previewLabel() {
   return previewWithDeadline() catch (error) => {
     // error._tag is "TimeoutError"
     return "Preview still unavailable"
@@ -53,7 +53,7 @@ The internal interruption that stops the source is separate from the typed timeo
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try optionalPreview())
-effect optionalPreview() {
+effect function optionalPreview() {
   const preview = try timeoutOption(buildPreview(), "500 millis")
   return Option.isNone(preview) ? "No preview yet" : preview.value
 }
@@ -70,7 +70,7 @@ No preview yet
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try previewOrPlaceholder()); try Console.log((try flip(requiredPreview("doc-1"))).documentId)
-effect previewOrPlaceholder() {
+effect function previewOrPlaceholder() {
   return try timeoutOrElse(buildPreview(), {
     duration: "500 millis",
     orElse: () => succeed("Static placeholder")
@@ -81,7 +81,7 @@ error PreviewDeadline {
   documentId: string
 }
 
-effect requiredPreview(documentId: string) {
+effect function requiredPreview(documentId: string) {
   return try timeoutOrElse(buildPreview(), {
     duration: "500 millis",
     orElse: effect () => { throw new PreviewDeadline({ documentId }) }
@@ -102,7 +102,7 @@ The alternative Effect runs lazily, after the timer wins, and can use services, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-22
 // run: try Console.log((try flip(protectedPreview()))._tag)
-effect protectedPreview() {
+effect function protectedPreview() {
   return try timeout(
     Effect.uninterruptible(buildPreview()),
     "500 millis"

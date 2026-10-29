@@ -7,7 +7,7 @@
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
-effect dimensions() {
+effect function dimensions() {
   const terminal = try Terminal
   return { columns: try terminal.columns, rows: try terminal.rows }
 }
@@ -25,7 +25,7 @@ effect dimensions() {
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeTerminal from "@effect/platform-node/NodeTerminal"
 
-effect main() {
+effect function main() {
   const terminal = try Terminal
   try terminal.display("Package prepared.\n")
 }
@@ -41,7 +41,7 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
-effect askName() {
+effect function askName() {
   const terminal = try Terminal
   try terminal.display("Your name: ")
   const name = try terminal.readLine
@@ -59,7 +59,7 @@ effect askName() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
 // run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
-effect askNameOrQuit() {
+effect function askNameOrQuit() {
   return askName() catch effect (error) => match (error) {
     when { _tag: "QuitError" }: undefined
     default: throw error
@@ -88,7 +88,7 @@ function parseGuess(input: string) {
     : Option.none<number>()
 }
 
-effect game() {
+effect function game() {
   const terminal = try Terminal
   const secret = try Random.nextIntBetween(1, 20)
   try terminal.display("Guess an integer from 1 to 20. You have five guesses.\n")
@@ -112,7 +112,7 @@ effect game() {
 }
 // void!Terminal.QuitError | PlatformError.PlatformError!Terminal.Terminal
 
-export effect main() {
+export effect function main() {
   return game() catch effect (error) => match (error) {
     when { _tag: "QuitError" }: undefined
     default: throw error

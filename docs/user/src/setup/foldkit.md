@@ -97,13 +97,13 @@ export const quoteOrFallback = (url: string) =>
 // pending: VIP-1, VIP-5, VIP-14, VIP-15, VIP-33
 schema Quote { text: string }
 
-effect loadQuote(url: string) {
+effect function loadQuote(url: string) {
   const response = try HttpClient.get(url)
   const quote = try Schema.decodeUnknownEffect(Quote)(try response.json)
   return quote.text
 }
 
-export effect quoteOrFallback(url: string) {
+export effect function quoteOrFallback(url: string) {
   return loadQuote(url) catch "Could not load a quote"
 }
 ```

@@ -46,7 +46,7 @@ error MissingRecord {
   id: string
 }
 
-effect diagnose() {
+effect function diagnose() {
   const outcome = try exit(effect {
     throw new MissingRecord({ id: "r-9" })
   })
@@ -68,7 +68,7 @@ MissingRecord:
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try classify(Cause.combine(Cause.combine(Cause.fail("missing"), Cause.die("broken")), Cause.interrupt(17))))); try Console.log(JSON.stringify(try classify(Cause.empty)))
-effect classify<E>(cause: Cause.Cause<E>) {
+effect function classify<E>(cause: Cause.Cause<E>) {
   const summary = {
     failed: Cause.hasFails(cause),
     defective: Cause.hasDies(cause),

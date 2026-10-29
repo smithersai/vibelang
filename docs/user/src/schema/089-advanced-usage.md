@@ -16,7 +16,7 @@ const ShelfSchema = Schema.declare(
   { identifier: "Shelf", description: "A warehouse shelf handle" }
 )
 
-effect readShelf(input: unknown) {
+effect function readShelf(input: unknown) {
   return try Schema.decodeUnknownEffect(ShelfSchema)(input)
 }
 ```
@@ -124,7 +124,7 @@ const Parcel = Schema.Struct({
   priority: Schema.Int.pipe(Schema.withConstructorDefault(effect { return 1 }))
 })
 
-effect createParcel() {
+effect function createParcel() {
   const shelf = try ShelfId.makeEffect("rack-18")
   return try Parcel.makeEffect({ shelf })
 }
@@ -183,7 +183,7 @@ const Preferences = Schema.Struct({
   alias: Schema.OptionFromOptionalNullOr(Schema.String)
 })
 
-effect readPreferences() {
+effect function readPreferences() {
   return try Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
 }
 // All three fields contain Option.none().
@@ -286,7 +286,7 @@ const Branch = Schema.Struct({
 })
 const Leaf = Schema.Struct({ owner: Schema.NullOr(Branch) })
 
-effect readCrate(input: unknown) {
+effect function readCrate(input: unknown) {
   return try Schema.decodeUnknownEffect(Crate)(input)
 }
 ```

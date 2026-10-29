@@ -7,7 +7,7 @@ VibeLang sequences computations with effect functions and `try`, covering the co
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try Effect.provide(invoice(3), ConfigProvider.layer(ConfigProvider.fromUnknown({ UNIT_PRICE: 4 }))))
-effect invoice(quantity: number) {
+effect function invoice(quantity: number) {
   const unitPrice = try Config.Finite("UNIT_PRICE")
   const subtotal = quantity * unitPrice
   try Console.log(`subtotal=${subtotal}`)
@@ -24,12 +24,12 @@ Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE"
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try greeting())
-effect delayedLabel(name: string) {
+effect function delayedLabel(name: string) {
   try sleep("30 millis")
   return name.toUpperCase()
 }
 
-effect greeting() {
+effect function greeting() {
   const label = try delayedLabel("sora")
   return `Hello ${label}`
 }
@@ -43,7 +43,7 @@ effect greeting() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try reportEven([1, 2, 3, 4, -1, 6]))
-effect reportEven(values: ReadonlyArray<number>) {
+effect function reportEven(values: ReadonlyArray<number>) {
   let count = 0
   for (const value of values) {
     if (value < 0) break
@@ -67,13 +67,13 @@ Conditions, local variables, `break`, `continue`, and early returns keep JavaScr
 // run: try Console.log(try optionalTitle(undefined))
 error MissingTitle
 
-effect titleLength(title: string | undefined) {
+effect function titleLength(title: string | undefined) {
   if (title === undefined) throw new MissingTitle()
   return title.length
 }
 // number!MissingTitle!
 
-effect optionalTitle(title: string | undefined) {
+effect function optionalTitle(title: string | undefined) {
   return titleLength(title) catch 0
 }
 // Output: 0
@@ -97,7 +97,7 @@ class Prefixer {
   }
 }
 
-effect label() {
+effect function label() {
   const prefixer = new Prefixer("item")
   return try prefixer.format("marker")
 }
@@ -119,7 +119,7 @@ effect function* ticks() {
   }
 }
 
-effect firstTwo() {
+effect function firstTwo() {
   const values: number[] = []
   for try (const n of ticks()) {
     values.push(n)

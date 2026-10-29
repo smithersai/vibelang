@@ -13,12 +13,12 @@ Matching turns an outcome into one value or selects the next computation. Use ty
 ```vibe
 error InvalidCount
 
-effect itemCount(raw: number) {
+effect function itemCount(raw: number) {
   if (raw < 0) throw new InvalidCount()
   return raw
 }
 
-effect countLabel(raw: number) {
+effect function countLabel(raw: number) {
   return try Effect.match(itemCount(raw), {
     onFailure: () => "Count unavailable",
     onSuccess: (count) => `${count} items`
@@ -37,7 +37,7 @@ Count unavailable
 ## Choosing effectful branches
 
 ```vibe
-effect reportCount(raw: number) {
+effect function reportCount(raw: number) {
   return try matchEffect(itemCount(raw), {
     onFailure: effect () => {
       try Console.log("Invalid count received")
@@ -63,14 +63,14 @@ Count unavailable
 ## Matching complete failure causes
 
 ```vibe
-effect outcomeLabel() {
+effect function outcomeLabel() {
   return try matchCause(die(new Error("index invariant")), {
     onFailure: (cause) => Cause.hasDies(cause) ? "Index defect" : "Index stopped",
     onSuccess: () => "Index ready"
   })
 }
 
-effect reportOutcome() {
+effect function reportOutcome() {
   return try matchCauseEffect(die(new Error("index invariant")), {
     onFailure: effect (cause) => {
       try Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
@@ -92,12 +92,12 @@ Unavailable
 ## Discarding failures or all causes
 
 ```vibe
-effect ignoreRejectedCount() {
+effect function ignoreRejectedCount() {
   try ignore(itemCount(-2))
 }
 // void!!
 
-effect discardBoundaryOutcome() {
+effect function discardBoundaryOutcome() {
   try ignoreCause(die(new Error("isolated task failed")))
 }
 // Output:

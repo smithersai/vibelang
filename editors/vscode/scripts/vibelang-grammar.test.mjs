@@ -46,12 +46,13 @@ function scopes(source, word) {
 }
 const has = (source, word, scope) => scopes(source, word).includes(scope)
 
-test("effect and async declare functions, shorthand and generators included (VIP-1, VIP-21)", () => {
-  for (const source of ["export effect load(id: string) { return id }", "effect load(id: string) { return id }", "export effect function load() { return 1 }", "effect function* load() { yield 1 }", "async load(url: string) { return url }"]) {
+test("effect declares functions where async does, generators included (VIP-1, VIP-21, VIP-39)", () => {
+  for (const source of ["export effect function load(id: string) { return id }", "effect function load() { return 1 }", "effect function* load() { yield 1 }", "async function load(url: string) { return url }"]) {
     const modifier = source.includes("async") ? "async" : "effect"
     assert.ok(has(source, modifier, "storage.modifier.async.ts"), source)
     assert.ok(has(source, "load", "entity.name.function.ts"), source)
   }
+  assert.ok(has("const f = effect function (id: string) { return id }", "effect", "storage.modifier.async.ts"))
   assert.ok(has("effect function* load() { yield 1 }", "*", "keyword.generator.asterisk.ts"))
 })
 

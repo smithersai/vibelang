@@ -10,7 +10,7 @@ Schema constructors work as in Effect, on decoded values: they apply constructor
 const Label = Schema.Struct({ text: Schema.NonEmptyString })
 const LabelsById = Schema.Record(Schema.String, Schema.NonEmptyString)
 
-effect makeLabels() {
+effect function makeLabels() {
   const label = try Label.makeEffect({ text: "Keep upright" })
   const byId = try LabelsById.makeEffect({ handling: label.text })
   return { label, byId }
@@ -32,7 +32,7 @@ const CaseCount = Schema.FiniteFromString.check(
   Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 48 })
 ).pipe(Schema.brand("CaseCount"))
 
-effect makeCaseCount(value: number) {
+effect function makeCaseCount(value: number) {
   return try CaseCount.makeEffect(value)
 }
 ```
@@ -49,7 +49,7 @@ Filters run during construction as well as parsing. A filter leaves the static t
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(try constructOrExplain(6)); try Console.log(constructAsOption(0).isNone()); try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected")) })
-effect constructOrExplain(value: number) {
+effect function constructOrExplain(value: number) {
   return effect {
     return String(try CaseCount.makeEffect(value))
   } catch (issue) => SchemaIssue.makeFormatterDefault()(issue)
@@ -59,7 +59,7 @@ function constructAsOption(value: number) {
   return CaseCount.makeOption(value)
 }
 
-effect constructWithExpectedFailure(value: number) {
+effect function constructWithExpectedFailure(value: number) {
   return try CaseCount.makeEffect(value)
 }
 ```
@@ -86,7 +86,7 @@ const Packing = Schema.Struct({
   labels: Schema.Array(Schema.String).pipe(Schema.withConstructorDefault(effect { return [] }))
 })
 
-effect makePacking() {
+effect function makePacking() {
   return try Packing.makeEffect({})
 }
 // { handling: "standard", dimensions: { unit: "cm", width: 10 }, labels: [] }
@@ -112,7 +112,7 @@ const ReturnPacking = Schema.Struct({
   labels: Packing.fields.labels
 })
 
-effect makeReturnPacking() {
+effect function makeReturnPacking() {
   return try ReturnPacking.makeEffect({ reason: "inspection" })
 }
 ```
@@ -134,7 +134,7 @@ class PackingRequest extends Schema.Class<PackingRequest>("PackingRequest")({
   labels: Packing.fields.labels
 }) {}
 
-effect createPackingRequest(reference: string) {
+effect function createPackingRequest(reference: string) {
   return try PackingRequest.makeEffect({ reference })
 }
 ```

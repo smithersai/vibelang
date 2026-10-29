@@ -7,7 +7,7 @@
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try stringify(try runGroup()))
-effect runGroup() {
+effect function runGroup() {
   return try scoped(effect {
     const workers = try FiberSet.make<number>()
     const first = try FiberSet.run(workers, effect {
@@ -23,7 +23,7 @@ effect runGroup() {
   })
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
@@ -41,7 +41,7 @@ tracked workers 2
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try replacePreview())
-effect replacePreview() {
+effect function replacePreview() {
   return try scoped(effect {
     const previews = try FiberMap.make<string, string>()
     try FiberMap.run(previews, "editor-1", effect {
@@ -68,7 +68,7 @@ Running a fiber under an existing key interrupts that key's previous fiber: late
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try waitForAllTracked())
-effect waitForAllTracked() {
+effect function waitForAllTracked() {
   return try scoped(effect {
     const workers = try FiberSet.make<void>()
     try FiberSet.run(workers, sleep("10 millis"))
@@ -90,7 +90,7 @@ Sets and maps remove completed fibers automatically, so a long-lived owner doesn
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try serveBriefly()
-effect serveBriefly() {
+effect function serveBriefly() {
   try scoped(effect {
     const workers = try FiberSet.make<void>()
     try FiberSet.run(workers, ensuring(

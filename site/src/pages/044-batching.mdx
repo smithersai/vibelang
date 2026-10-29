@@ -61,12 +61,12 @@ Complete every entry, including requests for absent rows. Use `Request.succeed` 
 ## Build queries from requests
 
 ```vibe
-effect findPart(code: string) {
+effect function findPart(code: string) {
   return try request(FindPart({ code }), PartResolver)
 }
 // Part!PartMissing | CatalogUnavailable!
 
-effect partLabel(code: string) {
+effect function partLabel(code: string) {
   return (try findPart(code)).label
 }
 // Output: catalog batch size=1
@@ -80,7 +80,7 @@ effect partLabel(code: string) {
 ## Combine compatible requests into batches
 
 ```vibe
-effect labels(codes: ReadonlyArray<string>) {
+effect function labels(codes: ReadonlyArray<string>) {
   return try forEach(codes, (code) => partLabel(code), {
     concurrency: "unbounded"
   })
@@ -100,7 +100,7 @@ const TunedResolver = PartResolver
   |> RequestResolver.setDelay(%, "8 millis")
   |> RequestResolver.batchN(%, 64)
 
-effect tunedLookup(code: string) {
+effect function tunedLookup(code: string) {
   return try request(FindPart({ code }), TunedResolver)
 }
 // Output: catalog batch size=64
@@ -156,7 +156,7 @@ Match results by identifier; don't assume the backend preserves request order. A
 ## Share and tune request caches
 
 ```vibe
-effect cachedQueries() {
+effect function cachedQueries() {
   const resolver = try RequestResolver.withCache(PartResolver, {
     capacity: 128,
     strategy: "lru"
@@ -166,7 +166,7 @@ effect cachedQueries() {
   }
 }
 
-effect cachedExample() {
+effect function cachedExample() {
   const parts = try cachedQueries()
   const first = try parts.find("ink-blue")
   const again = try parts.find("ink-blue")
@@ -184,7 +184,7 @@ effect cachedExample() {
 The cache is bounded by `capacity`, with `"lru"` eviction by default or `"fifo"` for insertion order. Completed expected failures are cached; interrupted results are not. Entries have no time-based expiry, and hits depend on request equality.
 
 ```vibe
-effect expiringLookup() {
+effect function expiringLookup() {
   const cache = try RequestResolver.asCache(PartResolver, {
     capacity: 128,
     timeToLive: () => "20 seconds"

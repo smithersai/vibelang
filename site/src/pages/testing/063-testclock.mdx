@@ -32,7 +32,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 ```vibe
 import { assert, it } from "@effect/vitest"
 
-effect check(condition: boolean, message: string) {
+effect function check(condition: boolean, message: string) {
   try sync(() => assert.isTrue(condition, message))
 }
 
@@ -55,7 +55,7 @@ it.effect("a deadline returns the fallback", () => effect {
 `it.effect` provides the test services, virtual time included. `adjust` advances by a duration and runs sleepers whose deadlines fall within it; `setTime` sets an absolute timestamp in milliseconds. Fork the timed work first so the test's own fiber stays free to adjust the clock. The test fiber owns `pending` and interrupts it if the test exits early.
 
 ```vibe
-effect standaloneClockExample() {
+effect function standaloneClockExample() {
   provide TestClock.layer() {
     try TestClock.setTime(5_000)
     try TestClock.adjust("2 seconds")
@@ -105,7 +105,7 @@ Use the `check` helper from the first example. Advancing to each boundary lets t
 ```vibe
 import { it } from "@effect/vitest"
 
-effect isExpired(createdAt: number, lifetimeMillis: number) {
+effect function isExpired(createdAt: number, lifetimeMillis: number) {
   return (try Clock.currentTimeMillis) - createdAt >= lifetimeMillis
 }
 

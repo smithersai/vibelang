@@ -12,7 +12,7 @@ const Dispatch = Schema.Struct({
   packages: Schema.Int
 })
 
-effect readableFailure(input: unknown) {
+effect function readableFailure(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input)
     return "Accepted"
@@ -33,7 +33,7 @@ Accepted
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(try allFailures({})) })
-effect allFailures(input: unknown) {
+effect function allFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return "Accepted"
@@ -56,7 +56,7 @@ Formatting shows only the issues parsing collected; set `errors: "all"` on the p
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(JSON.stringify(try formFailures({}))) })
-effect formFailures(input: unknown) {
+effect function formFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []
@@ -82,7 +82,7 @@ const formFormatter = SchemaIssue.makeFormatterStandardSchemaV1({
     : SchemaIssue.defaultLeafHook(issue)
 })
 
-effect localizedFailures(input: unknown) {
+effect function localizedFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
     return []

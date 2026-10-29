@@ -85,7 +85,7 @@ Create `src/hello.vibe`, in a directory that `include` selects:
 // src/hello.vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try hello("VibeLang"))
-export effect hello(name: string) {
+export effect function hello(name: string) {
   return `Hello, ${name}!`
 }
 // Output: Hello, VibeLang!
@@ -105,7 +105,7 @@ The `start` script runs `dist/main.js`, so create `src/main.vibe`:
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { hello } from "./hello.vibe"
 
-export effect main() {
+export effect function main() {
   try Console.log(try hello("VibeLang"))
 }
 NodeRuntime.runMain(main())

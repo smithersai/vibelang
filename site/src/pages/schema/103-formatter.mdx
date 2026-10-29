@@ -15,7 +15,7 @@ const Dispatch = Schema.Struct({
   counts: Schema.Array(Schema.Int)
 })
 
-effect displayDispatch(input: unknown) {
+effect function displayDispatch(input: unknown) {
   const dispatch = try Schema.decodeUnknownEffect(Dispatch)(input)
   return Schema.toFormatter(Dispatch)(dispatch)
 }
@@ -36,7 +36,7 @@ const Weight = Schema.Finite.pipe(Schema.overrideToFormatter(
 ))
 schema Manifest { label: string; weight: Weight }
 
-effect displayManifest(input: unknown) {
+effect function displayManifest(input: unknown) {
   const manifest = try Schema.decodeUnknownEffect(Manifest)(input)
   return Schema.toFormatter(Manifest, {
     onBefore: (ast) => ast._tag === "String"

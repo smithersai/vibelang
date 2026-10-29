@@ -13,7 +13,7 @@ const Settings = Schema.Struct({
   hint: Schema.optionalKey(Schema.String)
 })
 
-effect readSettings(input: unknown) {
+effect function readSettings(input: unknown) {
   return try Schema.decodeUnknownEffect(Settings)(input)
 }
 // typeof Settings.Type!Schema.SchemaError!
@@ -59,11 +59,11 @@ const Parcel = Schema.Struct({ weight: Schema.FiniteFromString })
 type Parcel = typeof Parcel.Type       // { readonly weight: number }
 type ParcelWire = typeof Parcel.Encoded // { readonly weight: string }
 
-effect unpack() {
+effect function unpack() {
   return try Schema.decodeEffect(Parcel)({ weight: "3.75" })
 }
 
-effect pack(parcel: Parcel) {
+effect function pack(parcel: Parcel) {
   return try Schema.encodeEffect(Parcel)(parcel)
 }
 ```
@@ -80,7 +80,7 @@ Decoding goes from `Encoded` to `Type`, encoding from `Type` to `Encoded`. The c
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(JSON.stringify(try inspectBoundary("3.75", 2))); try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag)) })
-effect inspectBoundary(incoming: unknown, outgoing: unknown) {
+effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
   const quantity = try Schema.decodeUnknownEffect(Schema.FiniteFromString)(incoming)
   const text = try Schema.encodeUnknownEffect(Schema.FiniteFromString)(outgoing)
   return { quantity, text }
@@ -102,12 +102,12 @@ Calling an Effect-returning parser builds an Effect. `try` runs it and gives the
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(try roundTrip(3.75)); try Console.log(try normalizeText()) })
-effect roundTrip(value: number) {
+effect function roundTrip(value: number) {
   const wire = try Schema.encodeEffect(Schema.FiniteFromString)(value)
   return try Schema.decodeEffect(Schema.FiniteFromString)(wire)
 }
 
-effect normalizeText() {
+effect function normalizeText() {
   const value = try Schema.decodeEffect(Schema.Trim)("  dispatch  ")
   return try Schema.encodeEffect(Schema.Trim)(value) // "dispatch"
 }

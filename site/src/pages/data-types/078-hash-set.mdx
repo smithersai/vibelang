@@ -133,7 +133,7 @@ const array = Array.from(regions)
 const copy = [...regions]
 const native = new Set(regions)
 
-effect report() {
+effect function report() {
   for (const region of Array.from(regions).sort()) try Console.log(region)
 }
 ```

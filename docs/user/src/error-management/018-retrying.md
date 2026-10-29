@@ -11,7 +11,7 @@ Retry transient domain failures when a new attempt has a useful chance of succee
 // run: try Console.log(try loadWithRetries())
 error Busy { attempt: number }
 
-effect loadWithRetries() {
+effect function loadWithRetries() {
   let attempts = 0
   return try retry(effect {
     attempts += 1
@@ -42,11 +42,11 @@ error RequestRejected {
   transient: boolean
 }
 
-effect sendRequest(): string!RequestRejected! {
+effect function sendRequest(): string!RequestRejected! {
   throw new RequestRejected({ transient: false })
 }
 
-effect sendTransient() {
+effect function sendTransient() {
   return try retry(sendRequest(), {
     times: 4,
     while: (error) => error.transient
@@ -65,7 +65,7 @@ false
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try flip(sendWithBackoff()))._tag); try Console.log((try flip(sendThreeMoreTimes()))._tag)
-effect sendWithBackoff() {
+effect function sendWithBackoff() {
   return try retry(sendRequest(), {
     times: 4,
     while: (error) => error.transient,
@@ -73,7 +73,7 @@ effect sendWithBackoff() {
   })
 }
 
-effect sendThreeMoreTimes() {
+effect function sendThreeMoreTimes() {
   return try retry(sendRequest(), Schedule.recurs(3))
 }
 ```
@@ -90,7 +90,7 @@ A schedule controls delay and can add its own stopping condition; with `times`, 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try sendOrQueue())
-effect sendOrQueue() {
+effect function sendOrQueue() {
   return try retryOrElse(
     sendRequest(),
     Schedule.recurs(2),

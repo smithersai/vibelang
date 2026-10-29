@@ -45,7 +45,7 @@ error MissingRecord {
   id: string
 }
 
-effect diagnose() {
+effect function diagnose() {
   const outcome = try exit(effect {
     throw new MissingRecord({ id: "r-9" })
   })
@@ -65,7 +65,7 @@ MissingRecord:
 ## Identifying reason variants
 
 ```vibe
-effect classify<E>(cause: Cause.Cause<E>) {
+effect function classify<E>(cause: Cause.Cause<E>) {
   const summary = {
     failed: Cause.hasFails(cause),
     defective: Cause.hasDies(cause),

@@ -15,13 +15,13 @@ error UnknownProduct {
   sku: string
 }
 
-effect price(sku: string) {
+effect function price(sku: string) {
   if (sku !== "notebook") throw new UnknownProduct({ sku })
   return 12
 }
 // number!UnknownProduct!
 
-effect displayPrice(sku: string) {
+effect function displayPrice(sku: string) {
   return effect {
     return `$${try price(sku)}`
   } catch (error) => `No price for ${error.sku}`
@@ -42,7 +42,7 @@ Interruption, a third kind of termination, bypasses `catch` when the cause has n
 ## Choosing the error type
 
 ```vibe
-effect percentage(part: number, total: number) {
+effect function percentage(part: number, total: number) {
   if (total <= 0) {
     try die(new Error("validated total must be positive"))
   }

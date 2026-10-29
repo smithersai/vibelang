@@ -43,13 +43,13 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 ```vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect canRun(path: string) {
+effect function canRun(path: string) {
   const fs = try Experimental.FileSystem.FileSystem
   try fs.access(path, { executable: true })
   return true
 }
 
-effect runnable() {
+effect function runnable() {
   return try scoped(effect {
     const fs = try FileSystem
     const dir = try fs.makeTempDirectoryScoped()
@@ -67,7 +67,7 @@ effect runnable() {
 `noFollow` with `nonBlocking` opens a path that another process may replace: the open fails on a symbolic link and returns at once on a FIFO, and `file.chmod` then changes the file that was opened, not whatever the path names later.
 
 ```vibe
-effect restrict(path: string) {
+effect function restrict(path: string) {
   try scoped(effect {
     const fs = try Experimental.FileSystem.FileSystem
     const file = try fs.open(path, { flag: "r+", noFollow: true, nonBlocking: true })
@@ -91,7 +91,7 @@ The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 byte
 ```vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
+effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
   const crypto = try Experimental.Crypto.Crypto
   return Hex.encode(try crypto.hmac("SHA-256", secret, new TextEncoder().encode(body)))
 }
@@ -106,7 +106,7 @@ effect signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
 // alive.vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-export effect main() {
+export effect function main() {
   provide ExperimentalNodeServices.layer {
     const process = try Experimental.Process.Process
     const pid = try process.pid
@@ -139,14 +139,14 @@ The user's home directory is Effect's own, `try (try UserDirectories.UserDirecto
 // stop.vibe
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
-effect stop(pid: number) {
+effect function stop(pid: number) {
   const process = try Experimental.Process.Process
   if (!(try process.isRunning(pid))) return "already stopped"
   try process.kill(pid, { killSignal: "SIGTERM" })
   return "stopped"
 }
 
-export effect main() {
+export effect function main() {
   provide ExperimentalNodeServices.layer {
     try scoped(effect {
       const spawner = try ChildProcessSpawner.ChildProcessSpawner
@@ -177,7 +177,7 @@ Both fail with a `PlatformError` whose reason says why:
 
 ```vibe
 // platform-name.vibe
-export effect platformName() {
+export effect function platformName() {
   const process = try Experimental.Process.Process
   return (try process.platform) === "win32" ? "Windows" : "POSIX"
 }
@@ -190,7 +190,7 @@ export effect platformName() {
 
 ```vibe
 // leader.vibe
-export effect lead(name: string) {
+export effect function lead(name: string) {
   try scoped(effect {
     const locks = try Experimental.Locks.Locks
     const held = try locks.hold(name, { steal: true })

@@ -13,7 +13,7 @@ description: "Redacted works in VibeLang exactly as in Effect. It hides a sensit
 const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
 
-effect reportConfiguration() {
+effect function reportConfiguration() {
   try Console.log(JSON.stringify({ apiKey: exampleKey }))
 }
 ```
@@ -33,7 +33,7 @@ service CredentialsClient {
   authenticate(token: string): boolean!!
 }
 
-effect authenticate(token: Redacted.Redacted<string>) {
+effect function authenticate(token: Redacted.Redacted<string>) {
   const client = try CredentialsClient
   const raw = try Effect.try(() => Redacted.value(token))
   return try client.authenticate(raw)
@@ -50,7 +50,7 @@ true false
 ## Wiping stored secrets
 
 ```vibe
-effect useOnce(raw: string) {
+effect function useOnce(raw: string) {
   const token = Redacted.make(raw)
   return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
 }

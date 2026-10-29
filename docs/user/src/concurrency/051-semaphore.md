@@ -7,12 +7,12 @@ A semaphore limits access to a shared resource with a pool of permits. One permi
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const limit = try makeUploadLimit(); try Console.log(try Semaphore.withPermits(limit, 3, effect { return "three permits acquired" }))
-effect makeUploadLimit() {
+effect function makeUploadLimit() {
   return try Semaphore.make(3)
 }
 // Semaphore.Semaphore!!
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: three permits acquired
@@ -25,7 +25,7 @@ Create the pool once for the callers that share a limit: a pool allocated inside
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try uploadAll()))
-effect uploadAll() {
+effect function uploadAll() {
   const uploads = try Semaphore.make(2)
   return try forEach(["a.csv", "b.csv", "c.csv", "d.csv"], (file) =>
     Semaphore.withPermits(uploads, 1, effect {
@@ -48,7 +48,7 @@ The traversal can start all four callers, but only two enter the permit-protecte
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try weightedJobs()))
-effect weightedJobs() {
+effect function weightedJobs() {
   const memoryBudget = try Semaphore.make(4)
   return try forEach([1, 2, 3], (weight) =>
     Semaphore.withPermits(memoryBudget, weight, effect {
@@ -68,7 +68,7 @@ An operation waits until it can acquire all its requested permits together, whic
 // run: try Console.log(try releaseOnFailure())
 error Rejected
 
-effect releaseOnFailure() {
+effect function releaseOnFailure() {
   const mutex = try Semaphore.make(1)
   const rejected = Semaphore.withPermits(mutex, 1, effect {
     throw new Rejected()

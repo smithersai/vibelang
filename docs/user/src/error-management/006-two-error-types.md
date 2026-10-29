@@ -13,13 +13,13 @@ error UnknownProduct {
   sku: string
 }
 
-effect price(sku: string) {
+effect function price(sku: string) {
   if (sku !== "notebook") throw new UnknownProduct({ sku })
   return 12
 }
 // number!UnknownProduct!
 
-effect displayPrice(sku: string) {
+effect function displayPrice(sku: string) {
   return effect {
     return `$${try price(sku)}`
   } catch (error) => `No price for ${error.sku}`
@@ -42,7 +42,7 @@ Interruption, a third kind of termination, bypasses `catch` when the cause has n
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try percentage(1, 4)); try Console.log(try matchCause(percentage(1, 0), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
-effect percentage(part: number, total: number) {
+effect function percentage(part: number, total: number) {
   if (total <= 0) {
     try die(new Error("validated total must be positive"))
   }

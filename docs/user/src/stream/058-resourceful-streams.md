@@ -7,7 +7,7 @@ A stream can hold a connection, file, or subscription open while its elements ar
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readLines(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect openReader() {
+effect function openReader() {
   try Console.log("reader opened")
   return { lines: ["header", "entry-a", "entry-b"] }
 }
@@ -20,7 +20,7 @@ const lines = Stream.fromEffect(acquireRelease(
   Stream.scoped
 )
 
-effect readLines() {
+effect function readLines() {
   return try Stream.runCollect(lines)
 }
 // Output: reader opened
@@ -35,12 +35,12 @@ effect readLines() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(readWithDeadline()); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
-effect readHeader() {
+effect function readHeader() {
   return try Stream.runCollect(Stream.take(lines, 1))
 }
 // Returns ["header"] and closes the reader.
 
-effect readWithDeadline() {
+effect function readWithDeadline() {
   return try timeout(
     Stream.runForEach(lines, effect (line) => {
       try sleep("1 second")
@@ -69,7 +69,7 @@ const audited = Stream.ensuring(lines, effect {
   try Console.log("consumption finished")
 })
 
-effect readAudited() {
+effect function readAudited() {
   return try Stream.runCollect(audited)
 }
 // Output: reader opened

@@ -18,7 +18,7 @@ The core package supplies Effect's data types, schedules, concurrency tools, and
 ## Module and namespace imports
 
 ```vibe
-effect pauseBeforeRetry() {
+effect function pauseBeforeRetry() {
   const started = try Clock.currentTimeMillis
   try sleep(Duration.millis(25))
   return started
@@ -89,13 +89,13 @@ The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoo
 Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
 
 ```vibe
-effect readConfig(dir: string) {
+effect function readConfig(dir: string) {
   const fs = try FileSystem
   const path = try Path
   return try fs.readFileString(path.join(dir, "config.json"))
 }
 
-effect hasConfig(fs: FileSystem.FileSystem, dir: string) {
+effect function hasConfig(fs: FileSystem.FileSystem, dir: string) {
   const path = try Path
   return try fs.exists(path.join(dir, "config.json"))
 }
@@ -146,11 +146,11 @@ VibeLang's global names are source conveniences: they refer to Effect and langua
 ## Reusable operators
 
 ```vibe
-effect withinSecond<A, E, R>(program: A!E!R) {
+effect function withinSecond<A, E, R>(program: A!E!R) {
   return try timeout(program, "1 second")
 }
 
-effect example() {
+effect function example() {
   return try withinSecond(effect {
     try sleep("10 millis")
     return "ready"

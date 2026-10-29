@@ -9,7 +9,7 @@
 // run: provide TestClock.layer() { try TestClock.setTime(Date.parse("2026-11-02T00:00:00Z")); const worker = fork reportJob(); try Console.log("waiting for Monday morning"); try TestClock.adjust("3 days"); try Fiber.interrupt(worker) }
 const weekdayReport = Schedule.cron("45 7 * * 1-5", "UTC")
 
-effect reportJob() {
+effect function reportJob() {
   try schedule(Console.log("generating daily report"), weekdayReport)
 }
 // Output: waiting for Monday morning
@@ -40,7 +40,7 @@ A named zone follows its local calendar, daylight saving changes included; `UTC`
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(Result.isSuccess(try result(validateRule("45 7 * * 1-5", "UTC")))); for (const [expression, zone] of [["not cron", "UTC"], ["* * * * *", "invalid/zone"]]) { const outcome = try result(validateRule(expression, zone)); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
-effect validateRule(expression: string, timeZone: string) {
+effect function validateRule(expression: string, timeZone: string) {
   return try fromResult(Cron.parse(expression, timeZone))
 }
 // Cron.Cron!Cron.CronParseError!
@@ -56,7 +56,7 @@ effect validateRule(expression: string, timeZone: string) {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try preview(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect preview() {
+effect function preview() {
   const rule = try fromResult(Cron.parse("45 7 * * 1-5", "UTC"))
   let after = new Date("2026-11-02T00:00:00Z")
   const dates: string[] = []
@@ -76,7 +76,7 @@ effect preview() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { try TestClock.setTime(Date.parse("2026-11-02T00:09:45Z")); const app = fork runApplication(); try TestClock.adjust("31 seconds"); join app; try Console.log("application stopped"); try TestClock.adjust("10 minutes") }
-effect runApplication() {
+effect function runApplication() {
   const rule = try fromResult(Cron.parse("*/10 * * * *", "UTC"))
   const reports = fork schedule(
     Console.log("report tick"),

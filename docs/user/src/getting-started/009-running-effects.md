@@ -47,7 +47,7 @@ The starter's `main.vibe` exports an effect function named `main` and calls `Nod
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-26
 // run: try Console.log(total)
-effect subtotal() {
+effect function subtotal() {
   return 7 * 8
 }
 
@@ -63,7 +63,7 @@ const total = Effect.runSync(subtotal())
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try promise(() => pending))
-effect preparedMessage() {
+effect function preparedMessage() {
   try sleep("15 millis")
   return "prepared"
 }
@@ -82,7 +82,7 @@ const pending = Effect.runPromise(preparedMessage())
 // run: try Console.log(immediate._tag)
 error BadInput
 
-effect validate(input: string) {
+effect function validate(input: string) {
   if (input === "") throw new BadInput()
   return input.length
 }
@@ -101,7 +101,7 @@ An `Exit` is a success with a value or a failure with a `Cause`, which keeps exp
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(Exit.isFailure(try Fiber.await(running)))
-effect heartbeat() {
+effect function heartbeat() {
   try repeat(log("alive"), Schedule.spaced("200 millis"))
 }
 
@@ -123,7 +123,7 @@ The empty logger layer keeps this heartbeat quiet. `Effect.runFork` returns a ru
 // pending: VIP-1, VIP-5, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-export effect main() {
+export effect function main() {
   try Console.log("application started")
 }
 NodeRuntime.runMain(main())

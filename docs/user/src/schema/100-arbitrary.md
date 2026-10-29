@@ -12,7 +12,7 @@ const Parcel = Schema.Struct({
   count: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 24 }))
 })
 
-effect sampleParcels() {
+effect function sampleParcels() {
   const generator = try sync(() => Arbitrary.schema(Parcel))
   return try Arbitrary.sampleEffect(generator, { count: 12, seed: "parcel-samples" })
 }
@@ -54,7 +54,7 @@ Built-in bounds, lengths, patterns, property counts, and uniqueness checks give 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { const values = try sampleRepresentations(); try Console.log(values.numbers.length, values.numbers.every(Number.isFinite)); try Console.log(values.strings.length, values.strings.every((value) => typeof value === "string")); try Console.log(values.strings.some((value) => Schema.decodeUnknownResult(Schema.FiniteFromString)(value).isFailure())) })
-effect sampleRepresentations() {
+effect function sampleRepresentations() {
   const decoded = try sync(() => Arbitrary.schema(Schema.FiniteFromString))
   const encoded = try sync(() => Arbitrary.schema(Schema.toEncoded(Schema.FiniteFromString)))
   const numbers = try Arbitrary.sampleEffect(decoded, { count: 4, seed: 17 })
@@ -76,7 +76,7 @@ Generation targets the decoded type, so a string-to-number codec generates numbe
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log((try checkCountRoundTrip())._tag) })
-effect checkCountRoundTrip() {
+effect function checkCountRoundTrip() {
   const Count = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
   const generator = Arbitrary.schema(Count)
   const result = try Arbitrary.checkEffect(generator, effect (count): boolean!Schema.SchemaError!never => {
@@ -100,7 +100,7 @@ A falsification includes `shrunkInput` and a `replay` token. To reproduce it, ca
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { const values = try sampleDispatchPlans(); try Console.log(values.length, values.every((plan) => plan.label === "test-dispatch" && Number.isInteger(plan.count) && plan.count >= 0 && plan.count <= 32)) })
-effect sampleDispatchPlans() {
+effect function sampleDispatchPlans() {
   const counts = try sync(() => Arbitrary.schema(Schema.Int.check(
     Schema.isBetween({ minimum: 0, maximum: 32 })
   ), {
@@ -140,7 +140,7 @@ const ShelfRefSchema = Schema.instanceOf(ShelfRef, {
   )
 })
 
-effect sampleShelves() {
+effect function sampleShelves() {
   const generator = try sync(() => Arbitrary.schema(ShelfRefSchema))
   return try Arbitrary.sampleEffect(generator, { count: 5, seed: 23 })
 }
@@ -157,7 +157,7 @@ An opaque declaration needs a generatable representation through `toCodecArbitra
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-7, VIP-14, VIP-26
 // run: await runPromise(effect { try reportImpossibleGenerator() })
-effect reportImpossibleGenerator() {
+effect function reportImpossibleGenerator() {
   const outcome = try exit(sync(() => Arbitrary.schema(Schema.Never)))
   if (outcome is Exit.Failure) {
     try Console.log("Arbitrary derivation failed for the empty domain")

@@ -13,13 +13,13 @@ error InvalidHandle {
   input: string
 }
 
-effect validateHandle(input: string) {
+effect function validateHandle(input: string) {
   const handle = input.trim()
   if (handle.length < 3) throw new InvalidHandle({ input })
   return handle.toLowerCase()
 }
 
-effect validateTeam() {
+effect function validateTeam() {
   return try validate(
     ["Jo", "RIVER", ""],
     (input) => validateHandle(input),
@@ -39,7 +39,7 @@ river
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try checkTeamOnly(); try Console.log("All handles valid")
-effect checkTeamOnly() {
+effect function checkTeamOnly() {
   try validate(["RIVER", "SKY"], (input) => validateHandle(input), {
     discard: true,
     concurrency: 2
@@ -58,7 +58,7 @@ All handles valid
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try inspectTeam()))
-effect inspectTeam() {
+effect function inspectTeam() {
   const [handles, errors] = try partition(
     ["Jo", "RIVER", ""],
     (input) => validateHandle(input),

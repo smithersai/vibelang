@@ -12,7 +12,7 @@ test("published Markdown omits harness directives and preserves example outputs"
     expect(page).not.toMatch(/^\s*\/\/ run:/m)
     expect(page).not.toMatch(/^\s*\/\/ pending:/m)
     expect(page).toContain("// Output: Hello, Vite!")
-    expect(page).toContain('export effect greet(name: string)')
+    expect(page).toContain('export effect function greet(name: string)')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 

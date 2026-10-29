@@ -77,7 +77,7 @@ const GreeterLive = Layer.succeed(Greeter, {
   }
 })
 
-export effect greeting(name: string) {
+export effect function greeting(name: string) {
   provide GreeterLive {
     const greeter = try Greeter
     return greeter.greet(name) catch "Hello, stranger!"

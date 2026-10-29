@@ -13,7 +13,7 @@ class EmptyDocument extends Data.Error<{
   readonly documentId: string
 }> {}
 
-effect requireText(documentId: string, text: string) {
+effect function requireText(documentId: string, text: string) {
   if (text.trim() === "") throw new EmptyDocument({ documentId })
   return text
 }
@@ -34,7 +34,7 @@ function emptyDocumentError(documentId: string) {
   return new EmptyDocument({ documentId })
 }
 
-effect rejectDocument(documentId: string) {
+effect function rejectDocument(documentId: string) {
   const error = emptyDocumentError(documentId)
   throw error
 }
@@ -58,7 +58,7 @@ error TitleTooLong {
   length: number
 }
 
-effect title(text: string) {
+effect function title(text: string) {
   if (text.length === 0) throw new EmptyTitle()
   if (text.length > 80) throw new TitleTooLong({ length: text.length })
   return text
@@ -81,12 +81,12 @@ Give distinct error cases distinct tags. Tag-based matching compares strings, so
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try displayTitle("")); try Console.log(try editableTitle("")); try Console.log(try displayTitle("Draft")); try Console.log(try editableTitle("Draft")); try Console.log((try flip(displayTitle("x".repeat(81))))._tag); try Console.log((try flip(editableTitle("x".repeat(81))))._tag)
-effect displayTitle(text: string) {
+effect function displayTitle(text: string) {
   return try catchTag(title(text), "EmptyTitle", () => succeed("Untitled"))
 }
 // string!TitleTooLong!
 
-effect editableTitle(text: string) {
+effect function editableTitle(text: string) {
   return title(text) catch effect (error) => match (error) {
     when EmptyTitle: "Untitled"
     default: throw error

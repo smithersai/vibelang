@@ -10,12 +10,12 @@ A `Ref` holds shared mutable state behind atomic operations. Use it when several
 ## Creating a shared reference
 
 ```vibe
-effect makeCounter() {
+effect function makeCounter() {
   return try Ref.make(0)
 }
 // Ref.Ref<number>!!
 
-effect countLocally() {
+effect function countLocally() {
   const counter = try makeCounter()
   try Ref.update(counter, (n) => n + 1)
   return try Ref.get(counter)
@@ -28,7 +28,7 @@ effect countLocally() {
 ## Reading and atomically updating state
 
 ```vibe
-effect allocateIds() {
+effect function allocateIds() {
   const nextId = try Ref.make(100)
   const first = try Ref.modify(nextId, (n) => [n, n + 1] as const)
   const second = try Ref.getAndUpdate(nextId, (n) => n + 1)
@@ -45,7 +45,7 @@ effect allocateIds() {
 ## Coordinating concurrent updates
 
 ```vibe
-effect countCompleted() {
+effect function countCompleted() {
   const completed = try Ref.make(0)
   for concurrent(4) (const delay of [10, 20, 30, 40]) {
     try sleep(`${delay} millis`)
@@ -74,7 +74,7 @@ const RequestCountLive = Layer.effect(RequestCount, effect {
   }
 })
 
-effect handleRequests() {
+effect function handleRequests() {
   provide RequestCountLive {
     const requests = try RequestCount
     try requests.increment()
@@ -90,7 +90,7 @@ The layer allocates one reference when built. Every call inside this `provide` s
 ## Sharing references across fibers
 
 ```vibe
-effect collectNames() {
+effect function collectNames() {
   return try scoped(effect {
     const names = try Ref.make<ReadonlyArray<string>>([])
     const west = fork.scoped effect {

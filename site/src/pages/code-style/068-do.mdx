@@ -10,7 +10,7 @@ Dependent computations often need several intermediate values at once. VibeLang 
 ## Recognizing nesting in dependent pipelines
 
 ```vibe
-effect elapsed<A, E, R>(program: A!E!R) {
+effect function elapsed<A, E, R>(program: A!E!R) {
   const started = try Clock.currentTimeMillis
   const value = try program
   const finished = try Clock.currentTimeMillis
@@ -18,7 +18,7 @@ effect elapsed<A, E, R>(program: A!E!R) {
   return value
 }
 
-effect example() {
+effect function example() {
   return try elapsed(effect {
     try sleep("40 millis")
     return "complete"
@@ -36,7 +36,7 @@ Later statements still see `started` and `value`, with no nested callback to kee
 ## Named bindings with do notation
 
 ```vibe
-effect readInterval() {
+effect function readInterval() {
   return try Effect.Do.pipe(
     Effect.bind("started", () => Clock.currentTimeMillis),
     Effect.bind("value", () => effect {
@@ -58,7 +58,7 @@ effect readInterval() {
 ## Introducing derived values
 
 ```vibe
-effect intervalRecord() {
+effect function intervalRecord() {
   return try Effect.Do.pipe(
     Effect.bind("started", () => Clock.currentTimeMillis),
     Effect.bind("finished", () => effect {
@@ -79,7 +79,7 @@ effect intervalRecord() {
 ## The sequence as ordinary statements
 
 ```vibe
-effect intervalRecord() {
+effect function intervalRecord() {
   const started = try Clock.currentTimeMillis
   try sleep("40 millis")
   const finished = try Clock.currentTimeMillis

@@ -12,7 +12,7 @@ description: "Cron and Schedule.cron work in VibeLang exactly as in Effect. Use 
 ```vibe
 const weekdayReport = Schedule.cron("45 7 * * 1-5", "UTC")
 
-effect reportJob() {
+effect function reportJob() {
   try schedule(Console.log("generating daily report"), weekdayReport)
 }
 // Output: waiting for Monday morning
@@ -39,7 +39,7 @@ A named zone follows its local calendar, daylight saving changes included; `UTC`
 ## Validating expressions
 
 ```vibe
-effect validateRule(expression: string, timeZone: string) {
+effect function validateRule(expression: string, timeZone: string) {
   return try fromResult(Cron.parse(expression, timeZone))
 }
 // Cron.Cron!Cron.CronParseError!
@@ -53,7 +53,7 @@ effect validateRule(expression: string, timeZone: string) {
 ## Previewing future runs
 
 ```vibe
-effect preview() {
+effect function preview() {
   const rule = try fromResult(Cron.parse("45 7 * * 1-5", "UTC"))
   let after = new Date("2026-11-02T00:00:00Z")
   const dates: string[] = []
@@ -71,7 +71,7 @@ effect preview() {
 ## Starting and stopping a job
 
 ```vibe
-effect runApplication() {
+effect function runApplication() {
   const rule = try fromResult(Cron.parse("*/10 * * * *", "UTC"))
   const reports = fork schedule(
     Console.log("report tick"),

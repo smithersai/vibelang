@@ -7,7 +7,7 @@ Effect's runtime executes computations, carries service implementations, schedul
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 // run: const result = try promise(() => outcome); try Console.log(result._tag); if (Exit.isSuccess(result)) try Console.log(result.value)
-effect operation() {
+effect function operation() {
   try sleep("10 millis")
   return "complete"
 }
@@ -34,7 +34,7 @@ const context = Context.make(Labels, {
   format: effect (value) => `[${value}]`
 })
 
-effect label() {
+effect function label() {
   const labels = try Labels
   return try labels.format("queued")
 }
@@ -56,7 +56,7 @@ Most applications build their context from layers. Use an explicit context when 
 // run: try Effect.provide(startup(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
 const Quiet = Logger.layer([])
 
-effect startup() {
+effect function startup() {
   try log("visible before")
   provide Quiet {
     try log("suppressed in this region")
@@ -78,7 +78,7 @@ For another format, supply a logger such as `Logger.consoleJson` through `Logger
 // run: try Console.log(try roll())
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
-effect roll(): number!! {
+effect function roll(): number!! {
   provide Random.Random = seeded {
     return try Random.nextInt
   }
@@ -102,7 +102,7 @@ export service Notifications {
   })
 }
 
-export effect notify(message: string) {
+export effect function notify(message: string) {
   const notifications = try Notifications
   try notifications.send(message)
 }

@@ -7,7 +7,7 @@ Choose a Sink for the result you need and run it with `try Stream.run(source, si
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [Option.getOrElse((try endpoints()).first, () => ""), Option.getOrElse((try endpoints()).last, () => ""), (try endpoints()).prefix]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect endpoints() {
+effect function endpoints() {
   const source = Stream.make("opening", "middle", "closing")
   return {
     first: try Stream.run(source, Sink.head<string>()),
@@ -27,7 +27,7 @@ effect endpoints() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const summary = try summarize(); { const jsonValue = [summary.count, summary.sum, Duration.isDuration(summary.duration)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try drainObserved()
-effect summarize() {
+effect function summarize() {
   const source = Stream.make(6, 10, 14)
   return {
     count: try Stream.run(source, Sink.count), // 3
@@ -36,7 +36,7 @@ effect summarize() {
   }
 }
 
-effect drainObserved() {
+effect function drainObserved() {
   const source = Stream.tap(Stream.make("ready", "done"), (s) => Console.log(s))
   try Stream.run(source, Sink.drain)
 }
@@ -57,7 +57,7 @@ const print = Sink.forEach(effect (line: string) => {
   try sleep("10 millis")
 })
 
-effect writeRecords() {
+effect function writeRecords() {
   try Stream.run(Stream.make("created", "approved"), print)
 }
 // Output: record: created
@@ -73,11 +73,11 @@ effect writeRecords() {
 // run: try Console.log(try immediateResult()); const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag }; try Console.log(tag)
 error Rejected
 
-effect immediateResult() {
+effect function immediateResult() {
   return try Stream.run(Stream.make(40, 50), Sink.succeed("already complete"))
 }
 
-effect rejectInput() {
+effect function rejectInput() {
   return try Stream.run(Stream.make(40, 50), Sink.fail(new Rejected()))
 }
 // never!Rejected!
@@ -92,7 +92,7 @@ effect rejectInput() {
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try collectSamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect collectSamples() {
+effect function collectSamples() {
   const source = Stream.make(8, 5, -1, 13)
   return {
     all: try Stream.run(source, Sink.collect<number>()),
@@ -118,7 +118,7 @@ const threeUnique = Sink.reduceWhile(
   (set, value: string) => set.add(value)
 )
 
-effect collectUnique() {
+effect function collectUnique() {
   return try Stream.run(Stream.make("oak", "oak", "ash", "elm", "pine"), threeUnique)
 }
 // Set containing "oak", "ash", "elm".
@@ -144,7 +144,7 @@ const twoStations = Sink.reduceWhile(
   (map, reading: Reading) => addReading(map, reading)
 )
 
-effect summarizeStations() {
+effect function summarizeStations() {
   return try Stream.run(Stream.make(
     { station: "hill", count: 4 },
     { station: "hill", count: 3 },
@@ -174,7 +174,7 @@ const budget = Sink.fold(
 )
 const firstThree = Sink.foldUntil(() => 0, 3, effect (sum, n: number) => sum + n)
 
-effect foldSamples() {
+effect function foldSamples() {
   const source = Stream.make(7, 9, 12, 15)
   return {
     all: try Stream.run(source, total),       // 43
@@ -208,7 +208,7 @@ const weighted = Sink.fold<Batch, Packet>(
 )
 const packets = Sink.map(weighted, (batch) => batch.packets)
 
-effect firstBatch() {
+effect function firstBatch() {
   return try Stream.run(Stream.make({ bytes: 60 }, { bytes: 55 }, { bytes: 10 }), packets)
 }
 // Returns the 60-byte and 55-byte packets.

@@ -8,7 +8,7 @@ Compiler diagnostics show VibeLang contracts and catch failures or requirements 
 // example.vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try sample())
-effect sample() {
+effect function sample() {
   try sleep("5 millis")
   return "sample"
 }
@@ -39,7 +39,7 @@ For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattri
 // run: try Console.log(try accepted(2))
 error Rejected
 
-effect accepted(value: number) {
+effect function accepted(value: number) {
   if (value < 0) throw new Rejected()
   return value + 1
 }
@@ -57,7 +57,7 @@ Hover over an Effect-returning function to see its inferred `Effect<A, E, R>`. L
 // pending: VIP-1, VIP-3, VIP-5
 // expect-error: EK2001
 // Rejected escapes a contract promising no failures.
-effect promised(value: number): number!! {
+effect function promised(value: number): number!! {
   return try accepted(value)
 }
 ```
@@ -97,7 +97,7 @@ Each entry gives the condition and the repair. The examples and language-service
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try checked(2))
-effect checked(value: number): number!Rejected! {
+effect function checked(value: number): number!Rejected! {
   return try accepted(value)
 }
 // Output: 3
@@ -191,7 +191,7 @@ EK4801-EK4825 are lint. Each has a default, error, warning, or off, and warning 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-14
 // run: try Console.log(discard() catch 0)
-effect discard() {
+effect function discard() {
   // @vibelang-diagnostics-next-line EK4804:off
   throw new Error("unused")
 }
@@ -205,11 +205,11 @@ effect discard() {
 | Correctness | `anyUnknownInErrorContext` | EK4811, off by default | `throw cause` where `cause: unknown` |
 | Correctness | `classSelfMismatch` | Not needed: a `service` has no `Self` parameter | `service Users { find(id: string): User!NotFound }` |
 | Correctness | `duplicatePackage` | EK4803, warning | two versions of `effect` in one program |
-| Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect load(id) { … }` |
+| Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect function load(id) { … }` |
 | Correctness | `floatingEffect` | EK4801, error | `program` alone on a line leaves an Effect unrun; use `try program` |
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
-| Correctness | `missingEffectContext` | Covered: EK2002 at a contract, EK3201 at a runner | `effect f(): User!NotFound! { return try (try Users).find(id) }` is EK2002 |
-| Correctness | `missingEffectError` | Covered: EK2001 | `effect f(): User!! { return try (try Users).find(id) }` |
+| Correctness | `missingEffectContext` | Covered: EK2002 at a contract, EK3201 at a runner | `effect function f(): User!NotFound! { return try (try Users).find(id) }` is EK2002 |
+| Correctness | `missingEffectError` | Covered: EK2001 | `effect function f(): User!! { return try (try Users).find(id) }` |
 | Correctness | `missingLayerContext` | Covered: EK2002 and EK3201 | `provide UsersLive { … }` without the database layer is EK3201 at the runner |
 | Correctness | `missingReturnYieldStar` | Not needed in `.vibe`: `throw` ends the function | `throw new NotFound({ id })` |
 | Correctness | `missingStarInYieldEffectGen` | Use `try` in an effect function | `const user = try (try Users).find(id)` |
@@ -257,10 +257,10 @@ effect discard() {
 | Style | `catchAllToMapError` | Not needed: a catch that rethrows is the one form | `catch effect (e) => { throw new Failed({ cause: e }) }` |
 | Style | `deterministicKeys` | Not needed: the compiler derives each service key from its package, module, and name | `@acme/app/src/users#Users` |
 | Style | `effectDoNotation` | Not needed: `const` statements bind values | `const user = try (try Users).find(id)` |
-| Style | `effectFnOpportunity` | Use an effect function | `effect load(id: string) { … }` |
+| Style | `effectFnOpportunity` | Use an effect function | `effect function load(id: string) { … }` |
 | Style | `effectMapFlatten` | Not needed: statements | `const a = try f(); return try g(a)` |
 | Style | `effectMapVoid` | Not needed: statements | `try f()` on its own line |
-| Style | `effectSucceedWithVoid` | Not needed: an effect function that returns nothing | `effect done() { }` |
+| Style | `effectSucceedWithVoid` | Not needed: an effect function that returns nothing | `effect function done() { }` |
 | Style | `flatMapToMap` | Not needed: statements | `return try g(try f())` |
 | Style | `importFromBarrel` | Not needed: the compiler imports effect's root names and subpath modules | `Option.some(1)` with no import |
 | Style | `missedPipeableOpportunity` | Refactor: "Convert to a pipe" | `f(g(h(x)))` becomes `x \|> h(%) \|> g(%) \|> f(%)` |
@@ -292,13 +292,13 @@ effect discard() {
 | Refactor | `Effect.gen` to `Effect.fn` | Use an effect function | None |
 | Refactor | Function calls to pipe | Refactor: "Convert to a pipe" | `f(g(x))` becomes `x \|> g(%) \|> f(%)` |
 | Refactor | Pipe to data-first | Refactor: "Convert the pipe to calls" | `x \|> g(%) \|> f(%)` becomes `f(g(x))` |
-| Refactor | Toggle return type signature | Refactor: "Write the inferred contract" and "Remove the contract" | `effect load(id: string): User!NotFound!Users` |
+| Refactor | Toggle return type signature | Refactor: "Write the inferred contract" and "Remove the contract" | `effect function load(id: string): User!NotFound!Users` |
 | Refactor | Remove an unnecessary `Effect.gen` | Use an effect function | None |
 | Refactor | Wrap with `Effect.gen` | Use an effect function | None |
 | Refactor | Toggle pipe styles | Refactor: "Write pipe(x, …)" and "Write x.pipe(…)" | `x.pipe(f, g)` and `pipe(x, f, g)` |
 | Refactor | Structural type to Schema | Refactor: "Convert to a schema declaration" | `interface User { name: string }` becomes `schema User { name: string }` |
 | Refactor | `Effect.Service` to `Context.Tag` | Not needed: `service` declarations | None |
-| Codegen | `annotate` | Refactor: "Write the inferred contract" | `effect load(id: string): User!NotFound!Users` |
+| Codegen | `annotate` | Refactor: "Write the inferred contract" | `effect function load(id: string): User!NotFound!Users` |
 | Codegen | `typeToSchema` | Refactor: "Convert to a schema declaration" | `schema User { name: string }` |
 | Other | Renaming a tagged class renames its tag | Not needed: an `error` declaration's tag is its name, so a rename renames both | `error NotFound { }` renamed to `Missing` |
 | Other | Go to definition for `RpcClient` | Not adopted yet: the language server has no definition hook | None |
@@ -405,7 +405,7 @@ Declaration forms keep the TypeScript the checker reads: `error NotFound { id: s
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try tracedSample())
-effect tracedSample() {
+effect function tracedSample() {
   return try withSpan(sample(), "sample")
 }
 // Output: sample

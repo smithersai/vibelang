@@ -14,7 +14,7 @@ const ShelfCode = Schema.String.check(
   Schema.makeFilter((code) => code.startsWith("S-") || "Use an S- shelf code")
 )
 
-effect readShelf(input: unknown) {
+effect function readShelf(input: unknown) {
   return try Schema.decodeUnknownEffect(ShelfCode)(input)
 }
 ```
@@ -67,7 +67,7 @@ const DispatchWindow = Schema.Struct({
   })
 )
 
-effect validateWindow(input: unknown) {
+effect function validateWindow(input: unknown) {
   return try Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
 }
 ```

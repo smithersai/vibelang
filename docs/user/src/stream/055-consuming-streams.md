@@ -7,7 +7,7 @@ A consumer such as `Stream.runCollect` returns an Effect that consumes a Stream;
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try collectLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect collectLabels() {
+effect function collectLabels() {
   return try Stream.runCollect(Stream.make("north", "south", "west"))
 }
 // Array<"north" | "south" | "west">!!
@@ -21,7 +21,7 @@ effect collectLabels() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try announce()
-effect announce() {
+effect function announce() {
   try Stream.runForEach(Stream.make("build", "test", "package"), effect (stage) => {
     try Console.log(`starting ${stage}`)
     try sleep("20 millis")
@@ -40,7 +40,7 @@ effect announce() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try reachBudget())
-effect reachBudget() {
+effect function reachBudget() {
   let total = 0
   try Stream.runForEachWhile(Stream.make(3, 5, 8, 13), effect (amount) => {
     total += amount
@@ -58,12 +58,12 @@ The callback's Effect succeeds with `true` to continue or `false` to stop; the e
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try totalBytes()); try Console.log(try totalWithProgress())
-effect totalBytes() {
+effect function totalBytes() {
   return try Stream.runFold(Stream.make(256, 512, 128), () => 0, (total, n) => total + n)
 }
 // Returns 896.
 
-effect totalWithProgress() {
+effect function totalWithProgress() {
   return try Stream.runFoldEffect(Stream.make(256, 512, 128), () => 0, effect (total, n) => {
     const next = total + n
     try Console.log(`processed ${next} bytes`)
@@ -84,7 +84,7 @@ The initial-state callback runs per consumption, so a mutable accumulator starts
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect readHeader() {
+effect function readHeader() {
   const source = Stream.make("version", "length", "body")
   return try Stream.run(source, Sink.take<string>(2))
 }

@@ -10,7 +10,7 @@ Use statements for dependent steps and the pipe operator, `|>`, for a series of 
 function addMargin(n: number) { return n + 3 }
 function double(n: number) { return n * 2 }
 
-effect priceLabel() {
+effect function priceLabel() {
   return 9 |> addMargin(%) |> double(%) |> `Price: ${%}`
 }
 // string!!; "Price: 24"
@@ -24,7 +24,7 @@ Effect operators take Effect values directly, so nest them:
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try preparedPrice())
-effect preparedPrice() {
+effect function preparedPrice() {
   return try withSpan(timeout(priceLabel(), "1 second"), "price-label")
 }
 // Output: Price: 24
@@ -39,12 +39,12 @@ A pipe's `%` is always the value of the expression before its `|>`, and its body
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try adjustedPrice())
-effect adjustedPrice() {
+effect function adjustedPrice() {
   const price = 24
   return price + 5
 }
 
-effect recordPrice() {
+effect function recordPrice() {
   try log(`price=${try adjustedPrice()}`)
   return "recorded"
 }
@@ -60,12 +60,12 @@ Using the returned value replaces `Effect.map` for local transformations. A late
 // run: try Console.log(try total())
 error InvalidRate
 
-effect discounted(price: number, percent: number) {
+effect function discounted(price: number, percent: number) {
   if (percent < 0 || percent > 100) throw new InvalidRate()
   return price * (1 - percent / 100)
 }
 
-effect total() {
+effect function total() {
   const price = try adjustedPrice()
   const reduced = try discounted(price, 12)
   return reduced + 2
@@ -81,13 +81,13 @@ One `try` after another expresses the dependency that `flatMap` or `andThen` han
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log([try positive(2), try validated(0)].join(", "))
-effect positive(value: number) {
+effect function positive(value: number) {
   const optional = value > 0 ? Option.some(value) : Option.none()
   return try fromOption(optional)
 }
 // number!NoSuchElementError!
 
-effect validated(value: number) {
+effect function validated(value: number) {
   const checked = value >= 0
     ? Result.succeed(value)
     : Result.fail("negative value")
@@ -140,7 +140,7 @@ function totals(values: ReadonlyArray<Option.Option<number>>) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try quotedTotal())
-effect quotedTotal() {
+effect function quotedTotal() {
   const amount = try total()
   try Console.log(`quoted amount=${amount}`)
   return amount
@@ -156,7 +156,7 @@ The local variable stays available after logging, as with `Effect.tap`. An obser
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try summary())
-effect summary() {
+effect function summary() {
   const details = try all({
     price: total(),
     label: priceLabel()
@@ -175,7 +175,7 @@ For a dynamic collection, use `try forEach(values, (value) => work(value), { con
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try saveNotice()
-effect saveNotice() {
+effect function saveNotice() {
   const notice = Console.log("saved")
   try notice
   try Console.log("finished")

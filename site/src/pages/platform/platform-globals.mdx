@@ -127,7 +127,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 
 A numeric return value from `main` does not set the exit status:
-`effect main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
+`effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.
 
 ## The replacements at work
@@ -135,7 +135,7 @@ fail for exit 1, or interrupt for exit 130.
 Each call above, in an effect function. A function that calls a service needs its layer at the application boundary, such as `NodeServices.layer` from `@effect/platform-node`:
 
 ```vibe
-effect replacements(
+effect function replacements(
   path: string, text: string, url: string, key: string, specifier: string, message: string,
   size: number, min: number, max: number, bytes: Uint8Array, a: Uint8Array, b: Uint8Array,
   rows: ReadonlyArray<unknown>, target: EventTarget, program: void!!,
@@ -183,7 +183,7 @@ In the browser, `@effect/platform-browser` supplies these services and their lay
 ```vibe
 import { BrowserStream, Clipboard, Geolocation, Permissions } from "@effect/platform-browser"
 
-effect browser() {
+effect function browser() {
   const text = try (try Clipboard.Clipboard).readString
   const position = try (try Geolocation.Geolocation).getCurrentPosition()
   const status = try (try Permissions.Permissions).query("geolocation")
@@ -196,7 +196,7 @@ effect browser() {
 VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) has the details:
 
 ```vibe
-effect experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, key: Redacted.Redacted<Uint8Array>, privateKey: Redacted.Redacted<Uint8Array>, publicKey: Uint8Array, signature: Uint8Array, data: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, key: Redacted.Redacted<Uint8Array>, privateKey: Redacted.Redacted<Uint8Array>, publicKey: Uint8Array, signature: Uint8Array, data: Uint8Array) {
   const fs = try Experimental.FileSystem
   const id = try (try Experimental.Process).pid
   const platform = try (try Experimental.Process).platform
@@ -256,7 +256,7 @@ export function title(): string {
 // page-title.vibe
 import { title } from "./dom.ts"
 
-effect pageTitle() {
+effect function pageTitle() {
   return try Effect.try(() => title())
 }
 ```

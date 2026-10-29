@@ -9,14 +9,14 @@ A scope owns registered finalizers and runs them when its lifetime ends. Use `sc
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try runRegisteredWork())
-effect registeredWork() {
+effect function registeredWork() {
   try addFinalizer((outcome) =>
     Console.log(`Work scope closed with ${outcome._tag}`))
   return "Prepared"
 }
 // string!!Scope.Scope
 
-effect runRegisteredWork() {
+effect function runRegisteredWork() {
   return try scoped(registeredWork())
 }
 // string!!
@@ -33,7 +33,7 @@ Finalizers run in reverse registration order by default, with interruption defer
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try manuallyManagedWork())
-effect manuallyManagedWork() {
+effect function manuallyManagedWork() {
   return try acquireUseRelease(
     Scope.make(),
     effect (scope) => {
@@ -59,7 +59,7 @@ effect manuallyManagedWork() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try copyLabels())
-effect openBuffer(label: string) {
+effect function openBuffer(label: string) {
   return try acquireRelease(
     effect {
       try Console.log(`Opened ${label}`)
@@ -70,7 +70,7 @@ effect openBuffer(label: string) {
 }
 // { label: string }!!Scope.Scope
 
-effect copyLabels() {
+effect function copyLabels() {
   return try scoped(effect {
     const source = try openBuffer("source")
     const destination = try openBuffer("destination")
@@ -119,7 +119,7 @@ function open(events: string[]) {
 
 error Bad
 
-effect acquire(events: string[]) {
+effect function acquire(events: string[]) {
   return try acquireDisposable(sync(() => open(events)))
 }
 
@@ -130,7 +130,7 @@ function describe(outcome: Exit.Exit<void, Bad>) {
   return Exit.hasInterrupts(outcome) ? "interrupted" : "other"
 }
 
-effect run(ending: string) {
+effect function run(ending: string) {
   const events: string[] = []
   const outcome = try exit(scoped(effect {
     const file = try acquire(events)
@@ -141,11 +141,11 @@ effect run(ending: string) {
   return [describe(outcome), events]
 }
 
-effect pending() {
+effect function pending() {
   const events: string[] = []
   const entered = try Deferred.make<void>()
   const gate = try Deferred.make<void>()
-  effect work() {
+  effect function work() {
     try scoped(effect {
       const file = try acquireDisposable(effect {
         try Deferred.succeed(entered, undefined)
@@ -170,7 +170,7 @@ effect pending() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try nestedLifetimes(); try observeOwnership()
-effect nestedLifetimes() {
+effect function nestedLifetimes() {
   try scoped(effect {
     const outer = try openBuffer("session")
     try scoped(effect {
@@ -181,7 +181,7 @@ effect nestedLifetimes() {
   })
 }
 
-effect mixedOwnership() {
+effect function mixedOwnership() {
   const callerOwned = try openBuffer("caller")
   try scoped(effect {
     const local = try openBuffer("local")
@@ -190,7 +190,7 @@ effect mixedOwnership() {
 }
 // void!!Scope.Scope
 
-effect observeOwnership() {
+effect function observeOwnership() {
   try scoped(effect {
     try mixedOwnership()
     try Console.log("Local closed; caller buffer still open")
@@ -231,7 +231,7 @@ service ProjectSteps {
   finish(storage: string, index: string): string!SetupFailed
 }
 
-effect reserveStep(stage: string) {
+effect function reserveStep(stage: string) {
   const steps = try ProjectSteps
   return try acquireRelease(
     steps.create(stage),
@@ -242,7 +242,7 @@ effect reserveStep(stage: string) {
 }
 // string!SetupFailed!ProjectSteps | Scope.Scope
 
-effect setupProject() {
+effect function setupProject() {
   return try scoped(effect {
     const storage = try reserveStep("storage")
     const index = try reserveStep("index")
@@ -267,7 +267,7 @@ The finalizers see the whole setup's exit, so defects and interruption trigger t
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: const result = try exerciseRollback(); try Console.log(JSON.stringify({ outcome: result.outcome._tag, removed: result.removed }))
-effect exerciseRollback() {
+effect function exerciseRollback() {
   const removed: string[] = []
   const testLayer = Layer.succeed(ProjectSteps, {
     create: (stage) => succeed(stage),

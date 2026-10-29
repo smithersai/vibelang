@@ -62,12 +62,12 @@ Complete every entry, including requests for absent rows. Use `Request.succeed` 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try partLabel("ink-black")); const missing = try result(findPart("missing")); if (Result.isFailure(missing)) try Console.log(missing.failure._tag)
-effect findPart(code: string) {
+effect function findPart(code: string) {
   return try request(FindPart({ code }), PartResolver)
 }
 // Part!PartMissing | CatalogUnavailable!
 
-effect partLabel(code: string) {
+effect function partLabel(code: string) {
   return (try findPart(code)).label
 }
 // Output: catalog batch size=1
@@ -83,7 +83,7 @@ effect partLabel(code: string) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try labels(["ink-black", "ink-blue"])))
-effect labels(codes: ReadonlyArray<string>) {
+effect function labels(codes: ReadonlyArray<string>) {
   return try forEach(codes, (code) => partLabel(code), {
     concurrency: "unbounded"
   })
@@ -105,7 +105,7 @@ const TunedResolver = PartResolver
   |> RequestResolver.setDelay(%, "8 millis")
   |> RequestResolver.batchN(%, 64)
 
-effect tunedLookup(code: string) {
+effect function tunedLookup(code: string) {
   return try request(FindPart({ code }), TunedResolver)
 }
 // Output: catalog batch size=64
@@ -165,7 +165,7 @@ Match results by identifier; don't assume the backend preserves request order. A
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try cachedExample())); const queries = try cachedQueries(); for (let i = 0; i < 2; i++) { const outcome = try result(queries.find("missing")); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
-effect cachedQueries() {
+effect function cachedQueries() {
   const resolver = try RequestResolver.withCache(PartResolver, {
     capacity: 128,
     strategy: "lru"
@@ -175,7 +175,7 @@ effect cachedQueries() {
   }
 }
 
-effect cachedExample() {
+effect function cachedExample() {
   const parts = try cachedQueries()
   const first = try parts.find("ink-blue")
   const again = try parts.find("ink-blue")
@@ -195,7 +195,7 @@ The cache is bounded by `capacity`, with `"lru"` eviction by default or `"fifo"`
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try expiringLookup()))
-effect expiringLookup() {
+effect function expiringLookup() {
   const cache = try RequestResolver.asCache(PartResolver, {
     capacity: 128,
     timeToLive: () => "20 seconds"

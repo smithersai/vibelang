@@ -7,7 +7,7 @@
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed('{"theme":"dark"}') }) { try Console.log(try readSettings()) }
-effect readSettings() {
+effect function readSettings() {
   const fs = try FileSystem
   return try fs.readFileString("./settings.json")
 }
@@ -23,7 +23,7 @@ Getting the service adds `FileSystem` to the Effect's requirements. `readFileStr
 // run: provide NodeFileSystem.layer { try Console.log(JSON.stringify(try saveSummary("ready"))) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
-effect saveSummary(text: string) {
+effect function saveSummary(text: string) {
   const fs = try FileSystem
   try fs.makeDirectory("./output", { recursive: true })
   try fs.writeFileString("./output/summary.txt", text)
@@ -56,7 +56,7 @@ The `try` expressions run in order: the write completes before the read starts. 
 // run: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
-effect fileSize(path: string) {
+effect function fileSize(path: string) {
   return try scoped(effect {
     const fs = try FileSystem
     const file = try fs.open(path)
@@ -76,7 +76,7 @@ effect fileSize(path: string) {
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-effect main() {
+effect function main() {
   provide NodeFileSystem.layer {
     try scoped(effect {
       const fs = try FileSystem
@@ -99,7 +99,7 @@ NodeRuntime.runMain(main())
 // files.vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FilesTest { try Console.log(try readFixture()) }
-export effect readFixture() {
+export effect function readFixture() {
   const fs = try FileSystem
   if (!(try fs.exists("/fixtures/title.txt"))) return "Untitled"
   return try fs.readFileString("/fixtures/title.txt")

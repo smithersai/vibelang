@@ -42,7 +42,7 @@ export const UsersLive = Layer.effect(Users, effect {
 // routes.vibe
 import { CreateUser, NameTaken, Users, UsersLive } from "./users.vibe"
 
-export effect createUser() {
+export effect function createUser() {
   return effect {
     const input = try HttpServerRequest.schemaBodyJson(CreateUser)
     const users = try Users
@@ -88,7 +88,7 @@ function server(port: number) {
 }
 const Live = server(3000)
 
-export effect main() {
+export effect function main() {
   try Layer.launch(Live)
 }
 // Output: server acquired
@@ -116,7 +116,7 @@ NodeRuntime.runMain(main())
 import { assert, it } from "@effect/vitest"
 import { App } from "./routes.vibe"
 
-effect request(body: unknown) {
+effect function request(body: unknown) {
   const client = try HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body)
   return HttpServerRequest.fromClientRequest(client)
 }

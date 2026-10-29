@@ -11,12 +11,12 @@ error StartupFailed {
   stage: string
 }
 
-effect makeStartupSignal() {
+effect function makeStartupSignal() {
   return try Deferred.make<string, StartupFailed>()
 }
 // Deferred.Deferred<string, StartupFailed>!!
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: false
@@ -30,7 +30,7 @@ A new deferred is empty, holding neither a success nor a failure. Creating it is
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-17
 // run: try Console.log(try waitForAddress())
-effect waitForAddress() {
+effect function waitForAddress() {
   const address = try Deferred.make<string>()
   const listener = fork Deferred.await(address)
   try Deferred.succeed(address, "127.0.0.1:8080")
@@ -46,7 +46,7 @@ effect waitForAddress() {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try stringify(try completeOnce())); try Console.log(try shareFailure())
-effect completeOnce() {
+effect function completeOnce() {
   const result = try Deferred.make<number, string>()
   const accepted = try Deferred.succeed(result, 25)
   const ignored = try Deferred.fail(result, "too late")
@@ -54,7 +54,7 @@ effect completeOnce() {
 }
 // Returns { accepted: true, ignored: false, value: 25 }.
 
-effect shareFailure() {
+effect function shareFailure() {
   const result = try Deferred.make<number, string>()
   try Deferred.fail(result, "configuration missing")
   const outcome = Deferred.await(result) catch (error) => ({ error })
@@ -74,7 +74,7 @@ The first completion wins; later completions return `false`. `Deferred.done` tak
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try stringify(try inspectWithoutWaiting()))
-effect inspectWithoutWaiting() {
+effect function inspectWithoutWaiting() {
   const result = try Deferred.make<number>()
   const before = try Deferred.isDone(result) // false
   try Deferred.succeed(result, 9)
@@ -95,7 +95,7 @@ effect inspectWithoutWaiting() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try coordinate())
-effect coordinate() {
+effect function coordinate() {
   const prepared = try Deferred.make<ReadonlyArray<string>>()
   const producer = fork effect {
     try sleep("20 millis")

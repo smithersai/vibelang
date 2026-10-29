@@ -11,7 +11,7 @@ error Unavailable {
   item: string
 }
 
-effect reserve(item: string, available: boolean) {
+effect function reserve(item: string, available: boolean) {
   if (!available) throw new Unavailable({ item })
   return { item, reserved: true }
 }
@@ -26,7 +26,7 @@ The compiler records the returned object in `A` and `Unavailable` in `E`. `succe
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try attemptReservation("notebook", false))
-effect attemptReservation(item: string, available: boolean) {
+effect function attemptReservation(item: string, available: boolean) {
   const outcome = try result(reserve(item, available))
   if (Result.isFailure(outcome)) return outcome.failure.item
   return outcome.success.item
@@ -44,7 +44,7 @@ effect attemptReservation(item: string, available: boolean) {
 // run: provide NodeServices.layer { try Console.log((try token()).length) }
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
-effect token() {
+effect function token() {
   const crypto = try Crypto
   return try crypto.randomBytes(16)
 }
@@ -68,7 +68,7 @@ error StatFailed {
   cause: unknown
 }
 
-effect freeBlocks(path: string) {
+effect function freeBlocks(path: string) {
   return try Effect.try({
     try: () => statfsSync(path).bavail,
     catch: (cause) => new StatFailed({ cause })
@@ -124,7 +124,7 @@ error SigningFailed {
   cause: unknown
 }
 
-effect sign(secret: string, text: string) {
+effect function sign(secret: string, text: string) {
   return try tryPromise({ try: () => hmac(secret, text), catch: (cause) => new SigningFailed({ cause }) })
 }
 // ArrayBuffer!SigningFailed!
@@ -147,14 +147,14 @@ type Source = {
   read: (onValue: (n: number) => void, onError: (e: Error) => void) => () => void
 }
 
-effect nextReading(source: Source) {
+effect function nextReading(source: Source) {
   return try callback<number, Error>((resume) => {
     const cancel = source.read((n) => resume(succeed(n)), (error) => resume(fail(error)))
     return sync(cancel)
   })
 }
 
-effect readAndReport(source: Source) {
+effect function readAndReport(source: Source) {
   const reading = try nextReading(source)
   try Console.log(`reading=${reading}`)
   return reading
@@ -191,7 +191,7 @@ export function isSymbolicLink(path: string): boolean {
 // run: try Console.log(try linked("."))
 import { isSymbolicLink } from "./links.js"
 
-effect linked(path: string) {
+effect function linked(path: string) {
   return try sync(() => isSymbolicLink(path))
 }
 // Output: false
@@ -206,7 +206,7 @@ Keep shared adapters in `.ts` files and import them wherever needed. Relative sp
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify(try counters()))
-effect nextCounter() {
+effect function nextCounter() {
   let count = 0
   return effect {
     count += 1
@@ -214,7 +214,7 @@ effect nextCounter() {
   }
 }
 
-effect counters() {
+effect function counters() {
   const next = try nextCounter()
   return [try next, try next]
 }
@@ -227,13 +227,13 @@ The returned Effect delays its body until each run. For retry to create new stat
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try countdown(3))
-effect countdown(n: number): number!! {
+effect function countdown(n: number): number!! {
   if (n <= 0) return 0
   try sleep("1 millis")
   return 1 + (try countdown(n - 1))
 }
 
-effect checkedQuantity(n: number) {
+effect function checkedQuantity(n: number) {
   if (n < 0) throw new Unavailable({ item: "quantity" })
   return n
 }

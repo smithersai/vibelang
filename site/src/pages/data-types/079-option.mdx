@@ -147,12 +147,12 @@ true true 0 ""
 ## Converting options into effects
 
 ```vibe
-effect requiredName(name: Option.Option<string>) {
+effect function requiredName(name: Option.Option<string>) {
   return try fromOption(name)
 }
 // string!Cause.NoSuchElementError!
 
-effect requiredPair() {
+effect function requiredPair() {
   return try all([
     fromOption(Option.some("east")),
     fromOption(Option.some(3))

@@ -16,7 +16,7 @@ error ItemMissing {
   code: string
 }
 
-effect normalizeCode(input: string) {
+effect function normalizeCode(input: string) {
   const code = input.trim()
   if (code.length === 0) throw new InvalidCode({ input })
   return code.toUpperCase()
@@ -91,7 +91,7 @@ export function parseQuantity(text: string): number {
 // run: try Console.log(try quantity("3")); try Console.log((try flip(quantity("x")))._tag)
 import { InvalidQuantity, parseQuantity } from "./quantity.ts"
 
-effect quantity(text: string) {
+effect function quantity(text: string) {
   return Effect.try({
     try: () => parseQuantity(text),
     catch: (cause) => cause
@@ -116,7 +116,7 @@ InvalidQuantity
 // run: try Console.log(try port(new Map([["PORT", "3000"]]))); try Console.log((try flip(port(new Map())))._tag)
 error MissingPort
 
-effect port(env: Map<string, string>) {
+effect function port(env: Map<string, string>) {
   return try effect {
     const value = env.get("PORT")
     if (value === undefined) throw new MissingPort()
@@ -138,7 +138,7 @@ An `effect { … }` expression builds an Effect from statements. Here it validat
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try findItem("pen")).label); try Console.log((try flip(findItem("book")))._tag); try Console.log((try flip(findItem("")))._tag)
-effect findItem(input: string) {
+effect function findItem(input: string) {
   const code = try normalizeCode(input)
   if (code !== "PEN") throw new ItemMissing({ code })
   return { code, label: "Fountain pen" }
@@ -159,7 +159,7 @@ An effect function collects the failures it throws and those of the Effects it r
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try inspectItem("pen")); try Console.log(try inspectItem("")); try Console.log(try inspectItem("book")); try Console.log(try optionalItem("pen")); try Console.log(try optionalItem("book"))
-effect inspectItem(input: string) {
+effect function inspectItem(input: string) {
   const outcome = try result(findItem(input))
   return Result.match(outcome, {
     onFailure: (error) => `unavailable: ${error._tag}`,
@@ -167,7 +167,7 @@ effect inspectItem(input: string) {
   })
 }
 
-effect optionalItem(input: string) {
+effect function optionalItem(input: string) {
   const item = try option(findItem(input))
   return Option.isNone(item) ? "No item" : item.value.label
 }
@@ -188,7 +188,7 @@ No item
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-14
 // run: try Console.log(try itemLabel("pen")); try Console.log(try itemLabel("")); try Console.log(try itemLabel("book"))
-effect itemLabel(input: string) {
+effect function itemLabel(input: string) {
   return effect {
     return (try findItem(input)).label
   } catch (error) => `Unavailable (${error._tag})`
@@ -207,7 +207,7 @@ The catch expression receives `InvalidCode | ItemMissing` and handles both, but 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try itemLabelInline("pen")); try Console.log(try itemLabelInline("")); try Console.log(try itemLabelInline("book"))
-effect itemLabelInline(input: string) {
+effect function itemLabelInline(input: string) {
   const item = findItem(input) catch (error) => ({
     code: "",
     label: `Unavailable (${error._tag})`
@@ -232,7 +232,7 @@ After an Effect, `x catch (error) => handler` runs `x` and passes an expected fa
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try labelOrMissing("book")); try Console.log((try flip(labelOrMissing("")))._tag); try Console.log((try labelByTag("book")).label); try Console.log((try flip(labelByTag("")))._tag)
-effect labelOrMissing(input: string) {
+effect function labelOrMissing(input: string) {
   return effect {
     return (try findItem(input)).label
   } catch effect (error) => match (error) {
@@ -242,7 +242,7 @@ effect labelOrMissing(input: string) {
 }
 // string!InvalidCode!
 
-effect labelByTag(input: string) {
+effect function labelByTag(input: string) {
   return try catchTag(
     findItem(input),
     "ItemMissing",
@@ -263,14 +263,14 @@ Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles t
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try withTagTable("")).label); try Console.log((try withFilter("book")).label); try Console.log((try withPredicate("book")).label); try Console.log((try flip(withFilter("")))._tag); try Console.log((try flip(withPredicate("")))._tag)
-effect withTagTable(input: string) {
+effect function withTagTable(input: string) {
   return try catchTags(findItem(input), {
     InvalidCode: () => succeed({ code: "", label: "Enter a code" }),
     ItemMissing: (error) => succeed({ code: error.code, label: "Out of catalog" })
   })
 }
 
-effect withFilter(input: string) {
+effect function withFilter(input: string) {
   return try catchFilter(
     findItem(input),
     Filter.tagged("ItemMissing"),
@@ -278,7 +278,7 @@ effect withFilter(input: string) {
   )
 }
 
-effect withPredicate(input: string) {
+effect function withPredicate(input: string) {
   return try catchIf(
     findItem(input),
     (error): error is ItemMissing => error._tag === "ItemMissing",
@@ -308,25 +308,25 @@ error CatalogError {
   reason: Busy | Rejected
 }
 
-effect remoteLabel(): string!CatalogError! {
+effect function remoteLabel(): string!CatalogError! {
   throw new CatalogError({ reason: new Busy({ seconds: 4 }) })
 }
 
-effect explainBusy() {
+effect function explainBusy() {
   return try catchReason(
     remoteLabel(), "CatalogError", "Busy",
     (reason) => succeed(`Try again in ${reason.seconds} seconds`)
   )
 }
 
-effect explainReasons() {
+effect function explainReasons() {
   return try catchReasons(remoteLabel(), "CatalogError", {
     Busy: (reason) => succeed(`Wait ${reason.seconds} seconds`),
     Rejected: () => succeed("Request rejected")
   })
 }
 
-effect exposeReasons() {
+effect function exposeReasons() {
   return try unwrapReason(remoteLabel(), "CatalogError")
 }
 // string!Busy | Rejected!
@@ -348,11 +348,11 @@ These operators inspect the tagged error's readonly `reason` field. `catchReason
 error Missing { code: string; path: string }
 error Expired { code: string }
 
-effect raise(error: Missing | Expired) {
+effect function raise(error: Missing | Expired) {
   throw error
 }
 
-effect describeFailure(error: Missing | Expired) {
+effect function describeFailure(error: Missing | Expired) {
   return raise(error) catch (failure) => match (failure) {
     when Missing and { let path }: `missing ${path}`
     when Expired and { let code }: `expired ${code}`
@@ -393,11 +393,11 @@ error MissingFile { code: string; path: string }
 error ExpiredFile { code: string }
 type FileError = MissingFile | ExpiredFile
 
-effect raiseFile(error: FileError) {
+effect function raiseFile(error: FileError) {
   throw error
 }
 
-effect describeFamily(error: FileError) {
+effect function describeFamily(error: FileError) {
   return raiseFile(error) catch (failure) => match (failure) {
     when MissingFile and { let path }: `missing ${path}`;
     when ExpiredFile and { let code }: `expired ${code}`;
@@ -419,12 +419,12 @@ An `error` declaration always extends `Data.TaggedError`, so `error MissingFile 
 // run: try Console.log(try encodeStoreError()); try Console.log(try decodeStoreError())
 schema error NotStored { key: string; attempts: number }
 
-effect encodeStoreError() {
+effect function encodeStoreError() {
   const encoded = try Schema.encodeEffect(NotStored)(new NotStored({ key: "a", attempts: 2 }))
   return JSON.stringify(encoded)
 }
 
-effect decodeStoreError() {
+effect function decodeStoreError() {
   const decoded = try Schema.decodeUnknownEffect(NotStored)({ _tag: "NotStored", key: "b", attempts: 1 })
   return match (decoded) {
     when NotStored: true

@@ -7,12 +7,12 @@ Effect's structured logging records progress, failures, and diagnostic context. 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try reportProgress() }; try Console.log(try stringify(records))
-effect reportProgress() {
+effect function reportProgress() {
   try log("export started", { format: "csv", stage: "prepare" })
   try logInfo("export completed", { rows: 240 })
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
@@ -29,7 +29,7 @@ effect stringify(value: unknown) {
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try diagnostics() }; try Console.log(try stringify(records))
-effect diagnostics() {
+effect function diagnostics() {
   provide References.MinimumLogLevel = "Debug" {
     try logTrace("entered parser")
     try logDebug("parsed header")
@@ -52,7 +52,7 @@ The default threshold, Info, filters Debug and Trace. Providing Debug enables De
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) }); provide Logger.layer([capture]) { try annotatedExport(); try scopedAnnotations() }; try Console.log(try stringify(records))
-effect annotatedExport() {
+effect function annotatedExport() {
   try annotateLogs(effect {
     try logInfo("preparing")
     try annotateLogs(logInfo("writing"), "stage", "write")
@@ -60,7 +60,7 @@ effect annotatedExport() {
   try logInfo("outside annotated operation")
 }
 
-effect scopedAnnotations() {
+effect function scopedAnnotations() {
   try scoped(effect {
     try annotateLogsScoped({ component: "importer" })
     try logInfo("reading input")
@@ -81,7 +81,7 @@ effect scopedAnnotations() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) }); provide TestClock.layer() { try TestClock.setTime(0); provide Logger.layer([capture]) { const worker = fork timedExport(); try TestClock.adjust("30 millis"); join worker } }; try Console.log(try stringify(records))
-effect timedExport() {
+effect function timedExport() {
   try withLogSpan(effect {
     try logInfo("opening output")
     try sleep("30 millis")
@@ -109,11 +109,11 @@ const ConfiguredLevel = Layer.unwrap(effect {
   return Layer.succeed(References.MinimumLogLevel, minimum)
 })
 
-effect quiet() {
+effect function quiet() {
   provide Silent { try logInfo("suppressed") }
 }
 
-effect configured() {
+effect function configured() {
   provide ConfiguredLevel { try logDebug("configuration loaded") }
 }
 ```
@@ -129,7 +129,7 @@ The None threshold silences the provided region. `Config.LogLevel` builds a conf
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Console.log(try stringify(try captureLogs()))
-effect captureLogs() {
+effect function captureLogs() {
   const records: Array<{ level: string; message: unknown }> = []
   const capture = Logger.make(({ logLevel, message }) => {
     records.push({ level: logLevel, message })
@@ -158,7 +158,7 @@ const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])
 const JsonLogs = Logger.layer([Logger.consoleJson, Logger.tracerLogger])
 
-effect jsonExample() {
+effect function jsonExample() {
   provide JsonLogs { try logInfo("started", { workers: 4 }) }
 }
 ```
@@ -174,7 +174,7 @@ The default logger emits readable text, LogFmt compact key/value pairs, and Pret
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const lines: unknown[][] = []; const original = try Console.Console; const audit = try provideService(consoleAndCapture(), Console.Console, { ...original, log: (...args: ReadonlyArray<unknown>) => { lines.push([...args]) } }); try Console.log(try stringify(audit), lines.length, (try stringify(lines)).includes("job finished"))
-effect consoleAndCapture() {
+effect function consoleAndCapture() {
   const auditMessages: unknown[] = []
   const audit = Logger.make(({ message }) => { auditMessages.push(message) })
   const destinations = Logger.layer([

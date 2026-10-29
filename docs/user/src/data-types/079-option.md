@@ -158,12 +158,12 @@ true true 0 ""
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(JSON.stringify(try requiredPair())); try Console.log(requiredName(Option.none()) catch (error) => error._tag)
-effect requiredName(name: Option.Option<string>) {
+effect function requiredName(name: Option.Option<string>) {
   return try fromOption(name)
 }
 // string!Cause.NoSuchElementError!
 
-effect requiredPair() {
+effect function requiredPair() {
   return try all([
     fromOption(Option.some("east")),
     fromOption(Option.some(3))

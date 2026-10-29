@@ -7,7 +7,7 @@ A latch is a reusable gate for fibers: closed, it makes callers wait; open, it l
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try initializeThenWork())
-effect initializeThenWork() {
+effect function initializeThenWork() {
   const ready = try Latch.make()
   const worker = fork effect {
     try Latch.await(ready)
@@ -27,7 +27,7 @@ effect initializeThenWork() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-14, VIP-17
 // run: try Console.log(try reopenGate())
-effect reopenGate() {
+effect function reopenGate() {
   const gate = try Latch.make(true)
   try Latch.await(gate) // Passes immediately.
   try Latch.close(gate)
@@ -45,7 +45,7 @@ Opening releases current waiters and lets future callers through. Closing makes 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: const gates = try createGates(); try Console.log(Latch.isOpen(gates.starting), Latch.isOpen(gates.paused), Latch.isOpen(gates.active))
-effect createGates() {
+effect function createGates() {
   const starting = try Latch.make()      // Closed by default.
   const paused = try Latch.make(false)   // Explicitly closed.
   const active = try Latch.make(true)    // Open from the start.
@@ -61,7 +61,7 @@ Create the latch once and share it with every operation the condition controls. 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
 // run: try gatedExclusiveWork()
-effect gatedExclusiveWork() {
+effect function gatedExclusiveWork() {
   const initialized = try Latch.make(true)
   const exclusive = try Semaphore.make(1)
   try Latch.await(initialized)

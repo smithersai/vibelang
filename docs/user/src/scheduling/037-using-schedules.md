@@ -7,7 +7,7 @@ A schedule decides when work runs again and when it stops. `Schedule` values wor
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork heartbeat(); try TestClock.adjust("46 seconds"); try Fiber.interrupt(worker) }
-effect heartbeat() {
+effect function heartbeat() {
   try repeat(
     Console.log("worker available"),
     Schedule.spaced("15 seconds")
@@ -26,7 +26,7 @@ effect heartbeat() {
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try waitForBuild(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect waitForBuild() {
+effect function waitForBuild() {
   let checks = 0
   const status = try repeat(effect {
     checks++
@@ -49,7 +49,7 @@ The initial check is separate from the seven permitted repetitions, so the loop 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork delayedCleanup(); try Console.log("before first sweep"); try TestClock.adjust("60 minutes"); try Fiber.interrupt(worker) }
-effect delayedCleanup() {
+effect function delayedCleanup() {
   try schedule(
     Console.log("sweeping expired sessions"),
     Schedule.spaced("30 minutes")
@@ -69,7 +69,7 @@ effect delayedCleanup() {
 // run: try Console.log(try reserveSlot())
 error Busy
 
-effect reserveSlot() {
+effect function reserveSlot() {
   let attempts = 0
   return try retry(effect {
     attempts++
@@ -94,7 +94,7 @@ service Sensor {
   read(): number!SensorOffline
 }
 
-effect sampleContinuously() {
+effect function sampleContinuously() {
   try repeat(effect {
     const sample = effect {
       const sensor = try Sensor

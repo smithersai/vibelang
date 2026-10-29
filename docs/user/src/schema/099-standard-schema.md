@@ -41,7 +41,7 @@ const ReviewedDispatch = Dispatch.pipe(Schema.decode({
 }))
 const ReviewedStandard = Schema.toStandardSchemaV1(ReviewedDispatch)
 
-effect validateDispatch(input: unknown) {
+effect function validateDispatch(input: unknown) {
   return try tryPromise({ try: () => Promise.resolve(ReviewedStandard["~standard"].validate(input)), catch: (cause) => new ValidationBoundaryError({ cause }) })
 }
 
@@ -70,7 +70,7 @@ const BrokenLabel = Schema.String.pipe(Schema.decode({
 }))
 const BrokenStandard = Schema.toStandardSchemaV1(BrokenLabel)
 
-effect inspectBrokenValidation() {
+effect function inspectBrokenValidation() {
   return try tryPromise(() => Promise.resolve(BrokenStandard["~standard"].validate("crate")))
 }
 ```

@@ -11,14 +11,14 @@ Effect gives the clock, random generation, console output, configuration sources
 ## Using the clock, random, and console
 
 ```vibe
-effect startupMessage() {
+effect function startupMessage() {
   const started = try Clock.currentTimeMillis
   const sample = try Random.next
   try Console.log(`Started at ${started}; sample=${sample}`)
 }
 // void!!
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 // Output: Started at 1000; sample=0.25
@@ -31,7 +31,7 @@ Default references include `Clock.Clock`, `ConfigProvider.ConfigProvider`, `Cons
 ```vibe
 const Port = Config.withDefault(Config.Port("PORT"), 3000)
 
-effect configuredPort() {
+effect function configuredPort() {
   return try Port
 }
 // number!Config.ConfigError!
@@ -43,7 +43,7 @@ effect configuredPort() {
 ## Replacing default implementations
 
 ```vibe
-effect fixedRandomSample() {
+effect function fixedRandomSample() {
   return try provideService(Random.next, Random.Random, {
     nextDoubleUnsafe: () => 0.25,
     nextIntUnsafe: () => 12
@@ -62,7 +62,7 @@ service DisplaySettings {
   static readonly defaultValue = () => ({ prefix: "Ticket" })
 }
 
-effect defaultLabel(id: number) {
+effect function defaultLabel(id: number) {
   const settings = try DisplaySettings
   return `${settings.prefix} ${id}`
 }
@@ -76,11 +76,11 @@ A service with `static readonly defaultValue = () => implementation` compiles to
 ## Reproducible random computations
 
 ```vibe
-effect pair() {
+effect function pair() {
   return [try Random.next, try Random.next]
 }
 
-effect reproduciblePairs() {
+effect function reproduciblePairs() {
   const first = try Random.withSeed(pair(), "documentation-seed")
   const second = try Random.withSeed(pair(), "documentation-seed")
   return { first, second }

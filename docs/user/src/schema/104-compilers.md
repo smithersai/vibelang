@@ -13,7 +13,7 @@ export const Parcel = Schema.Struct({
   count: Schema.Int
 })
 
-effect readParcel(input: unknown) {
+effect function readParcel(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
@@ -40,7 +40,7 @@ const CompiledParcel = Schema.Struct({
   count: Schema.Int
 })
 
-effect receiveCompiled(input: unknown) {
+effect function receiveCompiled(input: unknown) {
   return try Schema.decodeUnknownEffect(CompiledParcel)(input)
 }
 ```
@@ -109,7 +109,7 @@ Prepared 1 schema exports
 // run: void 0
 import { buildSchemas } from "./build-schema-aot.ts"
 
-export effect main() {
+export effect function main() {
   const build = try sync(() => buildSchemas())
   const result = try build
   try Console.log(`Prepared ${result.schemas} schema exports`)
@@ -145,7 +145,7 @@ Decoding is the default operation; add encoding, guards, and construction only w
 import "./generated/parcel-validators.js"
 import { Parcel } from "./schemas/Parcel.vibe"
 
-effect receive(input: unknown) {
+effect function receive(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input)
 }
 ```
@@ -188,7 +188,7 @@ The low-level API calls directional parsing `decode`, the flipped encoding path 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(JSON.stringify(try parseNormally({ reference: "pkg-94", count: 2 }))); try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message)) })
-effect parseNormally(input: unknown) {
+effect function parseNormally(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input, {
     errors: "all", onExcessProperty: "error"
   })

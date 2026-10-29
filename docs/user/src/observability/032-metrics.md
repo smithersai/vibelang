@@ -11,7 +11,7 @@ const requests = Metric.counter("guide_requests", { incremental: true })
 const queued = Metric.gauge("guide_queued")
 const bytes = Metric.counter("guide_bytes", { bigint: true })
 
-effect recordBatch() {
+effect function recordBatch() {
   try Metric.update(requests, 1)
   try Metric.update(requests, 3)
   try Metric.update(queued, 12)
@@ -23,7 +23,7 @@ effect recordBatch() {
   }
 }
 
-effect stringify(value: unknown) {
+effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
@@ -45,7 +45,7 @@ const completions = Metric.withConstantInput(
   1
 )
 
-effect instrumentedValue() {
+effect function instrumentedValue() {
   return try trackSuccesses(effect { return "processed" }, completions)
 }
 ```
@@ -70,7 +70,7 @@ const recentSizes = Metric.summary("guide_recent_batch_size", {
   quantiles: [0.5, 0.9, 0.99]
 })
 
-effect recordSizes() {
+effect function recordSizes() {
   for (const size of [12, 36, 8, 91]) {
     try Metric.update(batchSizes, size)
     try Metric.update(recentSizes, size)
@@ -98,7 +98,7 @@ const renderTime = Metric.timer("guide_render_duration", {
   boundaries: [5, 20, 50, 100, 500]
 })
 
-effect render() {
+effect function render() {
   return try trackDuration(effect {
     try sleep("30 millis")
     return "rendered"
@@ -120,7 +120,7 @@ rendered
 // run: try Console.log(try stringify(Array.from(try recordOutcomes()).sort(([a], [b]) => Order.String(a, b))))
 const outcomes = Metric.frequency("guide_validation_outcomes")
 
-effect recordOutcomes() {
+effect function recordOutcomes() {
   try Metric.update(outcomes, "accepted")
   try Metric.update(outcomes, "rejected")
   try Metric.update(outcomes, "accepted")
@@ -145,7 +145,7 @@ const apiRequests = Metric.withAttributes(
 )
 const failures = Metric.counter("guide_api_failures", { incremental: true })
 
-effect attributed() {
+effect function attributed() {
   provide Metric.CurrentMetricAttributes = { environment: "staging" } {
     try Metric.update(apiRequests, 1)
     try Metric.update(failures, 1)

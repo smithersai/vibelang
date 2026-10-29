@@ -37,7 +37,7 @@ These declarations build reusable values and run no work. Choose a rule by requi
 ## Understanding schedule steps
 
 ```vibe
-effect runChecks() {
+effect function runChecks() {
   try repeat(effect {
     try Console.log("checking", try Clock.currentTimeMillis)
     try sleep("2 seconds")

@@ -11,7 +11,7 @@ error ExportRejected {
   reason: string
 }
 
-effect inspectExport() {
+effect function inspectExport() {
   const outcome = try exit(effect {
     throw new ExportRejected({ reason: "empty selection" })
   })
@@ -96,7 +96,7 @@ An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try replay(Exit.succeed(12))); const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))); if (Exit.isFailure(failed)) try Console.log(JSON.stringify(failed.cause.reasons.map((reason) => reason._tag)))
-effect replay<A, E>(outcome: Exit.Exit<A, E>) {
+effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome
 }
 // A!E!

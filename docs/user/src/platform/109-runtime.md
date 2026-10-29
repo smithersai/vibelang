@@ -9,7 +9,7 @@ A platform `runMain` starts a VibeLang application and ties its lifetime to the 
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
-effect main() {
+effect function main() {
   try Console.log("Preparing export")
   try sleep("100 millis")
   try Console.log("Export complete")
@@ -37,7 +37,7 @@ error StartupRejected {
   reason: string
 }
 
-effect main() {
+effect function main() {
   throw new StartupRejected({ reason: "configuration missing" })
 }
 
@@ -64,7 +64,7 @@ export const launchOptions = {
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { launchOptions } from "./launch-options.ts"
 
-effect main() {
+effect function main() {
   try Console.log("Starting with custom exit handling")
 }
 
@@ -85,7 +85,7 @@ error InvalidBatch {
   count: number
 }
 
-effect exportBatch(count: number) {
+effect function exportBatch(count: number) {
   try ensuring(effect {
     if (count <= 0) throw new InvalidBatch({ count })
     try Console.log(`Exporting ${count} records`)

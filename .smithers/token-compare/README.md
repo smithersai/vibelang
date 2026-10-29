@@ -4,10 +4,10 @@ The main README compares one program written in VibeLang (`users.vibe`) and in E
 
 | File | Tokens |
 | --- | --- |
-| `users.vibe` | 133 |
+| `users.vibe` | 134 |
 | `users.ts` | 202 |
 
-VibeLang uses 34.2% fewer tokens: `(202 − 133) / 202`, rounded to one decimal place. `counts.json` records the result.
+VibeLang uses 33.7% fewer tokens: `(202 − 134) / 202`, rounded to one decimal place. `counts.json` records the result.
 
 ## Reproduce
 
