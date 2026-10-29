@@ -8,7 +8,7 @@ const run = effect <E2, R2>(record: (n: number) => void!E2!R2): void!E2!R2 => {
 }
 
 const watch = effect (seen: Array<number>, watching: boolean): void!! => {
-  const observe = (n: number): void!! => {
+  const observe = effect (n: number): void!! => {
     seen.push(n)
   }
   try run(watching ? observe : () => Effect.void)

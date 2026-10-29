@@ -68,6 +68,8 @@ In `package.json`, replace `tsc` with `vibelang` in every script. If the project
 
 `vibelang` with no arguments checks and emits the project, `vibelang --noEmit` only checks it, `vibelang --watch` rebuilds when a compilation input of the selected project changes, and `vibelang -b` builds project references. `vibelang --fix` first rewrites Effect code written in TypeScript's style into VibeLang's forms, such as a `Data.TaggedError` class into an `error` declaration, and then runs as the rest of the command says ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
+The VIP migration also marks Effect functions `effect`, including arrows with an Effect return annotation such as `const value = (): number!! => 1`. Run `vibelang --fix --fix-vip-only` to apply only the VIP migrations.
+
 For a monorepo, use `vibelang -b -w <solution-or-consuming-project>` to watch and rebuild the project-reference graph. Ordinary `-w` watches the selected project's compilation inputs; it does not keep referenced libraries built. For example:
 
 ```sh

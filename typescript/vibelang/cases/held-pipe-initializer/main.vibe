@@ -4,7 +4,7 @@ import { Effect } from "effect"
 // a pipe (D154): the pipe body builds the program and its left side lands in a
 // program parameter, so the const is initialized without running anything,
 // and running the const runs the pipe.
-const make = (state: { mutable runs: number }): number!! => {
+const make = effect (state: { mutable runs: number }): number!! => {
   state.runs++
   return state.runs
 }

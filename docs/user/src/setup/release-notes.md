@@ -341,6 +341,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Typed ESLint programs required `tsconfig.json` even when a project used `vibe.config.json` or `jsconfig.json`; `typedProgram()` now discovers the nearest project in the same order as the compiler and still honors an explicit `project`.
 
+- `vibelang --fix` left some arrows with Effect return annotations unmarked, so they lost their Effect behavior when only the `effect` keyword decided their form. It now marks these arrows `effect`, including arrows whose bodies qualify for direct-call optimization.
+
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
 - After an Effect upgrade, CI reused an older `node_modules` tree and failed to build the runtime; CI now refreshes installs that disagree with a package's exact Effect pin.

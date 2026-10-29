@@ -2,7 +2,7 @@
 // value is its body's, so the body builds a program and the left side,
 // passed by name to the body's program parameter, runs only when the const
 // is run, each time it is run.
-const make = (state: { mutable runs: number }): number!! => {
+const make = effect (state: { mutable runs: number }): number!! => {
   state.runs++
   return state.runs
 }

@@ -2,7 +2,7 @@
 // is one of the branches, so neither branch runs when the const is
 // initialized, and the chosen branch runs each time the const is run. Only
 // the condition is evaluated at initialization.
-const count = (state: { mutable runs: number }): number!! => {
+const count = effect (state: { mutable runs: number }): number!! => {
   state.runs++
   return state.runs
 }

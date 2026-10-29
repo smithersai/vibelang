@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 type Hook = (n: number) => void!!
 
 let ran = 0
-const work = (): void!! => {
+const work = effect (): void!! => {
   ran++
 }
 

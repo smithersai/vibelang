@@ -5,11 +5,11 @@
 // code would run it. EK4802 is an error here (tsconfig.json).
 
 // A written unknown success.
-export const literal = (n: number): unknown!! => {
+export const literal = effect (n: number): unknown!! => {
   const copy = n
   return effect () => copy + 1
 }
-export const held = (n: number): unknown!! => {
+export const held = effect (n: number): unknown!! => {
   const program: unknown!! = effect { return n + 1 }
   return program
 }
@@ -43,7 +43,7 @@ export const s: S = {
 }
 
 // Not reported: the success type names the program, or the value runs.
-export const kept = (n: number): (unknown!!)!! => {
+export const kept = effect (n: number): (unknown!!)!! => {
   const program: unknown!! = effect { return n + 1 }
   return program
 }

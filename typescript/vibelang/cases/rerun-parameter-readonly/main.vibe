@@ -1,16 +1,16 @@
 // Read-only parameters keep the direct optimization. Shadowed writes and
 // mutations of caller-owned objects do not write the parameter binding.
-export const compact = (n: number): Effect<number, never, never> => n + 1
+export const compact = effect (n: number): Effect<number, never, never> => n + 1
 export effect function declared(n: number): Effect<number, never, never> { return n + 1 }
 export class Counter {
   effect read(n: number): Effect<number, never, never> { return n + 1 }
 }
-export const shadowed = (n: number): Effect<number, never, never> => [n].map((n) => ++n)[0]!
-export const property = (value: { mutable n: number }): Effect<number, never, never> => ++value.n
+export const shadowed = effect (n: number): Effect<number, never, never> => [n].map((n) => ++n)[0]!
+export const property = effect (value: { mutable n: number }): Effect<number, never, never> => ++value.n
 // Plain exports bind parameters inside their delayed $direct call.
 export function plain(n: number) { return ++n }
 export function plainRest(...values: number[]) { return values.pop() }
 export const hatch = effect (n: number): Effect<number, never, never> => try sync((n: number) => ++n, n)
-export const shorthand = (n: number): Effect<{ n: number }, never, never> => ({ n })
+export const shorthand = effect (n: number): Effect<{ n: number }, never, never> => ({ n })
 // Explicit program factories intentionally keep their eager outer state.
 export function factory(n: number): Effect<number, never, never> { return effect { return ++n } }

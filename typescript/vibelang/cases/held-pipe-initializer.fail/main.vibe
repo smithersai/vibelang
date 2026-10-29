@@ -4,5 +4,5 @@ import { Effect } from "effect"
 // A pipe that no declared Effect type holds still runs at a module's top
 // level (D262), so EK1001 reports its outermost program; the pipe's left
 // side, which its topic passes by name, is not reported again.
-const make = (n: number): number!! => n
+const make = effect (n: number): number!! => n
 export const unheld = make(1) |> Effect.map(%, (n) => n + 1)

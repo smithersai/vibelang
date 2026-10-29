@@ -40,11 +40,11 @@ export const object = {
     return result
   }
 }
-export const nested = (n: number): Effect<number, never, never> => [0].map(() => ++n)[0]!
-export const destructuringAssignment = (n: number): Effect<number, never, never> => ([n] = [n + 1], n)
-export const objectAssignment = (n: number): Effect<number, never, never> => ({ n } = { n: n + 1 }, n)
-export const postfix = (n: number): Effect<number, never, never> => n++
-export const logical = (n: number): Effect<number, never, never> => (n ||= 2, n++)
+export const nested = effect (n: number): Effect<number, never, never> => [0].map(() => ++n)[0]!
+export const destructuringAssignment = effect (n: number): Effect<number, never, never> => ([n] = [n + 1], n)
+export const objectAssignment = effect (n: number): Effect<number, never, never> => ({ n } = { n: n + 1 }, n)
+export const postfix = effect (n: number): Effect<number, never, never> => n++
+export const logical = effect (n: number): Effect<number, never, never> => (n ||= 2, n++)
 export class Base {
   effect read(n: number): Effect<number, never, never> { return n }
 }

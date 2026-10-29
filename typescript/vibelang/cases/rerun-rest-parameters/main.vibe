@@ -1,6 +1,6 @@
 // Rest arrays belong to each execution, including the direct-return path.
-export const compact = (...values: number[]): Effect<number | undefined, never, never> => values.pop()
-export const expanded = (...values: number[]): Effect<number | undefined, never, never> => {
+export const compact = effect (...values: number[]): Effect<number | undefined, never, never> => values.pop()
+export const expanded = effect (...values: number[]): Effect<number | undefined, never, never> => {
   const last = values.pop()
   return last
 }
@@ -21,4 +21,4 @@ export class Defaults {
   effect destructured({ values = [1, 2] }: { values?: number[] } = {}): Effect<number | undefined, never, never> { return values.pop() }
 }
 export effect function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return try Effect.succeed(values.pop()) }
-export const fresh = (...values: number[]): Effect<number[], never, never> => values
+export const fresh = effect (...values: number[]): Effect<number[], never, never> => values

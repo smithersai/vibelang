@@ -104,3 +104,37 @@ export effect function main() {
 		t.Errorf("a second run wrote %+v", again.Files[file.FileName()])
 	}
 }
+
+func TestFixEffectAnnotatedArrows(t *testing.T) {
+	source := `import * as Effect from "effect/Effect"
+export const value = (): Effect.Effect<number> => 1
+export const block = (): Effect.Effect<number> => { return 2 }
+export const literal = function (): Effect.Effect<number> { return 3 }
+export const shorthand = (): number!! => 4
+type Result = Effect.Effect<number>
+export const alias = (): Result => 5
+export const plain = (): number => 6
+const held: Effect.Effect<number> = Effect.succeed(7)
+export const factory = (): Effect.Effect<number> => held
+`
+	want := `import * as Effect from "effect/Effect"
+export const value = effect (): Effect.Effect<number> => 1
+export const block = effect (): Effect.Effect<number> => { return 2 }
+export const literal = effect function (): Effect.Effect<number> { return 3 }
+export const shorthand = effect (): number!! => 4
+type Result = Effect.Effect<number>
+export const alias = effect (): Result => 5
+export const plain = (): number => 6
+const held: Effect.Effect<number> = Effect.succeed(7)
+export const factory = (): Effect.Effect<number> => held
+`
+	program, file, _, _ := editorProgram(t, source)
+	program.GetSemanticDiagnostics(t.Context(), file)
+	c, done := program.GetTypeCheckerForFile(t.Context(), file)
+	defer done()
+	edits, count := effectEdits(c, file)
+	got := applyEdits(source, mergeInsertions(edits))
+	if got != want || count != 5 {
+		t.Fatalf("effect rewrite (%d):\n%s\nwant:\n%s", count, got, want)
+	}
+}

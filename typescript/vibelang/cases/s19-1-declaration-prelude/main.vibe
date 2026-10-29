@@ -14,4 +14,4 @@ export const effectBody = effect (pick: boolean): Effect.Effect<Prompt.Prompt<st
   return try sync((n: number) => Prompt.succeed(`x${n}`), n)
 }
 
-export const noOperation = (): Effect.Effect<number, never, never> => { return 42 }
+export const noOperation = effect (): Effect.Effect<number, never, never> => { return 42 }

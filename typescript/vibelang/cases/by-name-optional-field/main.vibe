@@ -1,7 +1,7 @@
 // expect-result: {"missing":{"value":7},"present":{"value":7,"tags":["branch:main"]},"runs":1}
 import * as Effect from "effect/Effect"
 let runs = 0
-const decodeTags = (text: string): Effect.Effect<ReadonlyArray<string>, never, never> => {
+const decodeTags = effect (text: string): Effect.Effect<ReadonlyArray<string>, never, never> => {
   runs += 1
   return [text]
 }

@@ -17,7 +17,7 @@ export const ls = command("ls", effect () => listFlows)
 export const fromField = command("list", effect () => handlers.list)
 
 // A written unknown success.
-export const written = (): unknown!! => listFlows
+export const written = effect (): unknown!! => listFlows
 
 // A callback whose success is a type parameter, and a parameter by name.
 export const thunk = effect () => try Effect.suspend(effect () => listFlows)
@@ -29,5 +29,5 @@ export const arm = effect (code: number) => try Effect.suspend(effect () => code
 // Not reported: the call runs, the success type names the function, or no
 // Effect is expected.
 export const called = command("ls", effect () => try listFlows())
-export const kept = (): (() => void!!)!! => listFlows
+export const kept = effect (): (() => void!!)!! => listFlows
 export const plain = effect (n: number) => listFlows

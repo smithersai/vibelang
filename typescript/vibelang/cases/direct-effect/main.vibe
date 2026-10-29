@@ -13,14 +13,14 @@ export effect function record(runs: string[], n: number) {
 }
 
 // An empty body.
-export const ignore = (event: string): Effect<void, never, never> => {}
+export const ignore = effect (event: string): Effect<void, never, never> => {}
 
 // A value beside a program becomes Effect.succeed(value).
 export const resolve = effect (cached: string | undefined, load: () => Effect<string, never, never>): Effect<string, never, never> =>
   cached === undefined ? try load() : cached
 
 // A throw while building the result.
-export const first = (items: string[]): Effect<string, never, never> => items[0]!.toUpperCase()
+export const first = effect (items: string[]): Effect<string, never, never> => items[0]!.toUpperCase()
 
 // A method's thunk sees the method's this.
 export class Greeter {

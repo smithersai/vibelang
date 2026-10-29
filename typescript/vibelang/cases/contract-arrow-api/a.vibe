@@ -1,4 +1,4 @@
 import * as Effect from "effect/Effect"
-export const one = (): Effect.Effect<number, never, never> => 1
-export const two = (input: { value: number }): Effect.Effect<number, never, never> => { const v = input.value; return v }
+export const one = effect (): Effect.Effect<number, never, never> => 1
+export const two = effect (input: { value: number }): Effect.Effect<number, never, never> => { const v = input.value; return v }
 export effect function three(): Effect.Effect<number, never, never> { return 3 }

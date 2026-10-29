@@ -3,4 +3,4 @@
 // not two. Array keeps its import because JavaScript's global takes the name.
 import { Array } from "effect"
 
-export const size = (xs: Array.NonEmptyReadonlyArray<number>): number!! => xs.length
+export const size = effect (xs: Array.NonEmptyReadonlyArray<number>): number!! => xs.length

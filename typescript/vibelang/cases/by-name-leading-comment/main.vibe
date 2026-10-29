@@ -11,7 +11,7 @@ const journal: Journal = {
     return recorded.length
   }
 }
-const make = (state: { mutable runs: number }): number!! => {
+const make = effect (state: { mutable runs: number }): number!! => {
   state.runs++
   return state.runs * 10
 }

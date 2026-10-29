@@ -1,6 +1,6 @@
 // Reusing an Effect never reuses a parameter binding.
-export const compact = (n: number): Effect<number, never, never> => n = n + 1
-export const expanded = (n: number): Effect<number, never, never> => {
+export const compact = effect (n: number): Effect<number, never, never> => n = n + 1
+export const expanded = effect (n: number): Effect<number, never, never> => {
   const result = n = n + 1
   return result
 }

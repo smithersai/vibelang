@@ -92,7 +92,9 @@ func (a *analyzer) effectRewriteOf(fn *ast.Node) form {
 	if a.isFactory(fn) || isForkOperand(fn) {
 		return formNone // D269: a plain body that returns a program; fork's operand is VIP-17's
 	}
-	if t := fn.Type(); t != nil && a.isEffectAnnotation(t) && !isLambda(fn) {
+	if t := fn.Type(); t != nil && a.isEffectAnnotation(t) && (!isLambda(fn) || a.finalForm(fn) == formEffect) {
+		// An annotated const arrow may have a $direct variant too. That
+		// optimization does not make its written Effect contract plain.
 		return formEffect // an Effect contract: an Effect function, its $direct variant aside
 	}
 	if isPlainCandidate(fn) && a.isPlainFunction(fn) {
