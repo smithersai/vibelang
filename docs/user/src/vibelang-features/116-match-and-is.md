@@ -317,3 +317,5 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
+
+The specification's static coverage algorithm for non-class patterns, including composite `data` object patterns, is pending a VIP. Use `default` for those forms until that choice is settled; runtime matching continues to use the pinned TC39 rules.

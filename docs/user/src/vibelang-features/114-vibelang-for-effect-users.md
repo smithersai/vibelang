@@ -214,7 +214,7 @@ await runPromise(main())
 
 The module top level is ordinary JavaScript. Construct Effects there and run them with an explicit runner. Top-level `await` accepts a Promise. `try` execution belongs inside an effect function or block.
 
-Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module. Platform subpath namespaces such as `HttpClient` are also in scope.
+Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module. Platform subpath namespaces such as `HttpClient` are also in scope. Precedence applies separately to TypeScript's type and value meanings: `Console` in a type position remains the DOM interface, while `Console.log` uses Effect's namespace. Generated imports use fresh names.
 
 ## Keep platform work in Effect
 
@@ -254,9 +254,9 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 
 `NodeServices.layer` holds `FileSystem`, `Path`, `Crypto`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; Bun uses `BunServices.layer`. `HttpClient`, from `effect/http`, needs `FetchHttpClient.layer` provided inside `main`. [The platform introduction](../platform/105-introduction.md) lists the service for each common Node.js and web call. Don't wrap a platform API that Effect covers in a `.ts` adapter. Node's globals and the web's I/O globals are not in scope in `.vibe`, and a `.vibe` file does not import a Node.js module as a value (D310); [Platform globals](../platform/platform-globals.md) answers each one. A `.ts` file imports what Effect lacks, such as the `createServer` that [Building an HTTP API](113-building-an-http-api.md) passes to a server layer.
 
-A platform API that Effect lacks, such as `os.hostname()`, is often one of VibeLang's [experimental platform APIs](118-experimental-platform-apis.md): `try (try Experimental.Process.Process).hostname`. Code that needs Node.js globals or `node:*` value imports belongs in a `.ts` file.
+A platform API that Effect lacks, such as `os.hostname()`, is often one of VibeLang's [experimental platform APIs](118-experimental-platform-apis.md): `try (try Experimental.Process.Process).hostname`. Code that needs Node.js globals or `node:*` value imports belongs in a `.ts` file. Prefixing a banned global with `globalThis` does not bypass the restriction: `globalThis.fetch` and `globalThis["setTimeout"]` are also `EK4402`.
 
-A plain function known not to throw can be called directly inside an effect function. Wrap a potentially throwing call with `Effect.try`, then run it with `try`. Always wrap a Promise with `tryPromise` or `promise`. Callbacks capture local variables normally. Exported declarations record thrown types with `@throws {E}`. A declaration without `@throws` may throw `unknown`.
+A plain function known not to throw can be called directly inside an effect function. Wrap a potentially throwing call with `Effect.try`, then run it with `try`. Always wrap a Promise with `tryPromise` or `promise`. Callbacks capture local variables normally. Exported declarations record thrown types with `@throws {E}`. A foreign callable without a signature contract may throw `unknown`, whether imported from source or an emitted `.d.ts` and whether its type is written or inferred. Shipped contracts precede defaults; `@rethrows f` adds the actual callback's thrown type to own throws. Effectful callables never add synchronous throws.
 
 ## Trace and debug calls
 

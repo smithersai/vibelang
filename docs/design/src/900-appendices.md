@@ -24,16 +24,9 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a><a id="declarationstart"></a><a id="servicestart"></a><a id="errorstart"></a><a id="schemaerrorstart"></a><a id="schemastart"></a><a id="datastart"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
 
-```text
-DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
-ServiceStart     = "service" [no LineTerminator here] BindingIdentifier
-ErrorStart       = "error"   [no LineTerminator here] BindingIdentifier
-SchemaErrorStart = "schema"  [no LineTerminator here] "error" [no LineTerminator here] BindingIdentifier
-SchemaStart      = "schema"  [no LineTerminator here] BindingIdentifier
-DataStart        = "data"    [no LineTerminator here] BindingIdentifier
-```
+
 
 Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](#errordeclaration). No other line-break or disambiguation rule applies to these four words.
 
@@ -71,6 +64,42 @@ Timeout                       then another
 ### Productions
 
 Each declaration production starts with its own start production (`ServiceDeclaration` with `ServiceStart`, and so on); `export` and `export default` come from ECMAScript's `ExportDeclaration`, so `export error E { }` parses and `export default error E { }` is a syntax error (`export default` takes only a function or class declaration or an expression).
+
+#### DeclarationStart
+
+```text
+DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
+```
+
+#### ServiceStart
+
+```text
+ServiceStart     = "service" [no LineTerminator here] BindingIdentifier
+```
+
+#### ErrorStart
+
+```text
+ErrorStart       = "error"   [no LineTerminator here] BindingIdentifier
+```
+
+#### SchemaErrorStart
+
+```text
+SchemaErrorStart = "schema"  [no LineTerminator here] "error" [no LineTerminator here] BindingIdentifier
+```
+
+#### SchemaStart
+
+```text
+SchemaStart      = "schema"  [no LineTerminator here] BindingIdentifier
+```
+
+#### DataStart
+
+```text
+DataStart        = "data"    [no LineTerminator here] BindingIdentifier
+```
 
 #### EffectFunction
 
@@ -492,7 +521,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file | 1, 4 | [Functions](001-functions.md#direct-eval) |
 | `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
-| `EK0401` | a `throw`, a call that may throw, or a parameter default that may throw, in an effectful function | 4 | [Failures](003-failures.md#effectful-callables) |
+| `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function | 4 | [Failures](003-failures.md#effectful-callables) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](003-failures.md#assignability) |
 | `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler | 4 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0404` | an unwrapped Promise-producing call, `new` expression or `async match` in effect code | 4 | [Failures](003-failures.md#calls-in-effect-code) |
@@ -524,7 +553,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2002` | `return` in a `for try` body | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement outside it | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement outside that `for try` statement | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2101` | `return value` in a producer | 21 | [Running Effects](002-running.md#producers) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |
@@ -604,17 +633,58 @@ These are the annotations [Thrown types](003-failures.md#thrown-types) refers to
 | `Schema.decodeUnknownSync`, `Schema.decodeSync` | `@throws {never}`: they only build a decoder |
 | the constructors of `Data.TaggedError` and `Data.taggedEnum` variants: `new NotFound({ id })`, `Delivery.Sent({ … })` | `@throws {never}` |
 | the constructor of `Schema.TaggedError`: `new Invalid({ … })` for a `schema error` | `@throws {never}`, as for `error` and `data`: a bad field at construction throws a plain `Error`, a defect: `effect { throw new Invalid({ name: "" }) }` dies |
-| the decoder that `Schema.decodeUnknownSync(schema)` returns | `@throws {SchemaError}` |
+| the decoder that `Schema.decodeUnknownSync(schema)` or `Schema.decodeSync(schema)` returns | `@throws {SchemaError}` |
 | the thunk of `Effect.try` and `tryPromise`, in either form: the function argument, or the `try` property of the options argument | `@throws {unknown}`: the wrapper makes a throw a failure. The options form's `catch` callback has no `@throws`. `promise`'s thunk has no `@throws`, so it admits only a thunk that throws `never` |
-| `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` | `@rethrows` the callback |
+| `Array.prototype.map`, `.forEach`, `.filter`, `.reduce`, `.find`, `.some`, `.every`, `.sort`, and `Array.from` | `@rethrows` the callback |
 | `new Promise(executor)` | `@throws {never}`, no `@rethrows`: a throw in the executor rejects the Promise, as in JavaScript; it never throws at the construction site |
 | the `executor` parameter's call signature | `@throws {unknown}`: it admits a throwing executor, whose throw becomes the rejection, not part of the constructor's thrown type |
 
-In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](005-services.md#the-platform-standard-library)). A library declares the same tags in its own declarations:
+In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](005-services.md#the-platform-standard-library)). Effect's `map`, `forEach`, `filter` and `reduce` are effectful: they never throw synchronously, and their callbacks have no `@throws`. A library declares the same tags in its own declarations:
 
 ```ts
 /** @throws {never} @rethrows f */
 export declare function each<T>(xs: readonly T[], f: (x: T) => void): void
+```
+
+Apply the three-step procedure in [Thrown types](003-failures.md#thrown-types) to these shipped signature contracts. It composes own throws with `@rethrows` and preserves the effectful exemption (decided detail 66).
+
+```vibe es
+// compiler-gap: pending VIP-4
+/** @throws {never} @rethrows f */
+function each<T>(xs: readonly T[], f: (x: T) => void): void {
+  xs.forEach(f)
+}
+
+effect function direct() {
+  each([1], () => { throw "callback" }) // EK0403: wrap the call
+}
+
+effect function wrapped() {
+  return try Effect.try({
+    try: () => each([1], () => { throw "callback" }),
+    catch: (e) => e
+  })
+}
+```
+
+The same contracts apply when `each` is imported through the declaration above. Its ordinary JavaScript call throws; `Effect.try` turns that throw into a typed failure:
+
+```ts effect
+import { Effect } from "effect"
+
+/** @throws {never} @rethrows f */
+function each<T>(xs: readonly T[], f: (x: T) => void): void {
+  xs.forEach(f)
+}
+
+function wrapped() {
+  return Effect.gen(function* () {
+    return yield* Effect.try({
+      try: () => each([1], () => { throw "callback" }),
+      catch: (e) => e
+    })
+  })
+}
 ```
 
 ```vibe es
@@ -690,7 +760,7 @@ function parseJson(s: string) {
 }
 ```
 
-`Schema.decodeUnknownSync(User)` only builds the decoder and throws nothing; calling the decoder throws `SchemaError`.
+`Schema.decodeUnknownSync(User)` and `Schema.decodeSync(User)` only build decoders and throw nothing; calling either decoder throws `SchemaError` on invalid input.
 
 Every remaining global and effect 4.1.0 non-Effect export is annotated by a generator, not by hand: `@throws {never}` only when its source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `@throws {unknown}`. The generated table is not yet published. `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload, so a returned function's contract sits on its own signature:
 

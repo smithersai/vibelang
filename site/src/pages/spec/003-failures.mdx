@@ -68,21 +68,45 @@ const failure: Effect.Effect<never, Missing> = missing()
 
 ### Thrown type by kind of callable
 
-| Callable | Thrown type |
-| --- | --- |
-| an effectful callable | `never` |
-| constructing an `error` value or a `data` variant: `new NotFound({ id })`, `new Timeout()`, `Delivery.Sent({ … })` | `never`, as VIP-13's `throw new NotFound({ id })` example requires; the generated `Data.TaggedError` constructor and a `Data.taggedEnum` variant constructor don't throw in 4.1.0, and a variant constructor's signature has no `@throws` ([Data](/spec/006-data#data-declarations)) |
-| a plain, non-`async` `.vibe` function: declaration, expression, arrow, method or constructor | inferred from its body: each uncaught `throw`, and each unwrapped call whose thrown type is not `never`. Koka infers its `exn` effect the same way. A constructor's body includes its class's field initializers, which `new X()` runs |
-| an `async` `.vibe` function, any form | `never`: calling it returns a Promise, and a throw in its body rejects that Promise. Exceptions while evaluating its arguments belong to the caller |
-| a getter or setter | not tracked: property access is never a tracked call |
-| a function type written in a type position (alias, interface, parameter or type annotation), in any file | `never`, or the `T` of its `@throws {T}` (Swift's non-`throws` function type) |
-| a foreign callable declaration (`.ts`, `.d.ts`, JavaScript), including callable constants, class methods and each overload | the `T` of its own `@throws {T}`, otherwise its declared type's `@throws`, otherwise `unknown`; `@throws {never}` says it can't throw |
-| a JavaScript global or a non-effectful Effect export | VibeLang's shipped annotation ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)): `JSON.parse` throws `SyntaxError`, `Math.max` and `Option.some` throw `never`, the decoder that `Schema.decodeUnknownSync` returns throws `SchemaError` |
-| a function with `@rethrows p` | its own thrown type, plus the thrown type of the argument passed for `p`. The tag is written, never inferred (VIP-4) |
+```vibe [VibeLang]
+// compiler-gap: pending VIP-4
+/** @rethrows f */
+function invoke(f: () => number) { return f() }
+// lib.d.ts: /** @throws {never} @rethrows f */
+// export declare function each(xs: string[], f: (s: string) => void): void
+// lib.d.ts: export declare const parse: (s: string) => string
 
-`@throws {T}` and `@rethrows p` are JSDoc tags on non-effectful declarations; neither adds synchronous throws to an effectful callable. The output of a `.vibe` file always tags its exported non-effectful callables ([Declaration output](/spec/001-functions#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
+effect function checked() {
+  // invoke(() => { throw "bad" })                 // EK0403
+  // each(["x"], () => { throw "callback" })        // EK0403
+  // parse("x")                                   // EK0403, from source or .d.ts
+  return try Effect.try(() => invoke(() => { throw "bad" }))
+}
+```
 
-The rows apply in order and the first that matches decides, so the effectful row takes precedence: a `.ts` function returning an Effect throws `never`. A foreign binding uses its own `@throws`, otherwise its declared type's tag; absent either, each signature gets `unknown`. A type written in a type position defaults to `never` instead. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type. An unannotated foreign class method throws `unknown`; a call through an unannotated interface member throws `never`.
+```ts [Effect]
+import { Effect } from "effect"
+
+/** @rethrows f */
+function invoke(f: () => number) { return f() }
+/** @throws {never} @rethrows f */
+function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
+const checked = Effect.try(() => invoke(() => { throw "bad" }))
+const checkedEach = Effect.try({
+  try: () => each(["x"], () => { throw "callback" }),
+  catch: (error) => error
+})
+```
+
+Determine a call's synchronous thrown type in three steps (decided detail 66):
+
+1. **Effectful callee:** its thrown type is `never`; neither `@throws` nor `@rethrows` adds synchronous throws.
+2. **Own thrown type:** a written `@throws {T}` on the declaration or its declared call signature gives `T` (a checked upper bound in `.vibe`). Otherwise use the shipped annotation, installed on the signature before defaults apply ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)). Otherwise infer a plain `.vibe` function's uncaught throws and unwrapped throwing calls, including field initializers for constructors. Otherwise a callable declared in `.ts`, `.d.ts` or JavaScript has `unknown`, whether its type is written or inferred: functions, callable constants, class or interface methods, and each overload. A function type in a `.vibe` type position (parameter, alias, interface member or annotation) instead defaults to `never`.
+3. **Rethrows:** union the own thrown type with the thrown types of the actual callbacks passed for every named `@rethrows` parameter, whichever case in step 2 applied. The tag is written, never inferred. `@throws {never}` describes only the callee's own throws and does not erase `@rethrows f`. Argument-expression evaluation remains the caller's code.
+
+Calling an `async` `.vibe` function throws `never`: body throws reject its Promise. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. Shipped annotations give `JSON.parse` `SyntaxError`, `Math.max` and `Option.some` `never`, and the decoder returned by `Schema.decodeUnknownSync` or `Schema.decodeSync` `SchemaError`; building either decoder throws `never`. Effect's `map`, `forEach`, `filter` and `reduce` are effectful; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
+
+`@throws {T}` and `@rethrows p` attach to call signatures, not a `type` alias's declaration: write `type Reader = { /** @throws {Error} */ (): string }`. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type. Declaration output tags exported non-effectful callables ([Declaration output](/spec/001-functions#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
 
 Contracts attach to each call signature, including each overload and a returned callable's own signature; declaration output preserves them (decided details 37–38). Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives' thrown types (detail 44). TypeScript still requires narrowing `unknown` before calling it.
 
@@ -286,11 +310,11 @@ effect function c({ id }: User) { return id }         // c() from untyped JS thr
 
 ### Syntax
 
-[ErrorDeclaration](/spec/900-appendices#errordeclaration), with an [ErrorBody](/spec/900-appendices#errorbody) of [Field](/spec/900-appendices#field)s and methods: ECMAScript's `MethodDefinition` (plain, `async`, generator and `async` generator methods, getters and setters, private names included) with TypeScript's class-method modifiers, plus [effect methods](/spec/900-appendices#effectmethod) and [producer methods](/spec/900-appendices#producermethod), as any class can have (VIP-13). A setter parses as a `MethodDefinition` and the static rules below reject it. `Field` and [Separator](/spec/900-appendices#separator) are shared with `schema` and `data`, so adjacent fields on one line need a separator. The field type is parsed greedily as a TypeScript type member: a line break separates members only after the type is complete. An explicit `readonly` is allowed and redundant. Empty `;` class elements between members are ignored, as in TypeScript.
+[ErrorDeclaration](/spec/900-appendices#errordeclaration), with an [ErrorBody](/spec/900-appendices#errorbody) of [Field](/spec/900-appendices#field)s and methods: ECMAScript's `MethodDefinition` (plain, `async`, generator and `async` generator methods, getters and setters, private names included) with TypeScript's class-method modifiers, plus [effect methods](/spec/900-appendices#effectmethod) and [producer methods](/spec/900-appendices#producermethod), as any class can have (VIP-13). A setter parses as a `MethodDefinition` and the static rules below reject it. [Field](/spec/900-appendices#field) and [Separator](/spec/900-appendices#separator) are shared with `schema` and `data`, so adjacent fields on one line need a separator. The field type is parsed greedily as a TypeScript type member: a line break separates members only after the type is complete. An explicit `readonly` is allowed and redundant. Empty `;` class elements between members are ignored, as in TypeScript.
 
 `error`, like `service`, `schema` and `data`, follows TypeScript's contextual keyword `type`: a declaration is the keyword, no line break, then the declaration's name (a `BindingIdentifier`), where a declaration can start; anything else is ordinary TypeScript, where `error` is an identifier ([Declaration keywords](/spec/900-appendices#declaration-keywords), the one rule for all four). So `const error = …`, `catch (error)`, `const e = error as Error` and `error instanceof NotFound` still work, and `error as T;` declares `as`, then fails; write `(error as T);`. The body is optional, as for TypeScript's `declare module "m"` ([ErrorDeclaration](/spec/900-appendices#errordeclaration)). As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors. Write `export { E as default }` instead, as for a [service](/spec/005-services).
 
-Each member has one classification ([Declarations](/spec/900-appendices#notes-on-the-productions)): `id: string`, `readonly id: string` and `id?: string` are always `Field`s, each complete method or accessor is classified once, including `effect` and producer methods, empty `;` class elements are ignored, and any other class element is a [RejectedElement](/spec/900-appendices#rejectedelement), which the static rules below reject. The parser also accepts type parameters and heritage clauses, only so their rules can report them.
+Each member has one classification ([Declarations](/spec/900-appendices#notes-on-the-productions)): `id: string`, `readonly id: string` and `id?: string` are always [Field](/spec/900-appendices#field)s, each complete method or accessor is classified once, including `effect` and producer methods, empty `;` class elements are ignored, and any other class element is a [RejectedElement](/spec/900-appendices#rejectedelement), which the static rules below reject. The parser also accepts type parameters and heritage clauses, only so their rules can report them.
 
 Field keys follow TypeScript object types, as in [Schema declarations](/spec/006-data#schema-declarations): an identifier, a string or numeric literal, or a computed name, emitted as written. A computed key of non-literal type gives an index signature in the instance type; at runtime it supplies just the one key the expression evaluates to. In `schema error`, the decoder requires that runtime key and ignores other keys by default; an index signature does not make it validate arbitrary keys.
 
@@ -323,7 +347,7 @@ error Access {
 | an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |
 | a user-written `static` member or setter, in either error form | `EK1302` |
 | type parameters, such as `error Invalid<T> { value: T }`, in either error form | `EK1303` |
-| any other member that is not a `Field`, a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |
+| any other member that is not a [Field](/spec/900-appendices#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |
 
 A member rejected by [Functions](/spec/001-functions#static-rules) for `effect` on a getter, setter or constructor gets that diagnostic alone, including in either error form. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 

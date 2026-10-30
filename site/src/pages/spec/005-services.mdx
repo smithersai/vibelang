@@ -10,7 +10,7 @@ Sources: [VIP-9](/vips/0009-service-declarations), [VIP-12](/vips/0012-provide),
 
 ### Syntax
 
-[ServiceDeclaration](/spec/900-appendices#servicedeclaration), whose members are TypeScript [Member](/spec/900-appendices#member) signatures, a [KeyMember](/spec/900-appendices#keymember) and a [DefaultMember](/spec/900-appendices#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a `KeyMember`, a `DefaultMember`, a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete. The optional `R` after `!!` starts on the same line and never with `{` (write `A!!({ … })`), so `now(): number!!` ends its member at the line break:
+[ServiceDeclaration](/spec/900-appendices#servicedeclaration), whose members are TypeScript [Member](/spec/900-appendices#member) signatures, a [KeyMember](/spec/900-appendices#keymember) and a [DefaultMember](/spec/900-appendices#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a [KeyMember](/spec/900-appendices#keymember), a [DefaultMember](/spec/900-appendices#defaultmember), a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete. The optional `R` after `!!` starts on the same line and never with `{` (write `A!!({ … })`), so `now(): number!!` ends its member at the line break:
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-9
@@ -136,7 +136,7 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 | `impl instanceof Users` | `EK3004` | always false, because implementations are plain objects |
 | `service Repo<T> { … }` | `EK3005` | `Repo<User>` and `Repo<Order>` would share one key |
 | `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | `EK3001` needs every key at compile time |
-| any member that is not a `PropertySignature`, a `MethodSignature`, a `KeyMember` or a `DefaultMember`: a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
+| any member that is not a `PropertySignature`, a `MethodSignature`, a [KeyMember](/spec/900-appendices#keymember) or a [DefaultMember](/spec/900-appendices#defaultmember): a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
 A service in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`) with a quick fix that inserts one.
 
@@ -158,7 +158,7 @@ class Users extends Context.Service<Users, {}>()("tools/Users") {}
 
 [ProvideStatement](/spec/900-appendices#providestatement), a list of [Provider](/spec/900-appendices#provider)s. A top-level comma separates providers. A top-level `=` whose left side is a `LeftHandSideExpression` makes `Key = value`; any other `=` belongs to the expression, so `provide flag ? A : B = x { }` provides `flag ? A : (B = x)`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
 
-`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](/spec/900-appendices#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as the head of a `ProvideStatement` (everything before its Block's `StatementList`), as an arrow needs its whole head; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
+`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](/spec/900-appendices#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as the head of a [ProvideStatement](/spec/900-appendices#providestatement) (everything before its Block's `StatementList`), as an arrow needs its whole head; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-12
@@ -236,7 +236,7 @@ A `provide` block is an ordinary block, as in TypeScript: its `return`, `break`,
 
 ## Effect's functions are globals
 
-Every value export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. A local declaration or import shadows one, as with any global. Type exports are not global types: write `Effect.Effect<A, E, R>`, or `A!E!R`.
+Every value export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. A local declaration or import shadows one, as with any global. These Effect functions do not inherit the `@rethrows` contracts of `Array.prototype.map`, `Array.prototype.forEach`, `Array.prototype.filter` or `Array.prototype.reduce`; a throwing callback needs the explicit wrapper required by [Failures](/spec/003-failures). Type exports are not global types: write `Effect.Effect<A, E, R>`, or `A!E!R`.
 
 A name that clashes is not a global, and is written `Effect.x` instead. A name clashes if it is:
 
@@ -278,13 +278,26 @@ function lookup(q: string, s: string) {
 
 Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`. `"vibe": { "effectModules": false }` in the config turns this off.
 
-**Precedence.** JavaScript globals that aren't platform-specific, and TypeScript's own global types, keep their meaning. Effect's module of the same name is then written `Effect.X`, or imported.
+**Precedence applies per meaning, as in TypeScript.** In a type position, a bare name declared as a type by TypeScript's `lib` files keeps that meaning (including the DOM's `Console`, `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace position the table below decides. JavaScript globals that aren't platform-specific keep their meaning; Effect's module of the same name is then written `Effect.X`, or imported. Emitted namespace imports use fresh names so they do not shadow those global types.
 
 | Name | Bare name means | Effect's module |
 | --- | --- | --- |
 | `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp` | JavaScript's | `Effect.Array`, `Effect.String`, … |
 | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
 | `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-14
+type HostConsole = Console                    // DOM type
+const output = Console.log("hi")             // Effect namespace; unrun Effect
+```
+
+```ts [Effect]
+// fragment
+import * as Console$ from "effect/Console"
+type HostConsole = Console
+const output = Console$.log("hi")
+```
 
 `Crypto` is the DOM's: effect 4.1.0 has no root module `Crypto` (VIP-14, amended). Import `effect/crypto` to use Effect's.
 
@@ -348,6 +361,16 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | a value import whose specifier is a Node builtin, with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), in a `.vibe` file | `EK4402` |
 | a reference to a banned global (list below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
 
+The platform restriction follows the referenced global binding: a statically named member of the standard `globalThis` whose name is on the banned list is `EK4402`, including `globalThis.fetch`, `globalThis["fetch"]`, `globalThis.process` and `globalThis["setTimeout"]`. A property on an unrelated object, such as `client.fetch`, is not a reference to that global. `window.fetch` is already rejected because `window` itself is banned.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-33
+globalThis.fetch(url)                         // EK4402: use HttpClient
+globalThis["setTimeout"](f, 10)               // EK4402: use sleep
+```
+
+**Undecided (pending VIP):** access to `globalThis` through a key not statically known, and escapes through aliases or destructuring: reject unchecked access, or track the referenced global through it. VIP-33 requires the platform ban but does not specify this analysis.
+
 `import type` from a Node builtin is allowed: VIP-33 bans value imports, and a type import is erased.
 
 The banned globals ("All web apis and all node.js apis should be wrapped and effectful", VIP-33):
@@ -356,7 +379,7 @@ The banned globals ("All web apis and all node.js apis should be wrapped and eff
 - web I/O and host state: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`;
 - console and timers: `console`, `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `queueMicrotask`.
 
-**Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global. Either bare `Worker` is Effect's namespace and only `globalThis.Worker` is banned, as for `Headers`, `Response` and `Event`, or bare `Worker` is `EK4402`.
+**Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global. Either bare `Worker` is Effect's namespace and only `globalThis.Worker` is banned, with the name resolving to Effect's namespace as `Headers`, `Response` and `Event` do (those three are not on the banned list), or bare `Worker` is `EK4402`.
 
 ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `Intl`) stay allowed.
 

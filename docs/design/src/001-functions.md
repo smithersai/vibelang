@@ -111,7 +111,7 @@ The temporaries and helpers are declared at the top of the innermost enclosing n
 | `var` | every `var` declaration, `for (var …)` included | `let`, or `const` when the binding is never assigned |
 | `with` | every `with` statement (already an early error in strict code, which a module is) | rewrite the property reads |
 
-Property names such as `o.arguments`, `o.eval` and `{ var: 1 }` are names, not references, and are unaffected. A static rule can't see a constructor reached by reflection, such as `(() => {}).constructor`; that is not checked.
+Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 1 }`, are names, not references, and are unaffected. This does not exempt access to a banned platform global through `globalThis`: `globalThis.fetch` and `globalThis["setTimeout"]` still name banned platform APIs (VIP-33; [Services](005-services.md#the-platform-standard-library)). A static rule can't see a constructor reached by reflection, such as `(() => {}).constructor`; that is not checked.
 
 With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](002-running.md#region-bodies), [Expression lowering](002-running.md#do-expressions), [Pattern matching](004-match.md) and [Runtime guarantees](008-runtime.md) refer to this rule. Inline `module` declarations stay denied ([VIP-25](../vips/0025-inline-modules-denied.md)).
 
@@ -292,8 +292,8 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`.
 - **Thrown types.** Each declaration carries its thrown type as [Thrown types](003-failures.md#thrown-types) defines it. An effectful function carries no `@throws`. Every other exported callable (a function, a method, a constructor, a function-typed `const`, an `async` function) carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default. Getters and setters carry none.
-- **Each call signature carries its own contract** ([Thrown types](003-failures.md#thrown-types), decided detail 38): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type.
-- **`@rethrows` is copied.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it.
+- **Each call signature carries its own contract** ([Thrown types](003-failures.md#thrown-types), decided detail 38): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type. A tag on an alias of a function type does not attach to its call signature; write `type Reader = { /** @throws {E} */ (): string }` instead (decided detail 38). A foreign callable binding without a tag on itself or its declared call signature throws `unknown`, whether imported from source or an emitted `.d.ts`, even with a written function type (decided details 37 and 66).
+- **`@rethrows` is copied and adds to own throws.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it. For a non-effectful callable, first determine its own thrown type: a written checked bound, else a shipped signature annotation, else local body inference or the foreign/type-position default. Shipped annotations are installed before defaults apply. At each call, union that type with the thrown types of the arguments for every `@rethrows` parameter (decided detail 66). Thus `@throws {never}` describes only own throws; it does not erase `@rethrows f`. Effectful callables have synchronous thrown type `never`, and `@rethrows` adds nothing.
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](003-failures.md#effectful-callables)):
 
 ```vibe es
@@ -347,3 +347,29 @@ export declare class Id {
 /** @throws {never} @rethrows f */
 export declare function each(xs: string[], f: (s: string) => void): void
 ```
+
+The emitted `each` contract above preserves callback throws at a foreign call site:
+
+```vibe es
+// compiler-gap: pending VIP-4
+import { each } from "./load.vibe"
+effect function direct() {
+  each(["x"], () => { throw "callback" })   // EK0403: invocation throws "callback"
+}
+effect function wrapped() {
+  return try Effect.try(() => each(["x"], () => { throw "callback" }))
+}
+```
+
+```ts effect
+// fragment
+/** @throws {never} @rethrows f */
+function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
+function wrapped() {
+  return Effect.gen(function* () {
+    return yield* Effect.try(() => each(["x"], () => { throw "callback" }))
+  })
+}
+```
+
+`wrapped()` fails with `Cause.UnknownError` whose `cause` is `"callback"`. An unwrapped JavaScript call inside `Effect.gen` would defect; the source `direct` is rejected rather than silently admitting that defect.

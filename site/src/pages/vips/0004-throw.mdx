@@ -56,6 +56,8 @@ effect function load(id) {
 
 *Corrected 2026-10-29: in effect 4.1.0, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
 
+- **Amended 2026-10-30: compose thrown-type contracts (decided detail 66).** First, an effectful callee has synchronous thrown type `never`, with no `@rethrows` contribution. Otherwise determine its own thrown type from its written signature contract, then shipped annotation, then local body inference or the foreign/type-position default. Shipped annotations are installed before defaults. A foreign callable, including an interface method or callable constant with a written type, defaults to `unknown` from source and declarations alike; a function type in a `.vibe` type position defaults to `never`. Finally union the own thrown type with the actual callback thrown types for each `@rethrows` parameter; `@throws {never}` does not erase callback throws. Argument evaluation belongs to the caller. Decided by the agent from VIP-4 and detail 37 (principles 2 and 8), 2026-10-30, under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later".
+
 ## Prior art
 
 - Swift: `throws` in the type, `try` at each call, `rethrows`.

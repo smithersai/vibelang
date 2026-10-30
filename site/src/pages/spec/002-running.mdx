@@ -239,7 +239,7 @@ The pinned snapshot is the vendored copy of `tc39/proposal-do-expressions` at co
 
 ### Syntax
 
-[ForkExpression](/spec/900-appendices#forkexpression) and [JoinExpression](/spec/900-appendices#joinexpression). In effect code, `fork` and `join` are reserved words, exactly as `await` is in an `async` function ([the grammar's Effect parameter](/spec/900-appendices#the-effect-parameter); VIP-17, amended): they can't name a variable, parameter or label there, and where an expression can start they begin a `fork` or `join` expression. As property names they stay names, as `await` does. Outside effect code they are ordinary identifiers. The owner forms `fork.in(…)`, `fork.scoped` and `fork.detached` are productions in JavaScript's `keyword.name` shape, like `new.target` and `import.meta`, not property reads. Their tokens may be separated as `new . target`'s may ([TryAll](/spec/900-appendices#tryall)). As with `await`, the operand may start on the next line. A `ForkOperand` never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
+[ForkExpression](/spec/900-appendices#forkexpression) and [JoinExpression](/spec/900-appendices#joinexpression). In effect code, `fork` and `join` are reserved words, exactly as `await` is in an `async` function ([the grammar's Effect parameter](/spec/900-appendices#the-effect-parameter); VIP-17, amended): they can't name a variable, parameter or label there, and where an expression can start they begin a `fork` or `join` expression. As property names they stay names, as `await` does. Outside effect code they are ordinary identifiers. The owner forms `fork.in(…)`, `fork.scoped` and `fork.detached` are productions in JavaScript's `keyword.name` shape, like `new.target` and `import.meta`, not property reads. Their tokens may be separated as `new . target`'s may ([TryAll](/spec/900-appendices#tryall)). As with `await`, the operand may start on the next line. A [ForkOperand](/spec/900-appendices#forkoperand) never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-17
@@ -307,7 +307,7 @@ function owners(scope: Scope.Scope) {
 }
 ```
 
-`fork` and `join` have `await`'s precedence: `ForkOperand` is a `UnaryExpression`, as for `try` (VIP-17, amended: "exactly as `await`"). So `fork a() |> f(%)` forks `a()` and pipes the `Fiber`, and `join f + 1` adds 1 to the joined value.
+`fork` and `join` have `await`'s precedence: [ForkOperand](/spec/900-appendices#forkoperand) is a `UnaryExpression`, as for `try` (VIP-17, amended: "exactly as `await`"). So `fork a() |> f(%)` forks `a()` and pipes the `Fiber`, and `join f + 1` adds 1 to the joined value.
 
 ## Running Effects concurrently
 
@@ -393,10 +393,10 @@ effect function syncAll(ids: string[]) {
 // fragment
 function syncAll(ids: string[]) {
   return Effect.gen(function* () {
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
+    yield* Effect.forEach(ids, ($item) => Effect.gen(function* () { const id = $item; { if (id === "") return; yield* syncOne(id) } }), { concurrency: "unbounded", discard: true })
     const $n = limit(), $xs = ids
-    yield* Effect.forEach($xs, (id) => Effect.gen(function* () { if (id === "") return; yield* syncOne(id) }), { concurrency: $n, discard: true })
-    yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }), { concurrency: "unbounded", discard: true })
+    yield* Effect.forEach($xs, ($item) => Effect.gen(function* () { const id = $item; { if (id === "") return; yield* syncOne(id) } }), { concurrency: $n, discard: true })
+    yield* Effect.forEach(ids, ($item) => Effect.gen(function* () { const id = $item; { yield* syncOne(id) } }), { concurrency: "unbounded", discard: true })
   })
 }
 ```
@@ -434,7 +434,7 @@ function saveAll(entries: Array<[string, number]>) {
 | --- | --- |
 | `for try` outside effect code | `EK2001` |
 | `return` in the body | `EK2002` |
-| a labeled `break` or `continue` naming a statement outside the body: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
+| a labeled `break` or `continue` naming a statement outside the `for try` statement: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 
 ### Meaning
@@ -456,10 +456,14 @@ effect function saveAll(rows: Stream.Stream<Row>) {
 // fragment
 function saveAll(rows: Stream.Stream<Row>) {
   return Effect.gen(function* () {
-    yield* Stream.runForEachWhile(rows, (row) => Effect.gen(function* () {
-      if (row.skip) return true
-      if (row.last) return false
-      yield* save(row); return true
+    yield* Stream.runForEachWhile(rows, ($item) => Effect.gen(function* () {
+      const row = $item
+      {
+        if (row.skip) return true
+        if (row.last) return false
+        yield* save(row)
+      }
+      return true
     }))
   })
 }
@@ -535,14 +539,15 @@ function ticks() {
 }
 function consume() {
   return Effect.gen(function* () {
-    yield* Stream.runForEachWhile(ticks(), (t) => Effect.gen(function* () { yield* Effect.log(t); return true }))
+    yield* Stream.runForEachWhile(ticks(), ($item) => Effect.gen(function* () { const t = $item; { yield* Effect.log(t) }; return true }))
   })
 }
 class Feed {
   items(ids: string[]) {
     return Stream.callback<User, NotFound>((queue) => Effect.gen(function* () {
-      yield* Effect.forEach(ids, (id) => Effect.gen(function* () {
-        yield* Queue.offer(queue, yield* fetchUser(id))
+      yield* Effect.forEach(ids, ($item) => Effect.gen(function* () {
+        const id = $item
+        { yield* Queue.offer(queue, yield* fetchUser(id)) }
       }), { concurrency: "unbounded", discard: true })
     }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })
   }
@@ -609,7 +614,7 @@ A *region body* is source code that the lowering moves into a generated callback
 - Any other completion ends the body's generator with a record: `{ _tag: "Return", value }`, `{ _tag: "Break", label }` or `{ _tag: "Continue", label }`, under fresh names, and `{ _tag: "Normal" }` when the body completes normally. `return e` evaluates `e` once, inside the body.
 - Where the region stands, after `yield*` returns, the code re-issues the record: `return $c.value`, `break L` or `continue L`, where `L` is the consumer's label; the lowering gives an unlabeled consumer a fresh label. Inside an enclosing region body the re-issued jump is again a record, so it passes outward until it reaches its consumer.
 - When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes `continue`, or a `continue` naming the `for try` itself, as `return true`, and `break`, or a `break` naming it, as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
-- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement outside it: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
+- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement outside that `for try` statement: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
 - Only a body that completes gives a record. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
 
 ```vibe [VibeLang]

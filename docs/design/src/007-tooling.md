@@ -61,7 +61,7 @@ A migration upgrades the target repository to the pinned Effect first, on its ow
 2. **Codemods.** Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically.
 3. **One formatter.** VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repository's existing formatter command covers `.vibe` files. It preserves the `provide` line restrictions ([VIP-12](../vips/0012-provide.md)): never break after `provide`, before or after a provider-separating comma, or before the block’s `{`. Wrap a long list inside `Layer.mergeAll(…)`, where argument line breaks are allowed ([example](005-services.md#syntax)).
 4. **Existing tools work.** Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories.
-5. **Severities.** Warning severities can be adjusted in `vibe.severities`. Errors cannot be set to `"off"`.
+5. **Severities.** Only warning codes can be configured in `vibe.severities`; entries for errors are config errors (`EK3006`), even if the requested severity is `"error"`.
 
 ## Effect's type-aware lint
 
@@ -71,7 +71,7 @@ vibelang lint -p tsconfig.json
 
 The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
 
-An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The Effect language service's floating-Effect rule reports it, just as it reports a discarded Effect in TypeScript, and the existing Effect language-service configuration selects and configures the rule. Whether the rule also gets an `EK` code that `vibe.severities` can adjust is Undecided (pending VIP).
+An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The Effect language service's floating-Effect rule reports it, just as it reports a discarded Effect in TypeScript, and the existing Effect language-service configuration selects and configures the rule. Undecided (pending VIP): the imported rules’ `EK` code mapping, whether `vibe.severities` can adjust them, and precedence when both configurations select a severity. No imported-rule code is assigned here.
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 

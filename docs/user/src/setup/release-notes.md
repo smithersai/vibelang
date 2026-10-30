@@ -113,6 +113,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The specification gave conflicting throw contracts for foreign callables and callback propagation; it now composes own throws with `@rethrows`, preserves contracts across declarations, and distinguishes both synchronous schema decoder builders from the decoders they return. Grammar tooling now sees every declaration-start production, and platform-global and namespace rules agree across chapters. Stream-loop jump diagnostics now agree with the shared rule that a label on the loop itself is consumed there.
+
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
 - The `examples/pipeline` README and output fixture expected a producer that never reads ahead, so the example check failed; both now show the VIP-21 order, where `Stream.take` closes the producer before the loop logs the second alert.

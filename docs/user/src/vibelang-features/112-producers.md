@@ -112,7 +112,7 @@ effect function sumStream() {
 // Output: 6
 ```
 
-`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the loop body is a compile error.
+`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the loop body is a compile error. A labeled `break` or `continue` naming this `for try` loop is consumed by the loop, just like its unlabeled form; a labeled jump to a statement outside the `for try` is an error.
 
 Arrays, maps, sets, and strings iterate as in JavaScript with ordinary `for...of`. As in JavaScript, a loop that exits early calls its iterator's `return()`, also when a binding default or the body fails, or the fiber is interrupted, and also for an array with its own iterator: a type annotation does not change cleanup.
 

@@ -54,6 +54,8 @@ The check only reports errors. It never changes what runs: a `match` that passes
 
 The check covers literal unions, `boolean`, `data` unions, `error` unions and enums ([VIP-7, amended](../vips/0007-match.md)). An arm covers a case only when its pattern matches every value of that case: for `error NotFound { id: string }`, `when NotFound:` and `when NotFound(let e):` cover `NotFound`; `when NotFound():`, `when NotFound({ id: "x" }):` and guarded arms cover nothing. The empty extractor never matches; the field-constrained extractor leaves other `id` values uncovered.
 
+**Undecided (pending VIP):** which non-class pattern forms the exhaustiveness checker can prove cover a case. VIP-7 specifies the checked subject types and that guarded arms cover nothing, but neither it nor TC39 specifies this static algorithm. In particular, coverage for `data` object patterns, `or`, `and`, `not`, regex, relational and built-in matcher patterns is pending. Their run-time matching remains the pinned TC39 algorithm; use `default` when relying on these forms until coverage is decided.
+
 ```vibe es
 // compiler-gap: pending VIP-7
 effect function bit(b: boolean) {

@@ -169,7 +169,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 [DataDeclaration](900-appendices.md#datadeclaration), which begins with [DataStart](900-appendices.md#datastart), is a list of [Variant](900-appendices.md#variant)s, possibly empty.
 
-`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. `Field` and `Separator` are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of `Separator` does not apply before that `{`.
+`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`.
 
 ### Meaning
 
@@ -205,9 +205,11 @@ if (d._tag === "Sent" && "tracking" in d) {
 }
 ```
 
-A variant constructor has thrown type `never`: its returned function signature has no `@throws`, so VIP-4's function-type rule applies. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
+A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
 
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
+
+VIP-7 includes `data` unions in the exhaustiveness check; guarded arms cover nothing. Which object-pattern and composite-pattern forms count as covering a whole variant is **Undecided (pending VIP)**. TC39 defines their runtime matching, but has no exhaustiveness check; this choice does not change the ordered tests that run.
 
 ### Generic unions
 

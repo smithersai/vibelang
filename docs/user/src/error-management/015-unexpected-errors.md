@@ -23,7 +23,7 @@ true
 
 `die` terminates the computation with a defect, preferably an `Error` with a useful message so diagnostics include its stack. An implicit JavaScript exception, such as an invalid property access, is also a defect.
 
-An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. In a plain or async function, `throw` is JavaScript's. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure, or with `sync` to make it a defect.
+An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. In a plain or async function, `throw` is JavaScript's. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure. A tracked throwing callback is not assignable to `sync`'s non-throwing thunk; use `orDie(Effect.try(() => call()))` when that exception should be a defect.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
@@ -38,7 +38,7 @@ one
 No label
 ```
 
-`Option.getOrThrow`, and the decoder that `Schema.decodeUnknownSync(schema)` returns, may throw; building the decoder doesn't. An effect function must wrap those calls: `sync` turns their exceptions into defects, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
+`Option.getOrThrow`, and the decoders that `Schema.decodeUnknownSync(schema)` and `Schema.decodeSync(schema)` return, may throw; building either decoder doesn't. An effect function wraps those calls with `Effect.try`; `orDie` then promotes the failure to a defect, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
 
 ## Promoting typed failures to defects
 
