@@ -1,0 +1,1 @@
+An error declaration cannot contain a static member. Move it outside the declaration, or write the error as a TypeScript class.

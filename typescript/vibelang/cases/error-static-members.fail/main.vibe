@@ -1,0 +1,9 @@
+// expect: EK1302
+error Field { static x = 1 }
+error Method { static make() { return 1 } }
+error Getter { static get count() { return 1 } }
+error Block { static {} }
+schema error SchemaField { static x = 1 }
+schema error SchemaMethod { static helper() { return 1 } }
+schema error SchemaGetter { static get count() { return 1 } }
+schema error SchemaBlock { static {} }

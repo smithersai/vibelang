@@ -57,7 +57,6 @@ FuzzFailuresSpec  feature:declaration-async  compiler  VIP-27: an exported async
 FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
 FuzzFailuresSpec  feature:error-constructor  compiler  VIP-13 (decided detail 24, 003-failures.md static rules): a constructor in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
-FuzzFailuresSpec  feature:error-static  compiler  VIP-13 (decided detail 8): a user-written static member in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-setter  compiler  VIP-13 (decided detail 8): a setter in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-type-parameters  compiler  VIP-13 (decided detail 9): `error Invalid<T> { value: T }` draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:schema-error-constructor  compiler  VIP-29 (decided detail 24): a constructor in a schema error body draws no error; lane fix-vip-decls
@@ -82,7 +81,6 @@ FuzzFailuresSpec  corpus:declaration-async  compiler  the minimal reproduction o
 FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
 FuzzFailuresSpec  corpus:error-constructor  compiler  the minimal reproduction of feature:error-constructor
 FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
-FuzzFailuresSpec  corpus:error-static  compiler  the minimal reproduction of feature:error-static
 FuzzFailuresSpec  corpus:error-setter  compiler  the minimal reproduction of feature:error-setter
 FuzzFailuresSpec  corpus:error-type-parameters  compiler  the minimal reproduction of feature:error-type-parameters
 FuzzFailuresSpec  corpus:schema-error-constructor  compiler  the minimal reproduction of feature:schema-error-constructor
@@ -98,7 +96,6 @@ FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction
 FuzzFailuresSpec feature:assign-throwing compiler VIP-4: 003-failures.md contract assign-throwing disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
 FuzzFailuresSpec feature:assign-throwing-argument compiler VIP-4: 003-failures.md contract assign-throwing-argument disagrees on unmodified main c9327b36 (error EK4301); lane vip-core2
 FuzzFailuresSpec feature:rethrows-not-inferred compiler VIP-4: 003-failures.md contract rethrows-not-inferred disagrees on unmodified main c9327b36 (error EK4301); lane vip-core2
-FuzzFailuresSpec feature:schema-error-static compiler VIP-29: 003-failures.md contract schema-error-static disagrees on unmodified main c9327b36 (error TS2417); lane fix-vip-decls
 FuzzFailuresSpec feature:schema-error-type-parameters compiler VIP-29: 003-failures.md contract schema-error-type-parameters disagrees on unmodified main c9327b36 (error EK2109, error TS2562); lane fix-vip-decls
 FuzzFailuresSpec feature:assign-object-member compiler VIP-4: 003-failures.md contract assign-object-member disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
 FuzzFailuresSpec feature:wrapper-catch-throw compiler VIP-4: 003-failures.md contract wrapper-catch-throw disagrees on unmodified main c9327b36 (error EK4301); lane w2-throw
@@ -177,7 +174,6 @@ FuzzFailuresSpec corpus:default-nonthrowing compiler VIP-4: minimized reproducti
 FuzzFailuresSpec corpus:assign-throwing compiler VIP-4: minimized reproduction of feature:assign-throwing; lane w2-throw
 FuzzFailuresSpec corpus:assign-throwing-argument compiler VIP-4: minimized reproduction of feature:assign-throwing-argument; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-not-inferred compiler VIP-4: minimized reproduction of feature:rethrows-not-inferred; lane w2-throw
-FuzzFailuresSpec corpus:schema-error-static compiler VIP-4: minimized reproduction of feature:schema-error-static; lane fix-vip-decls
 FuzzFailuresSpec corpus:schema-error-type-parameters compiler VIP-4: minimized reproduction of feature:schema-error-type-parameters; lane fix-vip-decls
 FuzzFailuresSpec corpus:assign-object-member compiler VIP-4: minimized reproduction of feature:assign-object-member; lane w2-throw
 FuzzFailuresSpec corpus:wrapper-catch-throw compiler VIP-4: minimized reproduction of feature:wrapper-catch-throw; lane w2-throw
@@ -229,12 +225,8 @@ FuzzFailuresSpec feature:assign-unknown-admits compiler VIP-4: 003-failures.md c
 FuzzFailuresSpec corpus:assign-unknown-admits compiler VIP-4: minimized reproduction of feature:assign-unknown-admits; lane vip-core2
 FuzzFailuresSpec feature:error-priority-tag-initializer compiler VIP-13: 003-failures.md contract error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
 FuzzFailuresSpec corpus:error-priority-tag-initializer compiler VIP-13: minimized reproduction of feature:error-priority-tag-initializer; lane fix-vip-decls
-FuzzFailuresSpec feature:error-priority-static-initializer compiler VIP-13: 003-failures.md contract error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-priority-static-initializer compiler VIP-13: minimized reproduction of feature:error-priority-static-initializer; lane fix-vip-decls
 FuzzFailuresSpec feature:schema-error-priority-tag-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
 FuzzFailuresSpec corpus:schema-error-priority-tag-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-tag-initializer; lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-priority-static-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-priority-static-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-static-initializer; lane fix-vip-decls
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 

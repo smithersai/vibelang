@@ -419,7 +419,8 @@ func needSemicolonBetween(a, b *ast.Node) bool {
 			ast.IsStatementButNotDeclaration(b) // TODO: only if b would start with a `(` or `[`
 }
 
-func (t *Tracker) getInsertionPositionAtSourceFileTop(sourceFile *ast.SourceFile) int {
+// GetInsertionPositionAtSourceFileTop locates an insertion after file headers and prologues.
+func GetInsertionPositionAtSourceFileTop(sourceFile *ast.SourceFile) int {
 	var lastPrologue *ast.Node
 	for _, node := range sourceFile.Statements.Nodes {
 		if ast.IsPrologueDirective(node) {
@@ -448,13 +449,16 @@ func (t *Tracker) getInsertionPositionAtSourceFileTop(sourceFile *ast.SourceFile
 		return position
 	}
 
+	commentPosition := position
 	shebang := scanner.GetShebang(text)
 	if shebang != "" {
 		position = len(shebang)
+		// Scan from the line break so the next line's comments are leading.
+		commentPosition = position
 		advancePastLineBreak()
 	}
 
-	ranges := slices.Collect(scanner.GetLeadingCommentRanges(t.NodeFactory, text, position))
+	ranges := slices.Collect(scanner.GetLeadingCommentRanges(&ast.NodeFactory{}, text, commentPosition))
 	if len(ranges) == 0 {
 		return position
 	}

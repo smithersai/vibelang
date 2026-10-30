@@ -9,8 +9,6 @@ FuzzDataSpecRules feature:schema-writable compiler VIP-15: writable fields, arra
 FuzzDataSpecRules corpus:data-schema-writable compiler VIP-15: writable fields, arrays, tuples and records are inferred readonly; lane ifix-data-r3; reproduction of feature:schema-writable
 FuzzDataSpecRules feature:schema-error-tag compiler VIP-29: schema error permits a user _tag member; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-tag compiler VIP-29: schema error permits a user _tag member; lane vip-decls; reproduction of feature:schema-error-tag
-FuzzDataSpecRules feature:schema-error-static compiler VIP-29: schema error permits user static members; lane vip-decls
-FuzzDataSpecRules corpus:data-schema-error-static compiler VIP-29: schema error permits user static members; lane vip-decls; reproduction of feature:schema-error-static
 FuzzDataSpecRules feature:schema-error-setter compiler VIP-29: schema error permits a setter; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-setter compiler VIP-29: schema error permits a setter; lane vip-decls; reproduction of feature:schema-error-setter
 FuzzDataSpecRules feature:schema-error-method-getter compiler VIP-29: a plain schema-error method is inferred Effectful and its call gets EK2003; lane vip-core2
@@ -39,8 +37,6 @@ FuzzDataSpecRules feature:schema-error-member-index compiler VIP-29: schema-erro
 FuzzDataSpecRules corpus:data-schema-error-member-index compiler VIP-29: schema-error-member-index requires EK1304, got 2411; lane vip-decls; reproduction of feature:schema-error-member-index
 FuzzDataSpecRules feature:schema-error-priority-tag-initializer compiler VIP-29: schema-error-priority-tag-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-priority-tag-initializer compiler VIP-29: schema-error-priority-tag-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-tag-initializer
-FuzzDataSpecRules feature:schema-error-priority-static-initializer compiler VIP-29: schema-error-priority-static-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
-FuzzDataSpecRules corpus:data-schema-error-priority-static-initializer compiler VIP-29: schema-error-priority-static-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-static-initializer
 FuzzDataSpecRules feature:schema-error-priority-setter compiler VIP-29: schema-error-priority-setter does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-priority-setter compiler VIP-29: schema-error-priority-setter does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-setter
 FuzzDataSpecRules feature:schema-error-priority-constructor compiler VIP-29: schema-error-priority-constructor does not emit the single first-priority diagnostic from chapter 3; lane vip-decls

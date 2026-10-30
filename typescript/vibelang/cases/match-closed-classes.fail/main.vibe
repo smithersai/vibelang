@@ -9,8 +9,9 @@ import { Missing } from "./errors.ts"
 
 error Gone { id: string }
 
-error Picky {
-  id: string
+class Picky extends Data.TaggedError("Picky")<{
+    readonly id: string;
+}> {
 
   static [Symbol.hasInstance](value: unknown): boolean {
     return false

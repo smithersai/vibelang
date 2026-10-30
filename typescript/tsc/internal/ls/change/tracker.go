@@ -546,7 +546,7 @@ func (t *Tracker) InsertAtTopOfFile(sourceFile *ast.SourceFile, insert []*ast.St
 		return
 	}
 
-	pos := t.getInsertionPositionAtSourceFileTop(sourceFile)
+	pos := GetInsertionPositionAtSourceFileTop(sourceFile)
 	originalPos := pos
 	// A content mapper may synthesize a header. Advance to the first writable segment so the insertion
 	// maps exactly to the original file, and use its original position when deciding leading trivia.

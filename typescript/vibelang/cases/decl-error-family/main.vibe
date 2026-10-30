@@ -4,9 +4,10 @@
 // D304: the base of a family declares its tag type with a _tag field.
 
 /** The base of a family: each subclass carries its own tag. */
-export error AppError {
-  _tag: string
-  code: string
+export class AppError extends Data.TaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
   static readonly family = "app"
 }
 

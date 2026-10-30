@@ -1,37 +1,45 @@
 // expect-result: {"code":"notfound","tag":"Validated","name":"Validated","label":"code notfound","first":"code notfound (1)","second":"code notfound (2)","json":"{\"code\":\"notfound\"}","docs":"https://example.com/errors","made":"a","coded":"notfound","attempts":0,"recovered":"x","wrapped":"w","matched":"Validated notfound"}
-// D278: an error declaration is a named class. Everything but the base and
-// the tag keeps its TypeScript meaning: a constructor that calls
-// super, methods, accessors, override, and static and private members.
+// VIP-13: static members live on an ordinary Effect TypeScript class.
+// The EK1302 quick fix preserves fields, constructors, implements clauses,
+// methods, getters, and static and private members.
 
 interface Coded {
   readonly code: string
 }
 
 /** A failure whose code is normalized when it is made. */
-export error Validated  {
-  /** The code, trimmed and in lower case. */
-  code: string
-  attempts: number
+export class Validated extends Data.TaggedError("Validated")<{
+    /** The code, trimmed and in lower case. */
+    readonly code: string;
+    readonly attempts: number;
+}>  implements Coded {
   static readonly docs = "https://example.com/errors"
+
   #seen = 0
+
   private readonly prefix = "code"
+
 
   constructor(code: string, attempts: number = 0) {
     super({ code: code.trim().toLowerCase(), attempts })
   }
 
+
   static make(code: string): Validated {
     return new Validated(code)
   }
+
 
   get label(): string {
     return `${this.prefix} ${this.code}`
   }
 
+
   describe(): string {
     this.#seen += 1
     return `${this.label} (${this.#seen})`
   }
+
 
   override toJSON(): Record<string, unknown> {
     return { code: this.code }

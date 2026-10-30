@@ -1,2 +1,2 @@
-main.vibe(28,10): error EK4701
-main.vibe(35,10): error EK4701
+main.vibe(29,10): error EK4701
+main.vibe(36,10): error EK4701

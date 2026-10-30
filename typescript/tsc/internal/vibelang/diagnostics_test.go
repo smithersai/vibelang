@@ -71,7 +71,7 @@ const renumbering = "lane diag-renumber registers each VIP's hundred-block (deci
 // that Appendix B no longer assigns, fails, so the change that registers it
 // deletes its entry.
 var specAhead = map[int32]string{
-	1301: renumbering, 1302: renumbering, 1303: renumbering,
+	1301: renumbering, 1303: renumbering,
 	// Jumps out of an async match (VIP-7) have an assigned code before compiler registration.
 	706: renumbering,
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
