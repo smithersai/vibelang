@@ -67,6 +67,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification's method-call example consulted mutable invocation helpers and changed native errors. Its counterpart now uses an ordinary call, preserving receiver and callee evaluation.
 
+- A comparison-table row appeared to allow both execution operators in either function body. It now explicitly pairs `await` with its `async` context and `try` with its effect context.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

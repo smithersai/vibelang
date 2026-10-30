@@ -185,11 +185,11 @@ fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.ca
 
 `await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors, and so is `await` on an Effect inside an `async` function ([Functions](/spec/001-functions#static-rules)). `await fiber` and `await deferred` keep TypeScript's behavior and get a VIP-38 lint warning suggesting `join fiber` (`EK4609`) or `try Deferred.await(deferred)` (`EK4610`) (VIP-5, amended).
 
-<a id="try-follows-await"></a>`try e` is allowed, forbidden and ordered exactly where `await e` is, and every rule that differs is listed here with its reason:
+<a id="try-follows-await"></a>`try e` is allowed, forbidden and ordered exactly where `await e` is, and every rule that differs is listed here with its reason. The columns use their corresponding execution contexts; transparent expressions inherit that context:
 
 | Position | `await` | `try` |
 | --- | --- | --- |
-| the body of an `async` or `effect` function, a `do`, a `match` arm or guard, parentheses | allowed | allowed |
+| the body of the corresponding function (`async` for `await`, `effect` for `try`), and a `do`, `match` arm/guard or parentheses inside that context | allowed | allowed |
 | a computed class key, an `extends` clause | allowed | allowed |
 | a parameter default, a class field initializer, a `static` block | SyntaxError | error |
 | a nested plain function | SyntaxError | error |

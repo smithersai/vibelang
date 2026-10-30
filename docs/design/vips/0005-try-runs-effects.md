@@ -22,6 +22,7 @@ effect function load(id) {
 - `try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |e| return e`.
 - **Amended 2026-10-30: completed Effects and scheduling.** `try e` uses the accepted `yield* e` execution under Effect's scheduler; it adds no Promise job, implicit `yieldNow` or mandatory suspension. A synchronously completing operand may continue in the same turn, while suspension or the cooperative scheduling budget can run other fibers. The `await` analogy governs source placement, precedence and evaluation order. Explicit `try yieldNow` requests a cooperative yield without promising a global order for unrelated fibers. See [Running Effects](../src/002-running.md#try-follows-await).
 
+- **Amended 2026-10-30: corresponding execution contexts.** Comparisons with `await` pair an `async` body with an `effect` body; neither operator becomes permitted in the other kind of function, and transparent expressions inherit their source context.
 - `e catch y` runs `e`, and on a failure evaluates `y`, as Zig's `catch` takes a value or `|err|`. As in Zig, you write `try x` or `x catch y`, never both. **Amended 2026-10-29:** the handler's syntax decides whether it runs Effects, as VIP-1 decides for any function:
 
   | Written | Effect TS |
