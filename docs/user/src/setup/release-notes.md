@@ -789,6 +789,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Repository example staging now uses one local-package mapping for dependencies and overrides. The staged versions and published example manifests stay unchanged.
 
+- Synthetic benchmark imports were assembled separately for `.vibe` and Effect TypeScript. Both now share one dependency-graph builder; generated projects stay byte-for-byte unchanged.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.

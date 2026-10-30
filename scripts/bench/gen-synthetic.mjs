@@ -32,10 +32,22 @@ const back = (i) => Array.from({ length: Math.min(fanIn, i) }, (_, k) => i - 1 -
 const tick = "`"
 const key = `${tick}k\${n}${tick}`
 
+function moduleImports(i, extension) {
+  if (shape === "single") return ""
+  const imports = []
+  if (i > 0) {
+    const prev = i - 1
+    const names = ["run" + prev, "plain" + prev]
+    if (fanIn) names.push("deep" + prev)
+    imports.push(`import { ${names.join(", ")} } from "./m${prev}${extension}"\n`)
+  }
+  for (const j of back(i)) imports.push(`import { load${j} } from "./m${j}${extension}"\n`)
+  return imports.join("")
+}
+
 function vibelangModule(i) {
   const prev = i - 1
-  const imports = shape === "single" ? "" : (i > 0 ? `import { run${prev}, plain${prev}${fanIn ? `, deep${prev}` : ""} } from "./m${prev}.vibe"\n` : "") +
-    back(i).map((j) => `import { load${j} } from "./m${j}.vibe"\n`).join("") + (i > 0 ? "\n" : "")
+  const imports = moduleImports(i, ".vibe") + (shape !== "single" && i > 0 ? "\n" : "")
   const a = i > 0 ? `n > 0 ? run${prev}() + plain${prev}(n) : 0` : "0"
   const extra = back(i).map((j) => ` + load${j}(${key})`).join("") + (fanIn && i > 0 ? ` + deep${prev}(n)` : "")
   return `${imports}export error Missing${i} { id: string }
@@ -106,8 +118,7 @@ export function run${i}(): number!! {
 
 function effectModule(i) {
   const prev = i - 1
-  const imports = shape === "single" ? "" : (i > 0 ? `import { run${prev}, plain${prev}${fanIn ? `, deep${prev}` : ""} } from "./m${prev}.ts"\n` : "") +
-    back(i).map((j) => `import { load${j} } from "./m${j}.ts"\n`).join("")
+  const imports = moduleImports(i, ".ts")
   const a = i > 0 ? `n > 0 ? (yield* run${prev}()) + plain${prev}(n) : 0` : "0"
   const extra = back(i).map((j) => ` + (yield* load${j}(${key}))`).join("") + (fanIn && i > 0 ? ` + (yield* deep${prev}(n))` : "")
   return `${shape === "single" && i > 0 ? "" : 'import { Context, Data, Effect, Fiber, Layer, Schema } from "effect"\n'}${imports}
