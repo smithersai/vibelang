@@ -914,7 +914,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3002` | a class extends a service | 9 | [Services](005-services.md#static-rules) |
 | `EK3003` | `new` on a service | 9 | [Services](005-services.md#static-rules) |
 | `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 7, 9 | [Services](005-services.md#static-rules) |
-| `EK3005` | a generic service | 9 | [Services](005-services.md#static-rules) |
+| `EK3005` | a generic service, or a service whose resolved member contracts capture an outer type parameter | 9 | [Services](005-services.md#static-rules) |
 | `EK3006` | an error code or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](007-tooling.md) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](007-tooling.md#config-files) |
 | `EK3009` | warning: `vibelang.diagnostics` in tsconfig is replaced by `vibe.severities`; `--fix` rewrites it | 30 | [Configuration and tooling](007-tooling.md#config-files) |

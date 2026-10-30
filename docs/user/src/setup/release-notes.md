@@ -157,6 +157,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The advice for renaming an imported `join` used a forbidden Node value import. It now uses an admitted relative VibeLang import.
 
+- The specified service shape alias created circular base types for recursive contracts, while local services could capture incompatible generic shapes under one key. Shapes now name their member object directly, and captured outer type parameters are `EK3005`.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

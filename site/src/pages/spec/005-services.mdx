@@ -40,10 +40,9 @@ service Users {
 
 ```ts [Effect]
 // fragment
-class Users extends Context.Service<Users, {
-  find(id: string): Effect.Effect<User, NotFound>
-}>()("@acme/app/src/users#Users") {}
-declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
+type $Users$Shape = { find(id: string): Effect.Effect<User, NotFound> }
+class Users extends Context.Service<Users, $Users$Shape>()("@acme/app/src/users#Users") {}
+declare namespace Users { type Shape = $Users$Shape }
 ```
 
 - **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name: the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name. The package is the file's Node package scope, the nearest ancestor directory with a `package.json`; if that file has no string `name`, the service has no derived key (`EK0903` below). The path's segments are joined with `/` on every OS, as in an import specifier, and only the final extension is removed: `src\users.vibe` on Windows gives `src/users`. A service can write it explicitly instead, as a migrated service does to keep its key:
@@ -58,8 +57,9 @@ declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 
   ```ts [Effect]
   // fragment
-  class Clock extends Context.Service<Clock, { now(): Effect.Effect<number> }>()("app/Clock") {}
-  declare namespace Clock { type Shape = Context.Service.Shape<typeof Clock> }
+  type $Clock$Shape = { now(): Effect.Effect<number> }
+  class Clock extends Context.Service<Clock, $Clock$Shape>()("app/Clock") {}
+  declare namespace Clock { type Shape = $Clock$Shape }
   ```
 - **A default.** `static readonly defaultValue`, of the type of `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default. It may carry a type annotation, as `key` may: `static readonly defaultValue: () => Flags.Shape = …`.
 
@@ -73,12 +73,13 @@ declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 
   ```ts [Effect]
   // fragment
-  const Flags = Context.Reference<Flags.Shape>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
-  declare namespace Flags { type Shape = { newCheckout: boolean } }
+  type $Flags$Shape = { newCheckout: boolean }
+  const Flags = Context.Reference<$Flags$Shape>("@acme/app/src/flags#Flags", { defaultValue: () => ({ newCheckout: false }) })
+  declare namespace Flags { type Shape = $Flags$Shape }
   ```
 
-- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as the namespace above. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. `EK3001` to `EK3004` apply to it unchanged: `when Flags:` is `EK3004`, as for any `service`. `EK0702` covers only a reference built with `Context.Reference(…)` directly ([chapter 004](/spec/004-match)). A member's throw contract is an interface member's: without `@throws` it admits only `never` ([Assignability](/spec/003-failures#assignability); decided detail 3).
-- **Inside a function or block** the counterpart is the class (or `const`) alone, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). There `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
+- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as a direct alias of the written member object, named by a fresh private type such as `$Users$Shape` above. It does not extract that alias through its own key while resolving the class base: self- and mutually recursive member types remain ordinary recursive object types. Private helper names are hygienic, including in declaration output; member modifiers and callable throw metadata are retained. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. `EK3001` to `EK3004` apply to it unchanged: `when Flags:` is `EK3004`, as for any `service`. `EK0702` covers only a reference built with `Context.Reference(…)` directly ([chapter 004](/spec/004-match)). A member's throw contract is an interface member's: without `@throws` it admits only `never` ([Assignability](/spec/003-failures#assignability); decided detail 3).
+- **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). There `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
 
   ```vibe [VibeLang]
   // compiler-gap: pending VIP-9
@@ -92,13 +93,53 @@ declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
   // fragment
   function test() {
     return Effect.gen(function* () {
-      class Users extends Context.Service<Users, {
-        find(id: string): Effect.Effect<User, NotFound>
-      }>()("test/Users") {}
+      type $Users$Shape = { find(id: string): Effect.Effect<User, NotFound> }
+      class Users extends Context.Service<Users, $Users$Shape>()("test/Users") {}
       const fake: Context.Service.Shape<typeof Users> = { find: (id) => Effect.succeed(user) }
     })
   }
   ```
+
+A service's resolved member contracts cannot capture a type parameter from an enclosing scope (`EK3005`). Follow aliases, constraints, defaulted type arguments and callable throw metadata by type-parameter identity. A member-local generic parameter is allowed when its contract is independent of outer parameters; a concrete service inside a generic function is also allowed. Explicit keys and duplicate-key checks are unchanged.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-9
+function storeKey<T>() {
+  service Store { static readonly key = "test/Store"; value: T } // EK3005
+  return Store
+}
+service Fixed {
+  static readonly key = "test/Fixed"
+  identity<T>(value: T): T // allowed: one polymorphic contract
+}
+service Repo {
+  static readonly key = "test/Repo"
+  value: number; next(): Repo.Shape; peer(): Peer.Shape;
+}
+service Peer { static readonly key = "test/Peer"; read(): Repo.Shape }
+```
+
+```ts [Effect]
+import { Context, Effect } from "effect"
+
+type $Repo$Shape = { value: number; next(): Repo.Shape; peer(): Peer.Shape }
+class Repo extends Context.Service<Repo, $Repo$Shape>()("test/Repo") {}
+declare namespace Repo { type Shape = $Repo$Shape }
+type $Peer$Shape = { read(): Repo.Shape }
+class Peer extends Context.Service<Peer, $Peer$Shape>()("test/Peer") {}
+declare namespace Peer { type Shape = $Peer$Shape }
+const impl: Repo.Shape = { value: 7, next() { return this }, peer() { return peer } }
+const peer: Peer.Shape = { read() { return impl } }
+type $Fixed$Shape = { identity<T>(value: T): T }
+class Fixed extends Context.Service<Fixed, $Fixed$Shape>()("test/Fixed") {}
+declare namespace Fixed { type Shape = $Fixed$Shape }
+const fixed: Fixed.Shape = { identity(value) { return value } }
+const polymorphicShapeExit = Effect.runSyncExit(Effect.sync(() => [fixed.identity(7), fixed.identity("ok")])) // Success([7, "ok"])
+const recursiveShapeExit = Effect.runSyncExit(Effect.provideService(Effect.gen(function* () {
+  const repo = yield* Repo
+  return repo.next().peer().read().value
+}), Repo, impl)) // Success(7)
+```
 
 ### Using a service
 
@@ -134,7 +175,7 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 | `class X extends Users {}` | `EK3002` | `X` would inherit `Users`' key and silently become the same service |
 | `new Users()` | `EK3003` | |
 | `impl instanceof Users`, and a class pattern `when Users:` or `when Users(…):` | `EK3004` | always false, because implementations are plain objects |
-| `service Repo<T> { … }` | `EK3005` | `Repo<User>` and `Repo<Order>` would share one key |
+| `service Repo<T> { … }`, or a written member contract depending on an outer type parameter | `EK3005` | specialized shapes would share one key; use a concrete shape or a member-local generic signature |
 | `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | `EK3001` needs every key at compile time |
 | any member that is not a `PropertySignature`, a `MethodSignature`, a [KeyMember](/spec/900-appendices#keymember) or a [DefaultMember](/spec/900-appendices#defaultmember): a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static`. A bodyless `effect find(id: string): User!NotFound` or `async find(): Promise<User>` is `EK0902`; the quick fix removes the modifier: `find(id: string): User!NotFound` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
 | `service S extends Base { }`, `service S implements I { }` | `EK0904` | a service's identity is its key; compose shapes with types (`find: Base.Shape["find"]`) |
