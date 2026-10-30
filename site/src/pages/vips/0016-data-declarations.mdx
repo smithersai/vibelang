@@ -26,6 +26,8 @@ const Delivery = Data.taggedEnum<Delivery>()
 - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
 - **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (the old EK2122 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 
+- **Amended 2026-10-30: payload key admission and erasure.** Payload fields use the ordinary TypeScript type-member computed-name checks. Duplicate members retain native TypeScript checking and merging. A broad entity-name key can form an index signature, while a dynamic expression can still be `TS1170`; a `PropertyKey` result alone is not an admission proof. These payload types are erased, so their key expressions add no runtime lookup, call or TDZ read when data is declared or constructed. Separate value declarations retain their normal evaluation. The generated `Data.TaggedEnum` constraint still rejects a payload that conflicts with `_tag`.
+
 - **Amended 2026-10-30: named default exports.** A direct `export default data D { … }` is `EK1603`: declare `D` and write `export { D as default }`. This catalogs the existing named-declaration grammar and changes neither generic data support nor the variant payload/helper diagnostics.
 
 - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized data declaration missing its required variant body is `EK1604`. An explicitly written empty body remains admitted; recovery does not supply one automatically. These codes label existing rejections; they add no admitted syntax.

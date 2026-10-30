@@ -109,7 +109,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
 | `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
 | nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |
-| string, numeric or computed field key | the same key, emitted as written, as in a TypeScript object type |
+| string, numeric or computed field key | the field property key; computed names use the runtime schema-object rules below |
 | writable field `name: T` | `name: Schema.mutableKey(S)` |
 | writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
 | readonly field `readonly name: T` | `name: S` |
@@ -148,7 +148,7 @@ const tupleForms = Schema.decodeUnknownSync(TupleForms)({
 tupleForms.optional.push(3)
 ```
 
-`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Field names follow TypeScript object types, which accept a computed name of any key type (TypeScript 5.9). Its expression is evaluated in declaration order, as in the emitted object literal; it is not a schema type reference. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
+`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Computed schema field names use native TypeScript runtime object-literal grammar and property-key type checks. A key call, parenthesized key or element-access key is admitted when that runtime object counterpart is admitted; type-member restrictions do not apply merely because the field's value is written as a type. Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order, preserving getters, coercion, TDZ, thrown values and source-context throw checks. This follows ECMA-262's [property definition evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-runtime-semantics-propertydefinitionevaluation) and [property-key conversion](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-topropertykey). The key expression is not a schema type reference. Infer the public type from the actual `Schema` value rather than a fabricated type literal containing the expression. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-15
@@ -181,6 +181,42 @@ const sample = Schema.decodeUnknownSync(Sample)({
 })
 sample.items.push(2)
 sample.counts.a = 2
+```
+
+The numeric keys below use call, parenthesized and element-access expressions. All pass native runtime object-key checks; the schema error also satisfies the existing reserved-`_tag` check because its key domain is numeric.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15, VIP-29
+let schemaKeyCalls = 0
+function schemaKey(): number { schemaKeyCalls++; return 42 }
+const Box = { get field(): number { schemaKeyCalls++; return 43 } }
+schema RuntimeCounts { [schemaKey()]: number; [(Box.field)]: number }
+schema error RuntimeCountError { [Box["field"]]: number }
+```
+
+```ts [Effect]
+import { Effect, Exit, Schema } from "effect"
+
+let schemaKeyCalls = 0
+function schemaKey(): number { schemaKeyCalls++; return 42 }
+const Box = { get field(): number { schemaKeyCalls++; return 43 } }
+const RuntimeCounts = Schema.Struct({
+  [schemaKey()]: Schema.mutableKey(Schema.Number),
+  [(Box.field)]: Schema.mutableKey(Schema.Number)
+})
+type RuntimeCounts = typeof RuntimeCounts.Type
+class RuntimeCountError extends Schema.TaggedError<RuntimeCountError>()("RuntimeCountError", {
+  [Box["field"]]: Schema.Number
+}) {}
+const runtimeKeysExit = Effect.runSyncExit(Effect.gen(function* () {
+  const decoded = yield* Schema.decodeUnknownEffect(RuntimeCounts)({ 42: 1, 43: 2, 44: 99 })
+  const missing = Schema.decodeUnknownExit(RuntimeCounts)({ 42: 1 })
+  return [
+    schemaKeyCalls, decoded[42], decoded[43], Object.hasOwn(decoded, "44"),
+    Exit.isFailure(missing), new RuntimeCountError({ 43: 7 })[43]
+  ]
+}))
+console.log(runtimeKeysExit) // Success([3, 1, 2, false, true, 7])
 ```
 
 Referenced schemas must preserve the source's decoded-key modifiers. At every required field, required fixed tuple slot (before or after a rest), and `Record` value, the inferred schema type's `"~type.optionality"` must be `"required"`. At every effectively readonly field or readonly `Record` value, `"~type.mutability"` must be `"readonly"`; all `schema error` payload fields are effectively readonly even without a written `readonly`. These checks apply at the mapped position, recursively in nested structs and schema errors, through aliases and unions. A conflicting or unprovable flag is `EK2109`: use an unmodified value schema and write modifiers on the declaration. Writable and optional source positions retain the mappings above. The checks describe decoded `Type`; encoded-key and constructor-input defaults keep Effect's behavior. Field readonlyness is shallow and does not freeze nested mutable values.
@@ -329,7 +365,7 @@ const genericSchemaExit = Schema.decodeUnknownExit(NumberBox)({ value: 2 }) // S
 
 [DataDeclaration](/spec/900-appendices#datadeclaration), which begins with [DataStart](/spec/900-appendices#datastart), is a list of [Variant](/spec/900-appendices#variant)s, possibly empty.
 
-`data` follows [Declaration keywords](/spec/900-appendices#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](/spec/900-appendices#field) and [Separator](/spec/900-appendices#separator) are those of `schema` declarations. A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`. Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`. Variant field keys follow TypeScript type literals, which accept computed names of any key type (TypeScript 5.9), as for `schema` fields. A non-literal key produces an index-signature type; the resulting payload must still satisfy Effect’s `Data.TaggedEnum` constraint forbidding `_tag`. In particular, a string index signature includes `_tag` and fails that constraint; it is not a `TS1170` error. Duplicate variant or field names get TypeScript’s duplicate-identifier diagnostic on the source name. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](/spec/900-appendices#separator) does not apply before that `{`.
+`data` follows [Declaration keywords](/spec/900-appendices#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](/spec/900-appendices#field) and [Separator](/spec/900-appendices#separator) are those of `schema` declarations. A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`. Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`. Variant field keys follow TypeScript's type-member checks. A broad entity-name key can produce an index signature; an arbitrary computed expression is not admitted merely because its type is a valid property-key type (`TS1170` can apply); the resulting payload must still satisfy Effect’s `Data.TaggedEnum` constraint forbidding `_tag`. In particular, a string index signature includes `_tag` and fails that constraint; it is not a `TS1170` error. Duplicate variant and field declarations receive the native TypeScript checks for their type members, rather than an unconditional duplicate-identifier diagnostic. Computed members with the same resolved name can merge when TypeScript admits them. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](/spec/900-appendices#separator) does not apply before that `{`.
 
 ### Meaning
 
@@ -382,6 +418,70 @@ type SafeNames = Data.TaggedEnum<{ Is: {}; Match: {}; Normal: {} }>
 const SafeNames = Data.taggedEnum<SafeNames>()
 const safeNameExit = Effect.runSyncExit(Effect.sync(() => [SafeNames.Is(), SafeNames.Match(), SafeNames.Normal()]))
 // Success([{ _tag: "Is" }, { _tag: "Match" }, { _tag: "Normal" }])
+```
+
+A data payload is emitted as a TypeScript type literal in `Data.TaggedEnum`. Its computed key expressions are type checked and erased: declaring or constructing data does not run those expressions. Ordinary value declarations keep their evaluation; a separate key initializer still runs where its statement stands. Schema field keys retain their documented runtime evaluation.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-16
+let keyReads = 0; let initializerRuns = 0
+const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
+const initializedKey = (++initializerRuns, 2)
+data Reads { Item { [Keys.field]: string } }
+data Initialized { Item { [initializedKey]: string } }
+const read = Reads.Item({ 1: "read" })
+const eager = Initialized.Item({ 2: "eager" })
+effect function observeDataKeys() {
+  return [keyReads, initializerRuns, read[1], eager[2], keyReads]
+}
+// data Calls { Item { [dynamicKey()]: string } } // TS1170 when dynamicKey returns number
+```
+
+```ts [Effect]
+import { Data, Effect, Exit } from "effect"
+
+let keyReads = 0; let initializerRuns = 0
+const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
+const initializedKey = (++initializerRuns, 2)
+type Reads = Data.TaggedEnum<{ Item: { [Keys.field]: string } }>
+const Reads = Data.taggedEnum<Reads>()
+type Initialized = Data.TaggedEnum<{ Item: { [initializedKey]: string } }>
+const Initialized = Data.taggedEnum<Initialized>()
+const read = Reads.Item({ 1: "read" })
+const eager = Initialized.Item({ 2: "eager" })
+function observeDataKeys() {
+  return Effect.gen(function* () {
+    return [keyReads, initializerRuns, read[1], eager[2], keyReads]
+  })
+}
+const dataKeyExit = Effect.runSyncExit(observeDataKeys())
+console.log(dataKeyExit) // Success([0, 1, "read", "eager", 0])
+```
+
+Computed payload members use TypeScript's own duplicate-member checks. The repeated computed field below is admitted with matching types; incompatible computed declarations instead receive the native `TS2717` check.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-16
+const slot = "x" as const
+data Repeated { Row { [slot]: number; ["x"]: number } }
+effect function readRepeated() { return Repeated.Row({ x: 7 }).x }
+```
+
+```ts [Effect]
+import { Data, Effect } from "effect"
+
+const slot = "x" as const
+type Repeated = Data.TaggedEnum<{
+  Row: { readonly [slot]: number; readonly ["x"]: number }
+}>
+const Repeated = Data.taggedEnum<Repeated>()
+type IncompatibleComputed = {
+  ["x"]: number
+  // @ts-expect-error TS2717: subsequent computed members must have the same type
+  ["x"]: string
+}
+const duplicateKeyExit = Effect.runSyncExit(Effect.sync(() => Repeated.Row({ x: 7 }).x))
+console.log(duplicateKeyExit) // Success(7)
 ```
 
 A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.

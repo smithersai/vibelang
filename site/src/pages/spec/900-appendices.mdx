@@ -683,8 +683,10 @@ RejectedElement = a ClassElement (an EffectAccessor included) that is not a Fiel
 #### Field
 
 ```text
-Field = "readonly"? PropertyName "?"? ":" Type Separator   (keys as in a TypeScript object type: an identifier, a string or numeric literal, or a computed name)
+Field = "readonly"? PropertyName "?"? ":" Type Separator   (identifier, string/numeric or computed spelling; admission and evaluation use the declaration counterpart below)
 ```
+
+For `schema` and `schema error`, computed names use native TypeScript runtime object-literal grammar and key-type checks, and execute once in native property evaluation order. For plain `error` and `data` payloads, they use native TypeScript type-member checks and are erased. A broad entity-name key can be admitted in a type member while a call, parenthesized or element-access expression receives `TS1170`; the corresponding runtime schema key can still be admitted. Independent native errors and the existing reserved-key/source-modifier checks remain.
 
 #### Separator
 
