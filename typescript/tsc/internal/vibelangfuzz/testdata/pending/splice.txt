@@ -10,6 +10,7 @@ FuzzSplice  ek:EK4802  compiler  Chapter 28 (D241, D321): EK4802 is an error by 
 FuzzSplice  ek:EK4409  compiler  D321: EK4409 is an error by default; the compiler reports it as a warning (as FuzzCompile ek:EK4409 in compile.txt)
 FuzzSplice  ek:EK2115  compiler  Chapter 28 (D323): EK2115 is retired and its number unused; the compiler still reports it for a factory's call-time body (FuzzCompile ek:EK2115 in compile.txt)
 FuzzSplice  ek:EK2116  compiler  Chapter 28 (D323): EK2116 is retired and its number unused; the compiler still reports it (FuzzCompile ek:EK2116 in compile.txt)
+FuzzSplice  ek:EK1008  compiler  Chapter 28 (D325): EK1008 is retired and its number unused; the compiler still reports it for a pipe topic passed by name (FuzzCompile ek:EK1008 in compile.txt)
 FuzzSplice  feature:parse-span-CallExpression  compiler  D61: a schema error's extends clause parses to a CallExpression with an inverted span (FuzzParse feature:parse-span-CallExpression in compile.txt)
 FuzzSplice  feature:estree-range-CallExpression  compiler  Chapter 28 Linting (D277): a schema error's extends clause converts to a CallExpression whose range ends before it starts (FuzzParse feature:estree-range-CallExpression in compile.txt)
 FuzzSplice  feature:declaration-consumer-TS2306  compiler  Chapter 27 rule 4 (D312, D366): a .vibe file whose only statement is its platform import, import "vibelang/platform/node", emits JavaScript that is a module (export {}) and an empty .d.ts that is not, so a TypeScript consumer that imports it is TS2306
