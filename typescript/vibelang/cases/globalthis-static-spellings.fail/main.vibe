@@ -1,0 +1,14 @@
+// expect: EK4402
+export const direct = globalThis.fetch
+export const literal = globalThis["fetch"]
+export const template = globalThis[`fetch`]
+export const repeated = globalThis.globalThis.fetch
+export const repeatedLiteral = globalThis["globalThis"]["fetch"]
+export const repeatedTemplate = globalThis[`globalThis`][`fetch`]
+export const timer = globalThis.globalThis.setTimeout
+export const pure = globalThis.globalThis.URL
+export function local(globalThis: { globalThis: { fetch: string } }): string {
+  return globalThis.globalThis.fetch
+}
+export type FetchType = typeof globalThis.fetch
+export type GlobalType = typeof globalThis

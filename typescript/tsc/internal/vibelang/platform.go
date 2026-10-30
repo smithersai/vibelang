@@ -649,7 +649,17 @@ func globalPlatformName(c *checker.Checker, node *ast.Node) string {
 	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) {
 		return ""
 	}
+	name := staticGlobalMemberName(node)
+	if name == "" || name == "globalThis" {
+		return ""
+	}
 	receiver := ast.SkipParentheses(node.Expression())
+	for ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) {
+		if staticGlobalMemberName(receiver) != "globalThis" {
+			return ""
+		}
+		receiver = ast.SkipParentheses(receiver.Expression())
+	}
 	if !ast.IsIdentifier(receiver) || receiver.Text() != "globalThis" {
 		return ""
 	}
@@ -657,11 +667,20 @@ func globalPlatformName(c *checker.Checker, node *ast.Node) string {
 	if symbol == nil || symbol.Name() != "globalThis" || len(symbol.Declarations()) != 0 {
 		return ""
 	}
+	return name
+}
+
+// staticGlobalMemberName implements detail 73's closed static-access grammar.
+// The receiver check above still resolves the original global binding.
+func staticGlobalMemberName(node *ast.Node) string {
 	if ast.IsPropertyAccessExpression(node) {
 		return node.Name().Text()
 	}
-	if key := node.AsElementAccessExpression().ArgumentExpression; ast.IsStringLiteral(key) {
-		return key.Text()
+	if ast.IsElementAccessExpression(node) {
+		key := node.AsElementAccessExpression().ArgumentExpression
+		if key != nil && (ast.IsStringLiteral(key) || key.Kind == ast.KindNoSubstitutionTemplateLiteral) {
+			return key.Text()
+		}
 	}
 	return ""
 }

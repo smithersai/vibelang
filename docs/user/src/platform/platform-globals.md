@@ -301,6 +301,8 @@ import { server } from "./server.ts"
 
 ## Limits of static checks
 
+The platform check also recognizes optional accesses, string-literal and template-literal keys without substitutions, and repeated `globalThis.globalThis` objects. For example, ``globalThis[`fetch`]`` and `globalThis.globalThis.fetch` report the same `EK4402` as `globalThis.fetch`. Local shadows and erased type queries keep their TypeScript meaning.
+
 EK4402 is a static, lint-strength check, not a sandbox or a
 security boundary. They recognize direct uses, statically named members of `globalThis`, and
 aliases, which keep the symbol they copy. Any other use of `globalThis`, such as

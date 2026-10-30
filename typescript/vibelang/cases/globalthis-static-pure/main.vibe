@@ -1,0 +1,15 @@
+// expect-result: [true,true,true,true,true,true,true]
+export function local(globalThis: { globalThis: { fetch: string } }): string {
+ return globalThis.globalThis.fetch
+}
+export effect function main() {
+ return [
+  globalThis.URL === URL,
+  globalThis["URL"] === URL,
+  globalThis[`URL`] === URL,
+  globalThis.globalThis.URL === URL,
+  globalThis["globalThis"]["URL"] === URL,
+  globalThis[`globalThis`][`URL`] === URL,
+  local({ globalThis: { fetch: "local" } }) === "local",
+ ]
+}
