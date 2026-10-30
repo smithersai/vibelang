@@ -677,7 +677,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound | 4 | [Failures](003-failures.md#effectful-callables) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](003-failures.md#assignability) |
 | `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code or a plain `catch` handler | 4 | [Failures](003-failures.md#calls-in-effect-code) |
-| `EK0404` | an unwrapped Promise-producing call, `new` expression or `async match` in effect code | 4, 5 | [Failures](003-failures.md#calls-in-effect-code) |
+| `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0405` | a body that throws more than its written `@throws {T}` | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0406` | a `@throws` or `@rethrows` tag on an effectful `.vibe` callable: an `effect` function, arrow, method or producer, or a callable whose return type is wholly `Effect`, `Stream` or `Layer`; quick fix: remove the tag | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0501` | `try` outside effect code, the top level included | 5 | [Running Effects](002-running.md#try) |

@@ -362,9 +362,29 @@ const suppliedContract = Effect.try({ try: () => invoke(() => 7), catch: (error)
 | Rule | Diagnostic |
 | --- | --- |
 | In effect code or a plain `catch` handler's parameter/default/destructuring initialization or body, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
-| In effect code, a call, `new` expression or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |
+| In effect code, a call, `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |
 
-`EK0404` uses the Promise test of [Result tests](002-running.md#result-tests) (detail 89): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does.
+`EK0404` uses the Promise test of [Result tests](002-running.md#result-tests) (detail 89): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does. For a tagged template, apply this test to the selected tag signature's result. Keep the original native invocation inside the bridge thunk, preserving its receiver, cached template object identity, once-only substitutions and evaluation order.
+
+```vibe es
+// compiler-gap: pending VIP-4
+async function tag(_parts: TemplateStringsArray) { return 7 }
+effect function unwrappedTag() { const p = tag`x`; return 0 } // EK0404
+effect function wrappedTag() { return try tryPromise(() => tag`x`) } // Success(7)
+```
+
+```ts effect
+import { Effect } from "effect"
+
+async function tag(_parts: TemplateStringsArray) { return 7 }
+function wrappedTag() {
+  return Effect.gen(function* () {
+    return yield* Effect.tryPromise(() => tag`x`)
+  })
+}
+// Success(7).
+```
+
 
 ```vibe es
 // compiler-gap: pending VIP-4
