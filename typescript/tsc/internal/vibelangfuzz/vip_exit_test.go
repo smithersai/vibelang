@@ -76,6 +76,9 @@ func TestVIPExitEncoding(t *testing.T) {
 		"hot-later": {`export const main = () => { ev("hot"); return Effect.sync(() => ev("later")) }`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
 		"later":     {`export const main = () => Effect.sync(() => { ev("hot"); ev("later") })`, "exit", `{"_tag":"Success","value":{"$undefined":true}}`},
 		"plain":     {`export const main = () => 1`, "plain", `{"_tag":"Success","value":1}`},
+		// A Promise from main is never awaited, so any two would encode
+		// alike; the worker refuses one instead of passing it.
+		"promise": {`export const main = async () => Effect.succeed(1)`, "crash", ``},
 		// A module with no main export runs its default export (Chapter 1:
 		// "`export default effect function (p) { B }`").
 		"default": {`export default () => Effect.sync(() => { ev("d"); return 1 })`, "exit", `{"_tag":"Success","value":1}`},

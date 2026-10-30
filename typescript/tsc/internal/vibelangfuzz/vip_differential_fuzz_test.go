@@ -285,11 +285,14 @@ func TestVIPConstructs(t *testing.T) {
 			}
 		}
 		// A plain construct stands in a plain program's plain main, so it
-		// requires only plain constructs, and none of VIP-1's or VIP-5's.
+		// requires only plain constructs, and none of VIP-1's. VIP-5's
+		// `await` is plain JavaScript ("`await` keeps exactly JavaScript's
+		// meaning"), so a plain construct may show it; VIP-5's `try` is not
+		// plain.
 		switch {
 		case c.Plain:
 			for _, k := range vipgen.Closure(c.Key) {
-				if r := vipgen.Lookup(k); !r.Plain || r.VIP == 1 || r.VIP == 5 || r.Declare != nil {
+				if r := vipgen.Lookup(k); !r.Plain || r.VIP == 1 || r.Declare != nil {
 					t.Errorf("%s is plain, but requires %s, which a plain program cannot hold", c.Key, k)
 				}
 			}

@@ -105,6 +105,7 @@ async function vip(entry, maxSteps) {
     const main = "main" in module ? module.main : module.default;
     const program = main();
     const called = events.events();
+    if (typeof program?.then === "function") return { kind: "crash", log: "main() returned a Promise, which the worker does not await, so it cannot compare what it gives" };
     if (!Effect.isEffect(program)) return { kind: "plain", called, events: called, exit: { _tag: "Success", value: vipEncode(program) } };
     const driven = Effect.gen(function* () {
       const fiber = yield* Effect.forkChild(program);
@@ -129,7 +130,7 @@ type VIPOutcome struct {
 	// Kind is "exit" when the Effect ended, "plain" when main() returned no
 	// Effect, "stuck" when it did not end within vipMaxSteps ms of virtual
 	// time, "timeout" when it did not end within RunLimit, and "crash" when
-	// the module could not run.
+	// the module could not run or main() returned a Promise.
 	Kind string `json:"kind"`
 	// Exit is the Exit in the worker's encoding: {"_tag":"Success","value":…}
 	// or {"_tag":"Failure","reasons":[…]}.
