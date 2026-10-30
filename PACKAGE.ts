@@ -120,8 +120,12 @@ const targets = {
   "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node]),
   "go-vibelang": goVibelang(
     "Go tests of internal/vibelang and its subpackages.",
-    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelang/...`,
-    [Tsc["vibelang-files"]]
+    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath ./internal/vibelang/...`,
+    [Tsc["vibelang-files"]],
+    // The native corpus took 15m alone and exhausted 25m under shared load
+    // while cases were still advancing. Go bounds the suite at 45m; the
+    // outer budget also covers admission and compilation, as for fuzz.
+    "70m"
   ),
   "go-vibelang-race": goVibelang(
     "Parallel declaration emit under the race detector.",

@@ -120,6 +120,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
+
 - Schema migration checks still expected mutable collections after `--fix` preserved readonly types; the fixtures now verify readonly arrays, tuples and records.
 
 - Compiler regression checks rejected the expected `EK1013` diagnostic for commas in `schema` bodies; the diagnostic golden now covers them alongside other declarations.
