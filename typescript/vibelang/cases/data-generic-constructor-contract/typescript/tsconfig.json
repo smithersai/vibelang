@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out",
+    "declaration": true
+  },
+  "include": [
+    "*.ts"
+  ]
+}

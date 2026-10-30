@@ -1,0 +1,6 @@
+// expect-result: [7,true,true]
+export data Box<T> { Empty; Value { value:T } }
+export effect function main():readonly [number,boolean,boolean]!never {
+  const value=Box.Value({value:7})
+  return [value.value,Box.$is("Value")(value),Equal.equals(value,Box.Value({value:7}))] as const
+}

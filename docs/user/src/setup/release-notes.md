@@ -286,6 +286,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The catch explanation incorrectly attributed a mixed failure/defect Cause to `try.any`. It now describes recovery without that origin claim; the native operation already elects those failures to defects.
 
+- Imported generic `data` constructors could report `EK4401` when read from a standalone declaration file; their declarations now retain Effect’s constructor signatures, so direct calls and aliases work without a boundary wrapper.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

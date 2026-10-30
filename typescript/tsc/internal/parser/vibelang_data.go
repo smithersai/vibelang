@@ -134,7 +134,7 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	if constructed == name.Text() {
 		constructorsType = p.dataType(keyword, []*ast.Node{p.dataReference(name.Text(), name.Loc)}, "Data", "TaggedEnum", "Constructor")
 	} else {
-		constructorsType = p.dataGenericConstructors(constructed, len(typeParameters.Nodes), name.Loc, keyword)
+		constructorsType = p.dataGenericConstructors(constructed, name.Loc, keyword)
 	}
 	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(p.mIdent(name.Text(), name.Loc), nil /*exclamationToken*/, constructorsType, call), name.Loc)
 	list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(name.Loc, []*ast.Node{declaration}), ast.NodeFlagsConst), name.Loc)
@@ -225,45 +225,12 @@ func (p *Parser) dataType(anchor core.TextRange, arguments []*ast.Node, names ..
 	return p.vibelangSynthesized(p.factory.NewTypeReferenceNode(entity, list), anchor)
 }
 
-// dataGenericConstructors writes the type that Data.taggedEnum returns for
-// definition, a generic data type's interface with count type parameters:
-//
-//	{
-//	  readonly [Tag in Definition["taggedEnum"]["_tag"]]: <A, B>(
-//	    args: Data.TaggedEnum.Args<Data.TaggedEnum.Kind<Definition, A, B>, Tag>
-//	  ) => Data.TaggedEnum.Value<Data.TaggedEnum.Kind<Definition, A, B>, Tag>
-//	} & Data.TaggedEnum.GenericMatchers<Definition>
-//
-// It is Effect's own, without the Types.Simplify around it.
-func (p *Parser) dataGenericConstructors(definition string, count int, nameAnchor core.TextRange, at core.TextRange) *ast.Node {
-	count = min(count, len(dataGenericNames))
-	literal := func(text string) *ast.Node {
-		return p.vibelangSynthesized(p.factory.NewLiteralTypeNode(p.mString(text, at)), at)
-	}
-	indexed := func(object *ast.Node, key string) *ast.Node {
-		return p.vibelangSynthesized(p.factory.NewIndexedAccessTypeNode(object, literal(key)), at)
-	}
-	tags := indexed(indexed(p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mTemp(definition, nameAnchor), nil), nameAnchor), "taggedEnum"), "_tag")
-	tag := p.vibelangSynthesized(p.factory.NewTypeParameterDeclaration(nil, p.mIdent("Tag", at), tags, nil, nil), at)
-	kind := func() *ast.Node {
-		arguments := []*ast.Node{p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mTemp(definition, nameAnchor), nil), nameAnchor)}
-		for _, letter := range dataGenericNames[:count] {
-			arguments = append(arguments, p.dataReference(letter, at))
-		}
-		return p.dataType(at, arguments, "Data", "TaggedEnum", "Kind")
-	}
-	parameters := make([]*ast.Node, count)
-	for i, letter := range dataGenericNames[:count] {
-		parameters[i] = p.vibelangSynthesized(p.factory.NewTypeParameterDeclaration(nil, p.mIdent(letter, at), nil, nil, nil), at)
-	}
-	args := p.dataType(at, []*ast.Node{kind(), p.dataReference("Tag", at)}, "Data", "TaggedEnum", "Args")
-	parameter := p.vibelangSynthesized(p.factory.NewParameterDeclaration(nil, nil, p.mIdent("args", at), nil, args, nil), at)
-	value := p.dataType(at, []*ast.Node{kind(), p.dataReference("Tag", at)}, "Data", "TaggedEnum", "Value")
-	constructor := p.vibelangSynthesized(p.factory.NewFunctionTypeNode(p.newNodeList(at, parameters), p.newNodeList(at, []*ast.Node{parameter}), value), at)
-	readonly := p.vibelangSynthesized(p.factory.NewToken(ast.KindReadonlyKeyword), at)
-	mapped := p.vibelangSynthesized(p.factory.NewMappedTypeNode(readonly, tag, nil, nil, constructor, p.newNodeList(at, nil)), at)
-	matchers := p.dataType(at, []*ast.Node{p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mTemp(definition, nameAnchor), nil), nameAnchor)}, "Data", "TaggedEnum", "GenericMatchers")
-	return p.vibelangSynthesized(p.factory.NewIntersectionTypeNode(p.newNodeList(at, []*ast.Node{mapped, matchers})), at)
+// dataGenericConstructors retains Effect's generic constructor signatures,
+// including their nonthrowing library contract in emitted declaration files.
+// Re-expanding the mapped type creates local foreign call signatures instead.
+func (p *Parser) dataGenericConstructors(definition string, nameAnchor core.TextRange, at core.TextRange) *ast.Node {
+	helper := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mTemp(definition, nameAnchor), nil), nameAnchor)
+	return p.dataType(at, []*ast.Node{helper}, "Data", "TaggedEnum", "GenericConstructor")
 }
 
 // dataGenericNames are the type parameters Data.TaggedEnum.WithGenerics declares.

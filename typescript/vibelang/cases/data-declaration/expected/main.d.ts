@@ -17,9 +17,7 @@ export type Delivery = Data.TaggedEnum<{
 export interface LoadStateDefinition extends Data.TaggedEnum.WithGenerics<2> {
     readonly taggedEnum: LoadState<this["A"], this["B"]>;
 }
-export declare const LoadState: {
-    readonly [Tag in LoadStateDefinition["taggedEnum"]["_tag"]]: <A, B>(args: Data.TaggedEnum.Args<Data.TaggedEnum.Kind<LoadStateDefinition, A, B>, Tag>) => Data.TaggedEnum.Value<Data.TaggedEnum.Kind<LoadStateDefinition, A, B>, Tag>;
-} & Data.TaggedEnum.GenericMatchers<LoadStateDefinition>;
+export declare const LoadState: Data.TaggedEnum.GenericConstructor<LoadStateDefinition>;
 export type LoadState<A, E> = Data.TaggedEnum<{
     Idle: {};
     Loaded: {

@@ -86,7 +86,7 @@ type Delivery = Data.TaggedEnum<{
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name.
+Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. Generic declarations use `Data.TaggedEnum.GenericConstructor`, keeping the same callable contract when imported from their declaration files: generic variants, including aliases and destructured constructors, can be called directly in effect code. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name.
 
 ```ts effect
 import { Data } from "effect"

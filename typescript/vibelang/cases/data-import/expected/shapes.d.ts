@@ -12,9 +12,7 @@ export type Shape = Data.TaggedEnum<{
 export interface TreeDefinition extends Data.TaggedEnum.WithGenerics<1> {
     readonly taggedEnum: Tree<this["A"]>;
 }
-export declare const Tree: {
-    readonly [Tag in TreeDefinition["taggedEnum"]["_tag"]]: <A>(args: Data.TaggedEnum.Args<Data.TaggedEnum.Kind<TreeDefinition, A>, Tag>) => Data.TaggedEnum.Value<Data.TaggedEnum.Kind<TreeDefinition, A>, Tag>;
-} & Data.TaggedEnum.GenericMatchers<TreeDefinition>;
+export declare const Tree: Data.TaggedEnum.GenericConstructor<TreeDefinition>;
 export type Tree<A> = Data.TaggedEnum<{
     Leaf: {
         readonly value: A;
