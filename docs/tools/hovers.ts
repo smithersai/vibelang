@@ -181,6 +181,21 @@ async function pageHovers(server: Server, dir: string, blocks: Block[]): Promise
   return { blocks: result, failures }
 }
 
+// Own both resources even when starting or closing the server fails.
+async function withHoverServer(compiler: string, use: (server: Server, temp: string) => Promise<void>): Promise<void> {
+  const temp = mkdtempSync(join(tmpdir(), "vibelang-hovers-"))
+  try {
+    const server = startServer([compiler, "--lsp", "--stdio"])
+    try {
+      await use(server, temp)
+    } finally {
+      await server.close()
+    }
+  } finally {
+    rmSync(temp, { recursive: true, force: true })
+  }
+}
+
 // Brings the cache up to date for the pages under root and returns what it did.
 export async function updateHovers(options: { compiler: string; root: string; cache: string; filter?: string }): Promise<Summary> {
   const started = performance.now()
@@ -193,9 +208,7 @@ export async function updateHovers(options: { compiler: string; root: string; ca
   const entries = new Map(pages.map(p => [p.file, read(p.file)]))
   const stale = pages.filter(p => entries.get(p.file)?.key !== p.key)
   if (stale.length) {
-    const temp = mkdtempSync(join(tmpdir(), "vibelang-hovers-"))
-    const server = startServer([options.compiler, "--lsp", "--stdio"])
-    try {
+    await withHoverServer(options.compiler, async (server, temp) => {
       linkModules(temp)
       await server.request("initialize", { processId: process.pid, rootUri: null, workspaceFolders: null,
         capabilities: { general: { positionEncodings: ["utf-16"] }, textDocument: { hover: { contentFormat: ["markdown"] }, diagnostic: {} } } })
@@ -216,10 +229,7 @@ export async function updateHovers(options: { compiler: string; root: string; ca
           entries.set(page.file, entry)
         }
       }))
-    } finally {
-      await server.close()
-      rmSync(temp, { recursive: true, force: true })
-    }
+    })
   }
   if (!options.filter && existsSync(options.cache)) {
     const current = new Set(pages.map(p => p.file))
