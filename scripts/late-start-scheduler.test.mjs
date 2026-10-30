@@ -45,3 +45,17 @@ test("flush drains delayed tasks once in priority order", async () => {
   await new Promise(resolve => setTimeout(resolve, 150))
   assert.deepEqual(events, ["first", "second"])
 })
+
+test("late dispatch starts its delay after the parent yields", async () => {
+  let started = false
+  await Effect.runPromise(Effect.gen(function*() {
+    const child = yield* Effect.forkChild(Effect.sync(() => { started = true }))
+    // Simulate the OS pausing the parent between forking and sleeping. An
+    // already-running delay could expire before the parent registers its timer.
+    const until = performance.now() + 150
+    while (performance.now() < until) {}
+    yield* Effect.sleep("5 millis")
+    yield* Fiber.interrupt(child)
+  }), { scheduler: lateStartScheduler(Scheduler) })
+  assert.equal(started, false)
+})

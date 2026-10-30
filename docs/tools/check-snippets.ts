@@ -427,7 +427,7 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
     entry = join(dir, "dist", "$docs-entry.js")
     const lateStart = process.env.VIBELANG_LATE_START === "1"
     const scheduler = lateStart
-      ? `import { Scheduler } from "effect";\nimport { lateStartScheduler } from ${JSON.stringify(join(repo, "typescript/vibelang/late-start-scheduler.mjs"))};\n`
+      ? `import { Scheduler } from "effect";\nimport { lateStartScheduler } from ${JSON.stringify(new URL("../../typescript/vibelang/late-start-scheduler.mjs", import.meta.url).href)};\n`
       : ""
     writeFileSync(entry, `import { ${helper} } from ${JSON.stringify("./" + emitted)};\n` +
       scheduler + `import { Effect } from "effect";\nconst result = ${helper}();\nif (Effect.isEffect(result)) await Effect.runPromise(result${lateStart ? ", { scheduler: lateStartScheduler(Scheduler) }" : ""});\nelse await result;\n`)

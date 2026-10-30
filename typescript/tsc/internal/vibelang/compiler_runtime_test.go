@@ -103,10 +103,15 @@ func TestCompilerRuntimeCases(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "late-start-scheduler.mjs"), scheduler, 0600); err != nil {
 				t.Fatal(err)
 			}
+			// Read the switch in Go so the test cache tracks its value too.
+			schedulerOptions := "{}"
+			if os.Getenv("VIBELANG_LATE_START") == "1" {
+				schedulerOptions = "{ scheduler: lateStartScheduler(Scheduler) }"
+			}
 			runner := `import { Effect, Cause, Exit, Scheduler } from "effect";
 import { lateStartScheduler } from "./late-start-scheduler.mjs";
 import { main } from ` + string(quotedEntry) + `;
-const exit = await Effect.runPromiseExit(main(), process.env.VIBELANG_LATE_START === "1" ? { scheduler: lateStartScheduler(Scheduler) } : {});
+const exit = await Effect.runPromiseExit(main(), ` + schedulerOptions + `);
 if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause));
 console.log("@@compiler-result:" + JSON.stringify(exit.value));
 `

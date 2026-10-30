@@ -75,11 +75,12 @@ effect function combinators(id: string, images: ReadonlyArray<string>) {
 
 // Background work with a lifetime
 
-effect function heartbeat() {
+effect function heartbeat(started: Deferred.Deferred<void>) {
   try {
     while (true) {
       try Effect.sleep("1 millis")
       beats++
+      try Deferred.succeed(started, undefined)
     }
   } finally {
     events.push("heartbeat stopped")
@@ -88,7 +89,9 @@ effect function heartbeat() {
 
 effect function serve(port: number) {
   using server = try Http.listen(port)
-  fork heartbeat()          // stopped before the server closes
+  const started = try Deferred.make<void>()
+  fork heartbeat(started)   // stopped before the server closes
+  try Deferred.await(started)
   return try server.awaitShutdown()
 }
 
@@ -117,9 +120,7 @@ const HttpTest = Layer.succeed(Http, {
       const server: Server = {
         port,
         awaitShutdown: effect () => {
-          // Long enough for the forked heartbeat to beat even when the
-          // machine is busy and the fiber starts late.
-          try Effect.sleep("100 millis")
+          // serve waits for the first heartbeat before requesting shutdown.
           events.push("shutdown requested")
           return "stopped"
         }

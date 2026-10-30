@@ -93,9 +93,13 @@ Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still
 checks the compiler result, failure marker and original source location.
 
+The `//typescript/vibelang:fork-late-start` target runs the fork startup
+regressions with delayed scheduling as part of the regular compiler suite.
+
 To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
-scheduler tasks by `100 ms` while timers can resume the parent. The same
+scheduler tasks by `100 ms` after the caller suspends, while timers can resume
+the parent. A pause between the fork and sleep cannot consume this delay. The same
 environment switch applies to `TestCompilerRuntimeCases` and runnable documentation
 examples checked by `bun docs/tools/check-snippets.ts --run`. For example:
 
@@ -103,7 +107,7 @@ examples checked by `bun docs/tools/check-snippets.ts --run`. For example:
 cd typescript
 EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --late-start uninterruptible-using fork-named-region
 cd tsc
-VIBELANG_LATE_START=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -p 8 ./internal/vibelang -run 'TestCompilerRuntimeCases/(uninterruptible-using|fork-named-region)$'
+VIBELANG_LATE_START=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -count=1 -p 8 ./internal/vibelang -run 'TestCompilerRuntimeCases/(uninterruptible-using|fork-named-region)$'
 ```
 
 A child must signal a `Deferred` after it enters its protected region or

@@ -11,11 +11,17 @@ export function lateStartScheduler(Scheduler, delay = 100) {
       const pending = new Map()
       return {
         scheduleTask(task, priority) {
-          const timer = setTimeout(() => {
-            pending.delete(timer)
-            dispatcher.scheduleTask(task, priority)
-          }, delay)
-          pending.set(timer, { task, priority })
+          // Begin the delay after the caller suspends. Even a long pause
+          // between its fork and sleep cannot let this delay expire early.
+          const initial = setTimeout(() => {
+            pending.delete(initial)
+            const timer = setTimeout(() => {
+              pending.delete(timer)
+              dispatcher.scheduleTask(task, priority)
+            }, delay)
+            pending.set(timer, { task, priority })
+          }, 0)
+          pending.set(initial, { task, priority })
         },
         flush() {
           for (const [timer, { task, priority }] of pending) {

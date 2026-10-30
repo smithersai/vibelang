@@ -93,11 +93,15 @@ Sets and maps remove completed fibers automatically, so a long-lived owner doesn
 effect function serveBriefly() {
   try scoped(effect {
     const workers = try FiberSet.make<void>()
+    const started = try Deferred.make<void>()
     try FiberSet.run(workers, ensuring(
-      sleep("1 minute"),
+      effect {
+        try Deferred.succeed(started, undefined)
+        try sleep("1 minute")
+      },
       Console.log("tracked worker cleaned up")
     ))
-    try sleep("20 millis")
+    try Deferred.await(started)
   })
   try Console.log("worker scope has closed")
 }
@@ -107,5 +111,7 @@ effect function serveBriefly() {
 tracked worker cleaned up
 worker scope has closed
 ```
+
+The child completes `started` from inside `ensuring`; awaiting that `Deferred` proves its cleanup is registered before the scope closes. A sleep cannot establish that order.
 
 `make` acquires a scope-owned collection. Here `scoped(effect { ... })` ties that scope to the block, whose exit interrupts remaining work and waits for cleanup. Without `scoped`, the collection belongs to the caller's runtime scope and `Scope` stays in the function's requirements; use that form when a service layer owns the group.

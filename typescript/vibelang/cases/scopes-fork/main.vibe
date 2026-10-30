@@ -24,10 +24,11 @@ effect function resource(name: string) {
 }
 
 // Runs until it is interrupted. A fiber interrupted before its first run never
-// enters this try and runs no finally, and a timer can beat that first run on a
-// loaded host, so each caller yields to the child right after forking it.
-effect function ticker(name: string) {
+// enters this try and runs no finally. Each caller awaits a Deferred signalled
+// inside the try, so cleanup is installed before the owner can exit.
+effect function ticker(name: string, started: Deferred.Deferred<void>) {
   try {
+    try Deferred.succeed(started, undefined)
     while (true) {
       try Effect.sleep("1 millis")
     }
@@ -49,9 +50,10 @@ effect function boom() {
 
 // The ticker stops before the server, acquired earlier, is released.
 effect function serve() {
+  const started = try Deferred.make<void>()
   using server = try resource("server")
-  fork ticker("ticker")
-  try Effect.yieldNow
+  fork ticker("ticker", started)
+  try Deferred.await(started)
   try Effect.sleep("5 millis")
   return `served by ${server}`
 }
@@ -66,9 +68,10 @@ effect function joined() {
 // A bare block owns nothing (D408): the function's body owns the fiber, so
 // it stops when the body exits, after the block.
 effect function inner() {
+  const started = try Deferred.make<void>();
   {
-    fork ticker("inner")
-    try Effect.yieldNow
+    fork ticker("inner", started)
+    try Deferred.await(started)
     try Effect.sleep("2 millis")
   }
   events.push("after inner block")
@@ -78,8 +81,9 @@ effect function inner() {
 // A fork in a loop body stops at the end of its iteration.
 effect function perIteration() {
   for (const n of [1, 2]) {
-    fork ticker(`loop ${n}`)
-    try Effect.yieldNow
+    const started = try Deferred.make<void>()
+    fork ticker(`loop ${n}`, started)
+    try Deferred.await(started)
     try Effect.sleep("2 millis")
     events.push(`end of iteration ${n}`)
   }
@@ -99,20 +103,22 @@ effect function failingChild() {
 
 // A block that fails still stops its fibers.
 effect function failingBlock() {
-  fork ticker("doomed")
-  try Effect.yieldNow
+  const started = try Deferred.make<void>()
+  fork ticker("doomed", started)
+  try Deferred.await(started)
   try Effect.sleep("2 millis")
   throw new Boom()
 }
 
 // Effect.forkScoped: the caller's Scope owns the fiber. An arrow's body owns
 // a fork in it (D353), so returning that fiber would be EK4838 (D409).
-const background = effect (name: string) => try Effect.forkScoped(effect { return try ticker(name) })
+const background = effect (name: string, started: Deferred.Deferred<void>) => try Effect.forkScoped(effect { return try ticker(name, started) })
 
 effect function scopedBackground() {
   return try Effect.scoped(effect {
-    try background("background")
-    try Effect.yieldNow
+    const started = try Deferred.make<void>()
+    try background("background", started)
+    try Deferred.await(started)
     try Effect.sleep("2 millis")
     events.push("scope closing")
     return "scoped done"
@@ -122,9 +128,10 @@ effect function scopedBackground() {
 // Effect.forkScoped keeps Effect's meaning: the caller's Scope owns the
 // fiber, so it outlives the block that forked it.
 effect function outlives() {
+  const started = try Deferred.make<void>()
   using block = try resource("block")
-  try Effect.forkScoped(effect { return try ticker("forkScoped") })
-  try Effect.yieldNow
+  try Effect.forkScoped(effect { return try ticker("forkScoped", started) })
+  try Deferred.await(started)
   return block
 }
 

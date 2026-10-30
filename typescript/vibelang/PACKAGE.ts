@@ -48,6 +48,18 @@ for (const name of cases) {
   })
 }
 
+// Keep the startup regressions deterministic in the regular compiler suite.
+const startupCases = ["uninterruptible-using", "fork-named-region", "fork-arrow-body", "scopes-fork", "ch07-concurrency"]
+targets["fork-late-start"] = S.Shell.Test({
+  summary: "Fork lifetime checks wait for child readiness under delayed scheduling.",
+  shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
+    "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --late-start --verbose " + startupCases.join(" "),
+  data: [...shared, ...startupCases.map((name) => S.glob(`cases/${name}/**`))],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 /** Every file in typescript/vibelang, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 

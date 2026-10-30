@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, writeProject } from "./check-snippets"
+import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
 
 const block = extract('```ts\nconst answer = 42\n```')[0]
 const diagnostic = (code: string, message = "example") => ({ code, message })
@@ -391,3 +391,44 @@ test("a block marked pending names its VIPs, stays out of the program and report
   expect(files.includes("main.vibe")).toBe(false)
   expect(files.length).toBe(1)
 })
+
+test.skipIf(!existsSync(compiler))("late-start documentation runs expose timer readiness and accept Deferred readiness", async () => {
+  const root = mkdtempSync(join(tmpdir(), "snippet-late-start-"))
+  const previous = process.env.VIBELANG_LATE_START
+  try {
+    process.env.VIBELANG_LATE_START = "1"
+    linkModules(root)
+    const blocks = extract([
+      "```vibe",
+      "// run: try Console.log(try cleanup(false)); try Console.log(try cleanup(true))",
+      'import { Deferred, Effect, Fiber } from "effect"',
+      "effect function cleanup(wait: boolean) {",
+      "  const started = try Deferred.make<void>()",
+      "  let cleaned = false",
+      "  const worker = try Effect.forkChild(Effect.ensuring(effect {",
+      "    try Deferred.succeed(started, undefined)",
+      "    try Effect.never()",
+      "  }, Effect.sync(() => { cleaned = true })))",
+      "  if (wait) try Deferred.await(started)",
+      '  else try Effect.sleep("5 millis")',
+      "  try Fiber.interrupt(worker)",
+      "  return cleaned",
+      "}",
+      "// Output: false",
+      "// Output: true",
+      "```"
+    ].join("\n"))
+    // runBlock bounds both compilation and execution, including child cleanup.
+    const result = await runBlock(join(root, "run"), blocks,
+      { ...blocks[0], status: "ok", diagnostics: [] }, compiler, 60_000)
+    if (result.status !== "ok") console.log(result.reason, result.execution)
+    expect(result.status).toBe("ok")
+    expect(result.execution).toMatchObject({
+      status: "passed", exitCode: 0, timedOut: false, stdout: "false\ntrue\n"
+    })
+  } finally {
+    if (previous === undefined) delete process.env.VIBELANG_LATE_START
+    else process.env.VIBELANG_LATE_START = previous
+    rmSync(root, { recursive: true, force: true })
+  }
+}, 150_000)

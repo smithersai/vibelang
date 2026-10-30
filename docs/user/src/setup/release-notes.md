@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow staged every build of one VibeLang version under the same tarball name, so a target's npm, Bun or pnpm install could keep parts of the earlier build and a rebuilt toolchain's `vibelang-format` command was missing; setup now names each staged tarball for its content.
 
+- Arrow-body and heartbeat checks, and fiber cleanup examples, could end their owner before a child started; they now await a child signal before observing cleanup or shutting down.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

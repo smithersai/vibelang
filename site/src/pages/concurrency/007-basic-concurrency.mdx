@@ -64,17 +64,23 @@ effect function cancelWork() {
 
 ```vibe
 effect function cancelWithCleanup() {
+  const started = try Deferred.make<void>()
   const worker = fork onInterrupt(
-    ensuring(sleep("1 minute"), Console.log("released worker resources")),
+    ensuring(effect {
+      try Deferred.succeed(started, undefined)
+      try sleep("1 minute")
+    }, Console.log("released worker resources")),
     () => Console.log("worker cancelled")
   )
-  try sleep("10 millis")
+  try Deferred.await(started)
   try Fiber.interrupt(worker)
 }
 // Output: released worker resources
 // Output: worker cancelled
 // Output: interrupt returned
 ```
+
+The child signals `started` after both cleanup handlers are installed, and the parent awaits that `Deferred` before interrupting. Sleeping for an estimated startup time leaves a race: an interrupted child that never started has no cleanup to run.
 
 `ensuring` runs cleanup on every exit; `onInterrupt` adds work only for cancellation. Cleanup runs before the interrupting caller resumes. For acquired resources, `acquireRelease` inside `scoped(effect { ... })` registers release as part of acquisition, not in a later statement.
 
