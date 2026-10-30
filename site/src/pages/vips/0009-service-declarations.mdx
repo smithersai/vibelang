@@ -81,6 +81,8 @@ const referenceShapeExit = Effect.runSyncExit(Effect.gen(function* () {
 })) // Success(true)
 ```
 
+- **Amended 2026-10-30: migration warnings.** The transitional compiler reports `EK4854` for a safe migration from the retired abstract-class spelling to `service`, retaining its contract and key, and `EK4855` for `static readonly default = shape` to `static readonly defaultValue = () => shape`, including corresponding type and value reads. An abstract class keeps ordinary TypeScript semantics until explicitly migrated. These warnings retain their emitted compatibility codes until a coordinated compiler/documentation renumber; the existing safe-fix and refusal rules apply.
+
 ## History
 
 | Problem | Kind | Status |
