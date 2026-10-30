@@ -36,8 +36,23 @@ func init() {
 func checkBuiltinPatterns(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// An extractor's arity check deliberately permits a non-match,
+		// including when its tuple length is known statically.
+		if ast.IsBinaryExpression(node) {
+			left := node.AsBinaryExpression().Left
+			if ast.IsPropertyAccessExpression(left) && left.Name().Text() == "length" {
+				if call := extractionCall(c, left.Expression()); call != nil {
+					coverCodes(c, node, 2367)
+				}
+			}
+		}
+		if ast.IsElementAccessExpression(node) && extractionCall(c, node.Expression()) != nil {
+			// Extra extractor arguments are unreachable after the arity test.
+			// The parser's indexed reads must not leak tuple-bound errors.
+			coverCodes(c, node, 2493)
+		}
 		if isPatternCall(node, "$is") {
-			if builtin, ok := builtinMatcherOf(c, node.Arguments()[0]); ok && builtin.Guard != "" {
+			if builtin, ok := builtinMatcherOf(c, node.Arguments()[0]); ok && builtin.Guard != "" && fixedErrorGuards[builtin.Module] == nil {
 				checkGuardSubject(c, node)
 			}
 		}
@@ -58,12 +73,38 @@ func checkGuardSubject(c *checker.Checker, call *ast.Node) {
 	c.CheckTypeAssignableTo(c.GetTypeAtLocation(subject), parameter, subject, diagnostics.Argument_of_type_0_is_not_assignable_to_parameter_of_type_1)
 }
 
+// fixedErrorGuards is the settled Effect tagged-error inventory (detail 53).
+// Resolve the namespace before consulting this table: aliases work and local
+// objects with the same spelling retain their own matcher.
+var fixedErrorGuards = map[string]map[string]string{
+	"Cause": {
+		"NoSuchElementError":    "isNoSuchElementError",
+		"TimeoutError":          "isTimeoutError",
+		"IllegalArgumentError":  "isIllegalArgumentError",
+		"ExceededCapacityError": "isExceededCapacityError",
+		"AsyncFiberError":       "isAsyncFiberError",
+		"UnknownError":          "isUnknownError",
+	},
+	"Schema":        {"SchemaError": "isSchemaError"},
+	"Cron":          {"CronParseError": "isCronParseError"},
+	"PlatformError": {"PlatformError": "isPlatformError"},
+	"SemVer":        {"SemVerError": "isSemVerError"},
+	"Terminal":      {"QuitError": "isQuitError"},
+	"TextDiff":      {"TextDiffError": "isTextDiffError"},
+}
+
 // builtinMatcherOf returns the built-in matcher that matcher, a pattern's
 // matcher, resolves to, or false: the class of a primitive when matcher
 // resolves to the global String, Number, Boolean, BigInt or Symbol, and a
 // variant of effect's Option, Exit or Result when matcher is Module.Variant
 // and Module resolves to that module.
 func builtinMatcherOf(c *checker.Checker, matcher *ast.Node) (parser.BuiltinMatcher, bool) {
+	if ast.IsPropertyAccessExpression(matcher) {
+		module := effectModuleNamed(c, matcher.Expression())
+		if guard := fixedErrorGuards[module][matcher.Name().Text()]; guard != "" {
+			return parser.BuiltinMatcher{Module: module, Guard: guard, Values: []string{""}}, true
+		}
+	}
 	builtin, ok := parser.BuiltinMatcherNamed(matcher)
 	switch {
 	case !ok:
@@ -89,7 +130,7 @@ func effectModuleNamed(c *checker.Checker, expression *ast.Node) string {
 		return ""
 	}
 	for _, declaration := range symbol.Declarations() {
-		for _, module := range []string{"Option", "Exit", "Result"} {
+		for _, module := range []string{"Option", "Exit", "Result", "Cause", "Schema", "Cron", "PlatformError", "SemVer", "Terminal", "TextDiff"} {
 			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
 				return module
 			}
@@ -164,8 +205,9 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 
 // builtinTest is the test the lowering writes for a built-in matcher.
 type builtinTest struct {
-	typeOf string // typeof subject === typeOf, for the class of a primitive
-	guard  string // Module.guard(subject), for a variant
+	typeOf  string // typeof subject === typeOf, for the class of a primitive
+	guard   string // Module.guard(subject), for a variant
+	extract bool   // the guard yields [subject] in extractor mode
 }
 
 // visitBuiltinTest writes node, $is(matcher, subject) for a built-in
@@ -179,6 +221,10 @@ func (tx *lowering) visitBuiltinTest(node *ast.Node, test builtinTest) *ast.Node
 	} else {
 		guard := f.NewPropertyAccessExpression(tx.Visitor().VisitNode(matcher.Expression()), nil /*questionDotToken*/, f.NewIdentifier(test.guard), ast.NodeFlagsNone)
 		lowered = f.NewCallExpression(guard, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{subject}), ast.NodeFlagsNone)
+	}
+	if test.extract {
+		values := f.NewArrayLiteralExpression(f.NewNodeList([]*ast.Node{subject}), false)
+		lowered = f.NewParenthesizedExpression(f.NewConditionalExpression(lowered, f.NewToken(ast.KindQuestionToken), values, f.NewToken(ast.KindColonToken), f.NewKeywordExpression(ast.KindFalseKeyword)))
 	}
 	tx.EmitContext().SetOriginal(lowered, node)
 	lowered.Loc = node.Loc

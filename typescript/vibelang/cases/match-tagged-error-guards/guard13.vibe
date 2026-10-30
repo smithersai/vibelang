@@ -1,0 +1,3 @@
+error E
+export function test(){return match(new E()){when E():true;default:false;}}
+export function extra(){const s=new E();if(s is E(let a,let b)){return true;}return false;}

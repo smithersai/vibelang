@@ -33,6 +33,12 @@ func newDataPlan() dataPlan {
 
 // planVariantTest records node when it is a variant pattern's $is call.
 func (p *dataPlan) planVariantTest(c *checker.Checker, node *ast.Node) {
+	if isPatternCall(node, "$extract") {
+		if builtin, ok := builtinMatcherOf(c, node.Arguments()[0]); ok && fixedErrorGuards[builtin.Module] != nil {
+			p.builtinTests[node] = builtinTest{guard: builtin.Guard, extract: true}
+		}
+		return
+	}
 	if !isPatternCall(node, "$is") {
 		return
 	}

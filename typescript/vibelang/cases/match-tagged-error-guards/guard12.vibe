@@ -1,0 +1,1 @@
+import * as C from "effect/Cause";export function test(){const s:any={"~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"};return match(s){when C.TimeoutError:true;default:false;}}

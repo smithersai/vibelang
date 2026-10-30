@@ -1,0 +1,16 @@
+import * as m0 from "./out/guard0.js"
+import * as m1 from "./out/guard1.js"
+import * as m2 from "./out/guard2.js"
+import * as m3 from "./out/guard3.js"
+import * as m4 from "./out/guard4.js"
+import * as m5 from "./out/guard5.js"
+import * as m6 from "./out/guard6.js"
+import * as m7 from "./out/guard7.js"
+import * as m8 from "./out/guard8.js"
+import * as m9 from "./out/guard9.js"
+import * as m10 from "./out/guard10.js"
+import * as m11 from "./out/guard11.js"
+import * as m12 from "./out/guard12.js"
+import * as m13 from "./out/guard13.js"
+const invoke = m => (m.test$direct ?? m.test)()
+console.log(JSON.stringify([invoke(m0),invoke(m1),invoke(m2),invoke(m3),invoke(m4),invoke(m5),invoke(m6),invoke(m7),invoke(m8),invoke(m9),invoke(m10),invoke(m11),invoke(m12),invoke(m13),(m1.extra$direct ?? m1.extra)(),(m1.rest$direct ?? m1.rest)(),(m13.extra$direct ?? m13.extra)()]))

@@ -1,4 +1,4 @@
-// expect: EK4701 EK9201 TS2367
+// expect: EK4701 EK9201
 error A { id: string }
 error B { code: string }
 error Out { code: string }
