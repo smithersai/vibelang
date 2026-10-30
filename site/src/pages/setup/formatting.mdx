@@ -49,8 +49,6 @@ npx dprint check
 
 ## What the formatter changes
 
-Formatting preserves diagnostic codes and executable JavaScript. Recompiling refreshes source positions and inline, external and declaration source maps, including embedded `sourcesContent`, to describe the formatted file. Semantic migrations use `vibelang --fix`.
-
 Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. The names within one import or export keep their order too, so a linter's `sort-imports` rule sees the order you wrote. VibeLang's own forms keep their shape:
 
 | Form | Formatted as |
@@ -67,7 +65,11 @@ Support for the new forms arrives with the compiler's VIP implementation.
 
 A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`.
 
-Comments and JSDoc stay in place. Formatting is idempotent: a formatted file doesn't change when formatted again.
+Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Formatting is idempotent: a formatted file doesn't change when formatted again.
+
+Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
+
+Normal quote, grouping, comma and layout styling may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, offsets and stack presentation may reflect the formatted text. Ordinary strings/data, tagged-template raw/cooked values, regex meaning, function names/lengths, property names and directive semantics must stay the same: an escaped string must not become an actual `use strict` directive. Compiler-generated source-map and declaration-map provenance, including `sourcesContent`, is refreshed for the formatted file.
 
 ## What the formatter refuses
 

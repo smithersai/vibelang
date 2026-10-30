@@ -1,8 +1,10 @@
 package vibelangfuzz
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"regexp"
@@ -19,6 +21,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
 // The tools area's targets (FuzzFormat, FuzzFix, FuzzEditor and
@@ -252,16 +255,76 @@ func toolsComments(text string) []string {
 	return comments
 }
 
-// toolsJSTokens uses the TypeScript scanner independently of SameProgram.
-// Chapter 28, Formatting (D276, D372), changes layout, not emitted JS tokens.
-func toolsJSTokens(text string) []string {
-	var tokens []string
-	for _, token := range toolsScan(text) {
-		if !toolsIsComment(token) {
-			tokens = append(tokens, fmt.Sprintf("%d:%s", token.kind, token.text))
+// toolsFormatTree compares parsed emit, independently of the formatter's
+// SameProgram guard. ESTree preserves child roles, directive positions,
+// optional-chain boundaries and literal values. Only Literal.raw is redundant
+// when ESTree supplies the value; TemplateElement.value.raw is significant.
+// Source comments/directives and map provenance have separate checks. This is
+// a finite structural oracle, not a decision procedure for program equivalence.
+func toolsFormatTree(name, text string) (string, error) {
+	tree, failure := vibelangestree.Parse(name, text)
+	if failure != nil {
+		return "", failure
+	}
+	var normalize func(json.RawMessage) (json.RawMessage, error)
+	normalize = func(raw json.RawMessage) (json.RawMessage, error) {
+		switch raw[0] {
+		case '[':
+			var nodes []json.RawMessage
+			if err := json.Unmarshal(raw, &nodes); err != nil {
+				return nil, err
+			}
+			for i, child := range nodes {
+				var err error
+				nodes[i], err = normalize(child)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return json.Marshal(nodes)
+		case '{':
+			var node map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &node); err != nil {
+				return nil, err
+			}
+			var kind string
+			if err := json.Unmarshal(node["type"], &kind); err == nil {
+				delete(node, "range")
+				if kind == "Program" {
+					delete(node, "tokens")
+					delete(node, "comments")
+				}
+				if kind == "Literal" {
+					// A non-finite number has no JSON value. Keep its spelling rather than
+					// equating it with null. Preserve lone surrogate code units by retaining
+					// primitive JSON instead of decoding all strings into Go strings.
+					value := string(node["value"])
+					if (value != "" && value != "null") || string(node["raw"]) == "\"null\"" || node["regex"] != nil {
+						delete(node, "raw")
+					}
+					var digits string
+					if json.Unmarshal(node["bigint"], &digits) == nil {
+						if n, ok := new(big.Int).SetString(digits, 0); ok {
+							node["bigint"], _ = json.Marshal(n.String())
+							delete(node, "raw")
+						}
+					}
+				}
+			}
+			for key, child := range node {
+				var err error
+				node[key], err = normalize(child)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return json.Marshal(node)
+		default:
+			return raw, nil
 		}
 	}
-	return tokens
+	canonical, err := normalize(json.RawMessage(tree))
+	return string(canonical), err
 }
 
 // toolsCommentNeighbors keeps both non-trivia neighbors of every comment.

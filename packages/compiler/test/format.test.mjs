@@ -81,3 +81,13 @@ test("vibelang-format refuses a Prettier configuration it cannot read, naming th
     assert.match(check.stderr, /vibelang\/prettier/)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// VIP-12 forbids a line break at a provider comma, and the formatter makes no
+// semantic rewrite, so a long list keeps its line and its spelling.
+test("formatting keeps a long provider list on one line and adds no Layer.mergeAll", () => {
+  const long = "Provider".repeat(12)
+  for (const head of [`${long}A, Key = { a: 1 }, ${long}B`, `Layer.mergeAll(${long}A, ${long}B)`]) {
+    const source = `effect function f() {\n  provide ${head} {\n    try a()\n  }\n}\n`
+    assert.equal(formatSource(source, "provide.vibe"), source)
+  }
+})

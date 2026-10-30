@@ -166,9 +166,9 @@ func toolsFormatter(tb testing.TB) vibelangfmt.TypeScriptFormatter {
 	}
 }
 
-// toolsFormatDifference compares independently emitted JS token streams and
-// diagnostic codes and categories, as Chapter 28's Formatting (D276, D372)
-// allows layout changes only. Both compilations use the same configuration.
+// toolsFormatDifference compares independently parsed JavaScript/declaration
+// output and diagnostic identities/categories/counts under the same options.
+// Harmless emitted spelling/layout changes are permitted; meaning is retained.
 func toolsFormatDifference(before, after *Result) string {
 	codes := func(r *Result) []string {
 		var codes []string
@@ -184,22 +184,34 @@ func toolsFormatDifference(before, after *Result) string {
 	if before.EmitSkipped != after.EmitSkipped {
 		return "formatting changed whether emit was skipped"
 	}
-	js := func(r *Result) map[string][]string {
-		files := map[string][]string{}
+	outputs := func(r *Result) map[string]string {
+		files := map[string]string{}
 		for name, text := range r.Outputs {
-			if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".mjs") || strings.HasSuffix(name, ".cjs") || strings.HasSuffix(name, ".jsx") {
-				files[name] = toolsJSTokens(text)
+			if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".mjs") || strings.HasSuffix(name, ".cjs") || strings.HasSuffix(name, ".jsx") || strings.HasSuffix(name, ".d.ts") || strings.HasSuffix(name, ".d.mts") || strings.HasSuffix(name, ".d.cts") {
+				files[name] = text
 			}
 		}
 		return files
 	}
-	a, b := js(before), js(after)
+	a, b := outputs(before), outputs(after)
 	if len(a) != len(b) {
-		return "formatting changed the emitted JavaScript files"
+		return "formatting changed the emitted JavaScript/declaration files"
 	}
-	for name, tokens := range a {
-		if other, ok := b[name]; !ok || !slices.Equal(tokens, other) {
-			return fmt.Sprintf("formatting changed %s's JavaScript token stream\nbefore: %q\nafter: %q", name, tokens, b[name])
+	for name, text := range a {
+		other, ok := b[name]
+		if !ok {
+			return fmt.Sprintf("formatting removed emitted %s", name)
+		}
+		left, err := toolsFormatTree(name, text)
+		if err != nil {
+			return fmt.Sprintf("cannot compare original %s: %v", name, err)
+		}
+		right, err := toolsFormatTree(name, other)
+		if err != nil {
+			return fmt.Sprintf("cannot compare formatted %s: %v", name, err)
+		}
+		if left != right {
+			return fmt.Sprintf("formatting changed %s's parsed structure", name)
 		}
 	}
 	return ""
