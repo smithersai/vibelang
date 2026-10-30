@@ -371,21 +371,36 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | Rule | Diagnostic |
 | --- | --- |
 | in a `.vibe` file, an `import` or `export … from` declaration, or an `import(…)` call with a string-literal specifier, whose specifier names a Node builtin with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), except an `import type` or `export type … from` declaration | `EK4402` |
-| a reference to a banned global (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
+| a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
 
-The platform restriction follows the referenced global binding: a statically named member of the standard `globalThis` whose name is banned is `EK4402`, including `globalThis.fetch`, `globalThis["fetch"]`, `globalThis.process` and `globalThis["setTimeout"]`. A property on an unrelated object, such as `client.fetch`, is not a reference to that global. `window.fetch` is already rejected because `window` itself is banned. Only value positions are `EK4402`: a type query such as `type Timer = ReturnType<typeof setTimeout>` is erased and allowed, as `import type` is.
+<a id="reaches-the-platform"></a>`EK4402` asks one question of a statically named value: does the symbol it resolves to reach the platform, by doing I/O, starting a timer, or reading or changing host state? Statically named means an identifier, `.name`, `?.name`, `["name"]`, a template with no substitutions, or a destructured property with such a key, and an alias keeps the symbol it copies. Two kinds of symbol reach the platform:
+
+- a global binding declared only by a host library and not on the allowlist (below);
+- a member of an allowlisted global that reaches the host: `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL`.
+
+So a statically named member of the standard `globalThis` whose name is banned is `EK4402`, including `globalThis.fetch`, `globalThis["fetch"]`, `globalThis.process` and `globalThis["setTimeout"]`. A property on an unrelated object, such as `client.fetch` or `client.timeout`, is a different symbol. `window.fetch` is already rejected because `window` itself is banned. Only value positions are `EK4402`: a type query such as `type Timer = ReturnType<typeof setTimeout>` is erased and allowed, as `import type` is. A key that is not statically known stays unchecked; this is not a sandbox.
 
 ```vibe es
 // compiler-gap: pending VIP-33
 globalThis.fetch(url)                         // EK4402: use HttpClient
 globalThis["setTimeout"](f, 10)               // EK4402: use sleep
+AbortSignal.timeout(100)                      // EK4402: it starts a timer; use Effect.timeout
+AbortSignal["timeout"](100)                   // EK4402: the same symbol
+const { timeout } = AbortSignal               // EK4402: the same symbol
+const Signals = AbortSignal
+Signals.timeout(100)                          // EK4402: an alias keeps the symbol
+URL.createObjectURL(blob)                     // EK4402: it stores the Blob in the host
+AbortSignal.any([a, b])                       // ok: pure
+AbortSignal[key]                              // unchecked: not statically named
+new URL(s).searchParams.get("q")              // ok: pure
+client.timeout(100)                           // ok: a different symbol
 ```
 
 `globalThis` may appear only as the object of a statically named member access; any other use, such as a computed key (`globalThis[k]`), an alias (`const g = globalThis`) or destructuring (`const { fetch } = globalThis`), is `EK0107` ([Legacy JavaScript](001-functions.md#direct-eval); decided detail 73). A computed specifier (`import(name)`, `import("node:" + m)`) compiles unchecked; a `data:` or `blob:` specifier is `EK0107` (decided detail 74).
 
 `import type { Stats } from "node:fs"` is allowed because it is erased. `import { type Stats } from "node:fs"` is `EK4402`, because `verbatimModuleSyntax` keeps it as `import {} from "node:fs"`; the quick fix rewrites it to `import type`.
 
-The banned globals ("All web apis and all node.js apis should be wrapped and effectful", VIP-33) are derived by resolved binding, not listed (decided detail 101, amending 56). A value reference in `.vibe` code is `EK4402` when the symbol it resolves to has a declaration in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, none in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist below. A local binding, an import or an Effect module in scope (`Option`, `FileSystem`, `Headers`, `Worker`) shadows the global first. The set is generated from the pinned TypeScript libs and `@types/node` into `docs/design/inventory/platform-globals.json` and regenerated when either is bumped. It includes detail 56's names, which keep their quick fixes:
+The banned globals ("All web apis and all node.js apis should be wrapped and effectful", VIP-33) are derived by resolved binding, not listed (VIP-33, amended). A global is banned when the symbol has a declaration in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, none in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist below. A local binding, an import or an Effect module in scope (`Option`, `FileSystem`, `Headers`, `Worker`) shadows the global first, and a project's own `declare var fetch` is not a host declaration. A name that resolves to nothing is TypeScript's `TS2304`: with a `lib` that omits `dom`, `fetch` is `TS2304`, not `EK4402`. The compiler reads the declarations themselves. [`platform-globals.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/platform-globals.json) records the result for the pinned TypeScript libs and `@types/node`: the banned globals, the allowlist, and every member of an allowlisted global, classified. `node docs/tools/platform-globals.mjs --write` generates it, and a test fails when the file is stale, when a member is unclassified, or when this page and the file disagree. The banned set includes these names, which keep their quick fixes:
 
 - Node: `process`, `Buffer`, `global`, `__dirname`, `__filename`, `require`, `module`, `exports`, `setImmediate`, `clearImmediate`;
 - web I/O and host state: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`;
@@ -444,7 +459,7 @@ import { Worker as EffectWorker } from "effect/workers"
 const workerSpawner = EffectWorker.Spawner
 ```
 
-ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `AbortSignal`, `Intl`) stay allowed. This allowlist is closed (decided detail 101): a name can be added later, never removed. `AbortSignal.timeout` starts a timer and stays `EK4402`, as `setTimeout` does.
+ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `AbortSignal`, `Intl`) stay allowed, apart from the [three members](#reaches-the-platform) that reach the host. This allowlist is closed: a name can be added later, never removed.
 
 ```vibe es
 // compiler-gap: pending VIP-33
