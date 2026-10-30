@@ -6,7 +6,7 @@ Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot
 
 Fuzz VibeLang with Go's native fuzzer, and take every oracle from the specification.
 
-The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles in 13 targets, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
+The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles in the targets below, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
 
 ## Question 1: how to fuzz TypeScript code
 
@@ -62,6 +62,7 @@ The specification is ahead of the compiler in places (Chapter 28: "A registry en
  FuzzParse  FuzzSpec   FuzzSpecRules     FuzzCompile      FuzzSpecPrograms
             Programs   FuzzSpecAllowed   FuzzTypeScript-  FuzzSpecVariants
                        FuzzConfig        Parity           FuzzFix (outcome)
+                                      FuzzDeclarationIdentity
    tools: FuzzFormat (vibelangfmt) · FuzzFix (--fix) · FuzzEditor (LSP) · FuzzIncremental (edits)
    the binary: FuzzCommandLine (every flag, --lsp, --api, --estree, --fix, --watch)
 ```
@@ -72,6 +73,7 @@ The specification is ahead of the compiler in places (Chapter 28: "A registry en
 | `FuzzParse` | One text, parsed as `.vibe`, `.ts`, `.tsx`, `.d.ts` | No panic; well-formed tree; deterministic; ESTree output is JSON with ranges inside the text (Chapter 28 Linting, D277) |
 | `FuzzConfig` | A `vibelang` settings object and a source | Invalid values draw a config diagnostic; a valid severity sets an adjustable code; non-adjustable codes never change; tracing changes no diagnostic (Chapter 28, D104, D275) |
 | `FuzzTypeScriptParity` | A `.ts`-only project | Same diagnostics, with complete spans, JavaScript, declarations and maps as stock TypeScript 7.1.0-beta (D266) |
+| `FuzzDeclarationIdentity` | The parity projects with `.ts` sources renamed to `.vibe`, plus saved corpus | For a valid stock project with no `.vibe` error diagnostic: declarations equal stock TypeScript 7.1.0-beta after the migrate identity gate canonicalizes them (Chapter 1, Declaration output; intro principle 4). Importers retain `./x.js` (D298). The Go harness calls `.smithers/flows/migrate/lib/declarations.mjs` through Node using the TypeScript 5.9.3 JS API in `$EFFECT_NODE_MODULES/typescript` |
 | `FuzzSpecRules` | Injection, host and choice bytes | Each of 148 registered codes, injected into a valid host at a fuzzed slot and setting, is reported exactly once, inside the injection, in the category Chapter 28 gives it under that setting, with no other new error |
 | `FuzzSpecAllowed` | One of 35 allowed forms, or a violation in a `.ts` file | Allowed forms add no diagnostic; a `.ts` file draws no EK code even with every adjustable code set to error (D266) |
 | `FuzzSpecPrograms` | Generator bytes (focus feature, swarm mask, choices); programs of one to three modules | The program compiles; its VibeLang and Effect TypeScript prints end with the same outcome, the same whole cause and the same trace, and no export returns a plain value where an Effect is due (Chapters 1, 17, 27, Appendix C); each export's `.d.ts` contract holds the A, E and R the model infers, producers included (Chapters 2-4, 8, 14, 27) |
@@ -89,6 +91,7 @@ Completeness is checked, not claimed. Each of these tests reads the specificatio
 | `TestSpecRuleCoverage` | A code in Chapter 28's table or list has no injection, pending line or retirement |
 | `TestGeneratorMatchesSpecForms` | A code span of SKILL.md's Forms table maps to no generator feature and no pending line that says why, or the map names a form SKILL.md dropped |
 | `TestCommandLineFlagsCoverSpec` | The specification shows a `vibelang` flag the command-line target does not fuzz |
+| `TestDeclarationIdentityAdmission` | Fewer than half of the ordinary `-short` declaration-identity seeds compile without a `.vibe` error |
 | `TestPendingLines` | A pending line names no target, a missing reproduction, or no chapter or decision |
 | `TestPendingHangs` | A pending hang's reproduction finishes within its deadline (XPASS) |
 
@@ -292,7 +295,9 @@ cap in `toolsSample`. Ordinary campaigns without that flag keep their
 existing caps; saved corpus files and probes run independently of these
 generated-seed limits.
 
-A new crasher lands in `testdata/fuzz/<Target>/`. The fuzz engine discards its workers' standard error, so a worker that dies of a hang panic or a fatal runtime error reports only `fuzzing process hung or terminated unexpectedly: exit status 2`; `campaign.sh` sets `VIBELANG_FUZZ_WORKER_LOG`, and each worker appends its standard error to `<Target>.workers.log` beside the target's log. The first nightly campaign (2026-10-29) lost two such reasons: the spec generator nested `do` blocks without bound, and 3.5 kB inputs wrote Effect readings of 2 and 3 MB whose compiles outlasted the 30-second hang limit. Minimize it, keep it there, and add its key and its `corpus:` line to `testdata/pending/<area>.txt` with the decision it breaks. Delete both lines in the change that fixes the compiler. `VIBELANG_FUZZ_PENDING=1` puts pending generator features back into campaigns; `VIBELANG_FUZZ_HANG=60s` raises the hang limit on a loaded host. The parity target and the stock consumer need the stock TypeScript that `packages/ts-mapper` pins, installed as the parity target's skip message says.
+A new crasher lands in `testdata/fuzz/<Target>/`. The fuzz engine discards its workers' standard error, so a worker that dies of a hang panic or a fatal runtime error reports only `fuzzing process hung or terminated unexpectedly: exit status 2`; `campaign.sh` sets `VIBELANG_FUZZ_WORKER_LOG`, and each worker appends its standard error to `<Target>.workers.log` beside the target's log. The first nightly campaign (2026-10-29) lost two such reasons: the spec generator nested `do` blocks without bound, and 3.5 kB inputs wrote Effect readings of 2 and 3 MB whose compiles outlasted the 30-second hang limit. Minimize it, keep it there, and add its key and its `corpus:` line to `testdata/pending/<area>.txt` with the decision it breaks. Delete both lines in the change that fixes the compiler. `VIBELANG_FUZZ_PENDING=1` puts pending generator features back into campaigns; `VIBELANG_FUZZ_HANG=60s` raises the hang limit on a loaded host. The parity and declaration-identity targets and the stock consumer need the stock TypeScript that `packages/ts-mapper` pins, installed as the parity target's skip message says.
+
+For declaration-identity campaigns, set `VIBELANG_FUZZ_DECLARATION_REPORT` to an absolute JSONL path to retain each divergent archive and its canonical line diff, including inputs covered by the pending feature key. This keeps campaign findings available for triage while known compiler gaps skip. `TestDeclarationIdentityAdmission` checks the same admission path on the ordinary short selection and requires at least half to reach the oracle.
 
 ## Not covered
 
@@ -337,8 +342,8 @@ for budget review; usage above `240` fails the test. The suite owner chose this
 regression threshold to tolerate contention. Campaigns, non-short runs and
 `VIBELANG_FUZZ_SEEDS=all` keep their complete inputs and bypass the short guard.
 
-`FuzzTypeScriptParity` samples `32` distinct TypeScript projects after filtering and deduplication with every
-generated pending witness retained. `FuzzFix` samples `16` cases instead of
+`FuzzTypeScriptParity` and `FuzzDeclarationIdentity` share `ParitySeeds`, sampling `32` distinct TypeScript projects after filtering and deduplication with every
+generated pending witness and every explicit `typescript/` twin retained. `FuzzFix` samples `16` cases instead of
 `22`, retaining every `tsforms-*` case and generated pending witness even
 when these exceed the sample size. Disk corpus files and probes are unchanged.
 Campaign caps remain unchanged; full-seed nightly runs retain every seed.
@@ -390,3 +395,22 @@ statements or the chapter's completion-record expansion. Pending dependencies
 are recorded as compiler gaps, never treated as proof that a construct works.
 
 `TestRunningRulesQuoted` also checks the citations in the spec gate, so a chapter edit updates its affected oracle before landing. The target reads chapters through `SpecPath`.
+
+## Declaration identity (Chapter 1)
+
+`FuzzDeclarationIdentity` renames each non-declaration `.ts` source to `.vibe` without editing its text. Configuration file lists and globs in the tsconfig inheritance chain follow the rename; other JSON data is preserved, and importers retain `./x.js` (D298). Both compilations request declaration-only output with the same compiler options. The fork uses the existing `FuzzCompile` workspace helpers and the stock executable is the mapper's pinned TypeScript 7.1.0-beta. Node imports the migration gate's actual `compareDeclarations` and `canonicalize`, using the TypeScript 5.9.3 API at `$EFFECT_NODE_MODULES/typescript`. Comments, member order, union order and relative `.ts` module spelling therefore get precisely the gate's equivalence.
+
+An input with a `.vibe` error is skipped. The configuration must actually include a renamed source, and the stock project must be valid: a missing prelude name such as an unimported `pipe` otherwise produces stock error-recovery `any`, which is not an API contract. A regression also rejects mutations introducing VibeLang-only syntax in the stock input.
+
+The shared `ParitySeeds` short selection now keeps all eleven explicit `typescript/` twins, plus its remaining fixed-stride sample and every pending witness. The previous stride omitted eight twins and admitted only 10/33 inputs. The admission test uses the target's actual compilation and stock-validation path and fails below one half; it admits 26/36 short inputs (72.2%) on main a0c9ef92 with the four saved witnesses. All full-seed runs and campaigns retain the complete parity list.
+
+Four minimized compiler witnesses are pending in `testdata/pending/compile.txt`; each quotes Chapter 1's “Declarations are exactly what idiomatic Effect TypeScript would declare.” The opencode witness records lane `migfix-opencode` and queued fix `60e2658dca5a`.
+
+| Corpus | Minimal TypeScript source | Stock canonical line | Renamed `.vibe` canonical line |
+| --- | --- | --- | --- |
+| `opencode-1` | `import { Schema } from "effect"; export const decode = Schema.decodeUnknownSync(Schema.String)` | `export declare const decode: (input: unknown, options?: import("effect/SchemaAST").ParseOptions) => string;` | `import { SchemaAST } from "effect";` then `export declare const decode: (input: unknown, options?: SchemaAST.ParseOptions) => string;` |
+| `runtime-effect-import` | `import { Runtime } from "effect"; export const main = Runtime.makeRunMain(() => {})` | `}): <E, A>(effect: import("effect/Effect").Effect<A, E>) => void;` | `}): <E, A>(effect: Effect.Effect<A, E>) => void;` and the import gains `Effect` |
+| `readonly-property` | `export interface Shape { value: number }` | `value: number;` | `readonly value: number;` |
+| `plain-arrow` | `export const f = () => "ok"` | `export declare const f: () => string;` | `export declare const f: () => Effect.Effect<string, never, never>;` plus `import { Effect } from "effect";` |
+
+The opencode corpus was run without pending entries and failed with the SchemaAST canonical diff, then passed as a pending skip with its entries present. Canonicalization controls cover comments, unions, member ordering, module spelling, changed lines and added/removed declaration files. A two-module positive control resolves the unchanged `./other.js` importer to `other.vibe` and compares both declarations.

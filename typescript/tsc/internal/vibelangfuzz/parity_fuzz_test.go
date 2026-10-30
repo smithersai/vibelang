@@ -60,7 +60,22 @@ func StockTypeScript(tb testing.TB) string {
 // case's typescript/ project with its own.
 var ParitySeeds = sync.OnceValue(func() []string {
 	var seeds []string
-	for _, seed := range shortWitnessSeeds(parityInputs(), 32) {
+	inputs := parityInputs()
+	if testing.Short() && !toolsFuzzing() {
+		n := 32
+		for _, seed := range inputs {
+			if seed.Pending != "" {
+				n++
+			}
+		}
+		// These projects are the cases' explicit TypeScript twins, rather
+		// than helper-only fragments left after dropping .vibe files. Keep
+		// every twin in the shared parity/declaration-identity short sample.
+		inputs = toolsSample(inputs, n, 0, func(seed Seed) bool {
+			return seed.Pending != "" || strings.HasSuffix(seed.Name, " typescript/")
+		})
+	}
+	for _, seed := range inputs {
 		seeds = append(seeds, Archive(seed.Files))
 	}
 	return seeds

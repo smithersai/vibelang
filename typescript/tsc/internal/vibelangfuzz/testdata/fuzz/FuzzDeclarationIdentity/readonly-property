@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nexport interface Shape { value: number }\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"declaration\":true,\"strict\":true,\"module\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.ts\"]}\n")

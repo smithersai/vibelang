@@ -7,6 +7,7 @@
 #   ES_REMOTE_HOST=ubuntu@<host> ES_REMOTE_KEY=~/.ssh/<key> \
 #     sh ../../scripts/remote.sh sh internal/vibelangfuzz/campaign.sh 5m
 #   ... campaign.sh 5m FuzzCompile=10m FuzzParse FuzzConfig
+#   ... campaign.sh 10m FuzzTypeScriptParity FuzzDeclarationIdentity
 #
 # The first argument is each target's default duration; the others name the
 # targets to run, each optionally with its own duration. With no targets it

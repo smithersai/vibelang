@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport { Runtime } from \"effect\"\nexport const main = Runtime.makeRunMain(() => {})\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"declaration\":true,\"strict\":true,\"module\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.ts\"]}\n")

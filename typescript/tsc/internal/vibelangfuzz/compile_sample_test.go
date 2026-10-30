@@ -76,4 +76,13 @@ func TestParitySampleHasInputs(t *testing.T) {
 	if testing.Short() && !toolsFuzzing() && len(ParitySeeds()) < min(32, len(inputs)) {
 		t.Fatalf("parity selected fewer actual inputs than its sample: %d", len(ParitySeeds()))
 	}
+	selected := map[string]bool{}
+	for _, archive := range ParitySeeds() {
+		selected[archive] = true
+	}
+	for _, seed := range inputs {
+		if strings.HasSuffix(seed.Name, " typescript/") && !selected[Archive(seed.Files)] {
+			t.Errorf("short parity sample lost the explicit TypeScript twin: %s", seed.Name)
+		}
+	}
 }

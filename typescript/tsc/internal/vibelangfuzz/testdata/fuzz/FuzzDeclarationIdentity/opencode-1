@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport { Schema } from \"effect\"\nexport const decode = Schema.decodeUnknownSync(Schema.String)\n-- tsconfig.json --\n{\"compilerOptions\":{\"declaration\":true,\"strict\":true,\"module\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.ts\"]}\n")
