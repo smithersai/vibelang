@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+export type T = number!{ readonly x: 1 }
+export type Full = number!{ readonly x: 1 }!never
+export type Empty = number!{}

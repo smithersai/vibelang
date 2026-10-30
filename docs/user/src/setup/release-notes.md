@@ -852,6 +852,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Packaging a `dprint` plugin could leave a temporary archive behind when replacing the archive failed; it now removes that temporary file on every return path.
 
+- Inline object types in an Effect error slot were rejected; `number!{ message: string }` now works like the corresponding `Effect` type.
+
 - Effect tagged-error patterns written with a directly imported constructor, such as `when TimeoutError:` after `import { TimeoutError } from "effect/Cause"`, did not use the module's guard, so branded errors from another package instance fell through. They now call the guard and narrow the matched error to its type.
 
 - Imported aliases in `Option`, `Exit` and `Result` patterns could fail to compile; they now use the resolved module guards and extract the specified fields, safely rejecting unbranded subjects.

@@ -246,9 +246,9 @@ func (p *Parser) vibelangReadonly(modifiers *ast.ModifierList, anchor core.TextR
 //
 // A slot without a type is never. Dependencies left out entirely, as in
 // User!NotFound, are never too, everywhere (VIP-3). Unions bind inside a slot:
-// User!NotFound | Timeout!Db fails with NotFound | Timeout. A slot that starts
-// with { is empty, because in a declaration the { starts the body; put an
-// object type in a slot in parentheses. A slot's type starts on the line of
+// User!NotFound | Timeout!Db fails with NotFound | Timeout. An error operand
+// may start with {; a requirement must be parenthesized so a following {
+// still starts the function body. A slot's type starts on the line of
 // its !, so a member that ends in `void!!` does not take the next member.
 //
 // The reference is Effect.Effect, which names Effect's type whether Effect is
@@ -262,7 +262,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		return result
 	}
 	bang := p.scanner.TokenRange() // synthesized nodes stand on the first !
-	errors := p.parseVibeLangSlot()
+	errors := p.parseVibeLangSlot(true)
 	var dependencies *ast.Node
 	omitted := p.token != ast.KindExclamationToken
 	if omitted {
@@ -271,7 +271,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		last := core.NewTextRange(errors.End()-1, errors.End())
 		dependencies = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), last)
 	} else {
-		dependencies = p.parseVibeLangSlot()
+		dependencies = p.parseVibeLangSlot(false)
 	}
 	span := core.NewTextRange(result.Pos(), dependencies.End())
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxEffectType, Range: core.NewTextRange(scanner.SkipTrivia(p.sourceText, result.Pos()), dependencies.End())})
@@ -285,10 +285,10 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 
 // parseVibeLangSlot parses the ! at the current token and the type after it, or
 // returns a synthesized never when no type follows on the same line.
-func (p *Parser) parseVibeLangSlot() *ast.Node {
+func (p *Parser) parseVibeLangSlot(allowObject bool) *ast.Node {
 	bang := p.scanner.TokenRange()
 	p.nextToken()
-	if p.token == ast.KindExclamationToken || p.token == ast.KindOpenBraceToken || p.hasPrecedingLineBreak() || !p.isStartOfType(false /*inStartOfParameter*/) {
+	if p.token == ast.KindExclamationToken || (p.token == ast.KindOpenBraceToken && !allowObject) || p.hasPrecedingLineBreak() || !p.isStartOfType(false /*inStartOfParameter*/) {
 		return p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), bang)
 	}
 	return p.parseVibeLangSlotType()
