@@ -156,6 +156,8 @@ test("yield delegation closes the delegated producer and then its own on break",
   expect(events).toEqual(["open", "close", "outer closed"])
 })
 
+// 100,000 elements through two producers take 2 to 4 seconds on the build
+// host, and more than 5 under its heaviest load: the budget covers a busy host.
 test("a 100,000-element delegated producer delivers every element", async () => {
   const inner = $produce(() => Effect.gen(function*() {
     for (let n = 0; n < 100_000; n++) yield* $yield(n)
@@ -166,7 +168,7 @@ test("a 100,000-element delegated producer delivers every element", async () => 
   expect(await Effect.runPromise($forOf(input, n => Effect.sync(() => { count++; sum += n })))).toEqual($normal)
   expect(count).toBe(100_000)
   expect(sum).toBe(4_999_950_000)
-})
+}, 30_000)
 
 for (const outcome of ["normal", "break", "return", "failure", "defect", "interrupt"] as const) {
   test(`iterable ${outcome}: loop closes a JavaScript generator exactly once`, async () => {
