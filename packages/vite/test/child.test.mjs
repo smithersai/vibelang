@@ -29,3 +29,21 @@ test("a child that exits normally resolves with its code and output", async () =
   const result = await runChild(process.execPath, ["-e", "console.log('out'); console.error('err'); process.exit(2)"])
   assert.deepEqual([result.code, result.stdout, result.stderr], [2, "out\n", "err\n"])
 })
+
+test("a test file that leaves a handle open still exits, and the handle is named", async (t) => {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const dir = await mkdtemp(join(tmpdir(), "vite-leak-"))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const file = join(dir, "leak.test.mjs")
+  await writeFile(file, `import { test } from "node:test"\ntest("leaves a timer", () => { setInterval(() => {}, 1000) })\n`)
+  const report = new URL("./report-handles.mjs", import.meta.url).href
+  // run.sh's flags. A child of a test file that inherits NODE_TEST_CONTEXT
+  // refuses to run test files, so the child runs as run.sh's node does.
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  const result = await runChild(process.execPath, ["--test", "--test-force-exit", "--import", report, file], { limit: 60_000, env })
+  assert.equal(result.code, 0)
+  assert.match(result.output, /leak\.test\.mjs left handles open after its tests: Timeout/)
+})

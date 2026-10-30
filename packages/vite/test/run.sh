@@ -59,4 +59,6 @@ ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
 cd "$package"
 # Includes plugin.property.test.mjs; FC_* controls property selection and replay.
 # A test that runs past five minutes fails with its name; none takes a minute.
-exec node --test --test-timeout=300000 "$@" test/*.test.mjs
+# A file whose tests are done exits even if a handle keeps its event loop
+# alive, and report-handles.mjs names that handle.
+exec node --test --test-timeout=300000 --test-force-exit --import ./test/report-handles.mjs "$@" test/*.test.mjs
