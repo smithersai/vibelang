@@ -397,6 +397,50 @@ first([1]) // "1"
 numeric(7) // "7"
 ```
 
+## Pattern bindings
+
+An `or` pattern shares one lexical cell for a name bound with the same keyword in its alternatives. A later alternative may replace a cell initialized by a failed earlier alternative of that `or`; closures saved by that earlier alternative observe the replacement. Ordinary TDZ before first initialization, user-facing `const` immutability, and duplicate-initialization restrictions outside that authorized replacement remain. Do not reset unrelated bindings or give alternatives disconnected cells.
+
+Lexical `is` bindings in `while` and `do…while` have the pinned explainer's loop-head/per-iteration scope, rather than an enclosing block's scope. The loop head shadows outer names and does not leak outside the loop. Each complete condition evaluation starts with fresh uninitialized cells, including after `continue`; condition reads see TDZ until the matching pattern initializes them. A successful condition and its following body share those cells, so closures see that body's later `let` writes. Short-circuiting past a binding leaves it uninitialized even if the condition is true. Nested source blocks/functions retain their own scopes.
+
+The first `do…while` body runs with the initial uninitialized head cells. Its direct reads throw `ReferenceError`, and closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+
+```vibe es
+// compiler-gap: pending VIP-7
+effect function alternative() {
+  return match ([5]) { when ([let x and String]) or { length: let x }: x; default: 0; }
+} // Success(1): the failed left alternative initialized x with 5, the right replaces it with 1
+function readLoop() {
+  const x = 99; let n = 0; const readers: (() => number)[] = []
+  while (n < 2 && (++n is let x)) { readers.push(() => x); x += 10 }
+  return [x, ...readers.map(f => f())] // [99, 11, 12]
+}
+effect function skipped() {
+  while (true || (1 is const x)) { return x }
+} // Die(ReferenceError): the successful condition skipped initialization
+```
+
+Native lexical-cell witnesses for the per-iteration and initial-head rules:
+
+```ts effect
+import { Effect } from "effect"
+
+function loopCells() {
+  const x = 99
+  const readers: (() => number)[] = []
+  for (const input of [1, 2]) { let x = input; readers.push(() => x); x += 10 }
+  return [x, ...readers.map(f => f())]
+}
+const loopCellsExit = Effect.runSyncExit(Effect.sync(loopCells)) // Success([99, 11, 12])
+let initialReader: () => number = () => 0
+initialHead: {
+  initialReader = (): number => x
+  break initialHead
+  const x = 0
+}
+const initialHeadExit = Effect.runSyncExit(Effect.sync(initialReader)) // Die(ReferenceError); later cells cannot initialize this closed-over binding
+```
+
 ## Exhaustiveness
 
 VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness check.

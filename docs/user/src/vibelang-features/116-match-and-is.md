@@ -188,6 +188,8 @@ For an extractor, the method receives `{ matchType: "extractor" }` as its second
 
 ## Combining patterns
 
+Same-keyword bindings in `or` alternatives share one cell. A later alternative can replace initialization from a failed earlier alternative; saved closures see the replacement. This does not permit an ordinary assignment to a `const`.
+
 `and` requires both patterns, `or` accepts either, and `not` rejects its pattern. A guard, `if (condition)`, tests any expression and sees the bindings before it:
 
 ```vibe
@@ -207,6 +209,8 @@ function classify(job: { status: string; attempts: number }) {
 `and`, `or`, and `not` cannot share a level: write `(a and b) or c`, not `a and b or c` (EK4705). An `or` or `not` pattern may bind names under the pinned TC39 binding rules. A name bound in every `or` alternative gets the union of its types.
 
 ## is
+
+In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. Outer names remain unchanged outside the loop.
 
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
 
