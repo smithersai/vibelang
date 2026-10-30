@@ -1119,7 +1119,7 @@ class Feed {
 
 [Uninterruptible](900-appendices.md#uninterruptible), [Restore](900-appendices.md#restore) and [Interruptible](900-appendices.md#interruptible): contextual keywords followed by `{` on the same line, and statements in effect code.
 
-`uninterruptible { }` is always `Effect.uninterruptibleMask(($restore) => Effect.gen(…))`, as VIP-22 writes it, whether or not a `restore` block is inside it. The callback's parameter has a fresh name, as `$c` does, so a user variable `restore` stays visible.
+`uninterruptible { }` is always `Effect.uninterruptibleMask(($restore) => Effect.gen(…))`, as VIP-22 writes it, whether or not a `restore` block is inside it. The callback's parameter has a fresh name, so a user variable `restore` stays visible. `restore` selects the innermost enclosing `uninterruptible` block in the same source activation. Its entry state may already be uninterruptible, so restoring does not necessarily enable interruption. Intervening `restore`, `interruptible` or `provide` blocks do not rebind that capability.
 
 ### Static rules
 
@@ -1182,6 +1182,46 @@ function ownMask() {
 }
 // Success(7), including when this function is called after another mask has ended.
 const delayedOwnMask = Effect.uninterruptibleMask(() => Effect.succeed(ownMask))
+```
+
+
+The following reference enters interruptibly and requests interruption while both masks are active. The inner `restore` keeps its masked entry state, so the two recorded statements run; leaving the outer mask delivers the pending interruption. The fixture observes both the interruption Exit and the named `events` trace.
+
+```vibe es
+// compiler-gap: pending VIP-22
+effect function nestedRestore(events: string[]) {
+  const self = try Effect.withFiberSucceed(fiber => fiber)
+  uninterruptible {
+    uninterruptible {
+      try orDie(Effect.try(() => self.interruptUnsafe()))
+      restore { events.push("inner") }
+    }
+    events.push("after inner")
+  }
+  events.push("after outer") // not reached with interruptible entry
+}
+// With interruptible entry: interruption Exit; events is ["inner", "after inner"].
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function nestedRestore(events: string[]) {
+  return Effect.gen(function* () {
+    const self = yield* Effect.withFiberSucceed(fiber => fiber)
+    yield* Effect.uninterruptibleMask(restoreOuter => Effect.gen(function* () {
+      yield* Effect.uninterruptibleMask(restoreInner => Effect.gen(function* () {
+        yield* Effect.orDie(Effect.try(() => { self.interruptUnsafe() }))
+        yield* restoreInner(Effect.sync(() => { events.push("inner") }))
+      }))
+      events.push("after inner")
+    }))
+    events.push("after outer")
+  })
+}
+// Under interruptible entry, the pending interruption yields an interruption Exit.
+// The inner restore keeps its uninterruptible entry state: events is ["inner", "after inner"].
+// The interruption is delivered when the outer mask restores interruptible entry.
 ```
 
 

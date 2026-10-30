@@ -529,7 +529,7 @@ effect function outcome() {
 // Output: Success
 ```
 
-**Interruption**. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it restores the interruptibility from before the mask. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function. A nested effect callable or `effect` block must introduce its own mask; it cannot capture an outer block's `restore`.
+**Interruption**. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it restores the interruptibility from before the innermost mask, which may itself be uninterruptible. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function. A nested effect callable or `effect` block must introduce its own mask; it cannot capture an outer block's `restore`.
 
 ```ts effect
 // fragment
