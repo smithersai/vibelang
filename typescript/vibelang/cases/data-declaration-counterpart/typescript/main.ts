@@ -24,7 +24,7 @@ export type Json = Data.TaggedEnum<{ Null: {}; Items: { items: ReadonlyArray<Jso
 export const Json = Data.taggedEnum<Json>()
 
 export type Outcome<A, E> = Data.TaggedEnum<{ Ok: { value: A }; Err: { error: E } }>
-export interface OutcomeDefinition extends Data.TaggedEnum.WithGenerics<2> {
+export interface $Outcome$Definition extends Data.TaggedEnum.WithGenerics<2> {
   readonly taggedEnum: Outcome<this["A"], this["B"]>
 }
-export const Outcome = Data.taggedEnum<OutcomeDefinition>()
+export const Outcome = Data.taggedEnum<$Outcome$Definition>()

@@ -29,14 +29,10 @@ import (
 // A data type with type parameters passes them through the interface that
 // Data.TaggedEnum.WithGenerics describes, named for the type:
 //
-//	interface LoadStateDefinition extends Data.TaggedEnum.WithGenerics<2> {
+//	interface $LoadState$Definition extends Data.TaggedEnum.WithGenerics<2> {
 //	  readonly taggedEnum: LoadState<this["A"], this["B"]>
 //	}
-//	const LoadState: {
-//	  readonly [Tag in LoadStateDefinition["taggedEnum"]["_tag"]]: <A, B>(
-//	    args: Data.TaggedEnum.Args<Data.TaggedEnum.Kind<LoadStateDefinition, A, B>, Tag>
-//	  ) => Data.TaggedEnum.Value<Data.TaggedEnum.Kind<LoadStateDefinition, A, B>, Tag>
-//	} & Data.TaggedEnum.GenericMatchers<LoadStateDefinition> = Data.taggedEnum<LoadStateDefinition>()
+//	const LoadState: Data.TaggedEnum.GenericConstructor<$LoadState$Definition> = Data.taggedEnum<$LoadState$Definition>()
 //	type LoadState<A, E> = Data.TaggedEnum<{ Idle: {}; Loaded: { readonly value: A } }>
 //
 // The type alias holds the source: the modifiers, the name, the type
@@ -114,14 +110,14 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	alias.Flags |= ast.NodeFlagsVibeLang
 	p.withJSDoc(alias, jsdoc)
 
-	// interface NameDefinition extends Data.TaggedEnum.WithGenerics<N> { readonly taggedEnum: Name<this["A"], ...> }
+	// interface $Name$Definition extends Data.TaggedEnum.WithGenerics<N> { readonly taggedEnum: Name<this["A"], ...> }
 	constructed := name.Text()
 	if typeParameters != nil && len(typeParameters.Nodes) != 0 {
 		constructed = DataDefinitionName(name.Text())
 		p.reparseList = append(p.reparseList, p.dataDefinition(name, typeParameters, modifiers, keyword))
 	}
 
-	// const Name = Data.taggedEnum<Name>(), or Data.taggedEnum<NameDefinition>()
+	// const Name = Data.taggedEnum<Name>(), or Data.taggedEnum<$Name$Definition>()
 	callee := p.mProperty(p.vibelangIntrinsic("Data", name.Loc), "taggedEnum", name.Loc)
 	constructedName := p.mIdent(constructed, name.Loc)
 	if typeParameters != nil && len(typeParameters.Nodes) != 0 {
@@ -293,9 +289,9 @@ func (p *Parser) dataModifiers(modifiers *ast.ModifierList, keyword core.TextRan
 }
 
 // DataDefinitionName is the name of the interface that a generic data type
-// Name declares for Data.taggedEnum (D307): NameDefinition.
+// Name declares for Data.taggedEnum (detail83): $Name$Definition.
 func DataDefinitionName(name string) string {
-	return name + "Definition"
+	return "$" + name + "$Definition"
 }
 
 // IsDataDeclaration reports whether node is the type alias that a data

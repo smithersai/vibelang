@@ -26,8 +26,8 @@ export type Tree<A> = Data.TaggedEnum<{
         right: Tree<A>;
     };
 }>;
-export interface TreeDefinition extends Data.TaggedEnum.WithGenerics<1> {
+export interface $Tree$Definition extends Data.TaggedEnum.WithGenerics<1> {
     readonly taggedEnum: Tree<this["A"]>;
 }
-export declare const Tree: Data.TaggedEnum.GenericConstructor<TreeDefinition>;
+export declare const Tree: Data.TaggedEnum.GenericConstructor<$Tree$Definition>;
 export declare function area(shape: Shape): number;

@@ -170,3 +170,5 @@ Normal schema and nested struct fields use TypeScript type members, not class fi
 - Schema fields are type members. Remove an ignored initializer after the written type when `TS1247` reports it. Keep its codec, optionality, readonlyness and comments; never evaluate the discarded initializer. `vibelang --fix` applies the preserving edit.
 
 For `EK0704`, replace an ordinary-class extractor with its bare class test or the editor's parameter-property object pattern. A matcher inherited from a base class does not admit extraction (VIP-7, decided detail 100).
+
+Generic `data` emits `$Name$Definition` and first-free `$2`, `$3`, … helper names. Keep an existing imported helper type binding or re-exported name when updating its target; use the compiler quick fix for named, namespace, and `import(...)` type references. Automatic migration edits owned VibeLang sources only (VIP-34); native TypeScript consumers remain unchanged and need an explicit helper-import update. Do not rename a user-declared helper interface merely because its name ends in `Definition`.

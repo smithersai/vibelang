@@ -906,12 +906,23 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 			if !spelled[name] {
 				continue
 			}
-			prefix := strings.TrimRight(name, "0123456789")
-			for {
-				p.vibelangMatchTemps++
-				fresh = prefix + strconv.Itoa(p.vibelangMatchTemps)
-				if !spelled[fresh] && !names[fresh] {
-					break
+			if strings.HasPrefix(name, "$") && strings.HasSuffix(name, "$Definition") {
+				// Detail83: data helpers use their own first-free suffix, not
+				// the counter shared by match bindings and labels.
+				for suffix := 2; ; suffix++ {
+					fresh = name + "$" + strconv.Itoa(suffix)
+					if !spelled[fresh] && !names[fresh] {
+						break
+					}
+				}
+			} else {
+				prefix := strings.TrimRight(name, "0123456789")
+				for {
+					p.vibelangMatchTemps++
+					fresh = prefix + strconv.Itoa(p.vibelangMatchTemps)
+					if !spelled[fresh] && !names[fresh] {
+						break
+					}
 				}
 			}
 			names[fresh] = true

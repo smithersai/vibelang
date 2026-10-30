@@ -15,6 +15,8 @@ failure rules from 0.0.10 still apply.
 
 ### Upgrade from 0.0.10
 
+- Run `vibelang --fix` to update imports and re-exports of older generated `data` helpers while preserving local bindings and exported names; native TypeScript consumers remain unchanged and need an explicit helper-import update.
+
 - `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
 
 This release changes platform access and name resolution in `.vibe`.
@@ -144,6 +146,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
@@ -541,6 +544,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification checks rejected the folded explanation that `trustedPackages` was removed. They now permit historical retirement notes while still rejecting obsolete settings in the current configuration documentation.
 
 
+| Imports of older generated generic-data helpers such as `OutcomeDefinition` | Run `vibelang --fix` in owned `.vibe` sources. Native TypeScript consumers stay unchanged; update their imported helper name to `$Outcome$Definition`. |
 - A legacy service member call in a `catch` head could typecheck but throw a `TypeError` instead of handling its typed failure. Accepted service calls in `catch`, `try` and pipe heads now look up the service before calling its member, and the lookup remains in the inferred requirements.
 
 - Comparing an unchanged declaration package could report a type difference for a `private` getter, setter or method with an elided type, or for a private getter/setter pair. The API-identity checker now preserves their original types and visibility while still detecting added or removed private members.
