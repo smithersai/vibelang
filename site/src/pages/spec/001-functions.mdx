@@ -360,6 +360,46 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 - **Thrown types.** Each declaration carries its thrown type as [Thrown types](/spec/003-failures#thrown-types) defines it. An effectful function carries no `@throws`. Every other call signature the output emits carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default: functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias (decided detail 66). A bare function type (`() => string`) stays a function type. Getters and setters carry none.
 - **Each call signature carries its own contract** ([Thrown types](/spec/003-failures#thrown-types), decided detail 38): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type. A tag on an alias of a function type does not attach to its call signature; write `type Reader = { /** @throws {E} */ (): string }` instead (decided detail 38). A foreign callable binding without a tag on itself or its declared call signature throws `unknown`, whether imported from source or an emitted `.d.ts`, even with a written function type (decided details 37 and 66).
 - **`@rethrows` is copied and adds to own throws.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it. For a non-effectful callable, first determine its own thrown type: a written checked bound, else a shipped signature annotation, else local body inference or the foreign/type-position default. Shipped annotations are installed before defaults apply. At each call, union that type with the thrown types of the arguments for every `@rethrows` parameter (decided detail 66). Thus `@throws {never}` describes only own throws; it does not erase `@rethrows f`. Effectful callables have synchronous thrown type `never`, and `@rethrows` adds nothing.
+- **Local overload implementations satisfy every exposed overload.** Check the tracked synchronous throws of a local implementation, including parameter/default initialization, against every exposed overload bound, for methods too. An overload returning wholly Effect, Stream or Layer contributes the implicit `never` synchronous bound even though its output has no throws tag. A mixed-return implementation cannot hide a known throw behind that overload; a violation is `EK0401`. A plain overload keeps its written bound or existing inference/default rules. The initial check uses one conservative implementation bound; it does not silently specialize by argument. Foreign signatures retain their declared contracts without a runtime wrapper.
+- **Callback admission survives a callable boundary.** A `@rethrows` parameter that admits arbitrary throwing callbacks has an admitted thrown bound of `unknown` outside the annotated callable's direct synchronous rethrow propagation. Preserve it when returning, storing or assigning the callback, or capturing/invoking it in a nested callable, including a returned object callable member or an immediately invoked nested function. A nested plain callable that may invoke the capture carries `@throws {unknown}` on its own emitted signature. Assignment to a nonthrowing destination is `EK0402`; an unwrapped invocation in effect code is `EK0403`. Merely returning or storing the callback is not an invocation. Direct synchronous invocation/forwarding keeps the own-throws-plus-actual-callback calculation above; async and effect boundaries keep their existing rules.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-4, VIP-27
+function choose(mode: true): number!!;
+function choose(mode: false): number;
+function choose(mode: boolean): Effect.Effect<number> | number { throw "boom" }
+// EK0401: the true overload promises never to throw synchronously.
+/** @rethrows f */
+export function later(f: () => number) { return () => f() }
+const delayed = later(() => { throw "callback" })
+const unsafe: () => number = delayed      // EK0402: returned signature throws unknown
+effect function bad() { return delayed() } // EK0403
+effect function good() { return try Effect.try({ try: () => delayed(), catch: (e) => e }) }
+```
+
+The returned declaration carries its own bound, for example `export declare function later(f: () => number): { /** @throws {unknown} */ (): number }`, with the outer callable's own throws and written `@rethrows f` preserved separately. Ordinary TypeScript accepts the overload signatures below; VibeLang adds the synchronous-contract check. The native references show the hidden throw as `Die("boom")`, the unwrapped callback as `Die("callback")`, and the explicit wrapper as `Fail("callback")`:
+
+```ts [Effect]
+// Callable-contract reference witnesses
+import { Effect, Exit } from "effect"
+function choose(mode: true): Effect.Effect<number>;
+function choose(mode: false): number;
+function choose(mode: boolean): Effect.Effect<number> | number { throw "boom" }
+function later(f: () => number) { return () => f() }
+const delayed = later(() => { throw "callback" })
+const hidden = Effect.runSyncExit(Effect.sync(() => choose(true)))
+const unwrapped = Effect.runSyncExit(Effect.gen(function* () { return delayed() }))
+const wrapped = Effect.runSyncExit(Effect.gen(function* () {
+  return yield* Effect.try({ try: () => delayed(), catch: (e) => e })
+}))
+function reason(exit: Exit.Exit<unknown, unknown>) {
+  if (Exit.isSuccess(exit)) return ["Success", exit.value]
+  const r = exit.cause.reasons[0]
+  return r._tag === "Die" ? ["Die", r.defect] : r._tag === "Fail" ? ["Fail", r.error] : ["Interrupt"]
+}
+console.log(JSON.stringify([reason(hidden), reason(unwrapped), reason(wrapped)]))
+```
+
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](/spec/003-failures#effectful-callables)):
 
 ```vibe [VibeLang]

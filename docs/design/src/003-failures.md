@@ -197,6 +197,8 @@ function parsed(s: string) {
 const guarded = Effect.try(() => parsed("bad")) // the written call is wrapped
 ```
 
+A local implementation must satisfy every exposed overload bound, including parameter/default initialization. A wholly Effect, Stream or Layer overload has the implicit `never` synchronous bound even without a throws tag; a mixed-return implementation whose tracked throws exceed it is `EK0401`. The check uses one conservative implementation bound, for methods too; plain overload bounds and foreign signature trust keep their existing rules ([Declaration output](001-functions.md#declaration-output)).
+
 Contracts attach to each call signature, including each overload and a returned callable's own signature; declaration output preserves them (decided details 37–38). Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives' thrown types (detail 44). TypeScript still requires narrowing `unknown` before calling it.
 
 ```ts effect
@@ -249,6 +251,8 @@ const walked = Effect.try(() => walk(1))
 ### Assignability
 
 As for Swift's non-`throws` function type, a function whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. A parameter named by `@rethrows` admits anything, because the call then throws what its argument throws. So `const r: () => string = parse` is an error (`EK0402`): wrap the function, or annotate the type `@throws`.
+
+A `@rethrows` parameter that admits arbitrary throwing callbacks retains an admitted thrown bound of `unknown` outside direct synchronous propagation in the annotated callable. Returning, storing, assigning or capturing it in a nested callable must preserve that bound, including returned object callable members and immediately invoked nested functions. Such a nested plain callable emits its own `@throws {unknown}`; a nonthrowing destination is `EK0402`, and an unwrapped invocation in effect code is `EK0403`. Merely returning/storing it does not invoke it, and async/effect boundaries keep their existing rules ([Declaration output](001-functions.md#declaration-output)).
 
 The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`. An overriding or implementing method may throw only what the base or interface signature admits (`EK0402`). VIP-4's two wrappers declare their thunk parameter `@throws {unknown}` ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)), in both overloads: the function argument or the options object's `try` property. Thus `Effect.try(() => parse(s))` and `tryPromise(() => queryDb(q))` are allowed, and the wrapper turns a throw into a failure. The options object's `catch` callback has the ordinary non-throwing function type; a tracked throw there is rejected, while an implicit throw is a defect. Effect's `LazyArg` and other callback parameter types, including those in `.d.ts` files, describe what an argument callback may throw; without `@throws`, they admit only `never`. This admission rule does not change the foreign-callable default: calling an unannotated foreign function-typed property still throws `unknown`. Every other function parameter admits only what its type says: `sync(() => parse(s))` is an error, so wrap the call with `Effect.try`.
 
