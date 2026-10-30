@@ -280,3 +280,12 @@ declared under `typescript/tsc/internal/vibelang/` has a code reference in
 `docs/user/src/`. Add its meaning and remedy when adding a diagnostic.
 EK4407 is temporarily exempt while module-name resolution is reworked.
 The docs/tools test suite runs the same coverage check.
+
+## Global throws snapshot
+
+`node docs/tools/throws-inventory.mjs --write` regenerates
+`docs/design/inventory/throws.json` from the compiler's shipped global
+contracts and bundled TypeScript declarations. `--check` checks freshness;
+`node --test docs/tools/throws-inventory.test.mjs` also checks overloads,
+unknown contracts and upstream-input changes. The inventory's `coverage`
+fields identify contracts that later slices still need to generate.
