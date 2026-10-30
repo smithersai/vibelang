@@ -57,11 +57,9 @@ FuzzFailuresSpec  feature:declaration-async  compiler  VIP-27: an exported async
 FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
 FuzzFailuresSpec  feature:error-constructor  compiler  VIP-13 (decided detail 24, 003-failures.md static rules): a constructor in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
-FuzzFailuresSpec  feature:error-setter  compiler  VIP-13 (decided detail 8): a setter in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-type-parameters  compiler  VIP-13 (decided detail 9): `error Invalid<T> { value: T }` draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:schema-error-constructor  compiler  VIP-29 (decided detail 24): a constructor in a schema error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:schema-error-tag  compiler  VIP-29 (decided detail 24): a `_tag` member in a schema error body draws no error; lane fix-vip-decls
-FuzzFailuresSpec  feature:schema-error-setter  compiler  VIP-29 (decided detail 8): a setter in a schema error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-interleaved  compiler  VIP-1, VIP-13: an error's plain method is inferred to return an Effect (TS2322), and `new NotFound(…)` at the top level draws EK1001; lane vip-core2
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
 FuzzFailuresSpec  feature:default-throwing  compiler  VIP-4: 003-failures.md rejects a default initializer that may throw in an effect function's parameter list; lane w2-throw
@@ -81,11 +79,9 @@ FuzzFailuresSpec  corpus:declaration-async  compiler  the minimal reproduction o
 FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
 FuzzFailuresSpec  corpus:error-constructor  compiler  the minimal reproduction of feature:error-constructor
 FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
-FuzzFailuresSpec  corpus:error-setter  compiler  the minimal reproduction of feature:error-setter
 FuzzFailuresSpec  corpus:error-type-parameters  compiler  the minimal reproduction of feature:error-type-parameters
 FuzzFailuresSpec  corpus:schema-error-constructor  compiler  the minimal reproduction of feature:schema-error-constructor
 FuzzFailuresSpec  corpus:schema-error-tag  compiler  the minimal reproduction of feature:schema-error-tag
-FuzzFailuresSpec  corpus:schema-error-setter  compiler  the minimal reproduction of feature:schema-error-setter
 FuzzFailuresSpec  corpus:error-interleaved  compiler  the minimal reproduction of feature:error-interleaved
 FuzzFailuresSpec  corpus:assign-annotated-type  compiler  the minimal reproduction of feature:assign-annotated-type
 FuzzFailuresSpec  corpus:assign-wrapped  compiler  the minimal reproduction of feature:assign-wrapped

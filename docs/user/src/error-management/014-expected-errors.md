@@ -454,3 +454,5 @@ An `implements` clause on `error` or `schema error` is `EK1304`.
 Remove the clause and use the error's instance type structurally; `vibelang --fix` removes it without changing the runtime class.
 
 User-written `static` members are forbidden in both `error` and `schema error` bodies (`EK1302`). Move helpers outside the declaration, or use `vibelang --fix` to write the equivalent Effect TypeScript class and keep its `static` members. Compiler-generated matchers remain available. The class migration keeps leading reference directives and class documentation when it adds an import.
+
+Setters are forbidden in both error forms (`EK1302`). Use a method instead, or keep the setter in the equivalent Effect TypeScript class with `vibelang --fix`. Getters remain allowed.

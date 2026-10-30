@@ -215,6 +215,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification’s appendices cited eleven rules by their numbers in a private decision log. They now cite the VIP amendments that record them (VIP-3, VIP-4, VIP-5, VIP-7, VIP-12, VIP-34 and VIP-38).
 
+- Error declarations previously accepted setters; both error forms now report `EK1302`, and `vibelang --fix` preserves the setter in an Effect TypeScript class.
+
 - Error declarations previously accepted user-written `static` members; both error forms now report `EK1302`, and `--fix` preserves them in an Effect TypeScript class. The class migration preserves reference directives and documentation when it adds an import.
 
 - `error` and `schema error` declarations accepted `implements` clauses; they now report `EK1304`, and `--fix` removes the clause without changing runtime behavior.
@@ -716,6 +718,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An identifier or call followed by a separate block on the next line was rejected with `EK1022`. Standalone blocks now compile normally, including after identifiers named `uninterruptible`, `interruptible` and `restore`.
 
 | A user-written `static` member in `error` or `schema error` | `EK1302`; run `vibelang --fix` to keep the fields and `static` members in an equivalent Effect TypeScript class. |
+| A setter in `error` or `schema error` | `EK1302`; run `vibelang --fix` to retain it in an equivalent Effect TypeScript class. |
 
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.

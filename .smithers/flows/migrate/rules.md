@@ -86,3 +86,5 @@ A source-required struct field cannot reference a codec with optional or unprova
 Remove an empty type argument list from a schema value reference: `schema Alias = Address<>` becomes `schema Alias = (Address)`. Apply the same repair inside fields, arrays, tuples, unions, records and schema errors. Keep comments inside the parentheses, especially line comments before an array suffix. Keep nonempty mapped built-in arguments such as `Array<string>` and expressions in computed field keys. `vibelang --fix` performs this preserving repair for `EK2109`.
 
 - Keep user-written `static` members on the original Effect error class; `error` and `schema error` declarations cannot contain them (`EK1302`).
+
+- Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).

@@ -1,0 +1,3 @@
+// expect: EK1302
+error E { set value(x: string) {} }
+schema error S { set value(x: string) {} }
