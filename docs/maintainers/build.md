@@ -9,7 +9,7 @@ else.
 
 ```sh
 sh scripts/ci.sh                                    # install, then smthrs ci //... --jobs 8
-sh scripts/ci.sh //typescript/vibelang/... --jobs 8 # the compiler cases only
+sh scripts/ci.sh //typescript/vibelang/... --jobs 8 # compiler cases and editor smoke
 .smithers/node_modules/.bin/smthrs targets //...
 .smithers/node_modules/.bin/smthrs explain //typescript/vibelang:await-ops
 ```
@@ -61,6 +61,7 @@ local `.smithers` installs run `bun install --frozen-lockfile`.
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
 //typescript/vibelang
   :<case>                       harness.mjs <case>, one target per case (809)
+  :lsp-smoke                    headless language-server editor checks
 //packages
   :runtime-dist                 bun run build -> packages/runtime/dist
   :runtime-test                 bun test (runtime)
@@ -80,6 +81,7 @@ local `.smithers` installs run `bun install --frozen-lockfile`.
 ```text
 :srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test
                     ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test
+                    ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
@@ -93,6 +95,21 @@ The documented debugging recipe test compiles an application and then starts
 Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still
 checks the compiler result, failure marker and original source location.
+
+The `//typescript/vibelang:lsp-smoke` target runs `lsp-smoke.sh --no-build`
+against the graph's compiler and runtime outputs. Its inputs cover the Go
+language service through `:compiler`, the runtime, the Effect lockfiles,
+`lsp-smoke.sh`, `lsp-smoke.mjs` and `lsp-fixture/**`. Unchanged inputs
+replay the cached result. Run it alone with:
+
+```sh
+sh scripts/ci.sh //typescript/vibelang:lsp-smoke --jobs 8
+```
+
+Post-merge selects it through `//typescript/vibelang/...` in the compiler-case
+shard. The merge gate also selects it when it covers the `compiler` step.
+The smoke runner continues after a failed check, prints each check's name on
+its own `FAIL` line, and exits with status `1` if any check fails.
 
 The `//typescript/vibelang:fork-late-start` target runs the fork startup
 regressions with delayed scheduling as part of the regular compiler suite.

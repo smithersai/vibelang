@@ -61,6 +61,29 @@ targets["fork-late-start"] = S.Shell.Test({
   timeout: "5m"
 })
 
+// The editor smoke shares the graph's compiler and runtime outputs. Its shell
+// only links the fixture: it must not rebuild or mutate dependencies another
+// target is reading. The compiler key includes the Go language service.
+targets["lsp-smoke"] = S.Shell.Test({
+  summary: "Headless language-server checks: diagnostics, hovers, quick fixes, refactors and watching.",
+  shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules " +
+    "VIBELANG_RUNTIME=$PWD/packages/runtime sh typescript/vibelang/lsp-smoke.sh --no-build",
+  data: [
+    Typescript.compiler,
+    Packages["runtime-dist"],
+    Packages["runtime-published"],
+    S.file("//packages/runtime/bun.lock"),
+    S.file("//experiments/package.json"),
+    S.file("//experiments/bun.lock"),
+    S.file("lsp-smoke.sh"),
+    S.file("lsp-smoke.mjs"),
+    S.glob("lsp-fixture/**")
+  ],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "10m"
+})
+
 /** Every file in typescript/vibelang, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 

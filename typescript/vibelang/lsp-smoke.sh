@@ -2,7 +2,8 @@
 # Builds vibelang and vibelang-runtime, then runs the headless language
 # server test, vibelang/lsp-smoke.mjs, on vibelang/lsp-fixture.
 #
-# Usage: vibelang/lsp-smoke.sh
+# Usage: vibelang/lsp-smoke.sh [--no-build]
+#   --no-build uses the build graph's built/local/tsc and runtime dist/.
 #
 # Environment:
 #   EFFECT_NODE_MODULES    a node_modules directory that holds effect 4.1.0
@@ -12,7 +13,14 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+no_build=false
+case ${1:-} in
+--no-build) no_build=true ;;
+"") ;;
+*) echo "Usage: $0 [--no-build]" >&2; exit 2 ;;
+esac
 vibelang="$root/built/local/vibelang"
+if "$no_build"; then vibelang="$root/built/local/tsc"; fi
 fixture="$root/vibelang/lsp-fixture"
 effect_modules=${EFFECT_NODE_MODULES:-}
 if [ -z "$effect_modules" ]; then
@@ -22,8 +30,10 @@ runtime=${VIBELANG_RUNTIME:-$root/../packages/runtime}
 runtime=$(cd "$runtime" && pwd)
 
 # The same flags as smoke.sh, so both builds share Go build cache entries.
-echo "build: go build -trimpath -gcflags=all=-dwarf=false -o built/local/vibelang ./cmd/tsc"
-(cd "$root/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$vibelang" ./cmd/tsc)
+if ! "$no_build"; then
+	echo "build: go build -trimpath -gcflags=all=-dwarf=false -o built/local/vibelang ./cmd/tsc"
+	(cd "$root/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$vibelang" ./cmd/tsc)
+fi
 
 # The binary names itself, and the TypeScript version it is built on.
 version=$("$vibelang" --version)
@@ -40,13 +50,15 @@ esac
 # The fixture's .vibe files use the prelude, so the runtime's declarations must
 # be built, as smoke.sh builds them, against the same copy of effect.
 effect_real=$(cd "$effect_modules/effect" && pwd -P)
-if [ "$(cd "$runtime/node_modules/effect" 2>/dev/null && pwd -P)" != "$effect_real" ]; then
-	mkdir -p "$runtime/node_modules"
-	rm -rf "$runtime/node_modules/effect"
-	ln -s "$effect_real" "$runtime/node_modules/effect"
+if ! "$no_build"; then
+	if [ "$(cd "$runtime/node_modules/effect" 2>/dev/null && pwd -P)" != "$effect_real" ]; then
+		mkdir -p "$runtime/node_modules"
+		rm -rf "$runtime/node_modules/effect"
+		ln -s "$effect_real" "$runtime/node_modules/effect"
+	fi
+	echo "build: vibelang -p $runtime/tsconfig.json"
+	"$vibelang" -p "$runtime/tsconfig.json"
 fi
-echo "build: vibelang -p $runtime/tsconfig.json"
-"$vibelang" -p "$runtime/tsconfig.json"
 
 [ -L "$fixture/node_modules" ] && rm "$fixture/node_modules" # an older lsp-smoke.sh linked the whole directory
 mkdir -p "$fixture/node_modules"
