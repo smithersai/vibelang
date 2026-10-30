@@ -76,7 +76,10 @@ Normal quote, grouping, comma and layout styling may change emitted JavaScript b
 The plugin reports the file and leaves it unchanged when:
 
 - the file has a syntax error, reported as `vibelang format: line:column: message`;
+- formatting would attach or remove JSDoc metadata, such as making an inline `@internal` comment hide a payload from a `.d.ts` file; choose whether the comment should apply before formatting.
 - formatting would change the program, a plugin bug: report it with the file.
+
+This check also covers ordinary `/* @internal */` comments on fields, methods and accessors. Parameter comments follow the compiler's parameter attachment rules; a line break that keeps the same meaning can still format.
 
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 

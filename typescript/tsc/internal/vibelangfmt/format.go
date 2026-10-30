@@ -103,6 +103,9 @@ func (c *comparer) same(a, b *ast.Node) error {
 	if a.Kind != b.Kind {
 		return c.differ(a, fmt.Sprintf("%v became %v", a.Kind, b.Kind))
 	}
+	if associatedDocCount(a, c.before) != associatedDocCount(b, c.after) {
+		return c.differ(a, "JSDoc attachment changed; choose whether the comment should apply before formatting")
+	}
 	if text, ok := leafText(a); ok {
 		if other, _ := leafText(b); text != other {
 			return c.differ(a, fmt.Sprintf("%q became %q", text, other))
@@ -127,6 +130,50 @@ func (c *comparer) same(a, b *ast.Node) error {
 		}
 	}
 	return nil
+}
+
+// associatedDocCount follows the compiler's attachment rules rather than the
+// lazy HasJSDoc hint. Declaration emission also recognizes @internal in an
+// ordinary leading declaration comment; parameters have separate attachment rules.
+func associatedDocCount(node *ast.Node, text string) int {
+	var factory ast.NodeFactory
+	count := len(parser.GetJSDocCommentRanges(&factory, nil, node, text))
+	ordinaryInternal := func(comment ast.CommentRange) bool {
+		raw := text[comment.Pos():comment.End()]
+		return strings.Contains(raw, "@internal") && (!strings.HasPrefix(raw, "/**") || strings.HasPrefix(raw, "/**/"))
+	}
+	if node.Kind == ast.KindParameter && node.Parent != nil {
+		// Declaration emission uses the last trailing/leading parameter comment.
+		params := node.Parent.Parameters()
+		index := slices.IndexFunc(params, func(p *ast.ParameterDeclarationNode) bool { return p.AsNode() == node })
+		var comments []ast.CommentRange
+		if index > 0 {
+			position := scanner.SkipTriviaEx(text, params[index-1].End()+1, &scanner.SkipTriviaOptions{StopAtComments: true})
+			for comment := range scanner.GetTrailingCommentRanges(&factory, text, position) {
+				comments = append(comments, comment)
+			}
+			for comment := range scanner.GetLeadingCommentRanges(&factory, text, node.Pos()) {
+				comments = append(comments, comment)
+			}
+		} else {
+			position := scanner.SkipTriviaEx(text, node.Pos(), &scanner.SkipTriviaOptions{StopAtComments: true})
+			for comment := range scanner.GetTrailingCommentRanges(&factory, text, position) {
+				comments = append(comments, comment)
+			}
+		}
+		if len(comments) > 0 && ordinaryInternal(comments[len(comments)-1]) {
+			count++
+		}
+		return count
+	}
+	if ast.IsDeclaration(node) || ast.IsVariableStatement(node) || ast.IsExportAssignment(node) || ast.IsExportDeclaration(node) || ast.IsImportDeclaration(node) {
+		for comment := range scanner.GetLeadingCommentRanges(&factory, text, node.Pos()) {
+			if ordinaryInternal(comment) {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 // leafText returns the text of a name or literal.
