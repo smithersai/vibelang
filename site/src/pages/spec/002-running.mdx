@@ -898,7 +898,7 @@ class Feed {
 | --- | --- |
 | any of the three, or `restore { }`, outside effect code, `function f() { uninterruptible { } }`; `EK2201` fires, not `EK2111` | `EK2201` |
 | `restore { }` outside an `uninterruptible` block, `effect function f() { restore { } }`; one inside an `interruptible` block nested in it is inside, as `$restore` is in scope there | `EK2111` |
-| `restore { }` inside any nested `effect` function, arrow, method, producer or `effect` block in the `uninterruptible` block, `uninterruptible { const e = effect { restore { try poll() } }; try e }`, or inside any `for concurrent` body: `restore` is lexical, and the nested Effect, or each item's Effect, runs outside the mask's control (decided details 51 and 51a). Mask per item with `Effect.uninterruptibleMask` inside the body, or use a plain `for` | `EK2202` |
+| `restore { }` that captures an outer mask across an independent `effect` function declaration/expression, arrow, method, producer or block, as in `uninterruptible { const e = effect { restore { try poll() } }; try e }`, or inside any `for concurrent` body: the nested Effect, or each item's Effect, is outside the enclosing mask's control. Mask per item with `Effect.uninterruptibleMask` inside the body, or use a plain `for` | `EK2202` |
 
 ### Meaning
 
@@ -929,6 +929,32 @@ function pay(card: Card, user: User) {
 ```
 
 `restore` inside a `provide` block, an `interruptible` block or a `for try` body applies, because those run on the masked fiber.
+
+Resolve `restore` in the same source activation as its lexical mask. A nested effect callable or `effect` block may introduce its own `uninterruptible` mask and restore that one. Generated callbacks for transparent regions and `for try` do not create a source activation boundary; the separate `for concurrent` ban above remains unchanged.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-22
+effect function invalidCapture() {
+  uninterruptible {
+    effect function later() { restore { return 7 } } // EK2202: outer mask
+  }
+}
+effect function ownMask() { uninterruptible { restore { return 7 } } } // Success(7)
+const delayedOwnMask = effect { uninterruptible { return ownMask } }
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function ownMask() {
+  return Effect.uninterruptibleMask(restore => Effect.gen(function* () {
+    return yield* restore(Effect.succeed(7))
+  }))
+}
+// Success(7), including when this function is called after another mask has ended.
+const delayedOwnMask = Effect.uninterruptibleMask(() => Effect.succeed(ownMask))
+```
+
 
 The keywords remove the globals of the same name ([VIP-6](/vips/0006-effect-globals)), so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
 
