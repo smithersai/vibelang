@@ -169,7 +169,7 @@ EffectModifier = "effect"
                | "async" [no LineTerminator here] "effect"   (parses, then EK0105 rejects it)
 ```
 
-Each two-word form needs a function, a method name or arrow parameters after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
+Each two-word form needs a function, a method name, arrow parameters or an expression-position block after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
 
 A recognized `effect` modifier follows TypeScript’s `async` diagnostic recovery positions too. An `abstract` declaration, ambient `declare` context, or an `interface` or type literal member with that modifier is rejected with `EK0108` ([Functions](/spec/001-functions#static-rules)). Recognition is syntactic: identifiers named `effect` retain their ordinary member reading. Function/class overload signatures follow TypeScript’s ordinary admission and compatibility; generator overloads retain their native rejection.
 
@@ -381,10 +381,12 @@ NonArrowHandler = FunctionExpression | EffectFunction   (no generator, async or 
 #### EffectBlock
 
 ```text
-EffectBlock = "effect" [no LineTerminator here] "{" FunctionBody[~Yield, ~Await, +Effect] "}"   (a PrimaryExpression; the body of effect () => { … })
+EffectBlock = EffectModifier [no LineTerminator here] "{" FunctionBody[~Yield, ~Await, +Effect] "}"   (a PrimaryExpression; the body of effect () => { … })
 ```
 
 The braces hold a function body, as `(effect () => { … })()` does: `return` ends the block's Effect with a value, and `yield`, or a `break` or `continue` whose target is outside the block, is a syntax error. So `const p = effect { return 1 }` parses at module top level.
+
+Both `effect async { B }` and `async effect { B }` parse for recovery and receive `EK0105`. The block quick fix is to remove `async`, retaining `effect { B }`; `async { B }` is not admitted.
 
 #### ForkExpression
 
@@ -730,7 +732,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0102` | `await`, `for await` or `await using` in effect code | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0103` | `await` on an Effect in an `async` function or at the module top level | 1, 5 | [Functions](/spec/001-functions#static-rules) |
 | `EK0104` | `effect` on a getter, setter or constructor | 1 | [Functions](/spec/001-functions#static-rules) |
-| `EK0105` | `effect` and `async` on one function | 1 | [Functions](/spec/001-functions#static-rules) |
+| `EK0105` | `effect` and `async` on one function or block | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](/spec/001-functions#direct-eval) |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](/spec/001-functions#static-rules) |

@@ -175,6 +175,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification described every numeric concurrency limit as an exact upper bound. It now delegates the full numeric domain to Effect, including zero and below-one limits that still run all items sequentially.
 
+- The specification’s mixed-modifier diagnostic omitted blocks. Both `effect async { … }` and `async effect { … }` now recover with `EK0105`; the valid repair removes `async` and keeps the Effect block.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
