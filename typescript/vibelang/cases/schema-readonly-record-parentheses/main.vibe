@@ -1,0 +1,4 @@
+export schema Grouped = Readonly<(Record<string, number>)>
+export schema Nested { readonly dict: Readonly<((Record<"a" | "b", number>))> }
+export const groupedKey = Grouped.key
+export const nestedValue = Nested.fields.dict.value

@@ -139,6 +139,8 @@ false
 
 ## Declaring records and index signatures
 
+In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties.
+
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 })) })

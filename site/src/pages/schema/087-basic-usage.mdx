@@ -134,6 +134,8 @@ false
 
 ## Declaring records and index signatures
 
+In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties.
+
 ```vibe
 const Stock = Schema.Record(Schema.String, Schema.Int)
 const SymbolStock = Schema.Record(Schema.Symbol, Schema.Int)
