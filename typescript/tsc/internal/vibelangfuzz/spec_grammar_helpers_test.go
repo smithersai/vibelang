@@ -2,7 +2,12 @@ package vibelangfuzz
 
 import (
 	"maps"
+	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +58,36 @@ func TestAppendixBRows(t *testing.T) {
 		if !SpecHasCode(code) {
 			t.Errorf("Appendix B assigns EK%04d, but SpecHasCode does not take it", code)
 		}
+	}
+}
+
+// TestCompilerRegistryIsSpecified fails when the compiler declares a code the
+// fuzz registry does not take. FuzzCompile reports such a code only after the
+// merge, on the case that draws it; //:spec-tests sees it before.
+func TestCompilerRegistryIsSpecified(t *testing.T) {
+	paths, err := filepath.Glob("../vibelang/*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	declared := regexp.MustCompile(`\bmessage\((\d+),`)
+	seen := 0
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		source, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range declared.FindAllSubmatch(source, -1) {
+			code, _ := strconv.Atoi(string(m[1]))
+			seen++
+			if !Facts().IsRegistered(int32(code)) {
+				t.Errorf("%s declares EK%04d, which the fuzz registry does not take: add it to Chapter 28, Appendix B or vipCodes", filepath.Base(path), code)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Fatal("no message( declaration in ../vibelang")
 	}
 }
