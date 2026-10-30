@@ -126,6 +126,8 @@ The explicit `NodeRuntime.runMain(main())` call starts the application when the 
 
 ## 5. Test with Vitest
 
+Use a project path without `#` for Vitest. The pinned Vitest `5.0.5` fails to resolve test modules when the absolute project path contains `#`; this also affects plain TypeScript projects.
+
 Create `vitest.config.ts`, which compiles `.vibe` tests through `vibelang-vite`:
 
 ```ts
