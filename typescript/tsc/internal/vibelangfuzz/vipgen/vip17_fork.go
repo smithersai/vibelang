@@ -25,6 +25,17 @@ import (
 // the end of Effect.scoped for fork.scoped, and Fiber.interrupt for
 // fork.detached, which has no owner.
 
+// madeModule is made.ts: made() logs when it is called and returns an
+// Effect, so a log shows where a fork's operand is evaluated.
+const madeModule = `import { Effect } from "effect"
+import { ev } from "vip-events"
+
+export function made(): Effect.Effect<number> {
+  ev("made")
+  return Effect.succeed(1)
+}
+`
+
 // A forkForm is one of VIP-17's forms.
 type forkForm struct {
 	key, vibe, effect, comment string
@@ -87,6 +98,32 @@ func init() {
 			},
 		})
 	}
+	// A fork's operand is evaluated where the fork stands, in the parent,
+	// as any operand is: madeModule's made() logs when it is called.
+	Register(&Construct{
+		Key:      "vip17.fork-operand-eager",
+		VIP:      17,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip17.fork", "vip17.join"},
+		Citations: []Citation{{
+			VIP:      17,
+			Template: "yield* Effect.forkChild(‹e›)",
+			Quote:    "`fork` starts a fiber and gives its `Fiber`. The form names the owner, which is what interrupts the fiber. Each form is exact sugar for Effect's function, used inside an `effect` function or block.",
+			Reading:  "Exact sugar: e is Effect.forkChild's argument, which JavaScript evaluates before the call, in the parent, as Chapter 2 says of every operand (\"evaluated once, left to right as written\").",
+		}},
+		// The probe forks made(), logs, and joins: made() logs first.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.AddFile("made.ts", madeModule, "made")
+			g.Use("vip17.join")
+			g.UseModule("Fiber", false)
+			f, v := g.Name("f"), g.Name("v")
+			s.Locals = append(s.Locals, v)
+			return []Stmt{
+				&Const{Name: f, Value: &Fork{Form: forkForms[0], X: &Call{Name: "made"}}},
+				&Event{Label: g.Label()},
+				&Const{Name: v, Value: &Join{Fiber: f}},
+			}
+		},
+	})
 	// A child of plain fork belongs to the current fiber, not to the
 	// function that forked it, so it outlives that function and its owner
 	// interrupts it when the fiber ends.
@@ -172,6 +209,20 @@ func (g *Gen) forkBody(s *Scope, form forkForm, joined bool, child Expr) []Stmt 
 		x := child
 		if x == nil {
 			x = g.Operand(s, true)
+			// Until lane w2-fork's fix, the compiler evaluates a fork's
+			// operand in the child, not at the fork, which an operand that
+			// logs or throws when evaluated, such as lib.ts's load(),
+			// shows. Unless vip17.fork-operand-eager is on, the operand
+			// stands in Effect.suspend, which both prints evaluate in the
+			// child. An effect block evaluates to its Effect and nothing
+			// else, so it needs no suspend.
+			_, block := x.(*EffectBlock)
+			switch {
+			case g.On("vip17.fork-operand-eager"):
+				g.Use("vip17.fork-operand-eager")
+			case !block:
+				x = &ModCall{Mod: "Effect", Fn: "suspend", Args: []Expr{&Arrow{Body: x}}}
+			}
 		}
 		gated := &ModCall{Mod: "Effect", Fn: "andThen", Args: []Expr{&ModCall{Mod: "Deferred", Fn: "await", Args: []Expr{&Ref{Name: d}}}, x}}
 		out = append(out, &Const{Name: f, Value: &Fork{Form: form, Scope: scope, X: gated}})
