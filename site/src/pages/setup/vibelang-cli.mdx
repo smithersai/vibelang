@@ -42,6 +42,8 @@ If the project has a `tsconfig.json`, keep it and check that `include` selects `
 
 ### Diagnostic severities
 
+TypeScript's own lexical, syntax and static errors keep their `TS` codes, including errors inside embedded expressions and types. VibeLang's productions, placement rules and adopted proposal restrictions use the owning VIP's `EK` codes, regardless of the parser helper used. A specific diagnostic takes priority for the same rejection; independent native errors still report.
+
 Set `vibe.severities` in any supported project config:
 
 ```json
