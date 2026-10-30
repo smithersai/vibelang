@@ -1,10 +1,12 @@
 package vibelangmapper
 
 import (
+	"cmp"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"slices"
 	"strings"
 )
 
@@ -221,7 +223,9 @@ type keyword struct {
 // before a function (VIP-1) changes nothing yet, so it becomes spaces too.
 // effect { … } (VIP-2) is the program that () => { … } builds where an
 // Effect is expected, and a return in it returns from the block, so its
-// effect becomes ()=> and spaces.
+// effect becomes ()=> and spaces. catch can follow the block but not an arrow,
+// so a block that catch follows becomes (()=> { … }), the ) over the space
+// after it.
 func vipKeywords(file *ast.SourceFile, text string) []keyword {
 	var keywords []keyword
 	var visit func(node *ast.Node) bool
@@ -239,6 +243,10 @@ func vipKeywords(file *ast.SourceFile, text string) []keyword {
 				with := "      "
 				if body := node.Body(); ast.IsArrowFunction(node) && body != nil && ast.IsBlock(body) && len(node.Parameters()) == 0 && scanner.SkipTrivia(text, at+len("effect")) == scanner.SkipTrivia(text, body.Pos()) {
 					with = "()=>  " // effect { … }: the parser's arrow has no => of its own
+					if end := body.End(); catchFollows(text, end) {
+						with = "(()=> "
+						keywords = append(keywords, keyword{end, ")"})
+					}
 				}
 				keywords = append(keywords, keyword{at, with})
 			}
@@ -246,7 +254,18 @@ func vipKeywords(file *ast.SourceFile, text string) []keyword {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	slices.SortFunc(keywords, func(a, b keyword) int { return cmp.Compare(a.at, b.at) }) // withoutKeywords walks them in order
 	return keywords
+}
+
+// catchFollows reports whether a space or tab at end, the end of a block,
+// comes before the word catch on the same line.
+func catchFollows(text string, end int) bool {
+	if end >= len(text) || text[end] != ' ' && text[end] != '\t' {
+		return false
+	}
+	rest := strings.TrimLeft(text[end:], " \t")
+	return strings.HasPrefix(rest, "catch") && (len(rest) == len("catch") || !scanner.IsIdentifierPart(rune(rest[len("catch")])))
 }
 
 // blank returns text with each of keywords written over, which keeps every

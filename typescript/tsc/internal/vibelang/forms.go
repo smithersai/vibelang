@@ -274,6 +274,9 @@ func (a *analyzer) decide(fn *ast.Node, e expectation) form {
 	if a.atProtocolKey(fn) && !a.hasContract(fn) {
 		return formPlain // D484: a protocol key is a destination of the plain form
 	}
+	if a.isCatchOperandProgram(fn) {
+		return formPlain // it gives the program, and the catch runs it
+	}
 	if isCalledInPlace(fn) {
 		// A match or an is expression is an arrow the parser writes and calls
 		// where it stands (isProgramArrow): no source text writes it as a

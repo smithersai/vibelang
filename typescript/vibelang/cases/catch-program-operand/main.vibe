@@ -1,0 +1,39 @@
+// expect-result: ["cached","Untitled issue","held","caught","held",7,"guest",8]
+// e catch h runs e (VIP-5): a left side that is a program, a name or property
+// that holds an Effect or an effect block, runs inside the catch, its failures
+// reach the handler, and the expression's value is what it succeeds with.
+error Missing
+
+effect function latestTitle(): string!Missing! { throw new Missing() }
+effect function cachedTitle(): string!Missing! { return "cached" }
+effect function noCache(): string!Missing! { throw new Missing() }
+
+export effect function nested() {
+  const title = effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"
+  return title
+}
+
+export effect function fallback() {
+  const title = effect { return noCache() catch effect () => try noCache() } catch () => "Untitled issue"
+  return title
+}
+
+const succeeds: string!Missing! = effect { return "held" }
+const fails: string!Missing! = effect { throw new Missing() }
+const programs = { member: succeeds, length: fails }
+
+// A yieldable error is a program that fails with itself.
+export effect function recovers(value: Cause.NoSuchElementError) {
+  return value catch () => 8
+}
+
+export effect function main() {
+  const a = try nested()
+  const b = try fallback()
+  const c: string = succeeds catch () => "not this"
+  const d = fails catch () => "caught"
+  const e = programs.member catch () => "not this"
+  const f = (fails catch effect (error) => error._tag === "Missing" ? 7 : 0)
+  const g = (effect { throw new Missing() }) catch () => "guest"
+  return [a, b, c, d, e, f, g, try recovers(new Cause.NoSuchElementError())]
+}

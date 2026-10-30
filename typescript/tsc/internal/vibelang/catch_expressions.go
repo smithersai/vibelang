@@ -59,6 +59,42 @@ func catchParts(call *ast.Node) (left *ast.Node, fallback *ast.Node) {
 	return left, fallback
 }
 
+// isCatchOperandProgram reports whether fn is the function the parser writes
+// around a catch expression's left side, and that side is a program, not code
+// that runs: a name or property that holds an Effect, a yieldable value such as
+// an error included, or an effect block.
+// e catch h runs e (VIP-5), so fn gives the program itself, which
+// $catchExpression runs, where an Effect function would succeed with it. A
+// call runs where it stands, so it stays code.
+func (a *analyzer) isCatchOperandProgram(fn *ast.Node) bool {
+	if !isProgramArrow(fn) {
+		return false
+	}
+	call := catchExpressionOf(fn.Parent)
+	if call == nil || call.Arguments()[0] != fn {
+		return false
+	}
+	left := ast.SkipParentheses(fn.Body())
+	if !ast.IsIdentifier(left) && !ast.IsPropertyAccessExpression(left) && !isEffectBlock(left) {
+		return false
+	}
+	return effectOfValue(a.checker, a.checker.GetTypeAtLocation(left)) != nil
+}
+
+// caughtErrors returns what a catch expression's handler can receive: the
+// failures of a program on its left side, or of the code that runs there.
+func (a *analyzer) caughtErrors(call *ast.Node) *checker.Type {
+	left, _ := catchParts(call)
+	if a.isCatchOperandProgram(call.Arguments()[0]) {
+		if program := effectOfValue(a.checker, a.checker.GetTypeAtLocation(ast.SkipParentheses(left))); program != nil {
+			if errors := channelType(a.checker, program, "_E"); errors != nil {
+				return errors
+			}
+		}
+	}
+	return a.checker.GetUnionType(a.flowOf(left).errors)
+}
+
 func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -73,7 +109,7 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 			if ast.NodeIsMissing(left) || fallback != nil && ast.NodeIsMissing(fallback) {
 				return false // the parser already reports the missing operand
 			}
-			if inLowerableBody(call) && c.GetUnionType(analyzerFor(c).flowOf(left).errors).Flags()&checker.TypeFlagsNever != 0 {
+			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))
 				note(d, "Use a form that can fail, such as Option.getOrElse or Schema.decodeUnknownEffect, or remove the catch.")
 			}
@@ -94,8 +130,8 @@ func catchExpressionQuickInfo(c *checker.Checker, node *ast.Node) (string, strin
 	if call == nil {
 		return "", ""
 	}
-	left, fallback := catchParts(call)
-	caught := c.GetUnionType(analyzerFor(c).flowOf(left).errors)
+	_, fallback := catchParts(call)
+	caught := analyzerFor(c).caughtErrors(call)
 	paragraph := "Runs the left side and passes an expected failure, `" + c.TypeToStringEx(caught, call, hoverTypeFlags, nil) + "`, to the handler (Effect.catch)."
 	if fallback != nil {
 		paragraph = "Runs the left side and, after an expected failure (`" + c.TypeToStringEx(caught, call, hoverTypeFlags, nil) + "`), the fallback instead (Effect.orElseSucceed)."
