@@ -51,6 +51,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `catch` head rule left erased TypeScript wrappers ambiguous. It now follows them consistently while preserving explicit source parentheses as a boundary.
 
+- Dynamic imports were implicit in the specification's Promise-call list and their failure phases were unclear. The bridge trigger now names runtime imports, distinguishes argument throws from Promise rejection, and leaves type queries erased.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - `vibelang --fix --fix-vip-only` removed the `try` of a plain call that gives a yieldable error, `return try toError(id)`, so the error became the program's success value, and `--fix` did the same to `yield* toError(id)`; both now write `throw toError(id)`, keep `try` where no statement can throw, and write `try x.asEffect()` for an `Effect.Yieldable`.

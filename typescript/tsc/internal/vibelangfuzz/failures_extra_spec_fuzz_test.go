@@ -68,7 +68,7 @@ func failuresExtraCases() []*failCase {
 	const direct = "| In effect code or a plain `catch` handler's parameter/default/destructuring initialization or body, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |"
 	add(&failCase{Name: "catch-tracked-new", Quote: direct, Code: 403, Decls: failInput, Body: "const p = Effect.fail(\"bad\") catch () => ⟦new Input(s)⟧"})
 	add(&failCase{Name: "catch-tracked-template", Quote: direct, Code: 403, Decls: "function tag(parts: TemplateStringsArray) { throw new Error(parts[0]) }", Body: "const p = Effect.fail(\"bad\") catch () => ⟦tag`x`⟧"})
-	const producing = "| In effect code, a call, `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"
+	const producing = "| In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"
 	add(&failCase{Name: "promise-new", Quote: producing, Code: 404, Body: "const p = ⟦new Promise<number>((resolve) => resolve(1))⟧"})
 
 	const signatures = "`@throws {T}` and `@rethrows p` attach to call signatures, not a `type` alias's declaration: write `type Reader = { /** @throws {Error} */ (): string }`. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type."
