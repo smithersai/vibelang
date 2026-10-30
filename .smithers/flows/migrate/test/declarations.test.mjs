@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { canonicalize, compareDeclarations, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
+import { canonicalize, compareDeclarations, emitDeclarations, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -88,4 +88,29 @@ test("compareDeclarations reports changed, added and removed files", () => {
 
 test("lineDiff stops at its limit", () => {
   assert.equal(lineDiff("a\nb\nc", "x\ny\nz", 2).length, 2)
+})
+
+test("emitDeclarations removes what the compiler wrote outside outDir and keeps what it wrote inside", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
+  try {
+    // tsc writes a file outside rootDir beside its source and reports TS6059.
+    const compiler = join(root, "vibelang")
+    const stray = join(root, "lib/l.d.ts")
+    mkdirSync(join(root, "lib"))
+    writeFileSync(compiler, `#!/bin/sh
+while [ $# -gt 0 ]; do [ "$1" = "--outDir" ] && out="$2"; shift; done
+echo "export {};" > "$out/a.d.ts"
+echo "export {};" > ${stray}
+echo "error TS6059: File is not under rootDir."
+echo "TSFILE: $out/a.d.ts"
+echo "TSFILE: ${stray}"
+exit 2
+`, { mode: 0o755 })
+    const emitted = await emitDeclarations({ compiler, tsconfig: "tsconfig.json", cwd: root, outDir: join(root, "out") })
+    assert.deepEqual(emitted, { code: 2, files: 1 })
+    assert.equal(existsSync(stray), false)
+    assert.deepEqual(listDeclarations(join(root, "out")), ["a.d.ts"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
