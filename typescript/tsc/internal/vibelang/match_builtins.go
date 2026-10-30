@@ -68,12 +68,33 @@ var fixedErrorGuards = map[string]map[string]string{
 		"AsyncFiberError":       "isAsyncFiberError",
 		"UnknownError":          "isUnknownError",
 	},
-	"Schema":        {"SchemaError": "isSchemaError"},
-	"Cron":          {"CronParseError": "isCronParseError"},
-	"PlatformError": {"PlatformError": "isPlatformError"},
-	"SemVer":        {"SemVerError": "isSemVerError"},
-	"Terminal":      {"QuitError": "isQuitError"},
-	"TextDiff":      {"TextDiffError": "isTextDiffError"},
+	"Schema":                     {"SchemaError": "isSchemaError"},
+	"Cron":                       {"CronParseError": "isCronParseError"},
+	"PlatformError":              {"PlatformError": "isPlatformError"},
+	"SemVer":                     {"SemVerError": "isSemVerError"},
+	"Terminal":                   {"QuitError": "isQuitError"},
+	"TextDiff":                   {"TextDiffError": "isTextDiffError"},
+	"ai/AiError":                 {"AiError": "isAiError"},
+	"ai/McpClientError":          {"McpClientError": "isMcpClientError"},
+	"crypto/CryptoError":         {"CryptoError": "isCryptoError"},
+	"encoding/Csv":               {"CsvError": "isCsvError"},
+	"encoding/EncodingError":     {"EncodingError": "isEncodingError"},
+	"encoding/JsonArray":         {"JsonArrayError": "isJsonArrayError"},
+	"encoding/Ndjson":            {"NdjsonError": "isNdjsonError"},
+	"encoding/Tar":               {"TarError": "isTarError"},
+	"encoding/Xml":               {"XmlError": "isXmlError"},
+	"encoding/Zip":               {"ZipError": "isZipError"},
+	"graphql/GraphQLClientError": {"GraphQLClientError": "isGraphQLClientError"},
+	"http/Cookies":               {"CookiesError": "isCookiesError"},
+	"http/Headers":               {"HeaderParseError": "isHeaderParseError"},
+	"http/HttpBody":              {"HttpBodyError": "isHttpBodyError"},
+	"http/HttpClientError":       {"HttpClientError": "isHttpClientError"},
+	"http/HttpServerError":       {"HttpServerError": "isHttpServerError"},
+	"http/Multipart":             {"MultipartError": "isMultipartError"},
+	"socket/DatagramSocket":      {"DatagramSocketError": "isDatagramSocketError"},
+	"socket/Socket":              {"SocketError": "isSocketError"},
+	"sql/SqlError":               {"SqlError": "isSqlError"},
+	"workers/WorkerError":        {"WorkerError": "isWorkerError"},
 }
 
 // builtinMatcherOf returns the built-in matcher that matcher, a pattern's
@@ -129,7 +150,7 @@ func effectModuleNamed(c *checker.Checker, expression *ast.Node) string {
 		return ""
 	}
 	for _, declaration := range symbol.Declarations() {
-		for _, module := range []string{"Option", "Exit", "Result", "Cause", "Schema", "Cron", "PlatformError", "SemVer", "Terminal", "TextDiff"} {
+		for _, module := range []string{"Option", "Exit", "Result", "Cause", "Schema", "Cron", "PlatformError", "SemVer", "Terminal", "TextDiff", "ai/AiError", "ai/McpClientError", "crypto/CryptoError", "encoding/Csv", "encoding/EncodingError", "encoding/JsonArray", "encoding/Ndjson", "encoding/Tar", "encoding/Xml", "encoding/Zip", "graphql/GraphQLClientError", "http/Cookies", "http/Headers", "http/HttpBody", "http/HttpClientError", "http/HttpServerError", "http/Multipart", "socket/DatagramSocket", "socket/Socket", "sql/SqlError", "workers/WorkerError"} {
 			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
 				return module
 			}

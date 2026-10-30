@@ -1,0 +1,7 @@
+import * as M from "effect/encoding/Zip"
+export function witness():boolean[][]{
+const copy={_tag:"ZipError", ["~effect/encoding/Zip/ZipError"]:"~effect/encoding/Zip/ZipError"};
+const subjects:unknown[]=[copy,{_tag:"ZipError"},null,{}];
+return subjects.map(s=>[match(s){when M.ZipError:true;default:false;},match(s){when M.ZipError(let e):e===s;default:false;},match(s){when M.ZipError():true;default:false;},match(s){when M.ZipError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.ZipError["_tag"]|undefined{return match(s){when M.ZipError(let error):error._tag;default:undefined;}}

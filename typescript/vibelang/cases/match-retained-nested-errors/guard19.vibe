@@ -1,0 +1,7 @@
+import * as M from "effect/sql/SqlError"
+export function witness():boolean[][]{
+const copy={_tag:"SqlError", ["~effect/sql/SqlError"]:"~effect/sql/SqlError"};
+const subjects:unknown[]=[copy,{_tag:"SqlError"},null,{}];
+return subjects.map(s=>[match(s){when M.SqlError:true;default:false;},match(s){when M.SqlError(let e):e===s;default:false;},match(s){when M.SqlError():true;default:false;},match(s){when M.SqlError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.SqlError["_tag"]|undefined{return match(s){when M.SqlError(let error):error._tag;default:undefined;}}

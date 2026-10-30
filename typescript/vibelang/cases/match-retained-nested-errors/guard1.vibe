@@ -1,0 +1,7 @@
+import * as M from "effect/ai/McpClientError"
+export function witness():boolean[][]{
+const copy={_tag:"McpClientError", ["~effect/ai/McpClientError"]:"~effect/ai/McpClientError"};
+const subjects:unknown[]=[copy,{_tag:"McpClientError"},null,{}];
+return subjects.map(s=>[match(s){when M.McpClientError:true;default:false;},match(s){when M.McpClientError(let e):e===s;default:false;},match(s){when M.McpClientError():true;default:false;},match(s){when M.McpClientError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.McpClientError["_tag"]|undefined{return match(s){when M.McpClientError(let error):error._tag;default:undefined;}}

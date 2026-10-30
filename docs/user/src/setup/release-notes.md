@@ -191,6 +191,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Before | After and repair |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | --- | --- |
+| A nested Effect error pattern used class identity, such as `Csv.CsvError`. | It now uses the module guard. `vibelang --fix --fix-migration-only` preserves the old class matcher through fresh constructor aliases and call-only extractors, with the same constructor, matcher observations and declared types. |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.1 is now the minimum supported version, pinned exactly: install `effect@4.1.1` and `@effect/*@4.1.1`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
 | A schema tuple rest uses a local type named `Array` or `ReadonlyArray` | The generic must resolve to the TypeScript library array. Run `vibelang --fix` to preserve an old accepted decoder as explicit `Schema.TupleWithRest` codecs. |
 | `Readonly<Record<K, V>>` with a shadowing type or a canonical `Readonly` alias that selects an array | Library bindings now select the mapped codec. Run `vibelang --fix` for rejected shadows or `vibelang --fix --fix-migration-only` to keep a previously accepted decoder explicit. |
@@ -592,6 +593,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - ESLint reported `no-unexpected-multiline` at a closing brace after some `is` patterns, such as `value is if (true)`; subject-capturing patterns now keep their own source form in ESTree, so generated matcher invocations produce no call warnings and written calls still report normally.
 
 - Commas between payload fields in `error` and `schema error` bodies reported `EK1013`; they now separate readonly constructor fields, including optional fields and trailing commas.
+
+- Tagged error patterns from nested Effect modules rejected independently branded errors; all thirty-three retained error patterns now use their module guards, including singleton extraction and failed arity mismatches.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

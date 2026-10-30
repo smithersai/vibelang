@@ -1,0 +1,7 @@
+import * as M from "effect/encoding/Xml"
+export function witness():boolean[][]{
+const copy={_tag:"XmlError", ["~effect/encoding/Xml/XmlError"]:"~effect/encoding/Xml/XmlError"};
+const subjects:unknown[]=[copy,{_tag:"XmlError"},null,{}];
+return subjects.map(s=>[match(s){when M.XmlError:true;default:false;},match(s){when M.XmlError(let e):e===s;default:false;},match(s){when M.XmlError():true;default:false;},match(s){when M.XmlError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.XmlError["_tag"]|undefined{return match(s){when M.XmlError(let error):error._tag;default:undefined;}}

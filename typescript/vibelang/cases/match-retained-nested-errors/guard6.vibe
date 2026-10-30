@@ -1,0 +1,7 @@
+import * as M from "effect/encoding/Ndjson"
+export function witness():boolean[][]{
+const copy={_tag:"NdjsonError", ["~effect/encoding/Ndjson/NdjsonError"]:"~effect/encoding/Ndjson/NdjsonError"};
+const subjects:unknown[]=[copy,{_tag:"NdjsonError"},null,{}];
+return subjects.map(s=>[match(s){when M.NdjsonError:true;default:false;},match(s){when M.NdjsonError(let e):e===s;default:false;},match(s){when M.NdjsonError():true;default:false;},match(s){when M.NdjsonError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.NdjsonError["_tag"]|undefined{return match(s){when M.NdjsonError(let error):error._tag;default:undefined;}}

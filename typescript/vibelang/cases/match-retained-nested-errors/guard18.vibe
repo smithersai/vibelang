@@ -1,0 +1,7 @@
+import * as M from "effect/socket/Socket"
+export function witness():boolean[][]{
+const copy={_tag:"SocketError", ["~effect/socket/Socket/SocketError"]:"~effect/socket/Socket/SocketError"};
+const subjects:unknown[]=[copy,{_tag:"SocketError"},null,{}];
+return subjects.map(s=>[match(s){when M.SocketError:true;default:false;},match(s){when M.SocketError(let e):e===s;default:false;},match(s){when M.SocketError():true;default:false;},match(s){when M.SocketError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.SocketError["_tag"]|undefined{return match(s){when M.SocketError(let error):error._tag;default:undefined;}}

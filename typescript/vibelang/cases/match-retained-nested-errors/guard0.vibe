@@ -1,0 +1,7 @@
+import * as M from "effect/ai/AiError"
+export function witness():boolean[][]{
+const copy={_tag:"AiError", ["~effect/ai/AiError"]:"~effect/ai/AiError"};
+const subjects:unknown[]=[copy,{_tag:"AiError"},null,{}];
+return subjects.map(s=>[match(s){when M.AiError:true;default:false;},match(s){when M.AiError(let e):e===s;default:false;},match(s){when M.AiError():true;default:false;},match(s){when M.AiError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.AiError["_tag"]|undefined{return match(s){when M.AiError(let error):error._tag;default:undefined;}}

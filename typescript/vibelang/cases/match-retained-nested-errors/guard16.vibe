@@ -1,0 +1,7 @@
+import * as M from "effect/http/Multipart"
+export function witness():boolean[][]{
+const copy={_tag:"MultipartError", ["~effect/http/Multipart/MultipartError"]:"~effect/http/Multipart/MultipartError"};
+const subjects:unknown[]=[copy,{_tag:"MultipartError"},null,{}];
+return subjects.map(s=>[match(s){when M.MultipartError:true;default:false;},match(s){when M.MultipartError(let e):e===s;default:false;},match(s){when M.MultipartError():true;default:false;},match(s){when M.MultipartError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.MultipartError["_tag"]|undefined{return match(s){when M.MultipartError(let error):error._tag;default:undefined;}}

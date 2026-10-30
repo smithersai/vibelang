@@ -1,0 +1,7 @@
+import * as M from "effect/socket/DatagramSocket"
+export function witness():boolean[][]{
+const copy={_tag:"DatagramSocketError", ["~effect/socket/DatagramSocket/DatagramSocketError"]:"~effect/socket/DatagramSocket/DatagramSocketError"};
+const subjects:unknown[]=[copy,{_tag:"DatagramSocketError"},null,{}];
+return subjects.map(s=>[match(s){when M.DatagramSocketError:true;default:false;},match(s){when M.DatagramSocketError(let e):e===s;default:false;},match(s){when M.DatagramSocketError():true;default:false;},match(s){when M.DatagramSocketError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.DatagramSocketError["_tag"]|undefined{return match(s){when M.DatagramSocketError(let error):error._tag;default:undefined;}}

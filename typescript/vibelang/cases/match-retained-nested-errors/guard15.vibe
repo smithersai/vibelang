@@ -1,0 +1,7 @@
+import * as M from "effect/http/HttpServerError"
+export function witness():boolean[][]{
+const copy={_tag:"HttpServerError", ["~effect/http/HttpServerError"]:"~effect/http/HttpServerError"};
+const subjects:unknown[]=[copy,{_tag:"HttpServerError"},null,{}];
+return subjects.map(s=>[match(s){when M.HttpServerError:true;default:false;},match(s){when M.HttpServerError(let e):e===s;default:false;},match(s){when M.HttpServerError():true;default:false;},match(s){when M.HttpServerError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.HttpServerError["_tag"]|undefined{return match(s){when M.HttpServerError(let error):error._tag;default:undefined;}}

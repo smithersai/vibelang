@@ -1,0 +1,7 @@
+import * as M from "effect/http/Cookies"
+export function witness():boolean[][]{
+const copy={_tag:"CookiesError", ["~effect/http/Cookies/CookieError"]:"~effect/http/Cookies/CookieError"};
+const subjects:unknown[]=[copy,{_tag:"CookiesError"},null,{}];
+return subjects.map(s=>[match(s){when M.CookiesError:true;default:false;},match(s){when M.CookiesError(let e):e===s;default:false;},match(s){when M.CookiesError():true;default:false;},match(s){when M.CookiesError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.CookiesError["_tag"]|undefined{return match(s){when M.CookiesError(let error):error._tag;default:undefined;}}

@@ -97,6 +97,8 @@ An object pattern matches only an object or a function, never a primitive, and r
 
 ## Option, Exit, Result, and primitives
 
+Effect 4.1.0 also retains thirty-three tagged error patterns, including `Csv.CsvError` from `effect/encoding/Csv` and `HttpClientError.HttpClientError` from `effect/http/HttpClientError`. Their resolved module guards recognize branded errors across installed copies, reject unbranded tag lookalikes, and extract the subject itself. Local constructor constants used by the preserving migration remain ordinary class patterns. To preserve class matching from an older compiler for the nested modules, run `vibelang --fix --fix-migration-only`: it retains the same constructor for bare tests and emits explicit call-only extractors for parenthesized patterns. The extractor forwards matcher property reads, receiver and hint, and explicitly retains the old `instanceof` fallback; it does not leave an ordinary-class extractor rejected by `EK0704`. The callback retains the SDK instance type in inferred public return declarations.
+
 These matchers compile to the module's own test. A name means what it resolves to. A local binding named `String` or `Option` shadows the built-in or intrinsic. A class pattern naming a `data` declaration or variant is `EK0702`. Until Effect ships custom matchers for Option, Exit, Result, and its tagged errors, VIP-7 keeps these fixed checks without patching Effect at runtime.
 
 | Matcher | Test | Extracts |

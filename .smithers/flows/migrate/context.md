@@ -160,6 +160,10 @@ For generic schema arrays, resolve the TypeScript-library type binding instead o
 
 - VIP-15/detail286: resolve both generic type bindings in `Readonly<Record<K, V>>`, including qualified or renamed imports. Keep source-required and readonly decoded-key checks. For previously accepted shadowed canonical names, apply the compiler’s preserving explicit-codec repair; when the canonical `Readonly` name resolves to an array library type, use `--fix-migration-only` to retain the earlier record codec. Never invent a previous codec for newly supported spellings.
 
+## Retained nested Effect error patterns (VIP-7, detail 92)
+
+Qualified constructors in the thirty-three retained Effect error patterns use their native module guards. When upgrading code whose nested-module patterns previously used ordinary class matching, run `vibelang --fix --fix-migration-only`; it introduces fresh local constructor aliases and explicit call-only extractors (detail 100), then rewrites those patterns to preserve their own matcher, `instanceof` behavior and declared types. Keep direct qualified patterns when deliberately adopting the native guard semantics. Compare complete `Exit`s and the emitted declarations after the upgrade.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

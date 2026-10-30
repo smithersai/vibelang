@@ -1,0 +1,7 @@
+import * as M from "effect/encoding/Tar"
+export function witness():boolean[][]{
+const copy={_tag:"TarError", ["~effect/encoding/Tar/TarError"]:"~effect/encoding/Tar/TarError"};
+const subjects:unknown[]=[copy,{_tag:"TarError"},null,{}];
+return subjects.map(s=>[match(s){when M.TarError:true;default:false;},match(s){when M.TarError(let e):e===s;default:false;},match(s){when M.TarError():true;default:false;},match(s){when M.TarError(let a,let b):true;default:false;}]);
+}
+export function narrow(s:unknown):M.TarError["_tag"]|undefined{return match(s){when M.TarError(let error):error._tag;default:undefined;}}

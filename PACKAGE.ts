@@ -335,6 +335,7 @@ const specTests = [
   "TestSuperseded",
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
+  "TestRetainedErrorMigrationQuoted",
   "TestLabelChainRulesQuoted",
   "TestBindingRenameOwnershipQuoted",
   "TestMigrationDeclarationFixQuoted",
