@@ -289,3 +289,5 @@ A `cause` field keeps the original exception through native error-cause support;
 ## Coming from Effect
 
 Raise a data error with `throw new DocumentMissing({ id })`; ordinary error propagation needs no generator yield or `Effect.fail`.
+
+An exported `data` declaration may use the contextual name `as`. Its declaration file writes `export declare type as = …` so TypeScript consumers can import both its constructor and its type.
