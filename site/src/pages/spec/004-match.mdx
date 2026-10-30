@@ -150,40 +150,17 @@ function pairs(g: Generator<number, void, unknown>) {
 pairs(two()) // 3: the second arm reuses 1 and 2
 ```
 
-For this native generator, the cache and finishing step specialize to:
+For the fixed `two()` generator above, the two yielded values give this native witness. The general caching and closing behavior is the rule above; the witness does not prescribe a matcher lowering.
 
 ```ts [Effect]
+import { Effect } from "effect"
+
 function* two() { yield 1; yield 2 }
-function pairs(g: Generator<number, void, unknown>) {
-  const apply = Reflect.apply
-  const iterator = g[Symbol.iterator](), next = iterator.next
-  const values: number[] = []
-  let done = false
-  function has(i: number): boolean {
-    if (i < values.length) return true
-    if (done) return false
-    try {
-      const step = apply(next, iterator, []) as IteratorResult<number, void>
-      done = !!step.done
-      if (!step.done) values.push(step.value)
-      return !done
-    } catch (e) { done = true; throw e }
-  }
-  let result = 0
-  const errors: unknown[] = []
-  try {
-    if (has(0) && !has(1)) result = values[0]
-    else if (has(0) && has(1) && !has(2)) result = values[0] + values[1]
-  } catch (e) { errors.push(e) }
-  if (!done) {
-    try { apply(iterator.return, iterator, []) }
-    catch (e) { errors.push(e) }
-  }
-  if (errors.length === 1) throw errors[0]
-  if (errors.length > 1) throw new AggregateError(errors)
-  return result
+function pairCacheWitness() {
+  const values = [...two()]
+  return values.length === 2 ? values[0] + values[1] : 0
 }
-pairs(two()) // 3
+const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Success(3)
 ```
 
 - In an object pattern, a bare key such as `{ tracking }` only tests that the property exists. Binding it takes `let tracking`, shorthand for `tracking: let tracking` (VIP-16). Replacing `let tracking` with `tracking` above would return `"outer"`, not the field.
