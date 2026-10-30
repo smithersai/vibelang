@@ -64,10 +64,14 @@ export function summarize(diagnostics, files = []) {
   }
 }
 
-/** TypeScript-style Effect forms (EK48xx) and platform globals (EK4402) in the given files. */
+/**
+ * What a batch may not keep in the given files: TypeScript-style Effect forms
+ * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204),
+ * a warning, which there means the TypeScript recovered and the .vibe throws.
+ */
 export function styleProblems(diagnostics, files) {
   const inFiles = new Set(files)
-  return diagnostics.filter((d) => inFiles.has(d.file) && (/^EK48\d\d$/.test(d.code) || d.code === "EK4402"))
+  return diagnostics.filter((d) => inFiles.has(d.file) && (/^EK48\d\d$/.test(d.code) || d.code === "EK4402" || d.code === "EK9204"))
 }
 
 /** Errors that the baseline did not have, compared by file, code and message. */

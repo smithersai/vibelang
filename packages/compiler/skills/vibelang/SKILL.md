@@ -5,7 +5,7 @@ description: Write, edit or review VibeLang (.vibe files), Effect programs in Ty
 
 # VibeLang
 
-VibeLang is TypeScript with syntax for Effect. An `effect` function returns an Effect, `try` runs an Effect, and every construct is exact sugar for the Effect TypeScript beside it, with Effect 4's runtime behavior. Plain and `async` functions mean exactly what they mean in TypeScript. `vibelang` (a TypeScript 7 compiler) checks `.vibe` and `.ts` files together and emits JavaScript and declarations.
+VibeLang is TypeScript with syntax for Effect. An `effect` function returns an Effect, `try` runs an Effect, and every construct is exact sugar for the Effect TypeScript beside it, with Effect 4's runtime behavior. Plain and `async` functions mean what they mean in TypeScript, apart from which exceptions a `catch` receives. `vibelang` (a TypeScript 7 compiler) checks `.vibe` and `.ts` files together and emits JavaScript and declarations.
 
 ## The model
 
@@ -15,7 +15,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 - Calling an Effect function returns its Effect unrun, so pass that Effect as a value: `try retry(fetchUser(id), policy)`, `try timeout(retry(load(), policy), "1 second")`, or with TC39's Hack pipe, `try (load() |> retry(%, policy) |> timeout(%, "1 second"))`.
 - `effect { … }` builds an Effect from statements without running it, Effect's `Effect.gen`. `do { … }` is TC39's do expression: it runs now and gives its last value.
 - `async` and `await` are for Promises only. `await` in an `effect` function, and `await` of an Effect, are errors. Wrap a Promise for Effect code, `try tryPromise(() => load())`, and run an Effect from TypeScript or `async` code with `await runPromise(program)`.
-- `throw new NotFound({ id })` in an `effect` function fails with that typed error, as `Effect.fail` does. In a plain function, `throw` is JavaScript's. The compiler infers and tracks what a non-Effect function may throw: Effect code calls a function that may throw only through `try Effect.try(() => parse(s))`.
+- `throw new NotFound({ id })` in an `effect` function fails with that typed error, as `Effect.fail` does. In a plain function, `throw` is JavaScript's. The compiler infers and tracks what a non-Effect function may throw: Effect code calls a function that may throw only through `try Effect.try(() => parse(s))`. A plain function's `catch` receives only what the compiler tracks, such as a `throw` or `JSON.parse`'s `SyntaxError`. Any other JavaScript exception passes through it, and `EK9204` warns that the `catch` can never run: `try { return new URL(x).hostname } catch { return null }` rethrows, so write `URL.parse(x)?.hostname ?? null`.
 - `A!E!R` is exactly `Effect.Effect<A, E, R>`. An omitted slot is `never`, never inferred: `User!!` cannot fail and needs nothing. To infer a type, leave the annotation out.
 - Every export of Effect's `Effect` module is a global (`retry`, `timeout`, `sleep`, `log`, `all`, `race`, `sync`, `promise`, `tryPromise`, `callback`, `scoped`, `acquireRelease`, `ensuring`, `exit`, `runPromise`, …), and every root module of `effect` is in scope (`Schema`, `Layer`, `Stream`, `Option`, `Console`, `Config`, `Duration`, `Schedule`, …), with no import. A name that clashes stays qualified: `Effect.try`, `Effect.catch`, `Effect.match`, `Effect.provide`, `Effect.uninterruptible`, `Effect.interruptible`, and `Effect.Array`, `Effect.String` and the like where JavaScript's global wins.
 

@@ -15,7 +15,7 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | codemod | none | Marks each member TypeScript declares writable `mutable`, which keeps it writable in `.vibe` (D134), renames the batch to `.vibe`, rewrites imports by VibeLang's rules, runs `vibelang --fix` until it fixes nothing, keeping the rewrites of the batch's files only (an earlier batch's committed files stay as committed), and records each rewrite it applied or refused | `batches/NN/codemod.json` |
 | compile | none | `vibelang --noEmit`: the batch's diagnostics and any error new against the baseline | `batches/NN/compile.json` |
 | repair | agent | Fixes what is left and finishes the idiomatic rewrite, with `context.md` as its system prompt; records codemod gaps, VibeLang issues and idiom lessons; returns a file it cannot migrate to `.ts` | `batches/NN/repair.prompt.md`, `repair.json`, `issues.jsonl` |
-| verify | none | The tests pass with no new failure against the baseline; the emitted declarations are identical to the baseline's; the batch has no error, no EK48xx and no EK4402 | `batches/NN/verify.json` |
+| verify | none | The tests pass with no new failure against the baseline; the emitted declarations are identical to the baseline's; the batch has no error, no EK48xx, no EK4402 and no EK9204 | `batches/NN/verify.json` |
 | record | none | Commits the batch with jj, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
