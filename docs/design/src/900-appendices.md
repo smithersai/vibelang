@@ -704,7 +704,10 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause | 13 | [Failures](003-failures.md#error-declarations) |
 | `EK1305` | `export default error E` or `export default schema error E`; write `export { E as default }` | 13 | [Failures](003-failures.md#error-declarations) |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](005-services.md#the-platform-standard-library) |
+| `EK1501` | `export default schema S …`; write `export { S as default }` | 15 | [Data](006-data.md#schema-declarations) |
+| `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](006-data.md#schema-declarations) |
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](006-data.md#data-declarations) |
+| `EK1603` | `export default data D { … }`; write `export { D as default }` | 16 | [Data](006-data.md#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in the parameters of a plain arrow written in effect code | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](002-running.md#fork-and-join) |

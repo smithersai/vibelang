@@ -37,6 +37,8 @@ A variant without fields is a bare name. A variant with fields lists them in bra
 
 Support for the new object patterns arrives with the compiler's VIP implementation.
 
+The specification assigns `EK1603` to `export default data D { … }`. Declare the name, then write `export { D as default }`. This keeps the type and constructors under that name.
+
 ## Generic data types
 
 ```vibe

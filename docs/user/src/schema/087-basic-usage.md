@@ -2,6 +2,8 @@
 
 Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
+The specification assigns `EK1501` to a direct default `schema` declaration and `EK1502` to schema type parameters. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

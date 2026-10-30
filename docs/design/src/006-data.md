@@ -195,7 +195,25 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 | Rule | Diagnostic |
 | --- | --- |
+| `export default schema S { … }` or `export default schema S = T`; declare the name and write `export { S as default }` | `EK1501` |
+| type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
 | a field type outside the mapping; use the corresponding Effect schema (for example, `Schema.Date` for `Date`) when available, otherwise declare a Schema value | `EK2109` |
+
+
+A `schema error` keeps the error-declaration diagnostic `EK1305`; it does not use `EK1501`. A schema's named default export and an ordinary generic factory are normal TypeScript:
+
+```ts effect
+import { Schema } from "effect"
+const S = Schema.Struct({ value: Schema.mutableKey(Schema.Number) })
+type S = typeof S.Type
+export { S as default }
+function schemaBox<A extends Schema.Constraint>(value: A) {
+  return Schema.Struct({ value: Schema.mutableKey(value) })
+}
+const NumberBox = schemaBox(Schema.Number)
+const namedSchemaExit = Schema.decodeUnknownExit(S)({ value: 1 }) // Success({ value: 1 })
+const genericSchemaExit = Schema.decodeUnknownExit(NumberBox)({ value: 2 }) // Success({ value: 2 })
+```
 
 ## `data` declarations
 
@@ -251,6 +269,18 @@ VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) i
 | Rule | Diagnostic |
 | --- | --- |
 | a variant field named `_tag`; rename it, because the variant name supplies the tag | `EK1601` |
+| `export default data D { … }`; declare the name and write `export { D as default }` | `EK1603` |
+
+
+The named default-export counterpart is:
+
+```ts effect
+import { Data, Effect } from "effect"
+type D = Data.TaggedEnum<{ A: {} }>
+const D = Data.taggedEnum<D>()
+export { D as default }
+const namedDataExit = Effect.runSyncExit(Effect.sync(() => D.A())) // Success({ _tag: "A" })
+```
 
 ### Generic unions
 

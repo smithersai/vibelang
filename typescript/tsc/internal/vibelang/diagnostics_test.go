@@ -76,6 +76,8 @@ var specAhead = map[int32]string{
 	1202: renumbering, 1305: renumbering, 1601: renumbering, 1702: renumbering, 1703: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-19 and round-20 spec for decided details 96 (a @throws tag on an effectful callable) and 100 (an extractor on a class without its own matcher).
 	406: renumbering, 704: renumbering,
+	// VIP-15 and VIP-16 catalog existing named/nongeneric declaration rejections.
+	1501: renumbering, 1502: renumbering, 1603: renumbering,
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
