@@ -374,20 +374,43 @@ func (w *printer) list(nodes []*ast.Node, separator string, e env) {
 	}
 }
 
-// builtinTest prints n when it is a pattern's $is call whose matcher names a
-// built-in matcher (parser.BuiltinMatchers), as the test the compiler writes
-// for it: typeof subject === "string", or Option.isNone(subject). The
-// compiler writes that test only when the matcher resolves to the built-in
-// (match_builtins.go in package vibelang); the projection has no checker, so
-// it goes by the name as written.
+// builtinTest prints n when it is a pattern's $is or $extract call whose
+// matcher names a built-in matcher (parser.BuiltinMatchers), as the test the
+// compiler writes for it: typeof subject === "string", Option.isNone(subject),
+// or, for an extractor, (Option.isSome(subject) ? [subject.value] : false).
+// The compiler writes that test only when the matcher resolves to the
+// built-in (match_builtins.go in package vibelang); the projection has no
+// checker, so it goes by the name as written.
 func (w *printer) builtinTest(n *ast.Node, e env) bool {
 	callee := n.Expression()
-	if !ast.IsIdentifier(callee) || callee.Text() != "$is" || callee.Flags&ast.NodeFlagsReparsed == 0 || len(n.Arguments()) != 2 {
+	if !ast.IsIdentifier(callee) || (callee.Text() != "$is" && callee.Text() != "$extract") || callee.Flags&ast.NodeFlagsReparsed == 0 || len(n.Arguments()) != 2 {
 		return false
 	}
 	builtin, ok := parser.BuiltinMatcherNamed(n.Arguments()[0])
 	if !ok {
 		return false
+	}
+	if callee.Text() == "$extract" {
+		if builtin.Guard == "" {
+			return false // the parser tests the class of a primitive itself
+		}
+		module := builtin.Module
+		if preludeNames[module] && !builtinGlobals[module] {
+			module = w.p.names.prelude(module)
+		}
+		subject := n.Arguments()[1]
+		w.write("(" + module + "." + builtin.Guard + "(")
+		w.node(subject, e)
+		w.write(") ? [")
+		for i, field := range builtin.Values {
+			if i > 0 {
+				w.write(", ")
+			}
+			w.node(subject, e)
+			w.write("." + field)
+		}
+		w.write("] : false)")
+		return true
 	}
 	if builtin.TypeOf != "" {
 		w.write("typeof ")

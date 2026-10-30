@@ -352,6 +352,8 @@ A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selec
 
 `Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not.
 
+Imported module aliases work in the six retained `Option`, `Exit` and `Result` patterns. Each checks the module brand before its variant guard; an unbranded subject falls through to the next arm.
+
 ## Effect tagged-error guards
 
 Patterns for `Cause.NoSuchElementError`, `Cause.TimeoutError`,

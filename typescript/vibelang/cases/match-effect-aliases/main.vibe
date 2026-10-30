@@ -1,0 +1,26 @@
+import { Option as O, Exit as X, Result as R } from "effect"
+import * as Other from "effect/Option"
+export function unwrap(s: unknown): unknown {
+  return match (s) {
+    when O.Some(let v): v;
+    when O.None: "none";
+    when X.Success(let v): v;
+    when X.Failure(let c): c;
+    when R.Success(let v): v;
+    when R.Failure(let e): e;
+    default: "other";
+  }
+}
+function arity(s: unknown): unknown {
+ return match (s) {
+  when O.Some(): "wrong zero";
+  when O.Some(let a, let b): "wrong two";
+  when O.Some(...let xs): xs;
+  default: "none";
+ }
+}
+let reads = 0
+function next(): unknown { reads++; return O.some(8) }
+export const result = [unwrap(O.some(1)), unwrap(O.none()), unwrap(X.succeed(2)),
+  unwrap(X.fail("bad")), unwrap(R.succeed(3)), unwrap(R.fail("oops")), unwrap(null),
+  unwrap({ _tag: "Some", value: 9 }), match (Other.some(4)) { when Other.Some(let v): v; default: 0; }, next() is O.Some, reads, arity(O.some(9)), match ("native" as unknown) { when String(let v): v; default: "wrong primitive"; }]

@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { $is, TaggedError } from "vibelang-runtime";
+import { $extract, $is, TaggedError } from "vibelang-runtime";
 import * as Effect_1 from "effect/Effect";
 import * as runtime from "vibelang-runtime";
+import * as Option_1 from "effect/Option";
 export class NotFound extends TaggedError("NotFound") {
 }
 export class Timeout extends TaggedError("Timeout") {
@@ -122,16 +123,17 @@ export function describe(...args) { return runtime.$plainSync(describe$direct, t
 describe[runtime.$direct] = describe$direct;
 export function greeting$direct(name) {
     {
-        const $match10 = name;
+        const $match11 = name;
         {
-            if (Option.isNone($match10)) {
+            if ((subject_1 => Option_1.isOption(subject_1) && Option_1.isNone(subject_1))($match11)) {
                 return "Hello";
             }
         }
         {
+            const $extracted12 = (subject_2 => Option_1.isOption(subject_2) && Option_1.isSome(subject_2) && [subject_2.value])($match11);
             {
-                runtime.$assertMatch(Option.isSome($match10), $match10);
-                let n = $match10.value;
+                runtime.$assertMatch($extracted12 !== false && $extracted12.length === 1, $match11);
+                let n = $extracted12[0];
                 return `Hello, ${n}`;
             }
         }
@@ -142,28 +144,28 @@ greeting[runtime.$direct] = greeting$direct;
 // In an Effect function, whose arms run Effects.
 export function announce(arg_1) {
     return Effect_1.fnUntraced(function* announce(phase) {
-        $match12: {
-            const $match13 = phase;
+        $match14: {
+            const $match15 = phase;
             {
-                if ($match13
+                if ($match15
                     === "draft") {
                     yield* Effect.log("draft");
-                    break $match12;
+                    break $match14;
                 }
             }
             {
-                if ($match13
+                if ($match15
                     === "review") {
                     yield* Effect.log("review");
-                    break $match12;
+                    break $match14;
                 }
             }
             {
                 {
-                    runtime.$assertMatch($match13
-                        === "published", $match13);
+                    runtime.$assertMatch($match15
+                        === "published", $match15);
                     yield* Effect.log("published");
-                    break $match12;
+                    break $match14;
                 }
             }
         }

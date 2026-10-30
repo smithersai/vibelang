@@ -1,2 +1,0 @@
-main.vibe(6,10): error TS2345
-main.vibe(13,10): error TS2345

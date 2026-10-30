@@ -889,7 +889,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			p.compilePattern(pat.rest, p.enterSubject(restPath, pat.rest, steps, ctx), steps, ctx)
 		}
 	case patternExtractor:
-		if known, ok := BuiltinMatcherNamed(pat.expr); ok {
+		if known, ok := BuiltinMatcherNamed(pat.expr); ok && known.TypeOf != "" {
 			// The test is the variable pattern's; the values are the
 			// built-in extractor's, the subject or the variant's property.
 			test(p.matcherTest(pat, path))

@@ -533,7 +533,7 @@ var projectionCases = []struct {
 	{
 		name:    "a returned match returns from its arms, exhaustively (D209)",
 		source:  "function g(o: Option.Option<number>) {\n  return match (o) {\n    when Option.Some(let v): v;\n    when Option.None: 0;\n  }\n}\n",
-		virtual: "function g(o: Option.Option<number>) { return $gen(function* () {\n  { void o; { if (Option.isSome(o)) { let v = o.value; return v; } } { if (Option.isNone(o)) { return 0; } } return $noMatch(o); }\n})}\n",
+		virtual: "function g(o: Option.Option<number>) { return $gen(function* () {\n  { void o; { const $extracted4 = (Option.isSome(o) ? [o.value] : false); if ($extracted4 !== false && $extracted4.length === 1) { let v = $extracted4[0]; return v; } } { if (Option.isNone(o)) { return 0; } } return $noMatch(o); }\n})}\n",
 	},
 	{
 		name:    "a match statement and an is test",

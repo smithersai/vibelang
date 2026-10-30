@@ -53,3 +53,8 @@ func (c *Checker) IteratedType(t *Type) *Type {
 	}
 	return types.yieldType
 }
+
+// CreatePatternExtractionType returns the extracted array or false produced by a matcher.
+func (c *Checker) CreatePatternExtractionType(values []*Type) *Type {
+	return c.getUnionType([]*Type{c.createArrayTypeEx(c.getUnionType(values), false), c.falseType})
+}

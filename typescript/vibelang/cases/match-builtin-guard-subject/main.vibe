@@ -1,0 +1,15 @@
+// Retained variants check the module brand before reading their tag.
+import * as Option from "effect/Option"
+function unknownSubject(x: unknown): string {
+  return match (x) {
+    when Option.None: "none";
+    default: "other";
+  }
+}
+function mixedSubject(x: string | Option.Option<number>): number {
+  return match (x) {
+    when Option.Some(let v): v;
+    default: 0;
+  }
+}
+export const result = [unknownSubject(null), mixedSubject("a")]

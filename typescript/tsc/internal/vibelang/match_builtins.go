@@ -1,9 +1,10 @@
 package vibelang
 
 import (
+	"strconv"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
@@ -26,13 +27,12 @@ func init() {
 	checker.RegisterMissingPropertyHook(builtinVariantProperty)
 	checker.RegisterFlowNarrowingHook(narrowBuiltinPattern)
 	fileChecks = append(fileChecks, checkBuiltinPatterns)
+	checker.RegisterCallExpressionTypeHook(builtinExtractionType)
+	checker.RegisterFlowNarrowingHook(narrowBuiltinExtraction)
 }
 
-// checkBuiltinPatterns reports TS2345 at the subject of a built-in variant's
-// $is call that the module's guard does not take, as the call of the guard
-// the lowering writes would: Option.isNone reads the _tag of an Option, and
-// would throw for null, so a subject typed unknown or string | Option<number>
-// is an error, as it was when the parser wrote the guard's call.
+// checkBuiltinPatterns covers the checker's errors at the tests the parser
+// writes for an extractor's arity.
 func checkBuiltinPatterns(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -51,26 +51,9 @@ func checkBuiltinPatterns(c *checker.Checker, file *ast.SourceFile) {
 			// The parser's indexed reads must not leak tuple-bound errors.
 			coverCodes(c, node, 2493)
 		}
-		if isPatternCall(node, "$is") {
-			if builtin, ok := builtinMatcherOf(c, node.Arguments()[0]); ok && builtin.Guard != "" && fixedErrorGuards[builtin.Module] == nil {
-				checkGuardSubject(c, node)
-			}
-		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-// checkGuardSubject checks that the subject of call, a built-in variant's
-// $is call, fits the parameter of the guard its matcher reads.
-func checkGuardSubject(c *checker.Checker, call *ast.Node) {
-	signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(call.Arguments()[0]), checker.SignatureKindCall)
-	if len(signatures) == 0 || len(signatures[0].Parameters()) == 0 {
-		return
-	}
-	subject := call.Arguments()[1]
-	parameter := c.GetTypeAtPosition(c.GetErasedSignature(signatures[0]), 0)
-	c.CheckTypeAssignableTo(c.GetTypeAtLocation(subject), parameter, subject, diagnostics.Argument_of_type_0_is_not_assignable_to_parameter_of_type_1)
 }
 
 // fixedErrorGuards is the settled Effect tagged-error inventory (detail 53).
@@ -104,16 +87,16 @@ func builtinMatcherOf(c *checker.Checker, matcher *ast.Node) (parser.BuiltinMatc
 		if guard := fixedErrorGuards[module][matcher.Name().Text()]; guard != "" {
 			return parser.BuiltinMatcher{Module: module, Guard: guard, Values: []string{""}}, true
 		}
+		builtin, ok := parser.BuiltinMatchers[module+"."+matcher.Name().Text()]
+		if ok && module != "" {
+			return builtin, true
+		}
 	}
 	builtin, ok := parser.BuiltinMatcherNamed(matcher)
-	switch {
-	case !ok:
+	if !ok || builtin.TypeOf == "" {
 		return parser.BuiltinMatcher{}, false
-	case builtin.TypeOf != "":
-		if symbol := c.GetSymbolAtLocation(matcher); symbol == nil || symbol != c.GlobalSymbol(matcher.Text(), ast.SymbolFlagsValue) {
-			return parser.BuiltinMatcher{}, false
-		}
-	case effectModuleNamed(c, matcher.Expression()) != builtin.Module:
+	}
+	if symbol := c.GetSymbolAtLocation(matcher); symbol == nil || symbol != c.GlobalSymbol(matcher.Text(), ast.SymbolFlagsValue) {
 		return parser.BuiltinMatcher{}, false
 	}
 	return builtin, true
@@ -154,7 +137,7 @@ func isBuiltinPatternTest(c *checker.Checker, node *ast.Node) bool {
 // Result for which the module exports no value, reads the guard that tests
 // the variant, Option.isNone.
 func builtinVariantProperty(c *checker.Checker, node *ast.Node, receiver *checker.Type, name string) *ast.Symbol {
-	if call := node.Parent; !isPatternCall(call, "$is") || call.Arguments()[0] != node {
+	if call := node.Parent; (!isPatternCall(call, "$is") && !isPatternCall(call, "$extract")) || call.Arguments()[0] != node {
 		return nil
 	}
 	builtin, ok := builtinMatcherOf(c, node)
@@ -207,26 +190,133 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 type builtinTest struct {
 	typeOf  string // typeof subject === typeOf, for the class of a primitive
 	guard   string // Module.guard(subject), for a variant
-	extract bool   // the guard yields [subject] in extractor mode
+	module  string // the effect module that exports guard
+	brand   string // Module.isModule(subject), tested before guard
+	value   string // the extracted property, or "." for the subject itself
+	extract bool   // the guard yields [value] in extractor mode
 }
 
 // visitBuiltinTest writes node, $is(matcher, subject) for a built-in
 // matcher, as typeof subject === "string" or Option.isNone(subject).
 func (tx *lowering) visitBuiltinTest(node *ast.Node, test builtinTest) *ast.Node {
 	f := tx.Factory()
-	matcher, subject := node.Arguments()[0], tx.Visitor().VisitNode(node.Arguments()[1])
+	subject := tx.Visitor().VisitNode(node.Arguments()[1])
 	var lowered *ast.Node
 	if test.typeOf != "" {
 		lowered = f.NewBinaryExpression(nil /*modifiers*/, f.NewTypeOfExpression(subject), nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewStringLiteral(test.typeOf, ast.TokenFlagsNone))
 	} else {
-		guard := f.NewPropertyAccessExpression(tx.Visitor().VisitNode(matcher.Expression()), nil /*questionDotToken*/, f.NewIdentifier(test.guard), ast.NodeFlagsNone)
-		lowered = f.NewCallExpression(guard, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{subject}), ast.NodeFlagsNone)
-	}
-	if test.extract {
-		values := f.NewArrayLiteralExpression(f.NewNodeList([]*ast.Node{subject}), false)
-		lowered = f.NewParenthesizedExpression(f.NewConditionalExpression(lowered, f.NewToken(ast.KindQuestionToken), values, f.NewToken(ast.KindColonToken), f.NewKeywordExpression(ast.KindFalseKeyword)))
+		argument := subject
+		subject = f.NewUniqueName("subject")
+		module := tx.moduleNamespace("effect/" + test.module)
+		callGuard := func(name string) *ast.Node {
+			guard := f.NewPropertyAccessExpression(module, nil, f.NewIdentifier(name), ast.NodeFlagsNone)
+			return f.NewCallExpression(guard, nil, nil, f.NewNodeList([]*ast.Node{subject}), ast.NodeFlagsNone)
+		}
+		lowered = callGuard(test.guard)
+		if test.brand != "" {
+			lowered = f.NewBinaryExpression(nil, callGuard(test.brand), nil, f.NewToken(ast.KindAmpersandAmpersandToken), lowered)
+		}
+		if test.extract {
+			var values []*ast.Node
+			if test.value == "." {
+				values = append(values, subject)
+			} else if test.value != "" {
+				values = append(values, f.NewPropertyAccessExpression(subject, nil, f.NewIdentifier(test.value), ast.NodeFlagsNone))
+			}
+			lowered = f.NewBinaryExpression(nil, lowered, nil, f.NewToken(ast.KindAmpersandAmpersandToken), f.NewArrayLiteralExpression(f.NewNodeList(values), false))
+		}
+		arrow := tx.arrow([]*ast.Node{f.NewParameterDeclaration(nil, nil, subject, nil, nil, nil)}, lowered)
+		lowered = f.NewCallExpression(f.NewParenthesizedExpression(arrow), nil, nil, f.NewNodeList([]*ast.Node{argument}), ast.NodeFlagsNone)
 	}
 	tx.EmitContext().SetOriginal(lowered, node)
 	lowered.Loc = node.Loc
 	return lowered
+}
+
+// builtinExtractionType gives the retained extractor its guard predicate's fields.
+func builtinExtractionType(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
+	if !isPatternCall(call, "$extract") {
+		return t
+	}
+	builtin, ok := builtinMatcherOf(c, call.Arguments()[0])
+	if !ok || builtin.Guard == "" {
+		return t
+	}
+	signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(call.Arguments()[0]), checker.SignatureKindCall)
+	if len(signatures) == 0 {
+		return t
+	}
+	predicate := c.GetTypePredicateOfSignature(c.GetErasedSignature(signatures[0]))
+	if predicate == nil || predicate.Type() == nil {
+		return t
+	}
+	candidate := c.NarrowTypeTo(c.GetTypeAtLocation(call.Arguments()[1]), predicate.Type(), true)
+	var fields []*checker.Type
+	for _, name := range builtin.Values {
+		field := candidate
+		if name != "" {
+			field = c.GetTypeOfPropertyOfType(candidate, name)
+		}
+		if field == nil {
+			field = c.GetUnknownType()
+		}
+		fields = append(fields, field)
+	}
+	return c.CreatePatternExtractionType(fields)
+}
+
+// narrowBuiltinExtraction preserves the guard's relationship with its captured
+// subject. The retained extractors return a fixed number of fields even though
+// their array type permits wrong-arity patterns to compile and fail at runtime.
+func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, _ func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
+	if !ast.IsBinaryExpression(test) {
+		return nil
+	}
+	binary := test.AsBinaryExpression()
+	if binary.OperatorToken.Flags&ast.NodeFlagsReparsed == 0 {
+		return nil
+	}
+	left := binary.Left
+	length := ast.IsPropertyAccessExpression(left) && left.Name().Text() == "length"
+	if length {
+		left = left.Expression()
+	}
+	call := extractionCall(c, left)
+	if call == nil || (!c.IsMatchingReference(reference, call.Arguments()[1]) && !readsThroughCapture(c, reference, call.Arguments()[1])) {
+		return nil
+	}
+	builtin, ok := builtinMatcherOf(c, call.Arguments()[0])
+	if !ok || builtin.Guard == "" {
+		return nil
+	}
+	if length && binary.Right.Kind == ast.KindNumericLiteral {
+		n, err := strconv.Atoi(binary.Right.Text())
+		if err != nil {
+			return nil
+		}
+		var matches bool
+		switch binary.OperatorToken.Kind {
+		case ast.KindEqualsEqualsEqualsToken:
+			matches = len(builtin.Values) == n
+		case ast.KindGreaterThanEqualsToken:
+			matches = len(builtin.Values) >= n
+		default:
+			return nil
+		}
+		if matches != assumeTrue {
+			return c.GetNeverType()
+		}
+		return t
+	}
+	if !length && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
+		signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(call.Arguments()[0]), checker.SignatureKindCall)
+		if len(signatures) == 0 {
+			return nil
+		}
+		predicate := c.GetTypePredicateOfSignature(c.GetErasedSignature(signatures[0]))
+		if predicate != nil && predicate.Type() != nil {
+			return c.NarrowTypeTo(t, predicate.Type(), assumeTrue)
+		}
+	}
+	return nil
 }
