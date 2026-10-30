@@ -104,6 +104,27 @@ export function homeProblems(document: string, exists: (path: string) => boolean
 
 const sha = (text: string) => `sha256:${createHash("sha256").update(text).digest("hex")}`
 
+function appSnippetProblems(): string[] {
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-content-"))
+  const problems: string[] = []
+  try {
+    const json = join(scratch, "snippets.json")
+    const snippets = spawnSync("bun", [join(repo, "docs/tools/check-snippets.ts"), "--root", join(repo, ".smithers/instructions"), "--json", json], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+    try {
+      const report = JSON.parse(readFileSync(json, "utf8"))
+      const blocks = report.pages.flatMap((p: { blocks: Array<{ status: string }> }) => p.blocks)
+      const bad = blocks.filter((b: { status: string }) => b.status !== "ok")
+      if (!blocks.length) problems.push("app.md has no checked VibeLang block")
+      if (bad.length) problems.push(`app.md: ${bad.length} snippet(s) do not pass check-snippets.ts:\n${snippets.stdout.slice(-1500)}`)
+    } catch {
+      problems.push(`check-snippets.ts did not report on app.md (exit ${snippets.status}):\n${(snippets.stdout + snippets.stderr).slice(-1500)}`)
+    }
+    return problems
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+}
+
 async function main() {
   const problems: string[] = []
   const at = (path: string) => join(repo, path)
@@ -119,17 +140,7 @@ async function main() {
   if (install !== commands.join("\n")) problems.push(`app.md's install block must be:\n${commands.join("\n")}\nnot:\n${install ?? "(missing)"}`)
   for (const line of (editorBlock ?? "").split("\n")) if (line && !editor.includes(line)) problems.push(`app.md: "${line}" is not what create-vibelang prints`)
 
-  const json = mkdtempSync(join(tmpdir(), "vibelang-content-")) + "/snippets.json"
-  const snippets = spawnSync("bun", [at("docs/tools/check-snippets.ts"), "--root", at(".smithers/instructions"), "--json", json], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
-  try {
-    const report = JSON.parse(readFileSync(json, "utf8"))
-    const blocks = report.pages.flatMap((p: { blocks: Array<{ status: string }> }) => p.blocks)
-    const bad = blocks.filter((b: { status: string }) => b.status !== "ok")
-    if (!blocks.length) problems.push("app.md has no checked VibeLang block")
-    if (bad.length) problems.push(`app.md: ${bad.length} snippet(s) do not pass check-snippets.ts:\n${snippets.stdout.slice(-1500)}`)
-  } catch {
-    problems.push(`check-snippets.ts did not report on app.md (exit ${snippets.status}):\n${(snippets.stdout + snippets.stderr).slice(-1500)}`)
-  }
+  problems.push(...appSnippetProblems())
 
   problems.push(...homeProblems(readFileSync(at(".smithers/home.json"), "utf8"), (p) => existsSync(at(p))).map((p) => `home.json: ${p}`))
 
