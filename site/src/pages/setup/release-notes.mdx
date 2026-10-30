@@ -18,16 +18,30 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
 
+- The specification checked throwing calls in plain handlers' bodies but skipped eager parameter initialization. The same check now covers defaults, destructuring and computed binding keys, while implicit exceptions and uncalled functions keep their existing behavior.
+
+- The documented debugging recipe check could time out after five seconds on a busy build host; it now allows thirty seconds to compile and run while checking the same failure and original source location.
+- Formatting a `catch` expression with a comment before its handler was refused; those comments and their line breaks now stay in place.
+- The specification lost loop-head binding scopes and allowed forbidden returns to hide in binding defaults. Both loop forms now retain JavaScript's operand scopes and apply their outward-jump restrictions to head initialization as well as the body.
+
+- The specification could lose a synchronous throw when a generic result became an Effect or a callback default disappeared from a declaration. Existing generic contracts and conservative default-callback bounds now survive both boundaries.
+
+- A required schema field could silently become optional through a referenced codec; conflicting or uncertain decoded optionality now reports `EK2109`, with a preserving `--fix` expansion to explicit codecs.
+
+- The platform decision gave banned `globalThis` members the wrong diagnostic and omitted the allowed `Function` checks; it now agrees with the language reference and the accepted `Function` exemptions.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
 - Diagnostic codes used the old numbering and dropped leading zeros; matching checks now use Appendix B codes, and terminal output keeps all four digits. See the [diagnostic code map](/vibelang-features/diagnostic-code-map).
+- The AST layout regression test failed because it expected a 32-byte node header; it now checks the 40-byte header that 64-bit node flags give.
 
 ### Configuration upgrade
 
 | Before | Now |
 | --- | --- |
+| A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
 | `vibelang.diagnostics` | Run `vibelang --fix` to move configurable warning settings to `vibe.severities`. Remove obsolete legacy policy entries before rerunning `--fix`. |
 
 ### Diagnostic codes
@@ -194,7 +208,19 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The optional Windows smoke test failed with an unhelpful module error in paths containing `#`; it now explains Vitest's limitation and how to run the compiler checks and the `--vitest` checks separately.
 
+- Documentation hover requests keep their results and error codes after an internal cleanup; stdio protocol tests now cover split responses and server settings requests.
+
+- Documentation checks keep rejecting private temporary paths in both scanning modes; the shared rule now has an explicit name instead of depending on its table position.
+
+- Cheat-sheet token measurement kept unused bookkeeping for excluded long-form alternatives; it now tracks only the blocks used in published totals, with identical counts.
+
+- The repository hygiene scan rebuilt its fixed scratch-path rules for every file; those rules are now shared across the scan, preserving the same diagnostics.
+
 - The `alchemy-stack` example failed on `effect@4.1.0`: importing `@alchemy.run/cloudflare` failed with `Cannot find module .../effect/dist/Crypto.js`, because `alchemy@2.0.0-beta.84` imports the removed `effect/Crypto`. The example now patches `alchemy` with Alchemy's own Effect 4.1 port on install, and the Alchemy page shows how to apply the patch.
+
+- Global throw annotations could not be inspected as data; a generated snapshot now lists their overloads, shipped own-throw contracts and exact declaration inputs, and checks when they become stale.
+
+- Host messaging references such as `postMessage` and `globalThis.postMessage` could bypass the platform check; they now report `EK4402`, while local bindings keep working.
 
 - The specification and producer guide made a labeled `break` or `continue` naming the `for try` itself `EK2003`, unlike JavaScript and `for concurrent`. It now means the loop's own unlabeled jump; only labels on enclosing statements are `EK2003`.
 
@@ -204,6 +230,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
+- After an Effect upgrade, CI reused an older `node_modules` tree and failed to build the runtime; CI now refreshes installs that disagree with a package's exact Effect pin.
+- Building from source could fail the runtime test of a 100,000-element delegated producer on a busy host after five seconds, while it was still delivering elements; it now allows 30 seconds.
+
+
 - The module and resource VIP references still named `effect@4.0.6`; they now describe the accepted `effect@4.1.0` pin, with its 149 root exports and scope functions checked.
 
 
@@ -215,6 +245,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Repository validation could reuse a passing Go test result after its specification changed; tests that read repository files now run again when their declared inputs change.
+
+- `Date` patterns accepted objects with only `Date.prototype`; they now require a real date, including valid date subclasses and invalid dates.
+
+- A `schema` or `schema error` declaration could throw `ReferenceError: Schema is not defined` when an explicit `Schema` import was used only by the declaration. Generated schema references now retain a runtime import.
 
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
@@ -495,6 +529,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 #### Docs
+
+- Completion could hang the language server in a file with a call left open after an earlier closed one, such as a second `pipe(` typed below `pipe(o, Option.getOrNull)`: matching the earlier `)` searched the whole file and found the later `(`. It now searches only before the token, as TypeScript does.
 
 - Language design inconsistencies were missing from these notes. They now list
   confirmed issues, examples and safe patterns in [Known design issues](#known-design-issues).

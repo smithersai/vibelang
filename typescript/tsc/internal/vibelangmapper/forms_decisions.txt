@@ -1860,6 +1860,9 @@ typescript/vibelang/cases/match-class-patterns/main.vibe:127:63 byname program a
 typescript/vibelang/cases/match-class-patterns/main.vibe:128:60 byname program annotation
 typescript/vibelang/cases/match-class-patterns/main.vibe:129:60 byname program annotation
 typescript/vibelang/cases/match-class-patterns/main.vibe:94:23 lambda dual fallback
+typescript/vibelang/cases/match-date-brand-r5/main.vibe:3:9 lambda dual fallback
+typescript/vibelang/cases/match-date-brand-r5/main.vibe:4:9 lambda dual fallback
+typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
 typescript/vibelang/cases/match-exhaustive-last-arm/arms.vibe:23:23 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:10 lambda effectFn table
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:26 lambda effectFn table

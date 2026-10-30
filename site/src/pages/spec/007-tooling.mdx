@@ -87,7 +87,7 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status (decided detail 71). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
-The legacy `vibelang.diagnostics` key reports migration warning `EK3009`. `vibelang --fix` rewrites configurable entries to `vibe.severities`, including in extended configs, and retains existing modern entries. Maps with obsolete nonconfigurable codes stay in place until those entries are removed. Like other warnings, `EK3009` can be configured through `vibe.severities`.
+The legacy `vibelang.diagnostics` key reports migration warning `EK3009`. `vibelang --fix` rewrites each map whose codes are all configurable to `vibe.severities`, including in extended configs, and retains existing modern entries. Maps with obsolete nonconfigurable codes stay in place until those entries are removed. Like other warnings, `EK3009` can be configured through `vibe.severities`.
 
 ## The Effect version
 
