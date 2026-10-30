@@ -108,7 +108,7 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 
 	// type Name<T> = Data.TaggedEnum<{ Variant: { fields } }>
 	literal := p.vibelangSpanning(p.factory.NewTypeLiteralNode(p.newNodeList(body, variants)), body)
-	taggedEnum := p.vibelangSynthesized(p.factory.NewQualifiedName(p.mIdent("Data", keyword), p.mIdent("TaggedEnum", keyword)), keyword)
+	taggedEnum := p.vibelangSynthesized(p.factory.NewQualifiedName(p.vibelangIntrinsic("Data", keyword), p.mIdent("TaggedEnum", keyword)), keyword)
 	typeNode := p.vibelangSpanning(p.factory.NewTypeReferenceNode(taggedEnum, p.newNodeList(body, []*ast.Node{literal})), body)
 	alias := p.factory.NewTypeAliasDeclaration(modifiers, name, typeParameters, typeNode)
 	p.finishNode(alias, pos)
@@ -123,7 +123,7 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	}
 
 	// const Name = Data.taggedEnum<Name>(), or Data.taggedEnum<NameDefinition>()
-	callee := p.mProperty(p.mIdent("Data", name.Loc), "taggedEnum", name.Loc)
+	callee := p.mProperty(p.vibelangIntrinsic("Data", name.Loc), "taggedEnum", name.Loc)
 	constructedName := p.mIdent(constructed, name.Loc)
 	if typeParameters != nil && len(typeParameters.Nodes) != 0 {
 		constructedName = p.mTemp(constructed, name.Loc)
@@ -198,7 +198,7 @@ func (p *Parser) dataDefinition(name *ast.Node, typeParameters *ast.NodeList, mo
 	constructed := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mIdent(name.Text(), name.Loc), p.newNodeList(keyword, arguments)), keyword)
 	readonly := p.newModifierList(keyword, []*ast.Node{p.vibelangSynthesized(p.factory.NewModifier(ast.KindReadonlyKeyword), keyword)})
 	member := p.vibelangSynthesized(p.factory.NewPropertySignatureDeclaration(readonly, p.mIdent("taggedEnum", keyword), nil, constructed, nil), keyword)
-	withGenerics := p.mProperty(p.mProperty(p.mIdent("Data", keyword), "TaggedEnum", keyword), "WithGenerics", keyword)
+	withGenerics := p.mProperty(p.mProperty(p.vibelangIntrinsic("Data", keyword), "TaggedEnum", keyword), "WithGenerics", keyword)
 	countType := p.vibelangSynthesized(p.factory.NewLiteralTypeNode(p.vibelangSynthesized(p.factory.NewNumericLiteral(strconv.Itoa(min(count, len(dataGenericNames))), ast.TokenFlagsNone), keyword)), keyword)
 	base := p.vibelangSynthesized(p.factory.NewExpressionWithTypeArguments(withGenerics, p.newNodeList(keyword, []*ast.Node{countType})), keyword)
 	clause := p.vibelangSynthesized(p.factory.NewHeritageClause(ast.KindExtendsKeyword, p.newNodeList(keyword, []*ast.Node{base})), keyword)
@@ -214,7 +214,7 @@ func (p *Parser) dataReference(name string, anchor core.TextRange) *ast.Node {
 // dataType writes a reference to the type that names, such as Data,
 // TaggedEnum and Constructor, qualify, with arguments, synthesized at anchor.
 func (p *Parser) dataType(anchor core.TextRange, arguments []*ast.Node, names ...string) *ast.Node {
-	entity := p.mIdent(names[0], anchor)
+	entity := p.vibelangIntrinsic(names[0], anchor)
 	for _, name := range names[1:] {
 		entity = p.vibelangSynthesized(p.factory.NewQualifiedName(entity, p.mIdent(name, anchor)), anchor)
 	}

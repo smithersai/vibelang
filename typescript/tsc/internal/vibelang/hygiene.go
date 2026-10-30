@@ -89,6 +89,11 @@ func (tx *lowering) intrinsicReference(node *ast.Node) *ast.Node {
 	if module := preludeModules[node.Text()]; module != "" && module != runtimeModule {
 		return tx.moduleNamespace(module)
 	}
+	// Generated Data references reach their Effect root namespace through
+	// the same subpath metadata used by ordinary prelude imports.
+	if root, ok := effectRootNames[node.Text()]; ok && root.namespace {
+		return tx.moduleNamespace(root.module)
+	}
 	reference := tx.runtimeMember(node.Text())
 	tx.EmitContext().SetOriginal(reference, node)
 	reference.Loc = node.Loc

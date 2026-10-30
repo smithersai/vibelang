@@ -1,0 +1,1 @@
+data namespace shadows stay local

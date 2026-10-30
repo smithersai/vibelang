@@ -1,0 +1,9 @@
+export const Data = "user namespace"
+export data Parcel { Empty; Value { readonly value: number } }
+export const empty = Parcel.Empty()
+export const value = Parcel.Value({ value: 7 })
+export function generic(): string {
+  const Data = "local namespace"
+  data Box<Data> { Value { readonly value: Data } }
+  return Box.Value<string>({ value: Data }).value
+}
