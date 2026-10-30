@@ -213,6 +213,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Date` patterns accepted objects with only `Date.prototype`; they now require a real date, including valid date subclasses and invalid dates.
 
+- A `schema` or `schema error` declaration could throw `ReferenceError: Schema is not defined` when an explicit `Schema` import was used only by the declaration. Generated schema references now retain a runtime import.
+
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
 - The `examples/pipeline` README and output fixture expected a producer that never reads ahead, so the example check failed; both now show the VIP-21 order, where `Stream.take` closes the producer before the loop logs the second alert.

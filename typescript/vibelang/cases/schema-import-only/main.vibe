@@ -1,0 +1,5 @@
+import { Schema } from "effect"
+schema S { id: string }
+schema error Gone { id: string }
+export const s = S
+export const gone = new Gone({ id: "gone" })

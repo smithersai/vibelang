@@ -1,0 +1,3 @@
+import { Schema } from "effect"
+schema error Missing { id: string }
+export const missing = new Missing({ id: "missing" })

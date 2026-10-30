@@ -449,10 +449,10 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 // prelude export that location, an intrinsic named name, means. The name
 // written where location stands binds what source code there would bind:
 // the prelude's import when no scope declares name, which is recorded as a
-// use; a binding of the same export, such as an import of Schema from
-// effect, which serves as it is; or another binding, which would capture it,
-// so location is recorded for the lowering to reach symbol through an import
-// of its own (intrinsicReference). An interface's heritage, such as a schema's
+// use; or a source binding, including an import of the same export. Source
+// aliases are not marked referenced by intrinsic resolution and may be elided,
+// so the lowering reaches symbol through its own import (intrinsicReference).
+// An interface's heritage, such as a schema's
 // Schema.Schema.Type, is erased, so it needs neither.
 func recordIntrinsic(c *checker.Checker, state *preludeState, file *ast.SourceFile, location *ast.Node, name string, meaning ast.SymbolFlags, symbol *ast.Symbol) {
 	if ast.FindAncestor(location, ast.IsInterfaceDeclaration) != nil {
@@ -462,7 +462,6 @@ func recordIntrinsic(c *checker.Checker, state *preludeState, file *ast.SourceFi
 	switch {
 	case lexical == symbol:
 		recordPreludeUse(state, file, name)
-	case lexical != nil && aliasTarget(c, lexical) == aliasTarget(c, symbol):
 	default:
 		if state.intrinsics == nil {
 			state.intrinsics = map[*ast.Node]bool{}
