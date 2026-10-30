@@ -1,0 +1,3 @@
+commented.vibe(1,34): error EK0905
+main.vibe(2,16): error EK0905
+multiline.vibe(2,2): error EK0905

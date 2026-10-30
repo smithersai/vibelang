@@ -1,0 +1,2 @@
+const service = 17
+export default service satisfies number

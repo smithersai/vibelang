@@ -1,0 +1,2 @@
+// expect: EK0905
+export default service Missing { readonly value: number }

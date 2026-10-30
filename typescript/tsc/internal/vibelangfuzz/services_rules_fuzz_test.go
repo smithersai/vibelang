@@ -42,6 +42,10 @@ var servicesRules = []struct{ key, quote, good, bad string }{
 	{"extends-clause", "`service S extends Base { }`", "export service Base { n: number }\nexport service S { m: number }", "export service Base { n: number }\nexport service S extends Base { }"},
 	{"implements-clause", "`service S implements I { }`", "interface I { n: number }\nexport service S { n: number }", "interface I { n: number }\nexport service S implements I { }"},
 	{"export-default", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default service S { n: number }"},
+	{"export-default-comment", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default /* gap */ service S { n: number }"},
+	{"export-default-newline", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default\nservice S { n: number }"},
+	{"export-default-contextual", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default service async { n: number }"},
+	{"export-default-empty", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default service S {}"},
 }
 
 func servicesRulesChapter(f testing.TB) string {

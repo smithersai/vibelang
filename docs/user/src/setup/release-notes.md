@@ -958,6 +958,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Invalid compiler benchmark counts or scaling shapes could fail after setup or earlier measurements, and `--runs 0` crashed while summarizing empty results; `scripts/bench/compiler.sh` now reports the invalid option and exits before setup.
 
+- A default-exported `service` could produce a generic TypeScript syntax error; it now reports `EK0905` and shows how to write the named declaration and indirect default export.
 - Default-exporting an `error` or `schema error` used to report an unrelated semicolon error; it now reports `EK1305` and explains `export { Name as default }`.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.

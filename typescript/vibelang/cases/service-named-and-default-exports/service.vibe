@@ -1,0 +1,2 @@
+export service Counter { readonly value: number }
+export { Counter as default }

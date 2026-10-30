@@ -75,7 +75,7 @@ var specAhead = map[int32]string{
 	// Jumps out of an async match (VIP-7) have an assigned code before compiler registration.
 	706: renumbering,
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	302: renumbering, 905: renumbering,
+	302: renumbering,
 	1601: renumbering, 1702: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-19 and round-20 spec for decided details 96 (a @throws tag on an effectful callable) and 100 (an extractor on a class without its own matcher).
 	406: renumbering, 704: renumbering,

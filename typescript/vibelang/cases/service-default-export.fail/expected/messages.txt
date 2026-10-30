@@ -1,0 +1,1 @@
+A `service` declaration cannot follow `export default`; write a named declaration and `export { Name as default }`.

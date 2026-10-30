@@ -1,0 +1,4 @@
+import Counter, { Counter as NamedCounter } from "./service.vibe"
+import value from "./contextual.vibe"
+export const same = Counter === NamedCounter
+export const contextual = value

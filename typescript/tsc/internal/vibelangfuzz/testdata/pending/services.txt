@@ -31,8 +31,6 @@ FuzzServicesRules reject:member-static-other compiler VIP-9: a static member oth
 FuzzServicesRules corpus:member-static-other compiler VIP-9: minimized reproduction of reject:member-static-other; lane impl-hunt-svc
 FuzzServicesRules reject:member-effect-modifier compiler VIP-9: a bodyless effect method compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
 FuzzServicesRules corpus:member-effect-modifier compiler VIP-9: minimized reproduction of reject:member-effect-modifier; lane impl-hunt-svc
-FuzzServicesRules diagnostic:export-default compiler VIP-9: export default service S is TypeScript syntax errors, not EK0905; chapter 5 is lane impl-hunt-svc territory, no fix queued yet; lane impl-hunt-svc
-FuzzServicesRules corpus:export-default compiler VIP-9: minimized reproduction of diagnostic:export-default; lane impl-hunt-svc
 FuzzServiceImplicitAny method-omitted-strict compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
 FuzzServiceImplicitAny corpus:method-omitted-strict compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
 FuzzServiceImplicitAny method-omitted-loose compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc

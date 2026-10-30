@@ -375,6 +375,7 @@ const specTests = [
   "TestSchemaErrorEffectKeysQuoted",
   "TestFixExplicitEmptyErrorDeclarations",
   "TestUnaryPowQuoted",
+  "TestServiceDefaultExportQuoted",
   "TestFixFixedPointQuoted",
   "TestPlainHandlerThrowQuoted",
   "TestFunctionsSpecQuotes",
