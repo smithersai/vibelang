@@ -1,0 +1,10 @@
+service Properties {
+  static readonly key = "separator/PropertySignatures";
+  readonly label: string,
+  count: number,
+  optional?: boolean,
+  tuple: readonly [number, number],
+  nested: { left: number, right: string },
+}
+const properties: Properties.Shape = { label: "comma", count: 2, tuple: [3, 4], nested: { left: 5, right: "nested" } }
+export const result = [properties.label, properties.count, properties.optional ?? false, properties.tuple[0] + properties.tuple[1], properties.nested.right]

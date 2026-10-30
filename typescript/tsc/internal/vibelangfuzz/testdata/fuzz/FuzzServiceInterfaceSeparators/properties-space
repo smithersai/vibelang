@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("properties:space\u0000\u0003")

@@ -38,7 +38,6 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		{"empty pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = pipe(1)", "Remove the pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = 1", 4824},
 		{"arrow expression", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => { return x + 1 }", "Write the value as the body", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => x + 1", 4823},
 		{"arrow object", "// @vibelang-diagnostics EK4823:warning\nexport const box = (x: number) => { return { value: x } }", "Write the value as the body", "// @vibelang-diagnostics EK4823:warning\nexport const box = (x: number) => ({ value: x })", 4823},
-		{"service field comma", "service Stock { region: string, count(): number!! }", "Write ; for the comma", "service Stock { region: string; count(): number!! }", 1013},
 		{"schema field comma", "schema Draft { readonly title: string, readonly count: number }", "Write ; for the comma", "schema Draft { readonly title: string; readonly count: number }", 1013},
 		{"data field comma", "data Shape { Rect { width: number, height: number } }", "Write ; for the comma", "data Shape { Rect { width: number; height: number } }", 1013},
 		{"data variant comma", "data Answer { Yes, No }", "Write ; for the comma", "data Answer { Yes; No }", 1013},

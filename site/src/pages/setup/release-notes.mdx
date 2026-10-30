@@ -1384,6 +1384,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - With `noUnusedLocals`, `vibelang --fix` could refuse a valid rewrite because it made an import from `effect` unused. It now removes those imports as part of the safety check.
 
 - Commas between service method signatures were rejected as missing method bodies; methods now accept interface separators, including trailing commas (VIP-9).
+- Commas between service properties reported `EK1013`; properties now accept interface separators, including trailing commas (VIP-9).
 
 - The specification's `try.allSettled` counterpart, `Effect.all([a, b].map(Effect.exit))`, was a TypeScript error when the operands had different types, and lost the tuple when it compiled. An array literal now maps to `Effect.all([Effect.exit(a), Effect.exit(b)])`, typed as a tuple of `Exit`s, as `Promise.allSettled` keeps one.
 - The specification lowered a destructuring default that contained `try`, `await` or a returning `do` into an arrow, so `const { x = do { return 9 } } = {}` returned from the arrow instead of the function. Such a default now runs in the enclosing function, keeping evaluation order, TDZ, `var` scoping and iterator closing.

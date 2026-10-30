@@ -16,7 +16,7 @@ import (
 // the parser marks their comma nodes as synthesized class separators.
 // Other retained markers still get this diagnostic and its semicolon fix.
 
-// EK1013: a comma after a field of an error, schema, schema error, service, or control declaration. {0} is the declaration's kind, such as "an error".
+// EK1013: a comma after a field of an error, schema, schema error, or control declaration. {0} is the declaration's kind, such as "an error".
 var EK1013 = message(1013, errorCategory, "The fields of {0} are separated by ; or a new line, not by a comma.")
 
 // EK1306 and EK0908 (decided detail 241, Appendix A Separator): two members
@@ -53,7 +53,8 @@ func checkFieldCommas(c *checker.Checker, file *ast.SourceFile) {
 					reportAt(c, file, next, m, fieldDeclarationKind(node), file.Text()[next.Pos():next.End()])
 					continue
 				}
-				if ast.IsSemicolonClassElement(member) && member.Flags&ast.NodeFlagsVibeLang != 0 && member.Flags&ast.NodeFlagsReparsed == 0 {
+				// Services admit comma separators, but still reject missing separators above.
+				if declarationWord(node) != "service" && ast.IsSemicolonClassElement(member) && member.Flags&ast.NodeFlagsVibeLang != 0 && member.Flags&ast.NodeFlagsReparsed == 0 {
 					note(report(c, member, EK1013, fieldDeclarationKind(node)), "Its body is a class body, as in TypeScript.")
 				}
 			}
@@ -74,7 +75,7 @@ func fieldDeclarationKind(class *ast.Node) string {
 	if classKindOf(class) == controlClass {
 		return "a control"
 	}
-	return "a service"
+	return "a declaration"
 }
 
 // fieldCommaFix is EK1013's quick fix: it writes ; for the comma the
