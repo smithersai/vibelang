@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport { both } from\nfunction shown(value: unknown): string {\n  missingName\n}\nmissingTop\n-- package.json --\n{\"private\":true,\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\":{\"strict\":true,\"target\":\"es2022\",\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"types\":[],\"skipLibCheck\":true,\"outDir\":\"out\"},\"include\":[\"*.ts\"]}\n")

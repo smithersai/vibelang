@@ -646,6 +646,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Clearer messages for a program run at a module's top level (EK1001) and a throw in a factory's body (EK2115). `export const config = loadConfig()` suggested only "Export a function instead"; it now shows the code that holds the program, `const config = () => loadConfig()`. A top-level `provide`, `handle`, `uninterruptible`, `interruptible` or `restore` block now says to move it into a function, a top-level throw expression reads like a throw statement, `A module's top level can't throw Bad`, and EK2115 no longer says a body "cannot run throw".
 
 - While an argument such as `Layer.effect(Reports, {` followed by `const printer = try Printer` was half written, the language server could recurse until its stack overflowed and the process died: checking the argument asked for the call's signature, whose resolution checked the argument again. The check now answers from the resolution already in progress.
+- An ordinary `.ts` file could get TypeScript errors that stock TypeScript does not report, in code TypeScript never checks, such as a function that error recovery reads as an import's module specifier (`import { a } from` followed by `function f() { missingName }`): a VibeLang pass whose diagnostics no longer apply to `.ts` files still asked the checker for types across the file. The pass no longer runs, so `.ts` files keep exactly TypeScript's diagnostics.
 
 #### Runtime
 

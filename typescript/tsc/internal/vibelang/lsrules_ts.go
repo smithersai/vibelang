@@ -10,9 +10,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// D266 supersedes D242: these Effect-rule candidates no longer attach EK
-// diagnostics to TypeScript files. The shared diagnostic constructor enforces
-// that boundary for every code; retain the editor fixes for these codes.
+// D266 supersedes D242: "This removes EK4801, EK4819, and EK4820 from
+// ordinary TypeScript." No check looks for them in a .ts file: the shared
+// diagnostic constructor would drop what it found, and the types it asked
+// the checker for made the checker report TypeScript diagnostics in code
+// that TypeScript never checks. The codes and editor fixes are retained.
 
 var (
 	// EK4819 (missingStarInYieldEffectGen): yield of an Effect in an Effect generator.
@@ -24,7 +26,6 @@ var (
 func init() {
 	registry[EK4819.Code] = EK4819
 	registry[EK4820.Code] = EK4820
-	typeScriptFileChecks = append(typeScriptFileChecks, checkTypeScriptRules)
 	ls.RegisterCodeFixProvider(yieldStarFix)
 }
 
@@ -40,61 +41,6 @@ func isCheckedTypeScriptFile(file *ast.SourceFile) bool {
 		return false
 	}
 	return tspath.FileExtensionIsOneOf(string(file.FileName()), []string{tspath.ExtensionTs, tspath.ExtensionTsx, tspath.ExtensionMts, tspath.ExtensionCts})
-}
-
-// checkTypeScriptRules reports EK4801, EK4819, and EK4820 in file.
-func checkTypeScriptRules(c *checker.Checker, file *ast.SourceFile) {
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		switch {
-		case ast.IsYieldExpression(node):
-			checkYield(c, node)
-		case ast.IsExpressionStatement(node):
-			checkTypeScriptStatement(c, node)
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-}
-
-// checkYield reports EK4819 at a yield without * of an Effect in an Effect
-// generator.
-func checkYield(c *checker.Checker, yield *ast.Node) {
-	operand := yield.Expression()
-	if yield.AsYieldExpression().AsteriskToken != nil || operand == nil || effectGeneratorOf(c, yield) == nil {
-		return
-	}
-	if isEffectType(c, c.GetTypeAtLocation(operand)) {
-		report(c, yield, EK4819)
-	}
-}
-
-// checkTypeScriptStatement reports EK4820 at a yield* statement of an Effect
-// that never succeeds in an Effect generator, and EK4801 at a statement that
-// discards an Effect.
-func checkTypeScriptStatement(c *checker.Checker, statement *ast.Node) {
-	expression := ast.SkipParentheses(statement.Expression())
-	generator := effectGeneratorOf(c, statement)
-	if ast.IsYieldExpression(expression) {
-		operand := expression.Expression()
-		if generator == nil || operand == nil || expression.AsYieldExpression().AsteriskToken == nil {
-			return
-		}
-		t := c.GetTypeAtLocation(operand)
-		if success := channelType(c, t, "_A"); isEffectType(c, t) && success != nil && success.Flags()&checker.TypeFlagsNever != 0 {
-			note(report(c, expression, EK4820), "Write return yield*, so that TypeScript narrows what follows.")
-		}
-		return
-	}
-	if isDiscardingForm(expression) || !isEffectType(c, c.GetTypeAtLocation(expression)) {
-		return
-	}
-	d := report(c, statement.Expression(), EK4801, messageText(statement.Expression(), "This expression"))
-	if generator != nil {
-		note(d, "Run it with yield*.")
-	} else {
-		note(d, "Run it with yield* inside Effect.gen, or keep it in a variable.")
-	}
 }
 
 // effectGeneratorOf returns the generator function whose body evaluates
