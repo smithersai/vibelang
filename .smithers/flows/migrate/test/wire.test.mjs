@@ -15,7 +15,7 @@ test("package.json edits: VibeLang packages and tsc in scripts", () => {
   const pkg = { dependencies: { parse5: "^8" }, devDependencies: { effect: "4.0.6", vitest: "^5" } }
   const added = addVibeLang(pkg, { vibelang: "file:/t/v.tgz", "vibelang-runtime": "file:/t/r.tgz", "vibelang-vite": "file:/t/p.tgz" })
   assert.equal(added.dependencies["vibelang-runtime"], "file:/t/r.tgz")
-  assert.deepEqual(Object.keys(added.devDependencies), ["effect", "vitest", "vibelang", "vibelang-vite"])
+  assert.deepEqual(Object.keys(added.devDependencies), ["effect", "vitest", "vibelang"])
   assert.equal(pkg.dependencies["vibelang-runtime"], undefined)
   assert.deepEqual(replaceTsc({ build: "pnpm run clean && tsc -b tsconfig.build.json", typecheck: "tsc -p tsconfig.json --noEmit", test: "vitest run", other: "tscx" }), {
     build: "pnpm run clean && vibelang -b tsconfig.build.json", typecheck: "vibelang -p tsconfig.json --noEmit", test: "vitest run", other: "tscx"

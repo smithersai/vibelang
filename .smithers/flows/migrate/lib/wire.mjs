@@ -57,10 +57,11 @@ export function addEffectLint(scripts = {}, readConfig) {
   return next
 }
 
-/** Adds the VibeLang packages: the runtime as a dependency, the compiler and plugin as dev dependencies. */
+/** Adds what a migrated package needs: the runtime as a dependency and the compiler as a dev dependency. The package that owns a Vite config also gets the plugin (addVibeLangPlugin). */
 export function addVibeLang(pkg, specs) {
-  const next = addVibeLangPlugin(pkg, specs)
+  const next = structuredClone(pkg)
   next.dependencies = { ...next.dependencies, "vibelang-runtime": specs["vibelang-runtime"] }
+  next.devDependencies = { ...next.devDependencies, vibelang: specs.vibelang }
   return next
 }
 
