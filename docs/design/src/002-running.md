@@ -112,7 +112,7 @@ After a parenthesized handler or a function expression handler, another `catch` 
 | Rule | Diagnostic |
 | --- | --- |
 | `catch` outside effect code | `EK0504` |
-| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the quick fix removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does (decided detail 99): `join f catch h` (quick fix `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (quick fix `fork effect { return e catch h }`, so the handler runs on the forked fiber). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.0, so it is `EK0506` | `EK0505` |
+| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the quick fix removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does (decided detail 99): `join f catch h` (quick fix `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (quick fix `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: `e` stays on the caller and the handler runs on the forked fiber, as [`fork`'s operand](#fork-operand) says). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.0, so it is `EK0506` | `EK0505` |
 | `e catch h` where `e` is not an Effect | `EK0506` |
 | a non-function handler, or an `async`, generator or `async` generator handler (table above) | `EK0509` |
 | a plain handler whose result type is a Promise or thenable (`x catch (e) => queryDb(e)`): the Promise is never run, as for an unwrapped Promise in effect code ([Failures](003-failures.md)) | `EK0507` |
@@ -321,6 +321,37 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 ### Meaning
 
 `fork` starts a fiber and gives its `Fiber`. The form names the owner, which interrupts the fiber when it ends. A child is not awaited at the end of a scope, as Swift's and Kotlin's structured children are; it keeps Effect's meaning. A `fork` child whose parent ends first exits with an interruption; a `fork.detached` child runs to its own end.
+
+<a id="fork-operand"></a>`fork e` evaluates `e` now, on the caller, as `const p = work(await id())` calls `id` and `work` now, and runs only the Effect that `e` gives on the new fiber. So a failure of `id` in `fork worker(try id())` is the caller's, as a rejection of `await id()` is. Handling a failure on the child keeps that split, as `.catch(h)` does on a Promise:
+
+```vibe es
+// compiler-gap: pending VIP-17
+effect function start(id: Effect.Effect<number, string>) {
+  const child = fork Effect.catch(worker(try id), (e) => Effect.succeed(recover(e)))
+  return "started"
+}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+const worker = (n: number) => Effect.fail(`worker ${n}`)
+const recover = (e: string) => `recovered ${e}`
+function start(id: Effect.Effect<number, string>) {
+  return Effect.gen(function* () {
+    const child = yield* Effect.forkChild(Effect.catch(worker(yield* id), (e) => Effect.succeed(recover(e))))
+    return "started"
+  })
+}
+if (Effect.runSync(start(Effect.succeed(1))) !== "started") throw new Error("the operand was lost")
+const failed = Effect.runSyncExit(start(Effect.fail("no id")))
+if (failed._tag !== "Failure") throw new Error("the operand left the caller")
+```
+
+| `id` | Exit of `start` | Runs on the child |
+| --- | --- | --- |
+| succeeds | `Success("started")` | `worker`'s Effect and the handler |
+| fails with `"no id"` | `Failure("no id")`, the caller's | nothing: no fiber starts |
 
 | VibeLang | Effect TypeScript | Owner |
 | --- | --- | --- |

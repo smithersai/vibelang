@@ -122,6 +122,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
+- The specification's fix for `fork e catch h` moved `e` onto the forked fiber, so a failure in `e` no longer reached the caller. The fix is now `fork Effect.catch(e, …)`: `e` runs on the caller, as a Promise's operand does, and the handler runs on the fiber.
+
 - The specification's `A!E!R` productions allowed a line break between a `!` and its slot, while its notes called the same program a syntax error. One rule now covers every `!`: a line break ends an Effect type, as it ends TypeScript's postfix type operators.
 
 - The specification left a `return`, `break` or `continue` out of a `match` arm undefined, and the pinned draft read literally turned `return 7` into `throw 7`. A jump out of an arm now behaves as the same jump out of a `for…of` body: cached iterators close, then the jump goes on. Chapters 3, 4 and 8 gave three different answers for which `throw` skips that closing; there is now one rule, and a no-match error is `new TypeError()` everywhere.
