@@ -301,14 +301,15 @@ try {
     assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
   })
 
-  await check("diagnostics: wait.vibe reports EK1003 with source EK at the async keyword", async () => {
+  await check("diagnostics: wait.vibe accepts ordinary async and shows a Promise result", async () => {
     open("src/wait.vibe", "vibe")
     const items = await diagnostics("src/wait.vibe")
-    assert(items.length === 1, `expected one diagnostic, got ${JSON.stringify(items.map((d) => d.message))}`)
-    const [item] = items
-    assert(item.source === "EK" && item.code === 1003, `expected EK 1003, got ${item.source} ${JSON.stringify(item.code)}`)
-    const start = at("src/wait.vibe", "async function")
-    assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
+    assert(items.length === 0, "ordinary async diagnostics: " + JSON.stringify(items.map(d => d.message)))
+    const shown = hoverText(await connection.request("textDocument/hover", {
+      textDocument: { uri: fileUri("src/wait.vibe") },
+      position: at("src/wait.vibe", "wait()")
+    }))
+    assert(shown.includes("Promise<number>"), "ordinary async hover: " + JSON.stringify(shown))
   })
 
   await check("code action: await on a fiber is EK4609, and its quick fix writes join; on a Deferred, EK4610 writes d.await()", async () => {

@@ -1,4 +1,4 @@
-// EK1003: a call already waits, so async is not part of VibeLang.
+// Ordinary async functions return JavaScript Promises.
 export async function wait() {
   return 1
 }

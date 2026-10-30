@@ -32,6 +32,8 @@ Other editors configure their LSP client to run `vibelang --lsp --stdio` for `*.
 
 For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattributes`; the starter's `.gitattributes` already has this line. Effect's type-aware lint rules, `@effect/tsgo`'s `effecttsgo/*` rules, are built into `vibelang`: see [Lint Effect code](../setup/vibelang-cli.md#lint-effect-code).
 
+Ordinary `async` functions in `.vibe` files return `Promise<T>`, as in TypeScript. The server accepts them and shows the promise's type on hover. Write an `effect` function to run Effects with `try`.
+
 ## Inspect inferred information
 
 ```vibe
@@ -47,7 +49,7 @@ effect function accepted(value: number) {
 // Output: 3
 ```
 
-Inspect `A`, `E`, and `R` when changing a function. A local call returns an unrun Effect. `try` returns its success value. The function's complete contract also records escaping failures and unmet services, and generated declarations expose it to TypeScript consumers.
+Inspect `A`, `E`, and `R` when changing a function. Calling an `effect` function returns an unrun Effect. `try` returns its success value. The function's complete contract also records escaping failures and unmet services, and generated declarations expose it to TypeScript consumers.
 
 Hover over an Effect-returning function to see its inferred `Effect<A, E, R>`. Language-server, formatter, and diagnostic support for the new forms arrives with the compiler's VIP implementation.
 
