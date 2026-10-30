@@ -1,0 +1,2 @@
+go test fuzz v1
+string("service Database {\n  query(sql: string): Effect.Effect<string, never, Maybe!!>\n}\n")

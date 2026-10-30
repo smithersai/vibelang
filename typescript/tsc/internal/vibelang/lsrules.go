@@ -615,7 +615,9 @@ func isLeakable(t *checker.Type) bool {
 	for _, declaration := range symbol.Declarations() {
 		file := ast.GetSourceFileOfNode(declaration)
 		for _, doc := range declaration.JSDoc(file) {
-			if strings.Contains(scanner.GetTextOfNode(doc), "@vibelang leakable") {
+			// The JSDoc node is the comment itself, which GetTextOfNode
+			// would skip as trivia, past the node's end.
+			if strings.Contains(scanner.GetSourceTextOfNodeFromSourceFile(file, doc, true /*includeTrivia*/), "@vibelang leakable") {
 				return true
 			}
 		}
