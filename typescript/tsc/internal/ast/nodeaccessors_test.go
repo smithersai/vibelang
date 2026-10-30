@@ -123,7 +123,8 @@ func TestNodeAccessorsMissing(t *testing.T) {
 
 func TestNodeHeaderLayout(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, unsafe.Sizeof(ast.Node{}), uintptr(32))
+	// NodeFlags is uint64 since VIP-1/VIP-38; its alignment makes the header 40 bytes.
+	assert.Equal(t, unsafe.Sizeof(ast.Node{}), uintptr(40))
 	assert.Equal(t, unsafe.Offsetof(ast.Identifier{}.Node), uintptr(0))
 	assert.Equal(t, unsafe.Offsetof(ast.SourceFile{}.Node), uintptr(0))
 	assert.Equal(t, unsafe.Offsetof(ast.FlowSwitchClauseData{}.Node), uintptr(0))
