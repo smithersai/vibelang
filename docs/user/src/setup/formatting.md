@@ -46,7 +46,7 @@ npx dprint check
 
 Formatting preserves diagnostic codes and executable JavaScript. Recompiling refreshes source positions and inline, external and declaration source maps, including embedded `sourcesContent`, to describe the formatted file. Semantic migrations use `vibelang --fix`.
 
-Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. Names within one import or export may be sorted. VibeLang's own forms keep their shape:
+Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. The names within one import or export keep their order too, so a linter's `sort-imports` rule sees the order you wrote. VibeLang's own forms keep their shape:
 
 | Form | Formatted as |
 | --- | --- |

@@ -147,8 +147,8 @@ func TestPluginAnswersDprint(t *testing.T) {
 	if request.kind != messageHostFormat || request.body[0] != formatID || string(request.sized[0]) != "/repo/a.vibe.ts" {
 		t.Fatalf("host format request %+v", request)
 	}
-	if string(request.sized[1]) != `{"module.sortImportDeclarations":"maintain","module.sortExportDeclarations":"maintain"}` {
-		t.Fatalf("host formatting must preserve module evaluation order: %s", request.sized[1])
+	if string(request.sized[1]) != `{"module.sortImportDeclarations":"maintain","module.sortExportDeclarations":"maintain","importDeclaration.sortNamedImports":"maintain","exportDeclaration.sortNamedExports":"maintain"}` {
+		t.Fatalf("host formatting must preserve module evaluation order and the order of named imports and exports: %s", request.sized[1])
 	}
 	typescript := string(request.sized[2])
 	formatted := strings.Replace(strings.Replace(typescript, "\nreturn", "\n  return", 1), "{ return 1 })", "{\n    return 1\n  })", 1)

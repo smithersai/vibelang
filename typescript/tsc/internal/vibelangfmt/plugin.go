@@ -177,7 +177,7 @@ func (s *pluginServer) sendHostFormat(original uint32, path string, text string)
 	s.mu.Lock()
 	s.hosts[id] = reply
 	s.mu.Unlock()
-	data := message(nil).u32(id).u32(messageHostFormat).u32(original).sized([]byte(path)).u32(0).u32(uint32(len(text))).sized([]byte(`{"module.sortImportDeclarations":"maintain","module.sortExportDeclarations":"maintain"}`)).sized([]byte(text))
+	data := message(nil).u32(id).u32(messageHostFormat).u32(original).sized([]byte(path)).u32(0).u32(uint32(len(text))).sized([]byte(`{"module.sortImportDeclarations":"maintain","module.sortExportDeclarations":"maintain","importDeclaration.sortNamedImports":"maintain","exportDeclaration.sortNamedExports":"maintain"}`)).sized([]byte(text))
 	data = append(data, successBytes...)
 	if _, err := s.writer.Write(data); err != nil {
 		return nil, err
