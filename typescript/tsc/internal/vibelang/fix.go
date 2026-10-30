@@ -498,10 +498,21 @@ func fixableFiles(program *compiler.Program) []*ast.SourceFile {
 	return files
 }
 
-// errorCounts counts program's errors by file, code, and message.
+// errorCounts counts program's errors by file, code, and message. It
+// collects every kind of error whatever the others hold, as the language
+// server does: GetDiagnosticsOfAnyProgram stops at syntax errors, so a
+// syntax error anywhere would hide every type error a fix adds.
 func errorCounts(ctx context.Context, program *compiler.Program) map[string]int {
 	counts := map[string]int{}
-	for _, d := range compiler.GetDiagnosticsOfAnyProgram(ctx, program, nil, false, program.GetBindDiagnostics, program.GetSemanticDiagnostics) {
+	all := slices.Concat(
+		program.GetConfigFileParsingDiagnostics(),
+		program.GetSyntacticDiagnostics(ctx, nil),
+		program.GetProgramDiagnostics(),
+		program.GetGlobalDiagnostics(ctx),
+		program.GetBindDiagnostics(ctx, nil),
+		program.GetSemanticDiagnostics(ctx, nil),
+	)
+	for _, d := range all {
 		if d.Category() == diagnostics.CategoryError {
 			counts[errorKey(d)]++
 		}

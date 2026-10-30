@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ntype Config = { readonly method: \"token\" | \"oauth\" }\nexport function kind(config: Config): string {\n  return Match.value(config).pipe(\n    Match.whenOr({ method: \"oauth\" }, { method: \"none\" }, (c) => c.method),\n    Match.orElse(() => \"other\"),\n  )\n}\nconst broken = ;\n")
