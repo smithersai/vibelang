@@ -81,6 +81,8 @@ const referenceShapeExit = Effect.runSyncExit(Effect.gen(function* () {
 
 - **Amended 2026-10-30: migration warnings.** The transitional compiler reports `EK4854` for a safe migration from the retired abstract-class spelling to `service`, retaining its contract and key, and `EK4855` for `static readonly default = shape` to `static readonly defaultValue = () => shape`, including corresponding type and value reads. An abstract class keeps ordinary TypeScript semantics until explicitly migrated. These warnings retain their emitted compatibility codes until a coordinated compiler/documentation renumber; the existing safe-fix and refusal rules apply.
 
+- **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized service declaration missing its required body is `EK0906`. Every custom `service` declaration in a native TypeScript ambient source context is unsupported (`EK0907`), before missing-body recovery for that declaration. This includes explicit `declare service` and inherited ambientness through nested namespaces, ambient external modules, `declare global` and native declaration-file contexts wherever the source syntax can otherwise occur. `export`, a complete body, an explicit key or a default does not escape that ambientness. Determine the context from source semantics, not the declaration's spelling; preserve ordinary native ambient classes/consts, imported real keys and generated `.d.ts` output. Use the intended runtime declaration or import the real service key; do not synthesize an ambient service or an empty implementation. Ordinary TypeScript ambient class/const declarations keep their rules. These codes label existing rejections; they add no admitted syntax.
+
 ## History
 
 | Problem | Kind | Status |

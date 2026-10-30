@@ -24,6 +24,8 @@ const Delivery = Data.taggedEnum<Delivery>()
 
 - **Amended 2026-10-30: named default exports.** A direct `export default data D { … }` is `EK1603`: declare `D` and write `export { D as default }`. This catalogs the existing named-declaration grammar and changes neither generic data support nor the variant payload/helper diagnostics.
 
+- **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized data declaration missing its required variant body is `EK1604`. An explicitly written empty body remains admitted; recovery does not supply one automatically. These codes label existing rejections; they add no admitted syntax.
+
 ## History
 
 One lego finding (D405): an exhaustive `match` over a `data` value skipped its last arm's test. VIP-7 settles it, because the exhaustiveness check never changes what runs.

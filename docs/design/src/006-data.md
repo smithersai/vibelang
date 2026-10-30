@@ -8,7 +8,48 @@ Sources: [VIP-15](../vips/0015-schema-declarations.md), [VIP-16](../vips/0016-da
 
 [SchemaDeclaration](900-appendices.md#schemadeclaration), which begins with [SchemaStart](900-appendices.md#schemastart), with [Field](900-appendices.md#field)s and [Separator](900-appendices.md#separator)s shared with `error` and `data`. `schema` and `data` are declaration keywords under the one rule of [Declaration keywords](900-appendices.md#declaration-keywords), as `type` is in TypeScript: the keyword and the name on one line, where a declaration can start; anything else, such as `const ok = schema satisfies Schema.Top`, is ordinary TypeScript. A field type is parsed greedily as in a TypeScript type member: a line break separates members only after the type is complete. Thus `role:` followed by `| "admin"` on the next line continues the type. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
 
-A `schema` declaration requires a field body or `= type`; a `data` declaration requires a variant body, even if empty. Unlike `error`, neither has a bodyless form. So `schema as T;`, `schema satisfies T;`, `data as T;` and `data satisfies T;` are syntax errors at statement start, and `schema as = Schema.String` and `data as {}` declare names `as`.
+A `schema` declaration requires a field body or `= type`; a `data` declaration requires a variant body, even if empty. Unlike `error`, neither has a bodyless form. A recognized ordinary schema header missing its required declaration form is `EK1503`; a recognized data header missing its variant body is `EK1604`. These diagnostics do not turn a missing body into an empty one, reject an admitted schema alias, or remove the bodyless `error` and `schema error` forms. So `schema as T;`, `schema satisfies T;`, `data as T;` and `data satisfies T;` are syntax errors at statement start, and `schema as = Schema.String` and `data as {}` declare names `as`.
+
+
+The incomplete forms below have no runtime counterpart. The repairs retain the existing declaration meanings, including empty bodies, schema aliases and bodyless errors:
+
+```vibe es
+// compiler-gap: pending VIP-9, VIP-15, VIP-16
+service MissingService // EK0906
+schema MissingSchema // EK1503
+data MissingData // EK1604
+declare service AmbientService // EK0907, not an additional EK0906
+
+service RuntimeService { static readonly key = "examples/RuntimeService" }
+schema EmptySchema {}
+schema SchemaAlias = Schema.String
+data NoCases {}
+error Allowed
+schema error AlsoAllowed
+```
+
+```ts effect
+import { Context, Data, Effect, Exit, Layer, Schema } from "effect"
+
+type RuntimeShape = {}
+class RuntimeService extends Context.Service<RuntimeService, RuntimeShape>()("examples/RuntimeService") {}
+const EmptySchema = Schema.Struct({})
+const SchemaAlias = Schema.String
+type NoCases = Data.TaggedEnum<{}>
+const NoCases = Data.taggedEnum<NoCases>()
+class Allowed extends Data.TaggedError("Allowed") {}
+class AlsoAllowed extends Schema.TaggedError<AlsoAllowed>()("AlsoAllowed", {}) {}
+const declarationRepairExit = Effect.runSyncExit(Effect.provide(Effect.gen(function* () {
+  const service = yield* RuntimeService
+  const empty = yield* Schema.decodeUnknownEffect(EmptySchema)({})
+  const alias = yield* Schema.decodeUnknownEffect(SchemaAlias)("ok")
+  return [
+    Object.keys(service).length, Object.keys(empty).length, alias,
+    new Allowed()._tag, new AlsoAllowed()._tag, Object.keys(NoCases).length
+  ]
+}), Layer.succeed(RuntimeService, {})))
+console.log(declarationRepairExit) // Success([0, 0, "ok", "Allowed", "AlsoAllowed", 0])
+```
 
 ### Meaning
 
@@ -258,6 +299,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | --- | --- |
 | `export default schema S { … }` or `export default schema S = T`; declare the name and write `export { S as default }` | `EK1501` |
 | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
+| a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | a field type outside the mapping, or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
@@ -350,6 +392,7 @@ VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) i
 | a variant field named `_tag`; rename it, because the variant name supplies the tag | `EK1601` |
 | a variant named `$is` or `$match`, generic data included; rename it and its resolved references to a fresh name | `EK1602` |
 | `export default data D { … }`; declare the name and write `export { D as default }` | `EK1603` |
+| a recognized data declaration missing its required variant body | `EK1604` |
 
 
 The named default-export counterpart is:

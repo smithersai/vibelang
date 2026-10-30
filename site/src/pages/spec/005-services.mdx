@@ -26,7 +26,7 @@ service Auth {
 
 `service` is a declaration keyword under the one rule of [Declaration keywords](/spec/900-appendices#declaration-keywords), as `type` is in TypeScript: `service` and the name on one line begin a service; the body's `{` may follow line breaks, as a class body's may.
 
-`service Name { members }` is the only way to declare a service. `export default service S { }` is `EK0905`; write `export { S as default }`. An `abstract class` is not a service. Members are written out with their types, because they have no bodies to infer from. A member may have any type, Effect or not, as `Context.Service` allows. For throw tracking a member is an interface member (decided detail 3): a non-Effect member with no `@throws` is non-throwing, and `/** @throws {E} */` opts in; an Effect-typed member cannot throw.
+`service Name { members }` is the only way to declare a service. A recognized service header missing its required body is `EK0906`. A custom `service` declaration in any native TypeScript ambient source context is `EK0907`, ahead of the same declaration's missing-body recovery. This includes an explicit `declare service` prefix and inherited ambientness in `declare namespace`, ambient external `declare module`, `declare global`, or a native declaration-file context wherever custom source service syntax can otherwise occur. Nested regions and `export` do not escape inherited ambientness; a complete body, explicit key or `defaultValue` does not create an ambient service form. Supply the intended runtime declaration or import the actual service key; no ambient service API is introduced. `export default service S { }` is `EK0905`; write `export { S as default }`. An `abstract class` is not a service. Members are written out with their types, because they have no bodies to infer from. A member may have any type, Effect or not, as `Context.Service` allows. For throw tracking a member is an interface member (decided detail 3): a non-Effect member with no `@throws` is non-throwing, and `/** @throws {E} */` opts in; an Effect-typed member cannot throw.
 
 ### Meaning
 
@@ -211,10 +211,53 @@ function load(id: string) {
 
 A service is a key, not a class you use.
 
+Inherited ambient context is a source property, not a check for an own `declare` token. Ordinary native ambient classes/consts and generated `.d.ts` counterparts retain TypeScript's rules; import an existing service key when only its type declaration is available. These rejected source forms have no runtime counterpart:
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-9
+export {} // the declare-global control is in a module
+declare namespace Ambient {
+  service Users { static readonly key = "ambient/Users"; n: number } // EK0907
+  namespace Nested {
+    export service Users { static readonly key = "ambient/Nested"; n: number } // EK0907
+  }
+  service Defaults { static readonly key = "ambient/Defaults"; static readonly defaultValue = () => ({ n: 1 }); n: number } // EK0907
+}
+declare global {
+  service GlobalUsers { static readonly key = "ambient/Global"; n: number } // EK0907
+}
+effect function runtimeAlternative() {
+  service RuntimeUsers { static readonly key = "ambient/Runtime"; n: number }
+  provide RuntimeUsers = { n: 7 } { return (try RuntimeUsers).n }
+}
+```
+
+The runtime alternative constructs its real service when the enclosing Effect runs. The ordinary native ambient class below erases; its TypeScript acceptance does not create the runtime key promised by a source `service`.
+
+```ts [Effect]
+import { Context, Effect, Exit, Layer } from "effect"
+
+declare namespace NativeContract {
+  class Existing extends Context.Service<Existing, { n: number }>()("ambient/Existing") {}
+}
+function runtimeAlternative() {
+  return Effect.gen(function* () {
+    class RuntimeUsers extends Context.Service<RuntimeUsers, { n: number }>()("ambient/Runtime") {}
+    return yield* Effect.provide(Effect.gen(function* () {
+      return (yield* RuntimeUsers).n
+    }), Layer.succeed(RuntimeUsers, { n: 7 }))
+  })
+}
+const ambientContextRepairExit = Effect.runSyncExit(runtimeAlternative())
+console.log(ambientContextRepairExit) // Success(7)
+```
+
 A member gets one diagnostic: the first row below that names it. The last row applies only when no other row applies.
 
 | Rule | Code | Why |
 | --- | --- | --- |
+| a recognized service declaration missing its required body | `EK0906` | recovery does not supply an empty body |
+| a custom `service` declaration in an ambient source context, explicit or inherited | `EK0907` | a service creates a runtime key; this takes priority over the same missing-body recovery |
 | two services with the same key anywhere in the program | `EK3001` | |
 | `class X extends Users {}` | `EK3002` | `X` would inherit `Users`' key and silently become the same service |
 | `new Users()` | `EK3003` | |

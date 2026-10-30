@@ -53,6 +53,8 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 
 - **Amended 2026-10-30: named declarations and diagnostics.** A `schema` declaration has no type parameters (`EK1502`); generic Schema construction stays an ordinary generic TypeScript factory. A direct `export default schema S …` is `EK1501`: declare `S` and write `export { S as default }`. A `schema error` follows the [error-declaration rules](0029-schema-errors.md). These codes catalog the existing named, nongeneric declaration grammar.
 
+- **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized ordinary schema declaration missing its required body or admitted alias form is `EK1503`. Recovery does not turn a missing body into an empty struct or reject a valid schema alias. The explicitly admitted bodyless `schema error` form keeps its existing rules. These codes label existing rejections; they add no admitted syntax.
+
 ## History
 
 One minor finding, a wrong Effect API name, fixed.
