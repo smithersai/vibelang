@@ -283,13 +283,14 @@ declared under `typescript/tsc/internal/vibelang/` has a code reference in
 EK4407 is temporarily exempt while module-name resolution is reworked.
 The docs/tools test suite runs the same coverage check. Appendix B coverage also checks imported lint rows against `lint-codes.json` and the compiler's `VibeImportedLintCodes` registry, preserving whole codes beyond ordinal `99`.
 
-## Global throws snapshot
+Regenerate the normative shipped throw contracts with `node docs/tools/throws-inventory.mjs --write`; check them with `node docs/tools/throws-inventory.mjs --check` or `node --test docs/tools/throws-inventory.test.mjs`. Install `docs/tools` first. This reads the compiler's bundled TypeScript lib files and the pinned Effect package's published declarations and `dist` sources. Computed properties use their source spellings, such as `[Symbol.iterator]`, in declaration keys and callback paths; TypeScript's process-local symbol IDs never enter the artifact.
 
-`node docs/tools/throws-inventory.mjs --write` regenerates
-`docs/design/inventory/throws.json` from the compiler's shipped global
-contracts and bundled TypeScript declarations. `--check` checks freshness;
-`node --test docs/tools/throws-inventory.test.mjs` also checks overloads,
-unknown contracts and upstream-input changes. The inventory's `coverage`
-fields identify contracts that later slices still need to generate.
+The throws generator keeps unmodeled native methods and unresolved source protocols at `unknown`. Source proofs do not infer safe argument types from erased JavaScript parameters; add a native proof only with argument-validation evidence and a regression.
+
+Detail 202 treats the iterator protocol of `Array.from(it)`, `new Map(it)` and `new Set(it)` as implicit. The source reader follows numeric `dual` arities through imports and aliases: fewer arguments build a function without executing the body, while a full invocation keeps the body's throw contract. Returned callable contracts retain each invocation stage; a full call that itself returns a function is not mistaken for a data-last factory. Dynamic arity predicates remain conservative. The settled `Effect.catchTag` factory keeps its detail-202 `never` contract.
+
+Built-in argument validation quantifies over each selected declaration's complete typed domain (detail 205), not its call-site values. String padding uses `ToLength` and has own `never`; `repeat` keeps `RangeError` even at safe literal calls (detail 206).
+
+Selected overloads remain distinct: `String.normalize`'s closed union of valid normalization forms is `never`, while its open `string` overload is `RangeError` (detail 205).
 
 Regenerate the normative imported lint inventory and both spec tables with `node docs/tools/lint-codes.mjs --write`; check staleness with `node docs/tools/lint-codes.mjs --check` or `node --test docs/tools/lint-codes.test.mjs`. The assignment registry reserves removed names; new names append in sorted order.
