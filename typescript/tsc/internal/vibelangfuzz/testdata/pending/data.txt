@@ -217,3 +217,25 @@ FuzzVIPDifferential exit:value/vip07.property-cache-reset-plain compiler VIP-7: 
 FuzzVIPDifferential corpus:data-vip07-property-cache-reset-plain compiler VIP-7: minimized vip07.property-cache-reset-plain witness; lane vip-match
 FuzzVIPDifferential compile:EK4704/vip07.regex-literal-plain compiler VIP-7: literal regular-expression patterns are rejected; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-regex-literal-plain compiler VIP-7: minimized vip07.regex-literal-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finishmatch-success-close-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-success-close-plain compiler VIP-7: minimized vip07.finishmatch-success-close-plain native-generator witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finishmatch-close-error-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-close-error-plain compiler VIP-7: minimized vip07.finishmatch-close-error-plain native-generator witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finishmatch-throw-close-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-throw-close-plain compiler VIP-7: minimized vip07.finishmatch-throw-close-plain native-generator witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finishmatch-aggregate-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-aggregate-plain compiler VIP-7: minimized vip07.finishmatch-aggregate-plain native-generator witness; lane vip-match
+FuzzVIPDifferential compile:TS1108/vip07.finishmatch-return-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-return-plain compiler VIP-7: minimized vip07.finishmatch-return-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:EK1019/vip07.finishmatch-break-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential compile:TS1109/vip07.finishmatch-break-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-break-plain compiler VIP-7: minimized vip07.finishmatch-break-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:EK1019/vip07.finishmatch-continue-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential compile:TS1109/vip07.finishmatch-continue-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-continue-plain compiler VIP-7: minimized vip07.finishmatch-continue-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:TS1108/vip07.finishmatch-close-replaces-return-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-close-replaces-return-plain compiler VIP-7: minimized vip07.finishmatch-close-replaces-return-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:EK1005/vip07.finishmatch-failure-abandons-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-failure-abandons-plain compiler VIP-7: minimized vip07.finishmatch-failure-abandons-plain completion witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finish-is-test-throw-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finish-is-test-throw-plain compiler VIP-7: minimized vip07.finish-is-test-throw-plain completion witness; lane vip-match

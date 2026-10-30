@@ -357,4 +357,8 @@ Static declaration witnesses also compile a consumer of emitted declarations and
 
 `FuzzVIPDifferential` also compares fixed pairs from the match, data, schema and schema-error chapters with their independently written Effect TypeScript. The pairs cover brand checks, extractor arity, bindings, observable evaluation order, per-match caches and schema mappings. `TestDataChapterWitnessesQuoted` checks each verbatim chapter or pinned-proposal citation in the fast gate. Disagreements use precise diagnostic codes or `Exit` comparison keys with named corpus inputs and compiler owners; passing a pending probe is an `XPASS`.
 
+Iterator-finishing pairs check cleanup after the selected arm, observable lookup and zero-argument calls of `return()`, a closing failure, a pending testing throw and ordered error aggregation. The native generator fixture records each step without clocks, I/O or asynchronous races.
+
 The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.
+
+Additional native `for…of` counterparts check `return`, `break` and `continue` through an arm, closing errors replacing jumps, abandonment after an Effect failure, and closing after an `is` test throws. These follow the current chapter's explicit FinishMatch reconciliation.
