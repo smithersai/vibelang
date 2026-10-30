@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Retiring valid compiler cases could make the fuzz splicer's category check fail even though mutation still worked; it now checks a rare category explicitly when the random sample misses it.
 
+- Formatting `async f()` or `effect f()` silently migrated the declaration and removed `EK4618`; formatting now preserves the shorthand, and `vibelang --fix` applies its existing repair.
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang

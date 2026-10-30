@@ -1,10 +1,10 @@
 effect function load(id: string) {
   return try find(id)
 }
-export effect function save(user: User) {
+export effect save(user: User) {
   try write(user)
 }
-async function get(url: string) {
+async get(url: string) {
   return await fetch(url)
 }
 class Users {

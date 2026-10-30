@@ -125,8 +125,17 @@ func (d *decoder) ordered() error {
 	if len(t.voids) != len(d.enc.voids) || len(t.ors) != len(d.enc.pipes) || len(t.fors) != len(d.enc.fors) || len(t.finallys) != len(d.enc.finallys) || len(t.asyncs) != len(d.enc.asyncs) || len(t.functions) != len(d.enc.functions) {
 		return fmt.Errorf("vibelang format: internal error: the formatter changed the number of void, ||, for, finally, async, or function tokens")
 	}
-	// A shorthand declaration keeps the function keyword encode wrote: VIP-39
-	// removed the shorthand, and EK4618 reports it.
+	// The TypeScript formatter needs function, but the source shorthand must
+	// retain its EK4618 diagnostic. Only --fix inserts function permanently.
+	for i, pos := range t.functions {
+		if d.enc.functions[i] == "shorthand" {
+			end := pos + len("function")
+			if end < len(d.text) && d.text[end] == ' ' {
+				end++
+			}
+			d.replace(pos, end, "")
+		}
+	}
 	for i, pos := range t.asyncs {
 		if word := d.enc.asyncs[i]; word != "" {
 			d.replace(pos, pos+len("async"), word)

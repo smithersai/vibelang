@@ -66,6 +66,8 @@ Under the same compiler/options, formatting preserves parsed program meaning, ev
 
 Normal quote, grouping, comma and layout styling may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, offsets and stack presentation may reflect the formatted text. Ordinary strings/data, tagged-template raw/cooked values, regex meaning, function names/lengths, property names and directive semantics must stay the same: an escaped string must not become an actual `use strict` directive. Compiler-generated source-map and declaration-map provenance, including `sourcesContent`, is refreshed for the formatted file.
 
+Formatting keeps diagnostics, including `EK4618` for `async f()` and `effect f()` declarations without `function`. Run `vibelang --fix` to insert the missing keyword.
+
 ## What the formatter refuses
 
 The plugin reports the file and leaves it unchanged when:
