@@ -38,3 +38,16 @@ test("repository scanning distinguishes neutral examples from personal paths, in
     expect(leaks(example, { repository: true })).toEqual([])
   }
 })
+
+test("repository mode keeps temporary-path checks while allowing public examples", () => {
+  for (const agent of ["claude", "codex"]) {
+    const root = "/private/" + "tmp/" + agent + "-123"
+    const path = root + "/project"
+    expect(leaks(path)).toEqual(["an agent temporary path: " + JSON.stringify(root)])
+    expect(leaks(path, { repository: true })).toEqual(leaks(path))
+  }
+  for (const example of ["/home/user/project", "10.1.2.3", "192.168.1.2", "~/.ssh/key"]) {
+    expect(leaks(example).length).toBeGreaterThan(0)
+    expect(leaks(example, { repository: true })).toEqual([])
+  }
+})

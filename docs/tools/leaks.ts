@@ -3,9 +3,11 @@
 // tracked-source gate. Private hosts and workstation paths belong in the local
 // environment: VIBELANG_LEAK_PATTERNS is a JSON array of regex source strings.
 // Example: '["private-build\\.example", "/private/workstation"]'.
+const agentTemporaryPath: [string, RegExp] = ["an agent temporary path", /\/private\/tmp\/(?:claude|codex)-\d+/]
+
 const forbidden: [string, RegExp][] = [
   ["a local path", /\/Users\/[A-Za-z]|\/home\/[a-z]/],
-  ["an agent temporary path", /\/private\/tmp\/(?:claude|codex)-\d+/],
+  agentTemporaryPath,
   ["a LAN address", /\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b/],
   ["a private key path", /\.ssh\//],
 ]
@@ -36,7 +38,7 @@ function privatePatterns(): RegExp[] {
 export function leaks(text: string, options: { repository?: boolean } = {}): string[] {
   const configured = privatePatterns()
   const rules: [string, RegExp][] = options.repository
-    ? [["a local path", repositoryPath], forbidden[1]!]
+    ? [["a local path", repositoryPath], agentTemporaryPath]
     : forbidden
   const problems: string[] = []
   for (const [what, pattern] of rules) {
