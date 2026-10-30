@@ -143,6 +143,50 @@ const matcherExit = Effect.runSyncExit(Effect.sync(() => [
 console.log(matcherExit) // Success([true, "number", 0, 8])
 ```
 
+- **Amended 2026-10-30: async results and default flow use TypeScript's actual tests.** For arm-type union `U`, `async match` has type `Promise<Awaited<U>>`, with native async-return adoption and TypeScript's Promise-like/thenable checks. A returned Promise is adopted rather than nested. A default arm follows TypeScript control flow after the preceding ordered pattern and guard tests fail, including cached reads and source mutations. This is independent of exhaustiveness coverage: a predicate can narrow its false branch without covering a case, and a failed guard does not establish that its positive predicate failed. Do not subtract a coverage set instead of analyzing those tests.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function isText(s: string | number): s is string { return typeof s === "string" }
+function classifyDefault(s: string | number) {
+  return match (s) { when isText: s.length; default: s.toFixed(0); }
+}
+function guardedDefault(s: string | number) {
+  return match (s) {
+    when isText and if (false): 0;
+    default: typeof s === "string" ? s.length : s;
+  }
+}
+const adoptedResult: Promise<number> = async match (true) { default: Promise.resolve(7); }
+```
+
+```ts effect
+import { Effect, Exit } from "effect"
+
+function isText(s: string | number): s is string { return typeof s === "string" }
+function classifyDefault(s: string | number) {
+  if (isText(s)) return s.length
+  return s.toFixed(0)
+}
+function guardedDefault(s: string | number) {
+  if (isText(s) && false) return 0
+  // @ts-expect-error the failed guard leaves both string and number possible
+  const numberOnly: number = s
+  return typeof s === "string" ? s.length : s
+}
+const adoptedResult: Promise<number> = (async () => Promise.resolve(7))()
+const resultFlowExit = await Effect.runPromiseExit(Effect.gen(function* () {
+  return [
+    classifyDefault("text"),
+    classifyDefault(7),
+    guardedDefault("text"),
+    guardedDefault(7),
+    yield* Effect.promise(() => adoptedResult)
+  ]
+}))
+console.log(resultFlowExit) // Success([4, "7", 4, 7, 7])
+```
+
 ## Meaning in Effect TS terms
 
 `match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.
