@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.guard-http-httpservererror-httpservererror-plain\x00")

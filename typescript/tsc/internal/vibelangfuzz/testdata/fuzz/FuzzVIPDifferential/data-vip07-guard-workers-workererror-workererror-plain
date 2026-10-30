@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.guard-workers-workererror-workererror-plain\x00")

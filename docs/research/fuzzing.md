@@ -362,3 +362,5 @@ Iterator-finishing pairs check cleanup after the selected arm, observable lookup
 The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.
 
 Additional native `for…of` counterparts check `return`, `break` and `continue` through an arm, closing errors replacing jumps, abandonment after an Effect failure, and closing after an `is` test throws. These follow the current chapter's explicit FinishMatch reconciliation.
+
+The retained-error inventory covers all 33 root and subpath rows in chapter 4. Native module guards verify every branded fixture and reject unbranded same-tag controls. Zero/two-argument extractor matrices remain separate from bare/single-binding guard pairs, so an arity error cannot hide a wrong runtime guard.

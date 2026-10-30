@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.tagged-graphql-graphqlclienterror-graphqlclienterror-plain\x00")

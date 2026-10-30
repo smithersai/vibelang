@@ -239,3 +239,132 @@ FuzzVIPDifferential compile:EK1005/vip07.finishmatch-failure-abandons-plain comp
 FuzzVIPDifferential corpus:data-vip07-finishmatch-failure-abandons-plain compiler VIP-7: minimized vip07.finishmatch-failure-abandons-plain completion witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.finish-is-test-throw-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-finish-is-test-throw-plain compiler VIP-7: minimized vip07.finish-is-test-throw-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-ai-aierror-aierror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-ai-aierror-aierror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-ai-aierror-aierror-plain compiler VIP-7: minimized vip07.tagged-ai-aierror-aierror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: minimized vip07.tagged-ai-mcpclienterror-mcpclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: minimized vip07.tagged-crypto-cryptoerror-cryptoerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-csv-csverror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-csv-csverror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-csv-csverror-plain compiler VIP-7: minimized vip07.tagged-encoding-csv-csverror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-encodingerror-encodingerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-encodingerror-encodingerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-encodingerror-encodingerror-plain compiler VIP-7: minimized vip07.tagged-encoding-encodingerror-encodingerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-jsonarray-jsonarrayerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-jsonarray-jsonarrayerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-jsonarray-jsonarrayerror-plain compiler VIP-7: minimized vip07.tagged-encoding-jsonarray-jsonarrayerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-ndjson-ndjsonerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-ndjson-ndjsonerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-ndjson-ndjsonerror-plain compiler VIP-7: minimized vip07.tagged-encoding-ndjson-ndjsonerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-tar-tarerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-tar-tarerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-tar-tarerror-plain compiler VIP-7: minimized vip07.tagged-encoding-tar-tarerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-xml-xmlerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-xml-xmlerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-xml-xmlerror-plain compiler VIP-7: minimized vip07.tagged-encoding-xml-xmlerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-encoding-zip-ziperror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-encoding-zip-ziperror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-encoding-zip-ziperror-plain compiler VIP-7: minimized vip07.tagged-encoding-zip-ziperror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-graphql-graphqlclienterror-graphqlclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-graphql-graphqlclienterror-graphqlclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-graphql-graphqlclienterror-graphqlclienterror-plain compiler VIP-7: minimized vip07.tagged-graphql-graphqlclienterror-graphqlclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-cookies-cookieserror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-cookies-cookieserror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-cookies-cookieserror-plain compiler VIP-7: minimized vip07.tagged-http-cookies-cookieserror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-headers-headerparseerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-headers-headerparseerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-headers-headerparseerror-plain compiler VIP-7: minimized vip07.tagged-http-headers-headerparseerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-httpbody-httpbodyerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-httpbody-httpbodyerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-httpbody-httpbodyerror-plain compiler VIP-7: minimized vip07.tagged-http-httpbody-httpbodyerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-httpclienterror-httpclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-httpclienterror-httpclienterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-httpclienterror-httpclienterror-plain compiler VIP-7: minimized vip07.tagged-http-httpclienterror-httpclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-httpservererror-httpservererror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-httpservererror-httpservererror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-httpservererror-httpservererror-plain compiler VIP-7: minimized vip07.tagged-http-httpservererror-httpservererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-http-multipart-multiparterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-http-multipart-multiparterror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-http-multipart-multiparterror-plain compiler VIP-7: minimized vip07.tagged-http-multipart-multiparterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-socket-datagramsocket-datagramsocketerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-socket-datagramsocket-datagramsocketerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-socket-datagramsocket-datagramsocketerror-plain compiler VIP-7: minimized vip07.tagged-socket-datagramsocket-datagramsocketerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-socket-socket-socketerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-socket-socket-socketerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-socket-socket-socketerror-plain compiler VIP-7: minimized vip07.tagged-socket-socket-socketerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-sql-sqlerror-sqlerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-sql-sqlerror-sqlerror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-sql-sqlerror-sqlerror-plain compiler VIP-7: minimized vip07.tagged-sql-sqlerror-sqlerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-workers-workererror-workererror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-workers-workererror-workererror-plain compiler VIP-7: impossible extractor arity reports TS errors instead of EK0703 and a failed match; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-workers-workererror-workererror-plain compiler VIP-7: minimized vip07.tagged-workers-workererror-workererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-ai-aierror-aierror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-ai-aierror-aierror-plain compiler VIP-7: minimized vip07.guard-ai-aierror-aierror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: minimized vip07.guard-ai-mcpclienterror-mcpclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: minimized vip07.guard-crypto-cryptoerror-cryptoerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-csv-csverror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-csv-csverror-plain compiler VIP-7: minimized vip07.guard-encoding-csv-csverror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-encodingerror-encodingerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-encodingerror-encodingerror-plain compiler VIP-7: minimized vip07.guard-encoding-encodingerror-encodingerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-jsonarray-jsonarrayerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-jsonarray-jsonarrayerror-plain compiler VIP-7: minimized vip07.guard-encoding-jsonarray-jsonarrayerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-ndjson-ndjsonerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-ndjson-ndjsonerror-plain compiler VIP-7: minimized vip07.guard-encoding-ndjson-ndjsonerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-tar-tarerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-tar-tarerror-plain compiler VIP-7: minimized vip07.guard-encoding-tar-tarerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-xml-xmlerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-xml-xmlerror-plain compiler VIP-7: minimized vip07.guard-encoding-xml-xmlerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-encoding-zip-ziperror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-encoding-zip-ziperror-plain compiler VIP-7: minimized vip07.guard-encoding-zip-ziperror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-graphql-graphqlclienterror-graphqlclienterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-graphql-graphqlclienterror-graphqlclienterror-plain compiler VIP-7: minimized vip07.guard-graphql-graphqlclienterror-graphqlclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-cookies-cookieserror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-cookies-cookieserror-plain compiler VIP-7: minimized vip07.guard-http-cookies-cookieserror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-headers-headerparseerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-headers-headerparseerror-plain compiler VIP-7: minimized vip07.guard-http-headers-headerparseerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-httpbody-httpbodyerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-httpbody-httpbodyerror-plain compiler VIP-7: minimized vip07.guard-http-httpbody-httpbodyerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-httpclienterror-httpclienterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-httpclienterror-httpclienterror-plain compiler VIP-7: minimized vip07.guard-http-httpclienterror-httpclienterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-httpservererror-httpservererror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-httpservererror-httpservererror-plain compiler VIP-7: minimized vip07.guard-http-httpservererror-httpservererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-http-multipart-multiparterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-http-multipart-multiparterror-plain compiler VIP-7: minimized vip07.guard-http-multipart-multiparterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-socket-datagramsocket-datagramsocketerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-socket-datagramsocket-datagramsocketerror-plain compiler VIP-7: minimized vip07.guard-socket-datagramsocket-datagramsocketerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-socket-socket-socketerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-socket-socket-socketerror-plain compiler VIP-7: minimized vip07.guard-socket-socket-socketerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-sql-sqlerror-sqlerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-sql-sqlerror-sqlerror-plain compiler VIP-7: minimized vip07.guard-sql-sqlerror-sqlerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-workers-workererror-workererror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-workers-workererror-workererror-plain compiler VIP-7: minimized vip07.guard-workers-workererror-workererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-timeouterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-timeouterror-plain compiler VIP-7: minimized vip07.guard-cause-timeouterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-nosuchelementerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-nosuchelementerror-plain compiler VIP-7: minimized vip07.guard-cause-nosuchelementerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-illegalargumenterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-illegalargumenterror-plain compiler VIP-7: minimized vip07.guard-cause-illegalargumenterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-exceededcapacityerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-exceededcapacityerror-plain compiler VIP-7: minimized vip07.guard-cause-exceededcapacityerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-asyncfibererror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-asyncfibererror-plain compiler VIP-7: minimized vip07.guard-cause-asyncfibererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cause-unknownerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cause-unknownerror-plain compiler VIP-7: minimized vip07.guard-cause-unknownerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-schema-schemaerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-schema-schemaerror-plain compiler VIP-7: minimized vip07.guard-schema-schemaerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-cron-cronparseerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-cron-cronparseerror-plain compiler VIP-7: minimized vip07.guard-cron-cronparseerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-platformerror-platformerror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-platformerror-platformerror-plain compiler VIP-7: minimized vip07.guard-platformerror-platformerror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-semver-semvererror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-semver-semvererror-plain compiler VIP-7: minimized vip07.guard-semver-semvererror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-terminal-quiterror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-terminal-quiterror-plain compiler VIP-7: minimized vip07.guard-terminal-quiterror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.guard-textdiff-textdifferror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-guard-textdiff-textdifferror-plain compiler VIP-7: minimized vip07.guard-textdiff-textdifferror-plain native-guard witness; lane vip-match
