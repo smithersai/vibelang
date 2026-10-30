@@ -50,6 +50,8 @@ An explicit string-literal key keeps its value, including `""`. It is used for r
 
 Derived keys require a module-scope declaration in a package whose `package.json` has a string `name`. A local or block-scoped service, or one outside a named package, reports `EK0903` when it omits `static readonly key`. The editor quick fix and `vibelang --fix` insert an explicit key while preserving the declaration's current runtime identity. A namespace at module scope can still derive its services' keys.
 
+The special `key` and `defaultValue` property headers allow only `static readonly`, without `public`, `private`, `protected`, `declare`, optional `?` or definite `!` markers. `defaultValue` also needs an initializer. Malformed headers report `EK0902`; invalid key literals or a missing `readonly` on `key` use the key-validation diagnostic instead.
+
 ## Declaring a service of any shape
 
 ```vibe

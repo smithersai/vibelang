@@ -1338,6 +1338,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Local services and services without a named package silently received fallback keys; they now require an explicit key, with a quick fix that preserves the existing identity.
 
+- Service keys accepted class modifiers, and default properties could omit `readonly` or an initializer; these malformed declarations now report `EK0902`.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
 - The specification incorrectly required `for concurrent` on one line. A newline after `for` is now allowed, matching native `for await` and leaving the loop behavior unchanged.

@@ -1,0 +1,7 @@
+export service Keyed { static readonly key: string = "literal/Keyed"; n: number }
+export service Defaults { n: number; static readonly defaultValue: () => Defaults.Shape = () => ({n: 3}) }
+class Ordinary {
+  private static readonly key? = "private"
+  static defaultValue = (): {n: number} => ({n: 4})
+}
+export const result = [Keyed.key, Ordinary.defaultValue().n]
