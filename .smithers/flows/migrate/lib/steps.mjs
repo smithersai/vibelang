@@ -505,7 +505,7 @@ export async function codemod(options) {
   const rounds = []
   let settled = true
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
-    const fixed = await fixToFixedPoint({ compiler, tsconfig: pkg.tsconfig, cwd: join(t, pkg.dir), root: t, log: join(p.batch(b), "logs", `fix-${slug(pkg.dir)}`) })
+    const fixed = await fixToFixedPoint({ compiler, tsconfig: pkg.tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-${slug(pkg.dir)}`) })
     for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
     refused.push(...fixed.refused)
     rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...r })))

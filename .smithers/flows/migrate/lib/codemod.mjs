@@ -2,7 +2,7 @@
 // modules to .vibe, rewrite the imports that name them by VibeLang's rules,
 // then run `vibelang --fix` until it finds nothing more to fix, recording each
 // rewrite it applied and each it refused.
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { applyEdits, parseImports, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
@@ -187,20 +187,53 @@ export function mergeFixes(into, files) {
   return into
 }
 
+/** Every .vibe file under dir, outside node_modules and hidden directories. */
+function vibeFilesUnder(dir) {
+  const out = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...vibeFilesUnder(path))
+    else if (entry.name.endsWith(".vibe")) out.push(path)
+  }
+  return out
+}
+
 /**
  * Runs `vibelang -p tsconfig --fix --noEmit` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
- * file and kind, the refusals, and the diagnostics of the last run.
+ * file and kind, the refusals, and the diagnostics of the last run. With
+ * only, the files (relative to root) whose rewrites a batch keeps: --fix
+ * rewrites every .vibe file of the project, so each round puts every other
+ * .vibe file back as it was, and an earlier batch's committed file, hand
+ * repairs included, stays as committed.
  */
-export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds = 4, log }) {
+export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only }) {
   const rounds = []
   const byFile = {}
   const refused = []
+  const kept = only && new Set(only)
+  const others = new Map()
+  if (kept) {
+    for (const path of vibeFilesUnder(cwd)) {
+      const file = posix.relative(root, path)
+      if (!kept.has(file)) others.set(file, readFileSync(path, "utf8"))
+    }
+  }
   let last
   for (let round = 1; round <= maxRounds; round++) {
     const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --pretty false`, { cwd, log: log && `${log}.${round}.log` })
     assertFinished(result, log && `${log}.${round}.log`)
     const parsed = parseFixOutput(result.stdout, { cwd, root })
+    if (kept) {
+      for (const file of Object.keys(parsed.files)) {
+        if (kept.has(file)) continue
+        if (others.has(file)) writeFileSync(join(root, file), others.get(file))
+        delete parsed.files[file]
+      }
+      parsed.total = Object.values(parsed.files).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
+      parsed.refused = parsed.refused.filter((r) => kept.has(r.file))
+    }
     rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })
     mergeFixes(byFile, parsed.files)
     refused.push(...parsed.refused)

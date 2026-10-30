@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { keepMutableMembers, mergeFixes, parseFixOutput, renameBatch, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
+import { fixToFixedPoint, keepMutableMembers, mergeFixes, parseFixOutput, renameBatch, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
 test("vibePath renames only .ts modules", () => {
@@ -118,6 +118,37 @@ test("keepMutableMembers marks the members TypeScript declares writable mutable,
       ""
     ].join("\n"))
     assert.equal(readFileSync(join(root, "src/plain.ts"), "utf8"), "export const one = 1\n")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("fixToFixedPoint keeps the rewrites of the batch's files only, and an earlier batch's file stays as committed", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-fix-scope-"))
+  try {
+    mkdirSync(join(root, "pkg/src"), { recursive: true })
+    writeFileSync(join(root, "pkg/src/batch.vibe"), "export const a = 1\n")
+    writeFileSync(join(root, "pkg/src/earlier.vibe"), "import * as DateTime from \"effect/DateTime\"\n")
+    // A compiler whose --fix rewrites every .vibe file of the project it has not rewritten yet, as vibelang does.
+    const compiler = join(root, "fake-vibelang")
+    writeFileSync(compiler, `#!/usr/bin/env node
+const fs = require("node:fs")
+let n = 0
+for (const file of ["src/batch.vibe", "src/earlier.vibe"]) {
+  const text = fs.readFileSync(file, "utf8")
+  if (text.includes("// fixed")) continue
+  fs.writeFileSync(file, text + "// fixed\\n")
+  console.log("vibelang --fix: " + file + ": 1 fix (prelude import ×1)")
+  n++
+}
+console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
+`)
+    chmodSync(compiler, 0o755)
+    const result = await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: join(root, "pkg"), root, only: ["pkg/src/batch.vibe"] })
+    assert.equal(readFileSync(join(root, "pkg/src/earlier.vibe"), "utf8"), "import * as DateTime from \"effect/DateTime\"\n")
+    assert.equal(readFileSync(join(root, "pkg/src/batch.vibe"), "utf8"), "export const a = 1\n// fixed\n")
+    assert.deepEqual(Object.keys(result.byFile), ["pkg/src/batch.vibe"])
+    assert.equal(result.settled, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
