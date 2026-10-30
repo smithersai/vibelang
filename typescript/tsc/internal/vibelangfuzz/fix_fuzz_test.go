@@ -43,7 +43,19 @@ import (
 //     contracts, are unchanged ("It has the same types too").
 func FuzzFix(f *testing.F) {
 	startShortBudget(f)
-	for _, seed := range toolsSample(CaseSeeds(), 16, 240, func(s Seed) bool { return s.Pending != "" || strings.HasPrefix(s.Name, "tsforms-") }) {
+	// Under -short every pending reproduction runs, with six of the
+	// tsforms cases, the TypeScript forms --fix rewrites, and four other
+	// cases: running all 22 tsforms cases took two minutes of seed CPU.
+	// Campaigns take every tsforms case and 240 others; the nightly takes
+	// every seed.
+	isTSForms := func(s Seed) bool { return s.Pending == "" && strings.HasPrefix(s.Name, "tsforms-") }
+	cases := CaseSeeds()
+	tsforms := slices.DeleteFunc(slices.Clone(cases), func(s Seed) bool { return !isTSForms(s) })
+	others := slices.DeleteFunc(slices.Clone(cases), isTSForms)
+	for _, seed := range toolsSample(others, 4, 240, func(s Seed) bool { return s.Pending != "" }) {
+		f.Add(Archive(seed.Files))
+	}
+	for _, seed := range toolsSample(tsforms, 6, 0, nil) {
 		f.Add(Archive(seed.Files))
 	}
 	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {
