@@ -285,6 +285,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			} else if len(p.fixes) == 0 {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 			}
+			p.cleanImports = !options.MigrationOnly
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
 			}
@@ -648,7 +649,8 @@ func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []pro
 				return
 			}
 			if !known || len(fs) == 1 {
-				trial := proposal{file: p.file, fixes: append(slices.Clone(taken), fs...)}
+				trial := p
+				trial.fixes = append(slices.Clone(taken), fs...)
 				error, ok := g.passes(texts, maps(kept, map[tspath.RootedFilePath]string{name: trial.text()}))
 				if ok {
 					taken = append(taken, fs...)
@@ -665,7 +667,9 @@ func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []pro
 		}
 		fixes(p.fixes, true)
 		if len(taken) > 0 {
-			keep(proposal{file: p.file, fixes: taken})
+			partial := p
+			partial.fixes = taken
+			keep(partial)
 		}
 	}
 	return accepted
@@ -687,8 +691,9 @@ type fileFix struct {
 
 // A proposal is one round's fixes of a file, whose edits do not overlap.
 type proposal struct {
-	file  *ast.SourceFile
-	fixes []fileFix
+	file         *ast.SourceFile
+	fixes        []fileFix
+	cleanImports bool
 }
 
 // text returns the proposal's file with its fixes applied.
@@ -697,7 +702,15 @@ func (p proposal) text() string {
 	for _, f := range p.fixes {
 		edits = append(edits, f.edits...)
 	}
-	return applyEdits(p.file.Text(), edits)
+	text := applyEdits(p.file.Text(), edits)
+	// Check the complete proposed rewrite. Delaying this cleanup until after
+	// acceptance would make noUnusedLocals reject a fix for its unused import.
+	if p.cleanImports {
+		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text); ok {
+			return cleaned
+		}
+	}
+	return text
 }
 
 // fileFixes asks the language server for the quick fix of each safe

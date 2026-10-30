@@ -122,6 +122,26 @@ test("--fix honors a project that turns a code off", { skip }, (t) => {
   assert.match(readFileSync(join(root, "main.vibe"), "utf8"), /class NotFound extends Data\.TaggedError/)
 })
 
+test("--fix composes unused Effect import cleanup with a rewrite", { skip }, (t) => {
+  const root = project(t, "import { Effect } from \"effect\"\nimport { operation } from \"./plain.js\"\nexport const run = () => Effect.gen(function* () { return yield* operation() })\n")
+  writeFileSync(join(root, "plain.ts"), "import { Effect } from \"effect\"\nexport function operation() { return Effect.succeed(42) }\n")
+  const configPath = join(root, "tsconfig.json")
+  const config = JSON.parse(readFileSync(configPath, "utf8"))
+  config.compilerOptions.noUnusedLocals = true
+  writeFileSync(configPath, JSON.stringify(config))
+  const result = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.doesNotMatch(result.stdout, /not fixed|refused/)
+  const text = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.ok(!text.includes("Effect.gen") && !text.includes("Effect.Effect"), text)
+  assert.match(text, /return operation/)
+  const again = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
+  assert.equal(again.status, 0, again.stdout + again.stderr)
+  assert.match(again.stdout, /0 fixes in 0 files/)
+})
+
+
+
 test("--fix refuses --watch and --build", { skip }, (t) => {
   const root = project(t, source)
   for (const flag of ["--watch", "--build"]) {
