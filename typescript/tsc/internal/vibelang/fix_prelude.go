@@ -86,6 +86,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 	var r preludeRewrite
 	text := file.Text()
 	removed := map[string]bool{} // names whose imports go, so the prelude supplies them
+	kept := map[string]bool{}    // namespace imports the declaration file writes, so M.M stays
 	gone := map[*ast.Node]bool{} // the import bindings that go
 	for _, statement := range file.Statements.Nodes {
 		if !ast.IsImportDeclaration(statement) || statement.ImportClause() == nil || !ast.IsStringLiteral(statement.ModuleSpecifier()) {
@@ -98,10 +99,15 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 		specifier := statement.ModuleSpecifier().Text()
 		if ast.IsNamespaceImport(clause.NamedBindings) {
 			name := clause.NamedBindings.Name().Text()
-			if preludeModulePath(name) == specifier && !isBuiltinGlobal(c, name) && !importShapesDeclaration(c, file, statement) {
-				gone[clause.NamedBindings] = true
-				removed[name] = true
+			if preludeModulePath(name) != specifier || isBuiltinGlobal(c, name) {
+				continue
 			}
+			if importShapesDeclaration(c, file, statement) {
+				kept[name] = true
+				continue
+			}
+			gone[clause.NamedBindings] = true
+			removed[name] = true
 			continue
 		}
 		for _, element := range clause.NamedBindings.Elements() {
@@ -173,7 +179,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 			return false
 		}
 		// A name the parser writes, as for a schema declaration, has no text of its own.
-		if inner, outer := shortenableExport(c, node, removed); inner != nil && node.Flags&ast.NodeFlagsReparsed == 0 &&
+		if inner, outer := shortenableExport(c, node, removed); inner != nil && node.Flags&ast.NodeFlagsReparsed == 0 && !kept[firstIdentifier(inner).Text()] &&
 			strings.TrimSpace(text[inner.End():outer.End()]) == "."+rightName(outer) {
 			r.edits = append(r.edits, sourceEdit{inner.End(), outer.End(), ""})
 			r.keys++
@@ -186,10 +192,14 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 
 // importShapesDeclaration reports whether the declaration file of file, in a
 // project that emits one, writes the module that statement imports through
-// statement's own spelling, because something file exports mentions it.
+// statement's own spelling, because something file exports mentions it or
+// file declares a service, whose base is Context.ServiceClass.
 func importShapesDeclaration(c *checker.Checker, file *ast.SourceFile, statement *ast.Node) bool {
 	if !c.CompilerOptions().GetEmitDeclarations() {
 		return false
+	}
+	if statement.ModuleSpecifier().Text() == preludeModulePath("Context") && declaresService(file) {
+		return true
 	}
 	module := c.GetSymbolAtLocation(statement.ModuleSpecifier())
 	if module != nil && module.Flags()&ast.SymbolFlagsAlias != 0 {

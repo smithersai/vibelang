@@ -215,6 +215,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			return declarations
 		}
 		slices.Sort(names)
+		declarations = sourceNamespaceImports(resolver.EmitContext(), sourceFile, declarations, names)
 		// A file that imports Effect from effect and writes Effect<…> keeps
 		// its import, so the prelude's Effect needs another local name.
 		aliases, imported := preludeAliases(declarations, names)
@@ -263,6 +264,57 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		statements.Loc = declarations.Statements.Loc
 		return f.UpdateSourceFile(declarations, statements, declarations.EndOfFileToken).AsSourceFile()
 	}
+}
+
+// namespaceImportOfModule returns M when statement is import * as M from the
+// module that holds the prelude's M, "effect/Context" for Context, and "" for
+// any other statement.
+func namespaceImportOfModule(statement *ast.Node) string {
+	if !ast.IsImportDeclaration(statement) || statement.ImportClause() == nil || !ast.IsStringLiteral(statement.ModuleSpecifier()) {
+		return ""
+	}
+	clause := statement.ImportClause().AsImportClause()
+	if clause.NamedBindings == nil || !ast.IsNamespaceImport(clause.NamedBindings) {
+		return ""
+	}
+	name := clause.NamedBindings.Name().Text()
+	if preludeModulePath(name) != statement.ModuleSpecifier().Text() {
+		return ""
+	}
+	return name
+}
+
+// sourceNamespaceImports returns declarations with each import of source,
+// import * as M from "effect/M", that binds a name of names and that
+// declaration emit dropped because no declaration the source wrote names it:
+// a service's base writes Context after that emit, and a contract writes
+// Effect only in its output. The file then imports the module as the Effect
+// TypeScript it stands for does (D501), in the source's order.
+func sourceNamespaceImports(ec *printer.EmitContext, source *ast.SourceFile, declarations *ast.SourceFile, names []string) *ast.SourceFile {
+	f := ec.Factory
+	statements := slices.Clone(declarations.Statements.Nodes)
+	changed := false
+	for _, statement := range source.Statements.Nodes {
+		name := namespaceImportOfModule(statement)
+		if name == "" || !slices.Contains(names, name) || slices.ContainsFunc(statements, func(kept *ast.Node) bool { return namespaceImportOfModule(kept) == name }) {
+			continue
+		}
+		at := 0
+		for i, kept := range statements {
+			if ast.IsImportDeclaration(kept) && ec.MostOriginal(kept).Pos() < statement.Pos() {
+				at = i + 1
+			}
+		}
+		clause := f.NewImportClause(statement.ImportClause().AsImportClause().PhaseModifier, nil /*name*/, f.NewNamespaceImport(f.NewIdentifier(name)))
+		statements = slices.Insert(statements, at, f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(statement.ModuleSpecifier().Text(), ast.TokenFlagsNone), nil /*attributes*/))
+		changed = true
+	}
+	if !changed {
+		return declarations
+	}
+	list := f.NewNodeList(statements)
+	list.Loc = declarations.Statements.Loc
+	return f.UpdateSourceFile(declarations, list, declarations.EndOfFileToken).AsSourceFile()
 }
 
 // keptNamedImports returns the index in declarations' statements of the first
@@ -532,13 +584,17 @@ func effectModulePath(c *checker.Checker, t *checker.Type) string {
 // that a top-level declaration or import of declarations already binds, and
 // the names an import of declarations already imports, under the same name,
 // from the module declaration emit would import them from, which need no
-// import of their own: the Effect of `import { Effect } from "effect"`.
+// import of their own: the Effect of `import { Effect } from "effect"` and
+// the Context of `import * as Context from "effect/Context"`.
 func preludeAliases(declarations *ast.SourceFile, names []string) (map[string]string, map[string]bool) {
 	bound := map[string]bool{}
 	imported := map[string]bool{}
 	for _, statement := range declarations.Statements.Nodes {
 		forEachTopLevelName(statement, func(name string) { bound[name] = true })
 		if ast.IsImportDeclaration(statement) {
+			if name := namespaceImportOfModule(statement); name != "" {
+				imported[name] = true
+			}
 			for _, name := range namesImportedAsThemselves(statement) {
 				if declarationModuleOf(name) == statement.ModuleSpecifier().Text() {
 					imported[name] = true

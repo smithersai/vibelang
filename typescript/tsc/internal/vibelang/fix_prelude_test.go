@@ -65,6 +65,54 @@ export const run = () => quiet()
 	}
 }
 
+// A kept namespace import keeps what the declaration file prints through it
+// (D501): M.M stays M.M, and a service keeps the Context its base names,
+// though no export's type in the source mentions the module.
+func TestFixKeepsNamespaceImportsOfDeclarations(t *testing.T) {
+	for _, source := range []string{
+		`import * as Duration from "effect/Duration"
+
+export interface Every {
+  readonly every: Duration.Duration
+}
+`,
+		`import * as Context from "effect/Context"
+
+export interface Shape {
+  readonly id: string
+}
+
+export service Svc: Shape {
+  static readonly key = "t3/Svc"
+}
+`,
+		`import * as Context from "effect/Context"
+
+export interface Shape {
+  readonly id: string
+}
+
+export class Svc extends Context.Service<Svc, Shape>()("t3/Svc") {}
+`,
+	} {
+		_, file, _, _ := editorProgram(t, source)
+		dir := filepath.Dir(file.FileName().AsString())
+		if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"declaration":true,"noEmit":true}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		fs := bundled.WrapFS(osvfs.FS())
+		config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+		if len(errors) != 0 {
+			t.Fatalf("config: %v", errors)
+		}
+		result := FixProject(t.Context(), fs, bundled.LibPath(), config)
+		fixed := result.Files[file.FileName()]
+		if fixed != nil {
+			t.Errorf("--fix rewrote\n%s\nto\n%s", source, fixed.Text)
+		}
+	}
+}
+
 func TestFixPreludeRewrites(t *testing.T) {
 	source := `import { FileSystem } from "effect/FileSystem"
 import * as Path from "effect/Path"

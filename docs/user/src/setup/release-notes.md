@@ -25,6 +25,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow added `vibelang` to the `devDependencies` of every package whose lint script it extended with the root ESLint config, which resolves `vibelang/eslint` from the root, so Knip reported it unused in each such package; setup now adds it only to the root and to packages whose own scripts run `vibelang-format` or the Prettier plugin.
 
+- A file that imports Effect's modules as namespaces, `import * as Context from "effect/Context"`, got a declaration file that imported `{ Context } from "effect"` for a `service`, or `{ Context as Context_1 }` beside its own import, and `--fix` dropped the import or shortened `Duration.Duration` to `Duration`, which printed another alias. The declaration file now uses the file's own import, `--fix` keeps it, and `noUnusedLocals` accepts it.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.

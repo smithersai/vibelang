@@ -136,6 +136,13 @@ func (c *Checker) AddDiagnostic(d *ast.Diagnostic) *ast.Diagnostic {
 	return c.addDiagnostic(d)
 }
 
+// MarkSymbolReferenced records that output the compiler writes reads symbol,
+// which no name in the source does, so the file does not report it unused. A
+// SourceFileCheckHook may call it: the unused check runs after the hooks.
+func (c *Checker) MarkSymbolReferenced(symbol *ast.Symbol) {
+	c.symbolReferenced(symbol, ast.SymbolFlagsAll)
+}
+
 // SourceFileCheckHook runs after c has checked file, once for each checker
 // and file, so it can report diagnostics for file with AddDiagnostic.
 type SourceFileCheckHook func(c *Checker, file *ast.SourceFile)

@@ -35,6 +35,16 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	if !declaresService(file) {
+		return
+	}
+	// The declaration file writes a service's base through the file's own
+	// import of Context, which no name in the source reads (D501).
+	for _, statement := range file.Statements.Nodes {
+		if namespaceImportOfModule(statement) == "Context" {
+			c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
+		}
+	}
 }
 
 // declarationWord returns "service" or "control" when class was declared with

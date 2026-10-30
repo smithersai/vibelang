@@ -1,0 +1,15 @@
+// A declaration file imports Effect's modules as its source does, as
+// typescript/main.ts does (D501): t3code imports each module as a namespace,
+// and a service's base and a contract's output name modules no source type
+// does, in the source's order among the imports declaration emit keeps.
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+
+export interface Shape {
+  readonly get: (id: string) => Option.Option<string>!!
+}
+
+export service Svc: Shape {
+  static readonly key = "t3/Svc"
+}
