@@ -126,7 +126,7 @@ test("ast-grep scan applies the migrated TS rule to .vibe and VibeLang syntax", 
 
 test("only the root and packages that run vibelang themselves get the vibelang devDependency", t => {
   const root = fixture(t, {
-    "package.json": JSON.stringify({ scripts: { lint: "oxlint" } }),
+    "package.json": JSON.stringify({ workspaces: ["packages/*"], scripts: { lint: "oxlint" } }),
     "packages/ui/package.json": JSON.stringify({ name: "ui", scripts: { lint: "oxlint src" } }),
     "packages/app/package.json": JSON.stringify({ name: "app", scripts: { format: "oxfmt ." } })
   })
@@ -137,6 +137,23 @@ test("only the root and packages that run vibelang themselves get the vibelang d
   assert.equal(read("packages/ui/package.json").devDependencies, undefined)
   assert.equal(read("packages/app/package.json").devDependencies.vibelang, "0.0.11")
   assert.equal(read("package.json").devDependencies.vibelang, "0.0.11")
+})
+test("a vendored tree that no workspace names keeps its bytes", t => {
+  const vendored = {
+    "repos/effect/package.json": '{ "scripts": { "lint": "oxlint", "format": "oxfmt ." } }',
+    "repos/effect/dprint.json": '{"plugins":["https://plugins.dprint.dev/typescript-0.95.0.wasm"]}',
+    "repos/effect/packages/effect/package.json": '{ "scripts": { "lint": "oxlint" } }'
+  }
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ scripts: { lint: "oxlint" } }),
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n",
+    "packages/app/package.json": JSON.stringify({ name: "app", scripts: { format: "oxfmt ." } }),
+    ...vendored
+  })
+  const { changed } = wireDeveloperTools({ root, specsFor })
+  assert.match(JSON.parse(readFileSync(join(root, "packages/app/package.json"))).scripts.format, /vibelang-format/)
+  for (const [file, text] of Object.entries(vendored)) assert.equal(readFileSync(join(root, file), "utf8"), text, file)
+  assert.deepEqual(changed.filter(file => file.startsWith("repos/")), [])
 })
 test("dprint keeps the repo TypeScript plugin and adds VibeLang; unrelated manifests keep their bytes", t => {
   const root = fixture(t, {

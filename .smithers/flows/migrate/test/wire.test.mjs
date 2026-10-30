@@ -242,7 +242,11 @@ test("rootTsconfigs lists the tsconfig files that extend no other of the reposit
       "packages/a/tsconfig.build.json": '{ "extends": "./tsconfig" }',
       "packages/b/tsconfig.json": '{ "extends": ["@tsconfig/node22/tsconfig.json"] }',
       "packages/b/node_modules/x/tsconfig.json": "{}",
-      ".cache/tsconfig.json": "{}"
+      ".cache/tsconfig.json": "{}",
+      "package.json": '{ "workspaces": ["packages/*"] }',
+      "repos/effect/package.json": "{}",
+      "repos/effect/tsconfig.json": "{}",
+      "repos/effect/packages/effect/tsconfig.json": "{}"
     }
     for (const [file, text] of Object.entries(files)) {
       mkdirSync(join(root, file, ".."), { recursive: true })

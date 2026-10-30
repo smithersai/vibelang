@@ -1,6 +1,7 @@
 // Developer tools must include .vibe in their existing commands.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
+import { ownedPaths } from "./wire.mjs"
 
 function vibeSelectors(text) {
   let selectors = false
@@ -32,7 +33,8 @@ export function wireDeveloperTools({ root, specsFor }) {
     mkdirSync(posix.dirname(join(root, file)), { recursive: true })
     writeFileSync(join(root, file), text); changed.push(file)
   }
-  const all = files(root)
+  // Only the repository's own packages: a vendored tree keeps its scripts and configs.
+  const all = files(root).filter(ownedPaths(root))
   const manifests = all.filter(file => posix.basename(file) === "package.json")
   let needsCompiler = false, needsLint = false
   for (const file of manifests) {

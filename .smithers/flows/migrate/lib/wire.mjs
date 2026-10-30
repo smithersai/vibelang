@@ -11,7 +11,32 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
+import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
+
+/**
+ * The repository's own files: a predicate on repository-relative paths that
+ * holds where the nearest package.json is the root's or a workspace
+ * member's (the root package.json's `workspaces`, pnpm-workspace.yaml's
+ * `packages`). A directory with a package.json no workspace names, such as a
+ * vendored repository, holds someone else's project, and setup leaves it as
+ * it is, as the Effect upgrade does.
+ */
+export function ownedPaths(root) {
+  const read = (file) => (existsSync(join(root, file)) ? readFileSync(join(root, file), "utf8") : "")
+  const manifest = read("package.json")
+  const globs = manifest ? workspaceGlobs(manifest, read("pnpm-workspace.yaml")) : []
+  const owned = new Map([[".", true]])
+  const ownerOwned = (dir) => {
+    if (!owned.has(dir)) {
+      owned.set(dir, existsSync(join(root, dir, "package.json"))
+        ? workspaceManifests([posix.join(dir, "package.json")], globs).length > 0
+        : ownerOwned(posix.dirname(dir)))
+    }
+    return owned.get(dir)
+  }
+  return (path) => ownerOwned(posix.dirname(path))
+}
 
 /** Replaces tsc with vibelang in package scripts: `tsc -b x` becomes `vibelang -b x`. */
 export function replaceTsc(scripts = {}) {
@@ -380,8 +405,9 @@ export function addVibeIncludes(text, ts) {
 }
 
 /**
- * The repository's tsconfig files (tsconfig*.json, outside node_modules and
- * hidden directories) that extend none of the others, as repository-relative
+ * The repository's tsconfig files (tsconfig*.json, outside node_modules,
+ * hidden directories and trees it does not own) that extend none of the
+ * others, as repository-relative
  * paths: a compiler option set in each is set in every project. ts is
  * TypeScript's compiler API.
  */
@@ -396,6 +422,8 @@ export function rootTsconfigs(root, ts) {
     }
   }
   walk("")
+  const own = ownedPaths(root)
+  files.splice(0, files.length, ...files.filter(own))
   const all = new Set(files)
   const local = (file, extended) => {
     const path = posix.normalize(posix.join(posix.dirname(file), extended))
