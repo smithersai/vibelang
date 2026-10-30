@@ -238,11 +238,11 @@ A default arm follows the failed ordered pattern and guard tests, as TypeScript 
 
 `match` is exhaustive for the specified finite cases. Without a `default` arm, `EK4701` checks a match when every normalized subject member is a supported finite case. These include literals, `boolean`, `null`, `undefined`, enums, data variants, `error` and `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and tagged members.
 
-An object, interface or class instance is tagged when its `_tag` has a literal type or a union of literal types. Only `_tag` counts as a discriminant. Each tag literal is a case. An optional `_tag` also has an `undefined` case.
+An object, interface or class instance is tagged when its `_tag` has a literal type or a union of literal types. Only `_tag` counts as a discriminant. Each tag literal is a case. An optional `_tag` also has an `undefined` case. Members sharing a literal `_tag` are covered by that tag pattern even where TypeScript does not narrow the whole union. An error-class pattern also covers plain objects with the same tag; a member with several tag cases still needs all its cases covered.
 
-Only unguarded arms cover cases. Literal and enum-member patterns cover their cases. A bare `error` pattern or its one-binding extractor covers that error case. The fixed patterns above cover their cases with bare `let` arguments, or with bare `Option.None`. A retained error's bare or one-binding extractor also covers its case.
+Only unguarded arms cover cases. Literal and enum-member patterns cover their cases. A bare `error` pattern or its one-binding extractor covers that error case. The fixed patterns above cover their cases with the required argument count and bare `let` or `const` arguments, or with bare `Option.None`. A retained error's bare or one-binding extractor also covers its case.
 
-An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case only for members that declare every other tested property as required. Each other property test must be a bare key or a `let` binding. Members sharing a tag are checked separately. Only a bare binding covers the `undefined` case of an optional `_tag`.
+An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case only for members that declare every other tested property as required. Each other property test must be a bare key or a `let` or `const` binding. Members sharing a tag are checked separately. Only a bare binding covers the `undefined` case of an optional `_tag`.
 
 `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules.
 

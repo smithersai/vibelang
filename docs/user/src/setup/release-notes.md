@@ -37,6 +37,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - In a project that emits declarations, `--fix` deleted an `import type` or `{ type X }` import of an Effect module that an export names, so the declaration imported it as a value where TypeScript keeps the modifier; `--fix` now keeps such an import.
 
+- The `match` documentation could reject an already covered shared tag by using TypeScript's whole-object narrowing as its test; it now counts each member's recognized tag cases, including plain objects matched by an error tag. The optional `_tag` example now identifies the absent case that remains uncovered.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
