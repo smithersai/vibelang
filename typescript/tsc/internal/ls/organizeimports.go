@@ -28,6 +28,11 @@ func (l *LanguageService) OrganizeImports(
 	program *compiler.Program,
 	kind lsproto.CodeActionKind,
 ) map[tspath.RootedFilePath][]*lsproto.TextEdit {
+	// VIP-25 denies inline modules. Their recovery AST contains synthetic
+	// import paths, which cannot be printed back as source imports safely.
+	if hasRetiredInlineModule(sourceFile, "") {
+		return nil
+	}
 	changeTracker := change.NewTracker(ctx, program.Options(), l.FormatOptions(), l.converters)
 	shouldSort := kind == lsproto.CodeActionKindSourceSortImportsTs || kind == lsproto.CodeActionKindSourceOrganizeImportsTs
 	shouldCombine := shouldSort

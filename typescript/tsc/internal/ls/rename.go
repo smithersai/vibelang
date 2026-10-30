@@ -245,7 +245,16 @@ func nodeIsEligibleForRename(node *ast.Node) bool {
 // renameBlockedReason returns a non-nil diagnostic message if the rename should be blocked
 // because the symbol is a library definition, a default keyword, or would cross node_modules boundaries.
 func (l *LanguageService) renameBlockedReason(sourceFile *ast.SourceFile, node *ast.Node, symbol *ast.Symbol, ch *checker.Checker, program *compiler.Program) *diagnostics.Message {
+	// A name colliding with a retired inline module also needs its identifier
+	// imports renamed. The recovery AST has already replaced those with paths.
+	// Decline the transaction rather than returning a partial rename.
+	if ast.IsIdentifier(node) && hasRetiredInlineModule(sourceFile, node.Text()) {
+		return diagnostics.You_cannot_rename_this_element
+	}
 	for _, declaration := range symbol.Declarations() {
+		if declaration.Kind == ast.KindModuleDeclaration && declaration.Flags&ast.NodeFlagsVibeLang != 0 {
+			return diagnostics.You_cannot_rename_this_element
+		}
 		if isDefinedInLibraryFile(program, declaration) {
 			return diagnostics.You_cannot_rename_elements_that_are_defined_in_the_standard_TypeScript_library
 		}

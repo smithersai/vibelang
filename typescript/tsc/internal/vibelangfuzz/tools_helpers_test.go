@@ -390,3 +390,23 @@ func TestToolsFreshExcludedFile(t *testing.T) {
 		t.Fatalf("excluded document lacks its inferred-project error: %v", toolsDiagnosticKeys(diagnostics))
 	}
 }
+
+// An inserted recovery identifier has no written reference for LSP to find.
+func TestConsistencyMissingModuleName(t *testing.T) {
+	w := NewWorkspace(t)
+	files := map[string]string{"main.vibe": "module { export const n = 1 }\nexport const result = 1\n"}
+	r := toolsCompile(t, w, consistencyTarget, files)
+	defer r.Remove()
+	c := &consistency{t: t, ctx: t.Context(), w: w, main: "main.vibe"}
+	c.before = c.project(r, files)
+	for _, declaration := range c.topLevel() {
+		if declaration.name == "" {
+			t.Fatal("missing parser identifier is treated as a written document symbol")
+		}
+	}
+	for _, symbol := range c.symbols() {
+		if symbol.name == "" {
+			t.Fatal("missing parser identifier is treated as a written LSP reference")
+		}
+	}
+}

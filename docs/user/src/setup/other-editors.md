@@ -32,3 +32,5 @@ Add this line to the project's `.gitattributes`:
 ```
 
 Support for the new forms arrives with the compiler's VIP implementation.
+
+Inline `module` declarations are denied by VIP-25. While editing old code, the server declines import organization in files containing those declarations and renames of their names, including colliding declarations. Move the inline code to a `.ts` file before applying those operations.

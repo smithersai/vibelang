@@ -273,6 +273,7 @@ func consistencyTwoSymbols(node *ast.Node) bool {
 // first reference. A reference counts when its text is the name of what it
 // names, so that a reference TypeScript resolves without naming the symbol,
 // such as `target` in `new.target`, does not; and when it names one symbol.
+// An empty identifier inserted by parser recovery has no written reference.
 // A receiver parameter named `this` is not an ordinary binding: upstream's
 // fourslash TestRenameThis allows its rename, but that turns an erased
 // receiver into a runtime parameter and can change call arity. It is not the
@@ -287,7 +288,7 @@ func (c *consistency) symbols() []*consistencySymbol {
 	var symbols []*consistencySymbol
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindIdentifier && node.Parent != nil && !consistencyTwoSymbols(node) && node.Text() != "this" {
+		if node.Kind == ast.KindIdentifier && node.Parent != nil && !consistencyTwoSymbols(node) && !ast.NodeIsMissing(node) && node.Text() != "this" {
 			start := node.End() - len(node.Text())
 			if start >= 0 && node.End() <= len(text) && text[start:node.End()] == node.Text() {
 				if symbol := checker.GetSymbolAtLocation(node); symbol != nil && symbol.Name() == node.Text() && len(symbol.Declarations()) > 0 {

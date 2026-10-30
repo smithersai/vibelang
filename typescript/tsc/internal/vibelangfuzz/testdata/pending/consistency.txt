@@ -8,15 +8,10 @@
 FuzzEditorConsistency feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
 FuzzEditorConsistency consistency:selection-ranges:nesting:vibelang compiler LSP 3.17 ("parent.range must contain this.range"), D32: nodes synthesized for VibeLang surface forms have selection ranges that do not nest in source order; ordinary TypeScript syntax retains strict keys
 FuzzEditorConsistency corpus:selection-contract-bang compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency consistency:organize-imports:error:TS2307 compiler D372, D283: Organize Imports rewrites `import { ... } from plans`, an import of a module declaration, as `from "./main.vibe.plans.js"`, the module's internal file name, which adds TS2307; an automatic change reports no new error (Chapter 28, Rewrites keep meaning)
-FuzzEditorConsistency consistency:organize-imports:error:TS2882 compiler D372, D283, D403: Organize Imports rewrites the side-effect import `import first` of a module declaration as `import "./main.vibe.first.js"`, which adds TS2882
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK2117 compiler LSP 3.17, D372: renaming an `error` or `schema error` declaration leaves `extends Base` in another error's heritage unrenamed (its references miss it), so the renamed program adds EK2117 and TS2304
 FuzzEditorConsistency corpus:rename-error-extends compiler the minimal reproduction of consistency:rename:ClassDeclaration:diagnostics:EK2117
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:TS2503 compiler LSP 3.17, D372: renaming a `service` declaration leaves `Settings.Shape` in a type unrenamed (its references miss the service's namespace use), so the renamed program adds TS2503
 FuzzEditorConsistency corpus:rename-service-shape compiler the minimal reproduction of consistency:rename:ClassDeclaration:diagnostics:TS2503
-FuzzEditorConsistency consistency:rename:ModuleDeclaration:diagnostics:EK4407 compiler LSP 3.17, D372, D283: renaming a module declaration `module text { }` leaves the identifier specifier of `import { x } from text` unrenamed, which adds EK4407
-FuzzEditorConsistency corpus:rename-module-block compiler the minimal reproduction of consistency:rename:ModuleDeclaration:diagnostics:EK4407
-FuzzEditorConsistency consistency:rename:InterfaceDeclaration:diagnostics:EK4407 compiler LSP 3.17, D372, D283: renaming an imported type `Other` that a module declaration `module Other { }` shares a name with breaks `import { n } from Other`, which adds EK4407
 FuzzEditorConsistency consistency:rename:FunctionDeclaration:diagnostics:TS2304 compiler LSP 3.17, D372: renaming a function leaves its call inside a retired `select` arm unrenamed (references miss it, as hover does there, D77), which adds TS2304
 FuzzEditorConsistency consistency:rename:VariableDeclaration:diagnostics:TS2339 compiler LSP 3.17, D372: renaming the binding of the pattern `when Option.Some { let value }` writes `{ let fresh }`, which reads the property `fresh` instead of `value` (TypeScript writes `value: fresh` for a shorthand binding), adding TS2339
 FuzzEditorConsistency consistency:call-hierarchy:incoming-missing:ClassDeclaration compiler LSP 3.17: the outgoing calls of `error Sub extends Base` hold a call of Base at Sub's name, from the constructor the declaration synthesizes, which Base's incoming calls do not hold; the Effect reading's class has no such call (D32)
@@ -24,9 +19,6 @@ FuzzEditorConsistency consistency:call-hierarchy:incoming-missing:FunctionDeclar
 FuzzEditorConsistency consistency:document-symbols:selection-outside:Block compiler LSP 3.17 (selectionRange "Must be contained by the `range`"): the document symbol of the temporary `$is1` that `outcome is Exit.Success(let value)` synthesizes selects bytes outside its range (D32)
 FuzzEditorConsistency corpus:calls-error-extends compiler the minimal reproduction of consistency:call-hierarchy:incoming-missing:ClassDeclaration
 FuzzEditorConsistency corpus:calls-select compiler the minimal reproduction of consistency:call-hierarchy:incoming-missing:FunctionDeclaration
-FuzzEditorConsistency corpus:organize-module-named compiler the minimal reproduction of consistency:organize-imports:error:TS2307
-FuzzEditorConsistency corpus:organize-module-side-effect compiler the minimal reproduction of consistency:organize-imports:error:TS2882
-FuzzEditorConsistency corpus:rename-imported-type-module compiler the minimal reproduction of consistency:rename:InterfaceDeclaration:diagnostics:EK4407
 FuzzEditorConsistency consistency:rename:Parameter:written-not-a-reference compiler LSP 3.17, D372: references at the parameter of `(fuzzFresh0: unknown) => fuzzFresh0 is E` (or `instanceof E`) hold its use but not its declaration, so a rename's written name is not among the new name's references; with a one-letter name they hold both
 FuzzEditorConsistency corpus:rename-is-parameter compiler the minimal reproduction of consistency:rename:Parameter:written-not-a-reference
 FuzzEditorConsistency corpus:rename-match-property compiler the minimal reproduction of consistency:rename:VariableDeclaration:diagnostics:TS2339
@@ -38,3 +30,5 @@ FuzzEditorConsistency corpus:selection-match-binding compiler the minimal reprod
 FuzzEditorConsistency corpus:selection-property-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:selection-schema compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:symbols-is-binding compiler the minimal reproduction of consistency:document-symbols:selection-outside:Block
+FuzzEditorConsistency consistency:rename:TypeParameter:diagnostics:TS2345 compiler D500, D372: renaming the infer _ return placeholder changes inference and adds type errors; lane bugs-d283-editor-31
+FuzzEditorConsistency corpus:rename-inferred-return compiler D500: renaming the infer _ return placeholder changes its meaning; lane bugs-d283-editor-31

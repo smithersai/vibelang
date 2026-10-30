@@ -16,7 +16,7 @@ import (
 // false for a name the parser synthesized or wrote another way, such as an
 // escaped identifier.
 func consistencyName(text string, name *ast.Node) (int, int, bool) {
-	if name == nil || !ast.IsIdentifier(name) {
+	if name == nil || !ast.IsIdentifier(name) || ast.NodeIsMissing(name) {
 		return 0, 0, false
 	}
 	start := name.End() - len(name.Text())
