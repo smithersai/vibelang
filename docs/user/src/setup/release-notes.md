@@ -589,6 +589,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
 
+- A `tsconfig.json` broken so that it parsed with a computed property name, such as one with an unterminated string before `"lib": ["esnext"]`, crashed the compiler while it looked for the legacy `vibelang.diagnostics` setting. Looking up a setting now skips names that have no text, and the file's syntax errors are reported.
+
 - Vite cannot load tests when the project's path contains `#`, even in a plain project without VibeLang. Use a directory path without `#`.
 - Under Yarn Classic, `import { NodeRuntime } from "@effect/platform-node"` fails at startup unless `redis` is installed, because the package's root module loads its Redis integration. Import the module itself instead: `import * as NodeRuntime from "@effect/platform-node/NodeRuntime"`.
 

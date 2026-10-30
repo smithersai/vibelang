@@ -191,7 +191,8 @@ func jsonProperty(object *ast.Node, name string) *ast.Node {
 		return nil
 	}
 	for _, property := range object.AsObjectLiteralExpression().Properties.Nodes {
-		if ast.IsPropertyAssignment(property) && property.Name() != nil && property.Name().Text() == name {
+		// A broken file can parse with a computed name, which has no text.
+		if ast.IsPropertyAssignment(property) && property.Name() != nil && ast.IsPropertyNameLiteral(property.Name()) && property.Name().Text() == name {
 			return property
 		}
 	}
