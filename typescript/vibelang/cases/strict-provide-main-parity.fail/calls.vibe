@@ -1,0 +1,9 @@
+// expect:
+// @vibelang-diagnostics *:off EK4816:warning
+import { Effect, Layer } from "effect"
+export function main(): Effect.Effect<number> {
+  return Effect.provide(Effect.succeed(1), Layer.empty)
+}
+export function other(): Effect.Effect<number> {
+  return Effect.provide(Effect.succeed(1), Layer.empty)
+}

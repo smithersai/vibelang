@@ -1,0 +1,6 @@
+export effect function main() {
+  provide Layer.empty { return 1 }
+}
+export effect function other() {
+  provide Layer.empty { return 1 }
+}

@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"es2022","module":"nodenext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"files":["blocks.vibe","calls.vibe","default.vibe"]}

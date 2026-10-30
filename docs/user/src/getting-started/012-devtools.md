@@ -248,7 +248,7 @@ effect function discard() {
 | Anti-pattern | `runEffectInsideEffect` | Covered: EK1005 | `Effect.runPromise(load())` inside a function |
 | Anti-pattern | `schemaSyncInEffect` | Effect 3 only | None |
 | Anti-pattern | `scopeInLayerEffect` | Effect 3 only: Effect 4's `Layer.effect` owns its scope | `Layer.effect(Users, effect { const pool = try open(); … })` |
-| Anti-pattern | `strictEffectProvide` | EK4816, off by default | `provide AppLive { … }` outside `main` |
+| Anti-pattern | `strictEffectProvide` | EK4816, off by default | `provide AppLive { … }` or `Effect.provide(program, AppLive)`; includes functions named `main` |
 | Anti-pattern | `tryCatchInEffectGen` | Use a `catch` expression | `(try Users).find(id) catch (e) => fallback` |
 | Anti-pattern | `unknownInEffectCatch` | EK4806, warning | `Effect.try({ try: code, catch: (cause) => cause })` |
 | Effect-native | `cryptoRandomUUID` | Covered: EK4402, because `crypto` is a banned global (the compiler still reports EK4403) | `crypto.randomUUID()` |
@@ -319,6 +319,8 @@ effect function discard() {
 | Codegen | `typeToSchema` | Refactor: "Convert to a schema declaration" | `schema User { name: string }` |
 | Other | Renaming a tagged class renames its tag | Not needed: an `error` declaration's tag is its name, so a rename renames both | `error NotFound { }` renamed to `Missing` |
 | Other | Go to definition for `RpcClient` | Not adopted yet: the language server has no definition hook | None |
+
+When enabled, `strictEffectProvide` reports providing a layer in every function, including one named `main`. Compose layers at the application entry point and disable the diagnostic at that site, as for Effect TypeScript.
 
 ## Debug stack traces
 

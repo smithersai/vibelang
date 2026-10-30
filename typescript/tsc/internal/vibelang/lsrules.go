@@ -53,8 +53,8 @@ var (
 	EK4814 = message(4814, warningCategory, "{0} overrides the constructor of a Schema class, which decoding does not call.")
 	// EK4815 (effectInFailure): a throw of an Effect value. {0} is the value.
 	EK4815 = message(4815, warningCategory, "{0} is an Effect value, so this throw fails with the program itself.")
-	// EK4816 (strictEffectProvide; off by default): a layer provided outside main. {0} is the layer.
-	EK4816 = messageOff(4816, "{0} is built here, but layers are provided once, in main.")
+	// EK4816 (strictEffectProvide; off by default): a provided layer. {0} is the layer.
+	EK4816 = messageOff(4816, "{0} is provided here, which may break scope lifetimes away from an application entry point.")
 	// EK4817 (instanceOfSchema; off by default): instanceof a schema class. {0} is the class.
 	EK4817 = messageOff(4817, "instanceof {0} tests the class; Schema.is({0}) tests the schema.")
 	// EK4818 (preferSchemaOverJson; off by default): JSON.parse or JSON.stringify. {0} is the function.
@@ -692,7 +692,7 @@ func (r *ruleCheck) checkCall(call *ast.Node) {
 	case module == "Effect" && name == "provide":
 		for _, argument := range call.Arguments() {
 			if isLayerType(r.c, r.c.GetTypeAtLocation(argument)) {
-				r.checkProvidedLayer(call, argument)
+				r.checkProvidedLayer(argument)
 			}
 		}
 	}
@@ -791,7 +791,7 @@ func (r *ruleCheck) checkMergeAll(call *ast.Node) {
 }
 
 // checkProvide reports EK4808 when block, a provide block, holds nothing but
-// another provide block, and EK4816 for each layer it provides outside main.
+// another provide block, and EK4816 for each layer it provides.
 func (r *ruleCheck) checkProvide(block *ast.Node) {
 	statements := block.Statements()
 	if len(statements) == 2 && isProvideBlock(statements[1]) {
@@ -801,7 +801,7 @@ func (r *ruleCheck) checkProvide(block *ast.Node) {
 	}
 	for _, provider := range providerList(provideLayer(block)) {
 		if !isServiceProvider(provider) && isLayerType(r.c, r.c.GetTypeAtLocation(provider)) {
-			r.checkProvidedLayer(block, provider)
+			r.checkProvidedLayer(provider)
 		}
 	}
 }
@@ -828,15 +828,10 @@ func isLayerType(c *checker.Checker, t *checker.Type) bool {
 	return provided != nil
 }
 
-// checkProvidedLayer reports EK4816 at layer, which site provides, unless
-// site is inside a function named main.
-func (r *ruleCheck) checkProvidedLayer(site *ast.Node, layer *ast.Node) {
-	for fn := ast.GetContainingFunction(site); fn != nil; fn = ast.GetContainingFunction(fn) {
-		if name := fn.Name(); name != nil && ast.IsIdentifier(name) && name.Text() == "main" {
-			return
-		}
-	}
-	note(report(r.c, layer, EK4816, messageText(layer, "This layer")), "Provide the layers in the entry module's main, and let other functions name what they need.")
+// checkProvidedLayer reports EK4816 at layer, including in a function named
+// main: an entry point is a project policy, not a function-name convention.
+func (r *ruleCheck) checkProvidedLayer(layer *ast.Node) {
+	note(report(r.c, layer, EK4816, messageText(layer, "This layer")), "Compose layers at the application entry point. If this is an entry point, disable this diagnostic for the site.")
 }
 
 // checkOutdated reports EK4813 at access, a name that Effect 3's Effect
