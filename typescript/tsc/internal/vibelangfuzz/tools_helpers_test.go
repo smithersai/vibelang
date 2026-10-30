@@ -6,6 +6,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 )
@@ -159,6 +162,36 @@ func TestToolsCommentNeighbors(t *testing.T) {
 	}
 	if moved := toolsMovedComments("// first\na // last", "// first\n a\n// last"); len(moved) != 0 {
 		t.Fatalf("boundary comments moved: %v", moved)
+	}
+}
+
+// TestToolsFormatKey keys the emit oracle's differences by what changed, so
+// that one known difference does not hide another.
+func TestToolsFormatKey(t *testing.T) {
+	diagnostic := func(code int32, category diagnostics.Category) *ast.Diagnostic {
+		return ast.NewDiagnosticFromText(nil, core.TextRange{}, code, category, "x", nil, nil, false, false)
+	}
+	outputs := func() map[string]string { return map[string]string{"out/main.js": "export const x = 1;"} }
+	before := &Result{Diagnostics: []*ast.Diagnostic{diagnostic(4618, diagnostics.CategoryError)}, Outputs: outputs()}
+	for _, c := range []struct {
+		name  string
+		after []*ast.Diagnostic
+		js    string
+		want  string
+	}{
+		{"lost", nil, "", "lost:TS4618"},
+		{"added", []*ast.Diagnostic{diagnostic(4618, diagnostics.CategoryError), diagnostic(2304, diagnostics.CategoryError)}, "", "added:TS2304"},
+		{"both", []*ast.Diagnostic{diagnostic(2304, diagnostics.CategoryError)}, "", "lost:TS4618:added:TS2304"},
+		{"category", []*ast.Diagnostic{diagnostic(4618, diagnostics.CategoryWarning)}, "", "diagnostics"},
+		{"js", []*ast.Diagnostic{diagnostic(4618, diagnostics.CategoryError)}, "export const x = 2;", "js"},
+	} {
+		after := &Result{Diagnostics: c.after, Outputs: outputs()}
+		if c.js != "" {
+			after.Outputs["out/main.js"] = c.js
+		}
+		if got := toolsFormatKey(before, after); got != c.want {
+			t.Errorf("%s: toolsFormatKey = %q, want %q", c.name, got, c.want)
+		}
 	}
 }
 

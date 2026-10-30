@@ -109,7 +109,7 @@ func FuzzFormat(f *testing.F) {
 				// D276 and D372: independently compile both projects with the same
 				// configuration. The formatter's own SameProgram guard is secondary.
 				if difference := toolsFormatDifference(before, after); difference != "" {
-					Gap(t, "FuzzFormat", "format:emit", "%s\nsource:\n%s\nformatted:\n%s", difference, source, once)
+					Gap(t, "FuzzFormat", "format:emit:"+toolsFormatKey(before, after), "%s\nsource:\n%s\nformatted:\n%s", difference, source, once)
 				}
 			}
 			if err := vibelangfmt.SameProgram(source, once); err != nil {
@@ -202,6 +202,53 @@ func toolsFormatDifference(before, after *Result) string {
 		}
 	}
 	return ""
+}
+
+// toolsFormatKey names a difference toolsFormatDifference reports, so that a
+// known one does not hide another: the diagnostic codes formatting lost and
+// added, as lost:EK4618 or added:TS2304+TS7006, diagnostics when the same
+// codes changed category or count, or js when only the emitted JavaScript
+// changed.
+func toolsFormatKey(before, after *Result) string {
+	codes := func(r *Result) map[string]bool {
+		set := map[string]bool{}
+		for _, d := range r.Diagnostics {
+			source := d.Source()
+			if source == "" {
+				source = "TS"
+			}
+			set[fmt.Sprintf("%s%d", source, d.Code())] = true
+		}
+		return set
+	}
+	b, a := codes(before), codes(after)
+	var lost, added []string
+	for code := range b {
+		if !a[code] {
+			lost = append(lost, code)
+		}
+	}
+	for code := range a {
+		if !b[code] {
+			added = append(added, code)
+		}
+	}
+	slices.Sort(lost)
+	slices.Sort(added)
+	var parts []string
+	if len(lost) > 0 {
+		parts = append(parts, "lost:"+strings.Join(lost, "+"))
+	}
+	if len(added) > 0 {
+		parts = append(parts, "added:"+strings.Join(added, "+"))
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, ":")
+	}
+	if strings.HasPrefix(toolsFormatDifference(before, after), "formatting changed diagnostics") {
+		return "diagnostics"
+	}
+	return "js"
 }
 
 // toolsTypeScriptIdempotence returns ":typescript" when formatting is

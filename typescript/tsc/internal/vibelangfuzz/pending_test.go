@@ -151,8 +151,8 @@ func deadKey(e PendingEntry) string {
 	if m == nil {
 		return ""
 	}
-	if code, _ := strconv.Atoi(m[1]); !strings.Contains(SpecText("428-part4-ch28-tooling.md"), "EK"+m[1]) && !slices.Contains(vipCodes, int32(code)) {
-		return "Chapter 28 never names EK" + m[1]
+	if code, _ := strconv.Atoi(m[1]); !strings.Contains(SpecText("428-part4-ch28-tooling.md"), "EK"+m[1]) && !slices.Contains(vipCodes, int32(code)) && !SpecHasCode(int32(code)) {
+		return "neither Chapter 28 nor Appendix B names EK" + m[1]
 	}
 	if m[2] != "" && e.Target == rulesTarget {
 		for _, inj := range ruleInjections {
