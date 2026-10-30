@@ -1,6 +1,6 @@
 # Alchemy
 
-[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.1.0 and VibeLang 0.0.11. Alchemy 2.0.0-beta.84 was built for Effect 4.0: its `Auth/OAuthFlow` module and some of its declarations import `effect/Crypto`, which Effect 4.1 removed, so its OAuth login fails to load until Alchemy publishes a build for Effect 4.1.
+[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.1.0 and VibeLang 0.0.11. Alchemy 2.0.0-beta.84 was built for Effect 4.0: its `Auth/OAuthFlow` module imports `effect/Crypto`, which Effect 4.1 removed, and `@alchemy.run/cloudflare` loads that module, so importing `@alchemy.run/cloudflare` fails with `Cannot find module` until Alchemy publishes a build for Effect 4.1.
 
 The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) and serves (`GET /key`) them, is [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite runs against its VibeLang version and its Effect TypeScript original.
 
