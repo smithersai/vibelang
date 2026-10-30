@@ -4,6 +4,8 @@
 
 ## Decision
 
+- **Amended 2026-10-30: call references.** Expressions retain ECMAScript's native call-reference and argument evaluation behavior, including receiver binding and non-callable errors. Compiler invocation machinery introduces no observable helper lookup; see [Evaluation order](../src/002-running.md#evaluation-order).
+
 ```ts
 const p = effect { console.log("hi"); return 1 }   // an Effect, not yet run
 try p                                              // prints "hi", gives 1
