@@ -28,6 +28,8 @@ func TestForTryControlDiagnostics(t *testing.T) {
 		{`for try (const x of rows) {}`, 2001},
 		{`effect function main() { for try (const x of rows) { return x } }`, 2002},
 		{`effect function main() { outer: for (const x of [1]) { for try (const y of rows) { continue outer } } }`, 2003},
+		{`effect function main() { let x = 0; for try (x of rows) {} }`, 2005},
+		{`effect function main() { for try (var x of rows) {} }`, 2005},
 	} {
 		p := Project(c.source, testContext)
 		assert.Equal(t, len(p.Diagnostics), 1, "%v", p.Diagnostics)

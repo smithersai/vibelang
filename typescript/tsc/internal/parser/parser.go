@@ -1381,7 +1381,8 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 			initializer = p.doInContext(ast.NodeFlagsDisallowInContext, true, (*Parser).parseExpression)
 		}
 	}
-	if tryToken != nil && (initializer == nil || !ast.IsVariableDeclarationList(initializer) || initializer.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 || initializer.Flags&ast.NodeFlagsUsing != 0) {
+	// A var, using or assignment head parses; the checker reports it as EK2005.
+	if tryToken != nil && initializer == nil {
 		p.parseErrorAtCurrentToken(diagnostics.Variable_declaration_expected)
 	}
 	var result *ast.Statement

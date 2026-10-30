@@ -1,5 +1,10 @@
-// expect: TS1134
+// expect: EK2005
 import { Stream } from "effect"
 export effect function main() {
+  let last = 0
+  const box = { value: 0 }
   for try (var value of Stream.make(1)) { void value }
+  for try (last of Stream.make(2)) { void last }
+  for try (box.value of Stream.make(3)) { void box }
+  return last
 }

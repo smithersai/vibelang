@@ -129,6 +129,9 @@ func (p *projector) forOfStatement(node *ast.Node, e env) {
 			return n.ForEachChild(check)
 		}
 		check(statement.Statement)
+		if init := statement.Initializer; init != nil && (!ast.IsVariableDeclarationList(init) || init.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 || init.Flags&ast.NodeFlagsUsing != 0) {
+			p.syntaxDiagnostic(init, 2005, "for try declares its element with const or let; write for try (const v of s) { x = v } to assign an existing variable.")
+		}
 
 		// Execution replaces the whole loop head; this edit belongs only to checking.
 		p.plan.edits = append(p.plan.edits, edit{kind: editWitness, pos: p.tokenStart(node) + len("for"), end: p.tokenStart(statement.Initializer), text: " ("})

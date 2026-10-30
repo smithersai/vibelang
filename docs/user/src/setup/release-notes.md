@@ -946,6 +946,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
 - Terminal diagnostics dropped leading zeros from VibeLang codes; they now preserve them. See the [diagnostic code map](../vibelang-features/diagnostic-code-map.md).
+- `for try (x of s)` and `for try (var x of s)` reported a generic `Variable declaration expected` syntax error with no fix. They now report `EK2005`, which says to declare the element with `const` or `let` and assign the existing variable in the body.
 - `Stream` loops previously depended on the operand type; `for try` now explicitly consumes a `Stream` with `continue` and `break`, and rejects a `return` or a labeled jump out of the loop in its head bindings or body (`EK2002`, `EK2003`).
 
 - An identifier or call followed by a separate block on the next line was rejected with `EK1022`. Standalone blocks now compile normally, including after identifiers named `uninterruptible`, `interruptible` and `restore`.
