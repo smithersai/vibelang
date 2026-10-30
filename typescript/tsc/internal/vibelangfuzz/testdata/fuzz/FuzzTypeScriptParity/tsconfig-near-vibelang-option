@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nexport const x = 1\n-- tsconfig.json --\n{\n  \"compilerOptions\": {\n    \"vibelrng\": {\"tracing\": \"all\"},\n    \"strict\": true,\n    \"types\": []\n  },\n  \"include\": [\"*.ts\"]\n}\n")

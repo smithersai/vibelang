@@ -16,6 +16,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // FuzzTypeScriptParity compiles projects of ordinary TypeScript sources with
@@ -201,7 +202,14 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 	// tsc sorts what it prints and removes duplicates.
 	reported = compiler.SortAndDeduplicateDiagnostics(reported)
 	for _, d := range reported {
-		ours = append(ours, parityLine(fork.Dir, d))
+		line := parityLine(fork.Dir, d)
+		if suggestsVibeLang(d) {
+			unknown := strings.TrimSuffix(line, fmt.Sprint(d.Code())) + fmt.Sprint(diagnostics.Unknown_compiler_option_0.Code())
+			if slices.Contains(stock, unknown) {
+				line = unknown
+			}
+		}
+		ours = append(ours, line)
 	}
 	slices.Sort(stock)
 	slices.Sort(ours)
@@ -241,6 +249,11 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 			text := d.File().Text()
 			span.Start = DecodedUTF16Len(text[:d.Pos()])
 			span.End = DecodedUTF16Len(text[:d.End()])
+		}
+		unknown := span
+		unknown.Code = diagnostics.Unknown_compiler_option_0.Code()
+		if suggestsVibeLang(d) && slices.Contains(spans, unknown) {
+			span = unknown
 		}
 		forkSpans = append(forkSpans, span)
 	}
@@ -282,6 +295,15 @@ func formatParity(file, line, column, category, code string) string {
 		return fmt.Sprintf("%s TS%s", category, code)
 	}
 	return fmt.Sprintf("%s(%s,%s): %s TS%s", filepath.ToSlash(file), line, column, category, code)
+}
+
+// suggestsVibeLang reports a TS5025 that suggests the fork's own
+// compilerOptions.vibelang (D275) for an unknown option spelled near it.
+// Stock TypeScript has no such option, so for the same option it reports
+// TS5023, or TS5025 with another suggestion, which compares equal already.
+func suggestsVibeLang(d *ast.Diagnostic) bool {
+	args := d.MessageArgs()
+	return d.Code() == diagnostics.Unknown_compiler_option_0_Did_you_mean_1.Code() && len(args) == 2 && args[1] == "vibelang"
 }
 
 func parityLine(dir string, d *ast.Diagnostic) string {
