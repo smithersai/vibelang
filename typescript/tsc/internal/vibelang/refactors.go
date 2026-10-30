@@ -188,10 +188,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		}
 		if n.Kind == ast.KindAwaitExpression {
 			awaits = append(awaits, n)
-			n.Expression().ForEachChild(func(inner *ast.Node) bool {
-				nested = nested || containsAwait(inner)
-				return nested
-			})
+			nested = nested || containsAwait(n.Expression())
 			return false
 		}
 		if n.Kind == ast.KindForOfStatement && n.AsForInOrOfStatement().AwaitModifier != nil {
