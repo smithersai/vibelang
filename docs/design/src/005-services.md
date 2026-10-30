@@ -432,7 +432,7 @@ const program = Effect.gen(function* () {
 ```vibe es
 // compiler-gap: pending VIP-33
 const u = new URL("./data.json", import.meta.url)   // ok: module identity (ECMA-262)
-const d = import.meta.dirname                        // EK4402: use Path.fromFileUrl
+const d = import.meta.dirname                        // EK4402: use (try Path.Path).fromFileUrl(…), then dirname
 const k = import.meta.env.API_KEY                    // EK4402: use Config.String("API_KEY")
 const m = import.meta                                // EK4402: alias
 ```
@@ -459,7 +459,7 @@ import { Worker as EffectWorker } from "effect/workers"
 const workerSpawner = EffectWorker.Spawner
 ```
 
-ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `AbortSignal`, `Intl`) stay allowed, apart from the [three members](#reaches-the-platform) that reach the host. This allowlist is closed: a name can be added later, never removed.
+ECMAScript library globals (`Date.now`, `Math.random`, `JSON`, `Intl`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `AbortSignal`) stay allowed, apart from the [three members](#reaches-the-platform) that reach the host. The web-utility allowlist is closed: a name can be added later, never removed. `Intl` is an [ECMAScript internationalization library](https://tc39.es/ecma402/#intl-object) declaration and needs no allowlist entry.
 
 ```vibe es
 // compiler-gap: pending VIP-33
