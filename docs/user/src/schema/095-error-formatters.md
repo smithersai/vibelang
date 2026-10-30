@@ -55,7 +55,7 @@ Formatting shows only the issues parsing collected; set `errors: "all"` on the p
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try formFailures({}))) })
+// run: await runPromise(effect { { const jsonValue = try formFailures({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 effect function formFailures(input: unknown) {
   return effect {
     try Schema.decodeUnknownEffect(Dispatch)(input, { errors: "all" })
@@ -75,7 +75,7 @@ The Standard Schema formatter returns a failure object with an `issues` array. E
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try localizedFailures({}))); try Console.log(JSON.stringify(try localizedFailures({ destination: 2, packages: 1 }))) })
+// run: await runPromise(effect { { const jsonValue = try localizedFailures({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try localizedFailures({ destination: 2, packages: 1 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const formFormatter = SchemaIssue.makeFormatterStandardSchemaV1({
   leafHook: (issue) => issue._tag === "MissingKey"
     ? "Complete this field"
@@ -101,7 +101,7 @@ effect function localizedFailures(input: unknown) {
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try tryPromise(() => Promise.resolve(formSchema()["~standard"].validate({}))))) })
+// run: await runPromise(effect { { const jsonValue = try tryPromise(() => Promise.resolve(formSchema()["~standard"].validate({}))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const DispatchForm = Schema.toStandardSchemaV1(Dispatch, {
   parseOptions: { errors: "all" },
   leafHook: (issue) => issue._tag === "MissingKey"

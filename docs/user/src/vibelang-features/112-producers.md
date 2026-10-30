@@ -78,7 +78,7 @@ Resources a producer acquires in its Effect Scope stay open between yields and c
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-20
-// run: try Console.log(JSON.stringify(try alerts()))
+// run: { const jsonValue = try alerts(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function alerts() {
   const selected = readings().pipe(
     Stream.filter((value) => value >= 25),

@@ -44,7 +44,7 @@ announced
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
-// run: try Console.log(JSON.stringify([try sequentialPair(), try concurrentPair(), try formattedPair()]))
+// run: { const jsonValue = [try sequentialPair(), try concurrentPair(), try formattedPair()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function amount() {
   try sleep("30 millis")
   return 18
@@ -84,7 +84,7 @@ effect function formattedPair() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try inspectPages())); try logAttempts()
+// run: { const jsonValue = try inspectPages(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try logAttempts()
 effect function inspectPages() {
   const inspected: number[] = []
   let page = 1
@@ -134,7 +134,7 @@ In Effect 4.1.0, `whileLoop` takes one options object and returns an Effect with
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try prepareAll())); try logAll()
+// run: { const jsonValue = try prepareAll(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try logAll()
 effect function prepare(id: number) {
   try sleep("10 millis")
   return `prepared-${id}`
@@ -168,7 +168,7 @@ id 8
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try collected()))
+// run: { const jsonValue = try collected(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function collected() {
   const tuple = try all([succeed(12), succeed("ready")] as const)
   const object = try all({ count: succeed(12), status: succeed("ready") })
@@ -188,7 +188,7 @@ effect function collected() {
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log(stopAtFailure() catch (error) => error._tag); try Console.log(JSON.stringify((try collectOutcomes()).map((result) => Result.isSuccess(result) ? result.success : result.failure._tag)))
+// run: try Console.log(stopAtFailure() catch (error) => error._tag); { const jsonValue = (try collectOutcomes()).map((result) => Result.isSuccess(result) ? result.success : result.failure._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Unavailable {
   id: number
 }

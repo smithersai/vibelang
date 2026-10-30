@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(Chunk.toReadonlyArray(collectBatches([["queued"], ["running", "done"]]))))
+// run: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(collectBatches([["queued"], ["running", "done"]])))))
 function collectBatches(batches: ReadonlyArray<ReadonlyArray<string>>) {
   let result = Chunk.empty<string>()
   for (const batch of batches) {
@@ -26,7 +26,7 @@ A chunk keeps order and shares internal structure across updates, so repeated co
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Chunk.toReadonlyArray(empty), Chunk.toReadonlyArray(pair), Chunk.toReadonlyArray(fromArray), Chunk.toReadonlyArray(fromSet)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(empty), Chunk.toReadonlyArray(pair), Chunk.toReadonlyArray(fromArray), Chunk.toReadonlyArray(fromSet)])))
 const empty = Chunk.empty<string>()
 const pair = Chunk.make("north", "south")
 const fromArray = Chunk.fromIterable(["east", "west"])
@@ -43,7 +43,7 @@ const fromSet = Chunk.fromIterable(new Set(["center"]))
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(Chunk.toReadonlyArray(ownedBatch())))
+// run: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(ownedBatch()))))
 function ownedBatch() {
   const values = ["queued", "running"]
   return Chunk.fromArrayUnsafe(values)
@@ -61,7 +61,7 @@ function ownedBatch() {
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Chunk.toReadonlyArray(original), Chunk.toReadonlyArray(remaining)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(original), Chunk.toReadonlyArray(remaining)])))
 const original = Chunk.make("draft", "review")
 const extended = Chunk.appendAll(original, Chunk.make("published"))
 const remaining = Chunk.drop(extended, 1)
@@ -97,7 +97,7 @@ Equality compares lengths and corresponding elements by Effect's equality rules,
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([nonempty, none, mutableCopy]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([nonempty, none, mutableCopy])))
 const nonempty = Chunk.toReadonlyArray(Chunk.make(7, 8))
 const none = Chunk.toReadonlyArray(Chunk.empty<number>())
 const mutableCopy = [...nonempty]

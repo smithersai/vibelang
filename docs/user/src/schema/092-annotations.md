@@ -42,7 +42,7 @@ Representation hooks include `toCodec`, `toCodecJson`, `toCodecStringTree`, `toC
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try reviewLabels(["north", "south"]))); try Effect.catch(reviewLabels([""]), (error) => Console.log(error.message)) })
+// run: await runPromise(effect { { const jsonValue = try reviewLabels(["north", "south"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(reviewLabels([""]), (error) => Console.log(error.message)) })
 const ReviewedLabel = Schema.String.pipe(Schema.decode({
   decode: SchemaGetter.checkEffect(effect (label) => {
     try sleep("10 millis")

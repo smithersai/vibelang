@@ -124,7 +124,7 @@ Getters derive synchronous values from fields; keep them pure so formatting, che
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try packageWireRoundTrip([{ reference: "pkg-94", pieces: "2" }]))) })
+// run: await runPromise(effect { { const jsonValue = try packageWireRoundTrip([{ reference: "pkg-94", pieces: "2" }]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Packages = Schema.Array(Package)
 
 effect function packageWireRoundTrip(input: unknown) {
@@ -162,7 +162,7 @@ Pass annotations after the fields or struct. The class identifier is also its de
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(value instanceof Crate, value.children[0] instanceof Crate); try Console.log(JSON.stringify(try Schema.encodeEffect(Crate)(value))) })
+// run: await runPromise(effect { const value = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(value instanceof Crate, value.children[0] instanceof Crate); { const jsonValue = try Schema.encodeEffect(Crate)(value); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 interface CrateWire {
   count: string
   children: ReadonlyArray<CrateWire>

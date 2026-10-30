@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify([String(try Effect.try(() => Duration.toNanosUnsafe(small))), String(try Effect.try(() => Duration.toNanosUnsafe(micro))), Duration.toMillis(polling), Duration.toSeconds(budget), Duration.toMinutes(session), Duration.toHours(shift), Duration.toDays(retention), Duration.toWeeks(fortnight), String(unbounded), Duration.toSeconds(negative)]))
+// run: { const jsonValue = [String(try Effect.try(() => Duration.toNanosUnsafe(small))), String(try Effect.try(() => Duration.toNanosUnsafe(micro))), Duration.toMillis(polling), Duration.toSeconds(budget), Duration.toMinutes(session), Duration.toHours(shift), Duration.toDays(retention), Duration.toWeeks(fortnight), String(unbounded), Duration.toSeconds(negative)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const small = Duration.nanos(750n)
 const micro = Duration.micros(20n)
 const polling = Duration.millis(250)
@@ -44,7 +44,7 @@ const checked = Duration.fromInput("3 seconds")
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify([Duration.toMillis(delay), Duration.toSeconds(delay), Duration.toMinutes(delay), Duration.toHours(delay), Duration.toDays(Duration.weeks(1)), Duration.toWeeks(Duration.days(14)), String(try Effect.try(() => Option.getOrThrow(Duration.toNanos(Duration.millis(3))))), Option.isNone(Duration.toNanos(Duration.infinity))]))
+// run: { const jsonValue = [Duration.toMillis(delay), Duration.toSeconds(delay), Duration.toMinutes(delay), Duration.toHours(delay), Duration.toDays(Duration.weeks(1)), Duration.toWeeks(Duration.days(14)), String(try Effect.try(() => Option.getOrThrow(Duration.toNanos(Duration.millis(3))))), Option.isNone(Duration.toNanos(Duration.infinity))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const delay = Duration.minutes(2)
 Duration.toMillis(delay) // 120000
 Duration.toSeconds(delay) // 120

@@ -153,7 +153,7 @@ A lossy conversion has no meaningful inverse. `forbidden` reports a schema issue
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try readNumbers())); try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message)) })
+// run: await runPromise(effect { { const jsonValue = try readNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message)) })
 const SemicolonNumbers = Schema.String.pipe(
   Schema.decodeTo(Schema.Array(Schema.String), SchemaTransformation.transform({
     decode: (text): ReadonlyArray<string> => text.split(";"),
@@ -191,7 +191,7 @@ When converting a collection whose elements are already decoded, use `Schema.toT
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try decodeTextFormats())) })
+// run: await runPromise(effect { { const jsonValue = try decodeTextFormats(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const LowerLabel = Schema.String.pipe(
   Schema.decodeTo(
     Schema.String.check(Schema.isLowercased()),

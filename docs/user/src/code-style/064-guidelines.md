@@ -65,7 +65,7 @@ Choose the runtime that matches the host and install its platform package. The a
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(parseDecimalTokens(["10", "10", "10"]))); try printValues([10, 20])
+// run: try Console.log(try Effect.try(() => JSON.stringify(parseDecimalTokens(["10", "10", "10"])))); try printValues([10, 20])
 function parseDecimalTokens(tokens: ReadonlyArray<string>) {
   return tokens.map((text) => Number.parseInt(text, 10))
 }

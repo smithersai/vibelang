@@ -6,7 +6,7 @@ Schema constructors work as in Effect, on decoded values: they apply constructor
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try makeLabels())) })
+// run: await runPromise(effect { { const jsonValue = try makeLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Label = Schema.Struct({ text: Schema.NonEmptyString })
 const LabelsById = Schema.Record(Schema.String, Schema.NonEmptyString)
 
@@ -76,7 +76,7 @@ In local Effect 4.1.0, `makeEffect` fails with a raw `SchemaIssue.Issue`, not th
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const first = try makePacking(); const second = try makePacking(); try Console.log(JSON.stringify(first)); try Console.log(first.labels === second.labels) })
+// run: await runPromise(effect { const first = try makePacking(); const second = try makePacking(); try Console.log(try Effect.try(() => JSON.stringify(first))); try Console.log(first.labels === second.labels) })
 const Packing = Schema.Struct({
   handling: Schema.String.pipe(Schema.withConstructorDefault(effect { return "standard" })),
   dimensions: Schema.Struct({
@@ -105,7 +105,7 @@ A default Effect may fail with schema issues but cannot require services; read s
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try makeReturnPacking())) })
+// run: await runPromise(effect { { const jsonValue = try makeReturnPacking(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const ReturnPacking = Schema.Struct({
   reason: Schema.String,
   handling: Packing.fields.handling,
@@ -127,7 +127,7 @@ Defaults belong to field descriptions, so reusing a field carries its constructo
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(JSON.stringify(value)) })
+// run: await runPromise(effect { const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(try Effect.try(() => JSON.stringify(value))) })
 class PackingRequest extends Schema.Class<PackingRequest>("PackingRequest")({
   reference: Schema.String,
   handling: Packing.fields.handling,

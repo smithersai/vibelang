@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([sameLabel(" Inbox ", "inbox"), sameLabel("inbox", "archive")]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([sameLabel(" Inbox ", "inbox"), sameLabel("inbox", "archive")])))
 const sameLabel: Equivalence.Equivalence<string> = (a, b) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
@@ -21,7 +21,7 @@ An `Equivalence.Equivalence<A>` is a synchronous function from two A values to a
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Equivalence.String("cyan", "cyan"), Equivalence.Number(12, 13), Equivalence.Boolean(true, true), Equivalence.BigInt(5n, 5n), Equivalence.Date(new Date("2026-04-12"), new Date("2026-04-12")), sameSymbol(key, key), sameSymbol(key, Symbol("entry"))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Equivalence.String("cyan", "cyan"), Equivalence.Number(12, 13), Equivalence.Boolean(true, true), Equivalence.BigInt(5n, 5n), Equivalence.Date(new Date("2026-04-12"), new Date("2026-04-12")), sameSymbol(key, key), sameSymbol(key, Symbol("entry"))])))
 Equivalence.String("cyan", "cyan") // true
 Equivalence.Number(12, 13) // false
 Equivalence.Boolean(true, true) // true

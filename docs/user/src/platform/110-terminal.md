@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
+// run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { { const jsonValue = try dimensions(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 effect function dimensions() {
   const terminal = try Terminal.Terminal
   return { columns: try terminal.columns, rows: try terminal.rows }

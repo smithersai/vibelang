@@ -129,7 +129,7 @@ effect function decoderBoundary(opcode: number) {
   const cause = outcome.cause
   if (Cause.hasInterrupts(cause)) return try failCause(cause)
   if (Cause.hasDies(cause)) {
-    try Console.log("Decoder failed", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+    try Console.log("Decoder failed", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag))))
     return "disabled"
   }
   return try failCause(cause)

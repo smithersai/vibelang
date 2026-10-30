@@ -423,7 +423,7 @@ schema error NotStored { key: string; attempts: number }
 
 effect function encodeStoreError() {
   const encoded = try Schema.encodeEffect(NotStored)(new NotStored({ key: "a", attempts: 2 }))
-  return JSON.stringify(encoded)
+  return try Effect.try(() => JSON.stringify(encoded))
 }
 
 effect function decodeStoreError() {

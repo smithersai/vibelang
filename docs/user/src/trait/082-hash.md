@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)])))
 const first = { section: "billing", page: 2 }
 const same = { section: "billing", page: 2 }
 Equal.equals(first, same) // true
@@ -20,7 +20,7 @@ Equal values must have equal hashes, but equal hashes do not prove equality: dif
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)), Equal.equals(new GridCell(3, 7), new GridCell(3, 8))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)), Equal.equals(new GridCell(3, 7), new GridCell(3, 8))])))
 class GridCell implements Equal.Equal {
   constructor(readonly row: number, readonly column: number) {}
 
@@ -47,7 +47,7 @@ It compiles to a plain JavaScript method. An effect method returns an Effect, wh
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([HashSet.size(cells), Hash.hash(first) === Hash.hash(equivalent)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([HashSet.size(cells), Hash.hash(first) === Hash.hash(equivalent)])))
 const first = new GridCell(3, 7)
 const equivalent = new GridCell(3, 7)
 const cells = HashSet.make(first, equivalent)

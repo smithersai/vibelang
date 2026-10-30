@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))])))
 Order.String("amber", "violet") // -1
 Order.Number(7, 7) // 0
 Order.BigInt(11n, 3n) // 1
@@ -20,7 +20,7 @@ An `Order.Order<A>` compares two A values synchronously. Built-in orders cover s
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([sorted, input, mutableCopy]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([sorted, input, mutableCopy])))
 const input = [9, 2, 6]
 const sorted = Effect.Array.sort(input, Order.Number)
 // sorted: [2, 6, 9]; input: [9, 2, 6]
@@ -83,7 +83,7 @@ const tasks = Effect.Array.sort([
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(Effect.Array.sort([5, 12, 3], descending)))
+// run: try Console.log(try Effect.try(() => JSON.stringify(Effect.Array.sort([5, 12, 3], descending))))
 const descending = Order.flip(Order.Number)
 Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
 // Output: [12,5,3]
@@ -95,7 +95,7 @@ Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)])))
 const less = Order.isLessThan(Order.Number)
 const greater = Order.isGreaterThan(Order.Number)
 const atMost = Order.isLessThanOrEqualTo(Order.Number)
@@ -113,7 +113,7 @@ These helpers turn an order, primitive or derived, into boolean tests. Equality 
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)])))
 Order.min(Order.Number)(13, 8) // 8
 Order.max(Order.Number)(13, 8) // 13
 Order.min(Order.flip(Order.Number))(13, 8) // 13
@@ -126,7 +126,7 @@ Order.min(Order.flip(Order.Number))(13, 8) // 13
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)])))
 const bounds = { minimum: 10, maximum: 50 }
 const clamp = Order.clamp(Order.Number)(bounds)
 const inside = Order.isBetween(Order.Number)(bounds)

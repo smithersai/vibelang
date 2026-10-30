@@ -24,7 +24,7 @@ Fail Die Interrupt 0
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(combined.reasons.map((reason) => reason._tag))); try Console.log(Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length)
+// run: try Console.log(try Effect.try(() => JSON.stringify(combined.reasons.map((reason) => reason._tag)))); try Console.log(Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length)
 const combined = Cause.combine(Cause.fail("export failed"), Cause.die(new Error("cleanup failed")))
 combined.reasons.map((reason) => reason._tag) // ["Fail", "Die"]
 Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length // 1
@@ -67,7 +67,7 @@ MissingRecord:
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try classify(Cause.combine(Cause.combine(Cause.fail("missing"), Cause.die("broken")), Cause.interrupt(17))))); try Console.log(JSON.stringify(try classify(Cause.empty)))
+// run: { const jsonValue = try classify(Cause.combine(Cause.combine(Cause.fail("missing"), Cause.die("broken")), Cause.interrupt(17))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try classify(Cause.empty); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function classify<E>(cause: Cause.Cause<E>) {
   const summary = {
     failed: Cause.hasFails(cause),
@@ -100,7 +100,7 @@ Cause predicates test whether a kind of reason is present. Reason guards narrow 
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: const result = inspect(Cause.combine(Cause.fail("missing"), Cause.die("broken"))); try Console.log(JSON.stringify({ failures: result.failures, defects: result.defects })); try Console.log(JSON.stringify(inspect(Cause.empty)))
+// run: const result = inspect(Cause.combine(Cause.fail("missing"), Cause.die("broken"))); try Console.log(try Effect.try(() => JSON.stringify({ failures: result.failures, defects: result.defects }))); try Console.log(try Effect.try(() => JSON.stringify(inspect(Cause.empty))))
 function inspect<E>(cause: Cause.Cause<E>) {
   const failures = cause.reasons
     .filter(Cause.isFailReason)

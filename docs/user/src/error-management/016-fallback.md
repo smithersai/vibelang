@@ -74,7 +74,7 @@ No title available
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try lookup()))
+// run: { const jsonValue = try lookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
 
 effect function lookup(): Lookup!! {

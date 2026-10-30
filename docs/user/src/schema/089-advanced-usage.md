@@ -118,7 +118,7 @@ A brand distinguishes values statically without changing their runtime represent
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try createParcel())); try Console.log(Schema.is(Parcel)({ shelf: "rack-18" })) })
+// run: await runPromise(effect { { const jsonValue = try createParcel(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Parcel)({ shelf: "rack-18" })) })
 const Parcel = Schema.Struct({
   shelf: ShelfId,
   priority: Schema.Int.pipe(Schema.withConstructorDefault(effect { return 1 }))
@@ -141,7 +141,7 @@ false
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null })); try Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null })); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined }))); try Effect.catch(Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }), (error) => Console.log(error._tag)) })
+// run: await runPromise(effect { try Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null })); try Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null })); { const jsonValue = try Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }), (error) => Console.log(error._tag)) })
 const Presence = Schema.Struct({
   exact: Schema.optionalKey(Schema.String),
   loose: Schema.optional(Schema.String),
@@ -176,7 +176,7 @@ SchemaError
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try readPreferences(); try Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone()); try Console.log(JSON.stringify(try Schema.encodeEffect(Preferences)(value))) })
+// run: await runPromise(effect { const value = try readPreferences(); try Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone()); { const jsonValue = try Schema.encodeEffect(Preferences)(value); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Preferences = Schema.Struct({
   note: Schema.OptionFromOptionalKey(Schema.String),
   weight: Schema.OptionFromOptional(Schema.FiniteFromString),
@@ -200,7 +200,7 @@ The decoded keys are required and hold `Option` values. The exact-key variant re
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try Schema.decodeUnknownEffect(Form)({ note: "", memo: "" }); try Console.log(JSON.stringify(value)); try Console.log(JSON.stringify(try Schema.encodeEffect(Form)(value))) })
+// run: await runPromise(effect { const value = try Schema.decodeUnknownEffect(Form)({ note: "", memo: "" }); try Console.log(try Effect.try(() => JSON.stringify(value))); { const jsonValue = try Schema.encodeEffect(Form)(value); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Form = Schema.Struct({
   note: Schema.optionalKey(Schema.String).pipe(
     Schema.decodeTo(Schema.optionalKey(Schema.String), {
@@ -244,7 +244,7 @@ Optional getters receive an `Option`: `None` means the key is absent, `Some(unde
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.encodeEffect(WireDestination)({ city: "Oslo", dock: 2, route: "north" }))) })
+// run: await runPromise(effect { { const jsonValue = try Schema.encodeEffect(WireDestination)({ city: "Oslo", dock: 2, route: "north" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Address = Schema.Struct({ city: Schema.String })
 const Destination = Schema.Struct({ ...Address.fields, dock: Schema.Int })
 const Routed = Destination.pipe(Schema.fieldsAssign({ route: Schema.String }))
@@ -261,7 +261,7 @@ Add fields by spreading `.fields` or with `fieldsAssign`. `encodeKeys` maps deco
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try readCrate({ count: "2", children: [{ count: "1", children: [] }] }))); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] }))) })
+// run: await runPromise(effect { { const jsonValue = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 interface Crate {
   count: number
   children: ReadonlyArray<Crate>

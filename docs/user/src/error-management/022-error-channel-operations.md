@@ -90,7 +90,7 @@ effect function observeQuantity(value: number) {
   const logged = tapError(quantity(value), (error) => Console.log(`Rejected quantity ${error.value}`))
   const tagged = tapErrorTag(logged, "InvalidQuantity", () => Console.log("Quantity validation failed"))
   return try tapCause(tagged, (cause) =>
-    Console.log("Failure kinds", JSON.stringify(cause.reasons.map((reason) => reason._tag))))
+    Console.log("Failure kinds", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag)))))
 }
 
 effect function observeDefect() {
@@ -119,7 +119,7 @@ A failing observation can change the resulting cause, so observe with code that 
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try inspectQuantity(2))); try Console.log(JSON.stringify(try inspectQuantity(0))); try Console.log(try quantityOrErrorValue(2)); const value = try quantityOrErrorValue(0); try Console.log(typeof value === "number" ? value : value._tag)
+// run: { const jsonValue = try inspectQuantity(2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try inspectQuantity(0); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try quantityOrErrorValue(2)); const value = try quantityOrErrorValue(0); try Console.log(typeof value === "number" ? value : value._tag)
 effect function inspectQuantity(value: number) {
   const outcome = try result(quantity(value))
   const summary = Result.match(outcome, {

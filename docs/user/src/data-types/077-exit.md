@@ -30,7 +30,7 @@ An exit is `Success` with `.value` or `Failure` with `.cause`. `try exit(program
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: const outcomes = sampleOutcomes(); try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess())); if (Exit.isFailure(outcomes.failed)) try Console.log(JSON.stringify(outcomes.failed.cause.reasons.map((reason) => reason._tag)))
+// run: const outcomes = sampleOutcomes(); try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess())); if (Exit.isFailure(outcomes.failed)) try Console.log(try Effect.try(() => JSON.stringify(outcomes.failed.cause.reasons.map((reason) => reason._tag))))
 function sampleOutcomes() {
   const successful = Exit.succeed(12)
   const failed = Exit.failCause(
@@ -76,7 +76,7 @@ true
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try Effect.try(() => Result.getOrThrow(asResult(Exit.succeed(12))))); const failed = asResult(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken")))); if (Result.isFailure(failed)) try Console.log(JSON.stringify(failed.failure.reasons.map((reason) => reason._tag)))
+// run: try Console.log(try Effect.try(() => Result.getOrThrow(asResult(Exit.succeed(12))))); const failed = asResult(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken")))); if (Result.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.failure.reasons.map((reason) => reason._tag))))
 function asResult<A, E>(outcome: Exit.Exit<A, E>) {
   if (Exit.isSuccess(outcome)) return Result.succeed(outcome.value)
   return Result.fail(outcome.cause)
@@ -95,7 +95,7 @@ An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try replay(Exit.succeed(12))); const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))); if (Exit.isFailure(failed)) try Console.log(JSON.stringify(failed.cause.reasons.map((reason) => reason._tag)))
+// run: try Console.log(try replay(Exit.succeed(12))); const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))); if (Exit.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.cause.reasons.map((reason) => reason._tag))))
 effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome
 }

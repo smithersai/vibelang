@@ -70,7 +70,7 @@ Create `src/todos.vibe`. The `TodosLive` layer keeps the list in a `Map` that it
 ```vibe
 // src/todos.vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15
-// run: provide TodosLive { try Console.log(JSON.stringify(try loadBoard())); const todos = try Todos; try Console.log(todos.complete(99) catch (error) => `${error._tag} ${error.id}`) }
+// run: provide TodosLive { { const jsonValue = try loadBoard(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const todos = try Todos; try Console.log(todos.complete(99) catch (error) => `${error._tag} ${error.id}`) }
 export schema Todo { id: number; title: string; done: boolean }
 
 export error TodoNotFound { id: number }

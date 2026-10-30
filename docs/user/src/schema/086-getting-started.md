@@ -8,7 +8,7 @@ The `Schema` module is in scope without an import. An explicit `import { Schema 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try receive({ tracking: "box-76", pieces: "2" }))) })
+// run: await runPromise(effect { { const jsonValue = try receive({ tracking: "box-76", pieces: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Shipment = Schema.Struct({
   tracking: Schema.NonEmptyString,
   pieces: Schema.FiniteFromString
@@ -48,7 +48,7 @@ The decoded `pieces` is a number, the encoded one a string, and both service typ
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }))) })
+// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 schema Batch {
   shipments: ReadonlyArray<Shipment>
 }
@@ -69,7 +69,7 @@ Separate `schema` declaration fields with `;` or a new line. A comma reports `EK
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }))); try Console.log(Schema.is(Status)("lost")) })
+// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Status)("lost")) })
 schema Status = "pending" | "delivered" | "returned"
 schema Delivery = { status: Status; shipments: ReadonlyArray<Shipment> }
 // Status: "pending" | "delivered" | "returned"
@@ -123,7 +123,7 @@ Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding servic
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try send({ tracking: "box-76", pieces: 2 }))); try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag)) })
+// run: await runPromise(effect { { const jsonValue = try send({ tracking: "box-76", pieces: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag)) })
 effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
@@ -167,7 +167,7 @@ The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }))) })
+// run: await runPromise(effect { try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); { const jsonValue = try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 effect function receiveStrict(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input, {
     onExcessProperty: "error",

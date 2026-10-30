@@ -31,7 +31,7 @@ JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(firstTwo([1, 2, 3])))
+// run: try Console.log(try Effect.try(() => JSON.stringify(firstTwo([1, 2, 3]))))
 import { Array as Arr } from "effect"
 
 function firstTwo(values: ReadonlyArray<number>) {

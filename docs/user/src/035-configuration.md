@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
-// run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })) { try Console.log(JSON.stringify(try serverSettings())) }
+// run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })) { { const jsonValue = try serverSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const Host = Config.NonEmptyString("HOST")
 const Port = Config.Port("PORT")
 
@@ -56,7 +56,7 @@ effect function teamName() {
 ```vibe
 // descriptors.vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try server.parse(ConfigProvider.fromUnknown({ server: { host: "localhost", port: 9091 } }))))
+// run: { const jsonValue = try server.parse(ConfigProvider.fromUnknown({ server: { host: "localhost", port: 9091 } })); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 export const server = Config.schema(Schema.Struct({
   host: Schema.String,
   port: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))
@@ -66,7 +66,7 @@ export const server = Config.schema(Schema.Struct({
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try localServer()))
+// run: { const jsonValue = try localServer(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 import { server } from "./descriptors.vibe"
 
 effect function localServer() {
@@ -83,7 +83,7 @@ Use `descriptor.parse(provider)` for an explicit source, especially in tests; it
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
-// run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ REGIONS: "north,south", LABELS: "team=search,tier=internal" })) { try Console.log(JSON.stringify(try routingSettings())) }
+// run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ REGIONS: "north,south", LABELS: "team=search,tier=internal" })) { { const jsonValue = try routingSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 effect function routingSettings() {
   const regions = try Config.Array(Schema.String, "REGIONS")
   const labels = try Config.Record(Schema.String, Schema.String, "LABELS")
@@ -99,7 +99,7 @@ Arrays accept structural values or a separated string such as `north,south`; rec
 ```vibe
 // database-config.vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try database.parse(ConfigProvider.fromEnv({ env: { DATABASE_HOST: "db.internal", DATABASE_PORT: "5433" } }))))
+// run: { const jsonValue = try database.parse(ConfigProvider.fromEnv({ env: { DATABASE_HOST: "db.internal", DATABASE_PORT: "5433" } })); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 export const database = Config.nested(Config.all({
   host: Config.NonEmptyString("HOST"),
   port: Config.Port("PORT")
@@ -109,7 +109,7 @@ export const database = Config.nested(Config.all({
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try testDatabaseSettings()))
+// run: { const jsonValue = try testDatabaseSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 import { database } from "./database-config.vibe"
 
 effect function testDatabaseSettings() {
@@ -248,7 +248,7 @@ effect function deploymentPort() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14
-// run: try Console.log(JSON.stringify(try configuredServer()))
+// run: { const jsonValue = try configuredServer(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Combined = ConfigProvider.orElse(
   ConfigProvider.fromEnv({ env: { HOST: "edge.internal" } }),
   ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })

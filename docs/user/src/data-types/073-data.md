@@ -41,7 +41,7 @@ Support for the new object patterns arrives with the compiler's VIP implementati
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14, VIP-16, VIP-28
-// run: try Console.log(JSON.stringify([loaded, failed, idle])); try Console.log(count(loaded), count(idle))
+// run: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle]))); try Console.log(count(loaded), count(idle))
 data LoadState<A, E> {
   Idle
   Loaded { value: A }
@@ -187,7 +187,7 @@ Rejected: address missing
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([loaded, failed, idle]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle])))
 type LoadState<A, E> = Data.TaggedEnum<{
   Idle: {}
   Ready: { value: A }
@@ -226,7 +226,7 @@ const idle = LoadState.Idle()
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
-// run: try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); try Console.log(JSON.stringify([try documentOrDraft("doc-3"), try documentOrDraft("")])); try Console.log(requireDocument("") catch (error) => error._tag)
+// run: try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); { const jsonValue = [try documentOrDraft("doc-3"), try documentOrDraft("")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requireDocument("") catch (error) => error._tag)
 class InvalidDocument extends Data.Error<{
   message: string
   line: number
@@ -261,7 +261,7 @@ DocumentMissing
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log(JSON.stringify(try decodeDocument("{\"id\":3}"))); try Console.log(decodeDocument("{") catch (error) => `${error._tag} ${error.cause instanceof SyntaxError}`)
+// run: { const jsonValue = try decodeDocument("{\"id\":3}"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(decodeDocument("{") catch (error) => `${error._tag} ${error.cause instanceof SyntaxError}`)
 error DocumentDecodeError {
   cause: unknown
 }

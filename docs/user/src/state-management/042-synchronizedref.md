@@ -6,7 +6,7 @@ A `SynchronizedRef` serializes updates that run Effects. Use it when the next va
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
-// run: try Console.log(JSON.stringify((try recordRevisions()).toSorted((a, b) => a - b)))
+// run: { const jsonValue = (try recordRevisions()).toSorted((a, b) => a - b); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function recordRevisions() {
   const revisions = try SynchronizedRef.make<ReadonlyArray<number>>([])
   for concurrent(3) (const id of [1, 2, 3]) {
@@ -26,7 +26,7 @@ Three fibers call the callbacks concurrently, but they acquire the reference's u
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try inspect()))
+// run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const state = try SynchronizedRef.make({ version: 0, ready: false })
   const before = try SynchronizedRef.get(state)
@@ -43,7 +43,7 @@ effect function inspect() {
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14, VIP-18
-// run: provide Versions = { loadAfter: effect (version) => { try sleep("10 millis"); return version + 1 } } { try Console.log(JSON.stringify(try refreshTwice())) }; const state = try SynchronizedRef.make(0); try Effect.catch(SynchronizedRef.updateEffect(state, effect () => { throw new RefreshFailed() }), (error) => Console.log(error._tag)); try Console.log(try SynchronizedRef.updateAndGetEffect(state, (n) => succeed(n + 1)))
+// run: provide Versions = { loadAfter: effect (version) => { try sleep("10 millis"); return version + 1 } } { { const jsonValue = try refreshTwice(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }; const state = try SynchronizedRef.make(0); try Effect.catch(SynchronizedRef.updateEffect(state, effect () => { throw new RefreshFailed() }), (error) => Console.log(error._tag)); try Console.log(try SynchronizedRef.updateAndGetEffect(state, (n) => succeed(n + 1)))
 error RefreshFailed
 
 service Versions {

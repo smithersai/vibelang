@@ -14,7 +14,7 @@ const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
 
 effect function reportConfiguration() {
-  try Console.log(JSON.stringify({ apiKey: exampleKey }))
+  try Console.log(try Effect.try(() => JSON.stringify({ apiKey: exampleKey })))
 }
 ```
 

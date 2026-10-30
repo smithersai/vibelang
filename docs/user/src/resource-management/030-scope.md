@@ -104,7 +104,7 @@ while acquisition is waiting. Each path closes the handle exactly once:
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-17
-// run: try Console.log(JSON.stringify({ succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }))
+// run: { const jsonValue = { succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function open(events: string[]) {
   let closed = false
   events.push("open")
@@ -266,7 +266,7 @@ The finalizers see the whole setup's exit, so defects and interruption trigger t
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: const result = try exerciseRollback(); try Console.log(JSON.stringify({ outcome: result.outcome._tag, removed: result.removed }))
+// run: const result = try exerciseRollback(); try Console.log(try Effect.try(() => JSON.stringify({ outcome: result.outcome._tag, removed: result.removed })))
 effect function exerciseRollback() {
   const removed: string[] = []
   const testLayer = Layer.succeed(ProjectSteps, {

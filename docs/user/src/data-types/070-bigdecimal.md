@@ -72,7 +72,7 @@ InvalidPrice invalid
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([BigDecimal.format(total), BigDecimal.format(BigDecimal.sum(total, discount)), Option.getOrNull(Option.map(BigDecimal.divide(total, quantity), BigDecimal.format)), Option.getOrNull(Option.map(BigDecimal.remainder(total, quantity), BigDecimal.format)), BigDecimal.sign(BigDecimal.negate(total)), BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total)))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([BigDecimal.format(total), BigDecimal.format(BigDecimal.sum(total, discount)), Option.getOrNull(Option.map(BigDecimal.divide(total, quantity), BigDecimal.format)), Option.getOrNull(Option.map(BigDecimal.remainder(total, quantity), BigDecimal.format)), BigDecimal.sign(BigDecimal.negate(total)), BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total)))])))
 const price = BigDecimal.make(875n, 2)
 const quantity = BigDecimal.fromBigInt(4n)
 const subtotal = BigDecimal.multiply(price, quantity)
@@ -97,7 +97,7 @@ BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total))) // "32.5"
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([BigDecimal.isLessThan(amount, limit), BigDecimal.isLessThanOrEqualTo(amount, amount), BigDecimal.isGreaterThan(limit, amount), BigDecimal.isGreaterThanOrEqualTo(limit, limit), BigDecimal.format(BigDecimal.min(amount, limit)), BigDecimal.format(BigDecimal.max(amount, limit)), BigDecimal.between(amount, { minimum: BigDecimal.fromBigInt(0n), maximum: limit }), BigDecimal.isZero(amount), BigDecimal.isPositive(amount), BigDecimal.isNegative(amount), BigDecimal.isInteger(amount)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([BigDecimal.isLessThan(amount, limit), BigDecimal.isLessThanOrEqualTo(amount, amount), BigDecimal.isGreaterThan(limit, amount), BigDecimal.isGreaterThanOrEqualTo(limit, limit), BigDecimal.format(BigDecimal.min(amount, limit)), BigDecimal.format(BigDecimal.max(amount, limit)), BigDecimal.between(amount, { minimum: BigDecimal.fromBigInt(0n), maximum: limit }), BigDecimal.isZero(amount), BigDecimal.isPositive(amount), BigDecimal.isNegative(amount), BigDecimal.isInteger(amount)])))
 const amount = BigDecimal.make(325n, 1)
 const limit = BigDecimal.fromBigInt(40n)
 BigDecimal.isLessThan(amount, limit) // true

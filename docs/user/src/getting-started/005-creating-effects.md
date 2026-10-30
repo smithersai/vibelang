@@ -205,7 +205,7 @@ Keep shared adapters in `.ts` files and import them wherever needed. Relative sp
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try counters()))
+// run: { const jsonValue = try counters(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nextCounter() {
   let count = 0
   return effect {

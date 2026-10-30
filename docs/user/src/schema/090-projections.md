@@ -31,7 +31,7 @@ SchemaError
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try inspectWireName(" x "))) })
+// run: await runPromise(effect { { const jsonValue = try inspectWireName(" x "); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Name = Schema.String.check(Schema.isMinLength(3)).pipe(
   Schema.decodeTo(Schema.Trim)
 )
@@ -53,7 +53,7 @@ effect function inspectWireName(input: unknown) {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try compareViews())); try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag)) })
+// run: await runPromise(effect { { const jsonValue = try compareViews(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag)) })
 const ParcelCount = Schema.String.check(Schema.isMinLength(2)).pipe(
   Schema.decodeTo(Schema.FiniteFromString),
   Schema.check(Schema.isGreaterThan(5))

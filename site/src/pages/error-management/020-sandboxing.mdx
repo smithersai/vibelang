@@ -74,7 +74,7 @@ This boundary recovers only causes made entirely of domain failures; checking on
 ```vibe
 effect function readWithInspection() {
   return try Effect.catch(sandboxedRow(), effect (cause) => {
-    try Console.log("Row computation stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+    try Console.log("Row computation stopped", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag))))
     return try failCause(cause)
   })
 }

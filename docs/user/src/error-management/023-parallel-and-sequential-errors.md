@@ -8,7 +8,7 @@ An operation can stop for several reasons: concurrent work can fail together, or
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(failureKinds()))
+// run: try Console.log(try Effect.try(() => JSON.stringify(failureKinds())))
 function failureKinds() {
   const cause = Cause.combine(Cause.fail("delivery rejected"), Cause.die(new Error("release invariant failed")))
   return cause.reasons.map((reason) => reason._tag)
@@ -26,7 +26,7 @@ A `Cause.Cause<E>` holds a readonly array of `Cause.Reason<E>`, each `Fail` with
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try inspectDelivery()))
+// run: { const jsonValue = try inspectDelivery(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function operationWithBrokenCleanup() {
   return try ensuring(
     effect { throw "delivery rejected" },
@@ -61,7 +61,7 @@ When every reason is an expected failure, ordinary catch receives the first and 
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log(JSON.stringify((try flip(validatePorts())).map((error) => error.port)))
+// run: { const jsonValue = (try flip(validatePorts())).map((error) => error.port); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidPort { port: number }
 
 effect function validatePorts() {

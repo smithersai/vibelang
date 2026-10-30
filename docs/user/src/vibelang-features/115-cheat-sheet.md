@@ -4,7 +4,7 @@ Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 
 
 ```vibe es
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
-// run: provide Approval = { approve: (_request) => succeed(true) } { try Console.log(JSON.stringify([try getUser("1"), try getOrders("1"), try release("v1")])) }
+// run: provide Approval = { approve: (_request) => succeed(true) } { { const jsonValue = [try getUser("1"), try getOrders("1"), try release("v1")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 error NotFound { id: string }
 interface User { id: string; name: string }
 
@@ -90,7 +90,7 @@ class Refused extends Failure {
 
 ```vibe es
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag])))
 class Invalid extends Data.TaggedError("Invalid")<{ readonly code: string }> {
   constructor(input: string) {
     super({ code: input.trim() })
@@ -171,7 +171,7 @@ const UsersLive = Layer.effect(Users, Effect.gen(function* () {
 
 ```vibe es
 // pending: VIP-2, VIP-5, VIP-12, VIP-14
-// run: provide UsersLive { const users = try Users; try Console.log(JSON.stringify(try users.find("1"))); try Console.log(users.region) }
+// run: provide UsersLive { const users = try Users; { const jsonValue = try users.find("1"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(users.region) }
 const UsersLive = Layer.effect(Users, effect {
   const seen = new Set<string>()
   return Users.of({
@@ -198,7 +198,7 @@ type Account = typeof Account.Type
 
 ```vibe es
 // pending: VIP-5, VIP-14, VIP-15
-// run: try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" })))
+// run: { const jsonValue = try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 schema Account {
   readonly id: string
   readonly nickname?: string
@@ -238,7 +238,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 
 ```vibe es
 // pending: VIP-5, VIP-14, VIP-16
-// run: try Console.log(JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })])))
 data Delivery {
   Waiting
   Sent { tracking: string }
@@ -315,7 +315,7 @@ const program = Effect.gen(function* () {
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-12
-// run: try Console.log(JSON.stringify(try program()))
+// run: { const jsonValue = try program(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function program() {
   provide UsersLive {
     const users = try Users
@@ -362,7 +362,7 @@ const describe = (id: string) =>
 
 ```vibe es
 // pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([try describe("1"), try describe("missing")]))
+// run: { const jsonValue = [try describe("1"), try describe("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function describe(id: string) {
   return effect {
     return (try getUser(id)).name
@@ -385,7 +385,7 @@ const nameOrGuest = (id: string) =>
 
 ```vibe es
 // pending: VIP-1, VIP-2, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([try nameOrGuest("1"), try nameOrGuest("missing")]))
+// run: { const jsonValue = [try nameOrGuest("1"), try nameOrGuest("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nameOrGuest(id: string) {
   return effect { return (try getUser(id)).name } catch () => "guest"
 }
@@ -404,7 +404,7 @@ const nameOrReason = (id: string) =>
 
 ```vibe es
 // pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([try nameOrReason("1"), try nameOrReason("missing")]))
+// run: { const jsonValue = [try nameOrReason("1"), try nameOrReason("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nameOrReason(id: string) {
   return effect { return (try getUser(id)).name } catch (e) => match (e) {
     when NotFound: `no user ${e.id}`;
@@ -477,7 +477,7 @@ const logged = getUser("1").pipe(
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify(try logged()))
+// run: { const jsonValue = try logged(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function logged() {
   const outcome = try exit(getUser("1"))
   if (outcome is Exit.Failure(let cause)) {
@@ -545,7 +545,7 @@ const cancellable = Effect.interruptible(getOrders("1"))
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-22
-// run: try Console.log(JSON.stringify([try guarded(), try cancellable()]))
+// run: { const jsonValue = [try guarded(), try cancellable()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function guarded() {
   uninterruptible {
     const user = try getUser("1")
@@ -622,7 +622,7 @@ const patient = Effect.gen(function* () {
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try patient()))
+// run: { const jsonValue = try patient(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function patient() {
   try sleep("10 millis")
   return try timeout(retry(getUser("1"), Schedule.recurs(2)), "1 second")
@@ -643,7 +643,7 @@ const hot = Stream.take(
 
 ```vibe es
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try Stream.runCollect(hot())))
+// run: { const jsonValue = try Stream.runCollect(hot()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function hot() {
   return Stream.make(18, 25, 30).pipe(
     Stream.filter((c) => c >= 25),
@@ -784,7 +784,7 @@ const phaseLabel = (phase: "draft" | "published") =>
 
 ```vibe es
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([phaseLabel("draft"), phaseLabel("published")]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([phaseLabel("draft"), phaseLabel("published")])))
 function phaseLabel(phase: "draft" | "published") {
   return match (phase) {
     when "draft": "Draft";
@@ -808,7 +808,7 @@ const describeFailure = (failure: NotFound | Timeout) =>
 
 ```vibe es
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())])))
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
     when NotFound(let e): `no user ${e.id}`;
@@ -830,7 +830,7 @@ const deliveryLabel = Delivery.$match({
 
 ```vibe es
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))])))
 function deliveryLabel(delivery: Delivery) {
   return match (delivery) {
     when { _tag: "Waiting" }: "waiting";
@@ -946,7 +946,7 @@ const name = await Effect.runPromise(greetUser("1"))
 
 ```vibe es
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-33
-// run: provide Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free })) }
+// run: provide Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(try Effect.try(() => JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free }))) }
 import { makeTicker, offTick, onceTick, statfs, uptime } from "./node-apis.ts"
 import type { EventEmitter } from "node:events"
 import { generateKey } from "./web-apis.ts"
@@ -1029,7 +1029,7 @@ return [yield* Fiber.join(user), yield* Fiber.join(orders)]
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-14, VIP-17
-// run: try Console.log(JSON.stringify(try both()))
+// run: { const jsonValue = try both(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function both() {
   const user = fork getUser("1")
   const orders = fork getOrders("1")
@@ -1048,7 +1048,7 @@ const pair = yield* Effect.all({ user: getUser("1"), orders: getOrders("1") }, {
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
-// run: try Console.log(JSON.stringify(try many()))
+// run: { const jsonValue = try many(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function many() {
   const [user, orders] = try.all [getUser("1"), getOrders("1")]
   const pair = try all({ user: getUser("1"), orders: getOrders("1") }, { concurrency: "unbounded" })
@@ -1067,7 +1067,7 @@ const outcomes = yield* Effect.all([Effect.exit(getUser("1")), Effect.exit(getOr
 
 ```vibe es
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
-// run: const value = try outcomes(); try Console.log(value.fastest.name); try Console.log(JSON.stringify(value.results.map((result) => result._tag))); try Console.log(JSON.stringify((try.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag))); try Console.log(JSON.stringify((try.all [exit(die("defect")), exit(getOrders("1"))]).map((e) => e._tag)))
+// run: const value = try outcomes(); try Console.log(value.fastest.name); try Console.log(try Effect.try(() => JSON.stringify(value.results.map((result) => result._tag)))); { const jsonValue = (try.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = (try.all [exit(die("defect")), exit(getOrders("1"))]).map((e) => e._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function outcomes() {
   const fastest = try.any [getUser("1"), getUser("2")]
   const results = try.allSettled [getUser("1"), getOrders("1")]

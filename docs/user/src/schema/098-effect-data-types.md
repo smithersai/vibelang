@@ -6,7 +6,7 @@ Schemas for Effect data types work as in Effect. Runtime collection schemas expe
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try configurationExample())) })
+// run: await runPromise(effect { { const jsonValue = try configurationExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const DispatchConfig = Config.schema(Schema.Struct({
   depot: Schema.String,
   capacity: Schema.Finite
@@ -54,7 +54,7 @@ Success
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try encodeResult())) })
+// run: await runPromise(effect { { const jsonValue = try encodeResult(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 effect function encodeResult() {
   const codec = Schema.toCodecJson(CountResult)
   return try Schema.encodeEffect(codec)(Result.succeed(9))
@@ -83,7 +83,7 @@ Canonical JSON uses `{ _tag: "Some", value }` and `{ _tag: "None" }` for options
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const values = try collectionsFromJson(); try Console.log(JSON.stringify(Array.from(values.set))); try Console.log(JSON.stringify(Array.from(values.map))); try Console.log(JSON.stringify(Array.from(try Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"]))))); try Console.log(JSON.stringify(Array.from(try Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]]))))) })
+// run: await runPromise(effect { const values = try collectionsFromJson(); try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.set)))); try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.map)))); { const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"]))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]]))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const NativeSet = Schema.ReadonlySet(Schema.FiniteFromString)
 const NativeMap = Schema.ReadonlyMap(Schema.String, Schema.FiniteFromString)
 const PersistentSet = Schema.HashSet(Schema.FiniteFromString)
@@ -111,7 +111,7 @@ effect function collectionsFromJson() {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try durations(); try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); try Console.log(JSON.stringify(value.json)) })
+// run: await runPromise(effect { const value = try durations(); try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); try Console.log(try Effect.try(() => JSON.stringify(value.json))) })
 effect function durations() {
   const hold = try Schema.decodeEffect(Schema.DurationFromString)("3 seconds")
   const milliseconds = try Schema.encodeEffect(Schema.DurationFromMillis)(hold)

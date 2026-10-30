@@ -6,7 +6,7 @@ Standard Schema adaptation works as in Effect: it exposes a codec to libraries t
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(standardMetadata()); try Console.log(JSON.stringify(try tryPromise(() => Promise.resolve(DispatchStandard["~standard"].validate({ reference: "pkg-94", count: "2" }))))) })
+// run: await runPromise(effect { try Console.log(standardMetadata()); { const jsonValue = try tryPromise(() => Promise.resolve(DispatchStandard["~standard"].validate({ reference: "pkg-94", count: "2" }))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Dispatch = Schema.Struct({
   reference: Schema.NonEmptyString,
   count: Schema.FiniteFromString
@@ -31,7 +31,7 @@ effect
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try validateDispatch({ reference: "pkg-94", count: "2" }))); try Console.log(JSON.stringify(try validateDispatch({}))) })
+// run: await runPromise(effect { { const jsonValue = try validateDispatch({ reference: "pkg-94", count: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try validateDispatch({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const ReviewedDispatch = Dispatch.pipe(Schema.decode({
   decode: SchemaGetter.checkEffect(effect (_dispatch) => {
     try sleep("5 millis")
@@ -63,7 +63,7 @@ Plain TypeScript calls are allowed inside the callback passed to `tryPromise`. T
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try inspectBrokenValidation())) })
+// run: await runPromise(effect { { const jsonValue = try inspectBrokenValidation(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const BrokenLabel = Schema.String.pipe(Schema.decode({
   decode: SchemaGetter.transformEffect(effect (_label) => try die("label invariant failed")),
   encode: SchemaGetter.passthrough()

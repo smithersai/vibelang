@@ -161,7 +161,7 @@ Effect declarations and combinator calls ported from TypeScript compile in a `.v
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-18
-// run: try Console.log(JSON.stringify([try sequential(), try concurrent()]))
+// run: { const jsonValue = [try sequential(), try concurrent()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function sequential() {
   const first = try greet("Ada")
   const second = try greet("Grace")
@@ -286,7 +286,7 @@ Effect-contracted calls were in the same order of cost as `Effect.fn` generators
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
-// run: try Console.log(JSON.stringify([try displayName("ada"), try displayName("missing")]))
+// run: { const jsonValue = [try displayName("ada"), try displayName("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Missing { id: string }
 
 effect function lookup(id: string) {

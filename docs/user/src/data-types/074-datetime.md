@@ -24,7 +24,7 @@ A `Utc` holds epoch milliseconds; a `Zoned` adds a `TimeZone`, either a fixed mi
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Option.getOrNull(Option.map(text, DateTime.formatIso)), Option.getOrNull(Option.map(epoch, DateTime.formatIso)), Option.getOrNull(Option.map(parts, DateTime.formatIso)), DateTime.formatIso(date), Option.isNone(invalid), Option.getOrNull(Option.map(localAppointment, DateTime.formatIsoZoned)), Option.getOrNull(Option.map(serialized, DateTime.formatIsoZoned))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(Option.map(text, DateTime.formatIso)), Option.getOrNull(Option.map(epoch, DateTime.formatIso)), Option.getOrNull(Option.map(parts, DateTime.formatIso)), DateTime.formatIso(date), Option.isNone(invalid), Option.getOrNull(Option.map(localAppointment, DateTime.formatIsoZoned)), Option.getOrNull(Option.map(serialized, DateTime.formatIsoZoned))])))
 const text = DateTime.make("2026-04-12T10:00:00Z")
 const epoch = DateTime.make(0)
 const parts = DateTime.make({ year: 2026, month: 4, day: 12 })
@@ -172,7 +172,7 @@ const utcEdited = DateTime.setPartsUtc(evening, { hour: 9 })
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([DateTime.formatIso(tomorrow), DateTime.formatIso(previous), DateTime.formatIso(elapsedHour), DateTime.formatIso(earlier), DateTime.formatIso(dayStart), DateTime.formatIso(dayEnd), DateTime.formatIso(rounded), DateTime.formatIsoDate(appointment), DateTime.formatIsoDateUtc(appointment), DateTime.formatIsoOffset(appointment), DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([DateTime.formatIso(tomorrow), DateTime.formatIso(previous), DateTime.formatIso(elapsedHour), DateTime.formatIso(earlier), DateTime.formatIso(dayStart), DateTime.formatIso(dayEnd), DateTime.formatIso(rounded), DateTime.formatIsoDate(appointment), DateTime.formatIsoDateUtc(appointment), DateTime.formatIsoOffset(appointment), DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })])))
 const appointment = DateTime.makeZonedUnsafe("2026-04-12T10:00:00Z", {
   timeZone: "Europe/Paris"
 })

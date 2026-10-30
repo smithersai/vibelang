@@ -37,7 +37,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide ExperimentalNodeServices.layer { try Console.log(JSON.stringify(try runnable())) }
+// run: provide ExperimentalNodeServices.layer { { const jsonValue = try runnable(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
 effect function canRun(path: string) {

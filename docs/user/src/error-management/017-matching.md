@@ -75,7 +75,7 @@ effect function outcomeLabel() {
 effect function reportOutcome() {
   return try matchCauseEffect(die(new Error("index invariant")), {
     onFailure: effect (cause) => {
-      try Console.log("Index stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+      try Console.log("Index stopped", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag))))
       return "Unavailable"
     },
     onSuccess: () => succeed("Ready")

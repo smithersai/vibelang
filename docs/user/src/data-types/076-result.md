@@ -77,7 +77,7 @@ Rejected COUNT: INVALID
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log(JSON.stringify(try validatePair())); try Console.log(requireCount("-1") catch (error) => `${error._tag} ${error.input}`)
+// run: { const jsonValue = try validatePair(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requireCount("-1") catch (error) => `${error._tag} ${error.input}`)
 error InvalidCount {
   input: string
 }
@@ -110,7 +110,7 @@ InvalidCount -1
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-14
-// run: const result = combine(Result.succeed(" Weekly "), Result.succeed(6)); try Console.log(JSON.stringify([try Effect.try(() => Result.getOrThrow(result.chained)), try Effect.try(() => Result.getOrThrow(result.tuple)), try Effect.try(() => Result.getOrThrow(result.record))])); const failed = combine(Result.fail("missing"), Result.fail("invalid")); try Console.log(Result.getOrElse(failed.chained, (error) => error), Result.getOrElse(failed.tuple, (error) => error), Result.getOrElse(failed.record, (error) => error))
+// run: const result = combine(Result.succeed(" Weekly "), Result.succeed(6)); { const jsonValue = [try Effect.try(() => Result.getOrThrow(result.chained)), try Effect.try(() => Result.getOrThrow(result.tuple)), try Effect.try(() => Result.getOrThrow(result.record))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const failed = combine(Result.fail("missing"), Result.fail("invalid")); try Console.log(Result.getOrElse(failed.chained, (error) => error), Result.getOrElse(failed.tuple, (error) => error), Result.getOrElse(failed.record, (error) => error))
 function combine(
   name: Result.Result<string, string>,
   count: Result.Result<number, string>
@@ -155,7 +155,7 @@ missing
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try Effect.try(() => Result.getOrThrow(combinedData()))))
+// run: { const jsonValue = try Effect.try(() => Result.getOrThrow(combinedData())); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function combinedData() {
   return Result.map(Result.all([Result.succeed(" Weekly "), Result.succeed(6)]), ([title, count]) => ({
     title: title.trim(), count

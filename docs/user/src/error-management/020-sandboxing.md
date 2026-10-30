@@ -8,7 +8,7 @@ Sandboxing puts the complete runtime failure cause in the typed error channel, f
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log((try flip(readRow())).line); try Console.log(JSON.stringify((try flip(sandboxedRow())).reasons.map((reason) => reason._tag)))
+// run: try Console.log((try flip(readRow())).line); { const jsonValue = (try flip(sandboxedRow())).reasons.map((reason) => reason._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidRow {
   line: number
 }
@@ -34,7 +34,7 @@ effect function sandboxedRow() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try rowFailureKinds()))
+// run: { const jsonValue = try rowFailureKinds(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function rowFailureKinds() {
   return sandboxedRow() catch (cause) => cause.reasons.map((reason) => {
     if (Cause.isFailReason(reason)) return `row ${reason.error.line}`
@@ -78,7 +78,7 @@ This boundary recovers only causes made entirely of domain failures; checking on
 // run: try Console.log((try flip(readWithInspection())).line)
 effect function readWithInspection() {
   return try Effect.catch(sandboxedRow(), effect (cause) => {
-    try Console.log("Row computation stopped", JSON.stringify(cause.reasons.map((reason) => reason._tag)))
+    try Console.log("Row computation stopped", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag))))
     return try failCause(cause)
   })
 }

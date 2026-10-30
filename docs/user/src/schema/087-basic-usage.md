@@ -34,7 +34,7 @@ false true true
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try locateBin("bin:12/upper"))) })
+// run: await runPromise(effect { { const jsonValue = try locateBin("bin:12/upper"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const BinPosition = Schema.TemplateLiteralParser([
   "bin:", Schema.FiniteFromString, "/", Schema.NonEmptyString
 ])
@@ -114,7 +114,7 @@ Fixed elements are `.elements`, or `.schema.elements` on a tuple with rest, whos
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try addLabel(["fragile"]))); try Console.log(Schema.is(RequiredLabels)([])) })
+// run: await runPromise(effect { { const jsonValue = try addLabel(["fragile"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RequiredLabels)([])) })
 const Labels = Schema.Array(Schema.String)
 const EditableLabels = Schema.mutable(Labels)
 const RequiredLabels = Schema.NonEmptyArray(Schema.NonEmptyString)
@@ -137,7 +137,7 @@ false
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }))); try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 })) })
+// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 })) })
 const Stock = Schema.Record(Schema.String, Schema.Int)
 const SymbolStock = Schema.Record(Schema.Symbol, Schema.Int)
 const RegionalStock = Schema.Record(Schema.Literals(["east", "west"]), Schema.Int)
@@ -171,7 +171,7 @@ A record exposes `.key` and `.value`; a struct with rest, `.schema.fields` and `
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try createPacked())); try Console.log(Schema.is(Packed)({ reference: "box-76", weight: 2 })) })
+// run: await runPromise(effect { { const jsonValue = try createPacked(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Packed)({ reference: "box-76", weight: 2 })) })
 const Package = Schema.Struct({
   reference: Schema.String,
   weight: Schema.Finite,
@@ -227,7 +227,7 @@ SchemaError
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(PackageSummary)({ reference: "box-76", weight: 2, comment: "ok" }))); try Console.log(Schema.is(Patch)({ comment: undefined }), Schema.is(LoosePatch)({ comment: undefined }), Schema.is(RequiredPatch)({})) })
+// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(PackageSummary)({ reference: "box-76", weight: 2, comment: "ok" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Patch)({ comment: undefined }), Schema.is(LoosePatch)({ comment: undefined }), Schema.is(RequiredPatch)({})) })
 const PackageSummary = Package.mapFields(Struct.pick(["reference", "weight"]))
 const WithoutComment = Package.mapFields(Struct.omit(["comment"]))
 const Patch = Package.mapFields(Struct.map(Schema.optionalKey))

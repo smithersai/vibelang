@@ -93,7 +93,7 @@ true true
 
 ```vibe
 // pending: VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])); try Console.log(certain); const failed = try exit(Effect.try(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
+// run: try Console.log(try Effect.try(() => JSON.stringify([extract(Option.some("Mina")), extract(Option.none())]))); try Console.log(certain); const failed = try exit(Effect.try(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
 function extract(value: Option.Option<string>) {
   return {
     defaulted: Option.getOrElse(value, () => "Guest"),
@@ -140,7 +140,7 @@ preferred backup regional
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(Option.isNone(Option.fromNullishOr(null)), Option.isNone(Option.fromNullishOr(undefined)), Option.getOrNull(Option.fromNullishOr(0)), JSON.stringify(Option.getOrNull(Option.fromNullishOr(""))))
+// run: try Console.log(Option.isNone(Option.fromNullishOr(null)), Option.isNone(Option.fromNullishOr(undefined)), Option.getOrNull(Option.fromNullishOr(0)), try Effect.try(() => JSON.stringify(Option.getOrNull(Option.fromNullishOr("")))))
 Option.fromNullishOr(null) // None
 Option.fromNullishOr(undefined) // None
 Option.fromNullishOr(0) // Some containing 0
@@ -157,7 +157,7 @@ true true 0 ""
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try requiredPair())); try Console.log(requiredName(Option.none()) catch (error) => error._tag)
+// run: { const jsonValue = try requiredPair(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requiredName(Option.none()) catch (error) => error._tag)
 effect function requiredName(name: Option.Option<string>) {
   return try fromOption(name)
 }
@@ -182,7 +182,7 @@ NoSuchElementError
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: const result = combine(Option.some("Mina"), Option.some(3)); try Console.log(JSON.stringify([Option.getOrNull(result.record), Option.getOrNull(result.tuple), Option.getOrNull(result.fields)])); const absent = combine(Option.none(), Option.some(3)); try Console.log(Option.isNone(absent.record), Option.isNone(absent.tuple), Option.isNone(absent.fields))
+// run: const result = combine(Option.some("Mina"), Option.some(3)); try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(result.record), Option.getOrNull(result.tuple), Option.getOrNull(result.fields)]))); const absent = combine(Option.none(), Option.some(3)); try Console.log(Option.isNone(absent.record), Option.isNone(absent.tuple), Option.isNone(absent.fields))
 function combine(
   name: Option.Option<string>,
   count: Option.Option<number>
@@ -228,7 +228,7 @@ true
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(Option.getOrNull(combinedData())))
+// run: try Console.log(try Effect.try(() => JSON.stringify(Option.getOrNull(combinedData()))))
 function combinedData() {
   return Option.map(Option.all([Option.some(" Daily "), Option.some(3)]), ([title, total]) => ({
     title: title.trim(), total
@@ -246,7 +246,7 @@ function combinedData() {
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4))); try Console.log(JSON.stringify([sorted.map((item) => Option.getOrNull(item)), descending.map((item) => Option.getOrNull(item))]))
+// run: try Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4))); try Console.log(try Effect.try(() => JSON.stringify([sorted.map((item) => Option.getOrNull(item)), descending.map((item) => Option.getOrNull(item))])))
 const same = Option.makeEquivalence(Equivalence.Number)
 same(Option.some(4), Option.some(4)) // true
 same(Option.none(), Option.some(4)) // false

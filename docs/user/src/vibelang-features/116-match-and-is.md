@@ -8,7 +8,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-13, VIP-14
-// run: try Console.log(JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))])))
 error NotFound { id: string }
 error Timeout
 error Denied { user: string; reason: string }
@@ -65,7 +65,7 @@ A function named `match` still works. Only `match (value) {` followed by `when`,
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([shape([]), shape([2]), shape([2, 3, 4]), shape({ kind: "box", size: 5 }), shape({ kind: "point", size: 1 }), shape({ kind: "other" })]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([shape([]), shape([2]), shape([2, 3, 4]), shape({ kind: "box", size: 5 }), shape({ kind: "point", size: 1 }), shape({ kind: "other" })])))
 function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
   return match (value) {
     when []: "empty";
@@ -126,7 +126,7 @@ A [`data` declaration](../data-types/073-data.md) creates tagged values. Match t
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14, VIP-16
-// run: try Console.log(JSON.stringify([track(Delivery.Sent({ tracking: "parcel-8" })), track(Delivery.Sent({ tracking: "parcel-9", carrier: "rail" })), track(Delivery.Waiting())])); try Console.log(carrierOf(Delivery.Sent({ tracking: "p", carrier: "rail" })))
+// run: try Console.log(try Effect.try(() => JSON.stringify([track(Delivery.Sent({ tracking: "parcel-8" })), track(Delivery.Sent({ tracking: "parcel-9", carrier: "rail" })), track(Delivery.Waiting())]))); try Console.log(carrierOf(Delivery.Sent({ tracking: "p", carrier: "rail" })))
 data Delivery {
   Waiting
   Sent { tracking: string; carrier?: string }
@@ -184,7 +184,7 @@ For an extractor, the method receives `{ matchType: "extractor" }` as its second
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([classify({ status: "failed", attempts: 3 }), classify({ status: "failed", attempts: 1 }), classify({ status: "queued", attempts: 0 }), classify({ status: "done", attempts: 0 }), classify({ status: "cancelled", attempts: 0 })]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([classify({ status: "failed", attempts: 3 }), classify({ status: "failed", attempts: 1 }), classify({ status: "queued", attempts: 0 }), classify({ status: "done", attempts: 0 }), classify({ status: "cancelled", attempts: 0 })])))
 function classify(job: { status: string; attempts: number }) {
   return match (job) {
     when { status: "failed", attempts: let n } and if (n >= 3): "escalate";
@@ -204,7 +204,7 @@ function classify(job: { status: string; attempts: number }) {
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(JSON.stringify([isRetryable(new Timeout()), isRetryable(new Denied({ user: "Ada", reason: "root" })), isRetryable(new NotFound({ id: "7" }))]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([isRetryable(new Timeout()), isRetryable(new Denied({ user: "Ada", reason: "root" })), isRetryable(new NotFound({ id: "7" }))])))
 function isRetryable(failure: Failure) {
   return failure is Timeout or Denied
 }

@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(HashSet.has(snapshot, "red"), HashSet.has(revised, "red")); try Console.log(JSON.stringify(Array.from(buildLocal()).sort()))
+// run: try Console.log(HashSet.has(snapshot, "red"), HashSet.has(revised, "red")); try Console.log(try Effect.try(() => JSON.stringify(Array.from(buildLocal()).sort())))
 const snapshot = HashSet.make("green", "blue")
 const revised = HashSet.add(snapshot, "red")
 HashSet.has(snapshot, "red") // false
@@ -49,7 +49,7 @@ Plain objects compare structurally in Effect 4.1.0, so separately allocated reco
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, HashSet.size(empty)]))
+// run: try Console.log(try Effect.try(() => JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, HashSet.size(empty)])))
 const empty = HashSet.empty<number>()
 const initial = HashSet.fromIterable([2, 4, 4, 6])
 const changed = HashSet.remove(HashSet.add(initial, 8), 2)
@@ -91,7 +91,7 @@ true 3 true true true
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: const result = uniqueRegions(["west", "west", ""]); try Console.log(result.count, result.containsUnknown, JSON.stringify(result.values.sort()))
+// run: const result = uniqueRegions(["west", "west", ""]); try Console.log(result.count, result.containsUnknown, try Effect.try(() => JSON.stringify(result.values.sort())))
 function uniqueRegions(regions: ReadonlyArray<string>) {
   const seen = MutableHashSet.fromIterable(regions)
   MutableHashSet.add(seen, "unknown")
@@ -114,7 +114,7 @@ function uniqueRegions(regions: ReadonlyArray<string>) {
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(snapshots([2, 2, 4]).map((set) => HashSet.size(set))))
+// run: try Console.log(try Effect.try(() => JSON.stringify(snapshots([2, 2, 4]).map((set) => HashSet.size(set)))))
 function snapshots(values: ReadonlyArray<number>) {
   let current = HashSet.empty<number>()
   const history = [current]
@@ -136,7 +136,7 @@ Persistent sets share storage between versions; mutable sets skip that allocatio
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()])); try report()
+// run: try Console.log(try Effect.try(() => JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()]))); try report()
 const regions = HashSet.make("west", "east")
 const array = Array.from(regions)
 const copy = [...regions]

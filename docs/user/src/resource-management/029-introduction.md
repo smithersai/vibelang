@@ -43,7 +43,7 @@ effect function observedExport(accepted: boolean) {
     if (Exit.isSuccess(outcome)) {
       try Console.log("Export succeeded")
     } else {
-      try Console.log("Export stopped", JSON.stringify(outcome.cause.reasons.map((reason) => reason._tag)))
+      try Console.log("Export stopped", try Effect.try(() => JSON.stringify(outcome.cause.reasons.map((reason) => reason._tag))))
     }
   })
 }

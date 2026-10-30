@@ -6,7 +6,7 @@ Canonical codec derivation works as in Effect: it preserves a schema's decoded t
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] }))) })
+// run: await runPromise(effect { { const jsonValue = try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const AuditRecord = Schema.Struct({
   created: Schema.Date,
   sequence: Schema.BigInt,
@@ -29,7 +29,7 @@ effect function encodeAudit(input: unknown) {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try encodeSearch())) })
+// run: await runPromise(effect { { const jsonValue = try encodeSearch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Search = Schema.Struct({
   offset: Schema.Int,
   archived: Schema.Boolean,
@@ -75,7 +75,7 @@ true 2 3
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try encodeDepot())) })
+// run: await runPromise(effect { { const jsonValue = try encodeDepot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 class DepotRef {
   constructor(readonly region: string, readonly number: number) {}
 }
@@ -109,7 +109,7 @@ Without a hook, JSON uses an unconstrained JSON fallback and parsing can still f
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(describeDepotJson())) })
+// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson()))) })
 function describeDepotJson() {
   return Schema.toJsonSchemaDocument(DepotRefSchema)
 }

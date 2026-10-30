@@ -7,7 +7,7 @@
 ```vibe
 // settings.vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try readSettings({ label: "depot" }))); try Console.log(Schema.is(Settings)({ label: "depot", hint: undefined })) })
+// run: await runPromise(effect { { const jsonValue = try readSettings({ label: "depot" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Settings)({ label: "depot", hint: undefined })) })
 const Settings = Schema.Struct({
   label: Schema.String,
   hint: Schema.optionalKey(Schema.String)
@@ -53,7 +53,7 @@ A schema is an immutable description; adding fields, checks, or annotations prod
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try unpack())); try Console.log(JSON.stringify(try pack({ weight: 3.75 }))) })
+// run: await runPromise(effect { { const jsonValue = try unpack(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try pack({ weight: 3.75 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
 const Parcel = Schema.Struct({ weight: Schema.FiniteFromString })
 
 type Parcel = typeof Parcel.Type       // { readonly weight: number }
@@ -79,7 +79,7 @@ Decoding goes from `Encoded` to `Type`, encoding from `Type` to `Encoded`. The c
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try inspectBoundary("3.75", 2))); try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag)) })
+// run: await runPromise(effect { { const jsonValue = try inspectBoundary("3.75", 2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag)) })
 effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
   const quantity = try Schema.decodeUnknownEffect(Schema.FiniteFromString)(incoming)
   const text = try Schema.encodeUnknownEffect(Schema.FiniteFromString)(outgoing)

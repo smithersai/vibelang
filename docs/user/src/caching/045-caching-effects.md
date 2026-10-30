@@ -6,7 +6,7 @@ Caching shares a computation's outcome across callers instead of repeating the w
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try memoizeLengths()))
+// run: { const jsonValue = try memoizeLengths(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function memoizeLengths() {
   let lookups = 0
   const cache = try Cache.make({
@@ -33,7 +33,7 @@ Each key stores its own outcome: repeated calls for the key reuse it, and concur
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try cachedSettings()))
+// run: { const jsonValue = try cachedSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function cachedSettings() {
   let loads = 0
   const settings = try cached(effect {
@@ -55,7 +55,7 @@ effect function cachedSettings() {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try expiringSnapshot()))
+// run: { const jsonValue = try expiringSnapshot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function expiringSnapshot() {
   let revision = 0
   const snapshot = try cachedWithTTL(effect { return ++revision }, "100 millis")
@@ -74,7 +74,7 @@ The TTL bounds how long an outcome is reused. Expiration starts no background re
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try reloadableSnapshot()))
+// run: { const jsonValue = try reloadableSnapshot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function reloadableSnapshot() {
   let revision = 0
   const [snapshot, invalidate] = try cachedInvalidateWithTTL(

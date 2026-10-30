@@ -33,7 +33,7 @@ The default cache captures lookup services when created. `try Cache.get(cache, s
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
-// run: try Console.log(JSON.stringify(try concurrentLookup()))
+// run: { const jsonValue = try concurrentLookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function concurrentLookup() {
   let calls = 0
   const cache = try Cache.make({
@@ -79,7 +79,7 @@ Capacity bounds entries, not bytes; eviction keeps recently used entries over ol
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try inspect()))
+// run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const cache = try Cache.make({ capacity: 5, lookup: (key: string) => succeed(key.length) })
   try Cache.get(cache, "paper")
@@ -99,7 +99,7 @@ effect function inspect() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try refreshExample()))
+// run: { const jsonValue = try refreshExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function refreshExample() {
   let version = 0
   const cache = try Cache.make({

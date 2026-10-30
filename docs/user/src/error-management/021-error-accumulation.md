@@ -8,7 +8,7 @@ Independent checks often must report every problem in one response. Validation c
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-// run: try Console.log(try validateHandle(" RIVER ")); try Console.log(JSON.stringify((try flip(validateTeam())).map((error) => error.input)))
+// run: try Console.log(try validateHandle(" RIVER ")); { const jsonValue = (try flip(validateTeam())).map((error) => error.input); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error InvalidHandle {
   input: string
 }
@@ -57,7 +57,7 @@ All handles valid
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try inspectTeam()))
+// run: { const jsonValue = try inspectTeam(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectTeam() {
   const [handles, errors] = try partition(
     ["Jo", "RIVER", ""],

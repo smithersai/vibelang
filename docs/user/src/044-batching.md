@@ -33,7 +33,7 @@ A direct service call per item repeats backend work. Batching helps only when th
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try request(FindPart({ code: "ink-blue" }), PartResolver)))
+// run: { const jsonValue = try request(FindPart({ code: "ink-blue" }), PartResolver); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const DemoCatalog = new Map<string, Part>([
   ["ink-black", { code: "ink-black", label: "Black ink" }],
   ["ink-blue", { code: "ink-blue", label: "Blue ink" }]
@@ -82,7 +82,7 @@ effect function partLabel(code: string) {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try labels(["ink-black", "ink-blue"])))
+// run: { const jsonValue = try labels(["ink-black", "ink-blue"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function labels(codes: ReadonlyArray<string>) {
   return try forEach(codes, (code) => partLabel(code), {
     concurrency: "unbounded"
@@ -121,7 +121,7 @@ For full control, `RequestResolver.makeWith` accepts `batchKey`, `delay`, `colle
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
-// run: provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag))) }; provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success"))) }
+// run: provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag)))) }; provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success")))) }
 service CatalogApi {
   fetchMany(codes: ReadonlyArray<string>): ReadonlyMap<string, Part>!CatalogUnavailable
 }
@@ -164,7 +164,7 @@ Match results by identifier; don't assume the backend preserves request order. A
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify(try cachedExample())); const queries = try cachedQueries(); for (let i = 0; i < 2; i++) { const outcome = try result(queries.find("missing")); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
+// run: { const jsonValue = try cachedExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const queries = try cachedQueries(); for (let i = 0; i < 2; i++) { const outcome = try result(queries.find("missing")); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
 effect function cachedQueries() {
   const resolver = try RequestResolver.withCache(PartResolver, {
     capacity: 128,
@@ -194,7 +194,7 @@ The cache is bounded by `capacity`, with `"lru"` eviction by default or `"fifo"`
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(try expiringLookup()))
+// run: { const jsonValue = try expiringLookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function expiringLookup() {
   const cache = try RequestResolver.asCache(PartResolver, {
     capacity: 128,

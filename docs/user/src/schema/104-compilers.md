@@ -7,7 +7,7 @@ Effect's experimental Schema compilers work behind the ordinary Schema APIs. The
 ```vibe
 // schemas/Parcel.vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try readParcel({ reference: "pkg-94", count: 2 }))); try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag)) })
+// run: await runPromise(effect { { const jsonValue = try readParcel({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag)) })
 export const Parcel = Schema.Struct({
   reference: Schema.String,
   count: Schema.Int
@@ -32,7 +32,7 @@ Compilation must be active for the AST and operation before a consumer captures 
 ```vibe
 // main.vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try receiveCompiled({ reference: "pkg-94", count: 2 }))); try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message)) })
+// run: await runPromise(effect { { const jsonValue = try receiveCompiled({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message)) })
 import "effect/schema/SchemaJITCompiler/enable"
 
 const CompiledParcel = Schema.Struct({
@@ -187,7 +187,7 @@ The low-level API calls directional parsing `decode`, the flipped encoding path 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(JSON.stringify(try parseNormally({ reference: "pkg-94", count: 2 }))); try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message)) })
+// run: await runPromise(effect { { const jsonValue = try parseNormally({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message)) })
 effect function parseNormally(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input, {
     errors: "all", onExcessProperty: "error"

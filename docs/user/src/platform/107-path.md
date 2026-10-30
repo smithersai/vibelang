@@ -22,7 +22,7 @@ effect function pathSeparator() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
-// run: provide NodePath.layer { try Console.log(JSON.stringify(try describeReport())) }
+// run: provide NodePath.layer { { const jsonValue = try describeReport(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 import * as NodePath from "@effect/platform-node/NodePath"
 
 effect function describeReport() {

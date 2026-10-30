@@ -103,7 +103,7 @@ effect function validated(value: number) {
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify([nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]))
+// run: { const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function nickname(id: number) {
   return Option.some(id).pipe(
     Option.filter((n) => n > 0),
@@ -128,7 +128,7 @@ To pass a function as a callback, use its module name:
 
 ```vibe
 // pending: VIP-5, VIP-14
-// run: try Console.log(JSON.stringify(totals([Option.some(2), Option.none()])))
+// run: try Console.log(try Effect.try(() => JSON.stringify(totals([Option.some(2), Option.none()]))))
 function totals(values: ReadonlyArray<Option.Option<number>>) {
   return values.map(Option.getOrElse(() => 0))
 }

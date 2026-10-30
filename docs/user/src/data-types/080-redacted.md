@@ -6,12 +6,12 @@
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(String(exampleKey)); try reportConfiguration(); try Console.log(JSON.stringify(exampleKey))
+// run: try Console.log(String(exampleKey)); try reportConfiguration(); try Console.log(try Effect.try(() => JSON.stringify(exampleKey)))
 const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
 
 effect function reportConfiguration() {
-  try Console.log(JSON.stringify({ apiKey: exampleKey }))
+  try Console.log(try Effect.try(() => JSON.stringify({ apiKey: exampleKey })))
 }
 ```
 
