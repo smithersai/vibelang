@@ -247,6 +247,8 @@ A template pattern such as `` `ready` `` has no substitutions and compares witho
 
 A default arm follows the failed ordered pattern and guard tests, as TypeScript control flow does; its type is independent of the exhaustiveness check. A negated class with an own matcher complements that matcher, so a boolean matcher does not imply an `instanceof` exclusion. `async match` adopts returned Promises and thenables, giving `Promise<Awaited<U>>` for arm union `U`.
 
+The specification assigns `EK0705` to an `is` binding that would need formal-parameter initialization as its lexical home. A binding-free default test stays allowed; an explicit local `do` block or match arm can hold bindings and return the needed result. Repairs preserve the call phase and do not move initialization into the body.
+
 ## Exhaustiveness
 
 `match` is exhaustive for the specified finite cases. Without a `default` arm, `EK4701` checks a match when every normalized subject member is a supported finite case. These include literals, `boolean`, `null`, `undefined`, enums, data variants, `error` and `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and tagged members.

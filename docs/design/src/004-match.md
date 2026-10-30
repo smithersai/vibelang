@@ -593,6 +593,7 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | a `match` with no `default` over a finite union that misses a case | `EK4701` |
 | invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
 | a missing `;` after a `match` arm, the last one included | `EK0701` |
+| an `is` pattern binding in formal-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
 | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
 | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
 | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](#class-patterns)) | `EK0703` |
@@ -965,6 +966,59 @@ function asyncBit(b: boolean) {
     })())
   })
 }
+```
+
+
+## `is` bindings in parameter initialization
+
+An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys. The pinned explainer leaves that scope unfinished, so no parameter-home binding is invented or moved into the body.
+
+A binding-free test remains allowed. A binding in an explicit source block within the initializer, including a `do` block or a match arm's scope, belongs to that block/arm and does not escape to other parameters or the body. Nested source callable bodies keep their own scopes and boundaries. Ordinary call arguments in a lexical block retain that block's binding rule; they are not formal parameters.
+
+A repair preserves eager, left-to-right, once-only initialization, parameter/body environment separation, `length`, TDZ and closure identity. An explicit local block can return the needed result; a different explicit parameter is an option only when it preserves the intended API. There is no generic move-to-body quick fix. Execution and exception boundaries retain the [shared default rules](002-running.md#destructuring-and-parameter-defaults).
+
+```vibe es
+// compiler-gap: pending VIP-7
+function bad(a = (1 is let captured)) { return a } // EK0705
+function nested({ a = (1 is const captured) } = {}) {} // EK0705
+function key({ [(1 is let captured) ? "x" : "y"]: value }: { x?: number; y?: number } = {}) {} // EK0705
+function testOnly(a = (1 is 1)) { return a } // allowed: no new binding
+function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a }
+function arm(a = match (1) { when let x: (1 is let captured) ? captured : 0; }) { return a }
+function body(a = () => (1 is let captured)) { return a } // nested source body
+function reader(seed: number, a = do { seed is let captured; () => ++captured }) { return a }
+function caller() { consume(1 is let captured); return captured } // caller's lexical block
+```
+
+For the simple non-jumping block-local default and ordinary call-argument witnesses, the native counterparts preserve the local cell and call phase:
+
+```ts effect
+import { Effect } from "effect"
+function good(a = (() => { let captured = 1; const ok = true; return [ok, captured] })()) {
+  return a
+}
+function testOnly(a = (1 === 1)) { return a }
+function reader(seed: number, a = (() => { let captured = seed; return () => ++captured })()) { return a }
+function caller() {
+  let captured = 1
+  consume(true)
+  return captured
+}
+function consume(_value: boolean) {}
+const defaultEvents: string[] = []
+function eager(
+  a = (() => { defaultEvents.push("default"); let captured = 1; return captured })(),
+  b = (defaultEvents.push("later"), 2)
+) {
+  defaultEvents.push("body")
+  return [a, b]
+}
+const parameterScopeExit = Effect.runSyncExit(Effect.sync(() => [good(), testOnly(), caller(), eager()])) // Success([[true, 1], true, 1, [1, 2]])
+defaultEvents // ["default", "later", "body"]
+const readerScopeExit = Effect.runSyncExit(Effect.sync(() => {
+  const first = reader(1), second = reader(100)
+  return [first(), second(), first()]
+})) // Success([2, 101, 3])
 ```
 
 ## Regular-expression patterns

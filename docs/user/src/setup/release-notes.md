@@ -324,6 +324,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Iterator guidance promised cleanup for every JavaScript error; it now follows native closing decisions and distinguishes abandoned `Effect` execution from JavaScript unwinding, including defaults after exhaustion.
 
+- The pattern reference left parameter-default binding scopes undefined; it now assigns `EK0705` to an `is` binding needing that unsettled parameter home and shows explicit block-local repairs.
+
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
 - Severity settings for TypeScript-form lint warnings reported `EK3006` and were ignored; every warning listed in Appendix B now accepts `vibe.severities` overrides.

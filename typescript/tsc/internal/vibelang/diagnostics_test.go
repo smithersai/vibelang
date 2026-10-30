@@ -89,6 +89,8 @@ var specAhead = map[int32]string{
 	1501: renumbering, 1502: renumbering, 1603: renumbering,
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
 	1602: renumbering,
+	// VIP-7 conservatively rejects an undefined parameter home for is bindings.
+	705: renumbering,
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
