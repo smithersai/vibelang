@@ -498,9 +498,10 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	p.setContextFlags(ast.NodeFlagsAwaitContext, false)
 	body := p.parseEmbeddedStatement()
 	p.contextFlags = saveContextFlags
-	if body.Kind != ast.KindBlock {
-		body = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(body.Loc, []*ast.Node{body}), true /*multiLine*/), body.Loc)
-	}
+	// The source body has its own scope below the callback parameter, as a
+	// for...of body does below its head binding. Keep its braces so a body
+	// declaration may shadow the iteration binding.
+	body = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(body.Loc, []*ast.Node{body}), true /*multiLine*/), body.Loc)
 	p.rewriteConcurrentJumps(body, false /*inSwitch*/)
 	name := binding
 	if binding.Kind != ast.KindIdentifier {

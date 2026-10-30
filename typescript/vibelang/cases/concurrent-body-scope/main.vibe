@@ -1,0 +1,17 @@
+// expect-result: {"consts":[9,9],"lets":[8,8],"functions":[7,7]}
+export effect function main() {
+  const consts: number[] = [], lets: number[] = [], functions: number[] = []
+  for concurrent(1) (const value of [1, 2]) {
+    const value = 9
+    consts.push(value)
+  }
+  for concurrent(1) (let value of [1, 2]) {
+    let value = 8
+    lets.push(value)
+  }
+  for concurrent(1) (const value of [1, 2]) {
+    function value() { return 7 }
+    functions.push(value())
+  }
+  return { consts, lets, functions }
+}

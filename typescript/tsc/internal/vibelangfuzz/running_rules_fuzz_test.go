@@ -217,3 +217,96 @@ func runningRuleDiagnostic(chapter, key, quote string) int32 {
 	}
 	return 0
 }
+
+const concurrentScopeTarget = "FuzzForConcurrentBodyScope"
+
+func concurrentScopeChapter(t testing.TB) {
+	t.Helper()
+	text, err := os.ReadFile(SpecPath("002-running.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, quote := range []string{
+		"The body keeps its own block scope:",
+		"The head is a `const` or `let` declaration, destructuring included:",
+	} {
+		if !strings.Contains(string(text), quote) {
+			t.Fatalf("chapter 2 no longer says %q", quote)
+		}
+	}
+}
+func TestForConcurrentBodyScopeQuoted(t *testing.T) { concurrentScopeChapter(t) }
+
+// The original body remains a Block, independent of the head's declaration.
+// Generate value-namespace shadows plus a type-only control; no new Exit
+// comparison is needed for this static scope property.
+func FuzzForConcurrentBodyScope(f *testing.F) {
+	startShortBudget(f)
+	concurrentScopeChapter(f)
+	keys := []string{"let", "const", "class", "function", "enum", "type-control"}
+	for _, key := range keys {
+		f.Add([]byte(key))
+		for mode := range 4 {
+			f.Add(append([]byte(key+":"), byte(mode)))
+		}
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, data []byte) {
+		choice, tail := 0, data
+		if len(data) > 0 {
+			choice = int(data[0]) % len(keys)
+			tail = data[1:]
+		}
+		for i, key := range keys {
+			if string(data) == key {
+				choice, tail = i, nil
+				break
+			}
+			if rest, ok := strings.CutPrefix(string(data), key+":"); ok {
+				choice, tail = i, []byte(rest)
+				break
+			}
+		}
+		mode := 0
+		if len(tail) > 0 {
+			mode = int(tail[0])
+		}
+		name := []string{"item", "entry", "value"}[(mode/4)%3]
+		n := mode%13 + 1
+		key := keys[choice]
+		body := ""
+		switch key {
+		case "let", "const":
+			body = fmt.Sprintf("%s %s: number = %d; seen.push(%s)", key, name, n, name)
+		case "class":
+			body = fmt.Sprintf("class %s { static value: number = %d }; seen.push(%s.value)", name, n, name)
+		case "function":
+			body = fmt.Sprintf("function %s(): number { return %d }; seen.push(%s())", name, n, name)
+		case "enum":
+			body = fmt.Sprintf("enum %s { Value = %d }; seen.push(%s.Value)", name, n, name)
+		case "type-control":
+			body = fmt.Sprintf("type %s = number; const local: %s = %d; seen.push(local)", name, name, n)
+		}
+		nesting := "direct"
+		if mode&2 != 0 {
+			body = "{ " + body + " }"
+			nesting = "nested"
+		}
+		head := []string{"const", "let"}[mode%2]
+		source := fmt.Sprintf("export effect function main() { const seen: number[] = []; for concurrent (%s %s of [1]) { %s }; return seen }", head, name, body)
+		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Remove()
+		precise := "admit:" + key + ":" + head + ":" + nesting
+		for _, d := range r.Diagnostics {
+			if d.Category() == diagnostics.CategoryError {
+				Gap(t, concurrentScopeTarget, precise, "chapter 2 keeps the body's block separate from its head:\n%s\n%s", source, d.String())
+				return
+			}
+		}
+		ExpectPending(t, concurrentScopeTarget, precise)
+		ExpectPending(t, concurrentScopeTarget, specCorpusKey(t))
+	})
+}
