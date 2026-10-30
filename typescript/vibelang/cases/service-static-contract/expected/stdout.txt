@@ -1,0 +1,1 @@
+service static contracts validated

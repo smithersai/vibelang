@@ -12,12 +12,12 @@ export interface User {
 export service Users {
   find(id: string): User!!
   readonly source: string
-
-  static readonly layer = Layer.succeed(Users, {
-    find: effect (id: string) => ({ id, name: "Ada" }),
-    source: "memory"
-  })
 }
+
+export const UsersLive = Layer.succeed(Users, {
+  find: effect (id: string) => ({ id, name: "Ada" }),
+  source: "memory"
+})
 
 export service Flags {
   readonly beta: boolean

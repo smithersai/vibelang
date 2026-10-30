@@ -356,6 +356,62 @@ typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda: effectFn f
 
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda: effectFn fallback -> plain fallback # foldkit-39 golden eagerly captures the argument before native contains; the unchanged boolean runtime golden and Option differentials retain its plain result contract.
 
+# VIP-9: separate service factories/layers preserve all existing function forms.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:36:9 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 34:11; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:76:39 lambda: program table -> program table # VIP-9 static-layer migration relocates 75:39; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:79:5 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 78:5; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:80:37 lambda: program table -> program table # VIP-9 static-layer migration relocates 79:37; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:84:5 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 83:5; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:85:24 lambda: program table -> program table # VIP-9 static-layer migration relocates 84:24; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:103:12 lambda: effectFn annotation -> effectFn annotation # VIP-9 static-layer migration relocates 102:12; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:107:14 lambda: effectFn annotation -> effectFn annotation # VIP-9 static-layer migration relocates 106:14; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:120:5 lambda: program table -> program table # VIP-9 static-layer migration relocates 119:5; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:124:5 lambda: effectFn table -> effectFn table # VIP-9 static-layer migration relocates 123:5; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:132:45 lambda: program table -> program table # VIP-9 static-layer migration relocates 131:45; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:135:12 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 134:12; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:136:14 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 135:14; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:158:9 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 157:9; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:159:11 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 158:11; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:163:36 lambda: program table -> program table # VIP-9 static-layer migration relocates 162:36; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:163:87 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 162:87; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:177:35 lambda: program table -> program table # VIP-9 static-layer migration relocates 176:35; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:178:36 lambda: program table -> program table # VIP-9 static-layer migration relocates 177:36; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:179:35 lambda: program table -> program table # VIP-9 static-layer migration relocates 178:35; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:180:41 lambda: program table -> program table # VIP-9 static-layer migration relocates 179:41; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:182:12 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 181:12; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:184:43 lambda: program table -> program table # VIP-9 static-layer migration relocates 183:43; function classification is unchanged.
+typescript/vibelang/cases/ch04-services/ch04-services.vibe:184:121 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 183:121; function classification is unchanged.
+typescript/vibelang/cases/decl-effect-types-lines/main.vibe:10:43 lambda: program table -> program table # VIP-9 static-layer migration relocates 7:49; function classification is unchanged.
+typescript/vibelang/cases/decl-effect-types-lines/main.vibe:13:16 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 10:18; function classification is unchanged.
+typescript/vibelang/cases/decl-effect-types-lines/main.vibe:13:51 lambda: plain table -> plain table # VIP-9 static-layer migration relocates 10:53; function classification is unchanged.
+typescript/vibelang/cases/decl-effect-types-lines/main.vibe:14:11 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 11:13; function classification is unchanged.
+typescript/vibelang/cases/decl-service/main.vibe:11:9 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 9:11; function classification is unchanged.
+typescript/vibelang/cases/decl-service/main.vibe:36:31 lambda: program table -> program table # VIP-9 static-layer migration relocates 35:31; function classification is unchanged.
+typescript/vibelang/cases/decl-service/main.vibe:37:5 lambda: effectFn table -> effectFn table # VIP-9 static-layer migration relocates 36:5; function classification is unchanged.
+typescript/vibelang/cases/decl-service/main.vibe:41:29 lambda: program table -> program table # VIP-9 static-layer migration relocates 40:29; function classification is unchanged.
+typescript/vibelang/cases/service-identity-dts/main.vibe:18:9 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 17:11; function classification is unchanged.
+typescript/vibelang/cases/vibelang-service-dts/main.vibe:22:9 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 20:11; function classification is unchanged.
+typescript/vibelang/cases/vibelang-service-dts/main.vibe:28:53 lambda: plain fallback -> plain fallback # VIP-9 static-layer migration relocates 27:53; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:20:10 lambda: effectFn annotation -> effectFn annotation # VIP-9 static-layer migration relocates 18:12; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:21:10 lambda: effectFn annotation -> effectFn annotation # VIP-9 static-layer migration relocates 19:12; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:21:70 lambda: plain table -> plain table # VIP-9 static-layer migration relocates 19:72; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:26:43 lambda: plain table -> plain table # VIP-9 static-layer migration relocates 24:48; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:30:60 lambda: plain fallback -> plain fallback # VIP-9 static-layer migration relocates 29:60; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:47:38 lambda: program table -> program table # VIP-9 static-layer migration relocates 46:38; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services-default/main.vibe:48:33 lambda: program table -> program table # VIP-9 static-layer migration relocates 47:33; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:28:10 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 26:12; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:34:11 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 33:11; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:42:5 lambda: effectFn annotation -> effectFn annotation # VIP-9 static-layer migration relocates 41:5; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:51:39 lambda: program table -> program table # VIP-9 static-layer migration relocates 50:39; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:73:3 lambda: effectFn service -> effectFn service # VIP-9 static-layer migration relocates 72:3; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:93:30 lambda: program table -> program table # VIP-9 static-layer migration relocates 92:30; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:94:32 lambda: program table -> program table # VIP-9 static-layer migration relocates 93:32; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:95:32 lambda: program table -> program table # VIP-9 static-layer migration relocates 94:32; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:96:31 lambda: program table -> program table # VIP-9 static-layer migration relocates 95:31; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:96:66 lambda: program table -> program table # VIP-9 static-layer migration relocates 95:66; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:97:30 lambda: program table -> program table # VIP-9 static-layer migration relocates 96:30; function classification is unchanged.
+typescript/vibelang/cases/vibelang-services/main.vibe:98:31 lambda: program table -> program table # VIP-9 static-layer migration relocates 97:31; function classification is unchanged.
+
 typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname: absent -> program table # Added numeric execution control passes an Effect program to pinned Effect.forkChild by name; no existing call decision or classifier changes.
 
 # VIP-39 G2 / amended VIP-17: coordinate-only moves; no existing site's decision or provenance changes.

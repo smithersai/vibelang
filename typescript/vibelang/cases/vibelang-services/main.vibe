@@ -21,11 +21,12 @@ service Settings {
   readonly greeting: string
   shout(text: string): Effect.Effect<string, never, never>
 
-  static readonly layer = Layer.succeed(Settings, {
-    greeting: "Welcome",
-    shout: effect (text: string) => try Effect.succeed(`${text}!`)
-  })
 }
+
+const SettingsLive = Layer.succeed(Settings, {
+  greeting: "Welcome",
+  shout: effect (text: string) => try Effect.succeed(`${text}!`)
+})
 
 const users = new Map<string, User>([["1", { id: "1", name: "Ada" }]])
 
@@ -84,12 +85,12 @@ export effect function lookupBoth(id: string) {
   return first.name
 }
 
-const Memory = Layer.mergeAll(Layer.succeed(Users, new UsersInMemory()), Settings.layer)
+const Memory = Layer.mergeAll(Layer.succeed(Users, new UsersInMemory()), SettingsLive)
 
 // expect-result: {"live":"Welcome, Ada!","memory":"Welcome, Grace!","direct":"Grace","missing":"UserNotFound","fake":"fake 3","grace":"Grace"}
 export effect function main() {
   return {
-    live: try Effect.provide(effect { return try greet("1") }, Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), Settings.layer)),
+    live: try Effect.provide(effect { return try greet("1") }, Layer.mergeAll(Layer.provide(UsersLive, DirectoryLive), SettingsLive)),
     memory: try Effect.provide(effect { return try greet("7") }, Memory),
     direct: try Effect.provide(effect { return try lookupBoth("7") }, Layer.succeed(Users, new UsersInMemory())),
     missing: (try Effect.flip(effect { return try Effect.provide(effect { return try greet("9") }, Memory) }))._tag,

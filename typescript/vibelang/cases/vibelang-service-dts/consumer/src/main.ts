@@ -1,6 +1,6 @@
 // TypeScript code that imports the .vibe services through their declarations.
 import { Context, Effect, Layer } from "effect"
-import { Flags, greet, Users } from "../../out/main.js"
+import { Flags, greet, UsersLive, Users } from "../../out/main.js"
 
 class UsersFake implements Context.Service.Shape<typeof Users> {
   readonly source = "fake"
@@ -17,4 +17,4 @@ const program = Effect.gen(function* () {
 })
 
 export const fake: Effect.Effect<string, never, never> = Effect.provide(program, Layer.succeed(Users, new UsersFake()))
-export const live: Effect.Effect<string, never, never> = Effect.provide(greet("1"), Users.layer)
+export const live: Effect.Effect<string, never, never> = Effect.provide(greet("1"), UsersLive)

@@ -3,7 +3,7 @@
 // and provides each service's shape and requires its identifier, and stock
 // TypeScript rejects what would stand for a service without being it.
 import { Context, Effect, Layer } from "effect"
-import { current, Flags, greet, sourceOf, Users, UsersInMemory } from "../../out/main.js"
+import { current, Flags, greet, sourceOf, Users, UsersLive, UsersInMemory } from "../../out/main.js"
 
 class UsersFake implements Context.Service.Shape<typeof Users> {
   readonly source = "fake"
@@ -44,5 +44,5 @@ const viaCurrent = Effect.map(current(), (users: Context.Service.Shape<typeof Us
 
 export const fake: Effect.Effect<string, never, never> = Effect.provide(program, Layer.succeed(Users, new UsersFake()))
 export const literal: Effect.Effect<string, never, never> = Effect.provideService(program, Users, shaped)
-export const live: Effect.Effect<string, never, never> = Effect.provide(greet("1"), Users.layer)
+export const live: Effect.Effect<string, never, never> = Effect.provide(greet("1"), UsersLive)
 export const memory: Effect.Effect<string, never, never> = Effect.provide(viaCurrent, Layer.succeed(Users, new UsersInMemory()))

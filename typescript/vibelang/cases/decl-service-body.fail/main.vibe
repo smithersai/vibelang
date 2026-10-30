@@ -5,5 +5,4 @@ export service Users {
     return `user ${id}`
   }
   region = "eu"
-  static readonly label = "users"
 }

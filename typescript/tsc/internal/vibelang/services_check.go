@@ -137,7 +137,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		return
 	}
 	for _, member := range class.Members() {
-		if ast.IsStatic(member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
+		if ast.IsStatic(member) && !serviceStaticMemberRejected(class, member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
 			if checkServiceLiteralKey(c, class, member) {
 				continue
 			}
@@ -176,6 +176,11 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		}
 	}
 	for _, member := range class.Members() {
+		if serviceStaticMemberRejected(class, member) {
+			report(c, member, serviceStaticMemberDiagnostic)
+			cover(c, member)
+			continue
+		}
 		memberName := member.Name()
 		if memberName == nil || !ast.IsIdentifier(memberName) {
 			continue

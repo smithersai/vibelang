@@ -112,7 +112,7 @@ export effect function notify(message: string) {
 // host.ts
 // run: return example()
 import { ManagedRuntime } from "effect"
-import { Notifications, notify } from "./notifications.js"
+import { NotificationsLive, notify } from "./notifications.js"
 
 const runtime = ManagedRuntime.make(NotificationsLive)
 
@@ -139,7 +139,7 @@ A `provide` reuses a layer that an enclosing `provide` already built, and a sibl
 // notification-host.ts
 // run: const host = makeNotificationHost(); return host.onMessage("framework event").finally(() => host.close())
 import { ManagedRuntime } from "effect"
-import { Notifications, notify } from "./notifications.js"
+import { NotificationsLive, notify } from "./notifications.js"
 
 export function makeNotificationHost() {
   const runtime = ManagedRuntime.make(NotificationsLive)

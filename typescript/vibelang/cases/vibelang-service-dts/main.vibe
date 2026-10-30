@@ -16,11 +16,12 @@ export service Users {
   find(id: string): Effect.Effect<User, never, never>
   readonly source: string
 
-  static readonly layer = Layer.succeed(Users, {
-    find: effect (id: string) => try Effect.succeed({ id, name: "Ada" }),
-    source: "memory"
-  })
 }
+
+export const UsersLive = Layer.succeed(Users, {
+  find: effect (id: string) => try Effect.succeed({ id, name: "Ada" }),
+  source: "memory"
+})
 
 export service Flags {
   readonly beta: boolean

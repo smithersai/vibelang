@@ -17,9 +17,9 @@ export service Users {
 
 export service Settings {
   readonly greeting: string
-
-  static readonly layer = Layer.succeed(Settings, { greeting: "Welcome" })
 }
+
+export const SettingsLive = Layer.succeed(Settings, { greeting: "Welcome" })
 
 export const UsersLive = Layer.succeed(Users, {
   find: effect (id: string) => try Effect.succeed({ id, name: "Ada" })

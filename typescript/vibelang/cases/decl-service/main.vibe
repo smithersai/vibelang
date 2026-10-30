@@ -5,14 +5,15 @@ export service Users {
   find(id: string): string!UserNotFound
   readonly region: string
 
-  static readonly layer = Layer.succeed(Users, {
-    find: effect (id: string) => {
-      if (id === "42") return "Ada"
-      throw new UserNotFound({ id })
-    },
-    region: "eu"
-  })
 }
+
+export const UsersLive = Layer.succeed(Users, {
+  find: effect (id: string) => {
+    if (id === "42") return "Ada"
+    throw new UserNotFound({ id })
+  },
+  region: "eu"
+})
 
 export control Approval {
   approve(request: string): boolean!!
@@ -37,5 +38,5 @@ export effect function main() {
       return try resume(continuation, true)
     }
   })
-  return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users).region, approved }) }, Users.layer)
+  return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users).region, approved }) }, UsersLive)
 }

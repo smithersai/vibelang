@@ -9,11 +9,11 @@ type Users_shape = {
 };
 declare const Users_base: Context.ServiceClass<Users, "service-identity-dts/main#Users", Users_shape>;
 export declare class Users extends Users_base {
-    static readonly layer: Layer.Layer<Users, never, never>;
 }
 export declare namespace Users {
     type Shape = Users_shape;
 }
+export declare const UsersLive: Layer.Layer<Users, never, never>;
 type Flags_shape = {
     readonly beta: boolean;
 };

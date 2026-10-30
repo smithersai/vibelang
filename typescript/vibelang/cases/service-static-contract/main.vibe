@@ -1,0 +1,4 @@
+export service Keyed { static readonly key = "literal/Keyed"; n: number }
+export service Defaults { n: number; static readonly defaultValue = () => ({ n: 3 }) }
+class Ordinary { static helper(): number { return 7 }; static field = 2; static { this.field += 1 } }
+export const result = [Keyed.key, Defaults.key, Ordinary.helper(), Ordinary.field]

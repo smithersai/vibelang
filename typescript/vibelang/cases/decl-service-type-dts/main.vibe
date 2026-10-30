@@ -6,11 +6,11 @@ export interface SearchApi {
   find(query: string): string!!
 }
 
-export service Search: SearchApi {
-  static readonly layer = Layer.succeed(Search, {
+export service Search: SearchApi {}
+
+export const SearchLive = Layer.succeed(Search, {
     find: effect (query: string) => `hit:${query}`
-  })
-}
+})
 
 export service Prefix: string
 
@@ -19,5 +19,5 @@ export service Version: number {
 }
 
 export effect function greet(query: string) {
-  return `${try Prefix}${try Search.find(query)} v${try Version}`
+  return `${try Prefix}${try (try Search).find(query)} v${try Version}`
 }

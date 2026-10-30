@@ -4,21 +4,21 @@
 export service Counter {
   increment(): void!!
 
-  static readonly layer = Layer.effect(Counter, effect {
-    const count = try Ref.make(0)
-    return {
-      increment: effect () => try Ref.update(count, (n) => n + 1),
-      read: effect () => try Ref.get(count)
-    }
-  })
-
   read(): number!!
 }
+
+const CounterLive = Layer.effect(Counter, effect {
+  const count = try Ref.make(0)
+  return {
+    increment: effect () => try Ref.update(count, (n) => n + 1),
+    read: effect () => try Ref.get(count)
+  }
+})
 
 export effect function main() {
   return try Effect.provide(effect {
     try Counter.increment()
     try Counter.increment()
     return { count: try Counter.read() }
-  }, Counter.layer)
+  }, CounterLive)
 }

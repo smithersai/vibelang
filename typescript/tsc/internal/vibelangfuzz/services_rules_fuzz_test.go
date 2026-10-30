@@ -46,6 +46,9 @@ var servicesRules = []struct{ key, quote, good, bad string }{
 	{"export-default-newline", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default\nservice S { n: number }"},
 	{"export-default-contextual", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default service async { n: number }"},
 	{"export-default-empty", "`export default service S { }`", "service S { n: number }\nexport { S as default }", "export default service S {}"},
+	{"member-static-shaped-object", "or another `static`", "export service Users: { n: number } { static readonly key = \"static/Object\" }", "export service Users: { n: number } { static readonly key = \"static/Object\"; static readonly extra = 1 }"},
+	{"member-static-shaped-scalar", "or another `static`", "export service Users: number { static readonly key = \"static/Scalar\" }", "export service Users: number { static readonly key = \"static/Scalar\"; static extra() { return 1 } }"},
+	{"member-static-shaped-shadow", "or another `static`", "export service Users: { read(): number } { static readonly key = \"static/Shadow\" }", "export service Users: { read(): number } { static readonly key = \"static/Shadow\"; static read() { return 1 } }"},
 }
 
 func servicesRulesChapter(f testing.TB) string {
@@ -65,6 +68,7 @@ func servicesRulesChapter(f testing.TB) string {
 		}
 	}
 	return string(chapter)
+
 }
 
 func TestServicesRulesQuoted(t *testing.T) { servicesRulesChapter(t) }

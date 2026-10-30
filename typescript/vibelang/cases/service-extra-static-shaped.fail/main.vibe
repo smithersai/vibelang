@@ -1,0 +1,4 @@
+// expect: EK0902
+export service Obj: { n: number } { static readonly key = "static/Obj"; static readonly extra = 1 }
+export service Scalar: number { static readonly key = "static/Scalar"; static extra() { return 1 } }
+export service Shadow: { read(): number } { static read() { return 1 } }

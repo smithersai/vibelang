@@ -1,0 +1,9 @@
+service Field { static helper = 1; n: number }
+service Method { static helper(): number { return 1 }; n: number }
+service Getter { static get helper(): number { return 1 }; n: number }
+service Setter { static set helper(n: number) {}; n: number }
+service Computed { static ["helper"] = 1; n: number }
+service Private { static #helper = 1; n: number }
+service Block { static {}; n: number }
+service KeyMethod { static key(): string { return "key" }; n: number }
+service DefaultMethod { static defaultValue() { return { n: 1 } }; n: number }

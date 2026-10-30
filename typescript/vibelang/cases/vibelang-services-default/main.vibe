@@ -1,7 +1,7 @@
-// A service with `static readonly default` is a Context.Reference (D40):
+// A service with `static readonly defaultValue` is a Context.Reference (D40):
 // code that uses it needs no provider, so it never joins R, and
-// Effect.provideService overrides it for a region. Static members such as
-// make and layer stay on the class.
+// Effect.provideService overrides it for a region. Factories and layers
+// are declared beside the service.
 import { Effect, Layer } from "effect"
 
 interface Session {
@@ -12,17 +12,18 @@ service Sessions {
   get(token: string): Effect.Effect<Session | undefined, never, never>
   set(token: string, session: Session): Effect.Effect<void, never, never>
 
-  static make(): Sessions.Shape {
-    const entries = new Map<string, Session>()
-    const impl: Sessions.Shape = {
-      get: effect (token: string) => try Effect.succeed(entries.get(token)),
-      set: effect (token: string, session: Session) => try Effect.sync(() => { entries.set(token, session) })
-    }
-    return impl
-  }
-
-  static readonly layer = Layer.sync(Sessions, () => Sessions.make())
 }
+
+function makeSessions(): Sessions.Shape {
+  const entries = new Map<string, Session>()
+  const impl: Sessions.Shape = {
+    get: effect (token: string) => try Effect.succeed(entries.get(token)),
+    set: effect (token: string, session: Session) => try Effect.sync(() => { entries.set(token, session) })
+  }
+  return impl
+}
+
+const SessionsLive = Layer.sync(Sessions, () => makeSessions())
 
 service FeatureFlags {
   readonly newCheckout: boolean
@@ -44,6 +45,6 @@ export effect function main() {
   return {
     classic: try checkoutPage("c1"),
     fresh: try Effect.provideService(effect { return try checkoutPage("c2") }, FeatureFlags, { newCheckout: true }),
-    session: try Effect.provide(effect { return try login("ada") }, Sessions.layer)
+    session: try Effect.provide(effect { return try login("ada") }, SessionsLive)
   }
 }
