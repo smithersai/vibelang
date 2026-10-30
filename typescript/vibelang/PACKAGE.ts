@@ -27,6 +27,7 @@ const shared = [
   S.file("//experiments/bun.lock"),
   S.file("harness.mjs"),
   S.file("harness-command.mjs"),
+  S.file("late-start-scheduler.mjs"),
   S.file("rewrite-preservation.mjs")
 ]
 

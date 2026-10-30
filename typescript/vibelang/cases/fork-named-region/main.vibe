@@ -5,8 +5,9 @@
 // owns its fibers with or without braces; a try block owns its own.
 const events: string[] = []
 
-effect function ticker(name: string) {
+effect function ticker(name: string, started: Deferred.Deferred<void>) {
   try {
+    try Deferred.succeed(started, undefined)
     while (true) try sleep("1 millis")
   } finally {
     events.push(`stop ${name}`)
@@ -14,36 +15,41 @@ effect function ticker(name: string) {
 }
 
 effect function branch(flag: boolean) {
+  const started = try Deferred.make<void>()
   if (flag) {
-    fork ticker("if")
+    fork ticker("if", started)
   }
-  try sleep("3 millis")
+  if (flag) try started.await()
   events.push("if: after")
 }
 
 effect function branchWithoutBraces(flag: boolean) {
-  if (flag) fork ticker("if without braces")
-  try sleep("3 millis")
+  const started = try Deferred.make<void>()
+  if (flag) fork ticker("if without braces", started)
+  if (flag) try started.await()
   events.push("if without braces: after")
 }
 
 effect function bare() {
+  const started = try Deferred.make<void>();
   {
-    fork ticker("bare")
-    try sleep("3 millis")
+    fork ticker("bare", started)
+    try started.await()
   }
   events.push("bare: after")
 }
 
 effect function loop() {
-  for (const n of [1, 2]) (fork ticker(`loop ${n}`), try sleep("3 millis"))
+  const started = [try Deferred.make<void>(), try Deferred.make<void>()]
+  for (const n of [1, 2]) (fork ticker(`loop ${n}`, started[n - 1]), try started[n - 1].await())
   events.push("loop: after")
 }
 
 effect function doBlock() {
+  const started = try Deferred.make<void>()
   const marked = do {
-    fork ticker("do")
-    try sleep("3 millis")
+    fork ticker("do", started)
+    try started.await()
     "marked"
   }
   events.push(`do: after`)
@@ -51,9 +57,10 @@ effect function doBlock() {
 }
 
 effect function guarded() {
+  const started = try Deferred.make<void>()
   try {
-    fork ticker("try")
-    try sleep("3 millis")
+    fork ticker("try", started)
+    try started.await()
   } finally {
     events.push("try: finally")
   }

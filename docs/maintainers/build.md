@@ -87,6 +87,23 @@ Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still
 checks the compiler result, failure marker and original source location.
 
+To reproduce child-start races without a busy host, run the acceptance harness
+with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
+scheduler tasks by `100 ms` while timers can resume the parent. The same
+environment switch applies to `TestCompilerRuntimeCases` and runnable documentation
+examples checked by `bun docs/tools/check-snippets.ts --run`. For example:
+
+```sh
+cd typescript
+EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --late-start uninterruptible-using fork-named-region
+cd tsc
+VIBELANG_LATE_START=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -p 8 ./internal/vibelang -run 'TestCompilerRuntimeCases/(uninterruptible-using|fork-named-region)$'
+```
+
+A child must signal a `Deferred` after it enters its protected region or
+registers cleanup; its parent awaits that signal before interrupting or leaving
+the region. Neither `sleep` nor `yieldNow` proves readiness.
+
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
 install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`

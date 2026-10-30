@@ -3,16 +3,18 @@
 // An uninterruptible block that owns a using resource finishes when its fiber
 // is interrupted, and releases the resource when the block ends.
 effect function masked() {
+  const started = try Deferred.make<void>()
   const done = try Deferred.make<string>()
   const released = try Deferred.make<boolean>()
   const fiber = fork {
     uninterruptible {
       using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => try Deferred.succeed(released, true))
+      try Deferred.succeed(started, undefined)
       try sleep("20 millis")
       try Deferred.succeed(done, lease)
     }
   }
-  try sleep("5 millis")
+  try started.await()
   try fiber.interrupt()
   return { masked: try Deferred.isDone(done), released: try Deferred.isDone(released) }
 }

@@ -425,8 +425,12 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
     // Importing suppresses the example's native main entry. TypeScript
     // helpers can return values or Promises; VibeLang helpers return Effects.
     entry = join(dir, "dist", "$docs-entry.js")
+    const lateStart = process.env.VIBELANG_LATE_START === "1"
+    const scheduler = lateStart
+      ? `import { Scheduler } from "effect";\nimport { lateStartScheduler } from ${JSON.stringify(join(repo, "typescript/vibelang/late-start-scheduler.mjs"))};\n`
+      : ""
     writeFileSync(entry, `import { ${helper} } from ${JSON.stringify("./" + emitted)};\n` +
-      `import { Effect } from "effect";\nconst result = ${helper}();\nif (Effect.isEffect(result)) await Effect.runPromise(result);\nelse await result;\n`)
+      scheduler + `import { Effect } from "effect";\nconst result = ${helper}();\nif (Effect.isEffect(result)) await Effect.runPromise(result${lateStart ? ", { scheduler: lateStartScheduler(Scheduler) }" : ""});\nelse await result;\n`)
   }
   const executed = importsVitest(join(dir, "dist"))
     ? await runVitest(dir, emitted, result.run ? helper : undefined, timeout)
