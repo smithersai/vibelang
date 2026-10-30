@@ -51,8 +51,8 @@ console.error("unexpected npm command"); process.exit(98)
 `, { mode: 0o755 })
   return { root, tarballs, calls, bin }
 }
-function run(f, env = {}) {
-  const result = spawnSync("sh", [join(f.root, "scripts/release/publish.sh"), "--dry-run"], {
+function run(f, env = {}, args = ["--dry-run"]) {
+  const result = spawnSync("sh", [join(f.root, "scripts/release/publish.sh"), ...args], {
     encoding: "utf8", timeout: 15_000, input: "",
     env: { PATH: `${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
   })
@@ -97,4 +97,25 @@ test("a failed dry-run stops immediately instead of prompting or publishing late
   assert.equal(result.status, 1)
   assert.equal(result.publishes.length, 1)
   assert.doesNotMatch(result.stdout, /Enter a new one-time password|dry run passed/)
+})
+
+test("an explicit --otp reaches npm alongside --dry-run in either argument order", (t) => {
+  for (const args of [["--otp", "123456", "--dry-run"], ["--dry-run", "--otp", "654321"]]) {
+    const result = run(fixture(t), {}, args)
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.publishes.length, names.length)
+    for (const call of result.publishes) {
+      assert.ok(call.includes("--dry-run"))
+      assert.equal(call[call.indexOf("--otp") + 1], args[args.indexOf("--otp") + 1])
+    }
+  }
+})
+
+test("invalid arguments stop before npm or archive processing", (t) => {
+  for (const args of [["--otp"], ["--otp", "--dry-run"], ["--dryrun"], ["--unknown"]]) {
+    const result = run(fixture(t), {}, args)
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.match(result.stderr, /usage:.*publish.sh/)
+    assert.equal(result.calls.length, 0)
+  }
 })

@@ -78,7 +78,7 @@ test("contributing makes the maintainer-run PR checks explicit", async () => {
   expect(output).toContain("`sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`")
 })
 
-test("maintainer docs describe direct landings, outside reviews, and the four-platform release", async () => {
+test("maintainer docs describe direct landings, outside reviews, and the six-platform release", async () => {
   const output = render(await readSources())
   for (const path of ["MAINTAINERS.md", "CONTRIBUTING.md"]) {
     expect(output[path]).toContain("Maintainers land their own work directly on `main`.")
@@ -86,11 +86,14 @@ test("maintainer docs describe direct landings, outside reviews, and the four-pl
     expect(output[path]).not.toContain("A person reviews and merges every change.")
   }
   const maintainers = output["MAINTAINERS.md"]!
-  expect(maintainers).toContain("VIBELANG_SKIP=win32")
-  expect(maintainers).toContain("four platform binaries")
-  expect(maintainers).toContain("nine packages")
-  expect(maintainers).not.toContain("six platform binaries")
-  expect(maintainers).not.toContain("eleven packages")
+  expect(maintainers).not.toContain("VIBELANG_SKIP=win32")
+  expect(maintainers).toContain("six platform binaries")
+  expect(maintainers).toContain("eleven packages")
+  expect(maintainers).toContain("@vibelang/cli-win32-x64")
+  expect(maintainers).toContain("@vibelang/cli-win32-arm64")
+  expect(maintainers).toContain("publish.sh --otp <one-time-password>")
+  expect(maintainers).not.toContain("four platform binaries")
+  expect(maintainers).not.toContain("nine packages")
 })
 
 

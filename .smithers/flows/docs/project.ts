@@ -74,8 +74,8 @@ export const releaseSteps: readonly string[] = [
   "**Align versions.** Every package version must equal the compiler's, in `typescript/tsc/internal/vibelang/identity.go`; `make-packages.mjs` refuses a mismatch. Review breaking changes.",
   "**Check.** Run setup, `{{e2e}}`, the compiler cases, affected package tests, editor tests and `bun docs/tools/check-snippets.ts`. Record commands, toolchain versions and results. A skipped platform is untested.",
   "**Build.** `sh scripts/release/build-binaries.sh` cross-compiles the candidate platform binaries. `node scripts/release/make-packages.mjs` assembles the candidate packages and their tarballs in `dist-npm/`. Check manifests, the bundled extension, licenses and notices.",
-  "**Rehearse.** `VIBELANG_SKIP=win32 sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It runs on one host, so it can't prove the other platforms' binaries work.",
-  "**Publish.** A person runs `VIBELANG_SKIP=win32 sh scripts/release/publish.sh --dry-run`, then `VIBELANG_SKIP=win32 sh scripts/release/publish.sh`. It publishes the platform packages first and skips versions already published, so a rerun resumes. Keep credentials out of recordings and logs.",
+  "**Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It runs on one host, so it can't prove the other platforms' binaries work.",
+  "**Publish.** A person runs `sh scripts/release/publish.sh --dry-run`, then `sh scripts/release/publish.sh --otp <one-time-password>`. It publishes the platform packages first and skips versions already published, so a rerun resumes. Keep credentials out of recordings and logs.",
   "**Verify.** `sh scripts/release/verify-published.sh <version>` scaffolds, installs, builds, starts and tests an app from the public registry. Publish release notes with exact versions, breaking changes and known limitations."
 ];
 
@@ -179,7 +179,7 @@ Timeline and commitment labels state a maintainer's current belief, not a promis
     },
     {
       heading: "Release process",
-      body: `Until native Windows binaries ship, keep \`VIBELANG_SKIP=win32\` for rehearsal and both publish commands below. Current releases ship four platform binaries (macOS and Linux on arm64 and x64) and nine packages. Build and assembly still produce Windows candidates; the skip setting filters the release selection.
+      body: `The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, \`@vibelang/cli-win32-x64\` and \`@vibelang/cli-win32-arm64\`, in rehearsal and publication.
 
 {{releaseSteps}}
 

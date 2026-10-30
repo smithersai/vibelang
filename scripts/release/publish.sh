@@ -5,6 +5,7 @@
 #
 #   sh scripts/release/publish.sh            # asks for a one-time password once
 #   sh scripts/release/publish.sh --dry-run  # checks everything, publishes nothing
+#   sh scripts/release/publish.sh --otp 123456
 #   NPM_OTP=123456 sh scripts/release/publish.sh
 #   VIBELANG_SKIP=win32 sh scripts/release/publish.sh  # omits win32 packages and their optional dependencies
 #
@@ -17,7 +18,22 @@ tarballs="$root/dist-npm/tarballs"
 # VIBELANG_REGISTRY points the script at another registry, such as a local Verdaccio.
 registry=${VIBELANG_REGISTRY:-https://registry.npmjs.org/}
 dry=""
-[ "${1:-}" = "--dry-run" ] && dry=--dry-run
+otp=${NPM_OTP:-}
+usage() {
+  echo "usage: sh scripts/release/publish.sh [--dry-run] [--otp <one-time-password>]" >&2
+  exit 2
+}
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    --dry-run) dry=--dry-run; shift ;;
+    --otp)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || usage
+      case $2 in -*) usage ;; esac
+      otp=$2
+      shift 2 ;;
+    *) usage ;;
+  esac
+done
 
 [ -f "$tarballs/manifest.json" ] || {
   echo "publish: no dist-npm/tarballs/manifest.json. Run sh scripts/release/build-binaries.sh and node scripts/release/make-packages.mjs first." >&2
@@ -60,7 +76,6 @@ for item in $(node -e 'for (const p of require(process.argv[1]).packages) consol
 done
 [ -n "$todo" ] || { echo "publish: every package not skipped is already on npm at $version."; exit 0; }
 
-otp=${NPM_OTP:-}
 if [ -z "$dry" ] && [ -z "$otp" ]; then
   printf 'npm one-time password (press Enter if your account does not use one): '
   read -r otp
