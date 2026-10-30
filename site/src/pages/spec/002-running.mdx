@@ -899,7 +899,9 @@ function f(xs: number[]) {
 
 ## The pipe operator
 
-`|>` is exactly TC39's Hack pipe operator, pinned to a dated snapshot of the proposal. `%` is the topic: the left side's value, evaluated once into a fresh temporary. The topic-versus-modulo grammar is TC39's, unchanged.
+`|>` follows the pinned TC39 Hack pipe proposal with the snapshot reconciliations and effective [PipeExpression](/spec/900-appendices#pipeexpression) and [PipeBody](/spec/900-appendices#pipebody). `%` is the topic: the left input value, evaluated once at its source position. The input is the declared [ShortCircuitExpression](/spec/900-appendices#shortcircuitexpression), read with `GetValue`; the printed evaluator's [ConditionalExpression](/spec/900-appendices#conditionalexpression) is a stale reference, not a change of precedence.
+
+The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](/spec/900-appendices#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain. `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-23
@@ -917,6 +919,41 @@ function run(id: string) {
     return yield* n
   })
 }
+```
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-23
+const one = 1 |> % + 1                     // 2
+const chain = 1 |> % + 1 |> % * 2           // 4: left-associated
+const nested = 1 |> (% + 1 |> % * 2)        // 4: explicit nesting
+const a = true ? 1 : 2 |> % + 10            // 1: only the alternate is piped
+const b = (true ? 1 : 2) |> % + 10          // 11: the whole conditional is piped
+const value = 7 |> %                       // 7
+const obj = {}; const same = obj |> % === obj // true
+const xor = 1 ^ 3; let assigned = 1; assigned ^= 3 // both 2
+const modulo = 7 |> % % 4                  // 3
+const bad = 1 |> f()                       // syntax error: missing topic
+const outer = 1 |> (2 |> % + 1)            // syntax error: outer body has no topic
+```
+
+The admitted controls have the following Effect TypeScript counterpart, with `Success([2, 4, 4, 1, 11, 7, true, 2, 2, 3])`:
+
+```ts [Effect]
+// Pipe reconciliation controls
+import * as Effect from "effect/Effect"
+const controls = Effect.gen(function* () {
+  const one = 1 + 1
+  const first = 1 + 1; const chain = first * 2
+  const nested = (1 + 1) * 2
+  const a = true ? 1 : 2 + 10
+  const b = (true ? 1 : 2) + 10
+  const value = 7
+  const obj = {}; const same = obj === obj
+  const xor = 1 ^ 3; let assigned = 1; assigned ^= 3
+  const modulo = 7 % 4
+  return [one, chain, nested, a, b, value, same, xor, assigned, modulo]
+})
+console.log(JSON.stringify(Effect.runSync(controls)))
 ```
 
 Effect's `pipe(x, f, g)` function stays available ([VIP-14](/vips/0014-effect-modules-in-scope)).

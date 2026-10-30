@@ -197,6 +197,20 @@ ArrowParams = "(" FormalParameters ")"   (TypeScript's parenthesized async-arrow
 Modifiers = the class-member modifiers TypeScript allows before async (static, public, private, protected, override)
 ```
 
+#### PipeExpression
+
+```text
+PipeExpression = ShortCircuitExpression "|>" PipeBody
+```
+
+#### PipeBody
+
+```text
+PipeBody = AssignmentExpression
+```
+
+These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
+
 #### EffectType
 
 ```text
@@ -223,7 +237,7 @@ TryExpression = [+Effect] "try" UnaryExpression   (where ECMAScript has AwaitExp
 <a id="shortcircuitexpression"></a>
 
 ```text
-ShortCircuitExpression = LogicalORExpression | CoalesceExpression | [+Effect] CatchExpression   (ECMAScript's, plus CatchExpression)
+ShortCircuitExpression = LogicalORExpression | CoalesceExpression | [+Effect] CatchExpression | PipeExpression   (ECMAScript's, plus CatchExpression and the reconciled pipe entry)
 ```
 
 ```text
@@ -496,6 +510,8 @@ ArmBody = Expression | "throw" Expression
 ```
 
 ### Notes on the productions
+
+**Pipe snapshot reconciliations.** The missing-topic early error checks the `AssignmentExpression` child with `ContainsOuterTopic`; the `PipeBody` boundary still returns `false`. Evaluation uses the actual `ShortCircuitExpression` input once, with `GetValue`, rather than the stale `ConditionalExpression` reference. `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, not the unbound `envRec`. Binary XOR `^` and XOR assignment `^=` remain ordinary TypeScript operators despite the duplicated `%` in the token table. The [snapshot receipt](../vips/tc39-pipeline-operator/README.md) records these corrections without changing the upstream HTML; [Running Effects](002-running.md#the-pipe-operator) gives the examples.
 
 **`catch`.** [CatchExpression](#catchexpression) sits in ECMAScript's precedence chain beside `CoalesceExpression`, and its head mirrors `CoalesceExpressionHead`: it binds like `??`, is left-associative, and can't be mixed with `??`, `||` or `&&` without parentheses, for the same structural reason `a ?? b || c` is a syntax error. The handler is a plain or `effect` arrow or function expression, possibly parenthesized, so its kind is decided by its syntax alone; any other handler is `EK0509` ([Running Effects](002-running.md#catch)). An unparenthesized arrow handler ends the chain: its `ConciseBody` is the longest `AssignmentExpression`, as in an ECMAScript arrow, so a later `catch` belongs to the body. Any other handler is a closed expression, after which only another `catch` or a lower-precedence operator can follow.
 

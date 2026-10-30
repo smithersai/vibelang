@@ -16,4 +16,14 @@ VIP-23 makes VibeLang's `|>` exactly the TC39 Hack pipe operator, pinned to this
 | [`explainer.md`](explainer.md) | `README.md`, the explainer |
 | [`spec.html`](spec.html) | `spec.html`, the draft specification text |
 
-VibeLang adds nothing to the proposal. The topic token is `%`, the explainer's placeholder, and the topic-versus-modulo grammar is the proposal's.
+The topic token is `%`, the explainer placeholder. The upstream `spec.html` stays unchanged. The effective grammar and operations use these reconciliations to preserve the accepted topic-bearing examples, sequential chains and ordinary TypeScript operators:
+
+| Area | Effective behavior |
+| --- | --- |
+| Missing topic | The missing-topic early error checks `AssignmentExpression` with `ContainsOuterTopic`, not the wrapping `PipeBody`. `ContainsOuterTopic(PipeBody)` stays `false`, hiding a nested body from its outer topic check. |
+| Grammar entry and chains | `PipeExpression` is an alternative of `ShortCircuitExpression`. A body whose whole unparenthesized expression is a `PipeExpression` is an early error, leaving unparenthesized chains left-associated. Parenthesized nesting remains valid, with separate topic scopes. |
+| Input evaluation | Evaluation belongs to the declared `ShortCircuitExpression` input, which evaluates once and is read with `GetValue` before `EvaluateWithTopics`. The printed `ConditionalExpression` reference does not change precedence. |
+| Topic read | `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just obtained; the printed `envRec` is out of scope. |
+| Punctuators | Binary XOR `^` and XOR assignment `^=` retain their TypeScript meanings. The duplicated `%` in `OtherPunctuator` does not delete XOR; `%` remains modulo or the topic according to its syntactic position. |
+
+The existing covering-production restrictions on unparenthesized conditional, yield, assignment and arrow bodies still apply. [Appendix A](../../src/900-appendices.md#pipeexpression) defines the effective productions; [Running Effects](../../src/002-running.md#the-pipe-operator) retains checked examples.
