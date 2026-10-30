@@ -60,3 +60,49 @@ func TestPreludeCollisionNotes(t *testing.T) {
 		})
 	}
 }
+
+// A prelude name whose package the file does not resolve draws TypeScript's
+// "Cannot find" error, with a note that names the package to install; with
+// both packages installed the same names resolve and draw no error.
+func TestPreludeMissingPackageNotes(t *testing.T) {
+	effectOnly := map[string]string{"effect": "packages/runtime/node_modules/effect"}
+	for _, test := range []struct {
+		name, source string
+		packages     map[string]string
+		code         int32
+		want         string
+	}{
+		{"contract without the runtime", "export declare const load: (id: string) => number!!", effectOnly, 2503,
+			"Effect is in scope in a .vibe file without an import, from vibelang-runtime, and this file does not resolve vibelang-runtime."},
+		{"error declaration without the runtime", "export error NotFound { id: string }", effectOnly, 2304,
+			"TaggedError is in scope in a .vibe file without an import, from vibelang-runtime, and this file does not resolve vibelang-runtime."},
+		{"Effect module without effect", `export const policy = (): unknown => Schedule.spaced("1 second")`, map[string]string{"vibelang-runtime": "packages/runtime"}, 2552,
+			"Schedule is in scope in a .vibe file without an import, from effect, and this file does not resolve effect."},
+		{"own name", "export const x = Missing.value", effectOnly, 2304, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			program, file, _, _ := editorProgramWith(t, test.source, test.packages)
+			var found, all []string
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				all = append(all, diagnosticWithNotes(d))
+				if d.Code() == test.code {
+					found = append(found, diagnosticWithNotes(d))
+				}
+			}
+			if len(found) == 0 {
+				t.Fatalf("got no TS%d diagnostic: %q", test.code, all)
+			}
+			if test.want == "" {
+				if strings.Contains(found[0], "does not resolve") {
+					t.Fatalf("got a note on a name the prelude does not supply:\n%s", found[0])
+				}
+			} else if !strings.Contains(found[0], test.want) {
+				t.Fatalf("diagnostic lacks %q:\n%s", test.want, found[0])
+			}
+		})
+	}
+	program, file, _, _ := editorProgram(t, "export declare const load: (id: string) => number!!\nexport error NotFound { id: string }\nexport const policy = (): unknown => Schedule.spaced(\"1 second\")")
+	if diagnostics := program.GetSemanticDiagnostics(t.Context(), file); len(diagnostics) != 0 {
+		t.Fatalf("with both packages installed, got %s", diagnosticWithNotes(diagnostics[0]))
+	}
+}

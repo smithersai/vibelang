@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The skill said plain functions mean exactly what they mean in TypeScript, but a plain `catch` receives only tracked failures, so `try { new URL(x) } catch { … }` rethrew with only a warning; the skill now says so, and the migrate flow rejects a batch with `EK9204`.
 
+- A `.vibe` file in a project without `vibelang-runtime` or `effect` installed reported only `Cannot find namespace 'Effect'` or `Cannot find name 'TaggedError'`, and its exports declared `any`; each such error now names the package that supplies the name and says to install it.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.

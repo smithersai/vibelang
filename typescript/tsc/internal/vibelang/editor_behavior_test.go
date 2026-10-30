@@ -39,6 +39,13 @@ func (h editorTestHost) GetPreferences(string) lsutil.UserPreferences {
 
 func editorProgram(t *testing.T, source string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
+	return editorProgramWith(t, source, map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"})
+}
+
+// editorProgramWith is editorProgram with only packages, each a name and its
+// directory under the repository root, installed in node_modules.
+func editorProgramWith(t *testing.T, source string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -47,7 +54,7 @@ func editorProgram(t *testing.T, source string) (*compiler.Program, *ast.SourceF
 	if err := os.Mkdir(filepath.Join(dir, "node_modules"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	for name, target := range map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"} {
+	for name, target := range packages {
 		if err := os.Symlink(filepath.Join(root, target), filepath.Join(dir, "node_modules", name)); err != nil {
 			t.Fatal(err)
 		}

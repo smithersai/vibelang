@@ -19,7 +19,17 @@ import (
 //	new Worker("./worker.js")   // TS2351: and the DOM's Worker is globalThis.Worker in a hatch
 //	w.postMessage("x")          // TS2339: w's Worker is Effect's; alias the DOM's in a .ts file
 //	Number.sum(1, 2)            // TS2339: Number is JavaScript's; import Effect's under another name
+//
+// A prelude name whose package the file does not resolve is not in scope, and
+// its error names the package to install:
+//
+//	const n: number!! = …       // TS2503 without vibelang-runtime: Effect comes from it
 func init() { checker.RegisterDiagnosticsFilterHook(explainPreludeCollisions) }
+
+// missingNameCodes are the errors a name that no scope declares draws: Cannot
+// find name (TS2304), the same with a suggestion (TS2552), and Cannot find
+// namespace (TS2503). Each names the name as its first argument.
+var missingNameCodes = map[int32]bool{2304: true, 2552: true, 2503: true}
 
 // preludeModuleTypeCodes are the errors a type reference draws when its name
 // means an Effect module the program did not mean: a namespace as a type
@@ -39,6 +49,12 @@ func explainPreludeCollisions(c *checker.Checker, file *ast.SourceFile, all []*a
 		if d.Source() != "" || diagnosticAlreadyExplained(c, file, d) {
 			continue
 		}
+		if missingNameCodes[d.Code()] && len(d.MessageArgs()) != 0 {
+			if explained := explainMissingPreludePackage(c, file, d, d.MessageArgs()[0]); explained != d {
+				all[i] = explained
+				continue
+			}
+		}
 		token := astnav.GetTokenAtPosition(file, d.Pos())
 		if token == nil || !ast.IsIdentifier(token) || token.Parent == nil || inHatch(token) {
 			continue
@@ -54,6 +70,33 @@ func explainPreludeCollisions(c *checker.Checker, file *ast.SourceFile, all []*a
 		}
 	}
 	return all
+}
+
+// explainMissingPreludePackage adds to d, an error that name is not in scope,
+// the package that supplies name when name is a prelude name and file does not
+// resolve that package, which happens when it is not installed. The error
+// arises wherever the prelude is written, including a contract such as
+// number!!, whose Effect namespace the source never spells, and the names the
+// parser writes for a form, such as an error declaration's TaggedError. It
+// returns d unchanged otherwise.
+func explainMissingPreludePackage(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, name string) *ast.Diagnostic {
+	if !isPreludeName(name) {
+		return d
+	}
+	state := preludeStateOf(c)
+	if _, ok := preludeModules[name]; ok {
+		if runtimeModuleSymbol(c, state, file) != nil {
+			return d
+		}
+		if strings.HasPrefix(name, "$") {
+			return note(d.Clone(), "The form here compiles to {0} from {1}, and this file does not resolve {1}. Install {1} at the version of vibelang.", name, runtimeModule)
+		}
+		return note(d.Clone(), "{0} is in scope in a .vibe file without an import, from {1}, and this file does not resolve {1}. Install {1} at the version of vibelang.", name, runtimeModule)
+	}
+	if effectRootModuleSymbol(c, state, file) != nil {
+		return d
+	}
+	return note(d.Clone(), "{0} is in scope in a .vibe file without an import, from {1}, and this file does not resolve {1}. Install {1} at the version {2} pins.", name, effectRootModule, runtimeModule)
 }
 
 // explainPreludeModule adds to d, an error at name, a type reference or the
