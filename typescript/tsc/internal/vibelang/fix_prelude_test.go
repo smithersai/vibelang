@@ -184,6 +184,67 @@ export class Renamed extends Schema.TaggedError<Renamed>()("Other", {}) {}
 	}
 }
 
+// The declaration file prints a type as the source writes it, so
+// vibelang --fix keeps an import that the emitted declaration file keeps,
+// wherever the declaration prints the module: in a local type an export
+// names, in a conditional type, or in a written type the checker resolves to
+// one that no longer names the module. An import only code uses still goes.
+func TestFixKeepsImportsTheDeclarationPrints(t *testing.T) {
+	cases := []struct{ name, source, want string }{
+		{"local conditional alias", `import * as DateTime from "effect/DateTime"
+
+type NonNull<V> = V extends DateTime.Utc ? string : V
+export type FieldFilter<V> = { eq: NonNull<V> }
+`, ""},
+		{"exported conditional alias", `import * as DateTime from "effect/DateTime"
+
+export type IsUtc<V> = V extends DateTime.Utc ? true : false
+`, ""},
+		{"resolved keyof", `import * as DateTime from "effect/DateTime"
+
+export type Keys = keyof DateTime.Utc
+`, ""},
+		{"module export under a kept import", `import * as Metric from "effect/Metric"
+
+export interface Tracked<M extends Metric.Metric<number, any>> {
+  readonly metric: M
+}
+`, ""},
+		{"code only", `import * as DateTime from "effect/DateTime"
+
+export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)
+`, `
+export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)
+`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			want := tc.want
+			if want == "" {
+				want = tc.source
+			}
+			_, file, _, _ := editorProgram(t, tc.source)
+			dir := filepath.Dir(file.FileName().AsString())
+			if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			fs := bundled.WrapFS(osvfs.FS())
+			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+			if len(errors) != 0 {
+				t.Fatalf("config: %v", errors)
+			}
+			result := FixProject(t.Context(), fs, bundled.LibPath(), config)
+			got := tc.source
+			if fixed := result.Files[file.FileName()]; fixed != nil {
+				got = fixed.Text
+			}
+			if got != want || len(result.Refused) != 0 {
+				t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+			}
+		})
+	}
+}
+
 func TestFixPreludeRewrites(t *testing.T) {
 	source := `import { FileSystem } from "effect/FileSystem"
 import * as Path from "effect/Path"

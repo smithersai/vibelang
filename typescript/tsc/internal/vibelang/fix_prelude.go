@@ -7,6 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -33,11 +35,14 @@ import (
 //
 // In a project that emits declarations, an import stays when its spelling
 // is not the one the declaration file would write for the prelude's name and
-// something the file exports mentions the module, so the declaration file
-// keeps the import its TypeScript wrote (D501): with
-// import * as Schema from "effect/Schema" and an export typed Schema.Codec,
-// the declaration keeps import * as Schema from "effect/Schema" rather than
-// import { Schema } from "effect".
+// the file's declaration file keeps it, so the declaration file keeps the
+// import its TypeScript wrote (D501): with import * as Schema from
+// "effect/Schema" and an export typed Schema.Codec, the declaration keeps
+// import * as Schema from "effect/Schema" rather than import { Schema } from
+// "effect". The declaration file prints types as the source writes them, so
+// the emitted declaration decides, not the exports' types: a local
+// type NonNull<V> = V extends DateTime.Utc ? … that an export names, or an
+// export typed keyof DateTime.Utc, keeps import * as DateTime.
 
 // A preludeRewrite is the rewrites of one file: its edits and how many of
 // each kind it makes.
@@ -82,7 +87,9 @@ func preludePackageOf(name string) string {
 }
 
 // preludeRewritesOf plans the rewrites of file, a .vibe file that c checked.
-func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite {
+// declared holds the imports file's declaration file keeps, by
+// declaredImportKey, in a project that emits declarations.
+func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[string]bool) preludeRewrite {
 	var r preludeRewrite
 	text := file.Text()
 	removed := map[string]bool{} // names whose imports go, so the prelude supplies them
@@ -102,7 +109,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 			if preludeModulePath(name) != specifier || isBuiltinGlobal(c, name) {
 				continue
 			}
-			if importShapesDeclaration(c, file, statement) {
+			if declared[declaredImportKey(specifier, name)] {
 				kept[name] = true
 				continue
 			}
@@ -122,7 +129,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 			case preludePackageOf(name) == specifier:
 				gone[element] = true
 				removed[name] = true
-			case preludeModulePath(name) == specifier && !importShapesDeclaration(c, file, statement):
+			case preludeModulePath(name) == specifier && !declared[declaredImportKey(specifier, name)]:
 				// import { FileSystem } from "effect/FileSystem": the module's export.
 				module := c.GetSymbolAtLocation(statement.ModuleSpecifier())
 				export := c.GetSymbolAtLocation(element.Name())
@@ -190,22 +197,44 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile) preludeRewrite 
 	return r
 }
 
-// importShapesDeclaration reports whether the declaration file of file, in a
-// project that emits one, writes the module that statement imports through
-// statement's own spelling, because something file exports mentions it or
-// file declares a service, whose base is Context.ServiceClass.
-func importShapesDeclaration(c *checker.Checker, file *ast.SourceFile, statement *ast.Node) bool {
-	if !c.CompilerOptions().GetEmitDeclarations() {
-		return false
+// declaredImportKey names the import of name from specifier.
+func declaredImportKey(specifier, name string) string {
+	return specifier + "\x00" + name
+}
+
+// declaredImports returns the imports of an effect module that the
+// declaration file of file keeps, by declaredImportKey, in a program that
+// emits declarations; nil otherwise, or when file imports no effect module
+// under the module's own name.
+func declaredImports(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
+	if !program.Options().GetEmitDeclarations() {
+		return nil
 	}
-	if statement.ModuleSpecifier().Text() == preludeModulePath("Context") && declaresService(file) {
-		return true
+	candidate := false
+	for _, b := range importBindingsOf(file) {
+		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && preludeModulePath(b.name) == module.Text() {
+			candidate = true
+		}
 	}
-	module := c.GetSymbolAtLocation(statement.ModuleSpecifier())
-	if module != nil && module.Flags()&ast.SymbolFlagsAlias != 0 {
-		module = c.GetAliasedSymbol(module)
+	if !candidate {
+		return nil
 	}
-	return exportsMentionModule(c, file, module)
+	var text string
+	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: []*ast.SourceFile{file}, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
+		WriteFile: func(name tspath.RootedFilePath, data string, _ *compiler.WriteFileData) error {
+			if tspath.IsDeclarationFileName(name.AsString()) {
+				text = data
+			}
+			return nil
+		}})
+	declarations := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/declarations.d.ts", PathKey: "/declarations.d.ts"}, text, core.ScriptKindTS)
+	declared := map[string]bool{}
+	for _, b := range importBindingsOf(declarations) {
+		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) {
+			declared[declaredImportKey(module.Text(), b.name)] = true
+		}
+	}
+	return declared
 }
 
 // moduleExportUses returns the edits that keep each use of export, a
@@ -357,8 +386,9 @@ func preludeRewriteProject(ctx context.Context, program *compiler.Program) map[t
 	rewrites := map[tspath.RootedFilePath]preludeRewrite{}
 	for _, file := range fixableFiles(program) {
 		program.GetSemanticDiagnostics(ctx, file)
+		declared := declaredImports(ctx, program, file)
 		c, done := program.GetTypeCheckerForFile(ctx, file)
-		r := preludeRewritesOf(c, file)
+		r := preludeRewritesOf(c, file, declared)
 		done()
 		if len(r.edits) > 0 {
 			rewrites[file.FileName()] = r
