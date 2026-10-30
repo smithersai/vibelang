@@ -71,6 +71,13 @@ export function readJsonl(path) {
   })
 }
 
+/**
+ * Whether path names a declaration file: x.d.ts, x.d.mts, x.d.cts, or the
+ * declaration of another extension, such as the x.d.vibe.ts sidecar vibelang
+ * writes beside x.vibe or TypeScript's x.d.css.ts.
+ */
+export const isDeclarationFile = (path) => /\.d\.(?:[^./]+\.)?[cm]?ts$/.test(path)
+
 /** A path relative to root, with forward slashes. */
 export const rel = (root, path) => relative(root, path).split(sep).join("/")
 

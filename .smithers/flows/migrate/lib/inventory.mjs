@@ -5,7 +5,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { effectUse, isEffectSpecifier, parseImports, resolveRelative } from "./imports.mjs"
-import { readJson, rel } from "./util.mjs"
+import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
 const sourceFile = /\.(?:ts|tsx|mts|cts|vibe)$/
@@ -18,7 +18,7 @@ export function listSources(root, dir) {
     for (const entry of readdirSync(absolute, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         if (!skipDirectories.has(entry.name)) walk(join(absolute, entry.name))
-      } else if (sourceFile.test(entry.name) && !/\.d\.[cm]?ts$/.test(entry.name)) out.push(rel(root, join(absolute, entry.name)))
+      } else if (sourceFile.test(entry.name) && !isDeclarationFile(entry.name)) out.push(rel(root, join(absolute, entry.name)))
     }
   }
   if (existsSync(join(root, dir))) walk(join(root, dir))

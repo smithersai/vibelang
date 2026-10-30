@@ -79,6 +79,8 @@ test("the inventory records Effect use, local imports, dependents and the tests 
     writeFileSync(join(root, "pkg/src/b.ts"), "import type { Option } from 'effect'\nexport const b = 1\n")
     writeFileSync(join(root, "pkg/src/a.test.ts"), "import { a } from './a.js'\n")
     writeFileSync(join(root, "pkg/src/types.d.ts"), "export {}\n")
+    writeFileSync(join(root, "pkg/src/a.d.vibe.ts"), "export declare const a: number\n")
+    writeFileSync(join(root, "pkg/src/styles.d.css.ts"), "export {}\n")
     const inv = buildInventory({ root, packages: [{ dir: "pkg", sources: ["src"] }], tokens: { [join(root, "pkg/src/a.ts")]: 30 }, coverage: { "pkg/src/a.ts": 88 } })
     const by = Object.fromEntries(inv.files.map((f) => [f.path, f]))
     assert.deepEqual(Object.keys(by), ["pkg/src/a.test.ts", "pkg/src/a.ts", "pkg/src/b.ts"])

@@ -6,11 +6,11 @@ import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from
 import { join, posix } from "node:path"
 import { applyEdits, parseImports, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
-import { quote, run } from "./util.mjs"
+import { isDeclarationFile, quote, run } from "./util.mjs"
 
 /** x.ts becomes x.vibe. Only .ts modules are renamed. */
 export function vibePath(path) {
-  if (!path.endsWith(".ts") || path.endsWith(".d.ts")) throw new Error(`${path}: only a .ts module becomes .vibe`)
+  if (!path.endsWith(".ts") || isDeclarationFile(path)) throw new Error(`${path}: only a .ts module becomes .vibe`)
   return path.slice(0, -3) + ".vibe"
 }
 

@@ -10,6 +10,7 @@ import { loadTypeScript } from "../lib/declarations.mjs"
 test("vibePath renames only .ts modules", () => {
   assert.equal(vibePath("src/a.ts"), "src/a.vibe")
   assert.throws(() => vibePath("src/a.d.ts"))
+  assert.throws(() => vibePath("src/a.d.vibe.ts"))
   assert.throws(() => vibePath("src/a.tsx"))
 })
 
