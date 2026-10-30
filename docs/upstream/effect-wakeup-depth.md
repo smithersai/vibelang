@@ -42,9 +42,13 @@ wake-ups. One stranded dependency can leave an application waiting forever.
 Observe failed fibers in the reproduction instead of relying only on a timeout.
 
 **Evidence:** [wakeup-chain.test.ts](../../experiments/tests/wakeup-chain.test.ts).
-Run `cd experiments && bun test tests/wakeup-chain.test.ts`: F10a passes by
-asserting the overflow observation, while K10a completes a 100,000-fiber chain
-using the kernel's depth budget. Host-dependent thresholds are measured by
+Run `cd experiments && bun test tests/wakeup-chain.test.ts`: `F10a` passes by
+asserting exhaustion of a tracer's logical stack budget of `64` evaluations,
+with one `RangeError` and the rest of the chain stranded. This leaves native
+stack space for error recovery: exhausting the actual host stack can livelock
+Effect's error handler and made the documentation suite intermittent.
+`K10a` still completes a `100,000`-fiber chain using the kernel's depth budget.
+Host-dependent native thresholds are measured separately by
 `node scripts/wakeup-chain-depth.ts`.
 The Effect 3 comparison is
 [v3-wakeup-chain.mjs](../../experiments/scripts/v3-wakeup-chain.mjs); it requires

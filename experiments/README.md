@@ -12,6 +12,13 @@ bun bench/perform.ts        # operation costs
 cd reference-machine && bun install && bun test   # independent strategy-B machine, ~17 s
 ```
 
+The `F10a` wake-up-chain probe uses a tracer with a logical stack budget of
+`64` nested primitive evaluations. It raises one `RangeError` at that budget,
+leaving native stack space for Effect's error handling, and still checks that
+the chain stops early with exactly one defect. Exhausting the host stack itself
+can strand the runtime inside its error handler; JIT state and host stack size
+made that probe intermittently hang during documentation generation.
+
 A watchdog (`scripts/test-watchdog.ts`, preloaded by `bunfig.toml`) ends a run when one test runs past `KERNEL_TEST_STALL_SECONDS` (120 by default, `0` turns it off) and prints the file, the test's position in it and its probable name. bun's per-test timeout can't stop a test that spins in synchronous code.
 
 | Path | Contents |

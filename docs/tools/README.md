@@ -190,7 +190,9 @@ can differ from the last one in a few nodes. Upstream tsgo does the same.
 
 The single docs site is the Vocs site in site/. Its prebuild hook runs
 the kernel law suite through docs/tools/kernel-facts.ts, then syncs user and
-specification pages with those measured facts. Vocs checks internal links. docs/tools/check-site.ts also checks every built local page and heading target, and refuses missing or external images.
+specification pages with those measured facts. The `F10a` wake-up-chain probe
+uses a logical stack budget of `64` evaluations instead of exhausting the host
+stack, so JIT-dependent overflow recovery cannot hang documentation generation. Vocs checks internal links. docs/tools/check-site.ts also checks every built local page and heading target, and refuses missing or external images.
 
 The postbuild hook calls docs/tools/markdown.ts, extracted from the former
 HTML renderer, to write each source page as Markdown into site/dist/public.

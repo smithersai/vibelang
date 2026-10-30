@@ -36,7 +36,7 @@ A feature-coverage audit mapped 309 Effect features to the language (`docs/resea
 | F5, F6 | same | `Effect.callback` ignores every resume after the first; an asynchronous resume runs the fiber on the resumer's stack |
 | F7, F8 | same | A child snapshots Context at fork, and nothing flows back; `forkChild` children are interrupted when the parent completes |
 | F9 | same | Direct recursion limit: about 39,900 frames on Bun 1.4.1 and 10,150 on Node 26.10 |
-| F10a, F10b | `tests/wakeup-chain.test.ts`, `scripts/` | A chain of `Deferred` wake-ups overflows in one fiber and strands the rest; effect 3.22.3 completes the same chain at 100,000 hops |
+| F10a, F10b | `tests/wakeup-chain.test.ts`, `scripts/` | A chain of `Deferred` wake-ups exhausts a logical stack budget in one fiber and strands the rest; effect 3.22.3 completes the same chain at 100,000 hops |
 | F11a-F11e | `tests/defect-precedence.test.ts` | Effect 4.0.6 makes a failure beside a cleanup's or a sibling's defect a defect, first; typed recovery skips a cause with a defect; an interruption doesn't block recovery; `mapError` maps every failure; `timeout` still drops a loser's cleanup failure (D305, D256) |
 | T5a, T6b | `tests/kernel.test.ts` | `Effect.callback` drops a late resume silently; plain JavaScript recursion overflows |
 | D01-D05 | `tests/conformance/source-claims.test.ts` | Corrections to the first draft's Effect claims: synchronous callback resume, fork-time async context, `zip`'s `concurrent` flag, `catchCause` on a self-raised interrupt, sibling provides sharing a supplied `MemoMap` |
