@@ -55,6 +55,10 @@ target's inputs, its key and whether the cache holds a result for it.
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 
+The runtime entry tests start up to three host processes in sequence. Each
+child has a `10_000` ms deadline; the whole test allows `35_000` ms so the
+outer deadline covers all three on a busy build host.
+
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
 install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`

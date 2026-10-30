@@ -25,6 +25,9 @@ const entry = (name: string, meta = "import.meta") =>
   `$entry(${meta}.main, ${meta}.url, main, () => console.log(${JSON.stringify(name + " ran")}));`
 
 const hosts = [["Node", "node"], ["Bun", process.execPath]] as const
+// A case starts up to three processes, each bounded by start() at ten seconds.
+// Keep the outer deadline above their combined budget on a busy build host.
+const entryTimeout = 35_000
 
 function start(executable: string, dir: string, file: string) {
   const result = Bun.spawnSync([executable, file], { cwd: dir, timeout: 10_000 })
@@ -71,19 +74,19 @@ for (const [host, executable] of hosts) {
     expect(start(executable, dir, "app.js")).toBe("app uses helper\napp ran\n")
     expect(start(executable, dir, "lib.js")).toBe("lib ran\n")
     expect(start(executable, dir, "test.js")).toBe("app uses helper\nfunction\n")
-  })
+  }, entryTimeout)
 
   test(`${host}: an ES module bundle runs only its entry module's main`, () => {
     const dir = project({ "package.json": `{ "type": "module" }`, "out.js": bundle(true), "plain.js": bundle(false) })
     expect(start(executable, dir, "out.js")).toBe("app uses helper\napp ran\n")
     expect(start(executable, dir, "plain.js")).toBe("entry without main uses helper\n")
-  })
+  }, entryTimeout)
 
   test(`${host}: a bundle started through a symbolic link runs only its entry module's main`, () => {
     const dir = project({ "package.json": `{ "type": "module" }`, "out.js": bundle(true) })
     symlinkSync(join(dir, "out.js"), join(dir, "linked.js"))
     expect(start(executable, dir, "linked.js")).toBe("app uses helper\napp ran\n")
-  })
+  }, entryTimeout)
 
   test(`${host}: a module whose URL a bundler wrote runs when its import.meta.main is true`, () => {
     // webpack and Rspack set import.meta.main per module and write each module's source URL.
@@ -97,7 +100,7 @@ $entry(true, "file:///src/app.js", main, () => console.log("app ran"));
 `
     })
     expect(start(executable, dir, "out.js")).toBe("app ran\n")
-  })
+  }, entryTimeout)
 
   test(`${host}: a CommonJS bundle runs only its entry module's main`, () => {
     // esbuild and Rolldown empty import.meta in CommonJS output.
@@ -120,7 +123,7 @@ console.log("entry without main");
     })
     expect(start(executable, dir, "out.cjs")).toBe("app ran\n")
     expect(start(executable, dir, "plain.cjs")).toBe("entry without main\n")
-  })
+  }, entryTimeout)
 
   test(`${host}: a module emitted as CommonJS runs its main only when the host starts it`, () => {
     const dir = project({
@@ -139,7 +142,7 @@ $entry(void 0, void 0, main, () => console.log("app ran"));
     })
     expect(start(executable, dir, "app.js")).toBe("app ran\n")
     expect(start(executable, dir, "lib.js")).toBe("lib ran\n")
-  })
+  }, entryTimeout)
 }
 
 test("without a host process, an ES module entry runs and a CommonJS one does not", () => {
@@ -155,4 +158,4 @@ $entry(false, import.meta.url, main, () => console.log("imported ran"));
 `
   })
   expect(start("node", dir, "page.js")).toBe("started ran\n")
-})
+}, entryTimeout)
