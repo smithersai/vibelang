@@ -850,3 +850,4 @@ parser/vibelang_try.go:Parser.isStartOfVibeLangTry@try-in-generator	admission:tr
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-for-head	admission:join-for-head	-	pending	VIP-17: join is exactly as await; `for (await x of xs)` is TS2487, but `for (join x of xs)` reports only EK4611
 parser/vibelang.go:Parser.parseServiceDeclaration@service-separators	admission:service-separators	-	pending	Appendix A: ServiceDeclaration has one Separator after each member, as interface members; `service S { n: number; ; m: string }` compiles
 parser/vibelang_match.go:misplacedRest	admission:match	004-match.md	recovery	VIP-7: EK0707, a rest element or property that is not last
+parser/vibelang.go:schemaWrittenReadonly	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 key mutability: a field is readonly only when written readonly

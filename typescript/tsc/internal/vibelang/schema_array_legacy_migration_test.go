@@ -19,7 +19,7 @@ func TestSchemaGenericArrayLegacyProjectScope(t *testing.T) {
 		{"readonly legacy", "export namespace N { export import ReadonlyArray=globalThis.Array; export schema S=ReadonlyArray<number> }", "const S = Schema.Array(Schema.Number);", true},
 		{"ordinary library", "export schema S=Array<number>", "", false},
 		{"new qualified form", "export schema S=globalThis.Array<number>", "", false},
-		{"mixed new form", "namespace N { export import Array=globalThis.ReadonlyArray; export schema S { old:Array<number>; added:globalThis.Array<number> } }", "", false},
+		{"mixed new form", "namespace N { export import Array=globalThis.ReadonlyArray; export schema S { readonly old:Array<number>; readonly added:globalThis.Array<number> } }", "", false},
 	} {
 		for _, compatibility := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: " ordinary", true: " compatibility"}[compatibility], func(t *testing.T) {

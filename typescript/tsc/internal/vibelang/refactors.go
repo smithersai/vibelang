@@ -163,9 +163,9 @@ func (rc *refactorContext) schemaRefactor(declaration *ast.Node) []*ls.CodeActio
 		if open < 0 {
 			return nil
 		}
-		body = text[declaration.Name().End()+open : declaration.End()]
+		body = schemaRefactorBody(rc.file, declaration, declaration.Name().End()+open, declaration.End())
 	case declaration.Type() != nil && ast.IsTypeLiteralNode(declaration.Type()):
-		body = scanner.GetTextOfNode(declaration.Type())
+		body = schemaRefactorBody(rc.file, declaration, nodeStart(rc.file, declaration.Type()), declaration.Type().End())
 	default:
 		return nil
 	}

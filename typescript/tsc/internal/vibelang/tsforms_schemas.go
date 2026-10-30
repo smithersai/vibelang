@@ -289,8 +289,12 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 		return "", false
 	}
 	field := key
-	if mutable {
-		field = "mutable " + field
+	if !mutable {
+		flags := c.GetTypeOfPropertyOfType(c.GetTypeAtLocation(value), "~type.mutability")
+		if flags == nil || !flags.IsStringLiteral() || flags.AsLiteralType().Value() != "readonly" {
+			return "", false
+		}
+		field = "readonly " + field
 	}
 	if optional {
 		field += "?"

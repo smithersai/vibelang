@@ -50,9 +50,9 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		{"service with its type arguments on lines", 4831, "export class RenderCommit extends Context.Service<\n  RenderCommit,\n  {\n    readonly isCommitPending: () => boolean\n    readonly onNextCommit: (callback: () => void) => () => void\n  }\n>()(\"app/RenderCommit\") {}", "export service RenderCommit {\n  static readonly key = \"app/RenderCommit\"\n  readonly isCommitPending: () => boolean\n  readonly onNextCommit: (callback: () => void) => () => void\n}"},
 		{"one-line service", 4831, `export class Clock2 extends Context.Service<Clock2, { now(): Effect.Effect<number, never, never>, zone: string }>()("app/Clock2") {}`, `export service Clock2 { static readonly key = "app/Clock2"; now(): number!!; zone: string }`},
 		// EK4832 (D286)
-		{"struct and its type", 4832, "export const User = Schema.Struct({ id: Schema.String, nickname: Schema.optional(Schema.String), role: Schema.Literals([\"admin\", \"member\"]) })\nexport type User = typeof User.Type\nexport const u: User = { id: \"1\", role: \"admin\" }", "export schema User { id: string; nickname?: string; role: \"admin\" | \"member\" }\nexport const u: User = { id: \"1\", role: \"admin\" }"},
-		{"every field form", 4832, "export const Order = Schema.Struct({\n  items: Schema.Array(Schema.Union([Schema.String, Schema.Number])),\n  pair: Schema.Tuple([Schema.String, Schema.Boolean]),\n  tags: Schema.Record(Schema.String, Schema.Number),\n  status: Schema.mutableKey(Schema.Literal(\"open\")),\n  note: Schema.optional(Schema.Union([Schema.String, Schema.Null])),\n  meta: Schema.Struct({ ok: Schema.Boolean }),\n  count: Schema.Finite\n})", "export schema Order {\n  items: ReadonlyArray<string | number>\n  pair: readonly [string, boolean]\n  tags: Readonly<Record<string, number>>\n  mutable status: \"open\"\n  note?: string | null\n  meta: { ok: boolean }\n  count: Schema.Finite\n}"},
-		{"local struct", 4832, "export function decode(value: unknown) {\n  const Local = Schema.Struct({ value: Schema.String })\n  return Schema.decodeUnknownEffect(Local)(value)\n}", "export function decode(value: unknown) {\n  schema Local { value: string }\n  return Schema.decodeUnknownEffect(Local)(value)\n}"},
+		{"struct and its type", 4832, "export const User = Schema.Struct({ id: Schema.String, nickname: Schema.optional(Schema.String), role: Schema.Literals([\"admin\", \"member\"]) })\nexport type User = typeof User.Type\nexport const u: User = { id: \"1\", role: \"admin\" }", "export schema User { readonly id: string; readonly nickname?: string; readonly role: \"admin\" | \"member\" }\nexport const u: User = { id: \"1\", role: \"admin\" }"},
+		{"every field form", 4832, "export const Order = Schema.Struct({\n  items: Schema.Array(Schema.Union([Schema.String, Schema.Number])),\n  pair: Schema.Tuple([Schema.String, Schema.Boolean]),\n  tags: Schema.Record(Schema.String, Schema.Number),\n  status: Schema.mutableKey(Schema.Literal(\"open\")),\n  note: Schema.optional(Schema.Union([Schema.String, Schema.Null])),\n  meta: Schema.Struct({ ok: Schema.Boolean }),\n  count: Schema.Finite\n})", "export schema Order {\n  readonly items: ReadonlyArray<string | number>\n  readonly pair: readonly [string, boolean]\n  readonly tags: Readonly<Record<string, number>>\n  status: \"open\"\n  readonly note?: string | null\n  readonly meta: { readonly ok: boolean }\n  readonly count: Schema.Finite\n}"},
+		{"local struct", 4832, "export function decode(value: unknown) {\n  const Local = Schema.Struct({ value: Schema.String })\n  return Schema.decodeUnknownEffect(Local)(value)\n}", "export function decode(value: unknown) {\n  schema Local { readonly value: string }\n  return Schema.decodeUnknownEffect(Local)(value)\n}"},
 		// EK4833 (D287)
 		{"full contract", 4833, `export effect function load(): Effect.Effect<number, never, never> { return 1 }`, `export effect function load(): number!! { return 1 }`},
 		{"never dependencies in a body's return", 4833, "error Gone\nexport effect function load(): Effect.Effect<number, Gone, never> { return 1 }", "error Gone\nexport effect function load(): number!Gone { return 1 }"},
@@ -287,9 +287,9 @@ export const decode = Schema.decodeUnknownSync(Local)
 `
 	want := `export const Snapshot = Schema.Struct({ value: Schema.String })
 
-export schema Pair { left: number }
+export schema Pair { readonly left: number }
 
-schema Local { id: string }
+schema Local { readonly id: string }
 export const decode = Schema.decodeUnknownSync(Local)
 `
 	for _, options := range []string{`"declaration":true,"emitDeclarationOnly":true,"outDir":"out"`, `"noEmit":true`} {
@@ -305,7 +305,7 @@ export const decode = Schema.decodeUnknownSync(Local)
 		}
 		expected := want
 		if options == `"noEmit":true` {
-			expected = strings.Replace(want, "export const Snapshot = Schema.Struct({ value: Schema.String })", "export schema Snapshot { value: string }", 1)
+			expected = strings.Replace(want, "export const Snapshot = Schema.Struct({ value: Schema.String })", "export schema Snapshot { readonly value: string }", 1)
 		}
 		if got != expected || len(result.Refused) != 0 {
 			t.Errorf("%s: --fix wrote\n%s\nwant\n%s\nrefused %+v", options, got, expected, result.Refused)

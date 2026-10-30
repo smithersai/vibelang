@@ -13,7 +13,7 @@ import (
 // nothing that runs:
 //
 //	schema S0 { f0: number; f1?: string; f2: K0 }
-//	const S0 = Schema.Struct({ f0: Schema.Number, f1: Schema.optional(Schema.String), f2: K0 })
+//	const S0 = Schema.Struct({ f0: Schema.mutableKey(Schema.Number), f1: Schema.mutableKey(Schema.optional(Schema.String)), f2: Schema.mutableKey(K0) })
 //	schema K0 = "k0" | "k1"
 //	const K0 = Schema.Literals(["k0", "k1"])
 //
@@ -59,7 +59,7 @@ func init() {
 		Citations: []Citation{
 			{
 				VIP:      15,
-				Template: "const ‹Name› = Schema.Struct({ ‹field›: Schema.String, ‹field›: Schema.optional(Schema.String), ‹field›: Schema.Literals([‹literals›]), ‹fields› })",
+				Template: "const ‹Name› = Schema.Struct({ ‹field›: Schema.mutableKey(Schema.String), ‹field›: Schema.mutableKey(Schema.optional(Schema.String)), ‹field›: Schema.mutableKey(Schema.Literals([‹literals›])), ‹fields› })",
 				Quote:    "`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name.",
 			},
 			{
@@ -198,7 +198,14 @@ func (f *SchemaField) Vibe(w *Writer) {
 }
 
 func (f *SchemaField) Effect(w *Writer) {
+	f.effectWithMutability(w, false)
+}
+
+func (f *SchemaField) effectWithMutability(w *Writer, writable bool) {
 	w.Write(f.Name + ": ")
+	if writable {
+		w.Write("Schema.mutableKey(")
+	}
 	if f.Optional {
 		w.Write("Schema.optional(")
 	}
@@ -213,6 +220,9 @@ func (f *SchemaField) Effect(w *Writer) {
 		w.Write(f.Ref.Name)
 	}
 	if f.Optional {
+		w.Write(")")
+	}
+	if writable {
 		w.Write(")")
 	}
 }
@@ -241,7 +251,7 @@ func (d *SchemaDecl) Effect(w *Writer) {
 		return
 	}
 	w.Write("const " + d.Name + " = Schema.Struct(")
-	schemaFields(w, d.Fields, ", ")
+	schemaFieldsWithMutability(w, d.Fields, ", ", true)
 	w.Write(")")
 }
 
@@ -257,6 +267,11 @@ func (d *SchemaDecl) numberField() *SchemaField {
 
 // schemaFields prints `{ f0: …; f1: … }` with its separator, or `{}`.
 func schemaFields(w *Writer, fields []*SchemaField, sep string) {
+	schemaFieldsWithMutability(w, fields, sep, false)
+}
+
+// Normal schema keys are writable; schema-error fields keep their readonly default.
+func schemaFieldsWithMutability(w *Writer, fields []*SchemaField, sep string, writable bool) {
 	if len(fields) == 0 {
 		w.Write("{}")
 		return
@@ -266,7 +281,11 @@ func schemaFields(w *Writer, fields []*SchemaField, sep string) {
 		if i > 0 {
 			w.Write(sep)
 		}
-		w.Node(f)
+		if writable && !w.IsVibe() {
+			f.effectWithMutability(w, true)
+		} else {
+			w.Node(f)
+		}
 	}
 	w.Write(" }")
 }

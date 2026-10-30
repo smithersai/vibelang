@@ -6,8 +6,8 @@ schema Tags = ReadonlyArray<string>
 schema Names = string[]
 schema Pair = readonly [string, number]
 schema Counts = Record<string, number>
-schema Point = { x: number; y?: number }
-schema Address { city: string }
+schema Point = { readonly x: number; readonly y?: number }
+schema Address { readonly city: string }
 schema Home = Address
 schema Status = Code | null
 schema Flag = true;

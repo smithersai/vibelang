@@ -1,11 +1,11 @@
 // expect: EK2109
 schema Event {
   // EK2109: Date is a class, not a schema.
-  when: Date
+  readonly when: Date
   // EK2109: a method has no schema form.
   run(): void
   // EK2109: a generic type other than an array or a record.
-  parts: Partial<{ a: string }>
+  readonly parts: Partial<{ readonly a: string }>
   // EK2109: unknown is not a primitive; the field names Schema.Unknown.
-  payload: unknown
+  readonly payload: unknown
 }

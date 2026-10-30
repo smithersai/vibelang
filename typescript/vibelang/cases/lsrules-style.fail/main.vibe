@@ -7,8 +7,8 @@
 export const Opened = Schema.Struct({ _tag: Schema.Literal("Opened"), at: Schema.Number })
 
 schema Closed {
-  _tag: "Closed"
-  at: number
+  readonly _tag: "Closed"
+  readonly at: number
 }
 
 // EK4822: a condition that is not a boolean.

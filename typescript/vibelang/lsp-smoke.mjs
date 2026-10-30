@@ -439,7 +439,7 @@ try {
     const contract = await refactor("greet()", "Write the inferred contract")
     assert(contract.includes("export effect function greet(): string!!Greeting {"), `contract: ${contract.split("\n").find((l) => l.includes("greet("))}`)
     const schema = await refactor("interface Point", "Convert to a schema declaration")
-    assert(schema.includes("schema Point {\n  x: number\n  y: number\n}"), "schema not written")
+    assert(schema.includes("schema Point {\n  x: number\n  y: number\n}"), `schema not written: ${JSON.stringify(schema.slice(schema.indexOf("schema Point"), schema.indexOf("schema Point") + 60))}`)
     const plain = await refactor("async function", "Convert to a VibeLang function")
     assert(plain.includes("export effect function size(text: string) {") && plain.includes("const length = try Effect.tryPromise(() => Promise.resolve(text.length))") && plain.includes("return try Effect.tryPromise(async () => "), `async: ${plain.split("\n").filter((l) => l.includes("size") || l.includes("length =")).join(" / ")}`)
     const mapped = await refactor("async function", "Convert to a VibeLang function with an error per await")
@@ -885,6 +885,8 @@ try {
     for (const member of ["name: string", 'tier: "free" | "pro"', "home:"]) {
       assert(shown.includes(member), `decoded type lacks ${member}: ${JSON.stringify(shown)}`)
     }
+    // VIP-15: a field without readonly stays writable in the decoded type.
+    assert(!shown.includes("readonly name:") && !shown.includes("readonly city:"), `got ${JSON.stringify(shown)}`)
   })
 
   await check("definition: a schema field that names another schema goes to its declaration", async () => {

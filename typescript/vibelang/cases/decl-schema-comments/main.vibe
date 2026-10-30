@@ -10,13 +10,13 @@ export schema Code =
 /** A user. */
 export schema User {
   /** The id. */
-  id: string
+  readonly id: string
   /** The nickname. */
-  nick?: string
+  readonly nick?: string
   /** The address. */
-  home: {
+  readonly home: {
     /** The city. */
-    city: string
+    readonly city: string
   }
 }
 

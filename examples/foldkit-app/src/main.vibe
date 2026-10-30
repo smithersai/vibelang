@@ -5,13 +5,13 @@ import { defineMessageUnion } from "foldkit/message"
 
 // MODEL
 
-export schema Todo { id: number; text: string; done: boolean }
+export schema Todo { readonly id: number; readonly text: string; readonly done: boolean }
 
 export schema Model {
-  count: number
-  draft: string
-  todos: ReadonlyArray<Todo>
-  quote: string
+  readonly count: number
+  readonly draft: string
+  readonly todos: ReadonlyArray<Todo>
+  readonly quote: string
 }
 
 // MESSAGE
@@ -31,7 +31,7 @@ export type Message = typeof Message.Type
 // COMMAND
 
 export const QUOTE_URL = "https://example.com/quote.json"
-schema Quote { text: string }
+schema Quote { readonly text: string }
 
 effect function loadQuote() {
   const response = try HttpClient.get(QUOTE_URL)

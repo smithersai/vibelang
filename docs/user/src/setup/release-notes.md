@@ -641,6 +641,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A toolchain upgrade could accept a failed VIP migration after its partial edits made ordinary checks pass. It now stops before the candidate build and rejects failed or interrupted finishing receipts as later baselines.
 - A pattern's optional property, `{ a?: 1 }`, and its member forms `this.#field` and `super.name` were syntax errors; they now compile as the pinned proposal says. A literal `__proto__` key and a rest pattern that is not last report `EK0707` instead of compiling or reporting `TS1005`.
+- Schema fields without `readonly` incorrectly produced readonly keys, including nested object fields; they now produce writable keys, while explicit `readonly` and direct schema-error payload defaults keep their meaning. To retain older implicit readonly schema keys, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The upgrade writes explicit `readonly` keys or preserves an explicit Effect codec when a source modifier cannot retain its decoded-key flags.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

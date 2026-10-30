@@ -4,23 +4,23 @@
 // alias, and works in a function body too; a struct with a field that no
 // declaration writes, such as Schema.optionalKey, draws nothing.
 // tsforms-schemas-fixed is what vibelang --fix writes.
-export schema User { id: string; nickname?: string; role: "admin" | "member" }
+export schema User { readonly id: string; readonly nickname?: string; readonly role: "admin" | "member" }
 
 schema Order {
-  items: ReadonlyArray<string>
-  total: number
-  pair: readonly [string, boolean]
-  tags: Readonly<Record<string, number>>
-  owner: User
-  mutable status: "open"
-  note: string | null
-  meta: { ok: boolean }
+  readonly items: ReadonlyArray<string>
+  readonly total: number
+  readonly pair: readonly [string, boolean]
+  readonly tags: Readonly<Record<string, number>>
+  readonly owner: User
+  status: "open"
+  readonly note: string | null
+  readonly meta: { readonly ok: boolean }
 }
 
 const Exact = Schema.Struct({ id: Schema.optionalKey(Schema.String) })
 
 function local(value: unknown) {
-  schema Local { value: string }
+  schema Local { readonly value: string }
   return Schema.decodeUnknownEffect(Local)(value)
 }
 

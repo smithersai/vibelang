@@ -1280,6 +1280,21 @@ func (p *Parser) vibelangCalleeAnchor(anchor core.TextRange) core.TextRange {
 // NodeFlagsVibeLang. body is the range of the braces.
 func (p *Parser) vibelangSchemaFields(members []*ast.Node, body core.TextRange) *ast.Node {
 	properties := p.vibelangSchemaProperties(members)
+	for i, member := range members {
+		if ast.IsPropertySignatureDeclaration(member) && member.Name() != nil && member.Type() != nil &&
+			ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && !schemaWrittenReadonly(member) {
+			// Only a written readonly belongs in a normal schema mapping.
+			// Keep schema-error payload defaults in vibelangSchemaProperties.
+			property := properties[i].AsPropertyAssignment()
+			property.Initializer = p.vibelangSchemaCall("mutableKey", member.Name().Loc, property.Initializer)
+			property.Initializer.Loc = core.NewTextRange(member.Name().Pos(), member.Type().End())
+			property.Initializer.Parent = properties[i]
+		}
+		if ast.IsPropertySignatureDeclaration(member) && member.Name() != nil && member.Type() != nil {
+			// Keep field comments before written modifiers with the property.
+			properties[i].Loc = core.NewTextRange(member.Pos(), properties[i].End())
+		}
+	}
 	brace := scanner.SkipTrivia(p.sourceText, body.Pos())
 	// The properties lie between the braces, as a parsed object literal's do:
 	// the printer writes the comments at the list's end before the closing
@@ -1460,4 +1475,17 @@ func (p *Parser) vibelangEntityExpression(name *ast.Node) *ast.Node {
 	}
 	qualified := name.AsQualifiedName()
 	return p.vibelangSpanning(p.factory.NewPropertyAccessExpression(p.vibelangEntityExpression(qualified.Left), nil /*questionDotToken*/, qualified.Right, ast.NodeFlagsNone), name.Loc)
+}
+
+// schemaWrittenReadonly excludes the historical readonly default on Vibe
+// type members. Both outer structs and nested object schemas use TS keys.
+func schemaWrittenReadonly(member *ast.Node) bool {
+	if modifiers := member.Modifiers(); modifiers != nil {
+		for _, modifier := range modifiers.Nodes {
+			if modifier.Kind == ast.KindReadonlyKeyword && modifier.Flags&ast.NodeFlagsReparsed == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

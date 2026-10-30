@@ -4,8 +4,8 @@ schema Run = () => void
 // EK2109: Date is a class, not a schema.
 schema When = Date
 // EK2109: a generic type other than an array or a record.
-schema Parts = Partial<{ a: string }>
+schema Parts = Partial<{ readonly a: string }>
 // EK2109: one member of a union.
 schema Mixed = string | (() => void)
 // EK2109: a field of an object type, which schemas.go checks.
-schema Event = { at: number; run(): void }
+schema Event = { readonly at: number; run(): void }

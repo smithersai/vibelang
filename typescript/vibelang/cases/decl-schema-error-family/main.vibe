@@ -34,7 +34,7 @@ export abstract schema error Quota { limit: number }
 export schema error OverQuota extends Quota { used: number }
 
 /** A schema built from the base before a subclass is declared lists it too. */
-schema Envelope { id: string; error: StoreError }
+schema Envelope { readonly id: string; readonly error: StoreError }
 
 export schema error Late extends StoreError
 

@@ -174,6 +174,8 @@ For `EK0704`, replace an ordinary-class extractor with its bare class test or th
 
 Generic `data` emits `$Name$Definition` and first-free `$2`, `$3`, … helper names. Keep an existing imported helper type binding or re-exported name when updating its target; use the compiler quick fix for named, namespace, and `import(...)` type references. Automatic migration edits owned VibeLang sources only (VIP-34); native TypeScript consumers remain unchanged and need an explicit helper-import update. Do not rename a user-declared helper interface merely because its name ends in `Definition`.
 
+VIP-15 key mutability upgrade: a normal schema field without `readonly` maps to `Schema.mutableKey`; this includes object types nested in schema aliases and schema-error payloads. Direct schema-error payload keys keep their readonly default. For an older program, run `vibelang -p tsconfig.json --fix --fix-migration-only` to retain old readonly keys. References carrying mutable or uncertain key flags require a preserving explicit-codec expansion, not an added wrapper or an inadmissible `readonly` source field. Retain exact declarations, field-codec identity, Exits/Causes, constructors/matchers and getter order. Apply the key upgrade before an expansion consumes the schema declaration.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

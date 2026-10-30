@@ -1,0 +1,12 @@
+"use client";
+export const events: string[]=[]
+const codecs={get number():typeof Schema.Number{events.push("number");return Schema.Number}}
+export const Mutable=Schema.mutableKey(Schema.Number)
+export schema Legacy {value:codecs.number;maybe?:string;nested:{count:number};readonly list:readonly number[]}
+export schema Ref {value:Mutable;count:number}
+export schema Alias=ReadonlyArray<{value:number;maybe?:string}>
+export namespace N {const Schema=1;export schema Scoped {value:Mutable;count:number}}
+export schema error Root {nested:{value:Mutable;count:number};get label():string{return "kept"}}
+export function make():infer _ {return new Root({nested:{value:7,count:1}})}
+export function matches(value:unknown):boolean{return value is Root}
+export const sameCodec=Ref.fields.value===Mutable

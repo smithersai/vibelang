@@ -1,0 +1,7 @@
+schema State { value: number; note?: string; nested: { active: boolean }; readonly items: readonly number[]; locked: readonly number[] }
+const state: State = { value: 1, nested: { active: false }, items: [1], locked: [1] }
+state.value = 2
+state.note = "ok"
+state.nested.active = true
+state.locked = [3]
+export const result = [state.value, state.note, state.nested.active, state.items, state.locked]

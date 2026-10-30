@@ -9,7 +9,7 @@ import { Boxed, NotFound, Timeout } from "./errors.vibe"
 class Renamed extends Data.TaggedError("app/Renamed")<{ readonly id: string }> {}
 class Untagged extends Data.Error<{ readonly id: string }> {}
 schema error SchemaFail {
-  id: string
+  readonly id: string
 }
 
 effect function find(id: string): never!(NotFound | Timeout) {

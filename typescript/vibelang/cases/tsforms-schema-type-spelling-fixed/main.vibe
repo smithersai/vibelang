@@ -1,6 +1,6 @@
 // Without declaration output nothing prints the alias, so EK4832 still offers
 // the schema declaration.
-export schema Token { id: string }
+export schema Token { readonly id: string }
 
 // Appendix B: EK4832 — spec-rule: docs/design/src/900-appendices.md#84ad230838705145
 

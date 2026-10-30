@@ -155,9 +155,9 @@ export service Prefix: string
  * @since 0.0.2
  */
 export schema Account {
-  id: string
-  nickname?: string
-  role: "admin" | "member"
+  readonly id: string
+  readonly nickname?: string
+  readonly role: "admin" | "member"
   mutable tags: ReadonlyArray<string>
 }
 

@@ -1,0 +1,25 @@
+"use client";
+const $Schema451 = Schema;
+
+export const events: string[]=[]
+const codecs={get number():typeof Schema.Number{events.push("number");return Schema.Number}}
+export const Mutable=Schema.mutableKey(Schema.Number)
+export schema Legacy {readonly value:codecs.number;readonly maybe?:string;readonly nested:{readonly count:number};readonly list:readonly number[]}
+export const Ref = Schema.Struct({
+    value: Mutable, count: Schema.Number
+});
+export type Ref = typeof Ref.Type;
+export schema Alias=ReadonlyArray<{readonly value:number;readonly maybe?:string}>
+export namespace N {const Schema=1;export const Scoped = $Schema451.Struct({
+    value: Mutable, count: $Schema451.Number
+});
+export type Scoped = typeof Scoped.Type;}
+const $makeCodec502_0 = (): infer _ => Schema.Struct({
+    value: Mutable, count: Schema.Number
+});
+const $codecs502 = { get $codec502_0() { return $makeCodec502_0(); } };
+
+export schema error Root {nested:$codecs502.$codec502_0;get label():string{return "kept"}}
+export function make():infer _ {return new Root({nested:{value:7,count:1}})}
+export function matches(value:unknown):boolean{return value is Root}
+export const sameCodec=Ref.fields.value===Mutable

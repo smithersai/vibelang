@@ -23,4 +23,4 @@ control Ask {
   ask(): number!!
 }
 
-schema Item { sku: string, available: number }
+schema Item { readonly sku: string, readonly available: number }

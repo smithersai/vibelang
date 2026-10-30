@@ -1,4 +1,4 @@
-export schema Todo { id: number; title: string; done: boolean }
+export schema Todo { readonly id: number; readonly title: string; readonly done: boolean }
 
 export error TodoNotFound { id: number }
 

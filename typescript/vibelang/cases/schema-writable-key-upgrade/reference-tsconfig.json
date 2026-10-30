@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "ESNext", "module": "NodeNext", "strict": true, "skipLibCheck": false, "types": [], "declaration": true, "outDir": "out", "noEmit": true}, "include": ["reference.ts"]}

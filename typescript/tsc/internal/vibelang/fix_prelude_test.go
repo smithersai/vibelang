@@ -146,12 +146,12 @@ export class Renamed extends Schema.TaggedError<Renamed>()("Other", {}) {}
 	want := `import * as Schema from "effect/Schema"
 
 export schema error Plain {
-  message: string
+  readonly message: string
 }
 
 const FailedCauseField = Schema.Defect()
 export schema error Failed {
-  reason: string
+  readonly reason: string
   cause?: FailedCauseField
   override get message(): string {
     return this.reason
@@ -365,7 +365,7 @@ func TestFixLeavesDeclarationBytesAroundImportComments(t *testing.T) {
 func TestFixSchemaErrorImports(t *testing.T) {
 	plain := "import * as Schema from \"effect/Schema\"\n\nexport class Plain extends Schema.TaggedError<Plain>()(\"Plain\", {\n  message: Schema.String,\n}) {}\n"
 	alias := "import { Schema as EffectSchema } from \"effect\"\n\nexport class Plain extends EffectSchema.TaggedError<Plain>()(\"Plain\", {\n  message: EffectSchema.String,\n}) {}\n"
-	declared := "export schema error Plain {\n  message: string\n}\n"
+	declared := "export schema error Plain {\n  readonly message: string\n}\n"
 	for _, tc := range []struct {
 		name, source, options, want string
 	}{

@@ -2,7 +2,7 @@
 // A property name in a hatch's destructuring pattern names the property it
 // reads, not a binding, so a same-named value outside the hatch is no capture
 // (D229).
-schema Item { kind: string; extra?: string }
+schema Item { readonly kind: string; readonly extra?: string }
 
 export effect function main() {
   const extra = "outside"

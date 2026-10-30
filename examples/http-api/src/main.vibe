@@ -1,7 +1,7 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { NodeHttpServer } from "@effect/platform-node"
 
-export schema CreateUser { name: string }
+export schema CreateUser { readonly name: string }
 export error NameTaken { name: string }
 
 export service Users {

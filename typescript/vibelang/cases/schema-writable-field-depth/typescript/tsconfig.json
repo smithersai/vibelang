@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "ESNext", "module": "NodeNext", "moduleResolution": "NodeNext", "strict": true, "skipLibCheck": false, "declaration": true, "outDir": "out", "types": []}, "include": ["main.ts"]}

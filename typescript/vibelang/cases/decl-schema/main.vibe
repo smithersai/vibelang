@@ -1,20 +1,20 @@
 // expect-result: {"a":{"id":"1","name":"Ada","role":"admin","tags":["x"],"home":{"city":"Paris"},"score":[1,"a"],"counts":{"a":1},"verified":null,"login":{"at":3}},"b":"invalid","c":true}
 export schema Address {
-  city: string
-  zip?: string
+  readonly city: string
+  readonly zip?: string
 }
 
 export schema User {
-  id: string
-  name: string
-  nickname?: string
-  role: "admin" | "member"
-  tags: ReadonlyArray<string>
-  home: Address
-  score: readonly [number, string]
-  counts: Record<string, number>
-  verified: boolean | null
-  login: { at: number }
+  readonly id: string
+  readonly name: string
+  readonly nickname?: string
+  readonly role: "admin" | "member"
+  readonly tags: ReadonlyArray<string>
+  readonly home: Address
+  readonly score: readonly [number, string]
+  readonly counts: Record<string, number>
+  readonly verified: boolean | null
+  readonly login: { readonly at: number }
 }
 
 effect function decode(input: unknown) {

@@ -5,10 +5,10 @@ import * as Schema from "effect/Schema"
 
 // alchemy: the trace a span carries.
 /** The trace a span carries. */
-export schema TraceJson { traceId: string }
+export schema TraceJson { readonly traceId: string }
 
 // t3code: a user profile.
-export schema Profile { name: string }
+export schema Profile { readonly name: string }
 
 export schema Code = "root_missing" | "read_failed"
 

@@ -1,4 +1,4 @@
-export schema Product { sku: string; name: string; cents: number; stock: number }
+export schema Product { readonly sku: string; readonly name: string; readonly cents: number; readonly stock: number }
 
 export error OutOfStock { sku: string; available: number }
 

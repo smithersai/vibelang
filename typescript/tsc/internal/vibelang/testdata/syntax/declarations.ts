@@ -10,5 +10,5 @@ abstract class Ask extends Control {
 }
 type Ticket = typeof Ticket.Type;
 const Ticket = Schema.Struct({
-    id: Schema.String, count: Schema.Number,
+    id: Schema.mutableKey(Schema.String), count: Schema.mutableKey(Schema.Number),
 });

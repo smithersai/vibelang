@@ -224,3 +224,5 @@ Guards and assertions check the decoded type: a numeric `pieces` is valid, a str
 `Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and its quick fix writes the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
 [Upstream page](https://effect.website/docs/v4/schema/getting-started)
+
+For older programs that relied on an implicit readonly schema key, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The upgrade makes the old readonly keys explicit. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.

@@ -8,11 +8,11 @@
 const dynamic: string = "dynamic"
 const prefix = "pre"
 schema Keyed {
-  [dynamic]: number
-  [prefix + "fix"]: string
-  [String("called")]: number
-  [("paren")]: boolean
-  plain: number
+  readonly [dynamic]: number
+  readonly [prefix + "fix"]: string
+  readonly [String("called")]: number
+  readonly [("paren")]: boolean
+  readonly plain: number
 }
 export const keys = Object.keys(Keyed.fields).sort()
 export const plain: number = Schema.decodeUnknownSync(Keyed)({ dynamic: 1, prefix: "p", called: 3, paren: true, plain: 2 }).plain

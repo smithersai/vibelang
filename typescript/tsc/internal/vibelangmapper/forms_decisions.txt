@@ -4780,6 +4780,7 @@ typescript/vibelang/cases/schema-required-field-reference-upgrade/main.vibe:14:2
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:10:21 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:14:9 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:21:9 lambda effectFn annotation
+typescript/vibelang/cases/schema-writable-key-upgrade/main.vibe:17:25 lambda plain annotation
 typescript/vibelang/cases/scopes-callback.fail/main.vibe:10:18 lambda plain protocol
 typescript/vibelang/cases/scopes-callback.fail/main.vibe:14:18 lambda plain table
 typescript/vibelang/cases/scopes-callback.fail/main.vibe:21:18 lambda plain table

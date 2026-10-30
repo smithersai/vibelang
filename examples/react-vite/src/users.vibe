@@ -1,4 +1,4 @@
-export schema User { id: string; name: string }
+export schema User { readonly id: string; readonly name: string }
 
 export error UserNotFound { id: string }
 
