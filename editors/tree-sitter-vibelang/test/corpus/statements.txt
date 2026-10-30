@@ -168,15 +168,13 @@ function auto(version: string) {
                 arguments: (arguments)))))))))
 
 ================================================================================
-Typed catch clauses and finally with the exit
+A TypeScript catch annotation and finally with the exit
 ================================================================================
 
 function tracked() {
   try {
     return getUser("1")
-  } catch (e: NotFound) {
-    return "missing"
-  } catch (cause: Cause) {
+  } catch (e: unknown) {
     return "failed"
   } finally (exit) {
     log(`lookup ${exit._tag}`)
@@ -201,15 +199,7 @@ function tracked() {
         handler: (catch_clause
           parameter: (identifier)
           type: (type_annotation
-            (type_identifier))
-          body: (statement_block
-            (return_statement
-              (string
-                (string_fragment)))))
-        handler: (catch_clause
-          parameter: (identifier)
-          type: (type_annotation
-            (type_identifier))
+            (predefined_type))
           body: (statement_block
             (return_statement
               (string

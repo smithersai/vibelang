@@ -944,6 +944,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Typed ESLint programs required `tsconfig.json` even when a project used `vibe.config.json` or `jsconfig.json`; `typedProgram()` now discovers the nearest project in the same order as the compiler and still honors an explicit `project`.
 
+- The editor parser accepted repeated statement `catch` clauses; it now marks them as invalid syntax while preserving TypeScript's `any` and `unknown` catch annotations.
+
 - `vibelang --fix` left some arrows with Effect return annotations unmarked, so they lost their Effect behavior when only the `effect` keyword decided their form. It now marks these arrows `effect`, including arrows whose bodies qualify for direct-call optimization.
 
 - Concurrent arrays could not use the documented concurrency spellings; they now run with `try.all`, `try.race`, `try.any` and `try.allSettled`; settled outcomes include defects and interruption as `Exit` values.

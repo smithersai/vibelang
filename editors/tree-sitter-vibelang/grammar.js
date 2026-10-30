@@ -313,12 +313,12 @@ const VibeLang = grammar(TypeScript, {
 
     // try { ... } handle Approval.approve(request) { ... } catch (e) { ... }
     // finally (exit) { ... } (D132, D176, D178): handle clauses, then catch
-    // clauses, typed or not, then finally.
+    // clause, then finally.
     try_statement: $ => seq(
       'try',
       field('body', $.statement_block),
       repeat(field('handler', $.handle_clause)),
-      repeat(field('handler', $.catch_clause)),
+      optional(field('handler', $.catch_clause)),
       optional(field('finalizer', $.finally_clause)),
     ),
 

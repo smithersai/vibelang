@@ -1793,15 +1793,20 @@
           }
         },
         {
-          "type": "REPEAT",
-          "content": {
-            "type": "FIELD",
-            "name": "handler",
-            "content": {
-              "type": "SYMBOL",
-              "name": "catch_clause"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "handler",
+              "content": {
+                "type": "SYMBOL",
+                "name": "catch_clause"
+              }
+            },
+            {
+              "type": "BLANK"
             }
-          }
+          ]
         },
         {
           "type": "CHOICE",

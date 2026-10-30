@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "generate": "tree-sitter generate --abi 14",
-    "test": "node scripts/check-generated.mjs && tree-sitter test && node scripts/corpus.mjs && node scripts/property-regressions.mjs && node --test test/grammar.property.test.mjs"
+    "test": "node scripts/check-generated.mjs && tree-sitter test && node --test test/catch-grammar.test.mjs && node scripts/corpus.mjs && node scripts/property-regressions.mjs && node --test test/grammar.property.test.mjs"
   },
   "devDependencies": {
     "tree-sitter-cli": "0.27.1",
