@@ -942,14 +942,18 @@ try {
     assert(location.range.start.line === lineOf("src/declarations.vibe", "approve(request: string)"), `line ${location.range.start.line}`)
   })
 
-  await check("hover: a schema declaration's interface types a field by its schema", async () => {
+  await check("hover: a schema field shows its decoded type", async () => {
     const shown = await hover("src/declarations.vibe", "tier\n")
     assert(shown.includes('tier: "free" | "pro"'), `got ${JSON.stringify(shown)}`)
   })
 
   await check("hover: a schema declaration's name is its decoded type", async () => {
     const shown = await hover("src/declarations.vibe", "Profile) {")
-    assert(shown.includes("interface Profile"), `got ${JSON.stringify(shown)}`)
+    // VIP-15 declares `type User = typeof User.Type` for the decoded type.
+    assert(shown.includes("type Profile = {"), `got ${JSON.stringify(shown)}`)
+    for (const member of ["name: string", 'tier: "free" | "pro"', "home:"]) {
+      assert(shown.includes(member), `decoded type lacks ${member}: ${JSON.stringify(shown)}`)
+    }
   })
 
   await check("definition: a schema field that names another schema goes to its declaration", async () => {
