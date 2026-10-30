@@ -1,12 +1,12 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
 import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
-import { makeConfig, nextStep, paths } from "../lib/steps.mjs"
+import { formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
 import { parseTokenCounts } from "../lib/tokens.mjs"
 import { repairPrompt } from "../lib/repair.mjs"
 
@@ -128,5 +128,28 @@ test("the repair prompt carries the context, the diagnostics, the checks and the
   assert.ok(prompt.startsWith("# Context\n"))
   for (const part of ["- pkg/src/a.vibe: EK4830 ×1", "EK4835 not fixed", "- pkg/src/a.vibe:8:2 error EK1002: Effect.gen expects\n  Write the body", "pkg/src/b.ts:1:1 error TS2305", '"kind":"codemod-gap","batch":"01"', "node step.mjs revert --run /run", "node step.mjs repair --run /run --batch 01 --done"]) {
     assert.ok(prompt.includes(part), `the prompt lacks ${part}`)
+  }
+})
+
+test("formatVibe runs the package's vibelang-format on the .vibe files that exist, and nothing else", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-format-"))
+  try {
+    const recorded = join(root, "formatted.txt")
+    mkdirSync(join(root, "packages/core/node_modules/.bin"), { recursive: true })
+    mkdirSync(join(root, "packages/core/src"), { recursive: true })
+    writeFileSync(join(root, "packages/core/src/a.vibe"), "export const a = 1\n")
+    writeFileSync(join(root, "packages/core/src/b.ts"), "export const b = 2\n")
+    const tool = join(root, "packages/core/node_modules/.bin/vibelang-format")
+    writeFileSync(tool, `#!/bin/sh\necho "$@" >> ${recorded}\n`, { mode: 0o755 })
+    const config = { target: root, packages: [{ dir: "packages/core" }] }
+    assert.deepEqual(await formatVibe(config, ["packages/core/src/a.vibe", "packages/core/src/b.ts", "packages/core/src/gone.vibe"]), { files: ["packages/core/src/a.vibe"], code: 0 })
+    assert.equal(readFileSync(recorded, "utf8"), "--write packages/core/src/a.vibe\n")
+    assert.deepEqual(await formatVibe(config, ["packages/core/src/b.ts"]), { files: [], code: 0 })
+    writeFileSync(tool, "#!/bin/sh\nexit 3\n", { mode: 0o755 })
+    assert.deepEqual(await formatVibe(config, ["packages/core/src/a.vibe"]), { files: ["packages/core/src/a.vibe"], code: 3 })
+    rmSync(tool)
+    assert.deepEqual(await formatVibe(config, ["packages/core/src/a.vibe"]), { files: [], code: 127 })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
   }
 })

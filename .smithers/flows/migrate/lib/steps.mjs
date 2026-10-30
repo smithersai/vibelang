@@ -164,6 +164,22 @@ async function formatWritten(t, files, log) {
   return { formatter: formatter.join(" "), files: targets, code }
 }
 
+/**
+ * Formats the .vibe files a batch wrote with vibelang-format, the formatter a
+ * target's format check runs on them, which neither `vibelang --fix` nor the
+ * repository's own formatter does. A formatter that fails leaves the files as
+ * written and returns its exit code.
+ */
+export async function formatVibe(config, files, log) {
+  const t = config.target
+  const targets = files.filter((file) => file.endsWith(".vibe") && existsSync(join(t, file)))
+  if (!targets.length) return { files: [], code: 0 }
+  const tool = [".", ...config.packages.map((pkg) => pkg.dir)].map((dir) => join(t, dir, "node_modules/.bin/vibelang-format")).find((path) => existsSync(path))
+  if (!tool) return { files: [], code: 127 }
+  const { code } = await sh([tool, "--write", ...targets].map(quote).join(" "), { cwd: t, log })
+  return { files: targets, code }
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -630,11 +646,13 @@ export async function record(options) {
     `Verify: ${verified?.ok ? "tests, declarations and style pass" : `forced: ${options.force}`}.`
   ]
   // The batch's other files, such as a test or config the repair edited, are in the repository's own format.
-  const formatted = await formatWritten(t, (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path), join(p.batch(b), "logs", "format.log"))
+  const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
+  const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
+  const vibeFormatted = await formatVibe(config, written, join(p.batch(b), "logs", "format-vibe.log"))
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, forced: verified?.ok ? null : options.force }
+  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, forced: verified?.ok ? null : options.force }
   writeJson(p.record(b), result)
   return result
 }
