@@ -1,0 +1,6 @@
+// expect: EK4402
+import { type Stats } from "node:fs"
+import { type Stats as BareStats } from "fs"
+import {} from "node:path"
+import type { Stats as Whole } from "node:fs"
+export type Seen = Stats | BareStats | Whole

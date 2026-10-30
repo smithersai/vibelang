@@ -1171,6 +1171,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Literal `data:` and `blob:` imports could load string-supplied code from `.vibe` files; they now report `EK0107`, including URL-equivalent scheme spellings and imports inside Effect wrappers.
 
+- Inline type-only and empty Node imports could retain runtime module loads under `verbatimModuleSyntax`; they now report `EK4402`, and the type-binding fix writes an erased `import type` clause.
+
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
 

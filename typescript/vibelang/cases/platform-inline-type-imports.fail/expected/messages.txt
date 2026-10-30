@@ -1,0 +1,2 @@
+This import keeps a runtime load of node:fs; write import type for type bindings, or move the import to a .ts file.
+This import has no type bindings to rewrite; move the runtime dependency to a .ts file.
