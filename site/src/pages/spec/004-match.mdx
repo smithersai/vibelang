@@ -552,7 +552,7 @@ function bit(b: boolean) {
 }
 ```
 
-`async match` is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. As in TC39's `async do`, whose grammar is `Block[~Yield, +Await, ~Return]`, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
+`async match` is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7

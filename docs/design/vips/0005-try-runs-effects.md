@@ -63,6 +63,8 @@ effect function load(id) {
 
 - **Clarified 2026-10-30: warning repairs keep the source callable's context.** The `await fiber` and `await deferred` amendments above preserve native `await` behavior. In an ordinary `async` function, the explicit-bridge rule of VIP-1 and this VIP gives `await runPromise(Fiber.join(fiber))` and `await runPromise(Deferred.await(deferred))` when the author wants the completion value. Their Effect-body forms, `join fiber` and `try Deferred.await(deferred)`, are outside-effect errors in that `async` body. This corrects the repair wording, not warning severity or execution: reporting a warning does not start either value, and a repair does not silently change the enclosing function's kind.
 
+- **Amended 2026-10-30: return values stay unflattened.** An `effect` function returns its body value as `Effect.gen` success data. A returned inner Effect stays unrun: `return e` keeps it, while `return try e` runs it and returns its success. A successful `try` and a plain `catch` handler result likewise keep their immediate value as data, without recursive execution or thenable assimilation. An `async` return instead assimilates its returned Promise or thenable. This records the existing VIP-1 counterpart rather than adding implicit execution.
+
 ## Prior art
 
 - Zig's `try` and `catch`.
@@ -94,3 +96,4 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 ## Later VIPs
 
 - `for await` over a Stream, and `await.all` / `await.race`, need new spellings. They are decided in their own VIPs.
+

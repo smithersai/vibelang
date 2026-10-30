@@ -257,7 +257,7 @@ const observed = await Effect.runPromiseExit(Effect.promise(async () => [
 | a nested plain function | SyntaxError | error |
 | the module top level | allowed | error: the top level is not effect code, and nothing runs an Effect implicitly (VIP-26). Write `await runPromise(e)` |
 
-The other constructs follow the Promise they mirror: `effect { }` is `async do { }`, `fork e` is starting a Promise without awaiting it, `e catch h` is `.catch(h)`, and a failure is a rejection. They differ where an Effect isn't a Promise:
+The other constructs follow the Promise they mirror: `effect { }` builds a cold Effect much as `(async () => { })()` constructs a Promise, `fork e` is starting a Promise without awaiting it, `e catch h` is `.catch(h)`, and a failure is a rejection. They differ where an Effect isn't a Promise:
 
 | Promise | Effect | Why |
 | --- | --- | --- |
@@ -266,8 +266,8 @@ The other constructs follow the Promise they mirror: `effect { }` is `async do {
 | A thrown error and a rejection are one channel, and `.catch` sees both | A failure and a defect are two channels, and `catch` sees failures only | Effect's typed error channel |
 | A Promise starts when it is created and runs once | An Effect is cold, and each `try e` runs it again | An Effect is a value (VIP-1) |
 | `await v` adopts a Promise or gives a non-Promise `v` | `try v` with `v: any` uses native delegation: a noniterable defects with `TypeError`; an unchecked iterable may complete normally | `try` is `yield* v`, with no dynamic Effect guard |
+| An `async` `return p` [assimilates](https://262.ecma-international.org/16.0/#sec-promise-resolve-functions) a returned Promise or thenable | An `effect` `return e` keeps `e` as its success value, including an inner Effect left unrun; write `return try e` to run it | `Effect.gen` returns its value without flattening it (VIP-1/VIP-5) |
 | Nothing cancels a Promise | Interruption ends a fiber: the generator is abandoned and Effect's finalizers run | Promises have no counterpart |
-| `async do { return 1 }` is a syntax error | `effect { return 1 }` ends the block's Effect | The block is `(effect () => { … })()` (VIP-2) |
 | A function's body starts at the call | A forked fiber starts later, and a child that never got a step is interrupted when its parent ends | Fibers are scheduled and owned |
 
 
@@ -314,6 +314,28 @@ async function promiseOrder() {
 // ["after completed", "child", "after yield"]; promiseOrder resolves to
 // ["child", "after completed", "after yield"]. This is no global scheduling guarantee.
 ```
+
+Within the Effect, a successful `try` gives the immediate success value unchanged: it neither recursively runs an inner Effect nor assimilates a Promise or thenable stored in that value. An `effect` function's return and a plain `catch` handler's result use the same data rule. Explicit Promise runners retain native Promise resolution.
+
+The imported `returnEffectInGen` lint reports returned Effects in generators under its [imported lint code](900-appendices.md#imported-lint-codes); its configured severity does not change the returned value.
+
+```vibe es
+// compiler-gap: pending VIP-1
+effect function boxedReturn(inner: Effect.Effect<number>) { return inner }
+effect function unboxedReturn(inner: Effect.Effect<number>) { return try inner }
+```
+
+```ts effect
+import { Effect } from "effect"
+function boxedReturn(inner: Effect.Effect<number>) {
+  return Effect.gen(function* () { return inner })
+}
+function unboxedReturn(inner: Effect.Effect<number>) {
+  return Effect.gen(function* () { return yield* inner })
+}
+```
+
+For `inner = succeed(7)`, running `boxedReturn(inner)` gives `Success(inner)`, with the inner Effect unrun; running `unboxedReturn(inner)` gives `Success(7)`.
 
 ## `effect` blocks
 
