@@ -1,6 +1,6 @@
 ## Essentials
 
-`effect` goes where `async` goes and returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect<A, E, R>`; empty slots: `never`.
+`effect` goes where `async` goes and returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect.Effect<A, E, R>`; empty slots: `never`.
 
 ```vibe
 // pending: VIP-1, VIP-6, VIP-9, VIP-13

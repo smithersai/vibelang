@@ -6,7 +6,7 @@ Read `node_modules/vibelang/skills/vibelang/SKILL.md` before .vibe edits.
 
 ## Essentials
 
-`effect` goes where `async` goes and returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect<A, E, R>`; empty slots: `never`.
+`effect` goes where `async` goes and returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect.Effect<A, E, R>`; empty slots: `never`.
 
 ```vibe
 // pending: VIP-1, VIP-6, VIP-9, VIP-13
@@ -32,4 +32,4 @@ export effect function names(ids: ReadonlyArray<string>) {
 - Resources: `try scoped(effect { const h = try acquireRelease(open(), close); … })`.
 - Tests: `it.effect("name", () => effect { … })` uses a test clock: `try TestClock.adjust("1 second")`. `it.live` uses real time. Assert.
 
-<!-- 585 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->
+<!-- 587 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->
