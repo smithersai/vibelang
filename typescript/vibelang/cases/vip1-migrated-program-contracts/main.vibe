@@ -1,0 +1,20 @@
+// expect-result: [0,1,2,true,7,2,1]
+// The VIP migration output for an annotated named program literal and a
+// captured function value: the literal keeps its identity, its defaults run
+// on each run, the helper import avoids an escaped `$effectPrograms`, and the
+// captured function is the one assigned when the program was built.
+import * as $effectPrograms$1 from "effect/Effect"
+import { Effect } from "effect"
+const $effectPrograms = 7
+let runs = 0
+const seen: unknown[] = []
+const program: number!! = $effectPrograms$1.suspend(effect function self(n = ++runs): number!! { seen.push(self); return n })
+let job: () => number!! = effect () => 1
+const captured: number!! = Effect.retry($effectPrograms$1.suspend(job), { times: 1 })
+job = effect () => 2
+export effect function main() {
+  const before = runs
+  const first = try program
+  const second = try program
+  return [before, first, second, seen[0] === seen[1], $effectPrograms, runs, try captured]
+}

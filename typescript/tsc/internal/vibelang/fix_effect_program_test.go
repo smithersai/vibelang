@@ -11,6 +11,12 @@ export effect function main(job: () => number!!) { return try Effect.retry($effe
 		{"shorthand program", `export effect function main(job: () => number!!) { const service: { job: number!! } = { job }; return try service.job() }`, `import * as $effectPrograms from "effect/Effect"
 export effect function main(job: () => number!!) { const service: { job: number!! } = { job: $effectPrograms.suspend(job) }; return try service.job() }`},
 		{"effect pipe result", `export effect function main() { return try Effect.orDie(Effect.succeed(Exit.succeed(9)) |> Effect.tap(%, effect () => try Effect.sleep("1 millis"))) }`, `export effect function main() { return try Effect.orDie(Effect.succeed(Exit.succeed(9)) |> Effect.tap(%, effect () => try Effect.sleep("1 millis"))) }`},
+		{"named literal and escaped helper name", `const \u0024effectPrograms = 7
+let runs = 0
+export const program: number!! = function self(n = ++runs): number!! { return n + \u0024effectPrograms }`, `import * as $effectPrograms$1 from "effect/Effect"
+const \u0024effectPrograms = 7
+let runs = 0
+export const program: number!! = $effectPrograms$1.suspend(effect function self(n = ++runs): number!! { return n + \u0024effectPrograms })`},
 		{"fork callback", `export function main() { const f = fork { try yieldNow(); return 1 }; return join f }`, `export effect function main() { const f = fork effect { try yieldNow(); return 1 }; return join f }`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

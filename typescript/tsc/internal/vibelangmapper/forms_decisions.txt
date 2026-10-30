@@ -3420,6 +3420,10 @@ typescript/vibelang/cases/vip1-effect-functions/main.vibe:24:3 lambda dual fallb
 typescript/vibelang/cases/vip1-effect-functions/main.vibe:28:17 lambda program table
 typescript/vibelang/cases/vip1-effect-functions/main.vibe:33:33 lambda effectFn table
 typescript/vibelang/cases/vip1-effect-functions/main.vibe:37:15 lambda plain fallback
+typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:11:53 lambda effectFn table
+typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:12:27 lambda effectFn annotation
+typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:13:41 byname program table
+typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:14:7 lambda plain fallback
 typescript/vibelang/cases/vip5-try-runs/main.vibe:22:13 lambda effectFn table
 typescript/vibelang/cases/vip5-try-runs/main.vibe:22:35 lambda effectFn table
 typescript/vibelang/cases/vip5-try-runs/main.vibe:23:29 lambda program annotation
