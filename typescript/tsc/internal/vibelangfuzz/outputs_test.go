@@ -33,6 +33,26 @@ const load = () => import("./d.ts");
 }
 
 // Chapter 27 and D34 require requested outputs even when the source is .ts.
+// Detail 72: a declaration file's module augmentation names the output, as
+// its imports do. No declaration sits beside ./x.vibe once it ships, so
+// TypeScript reports TS2664 or, under skipLibCheck, drops the augmentation.
+func TestOutputsAugmentationName(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"declare module \"./user.vibe\" {\n}\nexport {};\n", true},
+		{"declare module \"./user.js\" {\n}\nexport {};\n", false},
+		{"declare module \"pkg.vibe\" {\n}\nexport {};\n", false},
+	} {
+		g := &Gaps{}
+		(&OutputChecker{G: g}).checkDeclarationText(nil, "main.d.ts", tc.text, nil)
+		if got := g.Any(); got != tc.want {
+			t.Errorf("%q: gap %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}
+
 func TestOutputsRequiredFiles(t *testing.T) {
 	w := NewWorkspace(t)
 	project := Project{Files: map[string]string{

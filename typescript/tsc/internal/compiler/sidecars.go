@@ -30,7 +30,7 @@ func SidecarPath(fileName string) string {
 }
 
 var (
-	sidecarSpecifier = regexp.MustCompile(`(?m)((?:\bfrom|^import|\bimport\()\s*)(["'])(\.\.?/[^"'\n]*)(["'])`)
+	sidecarSpecifier = regexp.MustCompile(`(?m)((?:\bfrom|^import|\bimport\(|\brequire\(|\bdeclare module)\s*)(["'])(\.\.?/[^"'\n]*)(["'])`)
 	sidecarReference = regexp.MustCompile(`(?m)^(/// <reference path=)(["'])([^"']+)(["'])`)
 	sourceMapComment = regexp.MustCompile(`(?m)^//# sourceMappingURL=.*\n?`)
 )

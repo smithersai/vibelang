@@ -1870,6 +1870,10 @@ func (tx *DeclarationTransformer) transformModuleDeclaration(input *ast.ModuleDe
 		keyword = ast.KindNamespaceKeyword
 	}
 	attributes := tx.Visitor().Visit(input.Attributes)
+	name := input.Name()
+	if ast.IsExternalModuleAugmentation(input.AsNode()) {
+		name = tx.rewriteModuleSpecifier(input.AsNode(), name)
+	}
 
 	if inner != nil && inner.Kind == ast.KindModuleBlock {
 		oldNeedsScopeFix := tx.needsScopeFixMarker
@@ -1902,7 +1906,7 @@ func (tx *DeclarationTransformer) transformModuleDeclaration(input *ast.ModuleDe
 			input,
 			mods,
 			keyword,
-			input.Name(),
+			name,
 			attributes,
 			body,
 		)
@@ -1919,7 +1923,7 @@ func (tx *DeclarationTransformer) transformModuleDeclaration(input *ast.ModuleDe
 			input,
 			mods,
 			keyword,
-			input.Name(),
+			name,
 			attributes,
 			body,
 		)
@@ -1928,7 +1932,7 @@ func (tx *DeclarationTransformer) transformModuleDeclaration(input *ast.ModuleDe
 		input,
 		mods,
 		keyword,
-		input.Name(),
+		name,
 		attributes,
 		nil,
 	)

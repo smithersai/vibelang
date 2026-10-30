@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow failed declaration identity when `vibelang-format` reordered a named import, such as `{ ThreadId, type Ref }` to `{ type Ref, ThreadId }`; the gate now compares an import or export list in sorted order.
 
+- A module augmentation of a `.vibe` module, `declare module "./user.vibe"`, kept the source name in the emitted `.d.ts`, where no such module ships, so a consumer got `TS2664` or, under `skipLibCheck`, lost the augmentation; it now names `./user.js`. A declaration sidecar names `./user.vibe` in an augmentation and in `import x = require(...)`, so stock TypeScript finds the sidecar there too.
+
 - Repository validation could fail documentation-runner and site contrast tests on a busy host because healthy work hit a short deadline; a block now gets a minute, the contrast check ten, and only blocks that hang on purpose keep a short deadline.
 
 - Running `scripts/ci.sh` could modify a shared dependency install and fail another checkout's build; it now leaves every `node_modules` symlink intact and uses that install without writing through it.

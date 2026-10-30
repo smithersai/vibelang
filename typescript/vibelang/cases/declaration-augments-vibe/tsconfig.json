@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "declaration": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "types": [],
+    "outDir": "out"
+  },
+  "files": ["index.ts", "User.vibe"]
+}

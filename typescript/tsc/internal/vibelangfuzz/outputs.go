@@ -446,6 +446,13 @@ func (oc *OutputChecker) checkDeclarationText(c *Compilation, name, text string,
 			oc.G.Add("feature:d365-declaration", "D365: %s names %q, a source name, not its output", name, use.Specifier)
 		}
 	}
+	// Detail 72: an augmentation names its module the same way. ./x.vibe has
+	// no declaration beside the output, so the augmentation would be lost.
+	for _, statement := range file.Statements.Nodes {
+		if ast.IsModuleDeclaration(statement) && ast.IsStringLiteral(statement.Name()) && isRelative(statement.Name().Text()) && strings.HasSuffix(statement.Name().Text(), ".vibe") {
+			oc.G.Add("feature:declaration-augmentation-name", "detail 72: %s augments %q, a source name, not its output", name, statement.Name().Text())
+		}
+	}
 }
 
 // A SourceMap is a version 3 source map.
