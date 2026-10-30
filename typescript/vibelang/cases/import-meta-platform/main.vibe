@@ -1,0 +1,11 @@
+import { hostFilename } from "./host.js"
+export const checks = [
+  new URL(import.meta.url).protocol === "file:",
+  import.meta.url === (import.meta).url,
+  typeof hostFilename === "string",
+]
+export type Meta = ImportMeta
+export class Ordinary {
+  readonly name: string
+  constructor() { this.name = new.target.name }
+}

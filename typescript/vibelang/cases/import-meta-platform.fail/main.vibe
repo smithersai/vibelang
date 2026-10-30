@@ -1,0 +1,28 @@
+// expect: EK4402 TS2339
+declare global {
+  interface ImportMeta {
+    dirname: string
+    filename: string
+    main: boolean
+    env: Record<string, string>
+    resolve(specifier: string): string
+    extension: string
+  }
+}
+export const directory = import.meta.dirname
+export const filename = import.meta.filename
+export const main = import.meta.main
+export const env = import.meta.env
+export const resolve = import.meta.resolve
+export const extension = import.meta.extension
+export const alias = import.meta
+export const { url } = import.meta
+export const bracket = import.meta["url"]
+export const passed = ((meta: object): object => meta)(import.meta)
+export const spread = { ...import.meta }
+export const allowed = import.meta.url
+export const parenthesized = (import.meta).url
+export type Meta = ImportMeta
+export effect function wrapped() { return try Effect.sync(() => import.meta.dirname) }
+export const invalidUrlProperty = import.meta.url.notAProperty
+export { hostDirectory } from "./host.js"

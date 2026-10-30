@@ -2018,6 +2018,8 @@ typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:23:14 lamb
 typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:24:32 lambda plain table
 typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:32:27 lambda plain table
 typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:7:15 lambda factory annotation
+typescript/vibelang/cases/import-meta-platform.fail/main.vibe:21:24 lambda plain annotation
+typescript/vibelang/cases/import-meta-platform.fail/main.vibe:26:59 lambda plain table
 typescript/vibelang/cases/infer-deduplicated-channels/main.vibe:28:40 lambda effectFn service
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:22:17 lambda plain fallback
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:23:11 lambda dual fallback
