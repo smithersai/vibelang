@@ -182,6 +182,8 @@ effect function printAll(ids: ReadonlyArray<string>) {
 
 `for concurrent` runs its body for each item and ends when all finish; `for concurrent(8)` runs at most eight at once, and `for concurrent (...)` sets no limit. Whether an item gets its own fiber is `Effect.forEach`'s choice: a limit above 1 forks one fiber per item, and `for concurrent(1)` runs the items in order on the enclosing fiber. A failure interrupts the items still running and fails the loop. `continue` ends one item. A labeled `continue` targeting a loop outside `for concurrent` is an error (`EK1905`); use an unlabeled `continue` at the item level to end the current item. Labels on loops inside the item keep their ordinary meaning. Because the body runs in `Effect.forEach`'s callback, a `break` that would leave the loop (`EK1903`) and a `return` (`EK1904`) are errors; throw to stop every item. For results, use `forEach`.
 
+Line breaks and multiline comments may separate `concurrent` from its optional limit or loop head.
+
 The formatter preserves nested `try` expressions in the concurrency limit and iterable expression.
 
 ## Supervising child lifetimes

@@ -1,0 +1,15 @@
+// expect-result: [1,2,3,4,5,6,7,8]
+export effect function main() {
+  const seen: number[] = []
+  for concurrent
+    (const x of [1, 2]) { seen.push(x) }
+  for
+    concurrent // the limit can start on the next line
+    (1)
+    (const x of [3, 4]) { seen.push(x) }
+  for concurrent /* a comment
+    between tokens */ (const x of [5, 6]) { seen.push(x) }
+  for concurrent /* a comment
+    before the limit */ (1) (const x of [7, 8]) { seen.push(x) }
+  return seen
+}

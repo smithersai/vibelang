@@ -442,9 +442,9 @@ func isFunctionOrClassBoundary(node *ast.Node) bool {
 
 // isVibeLangConcurrentFor reports whether the current token, after for, starts
 // for concurrent: in a .vibe file, the identifier concurrent followed by (
-// on the same line, as await follows for in for await.
+// with ordinary token separation, as await follows for in for await.
 func (p *Parser) isVibeLangConcurrentFor() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "concurrent" && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenIsOpenParenOnSameLine)
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "concurrent" && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenIsOpenParen)
 }
 
 func (p *Parser) nextTokenIsOpenParenOnSameLine() bool {
