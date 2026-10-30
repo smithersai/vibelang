@@ -91,10 +91,12 @@ function watchBundle(bundler, root, env = {}) {
   // The failure message shows each build result, edit, and trace line in order.
   const history = []
   const log = (text) => history.push(`+${Date.now() - started}ms ${text}`)
-  createInterface({ input: child.stderr }).on("line", (line) => history.push(`  stderr: ${line}`))
+  const errors = createInterface({ input: child.stderr })
+  errors.on("line", (line) => history.push(`  stderr: ${line}`))
   const events = []
   let wake = () => {}
-  createInterface({ input: child.stdout }).on("line", (line) => {
+  const output = createInterface({ input: child.stdout })
+  output.on("line", (line) => {
     if (!line.startsWith("{")) return
     const event = JSON.parse(line)
     log(event.ok ? "build ok" : `build failed: ${event.message.split("\n")[0]}`)
@@ -111,7 +113,10 @@ function watchBundle(bundler, root, env = {}) {
           const event = events.shift()
           if (await check(event)) return event
         }
-        await new Promise((accept) => { wake = accept; setTimeout(accept, 250) })
+        await new Promise((accept) => {
+          const timer = setTimeout(accept, 250)
+          wake = () => { clearTimeout(timer); accept() }
+        })
       }
       assert.fail(`${bundler} --watch: no build ${what} within 60s\n${history.join("\n")}`)
     },
@@ -119,7 +124,7 @@ function watchBundle(bundler, root, env = {}) {
     // Stops the bundler and any compile it started before the fixture is removed.
     async close() {
       if (child.exitCode === null && child.signalCode === null) {
-        const exited = once(child, "exit")
+        const exited = once(child, "close")
         const parentOf = (pid) => Number(spawnSync("ps", ["-o", "ppid=", "-p", String(pid)], { encoding: "utf8" }).stdout?.trim())
         const stop = (pid, parent) => {
           if (parentOf(pid) !== parent) return
@@ -135,6 +140,10 @@ function watchBundle(bundler, root, env = {}) {
         stop(child.pid, process.pid)
         await exited
       }
+      output.close()
+      errors.close()
+      child.stdout.destroy()
+      child.stderr.destroy()
     }
   }
 }

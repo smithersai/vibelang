@@ -308,33 +308,77 @@ function cached({ project, root, compiler, cache, debug }, run) {
  * turn the cache off, or { directory } to move it.
  */
 export function projectBackend({ root, compiler, cache, debug = () => {} }) {
+  const children = new Set()
+  const pending = new Set()
+  let closed = false, closing
+
+  // Give a short compile time to finish, then terminate it, escalating if it
+  // ignores SIGTERM. Destroy the pipes too: an inherited writer can keep them
+  // open even after the compiler has exited.
+  function waitFor(work, ms) {
+    let timer
+    return Promise.race([work, new Promise(resolve => { timer = setTimeout(resolve, ms) })])
+      .finally(() => clearTimeout(timer))
+  }
+
+  function close() {
+    closed = true
+    return closing ??= (async () => {
+      const done = Promise.allSettled([...pending])
+      await waitFor(done, 500)
+      for (const child of children) child.kill("SIGTERM")
+      await waitFor(done, 500)
+      for (const child of children) {
+        child.kill("SIGKILL")
+        child.stdout.destroy()
+        child.stderr.destroy()
+      }
+      await done
+      // Node releases the ProcessWrap after invoking its close callbacks.
+      await new Promise(resolve => setImmediate(resolve))
+      await new Promise(resolve => setImmediate(resolve))
+    })()
+  }
   function run(args) {
     const [file, argv] = command(compiler, args)
     return new Promise((accept, reject) => {
-      let output = ""
+      let output = "", error
       const child = spawn(file, argv, { cwd: root, stdio: ["ignore", "pipe", "pipe"] })
+      children.add(child)
       child.stdout.on("data", (data) => { output += data })
       child.stderr.on("data", (data) => { output += data })
-      child.on("error", (error) => reject(new Error(`vibelang: ${error.message}\nCompiler: ${compiler}`)))
-      child.on("close", (status, signal) => accept({ status, signal, output }))
+      child.on("error", (value) => { error = value })
+      child.on("close", (status, signal) => {
+        children.delete(child)
+        if (error) reject(new Error(`vibelang: ${error.message}\nCompiler: ${compiler}`))
+        else if (signal && closed) reject(new Error(`vibelang: compiler exited with ${signal}\nCompiler: ${compiler}`))
+        else accept({ status, signal, output })
+      })
     })
   }
 
-  async function compile(project) {
-    return cached({ project, root, compiler, cache, debug }, async (stages) => {
-      // Outside the project: webpack and esbuild rebuild when a directory they resolved through changes.
-      const out = mkdtempSync(join(tmpdir(), "vibelang-project-"))
-      try {
-        const output = await stages.time("compiler", () => run(emitArgs(project, root, out)))
-        return stages.time("collect", () => collect(output, root, out))
-      } finally {
-        // Outputs are in memory now. The next compile starts from an empty directory.
-        rmSync(out, { recursive: true, force: true })
-      }
+  function compile(project) {
+    if (closed) return Promise.reject(new Error("vibelang: compiler backend is closed"))
+    const work = Promise.resolve().then(() => {
+      if (closed) throw new Error("vibelang: compiler backend is closed")
+      return cached({ project, root, compiler, cache, debug }, async (stages) => {
+        // Outside the project: webpack and esbuild rebuild when a directory they resolved through changes.
+        const out = mkdtempSync(join(tmpdir(), "vibelang-project-"))
+        try {
+          const output = await stages.time("compiler", () => run(emitArgs(project, root, out)))
+          return stages.time("collect", () => collect(output, root, out))
+        } finally {
+          // Outputs are in memory now. The next compile starts from an empty directory.
+          rmSync(out, { recursive: true, force: true })
+        }
+      })
     })
+    pending.add(work)
+    work.then(() => pending.delete(work), () => pending.delete(work))
+    return work
   }
 
-  return { compile }
+  return { compile, close }
 }
 
 /**
@@ -429,6 +473,7 @@ const failed = "throw new Error(\"vibelang: this module did not compile; see the
 export function projects({ root, project, compiler, cache, debug = () => {} }) {
   const states = new Map()
   let revision = 0
+  let closed = false, closing
 
   const projectOf = (file) => workspaceProject(resolve(file), root, project)
 
@@ -444,6 +489,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
 
   async function compiled(state) {
     while (state.compiled !== revision) {
+      if (closed) throw new Error("vibelang: projects are closed")
       if (!state.pending) {
         const started = revision
         // File mtimes retain fractional milliseconds. An integer Date.now()
@@ -475,11 +521,23 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
 
   return {
     projectOf,
+    /** Finishes or stops all compiles and releases their process and pipe handles. */
+    close() {
+      closed = true
+      return closing ??= (async () => {
+        await Promise.all([...states.values()].map(async state => {
+          await state.backend.close()
+          await Promise.allSettled([state.pending])
+        }))
+        states.clear()
+      })()
+    },
     /** Starts a new revision: every project compiles again on its next load. */
     invalidate() {
       revision++
     },
     async load(file) {
+      if (closed) throw new Error("vibelang: projects are closed")
       // Vite uses forward slashes on Windows; compiler output keys use native paths.
       file = resolve(file)
       const state = stateOf(projectOf(file))

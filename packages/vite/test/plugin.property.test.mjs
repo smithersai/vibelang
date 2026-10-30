@@ -125,7 +125,7 @@ async function hooks(root, input) {
           join(dirname(output.source), "importer.ts")), id)
       }
     }
-  } finally { plugin.closeBundle() }
+  } finally { await plugin.closeBundle() }
 }
 
 async function coldBuild(root, input, project, oracle) {
@@ -235,7 +235,7 @@ async function hotGraph(root, input) {
       plugin.configureVitest({ [method](generate) { key = generate } })
       for (const node of nodes) assert.equal(key({ id: node.file + input.query }), node.file.endsWith(".vibe") ? false : undefined)
     }
-  } finally { plugin.closeBundle() }
+  } finally { await plugin.closeBundle() }
 }
 
 function registerCase(root, input) {

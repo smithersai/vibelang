@@ -163,6 +163,13 @@ runs the native compiler the launcher would run, without starting Node for it. `
 `projects` take `cache: false` to turn the cache off, or `cache: { directory }`
 to move it.
 
+Await `close()` on the object returned by `projectBackend` or `projects` when
+the tool stops using it. It gives an active compile 500 ms to finish, sends
+`SIGTERM`, and after another 500 ms sends `SIGKILL` and closes its output
+pipes. It waits for the child and releases its handles before resolving.
+Repeated `close()` calls are safe; later `compile()` or `load()` calls on
+that object reject. Create a new backend for a later build.
+
 `projectImports({ project })` lists a project's module graph without
 type-checking it: `files` is every file of the program, and `imports` is every
 import its `.ts` and `.vibe` files write, as `{ importer, specifier, file }`

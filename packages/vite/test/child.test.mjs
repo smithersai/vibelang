@@ -47,3 +47,30 @@ test("a test file that leaves a handle open still exits, and the handle is named
   assert.equal(result.code, 0)
   assert.match(result.output, /leak\.test\.mjs left handles open after its tests: Timeout/)
 })
+
+test("the handle report ignores standard streams and handles whose close callbacks just ran", async (t) => {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const dir = await mkdtemp(join(tmpdir(), "vite-closed-handles-"))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const file = join(dir, "closed.test.mjs")
+  await writeFile(file, `
+import { test } from "node:test"
+import { spawn } from "node:child_process"
+test("uses stdin and closes a child", async () => {
+  void process.stdin
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["-e", ""])
+    child.on("error", reject)
+    child.on("close", resolve)
+  })
+})
+`)
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  const report = new URL("./report-handles.mjs", import.meta.url).href
+  const result = await runChild(process.execPath, ["--test", "--test-force-exit", "--import", report, file], { env })
+  assert.equal(result.code, 0, result.output)
+  assert.doesNotMatch(result.output, /left handles open/, result.output)
+})

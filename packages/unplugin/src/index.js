@@ -80,7 +80,7 @@ async function esbuildMessage(formatDiagnostic, diagnostic) {
 
 /** @type {import('./index.d.ts').unplugin} */
 export const unplugin = createUnplugin((options = {}, meta) => {
-  let root, project, backend, modules, current
+  let root, project, backend, modules, current, closing
 
   function configure(base) {
     if (root) return
@@ -92,12 +92,24 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   // workspace package's own for modules outside root.
   function loaded() {
     configure()
-    modules ??= loadBackend(root).then((value) => {
+    modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then((value) => {
       backend = value
       current = backend.projects({ root, project, compiler: backend.findCompiler(root, options.compiler), debug })
       return current
     })
     return modules
+  }
+
+  function close() {
+    const pending = modules
+    modules = undefined
+    current = undefined
+    const work = Promise.resolve(closing).then(async () => {
+      const projects = await pending
+      await projects?.close()
+    })
+    closing = work
+    return work
   }
 
   async function loadModule(id) {
@@ -135,6 +147,12 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       ;(await loaded()).invalidate()
       debug("build start")
     },
+    closeBundle: close,
+    closeWatcher: close,
+    // Bun/esbuild and webpack/Rspack do not forward closeBundle. Every
+    // adapter awaits buildEnd, so dispose after each build, including watch
+    // rebuilds, and start a fresh backend on the next one.
+    buildEnd: close,
     watchChange(id) {
       if (/\.(?:vibe|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
       debug(`watch change ${id}`)
@@ -184,6 +202,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     vite: { configResolved(config) { configure(config.root) } },
     webpack(compiler) {
       configure(compiler.context)
+      compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
       compiler.hooks.beforeCompile.tapPromise("vibelang-backend", loaded)
       compiler.hooks.thisCompilation.tap("vibelang-backend", (compilation) => {
         // The backend is selected from the app, so record the actual files
@@ -193,7 +212,10 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         }
       })
     },
-    rspack(compiler) { configure(compiler.context) },
+    rspack(compiler) {
+      configure(compiler.context)
+      compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
+    },
     esbuild: {
       config(initialOptions) { configure(initialOptions.absWorkingDir) },
       // No path matches /a^/: use the native loader to preserve diagnostic lineText,
@@ -201,6 +223,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       onLoadFilter: /a^/,
       onResolveFilter: /a^/,
       setup(build) {
+        build.onDispose?.(close)
         build.onResolve({ filter: /(?:\.vibe|^\.\.?\/.+\.js)(?:\?.*)?$/ }, (args) => {
           const id = resolveId(args.path, args.kind === "entry-point" ? undefined : args.importer)
           if (id === undefined) return

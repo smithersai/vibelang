@@ -17,6 +17,12 @@ npm install --save-dev vibelang vibelang-unplugin
 The plugin compiles with the `vibelang` package, a peer dependency, through its
 `vibelang/project` backend. It needs Node 22.22.3 (22.x) or Node 24.11.1 or later.
 
+Each build releases its compiler backend, including watch rebuilds.
+A compile still running during teardown gets 500 ms to finish, then
+`SIGTERM`, and after another 500 ms `SIGKILL` and closed output pipes.
+Closing a Rollup or Rolldown bundle or watcher, or a webpack or Rspack
+compiler, also awaits teardown. Later builds start a fresh backend.
+
 ## Configure
 
 Keep your normal `tsconfig.json` with the `.vibe` sources included; the plugin

@@ -67,4 +67,4 @@ ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
 
 cd "$package"
 # A test that runs past five minutes fails with its name; none takes a minute.
-exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/bundlers.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs
+exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/lifecycle.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/bundlers.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs

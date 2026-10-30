@@ -51,17 +51,29 @@ const debug = process.env.VIBELANG_VITE_DEBUG ? (text) => console.error(`vibelan
 
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
-  let root, project, logger, backend, modules, current
+  let root, project, logger, backend, modules, current, closing
 
   // One compile per tsconfig: the project for root's modules, and each
   // workspace package's own for modules outside root.
   function loaded() {
-    modules ??= loadBackend(root).then((value) => {
+    modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then((value) => {
       backend = value
       current = backend.projects({ root, project, compiler: backend.findCompiler(root, options.compiler), debug })
       return current
     })
     return modules
+  }
+
+  function close() {
+    const pending = modules
+    modules = undefined
+    current = undefined
+    const work = Promise.resolve(closing).then(async () => {
+      const projects = await pending
+      await projects?.close()
+    })
+    closing = work
+    return work
   }
 
   function diagnostics(errors, file) {
@@ -177,10 +189,7 @@ export default function vibelang(options = {}) {
       }
       return [...affected]
     },
-    closeBundle() {
-      // A later build compiles afresh.
-      modules = undefined
-      current = undefined
-    }
+    closeBundle: close,
+    closeWatcher: close
   }
 }

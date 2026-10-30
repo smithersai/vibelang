@@ -86,7 +86,11 @@ export function projectBackend(options: {
   compiler: string
   cache?: CacheOption
   debug?: (text: string) => void
-}): { compile(project: string): Promise<Result> }
+}): {
+  compile(project: string): Promise<Result>
+  /** Waits for compiles, terminating them after a bounded grace period, and closes their pipes. */
+  close(): Promise<void>
+}
 export function compileProjectSync(options: {
   project: string
   root?: string
@@ -111,6 +115,8 @@ export function projects(options: {
   debug?: (text: string) => void
 }): {
   projectOf(file: string): string
+  /** Closes every project backend. Further loads reject. */
+  close(): Promise<void>
   invalidate(): void
   load(file: string): Promise<Loaded>
 }

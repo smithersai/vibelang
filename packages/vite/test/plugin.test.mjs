@@ -293,6 +293,7 @@ test("a native compiler named bin/vibelang is executed without Node", async (t) 
   await mkdir(dirname(native), { recursive: true })
   await cp(process.env.VIBELANG_BINARY || join(packageRoot, "../../typescript/built/local/tsc"), native)
   const plugin = vibelang({ compiler: native })
+  t.after(() => plugin.closeBundle())
   plugin.configResolved({ root, logger: { warn() {} } })
   const file = join(root, "main.vibe")
   const result = await plugin.transform.call({
@@ -335,6 +336,7 @@ test("Vite hot updates ignore diagnostics in unserved TypeScript sources", async
   const unrelated = join(root, "unrelated.ts")
   await writeFile(unrelated, "export const value: number = 1\n")
   const plugin = vibelang({ compiler })
+  t.after(() => plugin.closeBundle())
   const messages = []
   const logger = { warn() {}, error: (message) => messages.push(message) }
   plugin.configResolved({ root, logger })

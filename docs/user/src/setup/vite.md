@@ -2,6 +2,11 @@
 
 `vibelang-vite` compiles `.vibe` modules for Vite (7 and 8) and Vitest with the project's `vibelang` compiler. It serves JavaScript and source maps, and reports compiler errors in the terminal and in Vite's overlay. The plugin adds `.vibe` to `resolve.extensions`, so an extensionless import or a directory's index (`./mount` for `mount/index.vibe`) reaches a `.vibe` module as it reaches a `.ts` one. Install the packages with [Add VibeLang to an existing project](existing-project.md) first.
 
+Closing the Vite build, dev server, or watcher waits for the plugin's compiler
+and closes its output pipes. A short compile can finish; after 500 ms teardown
+sends `SIGTERM`, then after another 500 ms sends `SIGKILL` if needed.
+A later build with the same plugin starts a fresh backend.
+
 ## 1. Add the plugin to Vite
 
 Add `vibelang()` to the `plugins` array in `vite.config.ts`, beside the existing plugins:
