@@ -6,6 +6,8 @@ ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `
 
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
 
+The builtin boundary covers the supported Node versions' internal and legacy names too: bare imports such as `_http_agent`, `_stream_readable` and `_tls_wrap` report `EK4402`, just like their `node:` forms. Type-only imports remain allowed and emit no Node import.
+
 Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does not change the global's origin: references to host constructors such as `XMLHttpRequest` still report `EK4402`. Local declarations and explicit imports continue to shadow those globals.
 
 ## Replacements

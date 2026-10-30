@@ -166,7 +166,13 @@ type platformAPI struct {
 // platformModules maps Node.js built-in modules to the platformServices that replace
 // their APIs; "" means Effect has none. Node.js's other modules are platform
 // APIs too when imported with the node: prefix.
+// Internal and legacy names from supported Node versions remain builtins
+// for the language even when a newer runtime has retired an alias.
 var platformModules = map[string]string{
+	"_http_agent": "", "_http_client": "", "_http_common": "", "_http_incoming": "",
+	"_http_outgoing": "", "_http_server": "", "_stream_duplex": "", "_stream_passthrough": "",
+	"_stream_readable": "", "_stream_transform": "", "_stream_wrap": "", "_stream_writable": "",
+	"_tls_common": "", "_tls_wrap": "",
 	"assert": "@effect/vitest", "assert/strict": "@effect/vitest", "async_hooks": "", "buffer": "Bytes",
 	"child_process": "ChildProcess", "cluster": "Worker", "console": "Console", "constants": "",
 	"crypto": "Crypto", "dgram": "DatagramSocket", "diagnostics_channel": "", "dns": "Dns",

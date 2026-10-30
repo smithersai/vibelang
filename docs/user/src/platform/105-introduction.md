@@ -2,6 +2,8 @@
 
 VibeLang reaches files, paths, processes, HTTP, randomness, and terminals through Effect's platform services. Write the application against those services; the entry module provides the platform's implementations to `main()` and passes that Effect to a runner. Node's globals and the web's I/O globals are not in scope in a `.vibe` file, and it imports no `node:*` module as a value (EK4402); it needs no wrapper of its own around one.
 
+Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the same `EK4402` import rule as `node:fs`. Legacy builtin names from supported Node 22/24 remain reserved across runtimes; move their value imports to a `.ts` module.
+
 ## Using platform services
 
 ```vibe
