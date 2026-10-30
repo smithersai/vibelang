@@ -13,7 +13,8 @@
 ```
 
 - **Precedence.** In a directory, VibeLang reads the first that exists: `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`.
-- **Superset.** Every tsconfig field means the same in `vibe.config.json`, including `extends`. The only addition is the `"vibe"` section.
+- **Superset.** Every tsconfig field is accepted in `vibe.config.json`, including `extends`, with the file-kind exception below. The added top-level section is `"vibe"`.
+- **Amendment: source module classification.** `moduleDetection` keeps its ordinary meaning for `.ts` and `.js`. As a deliberate exception, every source `.vibe` file is an external module before binding and checking; none of its values enables shared script globals. Written imports and exports, required prelude imports and both prelude switches cannot change that classification. JavaScript output and declaration sidecars retain an effective module marker when needed. Ordinary TypeScript module emission and host rules, including incompatible-option diagnostics, still apply (VIP-26).
 - **VibeLang's options live under a top-level `"vibe"` key.** Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so the repo's own TypeScript tooling keeps working.
 - The switches for VIP-6 (Effect function globals) and VIP-14 (Effect modules in scope) live there; their final names are settled during implementation.
 - **Amended 2026-10-29: the option names.** The keys are `vibe.effectGlobals`, `vibe.effectModules` and `vibe.severities`. Errors can't be set to `"off"` (VIP-34). Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.

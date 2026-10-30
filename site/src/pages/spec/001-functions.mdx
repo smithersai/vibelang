@@ -362,7 +362,25 @@ interface Store { find(id: string): Effect.Effect<User, NotFound> }
 
 ## Modules and the top level
 
-A module's top level is ordinary JavaScript (VIP-26). Every `.vibe` file is a module, as a `.mts` file is, whether or not it has an `import` or `export`: its code is strict, top-level `await` is allowed, top-level `this` is `undefined`, and its declarations are module-scoped. `moduleDetection` does not change this.
+A module's top level is ordinary JavaScript (VIP-26). Every source `.vibe` file is classified as an external module before binding and checking, whether or not it has a written `import` or `export`. Its declarations are module-scoped and its source is checked as strict module code. This classification is independent of required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`; no `moduleDetection` value opts it into shared script globals.
+
+Emitted JavaScript and declaration sidecars preserve this classification, including an effective empty module marker when needed. The ordinary TypeScript module emission and host rules still apply, including diagnostics for incompatible options. Top-level `await` requires a supported module and target configuration; top-level `this` is `undefined` under an ECMAScript-module host, while other output formats retain their ordinary host behavior. The deliberate `moduleDetection` exception is stated in [Configuration](/spec/007-tooling#config-files).
+
+For example, these two source files do not share a global binding, even with `moduleDetection: "legacy"` and both prelude switches disabled:
+
+```vibe
+// compiler-gap: pending VIP-26, VIP-30
+// a.vibe
+const policySecret = 1
+```
+
+```vibe
+// compiler-gap: pending VIP-26, VIP-30
+// b.vibe
+const reader = policySecret // TypeScript error: cannot find name
+```
+
+To share the value, `a.vibe` exports `policySecret` and `b.vibe` imports it. Adding or removing an implicit Effect use cannot change either file's scope.
 
 - `await` at the top level is ES top-level await of a Promise. `await` on an Effect there is `EK0103`.
 - `try` is not allowed at the top level, because the top level is not effect code. It is the one rule "`try` outside effect code" ([Running Effects](/spec/002-running#static-rules)), not a second one.
