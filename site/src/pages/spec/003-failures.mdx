@@ -120,11 +120,38 @@ const checkedEach = Effect.try({
 
 Determine a call's synchronous thrown type in three steps (decided detail 66):
 
-1. **Effectful callee:** its thrown type is `never`; neither `@throws` nor `@rethrows` adds synchronous throws.
+1. **Effectful callee:** its thrown type is `never`; neither `@throws` nor `@rethrows` adds synchronous throws. An ordinary nongenerator `async` callable declared in `.vibe` also has synchronous thrown type `never`: initialization and callback throws reject its Promise, as [Async contracts](/spec/003-failures#async-contracts) specifies.
 2. **Own thrown type:** a written `@throws {T}` on the declaration or its declared call signature gives `T` (a checked upper bound in `.vibe`). Otherwise use the shipped annotation, installed on the signature before defaults apply ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)). Otherwise infer a plain `.vibe` function's uncaught throws and unwrapped throwing calls, including instance field initializers and an implicit `super(...args)` for a derived class with no written constructor. An uncaught `throw e` contributes the TypeScript type of `e`: a catch-clause binding contributes `unknown` under `useUnknownInCatchVariables`. Otherwise a callable declared in `.ts`, `.d.ts` or JavaScript has `unknown`, whether its type is written or inferred: functions, callable constants, class or interface methods, function-typed property signatures or fields, and each overload. A function type in a `.vibe` type position (parameter, alias, interface member or annotation) instead defaults to `never`.
-3. **Rethrows:** union the own thrown type with the thrown types of the actual callbacks passed for every named `@rethrows` parameter, whichever case in step 2 applied. The tag is written, never inferred. `@throws {never}` describes only the callee's own throws and does not erase `@rethrows f`. Argument-expression evaluation remains the caller's code.
+3. **Rethrows for synchronous callables:** union the own thrown type with the thrown types of the actual callbacks passed for every named `@rethrows` parameter, whichever case in step 2 applied. The tag is written, never inferred. `@throws {never}` describes only the callee's own throws and does not erase `@rethrows f`. Argument-expression evaluation remains the caller's code.
 
-Calling an `async` `.vibe` function throws `never`: body throws reject its Promise. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. An Effect API overload returning an Effect is effectful. A data-last overload such as `map(f)` returns a function: it is non-effectful, with shipped `@throws {never}` when it only builds that function (detail 40). The returned callable has its own signature contract; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
+<a id="async-contracts"></a>An ordinary nongenerator `async` callable declared in `.vibe` has synchronous thrown type `never`: its body, parameter/default initialization and callback throws reject its Promise. This applies to declarations, methods and arrows, but not async generators. A source `@rethrows` parameter still admits arbitrary throwing callbacks. In declaration output, preserve that admission on the parameter's callable signature with `@throws {unknown}`, emit callee `@throws {never}`, and omit an active synchronous `@rethrows` tag. Merely dropping the tag loses callback admission; copying it unchanged invents synchronous throws after `async` is erased. Normalize aliases and sidecars alike, using a local annotated parameter type instead of mutating a shared type alias. A returned callable keeps its own thrown contract. A Promise-returning plain function can instead throw synchronously before returning; its ordinary own-throws and rethrows contracts remain. A Promise return type alone does not establish the async rule. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. An Effect API overload returning an Effect is effectful. A data-last overload such as `map(f)` returns a function: it is non-effectful, with shipped `@throws {never}` when it only builds that function (detail 40). The returned callable has its own signature contract; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-4
+/** @rethrows f */
+export async function invokeAsync(f: () => number) { return f() }
+/** @throws {never} */
+function build() { return invokeAsync(() => { throw "callback" }) }
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+/** @rethrows f */
+async function invokeAsync(f: () => number) { return f() }
+/** @rethrows f */
+function invokePlain(f: () => number) { return Promise.resolve(f()) }
+const checkedAsync = Effect.tryPromise({ try: () => invokeAsync(() => { throw "callback" }), catch: (error) => error })
+const checkedPlain = Effect.try({ try: () => invokePlain(() => { throw "callback" }), catch: (error) => error })
+// Both fail with "callback" through their matching wrappers; only invokePlain throws at the call.
+```
+
+The async declaration preserves the callback's admitted bound without claiming that the call rethrows:
+
+```ts
+/** @throws {never} */
+export declare function invokeAsync(f: { /** @throws {unknown} */ (): number }): Promise<number>
+```
 
 The generator publishes the normative thrown-signature inventory, `docs/design/inventory/throws.json` (detail 81a): exact TypeScript lib inputs and Effect version, keyed by module, declaration and overload signature, with own throws, `@rethrows` parameters, callback admission and returned callable contracts. That artifact awaits its generator: **the specification is incomplete for shipped thrown contracts**. The examples below are not a complete inventory. An unannotated signature follows step 2's inference or default, then step 3's `@rethrows`; omission does not imply `@throws {never}`. Regeneration is part of an Effect or TypeScript bump.
 
@@ -231,6 +258,40 @@ class Invalid extends Schema.TaggedError<Invalid>()("Invalid", { name: Schema.No
 const invalid = Effect.gen(function* () {
   return yield* Effect.fail(new Invalid({ name: "" }))
 })
+```
+
+For synchronous and `async` generator declarations, expressions and methods, parameter initialization alone contributes to the call's synchronous thrown type: defaults and destructuring run when the iterator is created. The suspended body and its calls do not contribute; they run when the iterator is resumed. Calls to `next`, `throw` and `return` have their own signature contracts under the three-step procedure above, with the foreign `unknown` default where no contract is supplied. An `async` generator's body throws reject its resumption Promise, but its parameter initialization can still throw synchronously at creation. This follows ECMA-262's [generator body evaluation](https://tc39.es/ecma262/2025/multipage/ecmascript-language-functions-and-classes.html#sec-generator-function-definitions-runtime-semantics-evaluatebody) and [async generator body evaluation](https://tc39.es/ecma262/2025/multipage/ecmascript-language-functions-and-classes.html#sec-asyncgenerator-definitions-evaluatebody), which initialize parameters before creating the suspended generator (VIP-1, VIP-4 and VIP-21).
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-4
+function* lazy() { throw "body" }
+function failDefault() { throw "default" }
+function* eager(x = failDefault()) { yield x }
+effect function inspect() {
+  lazy()                          // creates an iterator; its body does not run
+  return "not started"
+}
+// eager() may throw "default" at the call; lazy().next() may throw "body".
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function* lazy() { throw "body" }
+function failDefault() { throw "default" }
+function* eager(x = failDefault()) { yield x }
+const constructed = Effect.gen(function* () {
+  lazy()
+  return "not started"
+})
+const resumed = Effect.try({ try: () => lazy().next(), catch: (error) => error })
+const defaulted = Effect.try({ try: () => eager(), catch: (error) => error })
+async function* asyncLazy() { throw "async body" }
+async function* asyncEager(x = failDefault()) { yield x }
+const resumedAsync = Effect.tryPromise({ try: () => asyncLazy().next(), catch: (error) => error })
+const defaultedAsync = Effect.try({ try: () => asyncEager(), catch: (error) => error })
+// resumedAsync fails with "async body"; defaultedAsync fails with "default".
+// constructed succeeds with "not started"; resumed fails with "body"; defaulted fails with "default".
 ```
 
 Recursive and mutually recursive plain functions infer the least fixed point of their thrown types, starting from `never` (detail 43): `fib` below throws `never`, `walk` throws `Error`. A written `@throws {T}` is a checked upper bound: the body may throw only subtypes of `T` (otherwise `EK0405`), callers see `T`, and declaration output copies the tag (detail 45).

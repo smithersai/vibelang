@@ -27,6 +27,8 @@ export declare function add(a: number, b: number): number
 
 *Corrected 2026-10-29: `load` is declared with `export declare function`, because a declaration keeps its source form (VIP-1: `effect` goes exactly where TypeScript allows `async`) and idiomatic TypeScript declares a function declaration that way. The type is `Effect.Effect<…>`, as Effect TypeScript writes it.*
 
+- **Amended 2026-10-30: ordinary async contracts survive declaration output.** A nongenerator `async` callable's `@rethrows` parameter retains throwing-callback admission as a parameter callable carrying `@throws {unknown}`; the emitted callee carries `@throws {never}` and no active synchronous `@rethrows`. Normalize declarations, methods, arrows, aliases and sidecars consistently. Use a local annotated parameter type rather than mutating a shared type alias; returned callables preserve their own contracts. This exception does not apply to async generators or ordinary Promise-returning functions.
+
 ## Prior art
 
 Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `allowArbitraryExtensions`.

@@ -463,6 +463,8 @@ console.log(JSON.stringify([reason(hidden), reason(unwrapped), reason(wrapped)])
 
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](003-failures.md#effectful-callables)):
 
+Ordinary nongenerator `async` callables use the [normalized async contract](003-failures.md#async-contracts) instead of copying a synchronous `@rethrows` tag: the declaration keeps callback admission with a parameter callable `@throws {unknown}` and callee `@throws {never}`, so source and sidecar calls agree.
+
 ```vibe es
 // compiler-gap: pending VIP-4
 export function bad(id: string) { if (!id) throw new BadInput(); return fetchUser(id) }   // error: can't throw
