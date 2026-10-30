@@ -59,6 +59,7 @@ const specTests = [
   "TestCommandLineFlagsCoverSpec",
   "TestCommandLineFixScopes",
   "TestSpecFacts",
+  "TestDiagnosticCodesKeepFullOrdinal",
   "TestPendingLines",
   "TestSuperseded",
   "TestDataGeneratedMatchSeparators",

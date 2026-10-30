@@ -70,12 +70,16 @@ type SpecFacts struct {
 	Tracing []string
 }
 
-var codePattern = regexp.MustCompile(`EK(\d{4})`)
+// Imported lint ordinals can extend the printed number beyond four digits.
+var codePattern = regexp.MustCompile(`EK(\d{4,})\b`)
 
 func codesIn(text string) []int32 {
 	var codes []int32
 	for _, m := range codePattern.FindAllStringSubmatch(text, -1) {
-		n, _ := strconv.Atoi(m[1])
+		n, err := strconv.ParseInt(m[1], 10, 32)
+		if err != nil {
+			continue // A printed diagnostic number must fit the native int32 code.
+		}
 		if !slices.Contains(codes, int32(n)) {
 			codes = append(codes, int32(n))
 		}
