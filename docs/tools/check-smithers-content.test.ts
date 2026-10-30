@@ -4,11 +4,6 @@ import { homeProblems, linkTarget, links, sectionBlocks } from "./check-smithers
 describe("links in app.md", () => {
   test("map vibelang.sh pages to their sources", () => {
     expect(linkTarget("https://vibelang.sh/001-onboarding.html")).toEqual({ file: "docs/user/src/001-onboarding.md" })
-    expect(linkTarget("https://vibelang.sh/spec/103-part1-ch03-errors.html")).toEqual({ file: "docs/design/src/103-part1-ch03-errors.md" })
-    expect(linkTarget("https://vibelang.sh/")).toEqual({ ok: true })
-  })
-  test("map vibelang.sh pages to their sources", () => {
-    expect(linkTarget("https://vibelang.sh/001-onboarding.html")).toEqual({ file: "docs/user/src/001-onboarding.md" })
     expect(linkTarget("https://vibelang.sh/error-management/014-expected-errors.html")).toEqual({ file: "docs/user/src/error-management/014-expected-errors.md" })
     expect(linkTarget("https://vibelang.sh/spec/103-part1-ch03-errors.html")).toEqual({ file: "docs/design/src/103-part1-ch03-errors.md" })
     expect(linkTarget("https://vibelang.sh/")).toEqual({ ok: true })
