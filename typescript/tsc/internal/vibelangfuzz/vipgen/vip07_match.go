@@ -249,10 +249,13 @@ func (m *Match) Vibe(w *Writer) {
 		w.Node(a.Value)
 	}
 	if m.Default != nil {
-		w.Write("; default: ")
+		if len(m.Arms) > 0 {
+			w.Write("; ")
+		}
+		w.Write("default: ")
 		w.Node(m.Default)
 	}
-	w.Write(" }")
+	w.Write("; }")
 }
 
 func (m *Match) Effect(w *Writer) {
