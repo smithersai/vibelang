@@ -1,0 +1,2 @@
+read the provided one with try S
+implements S.Shape
