@@ -567,7 +567,7 @@ func functionWitness(key, template, reading, vibe, reference, call string) {
 			if key == "default-arrow" {
 				operand = &Code{V: "(Reflect.construct(" + name + ", []) as ReturnType<typeof " + name + ">)", E: "Reflect.construct(" + name + ", [])"}
 			}
-			return []Stmt{&Const{Name: v, Value: &Try{X: operand}}}
+			return []Stmt{&Const{Name: v, Type: "number", Value: &Try{X: operand}}}
 		},
 	})
 }
