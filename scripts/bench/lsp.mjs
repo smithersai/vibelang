@@ -67,37 +67,46 @@ async function timed(fn) {
   return [performance.now() - start, result]
 }
 
-await request("initialize", {
-  processId: process.pid,
-  rootUri: uri(project),
-  workspaceFolders: [{ uri: uri(project), name: "bench" }],
-  capabilities: { textDocument: { hover: { contentFormat: ["markdown", "plaintext"] }, diagnostic: { dynamicRegistration: false } }, workspace: { configuration: true } }
-})
-send({ jsonrpc: "2.0", method: "initialized", params: {} })
+async function benchmark() {
+  await request("initialize", {
+    processId: process.pid,
+    rootUri: uri(project),
+    workspaceFolders: [{ uri: uri(project), name: "bench" }],
+    capabilities: { textDocument: { hover: { contentFormat: ["markdown", "plaintext"] }, diagnostic: { dynamicRegistration: false } }, workspace: { configuration: true } }
+  })
+  send({ jsonrpc: "2.0", method: "initialized", params: {} })
 
-open(last)
-const [cold, first] = await timed(() => request("textDocument/diagnostic", { textDocument: { uri: uri(last) } }))
-open(other)
-const [warm] = await timed(() => request("textDocument/diagnostic", { textDocument: { uri: uri(other) } }))
+  open(last)
+  const [cold, first] = await timed(() => request("textDocument/diagnostic", { textDocument: { uri: uri(last) } }))
+  open(other)
+  const [warm] = await timed(() => request("textDocument/diagnostic", { textDocument: { uri: uri(other) } }))
 
-// Hover the call into the previous module's run function.
-const lines = readFileSync(last, "utf8").split("\n")
-const line = lines.findIndex((l) => l.includes(`run${count - 2}(`))
-const character = lines[line].indexOf(`run${count - 2}(`) + 1
-const hover = () => request("textDocument/hover", { textDocument: { uri: uri(last) }, position: { line, character } })
-const [firstHover, hoverResult] = await timed(hover)
-const samples = []
-for (let i = 0; i < hovers; i++) samples.push((await timed(hover))[0])
-samples.sort((a, b) => a - b)
-const median = samples[Math.floor(samples.length / 2)]
+  // Hover the call into the previous module's run function.
+  const lines = readFileSync(last, "utf8").split("\n")
+  const line = lines.findIndex((l) => l.includes(`run${count - 2}(`))
+  const character = lines[line].indexOf(`run${count - 2}(`) + 1
+  const hover = () => request("textDocument/hover", { textDocument: { uri: uri(last) }, position: { line, character } })
+  const [firstHover, hoverResult] = await timed(hover)
+  const samples = []
+  for (let i = 0; i < hovers; i++) samples.push((await timed(hover))[0])
+  samples.sort((a, b) => a - b)
+  const median = samples[Math.floor(samples.length / 2)]
 
-let rss = "n/a"
+  let rss = "n/a"
+  try {
+    const status = readFileSync(`/proc/${child.pid}/status`, "utf8")
+    rss = `${Math.round(Number(/VmHWM:\s+(\d+)/.exec(status)[1]) / 1024)} MiB`
+  } catch {}
+  const errors = (first?.items ?? []).filter((d) => d.severity === 1).length
+  await request("shutdown").catch(() => {})
+  send({ jsonrpc: "2.0", method: "exit" })
+  child.stdin.end()
+  console.log(`${path.basename(project)} ${count} modules: diagnostics cold ${cold.toFixed(0)} ms (${errors} errors), warm ${warm.toFixed(0)} ms; hover first ${firstHover.toFixed(0)} ms, median of ${hovers} ${median.toFixed(1)} ms${hoverResult ? "" : " (empty)"}; peak RSS ${rss}`)
+}
+
 try {
-  const status = readFileSync(`/proc/${child.pid}/status`, "utf8")
-  rss = `${Math.round(Number(/VmHWM:\s+(\d+)/.exec(status)[1]) / 1024)} MiB`
-} catch {}
-const errors = (first?.items ?? []).filter((d) => d.severity === 1).length
-await request("shutdown").catch(() => {})
-send({ jsonrpc: "2.0", method: "exit" })
-child.stdin.end()
-console.log(`${path.basename(project)} ${count} modules: diagnostics cold ${cold.toFixed(0)} ms (${errors} errors), warm ${warm.toFixed(0)} ms; hover first ${firstHover.toFixed(0)} ms, median of ${hovers} ${median.toFixed(1)} ms${hoverResult ? "" : " (empty)"}; peak RSS ${rss}`)
+  await benchmark()
+} catch (error) {
+  child.kill()
+  throw error
+}
