@@ -604,17 +604,23 @@ func addedErrors(ctx context.Context, program *compiler.Program, baseline map[st
 
 // fixGate keeps the fixes whose edited program adds no error to baseline.
 type fixGate struct {
-	ctx      context.Context // never canceled: see FixProject
-	done     context.Context // canceled when the command is interrupted
-	build    func(map[tspath.RootedFilePath]string) *compiler.Program
-	baseline map[string]int
-	refused  map[string]bool // fixes refused, by fixKey
+	lastFailed *compiler.Program // complete rejected program whose errors guide the search
+	ctx        context.Context   // never canceled: see FixProject
+	done       context.Context   // canceled when the command is interrupted
+	build      func(map[tspath.RootedFilePath]string) *compiler.Program
+	baseline   map[string]int
+	refused    map[string]bool // fixes refused, by fixKey
 }
 
 // passes reports whether the program with overlay over texts adds no error,
 // and returns the first error it adds.
 func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (string, bool) {
-	error, bad := newError(g.ctx, g.build(maps(texts, overlay)), g.baseline)
+	program := g.build(maps(texts, overlay))
+	error, bad := newError(g.ctx, program, g.baseline)
+	g.lastFailed = nil
+	if bad {
+		g.lastFailed = program
+	}
 	return error, !bad
 }
 
@@ -625,20 +631,25 @@ func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (strin
 // that add them. A set of files that adds an error is halved until each half
 // passes or is one file, keeping the halves that pass, and each failing
 // file's fixes are halved the same way, so that finding k bad files among n
-// costs about 2k·log2(n) checks of the program, not n.
+// costs about 2k·log2(n) checks of the program, not n. References in an
+// unchanged importer's added error also guide the search back to edited
+// declarations; these hints only choose groups, never replace a full check.
 func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
 	all := map[tspath.RootedFilePath]string{}
 	for _, p := range proposals {
 		all[p.file.FileName()] = p.text()
 	}
-	added := addedErrors(g.ctx, g.build(maps(texts, all)), g.baseline)
+	program := g.build(maps(texts, all))
+	added := addedErrors(g.ctx, program, g.baseline)
+	g.lastFailed = program
 	if len(added) == 0 {
 		return proposals
 	}
+	origins := g.errorSources(proposals)
 	var others, suspects []proposal
 	for _, p := range proposals {
 		prefix := p.file.FileName().AsString() + ": " // errorKey's
-		if slices.ContainsFunc(added, func(key string) bool { return strings.HasPrefix(key, prefix) }) {
+		if origins[p.file.FileName()] || (len(origins) == 0 && slices.ContainsFunc(added, func(key string) bool { return strings.HasPrefix(key, prefix) })) {
 			suspects = append(suspects, p)
 		} else {
 			others = append(others, p)
@@ -669,6 +680,20 @@ func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []pro
 		}
 		if len(ps) == 1 {
 			failing = append(failing, ps[0])
+			return
+		}
+		sources := g.errorSources(ps)
+		var rest, likely []proposal
+		for _, p := range ps {
+			if sources[p.file.FileName()] {
+				likely = append(likely, p)
+			} else {
+				rest = append(rest, p)
+			}
+		}
+		if len(likely) > 0 && len(rest) > 0 {
+			files(rest, false)
+			files(likely, false)
 			return
 		}
 		files(ps[:len(ps)/2], false)
