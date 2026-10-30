@@ -137,7 +137,7 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		list := p.parseList(PCClassMembers, func(p *Parser) *ast.Node {
 			start := p.nodePos()
 			mutable := p.parseVibeLangMutable()
-			element := p.parseClassElement()
+			element := p.parseVibeLangErrorElement()
 			if mutable {
 				// The field spans its mutable word, as a mutable type member does.
 				d.mutable[element] = true
@@ -170,6 +170,12 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 				form.Class = true
 			}
 			d.members = append(d.members, element)
+		}
+	}
+	for _, field := range d.fields {
+		name := field.Name()
+		if (ast.IsIdentifier(name) || ast.IsStringLiteral(name)) && name.Text() == "constructor" {
+			form.FieldNames = append(form.FieldNames, p.sourceRange(name))
 		}
 	}
 	form.Class = form.Class || d.abstract
@@ -260,6 +266,28 @@ func (p *Parser) parseVibeLangFieldComma() *ast.Node {
 	result := p.finishNode(p.factory.NewSemicolonClassElement(), pos)
 	result.Flags |= ast.NodeFlagsVibeLang
 	return result
+}
+
+// parseVibeLangErrorElement gives a typed payload field named constructor
+// the shared Field grammar. Ordinary classes still use TypeScript's parser,
+// and constructor(...) remains a constructor for its targeted static check.
+func (p *Parser) parseVibeLangErrorElement() *ast.Node {
+	field := p.lookAhead(func(p *Parser) bool {
+		p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
+		if p.token != ast.KindConstructorKeyword {
+			return false
+		}
+		p.nextToken()
+		p.parseOptional(ast.KindQuestionToken)
+		return p.token == ast.KindColonToken
+	})
+	if !field {
+		return p.parseClassElement()
+	}
+	pos := p.nodePos()
+	jsdoc := p.jsdocScannerInfo()
+	modifiers := p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
+	return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers)
 }
 
 // isVibeLangErrorField reports whether element, a member of an error

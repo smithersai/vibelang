@@ -130,6 +130,20 @@ func (p *projector) errorBodyOpen(node *ast.Node, after int) int {
 // unless written mutable or already readonly.
 func (p *projector) errorField(name *ast.Node) {
 	nameStart := p.tokenStart(name)
+	if (ast.IsIdentifier(name) || ast.IsStringLiteral(name)) && name.Text() == "constructor" {
+		// A class field cannot use constructor as an identifier. The
+		// computed spelling keeps the same payload key in virtual TypeScript.
+		prefix := "declare readonly "
+		if start, ok := p.keywordBefore(name, "mutable"); ok {
+			p.plan.replace(start, start+len("mutable"), "declare")
+			prefix = ""
+		} else if start, ok := p.keywordBefore(name, "readonly"); ok {
+			p.plan.insert(start, "declare ")
+			prefix = ""
+		}
+		p.plan.replace(nameStart, name.End(), prefix+"[\"constructor\"]")
+		return
+	}
 	if start, ok := p.keywordBefore(name, "mutable"); ok {
 		p.plan.replace(start, start+len("mutable"), "declare")
 		return

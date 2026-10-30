@@ -374,6 +374,12 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 func (e *encoder) declaration(form parser.VibeSyntax) error {
 	head := declarationKeywordSpacing(e.text(form.Head))
 	if form.Class {
+		// A constructor payload is a field, but TypeScript's class parser
+		// reserves its unquoted name for constructor methods. Preserve the
+		// source name through an ordinary identifier while formatting.
+		for _, name := range form.FieldNames {
+			e.opaque(placeholderText, name, "", "", firstLineWidth(e.text(name)))
+		}
 		name := e.hold(placeholderClassHead, head, form.Head.Pos(), firstLineWidth(head)-len("class "))
 		e.add(edit{pos: form.Head.Pos(), end: form.Head.End(), text: "class " + name, opaque: true})
 		if form.Open.Pos() == form.Open.End() {

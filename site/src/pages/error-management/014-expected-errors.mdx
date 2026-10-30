@@ -365,6 +365,8 @@ Normalized PEN
 
 An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. A field is a property written with a type and no initializer, and as between interface members, a `;`, a comma or a new line ends it. A field is readonly, and the constructor takes the fields as one object.
 
+A typed field named `constructor` in `error` or `schema error`, such as `constructor: string` or `constructor?: string`, is ordinary payload. The constructor restriction applies to a `constructor(...) { ... }` method.
+
 Use a union of error classes to describe several cases. Each class has its own bare name as its tag, so `catchTag("Missing")` and `catchTags` route the corresponding case. The generated matcher tests `_tag`, so `is` and `match` also match instances from another copy of the package.
 
 ### Error families

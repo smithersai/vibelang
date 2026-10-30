@@ -288,6 +288,21 @@ var projectionCases = []struct {
 		virtual: "function f() { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = 1; return $topic + ((yield* $run($gen(function* () { const $topic_1 = 2; return $topic_1 * 3 })))) }))) })}",
 	},
 	{
+		name:    "an error constructor payload stays a field in virtual TypeScript",
+		source:  "error E { constructor: string; get label(): string { return this.constructor } }\n",
+		virtual: "class E extends TaggedError(\"E\")<{ readonly constructor: string; }> { declare readonly [\"constructor\"]: string; get label(): string { return this.constructor } }\n",
+	},
+	{
+		name:    "a schema error constructor payload stays a field in virtual TypeScript",
+		source:  "schema error E { readonly constructor?: string }\n",
+		virtual: "class E extends Schema.TaggedError<E>()(\"E\", { constructor: Schema.optional(Schema.String) }) { declare readonly [\"constructor\"]?: string }\n",
+	},
+	{
+		name:    "a quoted schema error constructor payload keeps its literal key",
+		source:  "schema error E { \"constructor\": string }\n",
+		virtual: "class E extends Schema.TaggedError<E>()(\"E\", { \"constructor\": Schema.String }) { declare readonly [\"constructor\"]: string }\n",
+	},
+	{
 		name:    "error with fields",
 		source:  "error NotFound { id: string }\n",
 		virtual: "class NotFound extends TaggedError(\"NotFound\")<{ readonly id: string }> {}\n",

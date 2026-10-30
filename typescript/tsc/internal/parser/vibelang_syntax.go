@@ -100,6 +100,8 @@ type VibeSyntax struct {
 	Index bool
 	Class bool
 	Arms  []VibeSyntaxArm
+	// FieldNames are error payload names needing a class-body formatting placeholder.
+	FieldNames []core.TextRange
 	// Variants are the variants of a data declaration.
 	Variants []VibeSyntaxVariant
 }

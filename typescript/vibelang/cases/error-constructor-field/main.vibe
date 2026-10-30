@@ -1,0 +1,8 @@
+error Plain { constructor: string; get label(): string { return this.constructor } }
+schema error Serializable { readonly constructor: string; get label(): string { return this.constructor } }
+error Optional { constructor?: string }
+schema error OptionalSchema { constructor?: string }
+export const values = [new Plain({ constructor: "plain" }).label,
+  new Serializable({ constructor: "schema" }).label,
+  new Optional({ constructor: "optional" }).constructor,
+  new OptionalSchema({ constructor: "optional-schema" }).constructor]
