@@ -25,10 +25,13 @@ yield* Effect.provide(
 - **Amended 2026-10-29: when `provide` is a keyword.** `provide` is a keyword only when the tokens from `provide` through a `{` on the line where the last provider ends parse as the head of a provide statement, as an arrow needs its whole head. Otherwise it is an identifier, in any code: `provide(x)`, `provide[0] = 1` and `provide - 1` stay TypeScript. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 34).
 - **Amended 2026-10-29: no line break at a provider comma.** A line break after a comma between providers is a syntax error, as "its providers and block must be on one line" says. Breaks inside a provider are free. The formatter never breaks a `provide` list at a comma; a long list stays on one line or uses `Layer.mergeAll(…)`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 35).
 - Under VIP-6's rule, a keyword removes the global of the same name, so Effect's function is written `Effect.provide`.
+- **Amended 2026-10-30: observer payloads and source completions.** A `provide` or interruption region preserves its source completion separately from the primitive Effect success value. Normal completion and outward `break`/`continue` give primitive success `undefined`; a source `return value` gives that exact value, and bare `return` gives `undefined`. Nested regions apply this at each boundary. Finalizers observe these generator payloads, never compiler control records; a normal source value still contributes to an enclosing `do`. Real returned Effects and record-shaped objects remain data. Completion state is fresh for each execution/item, and failed, dying or interrupted bodies/finalizers transfer no pending source completion. This preserves the original generator counterpart and Effect's own finalization rules; see [Region bodies](../src/002-running.md#region-bodies).
 
 ## History
 
 A union of providers was mistyped in round 1 (local, fixed). Nothing since.
+
+- **Amended 2026-10-30: ordinary-block completion values.** A transparent block preserves the source completion's kind, value (including `empty`) and target. A surrounding `do` can observe its normal value or a value carried through a consumed jump; generated callbacks do not discard it. The compiler's transport is its choice; transfer the completion only after the region Effect and its finalizers succeed. Failures and finalization retain Effect's rules.
 
 ## Prior art
 

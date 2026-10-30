@@ -242,7 +242,52 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. Its type is the union of the types of the values it can complete with, as TypeScript types `c ? 1 : "a"`: each path ending in an expression statement contributes that expression's type, a path that completes empty contributes `undefined`, and a path that leaves by `return`, `break`, `continue` or `throw` contributes nothing; literals widen as in a `let` initializer. `do { if (c) 1; else "a" }` is `number | string`, and `do { }` is `undefined`. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`, so a `try` in a `do` or `match` suspends the enclosing generator.
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its source block's normal completion value. Its type is the union of the values reaching normal completion under ECMAScript's `UpdateEmpty` flow, including consumed local jumps. Only a final empty normal completion becomes `undefined`; an empty completion that inherits an earlier value keeps that value. Paths leaving outward by `return`, `break`, `continue` or `throw` supply no normal result, and a do expression with no normal path has type `never`. Their outward returns and typed failures are still checked at the enclosing activation.
+
+A do expression keeps ordinary expression fresh literal treatment: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`; a written annotation such as `const checked: number = do { 1 }` follows TypeScript as usual. `const chosen = do { if (c) 1; else "a" }` has type `1 | "a"`; `do { }` gives `undefined`, while `const inherited = do { 7; {} }` keeps `7`. Contextual typing reaches only the expression alternatives contributing to the normal result; discarded intermediate expressions and outward returns retain their own source contexts. Declaration output and overload selection use this source type, independent of generated function or temporary types.
+
+It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`, so a `try` in a `do` or `match` suspends the enclosing generator.
+
+```ts
+// fragment: static counterparts; choose has no runtime implementation here
+import type { Effect } from "effect"
+
+const literalSource = 1
+const exact: 1 = literalSource
+let ordinaryLet = 1
+// @ts-expect-error: an ordinary let initializer widens
+const letIsNotExact: 1 = ordinaryLet
+const annotatedSource: number = 1
+// @ts-expect-error: the written type governs
+const annotationIsNotExact: 1 = annotatedSource
+const returnedTemporary = (() => 1)()
+// @ts-expect-error: function-return widening is different
+const returnIsNotExact: 1 = returnedTemporary
+const onlyAbrupt = () => { throw 7 }
+const noNormalValue: never = onlyAbrupt()
+declare const condition: boolean
+const alternatives = condition ? 1 : "a"
+const alternativeTypes: 1 | "a" = alternatives
+declare function choose(value: 1): Effect.Effect<number>
+declare function choose(value: number): Promise<number>
+const effectOverload: Effect.Effect<number> = choose(literalSource)
+const promiseOverload: Promise<number> = choose(ordinaryLet)
+const contextual: { value: 1 } = condition ? { value: 1 } : { value: 1 }
+```
+
+```vibe es
+// compiler-gap: pending VIP-1, VIP-2
+effect function leaveDo() {
+  const neverValue = do { return 7 }
+  return neverValue // unreachable; neverValue has type never
+} // Success(7), with no normal value from the do expression
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function leaveDo() { return Effect.gen(function* () { return 7 }) }
+```
 
 <a id="evaluation-order"></a>**Evaluation order.** A `do` or `match` is an expression, and this is the one rule for it inside a larger expression: it runs where JavaScript evaluates the expression that holds it, never earlier or more often. Everything to its left runs first, in source order, the callee and a method's receiver included, so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`. In a conditional position (one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=`, after `?.`, a `case` test, a loop condition or update) it runs only when JavaScript evaluates that position. How the compiler keeps this is its choice. Destructuring and parameter defaults follow [their own rule](#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error.
 
@@ -816,14 +861,153 @@ effect function limitReturn() {
 
 **Bindings.** Every name is resolved on the source before lowering. `var` is a compile error in `.vibe` ([Legacy JavaScript](001-functions.md#direct-eval)), so every declaration in a region body (`let`, `const`, `class`, a function declaration) is scoped to its block, as in strict module code, and stays in it; the callback closes over every outer binding, so an assignment to one is seen outside. `this`, `super` and `new.target` are the source function's, passed in as for an `effect` arrow ([Functions](001-functions.md#meaning)).
 
-**Jumps.** In ECMAScript every statement completes with a Completion Record: normal, `return` with a value, or `break` or `continue` with a target label, empty when unlabeled. LabelledEvaluation decides which statement consumes a `break` or `continue`: an unlabeled `break` is consumed by the innermost iteration or `switch` statement, an unlabeled `continue` by the innermost iteration statement, and a labeled one by the statement whose label set holds the label (any statement for `break`, an iteration statement for `continue`). A `return` is consumed by the function. The lowering keeps that resolution:
+**Jumps.** Across `provide`, `uninterruptible`, `restore` and `interruptible`, a statement retains its ECMAScript completion kind, value (including `empty`) and target. A `provide` or interruption block has its source block's normal completion value, observable from `do`; local labels and loops consume jumps with their source values under `UpdateEmpty`. Label targets are empty when unlabeled. LabelledEvaluation decides which statement consumes a `break` or `continue`: an unlabeled `break` is consumed by the innermost iteration or `switch` statement, an unlabeled `continue` by the innermost iteration statement, and a labeled one by the statement whose label set holds the label (any statement for `break`, an iteration statement for `continue`). A `return` is consumed by the function. The compiler preserves that behavior; how it transports completions is its choice:
+
+Syntax-directed `do` checks traverse these transparent source blocks as ordinary `BlockStatement`s, respecting source activation boundaries rather than generated callbacks.
 
 - A completion consumed inside the region body stays as written.
-- Any other completion ends the body's generator with a record: `{ _tag: "Return", value }`, `{ _tag: "Break", label }` or `{ _tag: "Continue", label }`, under fresh names, and `{ _tag: "Normal" }` when the body completes normally. `return e` evaluates `e` once, inside the body.
-- Where the region stands, after `yield*` returns, the code re-issues the record: `return $c.value`, `break L` or `continue L`, where `L` is the consumer's label; the lowering gives an unlabeled consumer a fresh label. Inside an enclosing region body the re-issued jump is again a record, so it passes outward until it reaches its consumer.
-- When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
+- A normally completed `provide` or interruption block contributes its source block's normal value or empty completion. An outward `return`, `break` or `continue` keeps its kind, value and target, including a value inherited before a jump. An empty completion remains distinct from an explicit `undefined`.
+- A completion continues from the source region's position to the same consumer, even across further regions. A consumed jump can therefore supply a `do` result; crossing a generated callback does not discard that value.
+- The item protocol remains the API's: a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false`; a `for concurrent` consumes its own `continue` by ending that item. Nested source functions keep their own completion boundaries.
 - A `for concurrent` head's binding initialization or body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` head's binding initialization or body can't produce a `return` or a labeled `break` or `continue` naming a statement that encloses it: their static rules make these errors, because the body runs in `Effect.forEach`'s or `Stream.runForEachWhile`'s callback, not in the enclosing loop or function (VIP-19, VIP-20).
-- Only a body that completes gives a record. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
+- A completion transfers to the surrounding source expression only after the region Effect and its finalizers succeed. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
+
+
+**Effect observers.** Source completion transport is private. At every observable Effect or Scope boundary, `provide` and interruption regions keep the accepted generator's success payload:
+
+| Source completion leaving the region | Primitive Effect success payload |
+| --- | --- |
+| normal, whether its source value is empty, `undefined` or another value | `undefined` |
+| `return value` | that value, with its identity preserved |
+| bare `return` | `undefined` |
+| outward `break` or `continue`, including a labeled jump with an inherited completion value | `undefined` |
+
+The source completion, including its value and target, remains separate from that payload. Thus a normal region ending in `7` can supply a `do` result of `7` while its layer's finalizer sees `Exit.succeed(undefined)`. A return crossing nested transparent regions supplies its value at each boundary, after inner finalizers succeed. Compiler control records never appear in the primitive success channel, and a real returned record-shaped object or Effect remains ordinary data. Tracking is fresh per execution and item, preserving cold reruns and reentrancy. A body or finalizer that fails, dies or is interrupted transfers no pending source completion; Effect decides the resulting Exit and cause combination. An inner transparent region finishes before an enclosing item's separate `for try` or `for concurrent` callback protocol runs.
+
+```vibe es
+// compiler-gap: pending VIP-2, VIP-12, VIP-22
+effect function regionValues() {
+  const provided = do { provide Layer.empty { 7 } }
+  const masked = do { uninterruptible { 7 } }
+  const restored = do { uninterruptible { restore { 7 } } }
+  const interruptibleValue = do { interruptible { 7 } }
+  const inherited = do { 5; provide Layer.empty {} }
+  const jumped = do { label: { provide Layer.empty { 7; break label; } 99; } }
+  const undefinedValue = do { 5; uninterruptible { undefined } }
+  return [provided, masked, restored, interruptibleValue, inherited, jumped, undefinedValue] as const
+} // Success([7, 7, 7, 7, 5, 7, undefined])
+const cleanupLayer = Layer.effectDiscard(addFinalizer(() => die("cleanup")))
+effect function cleanupBeforeValue() { return do { provide cleanupLayer { 7 } } } // Die("cleanup")
+```
+
+```ts effect
+import { Effect, Layer } from "effect"
+
+const providedCompletion = Effect.gen(function* () {
+  let value = 0
+  yield* Effect.provide(Effect.gen(function* () { value = 7 }), Layer.empty)
+  return value
+})
+const maskedCompletion = Effect.gen(function* () {
+  yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { 7 }))
+  return 7
+})
+const restoredCompletion = Effect.gen(function* () {
+  yield* Effect.uninterruptibleMask(restore => restore(Effect.gen(function* () { 7 })))
+  return 7
+})
+const interruptibleCompletion = Effect.gen(function* () {
+  yield* Effect.interruptible(Effect.gen(function* () { 7 }))
+  return 7
+})
+const inheritedCompletion = Effect.gen(function* () {
+  const earlier = 5
+  yield* Effect.provide(Effect.void, Layer.empty)
+  return earlier
+})
+const jumpedCompletion = Effect.gen(function* () {
+  let value = 0
+  label: {
+    yield* Effect.provide(Effect.gen(function* () { value = 7 }), Layer.empty)
+    break label
+  }
+  return value
+})
+const undefinedCompletion = Effect.uninterruptibleMask(() => Effect.void)
+const cleanupLayer = Layer.effectDiscard(Effect.addFinalizer(() => Effect.die("cleanup")))
+const cleanupBeforeValue = Effect.gen(function* () {
+  yield* Effect.provide(Effect.gen(function* () { 7 }), cleanupLayer)
+  return 7
+})
+const regionCompletions = Effect.gen(function* () {
+  return [
+    yield* providedCompletion, yield* maskedCompletion, yield* restoredCompletion,
+    yield* interruptibleCompletion, yield* inheritedCompletion, yield* jumpedCompletion, yield* undefinedCompletion
+  ] as const
+})
+// Success([7, 7, 7, 7, 5, 7, undefined]); cleanupBeforeValue dies with "cleanup".
+```
+
+
+```vibe es
+// compiler-gap: pending VIP-2, VIP-12
+effect function observedNormal() { return do { provide observed { 7 } } }
+effect function observedReturn(value: unknown) { provide observed { return value } }
+effect function observedBreak() { outer: while (true) { provide observed { break outer } }; return 7 }
+// A layer finalizer sees Success(undefined), Success(value), Success(undefined), respectively.
+```
+
+```ts effect
+import { Effect, Layer } from "effect"
+
+const observingLayer = (seen: unknown[], label?: string) =>
+  Layer.effectDiscard(Effect.addFinalizer(exit => Effect.sync(() => {
+    const value = exit._tag === "Success" ? exit.value : exit
+    seen.push(label === undefined ? value : [label, value])
+  })))
+function observedNormal(seen: unknown[]) {
+  return Effect.gen(function* () {
+    let value = 0
+    yield* Effect.provide(Effect.gen(function* () { value = 7 }), observingLayer(seen))
+    return value
+  })
+}
+function observedReturn<A>(seen: unknown[], value: A) {
+  return Effect.provide(Effect.gen(function* () { return value }), observingLayer(seen))
+}
+function observedBreak(seen: unknown[]) {
+  return Effect.gen(function* () {
+    let stopped = false
+    outer: while (true) {
+      yield* Effect.provide(Effect.gen(function* () { stopped = true }), observingLayer(seen))
+      if (stopped) break outer
+    }
+    return 7
+  })
+}
+function observedNested(seen: unknown[], returning: boolean) {
+  return Effect.gen(function* () {
+    let value = 0
+    yield* Effect.provide(Effect.gen(function* () {
+      const result = yield* Effect.provide(Effect.gen(function* () {
+        value = 7
+        if (returning) return value
+      }), observingLayer(seen, "inner"))
+      if (returning) return result
+    }), observingLayer(seen, "outer"))
+    return value
+  })
+}
+const observerCleanupFailure = Effect.gen(function* () {
+  yield* Effect.provide(Effect.gen(function* () { 7 }),
+    Layer.effectDiscard(Effect.addFinalizer(() => Effect.die("cleanup"))))
+  return 7
+})
+// observedNormal/observedBreak: outer Success(7), observer Success(undefined).
+// observedReturn: both Exits carry the same value and identity.
+// observedNested: inner then outer see undefined normally, or 7 on return.
+// observerCleanupFailure dies with "cleanup" instead of transferring 7.
+```
 
 ```vibe es
 // compiler-gap: pending VIP-12
@@ -844,15 +1028,20 @@ effect function find(ids: string[]) {
 function find(ids: string[]) {
   return Effect.gen(function* () {
     outer: for (const id of ids) {
-      const $c = yield* Effect.provide(Effect.gen(function* () {
-        if (id === "skip") return { _tag: "Continue", label: "outer" } as const
-        if (id === "stop") return { _tag: "Break", label: "outer" } as const
-        if (yield* (yield* Users).has(id)) return { _tag: "Return", value: id } as const
-        return { _tag: "Normal" } as const
+      const $control: { kind: "Normal" | "Return" | "Break" | "Continue"; value: string } =
+        { kind: "Normal", value: "" }
+      yield* Effect.provide(Effect.gen(function* () {
+        if (id === "skip") { $control.kind = "Continue"; return }
+        if (id === "stop") { $control.kind = "Break"; return }
+        if (yield* (yield* Users).has(id)) {
+          $control.kind = "Return"
+          $control.value = id
+          return id
+        }
       }), [Layer.succeed(Users, testUsers)])
-      if ($c._tag === "Return") return $c.value
-      if ($c._tag === "Break") break outer
-      if ($c._tag === "Continue") continue outer
+      if ($control.kind === "Return") return $control.value
+      if ($control.kind === "Break") break outer
+      if ($control.kind === "Continue") continue outer
     }
     return "none"
   })
@@ -879,11 +1068,10 @@ function f(xs: number[]) {
     for (const x of xs) {
       $s: switch (x) {
         case 1: {
-          const $c = yield* Effect.uninterruptibleMask(($restore) => Effect.gen(function* () {
+          yield* Effect.uninterruptibleMask(($restore) => Effect.gen(function* () {
             n = n + 10
-            return { _tag: "Break", label: "$s" } as const
           }))
-          if ($c._tag === "Break") break $s
+          break $s
         }
       }
       n++

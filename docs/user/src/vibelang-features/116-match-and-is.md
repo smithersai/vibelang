@@ -30,7 +30,7 @@ Each arm, `when pattern: expression;`, is tried in order; the first match gives 
 
 A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code.
 
-An arm is one expression. Use `do { }` for several statements. Its value is its last statement's. Inside `do`, declare variables with `const` or `let`: `var` is `EK1019`, with a quick fix to `let`. `do` introduces no function boundary. A `return`, `break` or `continue` reaches the enclosing function, loop or label. An unlabeled `break` or `continue` in a `do` in a loop head is an error. These rules also apply in nested blocks. A nested function keeps its own declarations and control flow. For example:
+An arm is one expression. Use `do { }` for several statements. It gives the block's normal completion value, retaining an earlier value when a later empty block inherits it. Inside `do`, declare variables with `const` or `let`: `var` is `EK1019`, with a quick fix to `let`. `do` introduces no function boundary. A `return`, `break` or `continue` reaches the enclosing function, loop or label. An unlabeled `break` or `continue` in a `do` in a loop head is an error. These rules also apply in nested blocks. A nested function keeps its own declarations and control flow. For example:
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14

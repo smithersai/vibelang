@@ -8,8 +8,9 @@ Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 - **How it is checked.** Each VIP’s VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s and finalizer traces. The fuzz suite generates more pairs. Checking only the Effect TypeScript validates the counterpart, not compiler conformance; skipped pairs establish no conformance.
 - **Runtime helpers** do not patch Effect ([VIP-7](../vips/0007-match.md)). They implement only the specified adaptations: defining `Symbol.customMatcher` where absent; generated error matchers; the class tests below and the pinned snapshot's extraction rules, without modifying built-in globals; and the retained fixed checks for Effect's `Option`, `Exit`, `Result` and tagged errors (VIP-7). These checks follow resolved bindings, including aliases, not identifier spelling. The thirty-nine fixed tests and extracted lists are listed once in [Retained fixed patterns](004-match.md#retained-fixed-patterns) (decided details 86 and 92). VIP-7 keeps today’s fixed checks for Effect’s tagged errors until Effect ships matchers; neither inherited instance matching nor a new universal `_tag` test replaces them.
 - **Class patterns** have one definition, in [Class patterns](004-match.md#class-patterns) and [Retained fixed patterns](004-match.md#retained-fixed-patterns): a retained guard, an own `Symbol.customMatcher`, a built-in test, `instanceof`, or a call, chosen in that order. This deliberately differs from the pinned draft's `[[ConstructedBy]]` and internal-slot tests, which JavaScript cannot read for untouched `.ts` and `.js` objects. No helper patches `Function.prototype` or records construction.
-- **Source bindings and control flow survive lowering.** Bindings and jump targets are resolved on the source before any callback is introduced. Function bodies follow [Functions](001-functions.md#meaning) (`this`, `super`, `new.target`); region bodies follow [Region bodies](002-running.md#region-bodies) (completion records for outward jumps, not a continuation runtime); expressions follow the [evaluation-order rule](002-running.md#evaluation-order) (call references, receivers, short-circuits); destructuring and parameter defaults behave as [JavaScript with the `do` proposal](002-running.md#destructuring-and-parameter-defaults). The lowering is the implementation's choice, checked by those sections' examples and the fuzz suite. A nested source function keeps its own bindings. The legacy JavaScript uses listed in [Legacy JavaScript](001-functions.md#direct-eval) are compile errors throughout `.vibe`, so no lowering has to preserve them. Type references such as `Function` and property names such as `o.arguments` keep TypeScript’s meaning.
+- **Source bindings and control flow survive lowering.** Bindings and jump targets are resolved on the source before any callback is introduced. Function bodies follow [Functions](001-functions.md#meaning) (`this`, `super`, `new.target`); region bodies follow [Region bodies](002-running.md#region-bodies) (source completions kept separately from primitive Effect success payloads); expressions follow the [evaluation-order rule](002-running.md#evaluation-order) (call references, receivers, short-circuits); destructuring and parameter defaults behave as [JavaScript with the `do` proposal](002-running.md#destructuring-and-parameter-defaults). The lowering is the implementation's choice, checked by those sections' examples and the fuzz suite. A nested source function keeps its own bindings. The legacy JavaScript uses listed in [Legacy JavaScript](001-functions.md#direct-eval) are compile errors throughout `.vibe`, so no lowering has to preserve them. Type references such as `Function` and property names such as `o.arguments` keep TypeScript’s meaning.
 - **Match cache and cleanup** follow the pinned draft's `CreateMatchCache` and `FinishMatch`, as [Pattern matching](004-match.md#leaving-a-match) states them.
+- **Region observers.** `provide` and interruption regions preserve the original generator payload at every Effect/Scope boundary: normal completion and outward `break`/`continue` succeed with `undefined`, while source `return value` succeeds with that value, preserving identity. Source completion values and targets are carried separately and transferred only after successful finalization. Nested regions apply the rule independently; compiler control records never become finalizer payloads. See [Region bodies](002-running.md#region-bodies).
 - <a id="abandonment"></a>**Abandonment.** A rejected `await` resumes the `async` function with a throw. A failed `try` never resumes the generator. `try e` is `yield* e`, and `Effect.gen` calls only the generator's `next`, only on success. So when a `yield*` in effect code fails, dies or is interrupted, no JavaScript after it runs: no `using` disposal, no destructuring `IteratorClose`, no `FinishMatch`. `throw e` in effect code is `return yield* Effect.fail(e)`, so every `throw` abandons the generator, wherever it stands: in an arm, a guard, or a `do` in either. A JavaScript exception is different: a getter that throws, the no-match `TypeError` or a call that throws unwinds the generator, runs that cleanup, and then becomes a defect. Use `ensuring`, `scoped` or `acquireRelease` for cleanup on every exit.
 - Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](../vips/0035-handlers-open.md)), not part of the language.
 
@@ -229,4 +230,32 @@ const defectTrace = trace.slice()     // []
 if (!Exit.isFailure(unsafeExit) || !Exit.isFailure(safeExit)) throw new Error("expected failures")
 if (!Exit.isFailure(defectExit) || defectTrace.length !== 0) throw new Error("defect disposal changed")
 if (unsafeTrace.length !== 0 || safeTrace.join() !== "dispose") throw new Error("disposal changed")
+```
+
+
+### Region finalizer observations
+
+```vibe es
+// compiler-gap: pending VIP-2, VIP-12
+effect function normalObservation() { return do { provide observed { 7 } } }
+effect function returnObservation() { provide observed { return 7 } }
+```
+
+```ts effect
+import { Effect, Layer } from "effect"
+
+const released: unknown[] = []
+const observed = Layer.effectDiscard(Effect.addFinalizer(exit => Effect.sync(() => { released.push(exit) })))
+function normalObservation() {
+  return Effect.gen(function* () {
+    let value = 0
+    yield* Effect.provide(Effect.gen(function* () { value = 7 }), observed)
+    return value
+  })
+}
+function returnObservation() {
+  return Effect.provide(Effect.gen(function* () { return 7 }), observed)
+}
+// Both outer Exits are Success(7); their layer-finalizer Exits are
+// Success(undefined) and Success(7), respectively.
 ```

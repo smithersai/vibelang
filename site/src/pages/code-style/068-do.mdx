@@ -92,7 +92,9 @@ effect function intervalRecord() {
 {"started":0,"finished":40,"millis":40}
 ```
 
-This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.gen(function* () { ... })` binds each Effect result with `yield*` to a local name; in a `.vibe` file, an effect function sequences those operations with `try`. Use `effect { ... }` when a combinator needs an Effect built from several statements. `do { ... }` is a TC39 do expression: it runs immediately and gives its last statement's value.
+This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.gen(function* () { ... })` binds each Effect result with `yield*` to a local name; in a `.vibe` file, an effect function sequences those operations with `try`. Use `effect { ... }` when a combinator needs an Effect built from several statements. `do { ... }` is a TC39 do expression: it runs immediately and gives the block's normal completion value.
+
+`do` keeps ordinary expression typing: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`. `do { 7; {} }` retains `7`, because the empty block inherits the preceding value; an entirely empty `do` gives `undefined`. `provide` and interruption blocks preserve these completion values too, including values carried through a locally consumed `break`.
 
 An `effect function*` produces a Stream with `yield`. A plain `function*` is a JavaScript generator. Consume a Stream with `for try`.
 
@@ -101,6 +103,8 @@ An `effect function*` produces a Stream with `yield`. A plain `function*` is a J
 - `Effect.Do` and named `bind` fields usually become local `const` bindings.
 - A derived `Effect.let` field becomes an ordinary expression.
 - An `Effect.gen` body becomes an effect function body, with `try` replacing `yield*`.
+
+Region finalizers see the ordinary generator result: `undefined` for normal completion or an outward `break`/`continue`, and the returned value for `return`. The source block can still supply a different completion value to `do`; compiler control records stay private.
 
 ---
 

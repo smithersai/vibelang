@@ -28,10 +28,13 @@ yield* Effect.interruptible(Effect.gen(function* () { yield* poll() }))
 - **Amended 2026-10-30: `restore` in a `for concurrent` body.** `restore` inside any `for concurrent` body is a compile error (`EK2202`), whatever the limit: each item runs as a separate Effect that the enclosing mask does not govern. Mask per item with `Effect.uninterruptibleMask` inside the body, or use a plain `for`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 51a).
 - Under VIP-6, the keywords remove the globals of the same name, so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
 - **Ambiguity: none.** These are contextual keywords followed by `{` on the same line.
+- **Amended 2026-10-30: observer payloads and source completions.** A `provide` or interruption region preserves its source completion separately from the primitive Effect success value. Normal completion and outward `break`/`continue` give primitive success `undefined`; a source `return value` gives that exact value, and bare `return` gives `undefined`. Nested regions apply this at each boundary. Finalizers observe these generator payloads, never compiler control records; a normal source value still contributes to an enclosing `do`. Real returned Effects and record-shaped objects remain data. Completion state is fresh for each execution/item, and failed, dying or interrupted bodies/finalizers transfer no pending source completion. This preserves the original generator counterpart and Effect's own finalization rules; see [Region bodies](../src/002-running.md#region-bodies).
 
 ## History
 
 About 20 findings, all about masking during `using` acquisitions. VIP-8 removed `using`'s Effect rules, so none apply.
+
+- **Amended 2026-10-30: ordinary-block completion values.** A transparent block preserves the source completion's kind, value (including `empty`) and target. A surrounding `do` can observe its normal value or a value carried through a consumed jump; generated callbacks do not discard it. The compiler's transport is its choice; transfer the completion only after the region Effect and its finalizers succeed. Failures and finalization retain Effect's rules.
 
 ## Prior art
 
