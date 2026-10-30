@@ -18,7 +18,7 @@
 # 6. Records the release in UPSTREAM and builds tsc/.
 #
 # Nothing here is edited by hand except sync.sh, packages.txt, patches.txt and
-# UPSTREAM's notes; VibeLang's glue lives in tsc/internal/vibelang/effectlint*.go.
+# UPSTREAM's notes, the shim layout guard and tests; VibeLang's glue lives in tsc/internal/vibelang/effectlint*.go.
 set -eu
 tag=${1:?usage: sync.sh <Effect-TS/tsgo release tag, such as @effect/tsgo@0.57.0>}
 here=$(cd "$(dirname "$0")" && pwd)
@@ -108,7 +108,8 @@ sed -i "s#$self/shim/collections#$mod/internal/collections#" "$here"/etscore/*.g
   --repository-root "$src" --source-root "$tsc" \
   --module-prefix "$mod" --provider-shim-prefix "$mod/shim" \
   --extra-shim-root "$src/_tools/gen_shims/providers/typescript" >/dev/null)
-rm -rf "$here/shim"
+# Keep VibeLang-owned layout checks when refreshing upstream-generated shims.
+find "$here/shim" -type f ! -name '*_test.go' ! -path "$here/shim/checker/layout.go" -delete
 grep -rhoE "\"$self/shim/[^\"]+\"" "$here" --include='*.go' | tr -d '"' | sed "s#$self/shim/##" | sort -u | while read -r p; do
   mkdir -p "$here/shim/$p"
   for f in "$src/shim/$p"/*.go; do

@@ -329,6 +329,7 @@ type extra_Checker struct {
 	tupleTypes                             map[checker.CacheHashKey]*checker.Type
 	unionTypes                             map[checker.CacheHashKey]*checker.Type
 	unionOfUnionTypes                      map[checker.UnionOfUnionKey]*checker.Type
+	removedTypes                           map[checker.RemovedTypeKey]*checker.Type
 	intersectionTypes                      map[checker.CacheHashKey]*checker.Type
 	propertiesTypes                        map[checker.PropertiesTypesKey]*checker.Type
 	diagnostics                            ast.DiagnosticsCollection

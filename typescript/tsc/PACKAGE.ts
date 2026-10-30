@@ -37,6 +37,7 @@ export const Package = S.Package({
   targets: {
     srcs,
     tree,
+    "effect-shim-files": files("internal/effecttsgo/shim/checker"),
     "vibelang-files": files("internal/vibelang"),
     "vibelangfuzz-files": files("internal/vibelangfuzz"),
     "vibelangmapper-files": files("internal/vibelangmapper"),
