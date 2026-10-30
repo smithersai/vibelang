@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -77,4 +77,22 @@ test("with per-test results, the issue names each new failure and missing test",
   assert.equal(issue.title, "Upgrading Effect fails 2 of the target's tests")
   assert.equal(issue.actual, "fails: a > x; missing: a > y")
   assert.equal(issue.repro, "vitest run (in pkg), before and after the change; logs b.log and a.log")
+})
+
+test("a runner without per-test results runs again after a nonzero exit, and the second run counts", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-rerun-"))
+  try {
+    // Fails on its first run only, as a timing flake does under load.
+    const flaky = `node -e "const fs = require('node:fs'); const n = fs.existsSync('runs') ? 1 : 0; fs.writeFileSync('runs', 'x'); process.exit(n ? 0 : 1)"`
+    const result = await runTests({ command: flaky, cwd: root, root, jsonFile: join(root, "report.json"), log: join(root, "tests.log") })
+    assert.equal(result.code, 0)
+    assert.deepEqual(result.rerun, { code: 1 })
+    assert.ok(existsSync(join(root, "tests.rerun.log")))
+    const failing = await runTests({ command: "exit 3", cwd: root, root, jsonFile: join(root, "report.json") })
+    assert.equal(failing.code, 3)
+    const passing = await runTests({ command: "true", cwd: root, root, jsonFile: join(root, "report.json") })
+    assert.equal(passing.rerun, undefined)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })

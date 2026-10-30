@@ -54,11 +54,24 @@ export function tally(tests) {
   }
 }
 
-/** Runs the tests and reads what they report. */
+/**
+ * Runs the tests and reads what they report. A run with no per-test report is
+ * judged by its exit status alone, which cannot tell a flaky test from a
+ * failing one, so a nonzero exit runs the tests once more and the second
+ * run's status counts; rerun holds the first exit status.
+ */
 export async function runTests({ command, cwd, root, jsonFile, log, env }) {
-  const result = await run(withJsonReporter(command, jsonFile), { cwd, log, env })
-  const tests = isVitest(command) && existsSync(jsonFile) ? parseVitestJson(readJson(jsonFile), root) : null
-  return { code: result.code, ms: result.ms, tests, ...(tests ? tally(tests) : { total: null, passed: null, failed: [], skipped: null }) }
+  const once = async (log) => {
+    const result = await run(withJsonReporter(command, jsonFile), { cwd, log, env })
+    return { result, tests: isVitest(command) && existsSync(jsonFile) ? parseVitestJson(readJson(jsonFile), root) : null }
+  }
+  let { result, tests } = await once(log)
+  let rerun
+  if (!tests && result.code !== 0) {
+    rerun = { code: result.code }
+    ;({ result, tests } = await once(log && log.replace(/(?:\.log)?$/, ".rerun.log")))
+  }
+  return { code: result.code, ms: result.ms, tests, ...(rerun ? { rerun } : {}), ...(tests ? tally(tests) : { total: null, passed: null, failed: [], skipped: null }) }
 }
 
 /**
