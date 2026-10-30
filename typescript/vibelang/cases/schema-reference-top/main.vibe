@@ -1,0 +1,9 @@
+import { Schema } from "effect"
+class Model extends Schema.Class<Model>("Model")({ value: Schema.String }) {}
+const Optional = Schema.optionalKey(Schema.Number)
+const Mutable = Schema.mutableKey(Schema.String)
+export schema ModelAlias = Model
+export schema OptionalAlias = Optional
+export schema MutableAlias = Mutable
+export schema UnknownAlias = Schema.Unknown
+export schema AnyAlias = Schema.Any

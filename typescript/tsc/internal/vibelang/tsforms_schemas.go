@@ -284,7 +284,7 @@ func isSchemaCall(c *checker.Checker, node *ast.Node, name string, count int) bo
 func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, indent string) (string, bool) {
 	switch {
 	case ast.IsIdentifier(schema) || ast.IsPropertyAccessExpression(schema):
-		if !ast.IsEntityNameExpression(schema) {
+		if !ast.IsEntityNameExpression(schema) || !isSchemaValue(c, c.GetTypeAtLocation(schema)) {
 			return "", false
 		}
 		if module, name := effectMember(c, schema); module == "Schema" && ast.IsPropertyAccessExpression(schema) {

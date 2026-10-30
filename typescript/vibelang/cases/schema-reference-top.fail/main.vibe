@@ -1,0 +1,6 @@
+// expect: EK2109 EK2109 EK2109
+import { Schema } from "effect"
+const Fake = { "~effect/Schema/Schema": Schema.String["~effect/Schema/Schema"], Type: 0 }
+export schema Alias = Fake
+schema Struct { value: Fake }
+schema error Bad { value: Fake }

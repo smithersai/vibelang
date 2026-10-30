@@ -63,6 +63,8 @@ effect function locateBin(input: unknown) {
 
 `TemplateLiteral` validates a string pattern of literal, string, finite-number, union, or branded spans. `TemplateLiteralParser` also splits it into a tuple and applies the spans' conversions; encoding the tuple rebuilds the string.
 
+A reference in a `schema` declaration must satisfy Effect's `Schema.Top` contract; copying the schema marker onto an ordinary object is insufficient and reports `EK2109`. For an existing non-schema alias with a public `Type` member, `vibelang --fix` writes the original `const` and `type` pair, preserving its value and public type.
+
 ## Building unions and tagged alternatives
 
 ```vibe

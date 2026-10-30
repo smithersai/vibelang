@@ -571,7 +571,11 @@ func constructorKeywordRange(file *ast.SourceFile, member *ast.Node) core.TextRa
 // isSchemaValue reports whether t is a schema, such as Schema.String or a
 // Schema class.
 func isSchemaValue(c *checker.Checker, t *checker.Type) bool {
-	return t != nil && c.GetPropertyOfType(t, schemaTypeID) != nil
+	if t == nil || c.GetPropertyOfType(c.GetApparentType(t), schemaTypeID) == nil {
+		return false
+	}
+	top := servicesFor(c).effectExport("Schema", "Top")
+	return top != nil && c.IsTypeAssignableTo(t, c.GetDeclaredTypeOfSymbol(top))
 }
 
 // checkLeakingRequirements reports EK4809 when every Effect member of
