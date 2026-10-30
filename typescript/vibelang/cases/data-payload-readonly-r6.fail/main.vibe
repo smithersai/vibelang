@@ -1,0 +1,3 @@
+// expect: TS2540
+data Payload { Item { nested: { count: number }; readonlyNested: { readonly count: number } } }
+export function reject(value: Payload) { value.nested = { count: 1 }; value.readonlyNested.count++; }

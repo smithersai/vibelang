@@ -163,6 +163,11 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 		p.vibelangImplicitReadonly = true
 		fields = p.parseTypeLiteral()
 		p.vibelangImplicitReadonly = saved
+		for _, field := range fields.Members() {
+			if field.Type() != nil {
+				dataPayloadTypeScript(field.Type())
+			}
+		}
 		variant.Open, variant.Close = p.blockBraces(fields)
 	} else {
 		fields = p.vibelangSynthesized(p.factory.NewTypeLiteralNode(p.newNodeList(name.Loc, nil)), name.Loc)
@@ -299,4 +304,20 @@ func IsDataConstructors(node *ast.Node) bool {
 	callee := call.Expression()
 	data := callee.Expression()
 	return ast.IsIdentifier(data) && data.Flags&ast.NodeFlagsReparsed != 0 && data.Text() == "Data" && callee.Name().Text() == "taggedEnum"
+}
+
+// dataPayloadTypeScript preserves the payload's written TypeScript mutability.
+// TaggedEnum makes variant fields readonly itself; nested values stay as written.
+func dataPayloadTypeScript(node *ast.Node) bool {
+	if modifiers := node.Modifiers(); modifiers != nil {
+		kept := modifiers.Nodes[:0]
+		for _, modifier := range modifiers.Nodes {
+			if modifier.Kind != ast.KindReadonlyKeyword || modifier.Flags&ast.NodeFlagsReparsed == 0 {
+				kept = append(kept, modifier)
+			}
+		}
+		modifiers.Nodes = kept
+		modifiers.ModifierFlags = ast.ModifiersToFlags(kept)
+	}
+	return node.ForEachChild(dataPayloadTypeScript)
 }

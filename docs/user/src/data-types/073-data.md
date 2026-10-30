@@ -285,3 +285,5 @@ A `cause` field keeps the original exception through native error-cause support;
 Raise a data error with `throw new DocumentMissing({ id })`; ordinary error propagation needs no generator yield or `Effect.fail`.
 
 An exported `data` declaration may use the contextual name `as`. Its declaration file writes `export declare type as = …` so TypeScript consumers can import both its constructor and its type.
+
+A variant’s fields are readonly, as in `Data.TaggedEnum`; a nested object or array keeps its written TypeScript mutability. Nested index signatures are writable unless written `readonly`. To keep an older compiler’s implicit nested readonly API, run `vibelang --fix --fix-migration-only`; it writes the nested `readonly` modifiers without changing explicit `mutable` members.

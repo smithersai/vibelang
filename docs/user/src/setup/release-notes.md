@@ -176,6 +176,8 @@ failure rules from 0.0.10 still apply.
 
 ### Upgrade from 0.0.10
 
+- `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
+
 This release changes platform access and name resolution in `.vibe`.
 D310, D311, D312 and D313 are **provisional, pending the owner's review**.
 Run `vibelang -p tsconfig.json --fix`, then check the remaining diagnostics
@@ -532,6 +534,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A failed source setup could delete the previous local starter while copying or rewriting its replacement; setup now prepares the replacement first and restores the previous starter if publishing it fails.
 
 - The ESLint acceptance checks reported valid `effect` modifiers as missing variable names; they now recognize function and method prefixes while still detecting a missing node for a variable, parameter or method named `effect`.
+- Nested objects and index signatures inside a `data` payload were made readonly implicitly; they now keep their written TypeScript mutability.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

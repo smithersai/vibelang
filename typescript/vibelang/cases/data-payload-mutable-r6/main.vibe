@@ -1,0 +1,8 @@
+import { Data } from "effect";
+export data Payload { Item { nested: { count: number }; values: number[]; readonlyNested: { readonly count: number }; dictionary: { [key: string]: number } } }
+export function mutate(value: Payload): number[] {
+  value.nested.count++;
+  value.dictionary["count"] = value.nested.count;
+  value.values.push(value.nested.count);
+  return [value.nested.count, value.values.length];
+}
