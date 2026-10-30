@@ -30,6 +30,10 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest; }
 
 *Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
 
+## Amendment: member diagnostic priority
+
+A getter, setter or constructor rejected for an Effect modifier receives the applicable Functions diagnostics without an additional error-body category diagnostic, for both `error` and `schema error`. In particular, `async effect get x() { }` receives both `EK0104` and `EK0105` (VIP-1). Other rejected members use the first applicable member rule; the general category rule is the fallback.
+
 ## History
 
 Every finding was about error classes combined with `match` exhaustiveness: round 2 M7 and round 8 M1 (majors), plus five minors, all lego-kind. VIP-7's custom matcher, which tests `_tag`, settles them. The declaration syntax itself drew no findings.

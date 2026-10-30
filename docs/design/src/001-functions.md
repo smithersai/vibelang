@@ -19,6 +19,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 - `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1), apart from the `effect { … }` block (VIP-2). `Name` is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
 - There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start or after `export`, `effect` or `async` followed by a name other than `as`, `satisfies` or `is`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
 - As for `async`: type parameters follow the name, as in `effect m<T>(x: T) { }` and `effect function f<T>(x: T) { }`; `static effect m()` and a private `effect #load() { }` are allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
+- A recognized `effect` modifier in a TypeScript-forbidden `async` position is `EK0108`: on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member. Recognition follows syntax, including TypeScript’s recovery positions; ordinary TypeScript syntax keeps its own diagnostics. Valid function/class overload signatures retain TypeScript’s ordinary rules. A method named `effect`, such as `interface Ordinary { effect(): number }`, has no Effect modifier.
 - `effect get x() { }` and `effect set x(v) { }` parse, so the getter/setter rule below reports them, as TypeScript parses `async get x() { }` and reports TS1042.
 - `effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end, as with `async`.
 - Anywhere else, `effect` is an ordinary identifier, so `Layer.effect(…)` and `const effect = …` keep working. As with `async`, an arrow needs its whole head: `effect(x) => …` is an arrow, and `effect(x)` without `=>` is a call.
@@ -78,6 +79,18 @@ const result = Effect.runSync(Effect.gen(function* () {
 console.log(JSON.stringify(result))
 ```
 
+The forbidden modifier positions have their own code; ordinary identifier names remain available:
+
+```vibe
+// compiler-gap: pending VIP-1
+abstract class Bad { abstract effect read(): number!! } // EK0108
+declare effect function ambientRead(): number!!         // EK0108
+interface BadMember { effect read(): number!! }         // EK0108
+type BadLiteral = { effect read(): number!! }            // EK0108
+interface Ordinary { effect(): number }                 // a method named effect
+class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
+```
+
 ### Static rules
 
 | Rule | Diagnostic |
@@ -86,6 +99,7 @@ console.log(JSON.stringify(result))
 | `await` on an Effect, by the [Result test](002-running.md#result-tests) (decided detail 89: not `never`, `any` or `unknown`, and at least one union member an Effect), in an `async` function or at the module top level (VIP-5); write `await runPromise(e)` | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function | `EK0105` |
+| a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | `EK0108` |
 | A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async` (`any`, `unknown` and `never` are errors) | `EK0106` |
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](#direct-eval) defines it | `EK0107` |
 

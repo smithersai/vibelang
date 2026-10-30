@@ -109,6 +109,8 @@ EffectModifier = "effect"
 
 Each two-word form needs a function, a method name or arrow parameters after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
 
+A recognized `effect` modifier follows TypeScript’s `async` diagnostic recovery positions too. An `abstract` declaration, ambient `declare` context, or an `interface` or type literal member with that modifier is rejected with `EK0108` ([Functions](001-functions.md#static-rules)). Recognition is syntactic: identifiers named `effect` retain their ordinary member reading. Function/class overload signatures follow TypeScript’s ordinary admission and compatibility; generator overloads retain their native rejection.
+
 #### EffectFunction
 
 ```text
@@ -669,6 +671,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0105` | `effect` and `async` on one function | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](001-functions.md#direct-eval) |
+| `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](#notes-on-the-productions) |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound | 4 | [Failures](003-failures.md#effectful-callables) |

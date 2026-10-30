@@ -45,6 +45,10 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 
 - **Amended 2026-10-30: bindings behave as in an `async` body.** An `effect` body reads `this`, `super` and `new.target` exactly as the same body reads them in an `async` function of the same form: the same bindings, at the same step of evaluation, with the same errors. Building the Effect reads none of them. This replaces the helper recipe: how the compiler passes them in is its choice, and the spec keeps the reviewers' counterexamples as checked examples. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later".
 
+## Amendment: modifier placement diagnostics
+
+A recognized `effect` modifier follows the valid and diagnostic recovery positions of TypeScript’s `async`. On an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member, it is `EK0108`. Valid function/class overload signatures follow ordinary TypeScript admission and compatibility; the code does not reject a valid overload or admit a generator overload. Recognition is syntactic: an identifier-named method such as `interface Ordinary { effect(): number }` has no Effect modifier. Ordinary TypeScript syntax retains its native diagnostics. The existing getter/setter/constructor rejection is `EK0104`, and combining `async` and `effect` is `EK0105`; both may apply to one accessor. An error or schema-error member retains these applicable diagnostics without an extra member-category error (VIP-13).
+
 ## Prior art
 
 - JavaScript and TypeScript `async function`, C# `async`, Rust `async fn`, Kotlin `suspend fun`. In each, a keyword on the function, never its body, decides its kind.
