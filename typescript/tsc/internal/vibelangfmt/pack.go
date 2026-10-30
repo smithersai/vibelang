@@ -77,6 +77,7 @@ func writeArchive(path, executable, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer os.Remove(temporary)
 	hash := sha256.New()
 	archive := zip.NewWriter(io.MultiWriter(out, hash))
 	header := &zip.FileHeader{Name: name, Method: zip.Store}
@@ -92,7 +93,6 @@ func writeArchive(path, executable, name string) (string, error) {
 		err = closeErr
 	}
 	if err != nil {
-		os.Remove(temporary)
 		return "", err
 	}
 	if err := os.Rename(temporary, path); err != nil {
