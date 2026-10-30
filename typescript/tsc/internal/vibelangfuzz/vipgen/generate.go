@@ -79,6 +79,9 @@ type Gen struct {
 	// block is generated inside the if, so the count holds in every scope a
 	// construct makes there.
 	narrowed map[string]int
+	// heldForks counts the held children of plain fork written so far
+	// (vip17.fork-outlives-function).
+	heldForks int
 }
 
 // A Scope is what a statement may refer to: the function it stands in, the

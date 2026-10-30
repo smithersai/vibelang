@@ -80,11 +80,15 @@ func init() {
 			Stmt: func(g *Gen, s *Scope) Stmt {
 				joined := g.On("vip17.join") && !g.Chance(3)
 				// A held child of plain fork stands anywhere but main's
-				// own body only when vip17.fork-outlives-function is on:
-				// until lane w2-fork's fix, the compiler interrupts it
-				// when the enclosing function returns or region body
-				// (uninterruptible, provide, for try, …) ends.
-				if !joined && form.effect == "forkChild" && (s.Fn.Name != "main" || s.Depth > 0) {
+				// own body, or beside another held child, only when
+				// vip17.fork-outlives-function is on: until lane
+				// w2-fork's fix, the compiler interrupts it when the
+				// enclosing function returns or region body
+				// (uninterruptible, provide, for try, …) ends, and
+				// interrupts main's children last-forked first, where
+				// their fiber interrupts them in the order they were
+				// forked.
+				if !joined && form.effect == "forkChild" && (s.Fn.Name != "main" || s.Depth > 0 || g.heldForks > 0) {
 					switch {
 					case g.On("vip17.fork-outlives-function"):
 						g.Use("vip17.fork-outlives-function")
@@ -229,6 +233,9 @@ func (g *Gen) forkBody(s *Scope, form forkForm, joined bool, child Expr) []Stmt 
 		out = append(out, &Event{Label: g.Label()})
 		out = append(out, &ExprStmt{X: &Try{X: &ModCall{Mod: "Deferred", Fn: "succeed", Args: []Expr{&Ref{Name: d}, &Lit{Text: "undefined"}}}}})
 		return append(out, g.join(s, f))
+	}
+	if form.effect == "forkChild" {
+		g.heldForks++
 	}
 	held := &ModCall{Mod: "Effect", Fn: "ensuring", Args: []Expr{
 		&ModCall{Mod: "Effect", Fn: "andThen", Args: []Expr{
