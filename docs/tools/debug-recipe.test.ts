@@ -34,4 +34,4 @@ test.skipIf(!existsSync(defaultCompiler()))("the documented debugging entry work
     expect(executed.stderr).toContain("DEBUG_RECIPE_MARKER")
     expect(executed.stderr).toContain("app.vibe:3")
   } finally { rmSync(dir, { recursive: true, force: true }) }
-})
+}, 30_000)

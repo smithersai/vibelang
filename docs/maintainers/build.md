@@ -82,6 +82,11 @@ The runtime entry tests start up to three host processes in sequence. Each
 child has a `10_000` ms deadline; the whole test allows `35_000` ms so the
 outer deadline covers all three on a busy build host.
 
+The documented debugging recipe test compiles an application and then starts
+Node.js to check its failing source-mapped exit. Its test deadline is
+`30_000` ms so both host processes can finish on a busy build host; it still
+checks the compiler result, failure marker and original source location.
+
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
 install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`
