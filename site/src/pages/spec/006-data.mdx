@@ -142,6 +142,43 @@ sample.items.push(2)
 sample.counts.a = 2
 ```
 
+Referenced schemas must preserve the source's decoded-key modifiers. At every required field, required fixed tuple slot (before or after a rest), and `Record` value, the inferred schema type's `"~type.optionality"` must be `"required"`. At every effectively readonly field or readonly `Record` value, `"~type.mutability"` must be `"readonly"`; all `schema error` payload fields are effectively readonly even without a written `readonly`. These checks apply at the mapped position, recursively in nested structs and schema errors, through aliases and unions. A conflicting or unprovable flag is `EK2109`: use an unmodified value schema and write modifiers on the declaration. Writable and optional source positions retain the mappings above. The checks describe decoded `Type`; encoded-key and constructor-input defaults keep Effect's behavior. Field readonlyness is shallow and does not freeze nested mutable values.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15, VIP-29
+const OptionalNumber = Schema.optional(Schema.Number)
+const MutableString = Schema.mutableKey(Schema.String)
+// schema Bad { must: OptionalNumber; readonly frozen: MutableString; tuple: [OptionalNumber]; entries: Record<"a", OptionalNumber> }
+// schema error BadError { value: MutableString }
+// EK2109 at each conflicting reference: the written required/readonly position controls.
+schema FlagIntent {
+  must: number | undefined;
+  readonly frozen: string;
+  tuple: [number | undefined];
+  entries: Record<"a", number | undefined>;
+}
+schema error FlagError { value: string }
+```
+
+```ts [Effect]
+import { Schema } from "effect"
+
+const PresentNumber = Schema.Union([Schema.Number, Schema.Undefined])
+const FlagIntent = Schema.Struct({
+  must: Schema.mutableKey(PresentNumber),
+  frozen: Schema.String,
+  tuple: Schema.mutableKey(Schema.mutable(Schema.Tuple([PresentNumber]))),
+  entries: Schema.mutableKey(Schema.Record(Schema.Literal("a"), Schema.mutableKey(PresentNumber))),
+})
+type FlagIntent = typeof FlagIntent.Type
+class FlagError extends Schema.TaggedError<FlagError>()("FlagError", { value: Schema.String }) {}
+const decodeFlagIntent = Schema.decodeUnknownExit(FlagIntent)
+decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [undefined], entries: { a: undefined } }) // Success
+decodeFlagIntent({ frozen: "ok", tuple: [undefined], entries: { a: undefined } })                  // Failure: required field
+decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [], entries: { a: undefined } })          // Failure: required tuple slot
+decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [undefined], entries: {} })               // Failure: required record key
+```
+
 Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. `typeof Name.Type` is the declared type.
 
 ```vibe [VibeLang]
@@ -203,7 +240,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | --- | --- |
 | `export default schema S { … }` or `export default schema S = T`; declare the name and write `export { S as default }` | `EK1501` |
 | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
-| a field type outside the mapping; use the corresponding Effect schema (for example, `Schema.Date` for `Date`) when available, otherwise declare a Schema value | `EK2109` |
+| a field type outside the mapping, or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
 A `schema error` keeps the error-declaration diagnostic `EK1305`; it does not use `EK1501`. A schema's named default export and an ordinary generic factory are normal TypeScript:

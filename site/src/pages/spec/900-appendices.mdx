@@ -922,7 +922,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2103` | `yield*` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2104` | `yield` in an `effect` block, arrow or `effect function` nested in a producer | 21 | [Running Effects](/spec/002-running#producers) |
-| `EK2109` | a `schema` field type outside the mapping | 15 | [Data](/spec/006-data#schema-declarations) |
+| `EK2109` | a `schema` field type outside the mapping, or conflicting/unprovable referenced-schema decoded-key flags at a required or effectively readonly position | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK2111` | `restore` outside an `uninterruptible` block | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK2126` | a constraint on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |

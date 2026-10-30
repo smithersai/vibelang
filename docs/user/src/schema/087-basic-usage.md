@@ -4,6 +4,8 @@ Schema constructors work as in Effect. Combine small descriptions into arrays, o
 
 The specification assigns `EK1501` to a direct default `schema` declaration and `EK1502` to schema type parameters. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction.
 
+A VibeLang `schema` reference must preserve its written decoded-key modifiers (`EK2109`). Required fields, required fixed tuple slots and record values need a required value schema; readonly fields and readonly record values need readonly key flags. This includes every `schema error` payload field, whose readonlyness is implicit. Checks follow aliases and nested positions. Use the unmodified value schema and write optionality or mutability on the declaration; `number | undefined` allows a present `undefined` without allowing a missing required field or slot.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe
