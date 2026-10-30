@@ -37,8 +37,8 @@ effect function countdown(n: number, seen: number[]): Effect<number[], never, ne
 }
 
 // A body that is one expression returns its Effect without a generator. The
-// thunk that evaluates it is still named after the function; Effect calls it
-// as a method, so the frame also names the receiver's class, PrimitiveImpl.
+// thunk that evaluates it is still named after the function. Effect 4.1
+// calls the thunk directly, so the frame names the source function.
 effect function logOwner(account: Account) {
   return try Console.log(account.owner!.name)
 }
