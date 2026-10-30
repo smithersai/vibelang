@@ -56,6 +56,8 @@ effect function load(id) {
 
 *Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
 
+- **Amended 2026-10-30: unchecked operands retain native delegation.** After the static Effect-assignability check, `try e` is still `yield* e`, with no dynamic Effect guard, Promise conversion or non-Promise identity. An unchecked noniterable produces its native `TypeError` as a defect. An unchecked iterable can instead complete normally, delegate Effects or return a value; no blanket rejection of all runtime non-Effects is added. Ordinary typed arrays and generators still fail the static operand check. See [Running Effects](../src/002-running.md#meaning) and the [runtime witness](../src/008-runtime.md#unchecked-delegation).
+
 ## Prior art
 
 - Zig's `try` and `catch`.

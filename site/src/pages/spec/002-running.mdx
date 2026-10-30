@@ -43,7 +43,7 @@ Every operand is evaluated once, left to right as written, with two exceptions: 
 
 ### Meaning
 
-`try e` is `yield* e`. It runs `e` and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |err| return err`.
+`try e` is `yield* e`. It runs `e` and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |err| return err`. The static operand test adds no runtime Effect guard: an unchecked `any` follows native delegation, including its iterator errors, rather than Promise adoption or identity on a non-Promise value. A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; an unchecked empty iterable can complete with `undefined`, and an ordinary iterator can delegate Effects or return a value. This does not admit typed arrays or generators as Effect operands. See the [checked runtime witness](/spec/008-runtime#unchecked-delegation).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-5
@@ -203,6 +203,7 @@ The other constructs follow the Promise they mirror: `effect { }` is `async do {
 | A rejected `await` resumes the function with a throw, so `using`, iterator closing and `finally` run | A failed `try` never resumes the generator, so none of them run | [Abandonment](/spec/008-runtime#abandonment): `try e` is `yield* e` |
 | A thrown error and a rejection are one channel, and `.catch` sees both | A failure and a defect are two channels, and `catch` sees failures only | Effect's typed error channel |
 | A Promise starts when it is created and runs once | An Effect is cold, and each `try e` runs it again | An Effect is a value (VIP-1) |
+| `await v` adopts a Promise or gives a non-Promise `v` | `try v` with `v: any` uses native delegation: a noniterable defects with `TypeError`; an unchecked iterable may complete normally | `try` is `yield* v`, with no dynamic Effect guard |
 | Nothing cancels a Promise | Interruption ends a fiber: the generator is abandoned and Effect's finalizers run | Promises have no counterpart |
 | `async do { return 1 }` is a syntax error | `effect { return 1 }` ends the block's Effect | The block is `(effect () => { … })()` (VIP-2) |
 | A function's body starts at the call | A forked fiber starts later, and a child that never got a step is interrupted when its parent ends | Fibers are scheduled and owned |

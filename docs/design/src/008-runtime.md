@@ -330,3 +330,35 @@ if (first.value.$fiber !== 1 || second.value.$fiber !== 2 ||
 }
 // Success({ $fiber: 1, ["__proto__"]: 7 }) differs from Success({ $fiber: 2, ["__proto__"]: 8 }).
 ```
+
+<a id="unchecked-delegation"></a>Unchecked `try` operands keep ECMA-262's [delegated yield evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-generator-function-definitions-runtime-semantics-evaluation) inside the accepted `Effect.gen` counterpart, without a runtime Effect guard ([`try`](002-running.md#try)). A noniterable defects with its native `TypeError`; an unchecked iterable can complete normally. Native iterator getters, calls, results and errors keep their reached order and identity. This does not change static operand admission or Effect's generator abandonment.
+
+```vibe es
+// compiler-gap: pending VIP-5
+effect function unchecked(value: any) { return try value }
+// unchecked(5) defects with TypeError; unchecked([]) succeeds with undefined.
+```
+
+```ts effect
+// Unchecked delegation witness: VIP-5, VIP-31
+import { Effect, Exit } from "effect"
+
+function unchecked(value: any): Effect.Effect<unknown> {
+  return Effect.gen(function* (): Generator<Effect.Effect<unknown>, unknown, unknown> { return yield* value })
+}
+for (const value of [5, undefined, Promise.resolve(5)]) {
+  const result = Effect.runSyncExit(unchecked(value))
+  if (!Exit.isFailure(result) || result.cause.reasons.length !== 1) throw new Error("expected one defect")
+  const reason = result.cause.reasons[0]
+  if (reason._tag !== "Die" || !(reason.defect instanceof TypeError)) throw new Error("native delegation error lost")
+}
+for (const [value, expected] of [
+  [[], undefined],
+  [(function* () { return 7 })(), 7],
+  [(function* () { return yield* Effect.succeed(8) })(), 8]
+]) {
+  const result = Effect.runSyncExit(unchecked(value))
+  if (!Exit.isSuccess(result) || result.value !== expected) throw new Error("unchecked iterable completion changed")
+}
+if (await (5 as any) !== 5) throw new Error("native await identity changed")
+```
