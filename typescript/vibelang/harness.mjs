@@ -1,6 +1,6 @@
 // Compiles and runs the VibeLang acceptance cases in vibelang/cases.
 //
-//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [case...]
+//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [case...]
 //
 // smoke.sh builds tsc and the runtime, then runs this script; run smoke.sh,
 // not this file. A case argument selects the case with that name, or else
@@ -19,6 +19,9 @@
 //
 // --late-start (or VIBELANG_LATE_START=1) delays scheduler dispatch by 100 ms.
 // Use it to expose parents that sleep instead of waiting for child readiness.
+// --isolated copies each case into a private sibling of cases/, so an
+// aggregate target can run alongside per-case targets without sharing out/ or
+// node_modules. Successful copies are removed; failed copies retain evidence.
 //
 // Every case except a failing one must compile without errors. Every file in
 // expected/ other than stdout.txt and diagnostics.txt must equal the file at
@@ -67,7 +70,11 @@ const tsc = path.join(root, "built", "local", "tsc")
 const effectModules = process.env.EFFECT_NODE_MODULES
 const runtimeDir = process.env.VIBELANG_RUNTIME
 // A new directory per invocation preserves intermittent failures across reruns.
-const failureDir = path.join(root, ".cache", "vibelang-harness", `${Date.now()}-${process.pid}`)
+const runId = String(Date.now()) + "-" + process.pid
+const failureDir = path.join(root, ".cache", "vibelang-harness", runId)
+// Match cases/<name>'s depth so custom runners' ../../ helper imports still
+// resolve in vibelang/. This scratch prefix is already ignored by the graph.
+const isolatedCasesDir = path.join(root, "vibelang", ".smthrs-harness-" + runId)
 if (!effectModules || !runtimeDir) {
   console.error("harness.mjs: set EFFECT_NODE_MODULES and VIBELANG_RUNTIME, or run vibelang/smoke.sh")
   process.exit(2)
@@ -76,6 +83,7 @@ if (!effectModules || !runtimeDir) {
 const args = process.argv.slice(2)
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"
+const isolated = args.includes("--isolated")
 const verbose = args.includes("--verbose") || args.includes("-v")
 const jobsAt = args.indexOf("--jobs")
 const jobs = jobsAt >= 0 ? Number(args[jobsAt + 1]) : Math.max(2, Math.min(8, os.availableParallelism() >> 1))
@@ -245,9 +253,23 @@ async function checkDeclarationIdentity(dir, commands) {
   return undefined
 }
 
+// Keep the entire install and emit tree private, including custom run.mjs
+// files that import ./out and declaration-identity cases' typescript/out.
+function caseDirectory(name) {
+  const source = path.join(casesDir, name)
+  if (!isolated) return source
+  const dir = path.join(isolatedCasesDir, name)
+  fs.cpSync(source, dir, {
+    recursive: true,
+    filter: (file) => !path.relative(source, file).split(path.sep)
+      .some((part) => part === "out" || part === "node_modules" || part === ".cache"),
+  })
+  return dir
+}
+
 // check compiles and runs one case. It resolves with { ok, detail, log }.
 async function check(name, commands) {
-  const dir = path.join(casesDir, name)
+  const dir = caseDirectory(name)
   const headers = readHeaders(dir)
   fs.rmSync(path.join(dir, "out"), { recursive: true, force: true })
   linkNodeModules(dir)
@@ -368,12 +390,16 @@ async function main() {
           commands: commands.records,
         }, null, 2) + "\n")
       }
+      if (isolated && result.ok) fs.rmSync(path.join(isolatedCasesDir, name), { recursive: true, force: true })
       const status = pending ? (result.ok ? "XPASS" : "pending") : result.ok ? "ok" : "FAIL"
       results[index] = { name, pending, status, ms: Date.now() - started, ...result }
       flush()
     }
   }
   await Promise.all(Array.from({ length: jobs }, worker))
+  if (isolated && fs.existsSync(isolatedCasesDir) && fs.readdirSync(isolatedCasesDir).length === 0) {
+    fs.rmdirSync(isolatedCasesDir)
+  }
 
   const count = (status) => results.filter((r) => r.status === status).length
   console.log(

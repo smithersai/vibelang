@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -9,8 +9,9 @@ import test from "node:test"
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 function fixture(t) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-harness-test-"))
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-harness-test-"))
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }))
+  const root = path.join(temp, "typescript")
   const dir = path.join(root, "vibelang")
   fs.mkdirSync(dir, { recursive: true })
   for (const file of ["harness.mjs", "harness-command.mjs"]) {
@@ -154,4 +155,152 @@ fs.writeFileSync("out/main.js", 'import { name } from "vibelang-runtime"; consol
   fs.writeFileSync(path.join(at, "expected/stdout.txt"), "rebuilt\n")
   result = invoke()
   assert.equal(result.status, 0, result.stdout + result.stderr)
+})
+
+
+test("isolated failures retain their private output and command evidence", (t) => {
+  const { root, harness } = fixture(t)
+  const original = path.join(root, "vibelang/cases/runtime")
+  const result = spawnSync(process.execPath, [harness, "--isolated", "--status", "runtime"], {
+    env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
+    encoding: "utf8", timeout: 10_000,
+  })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  const logFile = /log: (.+)[)]/.exec(result.stdout)?.[1]
+  assert.ok(logFile, result.stdout)
+  const log = JSON.parse(fs.readFileSync(logFile, "utf8"))
+  const dir = log.commands[0].cwd
+  assert.notEqual(dir, original)
+  assert.ok(fs.existsSync(path.join(dir, "out/main.js")))
+  assert.ok(fs.existsSync(path.join(dir, "node_modules/vibelang-runtime/package.json")))
+  assert.equal(fs.existsSync(path.join(original, "out")), false)
+  assert.equal(fs.existsSync(path.join(original, "node_modules")), false)
+})
+
+// Load the real target declarations with inert build-graph inputs. Execute
+// their actual shell commands against a compiler that coordinates the overlap;
+// this neither needs a Go build nor recursively invokes the release target.
+test("the late-start target and a per-case target compile concurrently without sharing files", { timeout: 60_000 }, async (t) => {
+  const { root, compiler } = fixture(t)
+  const checkout = path.dirname(root)
+  const write = (name, text) => {
+    const file = path.join(checkout, name)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, text)
+  }
+  write("typescript/vibelang/PACKAGE.ts", fs.readFileSync(path.join(here, "PACKAGE.ts"), "utf8"))
+  write("typescript/PACKAGE.ts", 'export const Package = { compiler: "compiler" }')
+  write("packages/PACKAGE.ts", 'export const Package = { "runtime-dist": "runtime", "runtime-published": "runtime-published" }')
+  write("node_modules/@smthrs/targets/package.json", '{"type":"module","exports":"./index.js"}')
+  write("node_modules/@smthrs/targets/index.js", `
+export const Smithers = {
+  file: (value) => value, glob: (value) => value,
+  Shell: { Test: (value) => value }, Host: { bin: (value) => value },
+  Filegroup: (value) => value, Package: (value) => value,
+}
+`)
+  fs.cpSync(path.join(root, "runtime"), path.join(checkout, "packages/runtime"), { recursive: true })
+  const cases = ["uninterruptible-using", "fork-named-region", "fork-arrow-body", "scopes-fork", "ch07-concurrency"]
+  for (const name of cases) {
+    write("typescript/vibelang/cases/" + name + "/tsconfig.json", "{}")
+    write("typescript/vibelang/cases/" + name + "/expected/stdout.txt", "ready\n")
+  }
+  const declarations = spawnSync(process.execPath, ["--input-type=module", "-e", `
+import { Package } from "./typescript/vibelang/PACKAGE.ts"
+console.log(JSON.stringify({
+  regular: Package.targets["fork-named-region"].shell,
+  delayed: Package.targets["fork-late-start"].shell,
+}))
+`], { cwd: checkout, encoding: "utf8", timeout: 30_000 })
+  assert.equal(declarations.status, 0, declarations.stdout + declarations.stderr)
+  const targets = JSON.parse(declarations.stdout)
+  const barrier = path.join(checkout, "barrier")
+  fs.mkdirSync(barrier)
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+import path from "node:path"
+import { setTimeout } from "node:timers/promises"
+const barrier = process.env.HARNESS_TEST_BARRIER
+const side = process.env.HARNESS_TEST_SIDE
+const signal = (name) => fs.writeFileSync(path.join(barrier, name), "")
+const wait = async (name) => {
+  const deadline = Date.now() + 30_000
+  while (!fs.existsSync(path.join(barrier, name))) {
+    if (Date.now() > deadline) throw new Error("missing barrier " + name)
+    await setTimeout(10)
+  }
+}
+const named = path.basename(process.cwd()) === "fork-named-region"
+if (named && side === "delayed") {
+  signal("delayed-compiling")
+  await wait("regular-finished")
+}
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'console.log("ready")')
+if (named) {
+  fs.writeFileSync(path.join(barrier, side + "-cwd"), process.cwd())
+  if (side === "regular") {
+    signal("regular-emitted")
+    await wait("delayed-compiling")
+  }
+}
+`, { mode: 0o755 })
+  const start = (side) => {
+    const child = spawn("sh", ["-c", targets[side]], {
+      cwd: checkout,
+      env: { ...process.env, HARNESS_TEST_BARRIER: barrier, HARNESS_TEST_SIDE: side },
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    t.after(() => child.kill("SIGKILL"))
+    let output = ""
+    child.stdout.on("data", (data) => { output += data })
+    child.stderr.on("data", (data) => { output += data })
+    return new Promise((resolve, reject) => {
+      child.on("error", reject)
+      child.on("close", (code) => resolve({ code, output }))
+    })
+  }
+  const regular = start("regular")
+  const deadline = Date.now() + 30_000
+  while (!fs.existsSync(path.join(barrier, "regular-emitted"))) {
+    assert.ok(Date.now() < deadline, "per-case compiler never emitted")
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  const delayed = start("delayed")
+  const a = await regular
+  fs.writeFileSync(path.join(barrier, "regular-finished"), "")
+  const b = await delayed
+  assert.equal(a.code, 0, a.output)
+  assert.equal(b.code, 0, b.output)
+  assert.match(a.output, /1 cases: 1 ok, 0 FAIL/)
+  assert.match(b.output, /5 cases: 5 ok, 0 FAIL/)
+  const ordinaryDir = fs.readFileSync(path.join(barrier, "regular-cwd"), "utf8")
+  const delayedDir = fs.readFileSync(path.join(barrier, "delayed-cwd"), "utf8")
+  assert.notEqual(ordinaryDir, delayedDir, "targets must own different case directories")
+  assert.ok(fs.existsSync(path.join(ordinaryDir, "out/main.js")), "aggregate run preserved the per-case output")
+  assert.ok(fs.existsSync(path.join(ordinaryDir, "node_modules/vibelang-runtime/package.json")), "aggregate run preserved the per-case install")
+})
+
+test("isolated custom runners keep relative imports of shared helpers", (t) => {
+  const { root, harness, compiler } = fixture(t)
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'export const value = "expected"')
+`, { mode: 0o755 })
+  fs.writeFileSync(path.join(root, "vibelang/case-helper.mjs"), 'export const expected = "expected"')
+  fs.writeFileSync(path.join(root, "vibelang/cases/runtime/run.mjs"), `
+import { expected } from "../../case-helper.mjs"
+import { value } from "./out/main.js"
+if (value !== expected) throw new Error("wrong result")
+console.log(value)
+`)
+  const result = spawnSync(process.execPath, [harness, "--isolated", "runtime"], {
+    env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
+    encoding: "utf8", timeout: 10_000,
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+  assert.equal(fs.existsSync(path.join(root, "vibelang/cases/runtime/out")), false)
+  assert.equal(fs.readdirSync(path.join(root, "vibelang")).some((name) => name.startsWith(".smthrs-harness-")), false)
 })

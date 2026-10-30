@@ -96,6 +96,19 @@ checks the compiler result, failure marker and original source location.
 
 The `//typescript/vibelang:fork-late-start` target runs the fork startup
 regressions with delayed scheduling as part of the regular compiler suite.
+It passes the harness's `--isolated` switch, which copies each case into
+`typescript/vibelang/.smthrs-harness-<run>/<case>/` before compiling and running
+it. Keeping this directory beside `cases/` preserves custom runners' relative
+imports of shared helpers. Its `out/`, `node_modules/`, custom runners and declaration-identity
+outputs belong to that invocation, so it can run concurrently with the same
+cases' individual targets. Successful copies are removed; failing copies and
+command logs remain for inspection. Any aggregate harness target that overlaps
+individual case targets must use `--isolated`.
+
+The release check runs `typescript/vibelang/harness.test.mjs`, including a
+barrier-controlled regression that executes both targets' actual shell commands
+concurrently. The aggregate starts after the per-case compiler emits and before
+its runner loads the result, so shared output directories fail deterministically.
 
 To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued

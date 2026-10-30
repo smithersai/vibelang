@@ -49,11 +49,12 @@ for (const name of cases) {
 }
 
 // Keep the startup regressions deterministic in the regular compiler suite.
+// This aggregate overlaps per-case targets: keep its installs and emits private.
 const startupCases = ["uninterruptible-using", "fork-named-region", "fork-arrow-body", "scopes-fork", "ch07-concurrency"]
 targets["fork-late-start"] = S.Shell.Test({
   summary: "Fork lifetime checks wait for child readiness under delayed scheduling.",
   shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
-    "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --late-start --verbose " + startupCases.join(" "),
+    "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --late-start --verbose " + startupCases.join(" "),
   data: [...shared, ...startupCases.map((name) => S.glob(`cases/${name}/**`))],
   tools: [S.Host.bin("node")],
   sandbox: "none",
