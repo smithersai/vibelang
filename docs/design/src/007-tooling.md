@@ -139,6 +139,8 @@ VibeLang declares an exact `effect` peer dependency. The compiler reads the reso
 5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; relative `./x.vibe` specifiers become `./x.js`, as TypeScript’s `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins use the same names (decided detail 72). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
 6. **Severities.** Only VibeLang's own warning codes and all imported `EK38xx` lint codes can be configured in `vibe.severities`. Entries for VibeLang's own error codes or unknown codes are config errors (`EK3006`), even if the requested severity is `"error"`.
 
+The transitional compiler also emits three migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; and `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9. Their [compatibility inventory](900-appendices.md#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
+
 ## Effect's type-aware lint
 
 ```sh

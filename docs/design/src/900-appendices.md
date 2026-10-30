@@ -824,7 +824,32 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 
 <a id="imported-lint-codes"></a>**Imported lint codes.** Each imported `effecttsgo/*` rule has one stable `EK38xx` code (decided detail 77), pinned to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` ([`UPSTREAM`](../../../typescript/tsc/internal/effecttsgo/UPSTREAM); decided detail 98). The generated rule/code/default-severity table goes here with that pin in its header; it is not yet published, so this appendix is incomplete for imported rules. `EK3801` `floatingEffect` is the retained first assignment ([Configuration and tooling](007-tooling.md)). The other rules take ordinals 2 onward in ascending ASCII order of their rule names, so `abortControllerInEffect` is ordinal 2; a bump keeps every assigned code, retires removed rules' ordinals and appends new names in sorted order (decided detail 106). An ordinal past 99 extends the code: `EK3899`, then `EK38100`. Codes compare as whole strings, so `EK3810` and `EK38100` are distinct, and no `EK39xx` block is reserved: that block is VIP-39's.
 
-The compiler's current registry (`typescript/tsc/internal/vibelang/diagnostics.go`) still carries the old language's codes, documented in `docs/design/history/src/428-part4-ch28-tooling.md`. It is not normative.
+### Transitional compiler diagnostics
+
+A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its [registry](../../../typescript/tsc/internal/vibelang/diagnostics.go), separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
+
+| Emitted code | Rule | Retirement VIP | Replacement |
+| --- | --- | --- | --- |
+| interim `EK9201` | error: an expected failure escapes the written error contract | 1, 3 | Ordinary checked Effect return types and assignability |
+| interim `EK9202` | error: a requirement escapes the written requirement contract | 1, 3 | Ordinary checked Effect return types and assignability |
+| interim `EK9203` | error: a plain return annotation is on a function or native generator whose body runs an Effect or can fail | 1, 4 | Keywords decide function kind; ordinary JavaScript throws follow the accepted thrown-type rules |
+| interim `EK9204` | warning: an old Effect `try`/`catch` statement has no expected errors | 5 | Effect code has no `try` statement; an infallible Effect is still run with `try e` |
+| interim `EK9205` | error: a declaration without a body has a return type that is not an Effect | 1, 9 | Ordinary TypeScript declarations and service members may have non-Effect return types |
+| interim `EK9206` | error: a recursive function has a success type that depends on its own result, or the legacy partial-contract inference cannot break its call cycle | 1, 3 | Ordinary TypeScript inference and its own recursion diagnostics; no VibeLang recursion diagnostic |
+| interim `EK9207` | error: a service or control contract member has a body or initializer, or an instance member is placed in a legacy shape-only service body | 9 | Accepted service-member restrictions use `EK0902`; control syntax remains historical, not an accepted construct |
+| interim `EK9208` | error: a static service member has the same name as an instance service member | 9 | Accepted service shapes and their restricted static members follow the ordinary `Context.Service` counterpart |
+
+For example, `effect function bad(): number!! { throw new Bad() }`, with `error Bad`, fails ordinary Effect return-type checking: its error type is `Bad`, rather than `never`. `effect function run() { return try succeed(1) }` is valid and gives `Success(1)`. Removing the old statement warning never permits skipping an infallible Effect.
+
+The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
+
+| Code | Rule | VIP | Chapter |
+| --- | --- | --- | --- |
+| `EK4853` | warning: migration of an omitted requirement slot: write the previously inferred requirements explicitly, or omit the whole return annotation to infer the contract | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
+| `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Services](005-services.md#service-declarations) |
+| `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Services](005-services.md#service-declarations) |
+
+An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A migrated service default is a factory of type `() => Shape`; these warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements)).
 
 ## Appendix C. Denied and open VIPs
 

@@ -27,6 +27,8 @@ interface Users { find(id: string): User!NotFound }
 - **Amended 2026-10-29: function-type returns.** `(id: string) => User!NotFound` is `(id: string) => (User!NotFound)`, as `() => A | B` is `() => (A | B)`; likewise for constructor types. `!` still does not mix with `|` or `&`, and a conditional type's parts still need parentheses. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 80).
 - **Amended 2026-10-30: a line break ends an Effect type.** Each `!`, and the slot after it, start on the line where the previous slot ends; a slot in parentheses may span lines. TypeScript stops its postfix type operators at a preceding line break, and a slot has no closing token, so `now(): number!!` then `later(): number!!` stay two members and a `!` with no slot on its line is TS17019. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later".
 
+- **Amended 2026-10-30: migration warning.** The transitional compiler reports `EK4853` when `--fix` can preserve requirements that the retired omitted-slot rule inferred by writing them explicitly. An omitted slot still means `never`; omitting the whole return annotation instead infers the complete contract. The warning retains its emitted compatibility code until a coordinated compiler/documentation renumber.
+
 ## Prior art
 
 Zig's error unions write `NotFound!User`, error first. VibeLang writes the success type first because `Effect<A, E, R>` lists it first.
