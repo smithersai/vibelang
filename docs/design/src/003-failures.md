@@ -290,7 +290,7 @@ const defaultedAsync = Effect.try({ try: () => asyncEager(), catch: (error) => e
 // constructed succeeds with "not started"; resumed fails with "body"; defaulted fails with "default".
 ```
 
-Recursive and mutually recursive plain functions infer the least fixed point of their thrown types, starting from `never` (detail 43): `fib` below throws `never`, `walk` throws `Error`. A written `@throws {T}` is a checked upper bound: the body may throw only subtypes of `T` (otherwise `EK0405`), callers see `T`, and declaration output copies the tag (detail 45).
+Recursive and mutually recursive plain functions infer the least fixed point of their thrown types, starting from `never`: `fib` below throws `never`, `walk` throws `Error`. If an expanding recursive summary cannot reach a finite representable stable contract within the pinned checker's recursion, instantiation or representation bounds, widen the affected strongly connected component's inferred thrown summary to `unknown` and emit `@throws {unknown}`. The same rule applies to mutual recursion. Never truncate the union or emit an invalid circular alias. A written checked upper bound, including `unknown`, cuts the corresponding inference dependency and is checked normally. Independent source type errors still receive TypeScript's ordinary diagnostics; this fallback applies only to inferred throws. A written `@throws {T}` is a checked upper bound: the body may throw only subtypes of `T` (otherwise `EK0405`), callers see `T`, and declaration output copies the tag (detail 45).
 
 ```vibe es
 // compiler-gap: pending VIP-4
@@ -307,6 +307,34 @@ function fib(n: number): number { return n < 2 ? n : fib(n - 1) + fib(n - 2) }
 function walk(n: number): void { if (n) walk(n - 1); else throw new Error("end") }
 const direct = fib(5)
 const walked = Effect.try(() => walk(1))
+```
+
+An expanding generic recursion can throw arrays of arbitrarily increasing depth, so a finite prefix such as `T | T[]` is not a sound contract:
+
+```vibe es
+// compiler-gap: pending VIP-4
+export function grow<T>(value: T, depth: number): void {
+  if (depth <= 0) throw value
+  grow([value], depth - 1)
+} // inferred @throws {unknown}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function grow<T>(value: T, depth: number): void {
+  if (depth <= 0) throw value
+  grow([value], depth - 1)
+}
+const grown = Effect.try({ try: () => grow(7, 2), catch: (error) => error })
+// Failure([[7]]); depth 0 fails with 7, and depth 1 fails with [7].
+```
+
+Its emitted declaration remains ordinary TypeScript:
+
+```ts
+/** @throws {unknown} */
+export declare function grow<T>(value: T, depth: number): void
 ```
 
 ### Assignability
