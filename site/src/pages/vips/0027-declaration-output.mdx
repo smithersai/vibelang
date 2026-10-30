@@ -23,15 +23,20 @@ export declare function add(a: number, b: number): number
 ```
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare, per Will's earlier ruling (D501).
-- **Location.** `x.d.vibe.ts` is written next to each `x.vibe`, which TypeScript's `allowArbitraryExtensions` resolves, so plain `tsc`, TypeDoc and `bun check` understand `.vibe` imports. A package build also writes ordinary `.d.ts` files to its output directory.
+- **Location.** `x.d.vibe.ts` is written next to each `x.vibe`, which TypeScript's `allowArbitraryExtensions` resolves, so plain `tsc` and TypeDoc understand `.vibe` imports. A package build also writes ordinary `.d.ts` files to its output directory.
 - **`@throws`.** Every exported function carries `@throws`: its inferred thrown type, or `@throws {never}` when it can't throw. Under VIP-4, a function with no `@throws` throws `unknown`.
 - *Updated by VIP-4's 2026-10-29 amendment:* `@throws` applies only to functions that don't return an Effect, so the effect function `load` carries none.
 - The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.
+
 - **Amended 2026-10-30: the generated matcher.** A declaration file that declares an `error` or `schema error` keeps its static `[Symbol.customMatcher]` member and begins with `/// <reference types="vibelang-runtime" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67c).
 
 *Corrected 2026-10-29: `load` is declared with `export declare function`, because a declaration keeps its source form (VIP-1: `effect` goes exactly where TypeScript allows `async`) and idiomatic TypeScript declares a function declaration that way. The type is `Effect.Effect<…>`, as Effect TypeScript writes it.*
 
 - **Amended 2026-10-30: ordinary async contracts survive declaration output.** A nongenerator `async` callable's `@rethrows` parameter retains throwing-callback admission as a parameter callable carrying `@throws {unknown}`; the emitted callee carries `@throws {never}` and no active synchronous `@rethrows`. Normalize declarations, methods, arrows, aliases and sidecars consistently. Use a local annotated parameter type rather than mutating a shared type alias; returned callables preserve their own contracts. This exception does not apply to async generators or ordinary Promise-returning functions.
+
+### Amendment: Bun project scripts
+
+`bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. [Bun's script runner](https://bun.com/docs/runtime) executes the configured command.
 
 ## Prior art
 

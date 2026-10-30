@@ -189,7 +189,9 @@ You now have `src/hello.vibe`, `src/main.vibe`, and `src/hello.test.vibe`. Keep 
 
 ## Let TypeScript tools read .vibe modules
 
-Stock `tsc`, `tsrs`, `bun check`, TypeDoc and other checkers built on TypeScript cannot read a `.vibe` file, so the compiler writes each module's declarations beside it (VIP-27). `vibelang`, `vibelang --watch` and `vibelang -b` write them, `src/greet.d.vibe.ts` for `src/greet.vibe`, even with `--noEmit`. A sidecar is rewritten only when its text changes. Its text is the module's declaration file with one change: an import of another `.vibe` module names its source, `./name.vibe`.
+Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read a `.vibe` file, so the compiler writes each module's declarations beside it (VIP-27). `vibelang`, `vibelang --watch` and `vibelang -b` write them, `src/greet.d.vibe.ts` for `src/greet.vibe`, even with `--noEmit`. A sidecar is rewritten only when its text changes. Its text is the module's declaration file with one change: an import of another `.vibe` module names its source, `./name.vibe`.
+
+`bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 
 In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitraryExtensions`](https://www.typescriptlang.org/tsconfig/allowArbitraryExtensions.html), and import the module by its source name:
 
