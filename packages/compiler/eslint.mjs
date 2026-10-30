@@ -20,7 +20,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { basename, dirname, join, parse as parsePath, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { workspaceProject } from "./project.mjs"
+import { nearestProject, workspaceProject } from "./project.mjs"
 
 const manifest = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
 
@@ -293,13 +293,16 @@ function literal(node) {
  *
  * @param {{ project?: string, tsconfigRootDir?: string, compiler?: string }} [options]
  *   `project` is the tsconfig, relative to `tsconfigRootDir` (default: the
- *   working directory); it defaults to `tsconfig.json`. `compiler` is as for
+ *   working directory). Without it, discover the nearest `vibe.config.json`,
+ *   `tsconfig.json` or `jsconfig.json`, in that order per directory. `compiler` is as for
  *   the loaders: a vibelang command, else VIBELANG_BINARY, else the installed
  *   compiler.
  */
 export function typedProgram(options = {}) {
   const root = resolve(options.tsconfigRootDir ?? process.cwd())
-  const project = resolve(root, options.project ?? "tsconfig.json")
+  const project = options.project === undefined
+    ? nearestProject(join(root, "tsconfig.json")) ?? join(root, "tsconfig.json")
+    : resolve(root, options.project)
   const ts = projectTypeScript(project)
   const parsed = ts.getParsedCommandLineOfConfigFile(project, {}, {
     ...ts.sys,

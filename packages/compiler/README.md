@@ -247,6 +247,11 @@ const parserOptions = {
 }
 ```
 
+Without `project`, `typedProgram()` discovers the nearest `vibe.config.json`,
+`tsconfig.json`, or `jsconfig.json`, in that order per directory, starting at
+`tsconfigRootDir` (the working directory by default). An explicit `project`
+selects that config file.
+
 The
 [Devtools page](https://vibelang.sh/getting-started/012-devtools) lists the node types of VibeLang's own forms
 and shows the whole configuration.

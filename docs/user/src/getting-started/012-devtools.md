@@ -397,6 +397,8 @@ export default tseslint.config(
 )
 ```
 
+Without `project`, `typedProgram()` discovers the nearest config starting at `tsconfigRootDir` (the working directory by default). It checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory before searching its parent. An explicit `project` selects that file.
+
 `typedProgram` returns the project's TypeScript program, from the `typescript` the project resolves, in which each `.vibe` module reads as the declaration `vibelang` writes for it. A module of another workspace package compiles with that package's `tsconfig.json`, as the loaders compile it. It runs `vibelang` once per project, the first time the program reads one of its modules, and throws when a project does not compile, since typed lint would then have no types for its modules.
 
 Forms whose TypeScript long form would mislead a rule have their own node types, which rules and `no-restricted-syntax` selectors can name:

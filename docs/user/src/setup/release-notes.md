@@ -122,6 +122,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification promised that `match` class arms on ordinary classes would emulate the TC39 draft's construction-identity test, which compiled JavaScript cannot do for classes from `.ts` or `.js` files. A class without its own `Symbol.customMatcher` now matches by `instanceof`.
 
+- Typed ESLint programs required `tsconfig.json` even when a project used `vibe.config.json` or `jsconfig.json`; `typedProgram()` now discovers the nearest project in the same order as the compiler and still honors an explicit `project`.
+
 - Building from source could fail the runtime entry tests on a busy host after five seconds, even while their child processes were within the allowed time; each entry test now allows the combined budget of its subprocesses.
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
