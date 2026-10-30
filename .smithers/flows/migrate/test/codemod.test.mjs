@@ -154,3 +154,16 @@ console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test("the fix loop asks for declarations, so --fix keeps what they print under a noEmit tsconfig", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-fix-"))
+  try {
+    const seen = join(root, "args.txt")
+    const compiler = join(root, "vibelang")
+    writeFileSync(compiler, `#!/bin/sh\necho "$@" > ${seen}\necho 'vibelang --fix: 0 fixes in 0 files.'\n`, { mode: 0o755 })
+    await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: root, root })
+    assert.match(readFileSync(seen, "utf8"), /--fix --noEmit --declaration/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

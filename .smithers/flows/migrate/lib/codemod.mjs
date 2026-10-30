@@ -200,7 +200,7 @@ function vibeFilesUnder(dir) {
 }
 
 /**
- * Runs `vibelang -p tsconfig --fix --noEmit` until a run fixes nothing, at
+ * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
  * file and kind, the refusals, and the diagnostics of the last run. With
  * only, the files (relative to root) whose rewrites a batch keeps: --fix
@@ -222,7 +222,8 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
   }
   let last
   for (let round = 1; round <= maxRounds; round++) {
-    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --pretty false`, { cwd, log: log && `${log}.${round}.log` })
+    // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
+    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false`, { cwd, log: log && `${log}.${round}.log` })
     assertFinished(result, log && `${log}.${round}.log`)
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     if (kept) {
