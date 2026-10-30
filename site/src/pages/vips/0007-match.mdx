@@ -88,6 +88,65 @@ const alternativeCellExit = Effect.runSyncExit(Effect.sync(alternativeCellWitnes
 - **Amended 2026-10-30: leaving a `match`.** However a `match` or `is` test ends, its cached iterators close before control goes on, as at the end of a `for…of` body: a value, a `return`, a `break` or a `continue` closes and goes on, and an error from closing replaces it. A pending throw with a closing error gives the draft's `AggregateError`. The draft's `FinishMatch` appends every abrupt completion to its errors, which turns `return 7` into `throw 7`; VibeLang reads that step as "a throw completion", as the draft's notes intend. In effect code a failed `try`, or a `throw`, abandons the generator, so nothing closes. A no-match error is `new TypeError()`. A `return` in an `async match` is a syntax error, as in TC39's `async do`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later".
 - **Amended 2026-10-30: `_tag` exhaustiveness is TypeScript's `switch`.** `EK4701` treats `_tag` as TypeScript treats `switch (s._tag)`. A member is tagged when its `_tag` is a literal type: a string, number, bigint, boolean, enum, `null` or `undefined` literal, a `unique symbol`, or a union of those. Each literal is a case, and an optional `_tag` has the case `undefined`, so `{ _tag?: "A" } | { _tag: "B" }` is checked and the absent tag is left, as `tsc` leaves it. Any other `_tag` type turns the check off. Members that share a tag are covered one at a time: an object pattern covers a member only when every other property it tests is required on that member, as `"x" in s` narrows. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later". This replaces "exactly one string literal type" in the amendment above.
 
+- **Amended 2026-10-30: negation follows actual recognition.** `not P` uses only the TypeScript false-branch narrowing of `P`'s actual recognition test. Use `!(s instanceof C)` only for a dispatch path whose positive test is `s instanceof C`. Own matchers and predicates negate their invocation; an arbitrary `boolean` result narrows neither branch. Primitive/built-in adapters, retained Effect guards and generated tagged-error patterns likewise complement their actual tests. This adds no exhaustiveness coverage for negation.
+
+
+Negation complements the actual recognition test for every dispatch path: literals use their equality test, ordinary classes their `instanceof` test, primitive/built-in adapters their specified tests, retained Effect patterns their module guards, generated tagged errors their tag tests, and own matchers or predicates their invocation. Only the false-branch narrowing established by that TypeScript test applies. An arbitrary `boolean`-returning matcher establishes no narrowing on either branch. This typing rule adds no exhaustiveness coverage for `not`.
+
+```vibe
+// compiler-gap: pending VIP-7
+class OnlyNumbers {
+  readonly kind = "instance"
+  static [Symbol.customMatcher](s: unknown, _hint: { matchType: "boolean" }): boolean {
+    return typeof s === "number"
+  }
+}
+function matcherComplement(s: OnlyNumbers | number) {
+  return match (s) { when not OnlyNumbers: s; default: "number"; }
+}
+// Replacing the negated arm result with s + 1 is TS2365: the matcher does not narrow s.
+class Plain { readonly kind = "plain" }
+function ordinaryComplement(s: Plain | number) {
+  return match (s) { when not Plain: s + 1; default: 0; }
+}
+```
+
+```ts
+import { Effect, Exit } from "effect"
+
+const complementMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
+class OnlyNumbers {
+  readonly kind = "instance"
+  static [complementMatcher](s: unknown, _hint: { matchType: "boolean" }): boolean {
+    return typeof s === "number"
+  }
+}
+function matcherComplement(s: OnlyNumbers | number) {
+  if (!OnlyNumbers[complementMatcher](s, { matchType: "boolean" })) return s
+  return "number"
+}
+function rejectedComplement(s: OnlyNumbers | number) {
+  if (!OnlyNumbers[complementMatcher](s, { matchType: "boolean" })) {
+    // @ts-expect-error TS2365: a boolean-returning matcher establishes no narrowing
+    return s + 1
+  }
+  return 0
+}
+class Plain { readonly kind = "plain" }
+function ordinaryComplement(s: Plain | number) {
+  if (!(s instanceof Plain)) return s + 1
+  return 0
+}
+const instance = new OnlyNumbers()
+const matcherExit = Effect.runSyncExit(Effect.sync(() => [
+  matcherComplement(instance) === instance,
+  matcherComplement(7),
+  ordinaryComplement(new Plain()),
+  ordinaryComplement(7)
+]))
+console.log(matcherExit) // Success([true, "number", 0, 8])
+```
+
 ## Meaning in Effect TS terms
 
 `match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.
