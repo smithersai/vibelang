@@ -117,7 +117,16 @@ Each two-word form needs a function, a method name or arrow parameters after it,
 
 ```text
 EffectFunction = EffectModifier [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? Block
+               | EffectFunctionOverload
 ```
+
+#### EffectFunctionOverload
+
+```text
+EffectFunctionOverload = EffectModifier [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? ";"   (function declarations only; TypeScript overload signatures and semicolon insertion)
+```
+
+Bodyless signatures follow TypeScript overload ordering, adjacent-implementation and compatibility checks, with the same name requirements as the corresponding `async` declaration. Function expressions, object-literal methods and arrows still require bodies. TypeScript rejects starred overload signatures, `abstract async` methods and ambient `async` declarations; the corresponding `effect` forms are rejected too.
 
 #### EffectArrow
 
@@ -129,14 +138,28 @@ EffectArrow = EffectModifier [no LineTerminator here] BindingIdentifier [no Line
 #### EffectMethod
 
 ```text
-EffectMethod = Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+EffectMethod = EffectClassMethod | EffectObjectMethod
+```
+
+#### EffectClassMethod
+
+```text
+EffectClassMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? (Block | ";")   (TypeScript class methods and overload signatures, including semicolon insertion)
+```
+
+#### EffectObjectMethod
+
+```text
+EffectObjectMethod = EffectModifier [no LineTerminator here] PropertyName TypeParameters? Params ReturnType? Block
 ```
 
 #### EffectAccessor
 
 ```text
-EffectAccessor = Modifiers? EffectModifier [no LineTerminator here] ("get" | "set") ClassElementName Params ReturnType? Block   (parses, then the getter/setter rule rejects it)
+EffectAccessor = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ("get" | "set") ClassElementName Params ReturnType? Block   (parses, then the getter/setter rule rejects it)
 ```
+
+`DecoratorList` is TypeScript's class decorator list and is admitted only on class elements, with TypeScript placement checks; an object-literal method has none. This applies to producer methods and rejected accessor recovery too.
 
 `effect get x() { }` is an `EffectAccessor`; `effect get() { }` is an `EffectMethod` named `get`. `async effect get x() { }` gets both `EK0104` and `EK0105`.
 
@@ -157,7 +180,7 @@ Producer = EffectModifier [no LineTerminator here] "function" "*" Name? TypePara
 #### ProducerMethod
 
 ```text
-ProducerMethod = Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+ProducerMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal, with no DecoratorList or Modifiers there)
 ```
 
 #### Params
@@ -399,13 +422,19 @@ SchemaErrorDeclaration = SchemaErrorStart TypeParameters? ClassHeritage? ("{" Er
 #### ErrorBody
 
 ```text
-ErrorBody = (Field | Modifiers? MethodDefinition | EffectMethod | ProducerMethod | ";" | RejectedElement)*   (MethodDefinition is ECMAScript's: getters and setters included)
+ErrorBody = (Field | ClassMethod | EffectMethod | ProducerMethod | ";" | RejectedElement)*
+```
+
+#### ClassMethod
+
+```text
+ClassMethod = an ordinary TypeScript class MethodDeclaration, GetAccessorDeclaration or SetAccessorDeclaration, with its class modifiers, decorators and overload signatures
 ```
 
 <a id="rejectedelement"></a>
 
 ```text
-RejectedElement = a ClassElement (an EffectAccessor included) that is not a Field, a Modifiers? MethodDefinition, EffectMethod, ProducerMethod or ";"   (parses, then a static rule rejects it)
+RejectedElement = a ClassElement (an EffectAccessor included) that is not a Field, ClassMethod, EffectMethod, ProducerMethod or ";"   (parses, then a static rule rejects it)
 ```
 
 #### Field
@@ -537,15 +566,15 @@ schema User { role:             one field, role: "admin" | "user"
 
 A variant's `{` may follow a line break, as an error body's may; a line break before `{` is not a separator, so `data D { A` then `{ x: string } }` gives `A` the field `x`. `readonly` is allowed on any field; `error` and `data` fields are readonly either way. `data Empty {}` has no variants; it is an empty `Data.TaggedEnum`.
 
-**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](/spec/003-failures#error-declarations) and [Services](/spec/005-services#static-rules) instead of a generic syntax error. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. ECMAScript's `MethodDefinition` already contains getters, setters and `constructor`, so each has one parse: a getter is accepted, and the setter and constructor rules reject the other two. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no `MethodDefinition` does (`effect() { }` is a method named `effect`). A `MethodDefinition`, `EffectMethod` or `ProducerMethod` in an error body takes the method modifiers TypeScript allows in a class (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](/spec/001-functions) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets that diagnostic alone.
+**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](/spec/003-failures#error-declarations) and [Services](/spec/005-services#static-rules) instead of a generic syntax error. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. `ClassMethod` includes ordinary TypeScript method overloads, getters and setters, with their class modifiers and decorator checks. A getter is accepted and the setter rule rejects a setter; a constructor parses as `RejectedElement` but gets the specific constructor diagnostic before the catch-all row. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no ordinary `ClassMethod` does (`effect() { }` is a method named `effect`). A `ClassMethod`, `EffectMethod` or `ProducerMethod` in an error body follows TypeScript's class-method checks (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](/spec/001-functions) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets that diagnostic alone.
 
 ```text
 error E { id: string }            a Field
 error E { id = "init" }           RejectedElement: an initializer
 error E { private id: string }    RejectedElement: a modifier other than readonly
-error E { get message() { } }     a MethodDefinition (a getter)
+error E { get message() { } }     a ClassMethod (a getter)
 error E { effect again() { } }    an EffectMethod
-error E { m() { }; id: string }   a MethodDefinition, the empty element ";", a Field
+error E { m() { }; id: string }   a ClassMethod, the empty element ";", a Field
 error E { effect get x() { } }    an EffectAccessor: the getter/setter rule alone
 service S { a: number b: string } syntax error: no separator, as in an interface
 error E implements I { }          parses; an implements clause is rejected

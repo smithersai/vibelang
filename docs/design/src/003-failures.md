@@ -535,9 +535,45 @@ effect function c({ id }: User) { return id }         // c() from untyped JS giv
 
 ### Syntax
 
-[ErrorDeclaration](900-appendices.md#errordeclaration), with an [ErrorBody](900-appendices.md#errorbody) of [Field](900-appendices.md#field)s and methods: ECMAScript's `MethodDefinition` (plain, `async`, generator and `async` generator methods, getters and setters, private names included) with TypeScript's class-method modifiers, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13). A setter parses as a `MethodDefinition` and the static rules below reject it. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are shared with `schema` and `data`, so adjacent fields on one line need a separator. The field type is parsed greedily as a TypeScript type member: a line break separates members only after the type is complete. An explicit `readonly` is allowed and redundant. Empty `;` class elements between members are ignored, as in TypeScript.
+[ErrorDeclaration](900-appendices.md#errordeclaration), with an [ErrorBody](900-appendices.md#errorbody) of [Field](900-appendices.md#field)s and methods: [ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13). A setter parses as a [ClassMethod](900-appendices.md#classmethod) and the static rules below reject it. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are shared with `schema` and `data`, so adjacent fields on one line need a separator. The field type is parsed greedily as a TypeScript type member: a line break separates members only after the type is complete. An explicit `readonly` is allowed and redundant. Empty `;` class elements between members are ignored, as in TypeScript.
 
 `error`, like `service`, `schema` and `data`, follows TypeScript's contextual keyword `type`: a declaration is the keyword, no line break, then the declaration's name (a `BindingIdentifier`), where a declaration can start; anything else is ordinary TypeScript, where `error` is an identifier ([Declaration keywords](900-appendices.md#declaration-keywords), the one rule for all four). So `const error = …`, `catch (error)`, `const e = error as Error` and `error instanceof NotFound` still work, and `error as T;` declares `as`, then fails; write `(error as T);`. The body is optional, as for TypeScript's `declare module "m"` ([ErrorDeclaration](900-appendices.md#errordeclaration)). As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`). Write `export { E as default }` instead, as for a [service](005-services.md).
+
+Bodyless plain and `async` overload signatures are methods in both error forms, as in a TypeScript class; they execute no code themselves. For example, `labels()` gives an Effect with `Success(["ok", 7])`:
+
+```vibe es
+// compiler-gap: pending VIP-13, VIP-29
+error Plain {
+  label(x: string): string;
+  label(x: number): number;
+  label(x: string | number) { return x }
+}
+schema error Encoded {
+  label(x: string): string;
+  label(x: number): number;
+  label(x: string | number) { return x }
+}
+effect function labels() { return [new Plain().label("ok"), new Encoded().label(7)] }
+```
+
+```ts effect
+// Error-method overload counterpart
+import { Data, Effect, Schema } from "effect"
+class Plain extends Data.TaggedError("Plain") {
+  label(x: string): string;
+  label(x: number): number;
+  label(x: string | number) { return x }
+}
+class Encoded extends Schema.TaggedError<Encoded>()("Encoded", {}) {
+  label(x: string): string;
+  label(x: number): number;
+  label(x: string | number) { return x }
+}
+const labels = () => Effect.gen(function* () {
+  return [new Plain().label("ok"), new Encoded().label(7)]
+})
+console.log(JSON.stringify(Effect.runSync(labels())))
+```
 
 Each member has one classification ([Declarations](900-appendices.md#notes-on-the-productions)): `id: string`, `readonly id: string` and `id?: string` are always [Field](900-appendices.md#field)s, each complete method or accessor is classified once, including `effect` and producer methods, empty `;` class elements are ignored, and any other class element is a [RejectedElement](900-appendices.md#rejectedelement), which the static rules below reject. The parser also accepts type parameters and heritage clauses, only so their rules can report them.
 
