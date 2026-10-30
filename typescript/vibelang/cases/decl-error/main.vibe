@@ -1,7 +1,11 @@
 // expect-result: {"timeout":"Timeout","missing":"NotFound:42","wrapped":7,"label":"plain"}
 error Timeout
 export error NotFound { id: string }
-error Wrapped<T> { value: T; note?: string }
+class Wrapped<T> extends Data.TaggedError("Wrapped")<{
+    readonly value: T;
+    readonly note?: string;
+}> {
+}
 
 effect function find(id: string) {
   if (id === "slow") throw new Timeout()

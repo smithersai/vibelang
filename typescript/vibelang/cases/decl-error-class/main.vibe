@@ -46,7 +46,10 @@ export class Validated extends Data.TaggedError("Validated")<{
   }
 }
 
-export error Wrapped<T extends string> { value: T }
+export class Wrapped<T extends string> extends Data.TaggedError("Wrapped")<{
+    readonly value: T;
+}> {
+}
 
 function codeOf(coded: Coded): string {
   return coded.code

@@ -1,6 +1,6 @@
 // The error classes main.vibe raises, written as Effect's TypeScript writes
-// them. Each is exact, so --fix writes all three as error declarations and
-// removes the import of Data that nothing uses any more.
+// them. --fix writes the non-generic classes as error declarations; a
+// generic tagged-error class keeps its TypeScript form (VIP-13).
 import { Data } from "effect"
 
 /** An id that has no user. */

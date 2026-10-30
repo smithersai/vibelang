@@ -88,3 +88,5 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 - Keep user-written `static` members on the original Effect error class; `error` and `schema error` declarations cannot contain them (`EK1302`).
 
 - Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).
+
+- Keep generic Effect error classes in TypeScript; `error` and `schema error` declarations cannot have type parameters (`EK1303`). A generic schema needs concrete fields or a TypeScript schema factory, not a class whose base refers to its type parameters (`TS2562`).

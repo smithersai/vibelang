@@ -88,6 +88,10 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 
 - Keep user-written `static` members on the original Effect error class; `error` and `schema error` declarations cannot contain them (`EK1302`).
 
+- Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).
+
+- Keep generic Effect error classes in TypeScript; `error` and `schema error` declarations cannot have type parameters (`EK1303`). A generic schema needs concrete fields or a TypeScript schema factory, not a class whose base refers to its type parameters (`TS2562`).
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
@@ -741,5 +745,3 @@ A numeric return value from `main` does not set the exit status:
 fail for exit 1, or interrupt for exit 130.
 
 `import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. The specification makes every other member, `import.meta.resolve` included, and every use of `import.meta` as a value EK4402. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. The compiler does not report these yet, and the `require.resolve` row above still shows its current suggestion.
-
-- Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).

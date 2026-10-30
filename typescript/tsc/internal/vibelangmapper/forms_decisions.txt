@@ -894,8 +894,8 @@ typescript/vibelang/cases/decl-effect-types-lines/main.vibe:10:53 lambda plain t
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:11:13 lambda effectFn service
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:19:29 lambda program table
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:7:49 lambda program table
-typescript/vibelang/cases/decl-error-class/main.vibe:60:43 byname program table
-typescript/vibelang/cases/decl-error-class/main.vibe:60:59 lambda effectFn table
+typescript/vibelang/cases/decl-error-class/main.vibe:63:43 byname program table
+typescript/vibelang/cases/decl-error-class/main.vibe:63:59 lambda effectFn table
 typescript/vibelang/cases/decl-error-family/main.vibe:46:24 byname program table
 typescript/vibelang/cases/decl-error-family/main.vibe:46:39 lambda effectFn table
 typescript/vibelang/cases/decl-error-family/main.vibe:47:28 byname program table

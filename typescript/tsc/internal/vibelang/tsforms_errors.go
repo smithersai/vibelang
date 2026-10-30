@@ -124,7 +124,7 @@ func errorClassOf(c *checker.Checker, file *ast.SourceFile, class *ast.Node) err
 // from its base: a named class declaration, exported or not, with no other
 // modifiers, no implements clause, and an empty body.
 func errorClassShape(file *ast.SourceFile, class *ast.Node) bool {
-	if !errorClassHead(class) {
+	if !errorClassHead(class) || class.TypeParameters() != nil {
 		return false
 	}
 	if slices.ContainsFunc(class.Members(), func(m *ast.Node) bool { return !ast.IsSemicolonClassElement(m) }) {
@@ -175,6 +175,9 @@ func findSchemaErrorClasses(c *checker.Checker, file *ast.SourceFile, report fun
 
 // errorClassRewrite plans EK4830's fix for class.
 func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node) *formRewrite {
+	if class.TypeParameters() != nil {
+		return nil
+	} // VIP-13: a generic class has no error-declaration equivalent.
 	parts := errorClassOf(c, file, class)
 	name := class.Name().Text()
 	tag, literal := "", false
@@ -203,15 +206,6 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 		return nil
 	}
 	declaration := "error " + name
-	if class.TypeParameters() != nil {
-		// The parsed heritage clause starts after the entire type-parameter
-		// list. A constraint or comment may itself contain "extends".
-		heritage := ast.GetHeritageClause(class, ast.KindExtendsKeyword)
-		if heritage == nil {
-			return nil
-		}
-		declaration += strings.TrimSpace(text[class.Name().End():heritage.Pos()])
-	}
 	if parts.fields != nil {
 		if fields := errorFieldsText(file, parts.fields); strings.Trim(fields, "{} \t\r\n") != "" {
 			declaration += " " + fields

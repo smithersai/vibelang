@@ -1,7 +1,11 @@
 // expect: TS2322
 // The generated constructor of a subclass of Base<number> takes a number
 // value (D278), so a string is rejected where it is written.
-error Base<T> { _tag: string; value: T }
+class Base<T> extends Data.TaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly value: T;
+}> {
+}
 error Child extends Base<number> { own: string }
 
 export function wrong() {

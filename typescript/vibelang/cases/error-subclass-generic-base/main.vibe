@@ -2,7 +2,11 @@
 // own as one object (D278). A generic base keeps the type arguments the
 // subclass writes, so Child's value is a number and Pair's left and right
 // take Pair's own type parameter.
-error Base<T> { _tag: string; value: T }
+class Base<T> extends Data.TaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly value: T;
+}> {
+}
 error Child extends Base<number> { own: string }
 error Pair<T> extends Base<T> { other: T }
 

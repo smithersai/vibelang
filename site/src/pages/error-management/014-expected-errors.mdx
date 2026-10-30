@@ -432,6 +432,8 @@ User-written `static` members are forbidden in both `error` and `schema error` b
 
 Setters are forbidden in both error forms (`EK1302`). Use a method instead, or keep the setter in the equivalent Effect TypeScript class with `vibelang --fix`. Getters remain allowed.
 
+Neither error form accepts type parameters (`EK1303`). Keep a plain generic error as an Effect TypeScript class; `vibelang --fix` rewrites a generic `error` declaration to that class without changing its fields or type parameters. A generic `schema error` needs concrete fields or a TypeScript schema factory; its quick fix is withheld because a class whose base refers to its type parameters would introduce `TS2562`. Generic tagged-error classes no longer receive the `EK4830` suggestion to write an unsupported declaration.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/expected-errors](https://effect.website/docs/v4/error-management/expected-errors/)

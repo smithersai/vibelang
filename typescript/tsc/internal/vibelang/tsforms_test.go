@@ -32,7 +32,6 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		// EK4830 (D284)
 		{"tagged error", 4830, `export class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string; count: number }> {}`, `export error NotFound { id: string; count: number }`},
 		{"error without fields", 4830, `class Timeout extends Data.TaggedError("Timeout") {}` + "\nexport const t = new Timeout()", "error Timeout\nexport const t = new Timeout()"},
-		{"generic error", 4830, `export class Boxed<T> extends Data.TaggedError("Boxed")<{ value: T }> {}`, `export error Boxed<T> { value: T }`},
 		{"prelude TaggedError", 4830, `export class Gone extends TaggedError("Gone")<{ id: string }> {}`, `export error Gone { id: string }`},
 		{"last use of the import", 4830, "import * as Data from \"effect/Data\"\n/** Gone. */\nexport class Gone extends Data.TaggedError(\"Gone\")<{ id: string }> {}", "/** Gone. */\nexport error Gone { id: string }"},
 		// EK4831 (D285)

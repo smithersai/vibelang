@@ -52,6 +52,11 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		if !isSynthesizedName(baseNode.Expression().Expression(), "TaggedError") {
 			module = "Schema"
 		}
+		// A generic Schema Self would refer to a class type parameter in
+		// its base expression (TS2562), so no equivalent class fix exists.
+		if module == "Schema" && class.TypeParameters() != nil {
+			return nil, nil
+		}
 		qualifier, addedImport := module, ""
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()

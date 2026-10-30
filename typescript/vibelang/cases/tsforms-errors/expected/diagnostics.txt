@@ -1,6 +1,5 @@
 errors.vibe(7,14): warning EK4830
 errors.vibe(8,14): warning EK4830
-errors.vibe(9,14): warning EK4830
 main.vibe(9,7): warning EK4830
 main.vibe(10,7): warning EK4830
 main.vibe(11,7): warning EK4837
