@@ -56,7 +56,7 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 >
 > Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
 >
-> Use `vibelang` to check mixed source: stock `tsc` and `vue-tsc` cannot resolve `.vibe` imports.
+> Use `vibelang` to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >
 > For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
 >
@@ -308,7 +308,7 @@ The [cheat sheet](/vibelang-features/115-cheat-sheet) puts every form beside the
 - **The compiler checks what agents write.** Every function's type lists what it can fail with and what it needs, and code that breaks a declared type does not compile.
 {/* token-headline:start */}
 
-- **People can review what agents write.** [6.7% fewer tokens across the 47 cheat-sheet pairs](/vibelang-features/117-token-counts); VibeLang is longer in 20 pairs.
+- **People can review what agents write.** [6.6% fewer tokens across the 47 cheat-sheet pairs](/vibelang-features/117-token-counts); VibeLang is longer in 20 pairs.
 
 {/* token-headline:end */}
 - **Agents write less.** Fewer tokens per program means less to generate and less context to read back.

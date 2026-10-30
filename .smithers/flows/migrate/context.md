@@ -609,7 +609,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `EventSource` | `try HttpClient.get(url)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
-| `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`; bare `Worker` is undecided (pending VIP) |
+| `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
 | `XMLHttpRequest` | `try HttpClient.get(url)` |
 | `__dirname` | `(try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))` |
 | `__filename` | `try (try Path.Path).fromFileUrl(new URL(import.meta.url))` |
@@ -655,7 +655,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
-| `global` | `globalThis` |
+| `global` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
@@ -701,8 +701,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
-| `require.resolve` | `try Effect.try(() => import.meta.resolve(specifier))` |
-| `self` | `globalThis` |
+| `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
+| `self` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |

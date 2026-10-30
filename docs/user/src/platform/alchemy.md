@@ -180,7 +180,7 @@ export default Cloudflare.Worker("Api", { main: import.meta.url }, effect {
 })
 ```
 
-Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file, and whether a `match` arm over such a class covers it is undecided (pending VIP), so match its tag, `when { _tag: "R2Error" }:`.
+Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file. Tagged-member coverage applies to classes from declaration files too. An unguarded `when { _tag: "R2Error" }:` covers its tag case.
 
 ## The stack
 

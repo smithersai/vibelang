@@ -101,7 +101,7 @@ effect function checked(value: number): number!Rejected {
 // Output: 3
 ```
 
-A contract gives the compiler a promise to check. Write all three channels, such as `Effect<number, Rejected, never>`, or omit the return annotation to infer all three. An omitted slot is `never`, so `Effect<number>` is `number!!`. VibeLang reads `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`, in that order within a directory. `vibe.config.json` is a strict superset of `tsconfig.json`. Put VibeLang's settings under the top-level `"vibe"` key:
+A contract gives the compiler a promise to check. Write all three channels, such as `Effect.Effect<number, Rejected, never>`, or omit the return annotation to infer all three. An omitted slot is `never`, so `Effect.Effect<number>` is `number!!`. VibeLang reads `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`, in that order within a directory. `vibe.config.json` is a strict superset of `tsconfig.json`. Put VibeLang's settings under the top-level `"vibe"` key:
 
 ```json
 {
@@ -136,7 +136,7 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 | EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is a TaggedError; a different tag or `Data.Error` keeps the warning without one |
 | EK4831 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!! }` | When the members are written in the type argument; the class's key stays, written as `static readonly key` unless it is the one the compiler derives |
 | EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` | When every field has a declaration form; `Schema.optionalKey` or a check keeps the constant, without a warning. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file |
-| EK4833 | `Effect.Effect<User, NotFound, Db>` | `User!NotFound!Db` | The prelude's `Effect<User, NotFound, Db>` draws no warning |
+| EK4833 | `Effect.Effect<User, NotFound, Db>` | `User!NotFound!Db` | There is no global `Effect<…>` type: `Effect` is the module |
 | EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` | Pending VIP implementation |
 | EK4835 | `Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` | Pending VIP implementation |
 | EK4836 | `Effect.withSpan(load(), "load")`, `Effect.provide(main(), AppLive)` | `withSpan(load(), "load")`, `provide AppLive { return try main() }` | Pending VIP implementation |
@@ -198,7 +198,7 @@ effect function discard() {
 // Output: 0
 ```
 
-`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. Language diagnostics report in `.vibe` files, configuration diagnostics in config files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on both kinds of file ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, imported rules report their assigned `EK38xx` codes and rule names, at the configured severity.
+`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. Language diagnostics report in `.vibe` files, configuration diagnostics in config files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on both kinds of file ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, imported rules report their assigned `EK38xx` codes and rule names, at the configured severity. A rule's severity comes from its code's entry in `vibe.severities`, else the repository's Effect language-service configuration, else the rule's default.
 
 | Group | Effect's rule or feature | In VibeLang | Example |
 | --- | --- | --- | --- |

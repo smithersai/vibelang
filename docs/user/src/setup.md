@@ -84,7 +84,7 @@ export default {
 }
 ```
 
-Next's separate stock TypeScript checker cannot resolve `.vibe` imports. `ignoreBuildErrors` bypasses that entire checker, including ordinary TypeScript errors; it does not add `.vibe` support to stock TypeScript. Preserve checking with a required build script:
+Next's separate stock TypeScript checker reads only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on. `ignoreBuildErrors` bypasses that entire checker, including ordinary TypeScript errors; it does not add `.vibe` support to stock TypeScript. Preserve checking with a required build script:
 
 ```json
 {

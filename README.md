@@ -15,7 +15,7 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 >
 > Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
 >
-> Use `vibelang` to check mixed source: stock `tsc` and `vue-tsc` cannot resolve `.vibe` imports.
+> Use `vibelang` to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >
 > For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
 >
@@ -102,15 +102,15 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**6.7% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **136 vs 202 tokens (32.7% fewer)**.
+**6.6% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **136 vs 202 tokens (32.7% fewer)**.
 
 <!-- token-headline:end -->
 
 Counts use o200k_base. Both print `Ada Guest`. The counts cover the complete source files, including TypeScript's imports and runner, which VibeLang supplies. It is one example, not a general ratio. [Reproduce the counts and both runs](.smithers/token-compare/README.md). [Token counts](docs/user/src/vibelang-features/117-token-counts.md) measures the skill agents load, the docs and every cheat-sheet pair.
 
-`service` declares a dependency and `provide` supplies it. `try` runs an Effect, `try.all` runs Effects concurrently, and `catch` handles the declared failure. `Console` and `Layer` are in scope without imports, and the module runs `main` with a runner, as Effect TypeScript does. A contract reads `Result!Error!Services`, exactly `Effect<Result, Error, Services>`; leave it out and the compiler infers it.
+`service` declares a dependency and `provide` supplies it. `try` runs an Effect, `try.all` runs Effects concurrently, and `catch` handles the declared failure. `Console` and `Layer` are in scope without imports, and the module runs `main` with a runner, as Effect TypeScript does. A contract reads `Result!Error!Services`, exactly `Effect.Effect<Result, Error, Services>`; leave it out and the compiler infers it.
 
-`match` is TC39 pattern matching with one addition: leave a variant of a `data` type out of a match without `default`, and the compiler reports the missing case.
+`match` is TC39 pattern matching with exhaustiveness checks and generated error matchers: leave a variant of a `data` type out of a match without `default`, and the compiler reports the missing case.
 
 The compiler checks `.vibe` and `.ts` files together and emits JavaScript. Set `"declaration": true` in `compilerOptions` to emit `.d.ts` files for TypeScript consumers. The starter leaves declaration output off.
 
@@ -195,4 +195,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,261 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,296 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

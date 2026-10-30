@@ -31,7 +31,7 @@ effect function convert(amount: number, currency: string) {
 | `E` | `never` has no expected failure; defects and interruption remain possible. |
 | `R` | `never` needs no additional services. |
 
-Errors and services from several Effects run with `try` accumulate as unions. Catching a failure removes it from `E`; providing a service removes it from `R`. Write a full annotation, such as `number!!Rates`, to have the compiler check a promise. `Effect<number, never, Rates>` is accepted too, and means the same.
+Errors and services from several Effects run with `try` accumulate as unions. Catching a failure removes it from `E`; providing a service removes it from `R`. Write a full annotation, such as `number!!Rates`, to have the compiler check a promise. `Effect.Effect<number, never, Rates>` is accepted too, and means the same.
 
 Inferred errors and services are unions: running the same Effect more than once does not add another copy of its error or service types. Chains of repeated calls do not need written contracts to keep inference bounded.
 
@@ -58,28 +58,28 @@ effect function anyRate(currency: string) {
 // Output: 2
 ```
 
-`.vibe` code writes `Effect<A, E, R>` as `Result!Error!Dependencies`. An empty slot is `never`: `number!MissingRate` cannot need a service, and `number!!` neither fails nor needs one. An omitted dependencies slot is `never` everywhere. Code that relied on the older rule, under which a function with a body inferred them, draws `EK4853`; its fix, which `vibelang --fix` applies, writes the dependencies the body needs, such as `number!MissingRate!Rates`. `anyRate` omits the whole return annotation, so all three channels are inferred. A union in a slot needs parentheses: `string!(MissingRate | Offline)!Rates` fails with either error. Parenthesize an intersection, a function type, a conditional type, or an object type after a `!` the same way; an object type's `{` would start the function's body.
+`.vibe` code writes `Effect.Effect<A, E, R>` as `Result!Error!Dependencies`. An empty slot is `never`: `number!MissingRate` cannot need a service, and `number!!` neither fails nor needs one. An omitted dependencies slot is `never` everywhere. Code that relied on the older rule, under which a function with a body inferred them, draws `EK4853`; its fix, which `vibelang --fix` applies, writes the dependencies the body needs, such as `number!MissingRate!Rates`. `anyRate` omits the whole return annotation, so all three channels are inferred. A union in a slot needs parentheses: `string!(MissingRate | Offline)!Rates` fails with either error. Parenthesize an intersection, a function type or a conditional type the same way. A type literal can fill a slot, except right after `!!`, where `{` begins the function's body: write `number!!({ … })`. A line break ends an Effect type, so each `!` and its slot start on the line where the previous slot ends.
 
-Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect<A, E, R>` is accepted anywhere a type is.
+Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.provide(checkedConversion(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
-effect function rate(currency: string): Effect<number, MissingRate, Rates> {
+effect function rate(currency: string): Effect.Effect<number, MissingRate, Rates> {
   const rates = try Rates
   return try rates.lookup(currency)
 }
 // Checks number, MissingRate, and Rates.
 
-effect function rateOrDie(currency: string): Effect<number, never, Rates> {
+effect function rateOrDie(currency: string): Effect.Effect<number, never, Rates> {
   const rates = try Rates
   return try orDie(rates.lookup(currency))
 }
 // Checks number, never, and Rates.
 
-effect function label(currency: string): Effect<string, MissingRate, Rates> {
+effect function label(currency: string): Effect.Effect<string, MissingRate, Rates> {
   const rates = try Rates
   return (try rates.lookup(currency)).toFixed(2)
 }
@@ -92,7 +92,7 @@ effect function checkedConversion(amount: number, currency: string) {
 // Output: 60
 ```
 
-A return annotation checks the complete Effect type. Leave it out to infer all three channels from the body. A type argument left out of `Effect<…>` is `never`, as in TypeScript: `Effect<number>` is `number!!`, a promise that the function cannot fail and needs nothing. `number!MissingRate` also needs no services.
+A return annotation checks the complete Effect type. Leave it out to infer all three channels from the body. A type argument left out of `Effect.Effect<…>` is `never`, as in TypeScript: `Effect.Effect<number>` is `number!!`, a promise that the function cannot fail and needs nothing. `number!MissingRate` also needs no services.
 
 The `effect` keyword decides the function's kind. Plain functions and `async` functions keep TypeScript's meaning, regardless of their return annotations. A plain callback can return an Effect without running it, so `xs.map((x) => work(x))` builds an array of Effects. A callback that must run Effects uses `effect`, as in `forEach(xs, effect (x) => { return try work(x) })`.
 
@@ -149,6 +149,6 @@ TypeScript consumers see exported VibeLang functions as returning ordinary Effec
 
 ## Coming from Effect
 
-`Effect<A, E, R>` is global in `.vibe` files. Written with its type arguments, as `Effect.Effect<A, E, R>`, it draws EK4833, whose quick fix writes `A!E!R` ([TypeScript-style Effect code](012-devtools.md#typescript-style-effect-code)). A call returns an Effect; `try` gives `A`. Keep the Effect value to compose or store it.
+`Effect` is the module, in scope in `.vibe` files without an import, and its type is `Effect.Effect<A, E, R>`. Written that way, it draws EK4833, whose quick fix writes `A!E!R` ([TypeScript-style Effect code](012-devtools.md#typescript-style-effect-code)). A call returns an Effect; `try` gives `A`. Keep the Effect value to compose or store it.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/the-effect-type)

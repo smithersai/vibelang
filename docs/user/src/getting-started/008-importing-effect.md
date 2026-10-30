@@ -25,7 +25,7 @@ const backoff = Schedule.exponential("50 millis")
 // Output: true
 ```
 
-`Effect`, the `Effect<A, E, R>` type, and every root module of `effect` need no import. Every export of the `Effect` module is global unless its name clashes with a keyword or JavaScript global. This includes `sleep`, `log`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, `die`, `sync`, `tryPromise`, `callback`, `result`, and the runners. Names that clash stay qualified, such as `Effect.try`, `Effect.catch`, `Effect.match`, and `Effect.provide`. `pipe`, `flow`, and `identity` need no import either. `fork` and `join` use their language forms.
+`Effect` and every root module of `effect` need no import. Type exports are not global, so the type is `Effect.Effect<A, E, R>`, or `A!E!R`. Every export of the `Effect` module is global unless its name clashes with a keyword or JavaScript global. This includes `sleep`, `log`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, `die`, `sync`, `tryPromise`, `callback`, `result`, and the runners. Names that clash stay qualified, such as `Effect.try`, `Effect.catch`, `Effect.match`, and `Effect.provide`. `pipe`, `flow`, and `identity` need no import either. `fork` and `join` use their language forms.
 
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 

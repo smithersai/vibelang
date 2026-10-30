@@ -1,6 +1,6 @@
 # Pattern Matching
 
-VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals, tested in order, and inside an effect function an arm can run an Effect with `try`. How a pattern narrows a value's static type is undecided (pending VIP). [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
+VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals, tested in order, and inside an effect function an arm can run an Effect with `try`. Inside each arm, the subject narrows as its test narrows in TypeScript. Bindings take the types of the corresponding extracted values. [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
 
 ## Matching values
 
@@ -29,7 +29,7 @@ waiting: 2
 state: done
 ```
 
-Arms are tried in order; the first that matches gives the value. `Number` and `String` test `typeof`. An object pattern checks only the properties it names.
+Arms are tried in order; the first that matches gives the value. `Number` and `String` test `typeof` or `instanceof` their boxed constructors. An object pattern checks only the properties it names.
 
 ## Shapes, guards, and tags
 
@@ -111,7 +111,7 @@ function display(input: number | boolean): string {
 3.0 enabled disabled
 ```
 
-The static type of a `match` expression is undecided (pending VIP). Annotate the return type to require one type from every arm; that catches an arm returning a number from a text formatter.
+A `match` expression has the union of its arm types. A `throw` arm contributes `never`. Annotate the return type to require one type from every arm; that catches an arm returning a number from a text formatter.
 
 ## Exhaustive handling
 
@@ -132,7 +132,7 @@ function phaseLabel(phase: Phase) {
 Draft Published
 ```
 
-`match` is exhaustive. Without a `default` arm, a match over a finite union (literals, `boolean`, a data type's variants, `error` classes, or an enum) must handle every case: add a member to `Phase` and this match is EK4701, `This match does not handle every case of Phase: "review" is left.`, until it gets an arm. A guard doesn't prove that every value of a type is covered. Over other types, a match no arm fits throws a `TypeError` when it runs.
+`match` is exhaustive. Without a `default` arm, a match over a finite union (such as literals, `boolean`, a data type's variants, `error` classes, or an enum) must handle every case: add a member to `Phase` and this match is EK4701, `This match does not handle every case of Phase: "review" is left.`, until it gets an arm. A guard doesn't prove that every value of a type is covered. The checked kinds also include `null`, `undefined`, `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and objects, interfaces or class instances whose `_tag` has a literal type or a union of literal types. Any normalized subject member outside the checked kinds turns the check off. If no arm fits, the match throws a `TypeError` at run time.
 
 ## Defaults, optional outputs, and result outputs
 

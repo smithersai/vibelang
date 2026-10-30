@@ -115,7 +115,7 @@ effect function combine() {
 // Output: Inventory: 18
 ```
 
-`try.all [...]`, like `Promise.all`, starts every Effect in its own fiber, waits for all, and keeps the input array's order. `rowCount()` returns its Effect unrun, and `try.all` starts it in its fiber. For an object of Effects, use `try all({ name: title(), count: rowCount() }, { concurrency: "unbounded" })` to keep the object shape. If one fails, `try.all` interrupts the rest and propagates the failure, as `all` fails fast. For an expected-failure fallback, use `program catch () => fallback`; defects and interruption still propagate.
+`try.all [...]`, like `Promise.all`, waits for all and keeps the input array's order. Its operands start in order with unbounded concurrency. `rowCount()` returns its Effect unrun, and `try.all` starts it in its fiber. For an object of Effects, use `try all({ name: title(), count: rowCount() }, { concurrency: "unbounded" })` to keep the object shape. If one fails, `try.all` interrupts the rest and propagates the failure, as `all` fails fast. For an expected-failure fallback, use `program catch () => fallback`; defects and interruption still propagate.
 
 `try.allSettled [...]` returns an `Exit` for each element and never fails. Each `Exit` represents success, failure, defect, or interruption, keeping every outcome as data, mixed causes included.
 

@@ -37,7 +37,7 @@ effect function stringify(value: unknown) {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
-`all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency: like `Promise.all`, it starts every element in its own fiber at once. Elements start in order, and one that fails before it suspends stops the later ones from starting, as `Effect.all` does. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
+`all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency, like `Promise.all`. Its operands start in order, and one that fails before it suspends stops later ones from starting. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
 
 ## Interrupting computations
 
@@ -99,7 +99,7 @@ effect function cancelBatch() {
 // Output: true
 ```
 
-`for concurrent` runs each item in its own fiber. An interrupted branch stops the loop and interrupts its active siblings; so does an expected failure in the default concurrent traversal, cancelling work whose result is no longer needed. The parent waits for branch cleanup. A cause containing interruption or a defect passes through ordinary `catch` intact.
+`for concurrent` runs each item in its own fiber. An interrupted branch stops the loop and interrupts its active siblings; so does an expected failure in the default concurrent traversal, cancelling work whose result is no longer needed. The parent waits for branch cleanup. A cause that holds a defect passes through ordinary `catch` with its failures re-raised as defects, as `Effect.catch` does. A cause with no expected failure, such as a lone interruption, never reaches the handler.
 
 The right-hand operand sees uninitialized loop-head bindings, as in JavaScript's `for…of`; a closure created there keeps those bindings rather than an outer or per-item binding. Outward `return` is rejected in both head binding initialization and the body (`EK1904`), including a `return` in a default's `do`. A `do` return in the concurrency-limit or iterable expression still targets the enclosing function.
 

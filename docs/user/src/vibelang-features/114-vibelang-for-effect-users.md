@@ -306,6 +306,6 @@ effect function displayName(id: string) {
 
 Inside an Effect function, `throw` adds an expected failure to the function's error channel, and `catch` receives it. Defects and interruption bypass `catch`; `ensuring` and `onExit` still run cleanup. `try orDie(work())` promotes an expected failure to a defect; to inspect defects, use Effect's cause APIs at a boundary.
 
-`A!E!R` means exactly `Effect<A, E, R>`. Every omitted slot is `never`, including on a function with a body. Leave out the whole annotation to infer success, errors, and requirements.
+`A!E!R` means exactly `Effect.Effect<A, E, R>`. Every omitted slot is `never`, including on a function with a body. Leave out the whole annotation to infer success, errors, and requirements.
 
 See [Control operations and handlers](111-control-operations-and-handlers.md) for the proposal's status.

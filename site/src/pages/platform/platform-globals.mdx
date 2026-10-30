@@ -7,7 +7,7 @@ description: "Node.js reaches a .vibe file only through Effect's services, which
 
 Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value. Each use is EK4402, and the error names what replaces it. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global.
 
-ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `new Date()`, and `Math.random()`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. The web's pure helpers stay too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Blob`, `FormData`, `EventTarget`, `atob`, `btoa`, and the web streams. In a value position, bare `Headers`, `Response` and `Event` name Effect's namespaces from its subpaths; as types they keep the DOM's meaning.
+ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `new Date()`, and `Math.random()`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. A closed list of the web's pure helpers stays too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Intl`, `atob` and `btoa`. Every other web or Node.js global, such as `Blob`, `FormData`, `EventTarget` and the web streams, is EK4402 as a value. In a value position, bare `Headers`, `Response` and `Event` name Effect's namespaces from its subpaths; as types they keep the DOM's meaning.
 
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
 
@@ -27,7 +27,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `EventSource` | `try HttpClient.get(url)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
-| `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`; bare `Worker` is undecided (pending VIP) |
+| `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
 | `XMLHttpRequest` | `try HttpClient.get(url)` |
 | `__dirname` | `(try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))` |
 | `__filename` | `try (try Path.Path).fromFileUrl(new URL(import.meta.url))` |
@@ -73,7 +73,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
-| `global` | `globalThis` |
+| `global` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
@@ -120,8 +120,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
-| `require.resolve` | `try Effect.try(() => import.meta.resolve(specifier))` |
-| `self` | `globalThis` |
+| `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
+| `self` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
@@ -150,7 +150,6 @@ effect function replacements(
   const directory = (try Path.Path).resolve()
   const file = try (try Path.Path).fromFileUrl(new URL(import.meta.url))
   const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))
-  const resolved = try Effect.try(() => import.meta.resolve(specifier))
   const line = try (try Terminal.Terminal).readLine
   try Console.log(message)
   try Console.log(text)
@@ -178,8 +177,7 @@ effect function replacements(
   try yieldNow
   const fiber = fork effect { try repeat(program, Schedule.spaced("1 second")) }
   try Fiber.interrupt(fiber)
-  const global = globalThis
-  return { name, args, directory, here, file, resolved, line, random, id, roll, digest, encoded, empty, joined, response, socket, stored, events, millis, nanos, global }
+  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, empty, joined, response, socket, stored, events, millis, nanos }
 }
 ```
 
@@ -287,9 +285,9 @@ import { server } from "./server.ts"
 ## Limits of static checks
 
 EK4402 is a static, lint-strength check, not a sandbox or a
-security boundary. They recognize direct uses and statically named members of `globalThis`.
-Whether aliases such as `const g = globalThis; g.process.pid`, casts and
-reflection through `Reflect.get` are caught is undecided (pending VIP). Use process isolation when running untrusted
+security boundary. They recognize direct uses, statically named members of `globalThis`, and
+aliases, which keep the symbol they copy. Any other use of `globalThis`, such as
+`const g = globalThis`, a computed key, a cast or an argument to `Reflect.get`, is EK0107. Use process isolation when running untrusted
 code.
 
 `Date.now()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no

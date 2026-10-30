@@ -31,7 +31,7 @@ Rejected: address missing
 true
 ```
 
-A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line or `;` separates variants and fields; a comma is EK1013. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
+A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line, `;` or `,` separates variants and fields. The current compiler still reports a comma as EK1013. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
 
 `when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (EK4701). See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md#data-variants).
 
@@ -82,7 +82,7 @@ type Delivery = Data.TaggedEnum<{
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, given a free name such as `LoadStateDefinition`, which `export data` exports with the type and the constructors. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name.
+Declaration files write the constant's type out, `Data.TaggedEnum.Constructor<Delivery>`, which is what `Data.taggedEnum<Delivery>()` returns. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name.
 
 ```ts effect
 import { Data } from "effect"
@@ -92,10 +92,10 @@ type LoadState<A, E> = Data.TaggedEnum<{
   Loaded: { readonly value: A }
   Failed: { readonly error: E }
 }>
-interface LoadStateDefinition extends Data.TaggedEnum.WithGenerics<2> {
+interface $LoadState$Definition extends Data.TaggedEnum.WithGenerics<2> {
   readonly taggedEnum: LoadState<this["A"], this["B"]>
 }
-const LoadState = Data.taggedEnum<LoadStateDefinition>()
+const LoadState = Data.taggedEnum<$LoadState$Definition>()
 ```
 
 ## Creating values with structural equality
@@ -214,7 +214,7 @@ const idle = LoadState.Idle()
 
 | Code | Cause | Fix |
 | --- | --- | --- |
-| EK2122 | A `data` declaration without variants | Write at least one variant |
+| EK2122 | A `data` declaration without variants, which the specification allows as `data Empty {}`; the current compiler still rejects it | Write a variant until the compiler accepts it |
 | EK2123 | A variant declared twice | Rename one, or remove the second |
 | EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
 | EK2125 | A variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write `name: Type` or `name?: Type` |

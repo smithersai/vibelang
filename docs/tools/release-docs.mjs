@@ -26,7 +26,7 @@ export function renderReleasePage(path, text, version, effect) {
     const compatibility = [
       "**Compatibility.** Use exactly " + code("effect@" + effect) + "; keep " + code("@effect/platform-node") + " and " + code("@effect/vitest") + " at " + code(effect) + " when used.",
       "Existing projects need an " + code("@effect/platform-node-shared") + " override. The starter includes the pins and override.",
-      "Use " + code("vibelang") + " to check mixed source: stock " + code("tsc") + " and " + code("vue-tsc") + " cannot resolve " + code(".vibe") + " imports.",
+      "Use " + code("vibelang") + " to check " + code(".vibe") + " source. Stock " + code("tsc") + " and " + code("vue-tsc") + " see only the " + code("x.d.vibe.ts") + " declarations the compiler writes, which resolve " + code(".vibe") + " imports when " + code("allowArbitraryExtensions") + " is on.",
       "For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.",
     ]
     const install = path === "site/src/pages/index.mdx"

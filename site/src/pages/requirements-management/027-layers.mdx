@@ -151,7 +151,7 @@ effect function withBuiltContext() {
 // Output: reports/Inventory
 ```
 
-`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is `yield* Effect.provide(Effect.gen(…), AppLive)` around its statements, with a `return`, `break` or `continue` inside carried out where the block stands. It takes layers and `Key = value` entries; pass a `Context` or an array of layers to `Effect.provide` directly. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
+`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is `yield* Effect.provide(Effect.gen(…), AppLive)` around its statements, with a `return`, `break` or `continue` inside carried out where the block stands. It takes layers and `Key = value` entries, or a single `Context`. Pass an array of layers to `Effect.provide` directly. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
 
 `Layer.build` produces a `Context` and requires a `Scope`, here from `scoped(effect { ... })`; consume resource-owning services inside that scope. For an application that is entirely a layer, `Layer.launch(AppLive)` builds it and keeps its resources alive until interruption.
 

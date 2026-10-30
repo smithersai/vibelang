@@ -89,8 +89,8 @@ The statement form is an `if` followed by `throw`. Neither form changes the sour
 effect function observeQuantity(value: number) {
   const logged = tapError(quantity(value), (error) => Console.log(`Rejected quantity ${error.value}`))
   const tagged = tapErrorTag(logged, "InvalidQuantity", () => Console.log("Quantity validation failed"))
-  return try tapCause(tagged, (cause) =>
-    Console.log("Failure kinds", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag)))))
+  return try tapCause(tagged, effect (cause) =>
+    try Console.log("Failure kinds", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag)))))
 }
 
 effect function observeDefect() {

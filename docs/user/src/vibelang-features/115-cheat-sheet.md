@@ -29,7 +29,7 @@ effect function release(version: string) {
 
 ## Types
 
-**Effect types**. `A!E!R` means exactly `Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type.
+**Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type.
 
 ```ts effect
 // fragment
@@ -719,7 +719,7 @@ effect function label(id: string) {
 // Output: short
 ```
 
-A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `break` and `continue` stay inside that expression (`EK1019`); `return` is `TS1108`.
+A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `return`, `break` and `continue` act on the enclosing function or loop, as TC39 specifies.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.
 
@@ -1038,7 +1038,7 @@ effect function both() {
 // Output: [{"id":"1","name":"Ada"},1]
 ```
 
-**Wait for several**. `try.all` behaves like `Promise.all`: it starts each element in its own fiber, keeps the array's shape, and a failure interrupts the rest. Use `try all(record, { concurrency: "unbounded" })` to keep object keys.
+**Wait for several**. `try.all` behaves like `Promise.all`: it keeps the array's shape, and a failure interrupts the rest. Its operands start in order, and one that fails before it suspends stops later ones from starting. Use `try all(record, { concurrency: "unbounded" })` to keep object keys.
 
 ```ts effect
 // fragment
