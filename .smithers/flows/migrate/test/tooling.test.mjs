@@ -97,6 +97,20 @@ test("ast-grep scan applies the migrated TS rule to .vibe and VibeLang syntax", 
   assert.equal(good.status, 0, good.stdout + good.stderr)
 })
 
+test("only the root and packages that run vibelang themselves get the vibelang devDependency", t => {
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ scripts: { lint: "oxlint" } }),
+    "packages/ui/package.json": JSON.stringify({ name: "ui", scripts: { lint: "oxlint src" } }),
+    "packages/app/package.json": JSON.stringify({ name: "app", scripts: { format: "oxfmt ." } })
+  })
+  wireDeveloperTools({ root, specsFor })
+  const read = (file) => JSON.parse(readFileSync(join(root, file)))
+  // The ESLint config lives at the root and resolves vibelang/eslint from there.
+  assert.match(read("packages/ui/package.json").scripts.lint, /eslint --config \.\.\/\.\.\/\.vibelang\/eslint\.config\.mjs/)
+  assert.equal(read("packages/ui/package.json").devDependencies, undefined)
+  assert.equal(read("packages/app/package.json").devDependencies.vibelang, "0.0.11")
+  assert.equal(read("package.json").devDependencies.vibelang, "0.0.11")
+})
 test("dprint keeps the repo TypeScript plugin and adds VibeLang; unrelated manifests keep their bytes", t => {
   const root = fixture(t, {
     "package.json": '{"prettier":{"semi":false}}',

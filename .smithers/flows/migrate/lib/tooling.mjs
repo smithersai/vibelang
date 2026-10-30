@@ -61,7 +61,9 @@ export function wireDeveloperTools({ root, specsFor }) {
       pkg.prettier.plugins = [...new Set([...(pkg.prettier.plugins ?? []), "vibelang/prettier"])]
       needsCompiler = true
     }
-    if (needsCompiler && pkg.scripts && Object.values(pkg.scripts).some(c => /vibelang-format|vibelang\/prettier|\.vibelang\/eslint/.test(c))) {
+    // A script that loads the root ESLint config needs nothing of its own: the
+    // config resolves vibelang/eslint from the root, which gets vibelang below.
+    if (needsCompiler && pkg.scripts && Object.values(pkg.scripts).some(c => /vibelang-format|vibelang\/prettier/.test(c))) {
       pkg.devDependencies = { ...pkg.devDependencies, vibelang: specsFor(dir).vibelang }
     }
     if (JSON.stringify(pkg) !== original) write(file, JSON.stringify(pkg, null, 2) + "\n")
