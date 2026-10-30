@@ -93,7 +93,7 @@ true true
 
 ```vibe
 // pending: VIP-5, VIP-6, VIP-14
-// run: try Console.log(JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])); try Console.log(certain); const failed = try exit(sync(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
+// run: try Console.log(JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])); try Console.log(certain); const failed = try exit(Effect.try(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
 function extract(value: Option.Option<string>) {
   return {
     defaulted: Option.getOrElse(value, () => "Guest"),
@@ -108,10 +108,10 @@ const certain = Option.getOrThrow(Option.some("known"))
 ```output
 [{"defaulted":"Mina","nullable":"Mina","optional":"Mina"},{"defaulted":"Guest","nullable":null}]
 known
-true false
+false true
 ```
 
-`getOrElse` computes its fallback only for `None`; `getOrNull` and `getOrUndefined` suit APIs that expect nullish values. `getOrThrow` throws a JavaScript exception on `None`. In Effect code, `sync(() => Option.getOrThrow(value))` treats that exception as a defect; `Effect.try` captures it as a typed failure. When absence is expected rather than a programming error, prefer a guard, a default, or `fromOption`.
+`getOrElse` computes its fallback only for `None`; `getOrNull` and `getOrUndefined` suit APIs that expect nullish values. `getOrThrow` throws a JavaScript exception on `None`. In Effect code, wrap it in `Effect.try`, which captures the exception as a typed failure; `sync` takes only a function that can't throw. When absence is expected rather than a programming error, prefer a guard, a default, or `fromOption`.
 
 ## Choosing fallback options
 
@@ -161,7 +161,7 @@ true true 0 ""
 effect function requiredName(name: Option.Option<string>) {
   return try fromOption(name)
 }
-// string!Cause.NoSuchElementError!
+// string!Cause.NoSuchElementError
 
 effect function requiredPair() {
   return try all([

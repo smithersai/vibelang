@@ -26,7 +26,7 @@ wraps. For example, `settings.vibe` beside `settings.ts` both emit
 `settings.js`, causing TS5056 in the CLI, Vite and Vitest. Name the wrapper
 `load-settings.vibe` instead.
 
-Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped foreign calls as `EK4401`, platform calls as `EK4402`, and the web's clock and randomness reads, such as `crypto.randomUUID()`, as `EK4403` ([diagnostics](/getting-started/012-devtools#diagnostics-completions-and-refactors)). A function that cannot throw can be called directly. Library declarations describe thrown types with `@throws {E}`. A missing annotation means the call may throw `unknown`.
+Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped foreign calls as `EK4401`, and platform calls, including the web's clock and randomness reads such as `crypto.randomUUID()`, as `EK4402` ([diagnostics](/getting-started/012-devtools#diagnostics-completions-and-refactors)). A function that cannot throw can be called directly. Library declarations describe thrown types with `@throws {E}`. A missing annotation means the call may throw `unknown`.
 
 ## 1. Check package.json
 

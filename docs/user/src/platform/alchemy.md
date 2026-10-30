@@ -67,13 +67,13 @@ effect function read(key: string) {
 }
 
 export effect function handle() {
-  const request = try HttpServerRequest
+  const request = try HttpServerRequest.HttpServerRequest
   const url = try sync(() => new URL(request.url, "http://worker"))
   const key = url.pathname.slice(1)
   return effect {
     return HttpServerResponse.text(try read(key))
   } catch (error) => match (error) {
-    when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 })
+    when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
   }
 }
 ```
@@ -153,7 +153,7 @@ export effect function makeApi() {
   }
 
   effect function handle() {
-    const request = try HttpServerRequest
+    const request = try HttpServerRequest.HttpServerRequest
     const url = try sync(() => new URL(request.url, "http://worker"))
     const key = url.pathname.slice(1)
     return effect {
@@ -163,9 +163,9 @@ export effect function makeApi() {
       }
       return HttpServerResponse.text(try read(key))
     } catch effect (error) => match (error) {
-      when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 })
-      when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 })
-      default: throw error
+      when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
+      when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 });
+      default: throw error;
     }
   }
 
@@ -180,7 +180,7 @@ export default Cloudflare.Worker("Api", { main: import.meta.url }, effect {
 })
 ```
 
-Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file, and a `match` arm over such a class covers nothing, so match its tag, `when { _tag: "R2Error" }:`.
+Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file, and whether a `match` arm over such a class covers it is undecided (pending VIP), so match its tag, `when { _tag: "R2Error" }:`.
 
 ## The stack
 

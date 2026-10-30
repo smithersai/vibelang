@@ -152,7 +152,7 @@ effect function captureLogs() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const records: unknown[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { const record = JSON.parse(line); records.push([record.level, record.message]) } }); try Console.log(try stringify(records))
+// run: const lines: string[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } }); const records = try Effect.try(() => lines.map((line) => JSON.parse(line))); try Console.log(try stringify(records.map((record) => [record.level, record.message])))
 const TextLogs = Logger.layer([Logger.consoleLogFmt, Logger.tracerLogger])
 const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])

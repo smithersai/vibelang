@@ -644,13 +644,13 @@ const ready = Console.log(Hex.encode("ready"))
 
 :::
 
-**Look up platform services**. Get the implementation with `try FileSystem`, then run its Effect members with `try`.
+**Look up platform services**. Get the implementation with `try FileSystem.FileSystem`, then run its Effect members with `try`.
 
 :::code-group
 
 ```vibe [VibeLang]
 effect function size(path: string) {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   return (try fs.readFileString(path)).length
 }
 // Output: 5
@@ -829,7 +829,7 @@ import { assert, it } from "@effect/vitest"
 
 it.live("finds a user", () => effect {
   const user = try getUser("1")
-  try sync(() => assert.strictEqual(user.name, "Ada"))
+  try Effect.try(() => assert.strictEqual(user.name, "Ada"))
 })
 // Output:
 ```

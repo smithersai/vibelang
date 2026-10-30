@@ -42,7 +42,7 @@ error RequestRejected {
   transient: boolean
 }
 
-effect function sendRequest(): string!RequestRejected! {
+effect function sendRequest(): string!RequestRejected {
   throw new RequestRejected({ transient: false })
 }
 

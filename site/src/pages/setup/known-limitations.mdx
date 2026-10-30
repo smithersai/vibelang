@@ -22,7 +22,7 @@ is known to be effectful, even if the containing function compiles to plain
 JavaScript internally. The warning does not track arbitrary `any` values through
 mutable assignments, containers, foreign APIs, or intermediate local values.
 A hidden Effect can still be returned as an ordinary, unrun value. Keep the
-callee's callable type, such as `() => number!NotFound!`, instead of erasing it.
+callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
 

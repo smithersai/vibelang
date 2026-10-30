@@ -1,8 +1,8 @@
 # Platform globals in VibeLang
 
-Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value. Each use is EK4402, or EK4403 for a clock or randomness read, and the error names what replaces it. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global.
+Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value. Each use is EK4402, and the error names what replaces it. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global.
 
-ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `new Date()`, and `Math.random()`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. The web's pure helpers stay too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Blob`, `FormData`, `Headers`, `Response`, `Event`, `EventTarget`, `atob`, `btoa`, and the web streams.
+ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `new Date()`, and `Math.random()`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. The web's pure helpers stay too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Blob`, `FormData`, `EventTarget`, `atob`, `btoa`, and the web streams. In a value position, bare `Headers`, `Response` and `Event` name Effect's namespaces from its subpaths; as types they keep the DOM's meaning.
 
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
 
@@ -20,21 +20,21 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
-| `SharedWorker` | Worker and WorkerRunner |
+| `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
-| `Worker` | Worker and WorkerRunner |
+| `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`; bare `Worker` is undecided (pending VIP) |
 | `XMLHttpRequest` | `try HttpClient.get(url)` |
-| `__dirname` | `(try Path).dirname(try (try Path).fromFileUrl(new URL(import.meta.url)))` |
-| `__filename` | `try (try Path).fromFileUrl(new URL(import.meta.url))` |
+| `__dirname` | `(try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))` |
+| `__filename` | `try (try Path.Path).fromFileUrl(new URL(import.meta.url))` |
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
-| `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
+| `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
 | `cancelAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `clearImmediate` | `try Fiber.interrupt(fiber)` |
 | `clearInterval` | `try Fiber.interrupt(fiber)` |
 | `clearTimeout` | `try Fiber.interrupt(fiber)` |
-| `confirm` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
+| `confirm` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `console` | `try Console.log(message)` |
 | `console.debug` | `try Console.debug(message)` |
 | `console.error` | `try Console.error(message)` |
@@ -43,26 +43,26 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `console.table` | `try Console.table(rows)` |
 | `console.trace` | `try Console.trace(message)` |
 | `console.warn` | `try Console.warn(message)` |
-| `crypto` | `try (try SecureRandom).randomBytes(size)` |
-| `crypto.createCipheriv` | `try (try Aead).encrypt(key, plaintext, { nonce })` |
-| `crypto.createDecipheriv` | `try (try Aead).decrypt(key, ciphertext, { nonce })` |
-| `crypto.createHash` | `try (try Digest).digest(Digest.sha256, bytes)` |
-| `crypto.createHmac` | `try (try Mac).sign(key, data)` |
-| `crypto.createSign` | `try (try Signature).sign(privateKey, data)` |
-| `crypto.createVerify` | `try (try Signature).verify(publicKey, signature, data)` |
-| `crypto.generateKeyPair` | `try (try Signature).generateKeyPair(Signature.ed25519)` |
-| `crypto.getRandomValues` | `try (try SecureRandom).randomBytes(size)` |
-| `crypto.hash` | `try (try Digest).digest(Digest.sha256, bytes)` |
-| `crypto.randomBytes` | `try (try SecureRandom).randomBytes(size)` |
-| `crypto.randomInt` | `try (try SecureRandom).intBetween(min, max)` |
-| `crypto.randomUUID` | `try (try SecureRandom).uuidV4()` |
-| `crypto.sign` | `try (try Signature).sign(privateKey, data)` |
-| `crypto.subtle` | `try (try Mac).sign(key, data)` |
-| `crypto.subtle.digest` | `try (try Digest).digest(Digest.sha256, bytes)` |
-| `crypto.subtle.sign` | `try (try Signature).sign(privateKey, data)` |
-| `crypto.subtle.verify` | `try (try Signature).verify(publicKey, signature, data)` |
-| `crypto.verify` | `try (try Signature).verify(publicKey, signature, data)` |
-| `crypto.webcrypto` | `try (try Mac).sign(key, data)` |
+| `crypto` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
+| `crypto.createCipheriv` | `try (try Aead.Aead).encrypt(key, plaintext, { nonce })` |
+| `crypto.createDecipheriv` | `try (try Aead.Aead).decrypt(key, ciphertext, { nonce })` |
+| `crypto.createHash` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
+| `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` |
+| `crypto.createSign` | `try (try Signature.Signature).sign(privateKey, data)` |
+| `crypto.createVerify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
+| `crypto.generateKeyPair` | `try (try Signature.Signature).generateKeyPair(Signature.ed25519)` |
+| `crypto.getRandomValues` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
+| `crypto.hash` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
+| `crypto.randomBytes` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
+| `crypto.randomInt` | `try (try SecureRandom.SecureRandom).intBetween(min, max)` |
+| `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` |
+| `crypto.sign` | `try (try Signature.Signature).sign(privateKey, data)` |
+| `crypto.subtle` | `try (try Mac.Mac).sign(key, data)` |
+| `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
+| `crypto.subtle.sign` | `try (try Signature.Signature).sign(privateKey, data)` |
+| `crypto.subtle.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
+| `crypto.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
+| `crypto.webcrypto` | `try (try Mac.Mac).sign(key, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
 | `document` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
@@ -70,9 +70,9 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `fetch` | `try HttpClient.get(url)` |
 | `global` | `globalThis` |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
-| `importScripts` | Worker and WorkerRunner |
-| `indexedDB` | `try (try KeyValueStore).get(key)` |
-| `localStorage` | `try (try KeyValueStore).get(key)` |
+| `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
+| `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
+| `localStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `location` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `module` | `export const name = value` |
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
@@ -87,8 +87,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
 | `process.arch` | `try (try Experimental.Process).arch` |
-| `process.argv` | `try (try Stdio).args` |
-| `process.cwd` | `(try Path).resolve()` |
+| `process.argv` | `try (try Stdio.Stdio).args` |
+| `process.cwd` | `(try Path.Path).resolve()` |
 | `process.env` | `try Config.String("NAME")` |
 | `process.execPath` | `try (try Experimental.Process).execPath` |
 | `process.exit` | return from main for exit 0; fail for exit 1; interruption exits 130 |
@@ -104,12 +104,12 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `process.platform` | `try (try Experimental.Process).platform` |
 | `process.removeListener` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.stderr` | `try Console.error(text)` |
-| `process.stdin` | `try (try Terminal).readLine` |
+| `process.stdin` | `try (try Terminal.Terminal).readLine` |
 | `process.stdout` | `try Console.log(text)` |
 | `process.uptime` | escape to TypeScript for now: Clock reads the time, not the process's age: keep a `try Clock.monotonicTimeNanos` reading from the start. |
 | `process.version` | `try (try Experimental.Process).versions` |
 | `process.versions` | `try (try Experimental.Process).versions` |
-| `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal).readLine`. |
+| `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `queueMicrotask` | `try yieldNow` |
 | `removeEventListener` | `Stream.fromEventListener(target, "message")` |
 | `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
@@ -117,7 +117,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `require` | `import { name } from "./module.ts"` |
 | `require.resolve` | `try Effect.try(() => import.meta.resolve(specifier))` |
 | `self` | `globalThis` |
-| `sessionStorage` | `try (try KeyValueStore).get(key)` |
+| `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
 | `setTimeout` | `try sleep("1 second")` |
@@ -142,12 +142,12 @@ effect function replacements(
   rows: ReadonlyArray<unknown>, target: EventTarget, program: void!!,
 ) {
   const name = try Config.String("NAME")
-  const args = try (try Stdio).args
-  const directory = (try Path).resolve()
-  const file = try (try Path).fromFileUrl(new URL(import.meta.url))
-  const here = (try Path).dirname(try (try Path).fromFileUrl(new URL(import.meta.url)))
+  const args = try (try Stdio.Stdio).args
+  const directory = (try Path.Path).resolve()
+  const file = try (try Path.Path).fromFileUrl(new URL(import.meta.url))
+  const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))
   const resolved = try Effect.try(() => import.meta.resolve(specifier))
-  const line = try (try Terminal).readLine
+  const line = try (try Terminal.Terminal).readLine
   try Console.log(message)
   try Console.log(text)
   try Console.error(message)
@@ -157,16 +157,16 @@ effect function replacements(
   try Console.debug(message)
   try Console.trace(message)
   try Console.table(rows)
-  const random = try (try SecureRandom).randomBytes(size)
-  const id = try (try SecureRandom).uuidV4()
-  const roll = try (try SecureRandom).intBetween(min, max)
-  const digest = try (try Digest).digest(Digest.sha256, bytes)
+  const random = try (try SecureRandom.SecureRandom).randomBytes(size)
+  const id = try (try SecureRandom.SecureRandom).uuidV4()
+  const roll = try (try SecureRandom.SecureRandom).intBetween(min, max)
+  const digest = try (try Digest.Digest).digest(Digest.sha256, bytes)
   const encoded = new TextEncoder().encode(text)
   const empty = new Uint8Array(size)
   const joined = new Uint8Array([...a, ...b])
   const response = try HttpClient.get(url)
   const socket = try Socket.makeWebSocket(url)
-  const stored = try (try KeyValueStore).get(key)
+  const stored = try (try KeyValueStore.KeyValueStore).get(key)
   const events = Stream.fromEventListener(target, "message")
   const millis = try Clock.currentTimeMillis
   const nanos = try Clock.monotonicTimeNanos
@@ -214,12 +214,12 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const running = try (try Experimental.Process).isRunning(pid)
   try fs.access(path, { executable: true })
   const file = try fs.open(path, { nonBlocking: true })
-  const mac = try (try Mac).sign(key, data)
-  const signed = try (try Signature).sign(privateKey, data)
-  const valid = try (try Signature).verify(publicKey, signature, data)
-  const sealed = try (try Aead).encrypt(key, plaintext, { nonce })
-  const opened = try (try Aead).decrypt(key, ciphertext, { nonce })
-  const pair = try (try Signature).generateKeyPair(Signature.ed25519)
+  const mac = try (try Mac.Mac).sign(key, data)
+  const signed = try (try Signature.Signature).sign(privateKey, data)
+  const valid = try (try Signature.Signature).verify(publicKey, signature, data)
+  const sealed = try (try Aead.Aead).encrypt(key, plaintext, { nonce })
+  const opened = try (try Aead.Aead).decrypt(key, ciphertext, { nonce })
+  const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
   const lock = try (try Experimental.Locks).hold(name)
   return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock }
 }
@@ -286,10 +286,10 @@ import { server } from "./server.ts"
 
 ## Limits of static checks
 
-EK4402 and EK4403 are static, lint-strength checks, not a sandbox or a
-security boundary. They recognize direct uses, but aliases such as
-`const g = globalThis; g.process.pid`, `as any`, and reflection through
-`Reflect.get` can bypass them. Use process isolation when running untrusted
+EK4402 is a static, lint-strength check, not a sandbox or a
+security boundary. They recognize direct uses and statically named members of `globalThis`.
+Whether aliases such as `const g = globalThis; g.process.pid`, casts and
+reflection through `Reflect.get` are caught is undecided (pending VIP). Use process isolation when running untrusted
 code.
 
 `Date.now()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no

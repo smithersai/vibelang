@@ -89,7 +89,7 @@ effect function requireCount(input: string) {
     : Result.fail(new InvalidCount({ input }))
   return try fromResult(result)
 }
-// number!InvalidCount!
+// number!InvalidCount
 
 effect function validatePair() {
   return try all([

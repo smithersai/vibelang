@@ -1,6 +1,6 @@
 # Pattern Matching
 
-VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals: TypeScript narrows the value in each arm, and inside an effect function an arm can run an Effect with `try`. [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
+VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals, tested in order, and inside an effect function an arm can run an Effect with `try`. How a pattern narrows a value's static type is undecided (pending VIP). [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
 
 ## Matching values
 
@@ -65,7 +65,7 @@ worker w-1
 report.csv
 ```
 
-`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` narrows a tagged union. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`.
+`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` tests a tagged union's tag. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`.
 
 ## Negating and combining patterns
 
@@ -101,7 +101,7 @@ true true false
 // run: try Console.log(display(3), display(true), display(false))
 function display(input: number | boolean): string {
   return match (input) {
-    when Number: input.toFixed(1);
+    when Number: (input as number).toFixed(1);
     when Boolean: input ? "enabled" : "disabled";
   }
 }
@@ -111,7 +111,7 @@ function display(input: number | boolean): string {
 3.0 enabled disabled
 ```
 
-A match's type is the union of its arms' types. Annotate the return type to require one type from every arm; that catches an arm returning a number from a text formatter.
+The static type of a `match` expression is undecided (pending VIP). Annotate the return type to require one type from every arm; that catches an arm returning a number from a text formatter.
 
 ## Exhaustive handling
 
@@ -132,7 +132,7 @@ function phaseLabel(phase: Phase) {
 Draft Published
 ```
 
-`match` is exhaustive. Without a `default` arm, a match over a finite union (literals, a data type's variants, `error` classes, `Option`, `Exit`, or `Result`) must handle every case: add a member to `Phase` and this match is EK4701, `This match does not handle every case of Phase: "review" is left.`, until it gets an arm. A guard doesn't prove that every value of a type is covered. Over other types, a match no arm fits throws a `TypeError` when it runs.
+`match` is exhaustive. Without a `default` arm, a match over a finite union (literals, `boolean`, a data type's variants, `error` classes, or an enum) must handle every case: add a member to `Phase` and this match is EK4701, `This match does not handle every case of Phase: "review" is left.`, until it gets an arm. A guard doesn't prove that every value of a type is covered. Over other types, a match no arm fits throws a `TypeError` when it runs.
 
 ## Defaults, optional outputs, and result outputs
 
@@ -169,7 +169,7 @@ starting true
 starting help
 ```
 
-A `default` arm comes last and receives every unmatched input, narrowed to the cases no arm took. When the caller needs to know whether a case matched, return an `Option` or a `Result` from the arms. A failed Result is a returned value, not a typed Effect failure.
+A `default` arm comes last and receives every unmatched input. When the caller needs to know whether a case matched, return an `Option` or a `Result` from the arms. A failed Result is a returned value, not a typed Effect failure.
 
 ## Reusable matchers with the Match module
 

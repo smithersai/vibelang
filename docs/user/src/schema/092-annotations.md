@@ -15,7 +15,7 @@ const Destination = Schema.String.annotate({
   description: "The destination printed on the manifest",
   documentation: "Keep destination names consistent across depots.",
   examples: ["North depot"],
-  default: "Central depot"
+  default: "Central depot";
 })
 
 const Request = Schema.Struct({

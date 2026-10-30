@@ -6,7 +6,7 @@ File logging uses Effect's `Logger` module. Combine a string formatter with `Log
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide NodeFileSystem.layer { provide FileLogger { try application() }; const fs = try FileSystem; const text = try fs.readFileString("./application.log"); try Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed")) }
+// run: provide NodeFileSystem.layer { provide FileLogger { try application() }; const fs = try FileSystem.FileSystem; const text = try fs.readFileString("./application.log"); try Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed")) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 const FileLogger = Logger.layer([
   Logger.toFile(Logger.formatLogFmt, "./application.log", {
@@ -44,7 +44,7 @@ effect function main() {
     try log("Report generated")
   }
   // LoggerLive's scope has closed and its final batch has flushed.
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   const text = try fs.readFileString("./application.log")
   try Console.log(text.includes("Report generated"))
   return text

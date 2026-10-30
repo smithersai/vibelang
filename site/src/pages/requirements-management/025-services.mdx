@@ -91,7 +91,7 @@ effect function endpoint(path: string) {
 // Output: https://example.test/tickets
 ```
 
-Read value members from the implementation, as `settings.baseUrl` after `const settings = try Settings`. Looking up a service adds it to `R` whatever its members return: `const path = try Path; path.join(a, b)` returns a plain string and still requires Effect's `Path` service. Wrap a synchronous member call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A member that is itself an Effect value runs with `try`, as in `try terminal.readLine`.
+Read value members from the implementation, as `settings.baseUrl` after `const settings = try Settings`. Looking up a service adds it to `R` whatever its members return: `const path = try Path.Path; path.join(a, b)` returns a plain string and still requires Effect's `Path` service. Wrap a synchronous member call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A member that is itself an Effect value runs with `try`, as in `try terminal.readLine`.
 
 `provideService` removes the dependency only within its program. Nested overrides are local, a captured implementation stays the same object across later overrides or pauses, and forked fibers inherit the context present when they start.
 
@@ -117,7 +117,7 @@ effect function announceTicket() {
   try reporter.write(`Created ${label}`)
   return label
 }
-// string!!Sequence | Reporter
+// string!!(Sequence | Reporter)
 
 const SequenceTest = Layer.succeed(Sequence, {
   effect next() { return 17 }

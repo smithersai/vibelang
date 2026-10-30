@@ -74,7 +74,7 @@ effect function reserveSlot() {
     return "reserved"
   }, Schedule.recurs(3))
 }
-// string!Busy!
+// string!Busy
 // Output: reserved
 ```
 
@@ -95,7 +95,7 @@ effect function sampleContinuously() {
       const sensor = try Sensor
       return ["sample", try sensor.read()] as const
     } catch (error) => match (error) {
-      when SensorOffline: ["sample unavailable", error._tag] as const
+      when SensorOffline: ["sample unavailable", error._tag] as const;
     }
     try Console.log(...sample)
   }, Schedule.spaced("5 seconds"))

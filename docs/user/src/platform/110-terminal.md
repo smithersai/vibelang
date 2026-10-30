@@ -6,16 +6,16 @@
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
+// run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try Console.log(JSON.stringify(try dimensions())) }
 effect function dimensions() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   return { columns: try terminal.columns, rows: try terminal.rows }
 }
 // { columns: number; rows: number }!!Terminal.Terminal
 // Output: {"columns":80,"rows":24}
 ```
 
-`try Terminal` gets the service implementation; the key itself is `Terminal.Terminal`. `columns`, `rows`, and `readLine` hold Effect values, so run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also needs `try`.
+`try Terminal.Terminal` gets the service implementation; the key itself is `Terminal.Terminal`. `columns`, `rows`, and `readLine` hold Effect values, so run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also needs `try`.
 
 ## Writing standard output
 
@@ -26,7 +26,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeTerminal from "@effect/platform-node/NodeTerminal"
 
 effect function main() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   try terminal.display("Package prepared.\n")
 }
 
@@ -40,14 +40,14 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
+// run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
 effect function askName() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   try terminal.display("Your name: ")
   const name = try terminal.readLine
   try terminal.display(`Hello, ${name.trim() || "visitor"}.\n`)
 }
-// void!Terminal.QuitError | PlatformError.PlatformError!Terminal.Terminal
+// void!(Terminal.QuitError | PlatformError.PlatformError)!Terminal.Terminal
 // Output: Your name:
 // Output: Hello, Ada.
 ```
@@ -58,11 +58,11 @@ effect function askName() {
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
-// run: provide Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
+// run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
 effect function askNameOrQuit() {
   return askName() catch effect (error) => match (error) {
-    when { _tag: "QuitError" }: undefined
-    default: throw error
+    when { _tag: "QuitError" }: undefined;
+    default: throw error;
   }
 }
 // Output: Your name:
@@ -78,7 +78,7 @@ A host SIGINT or SIGTERM is a separate termination path: the runner interrupts t
 ```vibe
 // guessing.vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-14, VIP-33
-// run: const inputs = ["no", "2", "19", "11"]; provide Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
+// run: const inputs = ["no", "2", "19", "11"]; provide Random.Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
 function parseGuess(input: string) {
   const text = input.trim()
   const number = Number(text)
@@ -89,7 +89,7 @@ function parseGuess(input: string) {
 }
 
 effect function game() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   const secret = try Random.nextIntBetween(1, 20)
   try terminal.display("Guess an integer from 1 to 20. You have five guesses.\n")
 
@@ -110,12 +110,12 @@ effect function game() {
   }
   try terminal.display(`The answer was ${secret}.\n`)
 }
-// void!Terminal.QuitError | PlatformError.PlatformError!Terminal.Terminal
+// void!(Terminal.QuitError | PlatformError.PlatformError)!Terminal.Terminal
 
 export effect function main() {
   return game() catch effect (error) => match (error) {
-    when { _tag: "QuitError" }: undefined
-    default: throw error
+    when { _tag: "QuitError" }: undefined;
+    default: throw error;
   }
 }
 

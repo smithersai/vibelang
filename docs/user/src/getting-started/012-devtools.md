@@ -43,7 +43,7 @@ effect function accepted(value: number) {
   if (value < 0) throw new Rejected()
   return value + 1
 }
-// number!Rejected!
+// number!Rejected
 // Output: 3
 ```
 
@@ -97,7 +97,7 @@ Each entry gives the condition and the repair. The examples and language-service
 ```vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try checked(2))
-effect function checked(value: number): number!Rejected! {
+effect function checked(value: number): number!Rejected {
   return try accepted(value)
 }
 // Output: 3

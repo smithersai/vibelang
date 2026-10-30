@@ -41,7 +41,7 @@ const boundary = Stream.catchDefect(
 
 ```vibe
 // pending: VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
-// run: { const jsonValue = [try Stream.runCollect(recoverKnown(Stream.fail(new NotReady()))), try Stream.runCollect(selected), try Stream.runCollect(defectOnly)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(Stream.runCollect(recoverKnown(Stream.fail(new AccessDenied())))); if (Result.isFailure(outcome)) match (outcome.failure) { when AccessDenied: try Console.log(outcome.failure._tag) }
+// run: { const jsonValue = [try Stream.runCollect(recoverKnown(Stream.fail(new NotReady()))), try Stream.runCollect(selected), try Stream.runCollect(defectOnly)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const outcome = try result(Stream.runCollect(recoverKnown(Stream.fail(new AccessDenied())))); if (Result.isFailure(outcome)) match (outcome.failure) { when AccessDenied: try Console.log(outcome.failure._tag); }
 error NotReady
 error AccessDenied
 

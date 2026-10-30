@@ -70,7 +70,7 @@ effect function releaseOnFailure() {
   const rejected = Semaphore.withPermits(mutex, 1, effect {
     throw new Rejected()
   }) catch (error) => match (error) {
-    when Rejected: error._tag
+    when Rejected: error._tag;
   }
   try Console.log("first job rejected", rejected)
   return try Semaphore.withPermits(mutex, 1, effect {

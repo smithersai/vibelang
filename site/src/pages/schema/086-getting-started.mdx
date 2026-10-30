@@ -52,14 +52,14 @@ The decoded `pieces` is a number, the encoded one a string, and both service typ
 schema Batch {
   shipments: ReadonlyArray<Shipment>
 }
-// Batch: { readonly shipments: ReadonlyArray<Shipment> }
+// Batch: { shipments: ReadonlyArray<Shipment> }
 ```
 
 ```text
 {"shipments":[{"tracking":"box-76","pieces":2}]}
 ```
 
-`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and `name?: T` is `Schema.optional`. Any other type is EK2109. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`, which `vibelang --fix` writes. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. `vibelang --fix` preserves these distinctions when converting explicit schema combinators to declarations. JavaScript objects are not frozen.
+`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and an optional field `name?: T` accepts a missing key or `undefined`, through `Schema.optional`. Any other type is EK2109. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`, which `vibelang --fix` writes. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. `vibelang --fix` preserves these distinctions when converting explicit schema combinators to declarations. JavaScript objects are not frozen.
 
 Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.
 
@@ -121,7 +121,7 @@ Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding servic
 effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
-// ShipmentWire!Schema.SchemaError!
+// ShipmentWire!Schema.SchemaError
 
 effect function sendUntrusted(input: unknown) {
   return try Schema.encodeUnknownEffect(Shipment)(input)

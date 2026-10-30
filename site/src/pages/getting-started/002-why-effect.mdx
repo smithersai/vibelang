@@ -18,7 +18,7 @@ effect function unitPrice(total: number, quantity: number) {
   if (quantity <= 0) throw new InvalidQuantity({ quantity })
   return total / quantity
 }
-// number!InvalidQuantity!
+// number!InvalidQuantity
 
 const quote = unitPrice(72, 6)
 // Output: 12

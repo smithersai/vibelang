@@ -7,7 +7,7 @@ Build routes with Effect's HTTP modules and write each request handler as an eff
 ```vibe
 // users.vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15
-// run: provide UsersLive { const users = try Users; try Console.log(JSON.stringify(try users.create("Ada"))); const repeated = try result(users.create("Ada")); match (repeated) { when Result.Failure(let error): try Console.log(error.name); default: undefined } }
+// run: provide UsersLive { const users = try Users; try Console.log(JSON.stringify(try users.create("Ada"))); const repeated = try result(users.create("Ada")); match (repeated) { when Result.Failure(let error): try Console.log(error.name); default: undefined; } }
 export schema CreateUser { name: string }
 export error NameTaken { name: string }
 
@@ -129,11 +129,11 @@ it.effect("validates bodies and rejects duplicate names", () => scoped(effect {
   const created = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
   const conflict = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
   const bad = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: 123 }))
-  try sync(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
+  try Effect.try(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
 }))
 // Output:
 ```
 
 `try HttpRouter.toHttpEffect(App)` builds a request Effect without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
 
-Import assertions from `@effect/vitest`; wrap assertions with `sync` so assertion exceptions become defects. The [installation guide](../getting-started/004-installation.md) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.
+Import assertions from `@effect/vitest`; an assertion may throw, so wrap it in `Effect.try`; a failed assertion then fails the test. The [installation guide](../getting-started/004-installation.md) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.

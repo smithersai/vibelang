@@ -23,7 +23,7 @@ effect function requiredSize(size: number) {
   if (size < 0) throw new InvalidSize({ size })
   return size
 }
-// number!InvalidSize!
+// number!InvalidSize
 
 effect function announceIfEnabled(enabled: boolean) {
   return try Effect.when(effect {

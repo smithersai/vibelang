@@ -15,7 +15,7 @@ effect function reserve(item: string, available: boolean) {
   if (!available) throw new Unavailable({ item })
   return { item, reserved: true }
 }
-// { item: string; reserved: boolean }!Unavailable!
+// { item: string; reserved: boolean }!Unavailable
 // Output: notebook
 ```
 
@@ -45,13 +45,13 @@ effect function attemptReservation(item: string, available: boolean) {
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 
 effect function token() {
-  const random = try SecureRandom
+  const random = try SecureRandom.SecureRandom
   return try random.randomBytes(16)
 }
 // Output: 16
 ```
 
-Platform work goes through Effect's services, not through a wrapper of your own. Read the `SecureRandom` service with `const random = try SecureRandom`, then run `random.randomBytes(16)` with `try` instead of calling `crypto.getRandomValues`. Provide the platform layer explicitly at the application boundary, here `NodeCrypto.layer`. For each Node.js or web call, EK4402 names the service and its layer; [Platform globals](../platform/platform-globals.md) lists them all.
+Platform work goes through Effect's services, not through a wrapper of your own. Read the `SecureRandom` service with `const random = try SecureRandom.SecureRandom`, then run `random.randomBytes(16)` with `try` instead of calling `crypto.getRandomValues`. Provide the platform layer explicitly at the application boundary, here `NodeCrypto.layer`. For each Node.js or web call, EK4402 names the service and its layer; [Platform globals](../platform/platform-globals.md) lists them all.
 
 ```ts
 // platform-fs.ts
@@ -74,7 +74,7 @@ effect function freeBlocks(path: string) {
     catch: (cause) => new StatFailed({ cause })
   })
 }
-// number!StatFailed!
+// number!StatFailed
 // Output: true
 ```
 
@@ -127,7 +127,7 @@ error SigningFailed {
 effect function sign(secret: string, text: string) {
   return try tryPromise({ try: () => hmac(secret, text), catch: (cause) => new SigningFailed({ cause }) })
 }
-// ArrayBuffer!SigningFailed!
+// ArrayBuffer!SigningFailed
 // Output: 32
 ```
 
@@ -237,7 +237,7 @@ effect function checkedQuantity(n: number) {
   if (n < 0) throw new Unavailable({ item: "quantity" })
   return n
 }
-// number!Unavailable!
+// number!Unavailable
 // Output: 3
 ```
 

@@ -34,7 +34,7 @@ const Port = Config.withDefault(Config.Port("PORT"), 3000)
 effect function configuredPort() {
   return try Port
 }
-// number!Config.ConfigError!
+// number!Config.ConfigError
 // Output: 3000
 ```
 

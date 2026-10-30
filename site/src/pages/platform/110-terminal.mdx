@@ -11,14 +11,14 @@ description: "Terminal is Effect's interactive input and output service. Use it 
 
 ```vibe
 effect function dimensions() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   return { columns: try terminal.columns, rows: try terminal.rows }
 }
 // { columns: number; rows: number }!!Terminal.Terminal
 // Output: {"columns":80,"rows":24}
 ```
 
-`try Terminal` gets the service implementation; the key itself is `Terminal.Terminal`. `columns`, `rows`, and `readLine` hold Effect values, so run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also needs `try`.
+`try Terminal.Terminal` gets the service implementation; the key itself is `Terminal.Terminal`. `columns`, `rows`, and `readLine` hold Effect values, so run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also needs `try`.
 
 ## Writing standard output
 
@@ -28,7 +28,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeTerminal from "@effect/platform-node/NodeTerminal"
 
 effect function main() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   try terminal.display("Package prepared.\n")
 }
 
@@ -42,12 +42,12 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 
 ```vibe
 effect function askName() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   try terminal.display("Your name: ")
   const name = try terminal.readLine
   try terminal.display(`Hello, ${name.trim() || "visitor"}.\n`)
 }
-// void!Terminal.QuitError | PlatformError.PlatformError!Terminal.Terminal
+// void!(Terminal.QuitError | PlatformError.PlatformError)!Terminal.Terminal
 // Output: Your name:
 // Output: Hello, Ada.
 ```
@@ -59,8 +59,8 @@ effect function askName() {
 ```vibe
 effect function askNameOrQuit() {
   return askName() catch effect (error) => match (error) {
-    when { _tag: "QuitError" }: undefined
-    default: throw error
+    when { _tag: "QuitError" }: undefined;
+    default: throw error;
   }
 }
 // Output: Your name:
@@ -85,7 +85,7 @@ function parseGuess(input: string) {
 }
 
 effect function game() {
-  const terminal = try Terminal
+  const terminal = try Terminal.Terminal
   const secret = try Random.nextIntBetween(1, 20)
   try terminal.display("Guess an integer from 1 to 20. You have five guesses.\n")
 
@@ -106,12 +106,12 @@ effect function game() {
   }
   try terminal.display(`The answer was ${secret}.\n`)
 }
-// void!Terminal.QuitError | PlatformError.PlatformError!Terminal.Terminal
+// void!(Terminal.QuitError | PlatformError.PlatformError)!Terminal.Terminal
 
 export effect function main() {
   return game() catch effect (error) => match (error) {
-    when { _tag: "QuitError" }: undefined
-    default: throw error
+    when { _tag: "QuitError" }: undefined;
+    default: throw error;
   }
 }
 

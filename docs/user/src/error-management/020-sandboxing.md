@@ -20,7 +20,7 @@ effect function readRow() {
 effect function sandboxedRow() {
   return try sandbox(readRow())
 }
-// never!Cause.Cause<InvalidRow>!
+// never!Cause.Cause<InvalidRow>
 ```
 
 ```output
@@ -82,7 +82,7 @@ effect function readWithInspection() {
     return try failCause(cause)
   })
 }
-// never!InvalidRow!
+// never!InvalidRow
 ```
 
 ```output

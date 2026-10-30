@@ -77,7 +77,7 @@ effect function immediateResult() {
 effect function rejectInput() {
   return try Stream.run(Stream.make(40, 50), Sink.fail(new Rejected()))
 }
-// never!Rejected!
+// never!Rejected
 // Output: already complete
 // Output: Rejected
 ```

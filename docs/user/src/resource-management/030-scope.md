@@ -240,7 +240,7 @@ effect function reserveStep(stage: string) {
     }
   )
 }
-// string!SetupFailed!ProjectSteps | Scope.Scope
+// string!SetupFailed!(ProjectSteps | Scope.Scope)
 
 effect function setupProject() {
   return try scoped(effect {

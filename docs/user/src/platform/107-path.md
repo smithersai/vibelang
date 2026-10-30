@@ -10,13 +10,13 @@
 import * as NodePath from "@effect/platform-node/NodePath"
 
 effect function pathSeparator() {
-  const path = try Path
+  const path = try Path.Path
   return path.sep
 }
 // Output: /
 ```
 
-`try Path` gets the implementation from the current environment. Its `sep` property is a value, and `path.join(...)` calls one of its methods. The module's own exports, such as `Path.layer`, keep their meaning, and the key itself is `Path.Path`.
+`try Path.Path` gets the implementation from the current environment. Its `sep` property is a value, and `path.join(...)` calls one of its methods. The module's own exports, such as `Path.layer`, keep their meaning, and the key itself is `Path.Path`.
 
 ## Manipulating paths portably
 
@@ -26,7 +26,7 @@ effect function pathSeparator() {
 import * as NodePath from "@effect/platform-node/NodePath"
 
 effect function describeReport() {
-  const path = try Path
+  const path = try Path.Path
   const joined = path.join("reports", "weekly.txt")
   const normalized = path.normalize("reports/./draft/../weekly.txt")
   const parsed = path.parse(joined)
@@ -43,7 +43,7 @@ effect function describeReport() {
 // Output: {"joined":"reports/weekly.txt","normalized":"reports/weekly.txt","base":"weekly.txt","directory":"reports","extension":".txt","absolute":false,"rebuilt":"reports/weekly.txt"}
 ```
 
-Most `Path` methods are plain synchronous TypeScript functions. Getting the service with `try Path` adds `Path` to R even when a member returns a string. Call non-throwing methods directly. Wrap a synchronous call that may throw with `Effect.try` before running it in effect code.
+Most `Path` methods are plain synchronous TypeScript functions. Getting the service with `try Path.Path` adds `Path` to R even when a member returns a string. Call non-throwing methods directly. Wrap a synchronous call that may throw with `Effect.try` before running it in effect code.
 
 | Operation | Result |
 | --- | --- |
@@ -62,7 +62,7 @@ Most `Path` methods are plain synchronous TypeScript functions. Getting the serv
 import * as NodePath from "@effect/platform-node/NodePath"
 
 effect function asFileUrl(file: string) {
-  const path = try Path
+  const path = try Path.Path
   const absolute = path.resolve(file)
   const url = try path.toFileUrl(absolute)
   return try path.fromFileUrl(url)
@@ -81,7 +81,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodePath from "@effect/platform-node/NodePath"
 
 effect function main() {
-  const path = try Path
+  const path = try Path.Path
   try Console.log(path.join("reports", "weekly.txt"))
 }
 
@@ -93,4 +93,4 @@ NodeRuntime.runMain(Effect.provide(main(), NodePath.layer))
 
 ## Coming from Effect
 
-Use `try Path` to get the service. Call synchronous methods directly, and run Effect-returning methods with `try`. Read value properties from the implementation, as in `path.sep`.
+Use `try Path.Path` to get the service. Call synchronous methods directly, and run Effect-returning methods with `try`. Read value properties from the implementation, as in `path.sep`.

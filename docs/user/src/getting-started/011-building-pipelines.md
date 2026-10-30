@@ -70,7 +70,7 @@ effect function total() {
   const reduced = try discounted(price, 12)
   return reduced + 2
 }
-// number!InvalidRate!
+// number!InvalidRate
 // Output: 27.52
 ```
 
@@ -85,7 +85,7 @@ effect function positive(value: number) {
   const optional = value > 0 ? Option.some(value) : Option.none()
   return try fromOption(optional)
 }
-// number!NoSuchElementError!
+// number!NoSuchElementError
 
 effect function validated(value: number) {
   const checked = value >= 0
@@ -93,7 +93,7 @@ effect function validated(value: number) {
     : Result.fail("negative value")
   return try fromResult(checked)
 }
-// number!string!
+// number!string
 // Output: 2, 0
 ```
 

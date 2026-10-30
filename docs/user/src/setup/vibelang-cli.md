@@ -167,7 +167,7 @@ import { hello } from "./hello.vibe"
 
 it.effect("says hello", () => effect {
   const message = try hello("VibeLang")
-  try sync(() => assert.strictEqual(message, "Hello, VibeLang!"))
+  try Effect.try(() => assert.strictEqual(message, "Hello, VibeLang!"))
 })
 ```
 

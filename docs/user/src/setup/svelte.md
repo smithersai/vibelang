@@ -88,7 +88,7 @@ export effect function quote(sku: string, quantity: number) {
     const total = (product.cents * quantity / 100).toFixed(2)
     return `${quantity} x ${product.name}: $${total}`
   } catch (error) => match (error) {
-    when OutOfStock: `Only ${error.available} ${error.sku} left`
+    when OutOfStock: `Only ${error.available} ${error.sku} left`;
   }
 }
 
@@ -159,14 +159,14 @@ import { InventoryLive, Inventory, OutOfStock, quote, quoteCart } from "./cart.v
 
 it.effect("quotes a product in stock", () => effect {
   const line = try Effect.provide(quote("tea", 2), InventoryLive)
-  try sync(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
+  try Effect.try(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
 })
 
 it.effect("fails a reservation with OutOfStock", () => effect {
   provide InventoryLive {
     const inventory = try Inventory
     const outcome = try result(inventory.reserve("coffee", 3))
-    try sync(() => {
+    try Effect.try(() => {
       assert(Result.isFailure(outcome))
       if (Result.isFailure(outcome)) {
         assert.instanceOf(outcome.failure, OutOfStock)
@@ -178,12 +178,12 @@ it.effect("fails a reservation with OutOfStock", () => effect {
 
 it.effect("recovers OutOfStock in quote", () => effect {
   const line = try Effect.provide(quote("coffee", 3), InventoryLive)
-  try sync(() => assert.strictEqual(line, "Only 1 coffee left"))
+  try Effect.try(() => assert.strictEqual(line, "Only 1 coffee left"))
 })
 
 it.effect("quotes the cart concurrently", () => effect {
   const lines = try Effect.provide(quoteCart(), InventoryLive)
-  try sync(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
+  try Effect.try(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
 })
 ```
 

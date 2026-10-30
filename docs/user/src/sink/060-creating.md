@@ -70,7 +70,7 @@ effect function writeRecords() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-7, VIP-13, VIP-14
-// run: try Console.log(try immediateResult()); const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag }; try Console.log(tag)
+// run: try Console.log(try immediateResult()); const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag; }; try Console.log(tag)
 error Rejected
 
 effect function immediateResult() {
@@ -80,7 +80,7 @@ effect function immediateResult() {
 effect function rejectInput() {
   return try Stream.run(Stream.make(40, 50), Sink.fail(new Rejected()))
 }
-// never!Rejected!
+// never!Rejected
 // Output: already complete
 // Output: Rejected
 ```

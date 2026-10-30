@@ -64,7 +64,7 @@ Complete every entry, including requests for absent rows. Use `Request.succeed` 
 effect function findPart(code: string) {
   return try request(FindPart({ code }), PartResolver)
 }
-// Part!PartMissing | CatalogUnavailable!
+// Part!(PartMissing | CatalogUnavailable)
 
 effect function partLabel(code: string) {
   return (try findPart(code)).label

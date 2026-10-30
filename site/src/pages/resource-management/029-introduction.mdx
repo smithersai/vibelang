@@ -20,7 +20,7 @@ effect function exportRows(accepted: boolean) {
     return "Export complete"
   }, Console.log("Export finished"))
 }
-// string!ExportRejected!
+// string!ExportRejected
 // Output: Export started
 // Output: Export finished
 // Output: Export complete
@@ -129,7 +129,7 @@ effect function acquireLease() {
     (lease) => store.release(lease)
   )
 }
-// Lease!!LeaseStore | Scope.Scope
+// Lease!!(LeaseStore | Scope.Scope)
 
 effect function leaseId() {
   return try scoped(effect {

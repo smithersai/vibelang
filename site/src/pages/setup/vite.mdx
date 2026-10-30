@@ -91,7 +91,7 @@ import { greet } from "./greet.vibe"
 
 it.effect("greets", () => effect {
   const message = try greet("Vite")
-  try sync(() => assert.strictEqual(message, "Hello, Vite!"))
+  try Effect.try(() => assert.strictEqual(message, "Hello, Vite!"))
 })
 ```
 

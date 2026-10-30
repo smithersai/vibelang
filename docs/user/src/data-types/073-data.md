@@ -240,7 +240,7 @@ effect function requireDocument(id: string) {
   if (id === "") throw new DocumentMissing({ id })
   return { id }
 }
-// { id: string }!DocumentMissing!
+// { id: string }!DocumentMissing
 
 effect function documentOrDraft(id: string) {
   return requireDocument(id) catch (error) => match (error) {
@@ -272,7 +272,7 @@ effect function decodeDocument(text: string) {
     catch: (cause) => new DocumentDecodeError({ cause })
   })
 }
-// any!DocumentDecodeError!
+// any!DocumentDecodeError
 ```
 
 ```output

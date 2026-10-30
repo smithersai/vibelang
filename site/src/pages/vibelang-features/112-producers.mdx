@@ -27,7 +27,7 @@ effect function firstAlert() {
   }
   return alert
 }
-// number | undefined!!
+// (number | undefined)!!
 // Output: sensor closed
 // Output: 25
 ```
@@ -46,8 +46,8 @@ A bare `return` ends a producer. `return value` is an error (`EK2128`) because a
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
 effect function* fileTexts(directory: string) {
-  const fs = try FileSystem
-  const path = try Path
+  const fs = try FileSystem.FileSystem
+  const path = try Path.Path
   const names = (try fs.readDirectory(directory)).sort()
   for (const name of names) {
     const filename = path.join(directory, name)

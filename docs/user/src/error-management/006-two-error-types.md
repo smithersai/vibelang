@@ -17,7 +17,7 @@ effect function price(sku: string) {
   if (sku !== "notebook") throw new UnknownProduct({ sku })
   return 12
 }
-// number!UnknownProduct!
+// number!UnknownProduct
 
 effect function displayPrice(sku: string) {
   return effect {

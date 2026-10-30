@@ -12,9 +12,9 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 
 export effect function main() {
   try scoped(effect {
-    const fs = try FileSystem
-    const path = try Path
-    const spawner = try ChildProcessSpawner
+    const fs = try FileSystem.FileSystem
+    const path = try Path.Path
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
     const directory = try fs.makeTempDirectoryScoped()
     const file = path.join(directory, "greeting.txt")
     try fs.writeFileString(file, "Hello, VibeLang!")
@@ -29,30 +29,30 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 // Output: from a child process
 ```
 
-`try FileSystem` gets the implementation from the current environment. `try fs.readFileString(file)` runs its method and returns the text. Its `PlatformError` joins E. The module's own exports keep their meaning, as `FileSystem.layerNoop` does, and the type `FileSystem` is the service ([Effect's modules](../getting-started/008-importing-effect.md#a-modules-own-export)). `scoped` closes the temporary directory's scope when the block completes, fails, or is interrupted.
+`try FileSystem.FileSystem` gets the implementation from the current environment. `try fs.readFileString(file)` runs its method and returns the text. Its `PlatformError` joins E. The module's own exports keep their meaning, as `FileSystem.layerNoop` does, and the service's type is `FileSystem.FileSystem` ([Effect's modules](../getting-started/008-importing-effect.md#a-modules-own-export)). `scoped` closes the temporary directory's scope when the block completes, fails, or is interrupted.
 
 Calling `main()` builds an Effect. `NodeRuntime.runMain` runs it, and `Effect.provide` supplies `NodeServices.layer`. Shared modules declare effect functions and leave platform selection to the entry module or test.
 
 ## Replacing Node.js and web calls
 
-Each Node.js or web call has an Effect replacement, which needs no import. EK4402 and EK4403 name it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
+Each Node.js or web call has an Effect replacement, which needs no import. EK4402 names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
 
 | Call | Effect | Layer |
 | --- | --- | --- |
-| `fs.readFile` | `try (try FileSystem).readFileString(path)` | `NodeServices.layer` |
-| `os.tmpdir` | `try (try FileSystem).makeTempDirectory()` | `NodeServices.layer` |
-| `path.join` | `(try Path).join(directory, name)` | `NodeServices.layer` |
-| `process.cwd` | `(try Path).resolve()` | `NodeServices.layer` |
-| `child_process.execFileSync` | `try (try ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |
+| `fs.readFile` | `try (try FileSystem.FileSystem).readFileString(path)` | `NodeServices.layer` |
+| `os.tmpdir` | `try (try FileSystem.FileSystem).makeTempDirectory()` | `NodeServices.layer` |
+| `path.join` | `(try Path.Path).join(directory, name)` | `NodeServices.layer` |
+| `process.cwd` | `(try Path.Path).resolve()` | `NodeServices.layer` |
+| `child_process.execFileSync` | `try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |
 | `fetch` | `try HttpClient.get(url)` | `FetchHttpClient.layer` |
 | `http.createServer` | `try HttpRouter.serve(app)` | `NodeHttpServer.layer(createServer, { port })` |
-| `crypto.randomUUID` | `try (try SecureRandom).uuidV4()` | `NodeCrypto.layer` |
-| `crypto.subtle.digest` | `try (try Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
-| `process.argv` | `try (try Stdio).args` | `NodeServices.layer` |
+| `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
+| `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
+| `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
 | `os.hostname` | `try (try Experimental.Process).hostname` | `ExperimentalNodeServices.layer` |
 | `process.kill` | `try (try Experimental.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |
 | `fs.constants.X_OK` | `try (try Experimental.FileSystem).access(path, { executable: true })` | `ExperimentalNodeServices.layer` |
-| `crypto.createHmac` | `try (try Mac).sign(key, data)` | `NodeCrypto.layer` |
+| `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` | `NodeCrypto.layer` |
 | `navigator.locks` | `try (try Experimental.Locks).hold(name)` | `ExperimentalBrowserLocks.layer` |
 | `process.env` | `try Config.String("NAME")` | none |
 | `console.log` | `try Console.log(message)` | none |
@@ -61,7 +61,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | `performance.now` | `Number(try Clock.monotonicTimeNanos) / 1e6` | none |
 | `Math.random` | `try Random.next` | none |
 
-Get a service with `try`, as in `const random = try SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
+Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
 
 Where Effect has no service yet, as for `os.hostname()`, `process.pid`, an execute-permission check, or `navigator.locks`, EK4402 names the experimental service VibeLang adds, such as `try (try Experimental.Process).pid` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), whose layers come from `vibelang-runtime/experimental/platform-node`, `-bun`, or `-browser`. There, `ExperimentalNodeServices.layer` is `@effect/platform-node`'s bundle plus the experimental `FileSystem`, `Crypto`, and `Process`, so it replaces Effect's in `main`; like Effect's, it holds none of Effect's crypto services. Where nothing covers the call yet, as for `os.uptime()`, EK4402 says to escape to TypeScript: a `.ts` file that imports the API. Wrap calls that may throw with `Effect.try`, or Promises with `tryPromise`. [Platform globals](platform-globals.md) answers every Node.js and web global.
 
@@ -118,7 +118,7 @@ TypeScript runner.
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed("  Hello, VibeLang!\n") }) { try greet() }
 export effect function greet() {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   const greeting = try fs.readFileString("./greeting.txt")
   try Console.log(greeting.trim())
 }
@@ -137,7 +137,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { greet } from "./greeting.vibe"
 
 effect function main() {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   try fs.writeFileString("./greeting.txt", "Hello, VibeLang!")
   try greet()
 }
@@ -160,7 +160,7 @@ import * as BunServices from "@effect/platform-bun/BunServices"
 import { greet } from "./greeting.vibe"
 
 effect function main() {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   try fs.writeFileString("./greeting.txt", "Hello, VibeLang!")
   try greet()
 }

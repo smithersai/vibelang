@@ -24,7 +24,7 @@ effect function firstAlert() {
   }
   return alert
 }
-// number | undefined!!
+// (number | undefined)!!
 // Output: sensor closed
 // Output: 25
 ```
@@ -41,12 +41,12 @@ A bare `return` ends a producer. `return value` is an error (`EK2128`) because a
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-20, VIP-21, VIP-33
-// run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
+// run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
 effect function* fileTexts(directory: string) {
-  const fs = try FileSystem
-  const path = try Path
+  const fs = try FileSystem.FileSystem
+  const path = try Path.Path
   const names = (try fs.readDirectory(directory)).sort()
   for (const name of names) {
     const filename = path.join(directory, name)

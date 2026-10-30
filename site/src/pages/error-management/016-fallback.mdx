@@ -13,7 +13,7 @@ A fallback runs another computation after an expected failure; a catch expressio
 ```vibe
 error SourceOffline
 
-effect function latestTitle(): string!SourceOffline! {
+effect function latestTitle(): string!SourceOffline {
   throw new SourceOffline()
 }
 

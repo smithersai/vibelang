@@ -225,7 +225,7 @@ effect function reportTime() {
 // Output: 123
 ```
 
-`console.log`, `fetch`, timers, `process`, and `node:*` imports are errors in `.vibe` (EK4402), and so are the web's clock and randomness reads, such as `crypto.randomUUID()` (EK4403). Effect has a service for each, and the error names it and the layer that provides it. ECMAScript's `Date.now()` and `Math.random()` are allowed; read `try Clock.currentTimeMillis` and `try Random.next` where a test must control them. Use the prelude's `Console`, `Clock`, `sleep`, and `Config`. Look up a platform service with `try`, with no import, then call its members and run their Effects with `try`. Choose the platform layer at the application boundary:
+`console.log`, `fetch`, timers, `process`, and `node:*` imports are errors in `.vibe` (EK4402), and so are the web's clock and randomness reads, such as `crypto.randomUUID()` (EK4402). Effect has a service for each, and the error names it and the layer that provides it. ECMAScript's `Date.now()` and `Math.random()` are allowed; read `try Clock.currentTimeMillis` and `try Random.next` where a test must control them. Use the prelude's `Console`, `Clock`, `sleep`, and `Config`. Look up a platform service with `try`, with no import, then call its members and run their Effects with `try`. Choose the platform layer at the application boundary:
 
 ```vibe
 // notes.vibe
@@ -234,8 +234,8 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 export effect function main() {
   try scoped(effect {
-    const fs = try FileSystem
-    const path = try Path
+    const fs = try FileSystem.FileSystem
+    const path = try Path.Path
     const directory = try fs.makeTempDirectoryScoped()
     const file = path.join(directory, "note.txt")
     try fs.writeFileString(file, "saved")

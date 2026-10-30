@@ -586,7 +586,7 @@ effect function ready() {
 // Output: 7265616479
 ```
 
-**Look up platform services**. Get the implementation with `try FileSystem`, then run its Effect members with `try`.
+**Look up platform services**. Get the implementation with `try FileSystem.FileSystem`, then run its Effect members with `try`.
 
 ```ts effect
 import { Effect } from "effect"
@@ -604,7 +604,7 @@ const size = (path: string) =>
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed("hello") }) { try Console.log(try size("notes.txt")) }
 effect function size(path: string) {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   return (try fs.readFileString(path)).length
 }
 // Output: 5
@@ -758,7 +758,7 @@ import { assert, it } from "@effect/vitest"
 
 it.live("finds a user", () => effect {
   const user = try getUser("1")
-  try sync(() => assert.strictEqual(user.name, "Ada"))
+  try Effect.try(() => assert.strictEqual(user.name, "Ada"))
 })
 // Output:
 ```

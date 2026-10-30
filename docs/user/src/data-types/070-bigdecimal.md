@@ -56,7 +56,7 @@ effect function parsePrice(input: string) {
     when Option.None: throw new InvalidPrice({ input });
   }
 }
-// BigDecimal.BigDecimal!InvalidPrice!
+// BigDecimal.BigDecimal!InvalidPrice
 
 const fixedRate = BigDecimal.fromNumberUnsafe(1.25)
 ```

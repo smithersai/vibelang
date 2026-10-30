@@ -23,7 +23,7 @@ export default defineConfig({
 })
 ```
 
-Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`. `assert` and `expect` from `@effect/vitest` are Effect package exports: wrap assertions that may throw with `sync`, as in `try sync(() => assert.strictEqual(actual, expected))` or `try sync(() => expect(actual).toBe(expected))`. A failed assertion is a defect that fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`. The examples below use a local `check` helper that works the same way.
+Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`. `assert` and `expect` from `@effect/vitest` are Effect package exports: an assertion may throw, so wrap it in `Effect.try`, as in `try Effect.try(() => assert.strictEqual(actual, expected))` or `try Effect.try(() => expect(actual).toBe(expected))`; `sync` takes only a function that can't throw. A failed assertion fails the Effect, which fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`. The examples below use a local `check` helper that works the same way.
 
 Support for the new forms arrives with the compiler's VIP implementation.
 
@@ -33,7 +33,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 import { assert, it } from "@effect/vitest"
 
 effect function check(condition: boolean, message: string) {
-  try sync(() => assert.isTrue(condition, message))
+  try Effect.try(() => assert.isTrue(condition, message))
 }
 
 // Output:
@@ -119,7 +119,7 @@ it.effect("expires at the boundary", () => effect {
 })
 ```
 
-Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads the supplied clock, so it stays deterministic under the test layer. `Date.now()`, zero-argument `new Date()`, and platform timers are not application time sources in VibeLang. Testing just before and at a boundary catches comparison mistakes that a later timestamp alone misses.
+Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads the supplied clock, so it stays deterministic under the test layer. `Date.now()` and zero-argument `new Date()` read the real clock, so `TestClock` doesn't move them. Testing just before and at a boundary catches comparison mistakes that a later timestamp alone misses.
 
 ## Timed waits and deferred results
 

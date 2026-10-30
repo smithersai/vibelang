@@ -70,7 +70,7 @@ Completed: 12
 true
 ```
 
-`Exit.Success(let value)` binds the success value and `Exit.Failure(let cause)` the complete cause. Leaving out either arm is EK4701. Arms are ordinary expressions and can run Effects with `try` inside an effect function; `Exit.match(outcome, { onSuccess, onFailure })` also works when the callbacks compute values synchronously. To test one variant, write `outcome is Exit.Failure`.
+`Exit.Success(let value)` binds the success value and `Exit.Failure(let cause)` the complete cause. The exhaustiveness check doesn't cover `Exit` (it covers literal unions, `boolean`, `data` and `error` unions and enums), so write both arms or a `default`. Arms are ordinary expressions and can run Effects with `try` inside an effect function; `Exit.match(outcome, { onSuccess, onFailure })` also works when the callbacks compute values synchronously. To test one variant, write `outcome is Exit.Failure`.
 
 ## Relating exits to results
 
@@ -99,7 +99,7 @@ An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a
 effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome
 }
-// A!E!
+// A!E
 ```
 
 ```output

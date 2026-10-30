@@ -46,7 +46,7 @@ effect function main() {
     try log("Report generated")
   }
   // LoggerLive's scope has closed and its final batch has flushed.
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   const text = try fs.readFileString("./application.log")
   try Console.log(text.includes("Report generated"))
   return text

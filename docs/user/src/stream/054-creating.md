@@ -33,7 +33,7 @@ const closed = Stream.fail(new SourceClosed())
 
 effect function readClosed() {
   return Stream.runCollect(closed) catch (error) => match (error) {
-    when SourceClosed: ["source unavailable"]
+    when SourceClosed: ["source unavailable"];
   }
 }
 // Output: [["ready"],["source unavailable"]]
@@ -198,7 +198,7 @@ const halving = Stream.unfold(32, effect (n) => {
 })
 
 service Directory {
-  page(cursor: number): Effect<{
+  page(cursor: number): Effect.Effect<{
     names: ReadonlyArray<string>
     next: number | undefined
   }, never, never>

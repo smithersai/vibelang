@@ -80,7 +80,7 @@ export effect function greet(id: string) {
     const user = try users.find(id)
     return `Welcome, ${user.name}`
   } catch (error) => match (error) {
-    when UserNotFound: `No user ${error.id}`
+    when UserNotFound: `No user ${error.id}`;
   }
 }
 ```
@@ -144,14 +144,14 @@ import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 
 it.effect("greets a known user", () => effect {
   const message = try Effect.provide(greet("42"), UsersLive)
-  try sync(() => assert.strictEqual(message, "Welcome, Ada Lovelace"))
+  try Effect.try(() => assert.strictEqual(message, "Welcome, Ada Lovelace"))
 })
 
 it.effect("fails a lookup with UserNotFound", () => effect {
   provide UsersLive {
     const users = try Users
     const outcome = try result(users.find("404"))
-    try sync(() => {
+    try Effect.try(() => {
       assert(Result.isFailure(outcome))
       if (Result.isFailure(outcome)) {
         assert.instanceOf(outcome.failure, UserNotFound)
@@ -163,7 +163,7 @@ it.effect("fails a lookup with UserNotFound", () => effect {
 
 it.effect("recovers UserNotFound in greet", () => effect {
   const message = try Effect.provide(greet("404"), UsersLive)
-  try sync(() => assert.strictEqual(message, "No user 404"))
+  try Effect.try(() => assert.strictEqual(message, "No user 404"))
 })
 ```
 

@@ -104,7 +104,7 @@ export effect function completeTodo(id: number) {
     const todo = try todos.complete(id)
     return `Completed: ${todo.title}`
   } catch (error) => match (error) {
-    when TodoNotFound: `No todo #${error.id}`
+    when TodoNotFound: `No todo #${error.id}`;
   }
 }
 
@@ -187,14 +187,14 @@ import { completeTodo, loadBoard, TodoNotFound, Todos, TodosLive } from "./todos
 
 it.effect("completes a todo", () => effect {
   const message = try Effect.provide(completeTodo(2), TodosLive)
-  try sync(() => assert.strictEqual(message, "Completed: Write the service"))
+  try Effect.try(() => assert.strictEqual(message, "Completed: Write the service"))
 })
 
 it.effect("fails with TodoNotFound for an unknown id", () => effect {
   provide TodosLive {
     const todos = try Todos
     const outcome = try result(todos.complete(99))
-    try sync(() => {
+    try Effect.try(() => {
       assert(Result.isFailure(outcome))
       if (Result.isFailure(outcome)) {
         assert.instanceOf(outcome.failure, TodoNotFound)
@@ -206,12 +206,12 @@ it.effect("fails with TodoNotFound for an unknown id", () => effect {
 
 it.effect("recovers TodoNotFound in completeTodo", () => effect {
   const message = try Effect.provide(completeTodo(99), TodosLive)
-  try sync(() => assert.strictEqual(message, "No todo #99"))
+  try Effect.try(() => assert.strictEqual(message, "No todo #99"))
 })
 
 it.effect("loads the board after both completions", () => effect {
   const board = try Effect.provide(loadBoard(), TodosLive)
-  try sync(() => {
+  try Effect.try(() => {
     assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
     assert.deepStrictEqual(board.todos.map((todo) => todo.done), [true, true, false])
   })

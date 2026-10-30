@@ -28,7 +28,7 @@ effect function download() {
     return "archive ready"
   }, policy)
 }
-// string!Throttled!
+// string!Throttled
 // Output: archive ready
 ```
 
@@ -66,7 +66,7 @@ effect function waitForArchive() {
   if (status._tag === "Pending") throw new PollLimit()
   return status.path
 }
-// string!PollLimit!
+// string!PollLimit
 // Output: /archives/week.csv
 ```
 

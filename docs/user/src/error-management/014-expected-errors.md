@@ -21,7 +21,7 @@ effect function normalizeCode(input: string) {
   if (code.length === 0) throw new InvalidCode({ input })
   return code.toUpperCase()
 }
-// string!InvalidCode!
+// string!InvalidCode
 ```
 
 ```output
@@ -125,7 +125,7 @@ effect function port(env: Map<string, string>) {
     return value
   }
 }
-// string!MissingPort!
+// string!MissingPort
 ```
 
 ```output
@@ -145,7 +145,7 @@ effect function findItem(input: string) {
   if (code !== "PEN") throw new ItemMissing({ code })
   return { code, label: "Fountain pen" }
 }
-// { code: string; label: string }!InvalidCode | ItemMissing!
+// { code: string; label: string }!(InvalidCode | ItemMissing)
 ```
 
 ```output
@@ -238,11 +238,11 @@ effect function labelOrMissing(input: string) {
   return effect {
     return (try findItem(input)).label
   } catch effect (error) => match (error) {
-    when ItemMissing: "Out of catalog"
-    default: throw error
+    when ItemMissing: "Out of catalog";
+    default: throw error;
   }
 }
-// string!InvalidCode!
+// string!InvalidCode
 
 effect function labelByTag(input: string) {
   return try catchTag(
@@ -260,7 +260,7 @@ Out of catalog
 InvalidCode
 ```
 
-Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles that error class, and `default: throw error` passes the others on with their types (`string!InvalidCode!`). The expression form takes the same `match`: `effect { return (try findItem(input)).label } catch effect (error) => match (error) { when ItemMissing: "Out of catalog"; default: throw error; }`. A `match` without `default` must handle every failure the Effect can raise (compile error EK4701), so a complete match needs no rethrow. `error is ItemMissing` tests one class in an `if`. `catchTag` removes the selected tagged case, and accepts a nonempty array of tags for one handler; `catchTags` takes a table of separate handlers.
+Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles that error class, and `default: throw error` passes the others on with their types (`string!InvalidCode`). The expression form takes the same `match`: `effect { return (try findItem(input)).label } catch effect (error) => match (error) { when ItemMissing: "Out of catalog"; default: throw error; }`. A `match` without `default` must handle every failure the Effect can raise (compile error EK4701), so a complete match needs no rethrow. `error is ItemMissing` tests one class in an `if`. `catchTag` removes the selected tagged case, and accepts a nonempty array of tags for one handler; `catchTags` takes a table of separate handlers.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-13, VIP-14
@@ -310,7 +310,7 @@ error CatalogError {
   reason: Busy | Rejected
 }
 
-effect function remoteLabel(): string!CatalogError! {
+effect function remoteLabel(): string!CatalogError {
   throw new CatalogError({ reason: new Busy({ seconds: 4 }) })
 }
 
@@ -331,7 +331,7 @@ effect function explainReasons() {
 effect function exposeReasons() {
   return try unwrapReason(remoteLabel(), "CatalogError")
 }
-// string!Busy | Rejected!
+// string!(Busy | Rejected)
 ```
 
 ```output
@@ -346,7 +346,7 @@ These operators inspect the tagged error's readonly `reason` field. `catchReason
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
-// run: try Console.log(try describeFailure(new Missing({ code: "E1", path: "/a" }))); try Console.log(try describeFailure(new Expired({ code: "E2" }))); try Console.log(match (new Missing({ code: "E1", path: "/a" })) { when Missing: true; default: false }); try Console.log(normalizedError(" pen ").label)
+// run: try Console.log(try describeFailure(new Missing({ code: "E1", path: "/a" }))); try Console.log(try describeFailure(new Expired({ code: "E2" }))); try Console.log(match (new Missing({ code: "E1", path: "/a" })) { when Missing: true; default: false; }); try Console.log(normalizedError(" pen ").label)
 error Missing { code: string; path: string }
 error Expired { code: string }
 
@@ -356,8 +356,8 @@ effect function raise(error: Missing | Expired) {
 
 effect function describeFailure(error: Missing | Expired) {
   return raise(error) catch (failure) => match (failure) {
-    when Missing and { let path }: `missing ${path}`
-    when Expired and { let code }: `expired ${code}`
+    when Missing and { let path }: `missing ${path}`;
+    when Expired and { let code }: `expired ${code}`;
   }
 }
 // string!!
@@ -429,8 +429,8 @@ effect function encodeStoreError() {
 effect function decodeStoreError() {
   const decoded = try Schema.decodeUnknownEffect(NotStored)({ _tag: "NotStored", key: "b", attempts: 1 })
   return match (decoded) {
-    when NotStored: true
-    default: false
+    when NotStored: true;
+    default: false;
   }
 }
 ```

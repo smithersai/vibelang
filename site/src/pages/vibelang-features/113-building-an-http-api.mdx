@@ -126,11 +126,11 @@ it.effect("validates bodies and rejects duplicate names", () => scoped(effect {
   const created = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
   const conflict = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
   const bad = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: 123 }))
-  try sync(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
+  try Effect.try(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
 }))
 // Output:
 ```
 
 `try HttpRouter.toHttpEffect(App)` builds a request Effect without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
 
-Import assertions from `@effect/vitest`; wrap assertions with `sync` so assertion exceptions become defects. The [installation guide](/getting-started/004-installation) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.
+Import assertions from `@effect/vitest`; an assertion may throw, so wrap it in `Effect.try`; a failed assertion then fails the test. The [installation guide](/getting-started/004-installation) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.

@@ -11,7 +11,7 @@ A fallback runs another computation after an expected failure; a catch expressio
 // run: try Console.log(try title())
 error SourceOffline
 
-effect function latestTitle(): string!SourceOffline! {
+effect function latestTitle(): string!SourceOffline {
   throw new SourceOffline()
 }
 

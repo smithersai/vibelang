@@ -1,6 +1,6 @@
 # FileSystem
 
-`FileSystem` exposes Effect's portable file operations, in place of `node:fs`. Get the service with `try FileSystem`, then run its operations with `try`. Provide a runtime implementation or test layer around the application.
+`FileSystem` exposes Effect's portable file operations, in place of `node:fs`. Get the service with `try FileSystem.FileSystem`, then run its operations with `try`. Provide a runtime implementation or test layer around the application.
 
 ## Requesting the file-system service
 
@@ -8,7 +8,7 @@
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed('{"theme":"dark"}') }) { try Console.log(try readSettings()) }
 effect function readSettings() {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   return try fs.readFileString("./settings.json")
 }
 // Output: {"theme":"dark"}
@@ -24,7 +24,7 @@ Getting the service adds `FileSystem` to the Effect's requirements. `readFileStr
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
 effect function saveSummary(text: string) {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   try fs.makeDirectory("./output", { recursive: true })
   try fs.writeFileString("./output/summary.txt", text)
   const content = try fs.readFileString("./output/summary.txt", "utf8")
@@ -53,12 +53,12 @@ The `try` expressions run in order: the write completes before the read starts. 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
-// run: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
+// run: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 
 effect function fileSize(path: string) {
   return try scoped(effect {
-    const fs = try FileSystem
+    const fs = try FileSystem.FileSystem
     const file = try fs.open(path)
     return (try file.stat).size
   })
@@ -79,7 +79,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 effect function main() {
   provide NodeFileSystem.layer {
     try scoped(effect {
-      const fs = try FileSystem
+      const fs = try FileSystem.FileSystem
       const path = try fs.makeTempFileScoped()
       try fs.writeFileString(path, "Project notes")
       try Console.log(try fs.readFileString(path))
@@ -100,7 +100,7 @@ NodeRuntime.runMain(main())
 // pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FilesTest { try Console.log(try readFixture()) }
 export effect function readFixture() {
-  const fs = try FileSystem
+  const fs = try FileSystem.FileSystem
   if (!(try fs.exists("/fixtures/title.txt"))) return "Untitled"
   return try fs.readFileString("/fixtures/title.txt")
 }
@@ -120,7 +120,7 @@ import { FilesTest, readFixture } from "./files.vibe"
 
 it.effect("reads the configured title", () => effect {
   const title = try Effect.provide(readFixture(), FilesTest)
-  try sync(() => assert.strictEqual(title, "Release notes"))
+  try Effect.try(() => assert.strictEqual(title, "Release notes"))
 })
 // Output:
 ```

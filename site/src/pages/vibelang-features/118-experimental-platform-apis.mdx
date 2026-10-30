@@ -51,7 +51,7 @@ effect function canRun(path: string) {
 
 effect function runnable() {
   return try scoped(effect {
-    const fs = try FileSystem
+    const fs = try FileSystem.FileSystem
     const dir = try fs.makeTempDirectoryScoped()
     try fs.writeFileString(`${dir}/build.sh`, "#!/bin/sh")
     try fs.chmod(`${dir}/build.sh`, 0o755)

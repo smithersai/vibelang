@@ -80,27 +80,27 @@ Many of Effect's modules export something of their own name: the module `Option`
 | You write | It means |
 | --- | --- |
 | `Option.Option<number>` | Effect's optional number type |
-| `const fs = try FileSystem` | Reads the provided file-system implementation |
+| `const fs = try FileSystem.FileSystem` | Reads the provided file-system implementation |
 | `try fs.readFileString(path)` | Runs a method of that implementation |
-| `(try Path).sep` | Reads the provided path implementation's separator |
-| `const terminal = try Terminal; try terminal.columns` | Runs the implementation's `columns` Effect |
+| `(try Path.Path).sep` | Reads the provided path implementation's separator |
+| `const terminal = try Terminal.Terminal; try terminal.columns` | Runs the implementation's `columns` Effect |
 | `FileSystem.FileSystem.of(implementation)` | Checks a file-system implementation's shape |
 
 The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoop`, and `Path.layer`. A service key as an argument stays explicit: `Layer.succeed(FileSystem.FileSystem, implementation)`.
 
-Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
+Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem.FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) { try Console.log(try readConfig("/srv")); try Console.log(firstOr(Chunk.empty(), 7)) }
 effect function readConfig(dir: string) {
-  const fs = try FileSystem
-  const path = try Path
+  const fs = try FileSystem.FileSystem
+  const path = try Path.Path
   return try fs.readFileString(path.join(dir, "config.json"))
 }
 
 effect function hasConfig(fs: FileSystem.FileSystem, dir: string) {
-  const path = try Path
+  const path = try Path.Path
   return try fs.exists(path.join(dir, "config.json"))
 }
 
