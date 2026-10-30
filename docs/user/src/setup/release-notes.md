@@ -49,6 +49,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Forbidden Effect modifier positions lacked a specified diagnostic, and error members could lose a second modifier diagnostic. The specification now assigns `EK0108` and preserves applicable `EK0104` and `EK0105` without an extra member-category error.
 
+- The specification implied that running a completed Effect always suspends like `await`. It now states Effect's native scheduling behavior and when to request a cooperative yield.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.

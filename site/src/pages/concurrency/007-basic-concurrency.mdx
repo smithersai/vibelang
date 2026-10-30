@@ -7,6 +7,8 @@ description: "Effect functions return Effect values without running them. Inside
 
 Effect functions return Effect values without running them. Inside an effect function, use `try` to run an Effect. Effect's concurrency combinators overlap work, limit concurrency, and control cancellation; pass the work as Effect values so the combinator starts each operation at the right time.
 
+Running a completed Effect with `try` can continue in the same fiber turn. It adds no Promise job: Effect's scheduler decides when other fibers run, including through its cooperative work budget. Use `try yieldNow` to request a cooperative yield; one yield does not promise a global order for unrelated fibers.
+
 ## Sequential, bounded, and unbounded work
 
 ```vibe

@@ -199,12 +199,58 @@ The other constructs follow the Promise they mirror: `effect { }` is `async do {
 
 | Promise | Effect | Why |
 | --- | --- | --- |
+| Even an already completed value resumes `await` on a later Promise job | `try` can complete without suspending; cooperative scheduling can still run other fibers | `yield*` follows Effect's scheduler, with no added Promise job or implicit `yieldNow` |
 | A rejected `await` resumes the function with a throw, so `using`, iterator closing and `finally` run | A failed `try` never resumes the generator, so none of them run | [Abandonment](/spec/008-runtime#abandonment): `try e` is `yield* e` |
 | A thrown error and a rejection are one channel, and `.catch` sees both | A failure and a defect are two channels, and `catch` sees failures only | Effect's typed error channel |
 | A Promise starts when it is created and runs once | An Effect is cold, and each `try e` runs it again | An Effect is a value (VIP-1) |
 | Nothing cancels a Promise | Interruption ends a fiber: the generator is abandoned and Effect's finalizers run | Promises have no counterpart |
 | `async do { return 1 }` is a syntax error | `effect { return 1 }` ends the block's Effect | The block is `(effect () => { … })()` (VIP-2) |
 | A function's body starts at the call | A forked fiber starts later, and a child that never got a step is interrupted when its parent ends | Fibers are scheduled and owned |
+
+
+The `await` analogy specifies source placement, precedence and evaluation order, not Promise-job scheduling. Use explicit `try yieldNow` to request a cooperative yield; it gives no global ordering guarantee for unrelated fibers. The short default-scheduler reference below observes different orders; synchronous work can also reach Effect's cooperative scheduling budget.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-5, VIP-17
+effect function effectOrder() {
+  const events: string[] = []
+  fork effect { events.push("child") }
+  try succeed(1)
+  events.push("after completed")
+  try yieldNow
+  events.push("after yield")
+  return events
+}
+// Short reference: Success(["after completed", "child", "after yield"]).
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function effectOrder() {
+  return Effect.gen(function* () {
+    const events: string[] = []
+    yield* Effect.forkChild(Effect.sync(() => { events.push("child") }))
+    yield* Effect.succeed(1)
+    events.push("after completed")
+    yield* Effect.yieldNow
+    events.push("after yield")
+    return events
+  })
+}
+async function promiseOrder() {
+  const events: string[] = []
+  void Promise.resolve().then(() => { events.push("child") })
+  await Promise.resolve(1)
+  events.push("after completed")
+  await Promise.resolve()
+  events.push("after yield")
+  return events
+}
+// Short default-scheduler reference: effectOrder succeeds with
+// ["after completed", "child", "after yield"]; promiseOrder resolves to
+// ["child", "after completed", "after yield"]. This is no global scheduling guarantee.
+```
 
 ## `effect` blocks
 
