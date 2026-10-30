@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/build"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/incremental"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
@@ -183,18 +183,13 @@ func tscCompilation(ctx context.Context, sys tsc.System, commandLine *tsoptions.
 				return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
 			}
 		}
-	} else if !commandLine.CompilerOptions().IgnoreConfig.IsTrue() || len(commandLine.FileNames()) == 0 {
+	} else if len(commandLine.FileNames()) == 0 {
+		// VIP-30: explicit files use command-line options and bypass discovery.
 		foundConfigFileName := tsoptions.FindConfigFile(sys.GetCurrentDirectory(), sys.FS().FileExists)
 		if foundConfigFileName != "" {
 			configFileName = foundConfigFileName
 		}
-		if len(commandLine.FileNames()) != 0 {
-			if configFileName != "" {
-				// Error to not specify config file
-				reportDiagnostic(ast.NewCompilerDiagnostic(diagnostics.X_tsconfig_json_is_present_but_will_not_be_loaded_if_files_are_specified_on_commandline_Use_ignoreConfig_to_skip_this_error))
-				return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
-			}
-		} else if configFileName == "" {
+		if configFileName == "" {
 			if commandLine.CompilerOptions().ShowConfig.IsTrue() {
 				reportDiagnostic(ast.NewCompilerDiagnostic(diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, sys.GetCurrentDirectory().AsString()))
 			} else {

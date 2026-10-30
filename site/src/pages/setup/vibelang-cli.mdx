@@ -44,7 +44,7 @@ Top-level `await` keeps its module and target requirements for unary and multili
 
 - `vibelang --init` creates TypeScript's generic `tsconfig.json`. For an ESM project, set `"type": "module"` in `package.json`; then adapt `include` and the output options as above. The initializer does not create VibeLang's package setup.
 - `vibelang --showConfig` prints the effective project configuration, including inherited options, without compiling. Use `-p path/to/tsconfig.json` to inspect another project.
-- `vibelang --ignoreConfig --noEmit --module nodenext --target es2022 src/hello.vibe` checks explicit files without loading the discovered tsconfig. Supply the compiler options those files require; project include patterns and references do not apply.
+- `vibelang --noEmit --module nodenext --target es2022 src/hello.vibe` checks explicit files using the supplied compiler options. File arguments bypass config discovery, including nearby or parent `vibe.config.json`, `tsconfig.json` and `jsconfig.json` files; project include patterns and references do not apply. `--ignoreConfig` remains accepted and is optional for explicit files. Combining files with `-p`/`--project` is an error.
 
 ### Diagnostic severities
 
@@ -113,7 +113,7 @@ The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCo
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
-`vibelang lint` accepts the compiler's options, including `-p`/`--project` and file arguments, and has no options of its own. Like the compiler, it reads the first of `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in each directory. It reports the same diagnostics as the compiler and the language server. It exits with status `1` on an error. Warnings never change the exit status, so set a code to `"error"` in `vibe.severities` to fail CI. Invalid project settings report their compiler diagnostic and exit with status `2`.
+`vibelang lint` accepts the compiler's options, including `-p`/`--project` and file arguments, and has no options of its own. Without file arguments, it reads the first of `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in each directory. Explicit files bypass that discovery and use the supplied compiler options, as with the compiler. It reports the same diagnostics as the compiler and the language server. It exits with status `1` on an error. Warnings never change the exit status, so set a code to `"error"` in `vibe.severities` to fail CI. Invalid project settings report their compiler diagnostic and exit with status `2`.
 
 In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity: `effecttsgo/floating-effect` reports EK4801. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
 
