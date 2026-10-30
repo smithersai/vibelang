@@ -215,7 +215,9 @@ off, and `VIBELANG_REGISTER_DEBUG=1` to print how long each project's compile
 took, stage by stage. A type error stops the import with the compiler's
 diagnostics, and a stack trace names `.vibe` lines. A workspace package the
 project imports as source is checked by that package's own compile, when one of
-its `.vibe` modules loads. An extensionless import resolves as TypeScript's
+its `.vibe` modules loads. The cache tracks that package's nearest config,
+`vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, so editing it
+invalidates the cached result. An extensionless import resolves as TypeScript's
 `Bundler` resolution does: `../src/archive` reaches `archive.vibe` when there
 is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`.
 

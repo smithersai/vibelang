@@ -395,8 +395,9 @@ const installHolds = (record) => {
 // one name's answers by directory.
 function nearestFile(directory, name, found) {
   if (found.has(directory)) return found.get(directory)
-  const candidate = join(directory, name)
-  const result = existsSync(candidate) ? candidate : dirname(directory) === directory ? null : nearestFile(dirname(directory), name, found)
+  const names = name === "tsconfig.json" ? ["vibe.config.json", "tsconfig.json", "jsconfig.json"] : [name]
+  const candidate = names.map((name) => join(directory, name)).find(existsSync)
+  const result = candidate !== undefined ? candidate : dirname(directory) === directory ? null : nearestFile(dirname(directory), name, found)
   found.set(directory, result)
   return result
 }
