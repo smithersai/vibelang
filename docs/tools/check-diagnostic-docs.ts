@@ -16,6 +16,21 @@ export function diagnosticCodes(sources: string[]): string[] {
     [...source.matchAll(/^\s*(?:var\s+)?(EK\d+)\s*=\s*message\(/gm)].map(match => match[1])))].sort()
 }
 
+// Imported rules have a registry of their own rather than message declarations.
+// Keep full codes: EK3810 and EK38100 name different rules (detail 142).
+export function importedLintRules(source: string): { code: string, rule: string }[] {
+  const body = source.match(/var VibeImportedLintCodes = map\[string\]string\{([\s\S]*?)\n\}/)?.[1]
+  if (body === undefined) throw new Error("Missing VibeImportedLintCodes registry")
+  const rules = [...body.matchAll(/^\s*"(EK[0-9]+)":\s*"([^"]+)",?\s*$/gm)]
+    .map(([, code, rule]) => ({ code, rule }))
+  if (!rules.length || rules.some(({ code }) => !/^EK38[0-9]{2,}$/.test(code)) ||
+      new Set(rules.map(({ code }) => code)).size !== rules.length ||
+      new Set(rules.map(({ rule }) => rule)).size !== rules.length) {
+    throw new Error("Invalid or duplicate imported lint registry entry")
+  }
+  return rules
+}
+
 // The codes of forms the VIPs (docs/design/vips) remove or respell. The user docs
 // describe the VIP language, so these have no reference until the compiler retires
 // or respells them; delete an entry when its code goes.

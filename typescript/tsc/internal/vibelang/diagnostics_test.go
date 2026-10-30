@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"slices"
@@ -102,7 +103,7 @@ func TestRegistryMatchesSpec(t *testing.T) {
 		appendix = appendix[:next+1]
 	}
 	var assigned []int32
-	for _, m := range regexp.MustCompile("(?m)^\\| `?EK(\\d{4})`? \\|").FindAllStringSubmatch(appendix, -1) {
+	for _, m := range regexp.MustCompile("(?m)^\\| `?EK(38[0-9]{2,}|[0-9]{4})`? \\|").FindAllStringSubmatch(appendix, -1) {
 		code, _ := strconv.Atoi(m[1])
 		assigned = append(assigned, int32(code))
 	}
@@ -112,7 +113,7 @@ func TestRegistryMatchesSpec(t *testing.T) {
 	for _, code := range assigned {
 		lane, ahead := specAhead[code]
 		switch {
-		case registry[code] == nil && !ahead:
+		case registry[code] == nil && core.VibeImportedLintCodes[fmt.Sprintf("EK%04d", code)] == "" && !ahead:
 			t.Errorf("Appendix B assigns EK%04d, which the registry does not have", code)
 		case registry[code] != nil && ahead:
 			t.Errorf("the registry has EK%04d now; delete it from specAhead (%s)", code, lane)

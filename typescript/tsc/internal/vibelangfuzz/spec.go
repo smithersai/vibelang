@@ -124,7 +124,7 @@ var AppendixBCodes = sync.OnceValue(func() []int32 {
 })
 
 // ekCell is the code cell of an Appendix B row, EK0101 or `EK0101`.
-var ekCell = regexp.MustCompile("^`?EK(\\d{4})`?$")
+var ekCell = regexp.MustCompile("^`?EK(38[0-9]{2,}|[0-9]{4})`?$")
 
 // appendixBRows returns Appendix B's codes, each with its row's cell in the
 // column the table's header names "VIP". It counts that column from the end

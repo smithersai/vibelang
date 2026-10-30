@@ -14,6 +14,8 @@
 - **Amended 2026-10-30: warnings never change the exit status.** `vibelang` and `vibelang lint` exit non-zero only on errors, as `tsc` and ESLint do by default; a repository that wants a warning to fail CI sets its code to `"error"` in `vibe.severities`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 71).
 - **Amended 2026-10-30: emit names mirror TypeScript.** `x.vibe` compiles to `x.js` beside `x.d.ts` in `outDir`, and relative specifiers `./x.vibe` in emitted code are rewritten to `./x.js`, as `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins follow the same names. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 72).
 
+- **Amended 2026-10-30: imported-lint capacity.** VIP-38 is the exception to the hundred-code capacity: imported codes use `EK38` followed by a decimal ordinal padded to at least two digits, so ordinal `100` follows ordinal `99` in [VIP-38's generated table](0038-effect-lint-built-in.md). `EKxxxx` is a minimum display width for these codes, and `EK39xx` remains available to VIP-39. Existing assignments remain stable; configuration matches whole codes against the generated table (decided detail 142).
+
 ## Will's words
 
 > "make sure we have good compile error messages too"

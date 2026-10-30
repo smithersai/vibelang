@@ -22,7 +22,7 @@ import (
 // registered.
 
 var (
-	ekCode        = regexp.MustCompile(`EK(\d{4})\b`)
+	ekCode        = regexp.MustCompile(`EK(38[0-9]{2,}|[0-9]{4})\b`)
 	oldInSentence = regexp.MustCompile(`(?i)\bold\b`)
 )
 
@@ -50,9 +50,7 @@ func citedCodes(text string) map[string]string {
 // pendingCodes are codes the specification cites before their rows exist,
 // each with the lane that registers the code and adds its row. A code here
 // that gains a row fails, so the entry is deleted in that change.
-var pendingCodes = map[string]string{
-	"3801": "the EK38xx table that Appendix B's Imported lint codes generates from the pinned effect-tsgo version (VIP-38, decided detail 77) adds its rows",
-}
+var pendingCodes = map[string]string{}
 
 // TestSpecCodesInAppendixB checks that every code the chapters and the
 // accepted VIPs' decisions cite has a row in Appendix B, and that a code a
@@ -125,11 +123,16 @@ func TestSpecCodesInAppendixB(t *testing.T) {
 	}
 }
 
-// A code is four digits: a longer number after EK, such as the EK38100
-// spelling an undecided remark proposes, cites no code.
+// Imported lint codes extend their decimal ordinal past two digits (detail
+// 142). Read whole codes; never truncate EK38100 to EK3810.
 func TestCitedCodesReadWholeCodes(t *testing.T) {
-	codes := citedCodes("`EK0101` is an error. The spelling `EK38100` competes with `EK39xx`.")
-	if _, ok := codes["0101"]; !ok || len(codes) != 1 {
-		t.Errorf("citedCodes = %v, want only 0101", codes)
+	codes := citedCodes("`EK0101` is an error. `EK3810` and `EK38100` are distinct. `EK39000` is not allocated.")
+	for _, code := range []string{"0101", "3810", "38100"} {
+		if _, ok := codes[code]; !ok {
+			t.Errorf("citedCodes = %v, missing %s", codes, code)
+		}
+	}
+	if len(codes) != 3 {
+		t.Errorf("citedCodes = %v, want exactly three whole codes", codes)
 	}
 }

@@ -281,7 +281,7 @@ The check reads the site and registry; it does not deploy anything.
 declared under `typescript/tsc/internal/vibelang/` has a code reference in
 `docs/user/src/`. Add its meaning and remedy when adding a diagnostic.
 EK4407 is temporarily exempt while module-name resolution is reworked.
-The docs/tools test suite runs the same coverage check.
+The docs/tools test suite runs the same coverage check. Appendix B coverage also checks imported lint rows against `lint-codes.json` and the compiler's `VibeImportedLintCodes` registry, preserving whole codes beyond ordinal `99`.
 
 ## Global throws snapshot
 
@@ -291,3 +291,5 @@ contracts and bundled TypeScript declarations. `--check` checks freshness;
 `node --test docs/tools/throws-inventory.test.mjs` also checks overloads,
 unknown contracts and upstream-input changes. The inventory's `coverage`
 fields identify contracts that later slices still need to generate.
+
+Regenerate the normative imported lint inventory and both spec tables with `node docs/tools/lint-codes.mjs --write`; check staleness with `node docs/tools/lint-codes.mjs --check` or `node --test docs/tools/lint-codes.test.mjs`. The assignment registry reserves removed names; new names append in sorted order.

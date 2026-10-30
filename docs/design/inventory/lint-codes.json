@@ -1,0 +1,1290 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "node docs/tools/lint-codes.mjs --write",
+  "upstream": {
+    "repository": "https://github.com/Effect-TS/tsgo",
+    "tag": "@effect/tsgo@0.57.0",
+    "commit": "999942fa41462eb46dfcb2d718e7671db8e14156"
+  },
+  "allocation": "EK38 plus a decimal ordinal of at least two digits (EK3801 through EK3899, then EK38100). Retain EK3801 for floatingEffect; sort all other initial rules by name from ordinal 2 (detail 106). Future new names are sorted and appended after the largest reserved ordinal; removed names remain reserved in docs/tools/lint-code-assignments.json. Never renumber or reuse a code.",
+  "inputs": [
+    {
+      "file": "typescript/tsc/internal/effecttsgo/UPSTREAM",
+      "sha256": "7c3bac4af71f2f691dbf679ba6a27d24c0dbc63d87855ddec838250db966cf04"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/abort_controller_in_effect.go",
+      "sha256": "e056ccc941af8d6d08fa9ab59ddaf5d99a50f7137680fe0a57438a705f17e7c4"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/acquire_release_disposable.go",
+      "sha256": "dfc1b8e119bde1b11112c8b37ffffcbdeb2e0538def25bb39c78e4a06de7d4cc"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/all_of_map_to_for_each.go",
+      "sha256": "5337c4baf5928954968591428ec755f82e739f62552e0a09929a89e01637b4ae"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/any_unknown_in_error_context.go",
+      "sha256": "9888f4eb3e594bc8fbc5bf46867366ec223706a4a8a87eaae0ea2b461eccf4b5"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/api_stability_leak.go",
+      "sha256": "47098edd6fe433b99c8bf5e37c1ff7d521c170b8a6dc8847c3df83868d0cbac1"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/async_function.go",
+      "sha256": "ef80237b45e91c0931fa740ca83665e14e9214817ce6e7e83267099a15cb169f"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_all_tag_dispatch_to_catch_tag.go",
+      "sha256": "5287cc042b8f54e5f67c4ae9d793c1956578b0d5759f79e6f2052db344509b41"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_all_to_map_error.go",
+      "sha256": "7d93d61f69462622e478f315894d9ec87ff62491c1393de3c33dfdc7fe353679"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_chain_to_first_success_of.go",
+      "sha256": "7be798364e9596bea15209e20fa66ca490aa522a808e9b8e6d2e0227e72f554c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_conditional_refail_to_catch_if.go",
+      "sha256": "1e6e3132a0c8a16d89d9559d15cfbaccfdc86cd7cac24371c85d7584d8b1c5f9"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_die_to_or_die.go",
+      "sha256": "aac2721d8697f9f83355b3d9e5a732eb1001060608bfcda90ce17bc3f632dad7"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_if_tag_to_catch_tag.go",
+      "sha256": "b150aeb067c4673bf3a59e7bff055105ba94a1b3057065f602f911eb1af67437"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_refail_to_tap_error.go",
+      "sha256": "03b953a8e6e22839f57f923c9d15a951b3310f8e82c08ca501144f3918e61cbe"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_tag_to_catch_reason.go",
+      "sha256": "25f613582b7eda07619c0ac6409dfb12607c2c1194880d242d660c043deeb0ad"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_to_ignore.go",
+      "sha256": "99e07fbd7ef99c5604390187da9437d028b7aa71d9f671174468a5154ef99120"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_to_or_else_succeed.go",
+      "sha256": "1e7781a7dffc34d3898f3e0f4ed7bd2f83705dda7a582c1e63bfad6b0c255fd1"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/catch_unfailable_effect.go",
+      "sha256": "d96532226a10a3a83210ddefdd485e8047715ec0da52f0a4976354ec7ea97115"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/class_self_mismatch.go",
+      "sha256": "89914837b6b5844632ae09ac7a3db6827df463f4bb3f16130451f9109cfa885a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/crypto_random_uuid.go",
+      "sha256": "36be3ef84052768355bf875e1a9f70ebbc0b5eb31b1bceb788786e0368fd078e"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/deterministic_keys.go",
+      "sha256": "184f70614be30fb9c98e38bf668e92556cc9ae323911a4c6255a6e098aee0804"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/duplicate_package.go",
+      "sha256": "bc6ee4384f9199187b7d64b55f29adb12053d8e0142e0bb99932014851b42f3b"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_do_notation.go",
+      "sha256": "f8b635eed541581f7cd6d2b626478402f66fd9b1bbcc766c3dcb2505932e64f8"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_iife.go",
+      "sha256": "b19fb917d0fa070a3ab57fe7a498f855fb9043bb027911343c2d67ecc89ab552"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_implicit_any.go",
+      "sha256": "8a8a2c9af6524709ee86dcdb4f54f4d3e8fc0ba683fac768caaa79dfd8217bbd"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_opportunity.go",
+      "sha256": "91e53d5d8b9f144d415f6c9db19e66ac709a852ef17749517deaa4b942c0a0aa"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_gen_uses_adapter.go",
+      "sha256": "c7496ddfbfaae19d31c3e0d8af2c83453acc90f1fa883e358d564c3a86f0caaa"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_in_failure.go",
+      "sha256": "99fc8620721668062a626fe51d4487e9fd2f99e84601bd4c18e4f114e111458d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_in_void_success.go",
+      "sha256": "200f788bed8d1d5cdbdafb0e32d60dc7f97cb1a5e971f3b9bde03c55a5b45f5c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_map_flatten.go",
+      "sha256": "2c06209073d7aefd87e48176081f273afb340d58534d71e03cc8775901228ce5"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_map_void.go",
+      "sha256": "a95e2d7ef3c1a3f7d9ce7534de8598507c6246000f2ff998834dd3b4ba711291"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_sleep_zero_to_yield_now.go",
+      "sha256": "65e37bb7eb4c221f74d280efbbaca298d887bfd989d5fe85001875fe57ef16f6"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/effect_succeed_with_void.go",
+      "sha256": "5abc9247de31b4a91bcbb5f0320eb712b1a873eda1c8c5d0c9547de77b257c2c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/error_payload_shadows_name.go",
+      "sha256": "4bf44e8db0465096b38a0f37c8db0079d6b97cb38efc5168246387d2b0c2712b"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/extends_native_error.go",
+      "sha256": "089c872cc8905ba1db77ee3f1e63d58d7c1cf21fb7642ebe682e5c27f0905ec8"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_conditional_to_filter_or_fail.go",
+      "sha256": "eebc24a88b5ff7c0f0360b189b0a031c7709fc624d755d1dd51bee06d90c965d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_ignored_param_to_and_then.go",
+      "sha256": "dc6231c75e781196cf26036afb5325c9091323251ecbe53eab5f8e73af008887"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_to_map.go",
+      "sha256": "f3f2215739af4ef5a3b92d28b109c6879bb4dfd4aa8e5851566f980da1fee5ef"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_to_tap.go",
+      "sha256": "880b8c5820eb257675102a8bc97f4fe2f69368af001e0a99dc821329e8bb92ea"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/floating_effect.go",
+      "sha256": "44f828c3d2ca2eacd104d1650b019ae13377d250095587caf279dbb30a1de64c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/floating_effect_in_vitest.go",
+      "sha256": "687643036e6a4cd6ec8bb4921edb1eca7874c41ab6fbe9e3f93498536341748d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/generic_effect_services.go",
+      "sha256": "56f1fc9f02b5d1636e3490869a0502272baf97852d6422995379b7cf5187e092"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_console.go",
+      "sha256": "8a27e12030159e754effcfe2bc732574b3184e1333e7a12a83924280e9e3bb90"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_date.go",
+      "sha256": "6f98799ed358f99a85c2d68659c7c7fe09fe94b24e34fd61348e97f35f4a330c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_error_in_effect_catch.go",
+      "sha256": "609052340658ab8710851624bcb4b45742b1d2d98210f815a377b6e71359c08d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_error_in_effect_failure.go",
+      "sha256": "1bdd3220051c04043f8af88bfe774ec894016352e927b03b3b3bffbfbf06e19f"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_fetch.go",
+      "sha256": "ec889ec56087db71af5b4a76b6829ffe8086e408b60fbda55c7e9b5651014d4d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_random.go",
+      "sha256": "61fc57cc970576b8c01edb4ea28713fd46a5d6191ee301ba7bf56c5bbd88f672"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/global_timers.go",
+      "sha256": "ba9b8b31c5e28b341a3bdd2c210eddb37a75d9f2e6c5045dcb6f7a1d19c794ab"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/instance_of_schema.go",
+      "sha256": "a02af78c17ab68ffc9540f1d80621e4e7a4f0fe1b77e071a82ac0caf5b54e1bf"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/layer_merge_all_with_dependencies.go",
+      "sha256": "0590e8603ca4aca9073c6c3f01c1fc7de7703801095b1b5f6e7209169505234f"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/lazy_effect.go",
+      "sha256": "79b264181bef306bd346b6d2e5cacb3475737545d42d7e5dae64ea3c819c3e64"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/lazy_promise_in_effect_sync.go",
+      "sha256": "b7d214ccfc0ac2983bae6a4c0f38c8fbc4bf308b6826f1e38a3fbafb6a8997fd"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/leaking_requirements.go",
+      "sha256": "79a446434e0a15e1f635ac25f380ad4f863ba4cdc67f3ae955367d68a0ef1d4d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/map_some_to_as_some.go",
+      "sha256": "1471eddd4f1c978998528878b6cd5bd4be3922615fb394e456c9e9134ad54e6e"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/match_effect_to_map_both.go",
+      "sha256": "c0954b7fdcb0ea0103316c158f8d0a62717de25020bc7c297edc4f0249cb1f8a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/match_effect_to_match.go",
+      "sha256": "7b8b3d153654a6c8eabb0be81038477adb2dfa84147acf587778dc6523fcbf0b"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missed_pipeable_opportunity.go",
+      "sha256": "75d23d83f3db08bc4857d45fcf2a2908a0f22648f5a5838966e6654ec8f4cd01"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_context.go",
+      "sha256": "2955522911c6f4e95392f1060f6b6fe9b602123f00dee61d4112b46e888c9af1"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_error.go",
+      "sha256": "81bf5e5eab4650d0202db3e416f44364236b10fc777ca62153efa1853a2127fd"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_service_dependency.go",
+      "sha256": "a13c302ae649018417ed9631169c9bd53c110f9c10ce59dac7e665f1515cec2a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_layer_context.go",
+      "sha256": "6d49cf74ca121045aad60b5d684164927020d0c5d869bb495beb6d3e1afd3d1a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_pipeable_signature.go",
+      "sha256": "2757e4d0142b217a2c6430a7901bd946c75fbf85a782669dd16d38fd8e84ef3d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_return_yield_star.go",
+      "sha256": "7785d0729d51dd3994e57f7f019c7dd5f3185b9b64283fd60b2eecf08aa4aaee"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/missing_star_in_yield_effect_gen.go",
+      "sha256": "70e53b4b779412e271764b46df6682b8d8940049b12a25fc21eeb30015ac41c0"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/multiple_catch_tag.go",
+      "sha256": "6ff761c579389104689de358698d05912f774a71944ae909bc7e0631890ac06b"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/multiple_effect_provide.go",
+      "sha256": "1bf5e9a9e596b8c5773c750d13265e1f99d73059d70d05c0687b7fac3fbf632f"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/nested_effect_gen_yield.go",
+      "sha256": "2655b7b87cd50d2a311253bd67851fe969cd97a1129eac8616cf6c3444d157f8"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/new_promise.go",
+      "sha256": "d533fec146ccd3df61042ef8c0b7818009dab8085643c0732e4cdd5246057517"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/new_schema_class.go",
+      "sha256": "3a6bbb9cb4ff9376e1e2e8c884b8669f62214db7347c96ea3da6e4b6e993f989"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/node_builtin_import.go",
+      "sha256": "8b7ddab08f4506febf17a0c29e88dc759d81aef3057e4964ce24eccddc286f1e"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/non_object_effect_service_type.go",
+      "sha256": "84b7ec617cfcfb48b8f732a857f8d7bb6fd9b4100e8f952dbe22286d01af2ee4"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/obsolete_match_import.go",
+      "sha256": "09577b56b0f64cbfca4e23d794eeeb2c667d3adb227467e0f6cf65c1b5ec7c71"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/obsolete_schema_import.go",
+      "sha256": "aaca51829c0ac42183dc66c5e9082153e825863ec0fdadc5e8e9f440167b3acf"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/option_match_to_from_option.go",
+      "sha256": "d2dfc38900dd661fd408fc0e2852fbb32a66016a6c7c9a1e585af8efab054a5a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/outdated_api.go",
+      "sha256": "1fdd5601365effc53b71b2a2f850c951cc989c75b87ea48735c9f09e92ae31da"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/overridden_schema_constructor.go",
+      "sha256": "b256cee4e55ad3db6cf379ea7431cbf0fbaba8059a8b429794e0212d8ca70068"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_barrel_import.go",
+      "sha256": "fca7c65545358744ca589f0a15eea1e721d46b72ffa46c502b4f9d976c03d19c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_array.go",
+      "sha256": "ef75b1954128071d45719a1a7f3ffbce20efed0a18aef078d8ed1a3fb24e5839"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_record.go",
+      "sha256": "4e6e02d94605a31430be69e20709c9ff18e2563946b84ece702384b2c4c3832c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_string.go",
+      "sha256": "9fec9c21128ec3529fd4447d496973ee6b99926ccf3ae6a91b4143993ccaadc4"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_namespace_import.go",
+      "sha256": "28e61544d1966fb65a4ac4d5bb58adaccfdcadffd3900c67610a3e8fbd2f662d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_over_json.go",
+      "sha256": "b8343ff0d4556e2598112f1c3b69c732bc328e6ad2d47f35fdb6729f526f53d0"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_tagged_error.go",
+      "sha256": "492a9a9657c75d93152f3e5270e02c5719ae552035cd65319a17cc0613ab3c27"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_type_property.go",
+      "sha256": "f66357d35942a57dfa2e5058bcc596020948b110f32cf64a93892dbfd083b778"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_succeed_some_or_none.go",
+      "sha256": "bedb4055238e169762c9412489d4caaa3d3ac119bcfeee22c1643209cf5ba2a7"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_typed_schema_decoder.go",
+      "sha256": "ffa6a784f98d00fc9b8c31b3e84ce389fae76579f5fa827bdd65c97d597cd6a1"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_unsafe_constructor.go",
+      "sha256": "687591be3f126a8d84e5c90509c5368f66dca58fd7921e082e762509acace587"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/process_env.go",
+      "sha256": "a07287f4ddec1682b39ee92e3d5e4e03caf452765278a8fe2983b155955fe9fd"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/promise_in_effect_success.go",
+      "sha256": "d904098ef01a8aab97fa4e8a6b357be80449b12f51eda7a7cf2f6e7b1634615a"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/provide_layer_succeed_to_provide_service.go",
+      "sha256": "9a190dfcd9f3f6c60865df0a3d4b943d3797c3e877cf9c5a7458367c10a14064"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/race_first_with_sleep_to_timeout.go",
+      "sha256": "7f7b6e9979289f6ee7c9ad1d1a6d4d1812f4b9e3144897953c2c11e9167ca171"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_map_error.go",
+      "sha256": "1724d4c6fa34359afbf97705dd686d103f03f1c5a2f8af1d19f8e7153184e257"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_or_die.go",
+      "sha256": "6561c8028b06e6e65485be29f9ea03efcc0e3971309b8f6809520e59eab33154"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_schema_tag_identifier.go",
+      "sha256": "bf1b12524019f1d9c97b9e29cd9545e34817fdd365b306556db51ff188cb2adb"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/return_effect_in_gen.go",
+      "sha256": "e3c335154d65d46cedd24ae9c089ee1b85be434ff17cf0184ae720c945d0a6d9"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/rules.go",
+      "sha256": "6db05f546e998124ee2f0e111a6893e9678d914e8dedd86d9c906e4c76fd145c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/run_effect_inside_effect.go",
+      "sha256": "d6c6a9f3c0d95e86e46f7ab7c4aca3fc8882831583d0cb65cbe4e39350f01aa1"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/run_of_exit_to_run_exit.go",
+      "sha256": "1c9f61b04dd366cfad630299ed5dc7916a90e47667e733a845ce1032b195ddf9"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_class_missing_brand.go",
+      "sha256": "a33448062b9d2277179cdcd8e253fb5e7ece9598aa1d5cb2f3be10e5dd2b3a97"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_class_object_literal.go",
+      "sha256": "9a5e7c39554c841dfaeb413454137fe9839489b6b7f6aba2d5cfb1a5010a2195"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_literal_non_finite.go",
+      "sha256": "5d04e92252c5cc25438ebad95db80ed52a795a506750261e9cc8adc979b19d55"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_number.go",
+      "sha256": "5b8873dbf4b765b075d92a690703f1dd8dcb3033884bed9a9347d43e879ed350"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_opaque_instance_member.go",
+      "sha256": "f427ba59ddad4af2b09c78d2459754a86dd7545d3849518d4da47a8c39664300"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_struct_with_tag.go",
+      "sha256": "555f15bc2479af16f7637ef109a23788cfc5207935899c412bb8e3145ac22620"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_sync.go",
+      "sha256": "0ec68d057cfb7fbec142815b764ef216f13c4193329eb90eb09f57c384c559c4"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_sync_in_effect.go",
+      "sha256": "f3ebc7dd206fb0f84ca790e5dfdb51f642506a348072118a278be889ee2c821e"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/schema_union_of_literals.go",
+      "sha256": "f29b53523de323714935f56d69f829f0019178806ff202c368b46fbe54b94e6e"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/scope_in_layer_effect.go",
+      "sha256": "90550793376b8dacc9919a3512467aaa353ff8164ed42696ae041937ed62d994"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/service_not_as_class.go",
+      "sha256": "59ed32ed842165ea4dd6b41c3fed1a39461b5e2fa52a1de20d95d4b53eb610a7"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/stability_api_usage.go",
+      "sha256": "e72eff6d02be1b11a14bbf08b8d9164e4790adad039f201bb5e7b32459c715c7"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/strict_boolean_expressions.go",
+      "sha256": "b85577b0225b23b41a317619afea547341ad0e5baa2fef6edab4898474ee4ef2"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/strict_effect_provide.go",
+      "sha256": "b71c2c4e55e5e06b94604ee0343d15031cd0f0aa2a70fbb443017db0394f33d6"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/sync_to_succeed.go",
+      "sha256": "4662bb7b54f83ce636012197a9eea02a8ff2d25e55fe3b292706550723706f81"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/timeout_catch_tag_to_timeout_or_else.go",
+      "sha256": "d8b9d79e2c4f89d40f2ffe0c86239bd41d8c65e42618d881a5f553a406392a0c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/try_catch_in_effect_gen.go",
+      "sha256": "4db0302a670a9f7cae149d4697113c0a054e237310f8b2742439302d163c179c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unknown_in_effect_catch.go",
+      "sha256": "031c80e81d2172e3eb84dfd174aae078c7c88205be60956b33c9d73a3ce8f963"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_arrow_block.go",
+      "sha256": "c14ba182bf735a95f0b30138ec66abc7c3f05edac453c3d388227bbab91925b6"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_effect_gen.go",
+      "sha256": "f5a58e0ff10bb31a3352b08ef8994019b0f12119bad5358b0b544d457e0f2b6d"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_fail_yieldable_error.go",
+      "sha256": "10c53a5625b63cefe6eb618cd44498d20cdf1870fd9c14e6e6b492c559d472d6"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_pipe.go",
+      "sha256": "55c0f003c1548774d02d891b99f4dc0492419e17952b1fb7dad53a2489f2f19c"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_pipe_chain.go",
+      "sha256": "132d77072a9908b0896f43120d899a6b5ec13a30b2947cfde77b281631a1f598"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_typeof_type.go",
+      "sha256": "9217d75f4d8bbde552545bf8bd3641651699a427bdb327dc86c607e8415deedb"
+    },
+    {
+      "file": "typescript/tsc/internal/effecttsgo/internal/rules/unsafe_effect_type_assertion.go",
+      "sha256": "dc156bb7484ee214a16a5a8863d6a7851db81e6cabdd1e423d7e68cdf51e12be"
+    }
+  ],
+  "rules": [
+    {
+      "code": "EK3802",
+      "rule": "abortControllerInEffect",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/abort_controller_in_effect.go"
+    },
+    {
+      "code": "EK3803",
+      "rule": "acquireReleaseDisposable",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/acquire_release_disposable.go"
+    },
+    {
+      "code": "EK3804",
+      "rule": "allOfMapToForEach",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/all_of_map_to_for_each.go"
+    },
+    {
+      "code": "EK3805",
+      "rule": "anyUnknownInErrorContext",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/any_unknown_in_error_context.go"
+    },
+    {
+      "code": "EK3806",
+      "rule": "apiStabilityLeak",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/api_stability_leak.go"
+    },
+    {
+      "code": "EK3807",
+      "rule": "asyncFunction",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/async_function.go"
+    },
+    {
+      "code": "EK3808",
+      "rule": "catchAllTagDispatchToCatchTag",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_all_tag_dispatch_to_catch_tag.go"
+    },
+    {
+      "code": "EK3809",
+      "rule": "catchAllToMapError",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_all_to_map_error.go"
+    },
+    {
+      "code": "EK3810",
+      "rule": "catchChainToFirstSuccessOf",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_chain_to_first_success_of.go"
+    },
+    {
+      "code": "EK3811",
+      "rule": "catchConditionalRefailToCatchIf",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_conditional_refail_to_catch_if.go"
+    },
+    {
+      "code": "EK3812",
+      "rule": "catchDieToOrDie",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_die_to_or_die.go"
+    },
+    {
+      "code": "EK3813",
+      "rule": "catchIfTagToCatchTag",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_if_tag_to_catch_tag.go"
+    },
+    {
+      "code": "EK3814",
+      "rule": "catchRefailToTapError",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_refail_to_tap_error.go"
+    },
+    {
+      "code": "EK3815",
+      "rule": "catchTagToCatchReason",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_tag_to_catch_reason.go"
+    },
+    {
+      "code": "EK3816",
+      "rule": "catchToIgnore",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_to_ignore.go"
+    },
+    {
+      "code": "EK3817",
+      "rule": "catchToOrElseSucceed",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_to_or_else_succeed.go"
+    },
+    {
+      "code": "EK3818",
+      "rule": "catchUnfailableEffect",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/catch_unfailable_effect.go"
+    },
+    {
+      "code": "EK3819",
+      "rule": "classSelfMismatch",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/class_self_mismatch.go"
+    },
+    {
+      "code": "EK3820",
+      "rule": "cryptoRandomUUID",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/crypto_random_uuid.go"
+    },
+    {
+      "code": "EK3821",
+      "rule": "cryptoRandomUUIDInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/crypto_random_uuid.go"
+    },
+    {
+      "code": "EK3822",
+      "rule": "deterministicKeys",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/deterministic_keys.go"
+    },
+    {
+      "code": "EK3823",
+      "rule": "duplicatePackage",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/duplicate_package.go"
+    },
+    {
+      "code": "EK3824",
+      "rule": "effectDoNotation",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_do_notation.go"
+    },
+    {
+      "code": "EK3825",
+      "rule": "effectFnIife",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_iife.go"
+    },
+    {
+      "code": "EK3826",
+      "rule": "effectFnImplicitAny",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_implicit_any.go"
+    },
+    {
+      "code": "EK3827",
+      "rule": "effectFnOpportunity",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_fn_opportunity.go"
+    },
+    {
+      "code": "EK3828",
+      "rule": "effectGenUsesAdapter",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_gen_uses_adapter.go"
+    },
+    {
+      "code": "EK3829",
+      "rule": "effectInFailure",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_in_failure.go"
+    },
+    {
+      "code": "EK3830",
+      "rule": "effectInVoidSuccess",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_in_void_success.go"
+    },
+    {
+      "code": "EK3831",
+      "rule": "effectMapFlatten",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_map_flatten.go"
+    },
+    {
+      "code": "EK3832",
+      "rule": "effectMapVoid",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_map_void.go"
+    },
+    {
+      "code": "EK3833",
+      "rule": "effectSleepZeroToYieldNow",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_sleep_zero_to_yield_now.go"
+    },
+    {
+      "code": "EK3834",
+      "rule": "effectSucceedWithVoid",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/effect_succeed_with_void.go"
+    },
+    {
+      "code": "EK3835",
+      "rule": "errorPayloadShadowsName",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/error_payload_shadows_name.go"
+    },
+    {
+      "code": "EK3836",
+      "rule": "experimentalApiUsage",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/stability_api_usage.go"
+    },
+    {
+      "code": "EK3837",
+      "rule": "extendsNativeError",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/extends_native_error.go"
+    },
+    {
+      "code": "EK3838",
+      "rule": "flatMapConditionalToFilterOrFail",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_conditional_to_filter_or_fail.go"
+    },
+    {
+      "code": "EK3839",
+      "rule": "flatMapIgnoredParamToAndThen",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_ignored_param_to_and_then.go"
+    },
+    {
+      "code": "EK3840",
+      "rule": "flatMapToMap",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_to_map.go"
+    },
+    {
+      "code": "EK3841",
+      "rule": "flatMapToTap",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/flat_map_to_tap.go"
+    },
+    {
+      "code": "EK3801",
+      "rule": "floatingEffect",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/floating_effect.go"
+    },
+    {
+      "code": "EK3842",
+      "rule": "floatingEffectInVitest",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/floating_effect_in_vitest.go"
+    },
+    {
+      "code": "EK3843",
+      "rule": "genericEffectServices",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/generic_effect_services.go"
+    },
+    {
+      "code": "EK3844",
+      "rule": "globalConsole",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_console.go"
+    },
+    {
+      "code": "EK3845",
+      "rule": "globalConsoleInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_console.go"
+    },
+    {
+      "code": "EK3846",
+      "rule": "globalDate",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_date.go"
+    },
+    {
+      "code": "EK3847",
+      "rule": "globalDateInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_date.go"
+    },
+    {
+      "code": "EK3848",
+      "rule": "globalErrorInEffectCatch",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_error_in_effect_catch.go"
+    },
+    {
+      "code": "EK3849",
+      "rule": "globalErrorInEffectFailure",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_error_in_effect_failure.go"
+    },
+    {
+      "code": "EK3850",
+      "rule": "globalFetch",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_fetch.go"
+    },
+    {
+      "code": "EK3851",
+      "rule": "globalFetchInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_fetch.go"
+    },
+    {
+      "code": "EK3852",
+      "rule": "globalRandom",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_random.go"
+    },
+    {
+      "code": "EK3853",
+      "rule": "globalRandomInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_random.go"
+    },
+    {
+      "code": "EK3854",
+      "rule": "globalTimers",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_timers.go"
+    },
+    {
+      "code": "EK3855",
+      "rule": "globalTimersInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/global_timers.go"
+    },
+    {
+      "code": "EK3856",
+      "rule": "instanceOfSchema",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/instance_of_schema.go"
+    },
+    {
+      "code": "EK3857",
+      "rule": "layerMergeAllWithDependencies",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/layer_merge_all_with_dependencies.go"
+    },
+    {
+      "code": "EK3858",
+      "rule": "lazyEffect",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/lazy_effect.go"
+    },
+    {
+      "code": "EK3859",
+      "rule": "lazyPromiseInEffectSync",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/lazy_promise_in_effect_sync.go"
+    },
+    {
+      "code": "EK3860",
+      "rule": "leakingRequirements",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/leaking_requirements.go"
+    },
+    {
+      "code": "EK3861",
+      "rule": "mapSomeToAsSome",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/map_some_to_as_some.go"
+    },
+    {
+      "code": "EK3862",
+      "rule": "matchEffectToMapBoth",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/match_effect_to_map_both.go"
+    },
+    {
+      "code": "EK3863",
+      "rule": "matchEffectToMatch",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/match_effect_to_match.go"
+    },
+    {
+      "code": "EK3864",
+      "rule": "missedPipeableOpportunity",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missed_pipeable_opportunity.go"
+    },
+    {
+      "code": "EK3865",
+      "rule": "missingEffectContext",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_context.go"
+    },
+    {
+      "code": "EK3866",
+      "rule": "missingEffectError",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_error.go"
+    },
+    {
+      "code": "EK3867",
+      "rule": "missingEffectServiceDependency",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_effect_service_dependency.go"
+    },
+    {
+      "code": "EK3868",
+      "rule": "missingLayerContext",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_layer_context.go"
+    },
+    {
+      "code": "EK3869",
+      "rule": "missingPipeableSignature",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_pipeable_signature.go"
+    },
+    {
+      "code": "EK3870",
+      "rule": "missingReturnYieldStar",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_return_yield_star.go"
+    },
+    {
+      "code": "EK3871",
+      "rule": "missingStarInYieldEffectGen",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/missing_star_in_yield_effect_gen.go"
+    },
+    {
+      "code": "EK3872",
+      "rule": "multipleCatchTag",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/multiple_catch_tag.go"
+    },
+    {
+      "code": "EK3873",
+      "rule": "multipleEffectProvide",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/multiple_effect_provide.go"
+    },
+    {
+      "code": "EK3874",
+      "rule": "nestedEffectGenYield",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/nested_effect_gen_yield.go"
+    },
+    {
+      "code": "EK3875",
+      "rule": "newPromise",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/new_promise.go"
+    },
+    {
+      "code": "EK3876",
+      "rule": "newSchemaClass",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/new_schema_class.go"
+    },
+    {
+      "code": "EK3877",
+      "rule": "nodeBuiltinImport",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/node_builtin_import.go"
+    },
+    {
+      "code": "EK3878",
+      "rule": "nonObjectEffectServiceType",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/non_object_effect_service_type.go"
+    },
+    {
+      "code": "EK3879",
+      "rule": "obsoleteMatchImport",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/obsolete_match_import.go"
+    },
+    {
+      "code": "EK3880",
+      "rule": "obsoleteSchemaImport",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/obsolete_schema_import.go"
+    },
+    {
+      "code": "EK3881",
+      "rule": "optionMatchToFromOption",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/option_match_to_from_option.go"
+    },
+    {
+      "code": "EK3882",
+      "rule": "outdatedApi",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/outdated_api.go"
+    },
+    {
+      "code": "EK3883",
+      "rule": "overriddenSchemaConstructor",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/overridden_schema_constructor.go"
+    },
+    {
+      "code": "EK3884",
+      "rule": "preferBarrelImport",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_barrel_import.go"
+    },
+    {
+      "code": "EK3885",
+      "rule": "preferEffectArray",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_array.go"
+    },
+    {
+      "code": "EK3886",
+      "rule": "preferEffectRecord",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_record.go"
+    },
+    {
+      "code": "EK3887",
+      "rule": "preferEffectString",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_effect_string.go"
+    },
+    {
+      "code": "EK3888",
+      "rule": "preferNamespaceImport",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_namespace_import.go"
+    },
+    {
+      "code": "EK3889",
+      "rule": "preferSchemaOverJson",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_over_json.go"
+    },
+    {
+      "code": "EK3890",
+      "rule": "preferSchemaTaggedError",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_tagged_error.go"
+    },
+    {
+      "code": "EK3891",
+      "rule": "preferSchemaTypeProperty",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_schema_type_property.go"
+    },
+    {
+      "code": "EK3892",
+      "rule": "preferSucceedSomeOrNone",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_succeed_some_or_none.go"
+    },
+    {
+      "code": "EK3893",
+      "rule": "preferTypedSchemaDecoder",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_typed_schema_decoder.go"
+    },
+    {
+      "code": "EK3894",
+      "rule": "preferUnsafeConstructor",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/prefer_unsafe_constructor.go"
+    },
+    {
+      "code": "EK3895",
+      "rule": "processEnv",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/process_env.go"
+    },
+    {
+      "code": "EK3896",
+      "rule": "processEnvInEffect",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/process_env.go"
+    },
+    {
+      "code": "EK3897",
+      "rule": "promiseInEffectSuccess",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/promise_in_effect_success.go"
+    },
+    {
+      "code": "EK3898",
+      "rule": "provideLayerSucceedToProvideService",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/provide_layer_succeed_to_provide_service.go"
+    },
+    {
+      "code": "EK3899",
+      "rule": "raceFirstWithSleepToTimeout",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/race_first_with_sleep_to_timeout.go"
+    },
+    {
+      "code": "EK38100",
+      "rule": "redundantMapError",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_map_error.go"
+    },
+    {
+      "code": "EK38101",
+      "rule": "redundantOrDie",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_or_die.go"
+    },
+    {
+      "code": "EK38102",
+      "rule": "redundantSchemaTagIdentifier",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/redundant_schema_tag_identifier.go"
+    },
+    {
+      "code": "EK38103",
+      "rule": "returnEffectInGen",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/return_effect_in_gen.go"
+    },
+    {
+      "code": "EK38104",
+      "rule": "runEffectInsideEffect",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/run_effect_inside_effect.go"
+    },
+    {
+      "code": "EK38105",
+      "rule": "runOfExitToRunExit",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/run_of_exit_to_run_exit.go"
+    },
+    {
+      "code": "EK38106",
+      "rule": "schemaClassMissingBrand",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_class_missing_brand.go"
+    },
+    {
+      "code": "EK38107",
+      "rule": "schemaClassObjectLiteral",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_class_object_literal.go"
+    },
+    {
+      "code": "EK38108",
+      "rule": "schemaLiteralNonFinite",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_literal_non_finite.go"
+    },
+    {
+      "code": "EK38109",
+      "rule": "schemaNumber",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_number.go"
+    },
+    {
+      "code": "EK38110",
+      "rule": "schemaOpaqueInstanceMember",
+      "defaultSeverity": "error",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_opaque_instance_member.go"
+    },
+    {
+      "code": "EK38111",
+      "rule": "schemaStructWithTag",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_struct_with_tag.go"
+    },
+    {
+      "code": "EK38112",
+      "rule": "schemaSync",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_sync.go"
+    },
+    {
+      "code": "EK38113",
+      "rule": "schemaSyncInEffect",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_sync_in_effect.go"
+    },
+    {
+      "code": "EK38114",
+      "rule": "schemaUnionOfLiterals",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/schema_union_of_literals.go"
+    },
+    {
+      "code": "EK38115",
+      "rule": "scopeInLayerEffect",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/scope_in_layer_effect.go"
+    },
+    {
+      "code": "EK38116",
+      "rule": "serviceNotAsClass",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/service_not_as_class.go"
+    },
+    {
+      "code": "EK38117",
+      "rule": "strictBooleanExpressions",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/strict_boolean_expressions.go"
+    },
+    {
+      "code": "EK38118",
+      "rule": "strictEffectProvide",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/strict_effect_provide.go"
+    },
+    {
+      "code": "EK38119",
+      "rule": "syncToSucceed",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/sync_to_succeed.go"
+    },
+    {
+      "code": "EK38120",
+      "rule": "timeoutCatchTagToTimeoutOrElse",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/timeout_catch_tag_to_timeout_or_else.go"
+    },
+    {
+      "code": "EK38121",
+      "rule": "tryCatchInEffectGen",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/try_catch_in_effect_gen.go"
+    },
+    {
+      "code": "EK38122",
+      "rule": "unknownInEffectCatch",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unknown_in_effect_catch.go"
+    },
+    {
+      "code": "EK38123",
+      "rule": "unnecessaryArrowBlock",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_arrow_block.go"
+    },
+    {
+      "code": "EK38124",
+      "rule": "unnecessaryEffectGen",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_effect_gen.go"
+    },
+    {
+      "code": "EK38125",
+      "rule": "unnecessaryFailYieldableError",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_fail_yieldable_error.go"
+    },
+    {
+      "code": "EK38126",
+      "rule": "unnecessaryPipe",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_pipe.go"
+    },
+    {
+      "code": "EK38127",
+      "rule": "unnecessaryPipeChain",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_pipe_chain.go"
+    },
+    {
+      "code": "EK38128",
+      "rule": "unnecessaryTypeofType",
+      "defaultSeverity": "suggestion",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unnecessary_typeof_type.go"
+    },
+    {
+      "code": "EK38129",
+      "rule": "unsafeEffectTypeAssertion",
+      "defaultSeverity": "off",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/unsafe_effect_type_assertion.go"
+    },
+    {
+      "code": "EK38130",
+      "rule": "unstableApiUsage",
+      "defaultSeverity": "warning",
+      "source": "typescript/tsc/internal/effecttsgo/internal/rules/stability_api_usage.go"
+    }
+  ]
+}

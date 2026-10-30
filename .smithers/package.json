@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docs:generate": "node ../docs/tools/throws-inventory.mjs --write && node ../docs/tools/release-docs.mjs --write && bun run flows/docs/run.ts && bun ../site/scripts/build-docs.ts --sources && node flows/migrate/build-context.mjs",
-    "docs:check": "node ../docs/tools/throws-inventory.mjs --check && node ../docs/tools/check-tracked-leaks.mjs && node ../docs/tools/release-docs.mjs --check && bun test ./flows/docs/check.test.ts && node flows/migrate/build-context.mjs --check"
+    "docs:generate": "node ../docs/tools/lint-codes.mjs --write && node ../docs/tools/throws-inventory.mjs --write && node ../docs/tools/release-docs.mjs --write && bun run flows/docs/run.ts && bun ../site/scripts/build-docs.ts --sources && node flows/migrate/build-context.mjs",
+    "docs:check": "node ../docs/tools/lint-codes.mjs --check && node ../docs/tools/throws-inventory.mjs --check && node ../docs/tools/check-tracked-leaks.mjs && node ../docs/tools/release-docs.mjs --check && bun test ./flows/docs/check.test.ts && node flows/migrate/build-context.mjs --check"
   },
   "dependencies": {
     "@smthrs/artifacts": "1.0.0-rc.16",

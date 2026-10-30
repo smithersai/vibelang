@@ -155,8 +155,6 @@ The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rul
 
 Each imported `effecttsgo/*` rule gets one stable `EK38xx` code, in a normative table generated from the pinned effect-tsgo version ([Imported lint codes](/spec/900-appendices#imported-lint-codes)); a VIP-32 bump regenerates the table, and a rule's code never changes once assigned (decided detail 77). The CLI and language server print that code with the rule name in the message: `EK3801 floatingEffect: …`. A rule's severity resolves in this order, the more specific winning, as a tsconfig child overrides its base: an entry for its code in `vibe.severities`; else the repository's Effect language-service configuration; else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included: VIP-34's "errors can't be off" covers VibeLang's own rules.
 
-The normative upstream pin is `typescript/tsc/internal/effecttsgo/UPSTREAM`: `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` (decided detail 98). The update path is `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/`; a VIP-32 bump runs it and regenerates the table while retaining assigned codes. Effect TypeScript uses the same rules from that release. The complete rule-name/code/default-severity table is not yet published; its header must name this pin. `EK3801` for `floatingEffect` is the decided assignment and must be retained. The other rules take ordinals 2 onward in ascending ASCII order of their rule names, so `abortControllerInEffect` is ordinal 2; a bump keeps every assigned code, retires removed rules' ordinals and appends new names in sorted order (decided detail 106). An ordinal past 99 adds a digit ([Imported lint codes](/spec/900-appendices#imported-lint-codes)).
-
 ```json
 { "vibe": { "severities": { "EK3801": "warning" } } }
 ```
@@ -170,6 +168,151 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | A plain `catch` handler returns an unrun Effect (decided detail 62) | `EK0508` | `catch effect (e) => try …` |
 | `await` on a `Fiber` (decided detail 28) | `EK4609` | `join fiber` in effect code |
 | `await` on a `Deferred` (decided detail 29) | `EK4610` | `try Deferred.await(deferred)` in effect code |
+
+The imported rules are pinned by `UPSTREAM` to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` (decided detail 98). The normative [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) and the table below are generated with `node docs/tools/lint-codes.mjs --write`. An upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/` and regenerates the inventory.
+
+Each rule has one stable code: the `EK38` prefix followed by a decimal ordinal of at least two digits. The initial allocation retains `EK3801` for `floatingEffect` and sorts all remaining rule names from ordinal 2 (decided detail 106); future additions sort only the new names and append after the largest reserved ordinal. After `EK3899` comes `EK38100`, so the prefix also accommodates this pin's 130 rules (decided detail 142). Keep assignments in `docs/tools/lint-code-assignments.json`; removed rules retain their reservation and codes are never renumbered or reused.
+
+Severity resolves from an entry for the printed code in `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default (details 60 and 77). Every imported code accepts `"off"`, including rules whose default is `"error"`. A code identifies one rule even when that rule emits several upstream messages.
+
+
+
+Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e7671db8e14156`).
+
+| Code | Rule | VIP | Chapter | Default severity |
+| --- | --- | --- | --- | --- |
+| `EK3802` | `effecttsgo/abortControllerInEffect` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3803` | `effecttsgo/acquireReleaseDisposable` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3804` | `effecttsgo/allOfMapToForEach` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3805` | `effecttsgo/anyUnknownInErrorContext` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3806` | `effecttsgo/apiStabilityLeak` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3807` | `effecttsgo/asyncFunction` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3808` | `effecttsgo/catchAllTagDispatchToCatchTag` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3809` | `effecttsgo/catchAllToMapError` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3810` | `effecttsgo/catchChainToFirstSuccessOf` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3811` | `effecttsgo/catchConditionalRefailToCatchIf` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3812` | `effecttsgo/catchDieToOrDie` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3813` | `effecttsgo/catchIfTagToCatchTag` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3814` | `effecttsgo/catchRefailToTapError` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3815` | `effecttsgo/catchTagToCatchReason` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3816` | `effecttsgo/catchToIgnore` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3817` | `effecttsgo/catchToOrElseSucceed` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3818` | `effecttsgo/catchUnfailableEffect` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3819` | `effecttsgo/classSelfMismatch` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3820` | `effecttsgo/cryptoRandomUUID` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3821` | `effecttsgo/cryptoRandomUUIDInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3822` | `effecttsgo/deterministicKeys` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3823` | `effecttsgo/duplicatePackage` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3824` | `effecttsgo/effectDoNotation` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3825` | `effecttsgo/effectFnIife` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3826` | `effecttsgo/effectFnImplicitAny` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3827` | `effecttsgo/effectFnOpportunity` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3828` | `effecttsgo/effectGenUsesAdapter` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3829` | `effecttsgo/effectInFailure` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3830` | `effecttsgo/effectInVoidSuccess` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3831` | `effecttsgo/effectMapFlatten` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3832` | `effecttsgo/effectMapVoid` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3833` | `effecttsgo/effectSleepZeroToYieldNow` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3834` | `effecttsgo/effectSucceedWithVoid` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3835` | `effecttsgo/errorPayloadShadowsName` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3836` | `effecttsgo/experimentalApiUsage` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3837` | `effecttsgo/extendsNativeError` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3838` | `effecttsgo/flatMapConditionalToFilterOrFail` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3839` | `effecttsgo/flatMapIgnoredParamToAndThen` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3840` | `effecttsgo/flatMapToMap` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3841` | `effecttsgo/flatMapToTap` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3801` | `effecttsgo/floatingEffect` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3842` | `effecttsgo/floatingEffectInVitest` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3843` | `effecttsgo/genericEffectServices` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3844` | `effecttsgo/globalConsole` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3845` | `effecttsgo/globalConsoleInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3846` | `effecttsgo/globalDate` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3847` | `effecttsgo/globalDateInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3848` | `effecttsgo/globalErrorInEffectCatch` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3849` | `effecttsgo/globalErrorInEffectFailure` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3850` | `effecttsgo/globalFetch` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3851` | `effecttsgo/globalFetchInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3852` | `effecttsgo/globalRandom` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3853` | `effecttsgo/globalRandomInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3854` | `effecttsgo/globalTimers` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3855` | `effecttsgo/globalTimersInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3856` | `effecttsgo/instanceOfSchema` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3857` | `effecttsgo/layerMergeAllWithDependencies` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3858` | `effecttsgo/lazyEffect` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3859` | `effecttsgo/lazyPromiseInEffectSync` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3860` | `effecttsgo/leakingRequirements` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3861` | `effecttsgo/mapSomeToAsSome` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3862` | `effecttsgo/matchEffectToMapBoth` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3863` | `effecttsgo/matchEffectToMatch` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3864` | `effecttsgo/missedPipeableOpportunity` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3865` | `effecttsgo/missingEffectContext` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3866` | `effecttsgo/missingEffectError` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3867` | `effecttsgo/missingEffectServiceDependency` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3868` | `effecttsgo/missingLayerContext` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3869` | `effecttsgo/missingPipeableSignature` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3870` | `effecttsgo/missingReturnYieldStar` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3871` | `effecttsgo/missingStarInYieldEffectGen` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3872` | `effecttsgo/multipleCatchTag` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3873` | `effecttsgo/multipleEffectProvide` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3874` | `effecttsgo/nestedEffectGenYield` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3875` | `effecttsgo/newPromise` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3876` | `effecttsgo/newSchemaClass` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3877` | `effecttsgo/nodeBuiltinImport` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3878` | `effecttsgo/nonObjectEffectServiceType` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3879` | `effecttsgo/obsoleteMatchImport` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3880` | `effecttsgo/obsoleteSchemaImport` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3881` | `effecttsgo/optionMatchToFromOption` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3882` | `effecttsgo/outdatedApi` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3883` | `effecttsgo/overriddenSchemaConstructor` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK3884` | `effecttsgo/preferBarrelImport` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3885` | `effecttsgo/preferEffectArray` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3886` | `effecttsgo/preferEffectRecord` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3887` | `effecttsgo/preferEffectString` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3888` | `effecttsgo/preferNamespaceImport` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3889` | `effecttsgo/preferSchemaOverJson` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3890` | `effecttsgo/preferSchemaTaggedError` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3891` | `effecttsgo/preferSchemaTypeProperty` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3892` | `effecttsgo/preferSucceedSomeOrNone` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3893` | `effecttsgo/preferTypedSchemaDecoder` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3894` | `effecttsgo/preferUnsafeConstructor` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3895` | `effecttsgo/processEnv` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3896` | `effecttsgo/processEnvInEffect` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK3897` | `effecttsgo/promiseInEffectSuccess` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK3898` | `effecttsgo/provideLayerSucceedToProvideService` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK3899` | `effecttsgo/raceFirstWithSleepToTimeout` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38100` | `effecttsgo/redundantMapError` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38101` | `effecttsgo/redundantOrDie` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38102` | `effecttsgo/redundantSchemaTagIdentifier` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38103` | `effecttsgo/returnEffectInGen` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38104` | `effecttsgo/runEffectInsideEffect` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38105` | `effecttsgo/runOfExitToRunExit` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38106` | `effecttsgo/schemaClassMissingBrand` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38107` | `effecttsgo/schemaClassObjectLiteral` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK38108` | `effecttsgo/schemaLiteralNonFinite` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK38109` | `effecttsgo/schemaNumber` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38110` | `effecttsgo/schemaOpaqueInstanceMember` | 38 | [Tooling](/spec/007-tooling) | `error` |
+| `EK38111` | `effecttsgo/schemaStructWithTag` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38112` | `effecttsgo/schemaSync` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38113` | `effecttsgo/schemaSyncInEffect` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38114` | `effecttsgo/schemaUnionOfLiterals` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38115` | `effecttsgo/scopeInLayerEffect` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK38116` | `effecttsgo/serviceNotAsClass` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38117` | `effecttsgo/strictBooleanExpressions` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38118` | `effecttsgo/strictEffectProvide` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38119` | `effecttsgo/syncToSucceed` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38120` | `effecttsgo/timeoutCatchTagToTimeoutOrElse` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38121` | `effecttsgo/tryCatchInEffectGen` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38122` | `effecttsgo/unknownInEffectCatch` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+| `EK38123` | `effecttsgo/unnecessaryArrowBlock` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38124` | `effecttsgo/unnecessaryEffectGen` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38125` | `effecttsgo/unnecessaryFailYieldableError` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38126` | `effecttsgo/unnecessaryPipe` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38127` | `effecttsgo/unnecessaryPipeChain` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38128` | `effecttsgo/unnecessaryTypeofType` | 38 | [Tooling](/spec/007-tooling) | `suggestion` |
+| `EK38129` | `effecttsgo/unsafeEffectTypeAssertion` | 38 | [Tooling](/spec/007-tooling) | `off` |
+| `EK38130` | `effecttsgo/unstableApiUsage` | 38 | [Tooling](/spec/007-tooling) | `warning` |
+
+
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 

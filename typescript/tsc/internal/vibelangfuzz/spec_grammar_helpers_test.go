@@ -45,9 +45,10 @@ func TestSpecGrammarHelpers(t *testing.T) {
 func TestAppendixBRows(t *testing.T) {
 	doc := "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n" +
 		"| `EK0101` | `effect f() { }` outside a class | 1 | [Functions](001-functions.md#effect-functions) |\n" +
+		"| `EK38100` | `effecttsgo/redundantMapError` | 38 | [Tooling](007-tooling.md) |\n" +
 		"| EK0107 | `a \\| b` in a type | 1, 4 | [Functions](001-functions.md#direct-eval) |\n\n## Appendix C\n\n| `EK9999` | not B | 9 | x |\n"
 	rows, _ := appendixBRows(doc)
-	if want := map[string]string{"0101": "1", "0107": "1, 4"}; !maps.Equal(rows, want) {
+	if want := map[string]string{"0101": "1", "0107": "1, 4", "38100": "38"}; !maps.Equal(rows, want) {
 		t.Errorf("appendixBRows = %v, want %v", rows, want)
 	}
 	codes := AppendixBCodes()
