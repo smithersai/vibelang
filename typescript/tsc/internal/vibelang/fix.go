@@ -813,7 +813,9 @@ func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text strin
 	before, after := parse(original), parse(text)
 	names := map[string]bool{}
 	for _, b := range importBindingsOf(after) {
-		if module := b.declaration.ModuleSpecifier(); module != nil && (module.Text() == "effect" || strings.HasPrefix(module.Text(), "effect/")) {
+		// A specifier that is no string, as error recovery can leave one,
+		// names no module.
+		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && (module.Text() == "effect" || strings.HasPrefix(module.Text(), "effect/")) {
 			names[b.name] = true
 		}
 	}

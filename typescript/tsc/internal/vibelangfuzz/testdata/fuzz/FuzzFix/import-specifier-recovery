@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * ct.sleeon from \"effect/Option\"\n  const checked: Option.Option<void> = try Effect.option(guard())\n")
