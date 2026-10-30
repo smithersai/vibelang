@@ -59,6 +59,8 @@ effect function load(id) {
 
 - **Amended 2026-10-30: unchecked operands retain native delegation.** After the static Effect-assignability check, `try e` is still `yield* e`, with no dynamic Effect guard, Promise conversion or non-Promise identity. An unchecked noniterable produces its native `TypeError` as a defect. An unchecked iterable can instead complete normally, delegate Effects or return a value; no blanket rejection of all runtime non-Effects is added. Ordinary typed arrays and generators still fail the static operand check. See [Running Effects](../src/002-running.md#meaning) and the [runtime witness](../src/008-runtime.md#unchecked-delegation).
 
+- **Amended 2026-10-30: diagnose the missing handler function first.** A parameter list followed directly by a block after `catch`, as in `try x catch (e) { B }`, is the existing `EK0509` malformed-handler error. Do not also report `EK0505` for that same incomplete handler. Once a function literal is present, the ordinary head check applies; independent context and separate syntax errors remain. Repair explicitly to `x catch effect (e) => { B }` or a plain fallback `x catch (e) => { B }` under their distinct existing throw/result rules. A mechanical repair must preserve valid parameters, bindings and source jump targets; it does not create block-handler syntax or auto-run a plain handler's returned Effect. See [the handler rule](../src/002-running.md#catch).
+
 ## Prior art
 
 - Zig's `try` and `catch`.

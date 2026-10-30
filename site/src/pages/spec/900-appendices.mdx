@@ -378,6 +378,8 @@ NonArrowHandler = FunctionExpression | EffectFunction   (no generator, async or 
                 | "(" CatchHandler ")"
 ```
 
+Recovery for a parameter list followed directly by a block after `catch`, as in `try x catch (e) { B }`, reports `EK0509` without an additional `EK0505` for that same malformed handler. It admits no block-handler production. A well-formed function literal restores the ordinary head check; independent source-context and separate syntax diagnostics remain. The [handler repair rule](/spec/002-running#catch) preserves source jump targets and the selected plain or Effect handler kind.
+
 #### EffectBlock
 
 ```text
@@ -752,7 +754,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0506` | `e catch h` where `e` is not an Effect | 5, 17 | [Running Effects](/spec/002-running#catch) |
 | `EK0507` | a plain handler whose result is a Promise or thenable | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
-| `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }` | 5 | [Running Effects](/spec/002-running#catch) |
+| `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }`; a parameter list followed directly by a block, as in `try x catch (e) { }`, gets `EK0509` without adding `EK0505` for the same malformed handler | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0701` | a missing `;` after a `match` arm, the last one included | 7 | [Pattern matching](/spec/004-match#syntax-and-meaning) |
 | `EK0702` | a class pattern that [Class patterns](/spec/004-match#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](/spec/004-match#class-patterns) |
 | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](/spec/004-match#class-patterns) |
