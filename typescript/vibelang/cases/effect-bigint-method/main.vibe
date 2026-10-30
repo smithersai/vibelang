@@ -1,0 +1,9 @@
+export class Numbers {
+  offset = 3
+  effect 1n(n: number) { return try Effect.succeed(this.offset + n) }
+  static effect 1_000n<T>(value: T) { return try Effect.succeed(value) }
+}
+export const numbers = {
+  offset: 5,
+  effect 2n(n: number) { return try Effect.succeed(this.offset + n) },
+}

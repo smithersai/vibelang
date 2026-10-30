@@ -8,6 +8,8 @@ A function declaration keeps `function`: write `effect function load()` or `asyn
 
 Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`, as `async` methods do.
 
+Method names follow TypeScript's property-name rules, including bigint literals: `effect 1n() { … }` works in a class or object literal.
+
 ## Sequence computations
 
 ```vibe
