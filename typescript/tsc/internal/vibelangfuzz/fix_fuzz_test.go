@@ -146,7 +146,14 @@ func FuzzFix(f *testing.F) {
 					}
 				}
 				was, is := node.Run(r, entry.file, entry.name), node.Run(after, entry.file, entry.name)
-				if toolsInvalidOutcome(was) || toolsInvalidOutcome(is) {
+				// D372 says the fix keeps the program's outcome. An original that
+				// doesn't run as an Effect program, such as one whose package.json
+				// Node rejects before any user code, has no outcome to keep; a
+				// fixed program that stops running does break it.
+				if toolsInvalidOutcome(was) {
+					continue
+				}
+				if toolsInvalidOutcome(is) {
 					Gap(t, "FuzzFix", "fix:result", "D372: %s:%s returned an invalid Effect outcome: original %+v; fixed %+v\n%s\nfixed:\n%s", entry.file, entry.name, was, is, archive, Archive(fixed))
 				}
 				if toolsSameOutcome(was, is) {
