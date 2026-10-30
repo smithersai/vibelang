@@ -129,7 +129,7 @@ Except for VIP-7's retained compiler intrinsics below, a class arm such as `when
 - An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`. It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject. `when NotFound():` never matches: the matcher returns one element, but the extractor has zero argument patterns. Write `when NotFound:` for a bare test. Thus `when NotFound:` matches across copies of the same package. The TypeScript counterpart is in [Failures](003-failures.md#error-declarations).
 - `data` variants get no custom matchers. Match them with object patterns on `_tag`: `when { _tag: "Sent", let tracking }: …` ([Data](006-data.md#data-declarations)).
 - **No run-time patching of Effect.** The six fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.0. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
-- VIP-7 also retains the existing fixed checks for Effect’s tagged errors until Effect ships matchers. They are not replaced by ordinary instance matching, and the alias/shadowing rule above applies to them. **Undecided (pending VIP):** what those checks are. The missing inventory must specify resolved constructor identity, ordered subject test, extracted list and arity behavior for every retained entry. Neither a blanket `instanceof` replacement nor a new universal `_tag` test is decided by VIP-7; a subject's static type must not choose the runtime test.
+- VIP-7 also retains the fixed checks for Effect’s tagged errors until Effect ships matchers; the inventory below uses each module’s own guard (decided detail 53, 2026-10-29). The alias/shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
 - Built-in constructor patterns, including `Array`, `Error`, `Map`, `Set`, `Date` and `Promise`, use the runtime's `$is`/`$extract` emulation of the snapshot's built-in matchers, without defining methods on globals. Outside the retained Effect tagged-error checks, the inherited `Function.prototype` matcher for other ordinary classes is also emulated, through `$is`, without modifying `Function.prototype`: use the pinned specification’s constructed-by test and non-class callable fallback, not a blanket `instanceof` rewrite. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](008-runtime.md)).
 
 For the six specified intrinsics below, `s` is the subject, evaluated once; modules mean the resolved `effect/Option`, `effect/Exit` and `effect/Result` identities. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns using the snapshot's list-matching rules: without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail. Rest patterns follow the snapshot. Arity mismatch is a failed match, not a new compile-time error.
@@ -176,3 +176,49 @@ function unwrap(s: unknown) {
   })
 }
 ```
+
+## Retained Effect tagged-error patterns
+
+```vibe es
+// compiler-gap: pending VIP-7
+function errorLabel(e: unknown) {
+  return match (e) {
+    when Cause.TimeoutError(let t): t._tag;
+    when Schema.SchemaError: "invalid";
+    default: "other";
+  }
+}
+```
+
+```ts effect
+import { Cause, Schema } from "effect"
+
+function errorLabel(e: unknown) {
+  const subject = e
+  if (Cause.isTimeoutError(subject)) {
+    const t = subject
+    return t._tag
+  }
+  if (Schema.isSchemaError(subject)) return "invalid"
+  return "other"
+}
+```
+
+This is the retained inventory for Effect `4.1.0` (VIP-7, D208; decided detail 53). Each constructor is recognized by its resolved module binding, including aliases and excluding shadowed names. A bare pattern runs the listed guard; an extractor matches `[s]` by the same list rules as above: `X(let e)` binds the subject, `X()` never matches, and arity mismatch is a failed match.
+
+| Resolved constructor | Ordered test on `s` | Extracted list |
+| --- | --- | --- |
+| `Cause.NoSuchElementError` | `Cause.isNoSuchElementError(s)` | `[s]` |
+| `Cause.TimeoutError` | `Cause.isTimeoutError(s)` | `[s]` |
+| `Cause.IllegalArgumentError` | `Cause.isIllegalArgumentError(s)` | `[s]` |
+| `Cause.ExceededCapacityError` | `Cause.isExceededCapacityError(s)` | `[s]` |
+| `Cause.AsyncFiberError` | `Cause.isAsyncFiberError(s)` | `[s]` |
+| `Cause.UnknownError` | `Cause.isUnknownError(s)` | `[s]` |
+| `Schema.SchemaError` | `Schema.isSchemaError(s)` | `[s]` |
+| `Cron.CronParseError` | `Cron.isCronParseError(s)` | `[s]` |
+| `PlatformError.PlatformError` | `PlatformError.isPlatformError(s)` | `[s]` |
+| `SemVer.SemVerError` | `SemVer.isSemVerError(s)` | `[s]` |
+| `Terminal.QuitError` | `Terminal.isQuitError(s)` | `[s]` |
+| `TextDiff.TextDiffError` | `TextDiff.isTextDiffError(s)` | `[s]` |
+
+These guards recognize Effect’s brands across installed copies and reject an unbranded object with only the same `_tag`. Every other constructor, including `Config.ConfigError` (no guard), `PlatformError.BadArgument` and `PlatformError.SystemError`, uses ordinary TC39 matching. A VIP-32 Effect version bump updates this inventory.

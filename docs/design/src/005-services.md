@@ -6,7 +6,7 @@ Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-pr
 
 ### Syntax
 
-[ServiceDeclaration](900-appendices.md#servicedeclaration), whose members are TypeScript [Member](900-appendices.md#member) signatures, a [KeyMember](900-appendices.md#keymember) and a [DefaultMember](900-appendices.md#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a `KeyMember`, a `DefaultMember`, a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete:
+[ServiceDeclaration](900-appendices.md#servicedeclaration), whose members are TypeScript [Member](900-appendices.md#member) signatures, a [KeyMember](900-appendices.md#keymember) and a [DefaultMember](900-appendices.md#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a `KeyMember`, a `DefaultMember`, a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete. The optional `R` after `!!` starts on the same line and never with `{` (write `A!!({ … })`), so `now(): number!!` ends its member at the line break:
 
 ```vibe es
 // compiler-gap: pending VIP-9
@@ -15,6 +15,8 @@ service Auth {
     | "admin"
     | "member"
   check(token: string): boolean!never
+  now(): number!!
+  later(): number!!
 }
 ```
 
@@ -108,10 +110,22 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 | `new Users()` | EK3003 | |
 | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
 | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
-| `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | code pending | EK3001 needs every key at compile time |
-| any member that is not a `PropertySignature`, a `MethodSignature`, a `KeyMember` or a `DefaultMember`: a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
+| `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | EK3001 needs every key at compile time |
+| any member that is not a `PropertySignature`, a `MethodSignature`, a `KeyMember` or a `DefaultMember`: a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
-**Undecided (pending VIP):** the derived key of a service in a file outside any package, or declared inside a function or block. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name). Write `static readonly key` there until it is decided.
+A service in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`) with a quick fix that inserts one.
+
+```vibe es
+// compiler-gap: pending VIP-9
+// /repo/tools/x.vibe, no package.json
+service Users { }                                      // error: write static readonly key
+service Users { static readonly key = "tools/Users" }  // ok
+```
+
+```ts effect
+// fragment
+class Users extends Context.Service<Users, {}>()("tools/Users") {}
+```
 
 ## `provide` blocks
 
@@ -119,7 +133,7 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 
 [ProvideStatement](900-appendices.md#providestatement), a list of [Provider](900-appendices.md#provider)s. A top-level comma separates providers. A top-level `=` whose left side is a `LeftHandSideExpression` makes `Key = value`; any other `=` belongs to the expression, so `provide flag ? A : B = x { }` provides `flag ? A : (B = x)`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
 
-`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as a whole `ProvideStatement`, as an arrow needs its whole head; otherwise it is an identifier, in any code. Inside a provider, line breaks are free, as in any expression:
+`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as the head of a `ProvideStatement` (everything before its Block's `StatementList`), as an arrow needs its whole head; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
 
 ```vibe es
 // compiler-gap: pending VIP-12
@@ -154,7 +168,7 @@ Trailing blocks don't exist ([VIP-11](../vips/0011-trailing-blocks-denied.md)), 
 
 | Rule | Diagnostic |
 | --- | --- |
-| `provide L { }` outside effect code. The parser reads it as a `provide` statement to report this. In any code, `provide(x)` without a same-line `{` stays a call | code pending |
+| `provide L { }` outside effect code. The parser reads it as a `provide` statement to report this. In any code, `provide(x)` without a same-line `{` stays a call | `EK1201` |
 
 VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
@@ -274,7 +288,7 @@ const o = Option.some(1)
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
 3. **Subpath namespaces are in scope:** the namespaces exported by the 22 lowercase subpaths in effect 4.1.0's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's. In effect 4.1.0 these are `Headers`, `Response`, `Event` and `Worker`. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
 
-   **Undecided (pending VIP):** a name two subpaths export, or a subpath and a root (`Model`, `Prompt`, `Utils` in 4.1.0).
+   A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.0 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils`. `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
 
 ```vibe es
 // compiler-gap: pending VIP-33
@@ -307,9 +321,30 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | Rule | Diagnostic |
 | --- | --- |
 | a `node:*` value import in a `.vibe` file | EK4402 |
-| a Node global (`process`, `Buffer`) in a `.vibe` file | EK4402 |
+| a reference to a Node or web platform global (list below) in a `.vibe` file | EK4402 |
 | a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
 
 `import type` from `node:*` is allowed: VIP-33 bans value imports, and a type import is erased.
 
-**Undecided (pending VIP):** the full list of Node globals and web platform globals the rule covers, including whether `console` is one.
+The banned globals ("All web apis and all node.js apis should be wrapped and effectful", VIP-33):
+
+- Node: `process`, `Buffer`, `global`, `__dirname`, `__filename`, `require`, `module`, `exports`, `setImmediate`, `clearImmediate`;
+- web I/O and host state: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`;
+- console and timers: `console`, `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `queueMicrotask`.
+
+**Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global.
+
+ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `Intl`) stay allowed.
+
+```vibe es
+// compiler-gap: pending VIP-33
+console.log("hi")            // EK4402: write try Console.log("hi")
+setTimeout(f, 10)            // EK4402: write try Effect.sleep("10 millis"), then f()
+const u = new URL(s)         // ok
+```
+
+```ts effect
+// fragment
+yield* Console.log("hi")
+yield* Effect.sleep("10 millis")
+```

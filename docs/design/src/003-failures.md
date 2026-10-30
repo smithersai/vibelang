@@ -41,9 +41,9 @@ This section is the one definition of throw tracking; every other chapter refers
 
 A callable is *effectful* when its return type, written or inferred, is an Effect, a `Stream` or a `Layer`: an `effect` function or producer, Effect's own `sleep`, `sync`, `tryPromise` and `Effect.try`, a service member typed as an Effect, a `.ts` function whose return type is `Effect`. Here ‘an Effect’ uses the [Running Effects](002-running.md#try) test: assignability to `Effect.Effect<any, any, any>`. In Effect 4.1.0 this includes `error` instances, service keys and references; a plain function returning one is effectful and may not throw. Its thrown type is `never`, and it never rethrows a callback: its failures are its Effect's error channel. This is a static contract, not a JavaScript runtime guarantee: a `.ts` implementation that throws before returning produces a defect when evaluated inside an Effect generator, but a JavaScript exception at the call when evaluated in a parameter default, before the Effect exists.
 
-Because an effectful function can't throw, its own code that runs before the Effect exists may not throw either. In a plain `.vibe` function whose return type is an Effect, a `Stream` or a `Layer`, a `throw`, or a call whose thrown type is not `never`, is an error (code pending): make it an `effect` function, or return `fail(e)`. This follows VIP-4's effectful-callable amendment; its later ‘`try` only in effect code’ amendment removes the old restriction on non-Effect return annotations. The same holds for code an `effect` function runs at the call ([Code outside the generator](#code-outside-the-generator)).
+Because an effectful function can't throw, its own code that runs before the Effect exists may not throw either. In a plain `.vibe` function whose return type is an Effect, a `Stream` or a `Layer`, a `throw`, or a call whose thrown type is not `never`, is an error (`EK0401`): make it an `effect` function, or return `fail(e)`. This follows VIP-4's effectful-callable amendment; its later ‘`try` only in effect code’ amendment removes the old restriction on non-Effect return annotations. The same holds for code an `effect` function runs at the call ([Code outside the generator](#code-outside-the-generator)).
 
-**Undecided (pending VIP):** how return types such as `any` or `Effect.Effect<number> | undefined` classify.
+Only a return type wholly consisting of Effects, `Stream`s or `Layer`s is effectful. `any`, `unknown` and unions containing a non-effectful member, such as `Effect.Effect<number> | undefined`, remain throw-tracked (decided detail 36).
 
 ```vibe es
 // compiler-gap: pending VIP-4
@@ -70,23 +70,64 @@ const failure: Effect.Effect<never, Missing> = missing()
 | an `async` `.vibe` function, any form | `never`: calling it returns a Promise, and a throw in its body rejects that Promise. Exceptions while evaluating its arguments belong to the caller |
 | a getter or setter | not tracked: property access is never a tracked call |
 | a function type or interface member, in any file | `never`, or the `T` of its `@throws {T}` (Swift's non-`throws` function type) |
-| a foreign function declaration (`.ts`, `.d.ts`, JavaScript) | the `T` of its `@throws {T}`; `unknown` without one; `@throws {never}` says it can't throw |
+| a foreign callable declaration (`.ts`, `.d.ts`, JavaScript), including callable constants, class methods and each overload | the `T` of its `@throws {T}`; `unknown` without one; `@throws {never}` says it can't throw |
 | a JavaScript global or a non-effectful Effect export | VibeLang's shipped annotation ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)): `JSON.parse` throws `SyntaxError`, `Math.max` and `Option.some` throw `never`, the decoder that `Schema.decodeUnknownSync` returns throws `SchemaError` |
 | a function with `@rethrows p` | its own thrown type, plus the thrown type of the argument passed for `p`. The tag is written, never inferred (VIP-4) |
 
 `@throws {T}` and `@rethrows p` are JSDoc tags on non-effectful declarations; neither adds synchronous throws to an effectful callable. The output of a `.vibe` file always tags its exported non-effectful callables ([Declaration output](001-functions.md#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
 
-**Undecided (pending VIP):** which default applies to foreign callable constants, class methods and overload signatures (the declaration default `unknown`, or the function-type default `never`), and where an annotation on a returned call signature, such as the decoder above, is recorded. Calls through `any` or `Function`, and unions of callables, also need a thrown-type rule; TypeScript has no thrown-type counterpart.
+Contracts attach to each call signature, including each overload and a returned callable's own signature; declaration output preserves them (decided details 37–38). Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives' thrown types (detail 44). TypeScript still requires narrowing `unknown` before calling it.
 
-**Undecided (pending VIP):** the thrown type of a generated `schema error` constructor. Effect 4.1.0 validates at construction and throws a plain `Error` on invalid fields, including a failed refinement on otherwise well-typed input; it is not a `SchemaError`. Neither `never` as a static contract nor tracking that `Error` is decided.
+```ts effect
+import { Effect } from "effect"
 
-**Undecided (pending VIP):** how inferred thrown types are computed for recursive and mutually recursive plain functions. For `function walk(n: number) { if (n) walk(n - 1); else throw new Error("end") }`, VIP-4 requires inference but does not choose a least fixed point or a recursive-boundary fallback; TypeScript has no thrown-type counterpart.
+// A returned callable carries its own contract:
+declare function decoder(): { /** @throws {Error} */ (s: string): string }
+const dynamic: any = (s: string) => { if (!s) throw new Error("empty"); return s }
+const wrapped = Effect.try(() => dynamic("ok"))
+function uncertain(): Effect.Effect<number> | undefined { throw new Error("empty") }
+const uncertainWrapped = Effect.try(() => uncertain()) // mixed return type remains tracked
+```
 
-**Undecided (pending VIP):** whether a written `@throws {T}` on a plain `.vibe` callable constrains its inferred thrown type, replaces it, or is rejected. VIP-4 specifies body inference and library annotations, but does not choose a rule for a source annotation.
+A generated `schema error` constructor has thrown type `never`, a static contract (detail 42). Effect 4.1.0 validates its fields; invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.
+
+```vibe es
+// compiler-gap: pending VIP-29
+schema error Invalid { name: Schema.NonEmptyString }
+effect function invalid() { throw new Invalid({ name: "" }) } // defect, not typed failure
+```
+
+```ts effect
+import { Effect, Schema } from "effect"
+
+class Invalid extends Schema.TaggedError<Invalid>()("Invalid", { name: Schema.NonEmptyString }) {}
+const invalid = Effect.gen(function* () {
+  return yield* Effect.fail(new Invalid({ name: "" }))
+})
+```
+
+Recursive and mutually recursive plain functions infer the least fixed point of their thrown types, starting from `never` (detail 43): `fib` below throws `never`, `walk` throws `Error`. A written `@throws {T}` is a checked upper bound: the body may throw only subtypes of `T` (otherwise `EK0405`), callers see `T`, and declaration output copies the tag (detail 45).
+
+```vibe es
+// compiler-gap: pending VIP-4
+function fib(n: number): number { return n < 2 ? n : fib(n - 1) + fib(n - 2) }
+/** @throws {Error} */
+function walk(n: number) { if (n) walk(n - 1); else throw new Error("end") }
+// /** @throws {never} */ function bad() { throw new Error("end") } // error
+```
+
+```ts effect
+// fragment
+function fib(n: number): number { return n < 2 ? n : fib(n - 1) + fib(n - 2) }
+/** @throws {Error} */
+function walk(n: number): void { if (n) walk(n - 1); else throw new Error("end") }
+const direct = fib(5)
+const walked = Effect.try(() => walk(1))
+```
 
 ### Assignability
 
-As for Swift's non-`throws` function type, a function whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. A parameter named by `@rethrows` admits anything, because the call then throws what its argument throws. So `const r: () => string = parse` is an error (code pending): wrap the function, or annotate the type `@throws`.
+As for Swift's non-`throws` function type, a function whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. A parameter named by `@rethrows` admits anything, because the call then throws what its argument throws. So `const r: () => string = parse` is an error (`EK0402`): wrap the function, or annotate the type `@throws`.
 
 The rule applies member by member when assigning an object to an interface or object type with callable members, as TypeScript checks member assignability. The rule applies to arguments too. VIP-4's two wrappers declare their thunk parameter `@throws {unknown}` ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)), in both overloads: the function argument or the options object's `try` property. Thus `Effect.try(() => parse(s))` and `tryPromise(() => queryDb(q))` are allowed, and the wrapper turns a throw into a failure. The options object's `catch` callback has the ordinary non-throwing function type; a tracked throw there is rejected, while an implicit throw is a defect. Effect's `LazyArg` and other callback parameter types are function types, including those in `.d.ts` files. Every other function parameter admits only what its type says: `sync(() => parse(s))` is an error, so wrap the call with `Effect.try`.
 
@@ -94,12 +135,26 @@ The rule applies member by member when assigning an object to an interface or ob
 
 | Rule | Diagnostic |
 | --- | --- |
-| In effect code, a call, `new` expression or tagged template whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | code pending |
-| In effect code, a call, `new` expression or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | code pending |
+| In effect code, a call, `new` expression or tagged template whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
+| In effect code, a call, `new` expression or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |
 
 A plain function may propagate a JavaScript throw; an `async` function turns it into rejection. Effect code calls a function whose thrown type is `never` directly. Promise-producing calls inside wrapper thunks are ordinary JavaScript; wrapping never exempts a platform call from [VIP-33](../vips/0033-platform-stdlib.md). `Promise.reject(e)`, like every Promise-producing call, must be inside a wrapper thunk in effect code. An unannotated foreign `queryDb` may throw `unknown`, so use `tryPromise(() => queryDb(q))`; `promise` does not admit that throwing thunk under the wrapper annotations above.
 
-**Undecided (pending VIP):** whether a plain `catch` handler whose thrown type is not `never` is a compile error. VIP-5 gives its `throw` a defect's meaning.
+A tracked throwing call in a plain `catch` handler is an error (`EK0403`, detail 39); use an effect handler and a wrapper. An explicit `throw` in the plain handler retains VIP-5's defect meaning.
+
+```vibe es
+// compiler-gap: pending VIP-4
+// fragment: source: string!Error; parse(e: Error): string may throw
+source catch (e) => parse(e) // error
+source catch effect (e) => try Effect.try(() => parse(e))
+```
+
+```ts effect
+// fragment
+const source = Effect.fail(new Error("input"))
+function parse(e: Error): string { throw e }
+const recovered = Effect.catch(source, (e) => Effect.try(() => parse(e)))
+```
 
 ```vibe es
 // compiler-gap: pending VIP-4
@@ -183,7 +238,7 @@ function checked(text: string) {
 
 Some code an `effect` function owns runs when the function is called or a class is constructed, not when its Effect runs. `try` works like `await` (VIP-5), so none of it is effect code ([Appendix A](900-appendices.md#the-effect-parameter)):
 
-- **Parameter defaults and destructuring** run at the call, before the Effect exists. An effectful function can't throw, so a default whose thrown type is not `never` is an error (code pending). A default that returns a Promise is a plain value, as in TypeScript. Destructuring a parameter can still throw a `TypeError`, an implicit throw: a JavaScript exception at the call, and a defect when the call is inside effect code.
+- **Parameter defaults and destructuring** run at the call, before the Effect exists. An effectful function can't throw, so a default whose thrown type is not `never` is an error (`EK0401`). A default that returns a Promise is a plain value, as in TypeScript. Destructuring a parameter can still throw a `TypeError`, an implicit throw: a JavaScript exception at the call, and a defect when the call is inside effect code.
 - **Class field initializers** run in `new X()`, so their thrown types belong to the constructor's. **`static` blocks** run when the class is evaluated, as JavaScript's.
 - **Arguments** are evaluated by the caller, so their thrown types are the caller's.
 - **Wrapper thunks** run inside the Effect: their throws become what the wrapper makes of them.
@@ -234,12 +289,12 @@ error Access {
 
 | Rule | Diagnostic |
 | --- | --- |
-| a constructor in an `error` or `schema error` body | code pending |
+| a constructor in an `error` or `schema error` body | `EK1301` |
 | a `_tag` member in an `error` or `schema error` body | EK2117 |
 | an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | EK2117 |
-| a user-written `static` member or setter, in either error form | code pending |
-| type parameters, such as `error Invalid<T> { value: T }`, in either error form | code pending |
-| any other member that is not a `Field`, a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | code pending |
+| a user-written `static` member or setter, in either error form | `EK1302` |
+| type parameters, such as `error Invalid<T> { value: T }`, in either error form | `EK1303` |
+| any other member that is not a `Field`, a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |
 
 A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets that diagnostic alone, including in either error form. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports EK2117; `static x = 1` reports the static-member rule, not the general member rule.
 
@@ -275,7 +330,7 @@ class Timeout extends Data.TaggedError("Timeout") {
 
 The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
-VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect; these retained checks must not be replaced by inherited `Function.prototype` matching. Their inventory and TypeScript counterparts belong in [Pattern matching](004-match.md#class-patterns).
+VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect; these retained checks must not be replaced by inherited `Function.prototype` matching. Their inventory and TypeScript counterparts are in [Retained Effect tagged-error patterns](004-match.md#retained-effect-tagged-error-patterns).
 
 An `error` always extends `Data.TaggedError`. Group errors with a union, `type LookupError = NotFound | Timeout`: tagged errors are matched by `_tag`, and a subclass would match two tags.
 

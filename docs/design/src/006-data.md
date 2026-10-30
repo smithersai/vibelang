@@ -6,9 +6,9 @@ Sources: [VIP-15](../vips/0015-schema-declarations.md), [VIP-16](../vips/0016-da
 
 ### Syntax
 
-[SchemaDeclaration](900-appendices.md#schemadeclaration), with [Field](900-appendices.md#field)s and [Separator](900-appendices.md#separator)s shared with `error` and `data`. `schema` and `data` are declaration keywords under the one rule of [Declaration keywords](900-appendices.md#declaration-keywords), as `type` is in TypeScript: the keyword and the name on one line, where a declaration can start; anything else, such as `const ok = schema satisfies Schema.Top`, is ordinary TypeScript. A field type is parsed greedily as in a TypeScript type member: a line break separates members only after the type is complete. Thus `role:` followed by `| "admin"` on the next line continues the type. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
+[SchemaDeclaration](900-appendices.md#schemadeclaration), which begins with [SchemaStart](900-appendices.md#schemastart), with [Field](900-appendices.md#field)s and [Separator](900-appendices.md#separator)s shared with `error` and `data`. `schema` and `data` are declaration keywords under the one rule of [Declaration keywords](900-appendices.md#declaration-keywords), as `type` is in TypeScript: the keyword and the name on one line, where a declaration can start; anything else, such as `const ok = schema satisfies Schema.Top`, is ordinary TypeScript. A field type is parsed greedily as in a TypeScript type member: a line break separates members only after the type is complete. Thus `role:` followed by `| "admin"` on the next line continues the type. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](003-failures.md#error-declarations)).
 
-A `schema` declaration requires a field body or `= type`; a `data` declaration requires a variant body, even if empty. Unlike `error`, neither has a bodyless form. So `schema as T;` and `data as T;` are syntax errors, and `schema as = Schema.String` and `data as {}` declare names `as`.
+A `schema` declaration requires a field body or `= type`; a `data` declaration requires a variant body, even if empty. Unlike `error`, neither has a bodyless form. So `schema as T;`, `schema satisfies T;`, `data as T;` and `data satisfies T;` are syntax errors at statement start, and `schema as = Schema.String` and `data as {}` declare names `as`.
 
 ### Meaning
 
@@ -44,7 +44,7 @@ const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
-In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. Apart from the mapped built-ins below, a reference without a Schema value is EK2109: declare it with `schema`.
+In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. Apart from the mapped built-ins below, a reference without a Schema value is `EK2109`: declare it with `schema`.
 
 | Type or field | Effect 4.1.0 schema |
 | --- | --- |
@@ -161,13 +161,13 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 | Rule | Diagnostic |
 | --- | --- |
-| a field type outside the mapping | EK2109 |
+| a field type outside the mapping; declare a Schema value instead | EK2109 |
 
 ## `data` declarations
 
 ### Syntax
 
-[DataDeclaration](900-appendices.md#datadeclaration), a list of [Variant](900-appendices.md#variant)s, possibly empty.
+[DataDeclaration](900-appendices.md#datadeclaration), which begins with [DataStart](900-appendices.md#datastart), is a list of [Variant](900-appendices.md#variant)s, possibly empty.
 
 `data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. `Field` and `Separator` are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of `Separator` does not apply before that `{`.
 
@@ -211,7 +211,7 @@ Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004
 
 ### Generic unions
 
-A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` are a compile error (EK2126). The helper name shown below is illustrative: the compiler chooses a fresh name, so a user declaration named `OutcomeDefinition` does not collide.
+A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors (`EK2126` and `EK2803`). Write a default on a separate TypeScript type alias. The helper name shown below is illustrative: the compiler chooses a fresh name, so a user declaration named `OutcomeDefinition` does not collide.
 
 ```vibe es
 // compiler-gap: pending VIP-28
@@ -229,7 +229,25 @@ const Outcome = Data.taggedEnum<OutcomeDefinition>()
 
 | Rule | Diagnostic |
 | --- | --- |
-| more than 4 type parameters; the message names the limit | code pending |
-| a constraint on a type parameter | EK2126 |
+| more than 4 type parameters; remove parameters beyond the limit of 4 | EK2801 |
+| a constraint on a type parameter; remove the constraint | EK2126 |
+| a default on a type parameter; move it to a separate type alias | EK2803 |
 
-**Undecided (pending VIP):** whether generic `data` parameters may have defaults, such as `data Box<A = string> { Value { value: A } }`. VIP-28 does not specify how a default interacts with constructor inference.
+```vibe es
+// compiler-gap: pending VIP-28
+// data Box<A = string> { Value { value: A } } // EK2803
+data Box<A> { Value { value: A } }
+type StringBox<A = string> = Box<A>
+const boxed: StringBox = Box.Value({ value: "hello" })
+```
+
+```ts effect
+// fragment
+type Box<A> = Data.TaggedEnum<{ Value: { value: A } }>
+interface BoxDefinition extends Data.TaggedEnum.WithGenerics<1> {
+  readonly taggedEnum: Box<this["A"]>
+}
+const Box = Data.taggedEnum<BoxDefinition>()
+type StringBox<A = string> = Box<A>
+const boxed: StringBox = Box.Value({ value: "hello" })
+```

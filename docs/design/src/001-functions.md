@@ -17,28 +17,34 @@ A function's kind is decided by a keyword on the function, never by its body or 
 [EffectFunction](900-appendices.md#effectfunction), [EffectArrow](900-appendices.md#effectarrow) and [EffectMethod](900-appendices.md#effectmethod). [ArrowParams](900-appendices.md#arrowparams) and [Modifiers](900-appendices.md#modifiers) are TypeScript's, as for `async`: `effect x => …` is allowed. `export` and `export default` come before `effect function` through ECMAScript's `ExportDeclaration`, as before `async function`.
 
 - `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1), apart from the `effect { … }` block (VIP-2). `Name` is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
-- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start, `effect` or `async` followed by a name other than `as` or `satisfies`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. Diagnostic: code pending.
+- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start, `effect` or `async` followed by a name other than `as` or `satisfies`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
 - As for `async`: type parameters follow the name, as in `effect m<T>(x: T) { }` and `effect function f<T>(x: T) { }`; `static effect m()` and a private `effect #load() { }` are allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
 - `effect get x() { }` and `effect set x(v) { }` parse, so the getter/setter rule below reports them, as TypeScript parses `async get x() { }` and reports TS1042.
 - `effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end, as with `async`.
 - Anywhere else, `effect` is an ordinary identifier, so `Layer.effect(…)` and `const effect = …` keep working. As with `async`, an arrow needs its whole head: `effect(x) => …` is an arrow, and `effect(x)` without `=>` is a call.
 - `effect function*` declares a producer ([Running Effects](002-running.md#producers)).
 
-**Undecided (pending VIP):** whether `effect` and `async` may both modify one function, and what that would mean.
+`effect` and `async` on one function is a compile error, with quick fixes that remove one modifier (decided detail 46). No Effect TypeScript function is both an `Effect.gen` and a Promise-returning `async` function.
+
+```vibe es
+// compiler-gap: pending VIP-1
+effect async function f() { }   // error: pick effect or async
+```
 
 ### Static rules
 
 | Rule | Diagnostic |
 | --- | --- |
-| `await`, `for await` or `await using` inside an `effect` function | code pending |
-| `await` applied to an Effect inside an `async` function | code pending |
-| `effect` on a getter, setter or constructor | code pending |
-| A written return type of an `effect` function that is not an Effect (TypeScript's TS1064 for `async`) | code pending |
-| A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](#direct-eval) defines it | code pending |
+| `await`, `for await` or `await using` inside an `effect` function | `EK0102` |
+| `await` applied to an Effect inside an `async` function | `EK0103` |
+| `effect` on a getter, setter or constructor | `EK0104` |
+| `effect` and `async` on one function | `EK0105` |
+| A written return type of an `effect` function that is not an Effect (TypeScript's TS1064 for `async`) | `EK0106` |
+| A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](#direct-eval) defines it | `EK0107` |
 
 "Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it.
 
-`try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the `[Effect]` parameter](900-appendices.md#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](002-running.md#static-rules)). What a parameter default may throw is in [Code outside the generator](003-failures.md#code-outside-the-generator).
+`try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the grammar's Effect parameter](900-appendices.md#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](002-running.md#static-rules)). What a parameter default may throw is in [Code outside the generator](003-failures.md#code-outside-the-generator).
 
 ### Meaning
 
@@ -100,14 +106,12 @@ The temporaries and helpers are declared at the top of the innermost enclosing n
 | Banned | What the rule matches | Quick fix |
 | --- | --- | --- |
 | `eval` | every `IdentifierReference` named `eval`: a direct `eval(s)` as ECMAScript defines it, and indirect uses such as `(0, eval)(s)`, `eval?.(s)` and `const e = eval` | move the code to a `.ts` or `.js` file |
-| `Function` | a call or `new` whose callee is an `IdentifierReference` resolving to the global `Function` constructor: `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
+| `Function` | every `IdentifierReference` resolving to the global `Function` constructor, except the right operand of `instanceof` and the object of a member access (decided detail 33): `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`, `const F = Function`. `x instanceof Function` and `Function.prototype` are allowed; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
 | `arguments` | every `IdentifierReference` named `arguments` | a rest parameter |
 | `var` | every `var` declaration, `for (var …)` included | `let`, or `const` when the binding is never assigned |
 | `with` | every `with` statement (already an early error in strict code, which a module is) | rewrite the property reads |
 
 Property names such as `o.arguments`, `o.eval` and `{ var: 1 }` are names, not references, and are unaffected. A static rule can't see a constructor reached by reflection, such as `(() => {}).constructor`; that is not checked.
-
-**Undecided (pending VIP):** whether a `Function` reference that is not a callee is an error: an alias (`const F = Function`), `x instanceof Function`, `Function.prototype`.
 
 With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](002-running.md#region-bodies), [Expression lowering](002-running.md#do-expressions), [Pattern matching](004-match.md) and [Runtime guarantees](008-runtime.md) refer to this rule. Inline `module` declarations stay denied ([VIP-25](../vips/0025-inline-modules-denied.md)).
 
@@ -116,6 +120,8 @@ With these five uses gone, no lowering has to hide its generator or generated na
 effect function count(x: number) { return arguments.length }   // error: `arguments` in a .vibe file
 effect function count2(...xs: number[]) { return xs.length }   // write a rest parameter
 function total(xs: number[]) { var t = 0; for (const x of xs) t += x; return t }   // error: `var`; write `let t = 0`
+const F = Function                                              // error: an alias reaches the constructor
+const isFn = (x: unknown) => x instanceof Function               // allowed
 ```
 
 ```ts effect
@@ -188,7 +194,19 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 
 ### Syntax
 
-[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. In a type, the scanner splits `!=` and `!==` into `!` followed by `=` or `==`, as TypeScript rescans `>=` after type arguments, so `const e: User!!= load()` is `const e: User!! = load()`. `!` continues a type only on the same line, as TypeScript's postfix `[]` does, so this is two statements, as in TypeScript:
+[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. `!` continues a type only on the same line, as TypeScript's postfix `[]` does. The `R` after `!!` also starts on that line and never with `{`, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
+
+```vibe es
+// compiler-gap: pending VIP-3
+const e: User!!= load()     // const e: User!! = load()
+if (x as number !== 0) { }  // (x as number) !== 0
+interface Clock {
+  now(): number!!           // two members, not R = later
+  later(): number!!
+}
+```
+
+A line break also ends the type, so this is two statements, as in TypeScript:
 
 ```vibe es
 // compiler-gap: pending VIP-3
@@ -221,7 +239,22 @@ function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.
 interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
-**Undecided (pending VIP):** how `!` binds next to other type operators, for example whether `A | B!E` is `(A | B)!E` or `A | (B!E)`, and whether a union in the error slot needs parentheses.
+`!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (decided detail 47). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`.
+
+```vibe es
+// compiler-gap: pending VIP-3
+type T = A | B!E       // syntax error
+type U = (A | B)!E     // ok
+type V = A | (B!E)     // ok
+type W = A!(E1 | E2)   // ok
+```
+
+```ts effect
+// fragment
+type U = Effect.Effect<A | B, E>
+type V = A | Effect.Effect<B, E>
+type W = Effect.Effect<A, E1 | E2>
+```
 
 ## Modules and the top level
 
@@ -253,6 +286,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`.
 - **Thrown types.** Each declaration carries its thrown type as [Thrown types](003-failures.md#thrown-types) defines it. An effectful function carries no `@throws`. Every other exported callable (a function, a method, a constructor, a function-typed `const`, an `async` function) carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default. Getters and setters carry none.
+- **Each call signature carries its own contract** ([Thrown types](003-failures.md#thrown-types)): every overload, and a returned callable's own signature. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type.
 - **`@rethrows` is copied.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it.
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](003-failures.md#effectful-callables)):
 
