@@ -1,0 +1,8 @@
+// expect: TS17006
+effect function badJoin() {
+  const child = fork Effect.succeed(2)
+  return join child ** 2
+}
+effect function badFork() {
+  return fork Effect.succeed(2) ** 2
+}

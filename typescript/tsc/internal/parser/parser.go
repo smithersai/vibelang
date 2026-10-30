@@ -4901,11 +4901,19 @@ func (p *Parser) parseUnaryExpressionOrHigher() *ast.Expression {
 	//      3) LeftHandSideExpression[?Yield][no LineTerminator here]--
 	//      4) ++UnaryExpression[?Yield]
 	//      5) --UnaryExpression[?Yield]
-	if p.isStartOfVibeLangFork() {
-		return p.parseVibeLangFork() // fork operand (vibelang_fibers.go)
-	}
-	if p.isStartOfVibeLangJoin() {
-		return p.parseVibeLangJoin() // join operand (vibelang_fibers.go)
+	if p.isStartOfVibeLangFork() || p.isStartOfVibeLangJoin() {
+		unaryOperator := p.scanner.TokenValue()
+		var expression *ast.Expression
+		if unaryOperator == "fork" {
+			expression = p.parseVibeLangFork()
+		} else {
+			expression = p.parseVibeLangJoin()
+		}
+		if p.token == ast.KindAsteriskAsteriskToken {
+			pos := scanner.SkipTrivia(p.sourceText, expression.Pos())
+			p.parseErrorAt(pos, expression.End(), diagnostics.An_unary_expression_with_the_0_operator_is_not_allowed_in_the_left_hand_side_of_an_exponentiation_expression_Consider_enclosing_the_expression_in_parentheses, unaryOperator)
+		}
+		return expression
 	}
 	if p.isStartOfVibeLangThrowExpression() {
 		return p.parseVibeLangThrowExpression() // x ?? throw e (vibelang_blocks.go)

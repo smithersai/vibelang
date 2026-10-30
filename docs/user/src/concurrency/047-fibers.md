@@ -24,6 +24,8 @@ effect function buildDashboard() {
 
 `fork loadChart()` starts the Effect returned by `loadChart()`. To fork several statements, write `fork effect { ... }`. An existing Effect value is also a valid operand: after `const job = loadChart()`, write `fork job`. `join` takes a fiber: `join chart` waits for the fiber's result. A plain `fork` is owned by the current fiber, which interrupts unfinished children when it ends. `await` waits for Promises inside async functions. Awaiting a fiber there is the `EK4609` lint warning, whose fix is `join`; awaiting a `Deferred` is `EK4610`, whose fix is `try Deferred.await(d)`.
 
+`fork` and `join` follow the unary precedence of `await`. Parenthesize either operator on the left of exponentiation: `(join child) ** 2`. They may appear directly on its right: `2 ** join child`.
+
 ## Awaiting completion as data
 
 ```vibe
