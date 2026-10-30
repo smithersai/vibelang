@@ -304,8 +304,9 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 
 One algorithm decides every subject (VIP-7, amended; decided details 10, 78 and 102):
 
-- **Subjects.** Normalize the subject's declared type into a union of members, expanding `boolean` to `true | false`, an enum to its members, a `data` type to its variants, `Option.Option<A>` to `None | Some`, and `Exit.Exit<A, E>` and `Result.Result<A, E>` to `Success | Failure`. `EK4701` applies when every member is a literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six `Option`, `Exit` and `Result` cases, a retained Effect error ([Retained fixed patterns](/spec/004-match#retained-fixed-patterns)), or an object, interface or class instance with a `_tag` property of exactly one string literal type (detail 102). Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off for that `match`, which keeps TC39's run-time `TypeError`.
-- **Coverage.** Only an unguarded arm covers anything. A literal, `null`, `undefined` or enum-member pattern covers that member. A bare binding (`let x`) covers every member. `when NotFound:` and `when NotFound(let e):` cover `NotFound`; `when NotFound():` and `when NotFound({ id: "x" }):` cover nothing. A fixed pattern (`Option.Some(let v)`, `Option.None`, `Exit.Success(…)`, `Exit.Failure(…)`, `Result.Success(…)`, `Result.Failure(…)`) and a retained error's bare or one-binding extractor cover their case when every argument pattern is a bare `let` binding. An object pattern covers `data` variant `V` or a subject member with literal `_tag: "V"` when it has `_tag: "V"` and every other property is a bare key or a `let` binding of a field `V` declares as required. `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a `default`.
+- **Subjects.** Normalize the subject's declared type into a union of members, expanding `boolean` to `true | false`, an enum to its members, a `data` type to its variants, `Option.Option<A>` to `None | Some`, and `Exit.Exit<A, E>` and `Result.Result<A, E>` to `Success | Failure`. `EK4701` applies when every member is a literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six `Option`, `Exit` and `Result` cases, a retained Effect error ([Retained fixed patterns](/spec/004-match#retained-fixed-patterns)), or a tagged member. Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off for that `match`, which keeps TC39's run-time `TypeError`.
+- <a id="tagged-members"></a>**Tagged members.** Only `_tag` is a discriminant, Effect's convention, and `EK4701` treats it exactly as TypeScript treats `switch (s._tag)`. A member is tagged when it is an object, interface or class instance and its `_tag` is what TypeScript calls a literal type: a string, number, bigint, boolean, enum, `null` or `undefined` literal, or a union of those. Each of those literals is a case of the member, and an optional `_tag` has the case `undefined`. A `_tag` of any other type, such as `string` or a template type, is not tagged, because TypeScript checks no `switch` over it.
+- **Coverage.** Only an unguarded arm covers anything. A literal, `null`, `undefined` or enum-member pattern covers that member. A bare binding (`let x`) covers every member. `when NotFound:` and `when NotFound(let e):` cover `NotFound`; `when NotFound():` and `when NotFound({ id: "x" }):` cover nothing. A fixed pattern (`Option.Some(let v)`, `Option.None`, `Exit.Success(…)`, `Exit.Failure(…)`, `Result.Success(…)`, `Result.Failure(…)`) and a retained error's bare or one-binding extractor cover their case when every argument pattern is a bare `let` binding. An object pattern with `_tag: "V"` covers case `V` of each `data` variant or tagged member that declares every other property it tests, a bare key or a `let` binding, as required: `"x" in s` removes a member from its false branch only where `x` is required. Members that share a tag are covered one at a time, and one left uncovered stays uncovered. The `undefined` case of an optional `_tag` is covered only by a bare binding, because `{ _tag: undefined }` tests `"_tag" in s` first and an absent tag fails that test. `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a `default`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
@@ -316,6 +317,11 @@ declare const d: Delivery
 match (d) { when { _tag: "Sent", let tracking }: 1; }                    // EK4701: Waiting not covered
 match (d) { when { _tag: "Sent" } or { _tag: "Waiting" }: 1; }          // ok
 match (plain) { when { _tag: "Sent" }: 1; } // plain: { _tag: "Sent" } | { _tag: "Waiting" }: EK4701
+match (s) { when { _tag: "A" }: 1; }        // s: { _tag: "A"; x: number } | { _tag: "A"; y: number }: ok
+match (s) { when { _tag: "A", let x }: x; } // EK4701: the y member is left
+match (o) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } // o: { _tag?: "A" } | { _tag: "B" }: EK4701: no tag is left
+match (u) { when { _tag: "A" }: 1; when { _tag: "C" }: 3; } // u: { _tag: "A" | "B" } | { _tag: "C" }: EK4701: "B" is left
+match (w) { when { _tag: "A" }: 1; } // w: { _tag: "A" } | { _tag: string }: no check, as for a switch
 match (k) { when { kind: "a" }: 1; } // k: { kind: "a" } | { kind: "b" }: no check
 match (n) { when 1: "a"; }                                               // n: number: no check
 match (b) { when true and if (flag): 1; when false: 0; }                 // EK4701: a guarded arm covers nothing
@@ -330,6 +336,58 @@ const taggedLabel = Match.type<Tagged>().pipe(
   Match.exhaustive
 )
 taggedLabel({ _tag: "Sent", tracking: "1Z" }) // "1Z"
+```
+
+`tsc --strict` gives the rule for tagged members, on the same shapes:
+
+```ts [Effect]
+type Shared = { _tag: "A"; x: number } | { _tag: "A"; y: number }
+function shared(s: Shared) {
+  if (s._tag === "A" && "x" in s) return s.x
+  // @ts-expect-error: the y member is left
+  const left: never = s
+  return left
+}
+type Optional = { _tag?: "A" } | { _tag: "B" }
+function optional(o: Optional) {
+  switch (o._tag) { case "A": return 1; case "B": return 2 }
+  // @ts-expect-error: { _tag?: "A" } is left, until a `case undefined`
+  const left: never = o
+  return left
+}
+type Union = { _tag: "A" | "B"; x: number } | { _tag: "C" }
+function union(u: Union) {
+  switch (u._tag) { case "A": return 1; case "C": return 3 }
+  // @ts-expect-error: "B" is left
+  const left: never = u
+  return left
+}
+function unionDone(u: Union) {
+  switch (u._tag) { case "A": return 1; case "B": return 2; case "C": return 3 }
+  const left: never = u
+  return left
+}
+type Units = { _tag: 1 } | { _tag: true } | { _tag: null }
+function units(n: Units) {
+  switch (n._tag) { case 1: return 1; case true: return 2; case null: return 3 }
+  const left: never = n
+  return left
+}
+type Wide = { _tag: "A" } | { _tag: string }
+function wide(w: Wide) {
+  switch (w._tag) { case "A": return 1 }
+  // @ts-expect-error: string has no last case
+  const left: never = w
+  return left
+}
+type Payload = { _tag: "A"; x?: number } | { _tag: "B" }
+function payload(p: Payload) {
+  if (p._tag === "A" && "x" in p) return 1
+  if (p._tag === "B") return 2
+  // @ts-expect-error: A without x is left
+  const left: never = p
+  return left
+}
 ```
 
 ```vibe [VibeLang]

@@ -246,7 +246,7 @@ The object-pattern test first checks for an ECMAScript object (including functio
 
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
 
-VIP-7 includes `data` unions and object, interface or class-instance members whose `_tag` has exactly one string literal type in the exhaustiveness check (`EK4701`; decided detail 102). Every normalized subject member must be one of the checked kinds in [Exhaustiveness](004-match.md#exhaustiveness); another member turns the check off. Guarded arms cover nothing. An object pattern covers variant or tagged member `V` when it has `_tag: "V"` and every other property is a bare key or a `let` binding of a field `V` declares as required; `or` covers the union of its alternatives (decided details 78 and 102). Coverage never changes the ordered tests that run. A class pattern naming a `data` declaration or variant is `EK0702` ([Class patterns](004-match.md#class-patterns)).
+VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) in the exhaustiveness check (`EK4701`). Every normalized subject member must be one of the checked kinds in [Exhaustiveness](004-match.md#exhaustiveness); another member turns the check off. Coverage is defined there too, and never changes the ordered tests that run. A class pattern naming a `data` declaration or variant is `EK0702` ([Class patterns](004-match.md#class-patterns)).
 
 | Rule | Diagnostic |
 | --- | --- |
