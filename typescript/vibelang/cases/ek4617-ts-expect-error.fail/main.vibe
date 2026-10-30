@@ -1,4 +1,4 @@
-// expect: EK4617 TS2578
+// expect: EK0103 TS2578
 // An expect-error comment does not apply to EK diagnostics, so the one below
 // expects nothing and is itself reported as unused (TS2578).
 export async function total() {

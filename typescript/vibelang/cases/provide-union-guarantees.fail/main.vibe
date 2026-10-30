@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 // A union of providers is one of them at run time, so a provide block over
 // it discharges only the services every member provides: neither LA nor LB
 // provides both A and B, and neither CA nor CB does. A service each member

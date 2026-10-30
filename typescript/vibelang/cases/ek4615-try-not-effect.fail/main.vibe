@@ -1,4 +1,4 @@
-// expect: EK4615 EK4615 EK4615
+// expect: EK0502 EK0502 EK0502
 // try runs an Effect (VIP-5): before a plain call, a value that is not an
 // Effect, or a call passed by name, which the callee runs, it runs nothing.
 function plain(n: number) {

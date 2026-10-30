@@ -15,7 +15,7 @@
     "declaration": true,
     "vibelang": {
       "diagnostics": {
-        "EK2004": "error"
+        "EK9204": "error"
       }
     }
   },

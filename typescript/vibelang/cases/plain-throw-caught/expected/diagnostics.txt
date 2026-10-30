@@ -1,1 +1,1 @@
-a.vibe(23,12): warning EK2004
+a.vibe(23,12): warning EK9204

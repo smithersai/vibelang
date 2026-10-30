@@ -7,7 +7,7 @@
 // every case whose name contains it. Each case is a directory with a
 // tsconfig.json, and its kind comes from its sources:
 //
-//   - A failing case has a source whose first line is `// expect: EK2001 ...`.
+//   - A failing case has a source whose first line is `// expect: EK9201 ...`.
 //     It passes when the error codes tsc reports are exactly those codes.
 //   - A runnable case has a source with a `// expect-result: <json>` line.
 //     That source must export main(), a function that returns an Effect. The
@@ -93,7 +93,7 @@ function select(selector) {
   return matches
 }
 
-// Diagnostics as `tsc --pretty false` prints them: `file(line,col): error EK2001: message`,
+// Diagnostics as `tsc --pretty false` prints them: `file(line,col): error EK9201: message`,
 // or without the location for diagnostics that have no file.
 const diagnosticLine = /^(?:(.+)\((\d+),(\d+)\): )?(error|warning|message|suggestion) ([A-Za-z]+\d+): /
 

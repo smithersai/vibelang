@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 error NotFound { id: string }
 
 export effect function find(id: string): string!! {

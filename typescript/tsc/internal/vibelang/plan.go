@@ -319,7 +319,7 @@ func (a *analyzer) isEffect(fn *ast.Node) bool {
 		// size(): number method's this.next.size() does, is plain when fn has
 		// a plain return annotation: the annotation names its form (rule F),
 		// as D56's fixpoint counts a plain candidate's own cycle, and a body
-		// that runs an Effect is EK2003 at the annotation.
+		// that runs an Effect is EK9203 at the annotation.
 		return !a.hasPlainContract(fn)
 	case stateEffect:
 		return true
@@ -348,7 +348,7 @@ func (a *analyzer) performs(call *ast.Node) bool {
 
 // runsVariant reports whether call calls an Effect function through its plain
 // variant (D421). It runs no Effect, but its callee is an Effect function,
-// which plain code may not call (D500): EK1001, EK2003, or EK4301.
+// which plain code may not call (D500): EK1001, EK9203, or EK4301.
 func (a *analyzer) runsVariant(call *ast.Node) bool {
 	if inHatch(call) || holdsProgram(a.checker, call) {
 		return false

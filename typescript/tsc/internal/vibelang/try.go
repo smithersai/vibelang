@@ -19,7 +19,7 @@ import (
 // any other operand, try p is $try(p), the runtime's identity on Effects,
 // which the checker gives p's success type and the lowering writes as
 // yield* p, or p itself where $try(p) is passed by name. Anything else, a
-// call passed or held unrun or a value that is not an Effect, is EK4615.
+// call passed or held unrun or a value that is not an Effect, is EK0502.
 //
 // try(…) was a hatch, Effect.try with its inputs after its function (D148).
 // It now parses as try applied to the parenthesized operand, and EK4616
@@ -31,14 +31,14 @@ import (
 //	try(async (signal) => load(signal))           try Effect.tryPromise(async (signal) => load(signal))
 
 var (
-	// EK4615: try before something that is not an Effect. {0} is the operand, {1} its type.
-	EK4615 = message(4615, errorCategory, "try runs an Effect, but {0} is {1}.")
+	// EK0502: try before something that is not an Effect. {0} is the operand, {1} its type.
+	EK0502 = message(502, errorCategory, "try runs an Effect, but {0} is {1}.")
 	// EK4616: the retired try(…) hatch. {0} is the wrapper that replaces it.
 	EK4616 = message(4616, errorCategory, "try(…) is no longer a hatch: try runs an Effect. Wrap the code with {0}, then run it with try.")
 )
 
 func init() {
-	registry[EK4615.Code] = EK4615
+	registry[EK0502.Code] = EK0502
 	registry[EK4616.Code] = EK4616
 	fileChecks = append(fileChecks, checkTries)
 	tsFormFixCodes = append(tsFormFixCodes, EK4616.Code)
@@ -71,7 +71,7 @@ func tryOperand(node *ast.Node) *ast.Node {
 
 // checkTries reports each try of file that runs nothing: a call that does
 // not run where it stands, a retired try(…) hatch (EK4616), or a value that
-// is not an Effect (EK4615).
+// is not an Effect (EK0502).
 func checkTries(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -104,7 +104,7 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		return
 	}
 	text := shortText(expressionText(file, operand), "the operand")
-	d := report(c, operand, EK4615, text, "not an Effect: "+c.TypeToString(t))
+	d := report(c, operand, EK0502, text, "not an Effect: "+c.TypeToString(t))
 	switch {
 	case c.GetPromisedTypeOfPromise(t) != nil:
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", expressionText(file, operand))
@@ -135,7 +135,7 @@ func triedText(file *ast.SourceFile, operand *ast.Node) string {
 // Where an Effect call cannot run at all, at a module's top level or in a
 // plain function, the error that the call draws without try stands alone.
 // A call this position passes by name or holds as a program, or one that
-// returns anything but an Effect, is EK4615.
+// returns anything but an Effect, is EK0502.
 func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) {
 	keyword := tryKeyword(file, operand)
 	call := ast.SkipParentheses(operand)
@@ -145,16 +145,16 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 	}
 	text := shortText(triedText(file, operand), "the call")
 	if a.performs(call) && a.byNameOf(call) == nil && !inHatch(call) {
-		return // EK1001, EK2003, or EK4301 already reports the call
+		return // EK1001, EK9203, or EK4301 already reports the call
 	}
 	if isInvocation(call) && (a.performs(call) || callReturnsEffect(c, call)) {
 		switch {
 		case a.byNameOf(call) != nil:
-			note(reportAt(c, file, keyword, EK4615, text, "a program this position passes by name without running it"), "Remove try to pass the program, or run it first: const value = try {0}.", text)
+			note(reportAt(c, file, keyword, EK0502, text, "a program this position passes by name without running it"), "Remove try to pass the program, or run it first: const value = try {0}.", text)
 		case holdsProgram(c, call):
-			note(reportAt(c, file, keyword, EK4615, text, "a program this position holds without running it"), "Remove try to hold the program, or run it first: const value = try {0}.", text)
+			note(reportAt(c, file, keyword, EK0502, text, "a program this position holds without running it"), "Remove try to hold the program, or run it first: const value = try {0}.", text)
 		default:
-			note(reportAt(c, file, keyword, EK4615, text, "a call of a function that compiles to plain JavaScript, which runs no Effect"), "Remove try: the call gives its value.")
+			note(reportAt(c, file, keyword, EK0502, text, "a call of a function that compiles to plain JavaScript, which runs no Effect"), "Remove try: the call gives its value.")
 		}
 		return
 	}
@@ -162,7 +162,7 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
 		return
 	}
-	d := reportAt(c, file, keyword, EK4615, text, "not an Effect: "+c.TypeToString(t))
+	d := reportAt(c, file, keyword, EK0502, text, "not an Effect: "+c.TypeToString(t))
 	if c.GetPromisedTypeOfPromise(t) != nil {
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", text)
 	} else {

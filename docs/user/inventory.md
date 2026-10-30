@@ -190,6 +190,7 @@ Code example count: one example per fenced code block in the source body, includ
 - [Cheat sheet](src/vibelang-features/115-cheat-sheet.md)
 - [Pattern matching with match and is](src/vibelang-features/116-match-and-is.md)
 - [Token counts](src/vibelang-features/117-token-counts.md)
+- [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md)
 - [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md)
 
 ### Specification
@@ -337,6 +338,7 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 | [Cheat sheet](src/vibelang-features/115-cheat-sheet.md) | Every VibeLang change beside the Effect code it replaces |
 | [Pattern matching with match and is](src/vibelang-features/116-match-and-is.md) | `match` arms, every pattern kind, Option, Exit, and Result matchers, custom matchers, `is` bindings, exhaustiveness |
 | [Token counts](src/vibelang-features/117-token-counts.md) | Tokens an agent loads: the skill, each page, and each cheat-sheet entry in Effect TypeScript and VibeLang |
+| [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md) | Appendix B diagnostic code renumbering and repairs |
 | [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md) | What VibeLang adds where Effect lacks an API: `Experimental.FileSystem`, `Crypto`, `Process` and `Locks`, their layers, and how they leave |
 
 ## Counts by sidebar section

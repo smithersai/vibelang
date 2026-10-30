@@ -1,4 +1,4 @@
-// expect: EK3207 EK2002
+// expect: EK3207 EK9202
 // A list of layers provides what its required entries provide (D362): an
 // array value may be empty, which is EK3207, and a rest entry may be absent,
 // so they discharge nothing, while the entries of a tuple and of an array

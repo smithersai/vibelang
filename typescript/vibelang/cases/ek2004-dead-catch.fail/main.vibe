@@ -1,8 +1,8 @@
-// expect: EK2004 EK2004 EK2004 EK2004
+// expect: EK9204 EK9204 EK9204 EK9204
 // A catch receives typed failures only (D13, D282), so a catch whose try
 // block fails with no expected error can never run: Option.getOrThrow's
 // exception and a JavaScript TypeError are defects that pass through it.
-// EK2004 is a warning by default; this project makes it an error.
+// EK9204 is a warning by default; this project makes it an error.
 // TypeScript's complaint about e._tag on never is covered.
 import { Console, Data, Effect, Option } from "effect"
 

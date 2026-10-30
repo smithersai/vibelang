@@ -19,7 +19,7 @@ import (
 // members a service declares: properties, which become value members, and
 // methods whose return type is an Effect type, which become operations with
 // the ! form of that type (D127), since a member without a body must write
-// its contract (EK2101). The class must be named, exported or not, without
+// its contract (EK9205). The class must be named, exported or not, without
 // type parameters, an implements clause, members of its own, or the make
 // option. The declaration keeps the written key string as static readonly
 // key = "<key>" in its body (D501) unless it is the key the declaration

@@ -83,3 +83,22 @@ func TestErrorSummaryCountsAMappedFileOnce(t *testing.T) {
 		t.Fatalf("summary %q, want %q", got, want)
 	}
 }
+
+// VIP-34's hundred-block codes retain leading zeros in both CLI renderers.
+func TestEKCodeLeadingZeros(t *testing.T) {
+	for _, tc := range []struct{ source, want string }{{"EK", "EK0103"}, {"other", "other103"}, {"", "TS103"}} {
+		d := WrapASTDiagnostic(ast.NewExternalDiagnostic(nil, core.TextRange{}, tc.source, diagnostics.CategoryError, 103, "bad"))
+		opts := &FormattingOptions{NewLine: "\n"}
+		for _, pretty := range []bool{false, true} {
+			var out strings.Builder
+			if pretty {
+				FormatDiagnosticWithColorAndContext(&out, d, opts)
+			} else {
+				WriteFormatDiagnostic(&out, d, opts)
+			}
+			if got := plain(out.String()); !strings.Contains(got, tc.want+":") {
+				t.Errorf("pretty=%v: %q, want %s", pretty, got, tc.want)
+			}
+		}
+	}
+}

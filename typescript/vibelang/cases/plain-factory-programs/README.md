@@ -7,7 +7,7 @@ pins body classification when the factory call is the only Effect operation.
 The plain generic `identity` also runs its Effect-valued instantiated result.
 
 The companion `.fail` case pins EK1001 for unannotated top-level construction,
-EK2003 for running a factory result under a plain contract, and EK2001/EK2002
+EK9203 for running a factory result under a plain contract, and EK9201/EK9202
 for the returned program's failure and requirement channels.
 
 Emitter audit:

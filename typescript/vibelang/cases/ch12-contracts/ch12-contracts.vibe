@@ -76,7 +76,7 @@ effect function quoteCart(cartId: string) {
 // Effect<Quote, CartNotFound | EmptyCart, Carts | Pricing>
 
 // Checking a written contract
-// NOTE: the proposal's example omits Mailer from R to show EK2002 (ch12-welcome-missing-mailer.fail.vibe);
+// NOTE: the proposal's example omits Mailer from R to show EK9202 (ch12-welcome-missing-mailer.fail.vibe);
 // this version states the full contract, which must check.
 
 export effect function welcome(id: string): Effect<string, UserNotFound | MailError, Users | Mailer> {
@@ -85,7 +85,7 @@ export effect function welcome(id: string): Effect<string, UserNotFound | MailEr
   return user.name
 }
 
-// Declarations without bodies: see ch12-rates-bare-return.fail.vibe (EK2101).
+// Declarations without bodies: see ch12-rates-bare-return.fail.vibe (EK9205).
 
 // Recursion
 

@@ -1,4 +1,4 @@
-// expect: EK2002 EK2001
+// expect: EK9202 EK9201
 // A contract wider than the body binds its callers: the call below can fail
 // with Gone and needs Needed, although longForm's body runs nothing.
 error Gone {}

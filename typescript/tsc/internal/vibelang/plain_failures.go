@@ -13,9 +13,9 @@ import (
 // A plain return annotation (D67) makes a function plain JavaScript because
 // it never fails and never needs a service (D282). `throw` is a typed failure
 // everywhere outside a hatch, so a throw that can escape such a function is a
-// compile error, as running an Effect in it is: both are EK2003.
+// compile error, as running an Effect in it is: both are EK9203.
 //
-//	const validate = (value: string): string => {   // EK2003: can fail with Invalid
+//	const validate = (value: string): string => {   // EK9203: can fail with Invalid
 //	  if (value === "") throw new Invalid({ value })
 //	  return value
 //	}
@@ -25,22 +25,22 @@ import (
 // function calls throws is not a typed failure: it propagates unchanged and
 // becomes a defect where it reaches an effectful caller.
 
-// EK2003's texts lead with what the plain function can't do, name the
+// EK9203's texts lead with what the plain function can't do, name the
 // function and what it throws or runs, then say why: its return annotation.
 // The notes give each way out as code, the likely one first.
 var (
 	// plainContractThrow: a throw escapes. {0} is the function, {1} what it
 	// throws, {2} the annotation.
-	plainContractThrow = EK2003.With("{0} can't throw {1}: its return annotation, {2}, makes it a plain function, which never fails.")
+	plainContractThrow = EK9203.With("{0} can't throw {1}: its return annotation, {2}, makes it a plain function, which never fails.")
 	// plainContractRun: a call runs an Effect. {0} is the function, {1} the
 	// call, {2} the annotation.
-	plainContractRun = EK2003.With("{0} can't run {1}, an Effect: its return annotation, {2}, makes it a plain function, which runs no Effects.")
+	plainContractRun = EK9203.With("{0} can't run {1}, an Effect: its return annotation, {2}, makes it a plain function, which runs no Effects.")
 	// plainContractFailingRun: a call runs an Effect that can fail. {0} is the
 	// function, {1} the call, {2} its failures, {3} the annotation.
-	plainContractFailingRun = EK2003.With("{0} can't run {1}, an Effect that can fail with {2}: its return annotation, {3}, makes it a plain function, which runs no Effects.")
+	plainContractFailingRun = EK9203.With("{0} can't run {1}, an Effect that can fail with {2}: its return annotation, {3}, makes it a plain function, which runs no Effects.")
 	// plainContractFailure: a failure escapes from another source. {0} is the
 	// function, {1} the failures, {2} the annotation.
-	plainContractFailure = EK2003.With("{0} can't fail with {1}: its return annotation, {2}, makes it a plain function, which never fails.")
+	plainContractFailure = EK9203.With("{0} can't fail with {1}: its return annotation, {2}, makes it a plain function, which never fails.")
 )
 
 func init() {
@@ -143,7 +143,7 @@ func (a *analyzer) plainFailures(fn *ast.Node) *checker.Type {
 	return failures
 }
 
-// reportFailingPlainContract reports EK2003 at the plain return annotation of
+// reportFailingPlainContract reports EK9203 at the plain return annotation of
 // fn when fn's body can fail, and reports whether it did.
 func (a *analyzer) reportFailingPlainContract(fn *ast.Node) bool {
 	failures := a.plainFailures(fn)
@@ -176,7 +176,7 @@ func (a *analyzer) reportFailingPlainContract(fn *ast.Node) bool {
 	return true
 }
 
-// reportRunningPlainContract reports EK2003 at the plain return annotation of
+// reportRunningPlainContract reports EK9203 at the plain return annotation of
 // fn, whose body runs an Effect but cannot fail.
 func (a *analyzer) reportRunningPlainContract(fn *ast.Node) {
 	c := a.checker
@@ -188,18 +188,18 @@ func (a *analyzer) reportRunningPlainContract(fn *ast.Node) {
 	if call := a.firstEffectRun(fn); call != nil {
 		d = report(c, annotation, plainContractRun, upperFirst(name), messageCallText(file, call), written)
 	} else {
-		d = report(c, annotation, EK2003, upperFirst(name), written)
+		d = report(c, annotation, EK9203, upperFirst(name), written)
 	}
 	note(d, "Make it an Effect function: {0}", a.plainEffectContract(fn, written))
 	note(d, "Or remove the annotation to infer the whole contract.")
 }
 
-// plainContractFailureFix writes the Effect contract that EK2003 offers: `:
+// plainContractFailureFix writes the Effect contract that EK9203 offers: `:
 // string` becomes `: string!Invalid!` for a body that can fail, and `:
 // number!!` for one that runs an Effect.
 var plainContractFailureFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2003.Code},
+	ErrorCodes: []int32{EK9203.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		annotation := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 			return node.Parent != nil && isLowerable(node.Parent) && node.Parent.Type() == node
@@ -262,7 +262,7 @@ func (a *analyzer) reportFailingCallback(file *ast.SourceFile, fn *ast.Node, cal
 
 // reportFailingMethod reports EK4301 at the name of fn, a method that
 // implements owner's plain-function member, when it can fail. A method with a
-// plain return annotation has EK2003 instead.
+// plain return annotation has EK9203 instead.
 func (a *analyzer) reportFailingMethod(file *ast.SourceFile, fn *ast.Node, owner string) {
 	if fn.Type() != nil {
 		return
@@ -326,22 +326,22 @@ func forEachEscapingThrowIn(root *ast.Node, cb func(throw *ast.Node)) {
 // is an Effect, so none of them can fail (D282). A throw is a typed failure
 // everywhere outside a hatch or a module declaration, so one that can escape
 // such code is a compile error, as it is in a function with a plain return
-// annotation: EK2003, and EK1001 at a module's top level, where running a
+// annotation: EK9203, and EK1001 at a module's top level, where running a
 // program is EK1001 too.
 //
 //	error Invalid { value: number }
 //	class Port {
 //	  constructor(readonly value: number) {
-//	    if (value < 0) throw new Invalid({ value })   // EK2003
+//	    if (value < 0) throw new Invalid({ value })   // EK9203
 //	  }
 //	}
 //
 // A throw that the code's own catch handles stays inside it.
 
-// plainCodeFailure is EK2003's text for a throw that can escape a constructor,
+// plainCodeFailure is EK9203's text for a throw that can escape a constructor,
 // an accessor or a static block. {0} names the code, {1} is what it throws,
 // and {2} the kind of code.
-var plainCodeFailure = EK2003.With("{0} can't throw {1}: {2} runs as plain JavaScript, which never fails.")
+var plainCodeFailure = EK9203.With("{0} can't throw {1}: {2} runs as plain JavaScript, which never fails.")
 
 // topLevelFailure is EK1001's text for a throw that can escape a module's top
 // level. {0} is what it throws.
@@ -356,7 +356,7 @@ const topLevelBlockNote = "Move it into a function that a program runs, such as 
 const moduleThrowNote = "Or escape to TypeScript, whose throw is JavaScript's: move the code to a module block or a .ts file."
 
 // checkPlainCodeThrows reports each throw that can escape a module's top level
-// (EK1001) or a constructor, accessor or static block (EK2003) in file.
+// (EK1001) or a constructor, accessor or static block (EK9203) in file.
 func checkPlainCodeThrows(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	forEachEscapingThrowIn(file.AsNode(), func(throw *ast.Node) {

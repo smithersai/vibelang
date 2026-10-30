@@ -76,7 +76,7 @@ effect function readImplementation() {
 // Output: ticket-23 23
 ```
 
-A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as EK2001, and an undeclared call-time requirement as EK3101. Support for the new `defaultValue` form arrives with the compiler's VIP implementation.
+A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as `EK9201`, and an undeclared call-time requirement as `EK3101`. Support for the new `defaultValue` form arrives with the compiler's VIP implementation.
 
 `try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 

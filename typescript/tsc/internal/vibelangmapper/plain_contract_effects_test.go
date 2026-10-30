@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-// D282 keeps EK2003 for actual Effect calls under a plain return contract.
+// D282 keeps EK9203 for actual Effect calls under a plain return contract.
 func TestPlainContractEffectGreet(t *testing.T) {
 	source := "import { Console } from \"effect\"; export function greet(name: string): number { Console.log(`hello, ${name}`); return name.length }"
 	assertPlainContractDiagnostic(t, source, true)
 }
 
 // D282: a plain contract never fails, so a throw that can escape it is
-// EK2003, in a statement, a throw expression, or a match arm, and also under a
+// EK9203, in a statement, a throw expression, or a match arm, and also under a
 // contextual plain type. A throw its own try catches stays inside it.
 func TestPlainContractThrowHalf(t *testing.T) {
 	for _, source := range []string{
@@ -103,7 +103,7 @@ func assertPlainContractDiagnostic(t *testing.T, source string, want bool) {
 			}
 		}
 		if (count > 0) != want || count > 1 {
-			t.Fatalf("diagnostics=%v, want EK2003=%v\n%s", projection.Diagnostics, want, source)
+			t.Fatalf("diagnostics=%v, want EK9203=%v\n%s", projection.Diagnostics, want, source)
 		}
 	}
 }
@@ -122,7 +122,7 @@ func TestPlainContractByNameEffects(t *testing.T) {
 }
 
 // D296: a generator with a JavaScript iterator annotation never fails, so a
-// throw that can escape it is EK2003 in both renderings; one its own catch
+// throw that can escape it is EK9203 in both renderings; one its own catch
 // handles, and one in a nested function, are not.
 func TestPlainGeneratorThrows(t *testing.T) {
 	for _, test := range []struct {

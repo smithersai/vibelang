@@ -1,4 +1,4 @@
-// expect: EK2002 TS2322
+// expect: EK9202 TS2322
 // A service's identifier is nominal (D361, D501): only a type that carries
 // A's key, as Effect's Context.Service class declares it, is A. Widening A's requirement to a structural type with A's members
 // is allowed, but that type is not B either, so providing B leaves it in R

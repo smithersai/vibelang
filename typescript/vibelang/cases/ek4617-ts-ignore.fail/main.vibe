@@ -1,5 +1,5 @@
-// expect: EK4617
-// @ts-ignore hides TypeScript's diagnostics only; EK4617 is still reported.
+// expect: EK0103
+// @ts-ignore hides TypeScript's diagnostics only; EK0103 is still reported.
 export async function total() {
   // @ts-ignore
   await sleep("1 millis")

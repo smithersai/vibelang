@@ -372,7 +372,7 @@ func categoryName(c diagnostics.Category) string {
 
 func diagnosticKey(d *ast.Diagnostic) string {
 	if d.Source() == "EK" {
-		return fmt.Sprintf("EK%d", d.Code())
+		return fmt.Sprintf("EK%04d", d.Code())
 	}
 	return fmt.Sprintf("TS%d", d.Code())
 }

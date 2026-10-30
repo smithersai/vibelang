@@ -76,7 +76,7 @@ test("every EK code the skill names is one the compiler reports", () => {
   const dir = "typescript/tsc/internal/vibelang"
   const sources = readdirSync(new URL(`../../${dir}`, import.meta.url)).filter(name => name.endsWith(".go") && !name.endsWith("_test.go"))
   const codes = new Set(sources.flatMap(name => [...read(`${dir}/${name}`).matchAll(/\bmessage\((\d{4}),/g)].map(m => `EK${m[1]}`)))
-  assert.ok(codes.has("EK2001") && codes.has("EK4801") && codes.has("EK4836"), "the registry scan found the compiler's codes")
+  assert.ok(codes.has("EK9201") && codes.has("EK4801") && codes.has("EK4836"), "the registry scan found the compiler's codes")
   const named = [...read("packages/compiler/skills/vibelang/SKILL.md").matchAll(/\bEK\d{4}\b/g)].map(m => m[0])
   assert.ok(named.length >= 5)
   assert.deepEqual(named.filter(code => !codes.has(code)), [])

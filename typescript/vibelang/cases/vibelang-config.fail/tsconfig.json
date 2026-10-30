@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true,
     "outDir": "out",
-    "vibelang": { "diagnostics": { "EK2004": "loud", "EK2001": "off" }, "tracing": "sometimes", "tracng": "all" }
+    "vibelang": { "diagnostics": { "EK9204": "loud", "EK9201": "off" }, "tracing": "sometimes", "tracng": "all" }
   },
   "include": ["*.vibe", "*.ts"]
 }

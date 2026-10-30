@@ -15,7 +15,7 @@ import (
 )
 
 // VibeLang diagnostics are TypeScript diagnostics whose Source is "EK",
-// so tsc prints them as `error EK2001: …` and the language server publishes
+// so tsc prints them as `error EK0103: …` and the language server publishes
 // them with source "EK" and the code as a number. They are reported while the
 // checker checks a file, so `vibelang`, `vibelang --noEmit`, the language server, and
 // `vibelang --api` all see them, and @ts-ignore and @ts-expect-error do not apply
@@ -37,9 +37,9 @@ type Message struct {
 	Off      bool // off unless compilerOptions.vibelang or a comment turns it on, in Category
 }
 
-// String returns the code as the spec writes it, for example "EK2001".
+// String returns the code as the spec writes it, for example "EK0103".
 func (m *Message) String() string {
-	return diagnosticSource + strconv.Itoa(int(m.Code))
+	return fmt.Sprintf("%s%04d", diagnosticSource, m.Code)
 }
 
 // With returns a message with m's code and category and a different text,
@@ -57,13 +57,10 @@ const (
 	warningCategory = diagnostics.CategoryWarning
 )
 
-// The registry: every EK code in Chapter 28 of the spec
-// (docs/design/history/src/428-part4-ch28-tooling.md) with its default category and
-// the headline the spec prints for it. Every code is an error except EK2004,
-// EK2112, EK2113, EK2120, EK2121, and EK4406, which are warnings by default; a
-// EK4408 name collisions are warnings (D303). A
-// project may change the category of EK2004, EK4403, and EK4406 (design decisions D34,
-// D53, and D172).
+// The registry includes Appendix B's VIP identifiers and legacy diagnostics
+// pending retirement by their owning VIP implementations. appendix_codes.go
+// reserves rules whose behavior is not implemented yet; registration never
+// enables a check. See the user diagnostic-code map for renumbered identifiers.
 var (
 	// EK1001: a module's top level runs a program. {0} is the call, such as "loadConfig()".
 	EK1001 = message(1001, errorCategory, "{0} runs a program, but a module's top level is not inside one.")
@@ -90,23 +87,23 @@ var (
 	EK1022 = message(1022, errorCategory, parser.VibeLangNextLineBlockMessage)
 	// EK1023: a legacy decision would silently change meaning (D382). Not adjustable.
 	EK1023 = message(1023, errorCategory, "pipe now passes its first argument as the value it is, but through VibeLang 0.0.10 this pipe passed it as a program.")
-	// EK2001: an expected failure escapes the written contract. {0} is the failure, {1} the function, {2} what the contract allows.
-	EK2001 = message(2001, errorCategory, "{0} can escape {1}, but {2}.")
-	// EK2002: a requirement escapes the written contract. {0} is the function, {1} the requirement, {2} the contract's R.
-	EK2002 = message(2002, errorCategory, "{0} needs {1}, but its contract says R = {2}.")
-	// EK2003: a plain return annotation on a function whose body runs an Effect (D67) or can fail (D282). {0} is the function, {1} the annotation.
+	// EK9201: an expected failure escapes the written contract. {0} is the failure, {1} the function, {2} what the contract allows.
+	EK9201 = message(9201, errorCategory, "{0} can escape {1}, but {2}.")
+	// EK9202: a requirement escapes the written contract. {0} is the function, {1} the requirement, {2} the contract's R.
+	EK9202 = message(9202, errorCategory, "{0} needs {1}, but its contract says R = {2}.")
+	// EK9203: a plain return annotation on a function whose body runs an Effect (D67) or can fail (D282). {0} is the function, {1} the annotation.
 	// plain_failures.go names the call or the throw when it can.
-	EK2003 = message(2003, errorCategory, "{0} can't run Effects: its return annotation, {1}, makes it a plain function, which runs no Effects.")
-	// EK2004: an Effect try block with E = never; defects pass through.
-	EK2004 = message(2004, warningCategory, "This try block runs Effects but has no expected errors; defects pass through this catch.")
+	EK9203 = message(9203, errorCategory, "{0} can't run Effects: its return annotation, {1}, makes it a plain function, which runs no Effects.")
+	// EK9204: an Effect try block with E = never; defects pass through.
+	EK9204 = message(9204, warningCategory, "This try block runs Effects but has no expected errors; defects pass through this catch.")
 	// EK2005: a resumeWith program that needs a service or fails outside the operation's contract. {0} is what it needs.
 	EK2005 = message(2005, errorCategory, "resumeWith runs this code at the perform site, inside the handled program, where the clause's providers are not in scope. It needs {0}.")
 	// EK2006: a return, break, or continue that leaves a finally block. {0} is the statement's keyword.
 	EK2006 = message(2006, errorCategory, "{0} leaves a finally block, which would discard a failure in flight.")
-	// EK2101: a declaration without a body whose return type is not an Effect type. {0} is the declaration.
-	EK2101 = message(2101, errorCategory, "{0} has no body to infer from, so its contract must be written as an Effect type.")
-	// EK2103: a member of a service or control declaration with a body or an initializer. {0} is the member, {1} the word.
-	EK2103 = message(2103, errorCategory, "{0} has an implementation, but a {1} declares only contracts.")
+	// EK9205: a declaration without a body whose return type is not an Effect type. {0} is the declaration.
+	EK9205 = message(9205, errorCategory, "{0} has no body to infer from, so its contract must be written as an Effect type.")
+	// EK9207: a member of a service or control declaration with a body or an initializer. {0} is the member, {1} the word.
+	EK9207 = message(9207, errorCategory, "{0} has an implementation, but a {1} declares only contracts.")
 	// EK2104: a setup statement of a layer declaration that follows one of its members.
 	EK2104 = message(2104, errorCategory, "This statement follows the layer's members, but a layer's setup statements come first.")
 	// EK2105: a typed catch clause whose type has a member without a literal _tag. {0} is the clause's type, {1} the member.
@@ -132,8 +129,8 @@ var (
 	// EK2118: a subclass that declares fields and no constructor, whose base's constructor does not
 	// take one object of fields (D278). {0} is the subclass, {1} its base.
 	EK2118 = message(2118, errorCategory, "{0} declares fields and no constructor, but {1}'s constructor does not take its fields as one object.")
-	// EK2102: a recursive function whose A depends on its own result. {0} is the function.
-	EK2102 = message(2102, errorCategory, "{0} calls itself, and its success type depends on that call, so its contract must be written.")
+	// EK9206: a recursive function whose A depends on its own result. {0} is the function.
+	EK9206 = message(9206, errorCategory, "{0} calls itself, and its success type depends on that call, so its contract must be written.")
 
 	EK2115 = message(2115, errorCategory, "{0} returns a program, so its body runs when {0} is called and cannot run {1}.")
 	EK2116 = message(2116, errorCategory, "{0} returns a program on one path, so every path must return one; {1} does not.")
@@ -147,8 +144,8 @@ var (
 	EK3004 = message(3004, errorCategory, "instanceof {0} is always false: implementations are plain objects; check their members instead.")
 	// EK3005: a generic service class.
 	EK3005 = message(3005, errorCategory, "A service cannot have type parameters: every T would share one key; use an interface for the generic shape.")
-	// EK3006: a static member with the same name as a service member. {0} is the name.
-	EK3006 = message(3006, errorCategory, "The static member {0} has the same name as a service member.")
+	// EK9208: a static member with the same name as a service member. {0} is the name.
+	EK9208 = message(9208, errorCategory, "The static member {0} has the same name as a service member.")
 	// EK3101: a provider looks a service up per call where the contract allows no requirements. {0} is the member, {1} the service, {2} the contract.
 	EK3101 = message(3101, errorCategory, "{0} looks up {1} each time it is called, but {2} allows no call-time requirements.")
 	// EK3201: no provider for a required service. {0} is the service.
@@ -199,8 +196,8 @@ var registry = map[int32]*Message{}
 func init() {
 	for _, m := range []*Message{
 		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1008, EK1010, EK1011, EK1012, EK1022, EK1023,
-		EK2001, EK2002, EK2003, EK2004, EK2005, EK2006, EK2101, EK2102, EK2103, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
-		EK3001, EK3002, EK3003, EK3004, EK3005, EK3006, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
+		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
+		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
 		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,
 	} {
 		registry[m.Code] = m

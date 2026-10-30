@@ -283,7 +283,7 @@ func (g *generator) helpers() {
 	}
 	if g.on("recursion") {
 		// A plain recursion needs a plain annotation and an Effect one a
-		// written A (Ch 14 Recursion, D72, EK2102).
+		// written A (Ch 14 Recursion, D72, EK9206).
 		f := &Func{Name: "rec0", Params: []string{"p0"}, Recursive: true, Export: true}
 		ctx := gctx{fn: f, vars: []string{"p0"}, ret: true, mult: 1, plain: g.c.chance(2)}
 		var body []Stmt

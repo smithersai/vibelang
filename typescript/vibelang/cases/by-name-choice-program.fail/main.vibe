@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 import * as Effect from "effect/Effect"
 export effect function invalid(choose: boolean): number!! {
   const held: Effect.Effect<number, string> = effect { throw "held" }

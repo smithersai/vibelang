@@ -1,4 +1,4 @@
-// compilerOptions.vibelang (D34) accepts per-code categories for EK2004
+// compilerOptions.vibelang (D34) accepts per-code categories for EK9204
 // and EK4403 and a tracing mode; a valid block compiles without diagnostics.
 import { Effect } from "effect"
 

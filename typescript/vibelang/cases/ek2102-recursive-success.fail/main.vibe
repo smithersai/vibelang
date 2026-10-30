@@ -1,7 +1,7 @@
-// expect: EK2102
+// expect: EK9206
 // When an Effect function's A depends on its own result, TypeScript cannot
 // infer A, and the contract must be written (D52). The functions throw, so
-// they are Effects; a plain annotation such as : boolean would be EK2003.
+// they are Effects; a plain annotation such as : boolean would be EK9203.
 class Negative extends TaggedError("Negative")<{ readonly n: number }> {}
 
 export effect function isEven(n: number) {

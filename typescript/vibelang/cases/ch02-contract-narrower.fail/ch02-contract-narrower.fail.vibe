@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 // Chapter 2 "Writing the contract yourself": a contract may be wider than the body, never narrower.
 // Users.find can fail with UserNotFound, but the contract says E = never.
 

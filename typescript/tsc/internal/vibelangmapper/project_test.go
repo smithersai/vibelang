@@ -450,7 +450,7 @@ var projectionCases = []struct {
 		virtual: "interface Approval { approve(request: string): Effect.Effect<boolean, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Approval\" } abstract class Approval extends $service<Approval>(\"app/src/main#Approval\") {}\n",
 	},
 	{
-		// D1/EK2101: all three contract channels are required on now.
+		// D1/EK9205: all three contract channels are required on now.
 		name:    "a D1 abstract class keeps its static members in the key",
 		source:  "abstract class Clock extends Control {\n  abstract now(): Effect<number, never, never>;\n  static readonly zero = 0\n}\n",
 		virtual: "interface Clock {\n  now(): Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Clock\" } abstract class Clock extends $service<Clock>(\"app/src/main#Clock\") {\n  static readonly zero = 0\n}\n",

@@ -680,7 +680,7 @@ var inferredFormFix = &ls.CodeFixProvider{
 			}
 		}
 		// A plain form whose body pauses is EK4301's conflict, not a choice:
-		// a plain annotation there adds EK2003, so no annotation keeps the
+		// a plain annotation there adds EK9203, so no annotation keeps the
 		// program (Chapter 28, Rewrites keep meaning, D372).
 		if (f == formPlain || f == formNone) && a.firstPause(fn) != nil {
 			return nil, nil

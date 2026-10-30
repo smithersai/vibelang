@@ -38,13 +38,13 @@ test("diagnostic parsing preserves multiline detail, CRLF, global messages and d
   const root = resolve("project with spaces")
   const input = [
     "src/main.vibe(2,17): error TS2322: Type 'string' is not assignable.",
-    "  Type detail", "    Nested detail", "warning EK2004: unreachable catch",
+    "  Type detail", "    Nested detail", "warning EK9204: unreachable catch",
     join(root, "src/main.vibe"), join(root, "src/type-only.ts"), "", "ordinary banner"
   ].join("\r\n")
   assert.deepEqual(parseOutput(input, root), {
     diagnostics: [
       { file: join(root, "src/main.vibe"), line: 2, column: 17, category: "error", code: "TS2322", text: "Type 'string' is not assignable.\n  Type detail\n    Nested detail" },
-      { category: "warning", code: "EK2004", text: "unreachable catch" }
+      { category: "warning", code: "EK9204", text: "unreachable catch" }
     ], files: [join(root, "src/main.vibe"), join(root, "src/type-only.ts")]
   })
 })
@@ -53,7 +53,7 @@ test("wide diagnostic coordinates and messages survive parsing and formatting", 
   const root = resolve("project")
   for (let i = 1; i <= 300; i++) {
     const file = `source ${i}.vibe`, line = i * 19, column = i * 31
-    const category = i % 2 ? "error" : "warning", code = i % 2 ? "TS2322" : "EK2004"
+    const category = i % 2 ? "error" : "warning", code = i % 2 ? "TS2322" : "EK9204"
     const text = `message ${i}: punctuation (x,y), unicode λ, trailing space `
     const result = parseOutput(`${file}(${line},${column}): ${category} ${code}: ${text}\n`, root)
     const expected = { file: join(root, file), line, column, category, code, text }
@@ -205,7 +205,7 @@ test("a module outside root compiles with its own package's project, once per re
 })
 
 test("a project's compile checks its own files; an imported workspace package's source only supplies types", { skip }, async (t) => {
-  // Each module holds one warning (EK2004), which a check of that module reports.
+  // Each module holds one warning (EK9204), which a check of that module reports.
   // Checking every imported package in each project's compile checked a
   // package once per project that imports it.
   const { root, app, compiler, compiles } = workspace(t)
@@ -221,12 +221,12 @@ test("a project's compile checks its own files; an imported workspace package's 
   const warnings = (result) => result.warnings.map(({ file, code }) => [file, code])
   const main = await compile(app)
   assert.deepEqual(main.errors, [])
-  assert.deepEqual(warnings(main), [[join(app, "src/main.vibe"), "EK2004"]])
+  assert.deepEqual(warnings(main), [[join(app, "src/main.vibe"), "EK9204"]])
   assert.match(main.outputs.get(join(app, "src/main.vibe")).code, /shout\("app"\)/)
   assert.ok(main.inputs.includes(join(root, "dep/src/lib.vibe")), "the package's source still supplies its types")
   const lib = await compile(join(root, "dep"))
   assert.deepEqual(lib.errors, [])
-  assert.deepEqual(warnings(lib), [[join(root, "dep/src/lib.vibe"), "EK2004"]])
+  assert.deepEqual(warnings(lib), [[join(root, "dep/src/lib.vibe"), "EK9204"]])
   assert.deepEqual(compiles(), [join(app, "tsconfig.json"), join(root, "dep/tsconfig.json")])
 })
 

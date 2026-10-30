@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 import { Effect, Data } from "effect"
 class First extends Data.TaggedError("First")<{}> {}
 class Second extends Data.TaggedError("Second")<{}> {}

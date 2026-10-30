@@ -366,7 +366,7 @@ func (g *generator) hold(o holdOptions) []Stmt {
 	t := &Try{Body: body}
 	if g.c.chance(2) {
 		// The never-taken throw gives the try block an expected failure,
-		// so its catch is not EK2004's.
+		// so its catch is not EK9204's.
 		dead := &If{C: &Cond{Op: "<", L: &TraceLen{}, R: &Num{0}}, Then: []Stmt{&Throw{Err: &ErrNew{Err: g.errs[0], Fields: []Expr{&Num{0}}}}}}
 		t.Body = append([]Stmt{dead}, t.Body...)
 		t.CatchVar = g.local("e")

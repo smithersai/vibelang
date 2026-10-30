@@ -3,5 +3,5 @@ main.vibe(22,61): error EK3101
 main.vibe(25,25): error EK3101
 main.vibe(30,18): error EK3101
 main.vibe(36,12): error EK3101
-main.vibe(43,19): error EK2001
+main.vibe(43,19): error EK9201
 main.vibe(46,46): error TS2345

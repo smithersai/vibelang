@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -48,6 +49,11 @@ var SpecRows = sync.OnceValue(func() map[int32]SpecRow {
 			continue
 		}
 		rows[int32(code)] = SpecRow{Code: int32(code), Reports: cells[1], Repair: cells[2], Chapters: cells[3]}
+	}
+	// Appendix B splits the historical parameter-count/constraint row.
+	if row, ok := rows[2126]; ok {
+		row.Code = 2801
+		rows[2801] = row
 	}
 	return rows
 })
@@ -126,7 +132,7 @@ func SpecDefaultCategory(code int32) string {
 	case strings.HasPrefix(reports, "error by default"), strings.HasPrefix(reports, "an error"):
 		return CategoryError
 	}
-	if code < 4801 && slices.Contains(warningsBeforeEK4801(), code) {
+	if slices.Contains(warningsBeforeEK4801(), code) {
 		return CategoryWarning
 	}
 	return CategoryError
@@ -177,7 +183,7 @@ func SpecAdjustable(code int32) bool {
 // EK4830-EK4837 ("adjustable the same way"); of the earlier adjustable codes
 // it names only the setting, so the targets set those in tsconfig.json only.
 func SpecCommentAdjustable(code int32) bool {
-	return SpecAdjustable(code) && code >= 4801
+	return SpecAdjustable(code) && code >= 4801 && code < 9200
 }
 
 // SpecRetiredCodes returns the codes the specification keeps unused: those
@@ -205,5 +211,5 @@ func SpecRetired(code int32) bool {
 
 // specCodeName writes a code as the specification does.
 func specCodeName(code int32) string {
-	return "EK" + strconv.Itoa(int(code))
+	return fmt.Sprintf("EK%04d", code)
 }

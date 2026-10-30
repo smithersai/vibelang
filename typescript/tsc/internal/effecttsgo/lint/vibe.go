@@ -48,10 +48,10 @@ var vibeAnswers = map[string]vibeAnswer{
 	"unnecessaryPipeChain":          {ek: "EK4825"},
 
 	"genericEffectServices":    {covered: "EK3005"},
-	"missingEffectContext":     {covered: "EK2002"},
-	"missingEffectError":       {covered: "EK2001"},
+	"missingEffectContext":     {covered: "EK9202"},
+	"missingEffectError":       {covered: "EK9201"},
 	"missingLayerContext":      {covered: "EK3201"},
-	"catchUnfailableEffect":    {covered: "EK2004"},
+	"catchUnfailableEffect":    {covered: "EK9204"},
 	"runEffectInsideEffect":    {covered: "EK1005"},
 	"asyncFunction":            {covered: "EK1003"},
 	"cryptoRandomUUID":         {covered: "EK4403"},

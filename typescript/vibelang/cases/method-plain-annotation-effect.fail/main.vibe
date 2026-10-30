@@ -1,7 +1,7 @@
-// expect: EK2003
+// expect: EK9203
 // A method's plain return annotation is its type in the declaration file and
 // through any interface its class satisfies, so a method that runs an Effect
-// under one is EK2003, as a function is (D74). Each method below would return
+// under one is EK9203, as a function is (D74). Each method below would return
 // an unrun Effect where its annotation promises a number, and read would hide
 // its requirement, Count. method-effect-contract-dts writes their contracts.
 service Count { n: number }

@@ -15,15 +15,15 @@ import (
 //
 // The checker types it as that call, so its value is A | B and its failures
 // are what the fallback or handler lets escape. This file reports one inside
-// a hatch body (EK2114) and one whose left side cannot fail (EK2004), and
+// a hatch body (EK2114) and one whose left side cannot fail (EK9204), and
 // tells a hover on the keyword what the expression does.
 
 var (
 	// EK2114: a catch expression inside a hatch body, which is plain TypeScript.
 	EK2114 = message(2114, errorCategory, "A catch expression is VibeLang syntax, but a hatch body is plain TypeScript.")
-	// deadCatchExpression is EK2004's text for a catch expression whose left
+	// deadCatchExpression is EK9204's text for a catch expression whose left
 	// side cannot fail. {0} is the left side.
-	deadCatchExpression = EK2004.With("{0} has no expected errors; defects pass through this catch.")
+	deadCatchExpression = EK9204.With("{0} has no expected errors; defects pass through this catch.")
 )
 
 func init() {

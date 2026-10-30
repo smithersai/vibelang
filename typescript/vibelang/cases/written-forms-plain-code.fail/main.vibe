@@ -1,4 +1,4 @@
-// expect: EK1001 EK2003 EK4301 TS2345
+// expect: EK1001 EK9203 EK4301 TS2345
 // D500: an unannotated function is an Effect function, whatever its body
 // does, so plain code may not call it or pass it: a module's top level, a
 // class field, a constructor, an accessor, a parameter default, a function

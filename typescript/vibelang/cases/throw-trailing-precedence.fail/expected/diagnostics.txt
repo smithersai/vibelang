@@ -1,5 +1,5 @@
 main.vibe(6,15): error EK1010
-main.vibe(6,15): error EK2001
+main.vibe(6,15): error EK9201
 main.vibe(6,25): error TS2322
 main.vibe(6,52): error TS2322
 main.vibe(9,15): error EK1010

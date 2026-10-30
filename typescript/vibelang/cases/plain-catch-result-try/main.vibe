@@ -1,5 +1,5 @@
 // expect-result: [true,"caught",true,"caught"]
-// The spelling EK2004 names where a plain function's catch does not receive a
+// The spelling EK9204 names where a plain function's catch does not receive a
 // TypeScript exception: Result.try catches it.
 import { identity } from "./identity.ts"
 

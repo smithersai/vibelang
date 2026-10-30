@@ -159,7 +159,7 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 				facts.Retired = append(facts.Retired, code)
 			}
 			facts.Defaults[code] = DefaultNever
-		case code < facts.Boundary:
+		case historicalCode(code) < facts.Boundary:
 			switch {
 			case slices.Contains(mixed, code):
 				facts.Defaults[code] = DefaultErrorOrWarning

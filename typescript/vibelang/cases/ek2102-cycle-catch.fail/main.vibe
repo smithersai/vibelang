@@ -1,4 +1,4 @@
-// expect: EK2102
+// expect: EK9206
 // A catch whose try block calls into a call cycle with inferred contracts
 // handles failures the cycle's fixpoint finds (D52). The checker typed its
 // variable before the fixpoint knew them, so the cycle needs a written

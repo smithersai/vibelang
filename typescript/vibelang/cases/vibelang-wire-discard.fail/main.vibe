@@ -1,4 +1,4 @@
-// expect: EK2001 EK3201
+// expect: EK9201 EK3201
 // A layer that provides nothing, such as one that only runs a startup
 // program, keeps its errors and requirements through wire (D27): the
 // contract of launch must name Offline, and the runner reports Mailer.

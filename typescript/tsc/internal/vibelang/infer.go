@@ -123,7 +123,7 @@ func (a *analyzer) effectOf(fn *ast.Node) *effectInfo {
 		// fn's own E and R, as typing a call of fn passed by name in fn's
 		// body does. Solving fn again here would never end; the read gets
 		// empty channels, and checkRecursion asks for the written contract
-		// that makes the read exact (EK2102).
+		// that makes the read exact (EK9206).
 		a.reentered[fn] = true
 		return &effectInfo{}
 	}

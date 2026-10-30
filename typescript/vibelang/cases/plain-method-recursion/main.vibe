@@ -1,7 +1,7 @@
 // A method with a plain return annotation is plain (rule F), its own call
 // cycle included: a recursive size(): number, toString(): string or
 // static depth(n: number): number compiles to a plain method, and a
-// synchronous callback can call it. Each was EK2003, as if the method's call
+// synchronous callback can call it. Each was EK9203, as if the method's call
 // of itself ran an Effect.
 // expect-result: {"size":3,"text":"1,2,3","depth":5,"even":true,"sizes":[3,2]}
 class Chain {

@@ -82,7 +82,7 @@ func TestReceiverChoiceDidChange(t *testing.T) {
 	for _, d := range report(changed, uri) {
 		if d.Code != nil && d.Code.Integer != nil {
 			switch *d.Code.Integer {
-			case 2503, 2003, 9101:
+			case 2503, 9203, 9101:
 				t.Errorf("stale diagnostic after didChange: %d %s", *d.Code.Integer, *d.Message.String)
 			}
 		}

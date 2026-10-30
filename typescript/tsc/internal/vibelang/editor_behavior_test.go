@@ -324,7 +324,7 @@ func TestEditorReferencesInMatchAndPattern(t *testing.T) {
 }
 
 func TestEditorDirectiveCompletions(t *testing.T) {
-	for _, source := range []string{"// @vibe", "// @vibelang-diagnostics ", "// @vibelang-diagnostics-next-line EK2004:off EK44"} {
+	for _, source := range []string{"// @vibe", "// @vibelang-diagnostics ", "// @vibelang-diagnostics-next-line EK9204:off EK44"} {
 		program, file, _, _ := editorProgram(t, source)
 		c, done := program.GetTypeCheckerForFile(t.Context(), file)
 		items := vibelangTextCompletions(c, file, len(source))
@@ -349,7 +349,7 @@ func TestEditorDirectiveCompletions(t *testing.T) {
 				}
 			}
 		}
-		if !labels["*:off"] || labels["EK2001:off"] || labels["EK4813:off"] {
+		if !labels["*:off"] || labels["EK9201:off"] || labels["EK4813:off"] {
 			t.Fatalf("completions must preserve fixed diagnostic categories: %v", labels)
 		}
 	}

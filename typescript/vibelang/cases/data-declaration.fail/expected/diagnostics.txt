@@ -9,5 +9,5 @@ main.vibe(24,13): error EK2125
 main.vibe(25,13): error EK2125
 main.vibe(30,20): error EK1013
 main.vibe(30,33): error EK1013
-main.vibe(35,23): error EK2126
+main.vibe(35,23): error EK2801
 main.vibe(36,22): error EK2126

@@ -282,7 +282,7 @@ func inferredFileSystem(files map[string]string) vfs.FS {
 
 // TestInferredFormFixDeclinesPausingPlainCallback checks that the fix offers
 // no plain annotation for a callback whose body pauses where a plain
-// function fits: EK4301 reports it, and the annotation would add EK2003
+// function fits: EK4301 reports it, and the annotation would add EK9203
 // (Chapter 28, Rewrites keep meaning, D372).
 func TestInferredFormFixDeclinesPausingPlainCallback(t *testing.T) {
 	files := map[string]string{

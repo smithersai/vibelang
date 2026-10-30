@@ -37,3 +37,26 @@ test("every registered diagnostic has a user-doc reference", () => {
   const pages = walk(join(docsRepo, "docs/user/src")).filter(path => path.endsWith(".md")).map(path => readFileSync(path, "utf8"))
   expect(undocumentedCodes(diagnosticCodes(sources), pages)).toEqual([])
 })
+
+test("Appendix B codes, including leading zeros, have matching registry declarations", () => {
+  const appendix = readFileSync(join(repo, "docs/design/src/900-appendices.md"), "utf8")
+    .split("## Appendix B. Diagnostics")[1].split("\n## Appendix C.")[0]
+  const assigned = [...appendix.matchAll(/^\| `?(EK\d{4})`? \|/gm)].map(match => match[1])
+  expect(assigned.length).toBeGreaterThan(0)
+  const sources = walk(join(repo, "typescript/tsc/internal/vibelang"))
+    .filter(path => path.endsWith(".go") && !path.endsWith("_test.go")).map(path => readFileSync(path, "utf8"))
+  const names = sources.flatMap(source => [...source.matchAll(/^\s*(?:var\s+)?(EK\d+)\s*=\s*(?:message\(|&Message\{)/gm)].map(match => match[1]))
+  expect(names.length).toBe(new Set(names).size)
+  const declared = new Set(diagnosticCodes(sources))
+  // Use the native registry test's owned pending entries so their owner
+  // removes each exception once, in the same commit as its registration.
+  const registryTest = readFileSync(join(repo, "typescript/tsc/internal/vibelang/diagnostics_test.go"), "utf8")
+  const pendingBlock = registryTest.match(/var specAhead = map\[int32\]string\{([\s\S]*?)\n\}/)?.[1] ?? ""
+  const pending = [...pendingBlock.matchAll(/\b(\d+):/g)].map(match => "EK" + match[1].padStart(4, "0")).sort()
+  expect(assigned.filter(code => !declared.has(code)).sort()).toEqual(pending)
+  for (const source of sources) {
+    for (const match of source.matchAll(/^\s*(?:var\s+)?(EK\d+)\s*=\s*message\((\d+),/gm)) {
+      expect(Number(match[1].slice(2))).toBe(Number(match[2]))
+    }
+  }
+})

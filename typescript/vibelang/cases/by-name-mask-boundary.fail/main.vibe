@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 class WriteError extends Data.TaggedError("WriteError")<{}> {}
 effect function write() { throw new WriteError() }
 export effect function invalid(): void!! {

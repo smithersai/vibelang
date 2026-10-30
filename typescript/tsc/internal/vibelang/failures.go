@@ -230,11 +230,11 @@ func (a *analyzer) blockRunsEffects(block *ast.Node) bool {
 	return visit(block)
 }
 
-// deadCatch is EK2004's text for a catch whose try block runs no Effect and
+// deadCatch is EK9204's text for a catch whose try block runs no Effect and
 // fails with no expected error (D282).
-var deadCatch = EK2004.With("This catch can never run: nothing in its try block fails with an expected error, and a JavaScript exception passes through it as a defect.")
+var deadCatch = EK9204.With("This catch can never run: nothing in its try block fails with an expected error, and a JavaScript exception passes through it as a defect.")
 
-// checkDeadCatches reports EK2004 when a try block's E is never (D260, D282):
+// checkDeadCatches reports EK9204 when a try block's E is never (D260, D282):
 // the catch receives typed failures only, so defects, JavaScript exceptions
 // included, pass through it. The warning covers TypeScript's errors about the
 // never binding.
@@ -250,7 +250,7 @@ func checkDeadCatches(c *checker.Checker, file *ast.SourceFile) {
 				// (D282): a JavaScript exception is a defect that passes through.
 				m := deadCatch
 				if a.blockRunsEffects(try.TryBlock) {
-					m = EK2004
+					m = EK9204
 				}
 				d := reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, try.CatchClause.Pos()), m)
 				if d != nil {
@@ -273,9 +273,9 @@ func checkDeadCatches(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// passingCatch is EK2004's text for a call in a plain function's try block
+// passingCatch is EK9204's text for a call in a plain function's try block
 // whose exception passes through the catch (passingCall). {0} is the callee.
-var passingCatch = EK2004.With("This catch receives expected failures only, so an exception that {0} throws passes through it as a defect.")
+var passingCatch = EK9204.With("This catch receives expected failures only, so an exception that {0} throws passes through it as a defect.")
 
 // compilesPlain reports whether fn compiles to plain JavaScript, where a catch
 // written in TypeScript received every exception its try block threw.

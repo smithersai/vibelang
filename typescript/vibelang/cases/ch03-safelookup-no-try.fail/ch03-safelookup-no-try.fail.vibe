@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 // Chapter 3 "Promising that nothing escapes": remove the try and InvalidId escapes safeLookup,
 // whose contract says E = never.
 

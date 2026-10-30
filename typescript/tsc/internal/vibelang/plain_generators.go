@@ -12,17 +12,17 @@ import (
 // a compile error, and its catch receives typed failures only, so an
 // exception that its caller passes in with generator.throw() passes through.
 //
-//	function* steps(): Generator<number> {   // EK2003: can fail with Invalid
+//	function* steps(): Generator<number> {   // EK9203: can fail with Invalid
 //	  throw new Invalid()
 //	}
 //
 // Code that must speak a JavaScript protocol by throwing, such as a coroutine
 // driven by generator.throw(), belongs in a module block (D283) or a .ts file.
 
-// plainGeneratorFailure is EK2003's text for a generator with a JavaScript
+// plainGeneratorFailure is EK9203's text for a generator with a JavaScript
 // iterator annotation whose body can fail. {0} is the generator, {1} the
 // failures that can escape it, and {2} the annotation.
-var plainGeneratorFailure = EK2003.With("{0} can't throw {1}: its return annotation, {2}, makes it a JavaScript generator, which never fails.")
+var plainGeneratorFailure = EK9203.With("{0} can't throw {1}: its return annotation, {2}, makes it a JavaScript generator, which never fails.")
 
 func init() {
 	fileChecks = append(fileChecks, checkPlainGenerators)
@@ -55,9 +55,9 @@ func inPlainGeneratorBody(node *ast.Node) bool {
 	return false
 }
 
-// plainGeneratorCall is EK2003's text for a call that runs an Effect in a
+// plainGeneratorCall is EK9203's text for a call that runs an Effect in a
 // JavaScript generator. {0} is the call, {1} the generator.
-var plainGeneratorCall = EK2003.With("{0} runs an Effect, but {1} is a JavaScript generator, whose body is plain code and cannot run one.")
+var plainGeneratorCall = EK9203.With("{0} runs an Effect, but {1} is a JavaScript generator, whose body is plain code and cannot run one.")
 
 // isGeneratorMethod reports whether fn is a generator method of a class or an
 // object literal in a .vibe file, *name() { … }, which is a JavaScript
@@ -68,7 +68,7 @@ func isGeneratorMethod(fn *ast.Node) bool {
 		isVibeLangFile(ast.GetSourceFileOfNode(fn)) && !inHatch(fn)
 }
 
-// checkPlainGenerators reports EK2003 at the annotation of each plain
+// checkPlainGenerators reports EK9203 at the annotation of each plain
 // generator whose body can fail (D296), and at each call that runs an Effect
 // in the body of a generator method, which is plain code (Chapter 8): the
 // call returned its program unrun, and the method yielded it. A call that

@@ -55,16 +55,16 @@ Hover over an Effect-returning function to see its inferred `Effect<A, E, R>`. L
 ## Diagnostics, completions, and refactors
 
 ```vibe
-// expect-error: EK2001
+// expect-error: EK9201
 // Rejected escapes a contract promising no failures.
 effect function promised(value: number): number!! {
   return try accepted(value)
 }
 ```
 
-This is `EK2001`: handle `Rejected` inside the function or widen its contract. Unmet services are `EK2002`. A call returns an Effect that can be stored at module top level; run it with an explicit runner. A synchronous callback can return an Effect without running it.
+This is `EK9201`: handle `Rejected` inside the function or widen its contract. Unmet services are `EK9202`. A call returns an Effect that can be stored at module top level; run it with an explicit runner. A synchronous callback can return an Effect without running it.
 
-Inside effect functions, wrap a call that may throw with `Effect.try`, or a Promise with `tryPromise`, then run the wrapper with `try`. A plain function known not to throw can be called directly. A Node.js or web I/O global, run or held as a value, and a Node.js module imported as a value are rejected with the Effect service that replaces them (`EK4402`), and uncontrolled time or randomness reads have their own diagnostic (`EK4403`). A runner inside code a fiber runs is `EK1005`. A `catch` expression whose Effect has E = `never` gets `EK2004` (defects pass through), a warning by default.
+Inside effect functions, wrap a call that may throw with `Effect.try`, or a Promise with `tryPromise`, then run the wrapper with `try`. A plain function known not to throw can be called directly. A Node.js or web I/O global, run or held as a value, and a Node.js module imported as a value are rejected with the Effect service that replaces them (`EK4402`), and uncontrolled time or randomness reads have their own diagnostic (`EK4403`). A runner inside code a fiber runs is `EK1005`. A `catch` expression whose Effect has E = `never` gets `EK9204` (defects pass through), a warning by default.
 
 Use a throw statement to fail an Effect: `if (value === undefined) throw new MissingValue()`. A handler that fails again uses `catch effect (e) => { throw e }`; a plain `catch (e) => value` returns a value.
 
@@ -208,16 +208,16 @@ effect function discard() {
 | Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect function load(id) { … }` |
 | Correctness | `floatingEffect` | EK4801, error | `program` alone on a line leaves an Effect unrun; use `try program` |
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
-| Correctness | `missingEffectContext` | Covered: EK2002 at a contract, EK3201 at a runner | `effect function f(): User!NotFound! { return try (try Users).find(id) }` is EK2002 |
-| Correctness | `missingEffectError` | Covered: EK2001 | `effect function f(): User!! { return try (try Users).find(id) }` |
-| Correctness | `missingLayerContext` | Covered: EK2002 and EK3201 | `provide UsersLive { … }` without the database layer is EK3201 at the runner |
+| Correctness | `missingEffectContext` | Covered: `EK9202` at a contract, `EK3201` at a runner | `effect function f(): User!NotFound! { return try (try Users).find(id) }` is `EK9202` |
+| Correctness | `missingEffectError` | Covered: `EK9201` | `effect function f(): User!! { return try (try Users).find(id) }` |
+| Correctness | `missingLayerContext` | Covered: `EK9202` and `EK3201` | `provide UsersLive { … }` without the database layer is `EK3201` at the runner |
 | Correctness | `missingReturnYieldStar` | Not needed in `.vibe`: `throw` ends the function | `throw new NotFound({ id })` |
 | Correctness | `missingStarInYieldEffectGen` | Use `try` in an effect function | `const user = try (try Users).find(id)` |
 | Correctness | `nonObjectEffectServiceType` | Effect 3 only, and a `service` declares members | `service Port { value: number }` |
 | Correctness | `outdatedApi` | EK4813, error, in place of TS2339, with a quick fix; the same fix on TS2339 in `.ts` files | `Effect.catchAll`; the fix writes `Effect.catch` |
 | Correctness | `outdatedEffectCodegen` | Not adopted: no codegen comments | None |
 | Correctness | `overriddenSchemaConstructor` | EK4814, warning | `class Person extends Schema.Class<Person>("Person")({ … }) { constructor() { … } }` |
-| Anti-pattern | `catchUnfailableEffect` | Covered: EK2004, warning | `succeed(1) catch (e) => fallback`; a catch expression receives typed failures only |
+| Anti-pattern | `catchUnfailableEffect` | Covered: `EK9204`, warning | `succeed(1) catch (e) => fallback`; a catch expression receives typed failures only |
 | Anti-pattern | `effectFnIife` | An effect function call returns an Effect | `(() => load())()` |
 | Anti-pattern | `effectGenUsesAdapter` | Effect functions use `try` | None |
 | Anti-pattern | `effectInFailure` | EK4815, warning | `throw program`; run it: `try program` |

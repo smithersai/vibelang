@@ -17,7 +17,7 @@ import (
 // (design decision D34), which they reject as an unknown option:
 //
 //	"vibelang": {
-//	  "diagnostics": { "EK2004": "off", "EK4403": "warning" },
+//	  "diagnostics": { "EK9204": "off", "EK4403": "warning" },
 //	  "tracing": "exported",
 //	  "trustedPackages": ["@smthrs/*"],
 //	  "declarationSidecars": true

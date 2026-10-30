@@ -42,7 +42,7 @@ fragments. By default no snippet executes; `--run` also checks declared output
 
 Use a header comment before the code:
 
-- `// expect-error: EK2001` declares an intentionally invalid example; separate
+- `// expect-error: EK9201` declares an intentionally invalid example; separate
   several codes with spaces. Unexpected diagnostics still fail.
 - `// types: node` opts that page project into Node ambient declarations; the
   default is `"types": []`, matching the starter. Document the declaration
@@ -168,7 +168,7 @@ and `nodes` in the shape of `twoslash-protocol`:
 | Node | Fields |
 | --- | --- |
 | `hover` | `start`, `length`, `line`, `character`, `target`, `text` (the quick info), `docs` |
-| `error` | the same position fields, `code` such as `EK2001` or `TS2307`, `level` (`error` or `warning`), `text` |
+| `error` | the same position fields, `code` such as `EK9201` or `TS2307`, `level` (`error` or `warning`), `text` |
 
 Positions count UTF-16 code units from 0 within the block. `docs` keeps
 VibeLang's notes, such as "Runs here and returns `number`.", and the first

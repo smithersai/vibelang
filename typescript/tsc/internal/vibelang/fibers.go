@@ -29,10 +29,10 @@ var (
 	EK4603 = message(4603, errorCategory, "await in VibeLang code is only await.all, await.allSettled, await.race, or await.any, and this is {0}.")
 	// EK4604: await inside a hatch body that is not async.
 	EK4604 = message(4604, errorCategory, "await in a hatch body is JavaScript's await, which needs an async function.")
-	// EK4605: a break that would leave a for concurrent loop.
-	EK4605 = message(4605, errorCategory, "break cannot leave a for concurrent loop: each item runs in its own fiber.")
-	// EK4606: a return in the body of a for concurrent loop.
-	EK4606 = message(4606, errorCategory, "return cannot leave a for concurrent loop: each item runs in its own fiber.")
+	// EK1903: a break that would leave a for concurrent loop.
+	EK1903 = message(1903, errorCategory, "break cannot leave a for concurrent loop: each item runs in its own fiber.")
+	// EK1904: a return in the body of a for concurrent loop.
+	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop: each item runs in its own fiber.")
 	// EK4607: a select statement, replaced by await.race (D197).
 	EK4607 = message(4607, errorCategory, "select was replaced by await.race.")
 	// EK4608: await.race or await.any on an object. {0} is the operation.
@@ -48,7 +48,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK4605, EK4606, EK4607, EK4608, EK4609, EK4610, EK4611, EK4612} {
+	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK4607, EK4608, EK4609, EK4610, EK4611, EK4612} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkFiberForms)
@@ -404,11 +404,11 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 	visit = func(node *ast.Node) bool {
 		switch {
 		case node.Kind == ast.KindBreakStatement && node.Flags&ast.NodeFlagsVibeLang != 0:
-			note(report(c, node, EK4605), "Use continue to end this item, or throw to stop every item.")
+			note(report(c, node, EK1903), "Use continue to end this item, or throw to stop every item.")
 			cover(c, node)
 			return false
 		case node.Kind == ast.KindReturnStatement && node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0:
-			note(report(c, node, EK4606), "Use continue to end this item.")
+			note(report(c, node, EK1904), "Use continue to end this item.")
 			return false
 		case isFunctionBoundary(node):
 			return false

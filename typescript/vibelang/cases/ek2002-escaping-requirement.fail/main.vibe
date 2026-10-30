@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 // A requirement that the body adds must be in R (Chapter 14).
 class MailError extends TaggedError("MailError")<{ readonly reason: string }> {}
 

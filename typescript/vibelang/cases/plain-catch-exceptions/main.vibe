@@ -1,7 +1,7 @@
 // D282 (amends D260): a plain function's catch receives typed failures only.
 // The exceptions from coercion, a getter, a revoked proxy, and a prototype
 // lookup are JavaScript exceptions, so each passes through its catch
-// unchanged, and EK2004 says the catch can never run. JSON.parse's shipped
+// unchanged, and EK9204 says the catch can never run. JSON.parse's shipped
 // contract makes its SyntaxError a typed failure, which the catch receives.
 import { primitive, getter, revoked, prototype } from "./fixtures.js"
 

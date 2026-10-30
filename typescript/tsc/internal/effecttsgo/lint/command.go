@@ -348,7 +348,7 @@ func vibePortDiagnostics(checked []*ast.Diagnostic, severity map[string]etscore.
 		if d.Source() != "EK" {
 			continue
 		}
-		code := fmt.Sprintf("EK%d", d.Code())
+		code := fmt.Sprintf("EK%04d", d.Code())
 		strongest := etscore.SeverityOff
 		for name, answer := range vibeAnswers {
 			if answer.ek == code {

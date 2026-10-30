@@ -1,7 +1,7 @@
-// expect: EK2101
+// expect: EK9205
 // A service member has no body to infer from, so it states its full
 // contract, Effect<A, E, R> (Chapter 14). A bare return type, a partial
-// Effect, and a missing annotation are each EK2101; value members take any
+// Effect, and a missing annotation are each EK9205; value members take any
 // type.
 import { Effect } from "effect"
 

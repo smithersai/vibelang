@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 import * as Effect from "effect/Effect"
 service Host { field: string }
 service Outside { value: number }

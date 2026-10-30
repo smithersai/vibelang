@@ -77,7 +77,7 @@ func EmitAndReportStatistics(input EmitInput) (CompileAndEmitResult, *Statistics
 	}
 
 	// VibeLang: only errors make the exit status non-zero; warnings, such as
-	// EK2004 and the EK48xx lint rules (D241), do not fail a build.
+	// EK9204 and the EK48xx lint rules (D241), do not fail a build.
 	diagnosticsForExitCode := result.Diagnostics
 	if FilterDiagnosticsForExitCodeCallback != nil {
 		diagnosticsForExitCode = FilterDiagnosticsForExitCodeCallback(input.Config.CompilerOptions(), result.Diagnostics)

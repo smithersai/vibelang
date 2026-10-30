@@ -1,6 +1,6 @@
-// expect: EK2103 EK2103 EK2103
+// expect: EK9207 EK9207 EK9207
 // The body of service Name: Type holds only static members (D281): the
-// shape is the type, so an instance member is EK2103, with or without a body.
+// shape is the type, so an instance member is EK9207, with or without a body.
 interface SearchApi {
   find(query: string): string!!
 }

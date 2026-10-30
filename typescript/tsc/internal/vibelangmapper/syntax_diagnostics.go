@@ -26,7 +26,7 @@ func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 
 // checkSyntaxDiagnostics mirrors EK1003 (for await and await using outside an
 // async function), EK1010, D15's finally exits
-// (EK2006), D1's bodiless service contracts (EK2101), D129's setup order
+// (EK2006), D1's bodiless service contracts (EK9205), D129's setup order
 // (EK2104), and D229's lexical hatch captures (EK4405). Alias/type identity
 // and unresolved types remain native. A type argument left out of an Effect
 // type means what it means in TypeScript (D308, D309), so Effect<A> is complete.
@@ -83,7 +83,7 @@ func (p *projector) checkSyntaxDiagnostics() {
 	p.file.AsNode().ForEachChild(visit)
 }
 
-// syntaxLowerable follows the native body/async/generator gate (EK2003).
+// syntaxLowerable follows the native body/async/generator gate (EK9203).
 func syntaxLowerable(n *ast.Node) bool {
 	switch n.Kind {
 	case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindArrowFunction, ast.KindMethodDeclaration:
@@ -106,7 +106,7 @@ func syntaxInLowerableBody(n *ast.Node) bool {
 	return false
 }
 
-// checkServiceContracts reports EK2101 only for absent or primitive
+// checkServiceContracts reports EK9205 only for absent or primitive
 // contracts. An alias may already name an Effect type.
 func (p *projector) checkServiceContracts(class *ast.Node) {
 	for _, member := range class.Members() {

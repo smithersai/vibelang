@@ -138,7 +138,7 @@ func consistencyDiagnosticCounts(r *Result, keep func(*ast.Diagnostic) bool) map
 }
 
 // consistencyCountDiff returns the keys whose counts differ, as "key: n -> m",
-// and the code of the first one, such as "EK2001", for a gap's key.
+// and the code of the first one, such as "EK9201", for a gap's key.
 func consistencyCountDiff(before, after map[string]int, removedOnly bool) ([]string, string) {
 	keys := slices.Sorted(maps.Keys(before))
 	for key := range after {

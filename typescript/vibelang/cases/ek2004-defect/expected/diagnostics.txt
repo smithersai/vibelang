@@ -1,1 +1,1 @@
-main.vibe(8,5): warning EK2004
+main.vibe(8,5): warning EK9204

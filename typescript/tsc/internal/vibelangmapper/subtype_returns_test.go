@@ -93,7 +93,7 @@ func TestSubtypeReturnFailureDiagnostic(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatalf("missing EK2001: %v", projection.Diagnostics)
+			t.Fatalf("missing EK9201: %v", projection.Diagnostics)
 		}
 	}
 }

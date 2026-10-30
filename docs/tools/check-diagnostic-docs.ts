@@ -24,7 +24,7 @@ export const retiredByVips: Record<string, string> = {
   EK1022: "VIP-11: no block params",
   EK2005: "VIP-35: handlers are open",
   EK2006: "VIP-5: effect code has no try statements",
-  EK2103: "VIP-9: service X: T is not a form",
+  EK9207: "VIP-9: service X: T is not a form",
   EK2104: "VIP-11: no layer declarations",
   EK2105: "VIP-5: no typed catch clauses",
   EK2107: "VIP-35: handlers are open",

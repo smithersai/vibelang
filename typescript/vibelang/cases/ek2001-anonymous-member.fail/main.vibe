@@ -1,6 +1,6 @@
-// expect: EK2001 EK2001 EK3101
+// expect: EK9201 EK9201 EK3101
 // A member whose contract comes from an anonymous object type is named by
-// itself in EK2001 and EK3101, and one typed by an alias of such a type by
+// itself in EK9201 and EK3101, and one typed by an alias of such a type by
 // the alias. The internal name of a type literal never reaches a message.
 error Gone { path: string }
 

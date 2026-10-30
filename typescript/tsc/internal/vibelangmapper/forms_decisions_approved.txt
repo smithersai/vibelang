@@ -56,7 +56,7 @@ typescript/vibelang/cases/vibelang-hatches/main.vibe:27:12 lambda: dual fallback
 typescript/vibelang/cases/vibelang-hatches/main.vibe:38:44 lambda: plain table -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:27:24 lambda: dual fallback -> choice fallback # the dual would defer port(), a call of a Config value, which is not known to return an Effect: the user chooses
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:52:11 lambda: dual fallback -> choice fallback # a function from another file may take either form by overload: the user chooses
-typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: plain annotation -> choice annotation # a plain return annotation cannot throw a failure (the fork reports EK2003)
+typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: plain annotation -> choice annotation # a plain return annotation cannot throw a failure (the fork reports EK9203)
 typescript/vibelang/cases/ek4202.fail/main.vibe:14:16 lambda: dual fallback -> choice fallback # a function from another file (helpers.ts) may take either form by overload: the user chooses
 typescript/vibelang/cases/hatches-inputs/main.vibe:40:30 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/hatches-inputs/main.vibe:41:12 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
@@ -98,7 +98,7 @@ typescript/vibelang/cases/plain-catch-exceptions/main.vibe:21:21 lambda: choice 
 typescript/vibelang/cases/plain-catch-exceptions/main.vibe:25:17 lambda: choice fallback -> plain annotation # parseOr returns a string after a native JSON.parse call (D260)
 
 # D263: throws under a plain return annotation are JavaScript exceptions.
-typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: choice annotation -> plain annotation # half keeps its number return contract; only greet runs an Effect and remains EK2003
+typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: choice annotation -> plain annotation # half keeps its number return contract; only greet runs an Effect and remains EK9203
 
 # rules 5 (D268 and the 2a98b2d6/ca7e084f follow-ups): the resolver follows a lambda bound to a name or an object property to its calls, as the fork does. Parity on lane-vm-3 agreed with the fork at every site below (types identical, runtime ok).
 typescript/vibelang/cases/program-values/main.vibe:30:15 lambda: dual fallback -> program table # a stored program: job is a program value, the table's program position

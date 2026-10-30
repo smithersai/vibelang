@@ -10,7 +10,7 @@ import (
 // The checks in this file report TypeScript syntax that VibeLang does not
 // have. An async function means what it means in TypeScript (VIP-1): its body
 // is TypeScript, as a hatch's is, where await waits for a promise; awaiting
-// an Effect there is EK4617, since an Effect goes through runPromise first
+// an Effect there is EK0103, since an Effect goes through runPromise first
 // (VIP-5). Outside an async function a call already waits, so for await and
 // await using are EK1003 (Chapter 10). The parser writes await outside an
 // async function as $await (fibers.go), so an AwaitExpression here is inside
@@ -21,13 +21,13 @@ var EK1017 = message(1017, errorCategory, "provide is a statement; write provide
 
 var EK1015 = message(1015, errorCategory, "Calls run in VibeLang; remove yield*.")
 
-// EK4617: await on an Effect inside an async function (VIP-5). {0} is the operand.
-var EK4617 = message(4617, errorCategory, "await waits for a promise, but {0} is an Effect, which await never runs.")
+// EK0103: await on an Effect inside an async function (VIP-5). {0} is the operand.
+var EK0103 = message(103, errorCategory, "await waits for a promise, but {0} is an Effect, which await never runs.")
 
 func init() {
 	registry[EK1015.Code] = EK1015
 	registry[EK1017.Code] = EK1017
-	registry[EK4617.Code] = EK4617
+	registry[EK0103.Code] = EK0103
 	fileChecks = append(fileChecks, checkSyntax, checkThrowExpressionPrecedence)
 }
 
@@ -53,8 +53,8 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 		case ast.KindAwaitExpression:
 			if operand := node.Expression(); isEffectType(c, c.GetTypeAtLocation(operand)) {
 				text := nodeText(file, operand)
-				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK4617, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
-				cover(c, node) // the Effect the await leaves unrun restates EK4617
+				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0103, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
+				cover(c, node) // the Effect the await leaves unrun restates EK0103
 			}
 		case ast.KindForOfStatement:
 			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && !inAsyncFunction(node) {

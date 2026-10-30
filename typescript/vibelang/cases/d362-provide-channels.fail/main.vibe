@@ -1,4 +1,4 @@
-// expect: EK2001 EK2002
+// expect: EK9201 EK9202
 error First
 error Second
 service InputA { a: number }

@@ -1,4 +1,4 @@
-// expect: EK2001 EK3101
+// expect: EK9201 EK3101
 error Failed
 service Audit { record(): void!! }
 

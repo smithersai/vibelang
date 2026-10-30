@@ -1,4 +1,4 @@
-// expect: EK2002 EK2002 EK2002
+// expect: EK9202 EK9202 EK9202
 service Input { value: number }
 export function shorthand(): number!never { return Input().value }
 export function empty(): number!! { return Input().value }

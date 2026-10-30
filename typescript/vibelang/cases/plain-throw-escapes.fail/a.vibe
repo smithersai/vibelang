@@ -1,6 +1,6 @@
-// expect: EK2003 EK2003 EK2003 EK2003 EK2003 EK2003 EK4301
+// expect: EK9203 EK9203 EK9203 EK9203 EK9203 EK9203 EK4301
 // D282: a plain return annotation means the function never fails. A throw
-// that can escape it is a typed failure, so it is EK2003, as running an
+// that can escape it is a typed failure, so it is EK9203, as running an
 // Effect there is, whatever form the throw takes.
 error Invalid { value: string }
 

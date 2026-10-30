@@ -47,7 +47,7 @@ func isServiceShapeClass(node *ast.Node) bool {
 //
 // A static default makes the base $reference<SearchApi>(key) (D40). The
 // shape stays in place, so its contracts project as every type's do. An
-// instance member, which the fork reports (EK2103), and type parameters
+// instance member, which the fork reports (EK9207), and type parameters
 // (EK3005) are left unprojected.
 func (p *projector) serviceShapeDeclaration(node *ast.Node) {
 	name := node.Name()

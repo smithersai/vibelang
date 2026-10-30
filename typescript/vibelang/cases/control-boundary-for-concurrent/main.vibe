@@ -2,7 +2,7 @@
 // A for concurrent loop runs each item in its own fiber, so a body that
 // performs a control operation handles it inside (chapter 9, "Handlers and
 // concurrency"). A handle clause's tail resume is the clause's own return,
-// not a return that leaves the loop (EK4606).
+// not a return that leaves the loop (EK1904).
 control Ask { ask(name: string): number!! }
 
 effect function limited() {

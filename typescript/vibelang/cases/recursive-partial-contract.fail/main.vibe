@@ -1,8 +1,8 @@
-// expect: EK2102 EK2102 EK2102 EK2102
+// expect: EK9206 EK9206 EK9206 EK9206
 // A recursive function whose contract leaves E or R to inference must write
 // every channel when a call of itself stands where TypeScript needs the
 // contract to type it: an argument, a logical operand, or a generic call.
-// EK2102 suggests the whole contract, which compiles (D52).
+// EK9206 suggests the whole contract, which compiles (D52).
 error Neg { n: number }
 service Audit { note(n: number): void!! }
 

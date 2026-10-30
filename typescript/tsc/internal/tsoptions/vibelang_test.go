@@ -74,9 +74,9 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 		{"unknown setting", `{"trace":"all"}`, `"trace"`, "vibelang.trace", 5023},
 		{"empty setting", `{"":{}}`, `""`, "'vibelang.'", 5023},
 		{"empty diagnostic code", `{"diagnostics":{"":"off"}}`, `""`, "vibelang.diagnostics. is not adjustable", 5023},
-		{"soundness diagnostic", `{"diagnostics":{"EK2001":"off"}}`, `"EK2001"`, "vibelang.diagnostics.EK2001", 5023},
+		{"soundness diagnostic", `{"diagnostics":{"EK9201":"off"}}`, `"EK9201"`, "vibelang.diagnostics.EK9201", 5023},
 		{"TypeScript diagnostic", `{"diagnostics":{"EK4813":"off"}}`, `"EK4813"`, "vibelang.diagnostics.EK4813", 5023},
-		{"category spelling", `{"diagnostics":{"EK2004":"Warning"}}`, `"Warning"`, "'error', 'warning', 'off'", 6046},
+		{"category spelling", `{"diagnostics":{"EK9204":"Warning"}}`, `"Warning"`, "'error', 'warning', 'off'", 6046},
 		{"category type", `{"diagnostics":{"EK4403":false}}`, `false`, "vibelang.diagnostics.EK4403", 6046},
 		{"diagnostics type", `{"diagnostics":[]}`, `[]`, "vibelang.diagnostics", 5024},
 		{"diagnostics null", `{"diagnostics":null}`, `null`, "vibelang.diagnostics", 5024},
@@ -122,7 +122,7 @@ func TestVibeLangConfigInheritance(t *testing.T) {
 }
 
 func TestVibeLangNonAdjustableDiagnostic(t *testing.T) {
-	for _, code := range []string{"EK4402", "EK2001", "EK4813"} {
+	for _, code := range []string{"EK4402", "EK9201", "EK4813"} {
 		t.Run(code, func(t *testing.T) {
 			text := `{"compilerOptions":{"vibelang":{"diagnostics":{"` + code + `":"off"}}},"files":["main.vibe"]}`
 			config := vibeConfig(t, text, "{}")

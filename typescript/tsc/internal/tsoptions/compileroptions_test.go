@@ -257,9 +257,9 @@ func compilerOptionTestValues(t *testing.T, field reflect.StructField) []reflect
 		return []reflect.Value{
 			reflect.Zero(field.Type),
 			reflect.ValueOf(&core.VibeLangOptions{}),
-			reflect.ValueOf(&core.VibeLangOptions{Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK2004": "warning"}}),
-			reflect.ValueOf(&core.VibeLangOptions{TrustedPackages: []string{"@smthrs/*"}, Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK2004": "warning"}}),
-			reflect.ValueOf(&core.VibeLangOptions{TrustedPackages: []string{"exact-package"}, Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK2004": "warning"}}),
+			reflect.ValueOf(&core.VibeLangOptions{Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK9204": "warning"}}),
+			reflect.ValueOf(&core.VibeLangOptions{TrustedPackages: []string{"@smthrs/*"}, Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK9204": "warning"}}),
+			reflect.ValueOf(&core.VibeLangOptions{TrustedPackages: []string{"exact-package"}, Tracing: "all", Diagnostics: map[string]string{"EK4403": "off", "EK9204": "warning"}}),
 			reflect.ValueOf(&core.VibeLangOptions{Tracing: "exported", Diagnostics: map[string]string{"EK4403": "error"}}),
 		}
 	}

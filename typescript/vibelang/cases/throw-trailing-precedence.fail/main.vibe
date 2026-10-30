@@ -1,4 +1,4 @@
-// expect: EK1010 EK2001 TS2322
+// expect: EK1010 EK9201 TS2322
 error Missing { id: string }
 // D186: a throw that ends an operator's left operand or a conditional's
 // condition throws only its unary operand, as one that starts it does.

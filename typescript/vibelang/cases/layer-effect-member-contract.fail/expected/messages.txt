@@ -1,5 +1,5 @@
 error EK3101: Lookup.greet looks up Clock2 each time it is called, but Greeter.greet(name: string): string!! allows no call-time requirements.
 error EK3101: Variable.greet looks up Clock2 each time it is called, but Greeter.greet(name: string): string!! allows no call-time requirements.
 error EK3101: Acquires.open looks up Scope each time it is called, but Files.open(name: string): string!! allows no call-time requirements.
-error EK2001: Oops can escape Fails.greet, but Greeter.greet's contract allows no failures.
+error EK9201: Oops can escape Fails.greet, but Greeter.greet's contract allows no failures.
 Property 'greet' is missing in type '{}' but required in type '{ greet(name: string): Effect<string, never, never>; }'.

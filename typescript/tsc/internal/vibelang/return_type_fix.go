@@ -15,7 +15,7 @@ import (
 
 // A function without a return annotation is an Effect function, whatever its
 // body does (D500), so plain code that calls or passes a helper whose body
-// only computes is EK1001, EK2003 or EK4301. The quick fix of each writes the
+// only computes is EK1001, EK9203 or EK4301. The quick fix of each writes the
 // helper's return type, which makes it plain:
 //
 //	function twice(n: number) { return n * 2 }
@@ -35,17 +35,17 @@ import (
 
 func init() {
 	ls.RegisterCodeFixProvider(returnTypeFix)
-	tsFormFixCodes = append(tsFormFixCodes, EK1001.Code, EK2003.Code, EK4301.Code)
+	tsFormFixCodes = append(tsFormFixCodes, EK1001.Code, EK9203.Code, EK4301.Code)
 }
 
 // returnTypeFixTitle starts the title of returnTypeFix's action. vibelang
-// --fix applies, for EK1001, EK2003 and EK4301, only an action with this
+// --fix applies, for EK1001, EK9203 and EK4301, only an action with this
 // title, never another fix of those codes (writtenFormCodes).
 const returnTypeFixTitle = "Write the return type of "
 
 // writtenFormCodes are the codes whose only fix vibelang --fix applies is
 // returnTypeFix.
-var writtenFormCodes = []int32{EK1001.Code, EK2003.Code, EK4301.Code}
+var writtenFormCodes = []int32{EK1001.Code, EK9203.Code, EK4301.Code}
 
 // maxReturnTypeTokens is the longest return type the fix writes; a longer one
 // is written `infer _` (D500).

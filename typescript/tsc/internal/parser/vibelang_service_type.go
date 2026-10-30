@@ -27,7 +27,7 @@ const ServiceShapeFactory = "$service"
 // Context.Service<Search, SearchApi> (vibelang/services.go); the lowering
 // replaces the clause with the key class, as for every service. The body is
 // optional and holds static members; the checker reports an instance member
-// there (EK2103). The recorded form's Head runs from the word through the
+// there (EK9207). The recorded form's Head runs from the word through the
 // shape, and Right is the shape.
 func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, word core.TextRange, name *ast.Node, typeParameters *ast.NodeList) *ast.Node {
 	colon := p.tokenRange()

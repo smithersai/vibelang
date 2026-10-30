@@ -1,4 +1,4 @@
-// expect: TS2322 EK2001
+// expect: TS2322 EK9201
 import * as Effect from "effect/Effect"
 const decode = effect (text: string): Effect.Effect<number, string, never> => {
   if (text === "bad") throw "invalid"

@@ -198,7 +198,7 @@ func isHelperCall(expression *ast.Node) bool {
 
 // isDiscardingForm reports whether expression is a form whose value a
 // statement means to discard, or that runs on its own: an assignment, void,
-// delete, a producer's yield, or an async function's await, which EK4617
+// delete, a producer's yield, or an async function's await, which EK0103
 // reports when its operand is an Effect.
 func isDiscardingForm(expression *ast.Node) bool {
 	expression = ast.SkipParentheses(expression)

@@ -732,6 +732,10 @@ export const sidebar = [
         "link": "/vibelang-features/117-token-counts"
       },
       {
+        "text": "Diagnostic code map",
+        "link": "/vibelang-features/diagnostic-code-map"
+      },
+      {
         "text": "Experimental platform APIs",
         "link": "/vibelang-features/118-experimental-platform-apis"
       }

@@ -84,7 +84,7 @@ func shapeKindOf(class *ast.Node) classKind {
 	kind := serviceClass
 	if serviceShape(class) != nil {
 		// service Name: Type (D281): the shape is the type, and an instance
-		// member in the body is EK2103.
+		// member in the body is EK9207.
 		return kind
 	}
 	if extends := ast.GetClassExtendsHeritageElement(class); extends != nil {

@@ -9,7 +9,7 @@ import (
 )
 
 // vibelang --fix writes the return type of each unannotated helper that plain
-// code calls or passes (D500), and only that fix of EK1001, EK2003 and
+// code calls or passes (D500), and only that fix of EK1001, EK9203 and
 // EK4301: an exported helper, whose TypeScript API the annotation would
 // change, and a helper whose body runs an Effect keep their diagnostics.
 func TestFixWritesHelperReturnTypes(t *testing.T) {

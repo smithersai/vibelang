@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 // Chapter 12 "Checking a written contract", verbatim: welcome needs Mailer, but its contract says
 // R = Users.
 

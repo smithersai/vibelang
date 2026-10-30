@@ -1,4 +1,4 @@
-// expect: EK2103
+// expect: EK9207
 service Nested: { key: typeof Nested }
 service ArrayShape: ArrayShape[]
 type Shape = typeof Aliased

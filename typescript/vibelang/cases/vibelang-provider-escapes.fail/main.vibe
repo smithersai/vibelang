@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 // A provider's member must fit the service member's contract (Chapter 4).
 // Without Effect.orDie, DbError escapes find, whose contract allows only
 // UserNotFound, in an object literal provider and in an implementing class.

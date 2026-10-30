@@ -33,7 +33,7 @@ import (
 //
 // A is TypeScript's to infer. When A depends on the function's own result, as
 // it would above without the annotations, TypeScript gives up (TS7023), and
-// the function needs a written contract: EK2102.
+// the function needs a written contract: EK9206.
 
 func init() {
 	fileChecks = append(fileChecks, checkRecursion)
@@ -238,12 +238,12 @@ func takesSuccess(c *checker.Checker, call *ast.Node) bool {
 	return false
 }
 
-// checkRecursiveContract reports EK2102 at the contract of fn when it writes
+// checkRecursiveContract reports EK9206 at the contract of fn when it writes
 // A and infers E or R, and TypeScript could not read it: a call of fn in
 // fn's own body, or on its call cycle, stands where its program may be held,
 // such as an argument, or fn is generic, so typing the call asked for the
 // contract being read (TS2577, which this covers). Writing every channel
-// breaks the cycle. It also reports EK2102 when the contract TypeScript gave
+// breaks the cycle. It also reports EK9206 when the contract TypeScript gave
 // fn holds less than its cycle's fixpoint, so a caller read it too early.
 func (a *analyzer) checkRecursiveContract(fn *ast.Node) {
 	k := a.contractOf(fn)
@@ -259,7 +259,7 @@ func (a *analyzer) checkRecursiveContract(fn *ast.Node) {
 	name := functionDisplayName(fn)
 	whole := a.wholeContract(fn)
 	if t.Flags()&checker.TypeFlagsAny != 0 {
-		d := report(c, fn.Type(), EK2102.With("{0} calls itself where TypeScript needs its contract before it can infer the contract's channels, so its contract must write every channel."), name)
+		d := report(c, fn.Type(), EK9206.With("{0} calls itself where TypeScript needs its contract before it can infer the contract's channels, so its contract must write every channel."), name)
 		if len(fn.TypeParameters()) > 0 {
 			note(d, "Write {0}: a generic function's call of itself needs its whole contract.", whole)
 		} else {
@@ -274,7 +274,7 @@ func (a *analyzer) checkRecursiveContract(fn *ast.Node) {
 		return
 	}
 	if k.inferred(channelE) && channelType(c, t, "_E") != c.GetUnionType(info.errors) || k.inferred(channelR) && channelType(c, t, "_R") != c.GetUnionType(info.requirements) {
-		d := report(c, fn.Type(), EK2102.With("{0} is on a call cycle that TypeScript typed before the cycle's E and R were known, so its contract must be written."), name)
+		d := report(c, fn.Type(), EK9206.With("{0} is on a call cycle that TypeScript typed before the cycle's E and R were known, so its contract must be written."), name)
 		note(d, "Write {0}.", whole)
 	}
 }
@@ -317,10 +317,10 @@ func (a *analyzer) readsInferredContract(fn *ast.Node) bool {
 	})
 }
 
-// checkRecursion reports EK2102 for each function on a call cycle in file
+// checkRecursion reports EK9206 for each function on a call cycle in file
 // whose A TypeScript could not infer because it depends on the function's own
 // result, and covers TypeScript's TS7022, TS7023, or TS7024 there. It also
-// reports EK2102 where the checker typed a catch variable, or a function, on a
+// reports EK9206 where the checker typed a catch variable, or a function, on a
 // cycle before the cycle's E and R were known: there the written contracts
 // break the cycle.
 func checkRecursion(c *checker.Checker, file *ast.SourceFile) {
@@ -360,7 +360,7 @@ func (a *analyzer) checkRecursiveFunction(fn *ast.Node) {
 		at = parent.Name()
 	}
 	if t.Flags()&checker.TypeFlagsAny != 0 {
-		d := report(c, at, EK2102, name)
+		d := report(c, at, EK9206, name)
 		if a.readsInferredContract(fn) {
 			note(d, "Write its contract with its success type as A, such as Effect<number, infer E, infer R>, which still infers E and R.")
 		} else {
@@ -374,12 +374,12 @@ func (a *analyzer) checkRecursiveFunction(fn *ast.Node) {
 	}
 	info := a.effectOf(fn)
 	if channelType(c, t, "_E") != c.GetUnionType(info.errors) || channelType(c, t, "_R") != c.GetUnionType(info.requirements) {
-		d := report(c, at, EK2102.With("{0} is on a call cycle that TypeScript typed before the cycle's E and R were known, so its contract must be written."), name)
+		d := report(c, at, EK9206.With("{0} is on a call cycle that TypeScript typed before the cycle's E and R were known, so its contract must be written."), name)
 		note(d, "Write its contract, such as Effect<A, infer E, infer R>, or write the contract of a function it calls on the cycle.")
 	}
 }
 
-// checkReenteredFunction reports EK2102 at fn, whose E and R TypeScript read
+// checkReenteredFunction reports EK9206 at fn, whose E and R TypeScript read
 // while fn's own callees were being found: a call of fn passed by name in
 // fn's body is typed from fn's contract, so where the contract leaves E or R
 // to inference, the call was typed before they were known.
@@ -392,11 +392,11 @@ func (a *analyzer) checkReenteredFunction(fn *ast.Node) {
 	} else if parent := fn.Parent; parent.Kind == ast.KindVariableDeclaration {
 		at = parent.Name()
 	}
-	d := report(c, at, EK2102.With("{0} calls itself in another call's arguments, which TypeScript typed before {0}'s E and R were known, so its contract must write them."), name)
+	d := report(c, at, EK9206.With("{0} calls itself in another call's arguments, which TypeScript typed before {0}'s E and R were known, so its contract must write them."), name)
 	note(d, "Write every channel of its contract: {0}.", a.wholeContract(fn))
 }
 
-// checkRecursiveCatch reports EK2102 at clause when the checker typed its
+// checkRecursiveCatch reports EK9206 at clause when the checker typed its
 // variable before the failures of the cycle its try block calls were known.
 func (a *analyzer) checkRecursiveCatch(clause *ast.Node) {
 	c := a.checker
@@ -405,7 +405,7 @@ func (a *analyzer) checkRecursiveCatch(clause *ast.Node) {
 	if typed == c.GetUnionType(a.tryBlockFlow(clause.Parent.AsTryStatement().TryBlock).errors) {
 		return
 	}
-	d := report(c, declaration, EK2102.With("This catch handles failures from a call cycle, which were not known when its variable was typed, so the cycle needs a written contract."))
+	d := report(c, declaration, EK9206.With("This catch handles failures from a call cycle, which were not known when its variable was typed, so the cycle needs a written contract."))
 	note(d, "Write the contract of the function this try block calls on the cycle, such as Effect<A, E, infer R>.")
 	if d != nil {
 		cover(c, clause) // TypeScript's errors about the variable's early type

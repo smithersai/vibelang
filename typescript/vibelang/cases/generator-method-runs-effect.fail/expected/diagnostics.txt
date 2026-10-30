@@ -1,3 +1,3 @@
-main.vibe(17,11): error EK2003
-main.vibe(25,11): error EK2003
-main.vibe(29,11): error EK2003
+main.vibe(17,11): error EK9203
+main.vibe(25,11): error EK9203
+main.vibe(29,11): error EK9203

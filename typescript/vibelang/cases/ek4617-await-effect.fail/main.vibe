@@ -1,7 +1,7 @@
-// expect: EK4617
+// expect: EK0103
 // An async function means what it means in TypeScript (VIP-1): await waits
 // for a promise. An Effect goes through runPromise first (VIP-5), so awaiting
-// one is EK4617; awaiting a promise is fine.
+// one is EK0103; awaiting a promise is fine.
 export async function load() {
   return 1
 }

@@ -341,7 +341,7 @@ func (a *analyzer) canBePlain(fn *ast.Node) bool {
 		return false // TypeScript gave fn its contract's Effect type (functionExpressionType)
 	}
 	if a.isBodyDeferred(fn) {
-		return a.hasPlainContract(fn) // the deferred check reports a body that cannot be plain (EK2003)
+		return a.hasPlainContract(fn) // the deferred check reports a body that cannot be plain (EK9203)
 	}
 	// D147 skips by-name argument bodies; S5-1 keeps returned programs effectful.
 	return !a.forEachRunningCallInBody(fn, a.performs) && !hasEscapingThrow(fn) && !declaresUsing(fn) && !hasVibeLangStatement(fn) && !a.hasStreamLoop(fn) && !a.hasProgramReturn(fn)

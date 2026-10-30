@@ -325,7 +325,7 @@ func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 // A member without a body or initializer that is not static becomes abstract,
 // and a value member also readonly. Static members, such as a layer, and
 // members with bodies stay as written. A member's contract is written in the
-// ! form; without a ! a return type is not an Effect (EK2101).
+// ! form; without a ! a return type is not an Effect (EK9205).
 func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, control bool) *ast.Node {
 	word := p.scanner.TokenRange()
 	p.nextToken() // service or control

@@ -39,7 +39,7 @@ test("watch counts warnings separately on initial and incremental builds", { ski
   writeFileSync(file, source)
   const normal = spawnSync(native, ["--pretty", "false"], { cwd: root, encoding: "utf8" })
   assert.equal(normal.status, 0, normal.stdout + normal.stderr)
-  assert.match(normal.stdout, /warning EK2004/)
+  assert.match(normal.stdout, /warning EK9204/)
   const child = spawn(native, ["-w", "--pretty", "false", "--preserveWatchOutput"], { cwd: root })
   t.after(async () => {
     if (child.exitCode === null) {
@@ -100,12 +100,12 @@ test("watch counts warnings separately on initial and incremental builds", { ski
     record("source revision written", label)
   }
   record("waiting for initial build")
-  const initial = await cycle(text => /warning EK2004/.test(text))
+  const initial = await cycle(text => /warning EK9204/.test(text))
   assert.match(initial, /Found 0 errors and 1 warning\. Watching for file changes\./, diagnostic())
   writeRevision("broken", source + 'const broken: number = "wrong"\n')
-  const incremental = await cycle(text => /error TS2322/.test(text) && /warning EK2004/.test(text))
+  const incremental = await cycle(text => /error TS2322/.test(text) && /warning EK9204/.test(text))
   assert.match(incremental, /Found 1 error and 1 warning\. Watching for file changes\./, diagnostic())
   writeRevision("repaired", source)
-  const repaired = await cycle(text => /warning EK2004/.test(text) && !/error TS\d+/.test(text))
+  const repaired = await cycle(text => /warning EK9204/.test(text) && !/error TS\d+/.test(text))
   assert.match(repaired, /Found 0 errors and 1 warning\. Watching for file changes\./, diagnostic())
 })

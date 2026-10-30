@@ -1,4 +1,4 @@
-// expect: EK1001 EK2001 EK2114 EK4701
+// expect: EK1001 EK9201 EK2114 EK4701
 error NotFound { id: string }
 error Timeout
 
@@ -20,7 +20,7 @@ export effect function parsed() {
   return try sync(() => JSON.parse("{}") catch null)
 }
 
-// The left side cannot fail, so the catch never runs (EK2004, a warning).
+// The left side cannot fail, so the catch never runs (EK9204, a warning).
 export effect function constant() {
   return 1 catch 2
 }

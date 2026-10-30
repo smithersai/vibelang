@@ -4,9 +4,9 @@ import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdo
 const block = extract('```ts\nconst answer = 42\n```')[0]
 const diagnostic = (code: string, message = "example") => ({ code, message })
 test("extracts vibe and ts fences, skips unnamed TypeScript examples, and preserves lines and directives", () => {
-  const blocks = extract('heading\n```ts\n// TypeScript (.ts)\nconst ignored = 1\n```\n~~~vibe es\n// expect-error: EK2001 TS2322\nfunction f() {}\n~~~\n```json\n{}\n```\n```vibe\n// compiler-gap: return contract\nfunction g() {}\n```')
+  const blocks = extract('heading\n```ts\n// TypeScript (.ts)\nconst ignored = 1\n```\n~~~vibe es\n// expect-error: EK9201 TS2322\nfunction f() {}\n~~~\n```json\n{}\n```\n```vibe\n// compiler-gap: return contract\nfunction g() {}\n```')
   expect(blocks.map(b => [b.number, b.line, b.firstLine])).toEqual([[2, 7, "function f() {}"], [3, 14, "function g() {}"]])
-  expect(blocks[0].expected).toEqual(["EK2001", "TS2322"])
+  expect(blocks[0].expected).toEqual(["EK9201", "TS2322"])
   expect(blocks[1].gap).toBe("return contract")
 })
 test("extracts Effect comparison fences and keeps explicit fragment markers", () => {
@@ -38,23 +38,23 @@ test("only unresolved names and local imports are automatic fragments", () => {
   expect(classify(block, [diagnostic("TS2304"), diagnostic("TS2322")]).status).toBe("fail")
 })
 test("expected diagnostics must occur and do not hide other errors", () => {
-  const expected = { ...block, expected: ["EK2001"] }
+  const expected = { ...block, expected: ["EK9201"] }
   expect(classify(expected, []).status).toBe("fail")
-  expect(classify(expected, [diagnostic("EK2001")]).status).toBe("ok")
-  expect(classify(expected, [diagnostic("EK2001"), diagnostic("TS2322")]).status).toBe("fail")
+  expect(classify(expected, [diagnostic("EK9201")]).status).toBe("ok")
+  expect(classify(expected, [diagnostic("EK9201"), diagnostic("TS2322")]).status).toBe("fail")
 })
 test("explicit gaps remain checked, and stale markers fail", () => {
   const gap = { ...block, gap: "D56 program conversion" }
   expect(classify(gap, [diagnostic("TS2345")]).status).toBe("compiler-gap")
   expect(classify(gap, []).status).toBe("fail")
-  expect(classify({ ...gap, expected: ["EK2001"] }, []).status).toBe("compiler-gap")
-  expect(classify({ ...gap, expected: ["EK2001"] }, [diagnostic("EK2001")]).status).toBe("fail")
+  expect(classify({ ...gap, expected: ["EK9201"] }, []).status).toBe("compiler-gap")
+  expect(classify({ ...gap, expected: ["EK9201"] }, [diagnostic("EK9201")]).status).toBe("fail")
   expect(classify(gap, [diagnostic("TS2304")]).status).toBe("fail")
   expect(classify({ ...block, fragment: true }, [diagnostic("TS1005")]).status).toBe("fragment")
 })
 test("parses native ES and TS errors and ignores notes and warnings", () => {
-  expect(parseDiagnostics("block-2.vibe(4,8): error EK2001: failure escapes\n  Widen the contract.\nblock-3.vibe(1,1): warning EK2004: unreachable\nerror TS18003: No inputs were found")).toEqual([
-    { file: "block-2.vibe", diagnostic: { code: "EK2001", message: "failure escapes", line: 4, column: 8 } },
+  expect(parseDiagnostics("block-2.vibe(4,8): error EK9201: failure escapes\n  Widen the contract.\nblock-3.vibe(1,1): warning EK9204: unreachable\nerror TS18003: No inputs were found")).toEqual([
+    { file: "block-2.vibe", diagnostic: { code: "EK9201", message: "failure escapes", line: 4, column: 8 } },
     { diagnostic: { code: "TS18003", message: "No inputs were found" } }
   ])
 })

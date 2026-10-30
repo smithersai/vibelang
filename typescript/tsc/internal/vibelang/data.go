@@ -50,8 +50,9 @@ var (
 	EK2124 = message(2124, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}.")
 	// EK2125: a member of a variant that is not a field. {0} is the member.
 	EK2125 = message(2125, errorCategory, "{0} is not a field: a variant holds only fields, each written name: Type or name?: Type.")
-	// EK2126: a data declaration with more than four type parameters. {0} is its name, {1} the count.
-	EK2126 = message(2126, errorCategory, "data {0} has {1} type parameters, and Data.TaggedEnum.WithGenerics passes at most four.")
+	// EK2801: a data declaration with more than four type parameters. {0} is its name, {1} the count.
+	EK2801 = message(2801, errorCategory, "data {0} has {1} type parameters, and Data.TaggedEnum.WithGenerics passes at most four.")
+	EK2126 = message(2126, errorCategory, "{0} cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.")
 	// EK2127: Name.Variant names no variant of the data type Name. {0} is the data type, {1} the name, {2} its variants.
 	EK2127 = message(2127, errorCategory, "{0} has no variant {1}. Its variants are {2}.")
 	// EK4706: a field list after a matcher that is not a data variant. {0} is the matcher.
@@ -68,7 +69,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK2122, EK2123, EK2124, EK2125, EK2126, EK2127, EK4706, EK4707} {
+	for _, m := range []*Message{EK2122, EK2123, EK2124, EK2125, EK2126, EK2801, EK2127, EK4706, EK4707} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -356,7 +357,7 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 	parameters := alias.TypeParameters()
 	for i, parameter := range parameters {
 		if i == 4 {
-			report(c, parameter, EK2126, name, strconv.Itoa(len(parameters)))
+			report(c, parameter, EK2801, name, strconv.Itoa(len(parameters)))
 		}
 		if constraint := parameter.AsTypeParameterDeclaration().Constraint; constraint != nil {
 			report(c, constraint, ek2126Constraint, parameter.Name().Text())

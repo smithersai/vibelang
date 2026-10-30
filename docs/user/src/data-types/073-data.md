@@ -218,7 +218,8 @@ const idle = LoadState.Idle()
 | EK2123 | A variant declared twice | Rename one, or remove the second |
 | EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
 | EK2125 | A variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write `name: Type` or `name?: Type` |
-| EK2126 | More than four type parameters, or a constrained one | Use at most four unconstrained type parameters |
+| `EK2801` | More than four type parameters | Use at most four type parameters |
+| `EK2126` | A constrained type parameter | Remove the constraint |
 | EK2127 | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
 
 ## Defining ordinary and tagged errors

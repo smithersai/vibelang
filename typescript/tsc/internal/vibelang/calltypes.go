@@ -53,7 +53,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 // find(id)`, is a value's, not the Effect's. Read as the Effect, a contextual
 // type that is itself an Effect, such as an error instance, which fails with
 // itself, gave the Effect's E the error: `function f(): Late!! { return
-// late() }` drew EK2001 for an E that no argument names. Any other value type
+// late() }` drew EK9201 for an E that no argument names. Any other value type
 // gave no inference. Where the contextual type expects an Effect, the call
 // stands where a program is expected (D147, D262, D269), and TypeScript
 // infers from it as usual.

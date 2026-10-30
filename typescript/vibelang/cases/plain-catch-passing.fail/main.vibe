@@ -1,8 +1,8 @@
-// expect: EK2004
+// expect: EK9204
 // A plain function's catch receives expected failures only (D282). Where its
 // try block can fail, as JSON.parse can with SyntaxError (D101), an exception
 // that TypeScript code in the same block throws passes through the catch,
-// where TypeScript's catch received it. EK2004 is an error here
+// where TypeScript's catch received it. EK9204 is an error here
 // (tsconfig.json).
 import { identity } from "./identity.ts"
 

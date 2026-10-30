@@ -1,4 +1,4 @@
-// expect: TS2322 EK2001
+// expect: TS2322 EK9201
 // A service's static default is an implementation of the service (D40), so
 // it is checked as Layer.succeed's value is: against the service's shape,
 // with each member's contract. Without a type annotation it has the

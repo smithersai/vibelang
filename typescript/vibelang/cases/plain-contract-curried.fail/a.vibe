@@ -1,4 +1,4 @@
-// expect: EK2003
+// expect: EK9203
 // Returning an Effect function is plain; actually running one is not.
 export const invalid = (): () => Effect.Effect<number, never, never> => {
   Effect.succeed(1)

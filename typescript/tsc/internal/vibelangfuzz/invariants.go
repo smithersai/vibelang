@@ -249,7 +249,7 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 			continue
 		}
 		code := d.Code()
-		name := fmt.Sprintf("EK%d", code)
+		name := fmt.Sprintf("EK%04d", code)
 		// VIP-30 / 007-tooling.md puts configuration diagnostics in the config
 		// JSON, not in a .vibe source. Keep the ordinary-source D266 invariant
 		// below; only the configuration codes have this separate scope/category.

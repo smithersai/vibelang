@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -60,7 +61,13 @@ func SpecText(chapter string) string {
 	if err != nil {
 		panic(err)
 	}
-	return string(data)
+	text := string(data)
+	// The historical chapter describes unchanged legacy checks using their old
+	// identifiers. Translate identifiers only; keep every quoted rule intact.
+	if strings.Contains(SpecPath(chapter), "/history/") {
+		text = historicalDiagnosticNames.Replace(text)
+	}
+	return text
 }
 
 // SpecCodes returns every EK code in Chapter 28's registry table, in order.
@@ -77,12 +84,12 @@ var SpecListedCodes = sync.OnceValue(func() []int32 {
 })
 
 // vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
-// override Chapter 28 until it is rewritten from them: VIP-5's EK4615,
-// EK4616, and EK4617, VIP-39's EK4618, and the migration warnings of VIP-3's
+// override Chapter 28 until it is rewritten from them: VIP-5's EK0502,
+// EK4616, and EK0103, VIP-39's EK4618, and the migration warnings of VIP-3's
 // EK4853, VIP-9's EK4854 and EK4855, and VIP-9's EK3008. vipRetiredCodes are
 // those they retire: EK4404, with the try hatch.
 var (
-	vipCodes        = []int32{3008, 4615, 4616, 4617, 4618, 4853, 4854, 4855}
+	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 4853, 4854, 4855}
 	vipRetiredCodes = []int32{4404}
 )
 
@@ -195,3 +202,40 @@ var configurationDiagnosticRows = sync.OnceValue(func() map[string]appendixBChap
 	}
 	return rows
 })
+
+// historicalDiagnosticCodes follows the published diagnostic-code map: each
+// old identifier the historical chapter uses, and the code that replaced it.
+var historicalDiagnosticCodes = [][2]int32{
+	{4615, 502},
+	{4605, 1903},
+	{4606, 1904},
+	{2001, 9201},
+	{2002, 9202},
+	{2003, 9203},
+	{2004, 9204},
+	{2101, 9205},
+	{2102, 9206},
+	{2103, 9207},
+	{3006, 9208},
+	{4617, 103},
+}
+
+var historicalDiagnosticNames = func() *strings.Replacer {
+	var pairs []string
+	for _, p := range historicalDiagnosticCodes {
+		pairs = append(pairs, fmt.Sprintf("EK%04d", p[0]), fmt.Sprintf("EK%04d", p[1]))
+	}
+	return strings.NewReplacer(pairs...)
+}()
+
+// historicalCode returns the number Chapter 28 gave code before the map
+// renamed it, so that the code keeps the chapter's side of the lint range
+// (EK4801): EK9201 was EK2001, a rule before the lint range.
+func historicalCode(code int32) int32 {
+	for _, p := range historicalDiagnosticCodes {
+		if p[1] == code {
+			return p[0]
+		}
+	}
+	return code
+}

@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 // Effect's NodeServices.layer provides Effect's FileSystem, not the
 // experimental one (D313), so a contract that needs nothing is wrong.
 import { NodeServices } from "@effect/platform-node"

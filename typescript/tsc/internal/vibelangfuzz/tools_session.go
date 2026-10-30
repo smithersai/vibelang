@@ -500,6 +500,9 @@ func toolsFileCode(r *Result, d *ast.Diagnostic) string {
 	if source == "" {
 		source = "TS"
 	}
+	if source == "EK" {
+		return fmt.Sprintf("%s: EK%04d", file, d.Code())
+	}
 	return fmt.Sprintf("%s: %s%d", file, source, d.Code())
 }
 

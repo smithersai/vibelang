@@ -1,8 +1,8 @@
-// expect: EK2001 EK2002 EK2101
+// expect: EK9201 EK9202 EK9205
 // D308, D309: a type argument left out of Effect<...> is never, and the compiler
 // checks it as never. Effect<string> rejects the failure and the service the
 // body needs; Effect<string, Gone> rejects the service. A service member
-// still writes an Effect type: a bare return type is EK2101.
+// still writes an Effect type: a bare return type is EK9205.
 error Gone { id: string }
 
 service Users {

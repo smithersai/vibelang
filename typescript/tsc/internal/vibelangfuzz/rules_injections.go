@@ -133,26 +133,26 @@ var ruleInjections = []*ruleInjection{
 		Text: "const n$$ = provide Layer.empty { return 1 };"},
 
 	// Chapters 2 and 14: contracts.
-	{Code: 2001, Name: "throw-escapes", Quote: "An expected failure escapes the written contract", Slots: top,
+	{Code: 9201, Name: "throw-escapes", Quote: "An expected failure escapes the written contract", Slots: top,
 		Decls: "error NotFound$$ { id: string }", Text: "export function find$$(id: string): string!! {\n  if (id === \"\") throw new NotFound$$({ id });\n  return id;\n}"},
-	{Code: 2001, Name: "call-escapes", Quote: "An expected failure escapes the written contract", Slots: top,
+	{Code: 9201, Name: "call-escapes", Quote: "An expected failure escapes the written contract", Slots: top,
 		Decls: "error NotFound$$ { id: string }\nfunction lookup$$(id: string): string!NotFound$$! {\n  if (id === \"\") throw new NotFound$$({ id });\n  return id;\n}",
 		Text:  "export function find$$(id: string): string!! {\n  return lookup$$(id);\n}"},
-	{Code: 2002, Name: "requirement-escapes", Quote: "A requirement escapes the written contract", Slots: top,
+	{Code: 9202, Name: "requirement-escapes", Quote: "A requirement escapes the written contract", Slots: top,
 		Decls: "service Outside$$ { value: number }", Text: "export function needs$$(): number!! {\n  return Outside$$().value;\n}"},
-	{Code: 2003, Name: "plain-runs-effect", Quote: "A plain annotation on a function or method whose body runs an Effect", Slots: top,
+	{Code: 9203, Name: "plain-runs-effect", Quote: "A plain annotation on a function or method whose body runs an Effect", Slots: top,
 		Decls: loadDecl, Text: "export function bare$$(): number {\n  load$$();\n  return 1;\n}"},
-	{Code: 2003, Name: "plain-throw", Quote: "or a plain annotation on a function, or a generator method, whose throw or trusted call's listed failure can escape", Slots: top,
+	{Code: 9203, Name: "plain-throw", Quote: "or a plain annotation on a function, or a generator method, whose throw or trusted call's listed failure can escape", Slots: top,
 		Decls: "error Bad$$", Text: "export function check$$(n: number): number {\n  if (n < 0) throw new Bad$$();\n  return n;\n}"},
-	{Code: 2003, Name: "plain-method", Quote: "A plain annotation on a function or method whose body runs an Effect", Slots: []string{slotMember},
+	{Code: 9203, Name: "plain-method", Quote: "A plain annotation on a function or method whose body runs an Effect", Slots: []string{slotMember},
 		Decls: loadDecl, Text: "bare$$(): number {\n    return load$$();\n  }"},
-	{Code: 2003, Name: "constructor-throw", Quote: "or a throw or listed failure that can escape a constructor, an accessor or a class static block", Slots: top,
+	{Code: 9203, Name: "constructor-throw", Quote: "or a throw or listed failure that can escape a constructor, an accessor or a class static block", Slots: top,
 		Decls: "error Bad$$", Text: "export class Checked$$ {\n  constructor(n: number) {\n    if (n < 0) throw new Bad$$();\n  }\n}"},
 
 	// Chapter 3: a catch that cannot catch an expected failure (D238, D282).
-	{Code: 2004, Name: "dead-catch", Quote: "a catch whose try block has E = `never`, in an Effect or a plain function", Slots: stmt,
+	{Code: 9204, Name: "dead-catch", Quote: "a catch whose try block has E = `never`, in an Effect or a plain function", Slots: stmt,
 		Text: "try {\n  const inner$$ = 1;\n} catch (e) {\n  const caught$$ = 2;\n}"},
-	{Code: 2004, Name: "dead-catch-expression", Quote: "or a catch expression with no expected errors", Slots: stmt,
+	{Code: 9204, Name: "dead-catch-expression", Quote: "or a catch expression with no expected errors", Slots: stmt,
 		Text: "const constant$$ = 1 catch 2;"},
 
 	// Chapter 9: resumeWith runs at the perform site.
@@ -167,20 +167,20 @@ var ruleInjections = []*ruleInjection{
 		Text: "export function swallow$$(n: number) {\n  try {\n    return n;\n  } finally {\n    return -1;\n  }\n}"},
 
 	// Chapter 14: declarations without bodies need Effect contracts.
-	{Code: 2101, Name: "service-bare", Quote: "A service or control method without a body whose return type is not an Effect type", Slots: top,
+	{Code: 9205, Name: "service-bare", Quote: "A service or control method without a body whose return type is not an Effect type", Slots: top,
 		Text: "service Bare$$ {\n  find(id: string): string\n}"},
-	{Code: 2101, Name: "control-bare", Quote: "A service or control method without a body whose return type is not an Effect type", Slots: top,
+	{Code: 9205, Name: "control-bare", Quote: "A service or control method without a body whose return type is not an Effect type", Slots: top,
 		Text: "control Ask$$ {\n  ask(question: string): string\n}"},
-	{Code: 2102, Name: "recursive-success", Quote: "A recursive Effect function whose success, catch-variable, or return type needs a contract", Slots: top,
+	{Code: 9206, Name: "recursive-success", Quote: "A recursive Effect function whose success, catch-variable, or return type needs a contract", Slots: top,
 		Decls: "error Negative$$ { n: number }",
 		Text:  "export function countDown$$(n: number) {\n  if (n < 0) throw new Negative$$({ n });\n  if (n === 0) return 0;\n  return countDown$$(n - 1) + 1;\n}"},
 
 	// Chapter 4: declarations of services and layers.
-	{Code: 2103, Name: "service-body", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
+	{Code: 9207, Name: "service-body", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
 		Text: "service Users$$ {\n  find(id: string): string!!\n  describe(id: string) {\n    return id;\n  }\n}"},
-	{Code: 2103, Name: "service-initializer", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
+	{Code: 9207, Name: "service-initializer", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
 		Text: "service Region$$ {\n  region = \"eu\"\n}"},
-	{Code: 2103, Name: "shape-self", Quote: "or any instance member of `service Name: Type`", Slots: top,
+	{Code: 9207, Name: "shape-self", Quote: "or any instance member of `service Name: Type`", Slots: top,
 		Text: "interface Api$$ {\n  find(query: string): string!!\n}\nservice Search$$: Api$$ {\n  limit: number\n}"},
 	{Code: 2104, Name: "layer-setup-after", Quote: "A setup statement of an old `layer` declaration that follows one of its members", Slots: top,
 		Decls: "service Counter$$ {\n  next(): number!!\n}",
@@ -269,7 +269,7 @@ var ruleInjections = []*ruleInjection{
 		Text: "data Members$$ {\n  Method { run(): void }\n}"},
 	{Code: 2125, Name: "mutable", Quote: "or a `mutable` field", Slots: top,
 		Text: "data Members$$ {\n  Mutable { mutable count: number }\n}"},
-	{Code: 2126, Name: "five-parameters", Quote: "A `data` declaration with more than four type parameters", Slots: top,
+	{Code: 2801, Name: "five-parameters", Quote: "A `data` declaration with more than four type parameters", Slots: top,
 		Text: "data Five$$<A, B, C, D, E> {\n  Five { a: A; e: E }\n}"},
 	{Code: 2126, Name: "constrained", Quote: "or a constrained one", Slots: top,
 		Text: "data Bound$$<A extends string> {\n  Bound { a: A }\n}"},
@@ -293,7 +293,7 @@ var ruleInjections = []*ruleInjection{
 		Decls: "service Users$$ {\n  find(id: string): string!!\n}", Text: "const isUsers$$ = ({} as unknown) instanceof Users$$;"},
 	{Code: 3005, Name: "generic-service", Quote: "A generic service class", Slots: top,
 		Text: "service Box$$<T>: ReadonlyArray<T>"},
-	{Code: 3006, Name: "static-shadow", Quote: "A static member with the same name as a service member", Slots: top,
+	{Code: 9208, Name: "static-shadow", Quote: "A static member with the same name as a service member", Slots: top,
 		Decls: "interface SearchApi$$ {\n  find(query: string): string!!\n}",
 		Text:  "service Search$$: SearchApi$$ {\n  static find(query: string) {\n    return query;\n  }\n}"},
 	{Code: 3101, Name: "per-call-lookup", Quote: "A provider looks a service up per call where the contract allows no requirements", Slots: top,
@@ -402,9 +402,9 @@ var ruleInjections = []*ruleInjection{
 		Text: "const waited$$ = sync(() => {\n  await Promise.resolve(1);\n});"},
 	{Code: 4604, Name: "await-in-hatch", Quote: "`await` in a hatch body that is not `async`", Slots: []string{slotHatch},
 		Text: "await Promise.resolve(1);"},
-	{Code: 4605, Name: "break-concurrent", Quote: "`break` that would leave a `for concurrent` loop", Slots: effectOnly,
+	{Code: 1903, Name: "break-concurrent", Quote: "`break` that would leave a `for concurrent` loop", Slots: effectOnly,
 		Text: "for concurrent (const n$$ of [1, 2]) {\n  if (n$$ === 1) break;\n}"},
-	{Code: 4606, Name: "return-concurrent", Quote: "`return` in a `for concurrent` body", Slots: effectOnly,
+	{Code: 1904, Name: "return-concurrent", Quote: "`return` in a `for concurrent` body", Slots: effectOnly,
 		Text: "for concurrent (const n$$ of [1, 2]) {\n  if (n$$ === 2) return;\n}"},
 	{Code: 4607, Name: "select", Quote: "`select`, which `await.race` replaced", Slots: effectOnly,
 		Decls: loadDecl, Text: "select {\n  case const n = load$$(): Console.log(n)\n}"},
@@ -563,11 +563,11 @@ var ruleInjections = []*ruleInjection{
 		Text: "service Stock$$ {\n  region: string,\n  count(sku: string): number!!\n}"},
 	{Code: 1013, Name: "schema-error-comma", Quote: "A comma after a field of an `error`, `schema error`, `service`, or `control` declaration", Slots: top,
 		Text: "schema error Rejected$$ { sku: string, reason: string }"},
-	{Code: 2003, Name: "accessor-throw", Quote: "or a throw or listed failure that can escape a constructor, an accessor or a class static block", Slots: top,
+	{Code: 9203, Name: "accessor-throw", Quote: "or a throw or listed failure that can escape a constructor, an accessor or a class static block", Slots: top,
 		Decls: "error Bad$$", Text: "export class Guarded$$ {\n  get value(): number {\n    throw new Bad$$();\n  }\n}"},
 	{Code: 2006, Name: "break-finally", Quote: "A `return`, `break`, or `continue` that leaves a `finally` block", Slots: stmt,
 		Text: "while (1 + 1 === 2) {\n  try {\n    const seen$$ = 1;\n  } finally {\n    break;\n  }\n}"},
-	{Code: 2103, Name: "control-body", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
+	{Code: 9207, Name: "control-body", Quote: "A member of a `service` or `control` declaration with a body or an initializer", Slots: top,
 		Text: "control Ask$$ {\n  ask(question: string): string!! {\n    return question;\n  }\n}"},
 	{Code: 2117, Name: "error-extends-schema-error", Quote: "or an `error` that extends a `schema error`", Slots: top,
 		Text: "schema error Base$$ { code: string }\nerror Child$$ extends Base$$ { extra: number }"},
@@ -675,7 +675,7 @@ type ruleAllowed struct {
 var allowedForms = []*ruleAllowed{
 	// Chapter 10: a hatch's first argument is plain TypeScript (D396). A hatch
 	// is an Effect that runs, so a statement holding one goes only where a
-	// function runs Effects: in a plain function it is EK2003, "A plain
+	// function runs Effects: in a plain function it is EK9203, "A plain
 	// annotation on a function or method whose body runs an Effect".
 	{Name: "hatch-clock", Chapter: "110-part1-ch10-typescript.md", Quote: "platform APIs and clock reads are allowed (no EK4401, EK4402, or EK4403)",
 		Slots: effectOnly, Text: "const now$$ = sync(() => Date.now());"},

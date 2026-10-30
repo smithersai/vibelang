@@ -318,7 +318,7 @@ var toolsFixCodes = sync.OnceValue(func() []int32 {
 	first, _ := strconv.Atoi(forms[1])
 	last, _ := strconv.Atoi(forms[2])
 	for code := first; code <= last; code++ {
-		add(fmt.Sprintf("EK%d", code))
+		add(fmt.Sprintf("EK%04d", code))
 	}
 	// D382's Diagnostics rule also requires --fix to migrate classified sites.
 	if strings.Contains(text, "**EK1023**") && strings.Contains(text, "--fix` rewrites each other site") {

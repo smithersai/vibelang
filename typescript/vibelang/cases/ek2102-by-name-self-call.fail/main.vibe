@@ -1,4 +1,4 @@
-// expect: EK2102
+// expect: EK9206
 // A function that passes a call of itself by name reads its own E and R
 // while its callees are being found. Where its contract leaves R to
 // inference with infer R, that read cannot be exact, so the contract must

@@ -1,4 +1,4 @@
-// expect: EK3101 EK3101 EK3101 EK3101 EK3101 EK2001 TS2345
+// expect: EK3101 EK3101 EK3101 EK3101 EK3101 EK9201 TS2345
 // The object a Layer.effect program returns is typed by the service (D222), so
 // each member's failures and call-time requirements must fit its contract, as
 // in Layer.succeed (Chapter 4, "Requirements that would leak"). The block

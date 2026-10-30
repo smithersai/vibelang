@@ -15,7 +15,7 @@ import (
 // mismatch as TS2322 or TS2345 on the whole provider; these checks name the
 // member and the failure or the service:
 //
-//	error EK2001: DbError can escape UsersLive.find, but Users.find's contract allows only UserNotFound.
+//	error EK9201: DbError can escape UsersLive.find, but Users.find's contract allows only UserNotFound.
 //	error EK3101: UsersAudited.find looks up Audit each time it is called, but
 //	  Users.find(id: string): User!UserNotFound! allows no call-time requirements.
 //
@@ -211,7 +211,7 @@ func checkProviderClass(c *checker.Checker, class *ast.Node) {
 
 // checkMember compares implementation, the type of fn, holder's member name,
 // with declared, the type owner declares for it. Both must be functions that
-// return Effects; it reports a failure the contract does not allow (EK2001)
+// return Effects; it reports a failure the contract does not allow (EK9201)
 // at at, and a requirement it does not declare (EK3101) at the call in fn
 // that looks it up, and reports whether it reported anything.
 func checkMember(c *checker.Checker, at, fn *ast.Node, holder, owner, name string, declared, implementation *checker.Type) bool {
@@ -239,7 +239,7 @@ func checkMember(c *checker.Checker, at, fn *ast.Node, holder, owner, name strin
 		if allowedErrors.Flags()&checker.TypeFlagsNever != 0 {
 			allows = "allows no failures"
 		}
-		d := report(c, at, EK2001, c.TypeToString(failure), holder+"."+name, qualifiedMember(owner, name)+"'s contract "+allows)
+		d := report(c, at, EK9201, c.TypeToString(failure), holder+"."+name, qualifiedMember(owner, name)+"'s contract "+allows)
 		note(d, "Handle it, add {0} to {1}'s contract, or make it a defect with Effect.orDie.", c.TypeToString(failure), qualifiedMember(owner, name))
 	}
 	for _, service := range unionMembers(channelType(c, effect, "_R")) {

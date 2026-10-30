@@ -11,7 +11,7 @@ import (
 )
 
 // D282: a throw that can escape a function with a plain return annotation is
-// EK2003, and its quick fix writes the Effect contract that names the
+// EK9203, and its quick fix writes the Effect contract that names the
 // failures. The fixed document type-checks.
 func TestPlainContractFailureFix(t *testing.T) {
 	for _, test := range []struct{ name, source, title, want string }{
@@ -50,13 +50,13 @@ func TestPlainContractFailureFix(t *testing.T) {
 			program, file, service, converters := editorProgram(t, test.source)
 			var diagnostic *ast.Diagnostic
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == EK2003.Code {
+				if d.Code() == EK9203.Code {
 					diagnostic = d
 					break
 				}
 			}
 			if diagnostic == nil {
-				t.Fatalf("missing EK2003 in %s", test.source)
+				t.Fatalf("missing EK9203 in %s", test.source)
 			}
 			d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
 			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
@@ -107,7 +107,7 @@ func TestPlainContractWithoutFailureHasNoFix(t *testing.T) {
 	}
 }
 
-// EK2003 leads with what the plain function can't do and names the function
+// EK9203 leads with what the plain function can't do and names the function
 // and what it throws or runs, then says why: its return annotation. Its notes
 // give every way out as code, the Effect contract first.
 func TestPlainContractMessages(t *testing.T) {
@@ -147,12 +147,12 @@ func TestPlainContractMessages(t *testing.T) {
 			program, file, _, _ := editorProgram(t, test.source)
 			var got []string
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == EK2003.Code {
+				if d.Code() == EK9203.Code {
 					got = append(got, diagnosticWithNotes(d))
 				}
 			}
 			if len(got) != 1 || got[0] != test.want {
-				t.Fatalf("EK2003 messages:\n%s\nwant:\n%s", strings.Join(got, "\n---\n"), test.want)
+				t.Fatalf("EK9203 messages:\n%s\nwant:\n%s", strings.Join(got, "\n---\n"), test.want)
 			}
 		})
 	}

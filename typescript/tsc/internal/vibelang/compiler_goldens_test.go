@@ -309,7 +309,11 @@ func compilerDiagnosticLine(t *testing.T, dir string, d *ast.Diagnostic) string 
 	if source == "" {
 		source = "TS"
 	}
-	message := fmt.Sprintf("%s %s%d", d.Category().Name(), source, d.Code())
+	code := fmt.Sprintf("%s%d", source, d.Code())
+	if source == "EK" {
+		code = fmt.Sprintf("EK%04d", d.Code())
+	}
+	message := fmt.Sprintf("%s %s", d.Category().Name(), code)
 	if d.File() == nil {
 		return message
 	}

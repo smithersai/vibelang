@@ -1,6 +1,6 @@
-// expect: EK2003
+// expect: EK9203
 // A generator method is a JavaScript generator, whose body is plain code
-// (Chapter 8): a call that runs an Effect there is EK2003, where the method
+// (Chapter 8): a call that runs an Effect there is EK9203, where the method
 // yielded the program unrun. Data, plain calls, a program the method yields
 // as a function, and a call yield* delegates to are fine.
 effect function work(n: number): number!! {

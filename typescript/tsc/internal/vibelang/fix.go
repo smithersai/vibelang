@@ -209,7 +209,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		slices.Sort(codes)
 		var parts []string
 		for _, code := range codes {
-			parts = append(parts, diagnosticSource+strconv.Itoa(int(code))+" ×"+strconv.Itoa(fixed.Counts[code]))
+			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
 		}
 		for _, kind := range []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel} {
 			if n := fixed.Rewrites[kind]; n > 0 {
@@ -221,7 +221,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		fmt.Fprintf(w, "vibelang --fix: %s: %d %s (%s)\n", name(file), count, plural(count, "fix", "fixes"), strings.Join(parts, ", "))
 	}
 	for _, refusal := range r.Refused {
-		fmt.Fprintf(w, "vibelang --fix: %s:%d: EK%d not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, refusal.Code, refusal.Error)
+		fmt.Fprintf(w, "vibelang --fix: %s:%d: EK%04d not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, refusal.Code, refusal.Error)
 	}
 	fmt.Fprintf(w, "vibelang --fix: %d %s in %d %s", total, plural(total, "fix", "fixes"), len(r.Order), plural(len(r.Order), "file", "files"))
 	if len(r.Refused) > 0 {
@@ -520,7 +520,11 @@ func errorKey(d *ast.Diagnostic) string {
 	if source == "" {
 		source = "TS"
 	}
-	return file + ": " + source + strconv.Itoa(int(d.Code())) + ": " + d.String()
+	code := source + strconv.Itoa(int(d.Code()))
+	if source == diagnosticSource {
+		code = fmt.Sprintf("EK%04d", d.Code())
+	}
+	return file + ": " + code + ": " + d.String()
 }
 
 // newError returns an error program reports that baseline does not hold, as

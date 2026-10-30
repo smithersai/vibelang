@@ -95,15 +95,15 @@ var ConfigSeeds = sync.OnceValue(func() [][2]string {
 	// A returned block-owned fiber is EK4838 (Chapter 7), which no case
 	// lists because the compiler does not yet report it as an error.
 	bySource[4838] = append(bySource[4838], "export function main() {\n  const f = fork sleep(\"1 second\")\n  return f\n}\n")
-	fixed := []int32{4838, 4813, 9100, 2001, 4401, 1009}
+	fixed := []int32{4838, 4813, 9100, 9201, 4401, 1009}
 	for _, code := range append(slices.Clone(facts.Adjustable), fixed...) {
 		for _, source := range bySource[code] {
 			for _, severity := range append(slices.Clone(facts.Severities), "info") {
-				add(fmt.Sprintf(`{"diagnostics":{"EK%d":%q}}`, code, severity), source)
+				add(fmt.Sprintf(`{"diagnostics":{"EK%04d":%q}}`, code, severity), source)
 			}
 		}
 		if len(bySource[code]) == 0 {
-			add(fmt.Sprintf(`{"diagnostics":{"EK%d":"off"}}`, code), "export function main() { return 1 }\n")
+			add(fmt.Sprintf(`{"diagnostics":{"EK%04d":"off"}}`, code), "export function main() { return 1 }\n")
 		}
 	}
 	snippet := "export function main() {\n  Console.log(\"hello\")\n}\n"
@@ -113,7 +113,7 @@ var ConfigSeeds = sync.OnceValue(func() [][2]string {
 	for _, config := range []string{
 		`{}`, `{"tracing":"none"}`, `{"tracing":"exported"}`, `{"tracing":"all"}`, `{"tracing":"sometimes"}`, `{"tracing":1}`,
 		`{"trustedPackages":["@scope/*"]}`, `{"trustedPackages":"@scope/*"}`, `{"trustedPackages":[1]}`, `{"trustedPackages":[]}`,
-		`{"diagnostics":{"*":"off"}}`, `{"diagnostics":[]}`, `{"diagnostics":{"EK2004":null}}`, `{"diagnostics":{"ek2004":"off"}}`,
+		`{"diagnostics":{"*":"off"}}`, `{"diagnostics":[]}`, `{"diagnostics":{"EK9204":null}}`, `{"diagnostics":{"ek2004":"off"}}`,
 		`{"unknown":true}`, `{"diagnostics":{"EK4801":"off"},"tracing":"all","trustedPackages":["effect"]}`,
 	} {
 		add(config, snippet)
@@ -392,7 +392,7 @@ func CheckConfig(t *testing.T, w *Workspace, target, config, source string) {
 	}
 	slices.Sort(codes)
 	for _, code := range codes {
-		name := fmt.Sprintf("EK%d", code)
+		name := fmt.Sprintf("EK%04d", code)
 		got, base := occurrences(configured.Diagnostics, code), occurrences(baseline.Diagnostics, code)
 		severity, isSet := set[code]
 		switch {

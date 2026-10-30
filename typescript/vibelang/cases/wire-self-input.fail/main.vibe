@@ -1,4 +1,4 @@
-// expect: EK2002
+// expect: EK9202
 // A layer cannot supply its own input with its own output, which is not built
 // yet: wire(Decorated), where Decorated provides S and needs S, still needs
 // S, as Decorated does, so a block that provides it alone needs S.

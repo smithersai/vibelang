@@ -8,7 +8,7 @@ func TestVIP3OmittedRequirementIsNever(t *testing.T) {
 		found := false
 		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 			t.Log(d.String())
-			if d.Source() == diagnosticSource && d.Code() == EK2002.Code {
+			if d.Source() == diagnosticSource && d.Code() == EK9202.Code {
 				found = true
 			}
 		}

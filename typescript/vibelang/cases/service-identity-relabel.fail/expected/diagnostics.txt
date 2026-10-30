@@ -1,4 +1,4 @@
-main.vibe(15,10): error EK2002
 main.vibe(15,10): warning EK4836
-main.vibe(21,12): error EK2002
+main.vibe(15,10): error EK9202
+main.vibe(21,12): error EK9202
 main.vibe(27,9): error TS2322

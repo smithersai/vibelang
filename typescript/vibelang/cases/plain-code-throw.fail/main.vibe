@@ -1,8 +1,8 @@
-// expect: EK2003 EK1001
+// expect: EK9203 EK1001
 // D282: throw is a typed failure everywhere outside a hatch or a module
 // declaration. A constructor, an accessor and a class static block run as
 // plain JavaScript, as a module's top level does, so none of them can fail: a
-// throw that can escape one is EK2003, and EK1001 at the top level.
+// throw that can escape one is EK9203, and EK1001 at the top level.
 error Bad { why: string }
 
 // A constructor of an error class (D278) and of an ordinary class.

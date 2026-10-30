@@ -12,8 +12,8 @@ import (
 // whole computation of an async function. The function is an Effect whatever
 // its body runs. Its returns are checked against A, so a returned value that A
 // does not accept is TypeScript's own error. An expected failure that can
-// escape the body and that E does not accept is EK2001; a requirement that R
-// does not accept is EK2002. A contract may be wider than the body, never
+// escape the body and that E does not accept is EK9201; a requirement that R
+// does not accept is EK9202. A contract may be wider than the body, never
 // narrower (Chapter 14).
 //
 // A channel written `infer Name` comes from the body (D57). The signature's
@@ -22,7 +22,7 @@ import (
 // means in TypeScript: Effect<User> checks E and R as never (D309). A
 // non-Effect annotation makes a plain function,
 // which never fails and needs nothing (D67, D282): a failure that can escape
-// it, or an Effect it runs, is EK2003 (plain_failures.go).
+// it, or an Effect it runs, is EK9203 (plain_failures.go).
 
 func init() {
 	fileChecks = append(fileChecks, checkContracts)
@@ -252,9 +252,9 @@ func (a *analyzer) calleeContract(callee *ast.Node, call *ast.Node, sig *checker
 }
 
 // checkContracts reports, for each function in file that the lowering can
-// turn into an Effect: EK2003 for a return annotation that is not a contract
-// or leaves a channel out, EK2001 for an expected failure that escapes the
-// contract's E, and EK2002 for a requirement that escapes its R.
+// turn into an Effect: EK9203 for a return annotation that is not a contract
+// or leaves a channel out, EK9201 for an expected failure that escapes the
+// contract's E, and EK9202 for a requirement that escapes its R.
 func checkContracts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
@@ -306,14 +306,14 @@ func (a *analyzer) checkContract(file *ast.SourceFile, fn *ast.Node) {
 	if !k.inferred(channelE) {
 		declared := channelType(c, contractType, "_E")
 		for _, escape := range errorEscapes {
-			d := report(c, escape.source, EK2001, c.TypeToString(escape.t), name, "its contract says E = "+c.TypeToString(declared))
+			d := report(c, escape.source, EK9201, c.TypeToString(escape.t), name, "its contract says E = "+c.TypeToString(declared))
 			note(d, "Catch it inside {0}, or change the contract to {1}.", name, contractText(c, contractType, channelE, escape.t))
 		}
 	}
 	if !k.inferred(channelR) {
 		declared := channelType(c, contractType, "_R")
 		for _, escape := range requirementEscapes {
-			d := report(c, escape.source, EK2002, name, c.TypeToString(escape.t), c.TypeToString(declared))
+			d := report(c, escape.source, EK9202, name, c.TypeToString(escape.t), c.TypeToString(declared))
 			note(d, "Provide {0} inside {1} with provide layer { … }, or add it to the contract: {2}.", c.TypeToString(escape.t), name, contractText(c, contractType, channelR, escape.t))
 		}
 	}

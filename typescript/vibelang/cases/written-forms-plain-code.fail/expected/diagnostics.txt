@@ -8,4 +8,4 @@ main.vibe(21,19): error EK1001
 main.vibe(24,17): error EK1001
 main.vibe(27,12): error EK1001
 main.vibe(31,33): error EK1001
-main.vibe(35,35): error EK2003
+main.vibe(35,35): error EK9203

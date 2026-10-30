@@ -1,4 +1,4 @@
-// expect: EK2001 EK2002 EK2001 EK2002
+// expect: EK9201 EK9202 EK9201 EK9202
 import { Effect } from "effect"
 error Gone {}
 service Needed { id: string }

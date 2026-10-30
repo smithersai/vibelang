@@ -1,4 +1,4 @@
-// expect: EK2001
+// expect: EK9201
 // A contract may be wider than the body, never narrower: a failure that can
 // escape the body must be in E.
 class UserNotFound extends TaggedError("UserNotFound")<{ readonly id: string }> {}

@@ -466,8 +466,8 @@ func (p *Parser) nextTokenIsConstOrLet() bool {
 // the loop ends, and a failure interrupts the rest. Without a limit the
 // second argument is undefined. The body is a function, so it parses as one:
 // a continue that would go to the next item returns from it instead, a break
-// that would leave the loop is flagged for EK4605, and a return the body
-// writes is EK4606 (both reported by the checker).
+// that would leave the loop is flagged for EK1903, and a return the body
+// writes is EK1904 (both reported by the checker).
 func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	anchor := p.tokenRange()
 	p.nextToken() // concurrent
@@ -537,7 +537,7 @@ func (p *Parser) rewriteConcurrentJumps(node *ast.Node, inSwitch bool) {
 		return
 	case node.Kind == ast.KindBreakStatement:
 		if !inSwitch && node.AsBreakStatement().Label == nil {
-			node.Flags |= ast.NodeFlagsVibeLang // EK4605
+			node.Flags |= ast.NodeFlagsVibeLang // EK1903
 		}
 		return
 	case ast.IsIterationStatement(node, false /*lookInLabeledStatements*/), isFunctionOrClassBoundary(node):

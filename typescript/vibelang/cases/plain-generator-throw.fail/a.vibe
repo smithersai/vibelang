@@ -1,6 +1,6 @@
-// expect: EK2003 EK2003
+// expect: EK9203 EK9203
 // D296: a generator with a JavaScript iterator annotation follows D282 like
-// any plain function. A throw that can escape it is EK2003; one that its own
+// any plain function. A throw that can escape it is EK9203; one that its own
 // catch handles stays inside.
 error Invalid { value: string }
 

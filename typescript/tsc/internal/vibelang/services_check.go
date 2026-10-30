@@ -9,9 +9,9 @@ import (
 )
 
 // Checks of service and control classes (design D1, D2): a member without a
-// full contract (EK2101), a key that two services share (EK3001), and a
+// full contract (EK9205), a key that two services share (EK3001), and a
 // service used as a base class (EK3002, EK3003, EK3004), declared generic
-// (EK3005), or with a static member that shadows a service member (EK3006).
+// (EK3005), or with a static member that shadows a service member (EK9208).
 
 func init() { fileChecks = append(fileChecks, checkServices) }
 
@@ -52,7 +52,7 @@ func declarationWord(class *ast.Node) string {
 	return ""
 }
 
-// checkDeclarationMembers reports EK2103 for each instance member of a service
+// checkDeclarationMembers reports EK9207 for each instance member of a service
 // or control declaration that has a body or an initializer: the declaration
 // would otherwise be an ordinary abstract class.
 func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
@@ -69,13 +69,13 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if member.Body() != nil || ast.IsPropertyDeclaration(member) && member.Initializer() != nil {
-			d := report(c, member.Name(), EK2103, scanner.GetTextOfNode(member.Name()), word)
+			d := report(c, member.Name(), EK9207, scanner.GetTextOfNode(member.Name()), word)
 			note(d, "Implement it in a layer, or make it static to keep it on the class.")
 		}
 	}
 }
 
-// checkShapeDeclarationMembers reports EK2103 for each instance member of a
+// checkShapeDeclarationMembers reports EK9207 for each instance member of a
 // service of any shape (D281), service Search: SearchApi { ... }: the shape
 // is the written type, so the body holds only static members, such as a
 // layer. A member without a body is reported too, since it adds nothing to
@@ -85,12 +85,12 @@ func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *as
 		if ast.HasStaticModifier(member) || member.Name() == nil {
 			continue
 		}
-		d := report(c, member.Name(), EK2103.With("{0} is an instance member, but service {1}: {2} takes its members from {2}."), scanner.GetTextOfNode(member.Name()), class.Name().Text(), scanner.GetTextOfNode(shape))
+		d := report(c, member.Name(), EK9207.With("{0} is an instance member, but service {1}: {2} takes its members from {2}."), scanner.GetTextOfNode(member.Name()), class.Name().Text(), scanner.GetTextOfNode(shape))
 		note(d, "Declare the member in {0}, or make it static to keep it on the class.", scanner.GetTextOfNode(shape))
 	}
 }
 
-// checkServiceDeclaration reports EK2101, EK3001, EK3005, and EK3006 for
+// checkServiceDeclaration reports EK9205, EK3001, EK3005, and EK9208 for
 // class, if it declares a service or a control operation.
 func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 	checkDeclarationMembers(c, class)
@@ -99,7 +99,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		return
 	}
 	if reference := serviceShapeSelfReference(c, class); reference != nil {
-		d := report(c, serviceShape(class), EK2103.With("A service's shape cannot refer to the service itself."))
+		d := report(c, serviceShape(class), EK9207.With("A service's shape cannot refer to the service itself."))
 		note(d, "Name the implementation's type instead of the service key {0}.", class.Name().Text())
 		cover(c, reference)
 		return
@@ -147,7 +147,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		}
 		if ast.IsStatic(member) {
 			if instance[memberName.Text()] {
-				note(report(c, memberName, EK3006, memberName.Text()), "Rename one: {0}.{1} would call the service member.", name, memberName.Text())
+				note(report(c, memberName, EK9208, memberName.Text()), "Rename one: {0}.{1} would call the service member.", name, memberName.Text())
 			}
 			continue
 		}
@@ -157,7 +157,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 				at = memberName
 				cover(c, memberName) // TS7010: an implicit any return type
 			}
-			d := report(c, at, EK2101, name+"."+memberName.Text())
+			d := report(c, at, EK9205, name+"."+memberName.Text())
 			note(d, "Write {0}; use {1} if it cannot fail and needs nothing.", bangText(writtenSuccess(member.Type()), "Errors", "Dependencies"), bangText(writtenSuccess(member.Type()), "never", "never"))
 		}
 	}

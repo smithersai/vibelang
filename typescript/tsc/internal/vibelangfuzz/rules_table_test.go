@@ -34,7 +34,7 @@ func TestSpecRuleFacts(t *testing.T) {
 	}
 	var warnings []string
 	for _, code := range append(SpecCodes(), SpecListedCodes()...) {
-		if code < 4801 && SpecDefaultCategory(code) == CategoryWarning {
+		if (code < 4801 || code == 9204) && SpecDefaultCategory(code) == CategoryWarning {
 			warnings = append(warnings, specCodeName(code))
 		}
 	}

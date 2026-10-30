@@ -1,4 +1,4 @@
-// expect: EK2101
+// expect: EK9205
 // Chapter 12 "Declarations without bodies": Rates.lookup has no body to infer from, so its contract
 // must be written in full. NOTE: written as an abstract class (D1) instead of `service Rates`.
 

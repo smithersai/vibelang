@@ -315,7 +315,7 @@ func TestSpecFacts(t *testing.T) {
 	}
 	var warnings, mixed []int32
 	for code, category := range facts.Defaults {
-		if code < facts.Boundary && category == DefaultWarning {
+		if historicalCode(code) < facts.Boundary && category == DefaultWarning {
 			warnings = append(warnings, code)
 		}
 		if category == DefaultErrorOrWarning {
@@ -380,7 +380,7 @@ func TestSpecFacts(t *testing.T) {
 			t.Errorf("EK%d: \"A project may set\" it, but the options table does not list it", code)
 		}
 	}
-	for _, code := range []int32{4813, 4838, 9100, 2001} {
+	for _, code := range []int32{4813, 4838, 9100, 9201} {
 		if facts.IsAdjustable(code) {
 			t.Errorf("EK%d is adjustable by the derivation; Chapter 28 says no setting changes it", code)
 		}
@@ -406,7 +406,7 @@ func TestSpecFacts(t *testing.T) {
 		t.Errorf("tracing values %v", facts.Tracing)
 	}
 	// The defaults column of the diagnostics option agrees with the derived
-	// defaults: `EK1012, EK2004, and EK4406 "warning"; EK3205, EK4403,
+	// defaults: `EK1012, EK9204, and EK4406 "warning"; EK3205, EK4403,
 	// and EK4409 "error"`.
 	row := diagnostics[strings.Index(diagnostics, "| `diagnostics` |"):]
 	row = row[:strings.Index(row, "\n")]

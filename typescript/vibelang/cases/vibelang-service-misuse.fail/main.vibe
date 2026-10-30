@@ -1,8 +1,8 @@
-// expect: EK3002 EK3003 EK3004 EK3005 EK3006
+// expect: EK3002 EK3003 EK3004 EK3005 EK9208
 // A service is a key, not a base class (D1): extends (EK3002), new (EK3003),
 // and instanceof (EK3004) are errors, a generic fully abstract class cannot
 // be a service (EK3005), and a static member cannot share a service member's
-// name (EK3006).
+// name (EK9208).
 import { Effect } from "effect"
 
 service Users {

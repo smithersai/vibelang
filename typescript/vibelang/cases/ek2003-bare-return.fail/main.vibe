@@ -1,8 +1,8 @@
-// expect: EK2003
+// expect: EK9203
 // A plain return annotation keeps its type on a function that compiles to
 // plain JavaScript (D67). A function whose body runs an Effect returns
-// Effect<A, E, R>, so a plain annotation there is EK2003. A throw under a
-// plain annotation is JavaScript's throw, not EK2003 (D263;
+// Effect<A, E, R>, so a plain annotation there is EK9203. A throw under a
+// plain annotation is JavaScript's throw, not EK9203 (D263;
 // plain-contract-exceptions covers it).
 import { Console } from "effect"
 

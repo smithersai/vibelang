@@ -242,7 +242,7 @@ func FormatDiagnosticWithColorAndContext(output io.Writer, diagnostic Diagnostic
 	}
 
 	writeWithStyleAndReset(output, diagnostic.Category().Name(), getCategoryFormat(diagnostic.Category()))
-	fmt.Fprintf(output, "%s %s%d: %s", foregroundColorEscapeGrey, diagnosticPrefix(diagnostic), diagnostic.Code(), resetEscapeSequence)
+	fmt.Fprintf(output, "%s %s: %s", foregroundColorEscapeGrey, diagnosticCode(diagnostic), resetEscapeSequence)
 	WriteFlattenedDiagnosticMessage(output, diagnostic, formatOpts.NewLine, formatOpts.Locale)
 
 	if diagnostic.File() != nil && diagnostic.Code() != diagnostics.File_appears_to_be_binary.Code() {
@@ -382,13 +382,17 @@ func flattenDiagnosticMessageChain(writer io.Writer, chain Diagnostic, newLine s
 	}
 }
 
-// diagnosticPrefix returns the prefix shown before a diagnostic's code, e.g. "TS" for compiler
-// diagnostics or a content mapper's custom source for its diagnostics.
-func diagnosticPrefix(diagnostic Diagnostic) string {
-	if source := diagnostic.Source(); source != "" {
-		return source
+// diagnosticCode preserves Appendix B's four-digit EK identifiers. Other
+// diagnostic sources retain their own decimal formatting.
+func diagnosticCode(diagnostic Diagnostic) string {
+	source := diagnostic.Source()
+	if source == "EK" {
+		return fmt.Sprintf("EK%04d", diagnostic.Code())
 	}
-	return "TS"
+	if source == "" {
+		source = "TS"
+	}
+	return source + strconv.Itoa(int(diagnostic.Code()))
 }
 
 func getCategoryFormat(category diagnostics.Category) string {
@@ -580,7 +584,7 @@ func WriteFormatDiagnostic(output io.Writer, diagnostic Diagnostic, formatOpts *
 		fmt.Fprintf(output, "%s(%d,%d): ", relativeFileName, line+1, int(character)+1)
 	}
 
-	fmt.Fprintf(output, "%s %s%d: ", diagnostic.Category().Name(), diagnosticPrefix(diagnostic), diagnostic.Code())
+	fmt.Fprintf(output, "%s %s: ", diagnostic.Category().Name(), diagnosticCode(diagnostic))
 	WriteFlattenedDiagnosticMessage(output, diagnostic, formatOpts.NewLine, formatOpts.Locale)
 	fmt.Fprint(output, formatOpts.NewLine)
 }

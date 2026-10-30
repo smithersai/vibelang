@@ -1,4 +1,4 @@
-// expect: EK2103 EK2103
+// expect: EK9207 EK9207
 export service Users {
   find(id: string): string!!
   effect describe(id: string) {

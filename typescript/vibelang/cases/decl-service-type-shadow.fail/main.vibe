@@ -1,6 +1,6 @@
-// expect: EK3006
+// expect: EK9208
 // A static member named like a member of the shape would hide it:
-// Search.find(q) calls the service member (D41), so this is EK3006.
+// Search.find(q) calls the service member (D41), so this is EK9208.
 interface SearchApi {
   find(query: string): string!!
 }

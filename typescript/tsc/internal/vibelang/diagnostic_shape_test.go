@@ -157,7 +157,9 @@ func TestDiagnosticTextsStartAsSentences(t *testing.T) {
 	}
 }
 
-// Every code that Chapter 28's registry has not retired suggests a repair.
+// Every code that historical Chapter 28 has not retired suggests a repair.
+// Its sentinel keeps the historical spelling; TestRegistryMatchesSpec checks
+// the current Appendix B identifiers independently.
 func TestRegistryRowsSuggestRepairs(t *testing.T) {
 	spec, err := os.ReadFile("../../../../docs/design/history/src/428-part4-ch28-tooling.md")
 	if os.IsNotExist(err) {

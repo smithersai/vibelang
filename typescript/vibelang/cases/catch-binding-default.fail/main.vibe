@@ -1,4 +1,4 @@
-// expect: EK2001 EK2002
+// expect: EK9201 EK9202
 // A catch binding's defaults run in the handler, after the try block, so a
 // contract must allow what they raise and need (D13): failing can fail with
 // Fallback, and needing needs Lookup.

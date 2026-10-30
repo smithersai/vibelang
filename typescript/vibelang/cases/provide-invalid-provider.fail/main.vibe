@@ -1,8 +1,8 @@
-// expect: EK3207 EK2002
+// expect: EK3207 EK9202
 // provide takes what Effect.provide takes: a Layer, a Context, or a non-empty
 // list of layers (D362). Any other value is EK3207, a number or a union with
 // undefined included, since the block would fail when it runs, and it
-// provides nothing (EK2002). A Context is not a layer, so it cannot be an
+// provides nothing (EK9202). A Context is not a layer, so it cannot be an
 // entry of a list beside one.
 service A { value: string }
 
