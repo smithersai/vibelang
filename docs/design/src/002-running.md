@@ -164,6 +164,8 @@ function load(id: string) {
 }
 ```
 
+The known-throwing-call check covers a plain handler's eager parameter/default/destructuring initialization and computed binding keys as well as its body ([Calls in effect code](003-failures.md#calls-in-effect-code)). Use an effect handler with nonthrowing parameters and move the throwing work into its body behind an explicit bridge; a `try` in its parameter list is still forbidden, as `await` is.
+
 A handler's parameter may have a type annotation, checked as for a TypeScript arrow parameter: the error type must be assignable to it, so `x catch (e: NotFound) => guest` is an error when `x` can also fail with `DbError` (VIP-5, amended).
 
 A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the quick fix `catch effect (e) => try …`:

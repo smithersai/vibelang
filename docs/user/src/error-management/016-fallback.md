@@ -118,3 +118,5 @@ A catch expression can try the cache before applying a default: `effect { return
 ## Coming from Effect
 
 Pass Effect values directly: `try firstSuccessOf([latestTitle(), cachedTitle()])`. Calling an effect function constructs its Effect. Each run executes its body again. Use `effect { … }` to make an alternative from several statements.
+
+A plain handler's default parameters, destructuring and computed binding keys follow the same known-throwing-call check as its body (`EK0403`). Use an effect handler with nonthrowing parameters, then perform throwing initialization inside its body through `Effect.try`; `try` cannot run in a parameter default. Merely creating a nested function does not execute it.

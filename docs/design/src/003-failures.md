@@ -316,7 +316,7 @@ const initialized = Effect.try(() => {
 
 | Rule | Diagnostic |
 | --- | --- |
-| In effect code or the body of a plain `catch` handler, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
+| In effect code or a plain `catch` handler's parameter/default/destructuring initialization or body, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
 | In effect code, a call, `new` expression or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |
 
 `EK0404` uses the Promise test of [Result tests](002-running.md#result-tests) (detail 89): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does.
@@ -339,7 +339,44 @@ const mixed = Effect.tryPromise(async () => maybeQuery())
 
 A plain function may propagate a JavaScript throw; an `async` function turns it into rejection. Effect code calls a function whose thrown type is `never` directly. Promise-producing calls inside wrapper thunks are ordinary JavaScript; wrapping never exempts a platform call from [VIP-33](../vips/0033-platform-stdlib.md). `Promise.reject(e)`, like every Promise-producing call, must be inside a wrapper thunk in effect code. An unannotated foreign `queryDb` may throw `unknown`, so use `tryPromise(() => queryDb(q))`; `promise` does not admit that throwing thunk under the wrapper annotations above.
 
-A tracked throwing call in a plain `catch` handler is an error (`EK0403`, detail 39); use an effect handler and a wrapper. An explicit `throw` in the plain handler retains VIP-5's defect meaning.
+A tracked throwing call in a plain `catch` handler's eager parameters or body is an error (`EK0403`), including defaults, destructuring and computed binding keys. Use an effect handler with nonthrowing parameters, moving the throwing initialization into its body and bridging it explicitly. Keeping it in an effect handler's parameters still encounters `EK0401`; `try` cannot run there. Implicit initialization exceptions and explicit JavaScript throws retain their defect policies. Merely defining a nested source function adds no calls to initialization; invoking it checks its contract.
+
+```vibe es
+// compiler-gap: pending VIP-4, VIP-5
+function defaultError(): never { throw "default" }
+effect function rejected() {
+  return fail(undefined) catch (e: unknown = defaultError()) => 7 // EK0403
+}
+effect function recovered() {
+  return fail(undefined) catch effect (input) => {
+    if (input === undefined) try Effect.try({ try: () => defaultError(), catch: error => error })
+    return 7
+  }
+} // Failure("default")
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function defaultError(): never { throw "default" }
+function defaultKey(): never { throw "key" }
+const defaultedHandler = Effect.catch(Effect.fail(undefined),
+  (e: unknown = defaultError()) => Effect.succeed(7))
+const expressionHandler = Effect.catch(Effect.fail(undefined),
+  function (e: unknown = defaultError()) { return Effect.succeed(7) })
+const computedHandler = Effect.catch(Effect.fail({}),
+  ({ [defaultKey()]: value }: any) => Effect.succeed(7))
+const implicitHandler = Effect.catch(Effect.fail(null as any),
+  ({ value }: { value: number }) => Effect.succeed(value))
+const lazyHandler = Effect.catch(Effect.fail(undefined),
+  (e: unknown = () => defaultError()) => Effect.succeed(7))
+const bridgedHandler = Effect.catch(Effect.fail(undefined), input => Effect.gen(function* () {
+  if (input === undefined) yield* Effect.try({ try: () => defaultError(), catch: error => error })
+  return 7
+}))
+// Defaults and computed keys above Die("default") / Die("key"); implicitHandler dies with TypeError.
+// lazyHandler succeeds with 7; bridgedHandler fails with "default".
+```
 
 ```vibe es
 // compiler-gap: pending VIP-4
