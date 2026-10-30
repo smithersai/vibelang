@@ -1,8 +1,12 @@
 import { Context, Effect } from "effect";
-declare const Count_base: Context.ServiceClass<Count, "method-effect-contract-dts/main#Count", {
+type Count_shape = {
     readonly n: number;
-}>;
+};
+declare const Count_base: Context.ServiceClass<Count, "method-effect-contract-dts/main#Count", Count_shape>;
 export declare class Count extends Count_base {
+}
+export declare namespace Count {
+    type Shape = Count_shape;
 }
 export interface CounterApi {
     count(): Effect.Effect<number>;

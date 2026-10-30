@@ -13,18 +13,29 @@ func TestMigrationServiceImportsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("001-functions.md"), migrationServiceImportsQuote) {
 		t.Fatalf("Chapter1 no longer says %q", migrationServiceImportsQuote)
 	}
+	for _, quote := range []string{"declare namespace Users { type Shape = $Users$Shape }", "member modifiers and callable throw metadata are retained."} {
+		if !strings.Contains(SpecText("005-services.md"), quote) {
+			t.Fatalf("Chapter 5 no longer says %q", quote)
+		}
+	}
 }
 
 func migrationServiceImportPrograms() map[string][2]string {
 	pairs := map[string][2]string{}
 	add := func(key, prefix, name, tag, fields, shape string) {
 		vibe := prefix + "export service " + name + " { static readonly key = " + tag + "; " + fields + " }\n"
-		native := prefix + "export class " + name + " extends Context.Service<" + name + ", { " + shape + " }>()(" + tag + ") {}\n"
+		// VIP-9/detail181's native source counterpart includes the same public
+		// Shape alias; a bare Context.Service class has no such namespace.
+		carrier := name + "_shape"
+		native := prefix + "type " + carrier + " = { " + shape + " }\n" +
+			"export class " + name + " extends Context.Service<" + name + ", " + carrier + ">()(" + tag + ") {}\n" +
+			"export declare namespace " + name + " { type Shape = " + carrier + " }\n"
 		pairs[key] = [2]string{vibe, native}
 	}
-	// Byte-for-byte Alchemy round3-service-import sources, preserved separately
-	// from the generated Store names and synthetic keys.
-	add("alchemy-service-context-subpath", "import * as Context from \"effect/Context\";\n", "Correlation", "\"app/Correlation\"", "id: string", "readonly id: string")
+	// Alchemy round3-service-import pattern, using the preserving migration:
+	// its written readonly modifier remains explicit under VIP-9. Keep its
+	// Context subpath import separate from generated Store names and keys.
+	add("alchemy-service-context-subpath", "import * as Context from \"effect/Context\";\n", "Correlation", "\"app/Correlation\"", "readonly id: string", "readonly id: string")
 	for _, form := range []string{"root", "subpath"} {
 		prefix := "import { Context } from \"effect\";\n"
 		if form == "subpath" {
@@ -41,7 +52,7 @@ func migrationServiceImportPrograms() map[string][2]string {
 				if written {
 					modifier, label = "readonly ", "written"
 				}
-				add(form+":"+field+":"+label, prefix, "Store", "\"probe/Store\"", modifier+"value"+optional+": "+typ, "readonly value"+optional+": "+typ)
+				add(form+":"+field+":"+label, prefix, "Store", "\"probe/Store\"", modifier+"value"+optional+": "+typ, modifier+"value"+optional+": "+typ)
 			}
 		}
 	}

@@ -6,10 +6,14 @@ export declare class Missing extends Missing_base<{
     readonly id: number;
 }> {
 }
-declare const Names_base: Context.ServiceClass<Names, "vibelang-prelude-dts-shadow/main#Names", {
+type Names_shape = {
     lookup(id: number): Effect.Effect<string, Missing, never>;
-}>;
+};
+declare const Names_base: Context.ServiceClass<Names, "vibelang-prelude-dts-shadow/main#Names", Names_shape>;
 export declare class Names extends Names_base {
+}
+export declare namespace Names {
+    type Shape = Names_shape;
 }
 export declare const NamesLive: Layer.Layer<Names, never, never>;
 export declare function fallback(): Effect.Effect<string, never, never>;

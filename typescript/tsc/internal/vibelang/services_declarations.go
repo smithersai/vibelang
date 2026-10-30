@@ -18,14 +18,13 @@ import (
 //	}
 //
 // TypeScript code that imports it must see what Effect TypeScript declares
-// for class Users extends Context.Service<Users, Shape>()(key) {}, byte for
-// byte, so a migrated library keeps its public declarations (D501): a base
-// constant typed with Effect's ServiceClass, whose shape is the members
-// written in place, and a class that extends it with the static members:
+// for class Users extends Context.Service<Users, Shape>()(key) {} plus
+// the public Shape namespace (VIP-9/VIP-27, detail 181): one private named
+// shape, a base constant typed with Effect's ServiceClass and that shape,
+// and the key class with its static members.
 //
-//	declare const Users_base: Context.ServiceClass<Users, "app/users#Users", {
-//	    find(id: string): Effect.Effect<User, UserNotFound, never>;
-//	}>;
+//	type Users_shape = { find(id: string): Effect.Effect<User, UserNotFound, never> };
+//	declare const Users_base: Context.ServiceClass<Users, "app/users#Users", Users_shape>;
 //	export declare class Users extends Users_base {
 //	    static readonly layer: Layer.Layer<Users, never, never>;
 //	}
@@ -36,9 +35,10 @@ import (
 // (D281) writes its shape as written. A service with a static default and no
 // other static member is Effect's reference, export declare const Flags:
 // Context.Reference<Shape>; with other static members, its base is the
-// runtime's ReferenceKey<Shape>. A source type Users.Shape is written
-// Context.Service.Shape<typeof Users>, and a class that implements a service
-// in source implements that.
+// runtime's ReferenceKey<Shape>. Public Users.Shape references keep that
+// name; a compatibility shape reference to a foreign key is written as
+// Context.Service.Shape<typeof Users>. A class that implements a service
+// in source implements that extracted shape.
 //
 // A control operation keeps one interface for its members and an optional
 // brand, and its key's base is the runtime's ServiceKey<Approval>.
@@ -94,7 +94,7 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 		collect(file.Statements.Nodes)
 		var visit func(node *ast.Node) bool
 		visit = func(node *ast.Node) bool {
-			if ast.IsTypeReferenceNode(node) && isServiceShapeName(c, node.AsTypeReferenceNode().TypeName) {
+			if ast.IsTypeReferenceNode(node) && isServiceShapeName(c, node.AsTypeReferenceNode().TypeName) && !emittedServiceShapeName(c, node.AsTypeReferenceNode().TypeName) {
 				shapes[node] = true
 			}
 			return node.ForEachChild(visit)
@@ -289,8 +289,8 @@ func declareModifiers(f *printer.NodeFactory, ambient, exported bool) []*ast.Nod
 // declares for Context.Service<Name, Shape>()(key), a `<Name>_base` constant
 // typed Context.ServiceClass<Name, key, Shape> and a class that extends it
 // with the static members other than the key (D501), or, for a service with
-// a defaultValue, Effect's reference. It also returns the declarations
-// among them that stay unexported, the base constant. exported says whether
+// a defaultValue, Effect's reference. The direct named shape and the base
+// constant stay unexported; a companion namespace exports Shape. exported says whether
 // the service is exported, and ambient that it is in a namespace's body,
 // where nothing says declare.
 func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, ambient, exported bool) ([]*ast.Node, []*ast.Node) {
@@ -305,7 +305,13 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 		shape = f.NewTypeLiteralNode(f.NewNodeList(instance))
 	}
 
-	var result, hidden []*ast.Node
+	// The key and its public Shape alias name the same direct object type.
+	// Extracting the shape through typeof the key creates a base cycle for
+	// recursive members (VIP-9/VIP-27, decided detail 181).
+	shapeName := e.names.freshName(name + "_shape")
+	shapeAlias := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(shapeName), nil /*typeParameters*/, shape)
+	shape = f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/)
+	result, hidden := []*ast.Node{shapeAlias}, []*ast.Node{shapeAlias}
 	if hasDefaultValue(class) {
 		if others := withoutStatic(statics, "defaultValue"); len(others) == 0 {
 			// export declare const Flags: Context.Reference<Shape>
@@ -331,6 +337,11 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 		)
 		result, hidden = append(result, base, keyClass(f, declared, base, ambient, exported, false /*abstract*/, statics)), append(hidden, base)
 	}
+	// A type-only namespace can merge with either the service class or a
+	// Context.Reference const; no runtime namespace is emitted.
+	publicShape := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(serviceShapeName), nil /*typeParameters*/, f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/))
+	shapeNamespace := f.NewModuleDeclaration(f.NewModifierList(declareModifiers(f, ambient, exported)), ast.KindNamespaceKeyword, f.NewIdentifier(name), nil /*attributes*/, f.NewModuleBlock(f.NewNodeList([]*ast.Node{publicShape})))
+	result = append(result, shapeNamespace)
 	if isDefault {
 		result = append(result, f.NewExportAssignment(nil /*modifiers*/, false /*isExportEquals*/, nil /*type*/, f.NewIdentifier(name)))
 	}
@@ -513,8 +524,26 @@ func isServiceShapeName(c *checker.Checker, name *ast.Node) bool {
 	return resolveServiceShapeName(c, name, q.Left, q.Right, ast.SymbolFlagsType) != nil
 }
 
-// shapeReferences writes each type reference Name.Shape to a service's shape
-// that the source wrote as Effect's Context.Service.Shape<typeof Name>.
+// emittedServiceShapeName reports whether Name.Shape has a real companion
+// namespace, rather than VibeLang's compatibility alias for a foreign key.
+func emittedServiceShapeName(c *checker.Checker, name *ast.Node) bool {
+	if !ast.IsQualifiedName(name) {
+		return false
+	}
+	symbol := c.ResolveEntityName(name.AsQualifiedName().Left, ast.SymbolFlagsClass)
+	if symbol == nil {
+		return false
+	}
+	if symbol.Exports()[serviceShapeName] != nil {
+		return true
+	}
+	class := symbol.ValueDeclaration()
+	return classKindOf(class) == serviceClass && class.Parent != nil &&
+		(ast.IsSourceFile(class.Parent) || ast.IsModuleBlock(class.Parent))
+}
+
+// shapeReferences writes compatibility references without a real companion
+// namespace as Effect's Context.Service.Shape<typeof Name>.
 type shapeReferences struct {
 	transformers.Transformer
 	emitter    *serviceEmitter

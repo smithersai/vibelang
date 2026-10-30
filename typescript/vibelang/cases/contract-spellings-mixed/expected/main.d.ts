@@ -6,11 +6,15 @@ declare class NotFound extends NotFound_base<{
     readonly id: string;
 }> {
 }
-declare const Users_base: Context.ServiceClass<Users, "contract-spellings-mixed/main#Users", {
+type Users_shape = {
     find(id: string): Effect.Effect<string, NotFound>;
     count(): Effect.Effect<number>;
-}>;
+};
+declare const Users_base: Context.ServiceClass<Users, "contract-spellings-mixed/main#Users", Users_shape>;
 declare class Users extends Users_base {
+}
+declare namespace Users {
+    type Shape = Users_shape;
 }
 type Lookup = (id: string) => Effect.Effect<string, NotFound, Users>;
 type Counted = Effect.Effect<number>;

@@ -6,12 +6,16 @@ declare class Gone extends Gone_base<{
     readonly id: string;
 }> {
 }
-declare const Users_base: Context.ServiceClass<Users, "effect-type-defaults/main#Users", {
+type Users_shape = {
     find(id: string): Effect.Effect<string, Gone>;
     count(): Effect.Effect<number>;
     all(): Effect.Effect<ReadonlyArray<string>, never, never>;
-}>;
+};
+declare const Users_base: Context.ServiceClass<Users, "effect-type-defaults/main#Users", Users_shape>;
 declare class Users extends Users_base {
+}
+declare namespace Users {
+    type Shape = Users_shape;
 }
 export declare function plain(): Effect.Effect<number>;
 export declare function failing(id: string): Effect.Effect<string, Gone>;

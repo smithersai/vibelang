@@ -4,10 +4,14 @@ declare const Missing_base: new <A extends Record<string, any> = {}>(args: impor
 } & Readonly<A>;
 export declare class Missing extends Missing_base {
 }
-declare const Need_base: Context.ServiceClass<Need, "infer-deduplicated-channels/main#Need", {
+type Need_shape = {
     value(): Effect.Effect<number>;
-}>;
+};
+declare const Need_base: Context.ServiceClass<Need, "infer-deduplicated-channels/main#Need", Need_shape>;
 export declare class Need extends Need_base {
+}
+export declare namespace Need {
+    type Shape = Need_shape;
 }
 export declare function base(x: number): Effect.Effect<number, Missing, Need>;
 export declare function twice(x: number): Effect.Effect<number, Missing, Need>;

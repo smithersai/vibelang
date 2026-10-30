@@ -1,0 +1,33 @@
+export type Recursive_shape = "occupied"
+export service Recursive {
+  static readonly key = "test/PublicRecursive"
+  readonly value: number
+  readonly next: () => Recursive.Shape
+  readonly identity: <T>(value: T) => T
+}
+export const recursive: Recursive.Shape = { value: 7, next: () => recursive, identity<T>(value: T): T { return value } }
+
+export service Left {
+  static readonly key = "test/PublicLeft"
+  readonly value: number
+  readonly next: () => Right.Shape
+}
+export service Right {
+  static readonly key = "test/PublicRight"
+  readonly value: number
+  readonly next: () => Left.Shape
+}
+export const left: Left.Shape = { value: 8, next: () => right }
+export const right: Right.Shape = { value: 9, next: () => left }
+
+export service Defaults {
+  static readonly key = "test/PublicDefaults"
+  static readonly defaultValue = () => ({ value: 10 })
+  readonly value: number
+}
+export namespace Group {
+  export service Nested {
+    static readonly key = "test/PublicNested"
+    readonly value: number
+  }
+}

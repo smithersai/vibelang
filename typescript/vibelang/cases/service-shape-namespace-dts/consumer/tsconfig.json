@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"skipLibCheck":false,"types":[],"rootDir":"src","outDir":"out"},"files":["src/main.ts"]}
