@@ -52,12 +52,14 @@ rsync -a --delete -e "$SSH" \
 # The excludes above drop build outputs, but some cases track fixtures inside
 # node_modules or dist (symlinked packages, for one). Send every tracked file
 # those excludes would drop, keeping symlinks as symlinks.
-tracked=$(mktemp)
-(cd "$root" && jj file list) | grep -E '(^|/)(node_modules|dist)(/|$)' > "$tracked" || true
-if [ -s "$tracked" ]; then
-	rsync -a -e "$SSH" --files-from="$tracked" "$root/" "$HOST:$dest/"
-fi
-rm -f "$tracked"
+(
+	tracked=$(mktemp)
+	trap 'rm -f "$tracked"' 0
+	(cd "$root" && jj file list) | grep -E '(^|/)(node_modules|dist)(/|$)' > "$tracked" || true
+	if [ -s "$tracked" ]; then
+		rsync -a -e "$SSH" --files-from="$tracked" "$root/" "$HOST:$dest/"
+	fi
+)
 
 # Quote each argument for the remote shell.
 cmd=""

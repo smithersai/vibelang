@@ -719,6 +719,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The LSP benchmark could leave its language server running when a protocol request failed. It now terminates the server before reporting the error.
 
 - Enabling `strictEffectProvide` silently skipped functions named `main`; it now reports those sites too, matching Effect TypeScript, so entry points can suppress the warning explicitly (VIP-26, VIP-38).
+- A failed `scripts/remote.sh` sync could leave a temporary tracked-files list behind. The list is now removed on success and failure.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.
