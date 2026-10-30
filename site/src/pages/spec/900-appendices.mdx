@@ -688,6 +688,22 @@ DataDeclaration = DataStart TypeParameters? "{" (Variant (Separator Variant)* Se
 Variant = IdentifierName ("{" Field* "}")?   (a "{" after the name is its field body, after any line breaks: the LineTerminator alternative of Separator does not apply before "{")
 ```
 
+#### MatchExpression
+
+```text
+MatchExpression = "match" [no LineTerminator here] "(" Expression ")" [no LineTerminator here] MatchBody   (a PrimaryExpression; inherits the surrounding Yield, Await and Effect parameters)
+```
+
+This connects the pinned subject expression to VibeLang's [MatchBody](/spec/900-appendices#matchbody), including `when` arms and the required final semicolon.
+
+#### AsyncMatchExpression
+
+```text
+AsyncMatchExpression = "async" [no LineTerminator here] MatchExpression[~Yield, +Await, ~Effect]   (a PrimaryExpression)
+```
+
+The subject, patterns, guards and selected arm have this independent async-expression context. A source `return`, or a `break`/`continue` targeting outside that activation, is a syntax error, as specified in [Pattern matching](/spec/004-match#async-match); nested functions retain their own ordinary contexts. The expression can occur inside a plain function: its own `await` does not make that enclosing function async.
+
 #### MatchBody
 
 ```text

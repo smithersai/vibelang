@@ -35,7 +35,7 @@ function label(d: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }) {
 
 The first `label` counterpart uses a short object test because its subject type guarantees an object with `_tag`. For an arbitrary subject, the pinned algorithm first rejects non-objects (functions are objects too), then checks property presence before reading it; the short form is not a general lowering.
 
-The arm grammar is [MatchBody](900-appendices.md#matchbody), [MatchArm](900-appendices.md#matcharm) and [ArmBody](900-appendices.md#armbody): the pinned draft with VIP-7's `when` prefix and VIP-5's `throw` arm body. At least one arm is required; `default` appears at most once, last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a missing separator is `EK0701` (quick fix: insert `;`). A newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; the `RegExp.prototype` matcher uses the draft specification, emulated without modifying globals; built-in and primitive constructor tests use decided details 67a and 87 below.
+[MatchExpression](900-appendices.md#matchexpression) is a primary expression. Its arm grammar is [MatchBody](900-appendices.md#matchbody), [MatchArm](900-appendices.md#matcharm) and [ArmBody](900-appendices.md#armbody): the pinned draft with VIP-7's `when` prefix and VIP-5's `throw` arm body. At least one arm is required; `default` appears at most once, last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a missing separator is `EK0701` (quick fix: insert `;`). A newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; the `RegExp.prototype` matcher uses the draft specification, emulated without modifying globals; built-in and primitive constructor tests use decided details 67a and 87 below.
 
 Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707` when no more specific diagnostic is assigned. The message identifies the rejected form and a valid repair. Do not add it to a specific diagnostic for the same rejection, including arm separation, matcher admission, arity lint, ordinary-class extraction, parameter-home bindings, outward async-match jumps, exhaustiveness or service patterns. Independent native lexical, type and name errors, including errors in valid embedded expressions, retain TypeScript's diagnostics; malformed native templates do not become `EK0707` merely by appearing in a match.
 
@@ -748,7 +748,9 @@ function bit(b: boolean) {
 }
 ```
 
-`async match` is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
+<a id="async-match"></a>
+
+[AsyncMatchExpression](900-appendices.md#asyncmatchexpression) is a primary expression; no line terminator may separate `async` and `match`. Its independent context is `[~Yield, +Await, ~Effect]`, even inside a plain function. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -767,6 +769,26 @@ function asyncLabel(s: Promise<string>) {
     throw new TypeError()
   })()
 }
+```
+
+```vibe es
+// compiler-gap: pending VIP-7
+function grammarAsync() {
+  return async match (await Promise.resolve(7)) { when 7: await Promise.resolve(9); default: 0; }
+} // the plain outer function returns Promise<number>
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function grammarAsync() {
+  return (async () => {
+    const subject = await Promise.resolve(7)
+    if (subject === 7) return await Promise.resolve(9)
+    return 0
+  })()
+}
+const grammarAsyncExit = await Effect.runPromiseExit(Effect.promise(grammarAsync)) // Success(9)
 ```
 
 Inside effect code, a direct `async match` is a compile error under the [Promise-bridge rule](003-failures.md#calls-in-effect-code): like a Promise-returning call or `new` expression, it must run inside an explicit bridge's thunk. Its subject, tests and arms form a plain async boundary (`[~Effect, +Await]`): `await` is allowed there and effect `try` is not, as in a nested TypeScript async function. For example:
