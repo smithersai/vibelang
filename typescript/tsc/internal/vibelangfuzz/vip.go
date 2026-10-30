@@ -41,7 +41,7 @@ const vipMaxSteps = 10000
 // {"$cause": [reasons]} or {"$reason": …}, so its fiber ids are tagged and
 // renamed with the top-level ones (CanonicalVIPExit). It is recognized by
 // Effect's own type ids, the properties "~effect/Exit", "~effect/Cause" and
-// "~effect/Cause/Reason" in effect 4.0.6 (strings, not symbols), through
+// "~effect/Cause/Reason" in effect 4.1.0 (strings, not symbols), through
 // Exit.isExit, Cause.isCause and Cause.isReason; an object that only has a
 // _tag of "Success" stays an object. Events are labels, which ev turns into
 // strings, so they hold no Exit.
@@ -71,7 +71,7 @@ const vipEncode = (value, depth = 0, seen = new Set()) => {
     if (Array.isArray(value)) return { $array: value.map(next) };
     if (value instanceof Map) return { $map: [...value].map(([k, v]) => [next(k), next(v)]) };
     if (value instanceof Set) return { $set: [...value].map(next) };
-    const fields = {};
+    const fields = { __proto__: null };
     for (const key of Object.keys(value).sort()) {
       if (key !== "stack") fields[key] = next(value[key]);
     }
@@ -214,6 +214,18 @@ func CanonicalVIPExit(raw json.RawMessage) (string, error) {
 			// fibers in that order too.
 			out := map[string]any{}
 			for _, k := range mapKeys(v) {
+				// An encoded object's fields is a source-keyed dictionary,
+				// not an encoded value. Only its values can carry runtime tags.
+				if _, object := v["$class"]; object && k == "fields" {
+					if fields, ok := v[k].(map[string]any); ok {
+						data := map[string]any{}
+						for _, name := range mapKeys(fields) {
+							data[name] = rename(fields[name])
+						}
+						out[k] = data
+						continue
+					}
+				}
 				out[k] = rename(v[k])
 			}
 			return out
