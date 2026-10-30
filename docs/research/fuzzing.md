@@ -365,4 +365,6 @@ Additional native `for…of` counterparts check `return`, `break` and `continue`
 
 Jump pairs also cover a generator's `return()` inside a match arm, a normal `is` test and a jump or failure in a destructuring or parameter default.
 
+Pinned-draft pairs check that `[]` tests any empty iterable, an elision consumes an item, an optional element may be absent, object clauses run in source order through the cache, and a rest pattern reads outside it.
+
 The retained-error inventory covers all 33 root and subpath rows in chapter 4. Native module guards verify every branded fixture and reject unbranded same-tag controls. Zero/two-argument extractor matrices remain separate from bare/single-binding guard pairs, so an arity error cannot hide a wrong runtime guard.

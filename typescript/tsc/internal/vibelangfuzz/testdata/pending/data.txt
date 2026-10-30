@@ -388,3 +388,12 @@ FuzzDataSpecRules feature:tagged-enum-complete compiler VIP-7: the documented ta
 FuzzDataSpecRules corpus:data-tagged-enum-complete compiler VIP-7: minimized tagged-enum-complete witness; lane vip-match
 FuzzDataSpecRules feature:tagged-undefined-complete compiler VIP-7: the undefined literal pattern is rejected, so its tag case cannot be covered; lane vip-match
 FuzzDataSpecRules corpus:data-tagged-undefined-complete compiler VIP-7: minimized tagged-undefined-complete witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.empty-iterables-plain compiler VIP-7: an array pattern tests arrays only, not any iterable; lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.elision-width-plain compiler VIP-7: an elision in an array pattern does not parse; lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
+FuzzVIPDifferential compile:TS1109/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
+FuzzVIPDifferential exit:value/vip07.object-property-order-plain compiler VIP-7: a cached property is read again by a later arm; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-elision-width-plain compiler VIP-7: minimized vip07.elision-width-plain witness; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-empty-iterables-plain compiler VIP-7: minimized vip07.empty-iterables-plain witness; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-object-property-order-plain compiler VIP-7: minimized vip07.object-property-order-plain witness; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-optional-absence-plain compiler VIP-7: minimized vip07.optional-absence-plain witness; lane vip-match

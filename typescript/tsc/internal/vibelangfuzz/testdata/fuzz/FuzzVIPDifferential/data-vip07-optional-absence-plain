@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.optional-absence-plain\x00")
