@@ -250,6 +250,7 @@ Any subject member outside these checked kinds turns the check off. Examples inc
 
 A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeScript `0` case (`EK4701`), because its test distinguishes the two signs. Use unsigned `0` or `default`; ordinary negative nonzero literals still cover their cases.
 
+A type parameter with a finite constraint is checked over that constraint: `T extends "A" | "B"` needs both cases. A broad constraint such as `string` stays open. A represented TypeScript flow refinement can reduce the domain; a reference still typed as bare `T` keeps its whole constraint. This does not change the subject's ordinary type in an arm.
 
 A missing case is a compile error, EK4701, `This match does not handle every case of {type}: {cases} is left.`:
 

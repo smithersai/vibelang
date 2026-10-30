@@ -189,6 +189,8 @@ console.log(resultFlowExit) // Success([4, "7", 4, 7, 7])
 
 - **Amended 2026-10-30: remaining pattern-syntax diagnostics.** Invalid `match`/`is` grammar and proposal-specific early errors without a more specific assigned diagnostic use `EK0707`. An interpolated primitive template pattern uses that code; write the ordinary interpolation in a guard. Do not duplicate a more specific diagnostic for the same rejection. Independent native lexical/type/name errors and errors in valid subexpressions keep TypeScript's diagnostics, including a malformed native template. Diagnostic ownership follows the source rule even when the parser reuses TypeScript helpers; this changes no admitted program.
 
+- **Amended 2026-10-30: generic and refined subject domains.** Begin coverage normalization with the TypeScript type of the subject expression at its evaluation point, including represented flow refinements, and use its effective base constraint when one exists. Finite constrained parameters are checked conservatively over that constraint; unconstrained or broad parameters stay open. A represented intersection refinement may reduce the domain; a bare type parameter keeps its whole constraint even after a guard. Preserve literal, Boolean, enum and tag-case identity rather than boxing every subject with apparent-type conversion. This changes neither runtime tests nor ordinary arm/default-flow types.
+
 ## Meaning in Effect TS terms
 
 `match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.
