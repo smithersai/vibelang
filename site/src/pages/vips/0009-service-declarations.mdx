@@ -9,6 +9,7 @@ title: "VIP-9: service declarations"
 ## Decision
 
 ```ts
+// fragment
 // VibeLang
 service Users {
   find(id: string): User!NotFound
@@ -45,6 +46,40 @@ class Users extends Context.Service<Users, {
 
 - **Amended 2026-10-29: any member type.** A bodyless `service` member may declare any return type, Effect or not, as `Context.Service` allows (the old EK2101 is relaxed). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 - **Amended 2026-10-29: no derived key outside a package.** A `service` in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error with a quick fix that inserts one. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 54).
+
+
+- **Amended 2026-10-30: recursive member shapes.** Declare the written member shape under a private type alias before constructing the service key. Inside that service's own shape, `S.Shape` denotes that alias directly, so recursive members do not project through the not-yet-constructed `typeof S`. Outside the shape it retains `Context.Service.Shape<typeof S>`. Apply this to both class services and defaulted `Context.Reference` services, using resolved service identity rather than spelling. The hook is type-only; no runtime namespace or `Shape` property is created.
+- **Amended 2026-10-30: outer generic capture.** The generic-service diagnostic also rejects a resolved written Shape contract that depends on a free type parameter from an enclosing scope. Follow aliases, constraints, defaulted type arguments and callable thrown contracts; erased type arguments must not specialize one runtime key. A member's own generic parameters are allowed when their contracts do not depend on an outer parameter. A concrete parameter-independent shape inside a generic function remains allowed, as do unrelated generic value computations.
+
+```vibe
+// compiler-gap: pending VIP-9
+service NodeKey { static readonly key = "test/NodeKey"; next?: NodeKey.Shape }
+function bad<T>() {
+  service Store { static readonly key = "test/Store"; value: T } // error: the Shape depends on outer T
+  return Store
+}
+service Fixed { static readonly key = "test/Fixed"; identity<T>(value: T): T }
+```
+
+```ts
+import { Context, Effect, Layer } from "effect"
+type NodeKeyShape = { next?: NodeKeyShape }
+class NodeKey extends Context.Service<NodeKey, NodeKeyShape>()("test/NodeKey") {}
+type NodeImplementation = Context.Service.Shape<typeof NodeKey>
+const implementation: NodeImplementation = { next: {} }
+const recursiveShapeExit = Effect.runSyncExit(Effect.provide(
+  Effect.gen(function* () { const node = yield* NodeKey; return node.next !== undefined }),
+  Layer.succeed(NodeKey, implementation)
+)) // Success(true)
+type RefShape = { next?: RefShape }
+const Ref = Context.Reference<RefShape>("test/Ref", { defaultValue: () => ({}) })
+type RefImplementation = Context.Service.Shape<typeof Ref>
+const refImplementation: RefImplementation = { next: {} }
+const referenceShapeExit = Effect.runSyncExit(Effect.gen(function* () {
+  const value = yield* Ref
+  return value.next === undefined
+})) // Success(true)
+```
 
 ## History
 
