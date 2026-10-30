@@ -16,6 +16,16 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Repository validation could fail documentation-runner and site contrast tests on a busy host because healthy work hit a short deadline; a block now gets a minute, the contrast check ten, and only blocks that hang on purpose keep a short deadline.
 
+- Running `scripts/ci.sh` could modify a shared dependency install and fail another checkout's build; it now leaves every `node_modules` symlink intact and uses that install without writing through it.
+
+- The migrate flow failed a batch's declaration identity whenever a renamed module's importer had written `./leaf.ts`, because the importer's declaration now says `./leaf.js`, so every such module had to stay TypeScript; the gate now treats a relative `./leaf.ts` and `./leaf.js` as one module, since TypeScript resolves both to `leaf.d.ts`.
+
+- The migrate flow's Effect upgrade rewrote every tracked `package.json`, including vendored repositories and fixtures pinned to an old Effect on purpose; it now moves only the root and the workspace members the package manager installs.
+
+- The migrate flow's `upgrade-effect` step stopped with `Refusing to move bookmark backwards or sideways` after committing when `--base` named a commit behind an earlier run's bookmark; `--base` now restarts the bookmark there.
+
+- Installing `vibelang` with pnpm 11 or later exited with `ERR_PNPM_IGNORED_BUILDS` for `dprint`, and the migrate flow's setup stopped there; the setup guide now shows the `allowBuilds` entry, and the flow adds it.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
@@ -34,7 +44,43 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The interruption and named-region runtime checks could miss child cleanup on busy hosts; they now wait for child readiness, with a late-start test mode that exposes startup races.
 
+- Closing a bundler build or watcher during compilation could leave the compiler and its output pipes running. The `vibelang-vite` and `vibelang-unplugin` integrations now await teardown and stop a compiler that exceeds a one-second grace period.
+
+- The specification’s priority statement relied on an unspecified decision layer. It now points readers to accepted VIPs, their public amendments and cited counterparts, with the same publication rule in the VIP index.
+
+- Region completion examples exposed compiler control records or normal block values to layer finalizers. Finalizers now see the original generator payload while source values and jumps remain intact.
+
+- The specification widened every `do` literal and dropped values crossing transparent blocks. It now keeps ordinary expression typing and complete source completion values, including empty completions and values carried by jumps.
+
+- Forbidden Effect modifier positions lacked a specified diagnostic, and error members could lose a second modifier diagnostic. The specification now assigns `EK0108` and preserves applicable `EK0104` and `EK0105` without an extra member-category error.
+
+- The specification implied that running a completed Effect always suspends like `await`. It now states Effect's native scheduling behavior and when to request a cooperative yield.
+
+- The specification omitted Promise-returning tagged templates from its explicit bridge trigger. The same Promise-result rule now covers tagged invocations and keeps the original call inside the bridge.
+
+- The specification mixed generator-body throws with construction and copied synchronous callback throws onto async declarations. Call contracts now follow execution phase, and async declarations retain callback admission without inventing synchronous throws.
+
+- The formatter specification did not distinguish executable JavaScript from embedded source maps. It now preserves code and diagnostic codes while requiring fresh maps for the formatted source.
+
+- Producer docs promised a global two-element lead even with concurrent yields. That bound now applies to one sequential emitter; concurrent item fibers can each compute a value before waiting to offer it.
+
+- The runtime specification omitted construction traces, so equal `Exit`s could hide an eager body. It now requires call-time and full run traces, including eager defaults and repeated runs.
+
+- The severity guide described only four-digit codes. It now shows how to configure full printed codes such as `EK38100`.
+
+- The producer specification still required one receiver-passing recipe after the shared binding rule had replaced it. Producers now use the same source-binding behavior as Effect functions, with the implementation left to the compiler.
+
+- The specification gave conflicting meanings to `fork` and `join` in class and enum initializers. It now follows their ordinary initializer context, keeps class heads in the enclosing context, and distinguishes static keyword reservation from permission to run Effects.
+
+- The specification required recursive thrown types that could grow forever or produce invalid declarations. Expanding summaries now conservatively use `unknown`, while finite recursive summaries stay precise.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
+
+- The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
+
+- The specification incorrectly required `for concurrent` on one line. A newline after `for` is now allowed, matching native `for await` and leaving the loop behavior unchanged.
+
+- The specification could misread `effect is …` and `async is …` as invalid function shorthand. Both now retain their pattern-test reading, alongside the existing `as` and `satisfies` expression exclusions.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
@@ -176,6 +222,18 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` could write a fix that added a type error when the file also had an unrelated syntax error, because its check of the fixed program then saw only syntax errors. It now checks every error, so such a fix is listed as not fixed.
 
+- Bun, `vibelang/register`, Vite and unplugin could report `Cannot find module` for extensionless or directory imports after their TypeScript targets became `.vibe` files. They now resolve those imports with TypeScript's file priority and `index.vibe` fallback, preserving existing source files.
+
+- The pattern documentation omitted an `is` comparison and its binding scope; it now shows the Boolean test, explains block visibility and TDZ, and distinguishes skipped initialization from a later failed guard.
+
+- The declaration reference omitted diagnostic codes for direct default `schema` and `data` exports and for schema type parameters; it now assigns `EK1501`, `EK1603` and `EK1502` and shows named exports and generic factories as repairs.
+
+- The public service decision omitted the recursive `Shape` binding and outer-generic capture rule; it now records the private recursive alias, its type-only projection and the generic-service rejection for a shape that would specialize one key through erased outer type arguments.
+
+- The schema-error reference could admit a reserved `_tag` key hidden by a generic, enum or brand; it now requires proof over the runtime key domain and preserves the generated discriminant without a runtime guard.
+
+- The public pattern decision omitted the binding-cell lifetime rules; it now records shared `or` cells, fresh loop-condition cells and the initial `do` body's TDZ, with checked closure witnesses.
+
 - A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
 
 - The specification admitted generic parameters and return annotations on a bare effect-arrow parameter. Arrow heads now follow TypeScript: those decorations require parentheses, while `effect x => x` remains valid.
@@ -189,6 +247,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification omitted the surviving TypeScript-form advisory codes and their safe repairs. The reference now lists them as configurable warnings and excludes advice for retired language features.
 
 - The specification introduction described every Effect TypeScript comparison as an unchecked fragment. It now distinguishes partial examples from complete comparisons that can be checked directly.
+
+- The platform guide put `Intl` in the web allowlist and suggested a nonexistent `Path.fromFileUrl` shortcut; it now identifies `Intl` as an ECMAScript global and shows access through the `Path.Path` service.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 

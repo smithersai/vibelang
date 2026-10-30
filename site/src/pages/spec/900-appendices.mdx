@@ -114,7 +114,7 @@ Timeout                       then another
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
 | `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so `EK0105` reports them | [Functions](/spec/001-functions) |
-| `concurrent` | after `for`, then `(` | [Running Effects](/spec/002-running#for-concurrent) |
+| `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](/spec/002-running#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](/spec/002-running#interruption-blocks) |
 | `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](/spec/900-appendices#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](/spec/005-services#provide-blocks) |
 | `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says | [Pattern matching](/spec/004-match) |
@@ -418,7 +418,7 @@ As in `new . target`, whitespace, comments and line breaks may separate the toke
 #### ForConcurrent
 
 ```text
-ForConcurrent = [+Effect] "for" [no LineTerminator here] "concurrent" ("(" AssignmentExpression ")")? "(" ForDeclaration "of" AssignmentExpression ")" Statement
+ForConcurrent = [+Effect] "for" "concurrent" ("(" AssignmentExpression ")")? "(" ForDeclaration "of" AssignmentExpression ")" Statement
 ```
 
 #### ForTry
@@ -624,11 +624,35 @@ a catch async (e) => b               syntax error: remove async (decided detail 
 a catch function* (e) { }            syntax error: remove *
 ```
 
-**`for concurrent`.** After `for concurrent`, the first parenthesized group is the limit only when it parses as an `AssignmentExpression` and the next group is the for…of head. A group that holds `ForDeclaration of …` is the head, whatever follows it:
+**`for concurrent`.** A line break between `for` and `concurrent` is allowed, as in ECMAScript’s [`for await` grammar](https://tc39.es/ecma262/2025/multipage/ecmascript-language-statements-and-declarations.html#sec-for-in-and-for-of-statements) and TypeScript. After `for concurrent`, the first parenthesized group is the limit only when it parses as an `AssignmentExpression` and the next group is the for…of head. A group that holds `ForDeclaration of …` is the head, whatever follows it:
 
 ```text
 for concurrent (4) (const x of xs) f(x)        limit 4
 for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
+```
+
+Both loop layouts have the same Effect counterpart and give `Success(3)` here:
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-19
+effect function multilineTotal() {
+  let total = 0
+  for
+  concurrent (const x of [1, 2]) { total += x }
+  return total
+}
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+const multilineTotal = Effect.gen(function* () {
+  let total = 0
+  yield* Effect.forEach([1, 2], x => Effect.sync(() => { total += x }), {
+    concurrency: "unbounded", discard: true
+  })
+  return total
+})
 ```
 
 **`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error (`EK0302`). One rule explains every `[no LineTerminator here]` in the productions: a line break ends an Effect type. TypeScript stops its postfix type operators (`!`, `?`, `[]`) at a preceding line break, so in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. A `[]` has a closing token and a slot doesn't, so the slot starts on the line of its `!`, which keeps `now(): number!!` and `later(): number!!` two members. A slot in parentheses may span lines. `R` after `!!` never starts with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `EffectType` is an alternative of TypeScript's `Type`, beside a function type and a conditional type. A function or constructor type's return is a `Type`, so `() => A!E` is `() => (A!E)`, as `() => A | B` is `() => (A | B)` (decided detail 80). `!` does not mix with `|`, `&` or conditional types without parentheses (decided detail 47): an `EffectType` can't be an operand of `|` or `&` or a part of a conditional type unless parenthesized, and a function or constructor type in a slot needs its own parentheses (`A!(() => B)`, not `A!() => B`). Each is a syntax error with a quick fix that parenthesizes (`EK0301`). `A!!B!C` is `EK0302`. Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
