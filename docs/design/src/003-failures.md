@@ -172,7 +172,7 @@ effect function f(xs: number[], s: string, v: object) {
 
 `@throws {T}` and `@rethrows p` attach to call signatures, not a `type` alias's declaration: write `type Reader = { /** @throws {Error} */ (): string }`. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type. Declaration output tags exported non-effectful callables ([Declaration output](001-functions.md#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
 
-A no-match `TypeError`, the implicit read and call of `Symbol.customMatcher`, and pattern-protocol errors (including iterator closing) are implicit throws: never tracked, and defects in effect code (decided detail 95). The no-match `TypeError` and any iterator-closing errors become an `AggregateError` when the draft's `FinishMatch` collects more than one error; that aggregate is implicit too ([Pattern matching](004-match.md)). A failure, defect or interruption from a yielded Effect in a guard or arm skips `FinishMatch` and its iterator closing. Calls written in a subject, guard or arm, and predicate calls under detail 94, follow ordinary tracking. `EK4701` prevents a no-match on exhaustively checked subjects.
+A no-match `TypeError`, the implicit read and call of `Symbol.customMatcher`, and pattern-protocol errors (including iterator closing, and the `AggregateError` of [Leaving a `match`](004-match.md#leaving-a-match)) are implicit throws: never tracked, and defects in effect code (decided detail 95). Calls written in a subject, guard or arm, and predicate calls under detail 94, follow ordinary tracking. `EK4701` prevents a no-match on exhaustively checked subjects.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -187,7 +187,7 @@ import { Effect } from "effect"
 
 function label(x: unknown) {
   if (x === 1) return "one"
-  throw new TypeError("no matching arm") // implicit in the source match
+  throw new TypeError() // implicit in the source match
 }
 const labeled = Effect.sync(() => label(2)) // a defect, not a typed failure
 function parsed(s: string) {

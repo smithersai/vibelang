@@ -127,6 +127,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
+- The specification left a `return`, `break` or `continue` out of a `match` arm undefined, and the pinned draft read literally turned `return 7` into `throw 7`. A jump out of an arm now behaves as the same jump out of a `for…of` body: cached iterators close, then the jump goes on. Chapters 3, 4 and 8 gave three different answers for which `throw` skips that closing; there is now one rule, and a no-match error is `new TypeError()` everywhere.
+
 - Schema migration checks still expected mutable collections after `--fix` preserved readonly types; the fixtures now verify readonly arrays, tuples and records.
 
 - Compiler regression checks rejected the expected `EK1013` diagnostic for commas in `schema` bodies; the diagnostic golden now covers them alongside other declarations.

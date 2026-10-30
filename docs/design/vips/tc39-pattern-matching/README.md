@@ -29,6 +29,16 @@ The explainer and the draft specification differ in a few places. VibeLang follo
 | A custom matcher's arguments | the subject and `{ matchType: "boolean" }` or `{ matchType: "extractor" }` | the subject, the string `"boolean"` or `"list"`, and the receiver | the explainer's, which VibeLang already passed: the subject and `{ matchType }` |
 | Built-in custom matchers | `Function.prototype`, primitives, `RegExp.prototype` | also `Array`, `Error`, `Map`, `Set`, `Date`, `Promise` and the other built-in constructors | the specification's for `RegExp.prototype`, emulated without changing any built-in object. Built-in constructors test `Array.isArray(subject)` for `Array` and `subject instanceof C` for the others, since compiled JavaScript can't read their internal slots (decided detail 67a); `String`, `Number`, `Boolean`, `BigInt` and `Symbol` test the primitive or `instanceof` its boxed object (decided detail 87). A cross-realm built-in other than an array fails. The inherited `Function.prototype` matcher for other classes is replaced by `subject instanceof C` (decided detail 67): its `[[ConstructedBy]]` slot can only be recorded by an engine, so an object whose prototype changed after construction doesn't match and `Object.create(C.prototype)` does |
 
+## Reconciliations with the draft's text
+
+The draft text stays as vendored. VibeLang reads these steps as follows.
+
+| Step | Draft | VibeLang | Why |
+| --- | --- | --- | --- |
+| `FinishMatch`, its error list | "If _matchCompletion_ is an abrupt completion, append _matchCompletion_.[[Value]] to _errors_." | "… is a throw completion …". A `return`, `break` or `continue` closes the cached iterators and goes on; an error from closing replaces it | Read literally, `return 7` becomes `throw 7`. The draft's editor's notes show `do { …; return w * w; }` in a clause and describe a `continue` that survives unless closing fails. A generator's `return()` at a `yield` in an arm reaches the same step without `do`. `for…of` is the precedent: ECMA-262 IteratorClose keeps the completion and lets a closing error replace it |
+| `is`, its evaluation | "Let _matchCompletion_ be ? MatchPatternMatches of …", then a `~not-matched~` conversion | `Completion(MatchPatternMatches(…))`, kept as it is and passed to `FinishMatch` | `?` skips the closing step that the next line performs, and `MatchPatternMatches` gives a Boolean, not `~not-matched~` |
+| `async match`, its arms | the explainer's sketch, "just like `async do` expressions" | `return`, and a `break` or `continue` whose target is outside, are syntax errors | The `async do` draft's grammar is `Block[~Yield, +Await, ~Return]` |
+
 ## What VibeLang adds or keeps
 
 - A `match` without `default` over a finite union that misses a case is EK4701 at compile time. The check reports; it never changes what runs, and an unmatched value throws the proposal's `TypeError`.

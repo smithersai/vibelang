@@ -294,6 +294,8 @@ function describeError(failure: Missing | Other) {
 error EK4701: This match does not handle every case of Missing | Other: Other is left.
 ```
 
+A `return`, `break` or `continue` in an arm's `do` reaches its enclosing function or loop, as from a `for…of` body: iterators the patterns opened close first. In an `effect` function a failure, or a `throw`, ends the function without closing them; use `scoped` for cleanup on every exit.
+
 An arm that only binds the value, `when let other:`, matches every value, as `default` does, so a match that ends in one handles every case. A match that handles every case needs no `default`, and tests that reach every arm cover every branch. Its last arm is still tested like every other arm, with the same reads, without adding a branch. If a value from an unsound cast or `any` matches no arm, the match throws a `TypeError`.
 
 ## Errors

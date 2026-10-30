@@ -41,11 +41,78 @@ The first `label` counterpart uses a short object test because its subject type 
 
 The arm grammar is [MatchBody](/spec/900-appendices#matchbody), [MatchArm](/spec/900-appendices#matcharm) and [ArmBody](/spec/900-appendices#armbody): the pinned draft with VIP-7's `when` prefix and VIP-5's `throw` arm body. At least one arm is required; `default` appears at most once, last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a missing separator is `EK0701` (quick fix: insert `;`). A newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; the `RegExp.prototype` matcher uses the draft specification, emulated without modifying globals; built-in and primitive constructor tests use decided details 67a and 87 below.
 
-Synchronous `match` evaluates its subject once and tests arms in order. It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above. Only the selected arm body runs; guards run during arm testing and may have side effects. When no arm matches and there is no `default`, it produces a `TypeError` with the host’s default message (the pinned snapshot specifies no message), subject to `FinishMatch` below; in effect code the resulting throw is a defect, not a failure.
+Synchronous `match` evaluates its subject once and tests arms in order. It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above. Only the selected arm body runs; guards run during arm testing and may have side effects. When no arm matches and there is no `default`, it throws `new TypeError()`, with an empty message: the pinned snapshot says only "a newly created *TypeError*", and no user code runs. In effect code that throw is a defect, not a failure.
 
-**Match cache.** One `CreateMatchCache` per `match` (and per `is` test) caches property presence, property reads, `Symbol.iterator` lookup, iterators and pulled values per subject across arms, as the pinned draft specifies. Later arms reuse them: a cached getter runs at most once and an iterable subject is iterated once. After testing and the selected arm body, including an abrupt completion or the no-match `TypeError`, `FinishMatch` closes every unfinished cached iterator in draft order. An `is` test reaches `FinishMatch` only when its pattern test completes normally: a throw while testing propagates without closing, as the draft's `? MatchPatternMatches` specifies. One error is rethrown; multiple errors, including the pending throw and closing errors, become an `AggregateError` whose `errors` lists them in that order. This is the draft's completion algorithm, not destructuring's `IteratorClose`.
+**Match cache.** One `CreateMatchCache` per `match` (and per `is` test) caches property presence, property reads, `Symbol.iterator` lookup, iterators and pulled values per subject across arms, as the pinned draft specifies. Later arms reuse them: a cached getter runs at most once and an iterable subject is iterated once. The short object and fixed-pattern counterparts in this chapter omit cache machinery for subjects with plain data properties; they are not general lowerings for getters or iterators.
 
-In effect code, failure, defect or interruption propagated by an Effect suspension abandons the generator before `FinishMatch`, as for `using` and destructuring ([Runtime guarantees](/spec/008-runtime)); a source `throw` arm is such a typed failure. Ordinary JavaScript throws still pass through `FinishMatch`. The short object and fixed-pattern counterparts in this chapter omit cache machinery for subjects with plain data properties; they are not general lowerings for getters or iterators.
+<a id="leaving-a-match"></a>**Leaving a `match`.** However a `match` or an `is` test ends, `FinishMatch` closes every unfinished cached iterator, in draft order, before control goes on, as the end of a `for…of` body closes its iterator:
+
+| The arm, guard or test ends with | What happens |
+| --- | --- |
+| a value | the iterators close, then the `match` gives the value |
+| `return`, `break` or `continue`, through `do` or a generator's `return()` | the iterators close, then the jump goes on |
+| a JavaScript throw, the no-match `TypeError` included | the iterators close, then the throw goes on |
+| an error from closing | it replaces a value or a jump, as in `for…of`. With a pending throw, or a second closing error, the `match` throws an `AggregateError` whose `errors` lists the pending throw and then the closing errors, where `for…of` keeps the pending throw alone |
+| in effect code, a `try` that fails, dies or is interrupted, or a `throw` | nothing closes: the generator is [abandoned](/spec/008-runtime#abandonment) |
+
+The pinned draft's `FinishMatch` appends every abrupt completion to its errors, so read literally it turns `return 7` into `throw 7`. Its own notes intend otherwise, and VibeLang reads that step as "a throw completion" (the snapshot's reconciliations). The rule is the `for…of` rule because a jump out of an arm is the same completion as a jump out of a loop body:
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-7
+function* numbers(log: string[]) { try { yield 1; yield 2 } finally { log.push("closed") } }
+function first(log: string[]) {
+  const v = match (numbers(log)) { when [let a, ...]: do { return a }; default: 0; }
+  return -1
+}
+effect function answer() {
+  const ignored = match (true) { default: do { return 7 }; }
+  return 0
+}
+effect function typed(log: string[]) {
+  return match (numbers(log)) { when [let a, ...]: do { throw "bad" }; default: 0; }
+}
+effect function implicit(log: string[], o: { value: number }) {
+  return match (numbers(log)) { when [let a, ...]: o.value; default: 0; }
+}
+```
+
+| Call | Exit | `log` |
+| --- | --- | --- |
+| `first(log)` | returns `1` | `["closed"]`, as `for (const a of numbers(log)) return a` |
+| `answer()` | `Success(7)` | |
+| `typed(log)` | `Failure("bad")` | `[]`: the generator is abandoned |
+| `implicit(log, o)`, the getter `o.value` throws `"t"` | `Die("t")` | `["closed"]`: a JavaScript throw unwinds the generator |
+
+```ts [Effect]
+import { Effect, Exit } from "effect"
+
+function* numbers(log: string[]) { try { yield 1; yield 2 } finally { log.push("closed") } }
+function first(log: string[]) {
+  for (const a of numbers(log)) return a
+  return -1
+}
+function typed(log: string[]) {
+  return Effect.gen(function* () {
+    for (const a of numbers(log)) return yield* Effect.fail("bad")
+    return 0
+  })
+}
+function implicit(log: string[], o: { value: number }) {
+  return Effect.gen(function* () {
+    for (const a of numbers(log)) return o.value
+    return 0
+  })
+}
+const firstLog: string[] = []
+if (first(firstLog) !== 1 || firstLog.join() !== "closed") throw new Error("return lost its close")
+const typedLog: string[] = []
+const typedExit = Effect.runSyncExit(typed(typedLog))
+if (!Exit.isFailure(typedExit) || typedLog.length !== 0) throw new Error("a failure closed the iterator")
+const implicitLog: string[] = []
+const bad = { get value(): number { throw "t" } }
+const implicitExit = Effect.runSyncExit(implicit(implicitLog, bad))
+if (!Exit.isFailure(implicitExit) || implicitLog.join() !== "closed") throw new Error("a throw skipped the close")
+```
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
@@ -286,7 +353,7 @@ function bit(b: boolean) {
 }
 ```
 
-`async match` is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`.
+`async match` is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. As in TC39's `async do`, whose grammar is `Block[~Yield, +Await, ~Return]`, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7

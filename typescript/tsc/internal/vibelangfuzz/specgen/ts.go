@@ -847,7 +847,7 @@ func (t *tsPrinter) match(m *Match) string {
 	case m.Default != nil:
 		fmt.Fprintf(&b, "return %s ", t.expr(m.Default))
 	default:
-		b.WriteString(`return yield* Effect.die(new TypeError("no arm matched")) `)
+		b.WriteString(`return yield* Effect.die(new TypeError()) `)
 	}
 	b.WriteString("})")
 	return b.String()

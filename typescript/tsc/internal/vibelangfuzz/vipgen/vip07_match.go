@@ -257,7 +257,7 @@ func (m *Match) Effect(w *Writer) {
 			w.Node(m.Default)
 			w.Line("")
 		} else {
-			w.Line(`throw new TypeError("no match arm matched")`)
+			w.Line(`throw new TypeError()`)
 		}
 	})
 	w.Write("})(")
