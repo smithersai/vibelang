@@ -1,0 +1,6 @@
+error Bad { id: string }
+const copy: unknown = { _tag: "Bad", id: "x" }
+export const result = match (copy) {
+  when Bad(let e): e.id;
+  default: "no";
+};

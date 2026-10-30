@@ -21,12 +21,12 @@ export type Scope = ScopeModule.Scope
 /**
  * D3: `TaggedError` is Effect's `Data.TaggedError`, with the pattern matching
  * proposal's custom matcher (D215): `when NotFound` tests that the subject is
- * an instance, and the extractor `NotFound(let error)` binds it.
+ * tagged with the same name, and the extractor `NotFound(let error)` binds it.
  */
 export const TaggedError: typeof Data.TaggedError = ((tag: string) => {
   const Base: any = Data.TaggedError(tag)
   Base[customMatcher] = function(this: abstract new(...args: any) => any, subject: unknown, hint?: MatchHint) {
-    if (!(subject instanceof this)) return false
+    if (subject === null || (typeof subject !== "object" && typeof subject !== "function") || (subject as { _tag?: unknown })._tag !== tag) return false
     return hint?.matchType === "extractor" ? [subject] : true
   }
   return Base
@@ -49,6 +49,13 @@ export const $errorSubclass = <B extends abstract new(...args: any) => { readonl
       this._tag = tag
     }
   }
+  Object.defineProperty(Tagged, customMatcher, {
+    value(subject: unknown, hint?: MatchHint) {
+      if (subject === null || (typeof subject !== "object" && typeof subject !== "function") || (subject as { _tag?: unknown })._tag !== tag) return false
+      return hint?.matchType === "extractor" ? [subject] : true
+    },
+    configurable: true
+  })
   ;(Tagged.prototype as unknown as { name: string }).name = tag
   return Tagged as unknown as B
 }

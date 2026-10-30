@@ -50,7 +50,7 @@ test("match: $assertMatch returns when the last arm's test passed and throws $no
   expect($assertMatch(1, "kept")).toBeUndefined()
   expect(() => $assertMatch(false, "missing")).toThrow('No match arm matched "missing"')
   const structural = { _tag: "NotFound", id: "1" }
-  expect(() => $assertMatch($is(NotFound, structural), structural)).toThrow("No match arm matched [object Object]")
+  expect($assertMatch($is(NotFound, structural), structural)).toBeUndefined()
   expect($assertMatch($is(NotFound, new NotFound({ id: "1" })), structural)).toBeUndefined()
 })
 
