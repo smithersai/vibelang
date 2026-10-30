@@ -75,6 +75,8 @@ In `package.json`, replace `tsc` with `vibelang` in every script. If the project
 
 The VIP migration also marks Effect functions `effect`, including arrows with an Effect return annotation such as `const value = (): number!! => 1`. Run `vibelang --fix --fix-vip-only` to apply only the VIP migrations.
 
+For the VIP syntax migration, `vibelang --fix --fix-vip-only` writes explicit `effect` functions and `effect { … }` blocks. Program literals passed to combinators, including elements of `Effect.all` and racing collections, become Effects; callback arguments such as `Effect.forEach` stay functions. Annotated literals, named function expressions and optional parameters retain their contracts and delayed evaluation through `Effect.suspend`. By-name arguments that compute a value become `effect { … }` blocks, function values at program positions are captured with `Effect.suspend` or `Effect.sync`, and `fork` callbacks become `fork effect { … }`.
+
 For a monorepo, use `vibelang -b -w <solution-or-consuming-project>` to watch and rebuild the project-reference graph. Ordinary `-w` watches the selected project's compilation inputs; it does not keep referenced libraries built. For example:
 
 ```sh

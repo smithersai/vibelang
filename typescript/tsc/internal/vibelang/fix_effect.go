@@ -42,7 +42,9 @@ const effectLabel = "effect"
 func effectEdits(c *checker.Checker, file *ast.SourceFile) ([]sourceEdit, int) {
 	edits, marked := analyzerFor(c).effectEditsIn(file, file.AsNode())
 	name := (&freshNames{file: file}).freshName("$effectPrograms")
-	if slices.ContainsFunc(edits, func(e sourceEdit) bool { return strings.Contains(e.text, name+".suspend(") }) {
+	if slices.ContainsFunc(edits, func(e sourceEdit) bool {
+		return strings.Contains(e.text, name+".suspend(") || strings.Contains(e.text, name+".sync(")
+	}) {
 		// Keep shebangs first and diagnostic directives beside their target.
 		at := 0
 		if strings.HasPrefix(file.Text(), "\ufeff") {
@@ -63,9 +65,48 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 	text := file.Text()
 	var edits []sourceEdit
 	marked := 0
+	byName := map[*ast.Node]*ast.Node{}
+	for value := range a.conversions {
+		if a.finalConversion(value) == convertByName {
+			subject := byNameSubject(value)
+			if !isInvocation(subject) && !isPipe(ast.SkipParentheses(subject)) && !ast.IsFunctionLike(ast.SkipParentheses(subject)) && !a.byNameHasTail(subject) {
+				byName[subject] = value
+			}
+		}
+	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if value := byName[node]; value != nil {
+			replacement := a.byNameEffectText(file, node)
+			start := scanner.SkipTrivia(text, node.Pos())
+			edits = append(edits, sourceEdit{start, node.End(), replacement})
+			marked++
+			return false
+		}
+		if !ast.IsFunctionLike(ast.SkipParentheses(node)) && a.conversions[node] != nil {
+			conv := a.finalConversion(node)
+			if conv == convertProgram || conv == convertSyncProgram {
+				start := scanner.SkipTrivia(text, node.Pos())
+				// Capture the function now, as the old conversion did. A block
+				// reading it later changes mutable bindings and receiver calls.
+				name := (&freshNames{file: file}).freshName("$effectPrograms")
+				helper := name + ".suspend("
+				if conv == convertSyncProgram {
+					helper = name + ".sync("
+				}
+				if ast.IsShorthandPropertyAssignment(node.Parent) {
+					helper = text[start:node.End()] + ": " + helper
+				}
+				edits = append(edits, sourceEdit{start, start, helper}, sourceEdit{node.End(), node.End(), ")"})
+				marked++
+			}
+		}
 		switch {
+		case isProgramArrow(node) && !isMarkedEffect(node) && isForkOperand(node) && ast.IsBlock(node.Body()):
+			start := scanner.SkipTrivia(text, node.Body().Pos())
+			edits = append(edits, sourceEdit{start, start, "effect "})
+			edits = append(edits, a.returnTries(file, node)...)
+			marked++
 		case isLambda(node) && node.Body() != nil && !isProgramArrow(node) && !isForkOperand(node) && a.literalProgramOperand(node):
 			if len(node.Parameters()) == 0 && node.Type() == nil && (!ast.IsFunctionExpression(node) || node.Name() == nil) {
 				if !ast.IsBlock(node.Body()) {
