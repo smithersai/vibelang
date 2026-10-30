@@ -341,6 +341,30 @@ export function addVibeLangSetting(text, ts, key, value) {
 }
 
 /**
+ * Adds to a tsconfig's include (JSON with comments) the .vibe pattern of each
+ * pattern that names .ts or .tsx files, src/**\/*.vibe beside src/**\/*.ts: a
+ * composite project must list every file it compiles (TS6307), and a migrated
+ * module is a .vibe file. Patterns such as src/**\/* and src already match
+ * .vibe files. ts is TypeScript's compiler API.
+ */
+export function addVibeIncludes(text, ts) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) throw new Error("not a tsconfig object")
+  const include = root.properties.find((p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) && p.name.text === "include")
+  if (!include || !ts.isArrayLiteralExpression(include.initializer) || !include.initializer.elements.length) return text
+  const elements = include.initializer.elements
+  const patterns = elements.filter((e) => ts.isStringLiteral(e)).map((e) => e.text)
+  const added = [...new Set(patterns.filter((p) => /\.tsx?$/.test(p) && !/\.d\.tsx?$/.test(p)).map((p) => p.replace(/\.tsx?$/, ".vibe")))].filter((p) => !patterns.includes(p))
+  if (!added.length) return text
+  const last = elements.at(-1)
+  const start = last.getStart(file)
+  const multiline = text.slice(include.initializer.getStart(file), start).includes("\n")
+  const indent = /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", start) + 1))[0]
+  return text.slice(0, last.getEnd()) + added.map((p) => (multiline ? `,\n${indent}` : ", ") + JSON.stringify(p)).join("") + text.slice(last.getEnd())
+}
+
+/**
  * The repository's tsconfig files (tsconfig*.json, outside node_modules and
  * hidden directories) that extend none of the others, as repository-relative
  * paths: a compiler option set in each is set in every project. ts is

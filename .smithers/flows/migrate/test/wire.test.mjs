@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { must } from "../lib/util.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
@@ -206,6 +206,15 @@ test("addCompilerOptions adds to compilerOptions, or creates it, and keeps optio
   const set = '{ "compilerOptions": { "rewriteRelativeImportExtensions": false } }'
   assert.equal(addCompilerOptions(set, { rewriteRelativeImportExtensions: true }), set)
   assert.equal(addCompilerOptions("{}", { a: 1 }), '{\n  "compilerOptions": {\n    "a": 1\n  }\n}')
+})
+
+test("addVibeIncludes gives each .ts include pattern its .vibe pattern, which a composite project needs (TS6307)", () => {
+  const add = (text) => addVibeIncludes(text, ts)
+  assert.equal(add('{ "include": ["src/**/*.ts", "src/**/*.tsx"] }'), '{ "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vibe"] }')
+  assert.equal(add('{\n  "include": [\n    "src/**/*.ts",\n    "test/**/*.ts",\n  ],\n}\n'), '{\n  "include": [\n    "src/**/*.ts",\n    "test/**/*.ts",\n    "src/**/*.vibe",\n    "test/**/*.vibe",\n  ],\n}\n')
+  for (const text of ['{ "include": ["src/**/*.ts", "src/**/*.vibe"] }', '{ "include": ["src/**/*", "types/*.d.ts"] }', '{ "files": ["a.ts"] }', '{ "include": [] }']) {
+    assert.equal(add(text), text)
+  }
 })
 
 test("addVibeLangSetting adds to the vibelang object the file keeps, or a new top-level one", () => {

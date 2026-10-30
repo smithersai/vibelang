@@ -310,8 +310,9 @@ async function wireTarget(config, log) {
     for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig])) {
       const file = join(dir, tsconfig)
       const text = readFileSync(file, "utf8")
-      // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads.
-      writeIfChanged(file, text, Wire.addVibeLangSetting(Wire.addCompilerOptions(text, { rewriteRelativeImportExtensions: true }), ts, "declarationSidecars", true))
+      // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
+      // and the project lists .vibe files where it lists .ts files.
+      writeIfChanged(file, text, Wire.addVibeLangSetting(Wire.addCompilerOptions(Wire.addVibeIncludes(text, ts), { rewriteRelativeImportExtensions: true }), ts, "declarationSidecars", true))
     }
   }
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
