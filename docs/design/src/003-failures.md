@@ -664,10 +664,38 @@ Each member has one classification ([Declarations](900-appendices.md#notes-on-th
 
 Field keys follow TypeScript object types, as in [Schema declarations](006-data.md#schema-declarations): an identifier, a string or numeric literal, or a computed name, emitted as written. A computed key of non-literal type gives an index signature in the instance type; at runtime it supplies just the one key the expression evaluates to. In `schema error`, the decoder requires that runtime key and ignores other keys by default; an index signature does not make it validate arbitrary keys.
 
+In a `schema error` body, a computed key is `EK2117` unless its well-typed runtime property-key domain is proved to exclude `"_tag"`. Raw assignability of the unbranded string literal to a nominal key type does not establish that exclusion. Resolve effective generic constraints recursively; broad string constraints and unions that may contain the tag are rejected. Use enum members' underlying string values. In intersections retain genuine primitive literal/template constraints, but an opaque brand or refinement marker does not exclude the underlying string. Every possible union component must exclude it.
+
+Known numeric and symbol domains, including unique symbols, cannot become that string key. Safe literals, literal unions, templates and their brands remain admitted; `never` has no possible key. Reject `any`, `unknown`, unresolved/cyclic domains or any other unprovable exclusion conservatively. Ordinary TypeScript invalid-key errors remain independent. Use a literal key or a symbol when needed. Accepted keys keep their existing evaluation order and are emitted as written: no decoder/refinement is executed to prove exclusion, no value is unwrapped and no runtime tag guard is added.
+
+```vibe es
+// fragment
+// compiler-gap: pending VIP-29
+enum Field { Tag = "_tag", Count = "count" }
+declare const field: Field
+schema error Bad { [field]: number } // reserved-tag diagnostic: Field.Tag remains possible
+schema error Good { [Field.Count]: number }
+function generic<K extends string>(key: K) {
+  schema error AlsoBad { [key]: number } // the string constraint may be "_tag"
+}
+```
+
+```ts effect
+import { Schema } from "effect"
+enum Field { Tag = "_tag", Count = "count" }
+class Good extends Schema.TaggedError<Good>()("Good", { [Field.Count]: Schema.Number }) {}
+const admittedKeyExit = Schema.decodeUnknownExit(Good)({ _tag: "Good", count: 1 }) // Success
+const BrandedKey = Schema.String.pipe(Schema.brand("Key"))
+const brandedKey = Schema.decodeUnknownSync(BrandedKey)("_tag")
+const rawBrandAssignable: "_tag" extends typeof brandedKey ? true : false = false
+const rawEnumAssignable: "_tag" extends Field ? true : false = false
+brandedKey // "_tag": nominal typing does not change the runtime property key
+```
+
 ```ts effect
 import { Schema } from "effect"
 
-const field: string = "actual"
+const field = "actual"
 class Dynamic extends Schema.TaggedError<Dynamic>()("Dynamic", { [field]: Schema.Number }) {}
 const decode = Schema.decodeUnknownExit(Dynamic)
 decode({ _tag: "Dynamic", other: 1 })             // Failure: actual is missing
@@ -689,7 +717,7 @@ error Access {
 | Rule | Diagnostic |
 | --- | --- |
 | a constructor in an `error` or `schema error` body | `EK1301` |
-| a `_tag` member in an `error` or `schema error` body | `EK2117` |
+| a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"`; use a literal key or a symbol | `EK2117` |
 | an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |
 | a user-written `static` member or setter, in either error form | `EK1302` |
 | type parameters, such as `error Invalid<T> { value: T }`, in either error form | `EK1303` |

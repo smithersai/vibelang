@@ -191,6 +191,8 @@ const decoded = Schema.decodeUnknownExit(Dynamic)(admitted) // failure: missing 
 const kept = Schema.decodeUnknownSync(Dynamic)({ actual: 1, other: 2 }) // { actual: 1 }
 ```
 
+Computed `schema error` field keys also obey the [reserved-tag rule](003-failures.md#error-declarations): reject a runtime key domain that cannot be proved to exclude `"_tag"`, including generic, enum or branded string domains that may produce it. A nominal brand alone grants no exception. This restriction does not apply to ordinary `schema` struct keys.
+
 The generated constants keep TypeScript declaration order and temporal dead zone: declare `Address` before a schema that reads it. There is no implicit reordering or `Schema.suspend`; a forward or cyclic value reference has the same initialization behavior as the shown TypeScript.
 
 | Rule | Diagnostic |

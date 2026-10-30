@@ -732,7 +732,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2104` | `yield` in an `effect` block, arrow or `effect function` nested in a producer | 21 | [Running Effects](002-running.md#producers) |
 | `EK2109` | a `schema` field type outside the mapping | 15 | [Data](006-data.md#schema-declarations) |
 | `EK2111` | `restore` outside an `uninterruptible` block | 22 | [Running Effects](002-running.md#interruption-blocks) |
-| `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body | 13 | [Failures](003-failures.md#error-declarations) |
+| `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` | 13 | [Failures](003-failures.md#error-declarations) |
 | `EK2126` | a constraint on a generic `data` type parameter | 28 | [Data](006-data.md#generic-unions) |
 | `EK2128` | `return value` in a producer: a Stream has no return value; write a bare `return` to end the stream | 21 | [Running Effects](002-running.md#producers) |
 | `EK2201` | an interruption block outside effect code | 22 | [Running Effects](002-running.md#interruption-blocks) |
