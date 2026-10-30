@@ -41,7 +41,6 @@ FuzzFailuresSpec  feature:promise-library-wrapped  compiler  VIP-4: 003-failures
 FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejects the marked call for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: a constructor that throws draws EK2003 (decided detail 5 tracks new X() instead), so Id's declaration cannot carry @throws {BadInput}; lane w2-throw
-FuzzFailuresSpec  feature:declaration-async  compiler  VIP-27: an exported async function's declaration carries no @throws {never}; lane w2-throw
 FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
 FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:schema-error-tag  compiler  VIP-29 (decided detail 24): a `_tag` member in a schema error body draws no error; lane fix-vip-decls
@@ -52,7 +51,6 @@ FuzzFailuresSpec  feature:effectful-body-call  compiler  VIP-4 (001-functions.md
 FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail` that 001-functions.md's example returns is not in scope (TS2304); lane fix-vip-globals
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
-FuzzFailuresSpec  corpus:declaration-async  compiler  the minimal reproduction of feature:declaration-async
 FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
 FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
 FuzzFailuresSpec  corpus:schema-error-tag  compiler  the minimal reproduction of feature:schema-error-tag

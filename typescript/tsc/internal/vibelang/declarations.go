@@ -220,6 +220,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		slots := &emptySlots{}
 		slots.NewTransformer(slots.visit, resolver.EmitContext())
 		declarations = slots.TransformSourceFile(declarations)
+		annotateAsyncThrows(resolver.EmitContext(), declarations.AsNode())
 		if added := moduleImportDeclarations(resolver.EmitContext().Factory, moduleImports, declarations); len(added) > 0 {
 			statements := resolver.EmitContext().Factory.NewNodeList(append(added, declarations.Statements.Nodes...))
 			statements.Loc = declarations.Statements.Loc
@@ -1218,4 +1219,46 @@ func (tx *computedKeyRewriter) entityExpression(key *ast.Node) *ast.Node {
 	identifier := f.NewIdentifier(key.Text())
 	tx.written = append(tx.written, identifier)
 	return identifier
+}
+
+// annotateAsyncThrows writes `@throws {never}` on each emitted async function
+// declaration without a written contract: a throw in an async body rejects
+// the returned Promise, so the call itself never throws (VIP-4, VIP-27).
+// Async generators keep their ordinary contract: parameter initialization can
+// throw synchronously before returning the iterator (decided detail 108).
+func annotateAsyncThrows(context *printer.EmitContext, node *ast.Node) {
+	node.ForEachChild(func(child *ast.Node) bool {
+		annotateAsyncThrows(context, child)
+		return false
+	})
+	if node.Kind != ast.KindFunctionDeclaration {
+		return
+	}
+	original := context.MostOriginal(node)
+	if original.Kind != ast.KindFunctionDeclaration || hasThrowsTag(original) {
+		return
+	}
+	implementation := implementationOf(original)
+	if implementation == nil || implementation.BodyData().AsteriskToken != nil || !ast.HasSyntacticModifier(implementation, ast.ModifierFlagsAsync) {
+		return
+	}
+	comment := "* @throws {never} "
+	if docs := original.JSDoc(nil); len(docs) > 0 {
+		// A reader takes tags from the last JSDoc block only, so the tag joins
+		// that block rather than following it.
+		last := docs[len(docs)-1]
+		comment = joinThrowsNever(ast.GetSourceFileOfNode(original).Text()[last.Pos():last.End()])
+		context.SetCommentRange(node, core.UndefinedTextRange())
+	}
+	context.AddSyntheticLeadingComment(node, ast.KindMultiLineCommentTrivia, comment, true /*hasTrailingNewLine*/)
+}
+
+// joinThrowsNever returns the text between the /* and */ of doc, a JSDoc
+// block, with a `@throws {never}` line added.
+func joinThrowsNever(doc string) string {
+	body := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(doc), "/*"), "*/")
+	if !strings.Contains(body, "\n") {
+		body = "*\n * " + strings.TrimSpace(strings.TrimPrefix(body, "*"))
+	}
+	return strings.TrimRight(body, " \t\r\n") + "\n * @throws {never}\n "
 }

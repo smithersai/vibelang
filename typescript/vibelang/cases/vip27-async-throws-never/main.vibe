@@ -1,0 +1,11 @@
+import { failDefault } from "./helpers.js"
+export async function get(q: string) { if (!q) throw new Error("empty"); return q }
+/** @throws {never} */
+export async function tagged(q: string) { return q }
+/** Echoes q. */
+export async function documented(q: string) { return q }
+export function overloaded(q: string): Promise<string>
+export async function overloaded(q: string) { return q }
+export async function identityCause(q: Cause.Cause<never>) { return q }
+export async function defaultReject(q = failDefault()) { return q }
+export async function* generator(q = failDefault()): AsyncGenerator<string> { yield q }
