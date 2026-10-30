@@ -116,6 +116,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The specification and producer guide made a labeled `break` or `continue` naming the `for try` itself `EK2003`, unlike JavaScript and `for concurrent`. It now means the loop's own unlabeled jump; only labels on enclosing statements are `EK2003`.
+
+- The specification promised that `match` class arms on ordinary classes would emulate the TC39 draft's construction-identity test, which compiled JavaScript cannot do for classes from `.ts` or `.js` files. A class without its own `Symbol.customMatcher` now matches by `instanceof`.
+
 - Building from source could fail the runtime entry tests on a busy host after five seconds, even while their child processes were within the allowed time; each entry test now allows the combined budget of its subprocesses.
 
 - The module and resource VIP references still named `effect@4.0.6`; they now describe the accepted `effect@4.1.0` pin, with its 149 root exports and scope functions checked.
