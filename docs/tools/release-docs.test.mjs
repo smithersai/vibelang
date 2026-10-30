@@ -261,3 +261,18 @@ test("the 0.0.11 bug list covers the receiver report and service-alias diagnosti
   assert.match(bugs, /\[Upgrade from 0.0.10\]\(#upgrade-from-0010\)/)
   assert.doesNotMatch(bugs, /\bD\d{2,}\b|alpha-chlog|bug bash/)
 })
+
+// Development commits record every fix. Enforce the curated publication list at release time.
+// VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs
+test("current release notes describe user fixes without internal CI or fuzz bookkeeping", {
+  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+}, () => {
+  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
+  const current = notes.split(/^## /m).slice(1)[0]
+  const bugs = current.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
+  assert.ok(bugs, "current release needs a bug list")
+  assert.doesNotMatch(bugs, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
+  assert.doesNotMatch(bugs, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
+  const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
+  assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
+})

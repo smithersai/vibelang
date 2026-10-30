@@ -147,9 +147,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Organizing imports or renaming an old inline `module` declaration could introduce unresolved imports and new errors. The editor now refuses these unsafe edits; move the code to a `.ts` file, as inline modules are denied by VIP-25.
 
-- Schema migration checks still expected mutable collections after `--fix` preserved readonly types; the fixtures now verify readonly arrays, tuples and records.
+- The specification gave conflicting throw contracts for foreign callables and callback propagation; it now composes own throws with `@rethrows`, preserves contracts across declarations, and distinguishes both synchronous schema decoder builders from the decoders they return. Platform-global and namespace rules now agree across chapters. Stream-loop jump diagnostics now agree with the shared rule that a label on the loop itself is consumed there.
 
-- Compiler regression checks rejected the expected `EK1013` diagnostic for commas in `schema` bodies; the diagnostic golden now covers them alongside other declarations.
+
+- The release notes mixed development bookkeeping with user changes and repeated some fixes; the current list now contains each user-facing fix once and keeps the final stream-loop rule.
+
+
+
 
 - The specification's `try.allSettled` counterpart, `Effect.all([a, b].map(Effect.exit))`, was a TypeScript error when the operands had different types, and lost the tuple when it compiled. An array literal now maps to `Effect.all([Effect.exit(a), Effect.exit(b)])`, typed as a tuple of `Exit`s, as `Promise.allSettled` keeps one.
 
@@ -167,22 +171,17 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Typed ESLint programs required `tsconfig.json` even when a project used `vibe.config.json` or `jsconfig.json`; `typedProgram()` now discovers the nearest project in the same order as the compiler and still honors an explicit `project`.
 
-- Building from source could fail the runtime entry tests on a busy host after five seconds, even while their child processes were within the allowed time; each entry test now allows the combined budget of its subprocesses.
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
 - The module and resource VIP references still named `effect@4.0.6`; they now describe the accepted `effect@4.1.0` pin, with its 149 root exports and scope functions checked.
 
-- The specification and producer guide disagreed about labeled stream-loop jumps. Both now reject targets outside the `for try` body, including the loop itself, and show unlabeled `break` and `continue` as the repair.
 
-- The specification gave conflicting throw contracts for foreign callables and callback propagation; it now composes own throws with `@rethrows`, preserves contracts across declarations, and distinguishes both synchronous schema decoder builders from the decoders they return. Grammar tooling now sees every declaration-start production, and platform-global and namespace rules agree across chapters. Stream-loop jump diagnostics now agree with the shared rule that a label on the loop itself is consumed there.
 
-- Broken specification links could reach the published site before the full site check ran; the pre-merge graph now checks generated specification and VIP links in a small, independently cached target.
 
 - On the docs site, a specification link whose text held code with brackets, such as ``the `[Effect]` parameter``, kept its `.md` path, so the site build failed on a dead link; it now links to the section on the site.
 
 - Effect functions and program literals had no explicit spelling for migration; `vibelang --fix --fix-vip-only` now writes `effect` functions and `effect { }` blocks while preserving their behavior.
 
-- Grammar ambiguities could escape automated checks; the grammar test engine now preserves distinct derivations, including empty alternatives, for ambiguity detection.
 
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
@@ -190,7 +189,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Source maps from `vibelang-vite` and `vibelang-unplugin` named each `.vibe` source by `file:` URL, so webpack listed `src/file:/…/main.vibe` and Vite tests could not find the source. Bundler maps name the absolute path again; `vibelang/register` alone gives Node `file:` URLs, which a Windows drive path or a `#` needs.
 
-- `sh scripts/ci.sh` kept the VibeLang Go test targets busy for up to 20 minutes after their tests passed, while Go's test cache hashed every file the tests opened; they now run with `-count=1`, and `//:go-vibelangfuzz` takes about 4 minutes instead of 18.
 
 - Generic `data` declarations could collide with a user’s `NameDefinition` interface; generated helpers now choose a free name.
 
@@ -223,7 +221,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP-30: project discovery checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory; explicit config paths still select that file.
 
 - An LSP client that only accepts pushed diagnostics, such as Claude Code's, showed no errors in `.vibe` or `.ts` files, because the language server answered only `textDocument/diagnostic` requests. The server now publishes each open file's diagnostics to such a client after every open, change and save.
-- Effect's type-aware lint, the `effecttsgo/*` rules that `alchemy lint` and `foldkit lint:effect` run through Oxlint, never checked `.vibe` files, so a migrated file lost its Effect lint. `vibelang` now carries those rules (VIP-38): the `@effect/language-service` plugin in `tsconfig.json` reports them in builds and the editor, and `vibelang lint -c <oxlint config>` runs the configuration's rules on `.vibe` files in CI.
 - Effect's type-aware lint, the `effecttsgo/*` rules that `alchemy lint` and `foldkit lint:effect` run through Oxlint, never checked `.vibe` files, so a migrated file lost its Effect lint. `vibelang` now carries those rules (VIP-38): the `@effect/language-service` plugin in `tsconfig.json` reports them in builds and the editor, and `vibelang lint -c <oxlint config>` runs the configuration's rules on `.vibe` files in CI.
 - A target set up from a staged toolchain (`step.mjs toolchain`) installed `vibelang-runtime`, `vibelang-vite` and `vibelang` without their `LICENSE` and `NOTICE` files, so license tooling such as a bundle's third-party notices rejected them. The staged tarballs now carry the files the published packages carry.
 - Under `vibelang-vite`, an import of a directory whose `index.ts` had become `index.vibe`, such as an alias to `src/mount`, failed with `Could not load ... Is a directory`, and an extensionless `./x` did not reach `x.vibe`. The plugin now adds `.vibe` to `resolve.extensions`. The migrate flow also wires a config written `defineConfig(() => ({ ... }))`.
@@ -258,7 +255,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Tree-sitter accepted unescaped line breaks inside quoted strings; it now rejects them as the compiler does, while preserving escaped line continuations.
 
-- The original editor syntax property tests now check the seven repaired tree-sitter disagreements as passing regressions instead of leaving them marked as expected failures.
 
 - Neovim's editor smoke test rejected an intentionally malformed LSP fixture; it now checks that fixture's expected parse error and keeps checking valid fixtures for clean syntax.
 
@@ -434,7 +430,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 #### Tooling and bundlers
 
 - Post-merge fuzz checks repeatedly compiled every generated acceptance case. Short compile, parity and fix runs now retain corpus and pending witnesses plus deterministic samples; campaigns and nightly runs retain their complete inputs, and every short target logs CPU use and fails on a large budget regression.
-- The command-line fuzz check could rebuild the entire compiler after the test build; its nested build now uses `-trimpath` to share that build cache.
 
 - Coding agents edited `.vibe` files without VibeLang's skill or diagnostics unless you set each one up by hand. `npx vibelang agents init` now writes the skill, an `AGENTS.md` section, the language server configuration and a post-edit check for Claude Code, Codex, opencode, Cursor and VS Code ([Coding agents](/setup/coding-agents)).
 - Typed ESLint rules read a `.vibe` module's types as unresolved from a `.ts` file, because typescript-eslint's TypeScript cannot load `.vibe`, so rules such as `@typescript-eslint/no-unnecessary-type-assertion` reported code that `vibelang -p` accepts. `vibelang/eslint` now exports `typedProgram`, a program for typescript-eslint's `parserOptions.programs` in which each `.vibe` module, another workspace package's included, reads as the declaration `vibelang` writes for it.
@@ -446,7 +441,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left Effect `Match` chains, `Match.value(x).pipe(Match.when(…), …, Match.exhaustive)`, for you to rewrite as a `match` expression. They now draw EK4839, whose quick fix writes the `match` wherever its arms test and give the same, with the chain's type.
 - `vibelang --fix` left every `Effect.gen(function* () { … })` program for you to rewrite by hand (EK1002). It now writes the body in direct style, each `yield* e` as the call that runs `e`, wherever that keeps what the program does, and EK1002's note says why where it does not.
 - In JavaScript that the experimental TypeScript content mapper emits, a module in an import cycle that called a plain VibeLang function, or passed one as a callback, before the exporting module had run got programs that never ran instead of values. It now gets the values, and no fiber or runner starts.
-- Release docs checks could fail to load a runtime platform entry with ERR_MODULE_NOT_FOUND. The extracted runtime now resolves its pinned platform peers and Node's shared platform package.
 - A running call followed by .pipe(Effect.catchTag(...)) had no catch quick fix. The compiler now offers a VibeLang catch rewrite for a single catch operator.
 - `--fix` could leave an unnecessary `Effect.succeed` in a rewritten catch arm. It now simplifies that handler.
 - A missing `tsconfig.json` could leave the compiler or bundler retrying forever. It now stops with TS5058.
@@ -464,15 +458,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An npm-created project's README could tell you to run Bun commands. It now uses the selected package manager.
 - A program that loads `.vibe` modules from many workspace packages through `vibelang/register`, `vibelang/bun` or a bundler plugin was slow to start with an empty cache: each package's compile type-checked the sources of every workspace package it imports, so a package was checked again for each package that imports it, and a 22-package program took 30 to 40 s to start, against 10 s without VibeLang. Each compile now checks only its own project's files, and the packages it imports only supply types to it, so that program starts in 20 to 25 s. A type error in an imported package's file now stops the import of that package's `.vibe` modules instead of the importer's.
 - Each compile of `vibelang/register`, `vibelang/bun` and the bundler plugins started Node to run the `vibelang` launcher, which only finds and starts the native compiler, adding about 70 ms per project. The loaders now start the native compiler themselves.
-- The fuzz target could ignore the post-merge Go concurrency limits and use every machine core; it now declares its seed-worker and build-job limits in the command.
 
-- The fuzz suite's explicit `VIBELANG_FUZZ_SEEDS=all` run could still cap generated tooling seeds; it now runs the complete seed list while ordinary campaigns keep their caps.
 
 #### Docs
 
 - Language design inconsistencies were missing from these notes. They now list
   confirmed issues, examples and safe patterns in [Known design issues](#known-design-issues).
-- Fixes could land without a changelog entry or matching docs. The contribution rules now require both in the same commit, and the docs tests check the bug-list heading and release versions.
 - Platform-global examples could fail when copied from the page. The page now includes the context needed to compile its browser-service, import and export examples.
 - Search descriptions could contain fenced source code. The site now skips code blocks when choosing a page description.
 - The site's 404 page could appear in search results. It now tells search engines not to index it.
@@ -493,7 +484,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The proposals page described shipped bundler adapters as future work. It now identifies the adapters already available.
 - The repository home page showed benchmark results without measurements. It now gives commands to reproduce the benchmarks.
 - The agent essentials used an undeclared layer binding. The example now declares the layer before providing it.
-- Stacked fixes could leave the published docs and compiler form tables out of date. Both are now regenerated from the complete release stack.
 - The language skill claimed Node and Bun entries supplied Locks. It now requires an explicit Locks layer and explains its platform limits.
 - The diagnostic guide omitted registered codes and their repairs. It now lists them and checks coverage against the compiler registry.
 - The diagnostic guide omitted the adjustable editor warning EK9100. It now identifies its default severity and editor-only behavior.
@@ -516,7 +506,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a file twice could indent a line again when the first format moved a statement onto a line of its own and the statement continued on the next line: a call's arguments, as in `{{0!\n("")}}`, a binary operator, as in `{{x\n+ y}}`, or a `%` operand. The first format now gives the final indentation.
 - Abstract classes could silently become services, and service defaults used a different contract from Effect; services now use `service` declarations and `defaultValue` thunks checked as `() => Shape`.
 - The same `A!E` annotation meant different types on a function and a service member; omitted slots now mean `never` everywhere.
-
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
