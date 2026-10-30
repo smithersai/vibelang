@@ -515,7 +515,13 @@ func (a *analyzer) isByName(node *ast.Node) bool {
 		if a.resolving[call] {
 			return false
 		}
+		// The checker may be resolving call already, checking this node as
+		// one of its arguments: marked, a check of the argument that this
+		// resolution starts again answers false here instead of resolving
+		// call once more, which recursed without end.
+		a.resolving[call] = true
 		a.checker.GetResolvedSignature(call)
+		delete(a.resolving, call)
 	}
 	return a.finalConversion(node) == convertByName
 }
