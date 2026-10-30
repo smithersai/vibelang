@@ -34,6 +34,24 @@ import (
 // synchronization.
 
 func init() {
+	// A schema declaration lowers to Schema calls, which need Schema bound
+	// whether or not the source names it as a value.
+	Register(&Construct{
+		Key:      "vip15.schema-declaration-only",
+		VIP:      15,
+		Requires: []string{"vip01.effect-function"},
+		Citations: []Citation{{
+			VIP:      15,
+			Template: "const ‹Name› = Schema.Literals([‹literals›])",
+			Quote:    `schema Code = "root_missing" | "read_failed"           // alias form`,
+		}},
+		// The probe declares a schema it never decodes, so its source
+		// names Schema only in the import, and main succeeds.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			newSchemaAlias(g, 2)
+			return []Stmt{&Event{Label: g.Label()}}
+		},
+	})
 	Register(&Construct{
 		Key:      "vip15.schema",
 		VIP:      15,
@@ -322,6 +340,23 @@ func (d *Default) Effect(w *Writer) { d.Vibe(w) }
 func decode(g *Gen, d *SchemaDecl, input Expr) Expr {
 	g.UseModule("Schema", true)
 	return &Apply{F: &ModCall{Mod: "Schema", Fn: "decodeUnknownEffect", Args: []Expr{&Ref{Name: d.Name}}}, Args: []Expr{input}}
+}
+
+// schemaNamedUse is `const s = Schema.is(S0)(0)` for the program's first
+// schema or schema error declaration, which names Schema as a value without
+// running an Effect or logging, or nil when it declares neither.
+func schemaNamedUse(g *Gen) Stmt {
+	var name string
+	if have := schemaDecls(g); len(have) > 0 {
+		name = have[0].Name
+	} else if have := schemaErrorDecls(g); len(have) > 0 {
+		name = have[0].Name
+	} else {
+		return nil
+	}
+	g.UseModule("Schema", true)
+	is := &Apply{F: &ModCall{Mod: "Schema", Fn: "is", Args: []Expr{&Ref{Name: name}}}, Args: []Expr{&Num{Value: 0}}}
+	return &Const{Name: g.Name("s"), Value: is}
 }
 
 // schemaDecls returns the program's schema declarations so far.

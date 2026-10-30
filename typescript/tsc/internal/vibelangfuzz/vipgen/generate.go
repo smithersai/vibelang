@@ -192,6 +192,14 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 		body = append(body, g.Block(s)...)
 	}
 	main.Body = g.finish(s, body)
+	// Until lane vip-decls's fix, the compiler drops the Schema import of a
+	// source that names Schema only through its declarations
+	// (vip15.schema-declaration-only), so main names it once first.
+	if !g.plain && !g.On("vip15.schema-declaration-only") {
+		if st := schemaNamedUse(g); st != nil {
+			main.Body = append([]Stmt{st}, main.Body...)
+		}
+	}
 	p.Funcs = append(p.Funcs, main)
 	for _, f := range p.Funcs {
 		if f.Form != nil {
