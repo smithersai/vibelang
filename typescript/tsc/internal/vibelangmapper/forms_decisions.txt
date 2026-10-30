@@ -658,6 +658,15 @@ typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:48:14 lambda effectFn s
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:55:36 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:56:38 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:59:24 lambda program table
+typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:12:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:4:15 lambda dual fallback
+typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:5:29 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-local/main.vibe:4:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:12:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:19:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:20:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:28:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:4:27 lambda effectFn table
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:10:15 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:11:19 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:14:32 lambda plain fallback

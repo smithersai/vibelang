@@ -369,8 +369,8 @@ func isAwaitable(c *checker.Checker, t *checker.Type, depth int) bool {
 	return true
 }
 
-// checkConcurrentBody reports a break that would leave a for concurrent loop
-// (the parser flags it) and a return the body writes. The parser's own
+// checkConcurrentBody reports a break or labeled continue that would leave a
+// for concurrent item, and a return the body writes. The parser's own
 // returns are not the body's: those that stand for a continue are
 // synthesized, and the return it writes for a tail resume in a handle clause
 // (parser/vibelang.go) is flagged NodeFlagsVibeLang and ends the clause.
@@ -381,6 +381,10 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		switch {
+		case node.Kind == ast.KindContinueStatement && concurrentContinueEscapes(node, body):
+			note(report(c, node, EK1905), "Use continue at the item level to end this item, or throw to stop every item.")
+			coverCodes(c, node, 1107)
+			return false
 		case node.Kind == ast.KindBreakStatement && node.Flags&ast.NodeFlagsVibeLang != 0:
 			note(report(c, node, EK1903), "Use continue to end this item, or throw to stop every item.")
 			cover(c, node)
@@ -394,6 +398,38 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 		return node.ForEachChild(visit)
 	}
 	body.ForEachChild(visit)
+}
+
+// concurrentContinueEscapes resolves the written label across the synthetic
+// item closure. Labels inside the item keep TypeScript's ordinary behavior;
+// unresolved labels and jumps across a written function keep its diagnostics.
+func concurrentContinueEscapes(node, body *ast.Node) bool {
+	label := node.Label()
+	if label == nil {
+		return false
+	}
+	outside := false
+	for parent := node.Parent; parent != nil; parent = parent.Parent {
+		if parent == body {
+			outside = true
+		}
+		if ast.IsFunctionLikeOrClassStaticBlockDeclaration(parent) {
+			if ast.IsArrowFunction(parent) && fiberHelper(parent.Parent) == "$forConcurrent" {
+				continue
+			}
+			return false
+		}
+		if parent.Kind == ast.KindLabeledStatement && parent.Label().Text() == label.Text() {
+			target := parent.Statement()
+			for target.Kind == ast.KindLabeledStatement {
+				target = target.Statement()
+			}
+			// A label on this for concurrent names the item itself.
+			return outside && target != body.Parent.Parent.Parent && (ast.IsIterationStatement(target, false /*lookInLabeledStatements*/) ||
+				target.Kind == ast.KindExpressionStatement && fiberHelper(target.Expression()) == "$forConcurrent")
+		}
+	}
+	return false
 }
 
 // fiberFormQuickInfo tells a hover on the keyword of a fiber form what the

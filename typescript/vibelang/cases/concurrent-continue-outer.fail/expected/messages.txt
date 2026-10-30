@@ -1,0 +1,2 @@
+continue cannot leave a for concurrent item: each item runs in its own fiber.
+Use continue at the item level to end this item, or throw to stop every item.

@@ -31,7 +31,7 @@ var (
 	EK1701 = message(1701, errorCategory, "Fork or join outside effect code. Move fork or join into an effect function or effect block.")
 	EK1901 = message(1901, errorCategory, "A for concurrent operand that is not an Iterable. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
-	EK1905 = message(1905, errorCategory, "A labeled continue naming a statement that encloses the for concurrent. Iterate an Iterable inside effect code, and use continue to end an item.")
+	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
 	EK2001 = message(2001, errorCategory, "For try outside effect code. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
 	EK2002 = message(2002, errorCategory, "Return in a for try body. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")
 	EK2003 = message(2003, errorCategory, "A labeled break or continue from a for try body to a statement outside it. Iterate a Stream with for try inside effect code and keep control flow inside the loop.")

@@ -1,0 +1,4 @@
+main.vibe(5,7): error EK1905
+main.vibe(13,30): error EK1905
+main.vibe(21,7): error EK1905
+main.vibe(29,7): error EK1905

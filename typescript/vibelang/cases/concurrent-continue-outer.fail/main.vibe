@@ -1,0 +1,32 @@
+// expect: EK1905
+export effect function main() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      continue outer
+    }
+  }
+}
+
+export effect function nestedLoop() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      for (const y of [1]) { continue outer }
+    }
+  }
+}
+
+export effect function nestedConcurrent() {
+  outer: for concurrent (const n of [1]) {
+    for concurrent (const x of [1]) {
+      continue outer
+    }
+  }
+}
+
+export effect function chainedLabels() {
+  outer: inner: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      continue outer
+    }
+  }
+}

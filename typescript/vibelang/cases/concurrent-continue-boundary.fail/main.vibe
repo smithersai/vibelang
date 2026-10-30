@@ -1,0 +1,13 @@
+// expect: TS1107
+export effect function writtenFunction() {
+  outer: for (const n of [1]) {
+    const f = effect () => {
+      for concurrent (const x of [1]) { continue outer }
+    }
+    try f()
+  }
+}
+
+export effect function unresolvedLabel() {
+  for concurrent (const x of [1]) { continue missing }
+}

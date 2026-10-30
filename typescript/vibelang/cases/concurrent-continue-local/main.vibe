@@ -1,0 +1,14 @@
+// expect-result: 5
+export effect function main() {
+  let count = 0
+  for concurrent (const x of [0, 1, 2]) {
+    if (x === 0) continue
+    local: for (const n of [1, 2]) {
+      if (n === 1) continue local
+      count += x
+    }
+    for (const n of [1]) { continue }
+    count++
+  }
+  return count
+}

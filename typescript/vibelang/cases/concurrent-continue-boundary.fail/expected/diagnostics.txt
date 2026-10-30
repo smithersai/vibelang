@@ -1,0 +1,2 @@
+main.vibe(5,41): error TS1107
+main.vibe(12,37): error TS1107

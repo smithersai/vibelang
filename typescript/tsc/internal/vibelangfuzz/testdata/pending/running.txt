@@ -17,8 +17,6 @@ FuzzRunningRules control:stream-head-continue-outer compiler VIP-20: `for try` d
 FuzzRunningRules corpus:stream-head-continue-outer compiler VIP-20: minimal reproduction of control:stream-head-continue-outer; lane vip-core2
 FuzzRunningRules control:contextual-conversion compiler VIP-2: the valid plain Effect-returning function call is rejected; lane vip-core2
 FuzzRunningRules corpus:contextual-conversion compiler VIP-2: minimal reproduction of control:contextual-conversion; lane vip-core2
-FuzzRunningRules diagnostic:concurrent-continue-outer compiler VIP-19: the rejection does not report the diagnostic assigned to this rule; lane d-diag
-FuzzRunningRules corpus:concurrent-continue-outer compiler VIP-19: minimized reproduction of diagnostic:concurrent-continue-outer; lane d-diag
 FuzzRunningRules diagnostic:join-plain compiler VIP-17: the rejection does not report the diagnostic assigned to this rule; lane vip-core2
 FuzzRunningRules corpus:join-plain compiler VIP-17: minimized reproduction of diagnostic:join-plain; lane vip-core2
 FuzzRunningRules diagnostic:restore-plain compiler VIP-22: the rejection does not report the diagnostic assigned to this rule; lane vip-core2
