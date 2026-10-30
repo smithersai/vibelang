@@ -57,6 +57,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The severity reference left invalid-entry recovery unclear; it now explains independent recovery after inheritance and that invalid child entries do not restore overwritten base settings.
 
+- Specification checks could mistake native `-Infinity` examples for CLI flags; they now read explicit compiler commands and exclude program examples.
+
+- Distinct non-finite cause interruptor IDs could compare equal in differential checks; comparison now preserves their native identity, including repeated IDs and signed zero.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.

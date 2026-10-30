@@ -1314,43 +1314,19 @@ func cliCheckAPI(g *Gaps, binary, dir string, args []string) {
 	}
 }
 
-// TestCommandLineFlagsCoverSpec reads every flag the specification shows for
-// vibelang and checks that FuzzCommandLine's table writes it, so that a flag
-// the specification adds fails here until the target fuzzes it. A flag-shaped
-// code span is vibelang's when it follows `vibelang ` in a code span or a
-// fenced command line, or is a span of its own; another tool's flag must be
-// named in cliForeignFlags.
+// TestCommandLineFlagsCoverSpec reads flags from explicit vibelang
+// invocations and checks that FuzzCommandLine writes them. Inline commands
+// and shell examples identify their tool; a standalone native expression
+// such as -value or --counter does not. Program fences are not CLI examples.
 func TestCommandLineFlagsCoverSpec(t *testing.T) {
-	spans := regexp.MustCompile("`([^`\n]+)`")
-	command := regexp.MustCompile(`(?:^|\s)vibelang\s+(.*)$`)
-	flag := regexp.MustCompile(`^--?[A-Za-z][\w-]*$`)
 	found := map[string]string{}
 	names, err := SpecGlob("*.md")
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no specification chapters: %v", err)
 	}
 	for _, name := range names {
-		text := SpecText(filepath.Base(name))
-		var candidates []string
-		for _, m := range spans.FindAllStringSubmatch(text, -1) {
-			span := m[1]
-			if strings.HasPrefix(span, "-") {
-				candidates = append(candidates, strings.Fields(span)...)
-			} else if c := command.FindStringSubmatch(span); c != nil {
-				candidates = append(candidates, strings.Fields(c[1])...)
-			}
-		}
-		for line := range strings.SplitSeq(text, "\n") {
-			if !strings.Contains(line, "`") {
-				if c := command.FindStringSubmatch(line); c != nil {
-					candidates = append(candidates, strings.Fields(c[1])...)
-				}
-			}
-		}
-		for _, candidate := range candidates {
-			if flag.MatchString(candidate) {
-				found[candidate] = filepath.Base(name)
-			}
+		for _, flag := range cliSpecCommandFlags(SpecText(filepath.Base(name))) {
+			found[flag] = filepath.Base(name)
 		}
 	}
 	if len(found) < 8 {

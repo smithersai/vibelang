@@ -6,6 +6,7 @@
 
 - **No runtime semantics of VibeLang's own.** Every accepted construct is exact sugar for Effect, so failures, defects, interruption, finalizer order and Cause combination are Effect 4's.
 - **The guarantee.** Compiled output gives the same `Exit` as the Effect TypeScript shown in each VIP: success, failure, defect or interruption, with finalizers in the same order.
+- **Interruptor identifier equality.** Renaming preserves the native equality classes of `Cause.interruptors`: repeated `NaN` identifies one interruptor, `Infinity` and `-Infinity` identify different interruptors, and `0` and `-0` identify the same interruptor. For an interrupt-only failure `Exit`, identifiers `[NaN, Infinity, -Infinity, NaN]` have the canonical identity sequence `[0, 1, 2, 0]`; identifiers `[NaN, NaN, NaN, NaN]` have `[0, 0, 0, 0]`.
 - **Checking it.** Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s. The fuzz suite generates more pairs.
 - **Encoded reason tags.** An encoded cause reason's `_tag` must be the string `Fail`, `Die` or `Interrupt`, including in nested encodings; any other tag value fails the comparison with an encoding error.
 - **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it (VIP-7).

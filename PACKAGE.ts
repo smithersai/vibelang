@@ -75,6 +75,8 @@ const specTests = [
   "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
+  "TestCLISpecCommandFlags",
+  "TestVIPFiberIDNumberEquality",
   "TestFunctionsSpecQuotes",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",

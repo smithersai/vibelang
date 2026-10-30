@@ -88,10 +88,12 @@ const vipEncode = (value, depth = 0, seen = new Set()) => {
     seen.delete(value);
   }
 };
-const vipReason = (r, encode) =>
-  Cause.isFailReason(r) ? { _tag: "Fail", error: encode(r.error) }
-  : Cause.isDieReason(r) ? { _tag: "Die", defect: encode(r.defect) }
-  : { _tag: "Interrupt", fiberId: r.fiberId === undefined ? { $undefined: true } : { $fiber: r.fiberId } };
+const vipReason = (r, encode) => {
+  if (Cause.isFailReason(r)) return { _tag: "Fail", error: encode(r.error) };
+  if (Cause.isDieReason(r)) return { _tag: "Die", defect: encode(r.defect) };
+  const id = r.fiberId;
+  return { _tag: "Interrupt", fiberId: id === undefined ? { $undefined: true } : { $fiber: encode(id === 0 ? 0 : id) } };
+};
 const vipExit = (exit, encode = vipEncode) => Exit.isSuccess(exit)
   ? { _tag: "Success", value: encode(exit.value) }
   : { _tag: "Failure", reasons: exit.cause.reasons.map((r) => vipReason(r, encode)) };
