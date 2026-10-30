@@ -138,6 +138,9 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 	}
 	for _, member := range class.Members() {
 		if ast.IsStatic(member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
+			if checkServiceLiteralKey(c, class, member) {
+				continue
+			}
 			if _, written := writtenKey(class); written == nil {
 				report(c, member, EK3008)
 			}

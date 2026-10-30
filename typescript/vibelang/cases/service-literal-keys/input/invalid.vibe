@@ -1,0 +1,6 @@
+const prefix = "literal/"
+service MissingReadonly { static key = "bad/readonly"; n: number }
+service Dynamic { static readonly key = prefix + "Dynamic"; n: number }
+service Template { static readonly key = `bad/template`; n: number }
+service NumberKey { static readonly key = 3; n: number }
+service MissingValue { static readonly key: string; n: number }

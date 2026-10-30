@@ -1,0 +1,3 @@
+service Good { static readonly key: string = "literal/Good"; n: number }
+service Empty { static readonly key = ""; n: number }
+export const result = Good.key
