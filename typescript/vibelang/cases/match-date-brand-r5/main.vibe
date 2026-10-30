@@ -1,0 +1,6 @@
+const forged: unknown = Object.create(Date.prototype);
+export const result = [
+  match (forged) { when Date: true; default: false; },
+  match (forged) { when Date(let d): true; default: false; },
+  match (new Date(NaN)) { when Date: true; default: false; }
+];

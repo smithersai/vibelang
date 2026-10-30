@@ -321,3 +321,5 @@ Support for the new forms arrives with the compiler's VIP implementation. VIP-7 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
 The exhaustiveness check covers subjects made of literals, `boolean`, enums, `data` variants, `error` classes, `Option`, `Exit` and `Result`. An object pattern covers a `data` variant when it names the variant's `_tag`. A plain TypeScript union of objects, such as `{ _tag: "A" } | { _tag: "B" }`, is not checked, so give its `match` a `default`.
+
+`Date` patterns require the date internal slot: a real date or date subclass matches, including an invalid date; `Object.create(Date.prototype)` does not.

@@ -35,6 +35,15 @@ const primitiveTypes = new Map<unknown, string>([
   [Symbol, "symbol"]
 ])
 
+function dateMatches(subject: unknown): boolean {
+  try {
+    Date.prototype.getTime.call(subject)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
  * Reports whether f is a class: written with class syntax, or a constructor
  * with methods on its prototype (a built-in such as Date or Map). Other
@@ -67,6 +76,7 @@ export function $is(matcher: unknown, subject: unknown): boolean {
     if (typeof matcher === "function") {
       const primitive = primitiveTypes.get(matcher)
       if (primitive !== undefined) return typeof subject === primitive
+      if (matcher === Date) return dateMatches(subject)
       return isClass(matcher) ? subject instanceof (matcher as any) : !!(matcher as Function)(subject)
     }
   }
@@ -101,6 +111,7 @@ export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any>
   if (typeof matcher === "function") {
     const primitive = primitiveTypes.get(matcher)
     if (primitive !== undefined) return typeof subject === primitive ? [subject] : false
+    if (matcher === Date) return dateMatches(subject) ? [subject] : false
     if (isClass(matcher)) return subject instanceof (matcher as any) ? [subject] : false
   }
   throw new TypeError("An extractor pattern needs a class or a value with a Symbol.customMatcher method")
