@@ -1,6 +1,11 @@
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { test } from "node:test"
-import { newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
+import { fixToFixedPoint } from "../lib/codemod.mjs"
+import { emitDeclarations } from "../lib/declarations.mjs"
+import { check, newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
 
 const output = `src/users.vibe(8,60): error EK1002: Effect.gen expects a JavaScript generator, but in VibeLang function* declares a producer.
   Write the body as an ordinary function: remove Effect.gen, function*, and yield*.
@@ -37,4 +42,34 @@ test("newErrors keeps a file's identity across the rename and counts repeats", (
   const after = parseDiagnostics("src/a.vibe(1,1): error TS2322: X.\nsrc/a.vibe(3,1): error TS2322: X.\nsrc/a.vibe(4,1): error TS2322: X.\nsrc/a.vibe(5,1): warning EK4831: W.\n")
   assert.equal(newErrors(before, after).length, 1)
   assert.deepEqual(newErrors(after, before), [])
+})
+
+test("a compiler that dies is no clean run: check, the fix loop and the declaration step throw", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-crash-"))
+  try {
+    const fake = (name, body) => {
+      const path = join(root, name)
+      writeFileSync(path, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+      return path
+    }
+    const dies = /the compiler did not finish \(exit 2/
+    const goCrash = fake("crash", "echo 'fatal error: concurrent map read and map write' >&2\necho >&2\necho 'goroutine 1 [running]:' >&2\nexit 2")
+    const options = { tsconfig: "tsconfig.json", cwd: root, root }
+    await assert.rejects(check({ compiler: goCrash, ...options }), dies)
+    await assert.rejects(fixToFixedPoint({ compiler: goCrash, ...options }), dies)
+    await assert.rejects(emitDeclarations({ compiler: goCrash, ...options, outDir: join(root, "out") }), dies)
+    await assert.rejects(check({ compiler: fake("silent", "exit 2"), ...options }), dies)
+    // A crash after a diagnostic is still a crash, and names itself.
+    const late = fake("late", "echo 'a.ts(1,1): error TS2304: Cannot find name x.'\necho 'panic: oops'\nexit 2")
+    await assert.rejects(check({ compiler: late, ...options }), /panic: oops/)
+    await assert.rejects(check({ compiler: fake("killed", "kill -SEGV $$"), ...options }), /did not finish/)
+
+    const reports = fake("reports", "echo 'a.ts(1,1): error TS2304: Cannot find name x.'\nexit 2")
+    assert.equal((await check({ compiler: reports, ...options })).diagnostics.length, 1)
+    assert.deepEqual((await check({ compiler: fake("clean", "exit 0"), ...options })).diagnostics, [])
+    const fixes = fake("fixes", "echo 'vibelang --fix: 0 fixes in 0 files.'")
+    assert.equal((await fixToFixedPoint({ compiler: fixes, ...options })).settled, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })

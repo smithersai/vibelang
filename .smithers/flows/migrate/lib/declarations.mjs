@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, resolve, sep } from "node:path"
+import { assertFinished } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
@@ -142,6 +143,7 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log })
   mkdirSync(outDir, { recursive: true })
   const flags = "--noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
   const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
+  assertFinished(result, log)
   // A file outside the project's rootDir emits beside its source, where a batch's commit would pick it up.
   const inside = `${resolve(outDir)}${sep}`
   for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) if (!file.startsWith(inside)) rmSync(file, { force: true })

@@ -29,6 +29,23 @@ export function parseDiagnostics(output, { cwd, root } = {}) {
   return out
 }
 
+// How a Go program's crash starts a line.
+const crashLine = /^(?:panic: |fatal error: |SIG[A-Z]+: |goroutine \d+ \[)/m
+
+/**
+ * Throws when a compiler run died rather than finished. A run that reports
+ * errors exits nonzero too, so only the output tells them apart: a Go crash, a
+ * signal, or a failing exit with no diagnostic to read. Read as a clean run,
+ * any of these reports no errors and no fixes.
+ */
+export function assertFinished(result, log) {
+  const output = result.stdout + result.stderr
+  const crash = crashLine.exec(output)
+  if (!crash && !result.signal && (result.code === 0 || parseDiagnostics(output).length)) return
+  const tail = crash ? output.slice(crash.index) : output
+  throw new Error(`the compiler did not finish (exit ${result.code}${log ? `, log ${log}` : ""}):\n${tail.trim().split("\n").slice(0, 8).join("\n")}`)
+}
+
 /** Counts by code, and the diagnostics of the given files apart from the rest. */
 export function summarize(diagnostics, files = []) {
   const inFiles = new Set(files)
@@ -71,5 +88,6 @@ export function newErrors(baseline, current) {
 /** Checks a project with vibelang and parses what it reports. */
 export async function check({ compiler, tsconfig, cwd, root, log }) {
   const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --noEmit --pretty false`, { cwd, log })
+  assertFinished(result, log)
   return { code: result.code, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }) }
 }

@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { applyEdits, parseImports, resolveRelative } from "./imports.mjs"
-import { parseDiagnostics } from "./diagnostics.mjs"
+import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, run } from "./util.mjs"
 
 /** x.ts becomes x.vibe. Only .ts modules are renamed. */
@@ -199,6 +199,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
   let last
   for (let round = 1; round <= maxRounds; round++) {
     const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --pretty false`, { cwd, log: log && `${log}.${round}.log` })
+    assertFinished(result, log && `${log}.${round}.log`)
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })
     mergeFixes(byFile, parsed.files)
