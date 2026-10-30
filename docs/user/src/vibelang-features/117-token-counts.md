@@ -17,10 +17,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,982 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 14,741 |
-| The skill and the user guide (139 pages) | 304,585 |
-| The user guide alone | 300,603 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,144 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 14,903 |
+| The skill and the user guide (139 pages) | 305,030 |
+| The user guide alone | 300,886 |
 | The specification (10 chapters) | 98,519 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -90,19 +90,19 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start Here** | **2,597** |
 | [Welcome](../001-onboarding.md) | 1,884 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 713 |
-| **Learning Path** | **10,548** |
+| **Learning Path** | **10,619** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,019 |
 | [Installation](../getting-started/004-installation.md) | 2,712 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
-| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 1,960 |
+| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,031 |
 | **Core Concepts** | **18,332** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,559 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,763 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,469 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
 | [Devtools](../getting-started/012-devtools.md) | 10,529 |
-| **All 12 pages** | **31,477** |
+| **All 12 pages** | **31,548** |
 
 ### Setup
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **44,150** |
-| [Release notes](../setup/release-notes.md) | 44,150 |
-| **All 18 pages** | **70,333** |
+| **Upgrade** | **44,184** |
+| [Release notes](../setup/release-notes.md) | 44,184 |
+| **All 18 pages** | **70,367** |
 
 ### Guides
 
@@ -159,11 +159,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Resource Management** | **4,732** |
 | [Introduction](../resource-management/029-introduction.md) | 1,761 |
 | [Scope](../resource-management/030-scope.md) | 2,971 |
-| **Observability** | **7,353** |
+| **Observability** | **7,412** |
 | [Logging](../observability/031-logging.md) | 2,223 |
 | [Metrics](../observability/032-metrics.md) | 1,530 |
 | [Tracing](../observability/033-tracing.md) | 2,673 |
-| [Tracking Fibers](../observability/034-tracking-fibers.md) | 927 |
+| [Tracking Fibers](../observability/034-tracking-fibers.md) | 986 |
 | [Configuration](../035-configuration.md) | 3,106 |
 | [Runtime](../036-runtime.md) | 1,583 |
 | **Scheduling** | **5,824** |
@@ -179,8 +179,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,226** |
 | [Caching Effects](../caching/045-caching-effects.md) | 1,039 |
 | [Cache](../caching/046-cache.md) | 1,187 |
-| **Concurrency** | **8,276** |
-| [Fibers](../concurrency/047-fibers.md) | 2,734 |
+| **Concurrency** | **8,395** |
+| [Fibers](../concurrency/047-fibers.md) | 2,853 |
 | [Deferred](../concurrency/048-deferred.md) | 1,104 |
 | [Queue](../concurrency/049-queue.md) | 1,495 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,362 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,086 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,519 |
-| **All 101 pages** | **167,898** |
+| **All 101 pages** | **168,076** |
 
 ### VibeLang features
 
