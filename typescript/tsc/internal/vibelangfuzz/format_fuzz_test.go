@@ -43,6 +43,7 @@ import (
 // a dprint binary to format with dprint and the repository's TypeScript
 // style instead, as vibelangfmt's own tests do.
 func FuzzFormat(f *testing.F) {
+	startShortBudget(f)
 	seen := map[string]bool{}
 	for _, seed := range toolsSample(append(CaseSeeds(), SnippetSeeds()...), 120, 0, nil) {
 		for _, name := range toolsVibeFiles(seed.Files) {

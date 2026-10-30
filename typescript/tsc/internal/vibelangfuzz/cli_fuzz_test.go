@@ -67,6 +67,7 @@ import (
 //     `--api --async` answers initialize and parseCommandLine, and ends when
 //     its input closes.
 func FuzzCommandLine(f *testing.F) {
+	startShortBudget(f)
 	for _, seed := range cliSeeds() {
 		f.Add(seed.archive, cliEncode(seed.args...))
 	}

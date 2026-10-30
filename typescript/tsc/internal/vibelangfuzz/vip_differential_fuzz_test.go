@@ -241,6 +241,7 @@ func vipSeeds(leaveOut map[string]bool) [][]byte {
 // lists, compiles its VibeLang print, and requires no error and the Exit,
 // event log and coldness of its VIPs' Effect TS.
 func FuzzVIPDifferential(f *testing.F) {
+	startShortBudget(f)
 	leaveOut := vipLeaveOut()
 	for _, seed := range vipSeeds(leaveOut) {
 		f.Add(seed)

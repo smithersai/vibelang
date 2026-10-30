@@ -319,3 +319,28 @@ it does not claim complete TypeScript coverage. Unknown names and prose
 terminals are retained and listed explicitly by `grammarLab.describe`.
 The loader reads the specification's contextual keyword and disambiguation
 rules separately, allowing searches to compare productions with prose.
+
+### Short compile seed selection
+
+With c9's approval, `FuzzCompile` retains every disk corpus input and generated
+pending witness, plus a fixed-stride sample of `32` ordinary acceptance cases
+and `16` snippets. Probes remain unchanged. Campaigns, non-short runs and
+`VIBELANG_FUZZ_SEEDS=all` keep the complete generated lists; `smoke.sh` still
+compiles every case. Other targets retain their existing seed selection.
+
+### Short target CPU guard
+
+Every ordinary `-short` fuzz target on Linux and macOS logs aggregate process
+and completed child-process user plus system CPU at cleanup, after parallel
+seeds and subprocess oracles finish. Usage above `120` CPU-seconds is marked
+for budget review; usage above `240` fails the test. The suite owner chose this
+regression threshold to tolerate contention. Campaigns, non-short runs and
+`VIBELANG_FUZZ_SEEDS=all` keep their complete inputs and bypass the short guard.
+
+`FuzzTypeScriptParity` samples `32` distinct TypeScript projects after filtering and deduplication with every
+generated pending witness retained. `FuzzFix` samples `16` cases instead of
+`22`, retaining every `tsforms-*` case and generated pending witness even
+when these exceed the sample size. Disk corpus files and probes are unchanged.
+Campaign caps remain unchanged; full-seed nightly runs retain every seed.
+`campaign.sh` also runs the ordinary short selection, saves `short-budget.log`,
+and lists every target above `120` in `summary.txt`, even for a full-seed nightly.

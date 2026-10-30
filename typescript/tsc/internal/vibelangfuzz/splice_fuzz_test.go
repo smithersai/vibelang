@@ -39,6 +39,7 @@ const spliceTarget = "FuzzSplice"
 // target records reach this one too; testdata/pending/splice.txt lists them
 // under this target, citing the other target's line.
 func FuzzSplice(f *testing.F) {
+	startShortBudget(f)
 	w := NewWorkspace(f)
 	for _, seed := range spliceSeeds() {
 		f.Add(seed)

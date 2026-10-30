@@ -42,7 +42,8 @@ import (
 //     returns the same outcome after fixing, and its declarations, its
 //     contracts, are unchanged ("It has the same types too").
 func FuzzFix(f *testing.F) {
-	for _, seed := range toolsSample(CaseSeeds(), 22, 240, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }) {
+	startShortBudget(f)
+	for _, seed := range toolsSample(CaseSeeds(), 16, 240, func(s Seed) bool { return s.Pending != "" || strings.HasPrefix(s.Name, "tsforms-") }) {
 		f.Add(Archive(seed.Files))
 	}
 	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {

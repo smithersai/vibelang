@@ -59,3 +59,28 @@ func TestCampaignDurations(t *testing.T) {
 		})
 	}
 }
+
+func TestCampaignBudgetReport(t *testing.T) {
+	dir := t.TempDir()
+	for name, script := range map[string]string{
+		"timeout": "#!/bin/sh\nexit 0\n",
+		"go":      "#!/bin/sh\ncase \" $* \" in *\" -short \"*) [ -z \"$VIBELANG_FUZZ_SEEDS\" ] || exit 2; echo \"FuzzParse: short seed CPU above 120s budget: 2m10s\";; esac\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command("sh", "campaign.sh", "1s", "FuzzParse")
+	cmd.Env = append(os.Environ(), "PATH="+dir+string(os.PathListSeparator)+os.Getenv("PATH"), "CAMPAIGN_OUT="+dir, "VIBELANG_FUZZ_SEEDS=all")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	summary, err := os.ReadFile(filepath.Join(dir, "summary.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(summary), "FuzzParse: short seed CPU above 120s budget: 2m10s") {
+		t.Fatalf("nightly omitted budget violation: %s", summary)
+	}
+}

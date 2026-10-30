@@ -41,6 +41,7 @@ import (
 // offsets holds big-endian pairs of bytes, each a byte offset into the main
 // file modulo its length.
 func FuzzEditor(f *testing.F) {
+	startShortBudget(f)
 	seeds := append(toolsSample(CaseSeeds(), 22, 400, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample(SnippetSeeds(), 16, 300, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)

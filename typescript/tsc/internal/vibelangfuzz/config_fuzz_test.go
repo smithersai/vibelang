@@ -24,6 +24,7 @@ import (
 // EK4838, EK4813 or EK9100, is never changed by one; and tracing changes no
 // diagnostic (D104).
 func FuzzConfig(f *testing.F) {
+	startShortBudget(f)
 	w := NewWorkspace(f)
 	for _, seed := range ConfigSeeds() {
 		f.Add(seed[0], seed[1])

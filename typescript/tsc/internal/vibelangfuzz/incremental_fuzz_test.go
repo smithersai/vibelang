@@ -28,6 +28,7 @@ import (
 // edits holds four-byte records: a file selector, an operation, then a
 // big-endian byte offset into that file modulo its length.
 func FuzzIncremental(f *testing.F) {
+	startShortBudget(f)
 	seeds := append(toolsSample(CaseSeeds(), 20, 400, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample(SnippetSeeds(), 12, 300, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)

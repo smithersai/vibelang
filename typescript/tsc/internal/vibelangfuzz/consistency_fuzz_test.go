@@ -52,6 +52,7 @@ const consistencyTarget = "FuzzEditorConsistency"
 // file modulo its length: the positions of the selection ranges, and the
 // symbols probed, each the first one referenced at or after an offset.
 func FuzzEditorConsistency(f *testing.F) {
+	startShortBudget(f)
 	seeds := append(toolsSample(CaseSeeds(), 10, 300, nil), toolsSample(SnippetSeeds(), 8, 200, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)

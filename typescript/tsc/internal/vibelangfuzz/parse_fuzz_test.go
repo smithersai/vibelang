@@ -22,6 +22,7 @@ import (
 // syntax errors on every parse; and an ESTree conversion that is valid JSON
 // whose ranges are UTF-16 offsets into the text (Chapter 28, Linting, D277).
 func FuzzParse(f *testing.F) {
+	startShortBudget(f)
 	for _, seed := range ParseSeeds() {
 		f.Add(seed)
 	}

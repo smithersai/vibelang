@@ -27,6 +27,7 @@ import (
 // positions, including diagnostic ends, and emit the same JavaScript,
 // declarations and source maps.
 func FuzzTypeScriptParity(f *testing.F) {
+	startShortBudget(f)
 	tsc := StockTypeScript(f)
 	w := NewWorkspace(f)
 	for _, seed := range ParitySeeds() {
@@ -58,7 +59,16 @@ func StockTypeScript(tb testing.TB) string {
 // case's typescript/ project with its own.
 var ParitySeeds = sync.OnceValue(func() []string {
 	var seeds []string
-	seen := map[string]bool{}
+	for _, seed := range shortWitnessSeeds(parityInputs(), 32) {
+		seeds = append(seeds, Archive(seed.Files))
+	}
+	return seeds
+})
+
+// Sample actual distinct parity projects, after removing VibeLang-only cases.
+func parityInputs() []Seed {
+	var seeds []Seed
+	seen := map[string]int{}
 	for _, seed := range CaseSeeds() {
 		for _, prefix := range []string{"", "typescript/"} {
 			files := map[string]string{}
@@ -81,15 +91,20 @@ var ParitySeeds = sync.OnceValue(func() []string {
 			if sources == 0 {
 				continue
 			}
-			if archive := Archive(files); !seen[archive] {
-				seen[archive] = true
-				seeds = append(seeds, archive)
-				seedNames.LoadOrStore(archive, "case "+seed.Name+" "+prefix)
+			archive := Archive(files)
+			if index, ok := seen[archive]; ok {
+				if seed.Pending != "" {
+					seeds[index].Pending = seed.Pending
+				}
+				continue
 			}
+			seen[archive] = len(seeds)
+			seeds = append(seeds, Seed{Name: seed.Name + " " + prefix, Files: files, Pending: seed.Pending})
+			seedNames.LoadOrStore(archive, "case "+seed.Name+" "+prefix)
 		}
 	}
 	return seeds
-})
+}
 
 var vibeEntry = regexp.MustCompile(`"[^"\n]*\.vibe"\s*,?\s*`)
 var trailingComma = regexp.MustCompile(`,(\s*\])`)

@@ -130,6 +130,19 @@ for spec in $targets; do
 	} >> "$summary"
 done
 
+echo "== ordinary short seed CPU budgets" >&2
+# Even a full-seed nightly reports the ordinary short selection separately.
+# -v preserves CPU logs from successful tests; count=1 avoids filesystem
+# input-log recording and result-cache rehashing.
+if ! VIBELANG_FUZZ_SEEDS= GOFLAGS= go test -short -count=1 -v -run "^($names)\$" "$pkg" > "$out/short-budget.log" 2>&1; then
+ failed=1
+ echo "short seed budget check failed; see $out/short-budget.log" >> "$summary"
+fi
+echo "Short targets above 120 CPU-seconds:" >> "$summary"
+if ! grep 'short seed CPU above 120s budget:' "$out/short-budget.log" >> "$summary"; then
+ echo "  none" >> "$summary"
+fi
+
 echo "== coverage over the seed corpus and testdata/fuzz" >&2
 profile="$out/cover.out"
 # Instrumented, the compiler runs several times slower, so a stage that

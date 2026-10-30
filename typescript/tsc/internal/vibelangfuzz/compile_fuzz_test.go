@@ -25,6 +25,7 @@ import (
 // helpers the runtime exports, source maps into the .vibe text (D34), and
 // declarations a TypeScript consumer type-checks against (D366).
 func FuzzCompile(f *testing.F) {
+	startShortBudget(f)
 	w := NewWorkspace(f)
 	for _, seed := range CompileSeeds() {
 		f.Add(seed)
@@ -52,7 +53,7 @@ var CompileSeeds = sync.OnceValue(func() []string {
 			seedNames.Store(archive, name)
 		}
 	}
-	for _, seed := range CaseSeeds() {
+	for _, seed := range shortWitnessSeeds(CaseSeeds(), 32) {
 		files := map[string]string{}
 		for name, text := range seed.Files {
 			files[name] = text
@@ -62,11 +63,25 @@ var CompileSeeds = sync.OnceValue(func() []string {
 		}
 		add(Archive(files), "case "+seed.Name)
 	}
-	for _, seed := range SnippetSeeds() {
+	for _, seed := range shortWitnessSeeds(SnippetSeeds(), 16) {
 		add(Archive(seed.Files), "snippet "+seed.Name)
 	}
 	return seeds
 })
+
+// shortWitnessSeeds keeps every pending witness; disk corpus is loaded independently.
+// Campaigns and all-seed runs retain the complete generated lists.
+func shortWitnessSeeds(seeds []Seed, n int) []Seed {
+	if !testing.Short() || toolsFuzzing() {
+		return seeds
+	}
+	for _, seed := range seeds {
+		if seed.Pending != "" {
+			n++
+		}
+	}
+	return toolsSample(seeds, n, 0, func(seed Seed) bool { return seed.Pending != "" })
+}
 
 var compilerOptionsOpen = regexp.MustCompile(`"compilerOptions"\s*:\s*\{`)
 
