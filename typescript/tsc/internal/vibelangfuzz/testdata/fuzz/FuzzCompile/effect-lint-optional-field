@@ -1,0 +1,2 @@
+go test fuzz v1
+string("import { Schema } from \"effect\"\nexport const A = Schema.Struct({ c: Schema.optional(Schema.String) })\n")

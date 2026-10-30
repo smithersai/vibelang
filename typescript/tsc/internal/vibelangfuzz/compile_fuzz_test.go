@@ -28,11 +28,16 @@ import (
 func FuzzCompile(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
+	lint := newEffectLint(f, 8)
 	for _, seed := range CompileSeeds() {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, archive string) {
 		t.Parallel() // the seed corpus only; fuzzing ignores it
+		project := ProjectFromArchive(archive)
+		if Admissible(project) == "" {
+			lint.check(t, w, project, archive, strings.HasPrefix(corpusFile(t, "FuzzCompile"), "effect-lint-"))
+		}
 		CheckCompile(t, w, "FuzzCompile", archive)
 	})
 }
@@ -192,9 +197,11 @@ func compileGaps(t *testing.T, w *Workspace, g *Gaps, project Project, key strin
 		t.Fatal(err)
 	}
 	defer a.Remove()
+	a.Diagnostics = withoutEffectLint(a.Diagnostics)
 	compile := func(stage string, order Order, singleThreaded bool) *Compilation {
 		var c *Compilation
 		within(t, stage, func() { c = w.CompileIn(ctx, a.Dir, project, order, singleThreaded || pending) })
+		c.Diagnostics = withoutEffectLint(c.Diagnostics)
 		return c
 	}
 	CheckDiagnostics(g, a.Dir, a.Diagnostics, DefaultsApply(project))

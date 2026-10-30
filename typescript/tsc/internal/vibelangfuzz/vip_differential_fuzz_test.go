@@ -54,6 +54,7 @@ const vipTarget = "FuzzVIPDifferential"
 type vipEnv struct {
 	w    *Workspace
 	node *Node
+	lint *effectLint
 }
 
 func newVIPEnv(tb testing.TB) *vipEnv {
@@ -67,7 +68,7 @@ func newVIPEnv(tb testing.TB) *vipEnv {
 		Missing(tb, "%v", err)
 	}
 	tb.Cleanup(node.Close)
-	return &vipEnv{w: w, node: node}
+	return &vipEnv{w: w, node: node, lint: newEffectLint(tb, 32)}
 }
 
 // A vipRun is one program compiled and run: the reference's outcome, the
@@ -89,6 +90,7 @@ func (e *vipEnv) run(t *testing.T, p *vipgen.Program) *vipRun {
 	// The program's other modules compile with main.vibe, and the
 	// reference imports what the compiler emits for them (Program.Files).
 	maps.Copy(run.files, p.Files)
+	e.lint.check(t, e.w, Project{Files: run.files}, run.files["main.vibe"], strings.HasPrefix(corpusFile(t, "FuzzVIPDifferential"), "effect-lint-"))
 	var r *Result
 	var err error
 	Within("compile", func() { r, err = e.w.Compile(t.Context(), Project{Files: run.files}) })
@@ -100,7 +102,7 @@ func (e *vipEnv) run(t *testing.T, p *vipgen.Program) *vipRun {
 	if err := vipReferenceStable(run.ref, e.node.RunVIP(r, "ref-again.mjs"), !p.Plain); err != nil {
 		t.Fatalf("a generator bug: %v\n%s", err, Archive(run.files))
 	}
-	for _, d := range r.Diagnostics {
+	for _, d := range withoutEffectLint(r.Diagnostics) {
 		if d.Category() == diagnostics.CategoryError {
 			run.errors = append(run.errors, d)
 		}
