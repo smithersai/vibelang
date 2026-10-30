@@ -75,8 +75,9 @@ function names(pattern) {
   if (!pattern) return []
   switch (pattern.type) {
     case "Identifier": return [pattern.name]
-    case "ObjectPattern": return pattern.properties.flatMap((p) => names(p.type === "RestElement" ? p.argument : p.value))
-    case "ArrayPattern": return pattern.elements.flatMap((e) => names(e?.type === "RestElement" ? e.argument : e))
+    case "ObjectPattern": return pattern.properties.flatMap((p) => names(p.type === "RestElement" ? p : p.value))
+    case "ArrayPattern": return pattern.elements.flatMap(names)
+    case "RestElement": return names(pattern.argument)
     case "AssignmentPattern": return names(pattern.left)
     default: return []
   }

@@ -71,3 +71,21 @@ test("the output is TypeScript that TypeScript parses without a syntax error", {
 test("a syntax error throws at its position", { skip }, () => {
   assert.throws(() => compile("export const = 1\n", "src/bad.vibe"), SyntaxError)
 })
+
+test("nested defaults and rest bindings preserve every exported name", { skip }, () => {
+  const text = `export const {
+    plain,
+    renamed: alias,
+    nested: { value = 1, ...nestedRest } = {},
+    items: [first = 2, , ...remaining],
+    ...objectRest
+  } = input
+  export const [head, , { key: renamed = 3 }, ...tail] = values
+  `
+  assert.equal(compile(text, "src/bindings.vibe"), [
+    'import "vibelang-runtime"',
+    ...["plain", "alias", "value", "nestedRest", "first", "remaining", "objectRest", "head", "renamed", "tail"]
+      .map(name => `export const ${name} = 0`),
+    ""
+  ].join("\n"))
+})
