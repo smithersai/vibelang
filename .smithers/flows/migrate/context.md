@@ -73,9 +73,9 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 
 ### The model
 
-- `effect function load(id: string) { … }` declares an Effect function; `effect (id) => …` and a method `effect find(id) { … }` work too. Calling it returns its Effect unrun, as calling an `async` function returns a Promise. Its return type is an Effect, written or inferred.
+- `effect` goes exactly where `async` goes: `effect function load(id: string) { … }` declares an Effect function, as do `effect function (id) { … }`, `effect (id) => …` and a method `effect find(id) { … }` in a class or object literal. A function with no modifier is plain, and there is no top-level `effect load() { … }` shorthand. Calling it returns its Effect unrun, as calling an `async` function returns a Promise. Its return type is an Effect, written or inferred.
 - Inside an `effect` function or an `effect { }` block, `try e` runs the Effect `e` and gives its success value; a failure propagates, as `yield*` does in Effect TypeScript. An Effect that can't fail is still run with `try`.
-- `e catch y` runs `e` and, on a failure, gives `y`, or `y(error)` when `y` is a function: `fetchUser(id) catch guest`, `fetchUser(id) catch (e) => e.id`. A handler that runs Effects or fails again is an effect function: `fetchUser(id) catch effect (e) => match (e) { when NotFound: guest; default: throw e }`. A `throw` inside a plain `(e) =>` handler is a defect. Write `try x` or `x catch y`, never both. An effect block fallback is `fetchUser(id) catch effect { return guest }`. Effect code has no `try` statements, including `try`/`finally`; cleanup uses `ensuring` or `onExit`. `catch` binds like `??`, left to right; mixing it with `??`, `||` or `&&` requires parentheses.
+- `e catch h` runs `e` and, on a failure, calls the handler `h` with the error. The handler is always a function literal, and its syntax decides its kind. A plain function's result becomes the success: `fetchUser(id) catch () => guest`, `fetchUser(id) catch (e) => e._tag`. An effect function runs Effects and fails again, typed, with `throw`: `fetchUser(id) catch effect (e) => match (e) { when NotFound: guest; default: throw e; }`. A `throw` inside a plain handler is a defect, and a value, a name or an `effect { }` block after `catch` is a syntax error. Write `try x` or `x catch h`, never both. Effect code has no `try` statements, including `try`/`finally`; cleanup uses `ensuring` or `onExit`. `catch` binds like `??`, left to right; mixing it with `??`, `||` or `&&` requires parentheses.
 - Calling an Effect function returns its Effect unrun, so pass that Effect as a value: `try retry(fetchUser(id), policy)`, `try timeout(retry(load(), policy), "1 second")`, or with TC39's Hack pipe, `try (load() |> retry(%, policy) |> timeout(%, "1 second"))`.
 - `effect { … }` builds an Effect from statements without running it, Effect's `Effect.gen`. `do { … }` is TC39's do expression: it runs now and gives its last value.
 - `async` and `await` are for Promises only. `await` in an `effect` function, and `await` of an Effect, are errors. Wrap a Promise for Effect code, `try tryPromise(() => load())`, and run an Effect from TypeScript or `async` code with `await runPromise(program)`.
@@ -91,9 +91,9 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 | `Effect.gen(function* () { … })` | `effect { … }` |
 | `yield* e` | `try e` |
 | `Effect.fail(err)` | `throw err` |
-| `Effect.catch(e, (err) => Effect.succeed(…))`, `Effect.orElseSucceed(e, () => v)` | `e catch (err) => …`, `e catch v` |
+| `Effect.catch(e, (err) => Effect.succeed(…))`, `Effect.orElseSucceed(e, () => v)` | `e catch (err) => …`, `e catch () => v` |
 | `Effect.catch(e, (err) => Effect.gen(…))` | `e catch effect (err) => { … }` |
-| `Effect.catchTag(e, "NotFound", …)` | `e catch effect (err) => match (err) { when NotFound: …; default: throw err }` |
+| `Effect.catchTag(e, "NotFound", …)` | `e catch effect (err) => match (err) { when NotFound: …; default: throw err; }` |
 | `class E extends Data.TaggedError("E")<{ readonly id: string }> {}` | `error E { id: string }`, `error Timeout` |
 | `class E extends Schema.TaggedError<E>()("E", { id: Schema.String }) {}` | `schema error E { id: string }` |
 | `Context.Service<Users, {...}>()("app/Users")` | `service Users { find(id: string): User!NotFound }`; the key is derived, `static readonly key = "app/Users"` keeps one, and `static readonly defaultValue = () => ({ … })` makes a `Context.Reference` |
@@ -103,7 +103,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 | `Schema.Struct({ … })` and its type | `schema User { id: string; nick?: string; role: "admin" \| "member"; home: Address }` |
 | `Schema.Literals([...])` and its type | `schema Code = "a" \| "b"` |
 | `Data.TaggedEnum<{ … }>` and `Data.taggedEnum` | `data Delivery { Waiting; Sent { tracking: string } }`; `Delivery.Waiting()`, `Delivery.Sent({ tracking })`; generic `data Outcome<A, E> { Ok { value: A }; Err { error: E } }` (up to four type parameters) |
-| `Match.value(x)…Match.exhaustive` | `match (x) { when "a": 1; when { _tag: "Sent", let tracking }: tracking; default: 0 }` |
+| `Match.value(x)…Match.exhaustive` | `match (x) { when "a": 1; when { _tag: "Sent", let tracking }: tracking; default: 0; }` |
 | `Effect.forkChild(w)`, `forkIn(w, scope)`, `forkScoped(w)`, `forkDetach(w)` | `fork w()`, `fork.in(scope) w()`, `fork.scoped w()`, `fork.detached w()` |
 | `Fiber.join(f)` | `join f` |
 | `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]`; `try all([a(), b()])` runs them one at a time, as `Effect.all` does |
@@ -115,7 +115,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 | `Effect.uninterruptibleMask((restore) => …)`, `Effect.interruptible(e)` | `uninterruptible { try a(); restore { try b() } }`, `interruptible { try poll() }` |
 | `Effect.scoped(Effect.gen(…))` with `acquireRelease` | `try scoped(effect { const r = try acquireRelease(open(), (r) => close(r)); … })` |
 | `Effect.ensuring`, `Effect.onExit` | `try ensuring(effect { … }, cleanup)`, `try onExit(effect { … }, (exit) => …)` |
-| `Effect.exit(e)` | `match (try exit(load())) { when Exit.Success(let v): v; when Exit.Failure(let cause): … }` |
+| `Effect.exit(e)` | `match (try exit(load())) { when Exit.Success(let v): v; when Exit.Failure(let cause): …; }` |
 | `Effect.sync`, `Effect.promise` | `try sync(() => count * 2)`, `try promise(() => load())` |
 | `Effect.try`, `Effect.tryPromise` | `try Effect.try({ try: () => JSON.parse(s), catch: (e) => new Bad({ e }) })`, `try tryPromise({ try: (signal) => sdk.get(id, { signal }), catch: (e) => new Bad({ e }) })` |
 | `Effect.withSpan(e, "load")` | `try withSpan(effect { … }, "load")` |

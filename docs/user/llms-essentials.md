@@ -1,6 +1,6 @@
 ## Essentials
 
-`effect function` returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect<A, E, R>`; empty slots: `never`.
+`effect` goes where `async` goes and returns an Effect; `try e` runs it in effect code. `A!E!R` is `Effect<A, E, R>`; empty slots: `never`.
 
 ```vibe
 // pending: VIP-1, VIP-6, VIP-9, VIP-13
@@ -10,7 +10,7 @@ service Users { name(id: string): string!NotFound }
 effect function nameOf(id: string) {
   const users = try Users
   const attempt = timeout(users.name(id), "1 second")
-  return retry(attempt, { times: 3 }) catch "unknown"
+  return retry(attempt, { times: 3 }) catch () => "unknown"
 }
 
 export effect function names(ids: ReadonlyArray<string>) {
@@ -18,7 +18,7 @@ export effect function names(ids: ReadonlyArray<string>) {
 }
 ```
 
-- `throw e` fails in effect code. `x catch value`, `x catch (e) => value`, `x catch effect (e) => { … }` and `x catch effect { … }` recover. Effect handlers fail with `throw`; plain handlers throw defects. `catch` binds like `??`; parenthesize mixtures with `??`, `||`, `&&`.
+- `throw e` fails in effect code. `x catch () => v`, `x catch (e) => v` and `x catch effect (e) => { … }` recover. Effect handlers fail with `throw`; plain handlers throw defects. `catch` binds like `??`; parenthesize mixtures with `??`, `||`, `&&`.
 - No `try` statements in effect code, including `try`/`finally`; use `ensuring` or `onExit`. `@throws` is only for non-Effect functions; Effect failures use the error channel.
 - Imports keep `"./user.vibe"`. Effect modules and functions are global. Provide platform services; run `NodeRuntime.runMain(main())` yourself.
 - Plain and `async` functions are TypeScript's. `await` is Promise-only. Wrap a Promise: `try tryPromise(() => load())`; a throwing call: `try Effect.try(() => f(x))`.
