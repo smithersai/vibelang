@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Pull, Queue, Stream } from "effect"
+import { Context, Effect, Exit, Pull, Queue, Scope, Stream } from "effect"
 import { $normal } from "./regions.js"
 import { $iteratorFrame } from "./iterators.js"
 
@@ -42,7 +42,7 @@ const producerBuffer = { bufferSize: 1, strategy: "suspend" } as const
  */
 export const $produce = <E, R>(
   body: () => Effect.Effect<unknown, E, R>
-): Producer<ElementOf<R>, E, Exclude<R, YieldOf<any>>> =>
+): Producer<ElementOf<R>, E, Exclude<R, YieldOf<any> | Scope.Scope>> =>
   Stream.callback<unknown, E, any>((queue) =>
     Effect.andThen(
       Effect.provideService(Effect.suspend(body), ProducerQueue, queue as Queue.Queue<unknown, unknown>),

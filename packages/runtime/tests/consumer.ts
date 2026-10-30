@@ -1,3 +1,4 @@
+import { Context } from "effect"
 // Compile a consumer against the installed package export and emitted .d.ts files.
 import { trusted, $errors, $bind, $direct, $done, $fast, $isRun, $program, $settle, $produce, $region, $using, $yield, Effect, Layer, Scope, suspend, type Producer } from "vibelang-runtime"
 
@@ -34,3 +35,16 @@ trusted(() => Effect.succeed(1), [])
 // @ts-expect-error A union cannot hide a Promise return.
 trusted((n: boolean) => n ? 1 : Promise.resolve(1), [])
 void [parsed, listed, notProgram, pure]
+
+/** VIP-21 / detail225: Stream.callback supplies Scope, but no other service. */
+const scopedProducer: Producer<number> = $produce(() => Effect.andThen(acquire, $yield(42)))
+class ProducerHost extends Context.Service<ProducerHost, number>()("ProducerHost") {}
+const serviceProducer = $produce(() => Effect.gen(function* () {
+  yield* acquire
+  yield* ProducerHost
+  yield* $yield(42)
+}))
+const requiresHost: Producer<number, never, ProducerHost> = serviceProducer
+// @ts-expect-error The callback's Scope must not erase unrelated services.
+const missingHost: Producer<number> = serviceProducer
+void [scopedProducer, requiresHost, missingHost]

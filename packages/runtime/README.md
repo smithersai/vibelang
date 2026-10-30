@@ -188,7 +188,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$clause` | Type a handle statement's clause bindings for the checker; compiled code never calls it | D132 |
 | `YieldOf` (type) | Type a producer body's yields until a loop or a Stream handles them | D26 |
 | `Producer` (type) | A producer: a `Stream` that also carries its body | D26 |
-| `$produce` | Turn a generated producer body into a cold `Stream`: `Stream.callback` with a one-element buffer, ended by `Queue.end` | VIP-21 |
+| `$produce` | Turn a generated producer body into a cold `Stream`: `Stream.callback` with a one-element buffer, ended by `Queue.end`. Its result omits the callback-supplied `Scope` requirement and retains other services | VIP-21 |
 | `$yield` | Perform the built-in yield operation | D26 |
 | `$yieldAll` | Yield every element of another producer, a Stream, or an iterable (`yield*`) | D26 |
 | `$forOf` | Pull a Stream, a producer included, or iterate a JavaScript iterable with IteratorClose, and lower loop completion records | D18, D26 |

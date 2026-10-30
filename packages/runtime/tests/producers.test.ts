@@ -317,3 +317,20 @@ for (const shadow of ["bind", "call"] as const) {
     expect(events).toEqual(["next", "return"])
   })
 }
+
+test("producer callback supplies a fresh Scope on each consumption", async () => {
+  const released: number[] = []
+  let acquired = 0
+  const input = $produce(() => Effect.gen(function*() {
+    const id = yield* Effect.acquireRelease(
+      Effect.sync(() => ++acquired),
+      id => Effect.sync(() => { released.push(id) })
+    )
+    yield* $yield(id)
+  }))
+  expect(acquired).toBe(0)
+  expect(await Effect.runPromise(Stream.runCollect(input))).toEqual([1])
+  expect(released).toEqual([1])
+  expect(await Effect.runPromise(Stream.runCollect(input))).toEqual([2])
+  expect(released).toEqual([1, 2])
+})
