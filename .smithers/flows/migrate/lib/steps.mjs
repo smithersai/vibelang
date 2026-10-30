@@ -2,7 +2,7 @@
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
 // an earlier one recorded. A step that has already recorded its result returns
 // it without running again.
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
@@ -273,12 +273,9 @@ async function wireTarget(config, log) {
   }
   const local = join(t, Wire.toolchainDirectory)
   rmSync(local, { recursive: true, force: true })
-  if (toolchain) {
-    mkdirSync(local, { recursive: true })
-    for (const file of Object.values(toolchain.packages)) copyFileSync(join(toolchain.dir, file), join(local, file))
-  }
+  const tarballs = toolchain ? Wire.copyTarballs(toolchain.dir, toolchain.packages, local) : {}
   const specsFor = (dir) => (toolchain
-    ? Wire.toolchainSpecs(dir, toolchain.packages)
+    ? Wire.toolchainSpecs(dir, tarballs)
     : { vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version })
 
   const writeIfChanged = (path, before, after) => {

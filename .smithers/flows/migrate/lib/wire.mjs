@@ -8,7 +8,8 @@
 // wireVite applies the plugin edit to the config files the tests load. The
 // Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
 // coding agents up with the vibelang it installed.
-import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { must, quote } from "./util.mjs"
 
@@ -530,9 +531,27 @@ export const installCommand = (manager) => ({
 export const toolchainDirectory = ".vibelang-toolchain"
 
 /**
+ * Copies a staged toolchain's tarballs into dir, each named for its content:
+ * vibelang-0.0.11.tgz becomes vibelang-0.0.11-<12 hex of its SHA-256>.tgz.
+ * Every build of one version packs to the same name, and npm, Bun and pnpm
+ * keep what an unchanged file: specifier installed before (its bin links,
+ * its lockfile entry), so only a new name installs a rebuilt toolchain.
+ * Returns each package's file name in dir.
+ */
+export function copyTarballs(toolchainDir, packages, dir) {
+  mkdirSync(dir, { recursive: true })
+  return Object.fromEntries(Object.entries(packages).map(([name, file]) => {
+    const bytes = readFileSync(join(toolchainDir, file))
+    const named = `${file.replace(/\.tgz$/, "")}-${createHash("sha256").update(bytes).digest("hex").slice(0, 12)}.tgz`
+    writeFileSync(join(dir, named), bytes)
+    return [name, named]
+  }))
+}
+
+/**
  * The dependency specifiers of a package at packageDir (relative to the
  * repository root) for tarballs in the root's toolchain directory:
- * file:../../.vibelang-toolchain/vibelang-0.0.11.tgz from packages/x.
+ * file:../../.vibelang-toolchain/vibelang-0.0.11-<hash>.tgz from packages/x.
  */
 export function toolchainSpecs(packageDir, tarballs) {
   const up = packageDir === "." || packageDir === "" ? "./" : "../".repeat(packageDir.split("/").filter(Boolean).length)

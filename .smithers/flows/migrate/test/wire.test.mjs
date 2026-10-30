@@ -5,7 +5,8 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, formattable, formatterOf, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunTestPreload, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { must } from "../lib/util.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -319,6 +320,37 @@ test("a staged toolchain's specifiers are relative to each package, into the ign
   })
   assert.equal(toolchainSpecs(".", tarballs).vibelang, "file:./.vibelang-toolchain/vibelang-0.0.11.tgz")
   assert.equal(toolchainSpecs("apps/web/", tarballs).vibelang, "file:../../.vibelang-toolchain/vibelang-0.0.11.tgz")
+})
+
+test("a rebuilt toolchain of the same version installs: each tarball's name follows its content", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "vibe-tarballs-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  // Two builds of vibelang 0.0.11 whose npm pack names agree; the second adds a command, as vibelang-format was added.
+  const build = async (dir, bins) => {
+    const pkg = join(root, dir, "package")
+    mkdirSync(pkg, { recursive: true })
+    writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "vibelang", version: "0.0.11", bin: Object.fromEntries(bins.map((bin) => [bin, `${bin}.js`])) }))
+    for (const bin of bins) writeFileSync(join(pkg, `${bin}.js`), "")
+    await must("npm pack --silent --pack-destination ..", { cwd: pkg })
+    return join(root, dir)
+  }
+  const first = await build("first", ["vibelang"])
+  const second = await build("second", ["vibelang", "vibelang-format"])
+  const target = join(root, "target")
+  mkdirSync(target)
+  // What setup does on each run: a fresh toolchain directory, the package's specifiers, an install.
+  const install = async (toolchain) => {
+    const local = join(target, toolchainDirectory)
+    rmSync(local, { recursive: true, force: true })
+    const tarballs = copyTarballs(toolchain, { vibelang: "vibelang-0.0.11.tgz" }, local)
+    writeFileSync(join(target, "package.json"), JSON.stringify({ name: "target", private: true, devDependencies: toolchainSpecs(".", tarballs) }))
+    await must("npm install --offline --no-audit --no-fund", { cwd: target })
+    return tarballs.vibelang
+  }
+  await install(first)
+  const after = await install(second)
+  assert.ok(existsSync(join(target, "node_modules/.bin/vibelang-format")), "the second build's new command is linked")
+  assert.equal(await install(second), after, "the same build keeps its name")
 })
 
 test("setIgnoreLine adds the toolchain directory once and removes it for a published version", () => {
