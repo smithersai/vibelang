@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, selectorTarget, setJsonOverrides, setYamlMap, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
+import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, repinVibeLang, selectorTarget, setJsonOverrides, setYamlMap, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
 import { readIssues } from "../lib/issues.mjs"
 import { flowStep, nextStep, paths, upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -274,6 +274,61 @@ test("upgrade-effect carries pnpm's patched dependency and selectors to the new 
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+// foldkit, round 3: a vibe bookmark an older toolchain set up kept that toolchain's
+// runtime through the upgrade, which imports what the new Effect removed, and
+// 1919 tests failed for the old runtime's sake.
+test("upgrade-effect moves a repository VibeLang set up to this run's VibeLang in the upgrade's commit", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-vibelang-"))
+  const target = join(root, "repo")
+  const toolchain = join(root, "toolchain")
+  const old = "000000000000"
+  try {
+    mkdirSync(join(target, "packages/core"), { recursive: true })
+    mkdirSync(join(target, ".vibelang-toolchain"))
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), `{ "name": "fixture", "private": true, "devDependencies": { "vibelang": "file:./.vibelang-toolchain/vibelang-0.0.11-${old}.tgz" } }\n`)
+    writeFileSync(join(target, ".gitignore"), ".vibelang-toolchain/\n")
+    writeFileSync(join(target, `.vibelang-toolchain/vibelang-0.0.11-${old}.tgz`), "old compiler")
+    writeFileSync(join(target, `.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz`), "old runtime")
+    writeFileSync(join(target, "pnpm-lock.yaml"), "")
+    writeFileSync(join(target, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n")
+    const core = `{\n  "name": "core",\n  "dependencies": {\n    "effect": "4.0.5",\n    "vibelang-runtime": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz"\n  }\n}\n`
+    writeFileSync(join(target, "packages/core/package.json"), core)
+    writeFileSync(join(target, "packages/core/core.test.ts"), 'import { expect, test } from "bun:test"\ntest("runs", () => expect(1).toBe(1))\n')
+    const base = await Jj.commit(target, "base")
+    mkdirSync(toolchain)
+    writeFileSync(join(toolchain, "vibelang-0.0.11.tgz"), "new compiler")
+    writeFileSync(join(toolchain, "vibelang-runtime-0.0.11.tgz"), "new runtime")
+    writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-0.0.11.tgz", "vibelang-runtime": "vibelang-runtime-0.0.11.tgz" } })
+
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base })
+    const runtime = readJson(join(target, "packages/core/package.json")).dependencies["vibelang-runtime"]
+    assert.match(runtime, /^file:\.\.\/\.\.\/\.vibelang-toolchain\/vibelang-runtime-0\.0\.11-[0-9a-f]{12}\.tgz$/)
+    assert.equal(readFileSync(join(target, "packages/core", runtime.slice("file:".length)), "utf8"), "new runtime")
+    const compiler = readJson(join(target, "package.json")).devDependencies.vibelang
+    assert.match(compiler, /^file:\.\/\.vibelang-toolchain\/vibelang-0\.0\.11-[0-9a-f]{12}\.tgz$/)
+    assert.equal(readFileSync(join(target, compiler.slice("file:".length)), "utf8"), "new compiler")
+    // Effect and VibeLang move together in the upgrade's commit, and each file keeps its formatting.
+    assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), core.replace("4.0.5", "4.0.6").replace(`vibelang-runtime-0.0.11-${old}.tgz`, runtime.split("/").at(-1)))
+    assert.deepEqual(result.vibelang, ["package.json", "packages/core/package.json"])
+    const { stdout } = await must(`jj diff --summary -r ${result.jj.commit}`, { cwd: target })
+    const files = stdout.trim().split("\n")
+    assert.ok(files.includes("M package.json") && files.includes("M packages/core/package.json"), stdout)
+    assert.equal(files.some((f) => f.includes(".vibelang-toolchain")), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("repinVibeLang moves only the VibeLang packages a manifest depends on, keeping its formatting", () => {
+  const text = '{\n  "dependencies": { "vibelang-runtime": "0.0.10", "effect": "4.0.6" },\n  "devDependencies": {\n    "vibelang": "0.0.10"\n  },\n  "scripts": { "vibelang": "0.0.10" }\n}\n'
+  const specs = { vibelang: "0.0.11", "vibelang-runtime": "0.0.11", "vibelang-vite": "0.0.11" }
+  const { text: next, found } = repinVibeLang(text, specs)
+  assert.equal(next, text.replace('"vibelang-runtime": "0.0.10"', '"vibelang-runtime": "0.0.11"').replace('"vibelang": "0.0.10"\n', '"vibelang": "0.0.11"\n'))
+  assert.deepEqual(found, ["vibelang-runtime", "vibelang"])
+  assert.deepEqual(repinVibeLang('{ "dependencies": { "effect": "4.0.6" } }', specs).found, [])
 })
 
 test("upgrade-effect leaves a run that setup already started alone", async () => {

@@ -46,6 +46,27 @@ export function workspaceManifests(paths, globs) {
   })
 }
 
+const vibeLangPackages = new Set(["vibelang", "vibelang-runtime", "vibelang-vite"])
+
+/**
+ * A package.json's text with each VibeLang package it depends on moved to
+ * specs[name], keeping the file's formatting, and the names it found. A
+ * repository VibeLang already set up upgrades Effect together with the
+ * VibeLang release that requires the new Effect, because the runtime pins
+ * Effect exactly.
+ */
+export function repinVibeLang(text, specs) {
+  const found = []
+  const edits = jsonStrings(text).flatMap((s) => {
+    const [field, name] = s.path
+    if (s.path.length !== 2 || !dependencyFields.has(field) || !vibeLangPackages.has(name)) return []
+    found.push(name)
+    const spec = specs[name]
+    return spec && spec !== s.value ? [{ start: s.start, end: s.end, text: JSON.stringify(spec).slice(1, -1) }] : []
+  })
+  return { text: applyEdits(text, edits), found }
+}
+
 /** The package an overrides key names: `@opencode/schema>effect` and `effect@^4` name effect. */
 export function selectorTarget(key) {
   const last = key.split(">").at(-1).replace(/^(?:\*\*\/)+/, "")

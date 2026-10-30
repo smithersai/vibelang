@@ -244,8 +244,10 @@ export async function upgradeEffect(options) {
     writeFileSync(join(t, patch.to), Upgrade.carryPatch(readFileSync(join(t, patch.from), "utf8"), patch.versions, to))
     rmSync(join(t, patch.from))
   }
-  const changed = [...upgrade.files.map((f) => f.path), ...upgrade.patches.flatMap((patch) => [patch.from, patch.to])]
-  const formatted = await formatWritten(t, upgrade.files.map((f) => f.path), join(logs, "upgrade-format.log"))
+  const vibelang = repinVibeLang(config, manifests)
+  const written = [...new Set([...upgrade.files.map((f) => f.path), ...vibelang])]
+  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to])]
+  const formatted = await formatWritten(t, written, join(logs, "upgrade-format.log"))
 
   let after = before
   let comparison = null
@@ -260,7 +262,7 @@ export async function upgradeEffect(options) {
     })
     if (issue) appendJsonl(p.issues, issue)
     await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
-    commit = await Jj.commit(t, `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed. No source file changes; VibeLang comes next.`)
+    commit = await Jj.commit(t, `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.`)
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
   // A --base names where the run starts, so the bookmark restarts there even when an earlier run left it elsewhere.
@@ -273,6 +275,7 @@ export async function upgradeEffect(options) {
     bumped: upgrade.bumped,
     selectors: upgrade.selectors,
     patches: upgrade.patches.map(({ from, to }) => ({ from, to })),
+    vibelang,
     changed,
     formatted,
     upstreamTests: testsOf(before),
@@ -281,6 +284,37 @@ export async function upgradeEffect(options) {
   }
   writeJson(p.upgrade, result)
   return result
+}
+
+/**
+ * Moves a repository VibeLang already set up to the VibeLang this run
+ * installs, for the Effect upgrade's commit: the runtime pins Effect exactly,
+ * so the new Effect under the old runtime would fail for the runtime's sake.
+ * Each VibeLang package a workspace manifest depends on moves to this run's
+ * version, a staged toolchain's tarballs copied where setup puts them, and
+ * the manifests it changed are returned.
+ */
+function repinVibeLang(config, manifests) {
+  const t = config.target
+  const files = manifests.filter((path) => posix.basename(path) === "package.json").map((path) => ({ path, text: readFileSync(join(t, path), "utf8") }))
+  if (!files.some((f) => Upgrade.repinVibeLang(f.text, {}).found.length)) return []
+  let specsFor = () => ({ vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version })
+  if (config.toolchain.kind === "staged") {
+    const toolchain = readToolchain(config.toolchain.dir)
+    const local = join(t, Wire.toolchainDirectory)
+    rmSync(local, { recursive: true, force: true })
+    const tarballs = Wire.copyTarballs(toolchain.dir, toolchain.packages, local)
+    specsFor = (dir) => Wire.toolchainSpecs(dir, tarballs)
+  }
+  const changed = []
+  for (const f of files) {
+    const next = Upgrade.repinVibeLang(f.text, specsFor(posix.dirname(f.path))).text
+    if (next !== f.text) {
+      writeFileSync(join(t, f.path), next)
+      changed.push(f.path)
+    }
+  }
+  return changed
 }
 
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
