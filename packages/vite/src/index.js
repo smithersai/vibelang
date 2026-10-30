@@ -154,7 +154,9 @@ export default function vibelang(options = {}) {
       this.addWatchFile(project)
       if (errors.length) this.error(diagnostics(errors, file))
       if (error) this.error(error)
-      return { code, map }
+      // Vite relativizes sources and annotates maps in place. The backend
+      // caches these objects across requests, so each caller owns its copy.
+      return { code, map: structuredClone(map) }
     },
     async transform(_source, id) {
       const file = cleanId(id)
@@ -165,7 +167,7 @@ export default function vibelang(options = {}) {
       if (errors.length) this.error(diagnostics(errors, file))
       for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)
-      return { code, map }
+      return { code, map: structuredClone(map) }
     },
     watchChange(id) {
       if (/\.(?:vibe|[cm]?tsx?|json)$/.test(id)) current?.invalidate()

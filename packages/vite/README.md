@@ -119,7 +119,9 @@ when Vite closes. It forces JavaScript and source-map emission, embeds source
 content, checks and emits only the files under the root (`--loader-root`), and
 disables declarations and incremental output.
 Source paths in compiler maps resolve to the original files before Vite composes
-the maps for its transformations.
+the maps for its transformations. Each hook returns an independent map, so
+Vite's path rewriting leaves the compiler's cached source paths and embedded
+source text intact for later requests, including inline module outputs.
 
 The Vite root must contain the project's source files; the plugin overrides
 `rootDir` to that root so emitted paths are predictable. Normal application

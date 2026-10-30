@@ -142,3 +142,8 @@ only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
+
+
+Source maps keep the original `.vibe` positions and source text through repeated
+development requests and hot updates, including modules declared inside a
+`.vibe` file.
