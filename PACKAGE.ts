@@ -65,7 +65,21 @@ const specTests = [
 ]
 const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
 
+// This check reads only the generated spec/VIP pages. Keep it independently
+// cached: an unrelated source edit must not rerun the link inventory.
+const siteSpecLinks = S.Shell.Test({
+  summary: "Generated specification and VIP links resolve to site pages and anchors.",
+  shell: "cd docs/tools && bun test site-spec-links.test.ts",
+  data: [S.Filegroup({ srcs: [...S.glob([
+    "site/src/pages/spec/**", "site/src/pages/vips/**", "docs/tools/site-spec-links.test.ts"
+  ])] })],
+  tools: [bun],
+  sandbox: "none",
+  timeout: "1m"
+})
+
 const targets = {
+  "site-spec-links": siteSpecLinks,
   release: check(
     "The release and contributor scripts' node tests.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs",
@@ -86,9 +100,9 @@ const targets = {
     [go, bun, node]
   ),
   "docs-tools": check(
-    "docs/tools' bun tests, except the site contrast check.",
-    "cd docs/tools && bun test $(ls *.test.* | grep -v '^site-contrast\\.test\\.')",
-    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
+    "docs/tools' bun tests, with cached specification links and without site contrast.",
+    "cd docs/tools && bun test $(ls *.test.* | grep -vE '^site-(contrast|spec-links)\\.test\\.')",
+    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks],
     [bun, node]
   ),
   // It installs the site with `npm ci` and builds it, so it runs only when

@@ -41,7 +41,7 @@ target's inputs, its key and whether the cache holds a result for it.
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
-  :release :snippets :tokens :forms :docs-tools :docs-check
+  :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                exclusive: runs only with --include-exclusive
   :design-files                 Filegroup: docs/design
   :spec-tests                   the Go tests that read docs/design (registry, VIP citations, pending lines)
@@ -124,3 +124,5 @@ A cached result is only as correct as its key is complete. Each target names:
 - **Not yet in the graph.** ts-mapper, create-vibelang, the
   editors, the examples, `scripts/e2e.sh` and the LSP smoke test run outside
   it.
+
+`//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
