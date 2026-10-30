@@ -103,7 +103,7 @@ Each form keeps the form it is written in, as `async` does. A declaration stays 
 | `effect m(p) { B }`, `effect #m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }`, `#m(p) { return Effect.gen(function* () { B }) }` |
 | `export default effect function (p) { B }` | `export default function (p) { return Effect.gen(function* () { B }) }` |
 
-Parameters, defaults included, are bound when the function is called, before `Effect.gen`. A `return` in a default's `do` expression therefore returns from the call, as the do-expressions draft requires, and gives the call's Effect, as a `return` in an `async` function's default resolves its Promise: `effect function g(x = do { return null }) { return 1 }` is `function g(x = undefined) { if (x === undefined) return Effect.succeed(null); return Effect.gen(function* () { return 1 }) }`, so `g()` is an Effect that succeeds with `null` ([Expression lowering](/spec/002-running#do-expressions)). The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
+Parameters, defaults included, are bound when the function is called, before `Effect.gen`, as an `async` function's are bound before its body starts. [Parameter defaults](/spec/002-running#parameter-defaults) says what a default may do: `effect function g(x = do { return null }) { return 1 }` is a function whose call `g()` gives an Effect that succeeds with `null`. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
 
 <a id="bindings"></a>**Bindings.** The body sees the bindings of the function it is written in, as an `async` body does. The generator `Effect.gen` takes would have its own, so the compiler passes them in, with fresh names:
 
@@ -133,7 +133,7 @@ Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 
 - **`.constructor` of a function.** Reading a property named `constructor` from a value whose static type is a function type or `Function` is `EK0107`: `(async () => {}).constructor` reaches the `AsyncFunction` constructor. `constructor` on other objects, and on values typed `any`, is unaffected.
 - **Code in a specifier.** A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`: it runs a string as code. `import(expr)` with a computed specifier is not checked; it loads a module and can't reach `eval` or `Function`.
 
-With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](/spec/002-running#region-bodies), [Expression lowering](/spec/002-running#do-expressions), [Pattern matching](/spec/004-match) and [Runtime guarantees](/spec/008-runtime) refer to this rule. Inline `module` declarations stay denied ([VIP-25](/vips/0025-inline-modules-denied)).
+With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](/spec/002-running#region-bodies), [Evaluation order](/spec/002-running#evaluation-order), [Pattern matching](/spec/004-match) and [Runtime guarantees](/spec/008-runtime) refer to this rule. Inline `module` declarations stay denied ([VIP-25](/vips/0025-inline-modules-denied)).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1
@@ -206,7 +206,7 @@ effect function load2(id: string) { return try fetchUser(id) }                  
 async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
 
-An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them. A `return v` in a moved parameter default adds the type of `v` to the success, and the lowering writes the return type `Effect.Effect<A, E, R>` explicitly, so `g` in [Meaning](/spec/001-functions#meaning) is `function g(x = undefined): Effect.Effect<number | null>`, not `Effect.Effect<null> | Effect.Effect<number>`. A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic (VIP-1, amended); write the return type:
+An inferred type takes its success from what the function returns, a `return` in a parameter default included, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them. So `g` in [Meaning](/spec/001-functions#meaning) returns `Effect.Effect<number | null>`. A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic (VIP-1, amended); write the return type:
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1

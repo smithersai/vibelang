@@ -160,7 +160,7 @@ pairs(two()) // 3
 - An arm's body may be `throw e`, as VIP-5's example writes it. In effect code it fails the Effect ([Failures](003-failures.md#throw)); outside effect code it is JavaScript's `throw`.
 - No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code (decided detail 95). Written calls in subjects, guards, arms and detail-94 predicates are tracked normally ([Thrown type by kind of callable](003-failures.md#thrown-type-by-kind-of-callable)).
 
-A `match` in a destructuring or parameter default follows [Destructuring and parameter defaults](002-running.md#destructuring-and-parameter-defaults): its suspensions run in the enclosing effect function, a `return`, `break` or `continue` in a `do` in its arms acts on the enclosing function or loop, and the pattern that holds it behaves exactly as ECMAScript destructuring, iterator protocol, IteratorClose and native error messages included. How the compiler achieves that is its choice (decided detail 68c). A `match` inside a larger expression follows the shared [expression-lowering rule](002-running.md#do-expressions): call references, receivers and short-circuit evaluation are preserved, and `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](001-functions.md#direct-eval); VIP-1, amended).
+A `match` in a destructuring or parameter default follows [Destructuring and parameter defaults](002-running.md#destructuring-and-parameter-defaults). A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order). `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](001-functions.md#direct-eval); VIP-1, amended).
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -174,13 +174,7 @@ effect function defaultBit(o: { x?: number }, b: boolean) {
 import { Effect } from "effect"
 function defaultBit(o: { x?: number }, b: boolean) {
   return Effect.gen(function* () {
-    const value = o.x
-    let result = value
-    if (value === undefined) {
-      const subject = b
-      result = subject === true ? yield* Effect.succeed(7) : 0
-    }
-    const x = result
+    const { x = b === true ? yield* Effect.succeed(7) : 0 } = o
     return x
   })
 }
