@@ -86,6 +86,7 @@ const specTests = [
   "TestVibeResolutionTableQuoted",
   "TestDoJumpOperandQuoted",
   "TestPreludeGlobalMemberQuoted",
+  "TestPlatformDerivedGlobalsQuoted",
   "TestSidecarIdentityQuoted",
   "TestFormatForHeadsQuoted",
   "TestFormatFoldkitQuoted",

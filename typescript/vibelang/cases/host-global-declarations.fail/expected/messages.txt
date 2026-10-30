@@ -1,0 +1,1 @@
+Use an injected Effect service, or move the platform code to a .ts file.

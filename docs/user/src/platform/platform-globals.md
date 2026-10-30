@@ -303,6 +303,8 @@ import { server } from "./server.ts"
 
 The platform check also recognizes optional accesses, string-literal and template-literal keys without substitutions, and repeated `globalThis.globalThis` objects. For example, ``globalThis[`fetch`]`` and `globalThis.globalThis.fetch` report the same `EK4402` as `globalThis.fetch`. Local shadows and erased type queries keep their TypeScript meaning.
 
+Host globals outside the replacement table are checked by their resolved declarations too. For example, value reads of `FileReader`, `WebAssembly`, window properties such as `name`, and `globalThis.Headers` report `EK4402`. Local properties and erased type queries remain allowed; Effect's in-scope namespaces retain precedence over host names.
+
 EK4402 is a static, lint-strength check, not a sandbox or a
 security boundary. They recognize direct uses, statically named members of `globalThis`, and
 aliases, which keep the symbol they copy. Any other use of `globalThis`, such as

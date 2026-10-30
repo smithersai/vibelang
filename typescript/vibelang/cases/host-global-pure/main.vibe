@@ -1,0 +1,16 @@
+// expect-result: [true,true,true,true,true,true,true,true]
+export type ReaderConstructor = typeof globalThis.FileReader
+export function local(FileReader: number): number { return FileReader }
+const client = { FileReader: "local" }
+export effect function main() {
+ return [
+  globalThis.URL === URL,
+  globalThis[`URL`] === URL,
+  globalThis.Math === Math,
+  globalThis.Date === Date,
+  globalThis.Intl === Intl,
+  globalThis.AbortSignal === AbortSignal,
+  local(7) === 7,
+  client.FileReader === "local",
+ ]
+}

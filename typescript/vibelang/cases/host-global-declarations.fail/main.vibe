@@ -1,0 +1,18 @@
+// expect: EK4402
+export const reader = FileReader
+export const hostName = name
+export const hostStatus = status
+export const hostOpen = open
+export const webasm = WebAssembly
+export const hostHeaders = globalThis.Headers
+export const hostResponse = globalThis.Response
+export const hostEvent = globalThis.Event
+export const template = globalThis[`FileReader`]
+export const repeated = globalThis.globalThis.FileReader
+export const shorthand = { FileReader }
+export type Reader = FileReader
+export type ReaderConstructor = typeof FileReader
+export type HeaderConstructor = typeof globalThis.Headers
+export const own = { FileReader: 42 }
+export const property = own.FileReader
+export function local(FileReader: number): number { return FileReader }
