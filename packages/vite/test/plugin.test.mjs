@@ -36,6 +36,12 @@ function runVitest(root, failing = false) {
   })
 }
 
+// The servers watch by polling. inotify instances are counted per user,
+// and on the shared build hosts every lane's watchers draw on one pool of
+// 128, so an inotify watcher can fail to start and a test would wait for
+// file events that never come.
+const watch = { usePolling: true, interval: 50 }
+
 async function until(check) {
   const deadline = Date.now() + 10000
   while (Date.now() < deadline) {
@@ -151,7 +157,7 @@ test("Vite serves JS and maps, invalidates importers, reports diagnostics and re
     root, configFile: false, plugins: [vibelang({ compiler })],
     customLogger: { info() {}, warn() {}, warnOnce() {}, error: (message) => errors.push(message),
       clearScreen() {}, hasErrorLogged() { return false }, hasWarned: false },
-    server: { host: "127.0.0.1", port: 0 }
+    server: { host: "127.0.0.1", port: 0, watch }
   })
   t.after(() => server.close())
   const messages = []
@@ -221,7 +227,7 @@ test("Vite serves and builds a module declaration as a module of its own (D403)"
   ].join("\n"))
   const server = await createServer({
     root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
-    server: { host: "127.0.0.1", port: 0 }
+    server: { host: "127.0.0.1", port: 0, watch }
   })
   t.after(() => server.close())
   await server.listen()
