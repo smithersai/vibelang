@@ -25,6 +25,8 @@ test("commits land on the bookmark, one on top of the last", async () => {
     assert.equal(await Jj.commitId(root, "vibe-"), base)
     assert.equal(await Jj.fileAt(root, base, "a.ts"), "export const a = 1\n")
     await assert.rejects(Jj.setBookmark(root, "vibe", base), /backwards|sideways/)
+    await Jj.setBookmark(root, "vibe", base, { restart: true })
+    assert.equal(await Jj.bookmarkTarget(root, "vibe"), base)
     await Jj.newAt(root, base)
     assert.equal(await Jj.commitId(root, "@-"), base)
   } finally {

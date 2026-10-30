@@ -236,7 +236,8 @@ export async function upgradeEffect(options) {
     commit = await Jj.commit(t, `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed. No source file changes; VibeLang comes next.`)
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
-  await Jj.setBookmark(t, config.bookmark, commit ?? baseCommit)
+  // A --base names where the run starts, so the bookmark restarts there even when an earlier run left it elsewhere.
+  await Jj.setBookmark(t, config.bookmark, commit ?? baseCommit, { restart: Boolean(config.base) })
   const result = {
     at: new Date().toISOString(),
     jj: { initialized: repo.initialized, base, baseCommit, commit: commit ?? baseCommit, bookmark: config.bookmark },

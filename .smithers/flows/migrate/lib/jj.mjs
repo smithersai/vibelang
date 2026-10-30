@@ -54,9 +54,9 @@ export async function bookmarkTarget(root, name) {
   return ids.length === 1 ? ids[0] : null
 }
 
-/** Points a bookmark at a revision, creating it or moving it forward. */
-export async function setBookmark(root, name, revision) {
-  await must(`jj bookmark set ${quote(name)} -r ${quote(revision)}`, { cwd: root })
+/** Points a bookmark at a revision, creating it or moving it forward; restart also moves it back or sideways. */
+export async function setBookmark(root, name, revision, { restart = false } = {}) {
+  await must(`jj bookmark set ${quote(name)} -r ${quote(revision)}${restart ? " --allow-backwards" : ""}`, { cwd: root })
 }
 
 /** Starts a new working-copy change on a revision. */
