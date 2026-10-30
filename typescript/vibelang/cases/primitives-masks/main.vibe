@@ -3,13 +3,15 @@
 // An uninterruptible block finishes even when its fiber is interrupted.
 effect function masked() {
   const done = try Deferred.make<string>()
+  const started = try Deferred.make<void>()
   const fiber = fork {
     uninterruptible {
+      try Deferred.succeed(started, void 0)
       try sleep("20 millis")
       try Deferred.succeed(done, "done")
     }
   }
-  try sleep("5 millis")
+  try started.await()
   try fiber.interrupt()
   return try done.await()
 }
