@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -16,12 +17,24 @@ import (
 
 // HangLimit is how long one input may take in a stage before Within crashes
 // the process. VIBELANG_FUZZ_HANG overrides it, for example "60s" under -race.
-var HangLimit = func() time.Duration {
-	if limit, err := time.ParseDuration(os.Getenv("VIBELANG_FUZZ_HANG")); err == nil {
-		return limit
+var HangLimit = hangLimit(os.Getenv("VIBELANG_FUZZ_HANG"), os.Args[1:])
+
+// workerHangLimit caps HangLimit in a fuzzing worker, a process cmd/go starts
+// with -test.fuzzworker. Go's worker panics "deadlocked!" when one input runs
+// 60 s (internal/fuzz/worker.go), printing no stack and saving no crasher,
+// so Within must fire first to name the stage and save the input.
+const workerHangLimit = 45 * time.Second
+
+func hangLimit(env string, args []string) time.Duration {
+	limit := 10 * time.Second
+	if l, err := time.ParseDuration(env); err == nil {
+		limit = l
 	}
-	return 10 * time.Second
-}()
+	if slices.Contains(args, "-test.fuzzworker") {
+		limit = min(limit, workerHangLimit)
+	}
+	return limit
+}
 
 // Within runs fn, and panics from another goroutine with every goroutine's
 // stack when fn takes longer than HangLimit. The panic ends the process, so
