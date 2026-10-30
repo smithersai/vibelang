@@ -1,0 +1,13 @@
+{
+  "property": "relative-imports",
+  "rule": "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract",
+  "input": {
+    "files": [
+      "app/sub/x.vibe"
+    ],
+    "directories": [],
+    "packages": [],
+    "specifier": "./sub/x"
+  },
+  "reason": "The opencode migration could load target.js but not its extensionless .vibe source."
+}

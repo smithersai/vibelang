@@ -1,0 +1,14 @@
+{
+  "property": "relative-imports",
+  "rule": "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract",
+  "input": {
+    "files": [
+      "app/x.ts",
+      "app/x/index.vibe"
+    ],
+    "directories": [],
+    "packages": [],
+    "specifier": "./x/"
+  },
+  "reason": "A trailing slash must skip the sibling file."
+}

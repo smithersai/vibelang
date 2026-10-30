@@ -8,7 +8,8 @@ const namedExtension = /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/
 const implicitExtensions = [".ts", ".tsx", ".vibe", ".d.ts", ".js", ".jsx"]
 
 /**
- * Returns the file TypeScript's Node10 and Bundler resolution picks for the
+ * Returns the file TypeScript's Bundler resolution picks (TypeScript 7 removed
+ * Node10: TS5108) for the
  * relative import `specifier` written in `directory` when it names no
  * extension: ./x is x.ts, x.tsx, x.vibe, x.d.ts, x.js or x.jsx, in that order,
  * else the directory x's index with the same extensions. It returns

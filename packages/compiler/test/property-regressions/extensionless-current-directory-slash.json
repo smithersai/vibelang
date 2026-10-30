@@ -1,0 +1,14 @@
+{
+  "property": "relative-imports",
+  "rule": "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract",
+  "input": {
+    "files": [
+      "app/index.vibe",
+      "app.vibe"
+    ],
+    "directories": [],
+    "packages": [],
+    "specifier": "./"
+  },
+  "reason": "A slash after a dot still names the directory index, skipping a sibling source."
+}

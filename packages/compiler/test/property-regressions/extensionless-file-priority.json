@@ -1,0 +1,19 @@
+{
+  "property": "relative-imports",
+  "rule": "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract",
+  "input": {
+    "files": [
+      "app/x.ts",
+      "app/x.tsx",
+      "app/x.vibe",
+      "app/x.d.ts",
+      "app/x.js",
+      "app/x.jsx",
+      "app/x/index.vibe"
+    ],
+    "directories": [],
+    "packages": [],
+    "specifier": "./x"
+  },
+  "reason": "A TypeScript file beside a migrated source must still win."
+}

@@ -1,0 +1,16 @@
+{
+  "property": "relative-imports",
+  "rule": "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract",
+  "input": {
+    "files": [
+      "app/x.vibe",
+      "app/x/index.ts"
+    ],
+    "directories": [],
+    "packages": [
+      "app/x"
+    ],
+    "specifier": "./x"
+  },
+  "reason": "A sibling source wins before the compiler reads directory package metadata."
+}
