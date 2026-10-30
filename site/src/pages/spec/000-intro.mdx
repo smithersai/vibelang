@@ -4,7 +4,7 @@ title: "Introduction"
 
 # The VibeLang specification
 
-This specification defines VibeLang as the accepted VibeLang Improvement Proposals (VIPs) define it, and nothing more. Each VIP lives in [`docs/design/vips/`](/vips/), with the reasons for the decision and its history. Where this text and an accepted VIP disagree, the VIP wins and this text is the bug. Where a VIP is silent, the TypeScript or pinned TC39 counterpart applies.
+This specification defines VibeLang as the accepted VibeLang Improvement Proposals (VIPs) define it, and nothing more. Each VIP lives in [`docs/design/vips/`](/vips/), with the reasons for the decision and its history. Where this text and an accepted VIP disagree, the VIP wins and this text is the bug. Where a VIP is silent, an applicable ruling or decided detail applies; otherwise the TypeScript or pinned TC39 counterpart applies.
 
 The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it.
 
@@ -12,9 +12,9 @@ The previous specification and its decision log (`D1` to `D558`) are in `docs/de
 
 VibeLang is TypeScript with a small set of constructs for writing Effect programs. Four principles decide every rule.
 
-1. **Syntax decides.** A keyword on a function, a block or an expression decides what it means. A type never chooses what code runs: a function literal never becomes an Effect because a parameter expects one, and a type never decides whether a loop consumes a Stream (VIP-1, VIP-2, VIP-20).
-2. **Exact sugar for Effect.** Every construct means one specific piece of Effect TypeScript, shown beside it in this specification. Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31). Failures, defects, interruption and `Cause` combination follow Effect. VIP-7 adds exhaustiveness checking and generated error matchers to TC39 matching, and retains compiler fixed checks for Effect's `Option`, `Exit`, `Result` and tagged errors until Effect ships custom matchers; none patches Effect at runtime. The retained tagged-error checks use resolved constructor bindings (aliases included, shadowing excluded) and each module's own guard (for example, `Cause.TimeoutError` uses `Cause.isTimeoutError`), not `instanceof` or a bare `_tag` test, as listed in [Retained Effect tagged-error patterns](/spec/004-match#retained-effect-tagged-error-patterns).
-3. **No ambiguity.** Every new keyword has exactly one reading. Each is contextual, except `fork` and `join`, which are reserved words in effect code exactly as `await` is in an `async` function ([the grammar's Effect parameter](/spec/900-appendices#the-effect-parameter); VIP-17, amended). "A little bit of ambiguity is unacceptable" (VIP-8). A proposal that can't meet that bar is denied (VIP-8, VIP-10, VIP-11, VIP-24).
+1. **Syntax decides.** A keyword on a function, a block or an expression decides what it means. A function literal never becomes an Effect because a parameter expects one, and a type never decides whether a loop consumes a Stream (VIP-1, VIP-2, VIP-20). Class patterns follow their separate [dispatch rules](/spec/004-match#class-patterns), including static call and construct signatures (decided detail 94).
+2. **Exact sugar for Effect.** Every construct means one specific piece of Effect TypeScript, shown beside it in this specification. Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31). Failures, defects, interruption and `Cause` combination follow Effect. VIP-7 adds exhaustiveness checking and generated error matchers to TC39 matching, and retains compiler fixed checks for Effect's `Option`, `Exit`, `Result` and tagged errors until Effect ships custom matchers; none patches Effect at runtime. The retained tagged-error checks use resolved constructor bindings (aliases included, shadowing excluded) and each module's own guard (including subpath errors: `HttpClientError.HttpClientError` uses `HttpClientError.isHttpClientError`; decided detail 92), not `instanceof` or a bare `_tag` test, as listed in [Retained fixed patterns](/spec/004-match#retained-fixed-patterns).
+3. **No ambiguity.** Every new keyword has exactly one reading. The new keywords are contextual, except `fork` and `join`, which are reserved words in effect code exactly as `await` is in an `async` function ([the grammar's Effect parameter](/spec/900-appendices#the-effect-parameter); VIP-17, amended). The expression forms of `try` and `catch` reuse words already reserved by JavaScript. "A little bit of ambiguity is unacceptable" (VIP-8). A proposal that can't meet that bar is denied (VIP-8, VIP-10, VIP-11, VIP-24).
 4. **TypeScript's meaning outside Effect code.** Plain functions, `async` functions, `await`, `throw`, `using`, classes, `do` expressions and the pipe operator keep their TypeScript or pinned TC39 meaning. The additional static checks still apply: [throw tracking and `@throws`](/spec/003-failures#thrown-types) apply only to non-effectful functions; functions returning an `Effect`, `Stream` or `Layer` cannot throw JavaScript exceptions; `throw` in an `effect` body means typed failure through `Effect.fail` (VIP-4, amended). [Legacy JavaScript restrictions](/spec/001-functions#direct-eval) also apply throughout `.vibe`, including plain functions (VIP-1, VIP-4, amended). [Platform restrictions](/spec/005-services#the-platform-standard-library) apply throughout `.vibe`, including plain functions and wrapper arrows (VIP-33).
 
 ## The language at a glance
@@ -44,20 +44,20 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 
 The table abbreviates the full translations: preserve [source function bindings](/spec/001-functions#meaning), dispatch [outward jumps](/spec/002-running#region-bodies) after `provide` and interruption blocks, and add the [custom matcher](/spec/004-match#class-patterns) to error classes. All Effect TypeScript meanings use the [pinned `effect` 4.1.0](/spec/007-tooling#the-effect-version).
 
-Other ordinary classes without an own `Symbol.customMatcher` use `instanceof`: `when C:` tests `s instanceof C` on the once-evaluated subject `s` (decided detail 67). This deliberately differs from the pinned TC39 draft’s construction-identity test; [Class patterns](/spec/004-match#class-patterns) gives the full rule.
+Other ordinary classes without an own `Symbol.customMatcher` use `instanceof`: `when C:` tests `s instanceof C` on the once-evaluated subject `s` (VIP-7 amendment; decided detail 67). An inherited static matcher is not an own matcher: for `class B extends A {}` without one, `when B:` tests `s instanceof B`. Reading an inherited matcher would make `class Sub extends NotFound {}` match every `NotFound`, because the generated matcher checks the base error’s tag (decided detail 93). Built-in class patterns use `Array.isArray(s)` for `Array`, and `s instanceof C` for the other built-ins (decided detail 67a); `String`, `Number`, `Boolean`, `BigInt` and `Symbol` also accept the primitive (decided detail 87). These adaptations differ from the pinned draft’s engine-slot tests; cross-realm built-ins fail `instanceof`, except arrays. [Class patterns](/spec/004-match#class-patterns) gives the full rule.
 
 What VibeLang leaves out is just as deliberate. The [appendix](/spec/900-appendices#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`, no inline modules. The open VIPs (handlers, the declaration manifest, Effectify the universe) are not part of the language.
 
 ## How to read this specification
 
-Each construct has four parts:
+Constructs generally have four parts; the type shorthand keeps its static rule under **Meaning**:
 
 - **Syntax**, as links to the productions of [Appendix A](/spec/900-appendices#appendix-a-grammar), the only place the grammar is written, with prose and examples.
-- **Static rules**, with the diagnostic each rule reports and its code in [Appendix B](/spec/900-appendices#appendix-b-diagnostics). VIP-34 requires every diagnostic to have a code; the code mapping for imported Effect language-service rules remains **Undecided (pending VIP)**. VIP-38 keeps their existing Effect language-service configuration.
+- **Static rules**, with the diagnostic each rule reports and its code in [Appendix B](/spec/900-appendices#appendix-b-diagnostics). VIP-34 requires every diagnostic to have a code; each imported Effect language-service rule prints a stable `EK38xx` code (decided detail 77).
 - **Meaning**, as the exact Effect TypeScript the construct equals, beside the VibeLang.
 - **Examples.**
 
-A detail that neither a VIP, a ruling nor the TypeScript or pinned TC39 counterpart decides is marked **Undecided (pending VIP)**. Such details are not part of the language until decided.
+A detail that no VIP, ruling, decided detail or TypeScript or pinned TC39 counterpart decides is marked **Undecided (pending VIP)**. Such details are not part of the language until decided.
 
 ### Examples are pending
 
@@ -65,7 +65,7 @@ The compiler is being changed to match the VIPs. Until it does, every VibeLang e
 
 ## Chapters
 
-1. [Functions and Effect types](/spec/001-functions): VIP-1, VIP-3, VIP-26, VIP-27.
+1. [Functions and Effect types](/spec/001-functions): VIP-1, VIP-3, VIP-4 (legacy JavaScript), VIP-26, VIP-27.
 2. [Running Effects](/spec/002-running): VIP-5, VIP-2, VIP-17 to VIP-23.
 3. [Failures](/spec/003-failures): VIP-4, VIP-13, VIP-29.
 4. [Pattern matching](/spec/004-match): VIP-7.

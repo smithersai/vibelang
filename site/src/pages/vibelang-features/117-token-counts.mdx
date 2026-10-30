@@ -23,15 +23,15 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,876 |
-| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 14,208 |
-| The skill and the user guide (138 pages) | 291,031 |
-| The user guide alone | 287,155 |
-| The specification (10 chapters) | 58,337 |
+| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 14,207 |
+| The skill and the user guide (138 pages) | 291,465 |
+| The user guide alone | 287,589 |
+| The specification (10 chapters) | 80,633 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
 
-7.6% fewer tokens across 47 pairs in total; VibeLang is longer in 20 pairs. This is the saving over the combined source tokens, not the arithmetic mean of the percentages below.
+7.5% fewer tokens across 47 pairs in total; VibeLang is longer in 20 pairs. This is the saving over the combined source tokens, not the arithmetic mean of the percentages below.
 
 Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Effect TypeScript blocks against its VibeLang blocks. A negative saving means the VibeLang snippet is longer.
 
@@ -78,13 +78,13 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | TypeScript companion files | 88 | 30 | 65.9% |
 | Fork and join | 43 | 35 | 18.6% |
 | Wait for several | 62 | 66 | -6.5% |
-| First success, all outcomes | 53 | 49 | 7.5% |
+| First success, all outcomes | 52 | 49 | 5.8% |
 | Fork scoped work | 52 | 39 | 25.0% |
 | Detached and scoped fibers | 35 | 50 | -42.9% |
 | Wait for a Deferred | 30 | 34 | -13.3% |
 | Race | 43 | 66 | -53.5% |
 | A concurrent loop | 40 | 36 | 10.0% |
-| **All 47 entries** | **2,325** | **2,149** | **7.6%** |
+| **All 47 entries** | **2,324** | **2,149** | **7.5%** |
 
 ## Every page
 
@@ -95,19 +95,19 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Start Here** | **2,495** |
 | [Welcome](/001-onboarding) | 1,782 |
 | [Why VibeLang?](/getting-started/002-why-effect) | 713 |
-| **Learning Path** | **10,132** |
+| **Learning Path** | **10,159** |
 | [The Effect Type](/getting-started/003-the-effect-type) | 1,946 |
 | [Installation](/getting-started/004-installation) | 2,734 |
 | [Creating Effects](/getting-started/005-creating-effects) | 3,021 |
 | [Two Types of Errors](/error-management/006-two-error-types) | 699 |
-| [Basic Concurrency](/concurrency/007-basic-concurrency) | 1,732 |
+| [Basic Concurrency](/concurrency/007-basic-concurrency) | 1,759 |
 | **Core Concepts** | **17,953** |
 | [Effect's Modules](/getting-started/008-importing-effect) | 2,493 |
 | [Running Effects](/getting-started/009-running-effects) | 1,762 |
 | [Sequencing Effects](/getting-started/010-using-generators) | 1,439 |
 | [Building Pipelines](/getting-started/011-building-pipelines) | 1,989 |
 | [Devtools](/getting-started/012-devtools) | 10,270 |
-| **All 12 pages** | **30,580** |
+| **All 12 pages** | **30,607** |
 
 ### Setup
 
@@ -135,9 +135,9 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Zed](/setup/zed) | 479 |
 | [Other editors](/setup/other-editors) | 401 |
 | [Coding agents](/setup/coding-agents) | 990 |
-| **Upgrade** | **39,707** |
-| [Release notes](/setup/release-notes) | 39,707 |
-| **All 18 pages** | **64,969** |
+| **Upgrade** | **39,868** |
+| [Release notes](/setup/release-notes) | 39,868 |
+| **All 18 pages** | **65,130** |
 
 ### Guides
 
@@ -251,17 +251,17 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Equivalence](/schema/102-equivalence) | 867 |
 | [Formatter](/schema/103-formatter) | 612 |
 | [Schema Compilers](/schema/104-compilers) | 2,367 |
-| **Platform** | **17,313** |
+| **Platform** | **17,433** |
 | [Introduction](/platform/105-introduction) | 2,961 |
 | [FileSystem](/platform/106-file-system) | 1,432 |
 | [Path](/platform/107-path) | 1,016 |
 | [PlatformLogger](/platform/108-platformlogger) | 868 |
 | [Runtime](/platform/109-runtime) | 1,399 |
 | [Terminal](/platform/110-terminal) | 1,790 |
-| [Platform globals in VibeLang](/platform/platform-globals) | 4,547 |
+| [Platform globals in VibeLang](/platform/platform-globals) | 4,667 |
 | [Cloudflare Workers](/platform/cloudflare-workers) | 788 |
 | [Alchemy](/platform/alchemy) | 2,512 |
-| **All 101 pages** | **164,303** |
+| **All 101 pages** | **164,423** |
 
 ### VibeLang features
 
@@ -271,25 +271,25 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Producers](/vibelang-features/112-producers) | 1,837 |
 | [Building an HTTP API](/vibelang-features/113-building-an-http-api) | 1,618 |
 | [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 5,533 |
-| [Cheat sheet](/vibelang-features/115-cheat-sheet) | 10,332 |
-| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 4,125 |
+| [Cheat sheet](/vibelang-features/115-cheat-sheet) | 10,331 |
+| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 4,252 |
 | [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) | 3,793 |
-| **All 7 pages** | **27,303** |
+| **All 7 pages** | **27,429** |
 
 ### Specification
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](/spec/000-intro) | 2,391 |
-| **The language** | **43,408** |
-| [1. Functions and Effect types](/spec/001-functions) | 7,065 |
-| [2. Running Effects](/spec/002-running) | 11,038 |
-| [3. Failures](/spec/003-failures) | 7,208 |
-| [4. Pattern matching](/spec/004-match) | 4,065 |
-| [5. Services and the environment](/spec/005-services) | 6,285 |
-| [6. Data](/spec/006-data) | 3,775 |
-| [7. Configuration and tooling](/spec/007-tooling) | 1,904 |
-| [8. Runtime guarantees](/spec/008-runtime) | 2,068 |
-| **Appendices** | **12,538** |
-| [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 12,538 |
-| **All 10 pages** | **58,337** |
+| [Introduction](/spec/000-intro) | 2,607 |
+| **The language** | **62,617** |
+| [1. Functions and Effect types](/spec/001-functions) | 8,527 |
+| [2. Running Effects](/spec/002-running) | 15,110 |
+| [3. Failures](/spec/003-failures) | 9,182 |
+| [4. Pattern matching](/spec/004-match) | 10,194 |
+| [5. Services and the environment](/spec/005-services) | 8,064 |
+| [6. Data](/spec/006-data) | 4,292 |
+| [7. Configuration and tooling](/spec/007-tooling) | 3,403 |
+| [8. Runtime guarantees](/spec/008-runtime) | 3,845 |
+| **Appendices** | **15,409** |
+| [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 15,409 |
+| **All 10 pages** | **80,633** |

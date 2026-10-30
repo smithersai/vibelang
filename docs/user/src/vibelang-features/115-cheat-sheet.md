@@ -1049,7 +1049,7 @@ effect function many() {
 ```ts effect
 // fragment
 const fastest = yield* Effect.raceAll([getUser("1"), getUser("2")])
-const outcomes = yield* Effect.all([getUser("1"), getOrders("1")].map(Effect.exit), { concurrency: "unbounded" })
+const outcomes = yield* Effect.all([Effect.exit(getUser("1")), Effect.exit(getOrders("1"))], { concurrency: "unbounded" })
 ```
 
 ```vibe es

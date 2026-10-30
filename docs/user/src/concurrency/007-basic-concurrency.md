@@ -37,7 +37,7 @@ effect function stringify(value: unknown) {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
-`all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency: like `Promise.all`, it starts every element in its own fiber at once. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
+`all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency: like `Promise.all`, it starts every element in its own fiber at once. Elements start in order, and one that fails before it suspends stops the later ones from starting, as `Effect.all` does. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
 
 ## Interrupting computations
 

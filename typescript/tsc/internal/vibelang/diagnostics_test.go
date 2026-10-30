@@ -84,6 +84,9 @@ var specAhead = map[int32]string{
 	1901: renumbering, 1902: renumbering, 1903: renumbering, 1904: renumbering, 1905: renumbering,
 	2201: renumbering, 2202: renumbering,
 	2801: renumbering, 2803: renumbering,
+	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
+	302: renumbering, 509: renumbering, 701: renumbering, 702: renumbering, 703: renumbering, 904: renumbering, 905: renumbering,
+	1202: renumbering, 1305: renumbering, 1601: renumbering, 1702: renumbering, 1703: renumbering, 1704: renumbering, 1906: renumbering,
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the

@@ -709,3 +709,5 @@ Each row says what replaces a global or one of its members: an Effect API first,
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.
+
+`import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. The specification makes every other member, `import.meta.resolve` included, and every use of `import.meta` as a value EK4402. The compiler does not report these yet, and the `require.resolve` row above still shows its current suggestion.

@@ -20,6 +20,7 @@ interface Users { find(id: string): User!NotFound }
 - An omitted slot is `never`, as Effect's own defaults make it. The meaning never depends on where the type is written. In particular, an omitted slot is never inferred, so `User!NotFound` means `Effect<User, NotFound, never>` even on a function with a body.
 - To have the type inferred, leave out the annotation (VIP-1).
 - **Amended 2026-10-29: `!` beside other type operators.** `!` does not mix with `|`, `&`, function types or conditional types without parentheses: `type T = A | B!E` is a syntax error with a quick fix that parenthesizes, to `(A | B)!E` (`Effect.Effect<A | B, E>`) or `A | (B!E)` (`A | Effect.Effect<B, E>`). Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 47).
+- **Amended 2026-10-29: function-type returns.** `(id: string) => User!NotFound` is `(id: string) => (User!NotFound)`, as `() => A | B` is `() => (A | B)`; likewise for constructor types. `!` still does not mix with `|` or `&`, and a conditional type's parts still need parentheses. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 80).
 
 ## Prior art
 

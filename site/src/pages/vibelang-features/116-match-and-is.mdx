@@ -148,7 +148,7 @@ A field in an object pattern takes a pattern, `carrier: "rail"`, or binds its va
 
 ## Errors and custom matchers
 
-An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type. A class without its own matcher, such as one imported from a `.ts` file, matches by `instanceof`: an object whose prototype was changed after construction no longer matches.
+An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type. A class without its own matcher, such as one imported from a `.ts` file, matches by `instanceof`: an object whose prototype was changed after construction no longer matches. A function that is not a class works as a predicate: `when isUser:` calls `isUser(value)` and narrows `value` as `if (isUser(value))` does, and `when Array.isArray:` tests for an array. A predicate must return a `boolean`; one that returns an Effect or a Promise is an error, so test it in a guard instead.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
@@ -302,4 +302,4 @@ Support for the new forms arrives with the compiler's VIP implementation. VIP-7 
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
-The specification's static coverage algorithm for non-class patterns, including composite `data` object patterns, is pending a VIP. Use `default` for those forms until that choice is settled; runtime matching continues to use the pinned TC39 rules.
+The exhaustiveness check covers subjects made of literals, `boolean`, enums, `data` variants, `error` classes, `Option`, `Exit` and `Result`. An object pattern covers a `data` variant when it names the variant's `_tag`. A plain TypeScript union of objects, such as `{ _tag: "A" } | { _tag: "B" }`, is not checked, so give its `match` a `default`.

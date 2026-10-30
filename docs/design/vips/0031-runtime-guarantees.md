@@ -9,6 +9,7 @@
 - **Checking it.** Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s. The fuzz suite generates more pairs.
 - **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it (VIP-7).
 - Effect handlers (`handle`/`resume`) would need a continuation runtime, and are decided separately.
+- **Amended 2026-10-29: differential tests compare the canonical `Exit`.** A pair agrees when both runs end with the same canonical `Exit` (`CanonicalVIPExit` in `typescript/tsc/internal/vibelangfuzz/vip.go`: ordered keys, `Cause` reasons in their order, payloads by class name, `name`, `message` and own enumerable fields with `stack` dropped, fiber ids renamed by first appearance) and the same finalizer trace. Object identity is never compared; a fixture that needs more names its extra check. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 91).
 
 ## History
 

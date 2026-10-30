@@ -48,6 +48,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 
 | Type or field | Effect 4.1.0 schema |
 | --- | --- |
+| `(T)` | the mapping of `T`; parentheses only group |
 | `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |
 | single literal `"a"` | `Schema.Literal("a")` (likewise numeric, boolean and bigint literals) |
 | union consisting entirely of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
@@ -58,7 +59,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |
 | `[A, B]` | `Schema.mutable(Schema.Tuple([A, B]))` |
 | `readonly [A, B]` | `Schema.Tuple([A, B])` |
-| `[A, B?]` | `Schema.mutable(Schema.Tuple([A, Schema.optionalKey(B)]))` |
+| `[A, B?]` | `Schema.mutable(Schema.Tuple([A, Schema.optional(B)]))` |
 | `[A, ...B[]]` | `Schema.mutable(Schema.TupleWithRest(Schema.Tuple([A]), [B]))` |
 | `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
 | `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
@@ -69,7 +70,11 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | readonly field `readonly name: T` | `name: S` |
 | readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |
 
+Parenthesized unions within a union are flattened in source order, as in TypeScript: `("a" | "b") | null` maps as `"a" | "b" | null`. In `("a" | "b")[]`, the element maps to `Schema.Literals(["a", "b"])`.
+
 For example, `"a" | "b" | null` maps to `Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.
+
+Optional tuple elements use `Schema.optional`, as optional fields do: `[string, number?]` admits `["a", undefined]`, matching TypeScript’s default.
 
 Tuple element labels (`[name: A, count?: B]`) do not change the mapping. Optional and rest tuples omit `Schema.mutable` when `readonly`; rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`.
 
@@ -87,13 +92,13 @@ schema TupleForms {
 const TupleForms = Schema.Struct({
   token: Schema.mutableKey(Schema.Symbol),
   optional: Schema.mutableKey(Schema.mutable(Schema.Tuple([
-    Schema.String, Schema.optionalKey(Schema.Number),
+    Schema.String, Schema.optional(Schema.Number),
   ]))),
   rest: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]),
 })
 type TupleForms = typeof TupleForms.Type
 const tupleForms = Schema.decodeUnknownSync(TupleForms)({
-  token: Symbol.for("token"), optional: ["name"], rest: ["name", 1, 2],
+  token: Symbol.for("token"), optional: ["name", undefined], rest: ["name", 1, 2],
 })
 tupleForms.optional.push(3)
 ```
@@ -190,7 +195,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 | Rule | Diagnostic |
 | --- | --- |
-| a field type outside the mapping; declare a Schema value instead | `EK2109` |
+| a field type outside the mapping; use the corresponding Effect schema (for example, `Schema.Date` for `Date`) when available, otherwise declare a Schema value | `EK2109` |
 
 ## `data` declarations
 
@@ -198,7 +203,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 [DataDeclaration](900-appendices.md#datadeclaration), which begins with [DataStart](900-appendices.md#datastart), is a list of [Variant](900-appendices.md#variant)s, possibly empty.
 
-`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`.
+`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations. Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`. Variant field keys follow TypeScript type literals, which accept computed names of any key type (TypeScript 5.9), as for `schema` fields. A non-literal key produces an index-signature type; the resulting payload must still satisfy Effect’s `Data.TaggedEnum` constraint forbidding `_tag`. In particular, a string index signature includes `_tag` and fails that constraint; it is not a `TS1170` error. Duplicate variant or field names get TypeScript’s duplicate-identifier diagnostic on the source name. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`.
 
 ### Meaning
 
@@ -224,9 +229,9 @@ const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default
 type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { tracking: string }; Rejected: { reason: string } }>
 const Delivery = Data.taggedEnum<Delivery>()
 const tracking = "outer"
-const d: Delivery = Delivery.Sent({ tracking: "1Z" })
+const d = Delivery.Sent({ tracking: "1Z" })
 let label: string
-if (typeof d === "object" && d !== null && "_tag" in d &&
+if ((typeof d === "object" || typeof d === "function") && d !== null && "_tag" in d &&
     d._tag === "Sent" && "tracking" in d) {
   const tracking = d.tracking
   label = tracking
@@ -237,15 +242,19 @@ if (typeof d === "object" && d !== null && "_tag" in d &&
 
 A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
 
-The object-pattern test first checks for an object and property presence, then reads the tag; a non-object fails the pattern.
+The object-pattern test first checks for an ECMAScript object (including functions) and property presence, then reads the tag; see [Pattern matching](004-match.md).
 
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](004-match.md)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
 
-VIP-7 includes `data` unions in the exhaustiveness check; guarded arms cover nothing. Which object-pattern and composite-pattern forms count as covering a whole variant is **Undecided (pending VIP)**. TC39 defines their runtime matching, but has no exhaustiveness check; this choice does not change the ordered tests that run.
+VIP-7 includes `data` unions and object, interface or class-instance members whose `_tag` has exactly one string literal type in the exhaustiveness check (`EK4701`; decided detail 102). Every normalized subject member must be one of the checked kinds in [Exhaustiveness](004-match.md#exhaustiveness); another member turns the check off. Guarded arms cover nothing. An object pattern covers variant or tagged member `V` when it has `_tag: "V"` and every other property is a bare key or a `let` binding of a field `V` declares as required; `or` covers the union of its alternatives (decided details 78 and 102). Coverage never changes the ordered tests that run. A class pattern naming a `data` declaration or variant is `EK0702` ([Class patterns](004-match.md#class-patterns)).
+
+| Rule | Diagnostic |
+| --- | --- |
+| a variant field named `_tag`; rename it, because the variant name supplies the tag | `EK1601` |
 
 ### Generic unions
 
-A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors (`EK2126` and `EK2803`). Write a default on a separate TypeScript type alias. The helper name shown below is illustrative: the compiler chooses a fresh name, so a user declaration named `OutcomeDefinition` does not collide.
+A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors (`EK2126` and `EK2803`). Write a default on a separate TypeScript type alias. TypeScript variance annotations `in` and `out` are preserved on the generated type alias and checked by TypeScript; `const` is rejected on the source parameter with TypeScript’s `TS1277`, as on a type alias. The helper for `data Outcome<A, E>` is named `$Outcome$Definition`, or `$Outcome$Definition$2`, `$3`, … when the module already declares that name, so it never collides with a user name and is the same on every build (decided detail 83).
 
 ```vibe es
 // compiler-gap: pending VIP-28
@@ -255,10 +264,10 @@ data Outcome<A, E> { Ok { value: A }; Err { error: E } }
 ```ts effect
 // fragment
 type Outcome<A, E> = Data.TaggedEnum<{ Ok: { value: A }; Err: { error: E } }>
-interface OutcomeDefinition extends Data.TaggedEnum.WithGenerics<2> {
+interface $Outcome$Definition extends Data.TaggedEnum.WithGenerics<2> {
   readonly taggedEnum: Outcome<this["A"], this["B"]>
 }
-const Outcome = Data.taggedEnum<OutcomeDefinition>()
+const Outcome = Data.taggedEnum<$Outcome$Definition>()
 ```
 
 | Rule | Diagnostic |
@@ -278,14 +287,14 @@ const boxed: StringBox = Box.Value({ value: "hello" })
 ```ts effect
 // fragment
 type Box<A> = Data.TaggedEnum<{ Value: { value: A } }>
-interface BoxDefinition extends Data.TaggedEnum.WithGenerics<1> {
+interface $Box$Definition extends Data.TaggedEnum.WithGenerics<1> {
   readonly taggedEnum: Box<this["A"]>
 }
-const Box = Data.taggedEnum<BoxDefinition>()
+const Box = Data.taggedEnum<$Box$Definition>()
 type StringBox<A = string> = Box<A>
 const boxed: StringBox = Box.Value({ value: "hello" })
 ```
 
 ### Declaration output
 
-Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the fresh `WithGenerics` helper when the exported constant references it; the helper remains an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.
+Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the `WithGenerics` helper, named as above, when the exported constant references it; the helper is an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.

@@ -16,6 +16,7 @@ const rs     = try.allSettled [a(), b()]                 // yield* Effect.all([â
 - **Amended 2026-10-29:** `try.allSettled` gives each element's `Exit` (success, failure, defect or interruption), and the whole never fails, as `Promise.allSettled` never rejects. Recorded under Will's standing approval of recommendations.
 - They use the same `keyword.name` shape as VIP-17's `fork.in`.
 - **Amended 2026-10-29: operands are arrays.** An object of Effects uses the `all` global: `try all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })`. An object form of `try.all` can be added later without breaking anything. Recorded under Will's standing approval of recommendations.
+- **Amended 2026-10-29: the `try.allSettled` counterpart for an array literal.** The comment above writes `[â€¦].map(Effect.exit)`, which is a TypeScript error when the elements differ in type. For an array literal the counterpart wraps each element, `Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: "unbounded" })`, which gives the same `Exit` and keeps the tuple type; any other operand uses `xs.map(Effect.exit)`. Erratum to the comment, following the TypeScript counterpart (Will: VibeLang mirrors the TypeScript counterpart where a VIP is silent).
 - **Ambiguity: none.** `try` is a reserved word, so `try.` can't start anything else.
 
 ## History

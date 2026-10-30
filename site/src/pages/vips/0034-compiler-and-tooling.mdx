@@ -15,6 +15,8 @@ title: "VIP-34: compiler and tooling requirements"
 5. **Severities.** Warning severities can be adjusted in the config's `"vibe"` section (VIP-30). Errors can't be turned off.
 
 - **Amended 2026-10-29: code numbering.** Each VIP's rules take one fresh hundred-block of diagnostic codes, `EKvvxx` for VIP-vv; an older code is kept only where its rule is unchanged. The specification's Appendix B lists every code. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 60).
+- **Amended 2026-10-30: warnings never change the exit status.** `vibelang` and `vibelang lint` exit non-zero only on errors, as `tsc` and ESLint do by default; a repository that wants a warning to fail CI sets its code to `"error"` in `vibe.severities`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 71).
+- **Amended 2026-10-30: emit names mirror TypeScript.** `x.vibe` compiles to `x.js` beside `x.d.ts` in `outDir`, and relative specifiers `./x.vibe` in emitted code are rewritten to `./x.js`, as `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins follow the same names. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 72).
 
 ## Will's words
 

@@ -1,6 +1,6 @@
 # Functions and Effect types
 
-Sources: [VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-3](../vips/0003-effect-type-shorthand.md), [VIP-26](../vips/0026-top-level-and-main.md), [VIP-27](../vips/0027-declaration-output.md).
+Sources: [VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-4](../vips/0004-throw.md) (legacy JavaScript), [VIP-3](../vips/0003-effect-type-shorthand.md), [VIP-26](../vips/0026-top-level-and-main.md), [VIP-27](../vips/0027-declaration-output.md).
 
 A function's kind is decided by a keyword on the function, never by its body or by a type. There are three kinds:
 
@@ -17,7 +17,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 [EffectFunction](900-appendices.md#effectfunction), [EffectArrow](900-appendices.md#effectarrow) and [EffectMethod](900-appendices.md#effectmethod). [ArrowParams](900-appendices.md#arrowparams) and [Modifiers](900-appendices.md#modifiers) are TypeScript's, as for `async`: `effect x => …` is allowed. `export` and `export default` come before `effect function` through ECMAScript's `ExportDeclaration`, as before `async function`.
 
 - `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1), apart from the `effect { … }` block (VIP-2). `Name` is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
-- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start, `effect` or `async` followed by a name other than `as` or `satisfies`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
+- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start or after `export`, `effect` or `async` followed by a name other than `as` or `satisfies`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
 - As for `async`: type parameters follow the name, as in `effect m<T>(x: T) { }` and `effect function f<T>(x: T) { }`; `static effect m()` and a private `effect #load() { }` are allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
 - `effect get x() { }` and `effect set x(v) { }` parse, so the getter/setter rule below reports them, as TypeScript parses `async get x() { }` and reports TS1042.
 - `effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end, as with `async`.
@@ -31,6 +31,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 effect async function f() { }   // EK0105: pick effect or async
 async effect function g() { }   // EK0105
 const h = async effect () => 1  // EK0105
+class K { async effect get x() { return 1 } }   // EK0104 and EK0105
 ```
 
 ### Static rules
@@ -38,11 +39,18 @@ const h = async effect () => 1  // EK0105
 | Rule | Diagnostic |
 | --- | --- |
 | `await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block | `EK0102` |
-| `await` applied to an Effect inside an `async` function | `EK0103` |
+| `await` on an Effect, by the [Result test](002-running.md#result-tests) (decided detail 89: not `never`, `any` or `unknown`, and at least one union member an Effect), in an `async` function or at the module top level (VIP-5); write `await runPromise(e)` | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function | `EK0105` |
-| A written return type of an `effect` function that is not an Effect (TypeScript's TS1064 for `async`) | `EK0106` |
+| A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async` (`any`, `unknown` and `never` are errors) | `EK0106` |
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](#direct-eval) defines it | `EK0107` |
+
+```vibe es
+// compiler-gap: pending VIP-1
+async function a() { await main() }                 // EK0103: write await runPromise(main())
+async function b(x: any) { return await x }         // ok: any is not an Effect for EK0103
+effect function n(): number { return 1 }            // EK0106: write number!! or leave it out
+```
 
 `new f()` on a `.vibe` function gets TypeScript's own error only, with no VibeLang check (VIP-1, amended; decided detail 19).
 
@@ -80,7 +88,7 @@ class Users {
 }
 ```
 
-Each form keeps the form it is written in, as `async` does. A declaration stays a hoisted function declaration, so a call above it works. Every row writes `Effect.gen({ self: this }, function* () { B })` when `B` reads `this` ([Bindings](#bindings)):
+Each form keeps the form it is written in, as `async` does. A declaration stays a hoisted function declaration, so a call above it works. Every row writes `Effect.gen({ self: this }, function* () { B })` when `B` reads `this` or calls a `super` method, whose lowering passes `this` as the receiver ([Bindings](#bindings)):
 
 | VibeLang | Effect TypeScript |
 | --- | --- |
@@ -91,7 +99,7 @@ Each form keeps the form it is written in, as `async` does. A declaration stays 
 | `effect m(p) { B }`, `effect #m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }`, `#m(p) { return Effect.gen(function* () { B }) }` |
 | `export default effect function (p) { B }` | `export default function (p) { return Effect.gen(function* () { B }) }` |
 
-Parameters, defaults included, are bound when the function is called. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
+Parameters, defaults included, are bound when the function is called, before `Effect.gen`. A `return` in a default's `do` expression therefore returns from the call, as the do-expressions draft requires, and gives the call's Effect, as a `return` in an `async` function's default resolves its Promise: `effect function g(x = do { return null }) { return 1 }` is `function g(x = undefined) { if (x === undefined) return Effect.succeed(null); return Effect.gen(function* () { return 1 }) }`, so `g()` is an Effect that succeeds with `null` ([Expression lowering](002-running.md#do-expressions)). The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
 
 <a id="bindings"></a>**Bindings.** The body sees the bindings of the function it is written in, as an `async` body does. The generator `Effect.gen` takes would have its own, so the compiler passes them in, with fresh names:
 
@@ -101,7 +109,7 @@ Parameters, defaults included, are bound when the function is called. The body r
 | `new.target` | a temporary, `const $new_target = new.target` |
 | `super[k]`, `super.m` | `$super_get(k)`, with `const $super_get = (k) => super[k]` |
 | `super[k] = v` | `$super_set(k, v)`, with `const $super_set = (k, v) => (super[k] = v)`; `super.x += v` reads with `$super_get` and writes with `$super_set`, evaluating `k` once |
-| `super.m(a)` | `$apply($super_get("m"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read |
+| `super.m(a)` | `$apply($super_get("m"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read. It needs the `{ self: this }` form |
 
 The temporaries and helpers are declared at the top of the innermost enclosing non-arrow function, or the module, once per call, as TypeScript's own `async` downleveling does with `_superIndex`. A class field initializer or a parameter default can't see the body's declarations, so there they are declared in an arrow called in place, which runs only when the initializer or default does: `f = (() => { const $super_get = (k) => super[k]; return () => Effect.gen(…) })()`. In an `effect` arrow and an `effect` block these bindings are that enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript. A producer (`effect function*`, `effect *m()`) gets the same bindings, as an `async function*` does ([Producers](002-running.md#producers)).
 
@@ -110,12 +118,16 @@ The temporaries and helpers are declared at the top of the innermost enclosing n
 | Banned | What the rule matches | Quick fix |
 | --- | --- | --- |
 | `eval` | every `IdentifierReference` named `eval`: a direct `eval(s)` as ECMAScript defines it, and indirect uses such as `(0, eval)(s)`, `eval?.(s)` and `const e = eval` | move the code to a `.ts` or `.js` file |
-| `Function` | every `IdentifierReference` resolving to the global `Function` constructor, except the right operand of `instanceof` and the object of a member access (decided detail 33): `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`, `const F = Function`. `x instanceof Function` and `Function.prototype` are allowed; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
+| `Function` | every `IdentifierReference` resolving to the global `Function` constructor, except the right operand of `instanceof` (decided detail 33) and the object of a statically named `prototype` access, `Function.prototype`, `Function?.prototype` or `Function["prototype"]` (decided detail 97): `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`, `const F = Function`, `Function.call(null, "return 7")`, `Function.name`. `x instanceof Function` and `Function.prototype.toString.call(f)` are allowed; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
 | `arguments` | every `IdentifierReference` named `arguments` | a rest parameter |
 | `var` | every `var` declaration, `for (var …)` included | `let`, or `const` when the binding is never assigned |
 | `with` | every `with` statement (already an early error in strict code, which a module is) | rewrite the property reads |
 
-Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 1 }`, are names, not references, and are unaffected. A statically named member `eval` or `Function` of the standard `globalThis` is the global itself, so `globalThis.eval(s)` and `globalThis["Function"]("return 1")` are `EK0107`, as VIP-1 bans indirect `eval`; it is resolved as for `EK4402`, where `globalThis.fetch` and `globalThis["setTimeout"]` still name banned platform APIs (VIP-33; [Services](005-services.md#the-platform-standard-library)). **Undecided (pending VIP):** a key not statically known, such as `globalThis[k]`, and aliases or destructuring such as `const { eval: e } = globalThis`, follow the same open question as there. A static rule can't see a constructor reached by reflection, such as `(() => {}).constructor`; that is not checked.
+Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 1 }`, are names, not references, and are unaffected. Three more rules close the other ways to reach these globals (decided details 73, 74 and 75):
+
+- **`globalThis`** may appear only as the object of a statically named member access: `.name`, `?.name`, `["name"]` or `` [`name`] `` with no substitutions. A member `eval` or `Function` is the global itself, so `globalThis.eval(s)` and `globalThis["Function"]("return 1")` are `EK0107`, with the two `Function` exemptions above: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed. A banned platform member is `EK4402` ([Services](005-services.md#the-platform-standard-library)). Every other use of `globalThis` is `EK0107`: a computed key that is not such a literal (`globalThis[k]`), an alias (`const g = globalThis`), destructuring (`const { eval: e } = globalThis`), an argument (`Reflect.get(globalThis, k)`), a spread, or the right operand of `in`. `typeof globalThis` in a type stays TypeScript's.
+- **`.constructor` of a function.** Reading a property named `constructor` from a value whose static type is a function type or `Function` is `EK0107`: `(async () => {}).constructor` reaches the `AsyncFunction` constructor. `constructor` on other objects, and on values typed `any`, is unaffected.
+- **Code in a specifier.** A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`: it runs a string as code. `import(expr)` with a computed specifier is not checked; it loads a module and can't reach `eval` or `Function`.
 
 With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](002-running.md#region-bodies), [Expression lowering](002-running.md#do-expressions), [Pattern matching](004-match.md) and [Runtime guarantees](008-runtime.md) refer to this rule. Inline `module` declarations stay denied ([VIP-25](../vips/0025-inline-modules-denied.md)).
 
@@ -127,6 +139,10 @@ function total(xs: number[]) { var t = 0; for (const x of xs) t += x; return t }
 const F = Function                                              // error: an alias reaches the constructor
 const r = globalThis.eval("1")                                  // error: indirect eval
 const isFn = (x: unknown) => x instanceof Function               // allowed
+const isFn2 = (x: unknown) => x instanceof globalThis.Function   // allowed
+const g = globalThis                                            // error: an alias of globalThis
+const AF = (async () => {}).constructor                         // error: reaches a Function constructor
+const m = import("data:text/javascript,export default 1")       // error: a string run as code
 ```
 
 ```ts effect
@@ -156,7 +172,24 @@ class Counter extends Base {
 }
 ```
 
-With `Base.prototype.offset` returning 30, `value()` succeeds with 37 even if `offset` has an own `call` property.
+With `Base.prototype.offset` returning 30, `value()` succeeds with 37 even if `offset` has an own `call` property. A body whose only receiver use is `super` gets `{ self: this }` too:
+
+```vibe es
+// compiler-gap: pending VIP-1
+class Counter2 extends Base { effect value() { return super.offset() } }
+```
+
+```ts effect
+// fragment
+class Counter2 extends Base {
+  value() {
+    const $super_get = (k: PropertyKey) => super[k as keyof Base]
+    return Effect.gen({ self: this }, function* () { return $apply($super_get("offset"), this, []) })
+  }
+}
+```
+
+`value()` succeeds with 30, and `offset` sees the instance as `this`; without `{ self: this }` its receiver would be `undefined`.
 
 ### Return types
 
@@ -169,7 +202,7 @@ effect function load2(id: string) { return try fetchUser(id) }                  
 async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
 
-An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them. A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic (VIP-1, amended); write the return type:
+An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them. A `return v` in a moved parameter default adds the type of `v` to the success, and the lowering writes the return type `Effect.Effect<A, E, R>` explicitly, so `g` in [Meaning](#meaning) is `function g(x = undefined): Effect.Effect<number | null>`, not `Effect.Effect<null> | Effect.Effect<number>`. A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic (VIP-1, amended); write the return type:
 
 ```vibe es
 // compiler-gap: pending VIP-1
@@ -193,7 +226,7 @@ No construct converts between the two. Effect's own functions do, as [VIP-6](../
 | a Promise, in an `effect` function | an Effect | `try tryPromise(() => queryDb(q))` or `try promise(() => p)` |
 | an Effect, in an `async` function | a Promise | `await runPromise(load(id))` |
 
-In these examples `queryDb` is a Promise-returning function imported from a `.ts` module with no `@throws`, so it may throw `unknown` ([Thrown types](003-failures.md#thrown-types)); `tryPromise` makes a throw or a rejection a failure. `promise(() => p)` wraps a Promise `p` already in hand. A platform call such as `fetch` can't appear in a `.vibe` file at all, wrapped or not ([Services](005-services.md#the-platform-standard-library)).
+In these examples `queryDb` is a Promise-returning function imported from a `.ts` module with no `@throws`, so it may throw `unknown` ([Thrown types](003-failures.md#thrown-types)); `tryPromise` makes a throw or a rejection a failure. `promise(() => p)` wraps a Promise `p` already in hand that can't reject: a rejection there is a defect, so use `tryPromise` otherwise. A platform call such as `fetch` can't appear in a `.vibe` file at all, wrapped or not ([Services](005-services.md#the-platform-standard-library)).
 
 ## The `A!E!R` type shorthand
 
@@ -244,11 +277,12 @@ function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.
 interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
-`!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (decided detail 47; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
+`!` does not mix with `|`, `&`, conditional types, or a function or constructor type in a slot, without parentheses: each is a syntax error with a quick fix that parenthesizes (decided details 47 and 80; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
 
 ```vibe es
 // compiler-gap: pending VIP-3
 type T = A | B!E       // syntax error
+type H = A!() => B     // syntax error (EK0301): write A!(() => B)
 type U = (A | B)!E     // ok
 type V = A | (B!E)     // ok
 type W = A!(E1 | E2)   // ok
@@ -267,13 +301,13 @@ type L = Effect.Effect<A, E[]>
 type M = Effect.Effect<A, E>[]
 ```
 
-The same rule covers a function type's return and a conditional type's parts, so an Effect type there is parenthesized. A return type annotation is not a function type and needs none:
+The same rule covers a conditional type's parts, so an Effect type there is parenthesized. A function or constructor type's return is a whole type, as `() => A | B` is `() => (A | B)` in TypeScript, so `=> A!E` needs no parentheses (decided detail 80); `=> A!E | B` still mixes `!` and `|`:
 
 ```vibe es
 // compiler-gap: pending VIP-3
-type F = (id: string) => User!NotFound     // syntax error: write => (User!NotFound)
-type G = (id: string) => (User!NotFound)   // ok
-type N = new () => (A!E)                   // ok
+type F = (id: string) => User!NotFound     // ok: (id: string) => (User!NotFound)
+type G = () => A!E | B                     // syntax error: write () => (A!E) | B or () => A!(E | B)
+type N = new () => A!E                     // ok
 type C = X extends Y ? (A!E) : B           // ok; X extends Y ? A!E : B is a syntax error
 type H = A!(() => B)                       // ok: the error slot holds a function type
 interface Store { find(id: string): User!NotFound }   // ok
@@ -281,7 +315,7 @@ interface Store { find(id: string): User!NotFound }   // ok
 
 ```ts effect
 // fragment
-type G = (id: string) => Effect.Effect<User, NotFound>
+type F = (id: string) => Effect.Effect<User, NotFound>
 type N = new () => Effect.Effect<A, E>
 type C = X extends Y ? Effect.Effect<A, E> : B
 type H = Effect.Effect<A, () => B>
@@ -290,9 +324,9 @@ interface Store { find(id: string): Effect.Effect<User, NotFound> }
 
 ## Modules and the top level
 
-A module's top level is ordinary JavaScript (VIP-26).
+A module's top level is ordinary JavaScript (VIP-26). Every `.vibe` file is a module, as a `.mts` file is, whether or not it has an `import` or `export`: its code is strict, top-level `await` is allowed, top-level `this` is `undefined`, and its declarations are module-scoped. `moduleDetection` does not change this.
 
-- `await` at the top level is ES top-level await of a Promise.
+- `await` at the top level is ES top-level await of a Promise. `await` on an Effect there is `EK0103`.
 - `try` is not allowed at the top level, because the top level is not effect code. It is the one rule "`try` outside effect code" ([Running Effects](002-running.md#static-rules)), not a second one.
 - A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript. Only effect code bans it (VIP-5).
 - There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript.
@@ -310,14 +344,15 @@ or, with top-level await:
 // compiler-gap: pending VIP-26
 export effect function main() { try log("started") }
 await runPromise(main())
+await main()                    // EK0103: the Effect would never run
 ```
 
 ## Declaration output
 
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc`, TypeDoc and `bun check` understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
-- **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`. A `service`, `error`, `schema`, `schema error` or `data` declaration is declared as the Effect TypeScript its chapter lowers it to, with its bodies removed. **Undecided (pending VIP):** the spelling of the generic-`data` helper's fresh name in declaration output (decided detail 26 makes it hygienic), and whether it is stable across builds.
-- **Thrown types.** Each declaration carries its thrown type as [Thrown types](003-failures.md#thrown-types) defines it. An effectful function carries no `@throws`. Every other exported callable (a function, a method, a constructor, a function-typed `const`, an `async` function) carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default. Getters and setters carry none.
+- **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`. A `service`, `error`, `schema`, `schema error` or `data` declaration is declared as TypeScript's declaration emit of its Effect TypeScript counterpart, which introduces a `Name_base` constant for a class-call heritage such as `Context.Service<…>()("k")`. The output imports every name the source had in scope without an import: each root module as `import type { Effect, Stream } from "effect"`, each subpath namespace from its subpath, and a module whose bare name is a JavaScript global's (`Array`, `Console`) under a fresh alias, as emitted code does ([Services](005-services.md#effects-modules-are-in-scope)). Nothing in it depends on `vibe.effectModules` or `vibe.effectGlobals`. The generic-`data` helper for `data Outcome<A>` is named `$Outcome$Definition`; if the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name, so the name is the same on every build (decided detail 83). An `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, and a declaration file that declares one begins with `/// <reference types="vibelang-runtime" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time (decided detail 67c).
+- **Thrown types.** Each declaration carries its thrown type as [Thrown types](003-failures.md#thrown-types) defines it. An effectful function carries no `@throws`. Every other call signature the output emits carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default: functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias (decided detail 66). A bare function type (`() => string`) stays a function type. Getters and setters carry none.
 - **Each call signature carries its own contract** ([Thrown types](003-failures.md#thrown-types), decided detail 38): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type. A tag on an alias of a function type does not attach to its call signature; write `type Reader = { /** @throws {E} */ (): string }` instead (decided detail 38). A foreign callable binding without a tag on itself or its declared call signature throws `unknown`, whether imported from source or an emitted `.d.ts`, even with a written function type (decided details 37 and 66).
 - **`@rethrows` is copied and adds to own throws.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it. For a non-effectful callable, first determine its own thrown type: a written checked bound, else a shipped signature annotation, else local body inference or the foreign/type-position default. Shipped annotations are installed before defaults apply. At each call, union that type with the thrown types of the arguments for every `@rethrows` parameter (decided detail 66). Thus `@throws {never}` describes only own throws; it does not erase `@rethrows f`. Effectful callables have synchronous thrown type `never`, and `@rethrows` adds nothing.
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](003-failures.md#effectful-callables)):
@@ -349,11 +384,13 @@ export class Id {
 }
 /** @rethrows f */
 export function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
+export interface Store { find(id: string): string }
 ```
 
 ```ts effect
 // fragment
 // load.d.vibe.ts
+import type { Effect, Stream } from "effect"
 export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // effectful: no @throws
 export declare function users(ids: string[]): Stream.Stream<string>              // effectful: no @throws
 /** @throws {BadInput} */
@@ -372,6 +409,10 @@ export declare class Id {
 }
 /** @throws {never} @rethrows f */
 export declare function each(xs: string[], f: (s: string) => void): void
+export interface Store {
+  /** @throws {never} */
+  find(id: string): string
+}
 ```
 
 The emitted `each` contract above preserves callback throws at a foreign call site:
