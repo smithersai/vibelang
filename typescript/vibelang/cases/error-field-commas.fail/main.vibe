@@ -1,8 +1,8 @@
 // expect: EK1013
-// An error, schema error, service, or control body is a class body (D278,
-// D128): ; or a new line separates its fields, and a comma after a field is
-// EK1013, not TypeScript's "Expected '=' for property initializer.". A schema
-// body is an object type, where a comma separates fields as in TypeScript.
+// Error, schema, schema error, service, and control declarations use
+// ; or a new line between fields (D278, D128). A comma reports EK1013.
+// The schema at the end is a declaration body; TypeScript object types
+// nested in a schema still allow commas.
 
 error OutOfStock { sku: string, available: number }
 

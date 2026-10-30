@@ -122,6 +122,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema migration checks still expected mutable collections after `--fix` preserved readonly types; the fixtures now verify readonly arrays, tuples and records.
 
+- Compiler regression checks rejected the expected `EK1013` diagnostic for commas in `schema` bodies; the diagnostic golden now covers them alongside other declarations.
+
 - The `alchemy-stack` example failed on `effect@4.1.0`: importing `@alchemy.run/cloudflare` failed with `Cannot find module .../effect/dist/Crypto.js`, because `alchemy@2.0.0-beta.84` imports the removed `effect/Crypto`. The example now patches `alchemy` with Alchemy's own Effect 4.1 port on install, and the Alchemy page shows how to apply the patch.
 
 - The specification and producer guide made a labeled `break` or `continue` naming the `for try` itself `EK2003`, unlike JavaScript and `for concurrent`. It now means the loop's own unlabeled jump; only labels on enclosing statements are `EK2003`.

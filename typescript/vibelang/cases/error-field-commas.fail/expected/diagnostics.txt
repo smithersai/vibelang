@@ -5,3 +5,4 @@ main.vibe(14,43): error EK1013
 main.vibe(16,36): error EK1013
 main.vibe(19,17): error EK1013
 main.vibe(24,16): error EK1013
+main.vibe(28,26): error EK1013
