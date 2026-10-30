@@ -31,7 +31,7 @@ cursor --install-extension node_modules/vibelang/editor/vibelang.vsix
 
 The extension is not on the VS Code Marketplace or Open VSX yet; reinstall it from `node_modules` after you update `vibelang`.
 
-Other editors configure their LSP client to run `vibelang --lsp --stdio` for `*.vibe` and `*.ts`, with `tsconfig.json` as the root marker. Turn off the other TypeScript server for this project to avoid duplicate diagnostics. JetBrains IDEs can use LSP4IJ.
+Other editors configure their LSP client to run `vibelang --lsp --stdio` for `*.vibe` and `*.ts`, with `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` as a root marker. Turn off the other TypeScript server for this project to avoid duplicate diagnostics. JetBrains IDEs can use LSP4IJ.
 
 For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattributes`; the starter's `.gitattributes` already has this line. Effect's type-aware lint rules, `@effect/tsgo`'s `effecttsgo/*` rules, are built into `vibelang`: see [Lint Effect code](/setup/vibelang-cli#lint-effect-code).
 
@@ -117,7 +117,7 @@ A contract gives the compiler a promise to check. Write all three channels, such
 
 A config that `extends` another inherits its `vibe` settings, as it inherits compiler options. TypeScript, typescript-eslint, and editors' TypeScript servers ignore the top-level object. Plain `tsc` rejects unknown `compilerOptions` with TS5023, so keep VibeLang's settings at the top level.
 
-Each `.vibe` file keeps the settings of the package that owns it. When a project reads another workspace package's `.vibe` source, the checker applies that package's config to its diagnostics and tracing. The importing project's settings apply to the files of its own package.
+Each `.vibe` file keeps the settings of the package that owns it. When a project reads another workspace package's `.vibe` source, the checker applies that package's config to its diagnostics and tracing. The importing project's settings apply to the files of its own package. Editor projects and imported packages use the nearest configuration directory, preferring `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json` there. Creating `vibe.config.json` in an open project refreshes that selection.
 
 Only a warning's code or an assigned imported `EK38xx` lint code may appear in `vibe.severities`. Set it to `"error"`, `"warning"`, `"suggestion"` or `"off"`. Warnings do not fail CI or prevent emission under `noEmitOnError`; use `"error"` to fail CI. Suggestions appear only in the language server. Invalid entries report `EK3006`; unknown or wrong-typed `vibe` options report `EK3007`. `extends` merges severity entries by code.
 

@@ -84,20 +84,9 @@ func homeOf(c *checker.Checker, s *projectSettingsState) tspath.RootedDirectoryP
 	return *s.home
 }
 
-// nearestConfig returns the nearest tsconfig.json at or above directory, or
-// "" when there is none.
+// nearestConfig returns the nearest project config in VIP-30 precedence order.
 func nearestConfig(c *checker.Checker, directory tspath.RootedDirectoryPath) tspath.RootedFilePath {
-	program := c.Program()
-	for {
-		if candidate := directory.ResolveFile("tsconfig.json"); program.FileExists(candidate) {
-			return candidate
-		}
-		parent := directory.AsPath().Directory()
-		if parent == directory {
-			return ""
-		}
-		directory = parent
-	}
+	return tsoptions.FindConfigFile(directory, c.Program().FileExists)
 }
 
 // configSettings returns the VibeLang settings that config, with what it

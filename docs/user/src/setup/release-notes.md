@@ -217,6 +217,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Host messaging references such as `postMessage` and `globalThis.postMessage` could bypass the platform check; they now report `EK4402`, while local bindings keep working.
 
+- Projects configured only with `vibe.config.json` could lose editor settings, and imported packages could miss `vibe.config.json` or `jsconfig.json`. Editors and package settings now use the nearest config in the documented precedence order and refresh when a canonical config is created.
+
 - The specification and producer guide made a labeled `break` or `continue` naming the `for try` itself `EK2003`, unlike JavaScript and `for concurrent`. It now means the loop's own unlabeled jump; only labels on enclosing statements are `EK2003`.
 
 - The specification promised that `match` class arms on ordinary classes would emulate the TC39 draft's construction-identity test, which compiled JavaScript cannot do for classes from `.ts` or `.js` files. A class without its own `Symbol.customMatcher` now matches by `instanceof`.

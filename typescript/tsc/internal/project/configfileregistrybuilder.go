@@ -448,7 +448,7 @@ func (c *configFileRegistryBuilder) invalidateCache(logger *logging.LogTree) cha
 }
 
 func (c *configFileRegistryBuilder) isConfigBaseName(baseName string) bool {
-	return baseName == "tsconfig.json" || baseName == "jsconfig.json" ||
+	return baseName == "vibe.config.json" || baseName == "tsconfig.json" || baseName == "jsconfig.json" ||
 		(c.customConfigFileName != "" && baseName == c.customConfigFileName)
 }
 
@@ -545,7 +545,7 @@ func (c *configFileRegistryBuilder) DidChangeFiles(summary FileChangeSummary, lo
 		}
 	}
 
-	// Handle created/deleted files named "tsconfig.json" or "jsconfig.json"
+	// Handle created/deleted project config files, including "vibe.config.json".
 	for path := range createdOrDeletedConfigFiles {
 		if hasExcessiveChanges {
 			return c.invalidateCache(logger)
@@ -691,30 +691,31 @@ func (c *configFileRegistryBuilder) computeConfigFileName(fileName tspath.Rooted
 		}
 	}
 
-	// When searching for ancestor of a config file, determine which config types to skip
-	// in the starting directory. This matches TSServer's forEachConfigFileLocation behavior:
-	// - For ancestor of tsconfig.json: skip tsconfig.json but still check jsconfig.json
-	// - For ancestor of jsconfig.json: skip both tsconfig.json and jsconfig.json
-	skipTsconfig := skipSearchInDirectoryOfFile
-	skipJsconfig := skipSearchInDirectoryOfFile && fileName.BaseName() != "tsconfig.json"
-	result, _ := searchDirectory.ForEachAncestorDirectory(func(directory tspath.RootedDirectoryPath) (result tspath.RootedFilePath, stop bool) {
-		if !skipTsconfig {
-			tsconfigPath := directory.ResolveFile("tsconfig.json")
-			if c.fs.FileExists(tsconfigPath) {
-				return tsconfigPath, true
+	// VIP-30 chooses the first config in the nearest directory. When walking
+	// ancestors of a config, continue after it in that directory's precedence
+	// order before moving up, matching the existing tsconfig/jsconfig walk.
+	configNames := []string{"vibe.config.json", "tsconfig.json", "jsconfig.json"}
+	start := 0
+	if skipSearchInDirectoryOfFile {
+		start = len(configNames)
+		for i, name := range configNames {
+			if fileName.BaseName() == name {
+				start = i + 1
+				break
 			}
 		}
-		if !skipJsconfig {
-			jsconfigPath := directory.ResolveFile("jsconfig.json")
-			if c.fs.FileExists(jsconfigPath) {
-				return jsconfigPath, true
+	}
+	result, _ := searchDirectory.ForEachAncestorDirectory(func(directory tspath.RootedDirectoryPath) (result tspath.RootedFilePath, stop bool) {
+		for _, name := range configNames[start:] {
+			configPath := directory.ResolveFile(name)
+			if c.fs.FileExists(configPath) {
+				return configPath, true
 			}
 		}
 		if directory.AsPath().BaseName() == "node_modules" {
 			return "", true
 		}
-		skipTsconfig = false
-		skipJsconfig = false
+		start = 0
 		return "", false
 	})
 	logger.Logf("computeConfigFileName:: File: %s:: Result: %s", fileName, result)
