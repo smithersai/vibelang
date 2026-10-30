@@ -349,4 +349,8 @@ and lists every target above `120` in `summary.txt`, even for a full-seed nightl
 
 `FuzzDataSpecRules` selects a named static witness from chapters 3, 4 and 6 and checks its diagnostic or acceptance. Each witness quotes its chapter verbatim, checked at test time; `TestDataSpecRulesQuoted` also runs in the documentation gate. Its named corpus files preserve each pending reproduction as the witness list grows. Known disagreements live under precise `feature:` keys in `testdata/pending/data.txt` and fail as `XPASS` once the compiler implements them.
 
+Static declaration witnesses also compile a consumer of emitted declarations and compare its instance and constructor types with the chapter's independently written Effect TypeScript, including readonly payloads and all four generic arities. Finite-match controls also check open subjects, fixed cases, required versus optional fields, bare bindings, unions of alternatives and patterns that do not establish static coverage. Four generic helper checks also occupy both preferred names and inspect the emitted collision suffix required by chapter 6.
+
 `TestDataGeneratedMatchSeparators` checks the match printer against the arm separator rule in the match chapter. Generated programs put `;` between arms and after the final arm, and a lone `default` starts directly with its arm. The fast spec gate runs this regression.
+
+The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.

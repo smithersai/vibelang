@@ -185,6 +185,40 @@ func dataRules() []dataRule {
 		add(fmt.Sprintf("generic-%d-distinct-positions", n), data, "Parameters map by position", "data G<"+strings.Join(params, ",")+"> { V { "+strings.Join(fields, ";")+" } }; const g:G<"+strings.Join(args, ",")+">=G.V({"+strings.Join(payload, ",")+"})", "", "vip-core2")
 	}
 
+	add("schema-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema as = string; const x:as=\"ok\"", "", "vip-decls")
+	add("data-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data as { V }; const x:as=as.V()", "", "vip-decls")
+	add("schema-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema satisfies = string; const x:satisfies=\"ok\"", "", "vip-decls")
+	add("data-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data satisfies { V }; const x:satisfies=satisfies.V()", "", "vip-decls")
+	add("schema-named-error-body", "003-failures.md", "`schema error { id: string }` is a schema named `error`", "schema error { id:string }; const x:error={id:\"ok\"}", "", "vip-decls")
+	add("schema-body-newline", "006-data.md", "schema Address\n{ city: string }", "schema S\n{ n:number }; const x:S={n:1}", "", "vip-decls")
+	add("schema-alias-newline", "006-data.md", "schema Code\n  = \"root_missing\" | \"read_failed\"", "schema S\n = \"a\" | \"b\"; const x:S=\"a\"", "", "vip-decls")
+	add("data-body-newline", "006-data.md", "data Delivery\n{", "data D\n{ V }; const x:D=D.V()", "", "vip-decls")
+	add("schema-type-continuation", "006-data.md", "a line break separates members only after the type is complete", "schema S { role:\n | \"a\"\n | \"b\"\n }; const x:S={role:\"a\"}", "", "vip-decls")
+	add("data-written-readonly", "006-data.md", "a variant's fields may be `readonly`", "data D { V { readonly n:number } }; const x:D=D.V({n:1})", "", "vip-core2")
+	add("schema-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "schema S { a:string b:number }", "error", "vip-decls")
+	add("schema-error-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "schema error E { a:string b:number }", "error", "vip-decls")
+	add("data-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "data D { V { a:string b:number } }", "error", "vip-decls")
+	add("schema-error-priority-tag-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { _tag = 1 }", "only:EK2117", "vip-decls")
+	add("schema-error-priority-static-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { static x = 1 }", "only:EK1302", "vip-decls")
+	add("schema-error-priority-setter", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { set x(v:number) {} }", "only:EK1302", "vip-decls")
+	add("schema-error-priority-constructor", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { constructor(){super({})} }", "only:EK1301", "vip-decls")
+
+	add("combined-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (if(x>0) and if(x<10)) or if(x===100):1;default:0;}}", "", "vip-match")
+	add("combined-guard-ungrouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when if(x>0) and if(x<10) or if(x===100):1;default:0;}}", "error", "vip-match")
+	add("not-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (not if(x>0)) and if(x<10):1;default:0;}}", "", "vip-match")
+	add("not-guard-ungrouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when not if(x>0) and if(x<10):1;default:0;}}", "error", "vip-match")
+
+	add("data-constructor-nothrow", data, "A generated variant constructor has the static contract `@throws {never}`", `data D { V { n:number } }; effect function f() { return D.V({n:1}) }`, "", "vip-core2")
+	add("schema-error-constructor-nothrow", errors, "A generated `schema error` constructor has thrown type `never`", `schema error E { n:number }; effect function f() { return new E({n:1}) }`, "", "vip-decls")
+	add("schema-reference-alias", data, "Imports and shadowing follow TypeScript value lookup.", `import { NumberFromString as Parsed } from "effect/Schema"; schema S { n:Parsed }; const s:S={n:7}`, "", "vip-decls")
+	add("schema-reference-shadow", data, "a type of the same name is not expanded.", `type Count=boolean; const Count=Schema.NumberFromString; schema S { n:Count }; const s:S={n:7}`, "", "vip-decls")
+	add("async-match-direct", match, "Inside effect code, a direct `async match` is a compile error", `effect function f(){return async match(true){default:1;}}`, "error", "vip-match")
+	add("async-match-effect-try", match, "`await` is allowed there and effect `try` is not", `effect function f(){return try promise(()=>async match(true){default:try succeed(1);})}`, "error", "vip-match")
+
+	rules = append(rules, dataExhaustivenessRules()...)
+	rules = append(rules, dataHelperNameRules()...)
+	rules = append(rules, dataTaggedMembersRules()...)
+	rules = append(rules, dataDeclarationRules()...)
 	return rules
 }
 
@@ -202,6 +236,9 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 		t.Fatal(err)
 	}
 	defer r.Remove()
+	r.Diagnostics = append(r.Diagnostics, dataDeclarationDiagnostics(t, w, c, r)...)
+	checkDataHelperName(t, c, r)
+	wantCode := strings.TrimPrefix(c.code, "only:")
 	var got []string
 	matched := false
 	for _, d := range r.Diagnostics {
@@ -209,12 +246,15 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 			continue
 		}
 		got = append(got, specDiagnosticText(d))
-		match := c.code == "error" || diagnosticKey(d) == c.code
+		match := wantCode == "error" || diagnosticKey(d) == wantCode
 		if c.name == "generic-limit" {
 			// "the message names the limit"
 			match = match && (strings.Contains(specDiagnosticText(d), "4") || strings.Contains(specDiagnosticText(d), "four"))
 		}
 		matched = matched || match
+	}
+	if strings.HasPrefix(c.code, "only:") && len(got) != 1 {
+		matched = false
 	}
 	key := "feature:" + c.name
 	if (c.code == "" && len(got) > 0) || (c.code != "" && !matched) {

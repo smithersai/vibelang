@@ -39,3 +39,51 @@ FuzzDataSpecRules feature:schema-error-member-accessor compiler VIP-29: schema-e
 FuzzDataSpecRules corpus:data-schema-error-member-accessor compiler VIP-29: schema-error-member-accessor requires EK1304, got no error; lane vip-decls; reproduction of feature:schema-error-member-accessor
 FuzzDataSpecRules feature:schema-error-member-index compiler VIP-29: schema-error-member-index requires EK1304, got 2411; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-member-index compiler VIP-29: schema-error-member-index requires EK1304, got 2411; lane vip-decls; reproduction of feature:schema-error-member-index
+FuzzDataSpecRules feature:schema-error-priority-tag-initializer compiler VIP-29: schema-error-priority-tag-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-priority-tag-initializer compiler VIP-29: schema-error-priority-tag-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-tag-initializer
+FuzzDataSpecRules feature:schema-error-priority-static-initializer compiler VIP-29: schema-error-priority-static-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-priority-static-initializer compiler VIP-29: schema-error-priority-static-initializer does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-static-initializer
+FuzzDataSpecRules feature:schema-error-priority-setter compiler VIP-29: schema-error-priority-setter does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-priority-setter compiler VIP-29: schema-error-priority-setter does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-setter
+FuzzDataSpecRules feature:schema-error-priority-constructor compiler VIP-29: schema-error-priority-constructor does not emit the single first-priority diagnostic from chapter 3; lane vip-decls
+FuzzDataSpecRules corpus:data-schema-error-priority-constructor compiler VIP-29: schema-error-priority-constructor does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-constructor
+FuzzDataSpecRules feature:declaration-schema compiler VIP-15: exported schema declarations omit Schema.mutableKey wrappers for writable fields, changing instance and constructor types; lane vip-decls
+FuzzDataSpecRules corpus:data-declaration-schema compiler VIP-15: minimized exported writable schema contract; lane vip-decls; reproduction of feature:declaration-schema
+FuzzDataSpecRules feature:exhaustive-open-number compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-number compiler VIP-7: minimized exhaustive-open-number witness; lane vip-match; reproduction of feature:exhaustive-open-number
+FuzzDataSpecRules feature:exhaustive-open-string compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-string compiler VIP-7: minimized exhaustive-open-string witness; lane vip-match; reproduction of feature:exhaustive-open-string
+FuzzDataSpecRules feature:exhaustive-open-unknown compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-unknown compiler VIP-7: minimized exhaustive-open-unknown witness; lane vip-match; reproduction of feature:exhaustive-open-unknown
+FuzzDataSpecRules feature:exhaustive-open-any compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-any compiler VIP-7: minimized exhaustive-open-any witness; lane vip-match; reproduction of feature:exhaustive-open-any
+FuzzDataSpecRules feature:exhaustive-open-object compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-object compiler VIP-7: minimized exhaustive-open-object witness; lane vip-match; reproduction of feature:exhaustive-open-object
+FuzzDataSpecRules feature:exhaustive-open-class compiler VIP-7: EK4701 incorrectly checks an open subject; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-open-class compiler VIP-7: minimized exhaustive-open-class witness; lane vip-match; reproduction of feature:exhaustive-open-class
+FuzzDataSpecRules feature:exhaustive-and-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-and-does-not-cover compiler VIP-7: minimized exhaustive-and-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-and-does-not-cover
+FuzzDataSpecRules feature:exhaustive-not-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-not-does-not-cover compiler VIP-7: minimized exhaustive-not-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-not-does-not-cover
+FuzzDataSpecRules feature:exhaustive-error-undefined-complete compiler VIP-7: the undefined literal pattern is rejected with EK1005; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-error-undefined-complete compiler VIP-7: minimized exhaustive-error-undefined-complete witness; lane vip-match; reproduction of feature:exhaustive-error-undefined-complete
+FuzzDataSpecRules feature:exhaustive-retained-error-complete compiler VIP-7: a retained-error binding extractor does not cover its case; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-retained-error-complete compiler VIP-7: minimized exhaustive-retained-error-complete witness; lane vip-match; reproduction of feature:exhaustive-retained-error-complete
+FuzzDataSpecRules feature:generic-helper-names-1 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-helper-names-1 compiler VIP-28: minimized generic-helper-names-1 witness; lane vip-core2; reproduction of feature:generic-helper-names-1
+FuzzDataSpecRules feature:generic-helper-names-2 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-helper-names-2 compiler VIP-28: minimized generic-helper-names-2 witness; lane vip-core2; reproduction of feature:generic-helper-names-2
+FuzzDataSpecRules feature:generic-helper-names-3 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-helper-names-3 compiler VIP-28: minimized generic-helper-names-3 witness; lane vip-core2; reproduction of feature:generic-helper-names-3
+FuzzDataSpecRules feature:generic-helper-names-4 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
+FuzzDataSpecRules corpus:data-generic-helper-names-4 compiler VIP-28: minimized generic-helper-names-4 witness; lane vip-core2; reproduction of feature:generic-helper-names-4
+FuzzDataSpecRules feature:tagged-shared-bare compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-shared-bare compiler VIP-7: minimized tagged-shared-bare witness; lane vip-match
+FuzzDataSpecRules feature:tagged-union-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-union-complete compiler VIP-7: minimized tagged-union-complete witness; lane vip-match
+FuzzDataSpecRules feature:tagged-wide-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-wide-disabled compiler VIP-7: minimized tagged-wide-disabled witness; lane vip-match
+FuzzDataSpecRules feature:tagged-template-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-template-disabled compiler VIP-7: minimized tagged-template-disabled witness; lane vip-match
+FuzzDataSpecRules feature:tagged-other-discriminant-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-other-discriminant-disabled compiler VIP-7: minimized tagged-other-discriminant-disabled witness; lane vip-match
