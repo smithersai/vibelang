@@ -3576,5 +3576,5 @@ typescript/vibelang/lsp-fixture/src/module.vibe:11:15 lambda plain table
 typescript/vibelang/lsp-fixture/src/old-await.vibe:7:18 byname program table
 typescript/vibelang/lsp-fixture/src/old-declarations.vibe:7:30 block appended/program table
 typescript/vibelang/lsp-fixture/src/old-declarations.vibe:9:3 lambda effectFn service
-typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:33 lambda plain fallback
-typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:60 lambda plain fallback
+typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:33 lambda plain annotation
+typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:68 lambda plain annotation
