@@ -28,9 +28,7 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
-
-
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, written once as the production [DeclarationStart](/spec/900-appendices#declarationstart) and its five start productions under [Productions](/spec/900-appendices#productions).
 
 Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](/spec/900-appendices#errordeclaration). No other line-break or disambiguation rule applies to these four words.
 
@@ -57,7 +55,7 @@ Timeout                       then another
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{`, except directly after `extends` in a class heritage, where `effect` is an identifier and `{` starts the class body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect` | [Functions](/spec/001-functions) |
+| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{`, except directly after `extends` in a class heritage, where `effect` is an identifier and `{` starts the class body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so `EK0105` reports them | [Functions](/spec/001-functions) |
 | `concurrent` | after `for`, then `(` | [Running Effects](/spec/002-running#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](/spec/002-running#interruption-blocks) |
 | `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](/spec/900-appendices#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](/spec/005-services#provide-blocks) |
@@ -105,22 +103,32 @@ SchemaStart      = "schema"  [no LineTerminator here] BindingIdentifier
 DataStart        = "data"    [no LineTerminator here] BindingIdentifier
 ```
 
+#### EffectModifier
+
+```text
+EffectModifier = "effect"
+               | "effect" [no LineTerminator here] "async"   (parses, then EK0105 rejects it)
+               | "async" [no LineTerminator here] "effect"   (parses, then EK0105 rejects it)
+```
+
+Each two-word form needs a function, a method name or arrow parameters after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
+
 #### EffectFunction
 
 ```text
-EffectFunction = "effect" [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? Block
+EffectFunction = EffectModifier [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? Block
 ```
 
 #### EffectArrow
 
 ```text
-EffectArrow = "effect" [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
+EffectArrow = EffectModifier [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
 ```
 
 #### EffectMethod
 
 ```text
-EffectMethod = Modifiers? "effect" [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+EffectMethod = Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
 ```
 
 #### EffectAccessor
@@ -142,13 +150,13 @@ EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ {
 #### Producer
 
 ```text
-Producer = "effect" [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block
+Producer = EffectModifier [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block
 ```
 
 #### ProducerMethod
 
 ```text
-ProducerMethod = Modifiers? "effect" [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+ProducerMethod = Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
 ```
 
 #### Params
@@ -462,7 +470,9 @@ for concurrent (4) (const x of xs) f(x)        limit 4
 for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
 ```
 
-**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (`EK0301`). Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
+**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `EffectType` is an alternative of TypeScript's `Type`, beside a function type and a conditional type. `!` does not mix with `|`, `&`, function types or conditional types without parentheses (decided detail 47): an `EffectType` can't be an operand of `|` or `&`, a part of a conditional type, or a function or constructor type's return type unless parenthesized. Each is a syntax error with a quick fix that parenthesizes (`EK0301`). Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
+
+After `as` or `satisfies`, a `!` that is followed on the same line by neither `!` nor the start of an `EffectOperand` is TypeScript's non-null assertion, so `x as Foo!;` is `(x as Foo)!`. `T!!` is always an `EffectType`: `x as Foo!!`, a double non-null assertion in TypeScript, is `x as Effect.Effect<Foo>` in VibeLang, a known TypeScript break.
 
 ```text
 service S {                       two members: R can't start on the next line
@@ -475,6 +485,14 @@ type T = A | B!E                  syntax error; write (A | B)!E or A | (B!E)
 keyof A!E                         (keyof A)!E
 A!E[]                             A!(E[]); write (A!E)[] for an array of Effects
 User!![]                          Effect.Effect<User, never, []>; write (User!!)[] for an array
+type Find = (id: string) => User!NotFound      syntax error; write (id: string) => (User!NotFound)
+type Find = (id: string) => (User!NotFound)    (id: string) => Effect.Effect<User, NotFound>
+type New = new () => (User!NotFound)           a constructor type returning an Effect
+A!(() => B)                       Effect.Effect<A, () => B>
+X extends Y ? A!E : B             syntax error; write X extends Y ? (A!E) : B
+A!E extends X ? 1 : 2             syntax error; write (A!E) extends X ? 1 : 2
+x as Foo!;                        (x as Foo)!, a non-null assertion, as in TypeScript
+x as Foo!!;                       x as Effect.Effect<Foo>; TypeScript reads ((x as Foo)!)!
 ```
 
 `(A | B)!E` is `Effect.Effect<A | B, E>`; `A | (B!E)` is `A | Effect.Effect<B, E>`.
@@ -513,7 +531,7 @@ service S { x: number = 1 }       RejectedMember: an initializer
 
 ## Appendix B. Diagnostics
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). Each VIP's rules take one hundred-block, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (decided detail 60). A code assigned before that scheme is kept where its rule is unchanged: `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610` and `EK4701`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Whether the Effect language service's own rules (VIP-38), such as floating-Effect, get `EK` codes is Undecided (pending VIP).
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). Each VIP's rules take one hundred-block, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (decided detail 60). A code assigned before that scheme is kept where its rule is unchanged: `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610` and `EK4701`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2003`, `EK2101` and `EK2102` previously named the deleted rules that VIP-4, VIP-9 and VIP-1 cite; in this table they mean only the rows below. Whether the Effect language service's own rules (VIP-38), such as floating-Effect, get `EK` codes is Undecided (pending VIP).
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -524,7 +542,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK0105` | `effect` and `async` on one function | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file | 1, 4 | [Functions](/spec/001-functions#direct-eval) |
-| `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses | 3 | [Functions](/spec/001-functions#the-aer-type-shorthand) |
+| `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses, including an `A!E` function or constructor return type: `() => A!E` | 3 | [Functions](/spec/001-functions#the-aer-type-shorthand) |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function | 4 | [Failures](/spec/003-failures#effectful-callables) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](/spec/003-failures#assignability) |
 | `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler | 4 | [Failures](/spec/003-failures#calls-in-effect-code) |
@@ -557,7 +575,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2002` | `return` in a `for try` body | 20 | [Running Effects](/spec/002-running#for-try) |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to the `for try` statement itself or a statement outside its body; remove a self-targeting jump’s label | 20 | [Running Effects](/spec/002-running#for-try) |
+| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2101` | `return value` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |

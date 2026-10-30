@@ -43,7 +43,11 @@ func toolsFuzzing() bool {
 // of the rest: at most n in all for the seed run, and at most campaign during
 // a campaign, where 0 means every seed. A slow target bounds its campaign's
 // seeds so that gathering their baseline coverage leaves time to fuzz.
+// VIBELANG_FUZZ_SEEDS=all bypasses both limits.
 func toolsSample(seeds []Seed, n, campaign int, must func(Seed) bool) []Seed {
+	if os.Getenv("VIBELANG_FUZZ_SEEDS") == "all" {
+		return seeds
+	}
 	if toolsFuzzing() {
 		if campaign == 0 {
 			return seeds

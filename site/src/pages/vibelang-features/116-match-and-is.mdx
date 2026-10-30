@@ -148,7 +148,7 @@ A field in an object pattern takes a pattern, `carrier: "rail"`, or binds its va
 
 ## Errors and custom matchers
 
-An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type.
+An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type. A class without its own matcher, such as one imported from a `.ts` file, matches by `instanceof`: an object whose prototype was changed after construction no longer matches.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 

@@ -104,7 +104,30 @@ Determine a call's synchronous thrown type in three steps (decided detail 66):
 2. **Own thrown type:** a written `@throws {T}` on the declaration or its declared call signature gives `T` (a checked upper bound in `.vibe`). Otherwise use the shipped annotation, installed on the signature before defaults apply ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)). Otherwise infer a plain `.vibe` function's uncaught throws and unwrapped throwing calls, including field initializers for constructors. Otherwise a callable declared in `.ts`, `.d.ts` or JavaScript has `unknown`, whether its type is written or inferred: functions, callable constants, class or interface methods, and each overload. A function type in a `.vibe` type position (parameter, alias, interface member or annotation) instead defaults to `never`.
 3. **Rethrows:** union the own thrown type with the thrown types of the actual callbacks passed for every named `@rethrows` parameter, whichever case in step 2 applied. The tag is written, never inferred. `@throws {never}` describes only the callee's own throws and does not erase `@rethrows f`. Argument-expression evaluation remains the caller's code.
 
-Calling an `async` `.vibe` function throws `never`: body throws reject its Promise. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. Shipped annotations give `JSON.parse` `SyntaxError`, `Math.max` and `Option.some` `never`, and the decoder returned by `Schema.decodeUnknownSync` or `Schema.decodeSync` `SchemaError`; building either decoder throws `never`. Effect's `map`, `forEach`, `filter` and `reduce` are effectful; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
+Calling an `async` `.vibe` function throws `never`: body throws reject its Promise. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. Effect's `map`, `forEach`, `filter` and `reduce` are effectful; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
+
+These shipped contracts are decided (VIP-4; details 2 and 40); a successful call alone does not establish `@throws {never}`:
+
+| Call in effect code | Synchronous thrown type | Use |
+| --- | --- | --- |
+| `JSON.parse(s)` | `SyntaxError` | `try Effect.try(() => JSON.parse(s))` |
+| `Math.max(1, 2)` | `never` | call directly |
+| `Option.some(1)` | `never` | call directly |
+| `Schema.decodeUnknownSync(Schema.String)` or `Schema.decodeSync(Schema.String)` | `never` | call directly to build the decoder |
+| `decode(value)` for that decoder | `SchemaError` | `try Effect.try(() => decode(value))` |
+
+```ts [Effect]
+import { Effect, Option, Schema } from "effect"
+
+const decode = Schema.decodeUnknownSync(Schema.String)
+const calls = Effect.gen(function* () {
+  const json = yield* Effect.try(() => JSON.parse("1"))
+  const text = yield* Effect.try(() => decode("ok"))
+  return [json, Math.max(1, 2), Option.some(1), text] as const
+})
+```
+
+**Undecided (pending VIP):** which additional built-in exceptions count as implicit throws rather than tracked throws? VIP-4 gives property access on `undefined` and stack overflow as implicit examples, but does not settle frozen receivers, proxies, coercion callbacks or built-in argument validation. JavaScript specifies when these throw, not their VibeLang classification. Until the generated annotation inventory in [Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations) is published, this chapter cannot classify `xs.push(x)`, `JSON.stringify(v)`, `s.repeat(n)`, `new Map()` or `Object.keys(o)` beyond the three-step procedure. The settled contracts above still apply.
 
 `@throws {T}` and `@rethrows p` attach to call signatures, not a `type` alias's declaration: write `type Reader = { /** @throws {Error} */ (): string }`. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type. Declaration output tags exported non-effectful callables ([Declaration output](/spec/001-functions#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
 
@@ -381,9 +404,9 @@ class Timeout extends Data.TaggedError("Timeout") {
 }
 ```
 
-The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](/spec/004-match#class-patterns)).
+The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. By comparison, `when Option.None():` matches: its extracted list is empty. The twelve retained Effect error constructors below, like `NotFound`, extract one subject, so their zero-argument extractors never match (detail 53). An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](/spec/004-match#class-patterns)).
 
-VIP-7 retains module-guard checks for Effect's own tagged errors, without patching Effect (detail 53). For example, `when Cause.TimeoutError(let e):` tests `Cause.isTimeoutError(subject)` and binds `subject` as `e`. A bare `{ _tag: "TimeoutError" }` does not pass that guard. These checks use neither a universal `_tag` test nor inherited `Function.prototype` matching. The twelve resolved constructors, alias/shadowing rules and singleton extraction are listed in [Retained Effect tagged-error patterns](/spec/004-match#retained-effect-tagged-error-patterns).
+VIP-7 retains module-guard checks for Effect's own tagged errors, without patching Effect (detail 53). For example, `when Cause.TimeoutError(let e):` tests `Cause.isTimeoutError(subject)` and binds `subject` as `e`. A bare `{ _tag: "TimeoutError" }` does not pass that guard. These checks use neither a universal `_tag` test nor `instanceof`. The twelve resolved constructors, alias/shadowing rules and singleton extraction are listed in [Retained Effect tagged-error patterns](/spec/004-match#retained-effect-tagged-error-patterns).
 
 ```ts [Effect]
 import { Cause } from "effect"

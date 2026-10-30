@@ -282,6 +282,12 @@ sh ../../scripts/remote.sh sh -c 'GOFLAGS= go test -run "^$" -fuzz "^FuzzSpecPro
 sh ../../scripts/remote.sh sh internal/vibelangfuzz/campaign.sh 5m
 ```
 
+For a complete generated-seed run, set `VIBELANG_FUZZ_SEEDS=all`. This
+explicit mode bypasses both the short-run sample and the ordinary campaign
+cap in `toolsSample`. Ordinary campaigns without that flag keep their
+existing caps; saved corpus files and probes run independently of these
+generated-seed limits.
+
 A new crasher lands in `testdata/fuzz/<Target>/`. The fuzz engine discards its workers' standard error, so a worker that dies of a hang panic or a fatal runtime error reports only `fuzzing process hung or terminated unexpectedly: exit status 2`; `campaign.sh` sets `VIBELANG_FUZZ_WORKER_LOG`, and each worker appends its standard error to `<Target>.workers.log` beside the target's log. The first nightly campaign (2026-10-29) lost two such reasons: the spec generator nested `do` blocks without bound, and 3.5 kB inputs wrote Effect readings of 2 and 3 MB whose compiles outlasted the 30-second hang limit. Minimize it, keep it there, and add its key and its `corpus:` line to `testdata/pending/<area>.txt` with the decision it breaks. Delete both lines in the change that fixes the compiler. `VIBELANG_FUZZ_PENDING=1` puts pending generator features back into campaigns; `VIBELANG_FUZZ_HANG=60s` raises the hang limit on a loaded host. The parity target and the stock consumer need the stock TypeScript that `packages/ts-mapper` pins, installed as the parity target's skip message says.
 
 ## Not covered

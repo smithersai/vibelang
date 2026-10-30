@@ -52,7 +52,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 
 | Type or field | Effect 4.1.0 schema |
 | --- | --- |
-| `string`, `number`, `boolean`, `bigint` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt` |
+| `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |
 | single literal `"a"` | `Schema.Literal("a")` (likewise numeric, boolean and bigint literals) |
 | union consisting entirely of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
 | other union `A \| B` | `Schema.Union([A, B])`, each member mapped separately in source order |
@@ -62,6 +62,8 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |
 | `[A, B]` | `Schema.mutable(Schema.Tuple([A, B]))` |
 | `readonly [A, B]` | `Schema.Tuple([A, B])` |
+| `[A, B?]` | `Schema.mutable(Schema.Tuple([A, Schema.optionalKey(B)]))` |
+| `[A, ...B[]]` | `Schema.mutable(Schema.TupleWithRest(Schema.Tuple([A]), [B]))` |
 | `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
 | `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
 | nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |
@@ -72,6 +74,33 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |
 
 For example, `"a" | "b" | null` maps to `Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.
+
+Tuple element labels (`[name: A, count?: B]`) do not change the mapping. Optional and rest tuples omit `Schema.mutable` when `readonly`; rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15
+schema TupleForms {
+  token: symbol;
+  optional: [name: string, count?: number];
+  readonly rest: readonly [string, ...number[]];
+}
+```
+
+```ts [Effect]
+// fragment
+const TupleForms = Schema.Struct({
+  token: Schema.mutableKey(Schema.Symbol),
+  optional: Schema.mutableKey(Schema.mutable(Schema.Tuple([
+    Schema.String, Schema.optionalKey(Schema.Number),
+  ]))),
+  rest: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]),
+})
+type TupleForms = typeof TupleForms.Type
+const tupleForms = Schema.decodeUnknownSync(TupleForms)({
+  token: Symbol.for("token"), optional: ["name"], rest: ["name", 1, 2],
+})
+tupleForms.optional.push(3)
+```
 
 `Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Field names follow TypeScript object types, which accept a computed name of any key type (TypeScript 5.9). Its expression is evaluated in declaration order, as in the emitted object literal; it is not a schema type reference. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
 
@@ -201,7 +230,8 @@ const Delivery = Data.taggedEnum<Delivery>()
 const tracking = "outer"
 const d: Delivery = Delivery.Sent({ tracking: "1Z" })
 let label: string
-if (d._tag === "Sent" && "tracking" in d) {
+if (typeof d === "object" && d !== null && "_tag" in d &&
+    d._tag === "Sent" && "tracking" in d) {
   const tracking = d.tracking
   label = tracking
 } else {
@@ -210,6 +240,8 @@ if (d._tag === "Sent" && "tracking" in d) {
 ```
 
 A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
+
+The object-pattern test first checks for an object and property presence, then reads the tag; a non-object fails the pattern.
 
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](/spec/004-match)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
 
@@ -257,3 +289,7 @@ const Box = Data.taggedEnum<BoxDefinition>()
 type StringBox<A = string> = Box<A>
 const boxed: StringBox = Box.Value({ value: "hello" })
 ```
+
+### Declaration output
+
+Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the fresh `WithGenerics` helper when the exported constant references it; the helper remains an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.

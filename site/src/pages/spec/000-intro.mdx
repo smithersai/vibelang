@@ -44,6 +44,8 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 
 The table abbreviates the full translations: preserve [source function bindings](/spec/001-functions#meaning), dispatch [outward jumps](/spec/002-running#region-bodies) after `provide` and interruption blocks, and add the [custom matcher](/spec/004-match#class-patterns) to error classes. All Effect TypeScript meanings use the [pinned `effect` 4.1.0](/spec/007-tooling#the-effect-version).
 
+Other ordinary classes without an own `Symbol.customMatcher` use `instanceof`: `when C:` tests `s instanceof C` on the once-evaluated subject `s` (decided detail 67). This deliberately differs from the pinned TC39 draft’s construction-identity test; [Class patterns](/spec/004-match#class-patterns) gives the full rule.
+
 What VibeLang leaves out is just as deliberate. The [appendix](/spec/900-appendices#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`, no inline modules. The open VIPs (handlers, the declaration manifest, Effectify the universe) are not part of the language.
 
 ## How to read this specification
