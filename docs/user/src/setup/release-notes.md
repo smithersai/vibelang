@@ -522,6 +522,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Programmatic Rolldown builds and exported plugin sets could not bundle migrated modules, including Alchemy's lazy bundles and framework adapters; setup now wires the native plugin into supported calls and typed plugin factories, preserves test-pinned plugin positions, and installs runtime dependencies for published code.
 
 - Compiler benchmarks overwrote earlier trials and targets' diagnostic logs. Every invocation now retains all trial logs, commands and parsed samples, including failed trials, when you reuse `--out`.
+- A held union of Effects could be rejected even though every alternative was an Effect; `try` now accepts it and preserves every success, error and requirement type.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
 - A catch-handler quick fix could remove `async` or `*` and leave invalid `await`, `yield` or result types; it now declines those repairs and explains the required explicit rewrite.
 

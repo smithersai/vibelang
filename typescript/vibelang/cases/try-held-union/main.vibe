@@ -1,0 +1,6 @@
+// expect-result: [1,"s",1,2,"cfg"]
+import { left, right, legacy, exitValue, configValue } from "./factory.js"
+import type { RequiredOperand, LeftRequirement, RightRequirement } from "./factory.js"
+effect function pick(p: typeof left | typeof right) { return try p }
+export effect function required(p: RequiredOperand) { return try p }
+export effect function main() { return [try pick(left), try pick(right), try pick(legacy), try exitValue, try configValue] }

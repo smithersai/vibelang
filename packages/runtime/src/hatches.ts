@@ -79,9 +79,15 @@ export function sync(evaluate: unknown, ...inputs: Array<unknown>): Effect.Effec
  * VIP-5: `try p` runs the Effect p where it stands and gives its success
  * value. Before anything but a call, the parser writes it as $try(p), and
  * the lowering writes yield* p, so this identity runs only where TypeScript
- * code calls it.
+ * code calls it. Preserve every union member's success, error and requirement
+ * in the canonical Effect return type, as the original signature did. In
+ * particular, a structural Effect subtype is still run, not returned as data.
+ * The second signature keeps explicit A/E/R calls; never remains Effect<never>.
  */
-export const $try = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => effect
+export const $try: {
+  <T extends Effect.Effect<any, any, any>>(effect: T): Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
+} = <T extends Effect.Effect<any, any, any>>(effect: T) => effect as Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
 
 /**
  * The `resume` a `callback` hatch receives. A .vibe file names it without an

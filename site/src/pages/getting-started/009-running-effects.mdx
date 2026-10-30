@@ -30,6 +30,8 @@ Constructing the object runs nothing; `journal.read()` returns an Effect, and `t
 
 Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
 
+`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types.
+
 ## Build and run a local project
 
 After [installing and scaffolding](/getting-started/004-installation), use the starter scripts:
