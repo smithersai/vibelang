@@ -61,6 +61,15 @@ test("compareDeclarations calls a module renamed to .vibe unchanged when its imp
   }
 })
 
+test("canonical text sorts an import or export list, and keeps what the list holds", () => {
+  const a = canonicalize(ts, `import { ThreadId, type ScopedThreadRef } from "@t3tools/contracts";\nexport { b, a } from "./x.js";\n`)
+  const b = canonicalize(ts, `import { type ScopedThreadRef, ThreadId } from "@t3tools/contracts";\nexport { a, b } from "./x.js";\n`)
+  assert.equal(a, b)
+  assert.notEqual(canonicalize(ts, `import { a } from "m";\n`), canonicalize(ts, `import { a, b } from "m";\n`))
+  assert.notEqual(canonicalize(ts, `import { a } from "m";\n`), canonicalize(ts, `import { type a } from "m";\n`))
+  assert.notEqual(canonicalize(ts, `import { a } from "m";\nimport { b } from "n";\n`), canonicalize(ts, `import { b } from "n";\nimport { a } from "m";\n`))
+})
+
 test("compareDeclarations reports changed, added and removed files", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
   try {

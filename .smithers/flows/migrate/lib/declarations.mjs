@@ -4,9 +4,11 @@
 // package migration's identity gate accepts and nothing more: comments
 // dropped, nodes reprinted, union members and uniquely named property members
 // in a stable order, and parentheses around a whole generic type argument
-// removed. One normalization is the migration's own: a relative specifier
+// removed. Two normalizations are the migration's own: a relative specifier
 // spelled ./x.ts becomes ./x.js, because a renamed module's importers declare
-// it that way (D298) and TypeScript resolves both spellings to the same x.d.ts.
+// it that way (D298) and TypeScript resolves both spellings to the same
+// x.d.ts; and an import or export list sorts, because vibelang-format sorts
+// the source's and the declaration prints that order.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, resolve, sep } from "node:path"
@@ -77,6 +79,9 @@ export function canonicalize(ts, text, fileName = "file.d.ts") {
       if (ts.isTypeReferenceNode(x) && x.typeArguments) {
         x = f.updateTypeReferenceNode(x, x.typeName, f.createNodeArray(x.typeArguments.map((t) => (ts.isParenthesizedTypeNode(t) ? t.type : t))))
       }
+      const sorted = (elements) => f.createNodeArray([...elements].sort((a, b) => compare(print(a), print(b))))
+      if (ts.isNamedImports(x)) x = f.updateNamedImports(x, sorted(x.elements))
+      else if (ts.isNamedExports(x)) x = f.updateNamedExports(x, sorted(x.elements))
       if (ts.isUnionTypeNode(x)) x = f.updateUnionTypeNode(x, f.createNodeArray([...x.types].sort((a, b) => compare(print(a), print(b)))))
       else if (ts.isTypeLiteralNode(x)) x = f.updateTypeLiteralNode(x, sortMembers(x.members))
       else if (ts.isInterfaceDeclaration(x)) x = f.updateInterfaceDeclaration(x, x.modifiers, x.name, x.typeParameters, x.heritageClauses, sortMembers(x.members))
