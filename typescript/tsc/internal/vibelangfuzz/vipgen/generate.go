@@ -100,6 +100,14 @@ func (s *Scope) child() *Scope {
 	return &Scope{Fn: s.Fn, Locals: slices.Clone(s.Locals), Callable: s.Callable, Depth: s.Depth + 1, NoReturn: s.NoReturn}
 }
 
+// snapshot returns the scope as it is now, which statements generated later
+// do not change. A statement placed before them may name only these locals.
+func (s *Scope) snapshot() *Scope {
+	c := *s
+	c.Locals = slices.Clone(s.Locals)
+	return &c
+}
+
 // Generate turns fuzz bytes into a program over the constructs leaveOut
 // does not name. It returns nil when every construct is left out.
 // A named input whose construct is not registered or is left out generates

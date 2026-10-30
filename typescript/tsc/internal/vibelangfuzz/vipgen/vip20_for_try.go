@@ -68,13 +68,16 @@ func init() {
 			}
 			body := &Scope{Fn: &Func{Name: x, Void: true}, Locals: append(slices.Clone(s.Locals), x), Callable: s.Callable, Depth: s.Depth + 1, NoReturn: true}
 			loop.Body = append(loop.Body, &EvItem{Label: g.Label(), Item: x})
+			// A guard may land before any statement of the body, so it names
+			// only the locals in scope at the body's start.
+			start := body.snapshot()
 			rest := g.Block(body)
 			if !ends(rest) {
 				switch g.Intn(4) {
 				case 1:
-					rest = slices.Insert(rest, g.Intn(len(rest)+1), Stmt(&If{Cond: g.Cond(body), Then: []Stmt{&StreamContinue{}}}))
+					rest = slices.Insert(rest, g.Intn(len(rest)+1), Stmt(&If{Cond: g.Cond(start), Then: []Stmt{&StreamContinue{}}}))
 				case 2:
-					rest = slices.Insert(rest, g.Intn(len(rest)+1), Stmt(&If{Cond: g.Cond(body), Then: []Stmt{&StreamBreak{}}}))
+					rest = slices.Insert(rest, g.Intn(len(rest)+1), Stmt(&If{Cond: g.Cond(start), Then: []Stmt{&StreamBreak{}}}))
 				case 3:
 					rest = append(rest, &StreamBreak{})
 				}

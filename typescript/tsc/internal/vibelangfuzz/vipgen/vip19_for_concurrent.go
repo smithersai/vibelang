@@ -66,10 +66,13 @@ func init() {
 				loop.Body = append(loop.Body, sleepFor(x))
 			}
 			loop.Body = append(loop.Body, &EvItem{Label: g.Label(), Item: x})
+			// The guard may land before any statement of the body, so it
+			// names only the locals in scope at the body's start.
+			start := body.snapshot()
 			rest := g.Block(body)
 			if !ends(rest) && g.Chance(3) {
 				at := g.Intn(len(rest) + 1)
-				rest = slices.Insert(rest, at, Stmt(&If{Cond: g.Cond(body), Then: []Stmt{&Continue{}}}))
+				rest = slices.Insert(rest, at, Stmt(&If{Cond: g.Cond(start), Then: []Stmt{&Continue{}}}))
 			}
 			loop.Body = append(loop.Body, rest...)
 			return loop
