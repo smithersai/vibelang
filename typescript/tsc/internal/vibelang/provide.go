@@ -30,7 +30,11 @@ import (
 //
 // The keyword matches Effect.provide.
 
+// EK1201: a provide statement at module scope requires effect code.
+var moduleProvideDiagnostic = message(1201, errorCategory, "A provide block requires effect code. Move it into an effect function or an effect { } block.")
+
 func init() {
+	registry[moduleProvideDiagnostic.Code] = moduleProvideDiagnostic
 	fileChecks = append(fileChecks, checkProvideBlocks, checkProvideProviders)
 	ls.RegisterQuickInfoHook(providerQuickInfo)
 }
@@ -346,7 +350,7 @@ func (tx *lowering) visitProvideBlock(node *ast.Node) *ast.Node {
 	return tx.runRegion(node, run, r)
 }
 
-// checkProvideBlocks reports EK1001 at a provide block that no function encloses:
+// checkProvideBlocks reports EK1201 at a provide block that no function encloses:
 // a module's top level only declares, and such a block would run a program.
 func checkProvideBlocks(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node) bool
@@ -355,7 +359,7 @@ func checkProvideBlocks(c *checker.Checker, file *ast.SourceFile) {
 			return false
 		}
 		if isProvideBlock(n) {
-			note(report(c, n.AsBlock().Statements.Nodes[0], EK1001.With("This provide block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
+			report(c, n, moduleProvideDiagnostic)
 		}
 		return n.ForEachChild(visit)
 	}

@@ -1,4 +1,4 @@
-// expect: EK1001
+// expect: EK1201
 service Names {
   name(): string!!
 }

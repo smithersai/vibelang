@@ -1,0 +1,2 @@
+// expect: EK1201
+provide Layer.empty {}

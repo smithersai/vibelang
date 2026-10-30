@@ -1,0 +1,2 @@
+provide block requires effect code
+Move it into an effect function or an effect { } block.

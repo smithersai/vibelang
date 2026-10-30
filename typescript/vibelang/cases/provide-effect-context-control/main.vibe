@@ -1,0 +1,4 @@
+// expect-result: 42
+export effect function main() {
+  provide Layer.empty { return 42 }
+}
