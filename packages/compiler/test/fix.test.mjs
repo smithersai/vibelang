@@ -35,6 +35,22 @@ function vibelang(root, ...args) {
   return spawnSync(native, args, { cwd: root, encoding: "utf8" })
 }
 
+test("--fix accepts computed static properties in ordinary classes", { skip }, (t) => {
+  const root = project(t, `const kind = Symbol.for("kind")
+export class Ordinary {
+  static readonly [kind] = "Ordinary"
+  static readonly ["default"] = 1
+}
+export type Result = Effect.Effect<number>
+`)
+  const result = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const text = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.match(text, /static readonly \[kind\] = "Ordinary"/)
+  assert.match(text, /static readonly \["default"\] = 1/)
+  assert.match(text, /Result = number!!/)
+})
+
 const source = `import { Data } from "effect"
 
 export class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}

@@ -84,7 +84,7 @@ func legacyServiceRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.N
 }
 
 func legacyDefault(n *ast.Node) bool {
-	return n != nil && ast.IsPropertyDeclaration(n) && ast.IsStatic(n) && ast.HasSyntacticModifier(n, ast.ModifierFlagsReadonly) && n.Name() != nil && n.Name().Text() == "default" && (declarationWord(n.Parent) == "service" || legacyService(n.Parent))
+	return n != nil && ast.IsPropertyDeclaration(n) && ast.IsStatic(n) && ast.HasSyntacticModifier(n, ast.ModifierFlagsReadonly) && n.Name() != nil && !ast.IsComputedPropertyName(n.Name()) && n.Name().Text() == "default" && (declarationWord(n.Parent) == "service" || legacyService(n.Parent))
 }
 
 func findLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
