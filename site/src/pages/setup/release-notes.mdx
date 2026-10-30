@@ -170,7 +170,23 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The accepted schema example still gave writable source fields readonly TypeScript types; its counterpart now uses `Schema.mutableKey`, and the public schema VIPs record the conservative checks for conflicting referenced-schema modifiers.
 
+- EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
+
+- `vibelang --fix` could write a fix that added a type error when the file also had an unrelated syntax error, because its check of the fixed program then saw only syntax errors. It now checks every error, so such a fix is listed as not fixed.
+
 - A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
+
+- The specification admitted generic parameters and return annotations on a bare effect-arrow parameter. Arrow heads now follow TypeScript: those decorations require parentheses, while `effect x => x` remains valid.
+
+- The specification excluded valid effect-function overload signatures, decorated class methods and ordinary error-method overloads. Their grammar now follows the corresponding TypeScript declaration positions and checks.
+
+- The specification inherited pipe-draft errors that rejected valid topic use or left chains and precedence undefined. Its effective grammar and operations now preserve sequential chains, nested topic scopes and ordinary TypeScript operators.
+
+- The specification could lose a synchronous throw behind an effectful overload or an escaped rethrowing callback. It now checks every exposed overload bound and preserves the callback contract on returned and nested callables.
+
+- The specification omitted the surviving TypeScript-form advisory codes and their safe repairs. The reference now lists them as configurable warnings and excludes advice for retired language features.
+
+- The specification introduction described every Effect TypeScript comparison as an unchecked fragment. It now distinguishes partial examples from complete comparisons that can be checked directly.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
@@ -508,6 +524,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Tooling and bundlers
 
+- `vibelang --fix` crashed on a file with a malformed import such as `import * ct.sleeon from "effect/Option"` once one of its fixes applied: removing the effect imports the fixes left unused read the import's specifier as a string. It now skips an import whose specifier is not a string.
+
+- The compiler crashed on `@vibelang leakable`, the documentation-comment marker that exempts a service from EK4809, and on any service member whose requirement's declaration has a documentation comment, such as `Effect.Effect<string, never, Maybe!!>`: reading the comment skipped it as trivia. The marker now exempts the service as documented.
+
 - `vibelang --fix` parsed every library and package again for each round of fixes, so a type nesting 20 `Effect.Effect<…>` took half a minute on a busy machine. A run now parses a file again only when a fix edits it, which took that type from 23 s to 6 s.
 - Post-merge fuzz checks repeatedly compiled every generated acceptance case. Short compile, parity and fix runs now retain corpus and pending witnesses plus deterministic samples; campaigns and nightly runs retain their complete inputs, and every short target logs CPU use and fails on a large budget regression.
 
@@ -545,6 +565,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 #### Docs
 
 - Completion could hang the language server in a file with a call left open after an earlier closed one, such as a second `pipe(` typed below `pipe(o, Option.getOrNull)`: matching the earlier `)` searched the whole file and found the later `(`. It now searches only before the token, as TypeScript does.
+
+- The compiler crashed on a file with a broken import whose recovery left a nameless binding, such as `import { Control, handle, resumeWithion nee "vibelang-runtime"`, beside an Effect error class: looking for the empty name in the rewritten code walked past its end. An empty name now matches nothing.
 
 - Language design inconsistencies were missing from these notes. They now list
   confirmed issues, examples and safe patterns in [Known design issues](#known-design-issues).
@@ -593,6 +615,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
+
+- A `tsconfig.json` broken so that it parsed with a computed property name, such as one with an unterminated string before `"lib": ["esnext"]`, crashed the compiler while it looked for the legacy `vibelang.diagnostics` setting. Looking up a setting now skips names that have no text, and the file's syntax errors are reported.
 
 - Vite cannot load tests when the project's path contains `#`, even in a plain project without VibeLang. Use a directory path without `#`.
 - Under Yarn Classic, `import { NodeRuntime } from "@effect/platform-node"` fails at startup unless `redis` is installed, because the package's root module loads its Redis integration. Import the module itself instead: `import * as NodeRuntime from "@effect/platform-node/NodeRuntime"`.

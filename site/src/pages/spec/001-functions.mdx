@@ -26,6 +26,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 - `effect get x() { }` and `effect set x(v) { }` parse, so the getter/setter rule below reports them, as TypeScript parses `async get x() { }` and reports TS1042.
 - `effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end, as with `async`.
 - Anywhere else, `effect` is an ordinary identifier, so `Layer.effect(…)` and `const effect = …` keep working. As with `async`, an arrow needs its whole head: `effect(x) => …` is an arrow, and `effect(x)` without `=>` is a call.
+- A decorator list precedes the class modifiers, as for `async` methods; object-literal methods have no decorators. An `effect` function declaration or class method may have bodyless overload signatures wherever TypeScript admits the corresponding `async` signatures, with its ordering, adjacent-implementation, compatibility and semicolon rules. Function expressions, object-literal methods and arrows require bodies. Starred overload signatures, `abstract effect` methods and ambient `effect` declarations are rejected as their `async` counterparts are.
 - `effect function*` declares a producer ([Running Effects](/spec/002-running#producers)).
 
 `effect` and `async` on one function, in either order, is a compile error, with quick fixes that remove one modifier (decided detail 46). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so the error is `EK0105`, not a generic syntax error. No Effect TypeScript function is both an `Effect.gen` and a Promise-returning `async` function.
@@ -47,6 +48,38 @@ const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: pa
 const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
 const b = effect <T>(x: T) => x                              // allowed
 const c: (x: number) => (number!!) = effect x => x             // allowed
+```
+
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-1
+effect function pick(x: string): string!!;
+effect function pick(x: number): number!!;
+effect function pick(x: string | number) { return x }
+class Choices {
+  effect pick(x: string): string!!;
+  effect pick(x: number): number!!;
+  effect pick(x: string | number) { return x }
+}
+```
+
+The exposed signatures remain separate in declaration output. Their Effect TypeScript counterpart gives `Success(["ok", 7])`; only the implementations execute bodies:
+
+```ts [Effect]
+// Overload-position counterpart
+import * as Effect from "effect/Effect"
+function pick(x: string): Effect.Effect<string>;
+function pick(x: number): Effect.Effect<number>;
+function pick(x: string | number) { return Effect.gen(function* () { return x }) }
+class Choices {
+  pick(x: string): Effect.Effect<string>;
+  pick(x: number): Effect.Effect<number>;
+  pick(x: string | number) { return Effect.gen(function* () { return x }) }
+}
+const result = Effect.runSync(Effect.gen(function* () {
+  return [yield* pick("ok"), yield* new Choices().pick(7)]
+}))
+console.log(JSON.stringify(result))
 ```
 
 ### Static rules
