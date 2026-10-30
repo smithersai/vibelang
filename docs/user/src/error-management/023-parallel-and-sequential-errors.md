@@ -70,7 +70,7 @@ effect function validatePorts() {
     return port
   })
 }
-// number[]![InvalidPort, ...InvalidPort[]]!
+// number[]![InvalidPort, ...InvalidPort[]]
 ```
 
 ```output

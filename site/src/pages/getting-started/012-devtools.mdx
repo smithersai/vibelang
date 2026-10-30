@@ -115,9 +115,9 @@ A contract gives the compiler a promise to check. Write all three channels, such
 }
 ```
 
-A config that `extends` another inherits its `vibe` settings, as it inherits compiler options. TypeScript, typescript-eslint, and editors' TypeScript servers ignore the top-level object. Plain `tsc` rejects unknown `compilerOptions` with TS5023, so keep VibeLang's settings at the top level.
+A config that `extends` another inherits its `vibe` settings key by key, and `severities` merges entry by diagnostic code. TypeScript, typescript-eslint, and editors' TypeScript servers ignore the top-level object. Plain `tsc` rejects unknown `compilerOptions` with TS5023, so keep VibeLang's settings at the top level.
 
-Each `.vibe` file keeps the settings of the package that owns it. When a project reads another workspace package's `.vibe` source, the checker applies that package's config to its diagnostics and tracing. The importing project's settings apply to the files of its own package. Editor projects and imported packages use the nearest configuration directory, preferring `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json` there. Creating `vibe.config.json` in an open project refreshes that selection.
+Each `.vibe` file keeps the settings of the package that owns it. When a project reads another workspace package's `.vibe` source, the checker applies that package's config to its diagnostics. The importing project's settings apply to the files of its own package. Editor projects and imported packages use the nearest configuration directory, preferring `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json` there. Creating `vibe.config.json` in an open project refreshes that selection.
 
 Only a warning's code or an assigned imported `EK38xx` lint code may appear in `vibe.severities`. Set it to `"error"`, `"warning"`, `"suggestion"` or `"off"`. Warnings do not fail CI or prevent emission under `noEmitOnError`; use `"error"` to fail CI. Suggestions appear only in the language server. Invalid entries report `EK3006`; unknown or wrong-typed `vibe` options report `EK3007`. `extends` merges severity entries by code.
 
@@ -135,14 +135,14 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 | --- | --- | --- | --- |
 | EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is a TaggedError; a different tag or `Data.Error` keeps the warning without one |
 | EK4831 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!! }` | When the members are written in the type argument; the class's key stays, written as `static readonly key` unless it is the one the compiler derives |
-| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { id: string }` | When every field has a declaration form; `Schema.optionalKey` or a check keeps the constant, without a warning. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file |
+| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` | When every field has a declaration form; `Schema.optionalKey` or a check keeps the constant, without a warning. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file |
 | EK4833 | `Effect.Effect<User, NotFound, Db>` | `User!NotFound!Db` | The prelude's `Effect<User, NotFound, Db>` draws no warning |
 | EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` | Pending VIP implementation |
 | EK4835 | `Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` | Pending VIP implementation |
 | EK4836 | `Effect.withSpan(load(), "load")`, `Effect.provide(main(), AppLive)` | `withSpan(load(), "load")`, `provide AppLive { return try main() }` | Pending VIP implementation |
 | EK4837 | `class Failed extends Schema.TaggedError<Failed>()("Failed", { … }) {}` | `schema error Failed { … }` | Pending VIP implementation |
 | EK4839 | `Match.value(status).pipe(Match.when("idle", () => "Idle"), Match.orElse(() => "Busy"))` | `match (status) { when "idle": "Idle"; default: "Busy"; }` | When each pattern is a literal, an object of patterns, a `Match` refinement such as `Match.string`, or `Match.instanceOf`, and each handler an arrow function that runs no program; a predicate or an array pattern keeps the warning without one. A type the arms do not share is written: `withReturnType`'s or the handlers' type, or a primitive one |
-| EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
+| EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
 | EK4842 | `import { Array } from "effect"` and `Array.take(values, 2)` | `import { Array as Arr } from "effect"` and `Arr.take(values, 2)` | When no type is written with the import, as `Array.NonEmptyReadonlyArray<T>`, and nothing the file exports names it or has a type the module declares; the names are `Arr`, `Str`, `Num`, `Bool`, `Fn`, `Sym`, `Big` and `Regex`, or `EffectArray` and its siblings when the file already uses the short one |
 
 ### Effect.gen in direct style
@@ -280,7 +280,7 @@ effect function discard() {
 | Hover | Layer service involvement | Hover: a layer lists what it provides, needs, and fails with | Hover on `UsersLive` |
 | Completion | `Self` in classes | Not needed: declarations have no `Self` | None |
 | Completion | `Effect.gen` snippet | Use an effect function | None |
-| Completion | `Effect.fn` span name | Not needed: `tracing` names spans after functions | `"tracing": "exported"` |
+| Completion | `Effect.fn` span name | Not needed: name a span explicitly | `try withSpan(effect { … }, "checkout")` |
 | Completion | Duration strings | Completion: `"2 seconds"` and the other units where a `Duration.Input` goes | `Effect.sleep("1 second")` |
 | Completion | Namespace import style | Not needed: effect's root names and subpath modules are in scope | `Option.some(1)` |
 | Completion | `Schema.brand` name | Completion: the declared name in `Schema.brand("…")` | `const UserId = Schema.String.pipe(Schema.brand("UserId"))` |
@@ -307,7 +307,7 @@ effect function discard() {
 
 Build with `"sourceMap": true` in `compilerOptions`, then run `node --enable-source-maps dist/main.js`. Source maps translate JavaScript locations to `.vibe` locations. They do not record the logical caller chain.
 
-Function tracing defaults to `"none"`. A defect can therefore show only one frame, even with source maps enabled. Set `"vibe": { "tracing": "exported" }` at the top level of `tsconfig.json` to add spans for exported functions, or use `"all"` to include local functions. Rebuild after changing it. Wrap work that needs a meaningful operation name in `try withSpan(effect { ... }, "checkout")`. More spans add runtime work.
+VibeLang adds no spans of its own, so a defect can show only one frame, even with source maps enabled. Wrap work that needs a meaningful operation name in `try withSpan(effect { ... }, "checkout")`. More spans add runtime work.
 
 The Node runner can exit with only `Error: message`. For a debugging run, call your application's exported `main` from a TypeScript entry and print the rejected error's stack:
 
@@ -426,7 +426,7 @@ effect function tracedSample() {
 // Output: sample
 ```
 
-Add spans where an execution boundary should appear in telemetry. VibeLang functions are untraced by default; `tracing` can add spans to exported functions or named functions and methods that compile to frames. Anonymous functions get no automatic span. Effect's `DevTools` layer from `effect/devtools`, with its VS Code extension, shows fibers and logical span stacks across suspensions.
+Add spans where an execution boundary should appear in telemetry. VibeLang adds no spans of its own: name each one with `withSpan`. Effect's `DevTools` layer from `effect/devtools`, with its VS Code extension, shows fibers and logical span stacks across suspensions.
 
 `vibelang` with `sourceMap` enabled, and the Vite plugin, map emitted JavaScript directly to `.vibe` positions. Debuggers that read standard source maps map breakpoints and paused frames to `.vibe`: VS Code's JavaScript debugger, Chrome and Edge DevTools, and JetBrains IDEs.
 
@@ -445,7 +445,7 @@ Library debugging concepts still apply; VibeLang's effect functions, service dec
 | EK2112 | Write `catch effect (e) => match (e) { when NotFound: fallback; default: throw e; }` to recover selected failures and fail again with the rest. |
 | TS2709, TS2707, TS2351 (`Message`, `Command`, `new Worker(…)`) | The name is Effect's module, in scope without an import. The note names the module; declare or import your own of that name. For a DOM name Effect takes, such as `Worker`, the note says how to reach the DOM's: `globalThis.Worker` in a `.ts` adapter, or its type aliased in a `.ts` file. |
 | TS2339 (`Number.sum`, `Array.make`) | JavaScript's global wins over Effect's module of that name, so the note names Effect's module and its import under another name: `import { Number as EffectNumber } from "effect"`. A member of Effect's type of a DOM name, such as `w.postMessage` on Effect's `Worker`, gets the DOM's alias instead. |
-| TS2304, TS2552 (`Process`, `Locks`) | An experimental service is in scope only as a member of `Experimental`; the note writes your call that way, such as `try (try Experimental.Process).hostname()`. A misspelled name never suggests a platform global that EK4402 bans, such as `process`; inside a `.ts` file, it may. |
+| TS2304, TS2552 (`Process`, `Locks`) | An experimental service is in scope only as a member of `Experimental`; the note writes your call that way, such as `try (try Experimental.Process.Process).hostname()`. A misspelled name never suggests a platform global that EK4402 bans, such as `process`; inside a `.ts` file, it may. |
 | TS2304 (`Model`, `Prompt`) | Two of effect's subpath packages have a module of this name, so neither is in scope. The note names both imports; write the one you mean, such as `import { Model } from "effect/schema"`. |
 
 ---

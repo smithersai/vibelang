@@ -85,7 +85,7 @@ Comments between `catch` and its literal handler are preserved, including line c
 
 ## The editor
 
-The language server's own formatting, `textDocument/formatting`, is TypeScript's formatter and ignores dprint's settings. Format with dprint: its editor extensions and `dprint lsp` run the same plugin.
+VibeLang has one formatter (VIP-34): the language server's formatting, `textDocument/formatting`, the dprint plugin and the Prettier and Oxfmt plugins all run it, so the editor and your format command agree.
 
 ## Prettier, Oxfmt and migration
 

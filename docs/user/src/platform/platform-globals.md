@@ -78,37 +78,37 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
 | `navigator.clipboard` | `try (try Clipboard.Clipboard).readString` |
 | `navigator.geolocation` | `try (try Geolocation.Geolocation).getCurrentPosition()` |
-| `navigator.hardwareConcurrency` | `try (try Experimental.Process).availableParallelism` |
-| `navigator.locks` | `try (try Experimental.Locks).hold(name)` |
+| `navigator.hardwareConcurrency` | `try (try Experimental.Process.Process).availableParallelism` |
+| `navigator.locks` | `try (try Experimental.Locks.Locks).hold(name)` |
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
 | `performance` | `try Clock.currentTimeMillis` |
 | `performance.now` | `try Clock.monotonicTimeNanos` |
-| `performance.timeOrigin` | `try (try Experimental.Process).timeOrigin` |
+| `performance.timeOrigin` | `try (try Experimental.Process.Process).timeOrigin` |
 | `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
-| `process.arch` | `try (try Experimental.Process).arch` |
+| `process.arch` | `try (try Experimental.Process.Process).arch` |
 | `process.argv` | `try (try Stdio.Stdio).args` |
 | `process.cwd` | `(try Path.Path).resolve()` |
 | `process.env` | `try Config.String("NAME")` |
-| `process.execPath` | `try (try Experimental.Process).execPath` |
+| `process.execPath` | `try (try Experimental.Process.Process).execPath` |
 | `process.exit` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.exitCode` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.hrtime` | `try Clock.monotonicTimeNanos` |
-| `process.kill` | `try (try Experimental.Process).kill(pid, { killSignal })` |
-| `process.memoryUsage` | `try (try Experimental.Process).memoryUsage` |
+| `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` |
+| `process.memoryUsage` | `try (try Experimental.Process.Process).memoryUsage` |
 | `process.nextTick` | `try yieldNow` |
 | `process.off` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.on` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.once` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
-| `process.pid` | `try (try Experimental.Process).pid` |
-| `process.platform` | `try (try Experimental.Process).platform` |
+| `process.pid` | `try (try Experimental.Process.Process).pid` |
+| `process.platform` | `try (try Experimental.Process.Process).platform` |
 | `process.removeListener` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
 | `process.stderr` | `try Console.error(text)` |
 | `process.stdin` | `try (try Terminal.Terminal).readLine` |
 | `process.stdout` | `try Console.log(text)` |
 | `process.uptime` | escape to TypeScript for now: Clock reads the time, not the process's age: keep a `try Clock.monotonicTimeNanos` reading from the start. |
-| `process.version` | `try (try Experimental.Process).versions` |
-| `process.versions` | `try (try Experimental.Process).versions` |
+| `process.version` | `try (try Experimental.Process.Process).versions` |
+| `process.versions` | `try (try Experimental.Process.Process).versions` |
 | `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `queueMicrotask` | `try yieldNow` |
 | `removeEventListener` | `Stream.fromEventListener(target, "message")` |
@@ -200,18 +200,18 @@ VibeLang's experimental services fill what Effect lacks, provided by `Experiment
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
 effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, key: Redacted.Redacted<Uint8Array>, privateKey: Redacted.Redacted<Uint8Array>, publicKey: Uint8Array, signature: Uint8Array, data: Uint8Array) {
-  const fs = try Experimental.FileSystem
-  const id = try (try Experimental.Process).pid
-  const platform = try (try Experimental.Process).platform
-  const arch = try (try Experimental.Process).arch
-  const executable = try (try Experimental.Process).execPath
-  const versions = try (try Experimental.Process).versions
-  const memory = try (try Experimental.Process).memoryUsage
-  const host = try (try Experimental.Process).hostname
-  const cores = try (try Experimental.Process).availableParallelism
-  const origin = try (try Experimental.Process).timeOrigin
-  try (try Experimental.Process).kill(pid, { killSignal })
-  const running = try (try Experimental.Process).isRunning(pid)
+  const fs = try Experimental.FileSystem.FileSystem
+  const id = try (try Experimental.Process.Process).pid
+  const platform = try (try Experimental.Process.Process).platform
+  const arch = try (try Experimental.Process.Process).arch
+  const executable = try (try Experimental.Process.Process).execPath
+  const versions = try (try Experimental.Process.Process).versions
+  const memory = try (try Experimental.Process.Process).memoryUsage
+  const host = try (try Experimental.Process.Process).hostname
+  const cores = try (try Experimental.Process.Process).availableParallelism
+  const origin = try (try Experimental.Process.Process).timeOrigin
+  try (try Experimental.Process.Process).kill(pid, { killSignal })
+  const running = try (try Experimental.Process.Process).isRunning(pid)
   try fs.access(path, { executable: true })
   const file = try fs.open(path, { nonBlocking: true })
   const mac = try (try Mac.Mac).sign(key, data)
@@ -220,7 +220,7 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const sealed = try (try Aead.Aead).encrypt(key, plaintext, { nonce })
   const opened = try (try Aead.Aead).decrypt(key, ciphertext, { nonce })
   const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
-  const lock = try (try Experimental.Locks).hold(name)
+  const lock = try (try Experimental.Locks.Locks).hold(name)
   return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock }
 }
 ```

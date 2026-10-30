@@ -66,7 +66,7 @@ function quantity(text: string): number {
 
 A generic call retains its declaration's thrown contract even when a type argument makes its result an Effect. A `@rethrows` parameter's possible default callback also contributes to a synchronous callable's conservative own thrown bound, retained in `@throws` when declaration output erases the default; a safe supplied callback does not erase that bound.
 
-Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In a plain or async function, `throw` is JavaScript's, and `sync` turns that exception into a defect.
+Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In a plain or async function, `throw` is JavaScript's, and `orDie(Effect.try(() => call()))` turns such an exception into a defect; `sync` takes only a function that can't throw.
 
 An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior. A plain function calls TypeScript code directly and handles JavaScript exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
 
@@ -356,8 +356,8 @@ effect function raise(error: Missing | Expired) {
 
 effect function describeFailure(error: Missing | Expired) {
   return raise(error) catch (failure) => match (failure) {
-    when Missing and { let path }: `missing ${path}`;
-    when Expired and { let code }: `expired ${code}`;
+    when Missing(let m): `missing ${m.path}`;
+    when Expired(let e): `expired ${e.code}`;
   }
 }
 // string!!
@@ -382,7 +382,7 @@ true
 Normalized PEN
 ```
 
-An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. A field is a property written with a type and no initializer, and as in a class body, `;` or a new line ends it: a comma between fields is EK1013, whose quick fix writes `;`. A field is readonly, and the constructor takes the fields as one object.
+An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. A field is a property written with a type and no initializer, and as between interface members, a `;`, a comma or a new line ends it. A field is readonly, and the constructor takes the fields as one object.
 
 Use a union of error classes to describe several cases. Each class has its own bare name as its tag, so `catchTag("Missing")` and `catchTags` route the corresponding case. The generated matcher tests `_tag`, so `is` and `match` also match instances from another copy of the package.
 
@@ -401,8 +401,8 @@ effect function raiseFile(error: FileError) {
 
 effect function describeFamily(error: FileError) {
   return raiseFile(error) catch (failure) => match (failure) {
-    when MissingFile and { let path }: `missing ${path}`;
-    when ExpiredFile and { let code }: `expired ${code}`;
+    when MissingFile(let m): `missing ${m.path}`;
+    when ExpiredFile(let e): `expired ${e.code}`;
   }
 }
 ```

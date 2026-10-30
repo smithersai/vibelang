@@ -79,13 +79,13 @@ A platform API that neither Effect nor VibeLang's [experimental platform APIs](/
 
 The wrapper's callback is plain TypeScript, evaluated when the Effect runs. Its arrow captures `path` from the enclosing function. `Effect.try` wraps synchronous code; `tryPromise` wraps a Promise.
 
-The compiler tracks what plain functions may throw. JavaScript's built-ins have `@throws` annotations, so a function known not to throw, such as string trimming, can be called directly. A function that may throw must be wrapped with `Effect.try` before an effect function calls it.
+The compiler tracks what plain functions may throw. JavaScript's built-ins have `@throws` annotations, so a function known not to throw, such as `Math.max`, can be called directly. A function that may throw must be wrapped with `Effect.try` before an effect function calls it.
 
 A TypeScript library states its thrown error type with `@throws {ErrorType}` in its declaration. A callable declared in `.ts`, `.d.ts` or JavaScript with no `@throws` is assumed to throw `unknown`, with a written type or without one; `@throws {never}` states that it cannot throw. VibeLang infers throws from non-effectful plain `.vibe` functions and writes each call signature's contract on exported declarations. Shipped annotations apply before foreign defaults. At a call, `@rethrows f` adds `f`'s thrown type to the callee's own throws, including when the own contract is `@throws {never}`. Wrap an imported function that may throw in `Effect.try`, and use its `catch` option to map the exception to a domain error.
 
 In Effect code, `catch` sees expected failures only. Implicit exceptions, such as reading a property of `undefined`, are defects. For recoverable input, use `Option.getOrElse`, `fromOption`, or `Schema.decodeUnknownEffect`. Plain and `async` functions keep JavaScript's `try`/`catch` semantics. Plain foreign calls at module top level are ordinary JavaScript calls, so their exceptions fail the module's import.
 
-`try sync(() => uptime())`, with `uptime` re-exported from `node:os` by a `.ts` file, wraps synchronous work whose exceptions should be defects. The host name has a service, `Experimental.Process`, among the [experimental platform APIs](/vibelang-features/118-experimental-platform-apis): read the service with `try Experimental.Process`, then call its `hostname` method. Keep Node adapters in `.ts`. `.vibe` helpers that calculate or mutate local data and cannot throw need no wrapper. For a platform API that Effect covers, use `Console` for output, `FileSystem` for files, `Crypto` for random bytes and digests, and `HttpClient` for HTTP.
+`try Effect.try(() => uptime())`, with `uptime` re-exported from `node:os` by a `.ts` file, wraps synchronous work that may throw: `uptime` has no `@throws` annotation, so it may throw `unknown`, and `sync` takes only a function that can't throw. The host name has a service, `Experimental.Process.Process`, among the [experimental platform APIs](/vibelang-features/118-experimental-platform-apis): read it with `try Experimental.Process.Process`, then call its `hostname` method. Keep Node adapters in `.ts`. `.vibe` helpers that calculate or mutate local data and cannot throw need no wrapper. For a platform API that Effect covers, use `Console` for output, `FileSystem.FileSystem` for files, `SecureRandom.SecureRandom` and `Digest.Digest` from `effect/crypto` for random bytes and digests, and `HttpClient` for HTTP.
 
 String computation needs no wrapper:
 
@@ -128,7 +128,7 @@ This HMAC signing calls the platform from a `.ts` module to show `tryPromise` wr
 
 `tryPromise` waits for the callback's Promise and maps a rejection into `E`. The `catch` option gives the failure a domain type. The callback receives an `AbortSignal`; pass it to an API that supports cancellation. Otherwise interruption stops the wait but not necessarily the foreign operation.
 
-An API returning `number | Promise<number>` can be normalized in the callback: `try tryPromise(async () => readNumber())` gives the number in either case. `promise` wraps a Promise whose rejection should be a defect. Plain `async` functions use `await` for Promises; effect functions use `try` for wrapped Effects, and `join` waits for a fiber. For HTTP, use Effect's `HttpClient`; for a digest, use its `Crypto` service.
+An API returning `number | Promise<number>` can be normalized in the callback: `try tryPromise(async () => readNumber())` gives the number in either case. `promise` wraps a Promise whose rejection should be a defect. Plain `async` functions use `await` for Promises; effect functions use `try` for wrapped Effects, and `join` waits for a fiber. For HTTP, use Effect's `HttpClient`; for a digest, use `Digest.Digest` from `effect/crypto`.
 
 ## Adapt callbacks and cancellation
 

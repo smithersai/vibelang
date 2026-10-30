@@ -5,9 +5,7 @@ VibeLang is a language for writing [Effect](https://effect.website) programs wit
 ```ts effect
 // fragment
 // Uses the User type from the VibeLang tab.
-class UserNotFound extends Schema.TaggedError<UserNotFound>()("UserNotFound", {
-  id: Schema.String
-}) {}
+class UserNotFound extends Data.TaggedError("UserNotFound")<{ readonly id: string }> {}
 
 class Users extends Context.Service<Users, {
   find(id: string): Effect.Effect<User, UserNotFound>
@@ -38,6 +36,7 @@ interface User { id: string; name: string }
 error UserNotFound { id: string }
 
 service Users {
+  static readonly key = "app/Users"
   find(id: string): User!UserNotFound
 }
 

@@ -55,7 +55,7 @@ effect function cancelWork() {
 // Output: true
 ```
 
-`Fiber.interrupt` requests cancellation and waits for termination, finalizers included; `Fiber.await` then returns an `Exit` describing the interruption instead of propagating it. `try interrupt()` interrupts the current fiber. Interruption is outside the expected error channel, so ordinary `catch` doesn't handle it.
+`Fiber.interrupt` requests cancellation and waits for termination, finalizers included; `Fiber.await` then returns an `Exit` describing the interruption instead of propagating it. `try interrupt` interrupts the current fiber. Interruption is outside the expected error channel, so ordinary `catch` doesn't handle it.
 
 ## Attaching interruption cleanup
 
@@ -87,7 +87,7 @@ effect function cancelBatch() {
     try ensuring(effect {
       if (id === 2) {
         try sleep("10 millis")
-        try interrupt()
+        try interrupt
       }
       try sleep("1 second")
     }, Console.log("branch finished"))
@@ -132,7 +132,7 @@ effect function raceExamples() {
 // Output: {"firstSuccess":"replica","anySuccess":"east","firstCompletion":"primary"}
 ```
 
-The `try` operations (TC39 await operations proposal) behave as the same-named `Promise` methods. `try.any` (`Effect.raceAll`) waits for a success, so an early failure doesn't defeat a branch that can still succeed; if none succeeds, it fails with the collected failure reasons. `try.race` (`Effect.raceAllFirst`) takes the earliest completion, failure included. Both interrupt and clean up the losers before returning. A named Effect function keeps Effect's meaning: `race`, like `Effect.race`, waits for a success.
+The `try` operations (TC39 await operations proposal) keep the same-named `Promise` methods' choice of result, with two differences: the Effects that lose are interrupted, and an empty `try.race` or `try.any` never completes, where `Promise.any([])` rejects. `try.any` (`Effect.raceAll`) waits for a success, so an early failure doesn't defeat a branch that can still succeed; if none succeeds, it fails with the collected failure reasons. `try.race` (`Effect.raceAllFirst`) takes the earliest completion, failure included. Both interrupt and clean up the losers before returning. A named Effect function keeps Effect's meaning: `race`, like `Effect.race`, waits for a success.
 
 ## Inspecting the winner
 

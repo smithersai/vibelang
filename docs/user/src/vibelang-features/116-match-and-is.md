@@ -1,6 +1,6 @@
 # Pattern matching with match and is
 
-`match` picks the first arm whose pattern fits a value; `is` tests a value against one pattern. Both come from the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal (stage 1) and compile to plain conditionals, so TypeScript narrows the value in each arm, and an arm can run Effects with `try` inside an effect function or block.
+`match` picks the first arm whose pattern fits a value; `is` tests a value against one pattern. Both come from the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal (stage 1) and compile to plain conditionals, tested in order (how a pattern narrows a value's static type is undecided, pending VIP), and an arm can run Effects with `try` inside an effect function or block.
 
 **`match` is exhaustive.** A match without a `default` arm over a finite union, such as a data type's variants, `error` classes or literals, must handle every case, or the compiler reports EK4701: `This match does not handle every case of Delivery: Delivery.Rejected is left.` See [Exhaustiveness](#exhaustiveness).
 
@@ -17,7 +17,7 @@ type Failure = NotFound | Timeout | Denied
 
 function describe(failure: Failure) {
   return match (failure) {
-    when NotFound and { let id }: `no user ${id}`;
+    when NotFound(let e): `no user ${e.id}`;
     when Timeout: "retry";
     when Denied and { reason: "root" or "admin" }: "denied by policy";
     when Denied: `denied ${failure.user}`;
@@ -83,13 +83,13 @@ An object pattern matches only an object or a function, never a primitive, and r
 
 ## Option, Exit, Result, and primitives
 
-These matchers compile to the module's own test, so the bindings have exact types. A name means what it resolves to: a binding or data type that you name `String` or `Option` is matched as itself, not as the built-in. Until Effect ships custom matchers for Option, Exit, Result, and its tagged errors, VIP-7 keeps these fixed checks without patching Effect at runtime.
+These matchers compile to the module's own test; the static types of their bindings are undecided (pending VIP). A name means what it resolves to: a binding or data type that you name `String` or `Option` is matched as itself, not as the built-in. Until Effect ships custom matchers for Option, Exit, Result, and its tagged errors, VIP-7 keeps these fixed checks without patching Effect at runtime.
 
 | Matcher | Test | Extracts |
 | --- | --- | --- |
-| `Option.Some`, `Option.None` | `Option.isSome`, `Option.isNone` | the value |
-| `Exit.Success`, `Exit.Failure` | `Exit.isSuccess`, `Exit.isFailure` | the value, the cause |
-| `Result.Success`, `Result.Failure` | `Result.isSuccess`, `Result.isFailure` | the success, the failure |
+| `Option.Some`, `Option.None` | `Option.isOption(s) && Option.isSome(s)`, `Option.isOption(s) && Option.isNone(s)` | the value, nothing |
+| `Exit.Success`, `Exit.Failure` | `Exit.isExit(s) && Exit.isSuccess(s)`, `Exit.isExit(s) && Exit.isFailure(s)` | the value, the cause |
+| `Result.Success`, `Result.Failure` | `Result.isResult(s) && Result.isSuccess(s)`, `Result.isResult(s) && Result.isFailure(s)` | the success, the failure |
 | `String`, `Number`, `Boolean`, `BigInt`, `Symbol` | `typeof` | the value |
 
 ```vibe
@@ -138,6 +138,7 @@ function track(delivery: Delivery) {
     when { _tag: "Sent", let tracking, carrier: "rail" }: `${tracking} by rail`;
     when { _tag: "Sent", let tracking }: `${tracking} by ${delivery.carrier ?? "post"}`;
     when { _tag: "Waiting" } or { _tag: "Rejected" }: "not sent";
+    default: "unknown";
   }
 }
 
@@ -149,7 +150,7 @@ function carrierOf(delivery: Delivery) {
 // Output: rail
 ```
 
-A field in an object pattern takes a pattern, `carrier: "rail"`, or binds its value, `let tracking`. A bare `tracking` only tests that the property exists. A tag pattern narrows the value so the arm can read the variant's other fields: after `delivery is { _tag: "Sent" }`, `delivery.tracking` is a `string`. A data type a `.ts` file declares with `Data.taggedEnum` matches the same way.
+A field in an object pattern takes a pattern, `carrier: "rail"`, or binds its value, `let tracking`. A bare `tracking` only tests that the property exists. Whether a tag pattern narrows the value's static type, so that an arm can read the variant's other fields, is undecided (pending VIP); bind the fields an arm reads, as `let tracking` does. A data type a `.ts` file declares with `Data.taggedEnum` matches the same way.
 
 ## Errors and custom matchers
 
@@ -230,7 +231,7 @@ Elsewhere, an `is` with bindings is EK4703.
 
 ## Exhaustiveness
 
-`match` is exhaustive. A match without a `default` arm whose value is a finite union must handle every case: literals, `null`, `undefined`, a data type's variants, `error` classes, `Option`, `Exit`, `Result`, and other objects with a literal `_tag`. Guards and patterns whose finite product cannot be described keep the remaining type.
+`match` is exhaustive. A match without a `default` arm whose value is a finite union must handle every case: a union of literals, `boolean`, a data type's variants, `error` classes, or an enum. A guarded arm covers nothing, and which object and composite patterns cover a whole case is undecided (pending VIP); until then, end such a match with a `default` arm. Guards and patterns whose finite product cannot be described keep the remaining type.
 
 Any other subject is open: a `string` or `number` without a literal type, `unknown`, `any`, `object`, an array, a type parameter, or a class that is not closed. Use a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`, which matches whatever is left.
 
@@ -305,13 +306,12 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 | EK4701 | A match without `default` misses a case of a finite union | Add an arm for each case left, or a `default` arm |
 | EK4702 | A binding inside an `or` or `not` pattern | Bind outside the combinator, or give each alternative its own arm |
 | EK4703 | An `is` with bindings outside an `if` or `while` condition | Move the test into the condition, or use `match` |
-| EK4704 | A regular expression pattern, a relational pattern such as `< 10`, or a computed key other than a name or a literal | Use a guard: `and if (n < 10)` |
 | EK4705 | `and`, `or`, and `not` at one level without parentheses | Add parentheses |
 
 ## Not yet supported
 
 - Array patterns match arrays only, not other iterables.
-- An extractor with a custom matcher types its bindings loosely; a class or a listed matcher types them exactly.
+- The static types of an extractor's bindings are undecided (pending VIP).
 - `is` bindings are not in scope in an `else` branch or after the statement.
 - A match inside a larger expression runs its arms in their own function, so an arm there cannot `yield`. A match after `return` or as a statement can.
 - `async match` and the proposal's regular expression and relational patterns.

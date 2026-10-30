@@ -23,7 +23,7 @@ effect function stringify(value: unknown) {
 // Output: ticket-17
 ```
 
-A service has no superclass or type parameters, and every instance member is abstract. Methods state full contracts, having no body to infer from; `readonly` value members are allowed. Static fields can hold layers or other helpers.
+A service has no superclass or type parameters, and every instance member is abstract. Methods state full contracts, having no body to infer from; `readonly` value members are allowed. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it.
 
 Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. A `key` that is not `static readonly` with a string literal is `EK3008`. An `abstract class` is an ordinary TypeScript class; one written as a service draws `EK4854`, whose fix, which `vibelang --fix` applies, writes the `service` declaration with its members and key. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
@@ -151,12 +151,12 @@ const testContext = Context.add(
 )
 
 effect function testWithContext() {
-  provide testContext { return try announceTicket() }
+  return try Effect.provide(announceTicket(), testContext)
 }
 // Output: ticket-17
 ```
 
-A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block, like `Effect.provide`, accepts either. `provide` is a statement: using it as an expression, as in `const ticket = provide testContext { … }`, is EK1017; return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
+A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block takes layers and `Key = value` entries, so pass a `Context` to `Effect.provide` directly, as `testWithContext` does. `provide` is a statement, not an expression: return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
 
 ## Requesting optional services
 

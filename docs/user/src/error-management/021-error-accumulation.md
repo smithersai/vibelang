@@ -26,7 +26,7 @@ effect function validateTeam() {
     { concurrency: 2 }
   )
 }
-// string[]![InvalidHandle, ...InvalidHandle[]]!
+// string[]![InvalidHandle, ...InvalidHandle[]]
 ```
 
 ```output

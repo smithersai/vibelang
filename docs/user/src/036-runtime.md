@@ -93,14 +93,14 @@ effect function roll(): number!! {
 ```vibe
 // notifications.vibe
 // pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-12, VIP-14
-// run: provide Notifications.layer { try notify("direct event") }
+// run: provide NotificationsLive { try notify("direct event") }
 export service Notifications {
   send(message: string): void!!
-
-  static readonly layer = Layer.succeed(Notifications, {
-    send: (message) => Console.log(message)
-  })
 }
+
+export const NotificationsLive = Layer.succeed(Notifications, {
+  send: (message) => Console.log(message)
+})
 
 export effect function notify(message: string) {
   const notifications = try Notifications
@@ -116,7 +116,7 @@ export effect function notify(message: string) {
 import { ManagedRuntime } from "effect"
 import { Notifications, notify } from "./notifications.js"
 
-const runtime = ManagedRuntime.make(Notifications.layer)
+const runtime = ManagedRuntime.make(NotificationsLive)
 
 export async function example() {
   try {
@@ -132,7 +132,7 @@ export async function example() {
 
 `ManagedRuntime.make` builds its layer lazily on first use and shares the context across executions; the layer's resources live until disposal, not until each call completes. Dispose the runtime when its owner shuts down, and create a fresh one for a new owner.
 
-Each `Effect.provide` builds its layers once per invocation, so repeating `provide` at several entry points rebuilds them; a managed runtime avoids that for shared pools or clients. For Effect-based cleanup, `runtime.disposeEffect` is an Effect value that runs with `try runtime.disposeEffect` in `.vibe`.
+A `provide` reuses a layer that an enclosing `provide` already built, and a sibling `provide` builds its own copy, so providing at several entry points rebuilds the layers; a managed runtime avoids that for shared pools or clients. For Effect-based cleanup, `runtime.disposeEffect` is an Effect value that runs with `try runtime.disposeEffect` in `.vibe`.
 
 ## Connect runtime execution to frameworks
 
@@ -144,7 +144,7 @@ import { ManagedRuntime } from "effect"
 import { Notifications, notify } from "./notifications.js"
 
 export function makeNotificationHost() {
-  const runtime = ManagedRuntime.make(Notifications.layer)
+  const runtime = ManagedRuntime.make(NotificationsLive)
   return {
     onMessage: (message: string) => runtime.runPromise(notify(message)),
     close: () => runtime.dispose()

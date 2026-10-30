@@ -78,14 +78,17 @@ test("existing-project migration explains same-stem output collisions", () => {
   for (const text of ["settings.vibe", "settings.ts", "settings.js", "TS5056", "load-settings.vibe"]) assert.ok(page.includes(text), text)
 })
 
-test("first-run readers can enable source-located development traces", () => {
-  // The docs use VIP-30's top-level "vibe" key; the starter's README changes with the compiler.
-  for (const [path, key] of [["templates/app/README.md", "vibelang"], ["docs/user/src/013-getting-started.md", "vibe"]]) {
-    const page = read(path)
-    assert.match(page, new RegExp(`\\b${key}\\.tracing`))
-    assert.match(page, new RegExp(`"${key}":\\s*\\{\\s*"tracing":\\s*"all"`))
-    assert.match(page, /012-devtools(?:\.md)?#debug-stack-traces/)
-    assert.match(page, /rebuild or restart/)
-  }
+test("first-run readers can find source-located development traces", () => {
+  // The starter's README changes with the compiler. The docs follow the spec: VIP-30 decides no
+  // tracing option, so the guide names spans with withSpan and links the debugging section.
+  const readme = read("templates/app/README.md")
+  assert.match(readme, /\bvibelang\.tracing/)
+  assert.match(readme, /"vibelang":\s*\{\s*"tracing":\s*"all"/)
+  assert.match(readme, /012-devtools(?:\.md)?#debug-stack-traces/)
+  assert.match(readme, /rebuild or restart/)
+  const guide = read("docs/user/src/013-getting-started.md")
+  assert.doesNotMatch(guide, /\bvibe\.tracing/)
+  assert.match(guide, /withSpan/)
+  assert.match(guide, /012-devtools(?:\.md)?#debug-stack-traces/)
   assert.notEqual(JSON.parse(read("templates/app/tsconfig.json")).vibelang?.tracing, "all", "tracing stays opt-in")
 })

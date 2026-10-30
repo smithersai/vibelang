@@ -42,7 +42,7 @@ function firstTwo(values: ReadonlyArray<number>) {
 
 `vibelang --fix` writes this form where code imports one of these modules under its own name (EK4842).
 
-JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. Platform-specific names use Effect's module: `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. An import or local declaration named like a module shadows it, as `import * as Duration from "effect/Duration"` would. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
+JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. Platform-specific names use Effect's module: `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. `Crypto` is the DOM's, because Effect has no root `Crypto` module; import `effect/crypto` to use Effect's. An import or local declaration named like a module shadows it, as `import * as Duration from "effect/Duration"` would. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
 
 ## Modules of subpath packages
 
@@ -124,7 +124,7 @@ These platform-specific names refer to Effect modules:
 `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable`, `Worker`.
 <!-- end D311 DOM types -->
 
-To name one of those DOM types, alias it in a `.ts` file, as in `export type DomFileSystem = FileSystem`, and import the alias.
+These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`.
 
 
 

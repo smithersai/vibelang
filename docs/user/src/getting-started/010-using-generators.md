@@ -19,7 +19,7 @@ effect function invoice(quantity: number) {
 // Output: 12
 ```
 
-Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE")` builds a descriptor; `try` loads the setting and returns a number, and a loading failure stops the function. `.vibe` files have no `Effect.gen` or `yield*`.
+Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE")` builds a descriptor; `try` loads the setting and returns a number, and a loading failure stops the function. Effect functions use `try` where Effect TypeScript writes `yield*`; `Effect.gen` stays available as a library function.
 
 ## Relate calls to async functions
 
@@ -107,7 +107,7 @@ effect function label() {
 // Output: item: marker
 ```
 
-Method calls preserve `this` and evaluate the receiver once; no nested generator needs a special receiver binding. To pass its Effect to an operator, use `prefixer.format("marker")`; the method call returns it unrun.
+Method calls preserve `this` and evaluate the receiver once: the compiler passes the method's `this` to its generator. To pass its Effect to an operator, use `prefixer.format("marker")`; the method call returns it unrun.
 
 ## Generators produce values and streams
 

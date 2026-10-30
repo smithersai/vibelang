@@ -39,17 +39,9 @@ code --install-extension node_modules/vibelang/editor/vibelang.vsix
 
 ## Debug your first program
 
-For source-located caller traces during development, set `vibe.tracing`
-to `"all"` at the top level of `tsconfig.json`:
-
-```json
-{ "vibe": { "tracing": "all" } }
-```
-
-Merge this into your existing config, then rebuild or restart `npm run dev`
-(or `bun run dev`). It records local and exported function calls; source
-maps alone do not record that caller chain. Tracing adds runtime work and
-defaults to `"none"`. See [Debug stack traces](getting-started/012-devtools.md#debug-stack-traces)
+Source maps map JavaScript locations back to `.vibe` lines, but they don't record the
+caller chain, and VibeLang adds no spans of its own. Name a span where it matters
+with `try withSpan(effect { ... }, "load")`. See [Debug stack traces](getting-started/012-devtools.md#debug-stack-traces)
 for source maps, named spans and a debugging entry.
 
 ## Guides and reference material

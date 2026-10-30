@@ -68,7 +68,7 @@ effect function titleOrPlaceholder() {
 No title available
 ```
 
-`x catch () => value` is `Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
+`x catch () => value` is `yield* Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
 
 ## Typing both sides
 

@@ -109,7 +109,7 @@ effect function oneSharedReadBoundary() {
 // Output: ["Monthly","Monthly"]
 ```
 
-Each `Effect.provide` starts its own build boundary, so `twoLocalReads` builds twice; `oneSharedReadBoundary` builds once and shares within it. Provide the application layer around the entry point; use `ManagedRuntime` when several entry points need a common runtime lifetime.
+Each sibling `provide` starts its own build boundary, and a nested one reuses a layer its enclosing `provide` already built, so `twoLocalReads` builds twice; `oneSharedReadBoundary` builds once and shares within it. Provide the application layer around the entry point; use `ManagedRuntime` when several entry points need a common runtime lifetime.
 
 ## Controlling memoization explicitly
 

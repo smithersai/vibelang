@@ -49,11 +49,11 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
 | `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
-| `os.hostname` | `try (try Experimental.Process).hostname` | `ExperimentalNodeServices.layer` |
-| `process.kill` | `try (try Experimental.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |
-| `fs.constants.X_OK` | `try (try Experimental.FileSystem).access(path, { executable: true })` | `ExperimentalNodeServices.layer` |
+| `os.hostname` | `try (try Experimental.Process.Process).hostname` | `ExperimentalNodeServices.layer` |
+| `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |
+| `fs.constants.X_OK` | `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` | `ExperimentalNodeServices.layer` |
 | `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` | `NodeCrypto.layer` |
-| `navigator.locks` | `try (try Experimental.Locks).hold(name)` | `ExperimentalBrowserLocks.layer` |
+| `navigator.locks` | `try (try Experimental.Locks.Locks).hold(name)` | `ExperimentalBrowserLocks.layer` |
 | `process.env` | `try Config.String("NAME")` | none |
 | `console.log` | `try Console.log(message)` | none |
 | `setTimeout` | `try sleep("1 second")` | none |
@@ -63,7 +63,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 
 Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
 
-Where Effect has no service yet, as for `os.hostname()`, `process.pid`, an execute-permission check, or `navigator.locks`, EK4402 names the experimental service VibeLang adds, such as `try (try Experimental.Process).pid` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), whose layers come from `vibelang-runtime/experimental/platform-node`, `-bun`, or `-browser`. There, `ExperimentalNodeServices.layer` is `@effect/platform-node`'s bundle plus the experimental `FileSystem`, `Crypto`, and `Process`, so it replaces Effect's in `main`; like Effect's, it holds none of Effect's crypto services. Where nothing covers the call yet, as for `os.uptime()`, EK4402 says to escape to TypeScript: a `.ts` file that imports the API. Wrap calls that may throw with `Effect.try`, or Promises with `tryPromise`. [Platform globals](platform-globals.md) answers every Node.js and web global.
+Where Effect has no service yet, as for `os.hostname()`, `process.pid`, an execute-permission check, or `navigator.locks`, EK4402 names the experimental service VibeLang adds, such as `try (try Experimental.Process.Process).pid` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), whose layers come from `vibelang-runtime/experimental/platform-node`, `-bun`, or `-browser`. There, `ExperimentalNodeServices.layer` is `@effect/platform-node`'s bundle plus the experimental `FileSystem`, `Crypto`, and `Process`, so it replaces Effect's in `main`; like Effect's, it holds none of Effect's crypto services. Where nothing covers the call yet, as for `os.uptime()`, EK4402 says to escape to TypeScript: a `.ts` file that imports the API. Wrap calls that may throw with `Effect.try`, or Promises with `tryPromise`. [Platform globals](platform-globals.md) answers every Node.js and web global.
 
 ## Making an HTTP client request
 

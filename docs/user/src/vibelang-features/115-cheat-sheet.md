@@ -200,9 +200,9 @@ type Account = typeof Account.Type
 // pending: VIP-5, VIP-14, VIP-15
 // run: try Console.log(JSON.stringify(try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" })))
 schema Account {
-  id: string
-  nickname?: string
-  role: "admin" | "member"
+  readonly id: string
+  readonly nickname?: string
+  readonly role: "admin" | "member"
 }
 // Output: {"id":"1","role":"admin"}
 ```
@@ -529,7 +529,7 @@ effect function outcome() {
 // Output: Success
 ```
 
-**Interruption**. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it allows interruption again. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function.
+**Interruption**. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it restores the interruptibility from before the mask. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function.
 
 ```ts effect
 // fragment
@@ -811,7 +811,7 @@ const describeFailure = (failure: NotFound | Timeout) =>
 // run: try Console.log(JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())]))
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
-    when NotFound and { let id }: `no user ${id}`;
+    when NotFound(let e): `no user ${e.id}`;
     when Timeout: "retry";
   }
 }
@@ -835,6 +835,7 @@ function deliveryLabel(delivery: Delivery) {
   return match (delivery) {
     when { _tag: "Waiting" }: "waiting";
     when { _tag: "Sent", let tracking }: `sent ${tracking}`;
+    default: "unknown";
   }
 }
 // Output: ["waiting","sent parcel-8"]
@@ -889,7 +890,7 @@ function firstFailure(outcome: Exit.Exit<User, NotFound>) {
 
 ## Wrap TypeScript calls
 
-**Wrap TypeScript calls**. Call a known nonthrowing function directly. Wrap a potentially throwing function with `Effect.try`. Use `sync` when an exception should be a defect. Always wrap Promises with `promise` or `tryPromise`. Callback arrows capture locals normally.
+**Wrap TypeScript calls**. Call a known nonthrowing function directly. Wrap a potentially throwing function with `Effect.try`. Use `sync` for a function that can't throw; when a function may throw and its failure should be a defect, use `orDie(Effect.try(() => …))`. Always wrap Promises: `tryPromise` for a function that may throw, `promise` for one that can't. Callback arrows capture locals normally.
 
 **Built-in exceptions.** VibeLang ships `@throws` annotations for JavaScript's globals: `JSON.parse` throws `SyntaxError`, and `decodeURI` and `decodeURIComponent` throw `URIError`. Wrap these calls with `Effect.try` before running them with `try` in an effect function. Use its `catch` option to map the error. Inside TypeScript's `Effect.gen`, a plain `JSON.parse` throw is a defect.
 
@@ -902,10 +903,21 @@ export { uptime } from "node:os"
 export { statfs } from "node:fs/promises"
 import { EventEmitter } from "node:events"
 
+/** @throws {never} */
 export function makeTicker() {
   const ticker = new EventEmitter()
   ticker.on("newListener", () => queueMicrotask(() => ticker.emit("tick", 7)))
   return ticker
+}
+
+/** @throws {never} */
+export function onceTick(ticker: EventEmitter, listener: (n: number) => void): void {
+  ticker.once("tick", listener)
+}
+
+/** @throws {never} */
+export function offTick(ticker: EventEmitter, listener: (n: number) => void): void {
+  ticker.off("tick", listener)
 }
 ```
 
@@ -920,9 +932,9 @@ export function generateKey() {
 // fragment
 import { uptime } from "node:os"
 import { statfs } from "node:fs/promises"
-const up = Effect.sync(() => uptime())
+const up = Effect.try(() => uptime())
 const parsed = Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
-const key = Effect.promise(() => crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, false, ["sign"]))
+const key = Effect.tryPromise(() => crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256" }, false, ["sign"]))
 const free = Effect.tryPromise({ try: async () => (await statfs(path)).bavail, catch: (error) => new NoDisk({ error }) })
 const tick = Effect.callback<number>((resume) => {
   const listener = (n: number) => resume(Effect.succeed(n))
@@ -935,7 +947,7 @@ const name = await Effect.runPromise(greetUser("1"))
 ```vibe es
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-33
 // run: provide Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free })) }
-import { makeTicker, statfs, uptime } from "./node-apis.ts"
+import { makeTicker, offTick, onceTick, statfs, uptime } from "./node-apis.ts"
 import type { EventEmitter } from "node:events"
 import { generateKey } from "./web-apis.ts"
 
@@ -943,16 +955,16 @@ error BadJson { error: unknown }
 error NoDisk { error: unknown }
 
 effect function wrappedCalls(text: string, path: string, ticker: EventEmitter) {
-  const up = try sync(() => uptime())
+  const up = try Effect.try(() => uptime())
   const parsed = try Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
-  const key = try promise(() => generateKey())
+  const key = try tryPromise(() => generateKey())
   const free = try tryPromise({ try: async () => (await statfs(path)).bavail, catch: (error) => new NoDisk({ error }) })
   const tick = try callback<number>((resume) => {
     const listener = (n: number) => resume(succeed(n))
-    ticker.once("tick", listener)
-    return sync(() => ticker.off("tick", listener))
+    onceTick(ticker, listener)
+    return sync(() => offTick(ticker, listener))
   })
-  const name = try promise(() => greetFromTypeScript())
+  const name = try tryPromise(() => greetFromTypeScript())
   return { up, parsed, key, free, tick, name }
 }
 
@@ -969,6 +981,7 @@ async function greetFromTypeScript() {
 // links.ts
 // types: node
 import { lstatSync } from "node:fs"
+/** @throws {never} */
 export function isSymbolicLink(path: string): boolean {
   try {
     return lstatSync(path).isSymbolicLink()

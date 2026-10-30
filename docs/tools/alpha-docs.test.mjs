@@ -32,14 +32,13 @@ test("2: first-screen compatibility covers exact peers, checker and editor costs
     assert.match(read(path), /bun add -d --exact [^\n]*@effect\/vitest@/)
   }
   assert.match(read("packages/compiler/README.md"), /exact.*fiber internals/s)
-  assert.match(read("site/src/pages/index.mdx"), /libraries compatible with the supported Effect version/)
 })
 
 test("3: prerequisites, output and starter descriptions agree", () => {
   const homepage = read("site/src/pages/index.mdx")
   assert.match(homepage, /Bun is optional/)
   assert.doesNotMatch(homepage, /Everything Effect does, VibeLang does|compiles to TypeScript/)
-  assert.match(homepage, /Everything Effect does is reachable from VibeLang/)
+  assert.match(homepage, /Effect's functions and modules are in scope/)
   const install = read("docs/user/src/getting-started/004-installation.md")
   assert.match(install, /macOS on Apple silicon[^\n]*\| No \|/)
   assert.match(install, /Linux on x64[^\n]*\| Yes \|/)
@@ -84,14 +83,15 @@ test("6: the shipped agent contract is self-contained and names current forms an
 test("7: Effect users can find tracing limits, a debugging recipe and measured costs", () => {
   for (const path of ["docs/user/src/getting-started/004-installation.md", "docs/user/src/getting-started/012-devtools.md", "docs/user/src/vibelang-features/114-vibelang-for-effect-users.md"]) {
     const text = read(path)
-    for (const term of ["--enable-source-maps", '"exported"', '"all"', "stack", "span"]) assert.ok(text.includes(term), path + ": " + term)
-    assert.match(text, /default.*none|none.*default/s)
+    // VIP-30 decides no tracing option, so each page names spans with withSpan.
+    for (const term of ["--enable-source-maps", "withSpan", "stack", "span"]) assert.ok(text.includes(term), path + ": " + term)
+    assert.doesNotMatch(text, /"tracing"/)
   }
   const tools = read("docs/user/src/getting-started/012-devtools.md")
   assert.match(tools, /Effect\.runPromise\(main\(\)\)/)
   assert.match(tools, /error\.stack/)
   const effects = read("docs/user/src/vibelang-features/114-vibelang-for-effect-users.md")
-  for (const term of ["single-machine", "2.9", "Effect.fn", "catch 0", "Effect.orElseSucceed", "200,000", "1,000,000", "Clock.currentTimeMillis"]) assert.ok(effects.includes(term), term)
+  for (const term of ["single-machine", "2.9", "Effect.fn", "catch () => 0", "Effect.orElseSucceed", "200,000", "1,000,000", "Clock.currentTimeMillis"]) assert.ok(effects.includes(term), term)
 })
 
 test("8: cache startup and formatter requirements state their measured limits", () => {

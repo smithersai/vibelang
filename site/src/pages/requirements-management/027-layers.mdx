@@ -35,7 +35,7 @@ effect function stringify(value: unknown) {
 
 On this page, `Printer` depends on `Settings`, and `Reports` on both. `Layer.Layer<Out, E, In>` gives the services produced, construction failures, and construction requirements; the global `Layer` namespace holds the constructors and that type.
 
-A `provide` block uses Effect's own provision types. It accepts a layer, a `Context`, a list or tuple of layers, or `Key = value` entries. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. The compiler currently reports EK3207 for a potentially empty array value, an invalid union member, `any`, or `unknown`. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
+A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
 
 ## Preventing dependency leakage
 
@@ -52,7 +52,7 @@ const PrinterLive = Layer.effect(Printer, effect {
 // Output: test: ready
 ```
 
-`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect function print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
+`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 
@@ -141,7 +141,7 @@ effect function main() {
 effect function withBuiltContext() {
   return try scoped(effect {
     const context = try Layer.build(AppLive)
-    provide context { return try report("Inventory") }
+    return try Effect.provide(report("Inventory"), context)
   })
 }
 // Output: reports: Rendering report
@@ -151,7 +151,7 @@ effect function withBuiltContext() {
 // Output: reports/Inventory
 ```
 
-`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is short for `Effect.provide(effect { ... }, AppLive)` and, like it, accepts a layer, an array of layers, or a `Context`. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
+`provide AppLive { ... }` builds the layer once, shares its implementations with every call inside, and releases its resources when the block exits. The statements belong to the enclosing function, so the `return` inside returns from `main`. The block is `yield* Effect.provide(Effect.gen(…), AppLive)` around its statements, with a `return`, `break` or `continue` inside carried out where the block stands. It takes layers and `Key = value` entries; pass a `Context` or an array of layers to `Effect.provide` directly. Separate provision boundaries acquire separately; use `ManagedRuntime` when several entry points need one application lifetime.
 
 `Layer.build` produces a `Context` and requires a `Scope`, here from `scoped(effect { ... })`; consume resource-owning services inside that scope. For an application that is entirely a layer, `Layer.launch(AppLive)` builds it and keeps its resources alive until interruption.
 
@@ -186,20 +186,20 @@ When a larger graph fails to initialize, acquired resources still release. Initi
 ```vibe
 service Banner {
   text(title: string): string!!
-
-  static effect make(): Banner.Shape!!Settings {
-    const settings = try Settings
-    return { text: effect (title) => `${settings.prefix}: ${title}` }
-  }
-
-  static readonly layerWithoutDependencies = Layer.effect(Banner, Banner.make())
-
-  static readonly layer = Layer.provide(Banner.layerWithoutDependencies, SettingsLive)
 }
+
+effect function makeBanner(): Banner.Shape!!Settings {
+  const settings = try Settings
+  return { text: effect (title) => `${settings.prefix}: ${title}` }
+}
+
+const BannerWithoutDependencies = Layer.effect(Banner, makeBanner())
+
+const BannerLive = Layer.provide(BannerWithoutDependencies, SettingsLive)
 // Output: reports: Orders
 ```
 
-Static members stay on the service class. `static effect make()` returns an Effect that builds the implementation, replacing Effect 4's service `make` option. `layerWithoutDependencies` exposes a factory that requires `Settings`; `static readonly layer` holds the chosen default layer. The compiler generates no layer, and a service can expose several layer values for different configurations or runtimes.
+A service declares only its members, besides `static readonly key` and `defaultValue`, so the factory and its layers are ordinary declarations beside it. `makeBanner()` returns an Effect that builds the implementation, replacing Effect 4's service `make` option. `BannerWithoutDependencies` needs `Settings`, and `BannerLive` provides it. The compiler generates no layer, and a module can export several layer values for different configurations or runtimes.
 
 ## Replacing services in tests
 
@@ -207,7 +207,7 @@ Static members stay on the service class. `static effect make()` returns an Effe
 const SettingsTest = Layer.succeed(Settings, {
   prefix: "test"
 })
-const BannerWithTestSettings = Layer.provide(Banner.layerWithoutDependencies, SettingsTest)
+const BannerWithTestSettings = Layer.provide(BannerWithoutDependencies, SettingsTest)
 const BannerTest = Layer.succeed(Banner, {
   effect text(title) { return `fixture/${title}` }
 })
@@ -226,7 +226,7 @@ effect function testBannerDirectly() {
 
 effect function testBannerWithInlineSettings() {
   provide Settings = { prefix: "inline" } {
-    provide Banner.layerWithoutDependencies {
+    provide BannerWithoutDependencies {
       const banner = try Banner
       return try banner.text("Orders")
     }
@@ -239,7 +239,7 @@ Replace a dependency to exercise the real factory, or the service itself to isol
 
 ## Coming from Effect
 
-`service` declarations and static layer fields replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw EK4836 and have a quick fix to write a `provide` block. Support for the new forms arrives with the compiler's VIP implementation.
+`service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw EK4836 and have a quick fix to write a `provide` block. Support for the new forms arrives with the compiler's VIP implementation.
 
 ---
 

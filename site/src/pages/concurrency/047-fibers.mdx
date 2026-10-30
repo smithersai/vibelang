@@ -81,7 +81,7 @@ effect function pollStatus(cancelled: boolean) {
   interruptible {
     try sleep("1 second")
   }
-  if (cancelled) try interrupt()
+  if (cancelled) try interrupt
 }
 // Output: saving; an interruption waits until the block ends
 // Output: saved
@@ -91,7 +91,7 @@ effect function pollStatus(cancelled: boolean) {
 - `uninterruptible` (`Effect.uninterruptibleMask`) runs its block without interruption: an interruption that arrives waits until the block ends.
 - `restore` inside it brings back the fiber's previous interruptibility, so long waits stay cancellable.
 - `interruptible` (`Effect.interruptible`) makes its code interruptible even inside an uninterruptible region.
-- `try interrupt()` (`Effect.interrupt`) interrupts the running fiber.
+- `try interrupt` (`Effect.interrupt`) interrupts the running fiber.
 
 Statements in these blocks stay code of the enclosing function, so `return` returns from it. Run Effects inside each block with `try`. To pass an Effect value instead, use `Effect.uninterruptible(saveRows())` or `Effect.interruptible(program)`.
 
@@ -227,7 +227,7 @@ effect function waitForReady() {
 // Output: initialization is complete
 ```
 
-Forking schedules a child; it doesn't prove the child reached a particular statement. `try yieldNow()` lets other work run but guarantees no readiness, and sleeping for an estimated startup time leaves a race. When ordering matters, use a `Deferred`: `try Deferred.await(ready)` waits until the child completes it.
+Forking schedules a child; it doesn't prove the child reached a particular statement. `try yieldNow` lets other work run but guarantees no readiness, and sleeping for an estimated startup time leaves a race. When ordering matters, use a `Deferred`: `try Deferred.await(ready)` waits until the child completes it.
 
 ---
 

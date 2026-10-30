@@ -108,7 +108,7 @@ The emitted declarations are the ones the Effect TypeScript writes, so a library
 | --- | --- |
 | `Effect.gen(function* () { ... })` | `effect { ... }`, or an `effect` function with statements |
 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` |
-| `const User = Schema.Struct({ id: Schema.String })` and `type User = typeof User.Type` | `schema User { id: string }` |
+| `const User = Schema.Struct({ id: Schema.String })` and `type User = typeof User.Type` | `schema User { readonly id: string }` |
 | `const Role = Schema.Literals(["admin", "member"])` and `type Role = typeof Role.Type` | `schema Role = "admin" \| "member"` |
 | `interface Cart { readonly id: string; items: Array<Item> }` | The same interface: `readonly` has its TypeScript meaning |
 | `const x = yield* work()` | `const x = try work()` |
@@ -192,7 +192,7 @@ export const capture = (input: { value: number }): Effect.Effect<number, never, 
 }
 ```
 
-A TypeScript caller can build `capture(input)`, mutate `input`, then run the program, and still get the snapshot. The outer body runs synchronously at the call and can compute or copy plain data; every path returns a program. **Where TypeScript returned Effect.fail(e), write return effect { throw e }**; a plain `throw` in the outer function is a JavaScript exception. Put Effects and service lookups inside the returned program.
+A TypeScript caller can build `capture(input)`, mutate `input`, then run the program, and still get the snapshot. The outer body runs synchronously at the call and can compute or copy plain data; every path returns a program. **Where TypeScript returned Effect.fail(e), write return effect { throw e }**; a plain `throw` in the outer function is a compile error (EK0401), because a function that returns an Effect can't throw. Put Effects and service lookups inside the returned program.
 
 A forwarding member keeps its delegate's call phase with `const program: Effect.Effect<number, never, never> = base.read(path); return program`. A const with a declared Effect type holds its initializer in any scope: `const built: Made = make(config)` calls the factory now and runs none of the result. Capture values at the same phase as the TypeScript implementation; keep reads intended for execution inside the returned program.
 
@@ -262,9 +262,9 @@ Generic instantiation substitutes within the declaration's existing thrown contr
 
 ## Trace and debug calls
 
-Run emitted JavaScript with `node --enable-source-maps dist/main.js` and enable `"sourceMap": true` in `compilerOptions`. Source maps preserve `.vibe` locations. Function tracing defaults to `"none"`, so defects can show only one stack frame. Set `"vibe": { "tracing": "exported" }` at the top level of `tsconfig.json` and rebuild to trace exported functions. Use `"all"` to trace local functions too.
+Run emitted JavaScript with `node --enable-source-maps dist/main.js` and enable `"sourceMap": true` in `compilerOptions`. Source maps preserve `.vibe` locations. VibeLang adds no spans of its own, so defects can show only one stack frame.
 
-Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you would use `Effect.withSpan` in TypeScript. Function spans supply the logical caller context that source maps alone cannot add, and add runtime work. If the default Node runner prints only an error message, use the [TypeScript debugging entry](../getting-started/012-devtools.md#debug-stack-traces) to print the rejected error's `stack`.
+Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you would use `Effect.withSpan` in TypeScript. Named spans supply the logical caller context that source maps alone cannot add, and add runtime work. If the default Node runner prints only an error message, use the [TypeScript debugging entry](../getting-started/012-devtools.md#debug-stack-traces) to print the rejected error's `stack`.
 
 ## Runtime cost
 

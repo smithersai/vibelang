@@ -23,7 +23,7 @@ effect function convert(amount: number, currency: string) {
 // Output: 60
 ```
 
-`A` is `number`, `E` is `MissingRate`, and `R` is `Rates`. A service method states its complete contract because it has no body to infer from; running its Effect also adds the service itself to the caller's requirements.
+`A` is `number`, `E` is `MissingRate`, and `R` is `Rates`. A service method states its complete contract because it has no body to infer from; looking up the service with `try` adds it to the caller's requirements, and running a method adds that method's own requirements.
 
 | Channel | Meaning of special types |
 | --- | --- |

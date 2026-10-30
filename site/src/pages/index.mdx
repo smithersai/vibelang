@@ -94,6 +94,7 @@ interface User { id: string; name: string }
 error UserNotFound { id: string }
 
 service Users {
+  static readonly key = "app/Users"
   find(id: string): User!UserNotFound
 }
 
@@ -124,7 +125,7 @@ effect function main() {
 import { Console, Context, Data, Effect, Layer } from "effect"
 
 interface User { id: string; name: string }
-class UserNotFound extends Data.TaggedError("UserNotFound")<{ id: string }> {}
+class UserNotFound extends Data.TaggedError("UserNotFound")<{ readonly id: string }> {}
 class Users extends Context.Service<Users, {
   find(id: string): Effect.Effect<User, UserNotFound>
 }>()("app/Users") {}
@@ -159,6 +160,7 @@ const main = Effect.gen(function* () {
 error ApiError { status: number }
 
 service Users {
+  static readonly key = "app/Users"
   name(id: string): string!ApiError
 }
 
@@ -178,11 +180,9 @@ export effect function names(ids: ReadonlyArray<string>) {
 ```
 
 ```ts [Effect]
-import { Context, Effect, Schedule, Schema } from "effect"
+import { Context, Data, Effect, Schedule } from "effect"
 
-class ApiError extends Schema.TaggedError<ApiError>()("ApiError", {
-  status: Schema.Number
-}) {}
+class ApiError extends Data.TaggedError("ApiError")<{ readonly status: number }> {}
 
 class Users extends Context.Service<Users, {
   name(id: string): Effect.Effect<string, ApiError>
@@ -308,7 +308,7 @@ The [cheat sheet](/vibelang-features/115-cheat-sheet) puts every form beside the
 - **The compiler checks what agents write.** Every function's type lists what it can fail with and what it needs, and code that breaks a declared type does not compile.
 {/* token-headline:start */}
 
-- **People can review what agents write.** [7.4% fewer tokens across the 47 cheat-sheet pairs](/vibelang-features/117-token-counts); VibeLang is longer in 20 pairs.
+- **People can review what agents write.** [6.7% fewer tokens across the 47 cheat-sheet pairs](/vibelang-features/117-token-counts); VibeLang is longer in 20 pairs.
 
 {/* token-headline:end */}
 - **Agents write less.** Fewer tokens per program means less to generate and less context to read back.

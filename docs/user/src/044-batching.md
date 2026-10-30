@@ -121,42 +121,42 @@ For full control, `RequestResolver.makeWith` accepts `batchKey`, `delay`, `colle
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
-// run: provide Layer.provide(Parts.layer, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag))) }; provide Layer.provide(Parts.layer, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success"))) }
+// run: provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag))) }; provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success"))) }
 service CatalogApi {
   fetchMany(codes: ReadonlyArray<string>): ReadonlyMap<string, Part>!CatalogUnavailable
 }
 
 service Parts {
-  find(code: string): Part!PartMissing | CatalogUnavailable
+  find(code: string): Part!(PartMissing | CatalogUnavailable)
+}
 
-  static readonly layer = Layer.effect(Parts, effect {
-    const api = try CatalogApi
-    const resolver = RequestResolver.make<FindPart>(effect (entries) => {
-      effect {
-        const codes = entries.map((entry) => entry.request.code)
-        const rows = try api.fetchMany(codes)
-        for (const entry of entries) {
-          try Request.completeEffect(entry, effect {
-            const part = rows.get(entry.request.code)
-            if (part === undefined) throw new PartMissing({ code: entry.request.code })
-            return part
-          })
-        }
-      } catch effect (error) => {
-        for (const entry of entries) try Request.fail(entry, error)
+export const PartsLive = Layer.effect(Parts, effect {
+  const api = try CatalogApi
+  const resolver = RequestResolver.make<FindPart>(effect (entries) => {
+    effect {
+      const codes = entries.map((entry) => entry.request.code)
+      const rows = try api.fetchMany(codes)
+      for (const entry of entries) {
+        try Request.completeEffect(entry, effect {
+          const part = rows.get(entry.request.code)
+          if (part === undefined) throw new PartMissing({ code: entry.request.code })
+          return part
+        })
       }
-    })
-    return {
-      find: (code) => Effect.request(FindPart({ code }), resolver)
+    } catch effect (error) => {
+      for (const entry of entries) try Request.fail(entry, error)
     }
   })
-}
-// Parts.layer: Layer<Parts, never, CatalogApi>
+  return {
+    find: (code) => Effect.request(FindPart({ code }), resolver)
+  }
+})
+// PartsLive: Layer<Parts, never, CatalogApi>
 // Output: ["INK","PartMissing"]
 // Output: ["CatalogUnavailable","CatalogUnavailable"]
 ```
 
-Read `try CatalogApi` while building the layer and close over its implementation: building `Parts.layer` requires `CatalogApi`, and resolver execution requires no services. Every call to the provided `Parts` implementation shares the resolver built for that layer.
+Read `try CatalogApi` while building the layer and close over its implementation: building `PartsLive` requires `CatalogApi`, and resolver execution requires no services. Every call to the provided `Parts` implementation shares the resolver built for that layer.
 
 Match results by identifier; don't assume the backend preserves request order. A backend failure completes every affected entry with `CatalogUnavailable`; a missing row completes only its entry with `PartMissing`. When wiring the application, supply a `CatalogApi` layer alongside this one.
 

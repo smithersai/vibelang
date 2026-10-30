@@ -65,13 +65,13 @@ export type Model = typeof Model.Type
 
 ```vibe
 // pending: VIP-15
-export schema Todo { id: number; text: string; done: boolean }
+export schema Todo { readonly id: number; readonly text: string; readonly done: boolean }
 
 export schema Model {
-  count: number
-  draft: string
-  todos: ReadonlyArray<Todo>
-  quote: string
+  readonly count: number
+  readonly draft: string
+  readonly todos: ReadonlyArray<Todo>
+  readonly quote: string
 }
 ```
 
@@ -95,7 +95,7 @@ export const quoteOrFallback = (url: string) =>
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-15, VIP-33
-schema Quote { text: string }
+schema Quote { readonly text: string }
 
 effect function loadQuote(url: string) {
   const response = try HttpClient.get(url)

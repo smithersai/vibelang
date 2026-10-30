@@ -87,7 +87,7 @@ With npm, run `npm install --save-exact` for the first line and `npm install --s
 
 | Package | Install as | Purpose |
 | --- | --- | --- |
-| `vibelang-runtime` | Dependency | The continuation kernel and helpers that compiled code imports |
+| `vibelang-runtime` | Dependency | The small helpers compiled code imports, such as `Symbol.customMatcher` where an engine lacks it; it adds no runtime semantics of its own |
 | `effect`, `@effect/platform-node` | Dependency | Effect 4.1.0 and its Node platform |
 | `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
@@ -134,15 +134,7 @@ Add scripts to `package.json`, which must have `"type": "module"`:
 
 `src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function.
 
-`node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain. Function tracing defaults to `"none"`, so a defect can show only one frame. To add function spans, set this top-level option in `tsconfig.json` and rebuild:
-
-```json
-{
-  "vibe": { "tracing": "exported" }
-}
-```
-
-`"exported"` traces exported functions; `"all"` traces local functions too. For a sparse failure message or a missing caller stack, follow [Debug stack traces](/getting-started/012-devtools#debug-stack-traces).
+`node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain, and VibeLang adds no spans of its own, so a defect can show only one frame. Name a span where it matters with `try withSpan(effect { ... }, "checkout")`. For a sparse failure message or a missing caller stack, follow [Debug stack traces](/getting-started/012-devtools#debug-stack-traces).
 
 Keep source tests out of the build output. Add `tsconfig.test.json` so Vitest also checks and compiles those files:
 
@@ -207,7 +199,7 @@ The compiler writes `x.d.vibe.ts` beside each `x.vibe`, so stock `tsc`, TypeDoc 
 
 ### TypeScript declaration consumers
 
-A downstream project using stock `tsc` needs **TypeScript 5.7 or later** for declarations built against the pinned `effect@4.1.0`. Effect's declarations use generic typed arrays such as `Uint8Array<ArrayBuffer>`, introduced in TypeScript 5.7; TypeScript 5.6 and earlier report errors such as “Type 'Uint8Array' is not generic.” This consumer requirement is separate from VibeLang's TypeScript 7.1 checker. Upgrade the consumer's `typescript` dependency; `skipLibCheck` can hide library errors but is not compatibility support. The declarations import their service and error brands from `vibelang-runtime`, so a consumer installs it beside `effect`; [Services and errors from TypeScript](/vibelang-features/114-vibelang-for-effect-users#services-and-errors-from-typescript) shows how a TypeScript consumer implements a service and catches an error.
+A downstream project using stock `tsc` needs **TypeScript 5.7 or later** for declarations built against the pinned `effect@4.1.0`. Effect's declarations use generic typed arrays such as `Uint8Array<ArrayBuffer>`, introduced in TypeScript 5.7; TypeScript 5.6 and earlier report errors such as “Type 'Uint8Array' is not generic.” This consumer requirement is separate from VibeLang's TypeScript 7.1 checker. Upgrade the consumer's `typescript` dependency; `skipLibCheck` can hide library errors but is not compatibility support. The declarations can reference `vibelang-runtime`, so a consumer installs it beside `effect`; [Services and errors from TypeScript](/vibelang-features/114-vibelang-for-effect-users#services-and-errors-from-typescript) shows how a TypeScript consumer implements a service and catches an error.
 
 ## Coming from Effect
 
