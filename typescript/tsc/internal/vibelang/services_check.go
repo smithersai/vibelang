@@ -105,7 +105,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		return
 	}
 	for _, member := range class.Members() {
-		if ast.IsStatic(member) && member.Name() != nil && member.Name().Text() == "key" {
+		if ast.IsStatic(member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
 			if _, written := writtenKey(class); written == nil {
 				report(c, member, EK3008)
 			}

@@ -353,6 +353,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Compiler and diagnostics
 
+- The compiler crashed on a service declaration with a static member whose name is computed, such as `static [Symbol.iterator] = 1`, while looking for the service's `key`. It now treats only a member named `key` as the key.
+
 - A call of a union of a plain function and an Effect function, such as `(flag ? double : Math.abs)(3)` with `double` unannotated, compiled and gave the Effect function's program back unrun when it was chosen. It is now EK4301; annotate `double` or call each function where it is chosen.
 - A `schema` declaration's `.d.ts` declared an interface, `interface User extends Schema.Schema.Type<typeof User> {}`, before the constant, so a library that rewrote `const User = Schema.Struct(…)` and `type User = typeof User.Type` as a `schema` changed its public declarations. It now declares the constant and then `type User = typeof User.Type`, byte for byte what the Effect TypeScript declares.
 - A function's form followed its body: adding a log call to an unannotated exported helper changed its declaration from plain to Effect and broke callers compiled earlier, a callback type written in place accepted Effect callbacks while the same type through an alias did not, and an unannotated protocol method such as `static [customMatcher]()` or `[Symbol.dispose]()` that ran an Effect returned it unrun. A function's form is now written: a plain return annotation or `: infer _` makes it plain, a function without one is an Effect function, a literal takes its destination's form, and a callback type means what TypeScript means; see [Upgrade from 0.0.10](#upgrade-from-0010).

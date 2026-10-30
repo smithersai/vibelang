@@ -1,0 +1,2 @@
+go test fuzz v1
+string("service Counter {\n  static [Symbol.iterator] = 1\n  n: number\n}\n")
