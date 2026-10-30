@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The documented debugging recipe check could time out after five seconds on a busy build host; it now allows thirty seconds to compile and run while checking the same failure and original source location.
 - Formatting a `catch` expression with a comment before its handler was refused; those comments and their line breaks now stay in place.
+- The specification lost loop-head binding scopes and allowed forbidden returns to hide in binding defaults. Both loop forms now retain JavaScript's operand scopes and apply their outward-jump restrictions to head initialization as well as the body.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.

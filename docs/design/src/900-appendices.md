@@ -610,13 +610,13 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1801` | a `try.all` operand that is not an array of Effects | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1902` | `for concurrent` outside effect code | 19 | [Running Effects](002-running.md#for-concurrent) |
-| `EK1903` | `break` leaving a `for concurrent` body | 19 | [Running Effects](002-running.md#for-concurrent) |
-| `EK1904` | `return` in a `for concurrent` body | 19 | [Running Effects](002-running.md#for-concurrent) |
+| `EK1903` | `break` leaving head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
+| `EK1904` | `return` in head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1906` | a `var` or assignment head in `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2002` | `return` in a `for try` body | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2002` | `return` in head binding initialization or the body of `for try` | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2003` | a labeled `break` or `continue` from `for try` head binding initialization or the body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2005` | a `var` or assignment head in `for try` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |

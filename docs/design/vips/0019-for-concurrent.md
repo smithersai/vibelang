@@ -21,6 +21,7 @@ yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) 
 - **Amended 2026-10-29: bindings and operands.** The head takes every `ForBinding` that `for…of` takes (`const`, `let`, destructuring), minus `var`. The operand is an `Iterable` only; a Stream is a compile error that points to `for try`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 48).
 
 *Corrected 2026-10-29: the example calls `syncOne(id)`, a user function, because `sync` is the VIP-6 global `Effect.sync`, which takes a thunk (found by the round-4 review).*
+- **Amended 2026-10-30: source head scope and item checks.** Evaluate the limit before entering the right-hand operand's separate lexical environment with uninitialized head bindings, as ECMAScript's `ForIn/OfHeadEvaluation` requires. RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block. Apply the loop's outward-jump restrictions to head binding initialization and body, including defaults and computed keys, while nested source functions keep their own targets. The limit and RHS retain the enclosing activation's permitted outward completions. These are source behavior requirements, independent of generated callbacks; see [Running Effects](../src/002-running.md#for-concurrent). In Effect `4.1.0`, concurrency `1` runs items sequentially on the enclosing fiber; higher limits and `"unbounded"` fork per item.
 
 ## History
 

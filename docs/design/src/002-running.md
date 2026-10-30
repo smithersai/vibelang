@@ -17,7 +17,7 @@ A call never runs anything. Calling an `effect` function, or any function that r
 
 "Effect code" means the body of an `effect` function, a producer or an `effect` block, not counting nested functions, class field initializers or `static` blocks, as `await` is not allowed there in an `async` function. A computed class key and an `extends` clause are effect code, as `await` is allowed there: in `effect function f() { class C { [try key()]() { } } }`, `try key()` runs. It is the code Appendix A parses with [the grammar's Effect parameter](900-appendices.md#the-effect-parameter), minus parameter lists, class field initializers and `static` blocks. Parentheses, `do` and `match` are not boundaries; an `async match` is one, as a nested `async` function is ([Pattern matching](004-match.md)), so `try` inside it is an error. Outside effect code a parser still parses these constructs, as TypeScript parses `await x` outside an `async` function, and reports the construct's "outside effect code" error; tokens that are also valid TypeScript, such as `fork(x)` or `join(x)`, keep their TypeScript meaning.
 
-Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is evaluated only on failure, and the body of an `effect` block or function is evaluated on each run. Where Effect's argument order differs from the source order (`fork.in(scope) e`, `for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, in source order, then calls Effect's function: `const $s = scope` before `Effect.forkIn(e, $s)`, and `const $n = n, $xs = xs` before `Effect.forEach($xs, …, { concurrency: $n })` (decided detail 84).
+Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is evaluated only on failure, and the body of an `effect` block or function is evaluated on each run. Where Effect's argument order differs from source order, the source order still governs: `fork.in(scope) e` evaluates `scope` before `e`, and `for concurrent(n) (… of xs)` evaluates `n` before `xs`. Each operand retains its source lexical environment, including the loop head scope described below.
 
 ## `try`
 
@@ -505,9 +505,9 @@ function page(id: string) {
 | Rule | Diagnostic |
 | --- | --- |
 | `for concurrent` outside effect code | `EK1902` |
-| `break` that would leave the body: `for concurrent (const x of xs) { break }` | `EK1903` |
-| `return` in the body: `for concurrent (const x of xs) { return x }` | `EK1904` |
-| a labeled `continue` naming a statement that encloses the `for concurrent` | `EK1905` |
+| `break` that would leave head binding initialization or the body: `for concurrent (const x of xs) { break }` | `EK1903` |
+| `return` targeting the enclosing function in head binding initialization or the body: `for concurrent (const x of xs) { return x }` | `EK1904` |
+| a labeled `continue` in head binding initialization or the body naming a statement that encloses the `for concurrent` | `EK1905` |
 | an operand that is not an `Iterable`, `for concurrent (const x of 5) { }`; a Stream uses `for try` | `EK1901` |
 | a `var` or assignment head: `for concurrent (x of xs)` | `EK1906` |
 
@@ -542,7 +542,7 @@ function syncAll(ids: string[]) {
 }
 ```
 
-The head is a `const` or `let` declaration, destructuring included: ECMAScript's `ForDeclaration`, `LetOrConst ForBinding` (VIP-19, amended). `var` and an assignment head, `for concurrent (x of xs)`, are syntax errors (`EK1906`). The item arrives under a fresh parameter, and the head's declaration runs first in the item's generator, so a default or computed key in it may run Effects and a failure there fails that item. The body keeps its own block scope:
+The head is a `const` or `let` declaration, destructuring included: ECMAScript's `ForDeclaration`, `LetOrConst ForBinding` (VIP-19, amended). `var` and an assignment head, `for concurrent (x of xs)`, are syntax errors (`EK1906`). In both `for concurrent` and `for try`, head bindings are uninitialized in a separate lexical environment while evaluating the right-hand operand, as in ECMA-262's [ForIn/OfHeadEvaluation](https://tc39.es/ecma262/2025/multipage/ecmascript-language-statements-and-declarations.html#sec-runtime-semantics-forinofheadevaluation). In `for concurrent(n)`, the limit is evaluated before entering this head environment. A closure created there captures those uninitialized cells, which are distinct from the bindings initialized for each item; calling it after the loop still encounters their temporal dead zone. The item arrives under a fresh parameter, and the head's declaration runs first in the item's generator, so a default or computed key in it may run Effects and a failure there fails that item. The body keeps its own block scope:
 
 ```vibe es
 // compiler-gap: pending VIP-19
@@ -563,6 +563,44 @@ function saveAll(entries: Array<[string, number]>) {
 }
 ```
 
+```vibe es
+// compiler-gap: pending VIP-19, VIP-20
+effect function headScope() {
+  let read = (): number => 0
+  let x = 42
+  for concurrent (let x of (read = (): number => x, [1])) { x = 7 }
+  return read() // Die(ReferenceError); the RHS closure did not capture the outer or item x
+}
+// The same head in for try, with Stream.make(1) as its operand, has the same head scope.
+```
+
+The limit in `for concurrent(x) (const x of [2]) { }` reads the outer `x` before the head environment exists, so with outer `x = 1` it selects concurrency `1`.
+
+```ts effect
+import { Effect } from "effect"
+
+const limitBeforeHead = Effect.sync(() => {
+  const x = 1
+  const limit = x
+  for (const x of [2]) { /* the separate item binding does not shadow the earlier limit */ }
+  return limit
+})
+const concurrentHeadScope = Effect.sync(() => {
+  let read = (): number => 0
+  let x = 42
+  for (let x of (read = (): number => x, [1])) { x = 7 }
+  return read()
+})
+const streamHeadScope = Effect.promise(async () => {
+  let read = (): number => 0
+  let x = 42
+  for await (let x of (read = (): number => x, [1])) { x = 7 }
+  return read()
+})
+// Both Die(ReferenceError): RHS closures keep the uninitialized head binding.
+function limitReturn() { return Effect.gen(function* () { return 7 }) } // Success(7)
+```
+
 ## `for try`
 
 ### Syntax
@@ -574,8 +612,8 @@ function saveAll(entries: Array<[string, number]>) {
 | Rule | Diagnostic |
 | --- | --- |
 | `for try` outside effect code | `EK2001` |
-| `return` in the body: `for try (const x of s) { return x }` | `EK2002` |
-| a labeled `break` or `continue` naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
+| `return` targeting the enclosing function in head binding initialization or the body: `for try (const x of s) { return x }` | `EK2002` |
+| a labeled `break` or `continue` in head binding initialization or the body naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 | a `var` or assignment head: `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
 
@@ -761,7 +799,20 @@ The keywords remove the globals of the same name ([VIP-6](../vips/0006-effect-gl
 
 ## Region bodies
 
-A *region body* is source code that the lowering moves into a generated callback: the block of `provide`, `uninterruptible`, `restore` and `interruptible`, and the body of `for try` and `for concurrent`. Its names and jumps mean what they mean in the source, as ECMAScript defines them: `provide` and interruption blocks are ordinary blocks, so `return`, `break` and `continue` inside them reach the enclosing function, loop, `switch` or label, as in any TypeScript block (VIP-12 and VIP-22, amended). This section is the one lowering rule for both; [Services](005-services.md#provide-blocks), [Functions](001-functions.md#meaning) and [Runtime guarantees](008-runtime.md) refer to it.
+A *region body* is source code that the lowering moves into a generated callback: the block of `provide`, `uninterruptible`, `restore` and `interruptible`, and head binding initialization and the body of `for try` and `for concurrent`. Its names and jumps mean what they mean in the source, as ECMAScript defines them: `provide` and interruption blocks are ordinary blocks, so `return`, `break` and `continue` inside them reach the enclosing function, loop, `switch` or label, as in any TypeScript block (VIP-12 and VIP-22, amended). This section is the one lowering rule for both; [Services](005-services.md#provide-blocks), [Functions](001-functions.md#meaning) and [Runtime guarantees](008-runtime.md) refer to it.
+
+For either loop, its whole item region includes head binding initialization and the body, excluding nested source functions. The existing outward-jump restrictions cover that whole region. Limit and iterable/Stream operand evaluation remain in the enclosing activation before item work; a `return` in a `do` there keeps its ordinary enclosing target. The pinned `do` proposal's independent early errors for `break` and `continue` in heads still apply.
+
+```vibe es
+// compiler-gap: pending VIP-19, VIP-20
+effect function rejectedHeads(rows: Array<{ n?: number }>, stream: Stream.Stream<{ n?: number }>) {
+  for concurrent (const { n = do { return 7 } } of rows) {} // EK1904
+  for try (const { n = do { return 7 } } of stream) {}       // EK2002
+}
+effect function limitReturn() {
+  for concurrent(do { return 7 }) (const n of [1]) {}
+} // Success(7), before any item starts
+```
 
 **Bindings.** Every name is resolved on the source before lowering. `var` is a compile error in `.vibe` ([Legacy JavaScript](001-functions.md#direct-eval)), so every declaration in a region body (`let`, `const`, `class`, a function declaration) is scoped to its block, as in strict module code, and stays in it; the callback closes over every outer binding, so an assignment to one is seen outside. `this`, `super` and `new.target` are the source function's, passed in as for an `effect` arrow ([Functions](001-functions.md#meaning)).
 
@@ -771,7 +822,7 @@ A *region body* is source code that the lowering moves into a generated callback
 - Any other completion ends the body's generator with a record: `{ _tag: "Return", value }`, `{ _tag: "Break", label }` or `{ _tag: "Continue", label }`, under fresh names, and `{ _tag: "Normal" }` when the body completes normally. `return e` evaluates `e` once, inside the body.
 - Where the region stands, after `yield*` returns, the code re-issues the record: `return $c.value`, `break L` or `continue L`, where `L` is the consumer's label; the lowering gives an unlabeled consumer a fresh label. Inside an enclosing region body the re-issued jump is again a record, so it passes outward until it reaches its consumer.
 - When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
-- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement that encloses it: their static rules make these errors, because the body runs in `Effect.forEach`'s or `Stream.runForEachWhile`'s callback, not in the enclosing loop or function (VIP-19, VIP-20).
+- A `for concurrent` head's binding initialization or body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` head's binding initialization or body can't produce a `return` or a labeled `break` or `continue` naming a statement that encloses it: their static rules make these errors, because the body runs in `Effect.forEach`'s or `Stream.runForEachWhile`'s callback, not in the enclosing loop or function (VIP-19, VIP-20).
 - Only a body that completes gives a record. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
 
 ```vibe es

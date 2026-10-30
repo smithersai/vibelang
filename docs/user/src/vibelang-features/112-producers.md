@@ -35,7 +35,7 @@ The consumer stops at 25; before `firstAlert` returns, the producer's finalizer 
 
 In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`.
 
-A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. A `return` inside a `for try` body is also an error. Save the result and use `break` instead.
+A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
 ## Call services between yields
 
@@ -112,7 +112,7 @@ effect function sumStream() {
 // Output: 6
 ```
 
-`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the loop body is a compile error. A labeled `break` or `continue` naming a statement that encloses the `for try` is `EK2003`. One naming the `for try` itself means its unlabeled `break` or `continue`, as in JavaScript: `scan: for try (const x of s) { continue scan }` skips an element. Labels targeting statements inside the body keep their TypeScript meaning.
+`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the item's head binding initialization or body is a compile error. A labeled `break` or `continue` naming a statement that encloses the `for try` is `EK2003`. One naming the `for try` itself means its unlabeled `break` or `continue`, as in JavaScript: `scan: for try (const x of s) { continue scan }` skips an element. Labels targeting statements inside the body keep their TypeScript meaning.
 
 Arrays, maps, sets, and strings iterate as in JavaScript with ordinary `for...of`. As in JavaScript, a loop that exits early calls its iterator's `return()`, also when a binding default or the body fails, or the fiber is interrupted, and also for an array with its own iterator: a type annotation does not change cleanup.
 
