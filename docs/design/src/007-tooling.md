@@ -49,6 +49,11 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 `vibe.severities` is a map keyed by the `EKxxxx` code printed by the CLI and language server. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only warning codes may appear; an error code or an unknown code is a config error (`EK3006`: remove the entry; decided detail 57). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
 
+```jsonc
+// Invalid even when retaining the error severity: only warning codes are configurable.
+{ "vibe": { "severities": { "EK4701": "error" } } } // EK3006: remove the entry
+```
+
 ## The Effect version
 
 During alpha, VibeLang pins exactly one Effect version, and the pin moves to each new Effect release. The pinned dependency artifact is `effect@4.1.0`, and 4.1 is the earliest supported version (VIP-32, amended). Every Effect TypeScript mapping in this specification, and the `Exit` guarantee of [Runtime guarantees](008-runtime.md), is relative to the pin. The pin controls variables during alpha; it is not the long-term plan, and supported version ranges get their own VIP after alpha.
@@ -81,7 +86,7 @@ These VibeLang warnings already have decided codes; they preserve the underlying
 | `await` on a `Fiber` (decided detail 28) | `EK4609` | `join fiber` in effect code |
 | `await` on a `Deferred` (decided detail 29) | `EK4610` | `try Deferred.await(deferred)` in effect code |
 
-Undecided (pending VIP): the imported rules’ `EK` code mapping, whether `vibe.severities` can adjust them, and precedence when both configurations select a severity. No imported-rule code is assigned here; the decided VibeLang warning codes above do not settle that mapping.
+Undecided (pending VIP): the imported rules’ `EK` code mapping, whether `vibe.severities` can adjust them, and precedence when both configurations select a severity. No imported-rule code is assigned here; the decided VibeLang warning codes above do not settle that mapping. In particular, the floating-Effect rule is imported, whereas `EK0508`, `EK4609` and `EK4610` are decided VibeLang warnings. Neither a new `EK38xx` mapping nor rule-name keys in `vibe.severities` are specified by this chapter.
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
