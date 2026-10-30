@@ -103,10 +103,11 @@ type Parser struct {
 	setParentFromContext ast.Visitor
 	reparsedClones       []*ast.Node
 
+	vibelangServiceMembers   bool                        // service member signatures use interface separators
 	vibelangMutableMember    bool                        // the type member being parsed was written with mutable (vibelang.go)
 	vibelangImplicitReadonly bool                        // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
 	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
-	vibelangFieldBody        bool                        // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
+	vibelangFieldBody        bool                        // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
 	vibelangFieldComma       bool                        // a comma follows the field just parsed in such a body (vibelang_errors.go)
 	vibelangNoSeparator      bool                        // a member follows the one just parsed in such a body on its line, with no separator (vibelang_errors.go)
 	vibelangSelects          int                         // select statements parsed so far, which number their labels (vibelang_fibers.go)
@@ -1919,10 +1920,10 @@ func (p *Parser) parseClassDeclarationOrExpression(pos int, jsdoc jsdocScannerIn
 	if p.parseExpected(ast.KindOpenBraceToken) {
 		// ClassTail[Yield,Await] : (Modified) See 14.5
 		//      ClassHeritage[?Yield,?Await]opt { ClassBody[?Yield,?Await]opt }
-		saveAbstract, saveFieldBody := p.vibelangAbstractMembers, p.vibelangFieldBody // a class inside a service body is not one (vibelang.go)
-		p.vibelangAbstractMembers, p.vibelangFieldBody = false, false
+		saveAbstract, saveFieldBody, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers // a class inside a service body is not one (vibelang.go)
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = false, false, false
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangFieldBody = saveAbstract, saveFieldBody
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = saveAbstract, saveFieldBody, saveService
 		p.parseExpected(ast.KindCloseBraceToken)
 	} else {
 		members = p.createMissingList()
@@ -2180,21 +2181,23 @@ func (p *Parser) parsePropertyOrMethodDeclaration(pos int, jsdoc jsdocScannerInf
 	// report an error in the grammar checker.
 	questionToken := p.parseOptionalToken(ast.KindQuestionToken)
 	if asteriskToken != nil || p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, diagnostics.X_or_expected, effect)
+		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, diagnostics.X_or_expected, effect, p.vibelangServiceMembers)
 	}
 	return p.parsePropertyDeclaration(pos, jsdoc, modifiers, name, questionToken)
 }
 
-func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, asteriskToken *ast.Node, name *ast.Node, questionToken *ast.Node, diagnosticMessage *diagnostics.Message, effect bool) *ast.Node {
+func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, asteriskToken *ast.Node, name *ast.Node, questionToken *ast.Node, diagnosticMessage *diagnostics.Message, effect bool, allowComma bool) *ast.Node {
 	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(asteriskToken != nil, ParseFlagsYield, ParseFlagsNone) | core.IfElse(modifierListHasAsync(modifiers), ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(signatureFlags)
 	typeNode := p.parseReturnType(ast.KindColonToken, false /*isType*/)
 	var body *ast.Node
-	// Only class methods carry this recovery diagnostic; object literal
-	// methods keep their native body syntax, even inside an error method.
-	if diagnosticMessage != nil && p.isVibeLangNoSeparator() {
+	if allowComma && p.token == ast.KindCommaToken {
+		p.nextToken() // interface-style separator after a service method signature
+	} else if diagnosticMessage != nil && p.isVibeLangNoSeparator() {
+		// Only class methods carry this recovery diagnostic; object literal
+		// methods keep their native body syntax, even inside an error method.
 		p.vibelangNoSeparator = true
 	} else {
 		body = p.parseFunctionBlockOrSemicolon(signatureFlags, diagnosticMessage)
@@ -6102,7 +6105,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 		name := p.parsePropertyName()
 		questionToken := p.parseOptionalToken(ast.KindQuestionToken)
-		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/, true /*effect*/), word) // effect m() { … } (vibelang_effect.go)
+		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/, true /*effect*/, false /*allowComma*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	tokenIsIdentifier := p.isIdentifier()
@@ -6115,7 +6118,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		postfixToken = p.parseOptionalToken(ast.KindExclamationToken)
 	}
 	if asteriskToken != nil || p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, postfixToken, nil /*diagnosticMessage*/, false /*effect*/)
+		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, postfixToken, nil /*diagnosticMessage*/, false /*effect*/, false /*allowComma*/)
 	}
 	// check if it is short-hand property assignment or normal property assignment
 	// NOTE: if token is EqualsToken it is interpreted as CoverInitializedName production

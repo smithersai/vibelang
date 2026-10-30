@@ -1,0 +1,9 @@
+// expect-result: ["comma",2,3,"method"]
+import { Effect } from "effect"
+service Properties { static readonly key = "separators/Properties"; readonly label: string; count: number; }
+service Methods { static readonly key = "separators/Methods"; first(): number!!, second(): string!!, }
+export effect function main() {
+  const properties: Properties.Shape = { label: "comma", count: 2 }
+  const methods: Methods.Shape = { first: () => Effect.succeed(3), second: () => Effect.succeed("method") }
+  return [properties.label, properties.count, try methods.first(), try methods.second()]
+}

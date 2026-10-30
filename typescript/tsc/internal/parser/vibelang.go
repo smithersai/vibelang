@@ -413,10 +413,10 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 		form.Open = p.tokenRange()
 	}
 	if p.parseExpected(ast.KindOpenBraceToken) {
-		saveAbstract, saveFieldBody := p.vibelangAbstractMembers, p.vibelangFieldBody
-		p.vibelangAbstractMembers, p.vibelangFieldBody = true, true
+		saveAbstract, saveFieldBody, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = true, true, !control
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangFieldBody = saveAbstract, saveFieldBody
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = saveAbstract, saveFieldBody, saveService
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}
@@ -477,13 +477,13 @@ func (p *Parser) parseLayerDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 				effectWord := p.parseVibeLangEffectMember()
 				asterisk := p.parseOptionalToken(ast.KindAsteriskToken)
 				memberName := p.parsePropertyName()
-				members = append(members, p.vibelangEffectMember(p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, true /*effect*/), effectWord))
+				members = append(members, p.vibelangEffectMember(p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, true /*effect*/, false /*allowComma*/), effectWord))
 			case p.lookAhead((*Parser).scanLayerMethodStart):
 				memberPos := p.nodePos()
 				memberJSDoc := p.jsdocScannerInfo()
 				asterisk := p.parseOptionalToken(ast.KindAsteriskToken)
 				memberName := p.parsePropertyName()
-				members = append(members, p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, false /*effect*/))
+				members = append(members, p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, false /*effect*/, false /*allowComma*/))
 			default:
 				statements = append(statements, p.parseStatement())
 			}

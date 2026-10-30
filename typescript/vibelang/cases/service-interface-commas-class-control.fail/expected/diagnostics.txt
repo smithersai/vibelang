@@ -1,0 +1,4 @@
+main.vibe(2,35): error TS1144
+main.vibe(3,33): error TS1144
+main.vibe(4,136): error TS1144
+main.vibe(5,130): error TS1005

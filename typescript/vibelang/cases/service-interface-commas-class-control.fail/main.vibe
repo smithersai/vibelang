@@ -1,0 +1,5 @@
+// expect: TS1144 TS1005
+control Legacy { first(): number!!, second(): string!! }
+class Ordinary { first(): number, second(): string }
+service Outer { static readonly key = "separator/Outer"; static readonly defaultValue = () => { abstract class Nested { first(): number, second(): string } return {} } }
+service ObjectFactory { static readonly key = "separator/ObjectFactory"; static readonly defaultValue = () => ({ method(): number, }); method(): number!! }

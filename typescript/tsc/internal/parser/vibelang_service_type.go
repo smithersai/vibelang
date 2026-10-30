@@ -38,10 +38,10 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
 		p.nextToken()
-		saveAbstract := p.vibelangAbstractMembers
-		p.vibelangAbstractMembers = true
+		saveAbstract, saveService := p.vibelangAbstractMembers, p.vibelangServiceMembers
+		p.vibelangAbstractMembers, p.vibelangServiceMembers = true, true
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers = saveAbstract
+		p.vibelangAbstractMembers, p.vibelangServiceMembers = saveAbstract, saveService
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}
