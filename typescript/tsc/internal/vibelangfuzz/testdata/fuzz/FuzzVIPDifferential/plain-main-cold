@@ -1,2 +1,2 @@
 go test fuzz v1
-[]byte("\x03")
+[]byte("key:vip23.pipe-plain\x00")
