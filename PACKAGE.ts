@@ -153,6 +153,16 @@ const targets = {
     `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...`,
     [Tsc["vibelangmapper-files"]]
   ),
+  // The merge gate runs it with the compiler step, where //:go-vibelangfuzz
+  // runs only post-merge: a fix that makes a pending input pass without
+  // deleting its line fails before it lands, not on main (four times on
+  // 2026-10-30).
+  "go-vibelangfuzz-pending": goVibelang(
+    "The inputs testdata/pending/ lists still fail: a change that makes one pass deletes its line.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
+    [Tsc["vibelangfuzz-files"]],
+    "30m"
+  ),
   // Shell targets do not inherit ambient Go controls. Declare the
   // post-merge fuzz budget: 24 seed workers and six build jobs.
   "go-vibelangfuzz": goVibelang(

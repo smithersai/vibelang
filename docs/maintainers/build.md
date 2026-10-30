@@ -70,6 +70,7 @@ local `.smithers` installs run `bun install --frozen-lockfile`.
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
+  :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail (merge gate)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                exclusive: runs only with --include-exclusive
   :design-files                 Filegroup: docs/design
