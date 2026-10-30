@@ -40,14 +40,15 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
   ], [go, node], timeout)
 
 // The Go tests that read docs/design: the registry against the
-// specification's Appendix B, the fuzz suite's citations of the VIPs, its
-// coverage of the accepted VIPs, its pending lines' VIP reasons, and the
-// chapters its oracles still read. Their inputs are the specification and the
+// specification's Appendix B, the settings oracle against the compiler, the
+// fuzz suite's citations of the VIPs, its coverage of the accepted VIPs, its
+// pending lines' VIP reasons, and the chapters its oracles still read. Their inputs are the specification and the
 // Go sources, not the whole tree, so a specification edit runs them before it
 // lands and they stay cached otherwise.
 const specTests = [
   "TestRegistryMatchesSpec",
   "TestCompilerRegistryIsSpecified",
+  "TestConfigOracleMatchesCompiler",
   "TestRegistryRowsSuggestRepairs",
   "TestCommandLineFlagsCoverSpec",
   "TestSpecFacts",

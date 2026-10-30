@@ -125,6 +125,8 @@ The legacy `vibelang.diagnostics` key reports `EK3009`. Run `vibelang --fix` to 
 
 For example, a legacy `EK4406` policy entry cannot appear in `vibe.severities`; remove it before migrating the map. `EK9100` is editor-only and warns by default; it requests a written type for the text-only projection and is not reported by the CLI.
 
+Unknown or retired warning codes cannot be configured. Remove an `EK1016` entry: the warning for an unused `main` was retired when `main` became an ordinary function (VIP-26).
+
 ## TypeScript-style Effect code
 
 Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe`. The table shows declaration forms and their existing diagnostics. Quick fixes for new VIP forms arrive with the compiler's VIP implementation; [Effect.gen in direct style](#effectgen-in-direct-style) shows the conversion.

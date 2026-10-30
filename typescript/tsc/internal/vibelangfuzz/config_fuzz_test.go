@@ -151,6 +151,13 @@ func configProject(source, settings string, place configPlacement) Project {
 	return Project{Files: files, Config: `{"compilerOptions": {` + options + `}, "files": ["main.vibe"]` + top + `}`}
 }
 
+// configCodeAdjustable applies accepted VIPs to the frozen options table.
+// VIP-26 makes main an ordinary function. Its removed entry warning EK1016
+// is an unknown setting, while the table still governs every other code.
+func configCodeAdjustable(code int32) bool {
+	return code != 1016 && Facts().IsAdjustable(code)
+}
+
 // settingProblems returns why settings are invalid by Chapter 28's options
 // table and D261, which adds trustedPackages: package-name globs.
 func settingProblems(settings map[string]any) []string {
@@ -166,7 +173,7 @@ func settingProblems(settings map[string]any) []string {
 			}
 			for code, severity := range codes {
 				n := codesIn(code)
-				if !regexp.MustCompile(`^EK\d{4}$`).MatchString(code) || len(n) != 1 || !facts.IsAdjustable(n[0]) {
+				if !regexp.MustCompile(`^EK\d{4}$`).MatchString(code) || len(n) != 1 || !configCodeAdjustable(n[0]) {
 					problems = append(problems, "diagnostics."+code+" is not adjustable")
 				}
 				if s, ok := severity.(string); !ok || !slices.Contains(facts.Severities, s) {
@@ -362,7 +369,7 @@ func CheckConfig(t *testing.T, w *Workspace, target, config, source string) {
 	if codes, ok := settings["diagnostics"].(map[string]any); ok {
 		for code, severity := range codes {
 			n := codesIn(code)
-			if s, ok := severity.(string); ok && len(n) == 1 && "EK"+fmt.Sprint(n[0]) == code && facts.IsAdjustable(n[0]) && slices.Contains(facts.Severities, s) {
+			if s, ok := severity.(string); ok && len(n) == 1 && "EK"+fmt.Sprint(n[0]) == code && configCodeAdjustable(n[0]) && slices.Contains(facts.Severities, s) {
 				set[n[0]] = s
 			}
 		}
@@ -389,8 +396,8 @@ func CheckConfig(t *testing.T, w *Workspace, target, config, source string) {
 		got, base := occurrences(configured.Diagnostics, code), occurrences(baseline.Diagnostics, code)
 		severity, isSet := set[code]
 		switch {
-		case !facts.IsAdjustable(code):
-			// Chapter 28: only the listed codes are adjustable; EK9100 and
+		case !configCodeAdjustable(code):
+			// Chapter 28 and VIP-26: only existing listed codes are adjustable; EK9100 and
 			// EK4838 are errors "that no setting lowers", and EK4813 stands in
 			// for TypeScript's TS2339.
 			if !semantic && !slices.Equal(got, base) {
