@@ -4,7 +4,7 @@ let escaped: Fiber<void> | undefined
 effect function work() { try sleep("1 minute") }
 effect function leak() {
   const f = fork work()
-  await.all [do { escaped = f; 1 }]
+  try.all [effect { escaped = f; return 1 }]
 }
 export effect function main() {
   try leak()

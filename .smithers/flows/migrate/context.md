@@ -23,7 +23,7 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 - When upgrading existing `.vibe` code to explicit Effect functions, run `vibelang --fix --fix-vip-only` while the old form analysis is available. It marks functions `effect` from their return annotation, body or destination, including an annotated arrow whose body has a direct-call optimization. A return annotation such as `number!!` does not replace the `effect` keyword.
 
-- Use VibeLang's form wherever the Effect code has one: `error`, `service`, `schema`, `data`, `match` and `is`, direct calls instead of `Effect.gen` and `yield*`, contracts `A!E!R` instead of `Effect.Effect<A, E, R>`, `throw` and `catch` instead of `Effect.fail` and the catch combinators, `try`/`finally` instead of `ensuring`, `|>` for a pipeline of values, `await.all`, `await.race`, `await.any` and `await.allSettled` for concurrency, `for concurrent(n)` instead of `forEach` with a concurrency option, `fork` and `join` for fibers, `using` for resources, `provide` blocks, and an effect block for a program argument, `withSpan(effect { ... }, "name")`.
+- Use VibeLang's form wherever the Effect code has one: `error`, `service`, `schema`, `data`, `match` and `is`, direct calls instead of `Effect.gen` and `yield*`, contracts `A!E!R` instead of `Effect.Effect<A, E, R>`, `throw` and `catch` instead of `Effect.fail` and the catch combinators, `try`/`finally` instead of `ensuring`, `|>` for a pipeline of values, `try.all`, `try.race`, `try.any` and `try.allSettled` on an array of Effects for concurrency, and `try all({ … }, { concurrency: "unbounded" })` for an object of Effects, `for concurrent(n)` instead of `forEach` with a concurrency option, `fork` and `join` for fibers, `using` for resources, `provide` blocks, and an effect block for a program argument, `withSpan(effect { ... }, "name")`.
 - `vibelang --fix` already wrote, wherever the meaning stays the same, `Effect.gen` bodies in direct style (EK1002), `Match` chains as `match` (EK4839), and `Option` pipelines as methods (EK4840). Where it left one, the diagnostic's `No quick fix:` note says what would change; rewrite it by hand so that it does not: an `Effect.gen(…).pipe(…)` becomes a direct-style body inside each stage's form (`provide L { … }`, `withSpan(effect { … }, "name")`, `x catch (e) => …`); `Effect.fn("name")(function* …)` becomes a function whose body is `withSpan(effect { … }, "name")`; a parameter with a pattern is destructured in the body only when every caller runs the program at once.
 - Write no Effect TypeScript in a `.vibe` file: no `Effect.gen`, `function*` with `yield*`, `pipe(...)` chains of `Effect.map` and `Effect.flatMap`, `Effect.succeed` or `Effect.fail` where the value runs, `Data.TaggedError` or `Context.Service` classes, or `Effect.Effect<...>` types. A warning EK48xx marks each one that `vibelang --fix` did not rewrite.
 - Wrap Effect mindfully. Call an Effect module where VibeLang has no form for the job (`Schema.decodeUnknown`, `Stream.*`, `Schedule.*`, `Layer.*`, `Option.*`, `Array.*`), and never where one exists. Prefer methods on Effect data types: `option.map(f).getOrElse(() => 0)`, `stream.filter(p).take(3)`.
@@ -204,7 +204,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
 | `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
-| `Effect.all([a, b], { concurrency: "unbounded" })` | `await.all [a(), b()]` |
+| `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]` |
 | `Effect.provide(program, UsersLive)` | `provide UsersLive { … }` |
 
 All of it in one program:
@@ -234,7 +234,7 @@ function nameOf(id: string) {
 
 export function main() {
   provide UsersLive {
-    const [a, b] = await.all [nameOf("1"), nameOf("2")]
+    const [a, b] = try.all [nameOf("1"), nameOf("2")]
     const all = forEach(["1", "2"], nameOf, { concurrency: 8 })
     log(`${a} ${b} ${all.length}`)
   }
@@ -429,7 +429,7 @@ function measure(name: string) {
 }
 
 export function metrics() {
-  const [cpu, memory] = await.all [measure("cpu"), measure("memory")]
+  const [cpu, memory] = try.all [measure("cpu"), measure("memory")]
   const disks = forEach(["root", "data", "backup"], measure, { concurrency: 8 })
   log(`Measured ${disks.length} disks`)
   return { cpu, memory, disks }
@@ -529,7 +529,7 @@ function probe(region: string, delay: number) {
 
 export function closest() {
   const audit = fork log("probe started")
-  const winner = await.race [probe("west", 7), probe("east", 12)]
+  const winner = try.race [probe("west", 7), probe("east", 12)]
   join audit
   return winner
 }

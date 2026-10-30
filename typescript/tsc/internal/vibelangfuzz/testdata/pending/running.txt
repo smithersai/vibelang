@@ -3,8 +3,6 @@ FuzzRunningRules reject:try-plain compiler VIP-5: plain functions still infer an
 FuzzRunningRules corpus:try-plain compiler VIP-5: minimal reproduction of reject:try-plain; lane vip-core2
 FuzzRunningRules reject:catch-plain compiler VIP-5: plain functions still infer an Effect body and accept this effect-only construct; lane vip-core2
 FuzzRunningRules corpus:catch-plain compiler VIP-5: minimal reproduction of reject:catch-plain; lane vip-core2
-FuzzRunningRules control:all-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules corpus:all-object compiler VIP-18: minimal reproduction of control:all-object; lane vip-core2
 FuzzRunningRules control:stream-return compiler VIP-20: the valid explicit effect-code control does not compile yet; lane vip-core2
 FuzzRunningRules corpus:stream-return compiler VIP-20: minimal reproduction of control:stream-return; lane vip-core2
 FuzzRunningRules control:stream-plain compiler VIP-20: the valid explicit effect-code control does not compile yet; lane vip-core2
@@ -17,12 +15,6 @@ FuzzRunningRules control:stream-head-break-outer compiler VIP-20: `for try` does
 FuzzRunningRules corpus:stream-head-break-outer compiler VIP-20: minimal reproduction of control:stream-head-break-outer; lane vip-core2
 FuzzRunningRules control:stream-head-continue-outer compiler VIP-20: `for try` does not parse in effect code yet (TS1005, TS1109); lane vip-core2
 FuzzRunningRules corpus:stream-head-continue-outer compiler VIP-20: minimal reproduction of control:stream-head-continue-outer; lane vip-core2
-FuzzRunningRules control:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules corpus:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules control:any-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules corpus:any-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules control:allSettled-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
-FuzzRunningRules corpus:allSettled-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
 FuzzRunningRules control:contextual-conversion compiler VIP-2: the valid plain Effect-returning function call is rejected; lane vip-core2
 FuzzRunningRules corpus:contextual-conversion compiler VIP-2: minimal reproduction of control:contextual-conversion; lane vip-core2
 FuzzRunningRules diagnostic:concurrent-continue-outer compiler VIP-19: the rejection does not report the diagnostic assigned to this rule; lane d-diag

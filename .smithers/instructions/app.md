@@ -45,7 +45,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
 | `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
-| `Effect.all([a, b], { concurrency: "unbounded" })` | `await.all [a(), b()]` |
+| `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]` |
 | `Effect.provide(program, UsersLive)` | `provide UsersLive { … }` |
 
 All of it in one program:
@@ -75,7 +75,7 @@ function nameOf(id: string) {
 
 export function main() {
   provide UsersLive {
-    const [a, b] = await.all [nameOf("1"), nameOf("2")]
+    const [a, b] = try.all [nameOf("1"), nameOf("2")]
     const all = forEach(["1", "2"], nameOf, { concurrency: 8 })
     log(`${a} ${b} ${all.length}`)
   }

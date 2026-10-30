@@ -1,6 +1,6 @@
-error EK4838: This fiber is owned by settledAssignment's body, which interrupts it on exit, but it is assigned to escaped, which outlives that body.
-error EK4838: This fiber is owned by racedStore's body, which interrupts it on exit, but it is assigned to box.fiber, which outlives that body.
-error EK4838: This fiber is owned by anyCall's body, which interrupts it on exit, but it is passed to keep, which may keep it.
+error EK4838: This fiber is owned by settledAssignment's body, which interrupts it on exit, but it is captured by a block param.
+error EK4838: This fiber is owned by racedStore's body, which interrupts it on exit, but it is captured by a block param.
+error EK4838: This fiber is owned by anyCall's body, which interrupts it on exit, but it is captured by a block param.
 error EK4838: This fiber is owned by forkReturn's body, which interrupts it on exit, but it is returned from that body.
 error EK4838: This fiber is owned by forkObject's body, which interrupts it on exit, but it is returned from that body in an object.
 error EK4838: This fiber is owned by forkArray's body, which interrupts it on exit, but it is returned from that body in an array.

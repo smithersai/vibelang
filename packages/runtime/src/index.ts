@@ -31,3 +31,6 @@ export { acquireDisposable, acquireRelease } from "./resources.js"
 // TypeScript adapters for asynchronous sources (D43).
 export { suspend, handoff, HandoffProtocolViolation, type Resumer } from "./kernel/kernel.js"
 
+
+// Migration-only symbols have no runtime exports.
+export type { $awaitAll, $awaitAllSettled, $awaitRace, $awaitAny, AwaitElement } from "./legacy-await-types.js"

@@ -5,6 +5,9 @@
 // never where it is written. fork(e) with parentheses is the same keyword
 // while fork is the prelude's (D391). Each element runs on its own fiber,
 // in the order written, after the literal is built.
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
+import { map as $tryMapResults } from "effect/Effect"
 export effect function main() {
   const events: string[] = []
   const forked = fork events.push("fork operand")
@@ -13,8 +16,8 @@ export effect function main() {
   const parenthesized = fork(events.push("fork(…) operand"))
   events.push("after fork(…)")
   const again = try join(parenthesized)
-  const all = await.all [events.push("element 1"), `${events.length} events`]
-  const keyed = await.all { first: events.push("field"), count: events.length }
+  const all = (try.all [effect { return events.push("element 1") }, effect { return `${events.length} events` }])
+  const keyed = (try $tryMapResults($tryAllEffects({ first: effect { return events.push("field") }, count: effect { return events.length } }, { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["first","count"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults))
   events.push("after await.all")
   return { length, again, all, keyed, events }
 }

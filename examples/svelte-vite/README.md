@@ -4,7 +4,7 @@ A Svelte 5 component renders a cart quote that a VibeLang program computes.
 `src/cart.vibe` declares a `Product` schema, an `OutOfStock` error, and an
 `Inventory` service with the `InventoryLive` layer. `quote` reserves a product
 and recovers `OutOfStock` with `try`/`catch`. `quoteCart` runs two quotes
-concurrently with `await.all`. `src/App.svelte` runs `quoteCart()` with a
+concurrently with `try.all`. `src/App.svelte` runs `quoteCart()` with a
 `ManagedRuntime` built from `InventoryLive` and renders `Loading…` in an
 `{#await}` block until the program completes.
 

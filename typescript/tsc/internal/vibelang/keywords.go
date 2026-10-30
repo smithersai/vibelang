@@ -8,7 +8,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // Keyword operands are the evaluation plan's syntax-owned regions (D322,
@@ -34,16 +33,6 @@ import (
 
 // EK4613: a keyword operand whose own type is a program (D394, D433). {0} is the operand, {1} what would give it back.
 var EK4613 = message(4613, errorCategory, "{0} is a program, so {1} would give it back unrun.")
-
-// EK4609's and EK4610's text at an await element (D394). {0} is the
-// element, {1} the operation.
-var (
-	operandFibersMessage    = EK4609.With("{0} holds fibers, which {1} does not wait for; join them with join {0}.")
-	operandDeferredsMessage = EK4610.With("{0} holds Deferreds, which {1} does not wait for; write an array literal whose elements call d.await().")
-	operandDataMessage      = EK4603.With("{1}'s operand holds {0}, which is not a program, so its elements cannot run.")
-	keywordFiberMessage     = EK4609.With("{0} is a fiber, so {1} would give it back without waiting for it.")
-	keywordDeferredMessage  = EK4610.With("{0} is a Deferred, so {1} would give it back without waiting for it.")
-)
 
 func init() {
 	registry[EK4613.Code] = EK4613
@@ -350,29 +339,17 @@ func keywordWhat(call *ast.Node) string {
 	return "fork's new fiber"
 }
 
-// checkKeywordOperands reports each keyword operand whose value is a program
-// (EK4613), and each await element that is a fiber or a Deferred (EK4609,
-// EK4610). For an await operation whose operand is not a literal, it
-// reports an element type that is not a program (EK4603, EK4609, EK4610):
-// that type decides how each element runs (D394).
+// checkKeywordOperands validates fork operands. Retired await operations
+// keep only their old typing recorder for --fix; EK1802 rejects the syntax.
 func checkKeywordOperands(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
-	var visit func(node *ast.Node) bool
+	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindModuleDeclaration {
-			return false // a module body is TypeScript (D283)
+		if node.Kind == ast.KindModuleDeclaration || awaitOperationNames[fiberHelper(node)] != "" {
+			return false
 		}
-		if ast.IsCallExpression(node) && !inHatch(node) {
-			if helper := fiberHelper(node); awaitOperationNames[helper] != "" && len(node.Arguments()) == 1 {
-				operand := ast.SkipParentheses(node.Arguments()[0])
-				if operand.Kind == ast.KindArrayLiteralExpression || operand.Kind == ast.KindObjectLiteralExpression {
-					forEachKeywordOperand(node, func(element *ast.Node) { a.checkKeywordOperand(file, node, element) })
-				} else if !ast.NodeIsMissing(operand) {
-					a.checkAwaitOperandElements(file, node, node.Arguments()[0])
-				}
-			} else if len(node.Arguments()) == 1 && a.keywordFork(node.Arguments()[0]) != nil {
-				a.checkKeywordOperand(file, node, node.Arguments()[0])
-			}
+		if ast.IsCallExpression(node) && !inHatch(node) && len(node.Arguments()) == 1 && a.keywordFork(node.Arguments()[0]) != nil {
+			a.checkKeywordOperand(file, node, node.Arguments()[0])
 		}
 		return node.ForEachChild(visit)
 	}
@@ -399,15 +376,10 @@ func (a *analyzer) checkKeywordOperand(file *ast.SourceFile, call *ast.Node, ope
 		}
 	default:
 		value := a.keywordValueType(inner)
-		await := awaitLiteralOperation(outerParentheses(inner)) != nil
 		switch {
 		case value == nil:
 		case a.isProgramValueType(value):
 			d = reportAt(c, file, span, EK4613, messageText(inner, "This operand"), keywordWhat(call))
-		case await && isFiberType(c, value):
-			d = reportAt(c, file, span, keywordFiberMessage, messageText(inner, "This element"), keywordWhat(call))
-		case await && isDeferredType(c, value):
-			d = reportAt(c, file, span, keywordDeferredMessage, messageText(inner, "This element"), keywordWhat(call))
 		}
 	}
 	if d != nil {
@@ -420,52 +392,6 @@ func (a *analyzer) checkKeywordOperand(file *ast.SourceFile, call *ast.Node, ope
 	}
 	if reading := a.legacyKeywordReading(call, operand); reading.change != keywordUnchanged {
 		reportKeywordMigration(c, file, legacyKeywordSite{call, operand, reading}, d)
-	}
-}
-
-// checkAwaitOperandElements reports the element type of operand, an await
-// operation's operand that is not a literal, when it is not a program:
-// definitely an Effect runs on its own fiber, and a function with no
-// required parameters becomes a program; anything else is EK4603, a fiber
-// EK4609, and a Deferred EK4610 (D394). No run-time test decides.
-func (a *analyzer) checkAwaitOperandElements(file *ast.SourceFile, call *ast.Node, operand *ast.Node) {
-	c := a.checker
-	t := c.GetTypeAtLocation(operand)
-	if t == nil {
-		return
-	}
-	var elements []*checker.Type
-	if t.Flags()&checker.TypeFlagsAny != 0 {
-		elements = []*checker.Type{t}
-	} else if found, iterable := a.iteratedTypes(t); iterable {
-		elements = found
-	} else if t.Flags()&checker.TypeFlagsObject != 0 {
-		for _, property := range c.GetPropertiesOfType(t) {
-			elements = append(elements, c.GetTypeOfSymbol(property))
-		}
-		for _, info := range c.GetIndexInfosOfType(t) {
-			elements = append(elements, info.ValueType())
-		}
-	}
-	for _, element := range elements {
-		if element == nil || a.isProgramValueType(element) {
-			continue
-		}
-		keyword := scanner.GetRangeOfTokenAtPosition(file, call.Pos())
-		span := core.NewTextRange(keyword.Pos(), operand.End())
-		what := keywordWhat(call)
-		switch {
-		case isFiberType(c, element):
-			reportAt(c, file, span, operandFibersMessage, messageText(operand, "This operand"), what)
-		case isDeferredType(c, element):
-			reportAt(c, file, span, operandDeferredsMessage, messageText(operand, "This operand"), what)
-		case element.Flags()&checker.TypeFlagsAny != 0 || effectInterfaceSymbol(c, element) != nil || isAwaitable(c, element, 1):
-			// TypeScript accepts these against the operation's declaration,
-			// so EK4603 is the only error. Other types are TypeScript's.
-			d := reportAt(c, file, span, operandDataMessage, c.TypeToString(element), what)
-			note(d, "An element of an operand that is not a literal runs by its type: an Effect runs, and a function with no required parameters becomes a program. Give the elements a program type, or write an array literal, whose elements are programs by syntax.")
-		}
-		return
 	}
 }
 

@@ -3,6 +3,7 @@
 // region and reads of it, join with an array or object literal operand,
 // the Fiber functions whose result holds no Fiber and their methods, and a
 // fork operand, await element, or for concurrent body in the region.
+import { join as $tryJoinFiber } from "effect/Fiber"
 effect function slow(): number!! {
   try sleep("5 millis")
   return 7
@@ -58,7 +59,7 @@ effect function operand() {
 
 effect function raced() {
   const fiber = fork slow()
-  return await.race [join fiber, do { try sleep("1 second"); 0 }]
+  return (try.race [$tryJoinFiber(fiber), effect { return try do { try sleep("1 second"); 0 } }])
 }
 
 effect function loop() {

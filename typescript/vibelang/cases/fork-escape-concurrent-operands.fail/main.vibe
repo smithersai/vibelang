@@ -7,22 +7,22 @@ effect function within(body: () => void!!) { try body() }
 
 export effect function settledAssignment() {
   const f = fork sleep("1 minute")
-  await.allSettled [do { escaped = f; 1 }]
+  try.allSettled [effect { escaped = f; return 1 }]
 }
 
 export effect function racedStore(box: { mutable fiber?: Fiber<void> }) {
   const f = fork sleep("1 minute")
-  await.race [do { box.fiber = f; 1 }]
+  try.race [effect { box.fiber = f; return 1 }]
 }
 
 export effect function anyCall() {
   const f = fork sleep("1 minute")
-  await.any [keep(f)]
+  try.any [effect { return keep(f) }]
 }
 
 export effect function awaitCapture() {
   const f = fork sleep("1 minute")
-  await.all [within(effect () => { try Fiber.interrupt(f) })]
+  try.all [effect { return try within(effect () => { try Fiber.interrupt(f) }) }]
 }
 
 export effect function forkAssignment() {

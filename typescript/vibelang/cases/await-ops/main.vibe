@@ -1,4 +1,8 @@
 // expect-result: {"all":["user 1",3],"record":{"user":"user 2","count":3},"held":["user 3",3],"failFast":"Boom","settled":["Success","Failure"],"race":"fast","raceFailure":"Boom","raceBlocks":"got user 4","any":"fast","deferred":"ready","tie":"a","raceDo":"got user 5","templates":["user 6!",3],"templateRace":"fast!"}
+import { join as $tryJoinFiber } from "effect/Fiber"
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
+import { map as $tryMapResults } from "effect/Effect"
 error Boom { n: number }
 
 effect function getUser(id: string): string!! {
@@ -26,102 +30,102 @@ effect function boom(): string!Boom! {
   throw new Boom({ n: 1 })
 }
 
-// await.all starts each program in its own fiber and keeps the shape.
+// try.all starts each program in its own fiber and keeps the shape.
 effect function all() {
-  const [user, n] = await.all [getUser("1"), count()]
+  const [user, n] = (try.all [effect { return try getUser("1") }, effect { return try count() }])
   return [user, n]
 }
 
 effect function record() {
-  return await.all { user: getUser("2"), count: count() }
+  return (try $tryMapResults($tryAllEffects({ user: effect { return try getUser("2") }, count: effect { return try count() } }, { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["user","count"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults))
 }
 
 // A fiber already running is awaited, not restarted.
 effect function held() {
   const user = fork getUser("3")
-  return await.all [join user, count()]
+  return (try.all [$tryJoinFiber(user), effect { return try count() }])
 }
 
 // A failure interrupts the rest and propagates.
 effect function failFast() {
   try {
-    await.all [slow(), boom()]
+    (try.all [effect { return try slow() }, effect { return try boom() }])
     return "no"
   } catch (e) {
     return e._tag
   }
 }
 
-// await.allSettled never fails; each outcome is a Result.
+// all with mode "result" never fails; each outcome is a Result.
 effect function settled() {
-  const outcomes = await.allSettled [count(), boom()]
+  const outcomes = (try $tryAllEffects([effect { return try count() }, effect { return try boom() }], { concurrency: "unbounded", mode: "result" }))
   return (outcomes as ReadonlyArray<(typeof outcomes)[number]>).map((outcome) => outcome._tag)
 }
 
-// await.race: the first to finish wins, success or failure.
+// try.race: the first to finish wins, success or failure.
 effect function race() {
-  return await.race [slow(), fast()]
+  return (try.race [effect { return try slow() }, effect { return try fast() }])
 }
 
 effect function raceFailure() {
   try {
-    return await.race [slow(), boom()]
+    return (try.race [effect { return try slow() }, effect { return try boom() }])
   } catch (e) {
     return e._tag
   }
 }
 
 effect function raceBlocks() {
-  return await.race [
-    do {
+  return (try.race [
+    effect { return try do {
       try sleep("1 second")
       "timeout"
-    },
-    do {
+    } },
+    effect { return try do {
       const user = try getUser("4");
       `got ${user}`
-    }
-  ]
+    } }
+  ])
 }
 
-// await.any: the first to succeed wins.
+// try.any: the first to succeed wins.
 effect function anyWins() {
-  return await.any [boom(), fast()]
+  return (try.any [effect { return try boom() }, effect { return try fast() }])
 }
 
 effect function deferred() {
   const ready = try Deferred.make<string>()
   try Deferred.succeed(ready, "ready")
-  return await.race [ready.await(), slow()]
+  return (try.race [effect { return try ready.await() }, effect { return try slow() }])
 }
 
 // Of elements ready at once, the first written wins.
 effect function tie() {
-  return await.race [Effect.succeed("a"), Effect.succeed("b")]
+  return (try.race [effect { return try Effect.succeed("a") }, effect { return try Effect.succeed("b") }])
 }
 
 // A do expression gives an element statements; it is passed by name.
 effect function raceDo() {
-  return await.race [
-    do {
+  return (try.race [
+    effect { return try do {
       try sleep("1 second")
       "timeout"
-    },
-    do {
+    } },
+    effect { return try do {
       const user = try getUser("5")
       "got " + user
-    }
-  ]
+    } }
+  ])
 }
 
 // An element passed by name may be any expression that runs a program.
 effect function templates() {
-  const [user, n] = await.all [`${getUser("6")}!`, count()]
+  const [user, n] = (try.all [effect { return `${try getUser("6")}!` }, effect { return try count() }])
   return [user, n]
 }
 
 effect function templateRace() {
-  return await.race [`${slow()}!`, `${fast()}!`]
+  return (try.race [effect { return `${try slow()}!` }, effect { return `${try fast()}!` }])
 }
 
 export effect function main() {

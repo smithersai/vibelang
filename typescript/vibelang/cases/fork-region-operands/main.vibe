@@ -1,5 +1,9 @@
 // expect-result: {"all":[1,2],"record":{"f":1,"g":2},"settled":true,"raced":1,"any":1,"forked":1,"interrupted":true,"looped":true}
 // Direct reads in concurrent operands stay with the owning region.
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
+import { map as $tryMapResults } from "effect/Effect"
+import { join as $tryJoinFiber } from "effect/Fiber"
 effect function work(n: number) {
   try sleep("1 millis")
   return n
@@ -8,11 +12,11 @@ effect function work(n: number) {
 export effect function main() {
   const f = fork work(1)
   const g = fork work(2)
-  const all = await.all [join f, join g]
-  const record = await.all { f: join f, g: join g }
-  const settled = await.allSettled [join f, join g]
-  const raced = await.race [join f, do { try sleep("1 second"); 0 }]
-  const any = await.any [join f]
+  const all = (try.all [$tryJoinFiber(f), $tryJoinFiber(g)])
+  const record = (try $tryMapResults($tryAllEffects({ f: $tryJoinFiber(f), g: $tryJoinFiber(g) }, { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["f","g"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults))
+  const settled = (try $tryAllEffects([$tryJoinFiber(f), $tryJoinFiber(g)], { concurrency: "unbounded", mode: "result" }))
+  const raced = (try.race [$tryJoinFiber(f), effect { return try do { try sleep("1 second"); 0 } }])
+  const any = (try.any [$tryJoinFiber(f)])
   const waiter = fork (join f)
   const forked = join waiter
   const pending = fork sleep("1 minute")

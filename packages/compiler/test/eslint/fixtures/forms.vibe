@@ -508,11 +508,11 @@ export function both() {
  * @since 0.0.2
  */
 export function many() {
-  const [user, orders] = await.all [getUser("1"), getOrders("1")]
-  const pair = await.all { user: getUser("1"), orders: getOrders("1") }
-  const fastest = await.any [getUser("1"), getUser("2")]
-  const settled = await.allSettled [getUser("1"), getOrders("1")]
-  const winner = await.race [getUser("1"), getUser("2")]
+  const [user, orders] = try.all [getUser("1"), getOrders("1")]
+  const pair = try all({ user: getUser("1"), orders: getOrders("1") }, { concurrency: "unbounded" })
+  const fastest = try.any [getUser("1"), getUser("2")]
+  const settled = try.allSettled [getUser("1"), getOrders("1")]
+  const winner = try.race [getUser("1"), getUser("2")]
   return { user, orders, pair, fastest, settled, winner }
 }
 

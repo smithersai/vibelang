@@ -28,12 +28,6 @@ func TestFormDiagnosticsMatchesProjection(t *testing.T) {
 		`import { opaque } from "./other"; function f() { return pipe(() => a(), opaque) }`,
 		`import { opaque } from "./other"; function f() { const job = () => a(); return pipe(job, opaque) }`,
 		`function f() { return pipe((() => a()), retry({ times: 2 })) }`,
-		`await.all [unknown()]`,
-		`function f(): void { await.all [unknown()] }`,
-		`function f() { return await.all [unknown()] }`,
-		`function f() { return sync(() => await.all [unknown()]) }`,
-		`class C { f() { return await.all [unknown()] } }`,
-		`function f() { return sync(async function() { return await.all [unknown()] }) }`,
 	} {
 		cases = append(cases, struct{ name, source, virtual string }{name: source, source: source})
 	}

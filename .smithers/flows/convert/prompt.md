@@ -25,7 +25,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
 | `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
-| `Effect.all([a, b], { concurrency: "unbounded" })` | `await.all [a(), b()]` |
+| `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]` |
 | `Effect.provide(program, UsersLive)` | `provide UsersLive { … }` |
 
 All of it in one program:
@@ -55,7 +55,7 @@ function nameOf(id: string) {
 
 export function main() {
   provide UsersLive {
-    const [a, b] = await.all [nameOf("1"), nameOf("2")]
+    const [a, b] = try.all [nameOf("1"), nameOf("2")]
     const all = forEach(["1", "2"], nameOf, { concurrency: 8 })
     log(`${a} ${b} ${all.length}`)
   }
@@ -248,7 +248,7 @@ function measure(name: string) {
 }
 
 export function metrics() {
-  const [cpu, memory] = await.all [measure("cpu"), measure("memory")]
+  const [cpu, memory] = try.all [measure("cpu"), measure("memory")]
   const disks = forEach(["root", "data", "backup"], measure, { concurrency: 8 })
   log(`Measured ${disks.length} disks`)
   return { cpu, memory, disks }
@@ -348,7 +348,7 @@ function probe(region: string, delay: number) {
 
 export function closest() {
   const audit = fork log("probe started")
-  const winner = await.race [probe("west", 7), probe("east", 12)]
+  const winner = try.race [probe("west", 7), probe("east", 12)]
   join audit
   return winner
 }

@@ -24,13 +24,13 @@ func (p *projector) join(call *ast.Node, e env) {
 		return
 	}
 	if !e.effect {
-		p.awaitChoice(call, "A join must run in an Effect body; move it into an Effect function with an explicit contract.")
+		p.formChoice(call, "A join must run in an Effect body; move it into an Effect function with an explicit contract.")
 		return
 	}
 	operand := call.Arguments()[0]
 	valid, known := p.joinValue(operand, 0, 0)
 	if !known {
-		p.awaitChoice(operand, "The mapper cannot determine whether this join operand holds fibers. Add an explicit Fiber annotation, or an array or object annotation with Fiber elements.")
+		p.formChoice(operand, "The mapper cannot determine whether this join operand holds fibers. Add an explicit Fiber annotation, or an array or object annotation with Fiber elements.")
 	} else if !valid {
 		p.fiberDiagnostic(operand, 4611, "join takes a Fiber or a one-level array or object of fibers. Annotate the operand with Fiber elements; nest joins for deeper collections.")
 	}
@@ -191,7 +191,7 @@ func (p *projector) joinType(t *ast.Node, level, depth int) (valid, known bool) 
 // try is the call itself, whose keyword visit removes.
 func (p *projector) tryValue(call *ast.Node, e env) {
 	if !e.effect {
-		p.awaitChoice(call, "A try must run in an Effect body; move it into an Effect function with an explicit contract.")
+		p.formChoice(call, "A try must run in an Effect body; move it into an Effect function with an explicit contract.")
 		return
 	}
 	operand := call.Arguments()[0]

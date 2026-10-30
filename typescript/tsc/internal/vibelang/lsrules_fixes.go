@@ -636,23 +636,7 @@ func resolveFormChoiceDiagnostics(ctx context.Context, service *ls.LanguageServi
 	defer done()
 	var result []*ast.Diagnostic
 	for _, choice := range choices {
-		message := choice.Message
-		if strings.HasPrefix(message, "The mapper cannot decide this await element") {
-			var visit func(*ast.Node) bool
-			visit = func(n *ast.Node) bool {
-				if nodeStart(file, n) == choice.Start && n.End() == choice.Start+choice.Length {
-					inferred := c.GetTypeAtLocation(n)
-					if success := successType(c, inferred); success != nil {
-						inferred = success
-					}
-					message += " The fork infers the success type " + c.TypeToStringEx(inferred, n, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil) + "."
-					return true
-				}
-				return n.ForEachChild(visit)
-			}
-			file.AsNode().ForEachChild(visit)
-		}
-		if d := newDiagnosticAt(optionsFor(c, file), file, core.NewTextRange(choice.Start, choice.Start+choice.Length), formChoiceMessage(choice.Code), message); d != nil {
+		if d := newDiagnosticAt(optionsFor(c, file), file, core.NewTextRange(choice.Start, choice.Start+choice.Length), formChoiceMessage(choice.Code), choice.Message); d != nil {
 			result = append(result, d)
 		}
 	}

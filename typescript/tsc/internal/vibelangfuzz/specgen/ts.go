@@ -375,7 +375,7 @@ func (t *tsPrinter) stmt(s Stmt, ctx tsCtx) {
 		}
 		list := "[" + strings.Join(els, ", ") + "]"
 		if len(s.Keys) > 0 {
-			// Ch 7 (D196): await.all { x: a() } is Effect.all over a record.
+			// VIP-18: try all({ x: a() }, …) is Effect.all over a record.
 			var props, binds []string
 			for i, k := range s.Keys {
 				props = append(props, k+": "+els[i])
@@ -388,7 +388,7 @@ func (t *tsPrinter) stmt(s Stmt, ctx tsCtx) {
 		case "all":
 			w.line(`const [%s] = yield* Effect.all(%s, { concurrency: "unbounded" })`, strings.Join(s.Names, ", "), list)
 		case "allSettled":
-			w.line(`const %s = yield* Effect.all(%s, { concurrency: "unbounded", mode: "result" })`, s.Names[0], list)
+			w.line(`const %s = yield* Effect.all(%s.map(Effect.exit), { concurrency: "unbounded" })`, s.Names[0], list)
 			w.line("for (const settled of %s) trace.push(`%s:${settled._tag}`)", s.Names[0], s.Names[0])
 		case "race":
 			w.line("const %s = yield* Effect.raceAllFirst(%s)", s.Names[0], list)

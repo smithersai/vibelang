@@ -236,17 +236,6 @@ var emitCases = []struct {
 		absent: []string{"|>", "(%)", "f$direct"},
 	},
 	{
-		name:   "await operations defer calls and do blocks while preserving a held Fiber",
-		source: "function f(held: Fiber.Fiber<string>) {\n  return await.all [Effect.succeed(1), do { 2 }, held]\n}\n",
-		contains: []string{
-			`import { $awaitAll, $done, $isRun, $settle } from "vibelang-runtime";`,
-			"$awaitAll([$gen(function* () { return (($t = Effect.succeed(1)), $isRun($t) ? (yield* $t) : $t); })",
-			"return 2;",
-			"$asProgram(held)",
-		},
-		absent: []string{"await.all", "f$direct"},
-	},
-	{
 		name:   "a pure function splits into f$direct and its Effect wrapper (D10)",
 		source: "export function double(n: number) {\n  return n * 2\n}\n",
 		contains: []string{

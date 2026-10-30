@@ -1,8 +1,8 @@
 // expect-result: [[42],[1,2]]
-// await.all and for concurrent call the runtime's $awaitAll and
+// try.all and for concurrent call the runtime's $tryAll and
 // $forConcurrent. Functions of the file spelled the same are functions of
 // their own, and the forms still start fibers and run their bodies.
-function $awaitAll(xs: unknown[]) { return "hijacked" }
+function $tryAll(xs: unknown[]) { return "hijacked" }
 function $forConcurrent(xs: number[], n: number, f: (n: number) => void) { return 999 }
 
 effect function work() {
@@ -11,7 +11,7 @@ effect function work() {
 }
 
 export effect function main() {
-  const result = await.all [work()]
+  const result = (try.all [effect { return try work() }])
   const seen: number[] = []
   for concurrent(2) (const n of [1, 2]) seen.push(n)
   return [result, seen.sort()]

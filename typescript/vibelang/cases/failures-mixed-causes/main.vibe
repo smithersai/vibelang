@@ -7,6 +7,7 @@
 // no typed recovery runs (#9516). experiments/tests/defect-precedence.test.ts
 // pins the Effect side. Without a defect, catch recovers the first failure
 // and drops an interruption beside it, as Effect.catch does (D306).
+import { all as $tryAllEffects } from "effect/Effect"
 import { referenceRows } from "./reference.js"
 
 error E
@@ -137,7 +138,7 @@ effect function producerCleanupDies() {
 }
 
 effect function awaitAllMixed() {
-  return await.all [failLater(), dieOnInterrupt()]
+  return (try.all [effect { return try failLater() }, effect { return try dieOnInterrupt() }])
 }
 
 effect function forConcurrentMixed() {
@@ -148,11 +149,11 @@ effect function forConcurrentMixed() {
 }
 
 effect function awaitRaceMixed() {
-  return await.race [failNow(), dieNow()]
+  return (try.race [effect { return try failNow() }, effect { return try dieNow() }])
 }
 
 effect function awaitAnyMixed() {
-  return await.any [failNow(), dieNow()]
+  return (try.any [effect { return try failNow() }, effect { return try dieNow() }])
 }
 
 effect function interruptThenFinallyThrows() {
@@ -180,7 +181,7 @@ effect function abandonMixed() {
 }
 
 effect function allSettledMixed() {
-  const [settled] = await.allSettled [finallyDies()]
+  const [settled] = (try $tryAllEffects([effect { return try finallyDies() }], { concurrency: "unbounded", mode: "result" }))
   return settled._tag
 }
 

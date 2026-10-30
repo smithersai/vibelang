@@ -1,5 +1,5 @@
 // expect-result: {"race":1,"any":2}
-// await.race and await.any run each element in its own fiber, so an element
+// try.race and try.any run each element in its own fiber, so an element
 // that handles its own control operations runs (chapter 9, "Handlers and
 // concurrency").
 control Ask { ask(): number!! }
@@ -19,7 +19,7 @@ effect function late() {
 
 export effect function main() {
   return {
-    race: await.race [answered(1), late()],
-    any: await.any [late(), answered(2)]
+    race: (try.race [effect { return try answered(1) }, effect { return try late() }]),
+    any: (try.any [effect { return try late() }, effect { return try answered(2) }])
   }
 }

@@ -244,7 +244,7 @@ func (g *generator) joinArray(ctx gctx) []Stmt {
 	return append(out, j)
 }
 
-// awaitRecord is await.all over an object literal (Ch 7, D196): Effect.all
+// awaitRecord is the all global over an object literal (VIP-18): Effect.all
 // over a record, keeping its keys.
 func (g *generator) awaitRecord(ctx gctx) []Stmt {
 	g.use("await-all-record")

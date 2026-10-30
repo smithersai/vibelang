@@ -265,7 +265,7 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case parser.IsVibeLangModuleDeclaration(node) || parser.IsVibeLangModuleReference(node):
 		// D364/D366: a text-only projection cannot preserve separate-module
 		// evaluation and live bindings. Refuse rather than guess a lowering.
-		p.awaitChoice(node, inlineModuleProjectionMessage)
+		p.formChoice(node, inlineModuleProjectionMessage)
 		return
 	case node.Kind == ast.KindImportDeclaration || node.Kind == ast.KindExportDeclaration:
 		p.relativeTypeScriptImport(node)
@@ -328,7 +328,7 @@ func (p *projector) visit(node *ast.Node, e env) {
 		p.tryOperation(node, e)
 		return
 	case awaitOperationHelper(node) != "":
-		p.awaitOperation(node, e)
+		p.retiredAwaitOperation(node)
 		return
 	case p.isHatchCall(node):
 		p.hatchCall(node, e)

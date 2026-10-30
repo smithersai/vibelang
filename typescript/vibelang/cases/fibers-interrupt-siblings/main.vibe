@@ -1,4 +1,4 @@
-// A failed join or await.all, and a decided race, interrupt the other
+// A failed join or try.all, and a decided race, interrupt the other
 // fibers and wait for their cleanup (D167, D196, D225). Every fiber is
 // signalled before any is waited for, as Fiber.interruptAll does: here A's
 // cleanup waits for B's, so interrupting A and waiting for it before
@@ -25,44 +25,44 @@ effect function joined(log: string[]) {
   try { join [bad, a, b] } catch (e) { log.push("caught " + e._tag) }
 }
 
-// await.all's elements are programs (D394): when one fails, the operation
+// try.all's elements are Effects (VIP-18): when one fails, the operation
 // interrupts the others, and every one is signalled before any is waited for.
 effect function all(log: string[]) {
   const startedA = try Deferred.make<void>()
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
   try {
-    await.all [
-      do {
+    (try.all [
+      effect { return try do {
         try { try Deferred.succeed(startedA, undefined); try Effect.never() }
         finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
-      },
-      do {
+      } },
+      effect { return try do {
         try { try Deferred.succeed(startedB, undefined); try Effect.never() }
         finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
-      },
-      do {
+      } },
+      effect { return try do {
         try startedA.await()
         try startedB.await()
         throw new Bad()
-      }
-    ]
+      } }
+    ])
   } catch (e) { log.push("caught " + e._tag) }
 }
 
 effect function racePrograms(log: string[]) {
   const releasedB = try Deferred.make<void>()
-  log.push(await.race [
-    do {
+  log.push((try.race [
+    effect { return try do {
       try { try Effect.never() }
       finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
-    },
-    do {
+    } },
+    effect { return try do {
       try { try Effect.never() }
       finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
-    },
-    do { "winner" }
-  ])
+    } },
+    effect { return do { "winner" } }
+  ]))
 }
 
 // expect-result: {"joined":["A waits","B done","A done","caught Bad"],"all":["A waits","B done","A done","caught Bad"],"racePrograms":["A waits","B done","A done","winner"]}

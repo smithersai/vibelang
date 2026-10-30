@@ -288,11 +288,6 @@ var projectionCases = []struct {
 		virtual: "function f() { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = 1; return $topic + ((yield* $run($gen(function* () { const $topic_1 = 2; return $topic_1 * 3 })))) }))) })}",
 	},
 	{
-		name:    "catch in an await element stays in the element program",
-		source:  "function f() { return await.all [a() catch 1] }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($awaitAll([$gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 })))) })]))) })}",
-	},
-	{
 		name:    "error with fields",
 		source:  "error NotFound { id: string }\n",
 		virtual: "class NotFound extends TaggedError(\"NotFound\")<{ readonly id: string }> {}\n",
@@ -762,105 +757,6 @@ func TestDataDeclarationIsUnprojected(t *testing.T) {
 		assert.Assert(t, strings.Contains(d.Message, "data declaration"), d.Message)
 	}
 	assertValidMap(t, projection, source)
-}
-
-// TestAwaitOperations checks D196's four helper calls and their fiber
-// boundaries: calls and do blocks become programs, while a held Fiber
-// remains a value. Both all operations also preserve keyed operands.
-func TestAwaitOperations(t *testing.T) {
-	t.Parallel()
-	for _, operation := range []struct{ word, helper string }{
-		{"all", "$awaitAll"}, {"allSettled", "$awaitAllSettled"},
-		{"race", "$awaitRace"}, {"any", "$awaitAny"},
-	} {
-		t.Run(operation.word, func(t *testing.T) {
-			source := "function f(held: Fiber.Fiber<string>) {\n  return await." + operation.word + " [Effect.succeed(1), do { 2 }, held]\n}\n"
-			want := "function f(held: Fiber.Fiber<string>) { return $gen(function* () {\n  return (yield* $run(" + operation.helper + "([$gen(function* () { return (yield* $run(Effect.succeed(1))) }), $gen(function* () { return (yield* $run($gen(function* () { return 2; }))) }), $asProgram(held)])))\n})}\n"
-			projection := Project(source, testContext)
-			assert.Equal(t, len(projection.Diagnostics), 0, "diagnostics: %v", projection.Diagnostics)
-			assert.Equal(t, virtualBody(t, projection), want)
-			assertValidMap(t, projection, source)
-			assertParses(t, projection.Text)
-			assert.Equal(t, len(lower(source, testContext).plan.unclosed()), 0)
-		})
-		if operation.word != "all" && operation.word != "allSettled" {
-			continue
-		}
-		t.Run(operation.word+" object", func(t *testing.T) {
-			source := "function f(held: Deferred.Deferred<string>) {\n  return await." + operation.word + " { n: Effect.succeed(1), held }\n}\n"
-			want := "function f(held: Deferred.Deferred<string>) { return $gen(function* () {\n  return (yield* $run(" + operation.helper + "({ n: $gen(function* () { return (yield* $run(Effect.succeed(1))) }), held: $asProgram(held) })))\n})}\n"
-			projection := Project(source, testContext)
-			assert.Equal(t, len(projection.Diagnostics), 0, "diagnostics: %v", projection.Diagnostics)
-			assert.Equal(t, virtualBody(t, projection), want)
-			assertValidMap(t, projection, source)
-			assertParses(t, projection.Text)
-		})
-	}
-}
-
-// TestAwaitFormChoices checks that opaque elements and unsupported
-// collection conversions ask for annotations instead of guessing, and
-// that the two races reject dictionaries (D196).
-func TestAwaitFormChoices(t *testing.T) {
-	t.Parallel()
-	for _, source := range []string{
-		"function f(x) { return await.all [x] }",
-		"import { x } from './other.vibe'; function f() { return await.race [x] }",
-		"function f(x: any) { return await.any [x] }",
-		"type Opaque = any; function f(x: Opaque) { return await.all [x] }",
-		"function f(xs) { return await.all xs }",
-		"function f(xs: Array<() => number!!>) { return await.all xs }",
-		"function f() { return await.race { x: Effect.succeed(1) } }",
-		"function f() { return await.any { x: Effect.succeed(1) } }",
-		"function f() { return await.all [unknown()] }",
-	} {
-		projection := Project(source, testContext)
-		assert.Assert(t, len(projection.Diagnostics) > 0, "%s", source)
-		for _, d := range projection.Diagnostics {
-			assert.Equal(t, d.Code, int32(CodeFormChoice), "%s: %v", source, d)
-		}
-		assertValidMap(t, projection, source)
-	}
-}
-
-// TestAwaitHeldOperands checks that collection values are read once and
-// that a fiber started before an operation is passed through, rather than
-// putting its acquisition into a second element program.
-func TestAwaitHeldOperands(t *testing.T) {
-	t.Parallel()
-	for _, annotation := range []string{
-		"ReadonlyArray<Fiber.Fiber<string>>",
-		"Record<string, Deferred.Deferred<string>>",
-		"{ readonly a: Effect.Effect<string>; readonly b: Fiber.Fiber<number> }",
-	} {
-		source := "function f(xs: " + annotation + ") { return await.all xs }"
-		want := "function f(xs: " + annotation + ") { return $gen(function* () { return (yield* $run($awaitAll(xs))) })}"
-		projection := Project(source, testContext)
-		assert.Equal(t, len(projection.Diagnostics), 0, "diagnostics: %v", projection.Diagnostics)
-		assert.Equal(t, virtualBody(t, projection), want)
-	}
-	source := "function f() { const held = fork Effect.succeed(1); return await.all [held] }"
-	want := "function f() { return $gen(function* () { const held = (yield* $run($scoped(fork)($gen(function* () { return (yield* $run(Effect.succeed(1))) })))); return (yield* $run($awaitAll([$asProgram(held)]))) })}"
-	projection := Project(source, testContext)
-	assert.Equal(t, len(projection.Diagnostics), 0, "diagnostics: %v", projection.Diagnostics)
-	assert.Equal(t, virtualBody(t, projection), want)
-	js, _, diagnostics := Emit(source, testContext)
-	assert.Equal(t, len(diagnostics), 0, "diagnostics: %v\n%s", diagnostics, js)
-	assert.Assert(t, strings.Contains(js, "$awaitAll([$asProgram(held)])"), "%s", js)
-}
-
-// TestAwaitLocalLambdaCall checks that a bound lambda's program body stays
-// inside its element fiber, just like a call of a function declaration.
-func TestAwaitLocalLambdaCall(t *testing.T) {
-	t.Parallel()
-	source := "function f() { const load = (): number!! => { sleep(1); return 2 }; return await.race [load()] }"
-	want := "function f() { return $gen(function* () { const load = (): Effect.Effect<number, never, never> => { return $gen(function* () { ;(yield* $run(sleep(1))); return 2 })}; return (yield* $run($awaitRace([$gen(function* () { return (yield* $run($value(load)())) })]))) })}"
-	projection := Project(source, testContext)
-	assert.Equal(t, len(projection.Diagnostics), 0, "diagnostics: %v", projection.Diagnostics)
-	assert.Equal(t, virtualBody(t, projection), want)
-	js, _, diagnostics := Emit(source, testContext)
-	assert.Equal(t, len(diagnostics), 0, "diagnostics: %v\n%s", diagnostics, js)
-	assert.Assert(t, strings.Contains(js, "$awaitRace([$gen(function* () { return"), "%s", js)
 }
 
 // TestFormChoice checks that a lambda whose form the rules cannot decide

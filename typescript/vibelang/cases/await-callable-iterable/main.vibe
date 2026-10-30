@@ -1,3 +1,5 @@
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
 module inputs {
   import { Effect } from "effect"
 
@@ -15,9 +17,9 @@ import { values } from inputs
 // expect-result: {"all":[3,7],"settled":[3,7],"race":3,"any":3}
 export effect function main() {
   const input = try sync(() => values())
-  const all = await.all input
-  const settled = await.allSettled input
-  const race = await.race input
-  const any = await.any input
+  const all = (try $tryAllEffects($tryGlobals.Array.from(input), { concurrency: "unbounded" }))
+  const settled = (try $tryAllEffects($tryGlobals.Array.from(input), { concurrency: "unbounded", mode: "result" }))
+  const race = (try.race $tryGlobals.Array.from(input))
+  const any = (try.any $tryGlobals.Array.from(input))
   return { all, settled: settled.map((r) => Result.getOrElse(r, () => 0)), race, any }
 }

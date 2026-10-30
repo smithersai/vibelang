@@ -1,4 +1,4 @@
-// expect: EK4607 EK4608 EK4604
+// expect: EK4607 EK1802 EK4604
 effect function load(): number!! {
   return 1
 }
@@ -9,12 +9,12 @@ export effect function replaced() {
   }
 }
 
-export effect function keyed() {
-  return await.race { a: load(), b: load() }
+export effect function retired() {
+  return await.race [load(), load()]
 }
 
 export effect function inHatch() {
   return try sync(() => {
-    await.all [Promise.resolve(1)]
+    await Promise.resolve(1)
   })
 }

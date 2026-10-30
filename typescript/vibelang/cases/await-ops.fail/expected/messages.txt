@@ -1,3 +1,3 @@
-select was replaced by await.race.
-await.race takes an array of programs, fibers, or deferreds: a race has no keys.
+select was replaced by try.race.
+await.race was removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: "unbounded" }) for an object; vibelang --fix rewrites it.
 await in a hatch body is JavaScript's await, which needs an async function.

@@ -4,7 +4,7 @@ function measure(name: string) {
 }
 
 export function metrics() {
-  const [cpu, memory] = await.all [measure("cpu"), measure("memory")]
+  const [cpu, memory] = try.all [measure("cpu"), measure("memory")]
   const disks = forEach(["root", "data", "backup"], measure, { concurrency: 8 })
   log(`Measured ${disks.length} disks`)
   return { cpu, memory, disks }

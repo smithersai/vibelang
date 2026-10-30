@@ -57,7 +57,6 @@ export const retiredByVips: Record<string, string> = {
   EK4602: "VIP-5: await is only for Promises",
   EK4604: "VIP-6: no hatches",
   EK4607: "VIP-18: no select",
-  EK4608: "VIP-18: try.race and its siblings take arrays",
   EK4612: "VIP-6: no hatches",
   EK4706: "VIP-16: variants are matched with object patterns",
   EK4707: "VIP-16: variants are matched with object patterns",

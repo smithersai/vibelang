@@ -16,8 +16,8 @@ import (
 // vibelang --fix-vip-only writes try before each call that runs where it
 // stands (VIP-5): a call, a method call, a call in a statement, and a call
 // whose value a member access continues, in parentheses, with a semicolon
-// where the parenthesis would continue the line before. It writes none in an
-// await operation's element, fork's operand, a held const, a function
+// where the parenthesis would continue the line before. It writes none in a
+// retired await operation (EK1802 rewrites it), fork's operand, a held const, a function
 // literal's expression body, the left side of catch, a plain function's
 // call, or a call that already has try. It rewrites the retired try(…)
 // hatch as Effect.try (EK4616), and marks the Effect functions effect
@@ -82,7 +82,7 @@ export effect function main() {
   const a = try load(1)
   try box.get(2)
   const b = (try load(3)).n
-  const all = await.all [load(4), load(5)]
+  const all = (try.all [effect { return try load(4) }, effect { return try load(5) }])
   const f = fork load(6)
   const p: { n: number }!! = load(7)
   const later = effect () => try load(8)
@@ -120,7 +120,7 @@ export effect function main() {
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 12 fixes (EK4616 ×1, try ×7, effect ×4)") {
+	if !strings.Contains(report.String(), "main.vibe: 13 fixes (EK1802 ×1, EK4616 ×1, try ×7, effect ×4)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 

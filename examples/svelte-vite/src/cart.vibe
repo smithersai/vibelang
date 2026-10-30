@@ -31,5 +31,5 @@ export function quote(sku: string, quantity: number) {
 }
 
 export function quoteCart() {
-  return await.all [quote("tea", 2), quote("coffee", 3)]
+  return try.all [quote("tea", 2), quote("coffee", 3)]
 }

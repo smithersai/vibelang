@@ -1,7 +1,11 @@
 // expect-result: {"all":[1,2],"keyed":{"first":3,"second":4},"held":[5,6]}
-// await.all runs each element in its own fiber, so an element that handles
+// try.all runs each element in its own fiber, so an element that handles
 // its own control operations runs (chapter 9, "Handlers and concurrency"). A
 // fiber already running is waited for, not started again.
+import { join as $tryJoinFiber } from "effect/Fiber"
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
+import { map as $tryMapResults } from "effect/Effect"
 control Ask { ask(): number!! }
 
 effect function answered(n: number) {
@@ -15,8 +19,8 @@ effect function answered(n: number) {
 export effect function main() {
   const running = fork answered(5)
   return {
-    all: await.all [answered(1), answered(2)],
-    keyed: await.all { first: answered(3), second: answered(4) },
-    held: await.all [join running, answered(6)]
+    all: (try.all [effect { return try answered(1) }, effect { return try answered(2) }]),
+    keyed: (try $tryMapResults($tryAllEffects({ first: effect { return try answered(3) }, second: effect { return try answered(4) } }, { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["first","second"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults)),
+    held: (try.all [$tryJoinFiber(running), effect { return try answered(6) }])
   }
 }

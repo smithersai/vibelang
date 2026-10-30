@@ -1,3 +1,5 @@
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
 module inputs {
   import { Effect } from "effect"
 
@@ -21,12 +23,12 @@ import { counted } from inputs
 export effect function main() {
   const seen: string[] = []
   const xs = try sync((s: string[]) => counted(s), seen)
-  const held: number[]!! = await.all xs
+  const held: number[]!! = effect { return try $tryAllEffects($tryGlobals.Array.from(xs), { concurrency: "unbounded" }) }
   const made = [...seen]
   const runs = [try held(), try held(), try held()]
   const ys = try sync((s: string[]) => counted(s), [] as string[])
-  const settled = await.allSettled ys
-  const race = await.race try sync((s: string[]) => counted(s), [] as string[])
-  const any = await.any try sync((s: string[]) => counted(s), [] as string[])
+  const settled = (try $tryAllEffects($tryGlobals.Array.from(ys), { concurrency: "unbounded", mode: "result" }))
+  const race = (try.race $tryGlobals.Array.from(try sync((s: string[]) => counted(s), [] as string[])))
+  const any = (try.any $tryGlobals.Array.from(try sync((s: string[]) => counted(s), [] as string[])))
   return { made, runs, settled: settled.map((r) => Result.getOrElse(r, () => 0)), race, any }
 }

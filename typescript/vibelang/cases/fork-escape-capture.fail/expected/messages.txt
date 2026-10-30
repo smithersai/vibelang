@@ -1,4 +1,4 @@
 error EK4838: This fiber is owned by returned's body, which interrupts it on exit, but it is captured by a function.
 error EK4838: This fiber is owned by local's body, which interrupts it on exit, but it is captured by a function.
 error EK4838: This fiber is owned by blockParam's body, which interrupts it on exit, but it is captured by a block param.
-To bound a join, race it in the region instead: await.race [join fiber, do { sleep(d); throw new Late() }]
+To bound a join, race it in the region instead: try.race [Fiber.join(fiber), effect { try sleep(d); throw new Late() }]

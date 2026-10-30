@@ -53,10 +53,10 @@ export function seat(ids: ReadonlyArray<string>) {
     const third = fork Seats.take("c")
     const one = join third
     detach(Seats.take("d"))
-    const all = await.all [Seats.take("e"), Seats.take("f")]
-    const race = await.race [Seats.take("g"), do { sleep("1 millis"); "late" }]
-    const any = await.any [Seats.take("h"), Seats.take("i")]
-    const settled = await.allSettled [Seats.take("j")]
+    const all = try.all [Seats.take("e"), Seats.take("f")]
+    const race = try.race [Seats.take("g"), effect { try sleep("1 millis"); return "late" }]
+    const any = try.any [Seats.take("h"), Seats.take("i")]
+    const settled = try.allSettled [Seats.take("j")]
     for concurrent(2) (const id of ids) log(id)
     const name = Seats.take("k") catch "guest"
     const reason = Seats.take("l") catch (e) => match (e) {

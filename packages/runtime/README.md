@@ -98,10 +98,10 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$assertMatch` | Require a successful pattern match | — |
 | `$asyncHatch` | Adapt an asynchronous hatch and its optional AbortSignal | — |
 | `$await` | Lower a retired await form | — |
-| `$awaitAll` | Run concurrent programs and collect successes | — |
-| `$awaitAllSettled` | Run concurrent programs and collect typed results | — |
-| `$awaitAny` | Race for the first success | — |
-| `$awaitRace` | Race for the first completion | — |
+| `$awaitAll` | Type of a removed `await.all`, which `vibelang --fix` reads to rewrite it (`EK1802`) | VIP-18 |
+| `$awaitAllSettled` | Type of a removed `await.allSettled`, read by `vibelang --fix` | VIP-18 |
+| `$awaitAny` | Type of a removed `await.any`, read by `vibelang --fix` | VIP-18 |
+| `$awaitRace` | Type of a removed `await.race`, read by `vibelang --fix` | VIP-18 |
 | `$catchCause` | Recover a complete Cause while preserving control abandonment | — |
 | `$defineProperty` | Captured Object.defineProperty intrinsic | — |
 | `$eager` | Track eager-call depth and its shared limit | — |

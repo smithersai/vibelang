@@ -1,6 +1,6 @@
 load() already runs here, so there is nothing to await.
 p is a promise, but await in VibeLang code does not wait for promises.
-await in VibeLang code is only await.all, await.allSettled, await.race, or await.any, and this is 42.
+await in VibeLang code waits for nothing, and this is 42.
 await in a hatch body is JavaScript's await, which needs an async function.
 await waits for a promise in JavaScript; join the fiber with join f.
 await waits for a promise in JavaScript; wait for the Deferred with d.await().

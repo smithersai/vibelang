@@ -484,15 +484,15 @@ func (v *vibePrinter) stmt(s Stmt) {
 		for _, el := range s.Elems {
 			els = append(els, v.awaitElem(el))
 		}
-		op := "await." + s.Op + " [" + strings.Join(els, ", ") + "]"
+		op := "try." + s.Op + " [" + strings.Join(els, ", ") + "]"
 		if len(s.Keys) > 0 {
-			// Ch 7 (D196): an object operand keeps its keys.
+			// VIP-18: an object of Effects uses the all global.
 			var props, binds []string
 			for i, k := range s.Keys {
 				props = append(props, k+": "+els[i])
 				binds = append(binds, k+": "+v.name(s.Names[i]))
 			}
-			w.line("const { %s } = await.%s { %s }", strings.Join(binds, ", "), s.Op, strings.Join(props, ", "))
+			w.line("const { %s } = try all({ %s }, { concurrency: \"unbounded\" })", strings.Join(binds, ", "), strings.Join(props, ", "))
 			break
 		}
 		switch s.Op {
@@ -747,11 +747,11 @@ func intList(xs []int) string {
 func (v *vibePrinter) awaitElem(el *AwaitElem) string {
 	switch {
 	case el.Never:
-		return "do { Effect.never() }"
+		return "Effect.never"
 	case el.X != nil:
-		return v.expr(el.X)
+		return "effect { return " + v.expr(el.X) + " }"
 	default:
-		return "do { " + v.inline(el.Body) + v.expr(el.Value) + " }"
+		return "effect { " + v.inline(el.Body) + "return " + v.expr(el.Value) + " }"
 	}
 }
 

@@ -73,9 +73,6 @@ func forkingCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) (what
 		return name, "run it on this fiber"
 	}
 	switch helper := fiberHelper(call); helper {
-	case "$awaitAll", "$awaitAllSettled", "$awaitRace", "$awaitAny":
-		// Each element starts in its own fiber (D196).
-		return awaitOperationNames[helper], "run it on this fiber"
 	case "$forConcurrent":
 		// Each item runs in its own fiber, unless the limit is 1 (D169).
 		args := call.Arguments()
@@ -189,14 +186,10 @@ func checkForkedArguments(c *checker.Checker, file *ast.SourceFile, call *ast.No
 }
 
 // holdsRecord reports whether call's first argument, when it is an object
-// literal, is a record of programs, as the operand of await.all and the first
-// argument of Effect.all are, rather than options, whose callbacks may run on
-// this fiber, as timeoutOrElse's orElse does.
+// literal, is a record of programs, as the first argument of Effect.all is,
+// rather than options, whose callbacks may run on this fiber, as
+// timeoutOrElse's orElse does.
 func holdsRecord(c *checker.Checker, call *ast.Node) bool {
-	switch fiberHelper(call) {
-	case "$awaitAll", "$awaitAllSettled":
-		return true
-	}
 	module, name := effectModuleExport(c, call.Expression())
 	return module == "Effect" && name == "all"
 }
@@ -207,10 +200,10 @@ func holdsRecord(c *checker.Checker, call *ast.Node) bool {
 // Effect.forkChild(load(id)), needs what running it adds, as the lambda
 // () => Ask.ask() would; visit receives the expression it runs. Each element
 // of an array literal, and each property of an object literal that record
-// says is a record of programs, such as await.all's operand, is its own
+// says is a record of programs, such as Effect.all's first argument, is its own
 // program. Any other argument needs what its type holds, and a program it
 // holds from a control operation's call, such as the property Ask.ask() of
-// await.all { x: Ask.ask() }, needs that control too: the call looks the
+// Effect.all({ x: Ask.ask() }), needs that control too: the call looks the
 // control up here, and its program performs the operation where it runs.
 func forkedPrograms(c *checker.Checker, argument *ast.Node, record bool, visit func(program *ast.Node, requirements []*checker.Type)) {
 	a := analyzerFor(c)

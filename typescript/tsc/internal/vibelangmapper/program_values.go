@@ -26,7 +26,7 @@ func (p *projector) programCollection(node *ast.Node, e env) bool {
 		return false
 	}
 	if ambiguous || propAmbiguous {
-		p.awaitChoice(node, "Annotate the callee's collection parameter as an iterable or record of Effects; its overloads disagree about program elements.")
+		p.formChoice(node, "Annotate the callee's collection parameter as an iterable or record of Effects; its overloads disagree about program elements.")
 		return false
 	}
 	start := p.tokenStart(node)
@@ -83,7 +83,7 @@ func (p *projector) programPipeInput(node *ast.Node) bool {
 	}
 	if len(candidates) == 0 {
 		if p.programInputUnannotated(node) {
-			p.awaitChoice(stage, "Annotate the pipe stage's input as an Effect or a plain function; the mapper cannot decide whether to pass the initial function as a program.")
+			p.formChoice(stage, "Annotate the pipe stage's input as an Effect or a plain function; the mapper cannot decide whether to pass the initial function as a program.")
 		}
 		return false
 	}
@@ -234,7 +234,7 @@ func (r *Resolver) holdsProgram(expr *ast.Node) bool {
 		return false
 	}
 	if d := r.Argument(node); d.Class == ClassProgram {
-		return d.Call == nil || awaitOperationHelper(d.Call) == ""
+		return true
 	}
 	if cls, _, ok := r.annotatedMember(node); ok && cls == ClassProgram {
 		return true

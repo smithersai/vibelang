@@ -81,13 +81,11 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 			bodyEffect = false
 		}
 
-		if helper := awaitOperationHelper(n); helper != "" {
-			if !effect {
-				p.awaitChoice(n, "An await operation must run in an Effect body; move it into an Effect function with an explicit contract.")
-				return
-			}
-			p.awaitFormChoices(n.Arguments()[0], helper == "$awaitRace" || helper == "$awaitAny")
+		if awaitOperationHelper(n) != "" {
+			p.retiredAwaitDiagnostic(n)
+			return
 		}
+
 		n.ForEachChild(func(child *ast.Node) bool {
 			childEffect := effect
 			if n.Body() != nil {
@@ -102,61 +100,6 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 	}
 	file.AsNode().ForEachChild(func(n *ast.Node) bool { visit(n, false); return false })
 	return p.diagnostics
-}
-
-// awaitFormChoices checks only the outer container, reusing the projector's
-// lexical classifiers without rendering its calls or traversing bodies twice.
-func (p *projector) awaitFormChoices(operand *ast.Node, race bool) {
-	switch operand.Kind {
-	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression:
-		p.awaitFormChoices(operand.Expression(), race)
-	case ast.KindArrayLiteralExpression:
-		for _, element := range operand.Elements() {
-			if element.Kind == ast.KindSpreadElement {
-				p.awaitChoice(element, "Annotate the spread operand as a collection of Effect, Fiber, or Deferred values and pass that collection directly to the await operation.")
-			} else {
-				p.awaitElementFormChoice(element)
-			}
-		}
-	case ast.KindObjectLiteralExpression:
-		if race {
-			p.awaitChoice(operand, "await.race and await.any require an iterable, not an object; use an array of programs.")
-		}
-		for _, property := range operand.Properties() {
-			switch property.Kind {
-			case ast.KindPropertyAssignment:
-				p.awaitElementFormChoice(property.Initializer())
-			case ast.KindShorthandPropertyAssignment:
-				p.awaitElementFormChoice(property.Name())
-			default:
-				p.awaitChoice(property, "Write an explicit property value with an Effect, Fiber, or Deferred annotation for this await operand.")
-			}
-		}
-	default:
-		if !p.awaitKnownCollection(operand) {
-			p.awaitChoice(operand, "Annotate the await operand as a collection of Effect, Fiber, or Deferred values, or write an array or object literal of programs.")
-		}
-	}
-}
-
-// awaitElementFormChoice shares the exact await classifiers with emit; held
-// values and call expressions still need annotation when text cannot decide.
-func (p *projector) awaitElementFormChoice(element *ast.Node) {
-	if isLambda(element) {
-		return
-	}
-	switch element.Kind {
-	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression:
-		p.awaitElementFormChoice(element.Expression())
-		return
-	}
-	if formsHoldsCall(element) {
-		if _, known := p.awaitCalls(element); !known {
-			p.awaitChoice(element, "The mapper cannot decide this await element's form from text. Bind it to a value with an explicit Effect, Fiber, or Deferred annotation, or write an explicitly annotated program lambda.")
-		}
-	} else if !p.awaitKnownValue(element, 0) {
-		p.awaitChoice(element, "The mapper cannot decide this await element's form from text. Add an Effect, Fiber, or Deferred annotation, or an explicit parameterless Effect function annotation.")
-	}
 }
 
 // sourceDataMethodAccess excludes synthesized pattern and handler scaffolding,

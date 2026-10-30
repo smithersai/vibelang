@@ -55,9 +55,6 @@ func inferredActions(t *testing.T, files map[string]string) ([]*lsproto.CodeActi
 			continue
 		}
 		forkChoices++
-		if diag.Message.String != nil && strings.HasPrefix(*diag.Message.String, "The mapper cannot decide this await element") && !strings.Contains(*diag.Message.String, "The fork infers the success type ") {
-			t.Fatal("await choice lacks the inferred type")
-		}
 		if diag.Severity == nil || *diag.Severity != lsproto.DiagnosticSeverityWarning {
 			t.Fatal("EK9100 is not an editor warning")
 		}
@@ -138,8 +135,6 @@ func TestInferredFormFix(t *testing.T) {
 		{"untyped argument", `declare const host: any; host((x: number) => { work(x); return x })`, 1},
 		{"unparenthesized", `declare const host: any; host(x => { work(x); return x })`, 1},
 		{"plain", `import { host } from "./host"; host((x: number) => Math.abs(x))`, 1},
-		{"await call element", `import { get } from "./host"; export function main() { return await.all [get(1)] }`, 1},
-		{"await collection", `export function main() { return await.all [() => work(1), () => work(2)] }`, 0},
 		{"hatch mapper", `export function main() { return sync(() => 1, (error: unknown) => { Math.abs(1); return new Error() }) }`, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -148,7 +143,7 @@ func TestInferredFormFix(t *testing.T) {
 				"/src/host.ts":       `import type { Effect } from "effect/Effect"; export declare const host: any; export declare function work(x: number): Effect<number,never,never>; export declare function get(x: number): Effect<number,never,never>; export declare function takesProgram(p: Effect<number,never,never>): Effect<number,never,never>; export declare function takesFn(f:(x:number)=>Effect<number,never,never>): Effect<number,never,never>`,
 				"/src/main.vibe":     `import { work } from "./host"; ` + test.source,
 				"/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
-				"/src/node_modules/vibelang-runtime/index.d.ts":   `export * as Effect from "effect/Effect"; import type { Effect } from "effect/Effect"; export declare function $awaitAll<A,E,R>(xs: readonly Effect<A,E,R>[]): Effect<A[],E,R>; export declare function sync<A>(f:()=>A, mapper?: (error: unknown)=>unknown): A`,
+				"/src/node_modules/vibelang-runtime/index.d.ts":   `export * as Effect from "effect/Effect"; import type { Effect } from "effect/Effect"; export declare function sync<A>(f:()=>A, mapper?: (error: unknown)=>unknown): A`,
 				"/src/node_modules/effect/package.json":           `{"name":"effect","types":"index.d.ts"}`,
 				"/src/node_modules/effect/index.d.ts":             `export * as Effect from "./Effect"`,
 				"/src/node_modules/effect/Effect.d.ts":            `export interface Effect<A,E=never,R=never> { readonly "~effect/Effect": { readonly _A: (_:never)=>A; readonly _E: (_:never)=>E; readonly _R: (_:never)=>R } }`,
@@ -197,9 +192,9 @@ func TestInferredFormFix(t *testing.T) {
 			if test.name == "named method contract" && !strings.Contains(before.DTS, "ReadonlyArray<string>") {
 				t.Fatalf("named contract spelling changed: %s", before.DTS)
 			}
-			if test.name == "await call element" || strings.HasPrefix(test.name, "program ") {
+			if strings.HasPrefix(test.name, "program ") {
 				if len(initialActions) != 0 {
-					t.Fatal("await expression received a fix that changes emit")
+					t.Fatal("program expression received a fix that changes emit")
 				}
 				return
 			}

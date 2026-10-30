@@ -1,7 +1,7 @@
 // expect-result: {"count":2,"first":1,"joined":3}
 // The parenthesized keyword forms are calls in shape (D452): a member
 // access, an element access, or a call after the ) applies to the form's
-// value. await.all([a(), b()]).length counts the results, and
+// value. (try.all [a, b]).length counts the results, and
 // fork(work(3)).join() forks the call and joins the fiber.
 effect function work(n: number) {
   try sleep("1 millis")
@@ -9,8 +9,8 @@ effect function work(n: number) {
 }
 
 export effect function main() {
-  const count = await.all([work(1), work(2)]).length
-  const first = await.all([work(1), work(2)])[0]
+  const count = (try.all ([effect { return try work(1) }, effect { return try work(2) }])).length
+  const first = (try.all ([effect { return try work(1) }, effect { return try work(2) }]))[0]
   const joined = try fork(work(3)).join()
   return { count, first, joined }
 }

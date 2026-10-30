@@ -85,11 +85,12 @@ var SpecListedCodes = sync.OnceValue(func() []int32 {
 
 // vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
 // override Chapter 28 until it is rewritten from them: VIP-5's EK0502,
-// EK4616, and EK0103, VIP-39's EK4618, and the migration warnings of VIP-3's
-// EK4853, VIP-9's EK4854 and EK4855, and VIP-9's EK3008. vipRetiredCodes are
+// EK4616, and EK0103, VIP-39's EK4618, VIP-18's EK1802 for a removed await
+// operation, and the migration warnings of VIP-3's EK4853, VIP-9's EK4854
+// and EK4855, and VIP-9's EK3008. vipRetiredCodes are
 // those they retire: EK4404, with the try hatch.
 var (
-	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 4853, 4854, 4855}
+	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 1802, 4853, 4854, 4855}
 	vipRetiredCodes = []int32{4404}
 )
 

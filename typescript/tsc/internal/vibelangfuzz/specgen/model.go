@@ -92,7 +92,7 @@ var Features = []Feature{
 	{"fork-detach", "Ch 7 (D170): detach(() => p()) starts a fiber that no region owns"},
 	{"fork-in", "Ch 7 (D170): forkIn(scope, () => p()) ties a fiber to a Scope the program closes"},
 	{"fork-scoped", "Ch 7 (D408): Effect.forkScoped(() => p()) ties a fiber to the caller's Scope, here Effect.scoped's"},
-	{"await-all-record", "Ch 7 Await operations (D196): await.all over an object literal keeps its keys"},
+	{"await-all-record", "Ch 7 Await operations (D196): Effect.all over an object literal keeps its keys, which VIP-18 writes try all({ … }, { concurrency: \"unbounded\" })"},
 	{"interruptible", "Ch 17 interruption rule (D180, D490): interruptible { } is Effect.interruptible, also under a mask and in cleanup"},
 	{"fail-cause", "Ch 17 throw rule (D406): Effect.failCause(cause) fails with every reason of an exit's cause"},
 	{"is-exit", "Ch 3 Matching (D208, D211): if (x is Exit.Failure(let cause)) and Exit.Success(let v)"},
@@ -617,9 +617,9 @@ type (
 		Call  Expr
 		Block []Stmt
 	}
-	// Await is `const [Names...] = await.Op [elems]`, or
-	// `const Names[0] = await.Op [elems]` for race and any. Keys makes an
-	// all's operand an object literal, `const { k: v } = await.all { k: el }`.
+	// Await is `const [Names...] = try.Op [elems]`, or
+	// `const Names[0] = try.Op [elems]` for race and any (VIP-18). Keys makes
+	// an all's operand an object literal, `const { k: v } = try all({ k: el }, …)`.
 	Await struct {
 		Op    string // all, allSettled, race, any
 		Names []string

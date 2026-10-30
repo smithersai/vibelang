@@ -1223,7 +1223,7 @@ need no new node kinds:
 | `fork { ... }` | `fork(() => { ... })` |
 | `join x` | `$join(x)`, a call that runs: the fiber's value and its failures (D225) |
 | `await x` (outside `async`) | `$await(x)`, kept only so that EK4609 and EK4610 name the replacement (D226) |
-| `await.all x`, `await.allSettled x`, `await.race x`, `await.any x` | `$awaitAll(x)`, `$awaitAllSettled(x)`, `$awaitRace(x)`, `$awaitAny(x)` (D196); the callee stands on `await` alone |
+| `await.all x`, `await.allSettled x`, `await.race x`, `await.any x` | `$awaitAll(x)`, `$awaitAllSettled(x)`, `$awaitRace(x)`, `$awaitAny(x)` (D196); the callee stands on `await` alone; retired by VIP-18, so the checker reports EK1802 and `vibelang --fix` writes `try.all` and its siblings |
 | `select { case const v = a(): S ... default: D }` | `$selectN: { const $selected = $select(hasDefault, () => a(), ...); ... }`, kept only so that EK4607 names its replacement (D197) |
 | `for concurrent(n) (const x of xs) S` | `$forConcurrent(xs, n, (x) => { S })`; the lowering evaluates `n` before `xs`, as written (`concurrentForCall`) |
 

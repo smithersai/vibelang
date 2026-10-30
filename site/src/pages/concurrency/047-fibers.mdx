@@ -25,7 +25,7 @@ effect function buildDashboard() {
 
 `fork` starts a child fiber and returns its handle, here a `Fiber.Fiber<string>`, without waiting for its result: the parent continues while the child waits. `join` waits for the child and returns its value or propagates its failure.
 
-`fork loadChart()` starts the Effect returned by `loadChart()`. To fork several statements, write `fork effect { ... }`. An existing Effect value is also a valid operand: after `const job = loadChart()`, write `fork job`. `join` takes a fiber: `join chart` waits for the fiber's result. A plain `fork` is owned by the current fiber, which interrupts unfinished children when it ends. `await` waits for Promises inside async functions.
+`fork loadChart()` starts the Effect returned by `loadChart()`. To fork several statements, write `fork effect { ... }`. An existing Effect value is also a valid operand: after `const job = loadChart()`, write `fork job`. `join` takes a fiber: `join chart` waits for the fiber's result. A plain `fork` is owned by the current fiber, which interrupts unfinished children when it ends. `await` waits for Promises inside async functions. Awaiting a fiber there is the `EK4609` lint warning, whose fix is `join`; awaiting a `Deferred` is `EK4610`, whose fix is `try Deferred.await(d)`.
 
 ## Awaiting completion as data
 

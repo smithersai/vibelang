@@ -1,12 +1,12 @@
-function user() {
+effect function user() {
   return { id: "1", name: "Ada" }
 }
 
-function orders() {
+effect function orders() {
   return [10, 20]
 }
 
-export function both() {
-  const [u, o] = await.all [user(), orders()]
+export effect function both() {
+  const [u, o] = try.all [user(), orders()]
   return `${u.name} has ${o.length} orders`
 }

@@ -88,7 +88,7 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 			if d.Call != nil {
 				sigs, _ := r.signaturesOf(d.Callee)
 				if d.Ambiguous || len(formsCandidates(sigs, len(d.Call.Arguments()))) == 0 {
-					p.awaitChoice(node, "The mapper cannot decide whether this pipe topic is a value or a program. Annotate the callee's parameter, or bind the input to an explicitly annotated value before the pipe.")
+					p.formChoice(node, "The mapper cannot decide whether this pipe topic is a value or a program. Annotate the callee's parameter, or bind the input to an explicitly annotated value before the pipe.")
 					ok = false
 				}
 			}
@@ -108,11 +108,11 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 		// D155 requires a running left side before a topic can pass it by
 		// name. An opaque call does not prove that native condition.
 		left := pipe.AsBinaryExpression().Left
-		if pauses, _ := p.awaitCalls(left); ok && pauses {
+		if pauses, _ := p.runningExpressionCalls(left); ok && pauses {
 			text := p.text[p.tokenStart(left):left.End()]
 			p.fiberDiagnostic(valueTopic, 1008, "% stands for "+text+", which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
 		} else {
-			p.awaitChoice(pipe, "A pipe cannot use its topic as both a program and a value; bind an explicitly annotated value or split the pipe.")
+			p.formChoice(pipe, "A pipe cannot use its topic as both a program and a value; bind an explicitly annotated value or split the pipe.")
 		}
 		return false
 	}

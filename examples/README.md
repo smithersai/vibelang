@@ -15,7 +15,7 @@ examples build browser bundles with Vite.
 | [pipeline](pipeline/) | A producer flowing through Stream operators and a `for...of` consumer. |
 | [react-vite](react-vite/) | A React component that runs a VibeLang service lookup through a `ManagedRuntime` and renders its recovered error. |
 | [vue-vite](vue-vite/) | A Vue single-file component over a VibeLang layer whose setup holds the todo list. |
-| [svelte-vite](svelte-vite/) | A Svelte 5 `{#await}` block over quotes that `await.all` runs concurrently. |
+| [svelte-vite](svelte-vite/) | A Svelte 5 `{#await}` block over quotes that `try.all` runs concurrently. |
 | [foldkit-app](foldkit-app/) | A Foldkit counter and todo list with one HTTP command, beside its Effect TypeScript original. |
 | [alchemy-stack](alchemy-stack/) | An Alchemy stack with a Cloudflare Worker over an R2 bucket, beside its Effect TypeScript original; tested without credentials. |
 

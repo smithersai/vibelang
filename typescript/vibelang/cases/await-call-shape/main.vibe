@@ -1,6 +1,9 @@
 // The parenthesized await operations are calls in shape (D452): a member
 // access, an element access, or a call after the `)` applies to the form's
 // value, as `fork(x).join()` does to a call of fork.
+import { all as $tryAllEffects } from "effect/Effect"
+import { $global as $tryGlobals } from "vibelang-runtime"
+import { map as $tryMapResults } from "effect/Effect"
 effect function one() { try yieldNow(); return 1 }
 effect function two() { try yieldNow(); return 2 }
 effect function work() { try yieldNow(); return { y: 7 } }
@@ -8,10 +11,10 @@ effect function work() { try yieldNow(); return { y: 7 } }
 // expect-result: {"count":2,"second":2,"field":2,"winner":"1","joined":7}
 export effect function main() {
   return {
-    count: await.all([one(), two()]).length,
-    second: await.all([one(), two()])[1],
-    field: await.all({ a: one(), b: two() }).b,
-    winner: await.race([one(), one()]).toString(),
+    count: (try.all ([effect { return try one() }, effect { return try two() }])).length,
+    second: (try.all ([effect { return try one() }, effect { return try two() }]))[1],
+    field: (try $tryMapResults($tryAllEffects(({ a: effect { return try one() }, b: effect { return try two() } }), { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["a","b"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults)).b,
+    winner: (try.race ([effect { return try one() }, effect { return try one() }])).toString(),
     joined: (try fork(work()).join()).y
   }
 }

@@ -21,7 +21,7 @@ func tryOperationHelper(node *ast.Node) string {
 }
 func (p *projector) tryOperation(call *ast.Node, e env) {
 	if !e.effect {
-		p.awaitChoice(call, "A try operation must run in an Effect body; move it into an effect function or block.")
+		p.formChoice(call, "A try operation must run in an Effect body; move it into an effect function or block.")
 		return
 	}
 	start := p.tokenStart(call)
@@ -43,7 +43,7 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 // legacy call-form classifier: a plain factory may return this Effect.
 func (p *projector) tryOperandExpression(node *ast.Node, e env) {
 	if !e.effect {
-		p.awaitChoice(node, "A try must run in an Effect body; move it into an effect function or block.")
+		p.formChoice(node, "A try must run in an Effect body; move it into an effect function or block.")
 		return
 	}
 	start := p.tokenStart(node)

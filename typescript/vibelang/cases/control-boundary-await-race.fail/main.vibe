@@ -1,12 +1,12 @@
 // expect: EK4201
-// await.race and await.any start each element in its own fiber (D196), which
+// try.race and try.any start each element in its own fiber (D196), which
 // cannot reach a handler on this one (chapter 9, "Handlers and
 // concurrency"). EK4201 reports each element that performs the operation.
 control Ask { ask(): number!! }
 
 export effect function race() {
   try {
-    return await.race [Ask.ask(), Ask.ask()]
+    return try.race [Ask.ask(), Ask.ask()]
   } handle Ask.ask() {
     try resume(1)
   }
@@ -14,7 +14,7 @@ export effect function race() {
 
 export effect function any() {
   try {
-    return await.any [sleep("1 second"), Ask.ask()]
+    return try.any [sleep("1 second"), Ask.ask()]
   } handle Ask.ask() {
     try resume(1)
   }
