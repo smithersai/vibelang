@@ -1,11 +1,14 @@
 // Run the law suite before publishing any derived specification claims.
 import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
+// The suite's watchdog ends a run that one test stalls; this deadline backs it up.
+// site-contrast.test.ts runs the site build, and with it this suite, so its timeout exceeds this.
+export const kernelSuiteDeadline = 15 * 60 * 1000
+
 export function kernelFacts(): Record<string, string> {
   const repo = resolve(import.meta.dir, "../..")
   const experiments = join(repo, "experiments")
-  // The suite's watchdog ends a run that one test stalls; this deadline backs it up.
-  const deadline = 15 * 60 * 1000
+  const deadline = kernelSuiteDeadline
   const started = Date.now()
   const suite = Bun.spawnSync(["bun", "test", "--timeout=30000"], { cwd: experiments, stdout: "pipe", stderr: "pipe", timeout: deadline })
   const suiteOutput = suite.stdout.toString() + suite.stderr.toString()

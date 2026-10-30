@@ -23,4 +23,6 @@ test("built home, onboarding and cheat sheet have zero contrast violations in bo
     expect({ command, code, output: code === 0 ? "" : stdout + stderr }).toEqual({ command, code: 0, output: "" })
     if (command.includes("test:contrast")) console.log(stdout)
   }
-}, 300_000)
+  // The build runs the kernel law suite (up to 15 minutes, kernel-facts.ts) and
+  // //:site-contrast allows 30; site-contrast-budget.test.ts keeps this between them.
+}, 25 * 60_000)

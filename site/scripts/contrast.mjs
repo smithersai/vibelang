@@ -141,6 +141,25 @@ export async function checkSiteContrast() {
           const button = page.locator('.vibelang-copy-prompt')
           for (const status of ['idle', 'copied', 'error']) {
             if (status !== 'idle') {
+              // The button resets its feedback after 2 s (CopyPromptButton), and
+              // each state's check and the axe audit can take longer on a loaded
+              // host. Hold that one timer until the audit ends; other timers run.
+              // Held ids are negative, so clearTimeout never cancels a real timer.
+              await page.evaluate(() => {
+                const { setTimeout, clearTimeout } = window
+                const held = new Map()
+                let next = -1
+                window.setTimeout = (callback, delay, ...args) => {
+                  if (delay !== 2_000) return setTimeout(callback, delay, ...args)
+                  held.set(next, () => callback(...args))
+                  return next--
+                }
+                window.clearTimeout = id => held.has(id) ? held.delete(id) : clearTimeout(id)
+                window.releaseFeedbackReset = () => {
+                  Object.assign(window, { setTimeout, clearTimeout })
+                  held.forEach(run => run())
+                }
+              })
               await page.evaluate(status => {
                 Object.defineProperty(navigator, 'clipboard', {
                   configurable: true,
@@ -161,7 +180,8 @@ export async function checkSiteContrast() {
                 await page.keyboard.press('Shift+Tab')
                 await page.keyboard.press('Tab')
               }
-              await page.waitForTimeout(180)
+              // Once per status, outlast the reset to prove the hold covers these checks.
+              await page.waitForTimeout(status !== 'idle' && state === 'default' ? 2_100 : 180)
               assert.equal(await button.innerText(), label, theme + ' ' + status + ' ' + state)
               if (state === 'active' || state === 'focus') {
                 assert(await button.evaluate((el, state) => el.matches(state === 'focus' ? ':focus-visible' : ':active'), state))
@@ -251,16 +271,6 @@ export async function checkSiteContrast() {
               }
             }
             if (status !== 'idle') {
-              // The button resets its feedback after 2 s (CopyPromptButton), and
-              // axe can take longer on a loaded host. Hold that one timer until
-              // the audit ends; axe's own timers run.
-              await page.evaluate(() => {
-                const setTimeout = window.setTimeout
-                const held = []
-                window.setTimeout = (callback, delay, ...args) =>
-                  delay === 2_000 ? held.push(() => callback(...args)) : setTimeout(callback, delay, ...args)
-                window.releaseFeedbackReset = () => { window.setTimeout = setTimeout; held.forEach(run => run()) }
-              })
               await button.click()
               await page.mouse.move(1360, 895)
               await page.waitForTimeout(180)
