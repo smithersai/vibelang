@@ -66,6 +66,9 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	if !isEffectTypeName(c, reference) {
 		return nil
 	}
+	if reference.Parent != nil && ast.IsHeritageClause(reference.Parent) {
+		return nil // extends Effect.Effect<…> names an interface to extend, which A!E!R is not
+	}
 	arguments := reference.TypeArguments()
 	if len(arguments) == 0 || len(arguments) > 3 {
 		return nil

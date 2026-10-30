@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Running the fork startup checks alongside individual compiler cases could delete their output; concurrent checks now use separate case copies.
 
+- EK4833 warned on `interface Api<A> extends Effect.Effect<A, never, never>`, where `A!E!R` cannot stand and its quick fix was refused; it now skips an interface's `extends` element and still rewrites an Effect type nested in its type arguments.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.

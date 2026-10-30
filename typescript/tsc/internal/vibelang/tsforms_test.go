@@ -49,6 +49,7 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		{"parameter", 4833, `export function run(program: Effect.Effect<number>): number!! { return program() }`, `export function run(program: number!!): number!! { return program() }`},
 		{"union member", 4833, `export type Maybe = Effect.Effect<number> | undefined`, `export type Maybe = (number!!) | undefined`},
 		{"function slot", 4833, `export type Make = Effect.Effect<() => number>`, `export type Make = (() => number)!!`},
+		{"type argument in a heritage clause", 4833, `export interface Programs<A> extends ReadonlyArray<Effect.Effect<A>> {}`, `export interface Programs<A> extends ReadonlyArray<A!!> {}`},
 		{"partial contract on a body", 4833, `export function load(): Effect.Effect<number> { return 1 }`, `export function load(): number!! { return 1 }`},
 		{"partial contract with errors on a body", 4833, "error Gone\nexport function load(): Effect.Effect<number, Gone> { return 1 }", "error Gone\nexport function load(): number!Gone { return 1 }"},
 		// EK4834 (D288)
@@ -181,6 +182,7 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 		{"struct whose name is another type", "type Point = { x: number }\nexport const Point = Schema.Struct({ x: Schema.Number })", 4832, ""},
 		{"prelude spelling", `export type Load = (id: string) => Effect<string, never, never>`, 4833, ""},
 		{"inferred requirements", `export function load(): Effect.Effect<number, never, infer R> { return 1 }`, 4833, ""},
+		{"interface extending an Effect", "export interface Api<A> extends Effect.Effect<A, never, never> {\n  readonly kind: \"Api\"\n}", 4833, ""},
 		{"inferred errors", `export function load(): Effect.Effect<number, infer E, never> { return 1 }`, 4833, ""},
 		{"succeed passed by name", `export function patient() { return retry(Effect.succeed(1), Schedule.recurs(1)) }`, 4834, ""},
 		{"succeed of an Effect", "const inner: Effect.Effect<number> = Effect.sync(() => 1)\nexport function outer() { return Effect.succeed(inner) }", 4834, ""},
