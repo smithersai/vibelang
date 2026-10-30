@@ -138,6 +138,58 @@ func (e *EvItem) Effect(w *Writer) { e.Vibe(w) }
 func (e *EvItem) Ends() bool       { return false }
 
 func init() {
+	Register(&Construct{
+		Key: "vip19.head-initialization-item", VIP: 19,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+		Citations: []Citation{{VIP: 19, Template: "yield* Effect.forEach(‹args›)", Quote: "RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block.",
+			Reading: "Head binding initialization, defaults and computed keys included, runs per item inside the item's Effect, before its body; its try suspends that item."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "const rows: { n?: number }[] = [{ n: 1 }, {}]; let total = 0; for concurrent (const { [do { ev(\"key\"); try Effect.succeed(\"n\" as const) }]: n = do { ev(\"default\"); try Effect.sync(() => ev(\"ran\")); 5 } } of rows) { ev(\"body\" + n); total += n }; return total", ref: "const rows = [{ n: 1 }, {}]; let total = 0; yield* Effect.forEach(rows, ($row) => Effect.gen(function* () { const { [(ev(\"key\"), yield* Effect.succeed(\"n\"))]: n = (ev(\"default\"), yield* Effect.sync(() => ev(\"ran\")), 5) } = $row; ev(\"body\" + n); total += n }), { concurrency: \"unbounded\", discard: true }); return total"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip19.rhs-return", VIP: 19,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+		Citations: []Citation{{VIP: 19, Template: "yield* Effect.forEach(‹args›)", Quote: "The limit and RHS retain the enclosing activation's permitted outward completions.",
+			Reading: "A return in the RHS do leaves the enclosing function before any item starts."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "const rows = [1, 2]; for concurrent (const x of do { if (rows.length === 2) { ev(\"early\"); return 7 }; rows }) { ev(\"item\" + x) }; return 0", ref: "const rows = [1, 2]; if (rows.length === 2) { ev(\"early\"); return 7 }; yield* Effect.forEach(rows, (x) => Effect.gen(function* () { ev(\"item\" + x) }), { concurrency: \"unbounded\", discard: true }); return 0"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip19.limit-return", VIP: 19,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+		Citations: []Citation{{VIP: 19, Template: "yield* Effect.forEach(‹args›)", Quote: "The limit and RHS retain the enclosing activation's permitted outward completions.",
+			Reading: "The limit runs before the RHS; a return in its do leaves the enclosing function, so the RHS never runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "const rows = [1, 2]; for concurrent (do { if (rows.length === 2) { ev(\"early\"); return 8 }; 1 }) (const x of (ev(\"rhs\"), rows)) { ev(\"item\" + x) }; return 0", ref: "const rows = [1, 2]; if (rows.length === 2) { ev(\"early\"); return 8 }; const n = 1; const xs = (ev(\"rhs\"), rows); yield* Effect.forEach(xs, (x) => Effect.gen(function* () { ev(\"item\" + x) }), { concurrency: n, discard: true }); return 0"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip19.rhs-tdz", VIP: 19,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+		Citations: []Citation{{VIP: 19, Template: "yield* Effect.forEach(‹args›)", Quote: "RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block.",
+			Reading: "ECMAScript ForIn/OfHeadEvaluation evaluates the RHS with uninitialized head bindings; the reference obtains that environment from a native for-of over no items, then runs the VIP operation on the captured RHS."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			return []Stmt{&catchEdge{vibe: "let probe: () => unknown = () => 0; for concurrent (const x of (probe = () => x, [1])) { ev(\"item\" + x) }; return try Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return (e as Error).name } })", ref: "let probe = () => 0; let xs; for (const x of (probe = () => x, xs = [1], [])) { }; yield* Effect.forEach(xs, (x) => Effect.gen(function* () { ev(\"item\" + x) }), { concurrency: \"unbounded\", discard: true }); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"}}
+		},
+	})
+}
+
+func init() {
 	for _, bound := range []string{"1", "\"unbounded\""} {
 		key := "vip19.limit-number"
 		if bound != "1" {

@@ -113,3 +113,21 @@ FuzzVIPDifferential compile:EK9203/vip21.lexical-receiver compiler VIP-21: the `
 FuzzVIPDifferential compile:TS2739/vip21.lexical-receiver compiler VIP-21: the `effect *name()` method shorthand compiles as a JavaScript generator (EK4801, EK9203, TS2739); lane w2-genpipe
 FuzzPlainHandlerThrow missing:EK0511 sl1-apply decided detail 239 (loop r1 ASTRA-9): an explicit throw that can complete a plain catch handler gets no EK0511 warning
 FuzzUnaryPow missing:EK0510 impl-hunt-fail decided detail 212 (loop r1 ASTRA-10): an unparenthesized try or join on the left of ** reports TS17006, not EK0510
+FuzzRunningRules diagnostic:concurrent-head-return compiler VIP-19: a `return` in a head default's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run
+FuzzRunningRules corpus:concurrent-head-return compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-return; lane impl-hunt-run
+FuzzRunningRules diagnostic:concurrent-head-computed-return compiler VIP-19: a `return` in a computed head key's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run
+FuzzRunningRules corpus:concurrent-head-computed-return compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-computed-return; lane impl-hunt-run
+FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
+FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
+FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block
+FuzzRunningRules corpus:concurrent-head-continue-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-continue-outer; lane core-block
+FuzzVIPDifferential compile:TS2464/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-head-initialization-item compiler VIP-19: minimal named probe reproduces compile:TS2464/vip19.head-initialization-item; lane impl-hunt-run
+FuzzVIPDifferential compile:TS2538/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
+FuzzVIPDifferential compile:TS1108/vip19.limit-return compiler VIP-19: a `return` in the limit's `do` draws TS1108 instead of leaving the enclosing function; lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-limit-return compiler VIP-19: minimal named probe reproduces compile:TS1108/vip19.limit-return; lane impl-hunt-run
+FuzzVIPDifferential compile:TS1108/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` draws TS1108 instead of leaving the enclosing function; lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-rhs-return compiler VIP-19: minimal named probe reproduces compile:TS1108/vip19.rhs-return; lane impl-hunt-run
+FuzzVIPDifferential compile:TS2345/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` draws TS1108 and leaves the `do`'s type as `7 | number[]` (TS2345); lane impl-hunt-run
+FuzzVIPDifferential compile:TS2304/vip19.rhs-tdz compiler VIP-19: an RHS closure cannot name the head binding (TS2304); ECMAScript's head environment holds it uninitialized; lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-rhs-tdz compiler VIP-19: minimal named probe reproduces compile:TS2304/vip19.rhs-tdz; lane impl-hunt-run

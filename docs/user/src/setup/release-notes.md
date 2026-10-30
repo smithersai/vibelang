@@ -195,6 +195,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow kept `vibelang --fix` rewrites of an earlier batch's `.vibe` module in another package, such as a `schema error` conversion of `../lib/error.vibe` while fixing `apps/server`, and reported no fix. It now puts back every `.vibe` file outside the batch, wherever it is in the repository.
 
+- The fuzz suite did not check jumps in a `for concurrent` head; new checks cover `return`, `break` and `continue` in head defaults and computed keys, and `return` in the limit and operand.
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
