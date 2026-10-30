@@ -179,3 +179,59 @@ func init() {
 		},
 	})
 }
+
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-callee-snapshot", VIP: 2,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{VIP: 2, Template: "yield* Effect.succeed(‹n›)", Quote: "It runs now and gives its last statement's value",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let f = (x: number) => 1; const out = f(do { ev(\"argument\"); f = (x: number) => 2; try Effect.succeed(0) }); return out", ref: "let f = (x) => 1; const saved = f; ev(\"argument\"); f = (x) => 2; const arg = yield* Effect.succeed(0); const out = saved(arg); return out"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-receiver-snapshot", VIP: 2,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{VIP: 2, Template: "yield* Effect.succeed(‹n›)", Quote: "It runs now and gives its last statement's value",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let o = { n: 1, f(x: number) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs: any[]) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs: any[]) => 99 } }); const out = o.f(do { ev(\"argument\"); o = { n: 99, f(x: number) { return this.n + x } }; try Effect.succeed(2) }); return out", ref: "let o = { n: 1, f(x) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs) => 99 } }); const self = o, fn = self.f; ev(\"argument\"); o = { n: 99, f(x) { return this.n + x } }; const arg = yield* Effect.succeed(2); const out = Reflect.apply(fn, self, [arg]); return out"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-optional-chain", VIP: 2,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{VIP: 2, Template: "yield* Effect.succeed(‹n›)", Quote: "It runs now and gives its last statement's value",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "const missing = null as { f: (x: number) => number } | null; const present = { f: (x: number) => x + 1 }; const a = missing?.f(do { ev(\"wrong\"); try Effect.succeed(99) }); const b = present?.f(do { ev(\"selected\"); try Effect.succeed(7) }); return [a, b]", ref: "const missing = null; const present = { f: (x) => x + 1 }; let a, b; if (missing == null) a = undefined; else { const fn = missing.f; ev(\"wrong\"); const arg = yield* Effect.succeed(99); a = Reflect.apply(fn, missing, [arg]) }; if (present == null) b = undefined; else { const fn = present.f; ev(\"selected\"); const arg = yield* Effect.succeed(7); b = Reflect.apply(fn, present, [arg]) }; return [a, b]"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-logical-assignment", VIP: 2,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{VIP: 2, Template: "yield* Effect.succeed(‹n›)", Quote: "It runs now and gives its last statement's value",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let value: number | null = 1; const box = { get x() { ev(\"get\"); return value }, set x(v: number | null) { ev(\"set\"); value = v } }; box.x ||= do { ev(\"skip-or\"); try Effect.succeed(9) }; box.x &&= do { ev(\"and\"); try Effect.succeed(7) }; box.x ??= do { ev(\"skip-nullish\"); try Effect.succeed(9) }; value = 0; box.x &&= do { ev(\"skip-and\"); try Effect.succeed(9) }; value = 0; box.x ||= do { ev(\"or\"); try Effect.succeed(6) }; value = null; box.x ??= do { ev(\"nullish\"); try Effect.succeed(8) }; return value", ref: "let value = 1; const box = { get x() { ev(\"get\"); return value }, set x(v) { ev(\"set\"); value = v } }; const old0 = box.x; if (!old0) { ev(\"skip-or\"); const next0 = yield* Effect.succeed(9); box.x = next0 }; const old1 = box.x; if (old1) { ev(\"and\"); const next1 = yield* Effect.succeed(7); box.x = next1 }; const old2 = box.x; if (old2 == null) { ev(\"skip-nullish\"); const next2 = yield* Effect.succeed(9); box.x = next2 }; value = 0; const old3 = box.x; if (old3) { ev(\"skip-and\"); const next3 = yield* Effect.succeed(9); box.x = next3 }; value = 0; const old4 = box.x; if (!old4) { ev(\"or\"); const next4 = yield* Effect.succeed(6); box.x = next4 }; value = null; const old5 = box.x; if (old5 == null) { ev(\"nullish\"); const next5 = yield* Effect.succeed(8); box.x = next5 }; return value"}}
+		},
+	})
+}

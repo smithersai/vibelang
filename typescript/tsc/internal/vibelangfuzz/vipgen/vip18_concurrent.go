@@ -322,3 +322,17 @@ func init() {
 		},
 	})
 }
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.readonly-arrays", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all", "vip18.race", "vip18.any", "vip18.all-settled"},
+		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "const xs: ReadonlyArray<Effect.Effect<number>> = [Effect.andThen(Effect.sleep(2), Effect.succeed(1)), Effect.andThen(Effect.sleep(1), Effect.succeed(2))]; const a = try.all xs; const r = try.race xs; const n = try.any xs; const s = try.allSettled xs; return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]", ref: "const xs = [Effect.andThen(Effect.sleep(2), Effect.succeed(1)), Effect.andThen(Effect.sleep(1), Effect.succeed(2))]; const a = yield* Effect.all(xs, { concurrency: \"unbounded\" }); const r = yield* Effect.raceAllFirst(xs); const n = yield* Effect.raceAll(xs); const s = yield* Effect.all(xs.map(Effect.exit), { concurrency: \"unbounded\" }); return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]"}}
+		},
+	})
+}

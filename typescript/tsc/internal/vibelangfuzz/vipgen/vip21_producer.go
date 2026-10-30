@@ -262,3 +262,18 @@ func init() {
 		},
 	})
 }
+
+func init() {
+	Register(&Construct{
+		Key: "vip21.lexical-receiver", VIP: 21,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip21.producer"},
+		Citations: []Citation{{VIP: 21, Template: "Stream.callback(‹args›)", Quote: "`effect function*` returns a Stream, as `async function*` returns an AsyncIterable.",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			g.UseModule("Queue", false)
+			return []Stmt{&catchEdge{vibe: "class Base { value() { return 2 } }; class C extends Base { n = 5; effect *values() { ev(\"yield\" + this.n); yield this.n; try Effect.sleep(1); yield super.value() } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = 7; const first = try Stream.runCollect(stream); c.n = 9; const second = try Stream.runCollect(stream); return [first, second]", ref: "class Base { value() { return 2 } }; class C extends Base { n = 5; values() { const self = this; const parentValue = () => super.value(); return Stream.callback(q => Effect.gen(function* () { ev(\"yield\" + self.n); yield* Queue.offer(q, self.n); yield* Effect.sleep(1); yield* Queue.offer(q, parentValue()) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = 7; const first = yield* Stream.runCollect(stream); c.n = 9; const second = yield* Stream.runCollect(stream); return [first, second]"}}
+		},
+	})
+}

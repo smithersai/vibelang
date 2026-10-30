@@ -162,3 +162,17 @@ func init() {
 		})
 	}
 }
+
+func init() {
+	Register(&Construct{
+		Key: "vip19.self-continue", VIP: 19,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+		Citations: []Citation{{VIP: 19, Template: "yield* Effect.forEach(‹args›)", Quote: "`continue` ends that one item.",
+			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+
+			return []Stmt{&catchEdge{vibe: "let n = 0; own: for concurrent (const x of [1, 2]) { if (x === 1) continue own; n += x }; return n", ref: "let n = 0; yield* Effect.forEach([1, 2], x => Effect.gen(function* () { if (x === 1) return; n += x }), { concurrency: \"unbounded\", discard: true }); return n"}}
+		},
+	})
+}
