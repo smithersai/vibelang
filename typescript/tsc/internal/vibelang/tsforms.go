@@ -492,8 +492,12 @@ func bindingRemovals(file *ast.SourceFile, statement *ast.Node, gone []*ast.Node
 	return edits
 }
 
-// containsWord reports whether text holds word as a whole identifier.
+// containsWord reports whether text holds word as a whole identifier. The
+// empty word, the name of a binding error recovery left without one, is none.
 func containsWord(text, word string) bool {
+	if word == "" {
+		return false
+	}
 	isPart := func(b byte) bool {
 		return b == '_' || b == '$' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= 0x80
 	}

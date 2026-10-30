@@ -549,6 +549,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Completion could hang the language server in a file with a call left open after an earlier closed one, such as a second `pipe(` typed below `pipe(o, Option.getOrNull)`: matching the earlier `)` searched the whole file and found the later `(`. It now searches only before the token, as TypeScript does.
 
+- The compiler crashed on a file with a broken import whose recovery left a nameless binding, such as `import { Control, handle, resumeWithion nee "vibelang-runtime"`, beside an Effect error class: looking for the empty name in the rewritten code walked past its end. An empty name now matches nothing.
+
 - Language design inconsistencies were missing from these notes. They now list
   confirmed issues, examples and safe patterns in [Known design issues](#known-design-issues).
 - Platform-global examples could fail when copied from the page. The page now includes the context needed to compile its browser-service, import and export examples.
