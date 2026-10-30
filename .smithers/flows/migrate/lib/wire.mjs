@@ -127,6 +127,8 @@ export function addVitePlugin(text, ts) {
 
 const viteConfigNames = ["vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs", "vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]
 
+const astroConfigNames = ["astro.config.mjs", "astro.config.ts", "astro.config.mts", "astro.config.js"]
+
 /**
  * The config file a test command names with --config or -c, as written, or
  * null. A package-manager command that runs a script (`pnpm test`, `npm run
@@ -166,12 +168,17 @@ export function wireVite({ root, packages, test, ts, specsFor }) {
   const configs = []
   for (const pkg of packages) {
     const name = viteConfigNames.find((f) => existsSync(join(root, pkg.dir, f)))
-    if (!name) {
+    // A package without its own config may name a shared one in its test script: --config ../../vite.config.ts.
+    const manifest = join(root, pkg.dir, "package.json")
+    const shared = name ? null : testConfigArgument("pnpm test", existsSync(manifest) ? JSON.parse(readFileSync(manifest, "utf8")).scripts : undefined)
+    const file = posix.normalize(posix.join(pkg.dir, name ?? shared ?? ""))
+    if ((!name && !shared) || !existsSync(join(root, file))) {
       warnings.push(`${pkg.dir}: no Vite or Vitest config, so the tests load no .vibe module unless their runner is set up for VibeLang`)
       continue
     }
-    configs.push(posix.join(pkg.dir, name))
-    wire(posix.join(pkg.dir, name))
+    if (configs.includes(file)) continue
+    configs.push(file)
+    wire(file)
   }
   return { changed, warnings, configs }
 }
@@ -275,6 +282,11 @@ export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
   const configs = []
   for (const file of viteAppConfigs(root, packages.map((pkg) => pkg.dir))) {
     if (wired.includes(file)) continue
+    const astro = astroConfigNames.find((name) => existsSync(join(root, posix.dirname(file), name)))
+    if (astro) {
+      warnings.push(`${file}: Astro builds this app from ${astro}, and the plugin breaks \`astro check\` here; add vibelang() to its vite.plugins by hand`)
+      continue
+    }
     try {
       wireViteConfig({ root, file, ts, specsFor, changed })
       configs.push(file)

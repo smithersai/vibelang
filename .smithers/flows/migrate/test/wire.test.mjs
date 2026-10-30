@@ -397,3 +397,51 @@ test("initAgents writes nothing with a vibelang that has no agents command", asy
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test("wireVite follows a package's test script to a shared config once, and warns for a package with neither", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-wire-"))
+  try {
+    const write = (file, text) => {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text)
+    }
+    const manifest = (test) => JSON.stringify({ scripts: { test } })
+    write("package.json", "{}")
+    write("vite.config.ts", "export default defineConfig({ plugins: [] })\n")
+    write("packages/a/package.json", manifest("vp test run --config ../../vite.config.ts --dir ."))
+    write("packages/b/package.json", manifest("vp test run --config ../../vite.config.ts --dir ."))
+    write("packages/c/package.json", manifest("vp test run"))
+    write("packages/d/package.json", manifest("vp test run --config ./missing.config.ts"))
+    const packages = ["a", "b", "c", "d"].map((name) => ({ dir: `packages/${name}` }))
+    const specsFor = () => ({ vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
+    const result = wireVite({ root, packages, test: { command: "python3 scope.py", cwd: "." }, ts, specsFor })
+    assert.deepEqual(result.configs, ["vite.config.ts"])
+    assert.deepEqual(result.warnings.map((w) => w.split(":")[0]), ["packages/c", "packages/d"])
+    assert.ok(readFileSync(join(root, "vite.config.ts"), "utf8").includes("vibelang()"))
+    assert.deepEqual(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies, { vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("wireViteApps leaves an Astro app's Vite config alone and says where the plugin goes", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-wire-"))
+  try {
+    const write = (file, text) => {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text)
+    }
+    const config = "export default defineConfig({ plugins: [] })\n"
+    write("package.json", "{}")
+    write("packages/core/package.json", JSON.stringify({ name: "core" }))
+    write("apps/site/package.json", JSON.stringify({ name: "site", dependencies: { core: "workspace:*" } }))
+    write("apps/site/vite.config.ts", config)
+    write("apps/site/astro.config.mjs", "export default {}\n")
+    const result = wireViteApps({ root, packages: [{ dir: "packages/core" }], ts, specsFor: () => ({ vibelang: "0.0.12", "vibelang-vite": "0.0.12" }) })
+    assert.deepEqual(result.configs, [])
+    assert.match(result.warnings[0], /^apps\/site\/vite\.config\.ts: Astro builds this app from astro\.config\.mjs/)
+    assert.equal(readFileSync(join(root, "apps/site/vite.config.ts"), "utf8"), config)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
