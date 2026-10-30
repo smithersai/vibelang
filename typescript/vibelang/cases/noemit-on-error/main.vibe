@@ -1,1 +1,1 @@
-export const clock = Date.now()
+export const clock = performance.now()

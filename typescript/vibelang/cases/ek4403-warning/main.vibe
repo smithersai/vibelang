@@ -4,7 +4,7 @@ import { Effect } from "effect"
 
 effect function stamp() {
   try Effect.sleep("1 millis")
-  return Date.now()
+  return performance.now()
 }
 
 function uuid() {

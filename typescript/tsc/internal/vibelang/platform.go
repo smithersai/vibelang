@@ -34,7 +34,7 @@ import (
 // module; a type-only import stays allowed. ECMAScript's built-ins and the
 // web's pure helpers (URL, TextEncoder, structuredClone, AbortController,
 // Blob, ...) are not platform code. A clock or randomness read, such as
-// Date.now(), is EK4403 instead, an error by default that a project may lower
+// performance.now(), is EK4403 instead, an error by default that a project may lower
 // (D34); a read it allows compiles as a trusted sync call. Both apply
 // everywhere in a .vibe file, a boundary's callback and the module's top
 // level included.
@@ -443,26 +443,22 @@ type clockRead struct {
 
 const (
 	testClock  = "In a test, TestClock sets it."
-	testRandom = "In a test, Random.withSeed(() => program(), seed) fixes it."
 	testCrypto = `In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.`
 )
 
-// clockReads lists the clock and randomness reads (EK4403), by the
+// clockReads lists host clock and randomness reads (EK4403), by the
 // declaration that a call resolves to, with what replaces each one.
+// VIP-33 allows ECMA-262 built-ins, including Date and Math.random.
 var clockReads = map[string]clockRead{
-	"DateConstructor.now":         {"Clock.currentTimeMillis(), the same number of milliseconds", "", testClock},
-	"DateConstructor":             {"String(DateTime.nowAsDate()), since Date() returns a string", "", testClock},
-	"DateConstructor.constructor": {"DateTime.nowAsDate() for a Date, or DateTime.now() for a DateTime.Utc", "", testClock}, // new Date()
-	"Math.random":                 {"Random.next(), a number from 0 up to 1", "", testRandom},
-	"Crypto.randomUUID":           {"SecureRandom.uuidV4()", "Crypto", testCrypto},
-	"Crypto.getRandomValues":      {"SecureRandom.randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
-	"Performance.now":             {"Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds", "", testClock},
-	"Now.instant":                 {"DateTime.now()", "", testClock},
-	"Now.zonedDateTimeISO":        {"DateTime.nowInCurrentZone()", "", testClock},
-	"Now.plainDateTimeISO":        {"DateTime.now()", "", testClock},
-	"Now.plainDateISO":            {"DateTime.now()", "", testClock},
-	"Now.plainTimeISO":            {"DateTime.now()", "", testClock},
-	"Now.timeZoneId":              {"DateTime.CurrentTimeZone()", "", "In a test, provide DateTime.CurrentTimeZone."},
+	"Crypto.randomUUID":      {"SecureRandom.uuidV4()", "Crypto", testCrypto},
+	"Crypto.getRandomValues": {"SecureRandom.randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
+	"Performance.now":        {"Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds", "", testClock},
+	"Now.instant":            {"DateTime.now()", "", testClock},
+	"Now.zonedDateTimeISO":   {"DateTime.nowInCurrentZone()", "", testClock},
+	"Now.plainDateTimeISO":   {"DateTime.now()", "", testClock},
+	"Now.plainDateISO":       {"DateTime.now()", "", testClock},
+	"Now.plainTimeISO":       {"DateTime.now()", "", testClock},
+	"Now.timeZoneId":         {"DateTime.CurrentTimeZone()", "", "In a test, provide DateTime.CurrentTimeZone."},
 }
 
 // platformModule is EK4402's text for an import of a platform module that
@@ -913,14 +909,7 @@ func clockReadOf(c *checker.Checker, call *ast.Node) string {
 	if container := containerName(owner); container != "" {
 		key = container + "." + key
 	}
-	switch {
-	case ast.IsNewExpression(call):
-		// new Date() reads the clock; new Date(value) parses value.
-		if key == "DateConstructor" && decl.Kind == ast.KindConstructSignature && len(call.Arguments()) == 0 {
-			return "DateConstructor.constructor"
-		}
-		return ""
-	case key == "DateConstructor" && decl.Kind != ast.KindCallSignature:
+	if ast.IsNewExpression(call) {
 		return ""
 	}
 	if _, ok := clockReads[key]; ok {

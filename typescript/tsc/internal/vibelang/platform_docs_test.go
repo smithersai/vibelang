@@ -30,7 +30,7 @@ func TestPlatformDocsTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	skipVIPForm(t, page)
-	reads := map[string]string{"Date.now": "DateConstructor.now", "performance.now": "Performance.now", "Math.random": "Math.random", "crypto.randomUUID": "Crypto.randomUUID"}
+	reads := map[string]string{"performance.now": "Performance.now", "crypto.randomUUID": "Crypto.randomUUID"}
 	code := regexp.MustCompile("^`([^`]*)`$")
 	rows := 0
 	for _, line := range strings.Split(string(page), "\n") {
@@ -41,6 +41,10 @@ func TestPlatformDocsTable(t *testing.T) {
 		rows++
 		call := code.FindStringSubmatch(cells[0])[1]
 		effect, layer := strings.Trim(cells[1], "`"), strings.Trim(cells[2], "`")
+		// VIP-33 allows ECMA-262 reads; these rows are optional advice.
+		if call == "Date.now" || call == "Math.random" {
+			continue
+		}
 		var s *platformService
 		if key, ok := reads[call]; ok {
 			read := clockReads[key]

@@ -1,13 +1,13 @@
 // expect: EK4401 EK4403
 // Only a hatch's first argument is TypeScript (D232). Its inputs are VibeLang,
 // so a plain foreign call among them needs a boundary (EK4401) and a clock
-// read among them is uncontrolled time (EK4403), as anywhere in VibeLang code.
+// read of host time among them is uncontrolled (EK4403). ECMA-262 Date stays allowed.
 // The same calls inside the function are allowed.
 import { legacyParse } from "./legacy.ts"
 
 export effect function inputs(text: string) {
   const inside = try sync((text) => legacyParse(text) + Date.now(), text)
   const parsed = try sync((n) => n + 1, legacyParse(text))
-  const stamped = try sync((t) => t, Date.now())
+  const stamped = try sync((t) => t, performance.now())
   return [inside, parsed, stamped]
 }

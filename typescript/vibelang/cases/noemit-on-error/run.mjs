@@ -30,7 +30,7 @@ for (const mode of ["-p", "-b"]) {
     config.compilerOptions.outDir = "js"
     config.compilerOptions.vibelang.diagnostics.EK4403 = severity === "error" ? "error" : "warning"
     writeFileSync(path.join(fixture, "tsconfig.json"), JSON.stringify(config))
-    writeFileSync(path.join(fixture, "main.vibe"), `${repro}export const clock = Date.now()\n${severity === "mixed" ? 'export const wrong: number = "bad"' : ""}\n`)
+    writeFileSync(path.join(fixture, "main.vibe"), `${repro}export const clock = performance.now()\n${severity === "mixed" ? 'export const wrong: number = "bad"' : ""}\n`)
     const compile = () => spawnSync(compiler, [mode, fixture, "--pretty", "false"], { encoding: "utf8" })
     const result = compile()
     const output = result.stdout + result.stderr

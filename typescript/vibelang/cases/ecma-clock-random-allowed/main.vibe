@@ -1,0 +1,6 @@
+// VIP-33: ECMA-262 globals stay allowed, including clock and randomness reads.
+export const values = [Date.now(), Math.random(), JSON.stringify(1)]
+export const dates = [new Date(), Date()]
+const now = Date.now
+const random = Math.random
+export const aliases = [now(), random(), globalThis.Date.now(), globalThis.Math.random()]

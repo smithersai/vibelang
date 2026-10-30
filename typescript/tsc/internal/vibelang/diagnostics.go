@@ -177,7 +177,7 @@ var (
 	EK4401 = message(4401, errorCategory, "{0} is a plain TypeScript function, and nothing says what its exceptions mean.")
 	// EK4402: a Node.js or browser API, used or imported as a value. {0} is the API.
 	EK4402 = message(4402, errorCategory, "{0} is platform code, which VibeLang code does not use directly.")
-	// EK4403: a clock or randomness read. {0} is the read, such as "Date.now()".
+	// EK4403: a clock or randomness read. {0} is the read, such as "performance.now()".
 	EK4403 = message(4403, errorCategory, "{0} reads the clock or randomness, which a test cannot control.")
 	// EK4501: method syntax without a call. {0} is the method, {1} the module.
 	EK4501 = message(4501, errorCategory, "{0} is a method of {1}'s values only in a call: x.{0}(…) calls {1}.{0}(x, …).")

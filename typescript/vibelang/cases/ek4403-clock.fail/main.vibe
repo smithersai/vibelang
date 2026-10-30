@@ -1,6 +1,6 @@
 // expect: EK4403
-// D5: clock and randomness reads go through Clock, DateTime, and Random so
-// tests control them. EK4403 is an error by default (D34).
+// VIP-33: host clock and randomness reads stay EK4403.
+// ECMA-262 Date and Math reads stay allowed.
 export function stamp() {
   return Date.now()
 }

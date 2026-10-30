@@ -197,23 +197,15 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			noServiceYet, "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's.",
 			"Run it in a hatch:   sync(() => document.title), or with try when it can throw; or move it to a module block or a .ts file.",
 		}},
-		{"clock", `export const run = () => Date.now()`, []string{
-			"Date.now() reads the clock or randomness, which a test cannot control.",
-			"Use Clock.currentTimeMillis(), the same number of milliseconds.", "In a test, TestClock sets it.", allowEK4403,
-		}},
+		{"clock", `export const run = () => Date.now()`, nil},
 		{"monotonic clock", `export const run = () => performance.now()`, []string{
 			"performance.now() reads the clock or randomness, which a test cannot control.",
 			"Use Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds.",
 			"In a test, TestClock sets it.", allowEK4403,
 		}},
-		{"date", `export const run = () => new Date()`, []string{
-			"new Date() reads the clock or randomness, which a test cannot control.",
-			"Use DateTime.nowAsDate() for a Date, or DateTime.now() for a DateTime.Utc.", "In a test, TestClock sets it.", allowEK4403,
-		}},
-		{"random", `export const run = () => Math.random()`, []string{
-			"Math.random() reads the clock or randomness, which a test cannot control.",
-			"Use Random.next(), a number from 0 up to 1.", "In a test, Random.withSeed(() => program(), seed) fixes it.", allowEK4403,
-		}},
+		{"date call", `export const run = () => Date()`, nil},
+		{"date", `export const run = () => new Date()`, nil},
+		{"random", `export const run = () => Math.random()`, nil},
 		{"crypto", `export const run = () => crypto.randomUUID()`, []string{
 			"crypto.randomUUID() reads the clock or randomness, which a test cannot control.",
 			"Use SecureRandom.uuidV4().", provideCrypto,

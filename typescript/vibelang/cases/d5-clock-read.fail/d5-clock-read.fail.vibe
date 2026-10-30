@@ -1,7 +1,6 @@
 // expect: EK4403
-// D5: clock and randomness reads (Date.now(), new Date(), Math.random(), crypto.randomUUID()) must go
-// through Clock, DateTime, and Random so tests control them.
+// VIP-33: host clock reads still require an injected service.
 
-function stamp(label: string) {
-  return `${label} at ${Date.now()}`
+export function stamp() {
+  return performance.now()
 }
