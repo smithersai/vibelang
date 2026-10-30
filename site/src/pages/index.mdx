@@ -82,7 +82,7 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 
 ## Overview
 
-VibeLang is [Effect](https://effect.website) as its own language, a fork of TypeScript. Effect puts what a function returns, what can fail, and what it depends on into one type, `Effect<Success, Error, Requirements>`, and the compiler checks it. As a library, Effect builds every feature out of generators, `yield*`, `pipe`, and classes. VibeLang gives each Effect idea its own syntax, and its compiler builds the same Effect program you would have written by hand.
+VibeLang is [Effect](https://effect.website) as its own language, a fork of TypeScript.
 
 ### Effect functions
 
@@ -108,10 +108,20 @@ effect function greet(id: string) {
   return `Hello, ${name}`
 }
 // (id: string) => string!!Users
+
+const UsersLive = Layer.succeed(Users, {
+  find: effect (id: string) => ({ id, name: "Ada" })
+})
+
+effect function main() {
+  provide UsersLive {
+    try Console.log(try greet("ada"))   // Hello, Ada
+  }
+}
 ```
 
 ```ts [Effect]
-import { Context, Data, Effect } from "effect"
+import { Console, Context, Data, Effect, Layer } from "effect"
 
 interface User { id: string; name: string }
 class UserNotFound extends Data.TaggedError("UserNotFound")<{ id: string }> {}
@@ -129,13 +139,17 @@ function greet(id: string) {
     return `Hello, ${name}`
   })
 }
+
+const UsersLive = Layer.succeed(Users, {
+  find: (id: string) => Effect.succeed({ id, name: "Ada" })
+})
+
+const main = Effect.gen(function* () {
+  yield* Console.log(yield* greet("ada"))
+}).pipe(Effect.provide(UsersLive))
 ```
 
 :::
-
-An `effect` function returns an Effect, as an `async` function returns a Promise. The comment under `greet` is the type your editor shows: `string!!Users` is exactly `Effect<string, never, Users>`, so `greet` gives a `string`, cannot fail, and needs the `Users` service. The compiler infers it from the body, and TypeScript code that imports `greet` sees the same Effect type.
-
-`try` runs an Effect and gives its value, `throw` fails with a typed error, `catch` handles it, `service` declares a dependency, and `fork` starts a fiber. Every form is exact sugar for the Effect code beside it.
 
 ### Retries, timeouts, and concurrency
 
@@ -192,11 +206,9 @@ export const names = Effect.fn("names")(function* (ids: ReadonlyArray<string>) {
 
 :::
 
-Both versions describe the same program. A call returns its Effect without running it, so the pipe operator `|>` passes the Effect `users.name(id)` to `retry` and `timeout`, which can run it again. `catch "unknown"` runs the result and removes every failure, including the timeout, so `nameOf` gives `string!!Users`. `forEach` with `{ concurrency: 8 }` loads up to eight names at once.
-
 ### Hello, VibeLang
 
-Create a project from the starter. You need Node 22.22.3 or later. Bun is optional. If you use Bun, use Bun 1.4 or later.
+You need Node 22.22.3 or later. Bun is optional, at 1.4 or later.
 
 ```bash
 npm create vibelang@latest my-app
@@ -204,7 +216,7 @@ cd my-app
 npm run start
 ```
 
-The starter's two source files:
+The starter's source:
 
 :::code-group
 
@@ -243,7 +255,7 @@ NodeRuntime.runMain(main())
 
 :::
 
-`npm run start` compiles the project, and the module runs `main` with Node's runner, which prints:
+`npm run start` prints:
 
 ```text
 Hello, VibeLang!
@@ -254,9 +266,7 @@ Recovered from EmptyName
 
 ### TypeScript stays one step away
 
-VibeLang's compiler is TypeScript's compiler, extended. It checks `.vibe` and `.ts` files together and emits JavaScript and declarations, so npm packages, your `.ts` files, and Effect libraries compatible with the supported Effect version work unchanged. TypeScript code calls VibeLang's `effect` functions as ordinary Effect functions.
-
-Plain and `async` functions in a `.vibe` file are TypeScript's, and a `.ts` file can sit beside any `.vibe` file. Effect's own functions adapt the rest: `tryPromise` wraps a Promise, `Effect.try` wraps a call that may throw, and `callback` wraps a callback API. Based on [Effect’s Creating Effects](https://effect.website/docs/v3/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
+A `.ts` file can sit beside any `.vibe` file, and TypeScript calls `effect` functions as ordinary Effect functions. Based on [Effect’s Creating Effects](https://effect.website/docs/v3/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
 
 ```vibe
 import { fetchTodo } from "./todos.ts" // (id: number, signal: AbortSignal) => Promise<string>
@@ -275,7 +285,7 @@ effect function todoOrFallback(id: number) {
 
 ## Features
 
-Everything Effect does is reachable from VibeLang: Effect's functions and modules are in scope, so use its APIs directly. The common features have their own syntax:
+Effect's functions and modules are in scope. The common features have their own syntax:
 
 | Effect feature | VibeLang |
 | --- | --- |
@@ -291,11 +301,9 @@ Everything Effect does is reachable from VibeLang: Effect's functions and module
 | Schema validation | `schema User { id: string; role: "admin" \| "member" }` |
 | Pattern matching | `match (e) { when NotFound: ...; }` |
 
-Streams, configuration, and Effect's HTTP, SQL, CLI, and AI packages need no syntax of their own: call them as you would in TypeScript. The [cheat sheet](/vibelang-features/115-cheat-sheet) puts every VibeLang form beside the Effect code it replaces.
+The [cheat sheet](/vibelang-features/115-cheat-sheet) puts every form beside the Effect code it replaces.
 
 ## Built for coding agents
-
-When coding agents write a growing share of your code, the hard part moves from writing code to trusting it.
 
 - **The compiler checks what agents write.** Every function's type lists what it can fail with and what it needs, and code that breaks a declared type does not compile.
 {/* token-headline:start */}
@@ -311,6 +319,6 @@ When coding agents write a growing share of your code, the hard part moves from 
 - **New to Effect:** start with [Welcome](/001-onboarding), then [The Effect Type](/getting-started/003-the-effect-type) and [Expected Errors](/error-management/014-expected-errors).
 - **Set up a project or editor:** [Set up VibeLang](/setup) covers new and existing projects, Vite, React, Vue, Svelte, VS Code, Neovim, and Zed.
 
-VibeLang is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. Version 0.0.11 provides native packages for macOS and Linux on arm64 and x64. The release rehearsal runs on Linux x64. Native Windows binaries are not available yet; use WSL.
+VibeLang is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. Version 0.0.11 provides native packages for macOS and Linux on arm64 and x64. Native Windows binaries are not available yet; use WSL.
 
 </article>

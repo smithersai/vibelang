@@ -20,11 +20,19 @@ const greet = Effect.fn("greet")(function* (id: string) {
   )
   return `Hello, ${user.name}`
 })
+
+const UsersLive = Layer.succeed(Users, {
+  find: (id: string) => Effect.succeed({ id, name: "Ada" })
+})
+
+const main = Effect.gen(function* () {
+  yield* Console.log(yield* greet("ada"))
+}).pipe(Effect.provide(UsersLive))
 ```
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-9, VIP-13, VIP-14
-// run: try Console.log(try Effect.provide(greet("ada"), Layer.succeed(Users, { find: effect (id) => ({ id, name: "Ada" }) })))
+// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
+// run: try main()
 interface User { id: string; name: string }
 
 error UserNotFound { id: string }
@@ -40,10 +48,20 @@ effect function greet(id: string) {
   return `Hello, ${name}`
 }
 // string!!Users
+
+const UsersLive = Layer.succeed(Users, {
+  find: effect (id: string) => ({ id, name: "Ada" })
+})
+
+effect function main() {
+  provide UsersLive {
+    try Console.log(try greet("ada"))
+  }
+}
 // Output: Hello, Ada
 ```
 
-A user service, a typed error, and a fallback in Effect and in VibeLang. The comment under `greet` is the type your editor shows: `string!!Users` means `Effect<string, never, Users>`. It returns a `string`, has no expected failures (defects and interruption remain possible), and needs the `Users` service. The compiler infers all three from the body, and TypeScript code that imports `greet` sees the Effect type. The TypeScript example's `Effect.fn("greet")` adds a tracing span; the VibeLang function is untraced by default.
+A user service, a typed error, a fallback, and a layer that provides the service, in Effect and in VibeLang. The comment under `greet` is the type your editor shows: `string!!Users` means `Effect<string, never, Users>`. It returns a `string`, has no expected failures (defects and interruption remain possible), and needs the `Users` service. The compiler infers all three from the body, and TypeScript code that imports `greet` sees the Effect type. The TypeScript example's `Effect.fn("greet")` adds a tracing span; the VibeLang function is untraced by default.
 
 VibeLang is v0: the language will change in major, breaking ways and is not ready for production use.
 
