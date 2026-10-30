@@ -368,3 +368,23 @@ FuzzVIPDifferential exit:value/vip07.guard-terminal-quiterror-plain compiler VIP
 FuzzVIPDifferential corpus:data-vip07-guard-terminal-quiterror-plain compiler VIP-7: minimized vip07.guard-terminal-quiterror-plain native-guard witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.guard-textdiff-textdifferror-plain compiler VIP-7: bare and one-binding error patterns reject the native module guard's independently branded subject; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-guard-textdiff-textdifferror-plain compiler VIP-7: minimized vip07.guard-textdiff-textdifferror-plain native-guard witness; lane vip-match
+FuzzVIPDifferential compile:EK1005/vip07.destructuring-default-failure-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane del-rest
+FuzzVIPDifferential corpus:data-vip07-destructuring-default-failure-plain compiler VIP-7: minimized vip07.destructuring-default-failure-plain completion witness; lane del-rest
+FuzzVIPDifferential compile:TS1108/vip07.destructuring-default-return-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-destructuring-default-return-plain compiler VIP-7: minimized vip07.destructuring-default-return-plain completion witness; lane vip-match
+FuzzVIPDifferential compile:TS1108/vip07.parameter-default-return-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-parameter-default-return-plain compiler VIP-7: minimized vip07.parameter-default-return-plain completion witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.finish-is-normal-close-plain compiler VIP-7: an is test on an iterable returns false without pulling or closing it; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finish-is-normal-close-plain compiler VIP-7: minimized vip07.finish-is-normal-close-plain completion witness; lane vip-match
+FuzzVIPDifferential exit:kind/vip07.finishmatch-generator-return-plain compiler VIP-7: a yield in a match arm is emitted inside an arrow function, so the module fails to parse; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-finishmatch-generator-return-plain compiler VIP-7: minimized vip07.finishmatch-generator-return-plain completion witness; lane vip-match
+FuzzDataSpecRules feature:tagged-number-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-number-complete compiler VIP-7: minimized tagged-number-complete witness; lane vip-match
+FuzzDataSpecRules feature:tagged-bigint-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-bigint-complete compiler VIP-7: minimized tagged-bigint-complete witness; lane vip-match
+FuzzDataSpecRules feature:tagged-boolean-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-boolean-complete compiler VIP-7: minimized tagged-boolean-complete witness; lane vip-match
+FuzzDataSpecRules feature:tagged-enum-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-enum-complete compiler VIP-7: minimized tagged-enum-complete witness; lane vip-match
+FuzzDataSpecRules feature:tagged-undefined-complete compiler VIP-7: the undefined literal pattern is rejected, so its tag case cannot be covered; lane vip-match
+FuzzDataSpecRules corpus:data-tagged-undefined-complete compiler VIP-7: minimized tagged-undefined-complete witness; lane vip-match

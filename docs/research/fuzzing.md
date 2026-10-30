@@ -351,6 +351,8 @@ and lists every target above `120` in `summary.txt`, even for a full-seed nightl
 
 Static declaration witnesses also compile a consumer of emitted declarations and compare its instance and constructor types with the chapter's independently written Effect TypeScript, including readonly payloads and all four generic arities. Finite-match controls also check open subjects, fixed cases, required versus optional fields, bare bindings, unions of alternatives and patterns that do not establish static coverage. Four generic helper checks also occupy both preferred names and inspect the emitted collision suffix required by chapter 6.
 
+The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.
+
 `TestDataGeneratedMatchSeparators` checks the match printer against the arm separator rule in the match chapter. Generated programs put `;` between arms and after the final arm, and a lone `default` starts directly with its arm. The fast spec gate runs this regression.
 
 ### Chapter-backed data and match witnesses
@@ -359,8 +361,8 @@ Static declaration witnesses also compile a consumer of emitted declarations and
 
 Iterator-finishing pairs check cleanup after the selected arm, observable lookup and zero-argument calls of `return()`, a closing failure, a pending testing throw and ordered error aggregation. The native generator fixture records each step without clocks, I/O or asynchronous races.
 
-The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.
-
 Additional native `for…of` counterparts check `return`, `break` and `continue` through an arm, closing errors replacing jumps, abandonment after an Effect failure, and closing after an `is` test throws. These follow the current chapter's explicit FinishMatch reconciliation.
+
+Jump pairs also cover a generator's `return()` inside a match arm, a normal `is` test and a jump or failure in a destructuring or parameter default.
 
 The retained-error inventory covers all 33 root and subpath rows in chapter 4. Native module guards verify every branded fixture and reject unbranded same-tag controls. Zero/two-argument extractor matrices remain separate from bare/single-binding guard pairs, so an arity error cannot hide a wrong runtime guard.
