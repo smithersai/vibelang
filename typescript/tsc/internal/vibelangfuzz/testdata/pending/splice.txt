@@ -7,7 +7,7 @@
 FuzzSplice  ek:EK3205  compiler  D420: EK3205 is an error by default; the compiler reports it as a warning (FuzzCompile ek:EK3205 in compile.txt)
 FuzzSplice  feature:d365-declaration  compiler  D365 (Chapter 26 Modules rule 5): a module declaration's .d.ts keeps the body's relative .ts specifiers (FuzzCompile feature:d365-declaration in compile.txt)
 FuzzSplice  ek:EK4802  compiler  Chapter 28 (D241, D321): EK4802 is an error by default; the compiler reports it as a warning (FuzzCompile ek:EK4802 in compile.txt)
-FuzzSplice  ek:EK4409  compiler  D321: EK4409 is an error by default; the compiler reports it as a warning (FuzzSpecRules ek:EK4409/any-call in rules.txt)
+FuzzSplice  ek:EK4409  compiler  D321: EK4409 is an error by default; the compiler reports it as a warning (as FuzzCompile ek:EK4409 in compile.txt)
 FuzzSplice  ek:EK2115  compiler  Chapter 28 (D323): EK2115 is retired and its number unused; the compiler still reports it for a factory's call-time body (FuzzCompile ek:EK2115 in compile.txt)
 FuzzSplice  ek:EK2116  compiler  Chapter 28 (D323): EK2116 is retired and its number unused; the compiler still reports it (FuzzCompile ek:EK2116 in compile.txt)
 FuzzSplice  feature:parse-span-CallExpression  compiler  D61: a schema error's extends clause parses to a CallExpression with an inverted span (FuzzParse feature:parse-span-CallExpression in compile.txt)
