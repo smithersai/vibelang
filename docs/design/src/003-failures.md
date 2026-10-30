@@ -379,7 +379,17 @@ class Timeout extends Data.TaggedError("Timeout") {
 
 The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
-VIP-7 also retains the compiler's existing fixed checks for Effect's own tagged errors until upstream matchers exist, without patching Effect; these retained checks must not be replaced by inherited `Function.prototype` matching. Their inventory and TypeScript counterparts are in [Retained Effect tagged-error patterns](004-match.md#retained-effect-tagged-error-patterns).
+VIP-7 retains module-guard checks for Effect's own tagged errors, without patching Effect (detail 53). For example, `when Cause.TimeoutError(let e):` tests `Cause.isTimeoutError(subject)` and binds `subject` as `e`. A bare `{ _tag: "TimeoutError" }` does not pass that guard. These checks use neither a universal `_tag` test nor inherited `Function.prototype` matching. The twelve resolved constructors, alias/shadowing rules and singleton extraction are listed in [Retained Effect tagged-error patterns](004-match.md#retained-effect-tagged-error-patterns).
+
+```ts effect
+import { Cause } from "effect"
+
+function timeoutPattern(subject: unknown) {
+  return Cause.isTimeoutError(subject) ? [subject] : false
+}
+timeoutPattern(new Cause.TimeoutError()) // [subject]
+timeoutPattern({ _tag: "TimeoutError" }) // false
+```
 
 An `error` always extends `Data.TaggedError`. Group errors with a union, `type LookupError = NotFound | Timeout`: tagged errors are matched by `_tag`, and a subclass would match two tags.
 
