@@ -196,7 +196,7 @@ var emitCases = []struct {
 	{
 		name:     "fiber forms in do bodies retain executable run boundaries",
 		source:   "function f(a: Fiber.Fiber<number>) { return do { join a } } function g() { return do { for concurrent (const x of [1]) { log(x) } 1 } }",
-		contains: []string{"$join(a)", "$forConcurrent([1], undefined, (x) => $gen(function* ()", "$isRun($t) ? (yield* $t) : $t"},
+		contains: []string{"$join(a)", "$forConcurrent([1], void 0, (x) => $gen(function* ()", "$isRun($t) ? (yield* $t) : $t"},
 		absent:   []string{"for concurrent", "join a", "f$direct", "g$direct"},
 	},
 	{
@@ -208,7 +208,7 @@ var emitCases = []struct {
 	{
 		name:     "concurrent loops defer bodies and continue returns from one item",
 		source:   "function f(xs: number[]) { for concurrent(2) (const x of xs) { if (!x) continue; log(x) } for concurrent (const x of xs) log(x) }",
-		contains: []string{"$forConcurrent(xs, 2, (x) => $gen(function* ()", "$forConcurrent(xs, undefined, (x) => $gen(function* ()", "return;", "log(x)"},
+		contains: []string{"$forConcurrent(xs, 2, (x) => $gen(function* ()", "$forConcurrent(xs, void 0, (x) => $gen(function* ()", "return;", "log(x)"},
 		absent:   []string{"for concurrent", "continue", "f$direct"},
 	},
 	{

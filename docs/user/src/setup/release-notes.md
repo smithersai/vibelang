@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Checking explicit files beside a project config failed with `TS5112` unless `--ignoreConfig` was added; compiler and `lint` file arguments now bypass config discovery as specified.
 
+- A local binding named `undefined` could reject `for concurrent` or silently limit its concurrency; an omitted limit now always runs unbounded.
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang

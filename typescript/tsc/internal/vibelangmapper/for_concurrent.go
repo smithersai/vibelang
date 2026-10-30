@@ -38,7 +38,7 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	at := items.End()
 	p.plan.insert(at, ", ")
 	if limit.Flags&ast.NodeFlagsReparsed != 0 {
-		p.plan.insert(at, "undefined")
+		p.plan.insert(at, "void 0")
 	} else {
 		p.concurrentCopy(limit, at, e)
 	}

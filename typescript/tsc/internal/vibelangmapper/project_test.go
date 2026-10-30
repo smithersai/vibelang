@@ -178,7 +178,7 @@ var projectionCases = []struct {
 	{
 		name:    "concurrent unbounded with continue",
 		source:  "function f(xs: number[]) { for concurrent (const x of xs) { if (x) continue; } }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run($forConcurrent(xs, undefined, (x) => $gen(function* () { if (x) return; })))); })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run($forConcurrent(xs, void 0, (x) => $gen(function* () { if (x) return; })))); })}",
 	},
 	{
 		name:    "concurrent bounded single statement",

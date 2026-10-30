@@ -111,6 +111,8 @@ effect function cancelBatch() {
 
 The tokens in `for concurrent` use ordinary whitespace: a line break or multiline comment may separate `concurrent` from its limit or loop head.
 
+Omitting the limit means unbounded concurrency. Local bindings, including a binding named `undefined`, do not change that default.
+
 Above a limit of 1, `for concurrent` runs each item in its own fiber. At a limit of 1 or below, items run in order on the enclosing fiber. An interrupted branch stops the loop and interrupts its active siblings; so does an expected failure in the default concurrent traversal, cancelling work whose result is no longer needed. The parent waits for branch cleanup. A cause that holds a defect passes through ordinary `catch` with its failures re-raised as defects, as `Effect.catch` does. A cause with no expected failure, such as a lone interruption, never reaches the handler.
 
 The right-hand operand sees uninitialized loop-head bindings, as in JavaScript's `for…of`; a closure created there keeps those bindings rather than an outer or per-item binding. Outward `return` is rejected in both head binding initialization and the body (`EK1904`), including a `return` in a default's `do`. A `do` return in the concurrency-limit or iterable expression still targets the enclosing function.

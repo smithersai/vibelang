@@ -511,7 +511,9 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	arrow := p.vibelangProgramArrow([]*ast.Node{parameter}, body, ofKeyword)
 	arrow.Flags |= ast.NodeFlagsVibeLang // a for concurrent body (fibers.go)
 	if limit == nil {
-		limit = p.vibelangSynthesized(p.factory.NewIdentifier("undefined"), anchor)
+		// A missing limit must not read a source binding named undefined.
+		zero := p.vibelangSynthesized(p.factory.NewNumericLiteral("0", ast.TokenFlagsNone), anchor)
+		limit = p.vibelangSynthesized(p.factory.NewVoidExpression(zero), anchor)
 	}
 	callee := p.vibelangIntrinsic("$forConcurrent", anchor)
 	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(core.NewTextRange(items.Pos(), body.End()), []*ast.Node{items, limit, arrow}), ast.NodeFlagsNone), core.NewTextRange(anchor.Pos(), body.End()))

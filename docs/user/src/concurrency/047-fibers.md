@@ -184,6 +184,8 @@ effect function printAll(ids: ReadonlyArray<string>) {
 
 Line breaks and multiline comments may separate `concurrent` from its optional limit or loop head.
 
+An omitted limit always means unbounded concurrency, even when a local binding is named `undefined`.
+
 The formatter preserves nested `try` expressions in the concurrency limit and iterable expression.
 
 ## Supervising child lifetimes

@@ -1,0 +1,21 @@
+// expect-result: {"string":{"undefined":"shadow","seen":[1,2]},"number":{"undefined":1,"maximum":3}}
+effect function stringShadow() {
+  const undefined = "shadow"
+  const seen: number[] = []
+  for concurrent (const item of [1, 2]) { seen.push(item) }
+  return { undefined, seen }
+}
+effect function numberShadow() {
+  const undefined = 1
+  let active = 0, maximum = 0
+  for concurrent (const item of [1, 2, 3]) {
+    active++
+    maximum = Math.max(maximum, active)
+    try Effect.yieldNow
+    active--
+  }
+  return { undefined, maximum }
+}
+export effect function main() {
+  return { string: try stringShadow(), number: try numberShadow() }
+}
