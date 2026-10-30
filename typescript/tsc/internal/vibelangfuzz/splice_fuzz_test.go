@@ -145,6 +145,15 @@ func CheckSplice(t *testing.T, w *Workspace, input string) {
 // spliced; and each splice puts a valid node of the replaced node's category
 // where that node stood.
 func TestSpliceMutation(t *testing.T) {
+	for _, seed := range []struct {
+		name  string
+		state uint64
+	}{{"original", 13}, {"rare-block-param", 12}} {
+		t.Run(seed.name, func(t *testing.T) { testSpliceMutation(t, seed.state) })
+	}
+}
+
+func testSpliceMutation(t *testing.T, seed uint64) {
 	pool := spliceDonors()
 	for c := range spliceCategories {
 		t.Logf("%s: %d donor texts", c, len(pool.donors[c]))
@@ -153,7 +162,7 @@ func TestSpliceMutation(t *testing.T) {
 		}
 	}
 	t.Logf("%d recipients", len(spliceRecipients()))
-	r := rand.New(rand.NewPCG(13, 21))
+	r := rand.New(rand.NewPCG(seed, 21))
 	spliced := map[spliceCategory]int{}
 	inputs, without, parsing := 300, 0, 0
 	for range inputs {
@@ -187,9 +196,43 @@ func TestSpliceMutation(t *testing.T) {
 	if without > inputs/10 {
 		t.Errorf("%d of %d inputs spliced nothing", without, inputs)
 	}
-	for c := range spliceCategories {
-		if spliced[c] == 0 {
-			t.Errorf("no input spliced a %s", c)
+	// A rare category need not occur in 300 randomly chosen recipients.
+	// Case retirement changes that sample without changing the mutator.
+	// Exercise a missing category in its minimal valid context instead.
+	for category := range spliceCategories {
+		if spliced[category] != 0 {
+			continue
+		}
+		covered := false
+		for _, donor := range pool.donors[category] {
+			if !donor.isValid(category) {
+				continue
+			}
+			context := spliceContexts[category]
+			text := context[0] + donor.text + context[1]
+			nodes, _ := spliceNodes(text)
+			index := 0
+			for c := range category {
+				if len(nodes[c]) != 0 {
+					index++
+				}
+			}
+			mutation, ok := spliceOnce(&spliceChoices{data: []byte{byte(index)}}, text)
+			if !ok || mutation.node.category != category {
+				continue
+			}
+			if !spliceValid(category, mutation.node.kind, mutation.old) ||
+				!spliceValid(category, mutation.donorKind, mutation.new) {
+				t.Errorf("explicit %s splice is not valid: %s", category, mutation)
+			}
+			if mutation.recipientText[mutation.node.start:mutation.node.end] != mutation.old {
+				t.Errorf("explicit %s splice replaced a different span: %s", category, mutation)
+			}
+			covered = true
+			break
+		}
+		if !covered {
+			t.Errorf("could not explicitly splice a %s", category)
 		}
 	}
 }
