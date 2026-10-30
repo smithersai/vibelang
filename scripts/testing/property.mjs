@@ -20,6 +20,14 @@ function integer(env, name, fallback, min, max) {
   return value
 }
 
+function* savedRegressions(regressions, name) {
+  if (!regressions || !existsSync(regressions)) return
+  for (const file of readdirSync(regressions).filter((file) => file.endsWith(".json")).sort()) {
+    const regression = JSON.parse(readFileSync(new URL(file, regressions), "utf8"))
+    if (regression.property === name) yield { file, regression }
+  }
+}
+
 /** Caller owns fast-check and the runner. Inputs and regression JSON contain data, never closures. */
 export async function checkProperty(fc, {
   name, rule, command, arbitrary, check, numRuns = 50, generatorVersion = 1,
@@ -28,17 +36,13 @@ export async function checkProperty(fc, {
   if (env.FC_PATH !== undefined && !env.FC_PROPERTY) throw new Error("FC_PATH requires FC_PROPERTY")
   if (env.FC_PROPERTY && env.FC_PROPERTY !== name) return
   // Saved inputs survive generator changes; replay them before starting discovery.
-  if (regressions && existsSync(regressions)) {
-    for (const file of readdirSync(regressions).filter((file) => file.endsWith(".json")).sort()) {
-      const regression = JSON.parse(readFileSync(new URL(file, regressions), "utf8"))
-      if (regression.property !== name) continue
-      if (!regression.knownFailure) await check(regression.input)
-      else {
-        let failed = false
-        try { await check(regression.input) } catch { failed = true }
-        if (!failed) throw new Error(`XPASS ${file}: remove knownFailure (${regression.rule})`)
-        process.stderr.write(`known failure ${file}: ${regression.rule}\n`)
-      }
+  for (const { file, regression } of savedRegressions(regressions, name)) {
+    if (!regression.knownFailure) await check(regression.input)
+    else {
+      let failed = false
+      try { await check(regression.input) } catch { failed = true }
+      if (!failed) throw new Error(`XPASS ${file}: remove knownFailure (${regression.rule})`)
+      process.stderr.write(`known failure ${file}: ${regression.rule}\n`)
     }
   }
   const parameters = {
