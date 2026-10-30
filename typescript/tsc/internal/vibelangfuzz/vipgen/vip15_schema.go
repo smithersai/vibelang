@@ -342,23 +342,6 @@ func decode(g *Gen, d *SchemaDecl, input Expr) Expr {
 	return &Apply{F: &ModCall{Mod: "Schema", Fn: "decodeUnknownEffect", Args: []Expr{&Ref{Name: d.Name}}}, Args: []Expr{input}}
 }
 
-// schemaNamedUse is `const s = Schema.is(S0)(0)` for the program's first
-// schema or schema error declaration, which names Schema as a value without
-// running an Effect or logging, or nil when it declares neither.
-func schemaNamedUse(g *Gen) Stmt {
-	var name string
-	if have := schemaDecls(g); len(have) > 0 {
-		name = have[0].Name
-	} else if have := schemaErrorDecls(g); len(have) > 0 {
-		name = have[0].Name
-	} else {
-		return nil
-	}
-	g.UseModule("Schema", true)
-	is := &Apply{F: &ModCall{Mod: "Schema", Fn: "is", Args: []Expr{&Ref{Name: name}}}, Args: []Expr{&Num{Value: 0}}}
-	return &Const{Name: g.Name("s"), Value: is}
-}
-
 // schemaDecls returns the program's schema declarations so far.
 func schemaDecls(g *Gen) []*SchemaDecl {
 	var out []*SchemaDecl
