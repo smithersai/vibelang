@@ -460,9 +460,12 @@ func releaseSeverity(options *core.CompilerOptions, m *Message) (string, string)
 	if options == nil || options.VibeLang == nil {
 		return "", ""
 	}
-	if core.VibeSeverityCode(m.String()) {
-		if value, ok := options.VibeLang.Severities[m.String()]; ok {
-			return value, m.String()
+	// Release keys retain the VIP's leading zero, independently of the
+	// legacy diagnostic display formatter. Width is a minimum for EK38100+.
+	canonical := fmt.Sprintf("EK%04d", m.Code)
+	if core.VibeSeverityCode(canonical) {
+		if value, ok := options.VibeLang.Severities[canonical]; ok {
+			return value, canonical
 		}
 	}
 	for _, code := range core.VibeLintPorts[m.String()] {
