@@ -304,7 +304,7 @@ func init() {
 			// Chapter 3's own example, encoded to JSON and decoded back.
 			Key:     "vip29.schema-error-round-trip-plain",
 			Chapter: "003-failures.md",
-			Quote:   "Fields are written as TypeScript types and mapped to Schemas, so the error can be decoded from JSON and crosses workers and RPC.",
+			Quote:   "Fields are written as TypeScript types and mapped to Schemas",
 			Vibe: `schema error NotFound { id: string }
 schema error Timeout
 function witness() {

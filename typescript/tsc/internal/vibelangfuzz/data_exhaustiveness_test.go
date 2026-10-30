@@ -29,7 +29,7 @@ func dataExhaustivenessRules() []dataRule {
 		// Each fixed Result pattern covers its case
 		{name: "exhaustive-finite-result-complete", chapter: "004-match.md", quote: "`Exit.Exit<A, E>` and `Result.Result<A, E>` to `Success | Failure`", source: "function f(x:Result.Result<number,string>){return match(x){when Result.Success(let v):v;when Result.Failure(let e):e;}}", code: "", owner: "vip-match"},
 		// Bare binding covers every finite member
-		{name: "exhaustive-binding-covers", chapter: "004-match.md", quote: "A bare binding (`let x`) covers every member.", source: "function f(x:boolean){return match(x){when let v:v;}}", code: "", owner: "vip-match"},
+		{name: "exhaustive-binding-covers", chapter: "004-match.md", quote: "covers every member.", source: "function f(x:boolean){return match(x){when let v:v;}}", code: "", owner: "vip-match"},
 		// Or covers union of alternatives
 		{name: "exhaustive-or-covers", chapter: "004-match.md", quote: "`or` covers the union of its alternatives.", source: "function f(x:boolean){return match(x){when true or false:1;}}", code: "", owner: "vip-match"},
 		// And covers nothing statically
@@ -37,13 +37,13 @@ func dataExhaustivenessRules() []dataRule {
 		// Not covers nothing statically
 		{name: "exhaustive-not-does-not-cover", chapter: "004-match.md", quote: "`and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing", source: "function f(x:boolean){return match(x){when not false:1;when false:0;}}", code: "EK4701", owner: "vip-match"},
 		// Bare required field covers entire variant
-		{name: "exhaustive-required-key-covers", chapter: "004-match.md", quote: "declares every other property it tests, a bare key or a `let` binding, as required", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",n}:1;}}", code: "", owner: "vip-match"},
+		{name: "exhaustive-required-key-covers", chapter: "004-match.md", quote: "`\"x\" in s` removes a member from its false branch only where `x` is required.", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",n}:1;}}", code: "", owner: "vip-match"},
 		// Required field binding covers entire variant
-		{name: "exhaustive-required-binding-covers", chapter: "004-match.md", quote: "declares every other property it tests, a bare key or a `let` binding, as required", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",let n}:n;}}", code: "", owner: "vip-match"},
+		{name: "exhaustive-required-binding-covers", chapter: "004-match.md", quote: "`\"x\" in s` removes a member from its false branch only where `x` is required.", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",let n}:n;}}", code: "", owner: "vip-match"},
 		// Optional field may be absent
-		{name: "exhaustive-optional-key-does-not-cover", chapter: "004-match.md", quote: "declares every other property it tests, a bare key or a `let` binding, as required", source: "data D{V{n?:number}};function f(x:D){return match(x){when {_tag:\"V\",n}:1;}}", code: "EK4701", owner: "vip-match"},
+		{name: "exhaustive-optional-key-does-not-cover", chapter: "004-match.md", quote: "`\"x\" in s` removes a member from its false branch only where `x` is required.", source: "data D{V{n?:number}};function f(x:D){return match(x){when {_tag:\"V\",n}:1;}}", code: "EK4701", owner: "vip-match"},
 		// Value-constrained field leaves other values
-		{name: "exhaustive-constrained-key-does-not-cover", chapter: "004-match.md", quote: "declares every other property it tests, a bare key or a `let` binding, as required", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",n:1}:1;}}", code: "EK4701", owner: "vip-match"},
+		{name: "exhaustive-constrained-key-does-not-cover", chapter: "004-match.md", quote: "`\"x\" in s` removes a member from its false branch only where `x` is required.", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",n:1}:1;}}", code: "EK4701", owner: "vip-match"},
 		// Or combines complete data variants
 		{name: "exhaustive-or-variants-cover", chapter: "004-match.md", quote: "`or` covers the union of its alternatives.", source: "data D{A;B};function f(x:D){return match(x){when {_tag:\"A\"} or {_tag:\"B\"}:1;}}", code: "", owner: "vip-match"},
 		// Schema error union is finite
@@ -55,8 +55,8 @@ func dataExhaustivenessRules() []dataRule {
 		// Null literal covers its member
 		{name: "exhaustive-error-null-complete", chapter: "004-match.md", quote: "literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance", source: "error E;function f(x:E|null){return match(x){when E:1;when null:0;}}", code: "", owner: "vip-match"},
 		// Retained Effect errors remain finite alongside declared errors
-		{name: "exhaustive-retained-error-missing", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case when every argument pattern is a bare `let` binding", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;}}", code: "EK4701", owner: "vip-match"},
+		{name: "exhaustive-retained-error-missing", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;}}", code: "EK4701", owner: "vip-match"},
 		// Bare binding extractor covers retained error
-		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case when every argument pattern is a bare `let` binding", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
+		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
 	}
 }

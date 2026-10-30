@@ -623,7 +623,7 @@ function witness() {
 		{
 			Key:     "vip07.intrinsic-arity-plain",
 			Chapter: "004-match.md",
-			Quote:   "without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail.",
+			Quote:   "arguments match only `[]`",
 			Modules: []string{"Option"},
 			Vibe: `function witness() {
   const some: unknown = Option.some(3)

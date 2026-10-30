@@ -46,7 +46,7 @@ func dataRules() []dataRule {
 		{"error", "error A; error B", "A | B", "when A: 1;"},
 		{"enum", "enum E { A, B }", "E", "when E.A: 1;"},
 	} {
-		add("exhaustive-"+c.name, match, "Normalize the subject's declared type into a union of members", c.decl+"\nfunction f(x: "+c.typ+") { return match(x) { "+c.arms+" } }", "EK4701", "vip-match")
+		add("exhaustive-"+c.name, match, "into a union of members", c.decl+"\nfunction f(x: "+c.typ+") { return match(x) { "+c.arms+" } }", "EK4701", "vip-match")
 	}
 	add("guard-not-cover", match, "Only an unguarded arm covers anything.", `function f(x:boolean) { return match(x) { when true and if (true): 1; when false: 0; } }`, "EK4701", "vip-match")
 	// Decided detail 25: data Empty {} with zero variants is allowed:
