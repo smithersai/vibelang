@@ -19,6 +19,7 @@ const effect = "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules"
 const bun = S.Host.bin("bun")
 const node = S.Host.bin("node")
 const go = S.Host.bin("go")
+const gofmt = S.Host.bin("gofmt")
 
 const check = (
   summary: string,
@@ -50,6 +51,8 @@ const specTests = [
   "TestVIPCanonicalFieldNames",
   "TestVIPEncodedFieldNames",
   "TestRegistryMatchesSpec",
+  "TestSeverityCodesMatchAppendixB",
+  "TestAppendixBSeveritySettingsTakeEffect",
   "TestCompilerRegistryIsSpecified",
   "TestConfigOracleMatchesCompiler",
   "TestRegistryRowsSuggestRepairs",
@@ -102,7 +105,7 @@ const targets = {
     "The release and contributor scripts' node tests.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs",
     [],
-    [node]
+    [node, gofmt]
   ),
   snippets: check(
     "Compile every code block in the docs.",
@@ -134,7 +137,7 @@ const targets = {
     exclusive: true,
     timeout: "30m"
   }),
-  "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node]),
+  "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
   "go-vibelang": goVibelang(
     "Go tests of internal/vibelang and its subpackages.",
     `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath ./internal/vibelang/...`,

@@ -53,10 +53,11 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
-// adjustable errors remain available only through the migration path.
+// checker messages outside Appendix B remain available only through the legacy
+// configuration. Appendix B categories, not legacy defaults, decide admission.
 func VibeSeverityCode(code string) bool {
-	switch code {
-	case "EK0508", "EK0703", "EK0801", "EK3009", "EK4609", "EK4610":
+	category := VibeDiagnosticCategories[code]
+	if category == "warning" || category == "lint warning" {
 		return true
 	}
 	_, ok := VibeImportedLintCodes[code]

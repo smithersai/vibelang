@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { test, expect } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -91,3 +92,9 @@ test("maintainer docs describe direct landings, outside reviews, and the four-pl
   expect(maintainers).not.toContain("six platform binaries")
   expect(maintainers).not.toContain("eleven packages")
 })
+
+
+test("compiler diagnostic categories match Appendix B", () => {
+  const result = spawnSync("node", [join(repository, "scripts/generate-diagnostic-registry.mjs"), "--check"], { encoding: "utf8" });
+  expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
+});

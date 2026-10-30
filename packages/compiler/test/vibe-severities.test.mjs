@@ -114,3 +114,15 @@ for (const severity of ["error","warning","suggestion","off"]) {
   else assert.doesNotMatch(result.stdout,/EK3009/)
  })
 }
+
+for (const severity of ["error", "warning", "suggestion", "off"]) {
+ test(`Appendix B lint warning EK4833 ${severity} controls CLI and emit`, {skip}, t => {
+  const dir = project(t, {vibe: {severities: {EK4833: severity}}}, "export type Value = Effect.Effect<number>\n")
+  const result = run(dir)
+  assert.equal(result.status === 0, severity !== "error", result.stdout + result.stderr)
+  assert.equal(existsSync(join(dir, "dist/main.js")), severity !== "error", result.stdout)
+  assert.doesNotMatch(result.stdout, /EK3006/)
+  if (severity === "warning" || severity === "error") assert.match(result.stdout, new RegExp(`${severity} EK4833:`))
+  else assert.doesNotMatch(result.stdout, /EK4833/)
+ })
+}

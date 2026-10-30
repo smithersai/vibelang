@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 // Command-line composition root: reads the inputs, runs the docs flow, writes the outputs and .smithers/generated.json.
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -45,6 +46,7 @@ export async function generate() {
 }
 
 if (import.meta.main) {
+  execFileSync("node", [join(repository, "scripts/generate-diagnostic-registry.mjs")], { stdio: "inherit" });
   const { outputs, manifest } = await generate();
   for (const [path, content] of Object.entries(outputs)) {
     const target = join(repository, path);
