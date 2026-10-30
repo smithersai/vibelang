@@ -39,7 +39,7 @@ effect async function f() { }   // error: pick effect or async
 
 | Rule | Diagnostic |
 | --- | --- |
-| `await`, `for await` or `await using` inside an `effect` function | `EK0102` |
+| `await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block | `EK0102` |
 | `await` applied to an Effect inside an `async` function | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function | `EK0105` |
@@ -243,7 +243,7 @@ function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.
 interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
-`!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (decided detail 47). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`.
+`!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (decided detail 47; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-3
@@ -251,6 +251,9 @@ type T = A | B!E       // syntax error
 type U = (A | B)!E     // ok
 type V = A | (B!E)     // ok
 type W = A!(E1 | E2)   // ok
+type K = keyof A!E     // (keyof A)!E
+type L = A!E[]         // A!(E[])
+type M = (A!E)[]       // an array of Effects
 ```
 
 ```ts [Effect]
@@ -258,6 +261,9 @@ type W = A!(E1 | E2)   // ok
 type U = Effect.Effect<A | B, E>
 type V = A | Effect.Effect<B, E>
 type W = Effect.Effect<A, E1 | E2>
+type K = Effect.Effect<keyof A, E>
+type L = Effect.Effect<A, E[]>
+type M = Effect.Effect<A, E>[]
 ```
 
 ## Modules and the top level
@@ -290,7 +296,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`.
 - **Thrown types.** Each declaration carries its thrown type as [Thrown types](/spec/003-failures#thrown-types) defines it. An effectful function carries no `@throws`. Every other exported callable (a function, a method, a constructor, a function-typed `const`, an `async` function) carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default. Getters and setters carry none.
-- **Each call signature carries its own contract** ([Thrown types](/spec/003-failures#thrown-types)): every overload, and a returned callable's own signature. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type.
+- **Each call signature carries its own contract** ([Thrown types](/spec/003-failures#thrown-types), decided detail 38): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type.
 - **`@rethrows` is copied.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it.
 - A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](/spec/003-failures#effectful-callables)):
 
@@ -330,8 +336,10 @@ export declare function load(id: string): Effect.Effect<User, NotFound, Users>  
 export declare function users(ids: string[]): Stream.Stream<string>              // effectful: no @throws
 /** @throws {BadInput} */
 export declare function parse(s: string): string
-/** @throws {never} */
-export declare const add: (a: number, b: number) => number
+export declare const add: {
+  /** @throws {never} */
+  (a: number, b: number): number
+}
 /** @throws {never} */
 export declare function get(q: string): Promise<Row[]>
 export declare class Id {
