@@ -1,0 +1,14 @@
+// expect: EK3003 EK3004 EK3002
+service Key { static readonly key = "test/AliasPaths"; n: number }
+const Alias = Key
+const Box = { Key }
+new Alias()
+new (Alias)()
+new Box.Key()
+const value: unknown = {}
+value instanceof Alias
+value instanceof (Alias)
+value instanceof Box.Key
+class Direct extends Alias { n = 1 }
+class Wrapped extends (Alias) { n = 2 }
+class Property extends Box.Key { n = 3 }

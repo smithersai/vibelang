@@ -263,14 +263,21 @@ func checkExtendsService(c *checker.Checker, class *ast.Node) {
 }
 
 // serviceNamedBy returns the declaration of the service or control class
-// that expr names, following imports, or nil.
+// that expr denotes, following imports and typed value aliases, or nil.
 func serviceNamedBy(c *checker.Checker, expr *ast.Node) *ast.Node {
-	if !ast.IsIdentifier(expr) && !ast.IsPropertyAccessExpression(expr) {
+	if expr == nil {
 		return nil
 	}
 	symbol := c.GetSymbolAtLocation(expr)
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
+	}
+	// A typed value alias keeps the service constructor's class symbol.
+	// Checking only the variable's declaration misses the same service key.
+	if symbol == nil || classKindOf(symbol.ValueDeclaration()) == ordinaryClass {
+		if t := c.GetTypeAtLocation(expr); t != nil {
+			symbol = t.Symbol()
+		}
 	}
 	if symbol == nil || classKindOf(symbol.ValueDeclaration()) == ordinaryClass {
 		return nil

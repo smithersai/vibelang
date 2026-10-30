@@ -1,0 +1,9 @@
+main.vibe(5,1): error EK3003
+main.vibe(6,1): error EK3003
+main.vibe(7,1): error EK3003
+main.vibe(9,1): error EK3004
+main.vibe(10,1): error EK3004
+main.vibe(11,1): error EK3004
+main.vibe(12,22): error EK3002
+main.vibe(13,23): error EK3002
+main.vibe(14,24): error EK3002

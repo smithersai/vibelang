@@ -1,0 +1,10 @@
+class Key { n = 1 }
+const Alias = Key
+const Box = { Key }
+const first = new Alias()
+const second = new (Alias)()
+const third = new Box.Key()
+class Direct extends Alias {}
+class Wrapped extends (Alias) {}
+class Property extends Box.Key {}
+export const result = [first.n, second.n, third.n, first instanceof Alias, second instanceof (Alias), third instanceof Box.Key, new Direct().n, new Wrapped().n, new Property().n]
