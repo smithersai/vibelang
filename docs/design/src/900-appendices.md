@@ -176,10 +176,10 @@ Modifiers = the class-member modifiers TypeScript allows before async (static, p
 #### EffectType
 
 ```text
-EffectType = EffectOperand [no LineTerminator here] "!" EffectOperand [no LineTerminator here] "!" EffectOperand   (A!E!R)
-           | EffectOperand [no LineTerminator here] "!" EffectOperand                                        (A!E)
-           | EffectOperand [no LineTerminator here] "!" "!" [no LineTerminator here] [lookahead ≠ "{"] EffectOperand   (A!!R)
-           | EffectOperand [no LineTerminator here] "!" "!"                                                  (A!!)
+EffectType = EffectOperand [no LineTerminator here] "!" [no LineTerminator here] EffectOperand [no LineTerminator here] "!" [no LineTerminator here] EffectOperand   (A!E!R)
+           | EffectOperand [no LineTerminator here] "!" [no LineTerminator here] EffectOperand   (A!E)
+           | EffectOperand [no LineTerminator here] "!" [no LineTerminator here] "!" [no LineTerminator here] [lookahead ≠ "{"] EffectOperand   (A!!R)
+           | EffectOperand [no LineTerminator here] "!" [no LineTerminator here] "!"   (A!!)
 ```
 
 #### EffectOperand
@@ -491,15 +491,19 @@ for concurrent (4) (const x of xs) f(x)        limit 4
 for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
 ```
 
-**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error (`EK0302`). The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `EffectType` is an alternative of TypeScript's `Type`, beside a function type and a conditional type. A function or constructor type's return is a `Type`, so `() => A!E` is `() => (A!E)`, as `() => A | B` is `() => (A | B)` (decided detail 80). `!` does not mix with `|`, `&` or conditional types without parentheses (decided detail 47): an `EffectType` can't be an operand of `|` or `&` or a part of a conditional type unless parenthesized, and a function or constructor type in a slot needs its own parentheses (`A!(() => B)`, not `A!() => B`). Each is a syntax error with a quick fix that parenthesizes (`EK0301`). `A!!B!C` is `EK0302`. Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
+**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error (`EK0302`). One rule explains every `[no LineTerminator here]` in the productions: a line break ends an Effect type. TypeScript stops its postfix type operators (`!`, `?`, `[]`) at a preceding line break, so in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. A `[]` has a closing token and a slot doesn't, so the slot starts on the line of its `!`, which keeps `now(): number!!` and `later(): number!!` two members. A slot in parentheses may span lines. `R` never starts with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `EffectType` is an alternative of TypeScript's `Type`, beside a function type and a conditional type. A function or constructor type's return is a `Type`, so `() => A!E` is `() => (A!E)`, as `() => A | B` is `() => (A | B)` (decided detail 80). `!` does not mix with `|`, `&` or conditional types without parentheses (decided detail 47): an `EffectType` can't be an operand of `|` or `&` or a part of a conditional type unless parenthesized, and a function or constructor type in a slot needs its own parentheses (`A!(() => B)`, not `A!() => B`). Each is a syntax error with a quick fix that parenthesizes (`EK0301`). `A!!B!C` is `EK0302`. Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
 
-A `!` after a type that is followed on the same line by neither `!` nor the start of an `EffectOperand` is a syntax error, as in TypeScript (TS17019); the quick fix parenthesizes: `(x as Foo)!`. `T!!` is always an `EffectType`.
+A `!` after a type with no slot and no second `!` after it on its line is a syntax error, as in TypeScript (TS17019); the quick fix parenthesizes: `(x as Foo)!`. `T!!` is always an `EffectType`.
 
 ```text
 service S {                       two members: R can't start on the next line
   now(): number!!
   later(): number!! }
 effect function f(): number!! {   "{" begins the body, not R
+const e: User!                    syntax error: NotFound starts a new line, so this ! has no slot
+  NotFound = load()
+const e: User!(                   one type: the slot starts on the line of its !
+  NotFound | Timeout) = load()
 const e: User!!= load()           const e: User!! = load()
 x as number !== 0                 (x as number) !== 0, as in TypeScript
 type T = A | B!E                  syntax error; write (A | B)!E or A | (B!E)

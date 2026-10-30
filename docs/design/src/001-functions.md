@@ -232,7 +232,7 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 
 ### Syntax
 
-[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. `!` continues a type only on the same line, as TypeScript's postfix `[]` does. The `R` after `!!` also starts on that line and never with `{`, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
+[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. The `R` after `!!` never starts with `{`, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
 
 ```vibe es
 // compiler-gap: pending VIP-3
@@ -242,6 +242,14 @@ interface Clock {
   now(): number!!           // two members, not R = later
   later(): number!!
 }
+const a: User!(
+  NotFound | Timeout) = load()   // one type: the slot starts on the line of its !
+```
+
+```vibe es
+// compiler-gap: pending VIP-3
+const b: User!
+  NotFound = load()         // syntax error (TS17019): this ! has no slot on its line
 ```
 
 A line break also ends the type, so this is two statements, as in TypeScript:
