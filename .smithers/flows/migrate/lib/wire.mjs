@@ -26,9 +26,7 @@ const oxlintValueOptions = new Set(["-c", "--config", "--tsconfig", "-A", "--all
 /**
  * Runs Effect's lint rules on .vibe files where a script runs them on .ts files
  * (VIP-38): after each oxlint command whose configuration enables effecttsgo/*
- * rules, adds error TS6231: Could not resolve the path 'lint' with the extensions: '.ts', '.tsx', '.d.ts', '.vibe', '.cts', '.d.cts', '.mts', '.d.mts'.
-  The file is in the program because:
-    Root file specified for compilation with the same configuration, --deny-warnings and
+ * rules, adds `vibelang lint` with the same configuration, --deny-warnings and
  * paths. readConfig(path) returns a configuration file's text, or undefined.
  */
 export function addEffectLint(scripts = {}, readConfig) {
