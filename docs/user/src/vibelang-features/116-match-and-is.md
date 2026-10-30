@@ -166,6 +166,8 @@ A plain `error` pattern compares `_tag`, so it also accepts a value from another
 
 An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type. A class without its own matcher, such as one imported from a `.ts` file, matches by `instanceof`: an object whose prototype was changed after construction no longer matches. A function that is not a class works as a predicate: `when isUser:` calls `isUser(value)` and narrows `value` as `if (isUser(value))` does, and `when Array.isArray:` tests for an array. A predicate must return a `boolean`; one that returns an Effect or a Promise is an error, so test it in a guard instead.
 
+Changing an `error` or `schema error` declaration's name also changes its `_tag`; update any `catchTag` or `catchTags` key that names it.
+
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
 ```vibe

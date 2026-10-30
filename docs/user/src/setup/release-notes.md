@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11 (unreleased)
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
 - The runtime helper `$produce` required an external `Scope` even though its Stream callback supplies one; its result now removes that requirement and keeps other services.
+- Compiler validation treated an error name as a private binding during rename and reported false failures; it now accounts for the public `_tag` value while checking every reference and edit (VIP-13, VIP-29).
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang

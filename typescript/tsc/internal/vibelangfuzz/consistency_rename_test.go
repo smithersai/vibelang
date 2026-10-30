@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // consistencyFreshName returns an identifier that no file of the project
@@ -111,6 +112,26 @@ func consistencySpelled(files map[string]string, name string) bool {
 		}
 	}
 	return false
+}
+
+// consistencyImplicitTag reports a name that is also a public string value.
+// VIP-13 says an error's tag is always its name (VIP-29 applies this to schema
+// errors too). Like an explicitly spelled tag, it can change catchTags keys
+// under rename, so diagnostic parity is not an alpha-rename invariant there.
+// Reference sets, edit bounds and renamed references still get checked.
+func consistencyImplicitTag(declaration *ast.Node) bool {
+	if declaration == nil || declaration.Kind != ast.KindClassDeclaration || declaration.Name() == nil {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil || !strings.HasSuffix(file.FileName().AsString(), ".vibe") {
+		return false
+	}
+	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/rename.vibe", PathKey: "/rename.vibe"}, file.Text())
+	return slices.ContainsFunc(forms, func(form parser.VibeSyntax) bool {
+		return form.Kind == parser.VibeSyntaxDeclaration && (form.Name == "error" || form.Name == "schema error") &&
+			form.Head.Pos() <= declaration.Name().Pos() && form.Head.End() == declaration.Name().End()
+	})
 }
 
 // consistencyDidYouMean maps each TypeScript diagnostic that suggests a
@@ -230,7 +251,7 @@ func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySp
 	}
 	after := toolsCompile(c.t, c.w, consistencyTarget, edited.files)
 	defer after.Remove()
-	if diff, code := consistencyCountDiff(consistencyDiagnosticCounts(p.r, nil), consistencyDiagnosticCounts(after, nil), false); len(diff) > 0 && !consistencySpelled(p.files, old) {
+	if diff, code := consistencyCountDiff(consistencyDiagnosticCounts(p.r, nil), consistencyDiagnosticCounts(after, nil), false); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
 		Gap(c.t, consistencyTarget, key+":diagnostics:"+code, "D372: the rename at %s changes the diagnostics:\n%s\n%s\nrenamed:\n%s", c.where, strings.Join(diff, "\n"), c.archive, Archive(edited.files))
 	}
 	if after.SourceFile(c.main) == nil || probe.merged() {
