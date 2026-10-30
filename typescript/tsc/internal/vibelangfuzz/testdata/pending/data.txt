@@ -15,8 +15,6 @@ FuzzDataSpecRules feature:schema-error-setter compiler VIP-29: schema error perm
 FuzzDataSpecRules corpus:data-schema-error-setter compiler VIP-29: schema error permits a setter; lane vip-decls; reproduction of feature:schema-error-setter
 FuzzDataSpecRules feature:schema-error-method-getter compiler VIP-29: a plain schema-error method is inferred Effectful and its call gets EK2003; lane vip-core2
 FuzzDataSpecRules corpus:data-schema-error-method-getter compiler VIP-29: a plain schema-error method is inferred Effectful and its call gets EK2003; lane vip-core2; reproduction of feature:schema-error-method-getter
-FuzzDataSpecRules feature:generic-limit compiler VIP-28: generic-limit requires EK2801, got 2126; lane vip-core2
-FuzzDataSpecRules corpus:data-generic-limit compiler VIP-28: generic-limit requires EK2801, got 2126; lane vip-core2; reproduction of feature:generic-limit
 FuzzDataSpecRules feature:schema-error-constructor compiler VIP-29: schema-error-constructor requires EK1301, got 2377; lane vip-decls
 FuzzDataSpecRules corpus:data-schema-error-constructor compiler VIP-29: schema-error-constructor requires EK1301, got 2377; lane vip-decls; reproduction of feature:schema-error-constructor
 FuzzDataSpecRules feature:schema-error-generics compiler VIP-29: schema-error-generics requires EK1303, got 2109,2562; lane vip-decls

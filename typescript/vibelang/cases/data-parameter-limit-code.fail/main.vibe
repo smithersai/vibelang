@@ -1,0 +1,6 @@
+// expect: EK2801 EK2126 EK2801 EK2126
+data Four<A, B, C, D> { Empty }
+data Five<A, B, C, D, E> { Empty }
+data Constrained<A extends string> { Value { readonly value: A } }
+data Both<A, B, C, D, E extends string> { Empty }
+export {}

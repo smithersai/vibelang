@@ -53,7 +53,7 @@ import (
 // (data.go in package vibelang): no variants (EK2122), a variant declared
 // twice (EK2123), a variant named $is or $match or a field named _tag
 // (EK2124), a member of a variant that is not a field (EK2125), more than
-// four type parameters or a constrained one (EK2126), and a comma after a
+// four type parameters (EK2801), a constrained one (EK2126), and a comma after a
 // variant or a field (EK1013). A variant, like a member of a type literal,
 // ends with its separator, so the checker reads the comma there.
 

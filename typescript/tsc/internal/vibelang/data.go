@@ -23,7 +23,7 @@ import (
 //
 //   - the declaration's rules: at least one variant (EK2122), no variant
 //     twice (EK2123), no name Data.taggedEnum reserves (EK2124), only fields in
-//     a variant (EK2125), at most four unconstrained type parameters (EK2126),
+//     a variant (EK2125), at most four type parameters (EK2801), no constraints (EK2126),
 //     and no comma between variants or fields (EK1013);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
 //     (EK2127, in place of TypeScript's TS2339);
@@ -52,6 +52,7 @@ var (
 	EK2125 = message(2125, errorCategory, "{0} is not a field: a variant holds only fields, each written name: Type or name?: Type.")
 	// EK2801: a data declaration with more than four type parameters. {0} is its name, {1} the count.
 	EK2801 = message(2801, errorCategory, "data {0} has {1} type parameters, and Data.TaggedEnum.WithGenerics passes at most four.")
+	// EK2126: a constraint on a data type parameter. {0} is the parameter.
 	EK2126 = message(2126, errorCategory, "{0} cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.")
 	// EK2127: Name.Variant names no variant of the data type Name. {0} is the data type, {1} the name, {2} its variants.
 	EK2127 = message(2127, errorCategory, "{0} has no variant {1}. Its variants are {2}.")
@@ -60,12 +61,11 @@ var (
 	// EK4707: a variant pattern whose subject's type has no case of that variant. {0} is the type, {1} the variant.
 	EK4707 = message(4707, errorCategory, "{0} has no case {1}, so this pattern never matches.")
 
-	ek2124Tag        = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
-	ek2125Mutable    = EK2125.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
-	ek2125Untyped    = EK2125.With("{0} has no type: write {0}: Type.")
-	ek2126Constraint = EK2126.With("{0} cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.")
-	ek4706Extractor  = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
-	ek1013Variants   = EK1013.With("The variants of {0} are separated by ; or a new line, not by a comma.")
+	ek2124Tag       = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
+	ek2125Mutable   = EK2125.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
+	ek2125Untyped   = EK2125.With("{0} has no type: write {0}: Type.")
+	ek4706Extractor = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
+	ek1013Variants  = EK1013.With("The variants of {0} are separated by ; or a new line, not by a comma.")
 )
 
 func init() {
@@ -360,12 +360,12 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 			report(c, parameter, EK2801, name, strconv.Itoa(len(parameters)))
 		}
 		if constraint := parameter.AsTypeParameterDeclaration().Constraint; constraint != nil {
-			report(c, constraint, ek2126Constraint, parameter.Name().Text())
+			report(c, constraint, EK2126, parameter.Name().Text())
 		}
 	}
 	if definition := dataDefinitionOf(alias); definition != nil {
 		// What TypeScript says about the interface, which the parser wrote,
-		// EK2126 says about the declaration.
+		// EK2801 says about the declaration.
 		if len(parameters) > 4 || slices.ContainsFunc(parameters, func(p *ast.Node) bool { return p.AsTypeParameterDeclaration().Constraint != nil }) {
 			cover(c, definition)
 		}
