@@ -115,6 +115,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification could misread `effect is …` and `async is …` as invalid function shorthand. Both now retain their pattern-test reading, alongside the existing `as` and `satisfies` expression exclusions.
 
+- The introduction hid contextual keyword parsing behind its promise about plain TypeScript code. It now states that those rules also apply in plain code and links to their declaration and expression boundaries.
+
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
 - Diagnostic codes used the old numbering and dropped leading zeros; matching checks now use Appendix B codes, and terminal output keeps all four digits. See the [diagnostic code map](../vibelang-features/diagnostic-code-map.md).
