@@ -165,6 +165,19 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		t.Fatal(err)
 	}
 	defer fork.Remove()
+	// tsc prints what GetDiagnosticsOfAnyProgram returns before it emits,
+	// which stops after syntax errors, then what emit returns. The fork's
+	// program has emitted, and the checker adds diagnostics while emit asks it
+	// about names (TS2552 at `kin` in `{ kin = Sc }`), which tsc never prints,
+	// so a fresh program of the same files is asked, before stock tsc writes
+	// its outputs beside them.
+	reported := fork.Diagnostics
+	if fork.Program != nil {
+		within(t, "diagnostics", func() {
+			fresh := w.programIn(fork.Dir, true).Program
+			reported = slices.Concat(compiler.GetDiagnosticsOfAnyProgram(t.Context(), fresh, nil, false, fresh.GetBindDiagnostics, fresh.GetSemanticDiagnostics), fork.EmitDiagnostics)
+		})
+	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
@@ -185,13 +198,7 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 			stock = append(stock, formatParity(m[1], m[2], m[3], m[4], m[5]))
 		}
 	}
-	// tsc reports what GetDiagnosticsOfAnyProgram returns, which stops after
-	// syntax errors, then what emit returns, sorted and without duplicates.
-	program := fork.Program
-	reported := fork.Diagnostics
-	if program != nil {
-		reported = slices.Concat(compiler.GetDiagnosticsOfAnyProgram(t.Context(), program, nil, false, program.GetBindDiagnostics, program.GetSemanticDiagnostics), fork.EmitDiagnostics)
-	}
+	// tsc sorts what it prints and removes duplicates.
 	reported = compiler.SortAndDeduplicateDiagnostics(reported)
 	for _, d := range reported {
 		ours = append(ours, parityLine(fork.Dir, d))
