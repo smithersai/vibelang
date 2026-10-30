@@ -61,7 +61,7 @@ A detail that no VIP, ruling, decided detail or TypeScript or pinned TC39 counte
 
 ### Examples are pending
 
-The compiler is being changed to match the VIPs. Until it does, every VibeLang example here starts with a `// compiler-gap: pending VIP-N` line, which the snippet checker (`docs/tools/check-snippets.ts`) reports as a known gap rather than a failure. The Effect TypeScript beside it is marked `// fragment`, because it names functions such as `fetchUser` that the example doesn't declare. [Appendix D](/spec/900-appendices#appendix-d-flipping-pending-examples) says how to flip an example once its VIP is implemented.
+The compiler is being changed to match the VIPs. Until it does, every VibeLang example here starts with a `// compiler-gap: pending VIP-N` line, which the snippet checker (`docs/tools/check-snippets.ts`) reports as a known gap rather than a failure. An Effect TypeScript comparison that needs undeclared helpers is marked `// fragment`, for example when it calls `fetchUser` without declaring it. Complete comparisons omit that marker and can be checked as self-contained programs. [Appendix D](/spec/900-appendices#appendix-d-flipping-pending-examples) says how to flip an example once its VIP is implemented.
 
 ## Chapters
 
