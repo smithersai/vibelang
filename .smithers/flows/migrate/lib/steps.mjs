@@ -319,6 +319,12 @@ async function wireTarget(config, log) {
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
   writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true))
+  // pnpm 11 and later fail an install that leaves a build script undecided, and vibelang's dprint has one that links its binary.
+  if (Wire.packageManager(readdirSync(t)) === "pnpm") {
+    const workspace = join(t, "pnpm-workspace.yaml")
+    const text = existsSync(workspace) ? readFileSync(workspace, "utf8") : ""
+    writeIfChanged(workspace, text, Upgrade.setYamlMap(text, "allowBuilds", { dprint: true }))
+  }
   // bun test loads .vibe modules through vibelang/bun, which only a [test] preload applies to it.
   const testCwd = join(t, config.test.cwd)
   const testScripts = existsSync(join(testCwd, "package.json")) ? readJson(join(testCwd, "package.json")).scripts : undefined

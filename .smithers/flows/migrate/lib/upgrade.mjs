@@ -139,17 +139,17 @@ export function yamlDeclarations(text) {
 const yamlKey = (name) => (/^[A-Za-z0-9_-]+$/.test(name) ? name : `'${name}'`)
 
 /**
- * Adds the pins the top-level `overrides:` map of a pnpm-workspace.yaml lacks,
+ * Adds the entries a top-level block map of a pnpm-workspace.yaml lacks,
  * inside the block, adding the block when there is none. An entry already
- * there keeps its value: the upgrade moved its version, and a `catalog:`
- * entry follows the catalog.
+ * there keeps its value: the upgrade moved its version, a `catalog:` entry
+ * follows the catalog, and a build the repository denied stays denied.
  */
-export function setYamlOverrides(text, pins) {
+export function setYamlMap(text, key, entries) {
   const lines = text.split("\n")
-  const start = lines.findIndex((l) => /^overrides:\s*$/.test(l))
+  const start = lines.findIndex((l) => l.startsWith(`${key}:`) && /^\s*$/.test(l.slice(key.length + 1)))
   if (start < 0) {
-    const body = Object.entries(pins).map(([k, v]) => `  ${yamlKey(k)}: ${v}`)
-    return text.replace(/\n*$/, "\n") + `\noverrides:\n${body.join("\n")}\n`
+    const body = Object.entries(entries).map(([k, v]) => `  ${yamlKey(k)}: ${v}`)
+    return `${text.trim() ? text.replace(/\n*$/, "\n\n") : ""}${key}:\n${body.join("\n")}\n`
   }
   let end = start + 1
   while (end < lines.length && (/^\s+\S/.test(lines[end]) || lines[end].trim() === "")) end++
@@ -159,7 +159,7 @@ export function setYamlOverrides(text, pins) {
     const m = /^\s+(['"]?)([^'":]+)\1:/.exec(lines[i])
     if (m) seen.add(m[2])
   }
-  lines.splice(end, 0, ...Object.entries(pins).filter(([k]) => !seen.has(k)).map(([k, v]) => `  ${yamlKey(k)}: ${v}`))
+  lines.splice(end, 0, ...Object.entries(entries).filter(([k]) => !seen.has(k)).map(([k, v]) => `  ${yamlKey(k)}: ${v}`))
   return lines.join("\n")
 }
 
@@ -271,7 +271,7 @@ export function planUpgrade(files, to, manager) {
     if (holder) {
       const text = next.get(holder.path) ?? holder.text
       const after = holder === yaml
-        ? setYamlOverrides(text, pins)
+        ? setYamlMap(text, "overrides", pins)
         : (() => {
           const pkg = JSON.parse(text)
           const withPins = setJsonOverrides(pkg, pins, manager)

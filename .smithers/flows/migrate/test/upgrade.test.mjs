@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, selectorTarget, setJsonOverrides, setYamlOverrides, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
+import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, selectorTarget, setJsonOverrides, setYamlMap, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
 import { readIssues } from "../lib/issues.mjs"
 import { flowStep, nextStep, paths, upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -80,11 +80,19 @@ test("yamlDeclarations finds Effect versions in the catalog, named catalogs and 
   ])
 })
 
-test("setYamlOverrides adds the pins the block lacks and keeps the values it has", () => {
+test("setYamlMap adds the entries the block lacks and keeps the values it has", () => {
   const yaml = "packages:\n  - 'packages/*'\n\noverrides:\n  '@types/node': 26.4.0\n  effect: \"catalog:\"\n\n  'monaco-editor>dompurify': 3.4.14\nother: 1\n"
-  assert.equal(setYamlOverrides(yaml, { effect: "4.0.6", "@effect/vitest": "4.0.6" }),
+  assert.equal(setYamlMap(yaml, "overrides", { effect: "4.0.6", "@effect/vitest": "4.0.6" }),
     "packages:\n  - 'packages/*'\n\noverrides:\n  '@types/node': 26.4.0\n  effect: \"catalog:\"\n\n  'monaco-editor>dompurify': 3.4.14\n  '@effect/vitest': 4.0.6\nother: 1\n")
-  assert.equal(setYamlOverrides("packages:\n  - a\n", { effect: "4.0.6" }), "packages:\n  - a\n\noverrides:\n  effect: 4.0.6\n")
+  assert.equal(setYamlMap("packages:\n  - a\n", "overrides", { effect: "4.0.6" }), "packages:\n  - a\n\noverrides:\n  effect: 4.0.6\n")
+})
+
+test("setYamlMap allows a build beside the repository's own decisions and creates the file's block", () => {
+  const yaml = "allowBuilds:\n  esbuild: true\n  workerd: false\n\ncatalog:\n  a: 1\n"
+  assert.equal(setYamlMap(yaml, "allowBuilds", { dprint: true }), "allowBuilds:\n  esbuild: true\n  workerd: false\n  dprint: true\n\ncatalog:\n  a: 1\n")
+  assert.equal(setYamlMap("allowBuilds:\n  dprint: false\n", "allowBuilds", { dprint: true }), "allowBuilds:\n  dprint: false\n")
+  assert.equal(setYamlMap("packages:\n  - a\n", "allowBuilds", { dprint: true }), "packages:\n  - a\n\nallowBuilds:\n  dprint: true\n")
+  assert.equal(setYamlMap("", "allowBuilds", { dprint: true }), "allowBuilds:\n  dprint: true\n")
 })
 
 test("setJsonOverrides adds missing pins under pnpm for pnpm, at the top level otherwise", () => {
