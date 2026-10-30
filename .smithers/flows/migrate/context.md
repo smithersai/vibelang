@@ -667,6 +667,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `performance` | `try Clock.currentTimeMillis` |
 | `performance.now` | `try Clock.monotonicTimeNanos` |
 | `performance.timeOrigin` | `try (try Experimental.Process).timeOrigin` |
+| `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
 | `process.arch` | `try (try Experimental.Process).arch` |
 | `process.argv` | `try (try Stdio).args` |

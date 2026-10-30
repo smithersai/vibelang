@@ -198,7 +198,7 @@ var platformGlobals = map[string]string{
 	"cancelIdleCallback": "",
 	"process":            "Config", "console": "Console", "crypto": "Crypto", "performance": "Clock",
 	"localStorage": "KeyValueStore", "sessionStorage": "KeyValueStore", "indexedDB": "KeyValueStore",
-	"Worker": "Worker", "SharedWorker": "Worker", "importScripts": "Worker",
+	"Worker": "Worker", "SharedWorker": "Worker", "importScripts": "Worker", "postMessage": "Worker",
 	"document": "", "window": "", "self": "GlobalThis", "navigator": "", "location": "", "history": "",
 	"alert": "", "confirm": "", "prompt": "",
 	"addEventListener": "PubSub", "removeEventListener": "PubSub", "dispatchEvent": "PubSub",

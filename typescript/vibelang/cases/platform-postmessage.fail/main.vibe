@@ -1,0 +1,6 @@
+// expect: EK4402
+export const direct = postMessage
+export const dotted = globalThis.postMessage
+export const bracket = globalThis["postMessage"]
+export const local = (postMessage: () => number) => postMessage()
+export const localGlobal = (globalThis: { postMessage: () => number }) => globalThis.postMessage()

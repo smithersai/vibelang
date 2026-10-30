@@ -4,6 +4,8 @@ Node.js reaches a `.vibe` file only through Effect's services, which a layer pro
 
 ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `new Date()`, and `Math.random()`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. The web's pure helpers stay too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Blob`, `FormData`, `Headers`, `Response`, `Event`, `EventTarget`, `atob`, `btoa`, and the web streams.
 
+A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
+
 ## Replacements
 
 Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members.
@@ -82,6 +84,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `performance` | `try Clock.currentTimeMillis` |
 | `performance.now` | `try Clock.monotonicTimeNanos` |
 | `performance.timeOrigin` | `try (try Experimental.Process).timeOrigin` |
+| `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
 | `process.arch` | `try (try Experimental.Process).arch` |
 | `process.argv` | `try (try Stdio).args` |

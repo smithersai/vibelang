@@ -2323,6 +2323,8 @@ typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:19:14 lambda dual fall
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:24:13 lambda dual fallback
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:49:38 lambda plain table
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:7:25 lambda plain annotation
+typescript/vibelang/cases/platform-postmessage.fail/main.vibe:5:22 lambda plain fallback
+typescript/vibelang/cases/platform-postmessage.fail/main.vibe:6:28 lambda plain fallback
 typescript/vibelang/cases/platform-scope.fail/main.vibe:13:22 lambda plain fallback
 typescript/vibelang/cases/platform-scope.fail/main.vibe:14:21 lambda plain fallback
 typescript/vibelang/cases/platform-scope.fail/main.vibe:15:21 lambda plain fallback
