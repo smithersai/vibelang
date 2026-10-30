@@ -58,6 +58,10 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile) (*
 				}
 				severity, ok := value.(string)
 				if !ok || !slices.Contains([]string{"error", "warning", "suggestion", "off"}, severity) {
+					if options.InvalidSeverities == nil {
+						options.InvalidSeverities = map[string]bool{}
+					}
+					options.InvalidSeverities[code] = true
 					report(jsonInitializer(entry), core.VibeInvalidSeverityCode, "vibe.severities."+code+" must be error, warning, suggestion or off; replace this value.")
 					continue
 				}

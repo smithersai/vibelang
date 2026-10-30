@@ -11,6 +11,9 @@ type VibeLangOptions struct {
 	// VibeOnly distinguishes a modern section from an explicitly empty legacy
 	// object, whose replacement semantics must remain intact during migration.
 	VibeOnly bool `json:"-"`
+	// InvalidSeverities shadows inherited entries during merging, without applying
+	// an invalid value or exposing it in the effective serialized configuration.
+	InvalidSeverities map[string]bool `json:"-"`
 	// Severities is the release configuration, separate from legacy diagnostics.
 	Severities    map[string]string `json:"severities,omitzero"`
 	EffectGlobals Tristate          `json:"effectGlobals,omitzero"`
@@ -49,7 +52,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && o.DeclarationSidecars == other.DeclarationSidecars && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && o.DeclarationSidecars == other.DeclarationSidecars && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -87,6 +90,22 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 			result.Severities = map[string]string{}
 		}
 		maps.Copy(result.Severities, child.Severities)
+	}
+	result.InvalidSeverities = maps.Clone(base.InvalidSeverities)
+	if len(child.InvalidSeverities) != 0 {
+		if result.InvalidSeverities == nil {
+			result.InvalidSeverities = map[string]bool{}
+		}
+		maps.Copy(result.InvalidSeverities, child.InvalidSeverities)
+		for code := range child.InvalidSeverities {
+			delete(result.Severities, code)
+		}
+	}
+	for code := range child.Severities {
+		delete(result.InvalidSeverities, code)
+	}
+	if len(result.InvalidSeverities) == 0 {
+		result.InvalidSeverities = nil
 	}
 	if result.EffectGlobals == TSUnknown {
 		result.EffectGlobals = base.EffectGlobals

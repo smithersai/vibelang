@@ -58,6 +58,15 @@ The decided keys (VIP-30, amended) are:
 
 An unknown `vibe` key or a value of the wrong type is a config error (`EK3007`), as for TypeScript’s `compilerOptions`; remove the key or supply its declared type. Exception: a `severities` entry whose value is not one of the four strings, whatever its JSON type, is `EK3006`; replace it with one of them. `EK3007` covers every other wrong-typed `vibe` value, including a `severities` value that is not an object.
 
+After `extends` merges entries by code, validate each effective entry independently. An invalid entry still reports `EK3006` and is ignored as a severity override; other valid entries and independent options still apply. An invalid child entry has already displaced the same code's inherited setting and does not restore that base entry: the code uses its lower-precedence Effect language-service configuration, where applicable, then its default. Unaffected inherited codes remain. A non-object `severities` container remains `EK3007`, and configuration errors retain their ordinary exit and emit consequences.
+
+```jsonc
+// Effective-entry recovery: base.json
+{ "vibe": { "effectGlobals": false, "severities": { "EK0801": "error", "EK4609": "off" } } }
+// child config: EK3006 on "bad"; EK0801 follows its default, while EK4609 and EK0508 stay off.
+{ "extends": "./base.json", "vibe": { "effectModules": false, "severities": { "EK0801": "bad", "EK0508": "off" } } }
+```
+
 ```jsonc
 { "vibe": { "effectGlobal": false } } // EK3007: use effectGlobals
 { "vibe": { "effectModules": "no" } } // EK3007: use a boolean

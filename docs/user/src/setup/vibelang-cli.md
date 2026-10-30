@@ -49,6 +49,8 @@ The values are `"error"`, `"warning"`, `"suggestion"` and `"off"`. Keep leading 
 
 `extends` merges the `vibe` section by key and `severities` by diagnostic code; child entries win. An `extends` array applies bases left to right. `--showConfig` prints the effective `vibe` section. A code setting overrides the Effect language-service rule configuration.
 
+Invalid effective entries report `EK3006` individually and are ignored as overrides; other valid entries and independent options still apply. An invalid child entry does not restore the displaced base entry for the same code: its lower-precedence Effect language-service setting, when applicable, then its default applies. Other inherited codes remain. These are still configuration errors, with their normal exit and emit consequences.
+
 Warnings print without failing the build or blocking `noEmitOnError`; set a warning to `"error"` to fail CI. `"suggestion"` is shown only by the language server, and `"off"` suppresses the diagnostic.
 
 The legacy `vibelang.diagnostics` setting reports migration warning `EK3009`. Run `vibelang -p tsconfig.json --fix` to move it to `vibe.severities`, including settings in extended config files. Existing `vibe.severities` entries take precedence. Legacy maps containing retired or nonconfigurable codes remain in place so the rewrite does not break a working project; remove those obsolete entries, then rerun `--fix`. JSONC comments, including comments containing braces, stay intact while the migrated settings remain active.

@@ -53,6 +53,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The docs check read a number followed by a colon in a comment or reason of the compiler's pending-diagnostic list as a code, so a comment such as `VIP-7: …` failed it with a phantom `EK0007`; it now reads only the list's keys.
 
+- An invalid child severity could restore a base config's error setting; it now reports the config error and uses the diagnostic's normal fallback while keeping other valid settings.
+
+- The severity reference left invalid-entry recovery unclear; it now explains independent recovery after inheritance and that invalid child entries do not restore overwritten base settings.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.

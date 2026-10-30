@@ -22,6 +22,8 @@
 - **Amended 2026-10-29: `extends` and the `vibe` section.** `extends` merges the `vibe` section key by key, as tsconfig merges `compilerOptions`: the child's keys win, missing keys come from the base, and `severities` merges entry by code. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 59).
 - **Amended 2026-10-30: legacy configuration migration.** The legacy `vibelang.diagnostics` key reports warning `EK3009`; `vibelang --fix` rewrites configurable maps to `vibe.severities` while preserving comments and modern entries. Maps containing obsolete nonconfigurable codes remain until those entries are removed. Decided by the agent on 2026-10-30 under VIP-34's rule that every breaking change ships a `vibelang --fix` codemod.
 
+- **Amended 2026-10-30: recover invalid effective severity entries independently.** Merge `extends` entries by code before validating them. An invalid code or severity reports `EK3006` and is ignored as an override, while unrelated valid entries and options remain effective. An invalid child entry does not restore the displaced base entry for that code: lower-precedence Effect language-service configuration, where applicable, then the default applies. A non-object severity container remains `EK3007`; configuration errors keep their normal exit and emit consequences. See [Configuration](../src/007-tooling.md#config-files).
+
 ## Prior art
 
 ts-node's top-level `"ts-node"` key in tsconfig; `deno.json`; VS Code's `jsconfig.json`.

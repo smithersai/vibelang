@@ -126,3 +126,45 @@ for (const severity of ["error", "warning", "suggestion", "off"]) {
   else assert.doesNotMatch(result.stdout, /EK4833/)
  })
 }
+
+test("invalid child severity falls back without restoring the base error", { skip }, t => {
+ const dir = project(t, { extends: "./base.json", vibe: { severities: { EK4609: 42, EK4610: "off" } } },
+  `import type { Deferred, Fiber } from "effect"
+export async function wait(fiber: Fiber.Fiber<number>, deferred: Deferred.Deferred<number>) {
+ await deferred
+ return await fiber
+}
+`)
+ writeFileSync(join(dir, "base.json"), JSON.stringify({
+  vibe: { severities: { EK4609: "error", EK4610: "error" } }
+ }))
+ const result = run(dir)
+ assert.equal(result.error, undefined)
+ assert.notEqual(result.status, 0, result.stdout + result.stderr)
+ assert.match(result.stdout, /error EK3006:/)
+ assert.match(result.stdout, /warning EK4609:/)
+ assert.doesNotMatch(result.stdout, /error EK4609:|EK4610:/)
+ assert.equal(existsSync(join(dir, "dist/main.js")), false, "config error must honor noEmitOnError")
+})
+
+test("invalid inherited lint severity uses the language-service setting", { skip }, t => {
+ const dir = project(t, { extends: "./base.json", vibe: { severities: { EK3833: null } } },
+  `import { Effect } from "effect"
+export function pause() { Effect.sleep(0); return 1 }
+`)
+ writeFileSync(join(dir, "base.json"), JSON.stringify({
+  compilerOptions: { plugins: [{ name: "@effect/language-service", diagnosticSeverity: { effectSleepZeroToYieldNow: "warning" } }] },
+  vibe: { severities: { EK3833: "error" } }
+ }))
+ writeFileSync(join(dir, ".oxlintrc.effect.json"), JSON.stringify({
+  rules: { "effecttsgo/effect-sleep-zero-to-yield-now": "warn" }
+ }))
+ for (const args of [["-p", "tsconfig.json"], ["lint", "-p", "tsconfig.json"]]) {
+  const result = spawnSync(native, [...args, "--pretty", "false"], { cwd: dir, encoding: "utf8" })
+  assert.equal(result.error, undefined)
+  assert.notEqual(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /error EK3006:/)
+  assert.match(result.stdout, /warning EK3833:/)
+  assert.doesNotMatch(result.stdout, /error EK3833:/)
+ }
+})
