@@ -63,7 +63,7 @@ export effect function main() {
     const users = try Users
     const [name, fallback] = try.all [
       users.find("42"),
-      effect { return users.find("7") catch "Guest" }
+      effect { return users.find("7") catch () => "Guest" }
     ]
     try Console.log(name, fallback)
   }
@@ -102,7 +102,7 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**6.7% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **134 vs 202 tokens (33.7% fewer)**.
+**6.7% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **136 vs 202 tokens (32.7% fewer)**.
 
 <!-- token-headline:end -->
 
@@ -155,7 +155,7 @@ effect function greet(name: string): string!EmptyName {
 
 export effect function main() {
   try Console.log(try greet("VibeLang"))
-  const recovered = greet("") catch "Hello, stranger!"
+  const recovered = greet("") catch () => "Hello, stranger!"
   try Console.log(recovered)
 }
 
@@ -195,4 +195,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,257 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,261 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

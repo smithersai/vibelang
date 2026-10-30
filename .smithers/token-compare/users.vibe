@@ -15,7 +15,7 @@ export effect function main() {
     const users = try Users
     const [name, fallback] = try.all [
       users.find("42"),
-      effect { return users.find("7") catch "Guest" }
+      effect { return users.find("7") catch () => "Guest" }
     ]
     try Console.log(name, fallback)
   }

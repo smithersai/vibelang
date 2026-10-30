@@ -660,7 +660,7 @@ These features from the earlier design exist in VibeLang today, most with new sy
 | Error declarations | `class NotFound extends Error { ... }` | `error NotFound { id: string }` |
 | `return` and `throw` | `throw` produces the Result's error variant | `throw` adds an expected failure to the error channel |
 | Propagation and must-use | `getUser(id)!`, earlier `getUser(id).unwrap()`; a discarded Result is an error | `getUser(id)`: calls run, and an uncaught failure propagates |
-| Recovery | `.match({ ok, error })`, `.recover(...)`, `.unwrapOr(...)` | `try`/`catch`, `x catch fallback`, `x catch (e) => ...` |
+| Recovery | `.match({ ok, error })`, `.recover(...)`, `.unwrapOr(...)` | `try`/`catch`, `x catch () => fallback`, `x catch (e) => ...` |
 | Exhaustive error matching | `error.match({ NotFound: ..., Timeout: ... })` | `match (e) { when NotFound: ...; when Timeout: ...; }` |
 | Defects | `Reflect.panic(...)` and the `panic` channel | `die(...)`; defects and interruption bypass `catch` |
 | Foreign calls | `Result.try(...)`, `Result.tryPromise(...)`, `@throws {never}`, `@throws {T}` | `sync(...)`, `try(...)`, and `callback(...)` hatches; trusted contracts |
