@@ -206,7 +206,9 @@ export async function upgradeEffect(options) {
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
 
   const to = await runtimeEffect(config)
-  const manifests = (await Jj.trackedFiles(t)).filter((f) => /(?:^|\/)package\.json$/.test(f) || f === "pnpm-workspace.yaml")
+  const workspaceFile = join(t, "pnpm-workspace.yaml")
+  const globs = Upgrade.workspaceGlobs(readFileSync(join(t, "package.json"), "utf8"), existsSync(workspaceFile) ? readFileSync(workspaceFile, "utf8") : "")
+  const manifests = Upgrade.workspaceManifests((await Jj.trackedFiles(t)).filter((f) => /(?:^|\/)package\.json$/.test(f) || f === "pnpm-workspace.yaml"), globs)
     .sort((a, b) => (a === "package.json" ? -1 : b === "package.json" ? 1 : a === "pnpm-workspace.yaml" ? -1 : b === "pnpm-workspace.yaml" ? 1 : a < b ? -1 : 1))
   const upgrade = Upgrade.planUpgrade(manifests.map((path) => ({ path, text: readFileSync(join(t, path), "utf8") })), to, manager)
   for (const f of upgrade.files) writeFileSync(join(t, f.path), f.text)

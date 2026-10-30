@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, selectorTarget, setJsonOverrides, setYamlOverrides, yamlDeclarations } from "../lib/upgrade.mjs"
+import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, selectorTarget, setJsonOverrides, setYamlOverrides, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
 import { readIssues } from "../lib/issues.mjs"
 import { flowStep, nextStep, paths, upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -277,4 +277,21 @@ test("upgrade-effect leaves a run that setup already started alone", async () =>
   } finally {
     rmSync(run, { recursive: true, force: true })
   }
+})
+
+test("workspaceGlobs reads package.json workspaces and pnpm-workspace.yaml packages", () => {
+  assert.deepEqual(workspaceGlobs('{"workspaces":["packages/*"]}'), ["packages/*"])
+  assert.deepEqual(workspaceGlobs('{"workspaces":{"packages":["apps/*"],"catalog":{}}}'), ["apps/*"])
+  assert.deepEqual(workspaceGlobs("{}"), [])
+  const yaml = "# comment\npackages:\n  - apps/*\n  - \"infra/*\"\n  # a comment\n  - '!apps/old'\n  - evals # the evals\n\nallowBuilds:\n  - not-a-glob\n"
+  assert.deepEqual(workspaceGlobs("{}", yaml), ["apps/*", "infra/*", "!apps/old", "evals"])
+  assert.deepEqual(workspaceGlobs("{}", "packages:\n- apps/*\n- evals\nallowBuilds:\n  esbuild: true\n"), ["apps/*", "evals"])
+  assert.deepEqual(workspaceGlobs("{}", "allowBuilds:\n  esbuild: true\n"), [])
+})
+
+test("workspaceManifests keeps what the package manager installs and leaves tracked copies alone", () => {
+  const paths = ["package.json", "pnpm-workspace.yaml", "apps/web/package.json", "apps/old/package.json", "apps/web/fixture/package.json", "evals/package.json", "deep/a/b/package.json", ".repos/alchemy-effect/test/cross-version-test/test/01-beta.39/package.json"]
+  assert.deepEqual(workspaceManifests(paths, ["apps/*", "!apps/old", "./evals/", "deep/**"]), ["package.json", "pnpm-workspace.yaml", "apps/web/package.json", "evals/package.json", "deep/a/b/package.json"])
+  assert.deepEqual(workspaceManifests(paths, ["**/fixture"]), ["package.json", "pnpm-workspace.yaml", "apps/web/fixture/package.json"])
+  assert.deepEqual(workspaceManifests(paths, []), ["package.json", "pnpm-workspace.yaml"])
 })

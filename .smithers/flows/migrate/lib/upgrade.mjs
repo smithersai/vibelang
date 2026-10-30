@@ -5,12 +5,46 @@
 // one ordinary dependency upgrade, reviewed apart from the migration. These
 // are text-in, text-out edits: each changes only the versions it names and
 // keeps the file's formatting.
+import { posix } from "node:path"
 import { applyEdits } from "./imports.mjs"
 
 /** An exact version or a ^ or ~ range of one: the specifiers the upgrade moves. Catalog references, workspace, npm: and file: specifiers stay. */
 const bumpable = /^([\^~]?)(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$/
 const majorOf = (spec) => Number(/^[\^~]?(\d+)\./.exec(spec)?.[1])
 const isEffect = (name) => name === "effect" || name.startsWith("@effect/")
+
+/** The member directory globs of a root package.json's `workspaces` and a pnpm-workspace.yaml's `packages`. */
+export function workspaceGlobs(manifestText, yamlText = "") {
+  const { workspaces } = JSON.parse(manifestText)
+  const declared = Array.isArray(workspaces) ? workspaces : workspaces?.packages ?? []
+  const lines = yamlText.split("\n")
+  const start = lines.findIndex((l) => /^packages:\s*$/.test(l))
+  const listed = []
+  for (let i = start + 1; start >= 0 && i < lines.length && !/^[^\s#-]/.test(lines[i]); i++) {
+    const m = /^\s*-\s*(['"]?)([^'"#\s]+)\1/.exec(lines[i])
+    if (m) listed.push(m[2])
+  }
+  return [...declared, ...listed]
+}
+
+const stars = { "**/": "(?:.*/)?", "/**": "(?:/.*)?", "**": ".*", "*": "[^/]*" }
+const globPattern = (glob) => new RegExp(`^${glob.replace(/^\.\//, "").replace(/\/$/, "").replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*\*\/|\/\*\*$|\*\*|\*/g, (m) => stars[m])}$`)
+
+/**
+ * The manifests of paths a package manager installs: the root's, the pnpm
+ * workspace file, and each directory the workspace globs match. Anything else
+ * a repository tracks, such as a vendored repository or a fixture pinned to an
+ * old Effect on purpose, is not its to upgrade.
+ */
+export function workspaceManifests(paths, globs) {
+  const included = globs.filter((g) => !g.startsWith("!")).map(globPattern)
+  const excluded = globs.filter((g) => g.startsWith("!")).map((g) => globPattern(g.slice(1)))
+  return paths.filter((path) => {
+    if (posix.dirname(path) === ".") return true
+    const dir = posix.dirname(path)
+    return included.some((g) => g.test(dir)) && !excluded.some((g) => g.test(dir))
+  })
+}
 
 /** The package an overrides key names: `@opencode/schema>effect` and `effect@^4` name effect. */
 export function selectorTarget(key) {
