@@ -7,6 +7,8 @@
 #   sh scripts/release/rehearse.sh
 #
 # Run scripts/release/build-binaries.sh and make-packages.mjs first.
+# Check registry routing alone with:
+#   VIBELANG_TEST_REGISTRY=1 node --test scripts/release/rehearse.test.mjs
 # VIBELANG_SKIP=win32 leaves out every package whose name contains win32, the way
 # publish.sh does, to rehearse a release that ships without those packages.
 # Both scripts repack vibelang to omit those optional dependencies too.
@@ -45,6 +47,9 @@ uplinks:
   npmjs:
     url: https://registry.npmjs.org/
 packages:
+  '@vibelang/*':
+    access: \$all
+    publish: \$authenticated
   'vibelang':
     access: \$all
     publish: \$authenticated
