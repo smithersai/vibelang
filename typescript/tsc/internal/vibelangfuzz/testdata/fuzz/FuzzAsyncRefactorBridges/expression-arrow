@@ -1,0 +1,4 @@
+go test fuzz v1
+string("expression-arrow")
+byte(20)
+byte(7)

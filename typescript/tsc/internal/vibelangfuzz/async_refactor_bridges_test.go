@@ -13,11 +13,16 @@ import (
 // This is a source-rewrite oracle, not a second runtime differential runner.
 const asyncRefactorBridgeQuote = "| a Promise, in an `effect` function | an Effect | `try tryPromise(() => queryDb(q))` or `try promise(() => p)` |"
 
+const asyncRefactorEffectQuote = "`effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1)"
+
 func requireAsyncRefactorBridgeQuote(t testing.TB) {
 	t.Helper()
 	chapter, err := os.ReadFile(SpecPath("001-functions.md"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(chapter), asyncRefactorEffectQuote) {
+		t.Fatalf("missing effect modifier rule: %q", asyncRefactorEffectQuote)
 	}
 	if !strings.Contains(string(chapter), asyncRefactorBridgeQuote) {
 		t.Fatalf("chapter 001 no longer contains %q", asyncRefactorBridgeQuote)
@@ -31,24 +36,40 @@ func TestAsyncRefactorBridgesQuoted(t *testing.T) { requireAsyncRefactorBridgeQu
 func FuzzAsyncRefactorBridges(f *testing.F) {
 	startShortBudget(f)
 	requireAsyncRefactorBridgeQuote(f)
-	for _, key := range []string{"declaration", "method", "block-arrow"} {
+	for _, key := range []string{"declaration", "method", "block-arrow", "expression-arrow", "function-expression", "generic-arrow", "object-method"} {
 		f.Add(key, uint8(0), uint8(1))
 		f.Add(key, uint8(3), uint8(7))
+		f.Add(key, uint8(20), uint8(7))
 	}
 	w := NewWorkspace(f)
 	sessions := newToolsSessions(f, w)
 	f.Fuzz(func(t *testing.T, key string, mode, value uint8) {
-		if key != "method" && key != "block-arrow" {
+		switch key {
+		case "method", "block-arrow", "expression-arrow", "function-expression", "generic-arrow", "object-method":
+		default:
 			key = "declaration"
 		}
 		operand := []string{"input", "(input)", "Promise.resolve(input)", "(Promise.resolve(input))"}[mode%4]
 		body := fmt.Sprintf("{ const value = await %s; return value + %d }", operand, value)
-		source := "export async function load(input: Promise<number>) " + body
+		gap, leading := " ", " "
+		if mode&16 != 0 {
+			gap = " /* async modifier 😀 */ "
+			leading = " /* async prefix */ "
+		}
+		source := "export" + leading + "ASYNC" + gap + "function load(input: Promise<number>) " + body
 		switch key {
 		case "method":
-			source = "export class Loader { async load(input: Promise<number>) " + body + " }"
+			source = "export class Loader { static" + leading + "ASYNC" + gap + "load(input: Promise<number>) " + body + " }"
 		case "block-arrow":
-			source = "export const load = async (input: Promise<number>) => " + body
+			source = "export const load = ASYNC" + gap + "(input: Promise<number>) => " + body
+		case "expression-arrow":
+			source = "export const load = ASYNC" + gap + "(input: Promise<number>) => await " + operand
+		case "function-expression":
+			source = "export const load = ASYNC" + gap + "function named(input: Promise<number>) " + body
+		case "generic-arrow":
+			source = "export const load = ASYNC" + gap + "<T extends number>(input: Promise<T>) => " + body
+		case "object-method":
+			source = "export const loader = { ASYNC" + gap + "load(input: Promise<number>) " + body + " }"
 		}
 		if mode&4 != 0 {
 			source = "const café = '😀';\n" + source
@@ -56,6 +77,8 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 		if mode&8 != 0 {
 			source = strings.Replace(source, "await ", "await /* promise */ ", 1)
 		}
+		cursor := strings.Index(source, "ASYNC")
+		source = strings.Replace(source, "ASYNC", "async", 1)
 		files := map[string]string{"main.vibe": source}
 		r := toolsCompile(t, w, "FuzzAsyncRefactorBridges", files)
 		defer r.Remove()
@@ -73,7 +96,7 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		position := newToolsLines(source).position(strings.Index(source, "async"))
+		position := newToolsLines(source).position(cursor)
 		response, ok := toolsRequest(e, "async refactors", func(s *ls.LanguageService) (lsproto.CodeActionResponse, error) {
 			return s.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
 				TextDocument: lsproto.TextDocumentIdentifier{Uri: e.uri},
@@ -96,6 +119,9 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 				t.Fatal("async refactor did not edit its document")
 			}
 			got := edited["main.vibe"]
+			if !strings.Contains(got, "effect"+gap) {
+				Gap(t, "FuzzAsyncRefactorBridges", "async-refactor:modifier:"+key, "%s; modifier/comments lost after %s\n%s", asyncRefactorEffectQuote, action.Title, Archive(edited))
+			}
 			want := "try Effect.tryPromise(() => " + operand + ")"
 			if strings.HasSuffix(action.Title, "with an error per await") {
 				want = "try Effect.tryPromise({ try: () => " + operand + ", catch: (cause) => new "

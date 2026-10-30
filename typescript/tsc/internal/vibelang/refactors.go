@@ -23,8 +23,8 @@ import (
 //	Write the inferred contract     function load(id: string): User!NotFound!Users { … }
 //	Remove the contract             the reverse
 //	Convert to a schema declaration interface User { … } becomes schema User { … }
-//	Convert to a VibeLang function   async function f() { await p } becomes function f() { try(p) }
-//	  and write an error per await  try(p, (cause) => new PFailed({ cause })), with error PFailed { cause: unknown }
+//	Convert to a VibeLang function   async function f() { await p } becomes effect function f() { try Effect.tryPromise(() => p) }
+//	  and map each rejection        Effect.tryPromise({ try: () => p, catch: (cause) => new PFailed({ cause }) })
 //	Convert to a pipe               f(g(x)) becomes x |> g(%) |> f(%)
 //	Convert the pipe to calls       the reverse
 //	Write pipe(x, …) / x.pipe(…)    toggles the two pipe styles
@@ -173,11 +173,9 @@ func (rc *refactorContext) schemaRefactor(declaration *ast.Node) []*ls.CodeActio
 	return []*ls.CodeAction{rc.action("Convert to a schema declaration", start, declaration.End(), modifiers+"schema "+declaration.Name().Text()+" "+body)}
 }
 
-// asyncRefactors offers to convert fn, an async function, to a VibeLang
-// function: Effect's four "async function to Effect" refactors, which
-// VibeLang's one function form makes two. Each await of a promise becomes a try
-// hatch that passes the bindings the promise reads as inputs (D229), and with
-// the second refactor maps a rejection to an error declaration of its own.
+// asyncRefactors offers to convert an async function to an effect function.
+// Each await bridges a Promise through Effect.tryPromise; the mapped action
+// declares a distinct error for each awaited rejection.
 func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	if asyncReturnsPromiseValue(rc.c, fn.Body()) {
 		return nil
@@ -202,24 +200,30 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		}
 		return n.ForEachChild(visit)
 	}
-	fn.Body().ForEachChild(visit)
+	visit(fn.Body())
 	if nested {
 		return nil // for await, or an await inside an awaited expression
 	}
 	text := rc.file.Text()
-	asyncStart := strings.Index(text[nodeStart(rc.file, fn):], "async")
-	if asyncStart < 0 {
+	var asyncModifier *ast.Node
+	if modifiers := fn.Modifiers(); modifiers != nil {
+		for _, modifier := range modifiers.Nodes {
+			if modifier.Kind == ast.KindAsyncKeyword {
+				asyncModifier = modifier
+				break
+			}
+		}
+	}
+	if asyncModifier == nil {
 		return nil
 	}
-	asyncStart += nodeStart(rc.file, fn)
-	afterAsync := scanner.SkipTrivia(text, asyncStart+len("async"))
 	// The removed shorthand `async f()` (EK4618) has no function keyword after
-	// async to keep, so the declaration gets one in its place.
-	keyword := ""
-	if ast.IsFunctionDeclaration(fn) && !strings.HasPrefix(text[afterAsync:], "function") {
-		keyword = "function "
+	// async to keep, so the declaration gets one with its effect modifier.
+	replacement := "effect"
+	if afterAsync := scanner.SkipTrivia(text, asyncModifier.End()); ast.IsFunctionDeclaration(fn) && !strings.HasPrefix(text[afterAsync:], "function") {
+		replacement = "effect function"
 	}
-	common := []*lsproto.TextEdit{rc.textEdit(asyncStart, afterAsync, keyword)}
+	common := []*lsproto.TextEdit{rc.textEdit(nodeStart(rc.file, asyncModifier), asyncModifier.End(), replacement)}
 	if annotation := fn.Type(); annotation != nil {
 		common = append(common, rc.textEdit(strings.LastIndexByte(text[:annotation.Pos()], ':'), annotation.End(), ""))
 	}
@@ -250,7 +254,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		for _, name := range errorNames {
 			declarations.WriteString("error " + name + " { cause: unknown }\n" + indent)
 		}
-		// The declarations can start where the edit removing async does (a declaration without export), and LSP
+		// The declarations can start where the edit replacing async does (a declaration without export), and LSP
 		// orders edits that share a start as inserts before the replacement: insert them first.
 		mapped = append([]*lsproto.TextEdit{rc.textEdit(declarationStart, declarationStart, declarations.String())}, mapped...)
 		actions = append(actions, &ls.CodeAction{Description: "Convert to a VibeLang function with an error per await", Changes: mapped})

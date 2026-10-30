@@ -200,6 +200,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Vite could fail with an unexpected token in a native dependency before evaluating its config; migration setup now preloads `vibelang/register` and selects `--configLoader native` for affected Vite scripts, with the supported config-loading path documented.
 
+- Converting an `async` function in the editor could leave `try` in an unmarked function or skip an arrow's awaited expression. The refactors now write `effect`, handle expression bodies, and preserve comments around the modifier.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
