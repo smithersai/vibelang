@@ -9,11 +9,11 @@ title: "VIP-19: for concurrent"
 ## Decision
 
 ```ts
-for concurrent (const id of ids) { try sync(id) }    // every item in its own fiber, all at once
+for concurrent (const id of ids) { try syncOne(id) }    // every item in its own fiber, all at once
 for concurrent(4) (const id of ids) { … }            // at most 4 at a time
 
 // exactly this Effect TS
-yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* sync(id) }),
+yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* syncOne(id) }),
                       { concurrency: "unbounded", discard: true })   // or concurrency: 4
 ```
 
@@ -22,6 +22,8 @@ yield* Effect.forEach(ids, (id) => Effect.gen(function* () { yield* sync(id) }),
 - Results are discarded; `try.all ids.map(…)` (VIP-18) keeps them.
 - **Ambiguity: none.** JavaScript's `for` can only be followed by `(` or `await`.
 - **Amended 2026-10-29: the limit.** In `for concurrent(n)`, `n` is any Effect `Concurrency`, passed straight to `concurrency`. In effect 4.1.0, `Concurrency` is a number or `"unbounded"` (`Types.d.ts`); the decision as sent also listed `"inherit"`, which 4.1.0 doesn't have. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+
+*Corrected 2026-10-29: the example calls `syncOne(id)`, a user function, because `sync` is the VIP-6 global `Effect.sync`, which takes a thunk (found by the round-4 review).*
 
 ## History
 

@@ -42,6 +42,10 @@ effect function load(id) {
 - **Amended 2026-10-29: function types.** A function type or interface member with no `@throws` is non-throwing, as Swift's non-`throws` function type is. `@throws` on the declaration opts in. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 - **Amended 2026-10-29: rethrows.** A function declares that it rethrows with a `@rethrows <param>` JSDoc tag. VibeLang ships the rethrowing globals: `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. `setTimeout` does not rethrow, because it stores the callback. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 - **Amended 2026-10-29: constructors and accessors.** `new X()` is throw-tracked; getters and setters are not. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: `try` only in effect code.** `try` is allowed only in effect code; plain functions may throw. The old part of EK2003 that made a plain return annotation forbid throws is deleted. Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: legacy JavaScript banned in all `.vibe` code.** Direct and indirect `eval`, `new Function` (and `Function(...)`), `arguments` (use rest parameters), `var` (use `let`/`const`) and `with` are each a compile error with a quick fix anywhere in a `.vibe` file, plain functions included. Legacy JavaScript lives in `.ts`/`.js` files. Inline `module {}` stays denied (VIP-25). Recorded in VIP-1 too. Decided by Will, 2026-10-29 15:57: "I don't have every api memorized that's on the agent to do a good job."
+
+*Corrected 2026-10-29: in effect 4.1.0, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
 
 ## Prior art
 

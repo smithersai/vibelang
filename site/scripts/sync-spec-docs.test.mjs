@@ -38,6 +38,13 @@ test('chapter, user, cross-chapter and local fragments resolve; repository files
   for (const link of ['/spec/101-calls#calls', '/welcome', '/spec/202-rules#rules', '/spec/000-intro#intro', '/vips/0001-one#why', '/vips/']) assert.ok(body.includes(`](${link})`))
   assert.ok(body.includes(' repo\n')); assert.equal(spec.counts().links, 6)
 })
+test('inline HTML anchors resolve as fragments, locally and across chapters', () => {
+  const { put, load } = fixture()
+  put('docs/design/src/101-calls.md', '# Calls\n\n<a id="direct-eval"></a>**Legacy.** text [here](#direct-eval)\n')
+  put('docs/design/src/000-intro.md', '# Intro\n\n[legacy](101-calls.md#direct-eval) [owned](#direct-eval)\n')
+  const body = load().convert('000-intro.md', facts)
+  assert.equal(body.match(/\]\(\/spec\/101-calls#direct-eval\)/g).length, 2)
+})
 test('page titles are the inventory labels, not the first heading', () => {
   const { put, load } = fixture()
   put('docs/design/src/101-calls.md', '## Part I. Examples\n\n### 1. Calls\n')

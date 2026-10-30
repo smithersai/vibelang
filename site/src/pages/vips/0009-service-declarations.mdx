@@ -43,6 +43,8 @@ class Users extends Context.Service<Users, {
   | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
   | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
 
+- **Amended 2026-10-29: any member type.** A bodyless `service` member may declare any return type, Effect or not, as `Context.Service` allows (EK2101 is relaxed). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+
 ## History
 
 | Problem | Kind | Status |

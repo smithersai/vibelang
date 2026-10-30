@@ -10,14 +10,9 @@ Sources: [VIP-15](/vips/0015-schema-declarations), [VIP-16](/vips/0016-data-decl
 
 ### Syntax
 
-```text
-SchemaDeclaration = "export"? "schema" Name "{" Field* "}"
-                  | "export"? "schema" Name "=" Type
-Field             = "readonly"? PropertyName "?"? ":" Type Separator
-Separator         = ";" | "," | LineTerminator | before "}"   (as between interface members)
-```
+[SchemaDeclaration](/spec/900-appendices#schemadeclaration), with [Field](/spec/900-appendices#field)s and [Separator](/spec/900-appendices#separator)s shared with `error` and `data`. `schema` and `data` are declaration keywords under the one rule of [Declaration keywords](/spec/900-appendices#declaration-keywords), as `type` is in TypeScript: the keyword and the name on one line, where a declaration can start; anything else, such as `const ok = schema satisfies Schema.Top`, is ordinary TypeScript. A field type is parsed greedily as in a TypeScript type member: a line break separates members only after the type is complete. Thus `role:` followed by `| "admin"` on the next line continues the type. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](/spec/003-failures#error-declarations)).
 
-`Field` and `Separator` are the productions of [Appendix A](/spec/900-appendices#productions), shared with `error` and `data`. `schema` is a contextual keyword on the same line as its name. Fields use TypeScript's type-member separators, so `{ a: string b: number }` is a syntax error. `schema error { … }` and `schema error = T` name a schema `error`; `schema error Name` declares a schema error ([Failures](/spec/003-failures#error-declarations)).
+A `schema` declaration requires a field body or `= type`; a `data` declaration requires a variant body, even if empty. Unlike `error`, neither has a bodyless form. So `schema as T;` and `data as T;` are syntax errors, and `schema as = Schema.String` and `data as {}` declare names `as`.
 
 ### Meaning
 
@@ -25,9 +20,17 @@ Separator         = ";" | "," | LineTerminator | before "}"   (as between interf
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-15
-schema Address { city: string }
-schema User { id: string; nickname?: string; role: "admin" | "member"; home: Address }
-schema Code = "root_missing" | "read_failed"
+schema Address
+{ city: string }
+schema User {
+  id: string; nickname?: string;
+  role:
+    | "admin"
+    | "member";
+  home: Address;
+}
+schema Code
+  = "root_missing" | "read_failed"
 ```
 
 ```ts [Effect]
@@ -45,7 +48,7 @@ const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
-In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding types.
+In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. Apart from the mapped built-ins below, a reference without a Schema value is EK2109: declare it with `schema`.
 
 | Type or field | Effect 4.1.0 schema |
 | --- | --- |
@@ -54,7 +57,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | union consisting entirely of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
 | other union `A \| B` | `Schema.Union([A, B])`, each member mapped separately in source order |
 | `null`, `undefined` | `Schema.Null`, `Schema.Undefined` |
-| another schema name `Address` | `Address` |
+| identifier or qualified name resolving to a Schema value (`Address`, `NonEmptyString`, `Schema.String`) | that value, emitted as written |
 | `T[]`, `Array<T>` | `Schema.mutable(Schema.Array(S))` |
 | `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |
 | `[A, B]` | `Schema.mutable(Schema.Tuple([A, B]))` |
@@ -62,6 +65,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
 | `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
 | nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |
+| string, numeric or computed field key | the same key, emitted as written, as in a TypeScript object type |
 | writable field `name: T` | `name: Schema.mutableKey(S)` |
 | writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
 | readonly field `readonly name: T` | `name: S` |
@@ -69,7 +73,7 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 
 For example, `"a" | "b" | null` maps to `Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.
 
-`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint.
+`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Field names follow TypeScript object types, which accept a computed name of any key type (TypeScript 5.9). Its expression is evaluated in declaration order, as in the emitted object literal; it is not a schema type reference. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-15
@@ -104,7 +108,58 @@ sample.items.push(2)
 sample.counts.a = 2
 ```
 
-Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`. `typeof Name.Type` is the declared type.
+Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. `typeof Name.Type` is the declared type.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15
+import { NonEmptyString } from "effect/Schema"
+schema Profile { name: NonEmptyString; title: Schema.String }
+// type Role = "admin" | "member"
+// schema Invalid { role: Role } // EK2109: declare Role with schema
+```
+
+```ts [Effect]
+// fragment
+import { NonEmptyString } from "effect/Schema"
+const Profile = Schema.Struct({
+  name: Schema.mutableKey(NonEmptyString),
+  title: Schema.mutableKey(Schema.String),
+})
+type Profile = typeof Profile.Type
+```
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15
+const key = Symbol("key")
+schema Keys { "a-b": string; 1: number; [key]: boolean }
+```
+
+```ts [Effect]
+// fragment
+const key = Symbol("key")
+const Keys = Schema.Struct({
+  "a-b": Schema.mutableKey(Schema.String),
+  1: Schema.mutableKey(Schema.Number),
+  [key]: Schema.mutableKey(Schema.Boolean),
+})
+type Keys = typeof Keys.Type
+```
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15
+const field: string = "actual"
+schema Dynamic { [field]: number }
+```
+
+```ts [Effect]
+// fragment
+const field: string = "actual"
+const Dynamic = Schema.Struct({ [field]: Schema.mutableKey(Schema.Number) })
+type Dynamic = typeof Dynamic.Type
+const admitted: Dynamic = { other: 1 } // index-signature type
+const decoded = Schema.decodeUnknownExit(Dynamic)(admitted) // failure: missing actual
+const kept = Schema.decodeUnknownSync(Dynamic)({ actual: 1, other: 2 }) // { actual: 1 }
+```
 
 The generated constants keep TypeScript declaration order and temporal dead zone: declare `Address` before a schema that reads it. There is no implicit reordering or `Schema.suspend`; a forward or cyclic value reference has the same initialization behavior as the shown TypeScript.
 
@@ -116,20 +171,24 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 ### Syntax
 
-```text
-DataDeclaration = "export"? "data" Name TypeParameters? "{" Variant (Separator Variant)* Separator? "}"
-Variant         = Name ("{" Field* "}")?
-```
+[DataDeclaration](/spec/900-appendices#datadeclaration), a list of [Variant](/spec/900-appendices#variant)s, possibly empty.
 
-`data` is a contextual keyword on the same line as its name, so `const data = …` still works. `Field` and `Separator` are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`.
+`data` follows [Declaration keywords](/spec/900-appendices#declaration-keywords), so `return data as User[]` and `const data = …` still work. `Field` and `Separator` are those of `schema` declarations. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of `Separator` does not apply before that `{`.
 
 ### Meaning
 
-`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name.
+`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name. Zero variants are allowed: `data Empty {}` maps to `type Empty = Data.TaggedEnum<{}>; const Empty = Data.taggedEnum<Empty>()`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-16
-data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
+data Delivery
+{
+  Waiting;
+  Sent
+
+  { tracking: string };
+  Rejected { reason: string };
+}
 const tracking = "outer"
 const d = Delivery.Sent({ tracking: "1Z" })
 const label = match (d) { when { _tag: "Sent", let tracking }: tracking; default: "none"; }
@@ -150,11 +209,13 @@ if (d._tag === "Sent" && "tracking" in d) {
 }
 ```
 
+A variant constructor has thrown type `never`: its returned function signature has no `@throws`, so VIP-4's function-type rule applies. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
+
 Variants are matched with TC39 object patterns on `_tag` ([Pattern matching](/spec/004-match)). A bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`. Here `label` is `"1Z"`; replacing `let tracking` with `tracking` would read `"outer"`. The variant constructors get no custom matchers.
 
 ### Generic unions
 
-A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`.
+A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` are a compile error (EK2126). The helper name shown below is illustrative: the compiler chooses a fresh name, so a user declaration named `OutcomeDefinition` does not collide.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-28
@@ -173,3 +234,6 @@ const Outcome = Data.taggedEnum<OutcomeDefinition>()
 | Rule | Diagnostic |
 | --- | --- |
 | more than 4 type parameters; the message names the limit | code pending |
+| a constraint on a type parameter | EK2126 |
+
+**Undecided (pending VIP):** whether generic `data` parameters may have defaults, such as `data Box<A = string> { Value { value: A } }`. VIP-28 does not specify how a default interacts with constructor inference.

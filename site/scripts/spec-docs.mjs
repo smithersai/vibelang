@@ -44,6 +44,11 @@ export function loadSpec(root) {
     const found = new Set(), counts = new Map()
     for (const part of readFences(text.split('\n'))) {
       if (part.type !== 'text') continue
+      // An inline HTML anchor, as in `<a id="direct-eval"></a>**Legacy JavaScript.**`, names a fragment too.
+      for (const [, id] of part.line.matchAll(/<a id="([^"]+)"><\/a>/g)) {
+        found.add(id)
+        owners.set(id, [...owners.get(id) ?? [], file])
+      }
       const heading = part.line.match(/^#{1,6}\s+(.+?)\s*#*$/)
       if (!heading) continue
       const base = slug(heading[1].replace(/`/g, ''))

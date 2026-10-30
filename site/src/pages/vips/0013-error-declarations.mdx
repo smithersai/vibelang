@@ -30,6 +30,7 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest; }
 - **Ambiguity: none.** `error` is a contextual keyword on the same line as its name, so `const error = …` and `catch (error)` still work.
 - **Amended 2026-10-29: no user-written `static` members or setters** in `error` or `schema error` bodies, for now. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 - **Amended 2026-10-29: no type parameters.** `error Invalid<T> { value: T }` is a compile error, for now. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: exactly VIP-13.** `error` declarations allow no `extends` and no `_tag` override; EK2117 enforces it. Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 
 *Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
 
