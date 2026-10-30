@@ -263,6 +263,10 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	}
 	bang := p.scanner.TokenRange() // synthesized nodes stand on the first !
 	errors := p.parseVibeLangSlot(true)
+	// Only here can an equality token begin the second shorthand bang.
+	if errors.End() == bang.End() && !p.hasPrecedingLineBreak() {
+		p.token = p.scanner.ReScanExclamationToken()
+	}
 	var dependencies *ast.Node
 	omitted := p.token != ast.KindExclamationToken
 	if omitted {

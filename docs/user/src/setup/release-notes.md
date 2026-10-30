@@ -852,6 +852,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Packaging a `dprint` plugin could leave a temporary archive behind when replacing the archive failed; it now removes that temporary file on every return path.
 
+- An initializer directly after `!!` caused a syntax error; `const e: number!!=Effect.succeed(1)` now parses with the same meaning as the spaced form.
+
 - Inline object types in an Effect error slot were rejected; `number!{ message: string }` now works like the corresponding `Effect` type.
 
 - Effect tagged-error patterns written with a directly imported constructor, such as `when TimeoutError:` after `import { TimeoutError } from "effect/Cause"`, did not use the module's guard, so branded errors from another package instance fell through. They now call the guard and narrow the matched error to its type.

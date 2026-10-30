@@ -1241,6 +1241,16 @@ func (s *Scanner) ReScanHashToken() ast.Kind {
 	return s.token
 }
 
+// ReScanExclamationToken splits != or !== when a type shorthand needs its
+// second !. Expression parsing keeps the ordinary equality tokens.
+func (s *Scanner) ReScanExclamationToken() ast.Kind {
+	if s.token == ast.KindExclamationEqualsToken || s.token == ast.KindExclamationEqualsEqualsToken {
+		s.pos = s.tokenStart + 1
+		s.token = ast.KindExclamationToken
+	}
+	return s.token
+}
+
 func (s *Scanner) ReScanQuestionToken() ast.Kind {
 	if s.token != ast.KindQuestionQuestionToken {
 		panic("'reScanQuestionToken' should only be called on a '??'")

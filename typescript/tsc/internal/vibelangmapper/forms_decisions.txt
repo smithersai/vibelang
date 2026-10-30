@@ -1939,6 +1939,12 @@ typescript/vibelang/cases/match-class-patterns/main.vibe:95:23 lambda dual fallb
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:3:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:4:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
+typescript/vibelang/cases/match-effect-aliases/main.vibe:26:112 lambda plain fallback
+typescript/vibelang/cases/match-effect-aliases/main.vibe:26:154 lambda dual fallback
+typescript/vibelang/cases/match-effect-aliases/main.vibe:26:45 lambda dual fallback
+typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:21:39 lambda dual fallback
+typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:22:83 lambda plain fallback
+typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:22:9 lambda dual fallback
 typescript/vibelang/cases/match-error-copy/main.vibe:3:29 lambda dual fallback
 typescript/vibelang/cases/match-exhaustive-last-arm/arms.vibe:23:23 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:10 lambda effectFn table

@@ -155,3 +155,5 @@ TypeScript consumers see exported VibeLang functions as returning ordinary Effec
 `Effect` is the module, in scope in `.vibe` files without an import, and its type is `Effect.Effect<A, E, R>`. Written that way, it draws EK4833, whose quick fix writes `A!E!R` ([TypeScript-style Effect code](012-devtools.md#typescript-style-effect-code)). A call returns an Effect; `try` gives `A`. Keep the Effect value to compose or store it.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/the-effect-type)
+
+An initializer can immediately follow the shorthand: `const e: number!!=Effect.succeed(1)` means `const e: number!! = Effect.succeed(1)`. Ordinary `!=` and `!==` expressions keep their TypeScript meaning.

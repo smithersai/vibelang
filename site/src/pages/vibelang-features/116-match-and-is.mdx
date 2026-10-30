@@ -336,6 +336,8 @@ A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selec
 
 `Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not.
 
+Imported module aliases work in the six retained `Option`, `Exit` and `Result` patterns. Each checks the module brand before its variant guard; an unbranded subject falls through to the next arm.
+
 ## Effect tagged-error guards
 
 Patterns for `Cause.NoSuchElementError`, `Cause.TimeoutError`,
@@ -343,7 +345,9 @@ Patterns for `Cause.NoSuchElementError`, `Cause.TimeoutError`,
 `Cause.AsyncFiberError`, `Cause.UnknownError`, `Schema.SchemaError`,
 `Cron.CronParseError`, `PlatformError.PlatformError`, `SemVer.SemVerError`,
 `Terminal.QuitError`, and `TextDiff.TextDiffError` call the module's
-corresponding `is…Error` guard. Namespace import aliases work too.
+corresponding `is…Error` guard. Namespace import aliases work too, and so does a
+constructor imported directly: `import { TimeoutError } from "effect/Cause"` makes
+`when TimeoutError:` call `Cause.isTimeoutError`.
 These guards accept brand-carrying copies from another package installation
 and reject objects carrying only `_tag`. In extractor mode they yield the
 subject as one value: `when Cause.TimeoutError(let error): …;`.
