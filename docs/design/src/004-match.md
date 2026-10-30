@@ -66,7 +66,71 @@ const templateExit = Effect.runSyncExit(Effect.sync(() => [
 
 Synchronous `match` evaluates its subject once and tests arms in order. It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above. Only the selected arm body runs; guards run during arm testing and may have side effects. When no arm matches and there is no `default`, it throws `new TypeError()`, with an empty message: the pinned snapshot says only "a newly created *TypeError*", and no user code runs. In effect code that throw is a defect, not a failure.
 
-**Match cache.** One `CreateMatchCache` per `match` (and per `is` test) caches property presence, property reads, `Symbol.iterator` lookup, iterators and pulled values per subject across arms, as the pinned draft specifies. Later arms reuse them: a cached getter runs at most once and an iterable subject is iterated once. The short object and fixed-pattern counterparts in this chapter omit cache machinery for subjects with plain data properties; they are not general lowerings for getters or iterators.
+<a id="match-evaluation"></a>**Match cache.** One `CreateMatchCache` per `match` (and per `is` test) caches property presence, property reads, `Symbol.iterator` lookup, iterators and pulled values per subject across arms, as the pinned draft specifies. Later arms reuse them: a cached pattern getter runs at most once and an iterable subject is iterated once. Object-rest copying is separate: it follows ordinary `CopyDataProperties` and may read the same getter again. The short object and fixed-pattern counterparts in this chapter omit cache machinery for subjects with plain data properties; they are not general lowerings for getters or iterators.
+
+The pinned matching operations obey these behavioral invariants, with the draft errata recorded in [the snapshot](../vips/tc39-pattern-matching/README.md). Ordinary expression reads use ECMAScript [GetValue](https://tc39.es/ecma262/#sec-getvalue); iterator lookup preserves [GetV](https://tc39.es/ecma262/#sec-getv) receivers, and object rest keeps [CopyDataProperties](https://tc39.es/ecma262/#sec-copydataproperties).
+
+| Rule | Required behavior |
+| --- | --- |
+| Object properties | Test properties left to right in source order, stopping at the first failure. For each property retain key evaluation, presence check, cached value read, sub-pattern and binding initialization in order; copy rest afterward. |
+| Guard and selected expressions | Read a guard expression's value once before Boolean conversion. Read every selected/default arm expression's value once before iterator finishing. Getter calls, TDZ errors and abrupt completions occur at that read, never on an internal Reference Record or after cleanup. |
+| Object rest | Use ordinary own-key, enumerability and value reads outside the match-specific read cache. A rest copy can re-read a previously cached getter; do not freeze its keys or descriptors in an earlier arm. |
+| Array-pattern admission | `null` and `undefined` fail. Other subjects use cached `Symbol.iterator` lookup with `GetV` semantics: retain the original subject as receiver for both an inherited getter and the iterator call, including primitive strings. Missing/noncallable methods fail the pattern. Throwing accessors/calls and malformed protocol results retain their implicit throws. |
+| Iterator records | Array and successful extractor list matching, and cleanup, use the same private cached Iterator Records, not user iterables. Successful custom extractor results must be objects. Iterator registration/closing stays in insertion order and skips empty registry slots; bookkeeping never reads user properties named `Value` or `IteratorsToClose`. Native iterator acquisition, saved `next`, result-object checks, `done`/`value` reads and abrupt-completion handling are preserved; an iterator marked done by an iteration error is not closed again. |
+| Elisions | Each `Elision` consumes its full number of commas, excluding a list-separator comma. Every skipped position must exist. Leading, internal and trailing elisions advance cached reads and list cardinality by that width. |
+| Optional elements | An absent optional element consumes zero values, leaves the iterator done and the actual index unchanged, and does not run its sub-pattern or initialize its bindings. Repeated missing optionals remain absent. A present `undefined` is a value and must satisfy its sub-pattern; no absent-binding default is invented. |
+| Inclusive relations | On the admitted string, number or bigint subject, `<= bound` and `>= bound` mean ordinary `subject <= bound` and `subject >= bound`, with once-only bound evaluation and native coercion order. Unordered/`NaN` comparisons fail both; other subject types fail before bound evaluation. The draft's reversed inclusive bounds are not adopted. |
+
+```vibe es
+// compiler-gap: pending VIP-7
+effect function evaluationWitness() {
+  let reads = 0
+  const restSubject = { get value() { return ++reads } }
+  const copied = match (restSubject) { when { value: 0 }: 0; when { ...let rest }: rest.value; }
+  const short = match ([9, 3]) { when [,,3]: "hit"; default: "miss"; }
+  const full = match ([9, 8, 3]) { when [,,3]: "hit"; default: "miss"; }
+  const absent = match ([]) { when [1?, 2?]: "hit"; default: "miss"; }
+  const present = match ([undefined]) { when [1?]: "hit"; default: "miss"; }
+  const primitive = match ("ab") { when ["a", "b"]: "word"; default: "other"; }
+  const flag = false
+  const guarded = match (true) { when true and if (flag): "hit"; default: "miss"; }
+  const lower = match (1) { when <= 2: "small"; default: "large"; }
+  const upper = match (1) { when >= 2: "large"; default: "small"; }
+  return { copied, reads, short, full, absent, present, primitive, guarded, lower, upper }
+}
+// Success({ copied: 2, reads: 2, short: "miss", full: "hit", absent: "hit", present: "miss", primitive: "word", guarded: "miss", lower: "small", upper: "small" })
+```
+
+The following counterpart witnesses use their literal arrays and plain objects; they are not a general matcher lowering.
+
+```ts effect
+import { Effect } from "effect"
+
+function evaluationWitness() {
+  let reads = 0
+  const restSubject = { get value() { return ++reads } }
+  let copied = 0
+  if (restSubject.value !== 0) { const { ...rest } = restSubject; copied = rest.value }
+  const elided = (xs: readonly number[]) => { const [, , third] = xs; return xs.length === 3 && third === 3 ? "hit" : "miss" }
+  const flag = false
+  const guarded = flag ? "hit" : "miss"
+  const optional = (xs: readonly unknown[]) => xs.length === 0 || (xs.length === 1 && xs[0] === 1) ? "hit" : "miss"
+  return { copied, reads, short: elided([9, 3]), full: elided([9, 8, 3]), absent: optional([]), present: optional([undefined]), primitive: [..."ab"].join() === "a,b" ? "word" : "other", guarded, lower: 1 <= 2 ? "small" : "large", upper: 1 >= 2 ? "large" : "small" }
+}
+const evaluationExit = Effect.runSyncExit(Effect.sync(evaluationWitness))
+// Success({ copied: 2, reads: 2, short: "miss", full: "hit", absent: "hit", present: "miss", primitive: "word", guarded: "miss", lower: "small", upper: "small" })
+const sourceOrder: string[] = []
+const ordered = { get first() { sourceOrder.push("first"); return sourceOrder.length }, get second() { sourceOrder.push("second"); return sourceOrder.length } }
+const sourceOrderExit = Effect.runSyncExit(Effect.sync(() => ordered.first === 1 && ordered.second === 2)) // Success(true); sourceOrder: ["first", "second"]
+function armBeforeClose(log: string[], answer: { readonly value: number }) {
+  function* values() { try { yield 1; yield 2 } finally { log.push("close") } }
+  for (const value of values()) return answer.value
+  return 0
+}
+const armOrder: string[] = []
+const armValueExit = Effect.runSyncExit(Effect.sync(() => armBeforeClose(armOrder, { get value() { armOrder.push("arm"); return 7 } })))
+// Success(7); armOrder: ["arm", "close"]
+```
 
 <a id="leaving-a-match"></a>**Leaving a `match`.** However a `match` or an `is` test ends, `FinishMatch` closes every unfinished cached iterator, in draft order, before control goes on, as the end of a `for…of` body closes its iterator:
 
@@ -771,7 +835,7 @@ builtin(changed) // "other"
 builtin(Object.create(TypeError.prototype)) // "type"
 ```
 
-Zero-argument extractors: `Option.None()` matches (`[]`); `NotFound()` and the thirty-three retained error constructors with `()` never match (`[s]`). When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-three retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and an extractor without a rest pattern has a different number of arguments, VibeLang reports the VIP-38 lint warning `EK0703`, with the quick fixes `when X:` and, for a singleton list, `when X(let e):` (decided detail 82). Matching is unchanged: the arm still fails at run time.
+Zero-argument extractors: `Option.None()` matches (`[]`); `NotFound()` and the thirty-three retained error constructors with `()` never match (`[s]`). When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-three retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and its known length lies outside the admitted interval of an extractor without a rest pattern: required positions through total positions, counting every elision slot and counting optional elements only in the maximum, VibeLang reports the VIP-38 lint warning `EK0703`, with the quick fixes `when X:` and, for a singleton list, `when X(let e):` (decided detail 82). The interval controls only this warning; actual list patterns still decide matching. For example, `Option.None(1?)` admits its empty extracted list and is not warned.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -811,7 +875,7 @@ Effect.runSync(classify(fake)) // "yes"
 
 ## Retained fixed patterns
 
-VIP-7 keeps today's fixed checks (D208) until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.0's thirty-three tagged errors (decided details 53, 86 and 92). Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail. An arity mismatch is a failed match (`EK0703` warns).
+VIP-7 keeps today's fixed checks (D208) until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.0's thirty-three tagged errors (decided details 53, 86 and 92). Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, the extracted length must fit the required-to-total position interval and every present sub-pattern must match. Zero arguments match only `[]`; absent optionals consume zero positions, so `Option.None(1?)` also matches. An arity mismatch is a failed match (`EK0703` warns).
 
 | Pattern | Ordered test on `s` | List |
 | --- | --- | --- |

@@ -6,6 +6,8 @@
 
 ## match
 
+Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept iterable primitives such as strings. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
+
 ```vibe
 // pending: VIP-5, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))])))
