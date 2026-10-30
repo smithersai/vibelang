@@ -106,7 +106,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 		specifier := statement.ModuleSpecifier().Text()
 		if ast.IsNamespaceImport(clause.NamedBindings) {
 			name := clause.NamedBindings.Name().Text()
-			if preludeModulePath(name) != specifier || isBuiltinGlobal(c, name) {
+			if preludeModulePath(name) != specifier || implicitEffectModuleDisabled(c, file, name) || isBuiltinGlobal(c, name) {
 				continue
 			}
 			if declared[declaredImportKey(specifier, name)] {
@@ -122,7 +122,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			if property := element.PropertyName(); property != nil && property.Text() != name {
 				continue
 			}
-			if isBuiltinGlobal(c, name) {
+			if isBuiltinGlobal(c, name) || implicitEffectModuleDisabled(c, file, name) {
 				continue
 			}
 			switch {

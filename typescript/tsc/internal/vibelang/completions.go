@@ -27,7 +27,7 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 	state := preludeStateOf(c)
 	if module := orProgramModule(c, runtimeModuleSymbol(c, state, file), runtimeModule); module != nil {
 		for name := range preludeModules {
-			if strings.HasPrefix(name, "$") {
+			if strings.HasPrefix(name, "$") || implicitEffectModuleDisabled(c, file, name) {
 				continue // written by the compiler, not by people
 			}
 			if symbol := c.TryGetMemberInModuleExports(name, module); symbol != nil && hasMeaning(c, symbol, meaning) {
@@ -37,7 +37,7 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 	}
 	if module := orProgramModule(c, effectRootModuleSymbol(c, state, file), effectRootModule); module != nil {
 		for name := range effectRootNames {
-			if isBuiltinGlobal(c, name) {
+			if isBuiltinGlobal(c, name) || implicitEffectModuleDisabled(c, file, name) {
 				continue
 			}
 			if symbol := c.TryGetMemberInModuleExports(name, module); symbol != nil && hasMeaning(c, symbol, meaning) {
@@ -57,6 +57,9 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 	}
 	barrels := map[string]*ast.Symbol{}
 	for name, subpath := range effectSubpathNames {
+		if implicitEffectModuleDisabled(c, file, name) {
+			continue
+		}
 		module, ok := barrels[subpath.barrel]
 		if !ok {
 			cache := state.barrels[subpath.barrel]

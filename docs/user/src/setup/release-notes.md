@@ -650,6 +650,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema hover checks in the LSP smoke test incorrectly required an `interface` label; they now verify the decoded `type` alias and field types.
 
+- `vibe.effectModules: false` left implicit Effect names available; it now requires imports, filters implicit editor suggestions and keeps required imports during `--fix`.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.

@@ -45,6 +45,8 @@ function firstTwo(values: ReadonlyArray<number>) {
 
 JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. Platform-specific names use Effect's module: `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. `Crypto` is the DOM's, because Effect has no root `Crypto` module; import `effect/crypto` to use Effect's. An import or local declaration named like a module shadows it, as `import * as Duration from "effect/Duration"` would. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
 
+Set `vibe.effectModules` to `false` to require imports for Effect's root and subpath exports, including `Effect`, `Schema`, `Layer`, `Scope`, `pipe` and `flow`. Explicit imports and local bindings still work. Compiler support for `A!E!R`, `effect`, `error`, `schema` and `service` remains available. Completion and spelling suggestions omit disabled implicit names.
+
 ## Modules of subpath packages
 
 A subpath package's modules need no import either. The emitted JavaScript imports each module you use from its own file, such as `effect/encoding/Hex`, so a program loads only what it uses:

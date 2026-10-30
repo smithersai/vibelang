@@ -8,6 +8,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
@@ -394,6 +395,15 @@ func preludeStateOf(c *checker.Checker) *preludeState {
 	}).(*preludeState)
 }
 
+// implicitEffectModuleDisabled is the VIP-14 switch for names supplied by
+// root and subpath exports. Runtime helpers remain language support.
+func implicitEffectModuleDisabled(c *checker.Checker, file *ast.SourceFile, name string) bool {
+	options := optionsFor(c, file)
+	module := isEffectExportName(name) || strings.HasPrefix(preludeModules[name], "effect/") || name == "pipe"
+	return module && options != nil && options.VibeLang != nil &&
+		options.VibeLang.EffectModules == core.TSFalse
+}
+
 // isPreludeName reports whether name is a name the prelude may supply: a
 // runtime prelude name, an effect root export, an unprefixed Effect function,
 // or a subpath module.
@@ -432,6 +442,13 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	}
 	file := ast.GetSourceFileOfNode(location)
 	if !isVibeLangFile(file) {
+		return nil
+	}
+	// Internal queries and parser intrinsics still reach compiler support;
+	// this switch controls actual unqualified names written in source.
+	if ast.IsIdentifier(location) && location.Text() == name &&
+		location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 &&
+		implicitEffectModuleDisabled(c, file, name) {
 		return nil
 	}
 	state := preludeStateOf(c)
@@ -504,7 +521,7 @@ func preludeSpellingCandidates(c *checker.Checker, location *ast.Node, meaning a
 	state := preludeStateOf(c)
 	var candidates []*ast.Symbol
 	offer := func(name string) {
-		if !strings.HasPrefix(name, "$") {
+		if !strings.HasPrefix(name, "$") && !implicitEffectModuleDisabled(c, file, name) {
 			if symbol := preludeSymbol(c, state, file, name); symbol != nil {
 				candidates = append(candidates, symbol)
 			}

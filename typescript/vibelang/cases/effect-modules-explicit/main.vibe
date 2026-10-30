@@ -1,0 +1,7 @@
+import { Effect, Option, Schema, Layer, flow } from "effect"
+import { Hex } from "effect/encoding"
+export const result = [Option.isSome(Option.some(1)), Hex.encode(new Uint8Array([65])), typeof Schema.String !== "undefined", typeof Layer.empty !== "undefined", flow((n: number): number => n+1)(2)]
+export effect function task(): number!! { return 3 }
+error Missing { n: number }
+service Service { n: number }
+schema Record { n: number }

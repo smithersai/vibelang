@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "lib": [
+      "esnext"
+    ],
+    "outDir": "out",
+    "noEmitOnError": true,
+    "declaration": true
+  },
+  "vibe": {
+    "effectModules": false
+  },
+  "files": [
+    "main.vibe"
+  ]
+}

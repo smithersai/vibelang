@@ -1,0 +1,4 @@
+// expect: TS2304 TS2503
+export const disabledNamespaces = [Option, Hex, Schema, Effect, Layer, flow, Scope, pipe]
+export type Optional = Option.Option<number>
+export const escaped = Op\u0074ion

@@ -1,0 +1,4 @@
+export effect function task(): number!! { return 3 }
+export error Missing { n: number }
+export service Service { n: number }
+export schema Data { n: number }
