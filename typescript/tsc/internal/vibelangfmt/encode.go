@@ -348,7 +348,8 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 		e.opaque(placeholderBlockHead, form.Head, "", ":", firstLineWidth(e.text(form.Head))-1)
 	case parser.VibeSyntaxForConcurrent:
 		end := skipSpaces(e.source, form.Head.End())
-		e.add(edit{pos: form.Head.Pos(), end: end, token: "for", keyword: form.Word.Pos(), stands: e.source[form.Head.Pos():end]})
+		// The saved head already contains nested prefixes; do not encode them twice.
+		e.add(edit{pos: form.Head.Pos(), end: end, opaque: true, token: "for", keyword: form.Word.Pos(), stands: e.source[form.Head.Pos():end]})
 	case parser.VibeSyntaxStatement:
 		e.opaque(placeholderText, form.Range, "", "", firstLineWidth(e.text(form.Range)))
 	case parser.VibeSyntaxClause:

@@ -38,6 +38,12 @@ const run = effect {
 }
 const later = Effect.retry(effect { try save(user) }, policy)
 `,
+	"concurrent head prefixes": `effect function f() {
+  for concurrent(try limit()) (const x of try items()) {
+    try work(x)
+  }
+}
+`,
 	"effect types": `type Find = (id: string) => User!NotFound
 type Release = (version: string) => string!!Approval
 type Load = () => string!!

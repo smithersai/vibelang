@@ -165,6 +165,8 @@ effect function printAll(ids: ReadonlyArray<string>) {
 
 `for concurrent` runs its body for each item in its own fiber and ends when all finish; `for concurrent(8)` runs at most eight at once, and `for concurrent (...)` sets no limit. A failure interrupts the items still running and fails the loop. `continue` ends one item. Because each item has its own fiber, a `break` that would leave the loop (EK4605) and a `return` (EK4606) are errors; throw to stop every item. For results, use `forEach`.
 
+The formatter preserves nested `try` expressions in the concurrency limit and iterable expression.
+
 ## Supervising child lifetimes
 
 ```vibe
