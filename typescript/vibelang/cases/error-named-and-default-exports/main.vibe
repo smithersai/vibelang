@@ -1,0 +1,4 @@
+import { Plain } from "./plain.vibe"
+import Encoded from "./schema.vibe"
+export const plain = new Plain({ id: "plain" })
+export const encoded = new Encoded({ id: "schema" })

@@ -1,0 +1,2 @@
+// expect: EK1305
+export default error Missing { id: string }

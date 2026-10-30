@@ -958,6 +958,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Invalid compiler benchmark counts or scaling shapes could fail after setup or earlier measurements, and `--runs 0` crashed while summarizing empty results; `scripts/bench/compiler.sh` now reports the invalid option and exits before setup.
 
+- Default-exporting an `error` or `schema error` used to report an unrelated semicolon error; it now reports `EK1305` and explains `export { Name as default }`.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.

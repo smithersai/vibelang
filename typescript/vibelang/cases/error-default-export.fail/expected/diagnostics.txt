@@ -1,0 +1,4 @@
+bodyless.vibe(1,16): error EK1305
+main.vibe(2,16): error EK1305
+schema-bodyless.vibe(1,16): error EK1305
+schema.vibe(1,16): error EK1305

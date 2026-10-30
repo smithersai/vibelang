@@ -1,0 +1,2 @@
+schema error Encoded { id: string }
+export { Encoded as default }

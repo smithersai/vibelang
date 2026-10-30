@@ -253,8 +253,6 @@ FuzzFailuresSpec feature:derived-implicit-super compiler VIP-4: the chapter repo
 FuzzFailuresSpec corpus:derived-implicit-super compiler VIP-4: minimized reproduction of feature:derived-implicit-super; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:effect-data-last-callback-throw compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws EK4301, TS2345 there and EK4502 elsewhere on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec corpus:effect-data-last-callback-throw compiler VIP-4: minimized reproduction of feature:effect-data-last-callback-throw; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
-FuzzFailuresSpec feature:error-default-export compiler VIP-13: the chapter reports EK1305 at the marked code; the compiler draws TS1005, TS2304, TS2552 there on main 90a26cf8; lane fix-vip-decls
-FuzzFailuresSpec corpus:error-default-export compiler VIP-13: minimized reproduction of feature:error-default-export; lane fix-vip-decls
 FuzzFailuresSpec feature:foreign-function-field compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:foreign-function-field compiler VIP-4: minimized reproduction of feature:foreign-function-field; lane w2-throw
 FuzzFailuresSpec feature:foreign-function-property compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
@@ -269,8 +267,6 @@ FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter 
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
 FuzzFailuresSpec feature:rethrows-tag-effect-function compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-tag-effect-function compiler VIP-4: minimized reproduction of feature:rethrows-tag-effect-function; lane w2-throw
-FuzzFailuresSpec feature:schema-error-default-export compiler VIP-29: the chapter reports EK1305 at the marked code; the compiler draws TS1005, TS2552 there on main 90a26cf8; lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-default-export compiler VIP-29: minimized reproduction of feature:schema-error-default-export; lane fix-vip-decls
 FuzzFailuresSpec feature:throws-tag-effect-function compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:throws-tag-effect-function compiler VIP-4: minimized reproduction of feature:throws-tag-effect-function; lane w2-throw
 FuzzFailuresSpec feature:throws-tag-effect-returner compiler VIP-4: the chapter reports EK0406 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
