@@ -714,6 +714,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The LSP smoke test treated an ordinary `async` function as invalid. It now checks that the function is accepted and its hover shows a `Promise`.
 
+- Benchmark projects could miss packages when the experiments and docs installs shared an npm scope. Staging now merges each scope's packages while keeping the first package found and the runtime's `effect` copy.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.
