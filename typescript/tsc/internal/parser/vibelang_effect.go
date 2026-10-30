@@ -36,6 +36,18 @@ func (p *Parser) isVibeLangEffectWord() bool {
 	return p.token == ast.KindIdentifier && p.isVibeLangFile() && p.scanner.TokenValue() == "effect"
 }
 
+// consumeVibeLangEffectWord consumes effect as a keyword, retaining the
+// Unicode-escape restriction of TypeScript's contextual async keyword.
+// Ordinary identifiers named effect do not use this path.
+func (p *Parser) consumeVibeLangEffectWord() core.TextRange {
+	word := p.tokenRange()
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
+	p.nextToken()
+	return word
+}
+
 // scanStartOfShorthandFunction reports whether the current token is a name
 // followed by ( or <, the rest of a shorthand declaration, effect load(id) or
 // async get(url). It moves the scanner; call it through lookAhead.
@@ -78,8 +90,7 @@ func (p *Parser) isStartOfAsyncShorthand(modifiers *ast.ModifierList) bool {
 // parseEffectDeclaration parses effect function name(…) { … } or effect
 // name(…) { … } at the current token, effect.
 func (p *Parser) parseEffectDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
-	word := p.tokenRange()
-	p.nextToken() // effect
+	word := p.consumeVibeLangEffectWord()
 	var fn *ast.Node
 	if p.token == ast.KindFunctionKeyword {
 		fn = p.parseFunctionDeclaration(pos, jsdoc, modifiers, true /*effect*/)
@@ -129,8 +140,7 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 	state := p.mark()
 	defer p.setVibeLangFiberContext(true)()
 	pos := p.nodePos()
-	word := p.tokenRange()
-	p.nextToken() // effect
+	word := p.consumeVibeLangEffectWord()
 	if p.hasPrecedingLineBreak() {
 		p.rewind(state)
 		return nil
@@ -213,8 +223,7 @@ func (p *Parser) isStartOfVibeLangEffectExpression() bool {
 // parseVibeLangEffectExpression parses effect function expressions (VIP-1).
 func (p *Parser) parseVibeLangEffectExpression() *ast.Node {
 	pos := p.nodePos()
-	word := p.tokenRange()
-	p.nextToken() // effect
+	word := p.consumeVibeLangEffectWord()
 	fn := p.parseFunctionExpression(true /*effect*/)
 	fn.Loc = core.NewTextRange(pos, fn.End())
 	return p.markEffect(fn, word)
@@ -231,8 +240,7 @@ func (p *Parser) isStartOfVibeLangEffectBlock() bool {
 // parseVibeLangEffectBlock builds an Effect inheriting the lexical scope.
 func (p *Parser) parseVibeLangEffectBlock() *ast.Node {
 	pos := p.nodePos()
-	word := p.tokenRange()
-	p.nextToken() // effect
+	word := p.consumeVibeLangEffectWord()
 	defer p.setVibeLangFiberContext(true)()
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsAwaitContext|ast.NodeFlagsYieldContext, false)
@@ -275,9 +283,7 @@ func (p *Parser) isStartOfVibeLangEffectMember() bool {
 // parseVibeLangEffectMember consumes effect before a method and returns its
 // range; vibelangEffectMember marks the method parsed after it.
 func (p *Parser) parseVibeLangEffectMember() core.TextRange {
-	word := p.tokenRange()
-	p.nextToken() // effect
-	return word
+	return p.consumeVibeLangEffectWord()
 }
 
 func (p *Parser) vibelangEffectMember(member *ast.Node, word core.TextRange) *ast.Node {

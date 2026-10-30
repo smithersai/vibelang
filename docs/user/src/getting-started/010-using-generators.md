@@ -20,6 +20,8 @@ Comments do not supply a keyword: `export /* function */ effect load() { }` stil
 
 Pattern tests such as `effect is (Number)` and `async is (String)` keep their pattern meaning, including at the start of a statement. A method named `is` still uses `effect is(...) { ... }` or `async is(...) { ... }`.
 
+Write the `effect` keyword literally, as with `async`: Unicode escapes in a function modifier or an `effect` block report `TS1260`. The editor quick fix and `vibelang --fix` write the literal keyword. An ordinary identifier named `effect` may still use Unicode escapes.
+
 ## Sequence computations
 
 ```vibe

@@ -325,10 +325,11 @@ func relativeName(sys tsc.System, name tspath.RootedFilePath) string {
 
 // A FixedFile is a file that the fixes change.
 type FixedFile struct {
-	Original string
-	Text     string
-	Counts   map[int32]int  // fixes applied, by code
-	Rewrites map[string]int // source rewrites applied, by kind
+	Original     string
+	Text         string
+	Counts       map[int32]int  // VibeLang fixes applied, by code
+	NativeCounts map[int32]int  // native TypeScript fixes applied, by code
+	Rewrites     map[string]int // source rewrites applied, by kind
 }
 
 // A FixRefusal is a fix that would add an error.
@@ -336,6 +337,7 @@ type FixRefusal struct {
 	File    tspath.RootedFilePath
 	Line    int // 1-based, in the text the fix was tried on
 	Code    int32
+	Native  bool   // Code names a native TypeScript diagnostic
 	Label   string // a source migration without a diagnostic
 	Rewrite string // a rewrite's label, as try, when no diagnostic's fix was refused
 	Error   string // the first error the fix would add, or for a rewrite why it was not written
@@ -380,6 +382,15 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fixCodeName(code)+" ×"+strconv.Itoa(fixed.Counts[code]))
 		}
+		var nativeCodes []int32
+		for code, n := range fixed.NativeCounts {
+			nativeCodes = append(nativeCodes, code)
+			count += n
+		}
+		slices.Sort(nativeCodes)
+		for _, code := range nativeCodes {
+			parts = append(parts, fmt.Sprintf("TS%d ×%d", code, fixed.NativeCounts[code]))
+		}
 		kinds := []string{tryLabel, effectLabel, untriedLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel, localServiceShapeLabel}
 		var otherKinds []string
 		for kind := range fixed.Rewrites {
@@ -407,7 +418,11 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		}
 		code := refusal.Label
 		if code == "" {
-			code = fixCodeName(refusal.Code)
+			if refusal.Native {
+				code = fmt.Sprintf("TS%d", refusal.Code)
+			} else {
+				code = fixCodeName(refusal.Code)
+			}
 		}
 		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, code, refusal.Error)
 	}
@@ -569,7 +584,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				proposals = append(proposals, p)
 				continue
 			}
-			var p proposal
+			p := escapedEffectKeywordFixes(file, g.refused)
+			if len(p.fixes) > 0 {
+				proposals = append(proposals, p)
+				continue
+			}
 			if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
@@ -730,6 +749,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 							fixed.Rewrites = map[string]int{}
 						}
 						fixed.Rewrites[f.label]++
+					} else if f.native {
+						if fixed.NativeCounts == nil {
+							fixed.NativeCounts = map[int32]int{}
+						}
+						fixed.NativeCounts[f.code]++
 					} else {
 						fixed.Counts[f.code]++
 					}
@@ -907,6 +931,9 @@ func fixesApplied(result *FixResult) int {
 			n += c
 		}
 		for _, c := range file.Rewrites {
+			n += c
+		}
+		for _, c := range file.NativeCounts {
 			n += c
 		}
 	}
@@ -1398,22 +1425,25 @@ func scannerLineOf(file *ast.SourceFile, pos int) (int, int) {
 // A fileFix is one diagnostic's quick fix: its code, its edits, and the key
 // that names it across rounds, its code and the text it replaces.
 type fileFix struct {
-	code  int32
-	edits []sourceEdit
-	key   string
-	label string // when set, the fix counts as a rewrite of this kind rather than under code: a native diagnostic has no EK code to count (fix_binding_rename.go)
+	code   int32
+	edits  []sourceEdit
+	key    string
+	label  string // when set, the fix counts as a rewrite of this kind rather than under code: a native diagnostic has no EK code to count (fix_binding_rename.go)
+	native bool   // the diagnostic code is TS rather than EK
 	// siteStart and siteEnd, when sited, are the span of the diagnostic.
-	siteStart, siteEnd int
-	sited              bool
+	siteStart int
+	siteEnd   int
+	sited     bool
 }
 
 // A declinedSite is a diagnostic fileFixes found no fix for, or whose fix
 // was refused before, by key.
 type declinedSite struct {
-	start, end int
-	code       int32
-	key        string
-	reason     string
+	start  int
+	end    int
+	code   int32
+	key    string
+	reason string
 }
 
 // A proposal is one round's fixes of a file, whose edits do not overlap.

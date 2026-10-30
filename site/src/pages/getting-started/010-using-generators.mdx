@@ -21,6 +21,8 @@ A class can extend a value named `effect`: in `class Derived extends effect { }`
 
 `try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed.
 
+Write the `effect` keyword literally, as with `async`: Unicode escapes in a function modifier or an `effect` block report `TS1260`. The editor quick fix and `vibelang --fix` write the literal keyword. An ordinary identifier named `effect` may still use Unicode escapes.
+
 ## Sequence computations
 
 ```vibe

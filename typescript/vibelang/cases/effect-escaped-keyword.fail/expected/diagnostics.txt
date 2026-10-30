@@ -1,0 +1,5 @@
+main.vibe(3,1): error TS1260
+main.vibe(4,15): error TS1260
+main.vibe(5,17): error TS1260
+main.vibe(6,18): error TS1260
+main.vibe(7,17): error TS1260

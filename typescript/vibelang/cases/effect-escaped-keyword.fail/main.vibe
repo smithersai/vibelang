@@ -1,0 +1,7 @@
+// expect: TS1260
+// Contextual keywords follow async's Unicode-escape rule (VIP-1).
+\u0065ffect function declared() { return try Effect.succeed(1) }
+const arrow = eff\u0065ct () => 2
+class Counter { \u{65}ffect read() { return 3 } }
+const object = { eff\u0065ct read() { return 4 } }
+const program = \u0065ffect { return 5 }

@@ -2025,6 +2025,9 @@ typescript/vibelang/cases/effect-contextual-assertions/main.vibe:6:15 lambda pla
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:10:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:11:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:8:18 lambda plain table
+typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:4:15 lambda plain fallback
+typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:6:18 lambda plain fallback
+typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:7:17 lambda plain fallback
 typescript/vibelang/cases/effect-gen-computed-method.fail/main.vibe:7:23 lambda plain table
 typescript/vibelang/cases/effect-globals-coverage-capture/main.vibe:11:33 byname program table
 typescript/vibelang/cases/effect-globals-coverage-capture/main.vibe:11:55 lambda plain table
