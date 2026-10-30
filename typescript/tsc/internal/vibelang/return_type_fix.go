@@ -165,14 +165,17 @@ var typeTokens = regexp.MustCompile(`[A-Za-z_$][\w$]*|\d+|"[^"]*"|\S`)
 
 // returnTypeText returns the return type the fix writes for fn: what
 // TypeScript infers from its body, or `infer _` when that takes more than
-// maxReturnTypeTokens tokens or cannot be written in fn's file.
+// maxReturnTypeTokens tokens or cannot be written in fn's file. The type is
+// printed through the names that reach it from fn, so Store.Ref<string>
+// stays qualified where Ref names the prelude's Ref, and a type no name
+// reaches prints as import(…), which is written `infer _`.
 func (a *analyzer) returnTypeText(fn *ast.Node) string {
 	c := a.checker
 	t := c.GetReturnTypeFromBody(fn)
 	if t == nil || t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
 		return "infer _"
 	}
-	text := c.TypeToString(t)
+	text := c.TypeToStringEx(t, fn, checker.TypeFormatFlagsAllowUniqueESSymbolType, nil)
 	if len(typeTokens.FindAllString(text, -1)) > maxReturnTypeTokens || containsAny(text, "import(", "typeof ", "...", "{") {
 		return "infer _"
 	}

@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow never told a batch that a `node` script reaching a migrated module needs `--import vibelang/register`, so the script failed on the `.vibe` import; the migration rules now say so.
 
+- The return-type quick fix of EK1001, EK9203 and EK4301 printed a type from another module or a namespace by its bare name, which in a `.vibe` file can name a prelude module (`: string | Ref<Any>` wrote Effect's `Ref`); it now prints the type through the names that reach it from the function, or writes `: infer _`.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.
