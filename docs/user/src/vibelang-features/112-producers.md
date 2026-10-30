@@ -29,7 +29,7 @@ effect function firstAlert() {
 // Output: 25
 ```
 
-`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.
+`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
 
 The consumer stops at 25; before `firstAlert` returns, the producer's finalizer logs `sensor closed`. `break` or a failure in the loop body closes the Stream and runs its cleanup. Iterating the Stream again starts a new run.
 

@@ -22,7 +22,7 @@ const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
 
 - `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects (VIP-5).
 - A plain `function*` stays a JavaScript generator.
-- It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. Exact pull semantics, which would need a continuation runtime, are not provided.
+- It compiles to Effect's `Stream.callback` with one element of buffer. For one sequential emitter, the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. With concurrent yields, each active item fiber can evaluate a value before waiting in `Queue.offer`; the one-element buffer does not bound all pending offers or upstream work. Unbounded concurrency has no constant global lead bound. A finite concurrency limit bounds active pending emitters in addition to the buffered element and work already consumed. Exact pull semantics, which would need a continuation runtime, are not provided.
 - `return value` in a producer is a compile error, because a Stream has no return value. A bare `return` ends the stream.
 - **Amended 2026-10-30: the producer-return diagnostic is `EK2128`.** `return value` in a producer is `EK2128`, because a Stream has no return value; a bare `return` ends the stream. This assigns the next free code in VIP-21's block, replacing the old `EK2101`, which `0.0.10` reports for another rule. Earlier numbers in VIP-21's block are already taken or historical, so this changes no diagnostic's meaning for a `0.0.10` user. Decided by the agent on 2026-10-30 under VIP-34's code-numbering amendment.
 - **Ambiguity: none** for `effect function* name()`. The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript. At top level it could parse as multiplication.
@@ -40,4 +40,4 @@ JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async gene
 
 > "Accept"
 
-*Corrected 2026-10-29: the producer can run up to two elements ahead (one buffered, one waiting), not one. The Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*
+*Corrected 2026-10-29: one sequential emitter can run up to two elements ahead (one buffered, one waiting); concurrent emitters can each have a pending offer. The Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*

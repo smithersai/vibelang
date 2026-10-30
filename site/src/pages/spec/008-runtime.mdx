@@ -177,6 +177,37 @@ if (Effect.runSync(e) !== null) throw new Error("default return lost")
 if (Effect.runSync(eager(0)) !== 1) throw new Error("body changed")
 ```
 
+A one-element producer buffer bounds queued elements, not concurrent emitter work. The [producer bound](/spec/002-running#producers) of two elements applies to one sequential emitter. Each concurrent item can evaluate its value before waiting in `Queue.offer`; an unbounded loop has no constant global lead bound. This Effect TypeScript witness succeeds with `{ started: 8, consumed: 1 }`, so seven values have been evaluated ahead of the consumer:
+
+```ts [Effect]
+// Concurrent producer witness: VIP-19, VIP-21, VIP-31
+import { Deferred, Effect, Exit, Queue, Stream } from "effect"
+
+const inspect = Effect.gen(function* () {
+  const started: number[] = []
+  const ready = yield* Deferred.make<void>()
+  const stream = Stream.callback<number>(queue => Effect.gen(function* () {
+    yield* Effect.forEach([1, 2, 3, 4, 5, 6, 7, 8], n => Effect.gen(function* () {
+      started.push(n)
+      if (started.length === 8) yield* Deferred.succeed(ready, undefined)
+      yield* Queue.offer(queue, n)
+    }), { concurrency: "unbounded", discard: true })
+  }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })
+  let consumed = 0
+  yield* Stream.runForEachWhile(stream, () => Effect.gen(function* () {
+    consumed++
+    yield* Deferred.await(ready)
+    return false
+  }))
+  return { started: started.length, consumed }
+})
+const outcome = await Effect.runPromiseExit(Effect.timeout(inspect, "2 seconds"))
+if (!Exit.isSuccess(outcome)) throw new Error("concurrent producer stalled")
+if (outcome.value.started !== 8 || outcome.value.consumed !== 1) {
+  throw new Error("concurrent producer lead changed")
+}
+```
+
 `using` keeps TypeScript’s meaning ([VIP-8](/vips/0008-using-denied), denied). It disposes when JavaScript control leaves its scope, including by `return` or a JavaScript throw; on a success `Exit`, the disposer runs as in TypeScript. A non-success `Exit` of an Effect run by `try` [abandons](/spec/008-runtime#abandonment) the generator without unwinding that scope. Use Effect’s `scoped`, `acquireRelease`, `acquireDisposable` or `addFinalizer` for cleanup on every Effect exit. `using` in effect code gets a warning (`EK0801`), with a quick fix to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
 
 ```vibe [VibeLang]
