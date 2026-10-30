@@ -717,6 +717,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `await.all`, `await.race`, `await.any` and `await.allSettled` still compiled beside VIP-18's `try` operations, with their own element rules and runtime helpers; they are now `EK1802`, and `vibelang --fix` rewrites them to `try.all` and its siblings with the same behavior.
 
+- `sh scripts/bench/compiler.sh` could miss the compiler after a normal build; it now prefers the native build output while preserving `VIBELANG` overrides and legacy builds.
+
 
 - The specification's `try.allSettled` counterpart, `Effect.all([a, b].map(Effect.exit))`, was a TypeScript error when the operands had different types, and lost the tuple when it compiled. An array literal now maps to `Effect.all([Effect.exit(a), Effect.exit(b)])`, typed as a tuple of `Exit`s, as `Promise.allSettled` keeps one.
 

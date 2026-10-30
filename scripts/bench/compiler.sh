@@ -13,11 +13,17 @@
 #   --shapes    synthetic shapes to scale (see gen-synthetic.mjs)
 #   --out       working directory (default: a new temp directory)
 #
-# The compiler under test is $VIBELANG, else typescript/built/local/tsc.
+# The compiler under test is $VIBELANG, else the native build output.
+# A legacy typescript/built/local/tsc build remains a fallback.
 # Needs node, bun, python3, and a built packages/runtime.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-vibelang=${VIBELANG:-$root/typescript/built/local/tsc}
+native=vibelang
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) native=vibelang.exe ;; esac
+vibelang=${VIBELANG:-$root/packages/compiler/native/$native}
+if [ -z "${VIBELANG:-}" ] && [ ! -x "$vibelang" ] && [ -x "$root/typescript/built/local/tsc" ]; then
+  vibelang="$root/typescript/built/local/tsc"
+fi
 upstream=""
 modules=200
 runs=5
