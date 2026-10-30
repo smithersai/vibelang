@@ -202,17 +202,17 @@ func TestEffectNameCollisionsDocumented(t *testing.T) {
 		slices.Sort(packages)
 		var scope string
 		switch _, isRoot := root[name]; {
-		case es[name] || sharedWebGlobals[name]:
-			scope = "the JavaScript or web global (rule 1)"
+		case es[name]:
+			scope = "the JavaScript global (rule 1)"
 		case isRoot:
 			packages = append([]string{"`effect`"}, packages...)
 			scope = "`effect`'s root module (rule 2)"
 		case len(packages) > 1:
 			scope = "nothing: import the one you mean (rule 3)"
 		case domValues[name]:
-			scope = "Effect's module: the DOM's global loses"
+			scope = "Effect's module; the DOM type keeps its name"
 		case domTypes[name]:
-			scope = "Effect's module; the DOM declares only a type"
+			scope = "Effect's module; the DOM type keeps its name"
 		default:
 			continue
 		}

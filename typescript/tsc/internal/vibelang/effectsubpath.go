@@ -7,8 +7,9 @@ package vibelang
 // import, under its module name, as effect's root modules are (D146). The
 // tiebreaks, in order:
 //
-//  1. A JavaScript or shared web global of the same name wins (D264,
-//     isBuiltinGlobal): Headers is the web's, not effect/http's.
+//  1. An ECMAScript global of the same name wins in that meaning (VIP-14,
+//     isBuiltinGlobal). Platform values such as Headers name Effect's module;
+//     ambient global types keep their own meanings.
 //  2. A root module wins over a subpath module of the same name: Utils is
 //     effect/Utils, so effect/rpc's Utils is not in this table.
 //  3. When two subpath packages list a module of the same name, neither is in

@@ -105,6 +105,9 @@ func explainMissingPreludePackage(c *checker.Checker, file *ast.SourceFile, d *a
 // DOM's. It returns d unchanged otherwise.
 func explainPreludeModule(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, name *ast.Node, value bool) *ast.Diagnostic {
 	text := name.Text()
+	if !value && isBuiltinGlobalType(c, text) {
+		return d
+	}
 	module := preludeModulePath(text)
 	if module == "" || !isEffectExportName(text) {
 		return d // the runtime's Effect, Layer, Schema and Scope are no surprise
@@ -142,25 +145,11 @@ func explainMissingMember(c *checker.Checker, file *ast.SourceFile, d *ast.Diagn
 			}
 			if module != nil && module.Flags()&ast.SymbolFlagsValueModule != 0 && c.TryGetMemberInModuleExports(member, module) != nil {
 				owner := "JavaScript's"
-				if sharedWebGlobals[text] {
-					owner = "the web's"
-				}
 				return note(d.Clone(), "{0} is {1} {0} here, which wins over Effect's {0} module ({2}). To call Effect's {0}.{3}, import the module under another name: import { {0} as Effect{0} } from \"{4}\".", text, owner, preludeModulePath(text), member, preludePackageOf(text))
 			}
 		}
 	}
-	t := c.GetApparentType(c.GetTypeAtLocation(receiver))
-	symbol := t.Symbol()
-	if symbol == nil || !declaredInEffect(symbol) {
-		return d
-	}
-	text := symbol.Name()
-	module := preludeModulePath(text)
-	dom := domGlobal(c, text, ast.SymbolFlagsType)
-	if module == "" || dom == nil || c.GetPropertyOfType(c.GetDeclaredTypeOfSymbol(dom), member) == nil {
-		return d
-	}
-	return note(d.Clone(), "{0} is Effect's {1} type ({2}): in a .vibe file the bare type name {1} means Effect's. The DOM's {1} has {3}; to use it, alias the DOM's type in a .ts file, as in export type Dom{1} = {1}, and import the alias.", c.TypeToString(t), text, module, member)
+	return d
 }
 
 // domGlobal returns the global symbol named name with meaning when the DOM's

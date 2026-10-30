@@ -57,20 +57,20 @@ function hexOf(text: string) {
 // Output: 6869
 ```
 
-Four rules settle a name that two globals share, in order: a JavaScript or shared web global wins; a root module wins over a subpath module; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. These are the names they settle for `effect@4.1.0`:
+Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a root module wins over a subpath module; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. Ambient types keep their names independently. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. These are the names they settle for `effect@4.1.0`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
 | --- | --- | --- |
-| `Event` | `effect/eventlog` | the JavaScript or web global (rule 1) |
-| `Headers` | `effect/http` | the JavaScript or web global (rule 1) |
-| `KeyFormat` | `effect/crypto` | Effect's module; the DOM declares only a type |
+| `Event` | `effect/eventlog` | Effect's module; the DOM type keeps its name |
+| `Headers` | `effect/http` | Effect's module; the DOM type keeps its name |
+| `KeyFormat` | `effect/crypto` | Effect's module; the DOM type keeps its name |
 | `Model` | `effect/ai`, `effect/schema` | nothing: import the one you mean (rule 3) |
 | `Prompt` | `effect/ai`, `effect/cli` | nothing: import the one you mean (rule 3) |
-| `Response` | `effect/ai` | the JavaScript or web global (rule 1) |
-| `Transferable` | `effect/workers` | Effect's module; the DOM declares only a type |
+| `Response` | `effect/ai` | Effect's module; the DOM type keeps its name |
+| `Transferable` | `effect/workers` | Effect's module; the DOM type keeps its name |
 | `Utils` | `effect`, `effect/rpc` | `effect`'s root module (rule 2) |
-| `Worker` | `effect/workers` | Effect's module: the DOM's global loses |
+| `Worker` | `effect/workers` | Effect's module; the DOM type keeps its name |
 <!-- end D310 collisions -->
 
 ## A module's own export
@@ -118,13 +118,13 @@ Read a service before calling its implementation methods. These modules name a s
 `AddressResolver`, `Aead`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
 <!-- end D311 services -->
 
-These platform-specific names refer to Effect modules:
+These names have both an Effect namespace and an ambient global type. Value and namespace positions use Effect; bare type positions keep the ambient type:
 
 <!-- D311 DOM types: TestModuleServicesDocumented checks this list -->
-`Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable`, `Worker`.
+`Cache`, `Console`, `Event`, `FileSystem`, `Headers`, `Iterable`, `KeyFormat`, `Record`, `Request`, `Response`, `Scheduler`, `Transferable`, `Worker`.
 <!-- end D311 DOM types -->
 
-These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`.
+These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. Use a qualified member such as `FileSystem.FileSystem` for Effect's type.
 
 
 

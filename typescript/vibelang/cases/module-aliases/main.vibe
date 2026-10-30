@@ -17,7 +17,7 @@ export function prompt(text: string): Prompt {
   return Prompt.make(text)
 }
 
-export function implementation(files: FileSystem) {
+export function implementation(files: FileSystem.FileSystem) {
   return FileSystem.of(files)
 }
 

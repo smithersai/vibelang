@@ -411,7 +411,7 @@ func isPreludeName(name string) bool {
 // resolvePreludeName resolves name, which no scope around location declares,
 // when location is in a .vibe file: a prelude name to the runtime's export,
 // and the name of an effect root export or subpath module to that export
-// unless a global value has the name, in each case when the export has the
+// unless an ECMAScript value has the name, in each case when the export has the
 // meaning the checker asks for.
 func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol {
 	if meaning&ast.SymbolFlagsType != 0 && meaning&ast.SymbolFlagsVariable == 0 {
@@ -423,6 +423,11 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 		}
 	}
 	if !isPreludeName(name) {
+		return nil
+	}
+	// VIP-14 resolves each meaning independently: ambient types survive
+	// even when an Effect namespace takes the same spelling as a value.
+	if meaning&ast.SymbolFlagsType == ast.SymbolFlagsType && meaning&ast.SymbolFlagsVariable == 0 && c.GlobalSymbol(name, ast.SymbolFlagsType) != nil {
 		return nil
 	}
 	file := ast.GetSourceFileOfNode(location)
@@ -532,7 +537,7 @@ func recordPreludeUse(state *preludeState, file *ast.SourceFile, name string) {
 // preludeSymbol returns the export that name, a prelude name or the name of an
 // effect root export or subpath module, refers to in file, or nil when its
 // module is not installed or file does not resolve it, or, for an effect
-// export, JavaScript defines a global value with the name.
+// export, ECMAScript defines a global value with the name.
 func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile, name string) *ast.Symbol {
 	if _, ok := preludeModules[name]; ok {
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
@@ -588,24 +593,13 @@ func isLoweredHatchCallee(location *ast.Node) bool {
 	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && location.Text() == "sync"
 }
 
-// sharedWebGlobals are the web-standard globals that every runtime VibeLang
-// targets defines (D264). Event joined with D310, for effect/eventlog's Event.
-var sharedWebGlobals = map[string]bool{
-	"Request": true, "Response": true, "Headers": true, "URL": true, "URLSearchParams": true, "TextEncoder": true,
-	"TextDecoder": true, "AbortController": true, "AbortSignal": true, "Blob": true, "FormData": true,
-	"structuredClone": true, "fetch": true, "Event": true,
-}
-
-// isBuiltinGlobal gives ECMAScript and shared web-standard globals precedence
-// over effect's module names (D146, D264, D310). DOM-only globals such as
-// Option and Worker lose.
+// isBuiltinGlobal gives ECMAScript globals precedence over Effect's module
+// names (VIP-14). Platform globals lose in value and namespace positions;
+// their ambient types keep their meanings in resolvePreludeName.
 func isBuiltinGlobal(c *checker.Checker, name string) bool {
 	symbol := c.GlobalSymbol(name, ast.SymbolFlagsValue)
 	if symbol == nil {
 		return false
-	}
-	if sharedWebGlobals[name] {
-		return true
 	}
 	for _, declaration := range symbol.Declarations() {
 		if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(path.Base(string(file.FileName())), "lib.es") {

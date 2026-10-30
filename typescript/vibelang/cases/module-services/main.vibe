@@ -1,13 +1,13 @@
-// A module's name also names its service (D311): with no import, a member
-// that the module does not export is the service's, M() is the
-// implementation, and the type M is the service. The module's exports keep
-// their meaning: FileSystem.layerNoop and Path.layer.
+// A module's name also names its service (D311). An ambient type keeps its
+// name: qualify FileSystem.FileSystem for Effect's service type.
+// Missing module members read from the implementation; exports keep
+// their meanings: FileSystem.layerNoop and Path.layer.
 effect function notes(directory: string) {
   const file = try Path.join(directory, "notes.txt")
   return [file, try FileSystem.readFileString(file)]
 }
 
-export effect function exists(fs: FileSystem, path: string) {
+export effect function exists(fs: FileSystem.FileSystem, path: string) {
   return try fs.exists(path)
 }
 

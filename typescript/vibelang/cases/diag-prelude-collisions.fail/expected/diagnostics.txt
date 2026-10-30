@@ -1,6 +1,5 @@
 main.vibe(8,25): error TS2709
 main.vibe(9,24): error TS2707
 main.vibe(10,38): error TS2351
-main.vibe(11,60): error TS2339
+main.vibe(11,67): error TS2339
 main.vibe(12,39): error TS2339
-main.vibe(13,44): error TS2339

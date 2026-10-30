@@ -27,7 +27,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Commas between `schema` declaration fields | Separate fields with `;` or a new line. `vibelang --fix` replaces commas with semicolons (`EK1013`). |
 | `import { Path } from "effect"`; `Path.Path.join("a", "b")` | Every unambiguous Effect module is global; write `Path.join("a", "b")`. Existing imports still work. `--fix` removes redundant imports and shortens the module's same-named export. |
 | The type `Option.Option<number>` | Write `Option<number>`; the long form remains valid. A module's own exports still win over its same-named export. |
-| A DOM type named `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | The bare name now means Effect's same-named type. Export an alias such as `export type DomWorker = Worker` from a `.ts` file and import that type. To use the DOM constructor, put `globalThis.Worker` in a hatch or named TypeScript module. |
+| A DOM type named `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | Bare type names retain their ambient meanings. Values and namespaces name Effect modules; qualify an Effect type, such as `FileSystem.FileSystem`. Emitted declaration imports use fresh aliases. |
 | `console.log("hello")`, or holding `const logger = console` | The call was already EK4402; holding the value is newly rejected. Use `Console.log("hello")`; the map lists the Effect service for each platform global. Node/web I/O globals are out of scope outside TypeScript escapes. |
 | A value import such as `import { join } from "node:path"` | EK4402, even before a call. Use `Path.join`; for an uncovered API, import it in a named `module` block or a `.ts` file and call through a hatch. A type-only import remains allowed. |
 | An entry that manually provides `NodeServices.layer` around `FileSystem.FileSystem.readFileString(path)` | It can start with `import "vibelang/platform/node"` and call `FileSystem.readFileString(path)`; the entry provides the required platform bundle. This spelling is provisional. Existing explicit providers keep working; no import is required for a main with no platform needs. |
@@ -722,6 +722,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A failed `scripts/remote.sh` sync could leave a temporary tracked-files list behind. The list is now removed on success and failure.
 
 - The docs snippet test could fail when its checkout path contained `fail`; it now checks the structured report instead of matching path text.
+
+- `Headers`, `Request`, `Response` and `Event` used host constructors instead of Effect namespaces; values now name Effect modules while ambient types keep their meanings, including in emitted declarations.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 

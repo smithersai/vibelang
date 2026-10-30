@@ -1,8 +1,8 @@
-import { Effect, FileSystem, Terminal } from "effect";
+import { Effect, FileSystem as FileSystem_1, Terminal } from "effect";
 import { SecureRandom } from "effect/crypto";
 import { ChildProcessSpawner } from "effect/process";
-export declare function exists(fs: FileSystem.FileSystem, path: string): Effect.Effect<boolean, import("effect/PlatformError").PlatformError, never>;
-export declare function read(path: string): Effect.Effect<string, import("effect/PlatformError").PlatformError, FileSystem.FileSystem>;
+export declare function exists(fs: FileSystem_1.FileSystem, path: string): Effect.Effect<boolean, import("effect/PlatformError").PlatformError, never>;
+export declare function read(path: string): Effect.Effect<string, import("effect/PlatformError").PlatformError, FileSystem_1.FileSystem>;
 export declare const id: () => Effect.Effect<string, never, SecureRandom.SecureRandom>;
 export declare const token: () => Effect.Effect<Uint8Array<ArrayBufferLike>, never, SecureRandom.SecureRandom>;
 export declare const status: () => Effect.Effect<string, import("effect/PlatformError").PlatformError, ChildProcessSpawner.ChildProcessSpawner>;

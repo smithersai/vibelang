@@ -2,6 +2,4 @@ Message is Effect's Message module (effect/cluster/Message), in scope without an
 Command is Effect's Command module (effect/cli/Command), in scope without an import. To use your own Command, declare or import it.
 Worker is Effect's Worker module (effect/workers/Worker), in scope without an import. To use your own Worker, declare or import it.
 For the DOM's Worker, write globalThis.Worker inside a hatch or a module block.
-Worker<string, string> is Effect's Worker type (effect/workers/Worker): in a .vibe file the bare type name Worker means Effect's. The DOM's Worker has postMessage; to use it, alias the DOM's type in a .ts file, as in export type DomWorker = Worker, and import the alias.
 Number is JavaScript's Number here, which wins over Effect's Number module (effect/Number). To call Effect's Number.sum, import the module under another name: import { Number as EffectNumber } from "effect".
-Headers is the web's Headers here, which wins over Effect's Headers module (effect/http/Headers). To call Effect's Headers.fromInput, import the module under another name: import { Headers as EffectHeaders } from "effect/http".

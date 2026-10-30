@@ -2,12 +2,12 @@
 // A name the prelude settles (D310, D311) can mean what the program did not
 // mean. The error keeps its meaning and a note names it and the way to the
 // other one: Message and Command are Effect's modules, Worker is Effect's
-// module and type where the DOM's lose, and Number and Headers are
-// JavaScript's and the web's, which win over Effect's modules.
+// namespace while ambient types keep their names; Number remains
+// JavaScript's and Headers is Effect's namespace.
 // prelude-collision-imports runs the imports the notes suggest.
 export function send(m: Message) { return m }
 export function run(c: Command) { return c }
 export function start() { return new Worker("./worker.js") }
-export function post(w: Worker<string, string>) { return w.postMessage("x") }
+export function post(w: Worker.Worker<string, string>) { return w.postMessage("x") }
 export function add() { return Number.sum(1, 2) }
 export function headers() { return Headers.fromInput({}) }

@@ -2,8 +2,8 @@
 // (D310), under its module name: Hex from effect/encoding, ChildProcess from
 // effect/process, TestClock from effect/testing. The emitted JavaScript
 // imports each module the file uses from its own file, and the declaration
-// file imports a module that a type names from its package. A web global
-// wins (Headers), and a local declaration shadows a module (Ndjson).
+// file imports a module that a type names from its package. Platform values
+// use Effect's namespace (Headers); a local declaration shadows it (Ndjson).
 const Ndjson = { label: "local" }
 
 export function encoded(bytes: Uint8Array): string {
@@ -17,7 +17,7 @@ export function main() {
   return {
     hex: encoded(new TextEncoder().encode("hi")),
     command: command._tag,
-    headers: new Headers({ "content-type": "text/plain" }).get("content-type"),
+    headers: Headers.get(Headers.fromInput({ "content-type": "text/plain" }), "content-type").pipe(Option.getOrElse(() => null)),
     local: Ndjson.label,
     adjust: typeof TestClock.adjust,
   }

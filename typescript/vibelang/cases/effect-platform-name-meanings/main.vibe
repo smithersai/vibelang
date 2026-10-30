@@ -1,0 +1,30 @@
+import { Headers as EffectHeaders } from "effect/http"
+import { Response as EffectResponse } from "effect/ai"
+import { Event as EffectEvent } from "effect/eventlog"
+import { Worker as EffectWorker } from "effect/workers"
+
+export type HostHeaders = Headers
+export type HostResponse = Response
+export type HostEvent = Event
+export type HostWorker = Worker
+export type HostConsole = Console
+export type HostFileSystem = FileSystem
+export type HeadersModule = typeof Headers
+export type ResponseModule = typeof Response
+export type EventModule = typeof Event
+export type WorkerModule = typeof Worker
+export const Headers_1 = "occupied"
+
+export const isHeaders = Headers.isHeaders
+export const isPart = Response.isPart
+export const isEvent = Event.isEvent
+
+const local = (): number => {
+  const Headers = { size: 3 }
+  return Headers.size
+}
+export const result = [
+  Headers === EffectHeaders, Response === EffectResponse,
+  Event === EffectEvent, Worker === EffectWorker,
+  Headers.isHeaders({}), Response.isPart({}), Event.isEvent({}), local()
+]

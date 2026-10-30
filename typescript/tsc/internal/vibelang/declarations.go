@@ -134,6 +134,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		}
 
 		var names []string
+		ambientTypes := map[string]bool{}
 		var refs, serviceTypes map[*ast.Node]bool
 		var moduleImports map[string]*ast.Node
 		r.WithChecker(func(c *checker.Checker) {
@@ -178,6 +179,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			}
 			for name := range state.typeUses[sourceFile] {
 				names = append(names, name)
+				ambientTypes[name] = isBuiltinGlobalType(c, name)
 			}
 			// The checker's maps grow while other files emit in parallel, so
 			// the transforms below read copies taken under the checker's lock.
@@ -210,7 +212,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		declarations = sourceNamespaceImports(resolver.EmitContext(), sourceFile, declarations, names)
 		// A file that imports Effect from effect and writes Effect<…> keeps
 		// its import, so the prelude's Effect needs another local name.
-		aliases, imported := preludeAliases(declarations, names)
+		aliases, imported := preludeAliases(declarations, names, ambientTypes)
 		if len(aliases) > 0 {
 			renamer := &preludeRenamer{aliases: aliases, refs: refs}
 			renamer.NewTransformer(renamer.visit, resolver.EmitContext())
@@ -606,12 +608,12 @@ func effectModulePath(c *checker.Checker, t *checker.Type) string {
 }
 
 // preludeAliases returns a free local name for each prelude name in names
-// that a top-level declaration or import of declarations already binds, and
+// that a declaration, import or ambient global type already binds, and
 // the names an import of declarations already imports, under the same name,
 // from the module declaration emit would import them from, which need no
 // import of their own: the Effect of `import { Effect } from "effect"` and
 // the Context of `import * as Context from "effect/Context"`.
-func preludeAliases(declarations *ast.SourceFile, names []string) (map[string]string, map[string]bool) {
+func preludeAliases(declarations *ast.SourceFile, names []string, ambientTypes map[string]bool) (map[string]string, map[string]bool) {
 	bound := map[string]bool{}
 	imported := map[string]bool{}
 	for _, statement := range declarations.Statements.Nodes {
@@ -638,7 +640,7 @@ func preludeAliases(declarations *ast.SourceFile, names []string) (map[string]st
 	declarations.AsNode().ForEachChild(visit)
 	aliases := map[string]string{}
 	for _, name := range names {
-		if !bound[name] || imported[name] {
+		if (!bound[name] && !ambientTypes[name]) || imported[name] {
 			continue
 		}
 		for i := 1; ; i++ {

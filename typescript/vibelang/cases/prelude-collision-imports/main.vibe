@@ -2,7 +2,7 @@
 // modules named like JavaScript's and the web's globals, under other names,
 // beside the globals themselves.
 import { Array as EffectArray, Number as EffectNumber } from "effect"
-import { Headers as EffectHeaders } from "effect/http"
+import { Headers as EffectHeaders } from "effect/http"; import { HostHeaders } from "./host.js"
 
 // expect-result: [3,[1,2],"1",[1,2],"2"]
 export function main() {
@@ -12,6 +12,6 @@ export function main() {
     EffectArray.make(1, 2),
     EffectHeaders.get(headers, "a").pipe(Option.getOrElse(() => "")),
     Array.from([1, 2]),
-    new Headers({ b: "2" }).get("b")
+    new HostHeaders({ b: "2" }).get("b")
   ]
 }

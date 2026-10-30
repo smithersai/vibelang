@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"path"
 	"slices"
 	"strings"
 
@@ -89,33 +88,22 @@ func moduleServiceKeyOf(c *checker.Checker, module *ast.Symbol, name string) *as
 }
 
 // moduleAliasTypeOf returns the export of module named name when it has a
-// type, the type a module's name names, or nil. A type that JavaScript or a
-// shared web standard declares globally under the name keeps it (D264).
+// type, the type a module's name names, or nil. Bare ambient types take
+// precedence in resolvePreludeName; qualified and imported modules retain
+// their own type exports.
 func moduleAliasTypeOf(c *checker.Checker, module *ast.Symbol, name string) *ast.Symbol {
 	export := moduleAliasOf(c, module, name)
-	if export == nil || export.Flags()&ast.SymbolFlagsType == 0 || isBuiltinGlobalType(c, name) {
+	if export == nil || export.Flags()&ast.SymbolFlagsType == 0 {
 		return nil
 	}
 	return export
 }
 
-// isBuiltinGlobalType reports whether an ECMAScript lib file or a shared web
-// standard declares a global type named name, which wins over a module's
-// export of that name, as such values win over effect's modules (D264).
+// isBuiltinGlobalType reports whether any ambient declaration supplies a
+// global type named name. VIP-14 preserves ambient types independently of
+// the Effect namespace chosen for the value or namespace meaning.
 func isBuiltinGlobalType(c *checker.Checker, name string) bool {
-	symbol := c.GlobalSymbol(name, ast.SymbolFlagsType)
-	if symbol == nil {
-		return false
-	}
-	if sharedWebGlobals[name] {
-		return true
-	}
-	for _, declaration := range symbol.Declarations() {
-		if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(path.Base(string(file.FileName())), "lib.es") {
-			return true
-		}
-	}
-	return false
+	return c.GlobalSymbol(name, ast.SymbolFlagsType) != nil
 }
 
 // firstIdentifier returns the identifier that name, an identifier, property

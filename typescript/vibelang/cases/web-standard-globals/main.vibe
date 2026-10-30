@@ -1,6 +1,6 @@
 // expect-result: ["https://x.test/",true,true]
-import { explicitRequest } from "./explicit.vibe"
+import { explicitRequest } from "./explicit.vibe"; import { HostRequest } from "./host.js"
 export function main() {
-  const request = new Request("https://x.test")
-  return [request.url, Option.isSome(Option.some(1)), explicitRequest()]
+  const request = new HostRequest("https://x.test")
+  return [request.url, Option.isSome(Option.some(1)), explicitRequest() && typeof Request.of === "function"]
 }

@@ -42,7 +42,7 @@ func TestModuleServiceDeclarations(t *testing.T) {
 	files[runtime+"index.d.ts"] = `export * as Effect from "effect/Effect"; export * from "./match.js"; export * as Control from "./experimental.js"`
 	files[runtime+"experimental.d.ts"] = `export * as FileSystem from "effect/FileSystem"`
 	src := strings.TrimSuffix(effect, "node_modules/effect/") // the project directory
-	files[src+"main.vibe"] = "export const name = (fs: FileSystem): infer _ => fs.name\n" +
+	files[src+"main.vibe"] = "export const name = (fs: FileSystem.FileSystem): infer _ => fs.name\n" +
 		"export const experimental = (fs: Control.FileSystem): infer _ => fs.name\n" +
 		"export const noop = FileSystem.layerNoop({})\n" +
 		"export const local = <FileSystem>(fs: FileSystem): infer _ => fs\n" +
@@ -52,9 +52,9 @@ func TestModuleServiceDeclarations(t *testing.T) {
 	files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe","prompt.vibe"]}`
 	dts := emitDeclarations(t, files)
 	for _, want := range []string{
-		`import { FileSystem, Option } from "effect";`,
+		`import { FileSystem as FileSystem_1, Option } from "effect";`,
 		`import { Control } from "vibelang-runtime";`,
-		`name: (fs: FileSystem.FileSystem) => string;`,
+		`name: (fs: FileSystem_1.FileSystem) => string;`,
 		`experimental: (fs: Control.FileSystem.FileSystem) => string;`,
 		`local: <FileSystem>(fs: FileSystem) => FileSystem;`,
 		`first: (value: Option.Option<number>) =>`,
@@ -235,7 +235,7 @@ func TestModuleServicesDocumented(t *testing.T) {
 	var source strings.Builder
 	source.WriteString("export const all = [")
 	for _, name := range names {
-		if !sharedWebGlobals[name] && !slices.Contains([]string{"Array", "BigInt", "Boolean", "Function", "Number", "RegExp", "String", "Symbol"}, name) {
+		if !slices.Contains([]string{"Array", "BigInt", "Boolean", "Function", "Number", "RegExp", "String", "Symbol"}, name) {
 			source.WriteString(name + ", ")
 		}
 	}
@@ -243,29 +243,19 @@ func TestModuleServicesDocumented(t *testing.T) {
 	program, file, _, _ := editorProgram(t, source.String())
 	program.GetSemanticDiagnostics(t.Context(), file)
 	c, done := program.GetTypeCheckerForFile(t.Context(), file)
-	var services, types []string
+	var services, ambientTypes []string
 	for _, name := range names {
 		module := preludeSymbol(c, preludeStateOf(c), file, name)
 		if moduleServiceKeyOf(c, module, name) != nil {
 			services = append(services, "`"+name+"`")
 		}
-		if moduleAliasTypeOf(c, module, name) != nil {
-			types = append(types, "`"+name+"`")
+		if module != nil && c.GlobalSymbol(name, ast.SymbolFlagsType) != nil {
+			ambientTypes = append(ambientTypes, "`"+name+"`")
 		}
 	}
 	done()
 	if len(services) < 10 {
 		t.Fatalf("found %d modules that name a service: %v", len(services), services)
-	}
-	dom, err := os.ReadFile("../bundled/libs/lib.dom.d.ts")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var lost []string
-	for _, name := range types {
-		if strings.Contains(string(dom), "\ninterface "+strings.Trim(name, "`")+" ") || strings.Contains(string(dom), "\ntype "+strings.Trim(name, "`")+" ") {
-			lost = append(lost, name)
-		}
 	}
 	page, err := os.ReadFile("../../../../docs/user/src/getting-started/008-importing-effect.md")
 	if err != nil {
@@ -282,8 +272,8 @@ func TestModuleServicesDocumented(t *testing.T) {
 	if got, want := block("D311 services"), strings.Join(services, ", ")+"."; got != want {
 		t.Errorf("the page's list of modules that name a service is\n%s\nthe installed effect gives\n%s", got, want)
 	}
-	if got, want := block("D311 DOM types"), strings.Join(lost, ", ")+"."; got != want {
-		t.Errorf("the page's list of DOM interfaces that lose their bare names is\n%s\nthe installed effect gives\n%s", got, want)
+	if got, want := block("D311 DOM types"), strings.Join(ambientTypes, ", ")+"."; got != want {
+		t.Errorf("the page's list of ambient types whose names also name Effect namespaces is\n%s\nthe installed effect gives\n%s", got, want)
 	}
 }
 
