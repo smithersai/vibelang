@@ -1,0 +1,44 @@
+const key = "id" as const
+error Computed { [key]: string; get label(): string { return this[key] } }
+schema error ComputedSchema { [key]: string }
+const ordinary = new Computed({ id: "plain" })
+const serializable = new ComputedSchema({ id: "schema" })
+export const values: readonly string[] = [ordinary.id, serializable.id]
+
+const idKey = "id" as const
+export const idSymbol = Symbol("id")
+export error PlainConstantRequired { [idKey]: string; get label(): string { return this[idKey] ?? "absent" } }
+export error PlainConstantOptional { [idKey]?: string; get label(): string { return this[idKey] ?? "absent" } }
+export error PlainLiteralRequired { ["id"]: string; get label(): string { return this["id"] ?? "absent" } }
+export error PlainLiteralOptional { ["id"]?: string; get label(): string { return this["id"] ?? "absent" } }
+export error PlainSymbolRequired { [idSymbol]: string; get label(): string { return this[idSymbol] ?? "absent" } }
+export error PlainSymbolOptional { [idSymbol]?: string; get label(): string { return this[idSymbol] ?? "absent" } }
+export error PlainNumericRequired { [7]: string; get label(): string { return this[7] ?? "absent" } }
+export error PlainNumericOptional { [7]?: string; get label(): string { return this[7] ?? "absent" } }
+export schema error SchemaConstantRequired { [idKey]: string; get label(): string { return this[idKey] ?? "absent" } }
+export schema error SchemaConstantOptional { [idKey]?: string; get label(): string { return this[idKey] ?? "absent" } }
+export schema error SchemaLiteralRequired { ["id"]: string; get label(): string { return this["id"] ?? "absent" } }
+export schema error SchemaLiteralOptional { ["id"]?: string; get label(): string { return this["id"] ?? "absent" } }
+export schema error SchemaSymbolRequired { [idSymbol]: string; get label(): string { return this[idSymbol] ?? "absent" } }
+export schema error SchemaSymbolOptional { [idSymbol]?: string; get label(): string { return this[idSymbol] ?? "absent" } }
+export schema error SchemaNumericRequired { [7]: string; get label(): string { return this[7] ?? "absent" } }
+export schema error SchemaNumericOptional { [7]?: string; get label(): string { return this[7] ?? "absent" } }
+
+export const matrix = [
+  [PlainConstantRequired, idKey, false, false],
+  [PlainConstantOptional, idKey, true, false],
+  [PlainLiteralRequired, "id", false, false],
+  [PlainLiteralOptional, "id", true, false],
+  [PlainSymbolRequired, idSymbol, false, false],
+  [PlainSymbolOptional, idSymbol, true, false],
+  [PlainNumericRequired, 7, false, false],
+  [PlainNumericOptional, 7, true, false],
+  [SchemaConstantRequired, idKey, false, true],
+  [SchemaConstantOptional, idKey, true, true],
+  [SchemaLiteralRequired, "id", false, true],
+  [SchemaLiteralOptional, "id", true, true],
+  [SchemaSymbolRequired, idSymbol, false, true],
+  [SchemaSymbolOptional, idSymbol, true, true],
+  [SchemaNumericRequired, 7, false, true],
+  [SchemaNumericOptional, 7, true, true]
+] as const

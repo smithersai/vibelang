@@ -303,6 +303,11 @@ var projectionCases = []struct {
 		virtual: "class E extends Schema.TaggedError<E>()(\"E\", { \"constructor\": Schema.String }) { declare readonly [\"constructor\"]: string }\n",
 	},
 	{
+		name:    "error with a computed constructor field",
+		source:  "const key = \"id\" as const; error E { [key]: string }\n",
+		virtual: "const key = \"id\" as const; class E extends TaggedError(\"E\")<{ readonly [key]: string }> {}\n",
+	},
+	{
 		name:    "error with fields",
 		source:  "error NotFound { id: string }\n",
 		virtual: "class NotFound extends TaggedError(\"NotFound\")<{ readonly id: string }> {}\n",

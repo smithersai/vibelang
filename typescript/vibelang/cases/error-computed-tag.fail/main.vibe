@@ -1,0 +1,15 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// Reserved computed tag fields are rejected for every payload type.
+const tagKey = "_tag" as const
+error PlainLiteralOther { ["_tag"]: "Other" }
+error PlainLiteralSame { ["_tag"]: "PlainLiteralSame" }
+error PlainLiteralWide { ["_tag"]: string }
+error PlainKeyOther { [tagKey]: "Other" }
+error PlainKeySame { [tagKey]: "PlainKeySame" }
+error PlainKeyWide { [tagKey]: string }
+schema error SchemaLiteralOther { ["_tag"]: "Other" }
+schema error SchemaLiteralSame { ["_tag"]: "SchemaLiteralSame" }
+schema error SchemaLiteralWide { ["_tag"]: string }
+schema error SchemaKeyOther { [tagKey]: "Other" }
+schema error SchemaKeySame { [tagKey]: "SchemaKeySame" }
+schema error SchemaKeyWide { [tagKey]: string }

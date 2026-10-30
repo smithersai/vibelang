@@ -43,6 +43,12 @@ func FuzzErrorDeclarationTwin(f *testing.F) {
 		"error-twin:getter",
 		"error-twin:id;count?",
 		"error-twin:id;count?;getter;method",
+		"error-twin:computed-id;count?;getter",
+		"error-twin:literal-id?;method",
+		"error-twin:symbol-id;getter;method",
+		"error-twin:schema;computed-id;count?;getter",
+		"error-twin:schema;literal-id?;method",
+		"error-twin:schema;symbol-id;getter;method",
 		"error-twin:schema",
 		"error-twin:schema;braces",
 		"error-twin:schema;id",
@@ -137,6 +143,13 @@ func parseErrorTwin(data []byte) errorTwin {
 				e.schema = true
 			default:
 				name, optional := strings.CutSuffix(part, "?")
+				computed := map[string]string{"computed-id": "[idKey]", "literal-id": "[\"id\"]", "symbol-id": "[idSymbol]", "numeric-id": "[7]"}
+				if spelling, ok := computed[name]; ok {
+					if !e.hasField("id") {
+						e.fields = append(e.fields, errorTwinField{spelling, optional, "string"})
+					}
+					continue
+				}
 				for i, known := range errorTwinFieldNames {
 					if name == known && len(e.fields) < len(errorTwinFieldNames) && !e.hasField(name) {
 						e.fields = append(e.fields, errorTwinField{name, optional, errorTwinTypes[i]})
@@ -159,6 +172,10 @@ func parseErrorTwin(data []byte) errorTwin {
 	}
 	flags := at(1 + len(errorTwinFieldNames))
 	e.getter, e.method, e.braces, e.schema = flags&1 != 0, flags&2 != 0, flags&4 != 0, flags&8 != 0
+	if len(e.fields) > 0 {
+		spellings := []string{"id", "[idKey]", "[\"id\"]", "[idSymbol]", "[7]"}
+		e.fields[0].name = spellings[int(flags>>4)%len(spellings)]
+	}
 	return e
 }
 
@@ -189,7 +206,7 @@ func (e errorTwin) shapeKey() string {
 
 func (e errorTwin) hasField(name string) bool {
 	for _, field := range e.fields {
-		if field.name == name {
+		if field.name == name || name == "id" && (field.name == "[idKey]" || field.name == "[\"id\"]" || field.name == "[idSymbol]" || field.name == "[7]") {
 			return true
 		}
 	}
@@ -205,6 +222,19 @@ func (e errorTwin) members() []string {
 		out = append(out, `describe(): string { return "Failure" }`)
 	}
 	return out
+}
+
+// Computed names keep an independently written constant in both programs.
+func (e errorTwin) setup() string {
+	for _, field := range e.fields {
+		switch field.name {
+		case "[idKey]":
+			return "const idKey = \"id\" as const\n"
+		case "[idSymbol]":
+			return "const idSymbol = Symbol(\"id\")\n"
+		}
+	}
+	return ""
 }
 
 // vibe prints the error declaration.
@@ -224,7 +254,7 @@ func (e errorTwin) vibe() string {
 		}
 		return "export " + keyword + " Failure\n"
 	}
-	return "export " + keyword + " Failure {\n  " + strings.Join(parts, "\n  ") + "\n}\n"
+	return e.setup() + "export " + keyword + " Failure {\n  " + strings.Join(parts, "\n  ") + "\n}\n"
 }
 
 // twin prints the Data.TaggedError class Chapter 3 says the declaration is.
@@ -244,7 +274,7 @@ func (e errorTwin) twin() string {
 	if members := e.members(); len(members) != 0 {
 		body = "{\n  " + strings.Join(members, "\n  ") + "\n}"
 	}
-	return "import { Data } from \"effect\"\n\nexport class Failure extends " + base + " " + body + "\n"
+	return "import { Data } from \"effect\"\n\n" + e.setup() + "export class Failure extends " + base + " " + body + "\n"
 }
 
 // schemaTwin prints the Schema.TaggedError class Chapter 3 says a `schema
@@ -266,7 +296,7 @@ func (e errorTwin) schemaTwin() string {
 	if members := e.members(); len(members) != 0 {
 		body = "{\n  " + strings.Join(members, "\n  ") + "\n}"
 	}
-	return "import { Schema } from \"effect\"\n\nexport class Failure extends " + base + " " + body + "\n"
+	return "import { Schema } from \"effect\"\n\n" + e.setup() + "export class Failure extends " + base + " " + body + "\n"
 }
 
 func optionalMark(optional bool) string {

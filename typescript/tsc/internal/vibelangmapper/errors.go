@@ -205,7 +205,7 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 		if fields.Flags&ast.NodeFlagsReparsed == 0 {
 			for _, member := range fields.Members() {
 				literal += p.fieldText(member.Name(), member.PostfixToken(), member.Type())
-				if member.Name().Text() == "_tag" {
+				if !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" {
 					tag += " as " + p.text[p.tokenStart(member.Type()):member.Type().End()]
 				}
 				p.errorField(member.Name())

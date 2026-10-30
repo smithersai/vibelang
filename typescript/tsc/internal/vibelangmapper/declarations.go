@@ -62,7 +62,7 @@ func (p *projector) errorDeclaration(node *ast.Node) {
 	fields := extendsElement(node).TypeArguments()[0]
 	if fields.Flags&ast.NodeFlagsReparsed == 0 {
 		for _, member := range fields.Members() {
-			if member.Name() != nil && member.Name().Text() == "_tag" && member.Type() != nil {
+			if member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" && member.Type() != nil {
 				// A family's base declares its tag type (D304).
 				tag += " as " + p.text[p.tokenStart(member.Type()):member.Type().End()]
 			}

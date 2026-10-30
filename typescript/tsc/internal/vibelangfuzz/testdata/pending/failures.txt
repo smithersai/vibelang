@@ -175,16 +175,12 @@ FuzzFailuresSpec feature:error-effect-setter-priority compiler VIP-13: chapter 3
 FuzzFailuresSpec corpus:error-effect-setter-priority compiler VIP-13: minimized reproduction of feature:error-effect-setter-priority; lane core-land
 FuzzFailuresSpec feature:error-effect-constructor-priority compiler VIP-13: chapter 3 contract error-effect-constructor-priority fails on main 405bac96 (initial probe: TS2337); lane core-land
 FuzzFailuresSpec corpus:error-effect-constructor-priority compiler VIP-13: minimized reproduction of feature:error-effect-constructor-priority; lane core-land
-FuzzFailuresSpec feature:error-literal-computed-keys compiler VIP-13: chapter 3 contract error-literal-computed-keys fails on main 405bac96 (initial probe: TS2353, TS2564); lane fix-fz-fail
-FuzzFailuresSpec corpus:error-literal-computed-keys compiler VIP-13: minimized reproduction of feature:error-literal-computed-keys; lane fix-fz-fail
 FuzzFailuresSpec feature:schema-error-effect-getter-priority compiler VIP-29: chapter 3 contract schema-error-effect-getter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
 FuzzFailuresSpec corpus:schema-error-effect-getter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-getter-priority; lane core-land
 FuzzFailuresSpec feature:schema-error-effect-setter-priority compiler VIP-29: chapter 3 contract schema-error-effect-setter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
 FuzzFailuresSpec corpus:schema-error-effect-setter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-setter-priority; lane core-land
 FuzzFailuresSpec feature:schema-error-effect-constructor-priority compiler VIP-29: chapter 3 contract schema-error-effect-constructor-priority fails on main 405bac96 (initial probe: TS2337); lane core-land
 FuzzFailuresSpec corpus:schema-error-effect-constructor-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-constructor-priority; lane core-land
-FuzzFailuresSpec feature:schema-error-literal-computed-keys compiler VIP-29: chapter 3 contract schema-error-literal-computed-keys fails on main 405bac96 (initial probe: TS2353, TS2564); lane fix-fz-fail
-FuzzFailuresSpec corpus:schema-error-literal-computed-keys compiler VIP-29: minimized reproduction of feature:schema-error-literal-computed-keys; lane fix-fz-fail
 FuzzFailuresSpec feature:wrapper-callback-throw compiler VIP-4: chapter 3 contract wrapper-callback-throw fails on main 405bac96 (initial probe: EK4405, EK4801); lane w2-throw
 FuzzFailuresSpec corpus:wrapper-callback-throw compiler VIP-4: minimized reproduction of feature:wrapper-callback-throw; lane w2-throw
 FuzzFailuresSpec feature:wrapper-suspend-throw compiler VIP-4: chapter 3 contract wrapper-suspend-throw fails on main 405bac96 (initial probe: TS2552); lane w2-throw

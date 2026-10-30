@@ -128,6 +128,27 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 	instance := c.GetDeclaredTypeOfSymbol(symbol)
 	abstract := ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract)
 	own := c.GetStringLiteralType(name.Text())
+	if form == errorFormRoot {
+		// A computed key that resolves to _tag can reduce the generated
+		// instance to never. Resolve it here so it still gets EK2117.
+		arguments := ast.GetClassExtendsHeritageElement(class).TypeArguments()
+		if len(arguments) == 1 && ast.IsTypeLiteralNode(arguments[0]) {
+			if tag := c.GetPropertyOfType(c.GetTypeFromTypeNode(arguments[0]), "_tag"); tag != nil {
+				computed := false
+				for _, declaration := range tag.Declarations() {
+					if declaration.Name() != nil && ast.IsComputedPropertyName(declaration.Name()) {
+						computed = true
+						d := report(c, declaration, EK2117.With("{0} declares a _tag field, and an error's tag is always its name, \"{0}\"."), name.Text())
+						note(d, "Remove the field; use a union to group different errors.")
+					}
+				}
+				if computed {
+					coverCodes(c, name, 2509) // the generated base's conflicting tag
+					return
+				}
+			}
+		}
+	}
 	if form == errorFormRoot || form == errorFormSchemaRoot {
 		if tag := c.GetTypeOfPropertyOfType(instance, "_tag"); !abstract && tag != nil && !c.IsTypeAssignableTo(own, tag) {
 			d := report(c, errorTagField(class, form), EK2117.With("{0}'s tag is \"{0}\", but its _tag field's type is {1}."), name.Text(), c.TypeToString(tag))
@@ -197,7 +218,7 @@ func errorBaseTag(c *checker.Checker, statics *checker.Type) *checker.Type {
 func errorDeclaredTag(c *checker.Checker, class *ast.Node, form errorForm, instance *checker.Type) *checker.Type {
 	if form == errorFormSubclass {
 		for _, member := range class.Members() {
-			if ast.IsPropertyDeclaration(member) && member.Name() != nil && member.Name().Text() == "_tag" && member.Type() != nil {
+			if ast.IsPropertyDeclaration(member) && member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" && member.Type() != nil {
 				return c.GetTypeFromTypeNode(member.Type())
 			}
 		}
@@ -236,14 +257,14 @@ func errorTagField(class *ast.Node, form errorForm) *ast.Node {
 		fields := ast.GetClassExtendsHeritageElement(class).TypeArguments()
 		if len(fields) == 1 && ast.IsTypeLiteralNode(fields[0]) {
 			for _, member := range fields[0].Members() {
-				if member.Name() != nil && member.Name().Text() == "_tag" {
+				if member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" {
 					return member
 				}
 			}
 		}
 	case errorFormSubclass:
 		for _, member := range class.Members() {
-			if ast.IsPropertyDeclaration(member) && member.Flags&ast.NodeFlagsReparsed == 0 && member.Name() != nil && member.Name().Text() == "_tag" {
+			if ast.IsPropertyDeclaration(member) && member.Flags&ast.NodeFlagsReparsed == 0 && member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" {
 				return member
 			}
 		}
@@ -326,7 +347,8 @@ func checkSchemaErrorFields(c *checker.Checker, file *ast.SourceFile, fields *as
 		value := property.Initializer()
 		if isUnsupportedSchema(value) {
 			loc := core.NewTextRange(scanner.SkipTrivia(file.Text(), value.Pos()), value.End())
-			d := reportAt(c, file, loc, EK2109.With("The field {1} has the type {0}, which has no schema form: a schema error's field is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name."), file.Text()[loc.Pos():loc.End()], property.Name().Text())
+			fieldName := nodeText(file, property.Name())
+			d := reportAt(c, file, loc, EK2109.With("The field {1} has the type {0}, which has no schema form: a schema error's field is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name."), file.Text()[loc.Pos():loc.End()], fieldName)
 			if !noteSchemaKeyword(d, file.Text()[loc.Pos():loc.End()]) {
 				note(d, "Declare the error with error instead of schema error when it is never encoded, or give the field a type with a schema.")
 			}
@@ -366,7 +388,7 @@ func fieldlessGeneratedErrorBase(c *checker.Checker, base *ast.Node) bool {
 		fields := ast.GetClassExtendsHeritageElement(decl).TypeArguments()
 		if len(fields) == 1 && ast.IsTypeLiteralNode(fields[0]) {
 			for _, field := range fields[0].Members() {
-				if field.Name() == nil || field.Name().Text() != "_tag" {
+				if field.Name() == nil || ast.IsComputedPropertyName(field.Name()) || field.Name().Text() != "_tag" {
 					return false
 				}
 			}

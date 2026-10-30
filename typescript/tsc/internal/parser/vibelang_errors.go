@@ -160,10 +160,13 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		vibelangErrorPayloadSeparators(elements)
 	}
 	for _, element := range elements {
+		// Legacy heritage lowers class members separately and expects named
+		// constructor keys. Keep its computed properties in the class body.
+		field := isVibeLangErrorField(element) && (d.base == nil || !ast.IsComputedPropertyName(element.Name()))
 		switch {
-		case isVibeLangErrorField(element) && isVibeLangTagField(element) && d.tag == nil:
+		case field && isVibeLangTagField(element) && d.tag == nil:
 			d.tag = element
-		case isVibeLangErrorField(element):
+		case field:
 			d.fields = append(d.fields, element)
 		default:
 			if d.mutable[element] {
@@ -318,7 +321,7 @@ func (p *Parser) parseVibeLangErrorElement() *ast.Node {
 // whose only modifier, if any, is readonly.
 func isVibeLangErrorField(element *ast.Node) bool {
 	if element.Kind != ast.KindPropertyDeclaration || element.Initializer() != nil || element.Type() == nil ||
-		ast.IsPrivateIdentifier(element.Name()) || ast.IsComputedPropertyName(element.Name()) {
+		ast.IsPrivateIdentifier(element.Name()) {
 		return false
 	}
 	if postfix := element.PostfixToken(); postfix != nil && postfix.Kind == ast.KindExclamationToken {
