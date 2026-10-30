@@ -67,10 +67,51 @@ func init() {
 				return g.fork(s, form, false, nil)
 			},
 			Stmt: func(g *Gen, s *Scope) Stmt {
-				return &Seq{Stmts: g.fork(s, form, g.On("vip17.join") && !g.Chance(3), nil)}
+				joined := g.On("vip17.join") && !g.Chance(3)
+				// A held child of plain fork stands anywhere but main's
+				// own body only when vip17.fork-outlives-function is on:
+				// until lane w2-fork's fix, the compiler interrupts it
+				// when the enclosing function returns or region body
+				// (uninterruptible, provide, for try, …) ends.
+				if !joined && form.effect == "forkChild" && (s.Fn.Name != "main" || s.Depth > 0) {
+					switch {
+					case g.On("vip17.fork-outlives-function"):
+						g.Use("vip17.fork-outlives-function")
+					case g.On("vip17.join"):
+						joined = true
+					default:
+						return nil
+					}
+				}
+				return &Seq{Stmts: g.fork(s, form, joined, nil)}
 			},
 		})
 	}
+	// A child of plain fork belongs to the current fiber, not to the
+	// function that forked it, so it outlives that function and its owner
+	// interrupts it when the fiber ends.
+	Register(&Construct{
+		Key:      "vip17.fork-outlives-function",
+		VIP:      17,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip17.fork"},
+		Citations: []Citation{{
+			VIP:      17,
+			Template: "yield* Effect.forkChild(‹e›)",
+			Quote:    "`fork` keeps Effect's meaning: a child is interrupted when its parent ends.",
+			Reading:  "The parent is the fiber that runs the fork, which a call of an effect function does not change: h's child outlives h and ends with main's fiber.",
+		}},
+		// The probe's helper forks a held child and returns. main logs
+		// after the call, and the child's finalizer logs only when main's
+		// fiber ends, last.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			h := &Func{Name: g.Name("h")}
+			hs := &Scope{Fn: h, Locals: slices.Clone(s.Locals), Callable: s.Callable, Depth: s.Depth + 1}
+			h.Body = g.finish(hs, g.forkBody(hs, forkForms[0], false, nil))
+			v := g.Name("v")
+			s.Locals = append(s.Locals, v)
+			return []Stmt{&LocalFunc{Func: h}, &Const{Name: v, Value: &Try{X: &Call{Name: h.Name}}}, &Event{Label: g.Label()}}
+		},
+	})
 	Register(&Construct{
 		Key:      "vip17.join",
 		VIP:      17,
