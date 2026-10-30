@@ -147,6 +147,8 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 | EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
 | EK4842 | `import { Array } from "effect"` and `Array.take(values, 2)` | `import { Array as Arr } from "effect"` and `Arr.take(values, 2)` | When no type is written with the import, as `Array.NonEmptyReadonlyArray<T>`, and nothing the file exports names it or has a type the module declares; the names are `Arr`, `Str`, `Num`, `Bool`, `Fn`, `Sym`, `Big` and `Regex`, or `EffectArray` and its siblings when the file already uses the short one |
 
+`EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`.
+
 ### Effect.gen in direct style
 
 An effect function expresses an `Effect.gen` program directly: each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:
