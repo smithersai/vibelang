@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -95,8 +96,55 @@ func specCodes(pattern string) []int32 {
 	return codes
 }
 
-// SpecHasCode reports whether Chapter 28 registers the code, in its table or
-// in the list after it.
+// SpecHasCode reports whether the specification registers the code: in
+// Chapter 28's table or the list after it, or in Appendix B, where VIP-34
+// records every code the VIPs assign, such as EK1302 (decided detail 60).
 func SpecHasCode(code int32) bool {
-	return slices.Contains(SpecCodes(), code) || slices.Contains(SpecListedCodes(), code)
+	return slices.Contains(SpecCodes(), code) || slices.Contains(SpecListedCodes(), code) || slices.Contains(AppendixBCodes(), code)
+}
+
+// AppendixBCodes returns the codes Appendix B of 900-appendices.md assigns.
+var AppendixBCodes = sync.OnceValue(func() []int32 {
+	rows, _ := appendixBRows(SpecText(grammarAppendix))
+	var codes []int32
+	for code := range rows {
+		n, _ := strconv.Atoi(code)
+		codes = append(codes, int32(n))
+	}
+	slices.Sort(codes)
+	return codes
+})
+
+// ekCell is the code cell of an Appendix B row, EK0101 or `EK0101`.
+var ekCell = regexp.MustCompile("^`?EK(\\d{4})`?$")
+
+// appendixBRows returns Appendix B's codes, each with its row's cell in the
+// column the table's header names "VIP". It counts that column from the end
+// of the row, so a pipe in a rule's text cannot move it.
+func appendixBRows(appendix string) (map[string]string, string) {
+	start := strings.Index(appendix, "## Appendix B")
+	if start < 0 {
+		return nil, ""
+	}
+	section := appendix[start:]
+	if next := strings.Index(section[1:], "\n## "); next >= 0 {
+		section = section[:next+1]
+	}
+	rows := map[string]string{}
+	vip := -1
+	for _, line := range strings.Split(section, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "| ") || !strings.HasSuffix(line, " |") {
+			continue
+		}
+		cells := strings.Split(strings.TrimSuffix(strings.TrimPrefix(line, "| "), " |"), " | ")
+		if i := slices.Index(cells, "VIP"); cells[0] == "Code" && i >= 0 {
+			vip = len(cells) - 1 - i
+			continue
+		}
+		if m := ekCell.FindStringSubmatch(cells[0]); m != nil && vip >= 0 && vip < len(cells) {
+			rows[m[1]] = strings.TrimSpace(cells[len(cells)-1-vip])
+		}
+	}
+	return rows, section
 }

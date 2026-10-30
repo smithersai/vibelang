@@ -23,40 +23,8 @@ import (
 
 var (
 	ekCode        = regexp.MustCompile(`EK(\d{4})`)
-	ekCell        = regexp.MustCompile("^`?EK(\\d{4})`?$")
 	oldInSentence = regexp.MustCompile(`(?i)\bold\b`)
 )
-
-// appendixBRows returns Appendix B's codes, each with its row's cell in the
-// column the table's header names "VIP". It counts that column from the end
-// of the row, so a pipe in a rule's text cannot move it.
-func appendixBRows(appendix string) (map[string]string, string) {
-	start := strings.Index(appendix, "## Appendix B")
-	if start < 0 {
-		return nil, ""
-	}
-	section := appendix[start:]
-	if next := strings.Index(section[1:], "\n## "); next >= 0 {
-		section = section[:next+1]
-	}
-	rows := map[string]string{}
-	vip := -1
-	for _, line := range strings.Split(section, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "| ") || !strings.HasSuffix(line, " |") {
-			continue
-		}
-		cells := strings.Split(strings.TrimSuffix(strings.TrimPrefix(line, "| "), " |"), " | ")
-		if i := slices.Index(cells, "VIP"); cells[0] == "Code" && i >= 0 {
-			vip = len(cells) - 1 - i
-			continue
-		}
-		if m := ekCell.FindStringSubmatch(cells[0]); m != nil && vip >= 0 && vip < len(cells) {
-			rows[m[1]] = strings.TrimSpace(cells[len(cells)-1-vip])
-		}
-	}
-	return rows, section
-}
 
 // citedCodes returns the codes text cites, each with the sentence it stands
 // in, leaving out a code its sentence calls old.

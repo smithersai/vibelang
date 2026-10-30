@@ -61,7 +61,8 @@ const specTests = [
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",
   "TestSpecCitedProductionsExist",
-  "TestSpecCodesInAppendixB"
+  "TestSpecCodesInAppendixB",
+  "TestAppendixBRows"
 ]
 const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
 

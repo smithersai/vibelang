@@ -33,3 +33,25 @@ func TestSpecGrammarHelpers(t *testing.T) {
 		t.Error("a continuation line matched as a production")
 	}
 }
+
+// TestAppendixBRows checks the Appendix B reader on a table in round 13's
+// layout, a code in backticks and a rule whose text holds a pipe, and that
+// the code oracle takes every code the real Appendix B assigns.
+func TestAppendixBRows(t *testing.T) {
+	doc := "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n" +
+		"| `EK0101` | `effect f() { }` outside a class | 1 | [Functions](001-functions.md#effect-functions) |\n" +
+		"| EK0107 | `a \\| b` in a type | 1, 4 | [Functions](001-functions.md#direct-eval) |\n\n## Appendix C\n\n| `EK9999` | not B | 9 | x |\n"
+	rows, _ := appendixBRows(doc)
+	if want := map[string]string{"0101": "1", "0107": "1, 4"}; !maps.Equal(rows, want) {
+		t.Errorf("appendixBRows = %v, want %v", rows, want)
+	}
+	codes := AppendixBCodes()
+	if len(codes) == 0 {
+		t.Fatal("Appendix B assigns no code")
+	}
+	for _, code := range codes {
+		if !SpecHasCode(code) {
+			t.Errorf("Appendix B assigns EK%04d, but SpecHasCode does not take it", code)
+		}
+	}
+}
