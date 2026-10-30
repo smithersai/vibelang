@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- lib.vibe --\nexport const pick = effect (name: string) => name === \"\" ? throw new TypeError(\"empty\") : name\n")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  return match (x) {\n    when [let a] or { length: let a }: 1;\n")

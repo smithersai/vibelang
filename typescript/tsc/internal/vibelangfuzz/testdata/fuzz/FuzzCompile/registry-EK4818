@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// @vibelang-diagnostics EK4818:warning\n  return JSON.parse(text) as number\n")

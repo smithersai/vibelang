@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n    const e = do { local: while (true) { const inner = do { break local; 5 }; break } 6 }\n")

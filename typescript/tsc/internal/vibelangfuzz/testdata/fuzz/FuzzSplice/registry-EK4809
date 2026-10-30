@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nservice Reports {\n  daily(): string!!Directory\n  weekly(): string!!Directory\n")

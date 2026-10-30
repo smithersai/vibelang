@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nclass Users extends Context.Service<Users, { name: string }>()(keys.pop()!) {}\n")

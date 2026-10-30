@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- ref2-opaque-layer.fail.vibe --\nconst UsersOpaque: Layer.Any = Layer.succeed(Users, {\nconst AppLive = wire(UsersOpaque)\n")

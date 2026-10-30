@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  return try sync(() => {\n    join x\n")

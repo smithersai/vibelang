@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function h() { return String(provide Layer.empty { return 1 }) }\n")

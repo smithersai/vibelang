@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function run<A, E, R>(body: Effect.Effect<A, E, R>): A!E!(Exclude<R, Host>) {\n  return try Effect.scoped(Effect.provideService(body, Host, { field: \"host\" }))\n")

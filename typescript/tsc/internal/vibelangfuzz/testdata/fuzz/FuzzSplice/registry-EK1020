@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst build = effect (n: number) => n\n  const c = new build(1)\n")

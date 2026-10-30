@@ -181,7 +181,7 @@ func FuzzFunctionsSpec(f *testing.F) {
 		var got []string
 		code := codes[r.key]
 		for _, d := range result.Diagnostics {
-			got = append(got, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
+			got = append(got, fmt.Sprintf("%s: %s", diagnosticCodeName(d.Source(), d.Code()), d.String()))
 			if d.Source() == "EK" && d.Code() == code && d.Category() == diagnostics.CategoryError {
 				found = true
 			}

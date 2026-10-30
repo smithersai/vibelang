@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ndata Delivery {\n}\nconst typo = Delivery.Snet({ tracking: \"parcel-8\" })\n")

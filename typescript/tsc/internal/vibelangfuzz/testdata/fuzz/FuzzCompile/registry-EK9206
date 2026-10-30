@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function countDown(n: number) {\n  if (n < 0) throw new Negative({ n })\n  return try countDown(n - 1) + 1\n")

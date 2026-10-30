@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction plain(cause: Cause<never>) {\n  try { throw cause } catch { return 0 }\n")

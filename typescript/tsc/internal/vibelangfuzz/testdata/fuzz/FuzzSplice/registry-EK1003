@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nawait using log = open(\"/var/log/app.log\")\n")

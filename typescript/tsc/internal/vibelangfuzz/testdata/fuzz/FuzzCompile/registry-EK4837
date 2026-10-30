@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nclass Failure extends Schema.TaggedError<Failure>()(\"Failure\", { message: Schema.String }) {}\n")

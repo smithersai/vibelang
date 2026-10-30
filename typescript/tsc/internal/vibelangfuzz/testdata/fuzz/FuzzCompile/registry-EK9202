@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nservice Input { value: number }\nexport function shorthand(): number!never { return Input().value }\n")

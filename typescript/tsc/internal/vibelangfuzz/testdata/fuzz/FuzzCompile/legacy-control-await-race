@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ncontrol Ask { ask(): number!! }\nexport effect function race() {\n    return await.race [Ask.ask(), Ask.ask()]\n")

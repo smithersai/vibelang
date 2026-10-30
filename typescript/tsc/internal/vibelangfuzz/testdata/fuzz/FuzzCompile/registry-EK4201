@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Fiber } from \"effect\"\n\nabstract class Ask extends Control {\n  abstract ask(question: string): Effect<number, never, never>\n}\n\neffect function forked() {\n  return try handle(effect {\n    const child = fork Ask.ask(\"in a child fiber\")\n    return try Fiber.join(child)\n  }, Ask, {\n    effect ask(question, k) { return try resume(k, question.length) }\n  })\n}\n")

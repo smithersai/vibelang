@@ -50,7 +50,7 @@ func checkAwaitAdvisoryPlacement(t *testing.T, w *Workspace, key string, variant
 	severity := []string{"", "warning", "error", "suggestion", "off"}[int(variant)%5]
 	project := Single("import type { Fiber, Deferred } from \"effect\"\ndeclare const value: " + typ + "\n" + declaration)
 	if severity != "" {
-		project.Config = strings.TrimSuffix(DefaultConfig, "\n}") + fmt.Sprintf(",\n\"vibe\":{\"severities\":{\"EK%d\":%q}}\n}", code, severity)
+		project.Config = strings.TrimSuffix(DefaultConfig, "\n}") + fmt.Sprintf(",\n\"vibe\":{\"severities\":{\"EK%04d\":%q}}\n}", code, severity)
 	}
 	result, err := w.Compile(t.Context(), project)
 	if err != nil {

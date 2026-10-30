@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function main() {\n  const f = fork sleep(\"1 minute\")\n  const g = fork (() => { try Fiber.interrupt(f) })\n")

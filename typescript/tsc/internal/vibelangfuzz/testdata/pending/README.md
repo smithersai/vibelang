@@ -36,7 +36,8 @@ that part of the specification yet. See `pending.go`.
   such as `ek:EK48*`. The VIP must be accepted in `docs/design/vips/`. Retiring
   an oracle whose rule a VIP replaced is not weakening it; rewrite or delete
   the oracle once its new rule is in the specification, and delete the line.
-- `TestPendingLines` checks all of this.
+- `TestPendingLines` checks all of this. An `ek:EKxxxx` key is dead when the current specification no longer registers that code.
+- A `registry:EKxxxx` key records a compiler-emitted code that Appendix B, its transitional inventory, its imported lint table and accepted VIP assignments all lack. Its reason quotes Appendix B and names `lane diag-renumber` for a missed mapping, or `decide-live decides` when no current row states the rule. It becomes dead once the specification registers that number. Its minimized corpus input remains the proof; no history code is added to the oracle to make it pass. `TestRegistryDebtLedger` requires the named witness and XPASS marker, checks both directions against `legacyDeclared`, and requires a reason for declarations with no reached emission witness. The declaration gate expires an entry when its declaration disappears or its number gains a current assignment.
 
 A corpus line names its reproduction by file name, so the file's input must
 keep its meaning. `FuzzVIPDifferential`'s first input byte indexes the

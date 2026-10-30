@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nmodule text { export const n = 1 }\nconst text = 2\n")

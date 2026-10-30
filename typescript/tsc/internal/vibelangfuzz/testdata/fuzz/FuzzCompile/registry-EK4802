@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function load(migration: Effect.Effect<void>) { try Effect.yieldNow(); return migration }\n")

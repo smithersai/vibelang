@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -61,60 +60,51 @@ func SpecText(chapter string) string {
 	if err != nil {
 		panic(err)
 	}
-	text := string(data)
-	// The historical chapter describes unchanged legacy checks using their old
-	// identifiers. Translate identifiers only; keep every quoted rule intact.
-	if strings.Contains(SpecPath(chapter), "/history/") {
-		text = historicalDiagnosticNames.Replace(text)
-	}
-	return text
+	return string(data)
 }
 
-// SpecCodes returns every EK code in Chapter 28's registry table, in order.
+// SpecCodes returns the codes registered by Appendix B and current tooling.
+// It never reads the historical registry.
 var SpecCodes = sync.OnceValue(func() []int32 {
-	return specCodes(`(?m)^\| EK(\d{4}) \|`)
+	var codes []int32
+	for code := range Facts().Rows {
+		codes = append(codes, code)
+	}
+	slices.Sort(codes)
+	return codes
 })
 
-// SpecListedCodes returns the codes Chapter 28 lists after its table, in
-// order: "These codes are rules of the language as the table's are", then
-// the codes accepted VIPs add before the specification is rewritten from
-// them (vipCodes).
+// SpecListedCodes keeps the VIP-ahead escape for accepted assignments not yet
+// represented by a current registry row.
 var SpecListedCodes = sync.OnceValue(func() []int32 {
-	return append(specCodes(`(?m)^- \*\*EK(\d{4})\*\*`), vipCodes...)
+	var codes []int32
+	for _, code := range vipCodes {
+		if !slices.Contains(SpecCodes(), code) {
+			codes = append(codes, code)
+		}
+	}
+	return codes
 })
 
 // vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
 // override Chapter 28 until it is rewritten from them: VIP-5's EK0502,
-// EK4616, and EK0103, VIP-39's EK4618, VIP-18's EK1802 for a removed await
-// operation, the migration warnings of VIP-3's EK4853, VIP-9's EK4854
-// and EK4855, VIP-9's EK3008, and VIP-20's migration code EK2007.
-// vipRetiredCodes are those they retire: EK4404, with the try hatch.
+// EK4616, and EK0103, VIP-39's EK4618, and VIP-18's EK1802 for a
+// removed await operation. VIP-20 adds EK2007, EK0201 and EK0202.
+// Appendix B now lists the earlier migration warnings.
 var (
-	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 1802, 4853, 4854, 4855, 2007, 201, 202}
-	vipRetiredCodes = []int32{4404}
+	vipCodes = []int32{502, 4616, 103, 2801, 4618, 1802, 2007, 201, 202}
 )
 
-func specCodes(pattern string) []int32 {
-	var codes []int32
-	for _, m := range regexp.MustCompile(pattern).FindAllStringSubmatch(SpecText("428-part4-ch28-tooling.md"), -1) {
-		code, _ := strconv.Atoi(m[1])
-		if !slices.Contains(codes, int32(code)) {
-			codes = append(codes, int32(code))
-		}
-	}
-	return codes
-}
-
-// SpecHasCode reports whether the specification registers the code: in
-// Chapter 28's table or the list after it, or in Appendix B, where VIP-34
-// records every code the VIPs assign, such as EK1302 (decided detail 60).
+// SpecHasCode reports whether the current registry, its transitional
+// inventory, its imported table or an accepted VIP names code.
 func SpecHasCode(code int32) bool {
-	return slices.Contains(SpecCodes(), code) || slices.Contains(SpecListedCodes(), code) || slices.Contains(AppendixBCodes(), code)
+	_, imported := Facts().Imported[code]
+	return imported || slices.Contains(SpecCodes(), code) || slices.Contains(SpecListedCodes(), code) || slices.Contains(Facts().Interim, code)
 }
 
 // AppendixBCodes returns the codes Appendix B of 900-appendices.md assigns.
 var AppendixBCodes = sync.OnceValue(func() []int32 {
-	rows, _ := appendixBRows(SpecText(grammarAppendix))
+	rows, _ := appendixBRows(currentSpecText(grammarAppendix))
 	var codes []int32
 	for code := range rows {
 		n, _ := strconv.Atoi(code)
@@ -203,40 +193,3 @@ var configurationDiagnosticRows = sync.OnceValue(func() map[string]appendixBChap
 	}
 	return rows
 })
-
-// historicalDiagnosticCodes follows the published diagnostic-code map: each
-// old identifier the historical chapter uses, and the code that replaced it.
-var historicalDiagnosticCodes = [][2]int32{
-	{4615, 502},
-	{4605, 1903},
-	{4606, 1904},
-	{2001, 9201},
-	{2002, 9202},
-	{2003, 9203},
-	{2004, 9204},
-	{2101, 9205},
-	{2102, 9206},
-	{2103, 9207},
-	{3006, 9208},
-	{4617, 103},
-}
-
-var historicalDiagnosticNames = func() *strings.Replacer {
-	var pairs []string
-	for _, p := range historicalDiagnosticCodes {
-		pairs = append(pairs, fmt.Sprintf("EK%04d", p[0]), fmt.Sprintf("EK%04d", p[1]))
-	}
-	return strings.NewReplacer(pairs...)
-}()
-
-// historicalCode returns the number Chapter 28 gave code before the map
-// renamed it, so that the code keeps the chapter's side of the lint range
-// (EK4801): EK9201 was EK2001, a rule before the lint range.
-func historicalCode(code int32) int32 {
-	for _, p := range historicalDiagnosticCodes {
-		if p[1] == code {
-			return p[0]
-		}
-	}
-	return code
-}

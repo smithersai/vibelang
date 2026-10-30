@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- ref2-cycle.fail.vibe --\nservice Cache {\n}\nservice Database {\n}\nconst CacheLive = Layer.effect(Cache, effect {\n  const db = try Database()\n})\nconst DatabaseLive = Layer.effect(Database, effect {\n  const cache = try Cache()\n})\nconst AppLive = wire(CacheLive, DatabaseLive)\n")

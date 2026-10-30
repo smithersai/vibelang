@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nerror Base {\n  constructor(code: string, note: string) {\n  }\n}\nexport error Child extends Base { extra: number }\n")

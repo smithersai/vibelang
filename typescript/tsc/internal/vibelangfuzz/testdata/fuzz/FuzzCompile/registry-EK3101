@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nservice Audit { record(): void!! }\nservice Leaky {\n  read(): number!!\n  static readonly defaultValue = () => ({\n    effect read() { try Audit.record(); return 1 }\n")

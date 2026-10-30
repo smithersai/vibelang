@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst describe = pipe(\n  Match.type<number | string>(),\n  Match.exhaustive\n")

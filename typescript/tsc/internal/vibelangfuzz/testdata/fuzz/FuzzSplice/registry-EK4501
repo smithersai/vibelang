@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  const numbers = Stream.make(1, 2, 3)\n  const filter = numbers.filter\n")

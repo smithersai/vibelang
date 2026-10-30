@@ -295,6 +295,9 @@ func toolsDiagnosticKey(d *lsproto.Diagnostic) string {
 	}
 	if d.Code != nil && d.Code.Integer != nil {
 		code = fmt.Sprint(*d.Code.Integer)
+		if source == "EK" {
+			code = fmt.Sprintf("%04d", *d.Code.Integer)
+		}
 	} else if d.Code != nil && d.Code.String != nil {
 		code = *d.Code.String
 	}

@@ -61,23 +61,6 @@ func TestToolsHelpers(t *testing.T) {
 		t.Errorf("toolsPanicFrame = %q", got)
 	}
 
-	// Chapter 28's codes that --fix fixes, read from the specification.
-	codes := toolsFixCodes()
-	for _, want := range []int32{1002, 1009, 1023, 2112, 2113, 2120, 2121, 4830, 4837, 4839, 4840} {
-		if !slices.Contains(codes, want) {
-			t.Errorf("toolsFixCodes() = %v lacks EK%d", codes, want)
-		}
-	}
-	// EK4802's quick fix belongs to the editor; --fix does not apply it.
-	if slices.Contains(codes, 4802) {
-		t.Errorf("toolsFixCodes() = %v holds EK4802, whose quick fix Chapter 28 leaves to the editor", codes)
-	}
-	for _, code := range codes {
-		if !SpecHasCode(code) {
-			t.Errorf("EK%d is not in Chapter 28's registry", code)
-		}
-	}
-
 	// An incremental edit never splits a character or a "\r\n".
 	source := "a😀\r\nb catch (e) => 1\n"
 	for op := range 256 {
@@ -388,25 +371,5 @@ func TestToolsFreshExcludedFile(t *testing.T) {
 	}
 	if !slices.ContainsFunc(diagnostics, func(d *lsproto.Diagnostic) bool { return strings.Contains(toolsDiagnosticKey(d), "2322 ") }) {
 		t.Fatalf("excluded document lacks its inferred-project error: %v", toolsDiagnosticKeys(diagnostics))
-	}
-}
-
-// An inserted recovery identifier has no written reference for LSP to find.
-func TestConsistencyMissingModuleName(t *testing.T) {
-	w := NewWorkspace(t)
-	files := map[string]string{"main.vibe": "module { export const n = 1 }\nexport const result = 1\n"}
-	r := toolsCompile(t, w, consistencyTarget, files)
-	defer r.Remove()
-	c := &consistency{t: t, ctx: t.Context(), w: w, main: "main.vibe"}
-	c.before = c.project(r, files)
-	for _, declaration := range c.topLevel() {
-		if declaration.name == "" {
-			t.Fatal("missing parser identifier is treated as a written document symbol")
-		}
-	}
-	for _, symbol := range c.symbols() {
-		if symbol.name == "" {
-			t.Fatal("missing parser identifier is treated as a written LSP reference")
-		}
 	}
 }

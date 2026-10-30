@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport service Users {\n  find(id: string): string\n")

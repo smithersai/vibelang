@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function first(xs: ReadonlyArray<number>) {\n  for (var i = 0; xs is [let head, ...]; i++) return i;\n  return 0;\n}\n")

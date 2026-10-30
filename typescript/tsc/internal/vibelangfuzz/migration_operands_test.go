@@ -82,7 +82,7 @@ func checkMigrationEffectOperand(t *testing.T, w *Workspace, rule migrationOpera
 		if d.Category() != diagnostics.CategoryError {
 			continue
 		}
-		errors = append(errors, fmt.Sprintf("%s%d", d.Source(), d.Code()))
+		errors = append(errors, diagnosticCodeName(d.Source(), d.Code()))
 		if d.Source() == "EK" && d.Code() == codes[op] {
 			matched = true
 		}

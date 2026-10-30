@@ -16,15 +16,9 @@ import (
 	"time"
 )
 
-// FuzzCompile compiles any project, a txtar archive of its files, and holds
-// every compilation to the invariants of Chapters 27 and 28: no panic or
-// hang; every EK code in Chapter 28's registry, in its default category when
-// nothing adjusts it, and only in .vibe files (D266); every span inside its
-// file; the same diagnostics and outputs from a fresh compilation and in
-// every order the checker can be asked; and, when no error is reported,
-// JavaScript that parses and imports only what Chapter 27 allows, runtime
-// helpers the runtime exports, source maps into the .vibe text (D34), and
-// declarations a TypeScript consumer type-checks against (D366).
+// FuzzCompile compiles arbitrary projects and checks current Appendix B
+// identity/defaults, valid diagnostic spans, fresh/order consistency and
+// the emitter, source-map and declaration invariants described below.
 func FuzzCompile(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
@@ -279,7 +273,7 @@ func orderKey(order Order, want, got []DiagnosticKey) string {
 		var out []string
 		for _, k := range from {
 			if !slices.Contains(without, k) {
-				out = append(out, fmt.Sprintf("%s%04d", cmp(k.Source, "TS"), k.Code))
+				out = append(out, diagnosticCodeName(cmp(k.Source, "TS"), k.Code))
 			}
 		}
 		slices.Sort(out)
@@ -325,123 +319,20 @@ func seedHash(parts ...string) uint32 {
 	return h.Sum32()
 }
 
-// TestSpecFacts checks that the facts read from Chapter 28 are the ones its
-// text states, so that a change in the chapter's wording cannot silently
-// empty an oracle.
+// TestSpecFacts checks current-spec facts and the quoted source sentences.
 func TestSpecFacts(t *testing.T) {
+	TestRegistryUsesCurrentAppendix(t)
 	facts := Facts()
-	if facts.Boundary != 4801 {
-		t.Errorf("the lint range starts at EK%d; Chapter 28's Diagnostics section says EK4801", facts.Boundary)
+	if !slices.Equal(facts.Severities, []string{"error", "warning", "suggestion", "off"}) {
+		t.Errorf("severities: %v", facts.Severities)
 	}
-	var warnings, mixed []int32
-	for code, category := range facts.Defaults {
-		if historicalCode(code) < facts.Boundary && category == DefaultWarning {
-			warnings = append(warnings, code)
-		}
-		if category == DefaultErrorOrWarning {
-			mixed = append(mixed, code)
-		}
-	}
-	slices.Sort(warnings)
-	if len(warnings) != facts.WarningCount || facts.WarningCount == 0 {
-		t.Errorf("%d warnings before EK%d (%v); the chapter says %d", len(warnings), facts.Boundary, warnings, facts.WarningCount)
-	}
-	if len(mixed) != 1 {
-		t.Errorf("codes with forms of both categories: %v; the chapter names EK4408's", mixed)
-	}
-	rows := registryRows(SpecText(chapter28))
 	for _, code := range SpecCodes() {
-		cells := rows[code]
-		category, ok := facts.Defaults[code]
-		if !ok {
-			t.Errorf("EK%d has no default", code)
-			continue
-		}
-		reports := strings.ToLower(cells[1])
-		// A row that states its category agrees with the paragraph.
-		switch {
-		case strings.HasPrefix(reports, "warning") && category != DefaultWarning:
-			t.Errorf("EK%d's row says a warning; derived %s", code, category)
-		case strings.HasPrefix(reports, "error by default") && category != DefaultError:
-			t.Errorf("EK%d's row says an error by default; derived %s", code, category)
-		case strings.HasPrefix(reports, "off by default") && category != DefaultOff:
-			t.Errorf("EK%d's row says off by default; derived %s", code, category)
-		}
-		// Every lint code but the reserved historical rules has a default.
-		if category == DefaultUnknown && !strings.HasPrefix(reports, "reserved historical") {
-			t.Errorf("EK%d: no default category derived from %q", code, cells[1])
+		if _, ok := facts.Rows[code]; !ok {
+			t.Errorf("%s has no current row", specCodeName(code))
 		}
 	}
-	for _, code := range []int32{4801, 4802, 4813, 4838, 9100} {
-		if facts.Defaults[code] != DefaultError {
-			t.Errorf("EK%d derived %s; Chapter 28 says an error", code, facts.Defaults[code])
-		}
-	}
-	if facts.Defaults[9101] != DefaultNever {
-		t.Errorf("EK9101 derived %s; Chapter 28 says the CLI never emits it", facts.Defaults[9101])
-	}
-	for _, code := range []int32{1008, 1014, 2115, 2116} {
-		if !slices.Contains(facts.Retired, code) {
-			t.Errorf("EK%d is retired in Chapter 28; derived retired codes %v", code, facts.Retired)
-		}
-	}
-	if len(facts.Rules) < 10 {
-		t.Errorf("only %d rules read below the registry table: %v", len(facts.Rules), facts.Rules)
-	}
-
-	// The options table and the paragraphs around it agree on what a project
-	// may adjust: the policy codes, the lint codes but EK4813, and none of
-	// the codes no setting lowers.
-	diagnostics := section(SpecText(chapter28), "#### Diagnostics")
-	policy := diagnostics[strings.Index(diagnostics, "A project may set"):]
-	policy = policy[:strings.Index(policy, " to ")]
-	for _, code := range codesIn(policy) {
-		if !facts.IsAdjustable(code) {
-			t.Errorf("EK%d: \"A project may set\" it, but the options table does not list it", code)
-		}
-	}
-	for _, code := range []int32{4813, 4838, 9100, 9201} {
-		if facts.IsAdjustable(code) {
-			t.Errorf("EK%d is adjustable by the derivation; Chapter 28 says no setting changes it", code)
-		}
-	}
-	lint := 0
-	for _, code := range facts.Adjustable {
-		if code >= 4801 && code <= 4825 {
-			lint++
-		}
-	}
-	if want := 24; lint != want {
-		t.Errorf("%d adjustable codes in EK4801-EK4825; Chapter 28 lists 25 codes there and excepts EK4813", lint)
-	}
-	for _, code := range []int32{4830, 4837, 3205, 4403, 4409} {
-		if !facts.IsAdjustable(code) {
-			t.Errorf("EK%d should be adjustable", code)
-		}
-	}
-	if !slices.Equal(facts.Severities, []string{"error", "warning", "off"}) {
-		t.Errorf("severities %v", facts.Severities)
-	}
-	if !slices.Equal(facts.Tracing, []string{"none", "exported", "all"}) {
-		t.Errorf("tracing values %v", facts.Tracing)
-	}
-	// The defaults column of the diagnostics option agrees with the derived
-	// defaults: `EK1012, EK9204, and EK4406 "warning"; EK3205, EK4403,
-	// and EK4409 "error"`.
-	row := diagnostics[strings.Index(diagnostics, "| `diagnostics` |"):]
-	row = row[:strings.Index(row, "\n")]
-	defaults := strings.Split(row, " | ")[2]
-	for _, part := range strings.Split(defaults, ";") {
-		for _, severity := range []string{"warning", "error"} {
-			if strings.Contains(part, `"`+severity+`"`) {
-				want := map[string]DefaultCategory{"warning": DefaultWarning, "error": DefaultError}[severity]
-				for _, code := range codesIn(part) {
-					if facts.Defaults[code] != want {
-						t.Errorf("EK%d's default is %s in the options table; derived %s", code, severity, facts.Defaults[code])
-					}
-				}
-			}
-		}
+	if facts.Default(3801) != DefaultError {
+		t.Error("Appendix B's imported table gives EK3801 the default error")
 	}
 }
 

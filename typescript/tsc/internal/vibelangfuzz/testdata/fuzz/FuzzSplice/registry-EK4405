@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- a.vibe --\nconst parse = (text: string): number => Number(text)\n  return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)\n")

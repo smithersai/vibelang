@@ -18,7 +18,7 @@ import (
 const unaryPowQuote = "| `EK0510` | an unparenthesized `try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` expression on the left of `**`"
 
 type unaryPowShape struct {
-	head, op string
+	head, op             string
 	paren, right, negate bool
 }
 

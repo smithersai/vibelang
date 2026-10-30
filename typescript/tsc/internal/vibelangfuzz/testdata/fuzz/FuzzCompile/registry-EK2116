@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function missing(flag: boolean): number!! { if (flag) return effect { return 1 } }\n")

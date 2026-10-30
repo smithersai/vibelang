@@ -23,7 +23,7 @@ var plainHandlerThrowQuotes = []string{
 }
 
 type plainHandlerWrapper struct {
-	key, open, close string
+	key, open, close             string
 	catches, boundary, plainOnly bool
 }
 

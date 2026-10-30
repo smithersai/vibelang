@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport \"vibelang/platform/node\"\nimport \"vibelang/platform/browser\"\n")

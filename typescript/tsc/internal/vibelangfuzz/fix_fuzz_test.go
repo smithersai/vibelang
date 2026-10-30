@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,10 +33,8 @@ import (
 //   - "One `vibelang --fix` run applies fixes until none applies; running it
 //     again changes nothing" (Chapter 7, decided 2026-10-31): --fix on the
 //     fixed project changes no file.
-//   - "--fix applies every such fix, and the quick fixes of the retired
-//     spellings": after fixing, no diagnostic remains whose code that
-//     sentence names, unless a refusal states the new error or the change in
-//     meaning that prevents it.
+//   - The current tooling chapter's explicitly named trailing-block codemod
+//     applies, under the existing safe-fix/refusal checks it preserves.
 //   - "Each fix keeps the program's meaning": a runnable program (one with an
 //     exported zero-argument Effect function, with or without an expectation marker)
 //     returns the same outcome after fixing, and its declarations, its
@@ -135,11 +132,9 @@ func FuzzFix(f *testing.F) {
 				}
 				Gap(t, "FuzzFix", "fix:idempotence", "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
 			}
-			// Chapter 28, Diagnostics: the spec, rather than the implementation's
-			// offered actions, determines which codes --fix must address. Chapter
-			// 7 scopes --fix-vip-only to "The existing VIP migration passes",
-			// so a fix-vip-only-* run leaves the TypeScript-form rewrites
-			// (EK4833, EK4834) to a later --fix and is not held to them.
+			// Current tooling explicitly names this codemod, independently of
+			// implementation action availability. Keep main's VIP-only scope;
+			// the unscoped run checks its completion and safe refusals.
 			if !options.VIPOnly {
 				toolsUnappliedFixes(t, w, after, codes, second.Refused, archive)
 			}
@@ -325,51 +320,25 @@ func toolsRunnableExports(r *Result) []toolsRunnable {
 	return entries
 }
 
-// toolsFixCodes reads the codes Chapter 28's Diagnostics says --fix fixes:
-// "--fix applies every such fix [of the lint codes EK4830-EK4837 and those
-// named beside them, such as EK4839], the quick fixes of the retired
-// spellings, and EK1002's", and EK1023's sites (D382). A registry
-// row's "(quick fix)", such as EK4802's, is an editor quick fix, which
-// FuzzEditor checks; D291's "every safe fix" summarizes this sentence. The
-// implementation's code-action list is deliberately not an oracle.
+// Only current tooling's explicit trailing-block codemod enters this check.
+// Historical lint ranges, retired spellings and editor quick-fix availability
+// do not establish a command-line completion promise.
+const currentFixCodesQuote = "For example, a trailing block ([VIP-11](../vips/0011-trailing-blocks-denied.md)) is `EK1101`, and its codemod writes the block as the call's last argument in the spelling of what it ran as:"
+const currentFixSafetyQuote = "`vibelang --fix` keeps the existing safe-fix checks and refusal rules."
+
 var toolsFixCodes = sync.OnceValue(func() []int32 {
-	text := SpecText("428-part4-ch28-tooling.md")
-	retired := regexp.MustCompile(`retired spellings that still compile the same, each with a quick fix: ([^.]*)\.`).FindStringSubmatch(text)
-	forms := regexp.MustCompile(`EK(48\d\d)-EK(48\d\d) mark Effect code written the way Effect's TypeScript writes it(.*?)They are lint too`).FindStringSubmatch(text)
-	fix := regexp.MustCompile("--fix` applies every such fix, (.*?) to a project's own").FindStringSubmatch(text)
-	if retired == nil || forms == nil || fix == nil || !strings.Contains(fix[1], "the quick fixes of the retired spellings") {
-		panic("Chapter 28 no longer names the codes --fix fixes; update toolsFixCodes")
+	text := currentSpecText(toolingChapter)
+	requireQuote(text, currentFixCodesQuote)
+	requireQuote(text, currentFixSafetyQuote)
+	// The quoted current sentence names the codemod's diagnostic.
+	match := regexp.MustCompile("a trailing block .*? is \x60(EK[0-9]{4})\x60").FindStringSubmatch(text)
+	if match == nil {
+		panic("current tooling no longer names the trailing-block codemod diagnostic")
 	}
-	var codes []int32
-	add := func(text string) {
-		for _, m := range regexp.MustCompile(`EK(\d{4})`).FindAllStringSubmatch(text, -1) {
-			code, _ := strconv.Atoi(m[1])
-			if !slices.Contains(codes, int32(code)) {
-				codes = append(codes, int32(code))
-			}
-		}
+	codes := codesIn(match[1])
+	if len(codes) != 1 {
+		panic("invalid current trailing-block codemod code")
 	}
-	// Chapter 7's codemod requirement also names a denied form that no
-	// longer compiles. Keep it in the unapplied-fix oracle, so a no-op cannot
-	// silently skip both the migration and its existing Exit comparison.
-	trailing := regexp.MustCompile("a trailing block .*? is \x60(EK[0-9]{4})\x60").FindStringSubmatch(SpecText("007-tooling.md"))
-	if trailing == nil {
-		panic("Chapter 7 no longer names the trailing-block codemod diagnostic; update toolsFixCodes")
-	}
-	add(trailing[1])
-	add(retired[1])
-	add(forms[3]) // the lint codes named beside the range (D472, D473)
-	add(fix[1])   // EK1002's Effect.gen fix (D470)
-	first, _ := strconv.Atoi(forms[1])
-	last, _ := strconv.Atoi(forms[2])
-	for code := first; code <= last; code++ {
-		add(fmt.Sprintf("EK%04d", code))
-	}
-	// D382's Diagnostics rule also requires --fix to migrate classified sites.
-	if strings.Contains(text, "**EK1023**") && strings.Contains(text, "--fix` rewrites each other site") {
-		add("EK1023")
-	}
-	slices.Sort(codes)
 	return codes
 })
 
@@ -402,7 +371,7 @@ func toolsUnappliedFixes(t *testing.T, w *Workspace, r *Result, codes []int32, r
 		if u.offered {
 			state = "offered"
 		}
-		Gap(t, "FuzzFix", fmt.Sprintf("fix:unapplied:EK%d:%s", d.Code(), state), "D291/D372: after --fix, %s still reports %s without a permitted refusal (no --fix refusal; explanation %v; quick fix offered %v):\n%s", rel, d.String(), u.explains, u.offered, archive)
+		Gap(t, "FuzzFix", fmt.Sprintf("fix:unapplied:EK%04d:%s", d.Code(), state), "D291/D372: after --fix, %s still reports %s without a permitted refusal (no --fix refusal; explanation %v; quick fix offered %v):\n%s", rel, d.String(), u.explains, u.offered, archive)
 	}
 }
 
@@ -458,7 +427,7 @@ func TestFixPermittedRefusals(t *testing.T) {
 	w := NewWorkspace(t)
 	r := toolsCompile(t, w, "FuzzFix", files)
 	defer r.Remove()
-	codes := toolsFixCodes()
+	codes := []int32{4837} // A helper fixture, not a current codemod assignment.
 	var warning *ast.Diagnostic
 	for _, d := range r.Diagnostics {
 		if d.Source() == "EK" && d.Code() == 4837 {

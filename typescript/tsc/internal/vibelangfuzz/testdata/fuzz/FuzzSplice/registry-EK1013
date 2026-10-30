@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nschema Comma { readonly one: string, readonly two: number }\n")

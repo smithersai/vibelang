@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Headers as EffectHeaders } from \"effect/http\"\n    EffectHeaders.get(headers, \"a\").pipe(Option.getOrElse(() => \"\")),\n")

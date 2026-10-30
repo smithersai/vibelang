@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ndeclare const pending: Promise<number>\n  const n = await pending\n")

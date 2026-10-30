@@ -76,7 +76,7 @@ func nativeAwaitOptionCodes(result *Result) []string {
 		if source == "" {
 			source = "TS"
 		}
-		codes = append(codes, fmt.Sprintf("%s%d", source, diagnostic.Code()))
+		codes = append(codes, diagnosticCodeName(source, diagnostic.Code()))
 	}
 	slices.Sort(codes)
 	return codes

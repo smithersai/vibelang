@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // TestSpecGrammarHelpers checks the grammar reader on a small document in the
@@ -62,16 +64,21 @@ func TestAppendixBRows(t *testing.T) {
 	}
 }
 
-// TestCompilerRegistryIsSpecified fails when the compiler declares a code the
-// fuzz registry does not take. FuzzCompile reports such a code only after the
-// merge, on the case that draws it; //:spec-tests sees it before.
+// TestCompilerRegistryIsSpecified keeps unassigned declarations explicit.
+// Appendix B says "A transitional compiler may still print compatibility
+// diagnostics from the old language" and catalogs only EK92xx, so other debt
+// belongs in legacyDeclared, never in SpecHasCode. Emitting one still fails
+// CheckDiagnostics under its precise registry: key.
 func TestCompilerRegistryIsSpecified(t *testing.T) {
+	if len(legacyDeclared) > 0 {
+		requireQuote(currentSpecText(grammarAppendix), transitionalQuote)
+	}
 	paths, err := filepath.Glob("../vibelang/*.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	declared := regexp.MustCompile(`\bmessage\((\d+),`)
-	seen := 0
+	pattern := regexp.MustCompile(`\bmessage(?:Off)?\((\d+),`)
+	declared := map[int32]bool{}
 	for _, path := range paths {
 		if strings.HasSuffix(path, "_test.go") {
 			continue
@@ -80,15 +87,31 @@ func TestCompilerRegistryIsSpecified(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, m := range declared.FindAllSubmatch(source, -1) {
-			code, _ := strconv.Atoi(string(m[1]))
-			seen++
-			if !Facts().IsRegistered(int32(code)) {
-				t.Errorf("%s declares EK%04d, which the fuzz registry does not take: add it to Chapter 28, Appendix B or vipCodes", filepath.Base(path), code)
+		// This inventories implementation declarations, not normative assignments.
+		// The parser owns the arrow-head identity; include its named constant
+		// so a nonliteral message declaration cannot escape the debt ledger.
+		source = []byte(strings.ReplaceAll(string(source), "message(parser.EffectArrowHeadDiagnosticCode,", "message("+strconv.Itoa(int(parser.EffectArrowHeadDiagnosticCode))+","))
+		for _, match := range pattern.FindAllSubmatch(source, -1) {
+			number, _ := strconv.Atoi(string(match[1]))
+			code := int32(number)
+			declared[code] = true
+			if Facts().IsRegistered(code) {
+				continue
+			}
+			if owner, ok := legacyDeclared[code]; !ok || owner == "" {
+				t.Errorf("%s declares %s: assign it in current Appendix B or an accepted VIP, or name its deletion/renumbering owner in legacyDeclared", filepath.Base(path), specCodeName(code))
 			}
 		}
 	}
-	if seen == 0 {
-		t.Fatal("no message( declaration in ../vibelang")
+	if len(declared) == 0 {
+		t.Fatal("no message declaration in ../vibelang")
+	}
+	for code, owner := range legacyDeclared {
+		if owner == "" {
+			t.Errorf("%s: legacyDeclared has no owner", specCodeName(code))
+		}
+		if !declared[code] || Facts().IsRegistered(code) {
+			t.Errorf("%s: delete it from legacyDeclared (%s): no longer declared or now specified", specCodeName(code), owner)
+		}
 	}
 }

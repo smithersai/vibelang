@@ -186,7 +186,7 @@ func toolsFormatDifference(before, after *Result) string {
 	codes := func(r *Result) []string {
 		var codes []string
 		for _, d := range r.Diagnostics {
-			codes = append(codes, fmt.Sprintf("%s%d:%s", d.Source(), d.Code(), d.Category().Name()))
+			codes = append(codes, fmt.Sprintf("%s:%s", diagnosticCodeName(d.Source(), d.Code()), d.Category().Name()))
 		}
 		slices.Sort(codes)
 		return codes
@@ -243,7 +243,7 @@ func toolsFormatKey(before, after *Result) string {
 			if source == "" {
 				source = "TS"
 			}
-			set[fmt.Sprintf("%s%d", source, d.Code())] = true
+			set[diagnosticCodeName(source, d.Code())] = true
 		}
 		return set
 	}

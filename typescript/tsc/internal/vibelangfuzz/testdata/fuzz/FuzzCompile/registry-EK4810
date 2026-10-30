@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function dropped(program: Effect.Effect<number, NotFound>): infer _ {\n  return program as Effect.Effect<number>\n")

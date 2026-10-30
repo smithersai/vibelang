@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport class Person extends Schema.Class<Person>(\"Person\")({ name: Schema.String }) {\n  constructor(props: { readonly name: string }) {\n")

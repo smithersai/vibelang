@@ -62,7 +62,7 @@ func FuzzMigrationEffectHeritage(f *testing.F) {
 				found = true
 			}
 			if d.Category() == diagnostics.CategoryError {
-				errors = append(errors, fmt.Sprintf("%s%d", d.Source(), d.Code()))
+				errors = append(errors, diagnosticCodeName(d.Source(), d.Code()))
 			}
 		}
 		expected := context != "direct"

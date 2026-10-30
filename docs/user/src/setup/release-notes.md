@@ -236,6 +236,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Renaming a repeated `is` binding could also change reads of an outer parameter or local after a failed pattern; the quick fix and `vibelang --fix` now preserve those fallback reads.
 
 - Schema declarations rejected named, optional and rest tuples, including rest arrays written as `readonly T[]`, with `EK2109`; they now preserve their written positions using Effect's tuple schemas, optional positions accept explicit `undefined`, and invalid element order keeps TypeScript's diagnostics.
+
+- Fuzz checks rejected current diagnostic codes and applied retired severity rules; they now read the registry and severity rules from Appendix B and the current tooling chapter, including imported `EK38xx` diagnostics in `.ts` files.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

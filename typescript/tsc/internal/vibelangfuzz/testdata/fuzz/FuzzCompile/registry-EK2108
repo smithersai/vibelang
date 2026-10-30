@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ncontrol Approval {\n  note(text: string): void!!\n  try {\n  } handle Approval.approve(request) {\n")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- ref2-ambiguous-provider.fail.vibe --\nservice Users {\n}\nconst UsersLive = Layer.succeed(Users, {\n})\nconst UsersTest = Layer.succeed(Users, {\n})\nconst AppLive = wire(UsersLive, UsersTest)\n")

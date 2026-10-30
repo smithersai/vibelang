@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\neffect function work() { try sleep(\"1 millis\"); return 1 }\n  static { work }\n")

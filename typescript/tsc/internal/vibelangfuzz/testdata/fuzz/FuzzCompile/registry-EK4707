@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ndata Delivery {\n}\ndata Phase { Draft; Done }\nfunction wrongType(delivery: Delivery) {\n  return match (delivery) {\n    when Phase.Draft: \"draft\";\n")

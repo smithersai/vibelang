@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ninterface SearchApi {\n  find(query: string): string!!\nexport service Search: SearchApi {\n  static effect find(query: string) {\n")

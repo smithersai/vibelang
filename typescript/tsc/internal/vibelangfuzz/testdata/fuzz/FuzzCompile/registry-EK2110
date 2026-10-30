@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ncontrol Steps {\n  first(): void!!\n  second(): void!!\n  return try handle(effect { return try work() }, Steps, {\n    effect first(k) {\n      const n: number = try resume(k, undefined)\n")

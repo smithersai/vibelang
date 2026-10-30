@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  return await.race { a: load(), b: load() }\n")

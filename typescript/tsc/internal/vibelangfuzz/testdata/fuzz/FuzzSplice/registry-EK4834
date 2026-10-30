@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function main() { return Effect.catchTag(g(), \"Missing\", (e) => Effect.succeed(1)) }\n")

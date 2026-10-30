@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\neffect function defect() {\n  try {\n  } catch {\n")

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("{\"severities\":{\"EK4610\":\"off\"}}")
+string("export effect function deferreds(ready: ReadonlyArray<Deferred<number>>) {\n  return await.race ready\n")

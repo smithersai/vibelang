@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function span() { return (try Effect.succeed(1)).pipe(Effect.withSpan(\"n\")) }\n")

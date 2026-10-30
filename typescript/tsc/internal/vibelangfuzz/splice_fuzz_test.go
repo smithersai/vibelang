@@ -23,8 +23,8 @@ const spliceTarget = "FuzzSplice"
 //     order (D266), the same tree on every parse, and ESTree that is JSON
 //     with ranges inside the text (Chapter 28 Linting, D277). CheckParse
 //     holds a text to these.
-//   - The project: every EK code registered in Chapter 28 and not retired,
-//     in its default category, only in .vibe files (D266), at spans inside
+//   - The project: every EK code registered in current Appendix B or an accepted VIP,
+//     in its specified default category, at spans inside
 //     their files; the same diagnostics and outputs from a fresh compilation
 //     and in every order the checker can be asked (Chapters 27 and 28); and,
 //     with no error, every output Chapter 27 requires, with the imports,

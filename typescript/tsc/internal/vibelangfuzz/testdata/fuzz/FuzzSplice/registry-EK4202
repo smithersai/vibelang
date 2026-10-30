@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- approval.vibe --\nexport abstract class Approval extends Control {\n  abstract approve(request: string): Effect<boolean, never, never>\n-- helpers.ts --\nimport { Effect } from \"effect\"\nimport type { Approval } from \"./approval.js\"\nexport declare function retryApproval(request: string): Effect.Effect<boolean, never, Approval>\n-- main.vibe --\nimport { retryApproval, twice } from \"./helpers.ts\"\n  return try retryApproval(\"deploy\")\n")

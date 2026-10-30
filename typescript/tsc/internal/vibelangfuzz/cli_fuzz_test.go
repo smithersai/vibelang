@@ -159,7 +159,7 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 		{"--fix", cliBareOnly, "Chapter 28, Diagnostics (D291)"},
 		{"--fix-migration-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
 		{"--fix-vip-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
-		{"--loader-root", []string{".", "sub", "missing"}, "Chapter 28, Building and testing; internal/vibelang/loaderroot.go"},
+		{"--loader-root", []string{".", "sub", "missing"}, "internal/vibelang/loaderroot.go"},
 		{"--lsp", cliBareOnly, "Chapter 28, The editor (D32)"},
 		{"--stdio", cliBareOnly, "Chapter 28, The editor (D32)"},
 		{"--clientProcessId", []string{pid, "0", "x"}, "cmd/tsc/lsp.go"},
@@ -557,9 +557,9 @@ type cliDiagnostic struct {
 
 func (d cliDiagnostic) String() string {
 	if d.File == "" {
-		return fmt.Sprintf("%s %s%d", d.Category, d.Prefix, d.Code)
+		return fmt.Sprintf("%s %s", d.Category, diagnosticCodeName(d.Prefix, int32(d.Code)))
 	}
-	return fmt.Sprintf("%s(%d,%d): %s %s%d", d.File, d.Line, d.Col, d.Category, d.Prefix, d.Code)
+	return fmt.Sprintf("%s(%d,%d): %s %s", d.File, d.Line, d.Col, d.Category, diagnosticCodeName(d.Prefix, int32(d.Code)))
 }
 
 var (
@@ -648,7 +648,7 @@ func cliOptions(w *Workspace, dir string, args []string) *tsoptions.ParsedComman
 
 // cliWithoutLoaderRoot returns args without the --loader-root flag and the
 // directory after it, which the CLI removes before TypeScript parses the
-// rest (Chapter 28, Building and testing; internal/vibelang/loaderroot.go,
+// rest (internal/vibelang/loaderroot.go,
 // "--loader-root <directory>"). It removes the first one only, as the CLI
 // does. A flag with no directory after it, or one that a -b or --build
 // beside it makes the CLI refuse, stays for TypeScript to report.
@@ -764,7 +764,7 @@ func cliErrorCounts(r *Result) map[string]int {
 		if d.File() != nil {
 			file = strings.TrimPrefix(d.File().FileName().AsString(), filepath.ToSlash(r.Dir)+"/")
 		}
-		counts[fmt.Sprintf("%s %s%d", file, cmp(d.Source(), "TS"), d.Code())]++
+		counts[fmt.Sprintf("%s %s", file, diagnosticCodeName(cmp(d.Source(), "TS"), d.Code()))]++
 	}
 	return counts
 }

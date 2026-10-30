@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- a.vibe --\nexport const throws = effect (): Effect.Effect<number, never, never> => { throw new Bad() }\n")

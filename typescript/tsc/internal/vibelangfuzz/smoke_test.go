@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"slices"
+	"strconv"
 	"testing"
 )
 
@@ -47,9 +48,20 @@ export function fails() { return nameOf("7") }
 	if n := len(SnippetSeeds()); n < 500 {
 		t.Errorf("%d snippet seeds; the documents hold more than 500 vibe blocks", n)
 	}
-	if n := len(SpecCodes()); n < 100 {
-		t.Errorf("%d EK codes read from Chapter 28", n)
+	rows, _ := appendixBRows(currentSpecText(grammarAppendix))
+	if len(rows) == 0 {
+		t.Fatal("current Appendix B has no diagnostic rows")
 	}
+	for name := range rows {
+		code, err := strconv.Atoi(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !SpecHasCode(int32(code)) {
+			t.Errorf("Appendix B code EK%s missing from the registry", name)
+		}
+	}
+
 	files := map[string]string{"main.vibe": "x\n", "a/b.ts": "y\n"}
 	if got := Unarchive(Archive(files)); len(got) != 2 || got["a/b.ts"] != "y\n" {
 		t.Errorf("archive round trip: %v", got)

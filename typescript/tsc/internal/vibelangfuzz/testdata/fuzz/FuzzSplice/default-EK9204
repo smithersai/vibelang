@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\neffect function defect() {\n  try {\n  } catch {\n  }\n}\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"lib\": [\"esnext\"], \"module\": \"nodenext\", \"moduleResolution\": \"nodenext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"outDir\": \"out\", \"vibelang\": {\"diagnostics\": {\"EK9204\": \"error\"}}}, \"include\": [\"*.vibe\"]}\n")

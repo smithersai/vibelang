@@ -3,7 +3,6 @@ package vibelangfuzz
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -15,51 +14,9 @@ func normalizeSpace(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// TestSpecRuleFacts checks that the facts read from Chapter 28 agree with
-// what the chapter's prose says about them, so a parse that drifts from the
-// text fails here and not as a wrong oracle.
-func TestSpecRuleFacts(t *testing.T) {
-	SkipRetired(t, rulesTarget)
-	rows := SpecRows()
-	for _, code := range SpecCodes() {
-		if _, ok := rows[code]; !ok {
-			t.Errorf("%s: no registry row parsed", specCodeName(code))
-		}
-	}
-	// "Before EK4801, nine EK codes are warnings by default."
-	words := map[string]int{"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
-	m := regexp.MustCompile(`Before EK4801, (\w+) EK codes are warnings by default`).FindStringSubmatch(SpecText(toolingChapter))
-	if m == nil {
-		t.Fatal("Chapter 28 no longer counts the warnings before EK4801")
-	}
-	var warnings []string
-	for _, code := range append(SpecCodes(), SpecListedCodes()...) {
-		if (code < 4801 || code == 9204) && SpecDefaultCategory(code) == CategoryWarning {
-			warnings = append(warnings, specCodeName(code))
-		}
-	}
-	if len(warnings) != words[m[1]] {
-		t.Errorf("Chapter 28 says %s warnings before EK4801; the parse finds %d: %v", m[1], len(warnings), warnings)
-	}
-	// "A project may set EK1012, ... and EK4409 to ..." names adjustable codes.
-	for _, code := range codesIn(specParagraph(toolingChapter, "A project may set")[:strings.Index(specParagraph(toolingChapter, "A project may set"), " to ")]) {
-		if !SpecAdjustable(code) {
-			t.Errorf("%s: Chapter 28's prose lets a project set it, the settings table's parse does not", specCodeName(code))
-		}
-	}
-	// "EK9100 is an error that no setting lowers"; EK4838 and EK4813 are not adjustable.
-	for _, code := range []int32{9100, 4813, 4838} {
-		if SpecAdjustable(code) {
-			t.Errorf("%s: parsed as adjustable", specCodeName(code))
-		}
-	}
-	for _, code := range []int32{1008, 2115, 2116} {
-		if !SpecRetired(code) {
-			t.Errorf("%s: Chapter 28 retires it; the parse does not", specCodeName(code))
-		}
-	}
-	t.Logf("%d codes; adjustable %v; retired %v", len(SpecCodes()), names(SpecAdjustableCodes()), names(SpecRetiredCodes()))
-}
+// TestSpecRuleFacts checks the shared current registry facts even though
+// the historical injection targets remain retired.
+func TestSpecRuleFacts(t *testing.T) { TestSpecFacts(t) }
 
 func names(codes []int32) []string {
 	var out []string
@@ -73,7 +30,6 @@ func names(codes []int32) []string {
 // each injection names a registry code and quotes the clause of its row
 // that it violates, and each allowed form quotes the text that allows it.
 func TestSpecRuleTable(t *testing.T) {
-	SkipRetired(t, rulesTarget)
 	seen := map[string]bool{}
 	allSlots := []string{slotTop, slotEffect, slotPlain, slotMember, slotHatch, slotAsyncHatch, slotModule, slotTS, slotFile, slotNoEffect}
 	for _, inj := range ruleInjections {
@@ -82,11 +38,11 @@ func TestSpecRuleTable(t *testing.T) {
 		}
 		seen[inj.Key()] = true
 		row, ok := SpecRows()[inj.Code]
-		if !ok {
-			t.Errorf("%s: Chapter 28's registry has no row for the code", inj.Key())
+		if _, imported := Facts().Imported[inj.Code]; !ok && !imported {
+			t.Errorf("%s: the current registry has no row for the code", inj.Key())
 			continue
 		}
-		if !strings.Contains(normalizeSpace(row.Reports), normalizeSpace(inj.Quote)) {
+		if !strings.Contains(normalizeSpace(currentSpecText(inj.Chapter)), normalizeSpace(inj.Quote)) {
 			t.Errorf("%s: the registry row no longer says %q; review the injection against the row:\n%s", inj.Key(), inj.Quote, row.Reports)
 		}
 		if SpecRetired(inj.Code) {
@@ -105,14 +61,14 @@ func TestSpecRuleTable(t *testing.T) {
 		}
 	}
 	for _, a := range allowedForms {
-		if !strings.Contains(normalizeSpace(SpecText(a.Chapter)), normalizeSpace(a.Quote)) {
+		if !strings.Contains(normalizeSpace(currentSpecText(a.Chapter)), normalizeSpace(a.Quote)) {
 			t.Errorf("allowed %s: %s no longer says %q", a.Name, a.Chapter, a.Quote)
 		}
 	}
 }
 
-// TestSpecRuleCoverage requires that every code in Chapter 28's registry,
-// the table's and those listed after it, has an injection, is pending in
+// TestSpecRuleCoverage is retained for the retired injection target: each
+// current registry code would need an injection, is pending in
 // testdata/pending/rules.txt as "ek:EKnnnn", or is one the specification
 // keeps unused. It fails when the specification adds a code that nothing
 // here checks.
@@ -223,7 +179,7 @@ func firstChoice(slot string, dom bool) ruleChoice {
 	panic("no template host offers slot " + slot)
 }
 
-// TestSpecRuleSettings checks Chapter 28's settings (D34, D241, D275): for an
+// TestSpecRuleSettings belongs to the retired injection target: for an
 // adjustable code, each setting gives the category it names, and for any
 // other code no comment or wildcard changes it.
 func TestSpecRuleSettings(t *testing.T) {

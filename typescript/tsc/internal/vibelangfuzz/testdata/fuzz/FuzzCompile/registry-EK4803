@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport const both = one + two\n-- vendor/one/index.d.ts --\n\n-- vendor/one/package.json --\n{\"name\":\"@effect/fake\",\"version\":\"1.0.0\",\"type\":\"module\",\"types\":\"./index.d.ts\"}\n-- vendor/two/index.d.ts --\n\n-- vendor/two/package.json --\n{\"name\":\"@effect/fake\",\"version\":\"2.0.0\",\"type\":\"module\",\"types\":\"./index.d.ts\"}\n")

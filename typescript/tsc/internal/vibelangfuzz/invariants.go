@@ -36,7 +36,8 @@ type Gaps struct {
 
 type gap struct{ key, text string }
 
-// Add records a disagreement under key: "ek:EK4409" for one rule,
+// Add records a disagreement under key: "ek:EK4701" for an assigned rule,
+// "registry:EK4409" for an unassigned emitted code,
 // "feature:<oracle>" for an oracle, or "corpus:<file>" for one input.
 func (g *Gaps) Add(key, format string, args ...any) {
 	text := fmt.Sprintf(format, args...)
@@ -123,7 +124,7 @@ type DiagnosticKey struct {
 }
 
 func (k DiagnosticKey) String() string {
-	return fmt.Sprintf("%s(%d+%d): %s %s%d: %s", k.File, k.Pos, k.Len, k.Category.Name(), cmp(k.Source, "TS"), k.Code, k.Text)
+	return fmt.Sprintf("%s(%d+%d): %s %s: %s", k.File, k.Pos, k.Len, k.Category.Name(), diagnosticCodeName(cmp(k.Source, "TS"), k.Code), k.Text)
 }
 
 func cmp(a, b string) string {
@@ -238,9 +239,7 @@ func firstDifference(x, y string) string {
 	return fmt.Sprintf("  first:  …%q\n  second: …%q", x[from:min(len(x), i+80)], y[from:min(len(y), i+80)])
 }
 
-// CheckDiagnostics applies the invariants every diagnostic of a compilation
-// keeps, whatever the project's settings. A Chapter 28 registry fact is
-// checked only where Facts derives one.
+// CheckDiagnostics checks current Appendix B identity and default categories.
 func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply bool, severities ...map[string]string) {
 	facts := Facts()
 	for _, d := range ds {
@@ -249,55 +248,37 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 			continue
 		}
 		code := d.Code()
-		name := fmt.Sprintf("EK%04d", code)
-		// VIP-30 / 007-tooling.md puts configuration diagnostics in the config
-		// JSON, not in a .vibe source. Keep the ordinary-source D266 invariant
-		// below; only the configuration codes have this separate scope/category.
-		if want, ok := configurationDiagnosticDefault(d); ok {
-			if (defaultsApply || want != DefaultWarning) && !CategoryMatches(want, d.Category()) {
-				g.Add("config:category:"+name, "%s has the wrong configuration category: %s", name, keyOf(dir, d))
+		name := specCodeName(code)
+		_, imported := facts.Imported[code]
+		// VIP-30 keeps configuration's JSON/global scope and category separate
+		// from language rules and VIP-38's imported lint rules.
+		if !imported {
+			if want, ok := configurationDiagnosticDefault(d); ok {
+				if (defaultsApply || want != DefaultWarning) && !CategoryMatches(want, d.Category()) {
+					g.Add("config:category:"+name, "%s has the wrong configuration category: %s", name, keyOf(dir, d))
+				}
+				continue
 			}
-			continue
 		}
-		// Chapter 28: the registry table and the rules listed below it are
-		// every EK code; "The table lists the codes the compiler's registry
-		// holds" (D33, D53, D374).
+		// Appendix B: "Every diagnostic has an `EK` code and a message that
+		// says how to fix it (VIP-34)."
 		if !facts.IsRegistered(code) {
-			g.Add("ek:"+name, "%s is not in Chapter 28's registry: %s", name, keyOf(dir, d))
+			g.Add("registry:"+name, "%s is not in the current Appendix B registry: %s", name, keyOf(dir, d))
 			continue
 		}
-		// Chapter 28: "Retired codes keep their numbers unused" (D309, D323,
-		// D325).
 		if slices.Contains(facts.Retired, code) {
-			g.Add("ek:"+name, "%s is retired and its number unused (Chapter 28), but was reported: %s", name, keyOf(dir, d))
+			g.Add("ek:"+name, "%s is retired in the current specification, but was reported: %s", name, keyOf(dir, d))
 			continue
 		}
-		// D266: "every EK diagnostic is restricted to .vibe files, and
-		// ordinary TypeScript sources keep TypeScript diagnostics whatever
-		// these settings say" (Chapter 28).
-		if d.File() == nil || !strings.HasSuffix(string(d.File().OriginalFileName()), ".vibe") {
-			g.Add("feature:d266", "D266: %s attaches to a file that is not a .vibe file: %s", name, keyOf(dir, d))
+		// VIP-38 / 007-tooling.md: "VibeLang-specific language checks remain
+		// confined to `.vibe`." Imported rules retain upstream file eligibility,
+		// including selected TypeScript inputs (importedFileScopeQuote).
+		// This invariant confines VibeLang's own rules, not the imported rules.
+		if !imported && (d.File() == nil || !strings.HasSuffix(string(d.File().OriginalFileName()), ".vibe")) {
+			g.Add("feature:d266", "VIP-34: %s attaches to a file that is not a .vibe file: %s", name, keyOf(dir, d))
 			continue
-		}
-		// Chapter 28: EK9101 is an "editor-only suggestion; not emitted by
-		// the CLI"; every other code has the default category the chapter
-		// gives it when no setting or comment changes it (D34, D241, D420).
-		want := facts.Default(code)
-		// VIP-20, amended: Appendix B assigns EK2004 to a non-Stream
-		// operand, an error. The legacy catch warning still uses this code
-		// until its lane renumbers it; keep checking that warning unchanged.
-		if code == 2004 && strings.HasPrefix(d.MessageText(), "for try requires a Stream;") {
-			want = DefaultError
 		}
 		adjustable := facts.IsAdjustable(code)
-		catalog := "Chapter 28"
-		if current, ok := currentDiagnosticPolicy()[code]; ok {
-			want, adjustable, catalog = current, current == DefaultWarning, "Appendix B"
-		}
-		if want == DefaultNever {
-			g.Add("ek:"+name, "%s is never emitted by the CLI (Chapter 28), but was reported: %s", name, keyOf(dir, d))
-			continue
-		}
 		// VIP-30 overrides one diagnostic code, never the whole project's
 		// warning policy. The effective map includes inherited settings.
 		if adjustable && len(severities) != 0 {
@@ -314,8 +295,8 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		if !defaultsApply && adjustable {
 			continue
 		}
-		if !CategoryMatches(want, d.Category()) {
-			g.Add("ek:"+name, "%s is %s by default (%s), but was reported as %s: %s", name, want, catalog, d.Category().Name(), keyOf(dir, d))
+		if !CategoryMatches(facts.Default(code), d.Category()) {
+			g.Add("ek:"+name, "%s is %s by default (Appendix B), but was reported as %s: %s", name, facts.Default(code), d.Category().Name(), keyOf(dir, d))
 		}
 	}
 }
@@ -327,9 +308,9 @@ func CategoryMatches(want DefaultCategory, got diagnostics.Category) bool {
 		return got == diagnostics.CategoryError
 	case DefaultWarning:
 		return got == diagnostics.CategoryWarning
-	case DefaultErrorOrWarning:
-		return got == diagnostics.CategoryError || got == diagnostics.CategoryWarning
-	case DefaultOff, DefaultNever:
+	case DefaultSuggestion:
+		return got == diagnostics.CategorySuggestion
+	case DefaultOff:
 		return false
 	}
 	return true
@@ -350,20 +331,20 @@ func checkSpan(g *Gaps, dir string, d *ast.Diagnostic) {
 	}
 }
 
-// DefaultsApply reports whether a project's EK diagnostics must have their
-// default categories: no configuration file sets the `vibelang` setting
-// `diagnostics`, and no source has an @vibelang-diagnostics comment
-// (Chapter 28, D241, D275). Modern vibe.severities entries are checked
-// individually against the effective project settings instead.
+// DefaultsApply checks defaults unless Effect language-service settings override them.
+// Modern vibe.severities entries are checked individually by CheckDiagnostics:
+// 007-tooling.md, "Severity resolves from an entry for the printed code in
+// `vibe.severities`, then the repository's Effect language-service
+// configuration, then the rule's default".
 func DefaultsApply(project Project) bool {
-	if strings.Contains(project.Config, `"diagnostics"`) {
+	supplied := func(text string) bool {
+		return strings.Contains(text, `"diagnosticSeverity"`)
+	}
+	if supplied(project.Config) {
 		return false
 	}
 	for name, text := range project.Files {
-		if strings.HasSuffix(name, ".json") && strings.Contains(text, `"diagnostics"`) {
-			return false
-		}
-		if strings.Contains(text, "@vibelang-diagnostics") {
+		if strings.HasSuffix(name, ".json") && supplied(text) {
 			return false
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -142,17 +141,25 @@ func TestSuperseded(t *testing.T) {
 	}
 }
 
-var ekKey = regexp.MustCompile(`^ek:EK(\d{4})(/.+)?$`)
+var registryKey = regexp.MustCompile(`^registry:EK(38\d{2,}|\d{4})$`)
 
-// deadKey names what is wrong with a key no input can reach: a code Chapter
-// 28 never names, or a rule injection that does not exist.
+var ekKey = regexp.MustCompile(`^ek:EK(38\d{2,}|\d{4})(/.+)?$`)
+
+// deadKey rejects codes absent from the current registry and missing injections.
 func deadKey(e PendingEntry) string {
+	if m := registryKey.FindStringSubmatch(e.Key); m != nil {
+		code, _ := strconv.Atoi(m[1])
+		if SpecHasCode(int32(code)) {
+			return "the current specification now registers EK" + m[1]
+		}
+		return ""
+	}
 	m := ekKey.FindStringSubmatch(e.Key)
 	if m == nil {
 		return ""
 	}
-	if code, _ := strconv.Atoi(m[1]); !strings.Contains(SpecText("428-part4-ch28-tooling.md"), "EK"+m[1]) && !slices.Contains(vipCodes, int32(code)) && !SpecHasCode(int32(code)) {
-		return "neither Chapter 28 nor Appendix B names EK" + m[1]
+	if code, _ := strconv.Atoi(m[1]); !SpecHasCode(int32(code)) {
+		return "the current specification never registers EK" + m[1]
 	}
 	if m[2] != "" && e.Target == rulesTarget {
 		for _, inj := range ruleInjections {

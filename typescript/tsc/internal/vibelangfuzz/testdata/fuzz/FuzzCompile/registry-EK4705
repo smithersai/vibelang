@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  return match (n) {\n    when 1 and Number or 3: \"mixed\";\n")

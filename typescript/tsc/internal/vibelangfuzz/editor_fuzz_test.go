@@ -416,12 +416,12 @@ func (e *toolsEditor) verifyQuickFix(title string, code int32, d *lsproto.Diagno
 			}
 		}
 		slices.Sort(codes)
-		Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-error:EK%d:%s", code, strings.Join(codes, "+")), "the quick fix %q of EK%d adds errors: %s\n%s\nfixed:\n%s", title, code, strings.Join(added, "\n"), e.archive, Archive(files))
+		Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-error:EK%04d:%s", code, strings.Join(codes, "+")), "the quick fix %q of EK%04d adds errors: %s\n%s\nfixed:\n%s", title, code, strings.Join(added, "\n"), e.archive, Archive(files))
 	}
 	file := fixed.SourceFile(e.main)
 	for _, after := range fixed.Diagnostics {
 		if after.File() == file && file != nil && after.Source() == "EK" && after.Code() == code && after.Pos() == start && after.End() == end {
-			Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-kept:EK%d", code), "the quick fix %q leaves EK%d at its span: %s\n%s\nfixed:\n%s", title, code, after.String(), e.archive, Archive(files))
+			Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-kept:EK%04d", code), "the quick fix %q leaves EK%04d at its span: %s\n%s\nfixed:\n%s", title, code, after.String(), e.archive, Archive(files))
 		}
 	}
 }
@@ -435,7 +435,7 @@ func toolsActionKey(action *lsproto.CodeAction, d *lsproto.Diagnostic) string {
 		if source == "" {
 			source = "TS"
 		}
-		return fmt.Sprintf("%s%d", source, code)
+		return diagnosticCodeName(source, code)
 	}
 	// A refactor is keyed by the words of its title, without the quoted
 	// names the input supplies, so each refactor's gap is its own.

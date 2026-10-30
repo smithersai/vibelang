@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n  const pending = new Promise<number>((resolve) => resolve(1))\n")

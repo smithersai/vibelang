@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\nEffect.succeed(1)\n\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"lib\": [\"esnext\", \"dom\"], \"module\": \"nodenext\", \"moduleResolution\": \"nodenext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"outDir\": \"out\", \"vibelang\": {}, \"plugins\": [{\"name\": \"@effect/language-service\", \"diagnosticSeverity\": {\"floatingEffect\": \"error\"}}]}, \"include\": [\"*.ts\", \"*.vibe\"]}\n")
