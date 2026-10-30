@@ -4,8 +4,8 @@ import "fmt"
 
 // VIP-29: serializable errors. "`schema error Name { fields }` combines
 // VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as
-// TypeScript types and mapped to Schemas, and the error can be decoded from
-// JSON". The reference is the class VIP-29 shows, less its type argument
+// TypeScript types and mapped to Schemas. Transport compatibility follows
+// their encoded representations". The reference is the class VIP-29 shows, less its type argument
 // `<NotFound>`, which ref.mjs, untyped JavaScript, cannot hold:
 //
 //	schema error E0 { f0: number; f1: string }
@@ -13,12 +13,11 @@ import "fmt"
 //
 // The fields are VIP-15's (vip15_schema.go). A program uses the error as
 // VIP-13 uses its errors: thrown (VIP-4) and caught with
-// `x catch (e) => f(e)` (VIP-5's table). VIP-29 shows no Effect TS for
-// crossing JSON, so the suite reads "can be decoded from JSON" as Effect's
-// Schema.encodeEffect of an error, then Schema.decodeUnknownEffect of what
-// it encoded, which gives an equal error; a decode of a corrupted encoding
+// `x catch (e) => f(e)` (VIP-5's table). The suite runs
+// Schema.encodeEffect on an error, then Schema.decodeUnknownEffect on its
+// encoded representation, giving an equal error; a corrupted encoding
 // fails with a SchemaError, whose structure the Exit comparison checks.
-// The encoding is a plain object, so it is what JSON would carry.
+// This is a codec round trip, without JSON serialization or transport.
 //
 // A schema error may have no fields. VIP-29's error is VIP-13's, and VIP-13
 // shows one, "error Timeout // an error with no fields", read as
@@ -48,7 +47,7 @@ func init() {
 			{
 				VIP:      29,
 				Template: `class ‹Name› extends Schema.TaggedError‹<Name>›()(‹"Name"›, { ‹field›: Schema.String }) {}`,
-				Quote:    "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.",
+				Quote:    "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above.",
 			},
 			{
 				VIP:      13,
@@ -58,20 +57,20 @@ func init() {
 			{
 				VIP:      29,
 				Template: "yield* Schema.encodeEffect(‹Name›)(‹error›)",
-				Quote:    "the error can be decoded from JSON, so it crosses workers and RPC.",
-				Reading:  "VIP-29 shows no Effect TS for crossing JSON. The class is a Schema, so the suite encodes the error with Effect's Schema.encodeEffect, run with try (yield*), which gives the plain object JSON carries.",
+				Quote:    "The encoded value follows the field codecs; encoding is not JSON serialization:",
+				Reading:  "The class is a Schema. The suite runs Schema.encodeEffect with try (yield*) to obtain its encoded representation; this probe does not serialize it as JSON.",
 			},
 			{
 				VIP:      29,
 				Template: "yield* Schema.decodeUnknownEffect(‹Name›)(‹encoded›)",
-				Quote:    "the error can be decoded from JSON, so it crosses workers and RPC.",
-				Reading:  "VIP-29 shows no Effect TS for decoding. The suite decodes the encoded object, or a corrupted one, with Effect's Schema.decodeUnknownEffect, run with try (yield*): an equal error, or a SchemaError.",
+				Quote:    "The encoded value follows the field codecs; encoding is not JSON serialization:",
+				Reading:  "The suite runs Schema.decodeUnknownEffect with try (yield*) on the encoded representation, or a corrupted one: an equal error, or a SchemaError, without a JSON transport.",
 			},
 		},
 		// The probe declares `schema error E0 { f0: number; f1: string }`,
 		// catches a failure with one and reads its number, encodes an E0
 		// and decodes it again, logs the decoded error's _tag, and throws
-		// the decoded error, so main fails with an E0 that crossed JSON. A
+		// the decoded error, so main fails with an E0 after a codec round trip. A
 		// campaign's input leaves the throw out half the time.
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -295,7 +294,7 @@ func roundTrip(g *Gen, d *SchemaErrorDecl, err *NewSchemaError, corrupt *Entry) 
 
 // vip29Cite is the VIP-29 sentence the chapter 3 witnesses give meaning to.
 func vip29Cite(template string) Citation {
-	return Citation{VIP: 29, Template: template, Quote: "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC."}
+	return Citation{VIP: 29, Template: template, Quote: "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above."}
 }
 
 func init() {
@@ -394,7 +393,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      29,
 			Template: "class ‹Name› extends Schema.TaggedError‹<Name>›()(‹tag›, { name: Schema.NonEmptyString }) {}",
-			Quote:    "- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.",
+			Quote:    "- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above.",
 			Reading:  "Chapter 3 shows exactly this constructor-validation counterpart: Invalid has name: Schema.NonEmptyString, and Effect.gen returns yield* Effect.fail(new Invalid({ name: emptyString })). The constructor's JavaScript exception is a defect rather than a typed failure. This uses VIP-29's field mapping; generic type arguments are erased for ref.mjs.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {

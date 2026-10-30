@@ -12,7 +12,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      29,
 			Template: "class ‹Name› extends Schema.TaggedError‹<Name>›()(‹tag›, { [‹field›]: Schema.Number }) {}",
-			Quote:    "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.",
+			Quote:    "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above.",
 			Reading:  "Chapter 3's Field keys example uses a string-typed field name and Schema.decodeUnknownExit: a missing actual key fails, and an unrelated key is stripped. The reference keeps that exact Schema.TaggedError class and computed field map. Type-only arguments/annotations are erased for ref.mjs.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {

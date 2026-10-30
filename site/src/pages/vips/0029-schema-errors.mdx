@@ -15,14 +15,30 @@ schema error NotFound { id: string }
 class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {}
 ```
 
-Crossing JSON uses Effect's Schema API (VIP-14), for example:
+Encoding and decoding use Effect's Schema API (VIP-14). The encoded value follows the field codecs; encoding is not JSON serialization:
 
 ```ts
-const json = try Schema.encodeEffect(NotFound)(err)
-const back = try Schema.decodeUnknownEffect(NotFound)(json)
+const encoded = try Schema.encodeEffect(NotFound)(err)
+const back = try Schema.decodeUnknownEffect(NotFound)(encoded)
 ```
 
-- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC.
+JSON, worker messages and RPC transports must support that encoded representation. The declaration adds no implicit wire conversion. For example, `Schema.BigInt` encodes a bigint, which ordinary JSON cannot serialize; `Schema.BigIntFromString` encodes a string. Choose compatible codecs and a transport that preserves the required values and property keys.
+
+```ts
+import { Effect, Schema } from "effect"
+
+class BigCount extends Schema.TaggedError<BigCount>()("BigCount", { count: Schema.BigInt }) {}
+class JsonCount extends Schema.TaggedError<JsonCount>()("JsonCount", { count: Schema.BigIntFromString }) {}
+const encodedBigCount = Schema.encodeSync(BigCount)(new BigCount({ count: 1n }))
+const jsonTransportExit = Effect.runSyncExit(Effect.try({
+  try: () => JSON.stringify(encodedBigCount), catch: (error) => error,
+})) // Failure(TypeError): count is still a bigint
+const encodedJsonCount = Schema.encodeSync(JsonCount)(new JsonCount({ count: 1n }))
+const jsonRoundTripExit = Schema.decodeUnknownExit(JsonCount)(JSON.parse(JSON.stringify(encodedJsonCount)))
+// Success(JsonCount({ count: 1n })); the encoded count was "1"
+```
+
+- `schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above.
 - The body rules are VIP-13's: methods and getters are allowed, and a constructor or a `_tag` override is not.
 - **Ambiguity: none.** `schema error NotFound {` and the alias form `schema error = …` differ at the next token.
 - **Amended 2026-10-29: no braces.** `schema error Timeout`, with no body, is allowed, like VIP-13's `error Timeout`. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
