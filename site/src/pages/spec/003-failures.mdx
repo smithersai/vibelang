@@ -791,6 +791,11 @@ error Access {
 
 A member rejected by [Functions](/spec/001-functions#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 
+```vibe [VibeLang]
+// compiler-gap: pending VIP-1, VIP-13
+error BadMember { async effect get value() { return 1 } } // EK0104 and EK0105; no extra EK1304
+```
+
 ### Meaning
 
 `error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly. Optional `id?: T` maps to `readonly id?: T`, as in a TypeScript type literal. Fields, methods and getters may be interleaved, as in a TypeScript class.
