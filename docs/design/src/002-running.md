@@ -430,7 +430,7 @@ function saveAll(entries: Array<[string, number]>) {
 | --- | --- |
 | `for try` outside effect code | `EK2001` |
 | `return` in the body | `EK2002` |
-| a labeled `break` or `continue` naming a statement outside the `for try` statement: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
+| a labeled `break` or `continue` naming a statement outside the body, including the `for try` statement itself: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 
 ### Meaning
@@ -462,6 +462,18 @@ function saveAll(rows: Stream.Stream<Row>) {
       return true
     }))
   })
+}
+```
+
+A label on the `for try` itself is outside its body (VIP-20, decided detail 49). Remove the labels from these jumps to use the unlabeled `break` and `continue` above:
+
+```vibe es
+// compiler-gap: pending VIP-20
+effect function first(rows: Stream.Stream<number>) {
+  scan: for try (const row of rows) {
+    if (row === 0) break scan   // EK2003; write break
+    continue scan               // EK2003; write continue
+  }
 }
 ```
 
@@ -609,8 +621,8 @@ A *region body* is source code that the lowering moves into a generated callback
 - A completion consumed inside the region body stays as written.
 - Any other completion ends the body's generator with a record: `{ _tag: "Return", value }`, `{ _tag: "Break", label }` or `{ _tag: "Continue", label }`, under fresh names, and `{ _tag: "Normal" }` when the body completes normally. `return e` evaluates `e` once, inside the body.
 - Where the region stands, after `yield*` returns, the code re-issues the record: `return $c.value`, `break L` or `continue L`, where `L` is the consumer's label; the lowering gives an unlabeled consumer a fresh label. Inside an enclosing region body the re-issued jump is again a record, so it passes outward until it reaches its consumer.
-- When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes `continue`, or a `continue` naming the `for try` itself, as `return true`, and `break`, or a `break` naming it, as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
-- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement outside that `for try` statement: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
+- When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes an unlabeled `continue` as `return true` and an unlabeled `break` as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
+- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement outside its body, including the `for try` statement itself: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
 - Only a body that completes gives a record. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
 
 ```vibe es
