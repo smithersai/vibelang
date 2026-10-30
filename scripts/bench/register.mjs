@@ -63,6 +63,8 @@ for (const [file, setup] of [[compiler, "run sh scripts/build-vibelang.sh, or se
   }
 }
 const out = options.out || mkdtempSync(path.join(tmpdir(), "vibelang-register-bench-"))
+// Own temporary output even when setup or a child command exits early.
+if (!options.out) process.on("exit", () => rmSync(out, { recursive: true, force: true }))
 
 const tsconfig = JSON.stringify({
   compilerOptions: {
@@ -229,7 +231,6 @@ console.log(`${options.packages} packages of ${options.modules} modules, medians
 console.log(`start ${seconds(start)} s, check ${seconds(checked)} s, cold ${seconds(cold)} s, warm ${seconds(warm)} s`)
 console.log(`ratio ${ratio.toFixed(2)} (budget ${options.budget}); each run: ${samples.ratio.map((value) => value.toFixed(2)).join(", ")}`)
 console.log(`last cold run: ${summary}`)
-if (!options.out) rmSync(out, { recursive: true, force: true })
 if (ratio > options.budget) {
   console.error(`register.mjs: over budget: the cold start compiled for ${ratio.toFixed(2)} checks of the workspace`)
   process.exit(1)
