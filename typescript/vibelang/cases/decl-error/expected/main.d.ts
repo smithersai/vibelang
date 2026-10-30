@@ -7,8 +7,8 @@ export declare class NotFound extends NotFound_base<{
 }> {
 }
 export declare function main(): Effect.Effect<{
-    timeout: void | string;
-    missing: void | string;
+    timeout: string;
+    missing: string;
     wrapped: number;
     label: string;
 }, never, never>;

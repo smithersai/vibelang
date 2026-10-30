@@ -1,0 +1,48 @@
+// expect-result: [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
+export effect function fail() { throw "stop" }
+export effect function branch(flag: boolean) { if (flag) throw 1; else throw 2 }
+export effect function empty() {}
+export effect function fallthrough(flag: boolean) { if (flag) throw "stop" }
+export effect function returnVoid() { return }
+export const arrow = effect () => { throw "stop" }
+export class Worker { effect fail() { throw "stop" } }
+export const worker = { effect fail() { throw "stop" } }
+import { plainFail, PlainWorker } from "./plain.js"
+export effect function nestedCallable() { function inner() { throw "nested" }; const arrow = () => { throw "nested" }; void inner; void arrow }
+export effect function nestedClass() { class Inner { fail() { throw "nested" } }; void Inner }
+export effect function diverges() { while (true) {} }
+export effect function throwOrReturn(flag: boolean) { if (flag) throw "stop"; return }
+type Success<F extends (...args: any[]) => any> = Effect.Success<ReturnType<F>>
+type IsNever<T> = [T] extends [never] ? true : false
+type Exact<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type IsVoid<T> = Exact<T, void>
+type IsUndefined<T> = Exact<T, undefined>
+const declaration: IsNever<Success<typeof fail>> = true
+const branches: IsNever<Success<typeof branch>> = true
+const classMethod: IsNever<Success<Worker["fail"]>> = true
+const arrowMethod: IsNever<Success<typeof arrow>> = true
+const objectMethod: IsNever<Success<typeof worker.fail>> = true
+const emptyVoid: IsVoid<Success<typeof empty>> = true
+const fallthroughVoid: IsUndefined<Success<typeof fallthrough>> = true
+const explicitVoid: IsVoid<Success<typeof returnVoid>> = true
+const plainVoid: IsVoid<ReturnType<typeof plainFail>> = true
+const plainMethodVoid: IsVoid<ReturnType<PlainWorker["fail"]>> = true
+const nestedFunctionVoid: IsVoid<Success<typeof nestedCallable>> = true
+const nestedClassVoid: IsVoid<Success<typeof nestedClass>> = true
+const divergingNever: IsNever<Success<typeof diverges>> = true
+const throwOrReturnUndefined: IsUndefined<Success<typeof throwOrReturn>> = true
+export effect function acceptsNever() {
+  const value: never = try fail()
+  return value
+}
+export effect function main() {
+  const a = try exit(fail())
+  const b = try exit(branch(true))
+  return [
+    declaration, branches, classMethod, arrowMethod, objectMethod,
+    nestedFunctionVoid, nestedClassVoid, divergingNever, throwOrReturnUndefined,
+    emptyVoid, fallthroughVoid, explicitVoid, plainVoid, plainMethodVoid,
+    a._tag === "Failure" && a.cause.reasons[0]?._tag === "Fail" && a.cause.reasons[0].error === "stop",
+    b._tag === "Failure" && b.cause.reasons[0]?._tag === "Fail" && b.cause.reasons[0].error === 1,
+  ]
+}

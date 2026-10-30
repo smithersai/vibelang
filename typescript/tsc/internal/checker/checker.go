@@ -20895,6 +20895,11 @@ func (c *Checker) checkAndAggregateReturnExpressionTypes(fn *ast.Node, checkMode
 		aggregatedTypes = core.AppendIfUnique(aggregatedTypes, t)
 		return false
 	})
+	// In an effect body, throw is return yield* Effect.fail(...). Its
+	// never return participates in inference even beside a successful fallthrough.
+	if fn.Flags&ast.NodeFlagsVibeLangEffect != 0 && effectBodyHasThrow(fn.Body()) {
+		aggregatedTypes = core.AppendIfUnique(aggregatedTypes, c.neverType)
+	}
 	if len(aggregatedTypes) == 0 && !hasReturnWithNoExpression && (hasReturnOfTypeNever || mayReturnNever(fn)) {
 		return nil, true
 	}
@@ -20909,7 +20914,28 @@ func (c *Checker) functionHasImplicitReturn(fn *ast.Node) bool {
 	return endFlowNode != nil && c.isReachableFlowNode(endFlowNode)
 }
 
+// effectBodyHasThrow excludes nested callable bodies and class initialization,
+// whose throws do not return from the surrounding effect body.
+func effectBodyHasThrow(body *ast.Node) bool {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindThrowStatement {
+			return true
+		}
+		if ast.IsFunctionLike(node) || ast.IsClassLike(node) {
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	return visit(body)
+}
+
 func mayReturnNever(fn *ast.Node) bool {
+	// An explicit effect function has the success type of its generator body.
+	// With no reachable successful exit, that type is never (VIP-1 and VIP-4).
+	if fn.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		return true
+	}
 	switch fn.Kind {
 	case ast.KindFunctionExpression, ast.KindArrowFunction:
 		return true
