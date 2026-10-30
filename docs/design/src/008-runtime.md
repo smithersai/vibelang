@@ -362,3 +362,58 @@ for (const [value, expected] of [
 }
 if (await (5 as any) !== 5) throw new Error("native await identity changed")
 ```
+
+<a id="iterable-lifecycle"></a>The `for concurrent` iterable's lifecycle is pinned `Effect.forEach` behavior ([Running Effects](002-running.md#for-concurrent)), not native `for…of` backpressure or closing. This finite witness records pulling before explicitly closing its remaining test iterator. The endless-input consequence follows from synchronous materialization; it does not require running an endless probe.
+
+```vibe es
+// compiler-gap: pending VIP-19
+effect function visit(items: Iterable<number>) {
+  for concurrent(2) (const item of items) {
+    if (item === 1) throw "bad"
+  }
+}
+// A finite non-array input is fully pulled before item Effects start; the Exit fails with "bad".
+```
+
+```ts effect
+// Iterable lifecycle witness: VIP-19, VIP-31, VIP-32
+import { Effect, Exit } from "effect"
+
+function observe(concurrency: number | "unbounded") {
+  const trace: string[] = []
+  function* items() {
+    try {
+      for (let item = 0; item < 5; item++) { trace.push("pull:" + item); yield item }
+    } finally { trace.push("close") }
+  }
+  const iterator = items()
+  const result = Effect.runSyncExit(Effect.forEach(iterator, item => Effect.gen(function* () {
+    trace.push("item:" + item)
+    if (item === 1) return yield* Effect.fail("bad")
+  }), { concurrency, discard: true }))
+  const observed = trace.slice()
+  iterator.return() // test-owned cleanup, after recording the native traversal
+  if (!Exit.isFailure(result) || result.cause.reasons[0]?._tag !== "Fail" ||
+      result.cause.reasons[0].error !== "bad") throw new Error("item failure changed")
+  return observed
+}
+for (const limit of [0, -1, 0.5, 1]) {
+  if (observe(limit).join() !== "pull:0,item:0,pull:1,item:1") throw new Error("incremental pulling or closing changed")
+}
+for (const limit of [2, 2.5, "unbounded"] as const) {
+  const trace = observe(limit)
+  if (trace.slice(0, 6).join() !== "pull:0,pull:1,pull:2,pull:3,pull:4,close") throw new Error("parallel materialization changed")
+  if (trace[6] !== "item:0") throw new Error("item started before materialization")
+}
+let iteratorCalls = 0
+const array = [1, 2]
+Object.defineProperty(array, Symbol.iterator, { value: function* () { iteratorCalls++; yield 99 } })
+function visit(concurrency: number) {
+  const seen: number[] = []
+  Effect.runSync(Effect.forEach(array, item => Effect.sync(() => { seen.push(item) }), { concurrency, discard: true }))
+  return seen.join()
+}
+if (visit(1) !== "99" || iteratorCalls !== 1) throw new Error("sequential array iterator changed")
+iteratorCalls = 0
+if (visit(2) !== "1,2" || iteratorCalls !== 0) throw new Error("parallel array reuse changed")
+```

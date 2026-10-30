@@ -44,6 +44,8 @@ effect function stringify(value: unknown) {
 
 `all` runs Effects sequentially by default; a positive numeric limit bounds active operations. `try.all [...]` is `Effect.all` with unbounded concurrency, like `Promise.all`. Its operands start in order, and one that fails before it suspends stops later ones from starting. Results keep the written order however the work finishes. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
 
+A concurrency limit bounds running work, not iterable pulling. In pinned Effect, `for concurrent(1)` pulls incrementally and an item failure does not call the iterator's `return()`. The parallel branch, including an omitted limit or `"unbounded"`, first materializes a non-array iterable; an endless one cannot finish that step. An existing array is reused by reference and its custom iterator is not called in that branch. Use a Stream with `for try` for ordered Stream consumption. See the [runtime witness](https://vibelang.sh/spec/008-runtime#iterable-lifecycle).
+
 ## Interrupting computations
 
 ```vibe
