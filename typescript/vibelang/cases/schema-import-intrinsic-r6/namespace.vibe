@@ -1,0 +1,2 @@
+import * as Schema from "effect/Schema";
+export schema Name = string;

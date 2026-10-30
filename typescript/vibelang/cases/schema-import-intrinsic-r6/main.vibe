@@ -1,0 +1,3 @@
+import { Schema } from "effect";
+export schema User { name: string; nested: { value: number }; values: number[] }
+export schema Code = "a" | "b";

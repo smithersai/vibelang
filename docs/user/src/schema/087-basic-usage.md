@@ -250,3 +250,5 @@ false true false
 `mapFields` builds a new struct from transformed field descriptions. `optionalKey` permits omission; `optional` also accepts explicit `undefined`. `requiredKey` removes key optionality but keeps an existing `undefined` union. Field transformations drop whole-struct checks; reapply the ones that still describe the new shape.
 
 [Upstream page](https://effect.website/docs/v4/schema/basic-usage)
+
+A `schema` declaration retains the runtime `Schema` dependency used by its generated initializer, including when an explicit `Schema` import has no other value use.
