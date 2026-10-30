@@ -105,8 +105,9 @@ export function loadSpec(root) {
         out.push(kind === 'Proposed.' ? ':::info' : ':::warning')
       }
       if (callout) line = line.replace(/^> ?/, '')
-      // Repository references keep their label. Inline code stays untouched.
-      line = line.replace(/(`+).*?\1|\[([^\]]+)\]\(([^\s)]+)\)/g, (match, ticks, label, href) => {
+      // Repository references keep their label. Inline code stays untouched,
+      // and a label may hold code with brackets, as in [the `[Effect]` parameter](…).
+      line = line.replace(/(`+).*?\1|\[((?:`[^`]*`|[^\]`])+)\]\(([^\s)]+)\)/g, (match, ticks, label, href) => {
         if (ticks) return match
         const result = link(href, path.join(dir, file))
         return result === undefined ? label : `[${label}](${result})`

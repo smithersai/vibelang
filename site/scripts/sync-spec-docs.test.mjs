@@ -131,3 +131,12 @@ test('CLI validates before writing, writes duplicate introduction, and user sync
   assert.throws(() => run('sync-spec-docs.mjs', [path.join(root, 'docs'), '--facts', path.join(root, 'facts.json')]))
   assert.equal(fs.readFileSync(path.join(site, 'src/pages/spec/index.mdx'), 'utf8'), intro)
 })
+
+test('a link label may hold code with brackets', () => {
+  const { put, load } = fixture()
+  put('docs/design/src/101-calls.md', '# Calls\n\n### The `[Effect]` parameter\n')
+  put('docs/design/src/000-intro.md', '# Intro\n\nSee [the `[Effect]` parameter](101-calls.md#the-effect-parameter) and `[not](a-link.md)`.\n')
+  const body = load().convert('000-intro.md', facts)
+  assert.ok(body.includes('[the `[Effect]` parameter](/spec/101-calls#the-effect-parameter)'), body)
+  assert.ok(body.includes('`[not](a-link.md)`'))
+})
