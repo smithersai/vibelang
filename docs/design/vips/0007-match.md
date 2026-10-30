@@ -25,6 +25,52 @@ match (e) {
 - **Amended 2026-10-30: built-in class patterns.** A class pattern naming a built-in uses `Array.isArray(subject)` for `Array` and `subject instanceof C` for every other built-in (`Error` and its subclasses, `AggregateError`, `Date`, `RegExp`, `Map`, `Set`, `WeakMap`, `WeakSet`, `Promise`, typed arrays, `ArrayBuffer`), because compiled JavaScript can't read the draft's internal slots portably. A cross-realm built-in other than an array fails `instanceof`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67a).
 - **Amended 2026-10-30: a class pattern on a VibeLang value that is not a class.** A class pattern naming a `data` declaration or variant constructor, a `schema` declaration, a `service` or a `Context.Reference` is a compile error (`EK0702`; a service keeps `EK3004`). Only `error` declarations and the retained Effect checks have their own `Symbol.customMatcher`. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67b).
 - **Amended 2026-10-29: which subjects are checked, and which arms cover a case.** The subject's type is normalized into union members (`boolean` to `true | false`, an enum to its members, a `data` type to its variants, `Option` to `None | Some`, `Exit` and `Result` to `Success | Failure`). The check applies when every member is a literal, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six cases or a retained Effect error; any other member turns it off. Only unguarded arms cover; a bare binding covers everything; an object pattern covers variant `V` when it has `_tag: "V"` and its other properties are bare keys or `let` bindings of required fields; `or` covers the union; `and`, `not`, regex, relational, array, built-in and user-matcher patterns cover nothing. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 78).
+- **Amended 2026-10-30: lexical cell identity.** Alternatives of one `or` share the cell of a name bound with the same keyword. A later alternative may replace a cell initialized by a failed earlier alternative; saved closures observe the replacement. Source `const` assignments remain forbidden; ordinary TDZ and duplicate-initialization rules outside that authorized replacement remain.
+- **Amended 2026-10-30: loop-head binding lifetimes.** Lexical `is` bindings in `while`/`do…while` shadow outer names in a loop-head scope and never leak outside the loop. Every complete condition evaluation, including after `continue`, starts with fresh uninitialized cells. A successful condition and its following body share those cells, including later `let` writes seen by closures; short-circuiting can leave a binding in TDZ even when the condition is true. The initial `do` body uses uninitialized head cells; closures captured there retain those cells permanently in TDZ. Later conditions never rebind the initial cells. Nested source scopes and ordinary `if` block scope retain their existing rules.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function loopReaders() {
+  const x = 99; let n = 0; const readers: (() => number)[] = []
+  while (n < 2 && (++n is let x)) { readers.push(() => x); x += 10 }
+  return [x, ...readers.map(f => f())] // [99, 11, 12]
+}
+function alternativeReader() {
+  let saved: () => number = () => 0
+  const matched = [5] is ([let x and if ((saved = () => x, false))] or { length: let x })
+  return [matched, saved()] // [true, 1]
+}
+```
+
+Native lexical-cell witnesses for these fixed inputs preserve each closure's cell identity:
+
+```ts effect
+import { Effect } from "effect"
+
+function loopCells() {
+  const x = 99
+  const readers: (() => number)[] = []
+  for (const input of [1, 2]) { let x = input; readers.push(() => x); x += 10 }
+  return [x, ...readers.map(f => f())]
+}
+const loopCellsExit = Effect.runSyncExit(Effect.sync(loopCells)) // Success([99, 11, 12])
+let initialReader: () => number = () => 0
+initialHead: {
+  initialReader = (): number => x
+  break initialHead
+  const x = 0
+}
+const initialHeadExit = Effect.runSyncExit(Effect.sync(initialReader)) // Die(ReferenceError); later cells cannot initialize this closed-over binding
+
+function alternativeCellWitness() {
+  let shared = 5
+  const saved = () => shared
+  shared = 1
+  return [true, saved()]
+}
+const alternativeCellExit = Effect.runSyncExit(Effect.sync(alternativeCellWitness)) // Success([true, 1])
+```
+
 - **Amended 2026-10-29: static typing.** Patterns type as the TypeScript counterpart the specification shows for them: a `match` has the union of its arm types (a `throw` arm contributes `never`), the subject narrows in each arm as the arm's test narrows in TypeScript, and each `let` binding has the type TypeScript gives the bound value in the counterpart. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 79).
 - **Amended 2026-10-29: a lint for extractors that can never match.** When a class or fixed pattern's extracted list has a statically known length and an extractor without a rest pattern has a different number of arguments, VibeLang reports a VIP-38 lint warning (`EK0703`), with the quick fixes `when X:` and `when X(let e):`. Matching is unchanged. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 82).
 - **Amended 2026-10-29: the complete inventory of retained fixed checks.** The retained fixed checks are eighteen: `Option.Some`, `Option.None`, `Exit.Success`, `Exit.Failure`, `Result.Success`, `Result.Failure`, and the twelve tagged errors of the amendment above, each recognized by resolved binding and tested with its module's own guard. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 86).
