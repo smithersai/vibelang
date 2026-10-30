@@ -92,6 +92,22 @@ func builtinMatcherOf(c *checker.Checker, matcher *ast.Node) (parser.BuiltinMatc
 			return builtin, true
 		}
 	}
+	if ast.IsIdentifier(matcher) {
+		symbol := c.GetSymbolAtLocation(matcher)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol != nil {
+			for _, decl := range symbol.Declarations() {
+				for module, guards := range fixedErrorGuards {
+					if guard := guards[symbol.Name()]; guard != "" && isEffectModuleFile(ast.GetSourceFileOfNode(decl), module) {
+						return parser.BuiltinMatcher{Module: module, Guard: guard, Values: []string{""}}, true
+					}
+				}
+			}
+		}
+	}
+
 	builtin, ok := parser.BuiltinMatcherNamed(matcher)
 	if !ok || builtin.TypeOf == "" {
 		return parser.BuiltinMatcher{}, false
@@ -173,7 +189,7 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 		candidate = c.GetESSymbolType()
 	default:
 		// The guard's predicate, its type parameters erased: Some<any>.
-		signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(matcher), checker.SignatureKindCall)
+		signatures := c.GetSignaturesOfType(builtinGuardType(c, matcher, builtin), checker.SignatureKindCall)
 		if len(signatures) == 0 {
 			return nil
 		}
@@ -242,7 +258,7 @@ func builtinExtractionType(c *checker.Checker, call *ast.Node, t *checker.Type) 
 	if !ok || builtin.Guard == "" {
 		return t
 	}
-	signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(call.Arguments()[0]), checker.SignatureKindCall)
+	signatures := c.GetSignaturesOfType(builtinGuardType(c, call.Arguments()[0], builtin), checker.SignatureKindCall)
 	if len(signatures) == 0 {
 		return t
 	}
@@ -309,7 +325,7 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 		return t
 	}
 	if !length && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
-		signatures := c.GetSignaturesOfType(c.TypeOfPatternMatcher(call.Arguments()[0]), checker.SignatureKindCall)
+		signatures := c.GetSignaturesOfType(builtinGuardType(c, call.Arguments()[0], builtin), checker.SignatureKindCall)
 		if len(signatures) == 0 {
 			return nil
 		}
@@ -319,4 +335,25 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 		}
 	}
 	return nil
+}
+
+// builtinGuardType resolves the actual guard, including a directly imported constructor.
+func builtinGuardType(c *checker.Checker, matcher *ast.Node, builtin parser.BuiltinMatcher) *checker.Type {
+	if ast.IsPropertyAccessExpression(matcher) {
+		if property := c.GetPropertyOfType(c.GetTypeAtLocation(matcher.Expression()), builtin.Guard); property != nil {
+			return c.GetTypeOfSymbol(property)
+		}
+	}
+	symbol := c.GetSymbolAtLocation(matcher)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol != nil && symbol.Parent() != nil {
+		for _, property := range c.GetExportsOfModule(symbol.Parent()) {
+			if property.Name() == builtin.Guard {
+				return c.GetTypeOfSymbol(property)
+			}
+		}
+	}
+	return c.TypeOfPatternMatcher(matcher)
 }

@@ -1,0 +1,44 @@
+import * as M0 from "effect/Cause"
+function bare0(s: unknown): boolean { return match (s) { when M0.NoSuchElementError: true; default: false; } }
+function extracted0(s: unknown): boolean { return match (s) { when M0.NoSuchElementError(let e): e === s; default: false; } }
+const b0: unknown = { _tag: "NoSuchElementError", "~effect/Cause/NoSuchElementError": "~effect/Cause/NoSuchElementError" }
+function bare1(s: unknown): boolean { return match (s) { when M0.TimeoutError: true; default: false; } }
+function extracted1(s: unknown): boolean { return match (s) { when M0.TimeoutError(let e): e === s; default: false; } }
+const b1: unknown = { _tag: "TimeoutError", "~effect/Cause/TimeoutError": "~effect/Cause/TimeoutError" }
+function bare2(s: unknown): boolean { return match (s) { when M0.IllegalArgumentError: true; default: false; } }
+function extracted2(s: unknown): boolean { return match (s) { when M0.IllegalArgumentError(let e): e === s; default: false; } }
+const b2: unknown = { _tag: "IllegalArgumentError", "~effect/Cause/IllegalArgumentError": "~effect/Cause/IllegalArgumentError" }
+function bare3(s: unknown): boolean { return match (s) { when M0.ExceededCapacityError: true; default: false; } }
+function extracted3(s: unknown): boolean { return match (s) { when M0.ExceededCapacityError(let e): e === s; default: false; } }
+const b3: unknown = { _tag: "ExceededCapacityError", "~effect/Cause/ExceededCapacityError": "~effect/Cause/ExceededCapacityError" }
+function bare4(s: unknown): boolean { return match (s) { when M0.AsyncFiberError: true; default: false; } }
+function extracted4(s: unknown): boolean { return match (s) { when M0.AsyncFiberError(let e): e === s; default: false; } }
+const b4: unknown = { _tag: "AsyncFiberError", "~effect/Cause/AsyncFiberError": "~effect/Cause/AsyncFiberError" }
+function bare5(s: unknown): boolean { return match (s) { when M0.UnknownError: true; default: false; } }
+function extracted5(s: unknown): boolean { return match (s) { when M0.UnknownError(let e): e === s; default: false; } }
+const b5: unknown = { _tag: "UnknownError", "~effect/Cause/UnknownError": "~effect/Cause/UnknownError" }
+import * as M1 from "effect/Schema"
+function bare6(s: unknown): boolean { return match (s) { when M1.SchemaError: true; default: false; } }
+function extracted6(s: unknown): boolean { return match (s) { when M1.SchemaError(let e): e === s; default: false; } }
+const b6: unknown = { _tag: "SchemaError", "~effect/Schema/SchemaError": "~effect/Schema/SchemaError" }
+import * as M2 from "effect/Cron"
+function bare7(s: unknown): boolean { return match (s) { when M2.CronParseError: true; default: false; } }
+function extracted7(s: unknown): boolean { return match (s) { when M2.CronParseError(let e): e === s; default: false; } }
+const b7: unknown = { _tag: "CronParseError", "~effect/Cron/CronParseError": "~effect/Cron/CronParseError" }
+import * as M3 from "effect/PlatformError"
+function bare8(s: unknown): boolean { return match (s) { when M3.PlatformError: true; default: false; } }
+function extracted8(s: unknown): boolean { return match (s) { when M3.PlatformError(let e): e === s; default: false; } }
+const b8: unknown = { _tag: "PlatformError", "~effect/PlatformError": "~effect/PlatformError" }
+import * as M4 from "effect/SemVer"
+function bare9(s: unknown): boolean { return match (s) { when M4.SemVerError: true; default: false; } }
+function extracted9(s: unknown): boolean { return match (s) { when M4.SemVerError(let e): e === s; default: false; } }
+const b9: unknown = { _tag: "SemVerError", "~effect/SemVer/SemVerError": "~effect/SemVer/SemVerError" }
+import * as M5 from "effect/Terminal"
+function bare10(s: unknown): boolean { return match (s) { when M5.QuitError: true; default: false; } }
+function extracted10(s: unknown): boolean { return match (s) { when M5.QuitError(let e): e === s; default: false; } }
+const b10: unknown = { _tag: "QuitError", "~effect/Terminal/QuitError": "~effect/Terminal/QuitError" }
+import * as M6 from "effect/TextDiff"
+function bare11(s: unknown): boolean { return match (s) { when M6.TextDiffError: true; default: false; } }
+function extracted11(s: unknown): boolean { return match (s) { when M6.TextDiffError(let e): e === s; default: false; } }
+const b11: unknown = { _tag: "TextDiffError", "~effect/TextDiff/TextDiffError": "~effect/TextDiff/TextDiffError" }
+export const inventory = [[bare0(b0), bare0({ _tag: "NoSuchElementError" }), extracted0(b0)],[bare1(b1), bare1({ _tag: "TimeoutError" }), extracted1(b1)],[bare2(b2), bare2({ _tag: "IllegalArgumentError" }), extracted2(b2)],[bare3(b3), bare3({ _tag: "ExceededCapacityError" }), extracted3(b3)],[bare4(b4), bare4({ _tag: "AsyncFiberError" }), extracted4(b4)],[bare5(b5), bare5({ _tag: "UnknownError" }), extracted5(b5)],[bare6(b6), bare6({ _tag: "SchemaError" }), extracted6(b6)],[bare7(b7), bare7({ _tag: "CronParseError" }), extracted7(b7)],[bare8(b8), bare8({ _tag: "PlatformError" }), extracted8(b8)],[bare9(b9), bare9({ _tag: "SemVerError" }), extracted9(b9)],[bare10(b10), bare10({ _tag: "QuitError" }), extracted10(b10)],[bare11(b11), bare11({ _tag: "TextDiffError" }), extracted11(b11)]]

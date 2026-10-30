@@ -361,7 +361,9 @@ Patterns for `Cause.NoSuchElementError`, `Cause.TimeoutError`,
 `Cause.AsyncFiberError`, `Cause.UnknownError`, `Schema.SchemaError`,
 `Cron.CronParseError`, `PlatformError.PlatformError`, `SemVer.SemVerError`,
 `Terminal.QuitError`, and `TextDiff.TextDiffError` call the module's
-corresponding `is…Error` guard. Namespace import aliases work too.
+corresponding `is…Error` guard. Namespace import aliases work too, and so does a
+constructor imported directly: `import { TimeoutError } from "effect/Cause"` makes
+`when TimeoutError:` call `Cause.isTimeoutError`.
 These guards accept brand-carrying copies from another package installation
 and reject objects carrying only `_tag`. In extractor mode they yield the
 subject as one value: `when Cause.TimeoutError(let error): …;`.

@@ -1,0 +1,22 @@
+import { Cause as C } from "effect"
+import { TimeoutError as Timeout } from "effect/Cause"
+export function check(e: unknown): boolean {
+  return match (e) { when C.TimeoutError: true; default: false; }
+}
+export function extract(e: unknown): unknown {
+  return match (e) { when C.TimeoutError(let v): v; default: null; }
+}
+const branded = { _tag: "TimeoutError", "~effect/Cause/TimeoutError": true }
+function arity(e: unknown): unknown {
+ return match (e) {
+  when Timeout(): "wrong zero";
+  when Timeout(let a, let b): "wrong two";
+  when Timeout(...let errors): errors.length === 1 && errors[0] === e;
+  default: false;
+ }
+}
+let reads = 0
+function next(): unknown { reads++; return branded }
+export const result = [check(new C.TimeoutError()), check({ _tag: "TimeoutError" }), check(branded),
+  extract(branded) === branded, match (branded) { when Timeout: true; default: false; }, arity(branded),
+  match (branded) { when Timeout(let v): v === branded; default: false; }, next() is Timeout, reads]
