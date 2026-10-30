@@ -75,10 +75,10 @@ Effect.runSync(Effect.succeed(42)) // 42
 ```
 
 ```json
-{ "vibe": { "severities": { "EK0801": "error", "EK4609": "off" } } }
+{ "vibe": { "severities": { "EK0801": "error", "EK4609": "off", "EK38100": "warning" } } }
 ```
 
-`vibe.severities` is a map keyed by the `EKxxxx` code printed by the CLI and language server. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only VibeLang's own warning codes and imported `EK38xx` codes may appear; a VibeLang error code or an unknown code is a config error (`EK3006`: remove the entry; decided details 57 and 77). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
+`vibe.severities` is a map keyed by the full `EK` code printed by the CLI and language server. Imported lint ordinals can add digits after `EK38`; `EK3801` and `EK38100` are distinct keys, compared as whole strings. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only VibeLang's own warning codes and imported `EK38xx` codes may appear; a VibeLang error code or an unknown code is a config error (`EK3006`: remove the entry; decided details 57 and 77). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
 
 ```jsonc
 // Invalid even when retaining the severity: VibeLang's own error codes cannot be configured.
