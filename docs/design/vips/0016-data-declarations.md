@@ -19,7 +19,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 - Variants are matched with TC39 object patterns on `_tag` (VIP-7). In the pinned TC39 snapshot, a bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`, the snapshot's shorthand for `tracking: let tracking`. The variant constructors get no custom matchers.
 - Generic unions (`data Result<A, E> { … }`) are left to a later VIP.
 - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
-- **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (EK2122 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (the old EK2122 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 
 ## History
 
