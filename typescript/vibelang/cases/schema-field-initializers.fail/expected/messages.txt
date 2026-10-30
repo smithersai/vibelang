@@ -1,0 +1,1 @@
+A type literal property cannot have an initializer.

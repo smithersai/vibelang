@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nschema error Outer { readonly child: { readonly value?: number = /* keep */ (() => 42)(); } }\nexport {}\n")

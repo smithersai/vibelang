@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nschema S { readonly value: number = /* keep */ (() => 42)(); }\nexport {}\n")

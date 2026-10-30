@@ -547,6 +547,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | Before | Now |
 | --- | --- |
+| A schema field with a JavaScript initializer | `TS1247`: run `vibelang --fix` to remove the ignored expression. Choose an explicit codec default when a default is intended. |
 | A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
 | A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
 | A schema reference with an empty type argument list, such as `schema Name = Address<>` | `EK2109`: run `vibelang --fix` to remove the empty list. The codec, decoded values and declaration types stay the same. |
@@ -710,6 +711,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The mapper hover check could leave its language server running after a successful check, a rejected request or a malformed reply. It now shares the mapper test transport and waits for its owned server to exit, escalating termination if necessary.
 - With `import { Effect } from "effect"` in a `.vibe` file, `Effect.Array.head([1])` compiled as if `Effect` were the implicit binding; a written `Effect` binding now keeps its ordinary TypeScript meaning, so that read reports `TS2339`, while the implicit `Effect.Array` and `typeof Effect.Array` still resolve (VIP-14).
 - Editor projection could erase `effect` from a pure class method or a named function with an aliased return type; both now keep their Effect bodies, including imported aliases.
+- A schema field initializer was silently discarded; it now reports `TS1247`, and `vibelang --fix` removes the ignored expression while keeping its codec, modifiers and comments.
 - The `EK4855` repair renamed a service `static readonly default` to `defaultValue` and rewrote its value reads, but left type reads such as `typeof Flags.default` and `(typeof Flags)["default"]`, so the repaired file failed with `TS2339`; the declaration now carries one `EK4855` whose fix rewrites every read in the file, type reads as `ReturnType<typeof Flags.defaultValue>`, and a read in another file keeps its own warning and fix.
 - A `break` or `continue` in a loop head's `do` could bypass `EK0205` by naming an outer label in a chain on the same loop; every label in that chain now gets the early error, while jumps to a different enclosing loop remain exempt.
 - In a project that emits declarations, `vibelang --fix` rewrote `Effect.fn("name")(function* … )` or `Effect.gen` and then removed the now unused `import * as Effect from "effect/Effect"`, so the declaration file imported `{ Effect } from "effect"` instead and the migrate flow's declaration identity gate refused the file. `--fix` now keeps an effect import that the file's declaration file writes, as its prelude rewrites already did.

@@ -1,0 +1,6 @@
+main.vibe(2,33): error TS1247
+main.vibe(3,36): error TS1247
+main.vibe(4,43): error TS1247
+main.vibe(5,42): error TS1247
+main.vibe(6,53): error TS1247
+main.vibe(7,56): error TS1247

@@ -330,6 +330,7 @@ func dataRules() []dataRule {
 	rules = append(rules, constructorParameterRules()...)
 	rules = append(rules, dataSchemaBindingScopeRules()...)
 	rules = append(rules, dataMemberSeparatorRules()...)
+	rules = append(rules, dataSchemaInitializerRules()...)
 	rules = append(rules, dataExhaustivenessRules()...)
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)

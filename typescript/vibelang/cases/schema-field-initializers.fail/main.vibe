@@ -1,0 +1,7 @@
+// expect: TS1247
+schema Direct { value: number = 42 }
+schema Optional { value?: number = 42 }
+schema Alias = { readonly value: string = "ignored" }
+schema Nested { child: { value: number = 42 } }
+namespace N { export schema Named { value: number = 42 } }
+schema error Outer { readonly child: { value: number = 42 } }

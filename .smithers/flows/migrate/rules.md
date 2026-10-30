@@ -166,3 +166,5 @@ Qualified constructors in the thirty-three retained Effect error patterns use th
 ## VIP-15: Schema type-member grammar
 
 Normal schema and nested struct fields use TypeScript type members, not class fields. For `TS1070` on class-only modifiers, run `vibelang --fix` to remove all ignored modifier tokens and repeated `readonly` tokens in that field together, preserving comments, one readonly marker and the codec. This does not change schema-error class modifier rules. Preserve emitted declarations, decode Exits/Causes and evaluation order.
+
+- Schema fields are type members. Remove an ignored initializer after the written type when `TS1247` reports it. Keep its codec, optionality, readonlyness and comments; never evaluate the discarded initializer. `vibelang --fix` applies the preserving edit.

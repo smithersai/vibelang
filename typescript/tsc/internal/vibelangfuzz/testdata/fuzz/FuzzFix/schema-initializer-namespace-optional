@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nnamespace N { export schema S { readonly value?: number = /* keep */ (() => 42)(); } }\nexport {}\n")
