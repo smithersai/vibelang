@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
+
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 
 ### Configuration upgrade

@@ -49,7 +49,7 @@ The values are `"error"`, `"warning"`, `"suggestion"` and `"off"`. Only VibeLang
 
 Warnings print without failing the build or blocking `noEmitOnError`; set a warning to `"error"` to fail CI. `"suggestion"` is shown only by the language server, and `"off"` suppresses the diagnostic.
 
-The legacy `vibelang.diagnostics` setting reports migration warning `EK3009`. Run `vibelang -p tsconfig.json --fix` to move it to `vibe.severities`, including settings in extended config files. Existing `vibe.severities` entries take precedence. Legacy maps containing retired or nonconfigurable codes remain in place so the rewrite does not break a working project; remove those obsolete entries, then rerun `--fix`.
+The legacy `vibelang.diagnostics` setting reports migration warning `EK3009`. Run `vibelang -p tsconfig.json --fix` to move it to `vibe.severities`, including settings in extended config files. Existing `vibe.severities` entries take precedence. Legacy maps containing retired or nonconfigurable codes remain in place so the rewrite does not break a working project; remove those obsolete entries, then rerun `--fix`. JSONC comments, including comments containing braces, stay intact while the migrated settings remain active.
 
 
 ## 2. Replace tsc in the scripts

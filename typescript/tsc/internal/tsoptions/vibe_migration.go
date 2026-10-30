@@ -138,7 +138,8 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 		if len(object.AsObjectLiteralExpression().Properties.Nodes) > 0 {
 			insertion += ","
 		}
-		start := object.Pos() + strings.Index(text[object.Pos():object.End()], "{") + 1
+		// Pos includes trivia; a brace in a JSONC comment is not the opening token.
+		start := scanner.GetRangeOfTokenAtPosition(file, object.Pos()).End()
 		edits = append(edits, configEdit{start, start, insertion})
 	}
 	slices.SortFunc(edits, func(a, b configEdit) int { return b.start - a.start })
