@@ -1,0 +1,2 @@
+A service cannot declare an index signature; declare named properties and methods, and put implementations in a layer.
+A service cannot declare a constructor; declare named properties and methods, and put implementations in a layer.

@@ -1,0 +1,38 @@
+// expect: EK0902
+export service StringIndex {
+  [key: string]: unknown
+}
+export service NumberIndex {
+  [key: number]: unknown
+}
+export service SymbolIndex {
+  [key: symbol]: unknown
+}
+export service ReadonlyIndex {
+  readonly [key: string]: unknown
+}
+export service TemplateIndex {
+  [key: `prefix-${string}`]: unknown
+}
+export service EmptyConstructor {
+  constructor()
+}
+export service BodyConstructor {
+  constructor() {}
+}
+export service ParameterProperty {
+  constructor(public value: number) {}
+}
+
+// Ordinary classes and explicit Effect service classes retain TypeScript members.
+export class Dictionary {
+  [key: string]: unknown
+  constructor(public value: number) {}
+}
+export class ExplicitDictionary extends Context.Service<ExplicitDictionary, Record<string, unknown>>()("service-nameless-members/ExplicitDictionary") {
+  static readonly example = { value: 1 }
+}
+export service NamedProperties {
+  readonly value: number
+  [Symbol.iterator]: () => IterableIterator<number>
+}
