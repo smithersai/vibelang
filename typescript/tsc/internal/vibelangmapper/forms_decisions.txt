@@ -1063,6 +1063,16 @@ typescript/vibelang/cases/ek1002-generators.fail/main.vibe:17:33 lambda plain ta
 typescript/vibelang/cases/ek1002-generators.fail/main.vibe:27:22 lambda dual fallback
 typescript/vibelang/cases/ek1002-generators.fail/main.vibe:8:25 lambda plain fallback
 typescript/vibelang/cases/ek1002-generators.fail/main.vibe:8:63 lambda plain table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:11:27 lambda program table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:14:20 lambda effectFn fallback
+typescript/vibelang/cases/ek1005-async-function/main.vibe:14:59 lambda program table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:18:29 lambda program table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:23:36 lambda plain table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:23:55 lambda program table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:27:35 lambda plain table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:28:35 lambda plain table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:29:35 lambda plain table
+typescript/vibelang/cases/ek1005-async-function/main.vibe:30:38 lambda plain table
 typescript/vibelang/cases/ek1005-prelude-runner.fail/main.vibe:10:25 lambda plain table
 typescript/vibelang/cases/ek1005-prelude-runner.fail/main.vibe:11:14 byname program table
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:16:40 lambda program table
