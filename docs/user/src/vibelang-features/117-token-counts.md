@@ -21,7 +21,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 14,207 |
 | The skill and the user guide (138 pages) | 291,465 |
 | The user guide alone | 287,589 |
-| The specification (10 chapters) | 80,633 |
+| The specification (10 chapters) | 80,147 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -276,17 +276,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,607 |
-| **The language** | **62,617** |
+| **The language** | **62,111** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 8,527 |
-| [2. Running Effects](../../../design/src/002-running.md) | 15,110 |
-| [3. Failures](../../../design/src/003-failures.md) | 9,182 |
-| [4. Pattern matching](../../../design/src/004-match.md) | 10,194 |
+| [2. Running Effects](../../../design/src/002-running.md) | 14,736 |
+| [3. Failures](../../../design/src/003-failures.md) | 9,170 |
+| [4. Pattern matching](../../../design/src/004-match.md) | 10,160 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 8,064 |
 | [6. Data](../../../design/src/006-data.md) | 4,292 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 3,403 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 3,845 |
-| **Appendices** | **15,409** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 15,409 |
-| **All 10 pages** | **80,633** |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 3,759 |
+| **Appendices** | **15,429** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 15,429 |
+| **All 10 pages** | **80,147** |
 
 <!-- token-counts: end -->

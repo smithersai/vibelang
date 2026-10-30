@@ -223,7 +223,7 @@ No other syntax builds an Effect. A function literal never becomes an Effect bec
 
 ## `do` expressions
 
-`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. Its type is the union of the types of the values it can complete with, as TypeScript types `c ? 1 : "a"`: each path ending in an expression statement contributes that expression's type, a path that completes empty contributes `undefined`, and a path that leaves by `return`, `break`, `continue` or `throw` contributes nothing; literals widen as in a `let` initializer. `do { if (c) 1; else "a" }` is `number | string`, and `do { }` is `undefined`. The lowering declares its temporary with that type. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator. **Expression lowering.** This paragraph is the one rule for every `do` or `match` inside a larger expression; [Pattern matching](/spec/004-match) and [Runtime guarantees](/spec/008-runtime) refer to it. Everything evaluated before the `do` or `match` goes into temporaries in source order, the callee and a method's receiver included; the `do` or `match` runs as statements that assign its value to a temporary; and the expression continues. `f(try a(), match (x) { … })` is `const $f = f, $t1 = yield* a(); let $t2; if (…) $t2 = …; $f($t1, $t2)`, and `o.m(…)` reads `o.m` before the arguments and calls it with `$apply`, `Reflect.apply` captured when the module starts ([Bindings](/spec/001-functions#bindings)), keeping `this` as `o`. A `do` or `match` runs where JavaScript evaluates the expression that holds it, never earlier or more often. On one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=` or after `?.` (call, member or element), its statements go inside the matching `if`. In a `case` test, the `switch` becomes an `if` chain over a temporary of the discriminant, in case order. In a loop condition or update, the statements go into the loop: `while (c)` becomes `for (;;) { …; if (!$t) break; … }`, and a `continue` in the body runs the update first. A destructuring or parameter default runs only when it applies. A default with a suspension (`try`, `await`, `yield`) whose `do` lowers to one expression stays native destructuring in the generator, so ECMAScript's own order and IteratorClose apply: `const [x = do { try succeed(7); bad.value }] = xs` is `const [x = (yield* Effect.succeed(7), bad.value)] = xs` (decided detail 68b). If it has a suspension and a statement that is not an expression, or a `do` whose `return`, `break` or `continue` leaves the default, the whole pattern becomes statements in the enclosing function at its place (decided detail 68a). They perform ECMAScript's BindingInitialization, IteratorBindingInitialization or DestructuringAssignmentEvaluation step for step: each key, property read, iterator step and default runs in the pattern's order into a temporary; an assignment target's reference is evaluated before its value is read, as ECMAScript does; and each binding is declared from its temporary with its source keyword at its InitializeBinding step, before the pattern's final IteratorClose, so a `var` stays function-scoped and hoisted, a `let` or `const` binding is in its TDZ while its default runs, and a closure that the iterator's `return` calls sees it initialized. An array pattern's steps set `$done` where IteratorBindingInitialization sets Done (the iterator finishes, or `next`, `done` or `value` throws), and close it with ECMA-262 IteratorClose through the helper `$iteratorClose($it, $throwing)`: an element's steps that throw close it, when not Done, with `$throwing` true and rethrow, and after the last binding it closes, when not Done, with `$throwing` false. The helper gets `return` and calls it on the iterator; a pending throw wins over any error from closing; otherwise an error from `return` propagates. A non-object result from `next` or `return` raises the host's own `TypeError` through `$notObject`, which runs a native IteratorClose on it, so the `Error.message` matches native destructuring (decided detail 68b). `next` is read once, and every call and check uses `$apply` and `typeof`, never a fresh read of a global such as `Object` or `Reflect`, which iterator code can replace. With an iterator whose first value is `undefined` and whose `return` throws `"close"`, and a default whose getter (`bad.value`) throws `"body"`, both forms exit `Die("body")`; with `return` giving `1` and a getter that returns, both exit `Die(TypeError: Iterator result 1 is not an object)`; with a getter that returns `7` and a `return` that calls a closure reading `x`, both read `7` and succeed with `7`. A failure or interruption of an Effect run by `try` abandons the generator without closing the iterator, as it skips `using` disposal ([Runtime guarantees](/spec/008-runtime)). Any other default may run in an arrow called in place, `x = (() => { …; return $t })()`. For a parameter list, every default from that parameter on moves into the body, so `function g(x = do { return null }) {}` becomes `function g(x = undefined) { if (x === undefined) { … } … }` and the `return` returns from `g`; `g.length` is unchanged. Parameters are bound at the call ([Functions](/spec/001-functions#meaning)), so for an `effect` function, method or arrow the moved defaults stay before `return Effect.gen(…)`, and `return v` there is `return Effect.succeed(v)`, as a `return` in an `async` function's default resolves its Promise: `effect function e(x = do { return null }) { return 1 }` gives an Effect that succeeds with `null`. In a producer only a bare `return` is allowed (`EK2101`); there it is `return Stream.empty`. A body binding that a moved default's free name would capture is renamed, as ECMAScript's separate parameter scope hides it: in `function g(a = do { return 0 }, b = () => y) { const y = "body"; return b() }`, `b` still reads the outer `y`. The one divergence from TC39 is a default that reads a later parameter in its TDZ (decided detail 68). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error. `eval` needs no lowering: it is a compile error anywhere in a `.vibe` file ([Legacy JavaScript](/spec/001-functions#direct-eval)).
+`do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its last statement's value. Its type is the union of the types of the values it can complete with, as TypeScript types `c ? 1 : "a"`: each path ending in an expression statement contributes that expression's type, a path that completes empty contributes `undefined`, and a path that leaves by `return`, `break`, `continue` or `throw` contributes nothing; literals widen as in a `let` initializer. `do { if (c) 1; else "a" }` is `number | string`, and `do { }` is `undefined`. The lowering declares its temporary with that type. It is not a function: as TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`. Neither `do` nor `match` is lowered to a function, so a `try` inside one stays a `yield*` of the enclosing generator. **Expression lowering.** This paragraph is the one rule for every `do` or `match` inside a larger expression; [Pattern matching](/spec/004-match) and [Runtime guarantees](/spec/008-runtime) refer to it. Everything evaluated before the `do` or `match` goes into temporaries in source order, the callee and a method's receiver included; the `do` or `match` runs as statements that assign its value to a temporary; and the expression continues. `f(try a(), match (x) { … })` is `const $f = f, $t1 = yield* a(); let $t2; if (…) $t2 = …; $f($t1, $t2)`, and `o.m(…)` reads `o.m` before the arguments and calls it with `$apply`, `Reflect.apply` captured when the module starts ([Bindings](/spec/001-functions#bindings)), keeping `this` as `o`. A `do` or `match` runs where JavaScript evaluates the expression that holds it, never earlier or more often. On one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=` or after `?.` (call, member or element), its statements go inside the matching `if`. In a `case` test, the `switch` becomes an `if` chain over a temporary of the discriminant, in case order. In a loop condition or update, the statements go into the loop: `while (c)` becomes `for (;;) { …; if (!$t) break; … }`, and a `continue` in the body runs the update first. Destructuring and parameter defaults follow [their own rule](/spec/002-running#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error. `eval` needs no lowering: it is a compile error anywhere in a `.vibe` file ([Legacy JavaScript](/spec/001-functions#direct-eval)).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-2
@@ -231,13 +231,6 @@ const x = do { const a = 1; a + 1 }    // 2
 effect function total(o: Calc) {
   return o.add(try a(), match (n()) { when 1: 10; default: 0; })
 }
-effect function f() { const { x = do { return 9 } } = {}; return 0 }   // succeeds with 9
-effect function g() { const { x = do { try succeed(7) } } = {}; return x }   // succeeds with 7
-effect function h(xs: Iterable<number | undefined>, b: { value: number }) {
-  const [x = do { const v = b.value; try succeed(7); v }] = xs   // a declaration: expanded
-  return x
-}
-effect function e(x = do { return null }) { return 1 }   // e() succeeds with null
 ```
 
 ```ts [Effect]
@@ -252,55 +245,53 @@ function total(o: Calc) {
     return $apply($f, $r, [$t1, $t2])                 // this is o; $apply is Reflect.apply, captured at module start
   })
 }
-function f() {
-  return Effect.gen(function* () {
-    const $o: { x?: unknown } = {}
-    const $x = $o.x
-    if ($x === undefined) { return 9 }
-    const x = $x
-    return 0
-  })
-}
-function g() {
-  return Effect.gen(function* () {
-    const { x = yield* Effect.succeed(7) }: { x?: number } = {}   // one expression: native
-    return x
-  })
-}
-function h(xs: Iterable<number | undefined>, b: { value: number }) {
-  return Effect.gen(function* () {
-    const $it = xs[Symbol.iterator](), $next = $it.next; let $done = false, $x: number | undefined
-    try {
-      const $r: IteratorResult<number | undefined> = $apply($next, $it, [])
-      if ($r === null || (typeof $r !== "object" && typeof $r !== "function")) $notObject($r)
-      if ($r.done) { $done = true; $x = undefined } else $x = $r.value
-    } catch (e) { $done = true; throw e }
-    try {
-      if ($x === undefined) { const v = b.value; yield* Effect.succeed(7); $x = v }
-    } catch (e) { if (!$done) $iteratorClose($it, true); throw e }
-    const x = $x                                       // initialized before the iterator closes
-    if (!$done) $iteratorClose($it, false)
-    return x
-  })
-}
-function e(x: number | undefined = undefined): Effect.Effect<number | null> {
-  if (x === undefined) { return Effect.succeed(null) }   // the moved default, before the generator
-  return Effect.gen(function* () { return 1 })
-}
-const $iteratorClose = (it: Iterator<unknown>, throwing: boolean): void => {
-  if (throwing) { try { const r = it.return; if (r != null) $apply(r, it, []) } catch {} return }   // the pending throw wins
-  const r = it.return
-  if (r === undefined || r === null) return
-  const o: unknown = $apply(r, it, [])
-  if (o === null || (typeof o !== "object" && typeof o !== "function")) $notObject(o)
-}
-const $notObject = (o: unknown): never => {   // the host's own TypeError: a native IteratorClose gets o
-  const [] = { [Symbol.iterator]: () => ({ next: () => ({ done: false, value: undefined }), return: () => o }) } as unknown as Iterable<never>
-  throw new TypeError()                        // not reached
-}
 ```
 
 The pinned snapshot is the vendored copy of `tc39/proposal-do-expressions` at commit `3ef6d463b8163cbf222846b40d17178cca36e9e1`, the head on 2026-10-28 (UTC), as pattern matching is pinned.
+
+### Destructuring and parameter defaults
+
+A destructuring or parameter default runs only when it applies. In effect code a destructuring pattern behaves exactly as ECMAScript destructuring: ECMA-262's BindingInitialization, IteratorBindingInitialization and DestructuringAssignmentEvaluation, with GetIterator and IteratorClose for array patterns. That fixes, as ECMAScript does:
+
+- **Evaluation order.** Each key, property read, getter call, iterator step, default and assignment-target reference runs once, in the pattern's order, and each binding is initialized at its InitializeBinding step: a `let` or `const` binding is in its TDZ while its default runs and is initialized before the pattern's final IteratorClose, so a closure that the iterator's `return` calls sees it; a `var` stays function-scoped and hoisted.
+- **The iterator protocol.** GetIterator uses the intrinsic `%Symbol.iterator%`, not the current global `Symbol`, checks that the iterator method's result is an object before reading `next`, reads `next` once, and checks that `next` and `return` are callable when it calls them.
+- **IteratorClose on every completion** before the iterator is done. A pending throw wins over any error from closing; otherwise an error from `return`, or a non-object result, propagates.
+- **Native errors.** Every protocol error is the `TypeError`, with the `message`, that native destructuring of the same source gives on the same host. The canonical `Exit` compares `name` and `message` ([Runtime guarantees](/spec/008-runtime); decided detail 91).
+
+A default's suspensions (`try`, `await`, `yield`) run in the enclosing effect function, and a `return`, `break` or `continue` in a default's `do` acts on the enclosing function or loop, as TC39 specifies. A failure or interruption of an Effect run by `try` abandons the generator without closing the iterator, as it skips `using` disposal ([Runtime guarantees](/spec/008-runtime)).
+
+Parameter defaults follow the same rule. A `return` in a parameter default's `do` returns from the function, and the function's `length` is unchanged. A default sees the parameter scope, not the body's bindings: in `function g(a = do { return 0 }, b = () => y) { const y = "body"; return b() }`, `b` reads the outer `y`. Parameters are bound at the call ([Functions](/spec/001-functions#meaning)), so in an `effect` function, method or arrow, a default's `return v` makes the call give an Effect that succeeds with `v`, as a `return` in an `async` function's default resolves its Promise. In a producer only a bare `return` is allowed (`EK2101`), and the call gives an empty `Stream`. The one divergence from TC39 is a default that reads a later parameter in its TDZ (decided detail 68).
+
+How the compiler achieves this (native destructuring with an inline `yield*`, a runtime helper, or any other lowering) is its choice. The examples below, the VIP-31 differential suite and the fuzz suite check it (decided detail 68c).
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-2
+effect function f() { const { x = do { return 9 } } = {}; return 0 }        // Success(9)
+effect function g() { const { x = do { try succeed(7) } } = {}; return x }  // Success(7)
+effect function e(x = do { return null }) { return 1 }                      // e() gives Success(null)
+effect function k(xs: Iterable<number | undefined>, bad: { value: number }) {
+  const [x = do { try succeed(7); bad.value }] = xs
+  return x
+}
+effect function h(xs: Iterable<number | undefined>, b: { value: number }) {
+  const [x = do { const v = b.value; try succeed(7); v }] = xs
+  return x
+}
+```
+
+Each row runs `k` or `h` with the iterable `xs` described; unless the row says otherwise, `xs` yields `undefined` first and its `return` returns an object. The Exit is the spec's expected result and equals the Effect TypeScript program with the same pattern written natively.
+
+| Function | `xs` and `b` | Exit |
+| --- | --- | --- |
+| `k` | `return` throws `"close"`; the getter `bad.value` throws `"body"` | `Die("body")`: the pending throw wins |
+| `k` | `return` returns `1`; `bad.value` returns | `Die(TypeError)`: the close result is not an object |
+| `h` | `b.value` is `7`; `return` calls a closure that reads `x` | `Success(7)`; the closure reads `7` |
+| `h` | `b.value` is `7`; before the pattern, `globalThis.Symbol` is replaced by a `Proxy` of `Symbol` whose `iterator` is `undefined` | `Success(7)`: GetIterator uses `%Symbol.iterator%` |
+| `h` | `xs[Symbol.iterator]()` returns `1` or `null` | `Die(TypeError)` with native GetIterator's message |
+| `h` | as above, returning `1`, with `Number.prototype.next` defined by a foreign fixture to return `{ done: true }` | `Die(TypeError)`, not `Success(7)`: the object check comes before `next` is read |
+| `h` | the iterator's `next` is `1` | `Die(TypeError)` with native IteratorStep's message |
+| `h` | the iterator's `return` is `1`; `b.value` is `7` | `Die(TypeError)` with native IteratorClose's message |
+| `h` | `xs` is `5` | `Die(TypeError)` with the message native `const [x] = xs` gives, naming `xs` as the host does |
 
 ## `fork` and `join`
 

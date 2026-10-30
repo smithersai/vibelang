@@ -558,17 +558,17 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | --- | --- | --- | --- |
 | `EK0101` | `effect f() { }` or `async f() { }` outside a class or object literal | 1 | [Functions](001-functions.md#effect-functions) |
 | `EK0102` | `await`, `for await` or `await using` in effect code | 1 | [Functions](001-functions.md#static-rules) |
-| `EK0103` | `await` on an Effect in an `async` function or at the module top level | 1 | [Functions](001-functions.md#static-rules) |
+| `EK0103` | `await` on an Effect in an `async` function or at the module top level | 1, 5 | [Functions](001-functions.md#static-rules) |
 | `EK0104` | `effect` on a getter, setter or constructor | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0105` | `effect` and `async` on one function | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](001-functions.md#static-rules) |
-| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4 | [Functions](001-functions.md#direct-eval) |
-| `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A | B!E`, `() => A!E | B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
+| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](001-functions.md#direct-eval) |
+| `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](#notes-on-the-productions) |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function | 4 | [Failures](003-failures.md#effectful-callables) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](003-failures.md#assignability) |
 | `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code or a plain `catch` handler | 4 | [Failures](003-failures.md#calls-in-effect-code) |
-| `EK0404` | an unwrapped Promise-producing call, `new` expression or `async match` in effect code | 4 | [Failures](003-failures.md#calls-in-effect-code) |
+| `EK0404` | an unwrapped Promise-producing call, `new` expression or `async match` in effect code | 4, 5 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0405` | a body that throws more than its written `@throws {T}` | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0406` | a `@throws` or `@rethrows` tag on an effectful `.vibe` callable: an `effect` function, arrow, method or producer, or a callable whose return type is wholly `Effect`, `Stream` or `Layer`; quick fix: remove the tag | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0501` | `try` outside effect code, the top level included | 5 | [Running Effects](002-running.md#try) |
@@ -576,7 +576,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK0503` | a `try` statement in effect code | 5 | [Running Effects](002-running.md#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](002-running.md#catch) |
 | `EK0505` | `try x catch h`: a `try`, `try.all` (or another await operation), `fork` or `join` reachable from a `catch` head through unary and binary operator nodes only | 5, 17 | [Running Effects](002-running.md#catch) |
-| `EK0506` | `e catch h` where `e` is not an Effect | 5 | [Running Effects](002-running.md#catch) |
+| `EK0506` | `e catch h` where `e` is not an Effect | 5, 17 | [Running Effects](002-running.md#catch) |
 | `EK0507` | a plain handler whose result is a Promise or thenable | 5 | [Running Effects](002-running.md#catch) |
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](002-running.md#catch) |
 | `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }` | 5 | [Running Effects](002-running.md#catch) |
@@ -601,7 +601,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](006-data.md#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in the parameters of a plain arrow written in effect code | 17 | [Running Effects](002-running.md#fork-and-join) |
-| `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 17 | [Running Effects](002-running.md#fork-and-join) |
+| `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1801` | a `try.all` operand that is not an array of Effects | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](002-running.md#for-concurrent) |
@@ -630,7 +630,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK3001` | two services with the same key | 9 | [Services](005-services.md#static-rules) |
 | `EK3002` | a class extends a service | 9 | [Services](005-services.md#static-rules) |
 | `EK3003` | `new` on a service | 9 | [Services](005-services.md#static-rules) |
-| `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 9 | [Services](005-services.md#static-rules) |
+| `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 7, 9 | [Services](005-services.md#static-rules) |
 | `EK3005` | a generic service | 9 | [Services](005-services.md#static-rules) |
 | `EK3006` | an error code or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](007-tooling.md) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](007-tooling.md#config-files) |

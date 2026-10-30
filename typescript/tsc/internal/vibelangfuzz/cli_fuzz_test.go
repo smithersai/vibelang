@@ -141,6 +141,7 @@ var cliForeignFlags = map[string]string{
 	"-browser":             "a package name's suffix (Chapter 11)",
 	"-bun":                 "a package name's suffix (Chapter 11)",
 	"--install-extension":  "VS Code's flag (Chapter 28, The editor)",
+	"-try":                 "unary minus before a try expression, `-try a catch h`, an EK0505 example (Running Effects)",
 }
 
 // cliFlags is the argument table: the entry points and VibeLang flags first,

@@ -66,7 +66,7 @@ const boom = () => { throw new Error("x") }
 const failure: Effect.Effect<never, Missing> = missing()
 ```
 
-`@throws` applies only to non-effectful callables (Will's ruling). A written `@throws` or `@rethrows` on an effectful `.vibe` callable is `EK0406`: remove the tag and declare failures in the Effect's error type (decided detail 96). Such tags in `.ts`, `.d.ts` and JavaScript are ignored.
+`@throws` applies only to non-effectful callables (VIP-4, amended). A written `@throws` or `@rethrows` on an effectful `.vibe` callable is `EK0406`: remove the tag and declare failures in the Effect's error type (decided detail 96). Such tags in `.ts`, `.d.ts` and JavaScript are ignored.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-4
@@ -126,7 +126,7 @@ Determine a call's synchronous thrown type in three steps (decided detail 66):
 
 Calling an `async` `.vibe` function throws `never`: body throws reject its Promise. Promise construction separately catches executor throws, as specified below. Getters and setters are not tracked calls. Constructing an `error` or `data` variant throws `never`; their generated constructors do not throw for well-typed input in Effect 4.1.0. An Effect API overload returning an Effect is effectful. A data-last overload such as `map(f)` returns a function: it is non-effectful, with shipped `@throws {never}` when it only builds that function (detail 40). The returned callable has its own signature contract; the shipped rethrowing array methods are `Array.prototype` methods and `Array.from`, not those Effect globals.
 
-The generator publishes the normative thrown-signature inventory, `docs/design/inventory/throws.json` (detail 81a): exact TypeScript lib inputs and Effect version, keyed by module, declaration and overload signature, with own throws, `@rethrows` parameters, callback admission and returned callable contracts. That artifact awaits its generator: **the specification is incomplete for shipped thrown contracts** (Sol round-18 M2; Astra round-18 m1). The examples below are not a complete inventory. An unannotated signature follows step 2's inference or default, then step 3's `@rethrows`; omission does not imply `@throws {never}`. Regeneration is part of an Effect or TypeScript bump.
+The generator publishes the normative thrown-signature inventory, `docs/design/inventory/throws.json` (detail 81a): exact TypeScript lib inputs and Effect version, keyed by module, declaration and overload signature, with own throws, `@rethrows` parameters, callback admission and returned callable contracts. That artifact awaits its generator: **the specification is incomplete for shipped thrown contracts**. The examples below are not a complete inventory. An unannotated signature follows step 2's inference or default, then step 3's `@rethrows`; omission does not imply `@throws {never}`. Regeneration is part of an Effect or TypeScript bump.
 
 These shipped contracts are decided (VIP-4; details 2 and 40); a successful call alone does not establish `@throws {never}`:
 
