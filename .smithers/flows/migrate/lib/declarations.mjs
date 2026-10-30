@@ -4,7 +4,9 @@
 // package migration's identity gate accepts and nothing more: comments
 // dropped, nodes reprinted, union members and uniquely named property members
 // in a stable order, and parentheses around a whole generic type argument
-// removed.
+// removed. One normalization is the migration's own: a relative specifier
+// spelled ./x.ts becomes ./x.js, because a renamed module's importers declare
+// it that way (D298) and TypeScript resolves both spellings to the same x.d.ts.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
@@ -26,6 +28,15 @@ export function loadTypeScript(directories) {
 }
 
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
+/** Whether a string literal is the module name of an import, export, `import()` type, `require` or augmentation, not a string in a type. */
+const isModuleName = (ts, node) => {
+  const parent = node.parent
+  if (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) return parent.moduleSpecifier === node
+  if (ts.isModuleDeclaration(parent)) return parent.name === node
+  if (ts.isLiteralTypeNode(parent)) return ts.isImportTypeNode(parent.parent) && parent.parent.argument === parent
+  return ts.isExternalModuleReference(parent)
+}
 
 /** A declaration file's canonical text. */
 export function canonicalize(ts, text, fileName = "file.d.ts") {
@@ -61,6 +72,7 @@ export function canonicalize(ts, text, fileName = "file.d.ts") {
     const f = ctx.factory
     const visit = (node) => {
       let x = ts.visitEachChild(node, visit, ctx)
+      if (ts.isStringLiteral(x) && /^\.\.?\/.*(?<!\.d)\.ts$/.test(x.text) && isModuleName(ts, node)) return f.createStringLiteral(x.text.replace(/\.ts$/, ".js"))
       if (ts.isTypeReferenceNode(x) && x.typeArguments) {
         x = f.updateTypeReferenceNode(x, x.typeName, f.createNodeArray(x.typeArguments.map((t) => (ts.isParenthesizedTypeNode(t) ? t.type : t))))
       }

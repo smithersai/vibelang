@@ -22,6 +22,45 @@ test("canonical text keeps real changes: a type, an optional member, method orde
   assert.notEqual(base, canonicalize(ts, "export interface I { a: number; n(): void; m(): void }\n"))
 })
 
+test("canonical text treats a relative ./x.ts and ./x.js as one module, wherever a declaration names one", () => {
+  const forms = (ext) => [
+    `export * from "./leaf${ext}";`,
+    `export { a } from "../up/leaf${ext}";`,
+    `import { b } from "./leaf${ext}";`,
+    `import c = require("./leaf${ext}");`,
+    `export declare const d: import("./leaf${ext}").T;`,
+    `declare module "./leaf${ext}" {\n}`
+  ]
+  const ts_ = forms(".ts")
+  const js = forms(".js")
+  for (let i = 0; i < ts_.length; i++) assert.equal(canonicalize(ts, ts_[i]), canonicalize(ts, js[i]))
+})
+
+test("canonical text keeps every other .ts: a declaration file, a package, a string type, a value", () => {
+  for (const [a, b] of [
+    [`export * from "./leaf.d.ts";`, `export * from "./leaf.d.js";`],
+    [`export * from "leaf.ts";`, `export * from "leaf.js";`],
+    [`export * from "pkg/leaf.ts";`, `export * from "pkg/leaf.js";`],
+    [`export declare const path: "./leaf.ts";`, `export declare const path: "./leaf.js";`],
+    [`export type Path = "./leaf.ts" | "./other.ts";`, `export type Path = "./leaf.js" | "./other.js";`],
+    [`export declare enum E { A = "./leaf.ts" }`, `export declare enum E { A = "./leaf.js" }`]
+  ]) assert.notEqual(canonicalize(ts, a), canonicalize(ts, b), a)
+})
+
+test("compareDeclarations calls a module renamed to .vibe unchanged when its importer's declaration spells it .js", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
+  try {
+    for (const [dir, index] of [["ts", `export * from "./leaf.ts";\n`], ["vibe", `export * from "./leaf.js";\n`]]) {
+      mkdirSync(join(root, dir))
+      writeFileSync(join(root, dir, "index.d.ts"), index)
+      writeFileSync(join(root, dir, "leaf.d.ts"), "export declare const value = 1;\n")
+    }
+    assert.equal(compareDeclarations(ts, join(root, "ts"), join(root, "vibe")).identical, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test("compareDeclarations reports changed, added and removed files", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
   try {
