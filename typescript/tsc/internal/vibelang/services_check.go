@@ -178,13 +178,21 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			}
 			continue
 		}
+		if kind == serviceClass && ast.IsMethodDeclaration(member) && serviceShape(class) == nil {
+			if member.Type() == nil {
+				cover(c, memberName) // TS7010: an implicit any return type
+				d := report(c, memberName, EK9205, name+"."+memberName.Text())
+				note(d, "Write the return type, such as {0} for a plain method or {1} for an Effect-returning method.", "number", "number!!")
+			}
+			continue
+		}
 		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
 			at := member.Type()
 			if at == nil {
 				at = memberName
 				cover(c, memberName) // TS7010: an implicit any return type
 			}
-			d := report(c, at, EK9205, name+"."+memberName.Text())
+			d := report(c, at, EK9205.With("{0} has no body to infer from, so its contract must be written as an Effect type."), name+"."+memberName.Text())
 			note(d, "Write {0}; use {1} if it cannot fail and needs nothing.", bangText(writtenSuccess(member.Type()), "Errors", "Dependencies"), bangText(writtenSuccess(member.Type()), "never", "never"))
 		}
 	}

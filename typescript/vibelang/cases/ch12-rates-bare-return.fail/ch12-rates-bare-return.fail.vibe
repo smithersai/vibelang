@@ -1,6 +1,6 @@
-// expect: EK9205
+// Service methods may declare a plain return type.
 // Chapter 12 "Declarations without bodies": Rates.lookup has no body to infer from, so its contract
-// must be written in full. NOTE: written as an abstract class (D1) instead of `service Rates`.
+// must be written explicitly; it need not be an Effect type.
 
 service Rates {
   lookup(currency: string): number

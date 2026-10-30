@@ -1,4 +1,4 @@
-// expect: EK9205
+// Service methods may declare a plain return type.
 export service Users {
   find(id: string): string
 }

@@ -115,14 +115,11 @@ func TestSyntaxEK2006(t *testing.T) {
 	}
 }
 
-// TestSyntaxEK2101 requires Effect types on service and D1 abstract members.
+// TestSyntaxEK2101 requires written return types and accepts plain service contracts.
 func TestSyntaxEK2101(t *testing.T) {
-	checkSyntaxFixture(t, "ch12-rates-bare-return", 2101, 1)
-	checkSyntaxFixture(t, "decl-service-contract", 2101, 1)
-	for _, source := range []string{`service Rates { lookup(currency: string): number }`} {
-		checkSyntaxDiagnostic(t, 2101, source, "number", "Rates.lookup has no body to infer from, so its contract must be written as an Effect type.", `service Rates { lookup(currency: string): number!! }`)
-	}
-	checkSyntaxDiagnostic(t, 2101, `service Rates { lookup() }`, "lookup", "Rates.lookup has no body to infer from, so its contract must be written as an Effect type.", `class Rates { lookup(): number { return 1 } }`)
+	checkSyntaxFixture(t, "ch12-rates-bare-return", 2101, 0)
+	checkSyntaxFixture(t, "decl-service-contract", 2101, 0)
+	checkSyntaxDiagnostic(t, 2101, `service Rates { lookup() }`, "lookup", "Rates.lookup has no body to infer from. Write its return type.", `service Rates { lookup(): number }`)
 }
 
 // TestSyntaxEK2104 pins the late setup statement, including its semicolon (D129).

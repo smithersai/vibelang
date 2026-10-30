@@ -1,0 +1,12 @@
+export service Rates {
+  static readonly key = "r4/Rates"
+  lookup(currency: string): number
+  details(): { base: string }
+  refresh(): Effect.Effect<void>
+}
+export const impl: Rates.Shape = {
+  lookup(currency: string): number { return currency.length },
+  details(): { base: string } { return { base: "USD" } },
+  refresh(): Effect.Effect<void> { return Effect.void }
+}
+export const result: number = impl.lookup(impl.details().base)

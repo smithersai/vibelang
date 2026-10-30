@@ -112,8 +112,8 @@ var (
 	EK2005 = message(2005, errorCategory, "resumeWith runs this code at the perform site, inside the handled program, where the clause's providers are not in scope. It needs {0}.")
 	// EK2006: a return, break, or continue that leaves a finally block of effect code. {0} is the statement's keyword.
 	EK2006 = message(2006, errorCategory, "{0} leaves a finally block, which would discard a failure in flight.")
-	// EK9205: a declaration without a body whose return type is not an Effect type. {0} is the declaration.
-	EK9205 = message(9205, errorCategory, "{0} has no body to infer from, so its contract must be written as an Effect type.")
+	// EK9205: a service method without a written return type. {0} is the declaration.
+	EK9205 = message(9205, errorCategory, "{0} has no body to infer from. Write its return type.")
 	// EK9207: a member of a service or control declaration with a body or an initializer. {0} is the member, {1} the word.
 	EK9207 = message(9207, errorCategory, "{0} has an implementation, but a {1} declares only contracts.")
 	// EK2104: a setup statement of a layer declaration that follows one of its members.

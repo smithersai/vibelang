@@ -106,11 +106,17 @@ func syntaxInLowerableBody(n *ast.Node) bool {
 	return false
 }
 
-// checkServiceContracts reports EK9205 only for absent or primitive
-// contracts. An alias may already name an Effect type.
+// checkServiceContracts requires a written service return type. The legacy
+// control checks retain their existing Effect-only contract rule.
 func (p *projector) checkServiceContracts(class *ast.Node) {
 	for _, member := range class.Members() {
 		if member.Kind != ast.KindMethodDeclaration || ast.IsStatic(member) || member.Name() == nil || !ast.IsIdentifier(member.Name()) {
+			continue
+		}
+		if !isControlClass(class) {
+			if member.Type() == nil {
+				p.syntaxDiagnostic(member.Name(), 2101, class.Name().Text()+"."+member.Name().Text()+" has no body to infer from. Write its return type.")
+			}
 			continue
 		}
 		annotation := member.Type()

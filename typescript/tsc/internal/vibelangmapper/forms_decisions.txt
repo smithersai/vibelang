@@ -4387,6 +4387,9 @@ typescript/vibelang/cases/provide-service-no-layer/main.vibe:65:32 lambda effect
 typescript/vibelang/cases/provide-service-no-layer/main.vibe:65:75 lambda effectFn service
 typescript/vibelang/cases/provide-service-no-layer/main.vibe:73:30 lambda effectFn service
 typescript/vibelang/cases/provide-stream-loop/main.vibe:9:59 lambda effectFn table
+typescript/vibelang/cases/r4-service-plain-method/main.vibe:10:3 lambda effectFn annotation
+typescript/vibelang/cases/r4-service-plain-method/main.vibe:8:3 lambda plain annotation
+typescript/vibelang/cases/r4-service-plain-method/main.vibe:9:3 lambda plain annotation
 typescript/vibelang/cases/recursion-bridge/main.vibe:19:32 lambda plain table
 typescript/vibelang/cases/recursion-bridge/main.vibe:22:43 lambda plain table
 typescript/vibelang/cases/recursion-bridge/main.vibe:22:73 lambda plain fallback
