@@ -72,7 +72,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
-| `global` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
+| `global` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
@@ -120,7 +120,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
 | `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
-| `self` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
+| `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
@@ -131,6 +131,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.
+
+`globalThis` is available only as the object of a statically named member access: `.name`, `?.name`, a string-literal key or a template key without substitutions. Copying the object, destructuring it, passing or spreading it, using it with `in` or value-level `typeof`, or reading a nonliteral key reports `EK0107`; move that code to a `.ts` file. A repeated `globalThis.globalThis` also has to be a static member's object. Type queries and local bindings with the name `globalThis` keep their TypeScript meaning. Static access still follows the platform and dynamic-code rules.
 
 `import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. Every other member, `import.meta.resolve` included, and every other use of `import.meta` as a value reports `EK4402`. Aliases, destructuring, computed keys, arguments and spreads are rejected, including inside `Effect.try`, `tryPromise` or `sync` callbacks. Direct `import.meta.url` reads keep working. Put module resolution in a TypeScript helper:
 

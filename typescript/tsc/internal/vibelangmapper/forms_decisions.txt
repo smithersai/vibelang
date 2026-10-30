@@ -1831,6 +1831,7 @@ typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:16:3 lambd
 typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:24:11 lambda dual fallback
 typescript/vibelang/cases/generic-callees/main.vibe:17:25 lambda effectFn annotation
 typescript/vibelang/cases/generic-callees/main.vibe:20:13 lambda effectFn annotation
+typescript/vibelang/cases/global-this-escape.fail/main.vibe:23:59 lambda plain table
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:3:23 lambda plain annotation
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:4:26 lambda plain annotation
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:5:31 lambda plain annotation

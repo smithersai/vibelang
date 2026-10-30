@@ -110,7 +110,6 @@ var platformServices = map[string]*platformService{
 	"PubSub":          {"PubSub, or Stream.fromEventListener for an event target, from the prelude", `Stream.fromEventListener(target, "message")`, "", ""},
 	"Exit":            {"return from main for exit 0; fail for exit 1; interruption exits 130", "", "", ""},
 	"@effect/vitest":  {"it.effect and assert", "", `import { assert, it } from "@effect/vitest"`, ""},
-	"GlobalThis":      {"globalThis, ECMAScript's global object", "globalThis", "", ""},
 	"Clipboard":       {"the Clipboard service", "Clipboard.readString()", `import { Clipboard } from "@effect/platform-browser"`, `Clipboard.layer from "@effect/platform-browser"`},
 	"Geolocation":     {"the Geolocation service", "Geolocation.getCurrentPosition()", `import { Geolocation } from "@effect/platform-browser"`, `Geolocation.layer from "@effect/platform-browser"`},
 	"Permissions":     {"the Permissions service", `Permissions.query("geolocation")`, `import { Permissions } from "@effect/platform-browser"`, `Permissions.layer from "@effect/platform-browser"`},
@@ -204,11 +203,11 @@ var platformGlobals = map[string]string{
 	"process":            "Config", "console": "Console", "crypto": "Crypto", "performance": "Clock",
 	"localStorage": "KeyValueStore", "sessionStorage": "KeyValueStore", "indexedDB": "KeyValueStore",
 	"Worker": "Worker", "SharedWorker": "Worker", "importScripts": "Worker", "postMessage": "Worker",
-	"document": "", "window": "", "self": "GlobalThis", "navigator": "", "location": "", "history": "",
+	"document": "", "window": "", "self": "", "navigator": "", "location": "", "history": "",
 	"alert": "", "confirm": "", "prompt": "",
 	"addEventListener": "PubSub", "removeEventListener": "PubSub", "dispatchEvent": "PubSub",
 	"require": "import", "module": "export", "exports": "export", "__dirname": "Path", "__filename": "Path",
-	"Buffer": "Bytes", "Bun": "", "Deno": "", "global": "GlobalThis", "caches": "", "BroadcastChannel": "",
+	"Buffer": "Bytes", "Bun": "", "Deno": "", "global": "", "caches": "", "BroadcastChannel": "",
 }
 
 // platformAPIs says what replaces single platform APIs. A name is a module
@@ -281,6 +280,8 @@ var platformAPIs = map[string]platformAPI{
 	"events.once":                   {note: "Effect has no adapter for a Node.js EventEmitter; Stream.fromEventListener reads an event target."},
 	"stream.Readable.from":          {"Stream", "Stream.fromIterable(values)", ""},
 	"require":                       {"import", "", "A static import loads a module when the program loads."},
+	"self":                          {note: "Effect has no global-object service; keep access to the host global object in TypeScript."},
+	"global":                        {note: "Effect has no global-object service; keep access to the host global object in TypeScript."},
 	"require.resolve":               {note: "Effect has no module-resolution service; keep module resolution in TypeScript."},
 	"navigator.locks":               {"ExperimentalLocks", "Experimental.Locks.hold(name)", "A Semaphore locks only within one program."},
 	"navigator.clipboard":           {"Clipboard", "", ""},

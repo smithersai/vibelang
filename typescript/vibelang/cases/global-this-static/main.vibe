@@ -1,0 +1,13 @@
+import { copied } from "./shadow.vibe"
+export const checks = [
+  globalThis.URL === URL,
+  globalThis["URL"] === URL,
+  globalThis[`URL`] === URL,
+  globalThis?.URL === URL,
+  globalThis.globalThis.URL === URL,
+  globalThis["globalThis"].URL === URL,
+  copied.URL === "local",
+]
+export type Global = typeof globalThis
+export type Constructor = typeof globalThis.URL
+export function shadow(globalThis: { URL: string }): string { return globalThis.URL }

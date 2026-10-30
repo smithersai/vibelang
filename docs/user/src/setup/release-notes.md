@@ -1167,6 +1167,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Host-specific `import.meta` members and copies of its object compiled in `.vibe` files; only direct `import.meta.url` reads are now allowed, with `EK4402` explaining how to move host access to TypeScript.
 
+- Copies of `globalThis` and reads through nonliteral keys bypassed its access restriction; they now report `EK0107`, while literal member access, type queries and local shadows keep working.
+
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
 

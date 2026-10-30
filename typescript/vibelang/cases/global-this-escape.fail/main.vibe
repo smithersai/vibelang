@@ -1,0 +1,25 @@
+// expect: EK0107 EK4402
+const key = "URL"
+export const alias = globalThis
+export const computed = globalThis[key]
+export const { URL: URLAlias } = globalThis
+export const passed = Reflect.get(globalThis, "URL")
+export const spread = { ...globalThis }
+export const test = "URL" in globalThis
+export const kind = typeof globalThis
+export const repeated = globalThis.globalThis
+export const repeatedComputed = globalThis.globalThis[key]
+export const direct = globalThis.URL
+export const literal = globalThis["URL"]
+export const template = globalThis[`URL`]
+export const optional = globalThis?.URL
+export const repeatedDirect = globalThis.globalThis.URL
+export type Global = typeof globalThis
+export type Constructor = typeof globalThis.URL
+export function shadow(globalThis: { URL: string }): string { return globalThis.URL }
+export const shorthand = { globalThis }
+export const parensCopy = (globalThis)
+export const repeatedLiteral = globalThis["globalThis"]
+export effect function wrapped() { return try Effect.sync(() => globalThis) }
+export const numeric = globalThis[0]
+export const banned = globalThis.fetch

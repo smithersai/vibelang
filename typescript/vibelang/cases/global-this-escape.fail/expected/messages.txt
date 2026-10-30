@@ -1,0 +1,2 @@
+Use globalThis only as the object of a statically named member access; move this use to a .ts file.
+globalThis.fetch is platform code, which VibeLang code does not use directly.

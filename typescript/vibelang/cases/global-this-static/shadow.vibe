@@ -1,0 +1,2 @@
+const globalThis = { URL: "local" }
+export const copied = globalThis
