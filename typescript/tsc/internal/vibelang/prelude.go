@@ -363,6 +363,7 @@ type preludeState struct {
 	typeUses    map[*ast.SourceFile]map[string]bool        // prelude names each .vibe file's declaration file writes (declarations.go)
 	typeRefs    map[*ast.Node]bool                         // the identifiers that write those names
 	scopes      map[*ast.SourceFile]map[*ast.Symbol]string // the modules each .vibe file names, by name (preludeModuleName)
+	written     map[*ast.SourceFile]map[string]bool        // the prelude names a declaration of each .vibe file may write
 	moduleNames map[*ast.Node]bool                         // the identifiers preludeModuleName made
 
 	// intrinsics are the intrinsics that a source binding of another meaning
@@ -383,6 +384,7 @@ func preludeStateOf(c *checker.Checker) *preludeState {
 			typeUses:    map[*ast.SourceFile]map[string]bool{},
 			typeRefs:    map[*ast.Node]bool{},
 			scopes:      map[*ast.SourceFile]map[*ast.Symbol]string{},
+			written:     map[*ast.SourceFile]map[string]bool{},
 			moduleNames: map[*ast.Node]bool{},
 		}
 	}).(*preludeState)

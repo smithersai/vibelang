@@ -50,6 +50,7 @@ func init() {
 	checker.RegisterSpellingCandidatesHook(preludeSpellingCandidates)
 	checker.RegisterEntityNameVisibilityHook(preludeNameVisible)
 	checker.RegisterModuleNameHook(preludeModuleName)
+	checker.RegisterCopiedNameHook(preludeNameUnwritten)
 	checker.RegisterIteratedElementTypeHook(iteratedElementType)
 }
 

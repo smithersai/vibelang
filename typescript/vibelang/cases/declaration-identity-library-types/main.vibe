@@ -1,0 +1,6 @@
+// A library's own type node in an inferred signature keeps TypeScript's
+// spelling. The prelude puts SchemaAST and Types in scope, but this file never
+// writes them, so its declaration file names neither.
+export const decode = Schema.decodeUnknownSync(Schema.String)
+export const decodeEffect = Schema.decodeUnknownEffect(Schema.String)
+export const makeContext = Context.make

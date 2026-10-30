@@ -349,6 +349,9 @@ func getExistingNodeTreeVisitor(b *NodeBuilderImpl, bound *recoveryBoundary) *as
 			// either because they are the expanded rest parameter,
 			// or because they are the newly added parameters from the tuple, which might have different meanings in the original context
 			symAtLocation := b.ch.resolveEntityName(leftmost, meaning, true, true, b.ctx.enclosingDeclaration)
+			if sym != nil && b.ch.copiedNameOutOfScope(b.ctx.enclosingFile, leftmost, symAtLocation) {
+				symAtLocation = nil
+			}
 			if
 			// Check for unusable parameters symbols
 			symAtLocation == b.ch.unknownSymbol ||

@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Arrow-body and heartbeat checks, and fiber cleanup examples, could end their owner before a child started; they now await a child signal before observing cleanup or shutting down.
 
+- An exported value whose inferred signature comes from a library, such as `Schema.decodeUnknownSync(Schema.String)`, declared `SchemaAST.ParseOptions` and added `import { SchemaAST } from "effect"` although the file never wrote `SchemaAST`, so its declaration differed from TypeScript's; it now declares `import("effect/SchemaAST").ParseOptions`, as TypeScript does.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

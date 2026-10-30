@@ -155,9 +155,9 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			//
 			// The node builder also copies a library's own type node into an
 			// inferred type, such as SchemaAST.ParseOptions from effect's
-			// Schema.d.ts for Schema.decodeUnknownEffect(…), when its first
-			// name resolves from the .vibe file, as an effect root export or
-			// prelude name does, without asking entity visibility either.
+			// Schema.d.ts for Schema.decodeUnknownEffect(…), when the .vibe
+			// file writes its first name (preludeNameUnwritten), without
+			// asking entity visibility either.
 			bound := map[string]bool{}
 			for _, statement := range declarations.Statements.Nodes {
 				forEachTopLevelName(statement, func(name string) { bound[name] = true })
@@ -343,16 +343,33 @@ func preludeModuleName(c *checker.Checker, file *ast.SourceFile, module *ast.Sym
 	return identifier
 }
 
-// modulesInScope returns the modules the declaration file of file may name,
-// by their names: Effect's, and each one whose name file writes and does not
-// declare.
-func modulesInScope(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[*ast.Symbol]string {
-	if scope, ok := state.scopes[file]; ok {
-		return scope
+// preludeNameUnwritten reports whether name, the first name of a type node that
+// declaration emit copies into the declaration file of file, resolves to
+// symbol only through the prelude and file never writes it. Effect TypeScript
+// would not import such a name, so the declaration writes what TypeScript
+// writes: import("effect/SchemaAST").ParseOptions, not SchemaAST.ParseOptions.
+func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string, symbol *ast.Symbol) bool {
+	if !isVibeLangFile(file) || !isPreludeName(name) {
+		return false
 	}
-	declared := map[string]bool{}
-	for _, statement := range file.Statements.Nodes {
-		forEachTopLevelName(statement, func(name string) { declared[name] = true })
+	state := preludeStateOf(c)
+	if writtenPreludeNames(state, file)[name] {
+		return false
+	}
+	prelude := preludeSymbol(c, state, file, name)
+	if prelude == nil {
+		return false
+	}
+	return resolvedAlias(c, prelude) == resolvedAlias(c, symbol) || moduleAliasTypeOf(c, prelude, name) == symbol
+}
+
+// writtenPreludeNames returns the prelude names that a declaration of file may
+// write: Effect, which a .vibe file drops where its Effect TypeScript imports
+// it, and each one file writes. The schema, error and data forms write theirs
+// as intrinsics.
+func writtenPreludeNames(state *preludeState, file *ast.SourceFile) map[string]bool {
+	if written, ok := state.written[file]; ok {
+		return written
 	}
 	written := map[string]bool{"Effect": true}
 	var visit func(node *ast.Node) bool
@@ -366,6 +383,22 @@ func modulesInScope(c *checker.Checker, state *preludeState, file *ast.SourceFil
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	state.written[file] = written
+	return written
+}
+
+// modulesInScope returns the modules the declaration file of file may name,
+// by their names: Effect's, and each one whose name file writes and does not
+// declare.
+func modulesInScope(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[*ast.Symbol]string {
+	if scope, ok := state.scopes[file]; ok {
+		return scope
+	}
+	declared := map[string]bool{}
+	for _, statement := range file.Statements.Nodes {
+		forEachTopLevelName(statement, func(name string) { declared[name] = true })
+	}
+	written := writtenPreludeNames(state, file)
 	names := make([]string, 0, len(written))
 	for name := range written {
 		names = append(names, name)
@@ -454,6 +487,14 @@ func typeEntityName(n *ast.Node) *ast.Node {
 	return nil
 }
 
+// resolvedAlias returns the symbol that symbol aliases, or symbol.
+func resolvedAlias(c *checker.Checker, symbol *ast.Symbol) *ast.Symbol {
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		return c.GetAliasedSymbol(symbol)
+	}
+	return symbol
+}
+
 // recordLibraryTypeUse records that the declaration file of file writes
 // identifier, the first name of a type node the node builder copied from a
 // library's declarations, when it names the symbol that the prelude name or
@@ -464,15 +505,9 @@ func recordLibraryTypeUse(c *checker.Checker, state *preludeState, file *ast.Sou
 	if !isPrelude && !isEffectExportName(name) {
 		return
 	}
-	resolve := func(symbol *ast.Symbol) *ast.Symbol {
-		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
-			return c.GetAliasedSymbol(symbol)
-		}
-		return symbol
-	}
 	prelude := preludeSymbol(c, state, file, name)
-	got := resolve(c.GetSymbolAtLocation(identifier))
-	if want := resolve(prelude); want != nil && want == got {
+	got := resolvedAlias(c, c.GetSymbolAtLocation(identifier))
+	if want := resolvedAlias(c, prelude); want != nil && want == got {
 		recordTypeUse(state, file, identifier)
 	} else if got != nil && got == moduleAliasTypeOf(c, prelude, name) && ast.IsTypeReferenceNode(identifier.Parent) {
 		// effect's own Option, the type, which the declaration file writes

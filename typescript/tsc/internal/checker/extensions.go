@@ -333,6 +333,35 @@ func (c *Checker) applyEntityNameVisibilityHooks(entityName *ast.Node, symbol *a
 	return false
 }
 
+// CopiedNameHook reports whether the declaration file of file must not write
+// name, which resolves to symbol there, when it copies a type node from
+// another file that starts with name. The node builder then treats name as
+// out of scope, as TypeScript treats a name the file does not import, and
+// writes import("module").Type. A name resolution hook can put a name in scope
+// that the source never wrote.
+type CopiedNameHook func(c *Checker, file *ast.SourceFile, name string, symbol *ast.Symbol) bool
+
+var copiedNameHooks []CopiedNameHook
+
+// RegisterCopiedNameHook adds hook to every checker. Call it only from the
+// init function of an in-tree package that tsc/cmd/tsc imports; registration
+// is not synchronized.
+func RegisterCopiedNameHook(hook CopiedNameHook) {
+	copiedNameHooks = append(copiedNameHooks, hook)
+}
+
+func (c *Checker) copiedNameOutOfScope(file *ast.SourceFile, name *ast.Node, symbol *ast.Symbol) bool {
+	if from := ast.GetSourceFileOfNode(name); symbol == nil || from == nil || from == file {
+		return false
+	}
+	for _, hook := range copiedNameHooks {
+		if hook(c, file, name.Text(), symbol) {
+			return true
+		}
+	}
+	return false
+}
+
 // ModuleNameHook lets a declaration file write a type from module, a module
 // no declaration of file imports, through a name, Name.Type, instead of an
 // import type, import("module").Type. It returns an identifier, made with

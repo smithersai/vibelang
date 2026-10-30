@@ -1,0 +1,3 @@
+// A file that writes the name keeps it in the signature that it copies.
+export const decode = Schema.decodeUnknownSync(Schema.String)
+export const first: SchemaAST.ParseOptions = { errors: "first" }
