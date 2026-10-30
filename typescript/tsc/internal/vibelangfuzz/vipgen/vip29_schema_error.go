@@ -129,7 +129,7 @@ func init() {
 				}
 				return &Seq{Stmts: append(trip, read)}
 			}
-			return &If{Cond: g.Cond(s), Then: []Stmt{&Throw{Value: newSchemaError(g, s, d)}}}
+			return g.Guarded(s, func() []Stmt { return []Stmt{&Throw{Value: newSchemaError(g, s, d)}} })
 		},
 		Operand: func(g *Gen, s *Scope, number bool) Expr {
 			// Effect.fail never succeeds, so it suits a number operand too.

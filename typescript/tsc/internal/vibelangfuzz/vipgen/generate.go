@@ -350,16 +350,7 @@ func (g *Gen) Stmt(s *Scope) Stmt {
 	}
 	if s.Depth < maxDepth {
 		forms = append(forms, func() Stmt {
-			cond := g.Cond(s)
-			names := narrows(cond)
-			for _, name := range names {
-				g.narrowed[name]++
-			}
-			then := g.Block(s.child())
-			for _, name := range names {
-				g.narrowed[name]--
-			}
-			return &If{Cond: cond, Then: then}
+			return g.Guarded(s, func() []Stmt { return g.Block(s.child()) })
 		})
 	}
 	if !s.NoReturn {
@@ -468,6 +459,23 @@ func narrows(cond Expr) []string {
 		}
 	}
 	return names
+}
+
+// Guarded writes `if (cond) { then }`: a fresh condition, then the body,
+// with the locals the condition narrows kept out of the body's ===
+// comparisons. A body built before or beside its condition misses that, and
+// writes 2 === n under if (1 === n), which TypeScript rejects (TS2367).
+func (g *Gen) Guarded(s *Scope, then func() []Stmt) Stmt {
+	cond := g.Cond(s)
+	names := narrows(cond)
+	for _, name := range names {
+		g.narrowed[name]++
+	}
+	body := then()
+	for _, name := range names {
+		g.narrowed[name]--
+	}
+	return &If{Cond: cond, Then: body}
 }
 
 func (g *Gen) isNarrowed(e Expr) bool {

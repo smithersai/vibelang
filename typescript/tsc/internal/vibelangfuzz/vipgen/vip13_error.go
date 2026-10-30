@@ -45,7 +45,7 @@ func init() {
 			case 2:
 				return catchConst(g, s, true, false)
 			case 3:
-				return &If{Cond: g.Cond(s), Then: []Stmt{&Throw{Value: errorValue(g, s)}}}
+				return g.Guarded(s, func() []Stmt { return []Stmt{&Throw{Value: errorValue(g, s)}} })
 			}
 			return &Throw{Value: errorValue(g, s)}
 		},
