@@ -110,6 +110,10 @@ A cached result is only as correct as its key is complete. Each target names:
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it.
 
+The command-line fuzz target builds its nested compiler with `-trimpath`,
+matching the outer Go test build. This lets the two builds share compiler
+package artifacts in the Go build cache on a fresh validation mirror.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

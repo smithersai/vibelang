@@ -264,6 +264,10 @@ A function may be its module's default export (`Func.Default`): both prints writ
 
 ## How to run
 
+`FuzzCommandLine` builds its compiler with `-trimpath`, matching the build
+graph seed check. Their compiler packages share Go build-cache entries, so
+a fresh mirror does not compile them twice in different build modes.
+
 ```sh
 cd typescript/tsc
 export ES_REMOTE_HOST=ubuntu@<host> ES_REMOTE_KEY=~/.ssh/<key>

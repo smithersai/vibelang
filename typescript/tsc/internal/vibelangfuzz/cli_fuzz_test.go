@@ -359,7 +359,9 @@ func cliBuild(tb testing.TB, dir string) string {
 		tb.Skipf("go is not on PATH, so the vibelang binary cannot be built: %v", err)
 	}
 	binary := filepath.Join(dir, "vibelang")
-	cmd := exec.Command(gocmd, "build", "-o", binary, "./cmd/tsc")
+	// Match the outer seed target: a fresh mirror reuses its trimmed
+	// compiler packages instead of rebuilding them in a second mode.
+	cmd := exec.Command(gocmd, "build", "-trimpath", "-o", binary, "./cmd/tsc")
 	cmd.Dir = filepath.Join(Root(), "typescript/tsc")
 	cliIsolate(cmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
