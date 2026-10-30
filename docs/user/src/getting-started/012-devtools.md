@@ -195,7 +195,7 @@ EK4801-EK4825 are lint. Each has a default, error, warning, or off, and the hist
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-14
-// run: try Console.log(discard() catch 0)
+// run: try Console.log(discard() catch () => 0)
 effect function discard() {
   // @vibelang-diagnostics-next-line EK4804:off
   throw new Error("unused")
@@ -412,7 +412,7 @@ Forms whose TypeScript long form would mislead a rule have their own node types,
 | --- | --- |
 | `A!E!R` | `VibeEffectType` with `success`, `failure`, and `requirements` |
 | `x \|> f(%)` | `VibePipeExpression` with `left` and `right`; `%` is `TopicReference` |
-| `x catch fallback`, `x catch (e) => recover(e)` | `VibeCatchExpression` with `expression` and `handler` |
+| `x catch () => fallback`, `x catch (e) => recover(e)` | `VibeCatchExpression` with `expression` and `handler` |
 | `provide AppLive, Random.Random = seeded { ... }` | `VibeProvideStatement` with `providers` and `body`; `Random.Random = seeded` is `VibeServiceProvider` |
 | `uninterruptible { ... }`, `restore { ... }`, `interruptible { ... }` | `VibeMaskStatement` with `kind` and `body` |
 

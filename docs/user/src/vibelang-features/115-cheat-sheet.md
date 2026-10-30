@@ -373,7 +373,7 @@ effect function describe(id: string) {
 // Output: ["Ada","no user missing"]
 ```
 
-**Falling back in an expression**. `x catch fallback` runs the Effect and gives the fallback after a typed failure. Defects and interruption propagate.
+**Falling back in an expression**. `x catch () => fallback` runs the Effect and gives the fallback after a typed failure. Defects and interruption propagate.
 
 ```ts effect
 // fragment
@@ -387,7 +387,7 @@ const nameOrGuest = (id: string) =>
 // pending: VIP-1, VIP-2, VIP-5, VIP-14
 // run: try Console.log(JSON.stringify([try nameOrGuest("1"), try nameOrGuest("missing")]))
 effect function nameOrGuest(id: string) {
-  return effect { return (try getUser(id)).name } catch "guest"
+  return effect { return (try getUser(id)).name } catch () => "guest"
 }
 // Output: ["Ada","guest"]
 ```

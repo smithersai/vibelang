@@ -123,7 +123,7 @@ The emitted declarations are the ones the Effect TypeScript writes, so a library
 | `Effect.provideService(program, Random.Random, seeded)` | `provide Random.Random = seeded { try program }` |
 | `Effect.catchTag(program, "Missing", recover)` | `program catch effect (e) => match (e) { when Missing: try recover(e); default: throw e; }` |
 | `Effect.catch(program, (e) => recover(e))` | `program catch effect (e) => try recover(e)` |
-| `Effect.orElseSucceed(program, () => value)` | `program catch value` |
+| `Effect.orElseSucceed(program, () => value)` | `program catch () => value` |
 | `Effect.result(program)` (Effect 3: `Effect.either(program)`) | `try result(program)` captures one program's typed failure as a `Result`; match `Result.Success(let value)` or `Result.Failure(let error)`. |
 | `Effect.exit(program)` | `try exit(program)` captures its full outcome; match `Exit.Success(let value)` or `Exit.Failure(let cause)`. |
 | `Effect.ensuring(program, cleanup)` | `try ensuring(program, cleanup)` |
@@ -276,7 +276,7 @@ These are single-machine observations from the 0.0.9 alpha review on Linux x64, 
 | --- | ---: |
 | 200,000 Effect-contracted VibeLang calls without `catch` | 550 to 610 ms, about 2.9 µs per call |
 | 200,000 `Effect.fn` generator calls | 860 to 1,200 ms |
-| 1,000,000 `step(n) catch 0` expressions | 3.0 to 3.8 s |
+| 1,000,000 `step(n) catch () => 0` expressions | 3.0 to 3.8 s |
 | 1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed` | About 0.33 s |
 | 1,000,000 plain-function calls | About 3 ms |
 

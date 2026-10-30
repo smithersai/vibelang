@@ -94,7 +94,7 @@ effect function getTodo(id: number) {
 // (id: number) => string!TodoFailed
 
 effect function todoOrFallback(id: number) {
-  return retry(getTodo(id), Schedule.recurs(2)) catch "Todo unavailable"
+  return retry(getTodo(id), Schedule.recurs(2)) catch () => "Todo unavailable"
 }
 ```
 
@@ -107,7 +107,7 @@ VibeLang runs on Effect and its library modules; common operations have syntax:
 | Effect feature | VibeLang |
 | --- | --- |
 | Effect types | `User!NotFound!Users`: returns `User`, fails with `NotFound`, needs `Users` |
-| Typed errors | `error NotFound { id: string }`, `throw new NotFound({ id })`, `x catch fallback` |
+| Typed errors | `error NotFound { id: string }`, `throw new NotFound({ id })`, `x catch () => fallback` |
 | Dependency injection | `service Users { ... }`, `provide UsersLive { ... }` |
 | Structured concurrency | `fork`, `join`, `try.all [a(), b()]`, `for concurrent(8) (const id of ids) { try work(id) }` |
 | Retries and timeouts | `try (work() \|> retry(%, policy) \|> timeout(%, "1 second"))` |

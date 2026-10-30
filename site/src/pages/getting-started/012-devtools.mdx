@@ -407,7 +407,7 @@ Forms whose TypeScript long form would mislead a rule have their own node types,
 | --- | --- |
 | `A!E!R` | `VibeEffectType` with `success`, `failure`, and `requirements` |
 | `x \|> f(%)` | `VibePipeExpression` with `left` and `right`; `%` is `TopicReference` |
-| `x catch fallback`, `x catch (e) => recover(e)` | `VibeCatchExpression` with `expression` and `handler` |
+| `x catch () => fallback`, `x catch (e) => recover(e)` | `VibeCatchExpression` with `expression` and `handler` |
 | `provide AppLive, Random.Random = seeded { ... }` | `VibeProvideStatement` with `providers` and `body`; `Random.Random = seeded` is `VibeServiceProvider` |
 | `uninterruptible { ... }`, `restore { ... }`, `interruptible { ... }` | `VibeMaskStatement` with `kind` and `body` |
 

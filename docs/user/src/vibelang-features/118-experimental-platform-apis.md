@@ -53,7 +53,7 @@ effect function runnable() {
     try fs.writeFileString(`${dir}/build.sh`, "#!/bin/sh")
     try fs.chmod(`${dir}/build.sh`, 0o755)
     try fs.writeFileString(`${dir}/notes.txt`, "")
-    return { script: canRun(`${dir}/build.sh`) catch false, notes: canRun(`${dir}/notes.txt`) catch false }
+    return { script: canRun(`${dir}/build.sh`) catch () => false, notes: canRun(`${dir}/notes.txt`) catch () => false }
   })
 }
 // Output: {"script":true,"notes":false}

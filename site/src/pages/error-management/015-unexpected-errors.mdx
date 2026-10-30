@@ -29,7 +29,7 @@ An explicit `throw` in an effect function, even `throw new Error(...)`, is a typ
 
 ```vibe
 effect function firstLabel(labels: ReadonlyArray<string>) {
-  return fromOption(Option.fromNullishOr(labels[0])) catch "No label"
+  return fromOption(Option.fromNullishOr(labels[0])) catch () => "No label"
 }
 ```
 

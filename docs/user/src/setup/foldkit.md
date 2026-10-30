@@ -104,7 +104,7 @@ effect function loadQuote(url: string) {
 }
 
 export effect function quoteOrFallback(url: string) {
-  return loadQuote(url) catch "Could not load a quote"
+  return loadQuote(url) catch () => "Could not load a quote"
 }
 ```
 

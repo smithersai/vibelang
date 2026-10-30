@@ -73,7 +73,7 @@ effect function titleLength(title: string | undefined) {
 // number!MissingTitle!
 
 effect function optionalTitle(title: string | undefined) {
-  return titleLength(title) catch 0
+  return titleLength(title) catch () => 0
 }
 // Output: 0
 ```

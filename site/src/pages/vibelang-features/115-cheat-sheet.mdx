@@ -414,13 +414,13 @@ const describe = (id: string) =>
 
 :::
 
-**Falling back in an expression**. `x catch fallback` runs the Effect and gives the fallback after a typed failure. Defects and interruption propagate.
+**Falling back in an expression**. `x catch () => fallback` runs the Effect and gives the fallback after a typed failure. Defects and interruption propagate.
 
 :::code-group
 
 ```vibe [VibeLang]
 effect function nameOrGuest(id: string) {
-  return effect { return (try getUser(id)).name } catch "guest"
+  return effect { return (try getUser(id)).name } catch () => "guest"
 }
 // Output: ["Ada","guest"]
 ```

@@ -51,7 +51,7 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 | `A!E!R`, patterns after `when` and `is` | As written; line breaks around them follow the surrounding code |
 | `match (x) { when P: v; ... }` | Arms as object-literal properties: one line when written on one line and they fit, else one per line, each ending in `;` |
 | `provide X { ... }`, `uninterruptible { ... }` | The block as a block statement |
-| `x catch y`, `x \|> f(%)` | Like a method call and the `\|\|` operator: a line break before `catch` or `\|>` stays |
+| `x catch (e) => y`, `x \|> f(%)` | Like a method call and the `\|\|` operator: a line break before `catch` or `\|>` stays |
 | `fork x`, `join x`, `throw x` | Like a prefix operator such as `void` |
 | `error`, `schema` | The body as an object type: one line when written on one line and it fits |
 | `service` | The body as a class body, one member per line |

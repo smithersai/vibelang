@@ -21,7 +21,7 @@ effect function cachedTitle() {
 }
 
 effect function title() {
-  return latestTitle() catch effect { return try cachedTitle() }
+  return latestTitle() catch effect () => try cachedTitle()
 }
 // string!!
 ```
@@ -49,7 +49,7 @@ Reading saved title
 Saved issue
 ```
 
-`x catch effect { … }` runs the left-hand Effect and runs its fallback only after an expected failure. An effect arrow can name the error and run Effects before returning its value. A plain arrow returns a success value; a `throw` in it is a defect.
+`x catch effect () => …` runs the left-hand Effect and calls its handler only after an expected failure. The handler is always a function literal: an effect handler can name the error and run Effects before returning its value, and a plain arrow returns a success value, where a `throw` is a defect. A value, a name or an `effect { … }` block after `catch` is a syntax error.
 
 `try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
 
@@ -59,7 +59,7 @@ Saved issue
 // pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try titleOrPlaceholder())
 effect function titleOrPlaceholder() {
-  return latestTitle() catch "No title available"
+  return latestTitle() catch () => "No title available"
 }
 // string!!
 ```
@@ -68,7 +68,7 @@ effect function titleOrPlaceholder() {
 No title available
 ```
 
-`x catch value` is `Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
+`x catch () => value` is `Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
 
 ## Typing both sides
 
@@ -80,7 +80,7 @@ type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
 effect function lookup(): Lookup!! {
   return effect {
     return { _tag: "Found" as const, title: try latestTitle() }
-  } catch { _tag: "Offline" as const }
+  } catch () => ({ _tag: "Offline" as const })
 }
 ```
 
@@ -111,9 +111,9 @@ Saved issue
 
 `firstSuccessOf` tries Effects one at a time in priority order and stops on success; if all fail with expected errors, it reports the last error. A cause without an expected failure stops the search, and so does one with a defect; an expected failure beside an interruption activates the next alternative. An empty iterable is a defect: pass at least one.
 
-`catch` has the precedence of `??` and associates to the left. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses: `loadTitle() catch (savedTitle || "Untitled issue")`. To try one more alternative after a fallback fails, nest it in an effect handler, which recovers it in turn: `latestTitle() catch effect { return cachedTitle() catch "Untitled issue" }`.
+`catch` has the precedence of `??` and associates to the left. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses. A handler's concise body extends as far as an arrow body does, so in `loadTitle() catch () => savedTitle || "Untitled issue"` the `||` is inside the handler. To try one more alternative after a fallback fails, nest it in an effect handler, which recovers it in turn: `latestTitle() catch effect () => cachedTitle() catch () => "Untitled issue"`.
 
-A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect { return try cachedTitle() } } catch "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
+A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
 ## Coming from Effect
 

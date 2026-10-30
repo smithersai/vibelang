@@ -225,7 +225,7 @@ Unavailable (InvalidCode)
 Unavailable (ItemMissing)
 ```
 
-After an Effect, `x catch (error) => handler` runs `x` and passes an expected failure to the handler, as `Effect.catch` does. Causes with a defect or only interruption pass through; an expected failure beside an interruption is recovered. `x catch fallback` evaluates the fallback instead; see [Fallback](016-fallback.md).
+After an Effect, `x catch (error) => handler` runs `x` and passes an expected failure to the handler, as `Effect.catch` does. Causes with a defect or only interruption pass through; an expected failure beside an interruption is recovered. `x catch () => fallback` ignores the error and gives the fallback instead; see [Fallback](016-fallback.md).
 
 `try Effect.catch(findItem(input), handler)` also recovers expected failures, with the same rule as source catch. `Effect.catchEager` has the same policy and can recover immediately when given an already computed `Exit`.
 

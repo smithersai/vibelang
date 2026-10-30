@@ -117,7 +117,7 @@ For a valid domain value, aim for `decode(encode(value))` to be equivalent to `v
 
 ## Coming from Effect
 
-Schemas use the same Effect 4 constructors. Write an `effect` function around parser calls and use `try` to run each returned Effect. Use `x catch y` to recover from `SchemaError` failures.
+Schemas use the same Effect 4 constructors. Write an `effect` function around parser calls and use `try` to run each returned Effect. Use `x catch (e) => y` to recover from `SchemaError` failures.
 
 ---
 

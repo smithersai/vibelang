@@ -29,7 +29,7 @@ An explicit `throw` in an effect function, even `throw new Error(...)`, is a typ
 // pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
 effect function firstLabel(labels: ReadonlyArray<string>) {
-  return fromOption(Option.fromNullishOr(labels[0])) catch "No label"
+  return fromOption(Option.fromNullishOr(labels[0])) catch () => "No label"
 }
 ```
 

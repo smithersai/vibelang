@@ -104,7 +104,7 @@ effect function nameOf(id: string) {
 }
 
 effect function greet(id: string) {
-  const name = nameOf(id) catch "guest"
+  const name = nameOf(id) catch () => "guest"
   return `Hello, ${name}`
 }
 // (id: string) => string!!Users
@@ -167,7 +167,7 @@ effect function nameOf(id: string) {
   const attempt = users.name(id)
     |> retry(%, Schedule.exponential("100 millis"))
     |> timeout(%, "2 seconds")
-  return attempt catch "unknown"
+  return attempt catch () => "unknown"
 }
 
 export effect function names(ids: ReadonlyArray<string>) {
@@ -279,7 +279,7 @@ effect function getTodo(id: number) {
 // (id: number) => string!TodoFailed
 
 effect function todoOrFallback(id: number) {
-  return retry(getTodo(id), Schedule.recurs(2)) catch "Todo unavailable"
+  return retry(getTodo(id), Schedule.recurs(2)) catch () => "Todo unavailable"
 }
 ```
 
@@ -291,7 +291,7 @@ Effect's functions and modules are in scope. The common features have their own 
 | --- | --- |
 | Effect types | `User!NotFound!Users`: returns `User`, fails with `NotFound`, needs `Users` |
 | Effect functions | `effect function load(id) { const user = try find(id); ... }` |
-| Typed errors | `error NotFound { id: string }`, `throw new NotFound({ id })`, `x catch fallback` |
+| Typed errors | `error NotFound { id: string }`, `throw new NotFound({ id })`, `x catch () => fallback` |
 | Dependency injection | `service Users { ... }`, `provide UsersLive { ... }` |
 | Structured concurrency | `fork work()`, `join f`, `try.all [a(), b()]`, `for concurrent(8) (const id of ids) { ... }` |
 | Retries and timeouts | `work() \|> retry(%, policy) \|> timeout(%, "1 second")` |
