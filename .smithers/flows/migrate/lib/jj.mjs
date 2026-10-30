@@ -59,6 +59,16 @@ export async function setBookmark(root, name, revision, { restart = false } = {}
   await must(`jj bookmark set ${quote(name)} -r ${quote(revision)}${restart ? " --allow-backwards" : ""}`, { cwd: root })
 }
 
+/**
+ * Moves a bookmark to revision, a re-run's commit on parent. When the bookmark
+ * is on an earlier commit on parent, revision replaces it, a sideways move jj
+ * refuses unless told; anything built on the earlier commit keeps the refusal.
+ */
+export async function replaceBookmark(root, name, revision, parent) {
+  const target = await bookmarkTarget(root, name)
+  await setBookmark(root, name, revision, { restart: Boolean(target) && (await commitId(root, `${target}-`)) === parent })
+}
+
 /** Starts a new working-copy change on a revision. */
 export async function newAt(root, revision) {
   await must(`jj new ${quote(revision)}`, { cwd: root })

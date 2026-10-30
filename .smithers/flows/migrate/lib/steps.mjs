@@ -437,7 +437,7 @@ export async function setup(options) {
 
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const setupCommit = await Jj.commit(t, `migrate(vibelang): set up ${version.trim()}\n\nAdds the compiler, the runtime and the Vite plugin, replaces tsc with vibelang\nin scripts, lets .vibe files import modules by source name, and sets coding\nagents up for .vibe files (vibelang agents init). Effect\n${upgrade.effect.to} came in the commit before.`)
-  await Jj.setBookmark(t, config.bookmark, setupCommit ?? upgrade.jj.commit)
+  await Jj.replaceBookmark(t, config.bookmark, setupCommit ?? upgrade.jj.commit, upgrade.jj.commit)
   const result = {
     at: new Date().toISOString(),
     jj: { initialized: upgrade.jj.initialized, base: upgrade.jj.base, baseCommit: upgrade.jj.baseCommit, upgradeCommit: upgrade.jj.commit, setupCommit: setupCommit ?? upgrade.jj.commit, bookmark: config.bookmark },
