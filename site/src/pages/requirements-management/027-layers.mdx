@@ -122,7 +122,7 @@ const AppLive = ReportsLive.pipe(Layer.provideMerge(PrinterAndSettings))
 
 `Layer.provide(consumer, dependencies)` feeds dependency outputs into the consumer and keeps the consumer's outputs; `provideMerge` also keeps the dependency outputs. Here `PrinterAndSettings` supplies the dependencies of `ReportsLive`, and `AppLive` retains all three services.
 
-Inputs the composition doesn't provide stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report `EK3201` with the unsatisfied inputs. A written contract that excludes a remaining requirement reports `EK9202`.
+Inputs the composition doesn't provide stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report `EK3201` with the unsatisfied inputs. A written contract that excludes a remaining requirement reports `EK9202`, an interim code.
 
 Reuse one layer value when several paths need a shared instance: equivalent reconstructed layer values have different memoization identities.
 
