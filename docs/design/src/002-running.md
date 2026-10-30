@@ -1,14 +1,16 @@
 # Running Effects
 
-Sources: [VIP-5](../vips/0005-try-runs-effects.md), [VIP-2](../vips/0002-effect-blocks-and-do.md), [VIP-17](../vips/0017-fork.md), [VIP-18](../vips/0018-concurrent.md), [VIP-19](../vips/0019-for-concurrent.md), [VIP-20](../vips/0020-for-try.md), [VIP-21](../vips/0021-producers.md), [VIP-22](../vips/0022-interruption-blocks.md), [VIP-23](../vips/0023-pipe.md).
+Sources: [VIP-4](../vips/0004-throw.md), [VIP-5](../vips/0005-try-runs-effects.md), [VIP-2](../vips/0002-effect-blocks-and-do.md), [VIP-17](../vips/0017-fork.md), [VIP-18](../vips/0018-concurrent.md), [VIP-19](../vips/0019-for-concurrent.md), [VIP-20](../vips/0020-for-try.md), [VIP-21](../vips/0021-producers.md), [VIP-22](../vips/0022-interruption-blocks.md), [VIP-23](../vips/0023-pipe.md).
 
-A call never runs anything. Calling an `effect` function, or any function that returns an Effect, gives the Effect unrun. An Effect runs only where one of these constructs runs it, in effect code (an `effect` function, a producer or an `effect` block):
+Calling an `effect` function constructs its cold Effect. Calls retain ordinary JavaScript evaluation, including receivers, arguments and parameter initialization; a plain factory can perform JavaScript work while constructing its result. Returning an Effect does not itself execute it. The table lists language execution sites in effect code (an `effect` function, a producer or an `effect` block); native Effect APIs and explicit written runners keep their own call behavior:
 
 | Construct | Runs |
 | --- | --- |
 | `try e` | one Effect, giving its success |
 | `e catch (err) => y` | one Effect, handling its failure |
 | `fork e` and its forms | one Effect, in a new fiber |
+| `join f` | `Fiber.join(f)`, giving the fiber's success or propagating its failure |
+| `throw e` | `Effect.fail(e)`, failing the enclosing Effect with `e` as its error value |
 | `try.all`, `try.race`, `try.any`, `try.allSettled` | several Effects at once |
 | `for concurrent` | one Effect per item, at once |
 | `for try` | one Effect per Stream element, in order |

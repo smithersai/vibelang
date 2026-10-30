@@ -4,15 +4,17 @@ title: "2. Running Effects"
 
 # Running Effects
 
-Sources: [VIP-5](/vips/0005-try-runs-effects), [VIP-2](/vips/0002-effect-blocks-and-do), [VIP-17](/vips/0017-fork), [VIP-18](/vips/0018-concurrent), [VIP-19](/vips/0019-for-concurrent), [VIP-20](/vips/0020-for-try), [VIP-21](/vips/0021-producers), [VIP-22](/vips/0022-interruption-blocks), [VIP-23](/vips/0023-pipe).
+Sources: [VIP-4](/vips/0004-throw), [VIP-5](/vips/0005-try-runs-effects), [VIP-2](/vips/0002-effect-blocks-and-do), [VIP-17](/vips/0017-fork), [VIP-18](/vips/0018-concurrent), [VIP-19](/vips/0019-for-concurrent), [VIP-20](/vips/0020-for-try), [VIP-21](/vips/0021-producers), [VIP-22](/vips/0022-interruption-blocks), [VIP-23](/vips/0023-pipe).
 
-A call never runs anything. Calling an `effect` function, or any function that returns an Effect, gives the Effect unrun. An Effect runs only where one of these constructs runs it, in effect code (an `effect` function, a producer or an `effect` block):
+Calling an `effect` function constructs its cold Effect. Calls retain ordinary JavaScript evaluation, including receivers, arguments and parameter initialization; a plain factory can perform JavaScript work while constructing its result. Returning an Effect does not itself execute it. The table lists language execution sites in effect code (an `effect` function, a producer or an `effect` block); native Effect APIs and explicit written runners keep their own call behavior:
 
 | Construct | Runs |
 | --- | --- |
 | `try e` | one Effect, giving its success |
 | `e catch (err) => y` | one Effect, handling its failure |
 | `fork e` and its forms | one Effect, in a new fiber |
+| `join f` | `Fiber.join(f)`, giving the fiber's success or propagating its failure |
+| `throw e` | `Effect.fail(e)`, failing the enclosing Effect with `e` as its error value |
 | `try.all`, `try.race`, `try.any`, `try.allSettled` | several Effects at once |
 | `for concurrent` | one Effect per item, at once |
 | `for try` | one Effect per Stream element, in order |
