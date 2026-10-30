@@ -26,6 +26,68 @@ function visibleText(text) {
       return { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " }[entity.toLowerCase()]
     })
 }
+function releasePageProblems(route, body, { version, expectedOutput, platforms }) {
+  const problems = []
+  if (body === undefined) return problems
+  const html = route === "/" || !/\.(?:md|txt)$/.test(route)
+  let text = html ? visibleText(body) : body
+  const problem = message => problems.push(route + ": " + message)
+  const notes = route.startsWith("/setup/release-notes")
+  if (notes) {
+    const headings = [...text.matchAll(new RegExp("^##\\s+(v?" + semver + ")\\s*$", "gm"))]
+    const current = headings[0]
+    if (!current || current[1].replace(/^v/, "") !== version) problem(`latest release notes are ${current?.[1] ?? "missing"}; expected ${version}`)
+    // Historical examples and comparisons keep the versions they describe.
+    text = current ? text.slice(current.index, headings[1]?.index ?? text.length) : ""
+  }
+  const pins = [
+    ...text.matchAll(new RegExp("\\b((?:create-)?vibelang(?:-[a-z0-9-]+)?)@(" + semver + ")", "g")),
+    ...text.matchAll(new RegExp('["\\x27]((?:create-)?vibelang(?:-[a-z0-9-]+)?)["\\x27]\\s*:\\s*["\\x27](' + semver + ')["\\x27]', "g"))
+  ]
+  for (const [, name, pin] of pins) if (pin !== version) problem(`pin ${name}@${pin}; expected ${version}`)
+  if (!notes) {
+    const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
+    for (const [label, pin] of labels) if (pin !== version) problem(`release label ${label.trim()}; expected ${version}`)
+    if (["/", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route) &&
+        !labels.some(([, pin]) => pin === version)) problem("missing current release label " + version)
+  }
+  for (const [output] of text.matchAll(new RegExp("VibeLang " + semver + " \\(TypeScript [^\\)]+\\)", "g"))) {
+    if (output !== expectedOutput) problem(`--version output ${output}; expected ${expectedOutput}`)
+  }
+  if (route === "/setup.md" && !text.includes(expectedOutput)) problem("missing expected --version output " + expectedOutput)
+  for (const [, pin] of text.matchAll(new RegExp("npm view vibelang@" + semver + " version[\\x60\\s]*and expect [\\x60\\s]*(" + semver + ")", "g"))) {
+    if (pin !== version) problem(`npm view expected ${pin}; expected ${version}`)
+  }
+  if (route === "/llms.txt") {
+    for (const path of ["/setup.md", "/getting-started/004-installation.md", "/setup/release-notes.md"]) {
+      if (!text.includes(path)) problem("missing Markdown link " + path)
+    }
+  }
+  if (platforms && ["/", "/setup.md", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route)) {
+    const install = route.startsWith("/getting-started/")
+    if (install) {
+      const listed = [...new Set(text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@vibelang\/cli-win32)-(?:arm64|x64)\b/g) ?? [])].sort()
+      for (const name of new Set([...platforms, ...listed])) {
+        if (!platforms.includes(name)) problem("platform " + name + " is not published in npm latest")
+        else if (!listed.includes(name)) problem("missing published platform " + name)
+      }
+    }
+    for (const [os, label] of [["darwin", "macOS"], ["linux", "Linux"]]) {
+      if (platforms.some(p => p.startsWith("vibelang-" + os)) && !text.includes(label)) problem("platform list missing " + label)
+    }
+    for (const arch of ["arm64", "x64"]) {
+      if (platforms.some(p => p.endsWith("-" + arch)) && !text.includes(arch)) problem("platform list missing " + arch)
+    }
+    const nativeWindows = platforms.some(p => /^(?:vibelang-win32-|@vibelang\/cli-win32-)/.test(p))
+    if (!nativeWindows) {
+      if (!/\bWSL\b/.test(text)) problem("platform list missing Windows via WSL guidance")
+      if (/vibelang-win32-|@vibelang\/cli-win32-|Windows on (?:arm64|x64)|(?:native )?Windows (?:binaries |packages )?(?:are )?(?:available|supported|published)|Windows\s*\|/i.test(text)) {
+        problem("platform list advertises native Windows, absent from npm latest")
+      }
+    }
+  }
+  return problems
+}
 export async function deployedReleaseProblems({
   baseUrl = "https://vibelang.sh",
   registryUrl = "https://registry.npmjs.org/vibelang/latest",
@@ -64,64 +126,7 @@ export async function deployedReleaseProblems({
     }
   }
   for (const [index, route] of releaseRoutes.entries()) {
-    if (bodies[index] === undefined) continue
-    const html = route === "/" || !/\.(?:md|txt)$/.test(route)
-    let text = html ? visibleText(bodies[index]) : bodies[index]
-    const problem = message => problems.push(route + ": " + message)
-    const notes = route.startsWith("/setup/release-notes")
-    if (notes) {
-      const headings = [...text.matchAll(new RegExp("^##\\s+(v?" + semver + ")\\s*$", "gm"))]
-      const current = headings[0]
-      if (!current || current[1].replace(/^v/, "") !== version) problem(`latest release notes are ${current?.[1] ?? "missing"}; expected ${version}`)
-      // Historical examples and comparisons keep the versions they describe.
-      text = current ? text.slice(current.index, headings[1]?.index ?? text.length) : ""
-    }
-    const pins = [
-      ...text.matchAll(new RegExp("\\b((?:create-)?vibelang(?:-[a-z0-9-]+)?)@(" + semver + ")", "g")),
-      ...text.matchAll(new RegExp('["\\x27]((?:create-)?vibelang(?:-[a-z0-9-]+)?)["\\x27]\\s*:\\s*["\\x27](' + semver + ')["\\x27]', "g"))
-    ]
-    for (const [, name, pin] of pins) if (pin !== version) problem(`pin ${name}@${pin}; expected ${version}`)
-    if (!notes) {
-      const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
-      for (const [label, pin] of labels) if (pin !== version) problem(`release label ${label.trim()}; expected ${version}`)
-      if (["/", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route) &&
-          !labels.some(([, pin]) => pin === version)) problem("missing current release label " + version)
-    }
-    for (const [output] of text.matchAll(new RegExp("VibeLang " + semver + " \\(TypeScript [^\\)]+\\)", "g"))) {
-      if (output !== expectedOutput) problem(`--version output ${output}; expected ${expectedOutput}`)
-    }
-    if (route === "/setup.md" && !text.includes(expectedOutput)) problem("missing expected --version output " + expectedOutput)
-    for (const [, pin] of text.matchAll(new RegExp("npm view vibelang@" + semver + " version[\\x60\\s]*and expect [\\x60\\s]*(" + semver + ")", "g"))) {
-      if (pin !== version) problem(`npm view expected ${pin}; expected ${version}`)
-    }
-    if (route === "/llms.txt") {
-      for (const path of ["/setup.md", "/getting-started/004-installation.md", "/setup/release-notes.md"]) {
-        if (!text.includes(path)) problem("missing Markdown link " + path)
-      }
-    }
-    if (platforms && ["/", "/setup.md", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route)) {
-      const install = route.startsWith("/getting-started/")
-      if (install) {
-        const listed = [...new Set(text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@vibelang\/cli-win32)-(?:arm64|x64)\b/g) ?? [])].sort()
-        for (const name of new Set([...platforms, ...listed])) {
-          if (!platforms.includes(name)) problem("platform " + name + " is not published in npm latest")
-          else if (!listed.includes(name)) problem("missing published platform " + name)
-        }
-      }
-      for (const [os, label] of [["darwin", "macOS"], ["linux", "Linux"]]) {
-        if (platforms.some(p => p.startsWith("vibelang-" + os)) && !text.includes(label)) problem("platform list missing " + label)
-      }
-      for (const arch of ["arm64", "x64"]) {
-        if (platforms.some(p => p.endsWith("-" + arch)) && !text.includes(arch)) problem("platform list missing " + arch)
-      }
-      const nativeWindows = platforms.some(p => /^(?:vibelang-win32-|@vibelang\/cli-win32-)/.test(p))
-      if (!nativeWindows) {
-        if (!/\bWSL\b/.test(text)) problem("platform list missing Windows via WSL guidance")
-        if (/vibelang-win32-|@vibelang\/cli-win32-|Windows on (?:arm64|x64)|(?:native )?Windows (?:binaries |packages )?(?:are )?(?:available|supported|published)|Windows\s*\|/i.test(text)) {
-          problem("platform list advertises native Windows, absent from npm latest")
-        }
-      }
-    }
+    problems.push(...releasePageProblems(route, bodies[index], { version, expectedOutput, platforms }))
   }
   return [...new Set(problems)]
 }
