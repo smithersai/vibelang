@@ -48,7 +48,7 @@ test("match: $rest keeps the properties the clauses do not name; $noMatch and $p
 test("match: $assertMatch returns when the last arm's test passed and throws $noMatch's TypeError when it failed", () => {
   expect($assertMatch(true, "kept")).toBeUndefined()
   expect($assertMatch(1, "kept")).toBeUndefined()
-  expect(() => $assertMatch(false, "missing")).toThrow('No match arm matched "missing"')
+  expect(() => $assertMatch(false, "missing")).toThrow(TypeError)
   const structural = { _tag: "NotFound", id: "1" }
   expect($assertMatch($is(NotFound, structural), structural)).toBeUndefined()
   expect($assertMatch($is(NotFound, new NotFound({ id: "1" })), structural)).toBeUndefined()
@@ -126,6 +126,19 @@ test("match: class extraction, primitive mismatches, and unprintable unmatched v
   expect($extract(Number, "42")).toBe(false)
   expect($extract(Symbol, Symbol.for("key"))).toEqual([Symbol.for("key")])
   expect(() => $extract(undefined, 42)).toThrow(TypeError)
-  expect(() => $noMatch("missing")).toThrow('No match arm matched "missing"')
-  expect(() => $noMatch({ [Symbol.toPrimitive]() { throw new Error("cannot print") } })).toThrow("No match arm matched object")
+  expect(() => $noMatch("missing")).toThrow(TypeError)
+  expect(() => $noMatch({ [Symbol.toPrimitive]() { throw new Error("cannot print") } })).toThrow(TypeError)
+})
+
+test("match: no-match uses the host TypeError without observing the subject", () => {
+  let reads = 0
+  const subject = {
+    get [Symbol.toPrimitive]() { reads++; throw new Error("must not coerce") },
+    toString() { reads++; return "must not stringify" }
+  }
+  let thrown: unknown
+  try { $noMatch(subject) } catch (error) { thrown = error }
+  expect(thrown).toBeInstanceOf(TypeError)
+  expect((thrown as TypeError).message).toBe(new TypeError().message)
+  expect(reads).toBe(0)
 })

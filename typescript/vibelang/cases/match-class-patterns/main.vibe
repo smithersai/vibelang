@@ -1,4 +1,4 @@
-// expect-result: {"sameName":["A a","timeout 5.0","A b"],"sameNameIs":["A a","timeout","A b"],"family":["app /p","other o"],"shape":["circle","square 2","circle","No match arm matched [object Object]"],"parity":["even","odd 3","neither"],"shapeOrCount":["circle","none","some 4","No match arm matched [object Object]"],"positions":[["square 2"],"No match arm matched [object Object]","square 2","No match arm matched [object Object]","logged","No match arm matched [object Object]"]}
+// expect-result: {"sameName":["A a","timeout 5.0","A b"],"sameNameIs":["A a","timeout","A b"],"family":["app /p","other o"],"shape":["circle","square 2","circle",""],"parity":["even","odd 3","neither"],"shapeOrCount":["circle","none","some 4",""],"positions":[["square 2"],"","square 2","","logged",""]}
 // An error class's matcher tests _tag (chapter 4, VIP-13), so two error
 // classes that share a name match each other, as with Effect's catchTag: the
 // first one's arm takes both and narrows to both (decided detail 103), and

@@ -1,4 +1,4 @@
-// expect-result: ["other","No match arm matched 2","No match arm matched 2"]
+// expect-result: ["other","",""]
 // A match calls the runtime's $is to test a class pattern, and the last arm
 // of a match that covers its subject checks its test with $assertMatch,
 // which calls $noMatch when the subject is outside its type (D405). They are

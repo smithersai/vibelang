@@ -159,13 +159,7 @@ export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<
 
 /** Ends a match without a default arm that no arm matched, as the proposal's TypeError does. */
 export function $noMatch(subject: unknown): never {
-  let shown: string
-  try {
-    shown = typeof subject === "string" ? JSON.stringify(subject) : String(subject)
-  } catch {
-    shown = typeof subject
-  }
-  throw new TypeError(`No match arm matched ${shown}`)
+  throw new TypeError()
 }
 
 /**
