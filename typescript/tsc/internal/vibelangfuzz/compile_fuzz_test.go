@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"hash/fnv"
 	"os"
 	"path"
@@ -241,16 +242,47 @@ func checkDeterminism(t *testing.T, g *Gaps, a *Compilation, compile func(string
 	// The checker is lazy, so the order in which a program is asked must not
 	// decide what it reports or writes: an editor asks for one file's
 	// diagnostics, and a bundler emits before it asks for any.
+	// The key names the codes that only one order reports, so a known
+	// difference can be pending without hiding the others.
+	want := SortedKeys(Keys(a.Dir, a.Diagnostics))
 	for _, order := range []Order{OrderReverse, OrderEmitFirst} {
 		c := compile(order.String(), order, true)
-		if diff := DiffKeys(SortedKeys(Keys(a.Dir, a.Diagnostics)), SortedKeys(Keys(c.Dir, c.Diagnostics))); diff != "" {
-			g.Add("feature:order", "asked in %s, the program reports other diagnostics:\n%s", order, diff)
+		got := SortedKeys(Keys(c.Dir, c.Diagnostics))
+		if diff := DiffKeys(want, got); diff != "" {
+			g.Add("feature:order:"+orderKey(order, want, got), "asked in %s, the program reports other diagnostics:\n%s", order, diff)
 		}
 		if diff := DiffOutputs(a.Dir, a.Outputs, c.Dir, c.Outputs); diff != "" {
-			g.Add("feature:order", "asked in %s, the program writes other outputs:\n%s", order, diff)
+			g.Add("feature:order:"+orderSlug(order)+":outputs", "asked in %s, the program writes other outputs:\n%s", order, diff)
 		}
 	}
 }
+
+// orderKey names how the diagnostics of a program asked in order differ
+// from tsc's order's: the codes of the diagnostics only tsc's order reports,
+// then those only order reports, as emit-first:+TS2552 or
+// reverse-file-order:-EK0102+TS2304.
+func orderKey(order Order, want, got []DiagnosticKey) string {
+	codes := func(from, without []DiagnosticKey) []string {
+		var out []string
+		for _, k := range from {
+			if !slices.Contains(without, k) {
+				out = append(out, fmt.Sprintf("%s%04d", cmp(k.Source, "TS"), k.Code))
+			}
+		}
+		slices.Sort(out)
+		return slices.Compact(out)
+	}
+	key := orderSlug(order) + ":"
+	for _, code := range codes(want, got) {
+		key += "-" + code
+	}
+	for _, code := range codes(got, want) {
+		key += "+" + code
+	}
+	return key
+}
+
+func orderSlug(order Order) string { return strings.ReplaceAll(order.String(), " ", "-") }
 
 // within runs a stage under Within and logs one that takes longer than a
 // second, so a slow input is named before it becomes a hang.
@@ -402,5 +434,26 @@ func recoverCompilerPanic(t testing.TB, target string) {
 	if r := recover(); r != nil {
 		stack := debug.Stack()
 		Gap(t, target, "crash:"+toolsPanicFrame(stack), "compiler panic: %v\n%s", r, stack)
+	}
+}
+
+// TestOrderKey checks that an order difference is keyed by the codes only
+// one order reports, so one pending code does not hide another.
+func TestOrderKey(t *testing.T) {
+	name := DiagnosticKey{Code: 2304, File: "main.vibe", Pos: 10, Text: "Cannot find name 'C'."}
+	other := DiagnosticKey{Code: 2304, File: "main.vibe", Pos: 20, Text: "Cannot find name 'C'."}
+	effect := DiagnosticKey{Source: "EK", Code: 102, File: "main.vibe", Pos: 5}
+	for _, c := range []struct {
+		order     Order
+		want, got []DiagnosticKey
+		key       string
+	}{
+		{OrderEmitFirst, []DiagnosticKey{name}, []DiagnosticKey{name, other}, "emit-first:+TS2304"},
+		{OrderReverse, []DiagnosticKey{effect, name}, []DiagnosticKey{name}, "reverse-file-order:-EK0102"},
+		{OrderEmitFirst, []DiagnosticKey{effect}, []DiagnosticKey{name}, "emit-first:-EK0102+TS2304"},
+	} {
+		if key := orderKey(c.order, c.want, c.got); key != c.key {
+			t.Errorf("orderKey(%s) = %q, want %q", c.order, key, c.key)
+		}
 	}
 }

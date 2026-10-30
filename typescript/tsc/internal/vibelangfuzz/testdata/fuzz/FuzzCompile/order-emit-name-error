@@ -1,0 +1,2 @@
+go test fuzz v1
+string("0A0128 function<a(0A=C 018")
