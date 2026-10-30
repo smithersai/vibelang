@@ -476,6 +476,37 @@ effect function names(parts: Fiber.Fiber<string[]>) {
 effect function bad(join: number) { }  // EK1702: join is reserved here, as await is in async code
 ```
 
+The inherited reservation covers the whole head, including defaults and destructuring; it does not turn an ordinary `async` arrow into an Effect arrow. Its body can declare `fork` or `join` and uses native `await`. Outside an enclosing Effect reservation those two names also remain ordinary parameters, as VIP-17 requires.
+
+```vibe es
+// compiler-gap: pending VIP-17
+effect function badArrowHead() {
+  const f = async (join: number) => 1 // EK1702
+  return 0
+}
+const ordinary = async (join: number) => join // ordinary context: allowed
+effect function arrowHeadNames() {
+  function plain(join: number) { return join } // a plain function resets the head
+  const later = async (value: number) => { const join = value; return join }
+  return plain(7)
+}
+```
+
+The admitted `arrowHeadNames()` has this counterpart and `Success(7)`; the rejected head has no runtime Exit.
+
+```ts effect
+import { Effect } from "effect"
+
+const ordinary = async (join: number) => join
+function arrowHeadNames() {
+  return Effect.gen(function* () {
+    function plain(join: number) { return join }
+    const later = async (value: number) => { const join = value; return join }
+    return plain(7)
+  })
+}
+```
+
 A line break after `fork` or `join` changes nothing, as after `await`: `join` then `f` on the next line joins `f`. After `join`, `/` begins a regular expression and `- 1` is a negation, as after `await` (VIP-17, amended).
 
 ### Static rules
@@ -483,7 +514,7 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 | Rule | Diagnostic |
 | --- | --- |
 | `fork` or `join` outside effect code | `EK1701` |
-| a `fork` or `join` naming a variable, parameter or label under `[+Effect]`, including parameter lists and static blocks inheriting Effect reservation, including a plain arrow's parameters written in effect code, as `(await) => 1` is an error in an `async` function: `effect function bad(join: number) { }`, and `const k = (join) => 1` in effect code; a nested `function h(join) { }` resets it, as it does for `await` | `EK1702` |
+| a `fork` or `join` naming a variable, parameter or label under `[+Effect]`, including parameter lists and static blocks inheriting Effect reservation, including a plain or `async` arrow head inheriting that reservation, even in an Effect callable's parameters: both `const k = (join) => 1` and `const k = async (join) => 1` are errors in effect code, as their `await` counterparts are in an `async` function; the arrow body has its own context, and a nested `function h(join) { }` resets its head too | `EK1702` |
 | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the [operand test](#operand-test): `fork n` with `n: number`; write `fork effect { … }` or call the function (decided detail 88) | `EK1703` |
 | a `join` operand not assignable to `Fiber.Fiber<any, any>`: `join p` with `p: Promise<number>`; `join` the value `fork` gave (decided detail 88) | `EK1704` |
 
