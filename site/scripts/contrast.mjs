@@ -1,39 +1,18 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
-import { resolve, extname, sep } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
+import { routeBuiltSite } from './built-site.mjs'
 
 const site = fileURLToPath(new URL('../', import.meta.url))
-const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain' }
-
-// Serve only the built output. No dev-server CSS, production assets or fixed ports.
-async function serve(root) {
-  await readFile(resolve(root, 'index.html'))
-  const server = createServer(async (req, res) => {
-    const path = resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname))
-    if (path !== root && !path.startsWith(root + sep)) { res.writeHead(403).end(); return }
-    for (const file of [path, resolve(path, 'index.html'), path + '.html']) {
-      try {
-        const body = await readFile(file)
-        res.writeHead(200, { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream' }).end(body)
-        return
-      } catch {}
-    }
-    res.writeHead(404).end('Not found')
-  })
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
-  return { server, origin: 'http://127.0.0.1:' + server.address().port }
-}
 
 export async function checkSiteContrast() {
   const artifacts = process.env.CONTRAST_ARTIFACTS
   if (artifacts) await mkdir(artifacts, { recursive: true })
   const observations = []
   const failures = []
-  const { server, origin } = await serve(resolve(site, 'dist/public'))
   let browser
   const check = (condition, message) => { if (!condition) failures.push(message) }
   try {
@@ -44,13 +23,7 @@ export async function checkSiteContrast() {
     })
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, colorScheme: theme })
-      // Vocs' baseUrl also controls dynamic imports. Route that entire origin to
-      // this build, including hydration chunks that do not exist in production.
-      await context.route('https://vibelang.sh/**', async route => {
-        const url = new URL(route.request().url())
-        const response = await context.request.get(origin + url.pathname + url.search)
-        await route.fulfill({ response })
-      })
+      await routeBuiltSite(context, resolve(site, 'dist/public'))
       for (const path of ['/', '/001-onboarding', '/vibelang-features/115-cheat-sheet']) {
         const page = await context.newPage()
         const errors = []
@@ -287,7 +260,6 @@ export async function checkSiteContrast() {
     }
   } finally {
     await browser?.close()
-    await new Promise(resolve => server.close(resolve))
     if (artifacts) await writeFile(resolve(artifacts, 'contrast.json'), JSON.stringify({ observations, failures }, null, 2) + '\n')
   }
   for (const observation of observations) {
