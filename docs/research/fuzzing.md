@@ -300,3 +300,22 @@ A new crasher lands in `testdata/fuzz/<Target>/`. The fuzz engine discards its w
 - A second implementation. The only differential reference is the specification's Effect TypeScript reading and stock TypeScript for `.ts` files; there is no independent VibeLang implementation to compare against.
 - Splicing real-world code. tree-splicer's approach would apply through the tree-sitter grammar in `editors/`, but the suite has no splicer yet.
 - Forms the generator does not write, each with its reason in `testdata/pending/programs.txt`: schemas, spans, the callback hatch, the platform entry, module blocks, custom error constructors, generic data, timeouts, `it.effect`, detached and scoped forks, record-shaped `await`, Promise hatches, and typing a service implementation as `Users.Shape` rather than `Users` (D361), which no rule injection checks either.
+
+
+## Appendix A grammar engine
+
+The grammar engine in `internal/vibelangfuzz/grammar_*_test.go` loads the
+current Appendix A through `SpecPath` at test time. It expands optional and
+repeated productions into a CFG and uses an Earley chart to count derivations
+and reconstruct two witness trees. Counts saturate at `1 << 40`; two distinct
+empty derivations remain distinct. `TestGrammarEngine` checks acceptance,
+rejection and a nullable ambiguity independently of VibeLang's current rules.
+`TestGrammarLoadsCurrentAppendix` checks that every current production loads.
+
+Inherited productions use an embedded subset pinned to ECMAScript 2025 and
+TypeScript 5.9 (the `tsSubset` constant), rather than the compiler under test.
+The subset covers expressions, statements, functions, class members and types;
+it does not claim complete TypeScript coverage. Unknown names and prose
+terminals are retained and listed explicitly by `grammarLab.describe`.
+The loader reads the specification's contextual keyword and disambiguation
+rules separately, allowing searches to compare productions with prose.

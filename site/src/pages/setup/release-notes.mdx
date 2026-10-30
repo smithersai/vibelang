@@ -140,6 +140,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Effect functions and program literals had no explicit spelling for migration; `vibelang --fix --fix-vip-only` now writes `effect` functions and `effect { }` blocks while preserving their behavior.
 
+- Grammar ambiguities could escape automated checks; the grammar test engine now preserves distinct derivations, including empty alternatives, for ambiguity detection.
+
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
 - The `examples/pipeline` README and output fixture expected a producer that never reads ahead, so the example check failed; both now show the VIP-21 order, where `Stream.take` closes the producer before the loop logs the second alert.
