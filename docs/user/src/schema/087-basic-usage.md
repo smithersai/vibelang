@@ -89,6 +89,8 @@ In a `schema` declaration, a `Record<K, V>` value schema must have required deco
 
 ## Defining tuples with optional and rest elements
 
+A fixed tuple spread such as `[string, ...[number, boolean]]` contributes fixed positions, as `[string, number, boolean]` does. This includes readonly rest operands, nested fixed spreads and fixed positions after an array rest. Literal spreads also follow native tuple normalization: `[number?, ...[string]]` requires two positions, with `number | undefined` first. Nested array rests retain their repeating and trailing positions.
+
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: await runPromise(effect { try Console.log(Schema.is(Coordinate)([1, 2]), Schema.is(Extended)([1, 2, "dock", true])); try Console.log(Schema.is(Readings)(["sensor"]), Schema.is(Readings)(["sensor", 2, true]), Schema.is(Readings)(["sensor", true])); try Console.log(Schema.is(BoundedReadings)(["sensor", 1, 2, false])) })
@@ -115,6 +117,8 @@ true
 ```
 
 Tuples are readonly and position-sensitive. Optional elements use `optionalKey`; a present element must still match its schema. `TupleWithRest` takes a fixed tuple and a rest list: its first schema repeats, and later schemas are required trailing elements. `Readings` accepts a label, an optional finite reading, then booleans. It can end after the label, but booleans need the reading in its fixed position: `["sensor", 2, true]` is valid, `["sensor", true]` is not. `BoundedReadings` ends with a boolean after any repeated numbers.
+
+Tuple types in `schema` declarations are mutable unless written `readonly`; mutable tuples wrap the mapped tuple in `Schema.mutable`. A `schema` declaration can also write named and optional tuple elements: `schema Position = readonly [name: string, count?: number]` maps to `Schema.Tuple([Schema.String, Schema.optional(Schema.Number)])`. Rest positions such as `readonly [string, ...number[], boolean]` use `Schema.TupleWithRest`, retaining the fixed prefix, repeating element and required trailing positions. TypeScript's tuple syntax checks still apply: required elements cannot follow optional elements, optional elements cannot follow a rest element, and a tuple cannot have two rest elements. Labels do not affect decoding; an optional position may be absent or contain explicit `undefined`, as with TypeScript tuple syntax. Rest arrays may use `T[]`, `readonly T[]`, `Array<T>` or `ReadonlyArray<T>`; the outer tuple's `readonly` modifier controls the tuple's mutability.
 
 Fixed elements are `.elements`, or `.schema.elements` on a tuple with rest, whose `.rest` describes the repeating and trailing schemas. Element annotations describe single positions.
 
@@ -256,3 +260,5 @@ false true false
 [Upstream page](https://effect.website/docs/v4/schema/basic-usage)
 
 A `schema` declaration retains the runtime `Schema` dependency used by its generated initializer, including when an explicit `Schema` import has no other value use.
+
+For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. The explicit compatibility upgrade `vibelang --fix --fix-migration-only` writes that old codec at the affected tuple position, retaining enclosing array or union mappings. Ordinary `--fix` keeps valid new tuple schemas. Module-level aliases and struct fields keep their existing tuple behavior.

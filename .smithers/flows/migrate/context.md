@@ -142,6 +142,8 @@ An `is` binding without a defined lexical home in a formal-parameter, catch-para
 - Whole-scope record requires readable, nonempty per-test receipts against the setup baseline, previous commit and main. Reject inconsistent summaries, unexplained exits, missing tests and newly skipped passing tests. Measure all sides in one provider job; never compare separate box jobs.
 - Repository-generated bundles and build-graph paths belong in recorded `--after-convert` hooks. Run them before settle checks and final verification; stop on failure. Record formats first and verifies the final bytes again. Its whole-scope test gate cannot be forced.
 
+When upgrading old nested `schema` aliases containing named, optional or rest tuples, `vibelang --fix --fix-migration-only` preserves their former `Schema.Unknown` placeholders and public declarations. Ordinary `--fix` keeps the new tuple mapping; check declaration identity and decode Exits before choosing to tighten a legacy codec.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

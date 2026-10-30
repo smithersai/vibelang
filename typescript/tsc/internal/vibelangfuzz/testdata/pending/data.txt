@@ -154,9 +154,7 @@ FuzzVIPDifferential corpus:data-vip07-throw-arm compiler VIP-7: minimized vip07.
 FuzzVIPDifferential exit:value/vip15.schema-nested-plain compiler VIP-15: vip15.schema-nested-plain disagrees with its cited chapter pair (exit:value); lane ifix-data-r6
 FuzzVIPDifferential corpus:data-vip15-schema-nested-plain compiler VIP-15: minimized vip15.schema-nested-plain witness; lane ifix-data-r6
 FuzzVIPDifferential compile:EK2109/vip15.schema-optional-tuple-plain compiler VIP-15: vip15.schema-optional-tuple-plain disagrees with its cited chapter pair (compile:EK2109); lane impl-hunt-data
-FuzzVIPDifferential corpus:data-vip15-schema-optional-tuple-plain compiler VIP-15: minimized vip15.schema-optional-tuple-plain witness; lane impl-hunt-data
 FuzzVIPDifferential compile:EK2109/vip15.schema-rest-tuple-plain compiler VIP-15: vip15.schema-rest-tuple-plain disagrees with its cited chapter pair (compile:EK2109); lane impl-hunt-data
-FuzzVIPDifferential corpus:data-vip15-schema-rest-tuple-plain compiler VIP-15: minimized vip15.schema-rest-tuple-plain witness; lane impl-hunt-data
 FuzzVIPDifferential exit:kind/vip29.constructor-validation-defect compiler VIP-29: vip29.constructor-validation-defect disagrees with its cited chapter pair (exit:kind); lane vip-decls
 FuzzVIPDifferential exit:value/vip29.schema-error-matcher-property-plain compiler VIP-29: vip29.schema-error-matcher-property-plain disagrees with its cited chapter pair (exit:value); lane vip-decls
 FuzzVIPDifferential corpus:data-vip29-schema-error-matcher-property-plain compiler VIP-29: minimized vip29.schema-error-matcher-property-plain witness; lane vip-decls

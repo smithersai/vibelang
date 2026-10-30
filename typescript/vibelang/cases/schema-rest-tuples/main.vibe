@@ -1,0 +1,35 @@
+// expect-result: [["sensor",2,true,false],["sensor"],["sensor",1,2,true],[],[1,2],false,["changed",1,true],["sensor",null,true],["sensor",1,true],["changed-fixed",1,true],["sensor",1,true,"tail"],["sensor",1,2,true,"tail"],["sensor"],false,[null,"tail"],[1,"tail"],["sensor",1,true,false],[1,true,null],false,false]
+export schema Readings = readonly [label: string, reading?: number, ...flags: boolean[]]
+export schema Bounded = readonly [string, ...number[], boolean]
+export schema Numbers = readonly [...number[]]
+export schema MutableRest = [string, ...number[], boolean]
+export schema FixedSpread = readonly [string,...[number,boolean]]
+export schema MutableFixedSpread = [string,...readonly [number,boolean]]
+export schema NestedFixedSpread = readonly [string,...[number,...[boolean,string]]]
+export schema TrailingFixedSpread = readonly [string,...number[],...[boolean,string]]
+export schema EmptyFixedSpread = readonly [string,...[]]
+export schema OptionalHeadSpread = readonly [number?,...[string]]
+export schema OptionalOperandSpread = readonly [...[number?],string]
+export schema NestedArraySpread = readonly [string,...[number,...boolean[]]]
+export schema OptionalAfterArraySpread = readonly [...number[],...[boolean?]]
+export effect function main() {
+  const readings = try Schema.decodeUnknownEffect(Readings)(["sensor", 2, true, false])
+  const explicitUndefined = try Schema.decodeUnknownEffect(Readings)(["sensor", undefined, true])
+  const empty = try Schema.decodeUnknownEffect(Readings)(["sensor"])
+  const bounded = try Schema.decodeUnknownEffect(Bounded)(["sensor", 1, 2, true])
+  const noNumbers = try Schema.decodeUnknownEffect(Numbers)([])
+  const numbers = try Schema.decodeUnknownEffect(Numbers)([1, 2])
+  const mutable = try Schema.decodeUnknownEffect(MutableRest)(["sensor", 1, true])
+  mutable[0] = "changed"
+  const fixedSpread = try Schema.decodeUnknownEffect(FixedSpread)(["sensor",1,true])
+  const mutableFixed = try Schema.decodeUnknownEffect(MutableFixedSpread)(["sensor",1,true])
+  mutableFixed[0] = "changed-fixed"
+  const nestedFixed = try Schema.decodeUnknownEffect(NestedFixedSpread)(["sensor",1,true,"tail"])
+  const trailingFixed = try Schema.decodeUnknownEffect(TrailingFixedSpread)(["sensor",1,2,true,"tail"])
+  const emptyFixed = try Schema.decodeUnknownEffect(EmptyFixedSpread)(["sensor"])
+  const optionalHead = try Schema.decodeUnknownEffect(OptionalHeadSpread)([undefined,"tail"])
+  const optionalOperand = try Schema.decodeUnknownEffect(OptionalOperandSpread)([1,"tail"])
+  const nestedArray = try Schema.decodeUnknownEffect(NestedArraySpread)(["sensor",1,true,false])
+  const optionalAfterArray = try Schema.decodeUnknownEffect(OptionalAfterArraySpread)([1,true,undefined])
+  return [readings, empty, bounded, noNumbers, numbers, Schema.is(Bounded)(["sensor", 1]), mutable, explicitUndefined, fixedSpread, mutableFixed, nestedFixed, trailingFixed, emptyFixed, Schema.is(FixedSpread)(["sensor",1]), optionalHead, optionalOperand, nestedArray, optionalAfterArray, Schema.is(OptionalHeadSpread)(["tail"]), Schema.is(NestedArraySpread)(["sensor",true])]
+}

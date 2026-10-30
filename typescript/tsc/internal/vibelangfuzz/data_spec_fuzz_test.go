@@ -121,6 +121,46 @@ func dataRules() []dataRule {
 	} {
 		add("mapping-"+c.name, data, "In this table, `S`, `A` and `B` are the recursively mapped schemas", "schema S = "+c.typ+"; const x:S="+c.value, "", "vip-decls")
 	}
+	// VIP-15 tuple syntax and mutability are static admission rules. Native
+	// cases compare decode Exits; these keyed mutations exercise both alias
+	// and field positions, labels, absent/undefined optionals and rest forms.
+	for _, tuple := range []struct{ name, typ, value string }{
+		{"named", "[name:string,count:number]", `["ok",7]`},
+		{"optional-missing", "[string,number?]", `["ok"]`},
+		{"optional-undefined", "[string,number?]", `["ok",undefined]`},
+		{"named-optional", "[name:string,count?:number]", `["ok",undefined]`},
+		{"rest", "[string,...number[]]", `["ok",7,8]`},
+		{"rest-readonly", "[string,...readonly number[]]", `["ok",7,8]`},
+		{"rest-array", "[string,...Array<number>]", `["ok",7,8]`},
+		{"rest-readonly-array", "[string,...ReadonlyArray<number>]", `["ok",7,8]`},
+		{"rest-fixed", "[string,...[number,boolean]]", `["ok",7,true]`},
+		{"rest-fixed-readonly-operand", "[string,...readonly [number,boolean]]", `["ok",7,true]`},
+		{"rest-fixed-nested", "[string,...[number,...[boolean,string]]]", `["ok",7,true,"tail"]`},
+		{"rest-fixed-trailing", "[string,...number[],...[boolean,string]]", `["ok",7,8,true,"tail"]`},
+		{"rest-fixed-empty", "[string,...[]]", `["ok"]`},
+		{"spread-optional-head", "[number?,...[string]]", `[undefined,"tail"]`},
+		{"spread-optional-operand", "[...[number?],string]", `[7,"tail"]`},
+		{"spread-nested-array", "[string,...[number,...boolean[]]]", `["ok",7,true,false]`},
+		{"spread-optional-after-array", "[...number[],...[boolean?]]", `[7,true,undefined]`},
+		{"rest-trailing", "[string,...number[],boolean]", `["ok",7,8,true]`},
+	} {
+		for _, prefix := range []string{"", "readonly "} {
+			for _, position := range []string{"alias", "field"} {
+				name := "schema-tuple-" + position + "-" + strings.ReplaceAll(prefix, " ", "-") + tuple.name
+				source := "schema S = " + prefix + tuple.typ + "; const value:S=" + tuple.value
+				if position == "field" {
+					source = "schema S { value:" + prefix + tuple.typ + " }; const value:S={value:" + tuple.value + "}"
+				}
+				quote := "Tuple element labels (`[name: A, count?: B]`) do not change the mapping."
+				if strings.HasPrefix(tuple.name, "rest") || strings.HasPrefix(tuple.name, "spread") {
+					quote = "rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`."
+				} else if strings.Contains(tuple.name, "optional") {
+					quote = "Optional tuple elements use `Schema.optional`, as optional fields do:"
+				}
+				add(name, data, quote, source, "", "impl-hunt-data")
+			}
+		}
+	}
 	add("data-readonly", data, "Variant payload properties are readonly in the resulting type", `data D { V { n:number } }; function f(d:D) { d.n=2 }`, "TS2540", "vip-core2")
 	add("data-optional", data, "[Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations.", `data D { V { n?:number } }; const a:D=D.V({}); const b:D=D.V({n:undefined})`, "", "vip-core2")
 	add("schema-reference", data, "Refinements and transformations stay Schema constants", `const N=Schema.NumberFromString; schema S { n:N }; const s:S={n:7}`, "", "vip-decls")

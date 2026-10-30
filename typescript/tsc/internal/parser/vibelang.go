@@ -1303,23 +1303,17 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 	case ast.KindTypeOperator:
 		if operator := typeNode.AsTypeOperatorNode(); operator.Operator == ast.KindReadonlyKeyword &&
 			(operator.Type.Kind == ast.KindArrayType || operator.Type.Kind == ast.KindTupleType) {
-			value := p.vibelangSchemaOf(operator.Type)
-			if value.Kind == ast.KindCallExpression {
-				return value.Arguments()[0] // remove only the collection's mutable wrapper
+			if operator.Type.Kind == ast.KindTupleType {
+				return p.vibelangSchemaTuple(operator.Type)
 			}
-			return value // unsupported tuple forms still report EK2109
+			value := p.vibelangSchemaOf(operator.Type)
+			if value.Kind == ast.KindCallExpression && value.Expression().Kind == ast.KindPropertyAccessExpression && value.Expression().Name().Text() == "mutable" {
+				return value.Arguments()[0]
+			}
+			return value
 		}
 	case ast.KindTupleType:
-		elements := typeNode.AsTupleTypeNode().Elements.Nodes
-		schemas := make([]*ast.Node, len(elements))
-		for i, element := range elements {
-			if element.Kind == ast.KindNamedTupleMember || element.Kind == ast.KindOptionalType || element.Kind == ast.KindRestType {
-				return p.vibelangUnsupportedSchema(typeNode.Loc)
-			}
-			schemas[i] = p.vibelangSchemaOf(element)
-		}
-		array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(typeNode.Loc, schemas), false /*multiLine*/), typeNode.Loc)
-		return p.vibelangSchemaCall("mutable", typeNode.Loc, p.vibelangSchemaCall("Tuple", typeNode.Loc, array))
+		return p.vibelangSchemaCall("mutable", typeNode.Loc, p.vibelangSchemaTuple(typeNode))
 	case ast.KindTypeLiteral:
 		return p.vibelangSchemaFields(typeNode.AsTypeLiteralNode().Members.Nodes, typeNode.Loc)
 	case ast.KindTypeReference:

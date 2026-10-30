@@ -1,0 +1,9 @@
+// expect: TS1257 TS1265 TS1266 TS5085 TS5086 TS5087
+export schema RequiredAfterOptional = readonly [value?: string, next: number]
+export schema RequiredAfterRest = readonly [value?: string, ...numbers: number[], tail: boolean]
+export schema OptionalAfterRest = readonly [...numbers: number[], tail?: boolean]
+export schema RepeatedRest = readonly [...numbers: number[], ...strings: string[]]
+export schema OptionalRest = readonly [...numbers?: number[]]
+export schema LabeledQuestion = readonly [value: string?]
+export schema LabeledRest = readonly [values: ...number[]]
+export schema Nested { tuple: [string?, number] }

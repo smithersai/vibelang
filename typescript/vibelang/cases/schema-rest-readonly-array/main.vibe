@@ -1,0 +1,6 @@
+export schema ReadonlyRest = readonly [head: string, ...tail: readonly number[]]
+export schema MutableRest = [head: string, ...tail: readonly number[]]
+export schema GenericReadonlyRest = readonly [head: string, ...tail: ReadonlyArray<number>]
+export schema GenericMutableRest = [head: string, ...tail: Array<number>]
+const writable: MutableRest = ["x", 1]
+writable.push(2)

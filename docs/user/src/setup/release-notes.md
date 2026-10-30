@@ -78,6 +78,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| Nested `schema` aliases containing named, optional or rest tuples | Normal compilation now maps the tuple positions. Run `vibelang --fix --fix-migration-only` to retain the previous `Schema.Unknown` placeholders and public declarations through explicit Effect codecs. |
 | Generic `data` with a default, such as `data Box<A = string>` | `EK2803`: run `vibelang --fix` to retain the default on an equivalent Effect TypeScript type alias and preserve the constructors. |
 
 - `--fix` could repeatedly recheck a large project when an importer's errors came from one edited dependency. It now traces referenced declarations and keeps unrelated reporter edits together while retaining the complete safety check.
@@ -220,6 +221,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Renaming a repeated `is` binding could also change reads of an outer parameter or local after a failed pattern; the quick fix and `vibelang --fix` now preserve those fallback reads.
+
+- Schema declarations rejected named, optional and rest tuples, including rest arrays written as `readonly T[]`, with `EK2109`; they now preserve their written positions using Effect's tuple schemas, optional positions accept explicit `undefined`, and invalid element order keeps TypeScript's diagnostics.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

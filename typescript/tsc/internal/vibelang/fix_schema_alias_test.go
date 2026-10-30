@@ -41,6 +41,8 @@ func TestSchemaAliasQuickFixes(t *testing.T) {
 			"schema A { a: string }\nschema AB = A | number | null\nexport const ab: AB = null\n"},
 		{"an array of tuples", "export const Pairs = Schema.Array(Schema.Tuple([Schema.String, Schema.Number]))\nexport type Pairs = typeof Pairs.Type\n",
 			"export schema Pairs = ReadonlyArray<readonly [string, number]>\n"},
+		{"a readonly tuple", "export const Pair = Schema.Tuple([Schema.String, Schema.Number])\nexport type Pair = typeof Pair.Type\ntype Mutable = Pair extends [string, number] ? true : false\nexport const mutable: Mutable = false\n",
+			"export schema Pair = readonly [string, number]\ntype Mutable = Pair extends [string, number] ? true : false\nexport const mutable: Mutable = false\n"},
 		{"a record", "export const Counts = Schema.Record(Schema.String, Schema.Number)\nexport type Counts = typeof Counts.Type\n",
 			"export schema Counts = Readonly<Record<string, number>>\n"},
 		{"a named schema", "export const Count = Schema.FiniteFromString\nexport type Count = typeof Count.Type\n",

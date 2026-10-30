@@ -1,0 +1,3 @@
+go test fuzz v1
+string("schema-tuple-alias-spread-optional-head")
+byte(0)

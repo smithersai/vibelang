@@ -1,0 +1,14 @@
+export schema Named = readonly [name: string, count: number]
+export schema Optional = readonly [string, number?]
+export schema NamedOptional = readonly [name: string, count?: number]
+export schema Mutable = [name: string, count?: number]
+export effect function main() {
+  const named = try Schema.decodeUnknownEffect(Named)(["a", 1])
+  const optional = try Schema.decodeUnknownEffect(Optional)(["b"])
+  const present = try Schema.decodeUnknownEffect(NamedOptional)(["c", 2])
+  const missing = try Schema.decodeUnknownEffect(NamedOptional)(["d"])
+  const mutable = try Schema.decodeUnknownEffect(Mutable)(["e"])
+  mutable[0] = "changed"
+  mutable[1] = 3
+  return [named, optional, present, missing, Schema.is(NamedOptional)(["e"]), Schema.is(NamedOptional)(["e", undefined]), mutable]
+}

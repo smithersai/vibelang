@@ -220,7 +220,7 @@ type FixedFile struct {
 	Original string
 	Text     string
 	Counts   map[int32]int  // fixes applied, by code
-	Rewrites map[string]int // prelude rewrites applied, by kind (fix_prelude.go)
+	Rewrites map[string]int // source rewrites applied, by kind
 }
 
 // A FixRefusal is a fix that would add an error.
@@ -228,6 +228,7 @@ type FixRefusal struct {
 	File  tspath.RootedFilePath
 	Line  int // 1-based, in the text the fix was tried on
 	Code  int32
+	Label string // a source migration without a diagnostic
 	Error string // the first error the fix would add
 }
 
@@ -255,7 +256,15 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
 		}
-		for _, kind := range []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel} {
+		kinds := []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
+		var otherKinds []string
+		for kind := range fixed.Rewrites {
+			if !slices.Contains(kinds, kind) {
+				otherKinds = append(otherKinds, kind)
+			}
+		}
+		slices.Sort(otherKinds)
+		for _, kind := range append(kinds, otherKinds...) {
 			if n := fixed.Rewrites[kind]; n > 0 {
 				parts = append(parts, kind+" ×"+strconv.Itoa(n))
 				count += n
@@ -265,7 +274,11 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		fmt.Fprintf(w, "vibelang --fix: %s: %d %s (%s)\n", name(file), count, plural(count, "fix", "fixes"), strings.Join(parts, ", "))
 	}
 	for _, refusal := range r.Refused {
-		fmt.Fprintf(w, "vibelang --fix: %s:%d: EK%04d not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, refusal.Code, refusal.Error)
+		code := refusal.Label
+		if code == "" {
+			code = fmt.Sprintf("EK%04d", refusal.Code)
+		}
+		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, code, refusal.Error)
 	}
 	fmt.Fprintf(w, "vibelang --fix: %d %s in %d %s", total, plural(total, "fix", "fixes"), len(r.Order), plural(len(r.Order), "file", "files"))
 	if len(r.Refused) > 0 {
@@ -364,6 +377,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 			p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 			p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
+			if options.MigrationOnly && len(p.fixes) == 0 {
+				p = sourceFileMigrationFixes(ctx, program, file, g.refused)
+			}
 			if len(p.fixes) == 0 && !options.MigrationOnly {
 				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
 				// A .pipe waits for the rules that read it, and for its
