@@ -1,0 +1,9 @@
+service Counter { n: number; readonly label: string }
+const counter: Counter.Shape = { n: 1, label: "count" }
+counter.n = 2
+export const result = counter.n
+
+function checkReadonly(value: Counter.Shape) {
+  // @ts-expect-error Explicit readonly remains protected.
+  value.label = "changed"
+}

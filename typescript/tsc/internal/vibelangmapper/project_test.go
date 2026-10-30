@@ -457,7 +457,7 @@ var projectionCases = []struct {
 	{
 		name:    "a service is an interface and a key (D45)",
 		source:  "export service Users {\n  find(id: string): User!NotFound\n  region: string\n}\n",
-		virtual: "export interface Users {\n  find(id: string): Effect.Effect<User, NotFound, never>\n  readonly region: string; readonly \"~vibelang/service\"?: \"app/src/main#Users\" } export abstract class Users extends $service<Users>(\"app/src/main#Users\") {}\n",
+		virtual: "export interface Users {\n  find(id: string): Effect.Effect<User, NotFound, never>\n  region: string; readonly \"~vibelang/service\"?: \"app/src/main#Users\" } export abstract class Users extends $service<Users>(\"app/src/main#Users\") {}\n",
 	},
 	{
 		name:    "a control is a service whose base goes",

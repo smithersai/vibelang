@@ -196,9 +196,20 @@ func serviceBodyText(c *checker.Checker, file *ast.SourceFile, literal *ast.Node
 			if member.Type() == nil {
 				return "", name.Text() + " has no type"
 			}
+			// An explicit mutable type-member modifier has no service-field spelling.
+			// A property named mutable starts at its name and must be retained.
+			if at := nodeStart(file, member); at < nodeStart(file, name) {
+				token := scanner.GetScannerForSourceFile(file, at)
+				if token.Token() == ast.KindIdentifier && token.TokenValue() == "mutable" {
+					end := scanner.SkipTriviaEx(text, token.TokenEnd(), &scanner.SkipTriviaOptions{StopAtComments: true})
+					edits = append(edits, sourceEdit{at, end, ""})
+				}
+			}
 			for _, modifier := range member.ModifierNodes() {
-				if modifier.Kind == ast.KindReadonlyKeyword && modifier.Flags&ast.NodeFlagsReparsed == 0 {
-					edits = append(edits, sourceEdit{nodeStart(file, modifier), scanner.SkipTriviaEx(text, modifier.End(), &scanner.SkipTriviaOptions{StopAtComments: true}), ""})
+				if modifier.Kind == ast.KindReadonlyKeyword && modifier.Flags&ast.NodeFlagsReparsed != 0 {
+					// A synthesized readonly in the shape still belongs to its API.
+					at := nodeStart(file, member)
+					edits = append(edits, sourceEdit{at, at, "readonly "})
 				}
 			}
 		case ast.IsMethodSignatureDeclaration(member):

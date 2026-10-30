@@ -159,14 +159,14 @@ func (p *Parser) vibelangModifiers(modifiers *ast.ModifierList, name *ast.Node, 
 	return p.newModifierList(modifiers.Loc, append(added, modifiers.Nodes...))
 }
 
-// vibelangAbstractMember adds abstract, and readonly for a property, to a
+// vibelangAbstractMember adds abstract, and readonly for a legacy control property, to a
 // member of a service or control body that has no body or initializer and is
 // not static.
 func (p *Parser) vibelangAbstractMember(modifiers *ast.ModifierList, name *ast.Node, property bool) *ast.ModifierList {
 	if !p.vibelangAbstractMembers || modifiers != nil && core.Some(modifiers.Nodes, func(m *ast.Node) bool { return m.Kind == ast.KindStaticKeyword }) {
 		return modifiers
 	}
-	if property {
+	if property && p.vibelangControlMembers {
 		return p.vibelangModifiers(modifiers, name, ast.KindAbstractKeyword, ast.KindReadonlyKeyword)
 	}
 	return p.vibelangModifiers(modifiers, name, ast.KindAbstractKeyword)
@@ -377,13 +377,13 @@ func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 // (D128, D223). The older spelling with class, service class Users { ... },
 // parses the same way; the checker warns about it (EK2120):
 //
-//	abstract class Users { abstract find(id: string): User!NotFound; abstract readonly region: string }
+//	abstract class Users { abstract find(id: string): User!NotFound; abstract region: string }
 //	abstract class Approval extends Control { abstract approve(request: string): boolean!! }
 //
 // A member without a body or initializer that is not static becomes abstract,
-// and a value member also readonly. Static members, such as a layer, and
-// members with bodies stay as written. A member's contract is written in the
-// ! form; without a ! a return type is not an Effect (EK9205).
+// and legacy control value members also readonly. Service properties keep
+// their written readonly modifier. Static members and members with bodies
+// stay as written.
 func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, control bool) *ast.Node {
 	word := p.scanner.TokenRange()
 	p.nextToken() // service or control
@@ -413,10 +413,10 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 		form.Open = p.tokenRange()
 	}
 	if p.parseExpected(ast.KindOpenBraceToken) {
-		saveAbstract, saveFieldBody, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = true, true, !control
+		saveAbstract, saveFieldBody, saveService, saveControl := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers = true, true, !control, control
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = saveAbstract, saveFieldBody, saveService
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers = saveAbstract, saveFieldBody, saveService, saveControl
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}

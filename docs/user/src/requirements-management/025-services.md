@@ -26,7 +26,7 @@ Export a service with `export service Counter { readonly value: number }`, or de
 
 Separate service method and property signatures with `;`, a newline, or `,`, as in a TypeScript interface. A trailing comma is allowed.
 
-A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`; `readonly` value members are allowed. Write intended types; a default factory does not infer missing member types. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it. Two members on one line with no separator are `EK0908`, whose quick fix inserts `;`.
+A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`; `readonly` value members are allowed. Write intended types; a default factory does not infer missing member types. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it. Two members on one line with no separator are `EK0908`, whose quick fix inserts `;`. Value members are mutable unless declared `readonly`. When `--fix` converts a `Context.Service` class, it preserves the shape's `readonly` properties.
 
 `Users.Shape` names the written member object directly, so service contracts can refer to their own or another service's `.Shape`. A service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`): different specializations would share one runtime key. Use a concrete contract or a member-local generic method independent of outer parameters.
 

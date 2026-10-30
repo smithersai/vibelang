@@ -4,7 +4,7 @@
 // annotation and compiles to a plain method (D67). consumer/src/main.ts calls
 // them through the declaration file; run.mjs compiles and runs it. With plain
 // annotations, count and read are EK9203 (method-plain-annotation-effect.fail).
-export service Count { n: number }
+export service Count { readonly n: number }
 
 export interface CounterApi {
   count(): number!!

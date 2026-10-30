@@ -8,7 +8,7 @@
 export service Users {
   static readonly key = "app/Users"
   find(id: string): string!!
-  region: string
+  readonly region: string
   size: (name: string) => number!!
 }
 

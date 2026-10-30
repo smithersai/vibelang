@@ -6,14 +6,14 @@
 /** Effect service tag that provides message dispatching to the view layer. */
 export service Dispatch {
   static readonly key = "@foldkit/Dispatch"
-  dispatchAsync: (message: unknown) => void!!
-  dispatchSync: (message: unknown) => void
+  readonly dispatchAsync: (message: unknown) => void!!
+  readonly dispatchSync: (message: unknown) => void
 }
 
 // alchemy: Domain/Telemetry.
 export service Correlation {
   static readonly key = "alchemy/Domain/Correlation"
-  id: string
+  readonly id: string
 }
 
 // alchemy: Domain/Model documents its Internals service fields. A member
