@@ -1284,6 +1284,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The pattern reference left parameter-default binding scopes undefined; it now assigns `EK0705` to an `is` binding needing that unsettled parameter home and shows explicit block-local repairs.
 
+- A required schema tuple position could disappear when its schema reference carried optional-key flags; it now reports `EK2109`, and `vibelang --fix` preserves existing decoding with explicit Effect codecs.
+
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
 - The specification's table of where `try` may run, like `await`, had no row for decorator expressions. A decorator expression such as `@(try d)` now runs in its enclosing context, as a computed class key does, matching TypeScript, which admits `@(await d)` in an `async` function and reports `TS1308` in a plain one.
@@ -1652,6 +1654,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
 | A `match` arm that ends in a new line, in `,`, or at `}` without `;` | `EK0701`: run `vibelang --fix` to write the `;`. |
+| Required tuple positions used a schema reference with optional decoded keys | `EK2109`; run `vibelang --fix` to preserve the existing codec, declarations and decoding with explicit Effect codecs. Schema-error declarations keep their constructor and matcher behavior. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

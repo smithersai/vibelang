@@ -372,6 +372,10 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		}
 		var elements []string
 		for _, element := range arguments[0].Elements() {
+			// A source fixed slot cannot preserve optional-key metadata (detail 137).
+			if known, required := schemaTupleElementRequired(c, element); !known || !required {
+				return "", false
+			}
 			text, ok := schemaTypeText(c, file, element, indent)
 			if !ok || ast.IsSpreadElement(element) {
 				return "", false

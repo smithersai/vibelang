@@ -1,0 +1,12 @@
+// expect: EK2109
+const OptionalNumber = Schema.optionalKey(Schema.Number)
+const OptionalUndefined = Schema.optional(Schema.Number)
+const Aliased = OptionalNumber
+declare const Uncertain: typeof Schema.Number | typeof OptionalNumber
+namespace Codecs { export const Optional = OptionalNumber }
+export schema Direct = readonly [OptionalNumber]
+export schema Second = readonly [number, Aliased]
+export schema Widened = readonly [Uncertain]
+export schema Nested { readonly value: readonly [OptionalUndefined] }
+namespace Local { export schema Pair = readonly [Codecs.Optional] }
+schema error Problem { value: readonly [OptionalNumber] }

@@ -1,0 +1,8 @@
+const RequiredNumber = Schema.Number
+export schema Pair = readonly [string, RequiredNumber]
+export schema PresentUndefined = readonly [number | undefined]
+export schema Nested = readonly [readonly [string, number]]
+export schema ObjectSlot = readonly [{ readonly value: number }]
+export schema ArraySlot = readonly [number[]]
+schema DeclaredNumber = number
+export schema ViaDeclaration = readonly [DeclaredNumber]
