@@ -19,6 +19,7 @@ const Outcome = Data.taggedEnum<OutcomeDefinition>()
 - **Ambiguity: none.**
 - **Amended 2026-10-29: a hygienic helper.** The generated generic-data helper (`XDefinition` in the example) gets a fresh name; it is not a reserved user-visible name. Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 - **Amended 2026-10-29: no constraints.** A constraint on a generic `data` type parameter (`<A extends string>`) is a compile error, since this VIP doesn't add them (EK2126 keeps that part). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: no defaults.** A default on a generic `data` type parameter (`data Box<A = string>`) is a compile error, as a constraint is. Write the default on a separate `type` alias. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 63).
 
 ## History
 

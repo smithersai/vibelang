@@ -22,6 +22,8 @@ yield* Stream.runForEachWhile(rows, (row) => Effect.gen(function* () {
 - `for try (const x of stream)` consumes a Stream inside an `effect` function or block, pulling one element at a time, in order. It mirrors `for await` over AsyncIterables, which keeps its JavaScript meaning (VIP-5).
 - `continue` skips one element, and `break` stops consuming. `return` from the enclosing function is a compile error. A failure in the body fails the loop.
 - **Ambiguity: none.** `try` is a reserved word, and JavaScript's `for` can only be followed by `(` or `await`.
+- **Amended 2026-10-29: bindings and operands.** The head takes every `ForBinding` that `for…of` takes (`const`, `let`, destructuring), minus `var`. The operand is a `Stream` only; an AsyncIterable is a compile error that points to `Stream.fromAsyncIterable`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 48).
+- **Amended 2026-10-29: no labeled jump out.** A labeled `break` or `continue` from a `for try` body to a statement outside it is a compile error, as `for concurrent` already rules. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 49).
 
 ## History
 

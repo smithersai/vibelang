@@ -21,6 +21,8 @@ provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platf
 
 *Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.0, `yield*` of the namespace is a defect.*
 
+- **Amended 2026-10-29: the banned globals.** A reference in any `.vibe` code to a Node global (`process`, `Buffer`, `global`, `__dirname`, `__filename`, `require`, `module`, `exports`, `setImmediate`, `clearImmediate`), a web I/O or host-state global (`fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`), `console` or a timer (`setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `queueMicrotask`) is a compile error whose quick fix names the Effect service or moves the code to a `.ts` file. ECMA-262 globals and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `Intl`) stay allowed. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 56).
+
 ## Will's words (2026-10-26)
 
 > "All web apis and all node.js apis should be wrapped and effectful. In fact, a lot of this is ALREADY wrapped and effectful. Platform should always be dependency injected. Effect has a platform package. If it doesn't support something we should extend it to support it."

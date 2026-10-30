@@ -22,6 +22,7 @@ const x = do { const a = 1; a + 1 }                // TC39 do expression: runs n
 - `do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal (moved deliberately, as VIP-7 does for `match`), everywhere, with no exceptions. It runs now and gives its last statement's value, like an IIFE. As TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`.
 - No other syntax builds a program. A function literal never turns into a program because the parameter it's passed to expects an Effect.
 - **Amended 2026-10-29: `do` follows TC39 exactly.** VibeLang adds no limits on `var`, `break` or `continue` inside a `do` block (the old EK1019 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: the pinned snapshot.** `do` is pinned to `tc39/proposal-do-expressions` commit `3ef6d463b8163cbf222846b40d17178cca36e9e1`, the head on 2026-10-28 (UTC), vendored in [`tc39-do-expressions/`](tc39-do-expressions/README.md), as pattern matching is pinned. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 52).
 
 ## Prior art
 

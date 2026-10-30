@@ -25,6 +25,7 @@ const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
 - It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. Exact pull semantics, which would need a continuation runtime, are not provided.
 - `return value` in a producer is a compile error, because a Stream has no return value. A bare `return` ends the stream.
 - **Ambiguity: none** for `effect function* name()`. The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript. At top level it could parse as multiplication.
+- **Amended 2026-10-29: no delegation yet.** `yield*` in a producer is a compile error until a VIP specifies delegation. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 50).
 
 ## History
 

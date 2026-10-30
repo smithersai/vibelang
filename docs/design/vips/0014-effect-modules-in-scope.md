@@ -21,6 +21,7 @@ const o = Option.some(1)                         // Effect's Option: the DOM's O
   | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
   | `Request`, `Crypto`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
 - **Amended 2026-10-29: no `Crypto` row.** effect 4.1.0 has no root `Crypto` module, so bare `Crypto` is the DOM's. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: names two subpaths export.** A namespace name that two subpaths export, or a subpath and the root, is not in scope bare. Using it is a compile error that names every exporter and offers one import per exporter: in 4.1.0, `Model`, `Prompt` and `Utils`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 55).
 
 ## History
 
