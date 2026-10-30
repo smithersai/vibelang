@@ -1,13 +1,14 @@
 // expect: EK3001
 // Two services with the same key would share one slot in a Context (D1). The
-// key is the package, the module path, and the class name, so two classes
-// named Local in one module collide.
+// local declarations write their keys explicitly; these preserve the old
+// shared identity and still collide.
 // Its project emits no declarations, so the sidecar cannot name Local (TS4058)
 // only where a .ts file imports the module, and none does (foldkit-33).
 import { Effect } from "effect"
 
 export function first() {
   service Local {
+    static readonly key = "vibelang-service-keys-shared.fail/main#Local"
     value(): Effect.Effect<number, never, never>
   }
   return Local
@@ -15,6 +16,7 @@ export function first() {
 
 export function second() {
   service Local {
+    static readonly key = "vibelang-service-keys-shared.fail/main#Local"
     value(): Effect.Effect<string, never, never>
   }
   return Local

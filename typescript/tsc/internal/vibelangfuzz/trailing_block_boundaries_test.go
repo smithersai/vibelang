@@ -35,7 +35,7 @@ func trailingBoundaryCases() []trailingBoundaryCase {
 		{"restore", "export effect function f(){uninterruptible {restore %s{return 1;}}}\n", false},
 		{"match", "export const value=match (1) %s{when 1: 2; default: 3;};\n", false},
 		{"error", "error Boundary %s{value:number}\n", true},
-		{"service", "service Boundary %s{value:number}\n", true},
+		{"service", "service Boundary %s{static readonly key = \"trailing/Boundary\"; value:number}\n", true},
 		{"schema", "schema Boundary %s{value:number}\n", true},
 		{"data", "data Boundary %s{Ready; Waiting}\n", true},
 	}

@@ -15,12 +15,12 @@ import (
 
 func copyCompilerFixture(t *testing.T, fixture, root string) string {
 	t.Helper()
-	// Unnamed fixture packages derive their nominal service key from the
-	// directory name, so preserve it instead of using TempDir's "001".
+	// Preserve the fixture directory in its named package scope, so service
+	// keys are stable across copies and no unrelated missing-key fix applies.
 	temp := t.TempDir()
 	// Preserve the acceptance corpus's inherited ESM package scope. Individual
 	// fixtures can override it with their own package.json.
-	if err := os.WriteFile(filepath.Join(temp, "package.json"), []byte(`{"type":"module"}`), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(temp, "package.json"), []byte(`{"name":"compiler-fixture","type":"module"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(temp, filepath.Base(fixture))

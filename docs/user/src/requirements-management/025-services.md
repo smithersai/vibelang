@@ -48,6 +48,8 @@ When migrating, preserve every original explicit key; deriving a new key can bre
 
 An explicit string-literal key keeps its value, including `""`. It is used for runtime lookup, the emitted key type, and duplicate-key checks; an empty literal does not request a derived key.
 
+Derived keys require a module-scope declaration in a package whose `package.json` has a string `name`. A local or block-scoped service, or one outside a named package, reports `EK0903` when it omits `static readonly key`. The editor quick fix and `vibelang --fix` insert an explicit key while preserving the declaration's current runtime identity. A namespace at module scope can still derive its services' keys.
+
 ## Declaring a service of any shape
 
 ```vibe

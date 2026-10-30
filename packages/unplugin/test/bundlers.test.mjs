@@ -307,7 +307,7 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
     if (bundler === "esbuild") {
       it("esbuild: a package that declares no side effects drops a .vibe module nothing uses", async (t) => {
         const root = await fixture(t, "esbuild-side-effects")
-        await writeFile(join(root, "package.json"), JSON.stringify({ private: true, type: "module", sideEffects: false }))
+        await writeFile(join(root, "package.json"), JSON.stringify({ name: "vibelang-unplugin-side-effects-fixture", private: true, type: "module", sideEffects: false }))
         // A top-level call: without the package's word, esbuild must keep the module.
         await writeFile(join(root, "src", "unused.vibe"), 'export const marker = ["unused", "module", "marker"].join("-")\n')
         await writeFile(join(root, "src", "barrel.ts"), 'export * as Unused from "./unused.vibe"\nexport { shop } from "./shop.vibe"\n')

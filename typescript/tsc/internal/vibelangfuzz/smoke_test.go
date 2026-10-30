@@ -11,17 +11,18 @@ import (
 func TestHarness(t *testing.T) {
 	w := NewWorkspace(t)
 	r, err := w.Compile(t.Context(), Single(`error NotFound { id: string }
-service Users { name(id: string): string!NotFound }
-effect function nameOf(id: string) {
+service Users { static readonly key = "fuzz/harness/Users"; name(id: string): string!NotFound }
+effect function nameOf(id: string): string!NotFound!Users {
   if (id !== "42") throw new NotFound({ id })
-  return try (try Users).name(id)
+  const users = try Users
+  return try users.name(id)
 }
 export effect function main() {
   provide Layer.succeed(Users, { effect name(id) { return "Ada" } }) {
-    return [try nameOf("42"), nameOf("7") catch (e) => e._tag]
+    return [try nameOf("42"), try (nameOf("7") catch effect (e) => e._tag)]
   }
 }
-export effect function fails() { return try nameOf("7") }
+export effect function fails(): string!NotFound!Users { return try nameOf("7") }
 `))
 	if err != nil {
 		t.Fatal(err)

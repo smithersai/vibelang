@@ -1335,6 +1335,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Bare internal HTTP, TLS and legacy stream imports escaped the Node platform check; they now report `EK4402` like their `node:` forms, while type-only imports remain erased.
 
 - `service` accepted extra static helpers and could crash on a computed static name; those members now report `EK0902`. The supported `static readonly default` migration still reports `EK4855` and can be repaired without an extra `EK0902`. The same rule covers inline object and scalar shapes.
+
+- Local services and services without a named package silently received fallback keys; they now require an explicit key, with a quick fix that preserves the existing identity.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
 - The specification incorrectly required `for concurrent` on one line. A newline after `for` is now allowed, matching native `for await` and leaving the loop behavior unchanged.

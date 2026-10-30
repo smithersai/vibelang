@@ -65,7 +65,7 @@ func FuzzServiceRunHead(f *testing.F) {
 		if len(data) > 2 && data[2]%2 == 1 {
 			shape = fmt.Sprintf("%s: (n: number) => number!Refused", member)
 		}
-		declaration := "export error Refused\nexport service Audit { " + shape + " }\n"
+		declaration := "export error Refused\nexport service Audit { static readonly key = \"service-run-head/Audit\"; " + shape + " }\n"
 		owner := "export effect function probe()"
 		if len(data) > 3 && data[3]%2 == 1 {
 			owner = "export const probe = effect () =>"

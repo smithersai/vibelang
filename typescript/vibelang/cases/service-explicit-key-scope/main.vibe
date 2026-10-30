@@ -1,0 +1,6 @@
+export service Root { n: number }
+export namespace Keys { export service Global { n: number } }
+export function localKey(): string {
+  service Local { static readonly key = "literal/Local"; n: number }
+  return Local.key
+}

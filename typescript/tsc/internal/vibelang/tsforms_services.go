@@ -117,7 +117,7 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 	}
 	name := class.Name().Text()
 	keyText := ""
-	if key.Text() != servicesFor(c).key(class) {
+	if key.Text() != servicesFor(c).key(class) || !serviceCanDeriveKey(c, class) {
 		keyText = sourceText(file, key)
 	}
 	keyNote := ""

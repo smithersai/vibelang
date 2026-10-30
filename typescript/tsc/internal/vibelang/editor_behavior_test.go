@@ -37,14 +37,33 @@ func (h editorTestHost) GetPreferences(string) lsutil.UserPreferences {
 	return lsutil.UserPreferences{}
 }
 
+// editorPackageJSON names the test package, so a service there has a derived
+// key (EK0903 otherwise).
+const editorPackageJSON = `{"name":"editor-tests","type":"module"}`
+
+// editorPackages are the packages editorProgram installs in node_modules.
+var editorPackages = map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"}
+
 func editorProgram(t testing.TB, source string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
-	return editorProgramWith(t, source, map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"})
+	return editorProgramIn(t, source, editorPackageJSON, editorPackages)
+}
+
+// editorProgramWithPackage is editorProgram with packageJSON as the package's
+// package.json, or none when it is "".
+func editorProgramWithPackage(t testing.TB, source, packageJSON string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
+	return editorProgramIn(t, source, packageJSON, editorPackages)
 }
 
 // editorProgramWith is editorProgram with only packages, each a name and its
 // directory under the repository root, installed in node_modules.
 func editorProgramWith(t testing.TB, source string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
+	return editorProgramIn(t, source, editorPackageJSON, packages)
+}
+
+func editorProgramIn(t testing.TB, source, packageJSON string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")
@@ -68,10 +87,13 @@ func editorProgramWith(t testing.TB, source string, packages map[string]string) 
 		}
 	}
 	for name, text := range map[string]string{
-		"package.json":  `{"type":"module"}`,
+		"package.json":  packageJSON,
 		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`,
 		"main.vibe":     source,
 	} {
+		if name == "package.json" && packageJSON == "" {
+			continue
+		}
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
 			t.Fatal(err)
 		}
