@@ -1,0 +1,4 @@
+// Without declaration output nothing prints the alias, so EK4832 still offers
+// the schema declaration.
+export const Token = Schema.Struct({ id: Schema.String })
+export type Token = Schema.Schema.Type<typeof Token>

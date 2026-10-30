@@ -144,7 +144,7 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 	if len(declarations) == 0 {
 		return nil, true
 	}
-	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text()) ||
+	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text(), exported && c.CompilerOptions().GetEmitDeclarations()) ||
 		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported || len(declarations[0].JSDoc(file)) != 0 {
 		return nil, false
 	}
@@ -161,13 +161,14 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 }
 
 // isStructOwnType reports whether declaration is a struct's own type written
-// beside it: type X = typeof X.Type, type X = Schema.Schema.Type<typeof X>,
-// or interface X extends Schema.Schema.Type<typeof X> {}.
-func isStructOwnType(file *ast.SourceFile, declaration *ast.Node, name string) bool {
+// beside it: type X = typeof X.Type, which a schema declaration declares
+// (D501), and, unless declared says a declaration file prints it, type X =
+// Schema.Schema.Type<typeof X> or interface X extends Schema.Schema.Type<typeof X> {}.
+func isStructOwnType(file *ast.SourceFile, declaration *ast.Node, name string, declared bool) bool {
 	compact := func(node *ast.Node) string {
 		return strings.Join(strings.Fields(expressionText(file, node)), "")
 	}
-	ownType := map[string]bool{"typeof" + name + ".Type": true, "Schema.Schema.Type<typeof" + name + ">": true}
+	ownType := map[string]bool{"typeof" + name + ".Type": true, "Schema.Schema.Type<typeof" + name + ">": !declared}
 	switch {
 	case ast.IsTypeAliasDeclaration(declaration) && declaration.TypeParameters() == nil:
 		return ownType[compact(declaration.Type())]

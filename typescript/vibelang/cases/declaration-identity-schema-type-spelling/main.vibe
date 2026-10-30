@@ -1,0 +1,7 @@
+// A schema declaration declares type X = typeof X.Type (D501), so in a project
+// that emits declarations EK4832 stays quiet about a struct whose own type is
+// spelled another way: rewriting it would change the declaration.
+export const Token = Schema.Struct({ id: Schema.String })
+export type Token = Schema.Schema.Type<typeof Token>
+export const Session = Schema.Struct({ id: Schema.String })
+export interface Session extends Schema.Schema.Type<typeof Session> {}
