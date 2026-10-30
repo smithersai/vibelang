@@ -79,6 +79,8 @@ var specAhead = map[int32]string{
 	406: renumbering, 704: renumbering,
 	// VIP-15 and VIP-16 catalog existing named/nongeneric declaration rejections.
 	1501: renumbering, 1502: renumbering, 1603: renumbering,
+	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
+	1602: renumbering,
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the

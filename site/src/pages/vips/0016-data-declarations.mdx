@@ -20,6 +20,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 ```
 
 - `data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name.
+- Variant names `$is` and `$match` are `EK1602`, including in generic data: those properties are Effect's helpers. Rename the variant and its resolved references; other variants retain the exact `Data.taggedEnum` constructors.
 - Variants are matched with TC39 object patterns on `_tag` (VIP-7). In the pinned TC39 snapshot, a bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`, the snapshot's shorthand for `tracking: let tracking`. The variant constructors get no custom matchers.
 - Generic unions (`data Result<A, E> { … }`) are left to a later VIP.
 - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
