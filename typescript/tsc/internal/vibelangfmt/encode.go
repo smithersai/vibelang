@@ -347,15 +347,11 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 			e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "async", token: "async", stands: e.text(form.Word)})
 			break
 		}
-		name := e.hold(placeholderText, e.text(form.Word), form.Word.Pos(), 0)
-		e.replace(form.Word.Pos(), form.Open.End(), name+block)
-		e.replace(form.Close.Pos(), form.Close.End(), "})")
+		e.expressionBlock(form, block)
 	case parser.VibeSyntaxShorthand:
 		e.add(edit{pos: form.Word.Pos(), end: form.Word.Pos(), text: "function ", token: "function", stands: "shorthand"})
 	case parser.VibeSyntaxDo, parser.VibeSyntaxForkBlock:
-		name := e.hold(placeholderText, e.text(form.Word), form.Word.Pos(), 0)
-		e.replace(form.Word.Pos(), form.Open.End(), name+block)
-		e.replace(form.Close.Pos(), form.Close.End(), "})")
+		e.expressionBlock(form, block)
 	case parser.VibeSyntaxPrefix:
 		e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "void", token: "void", stands: e.text(form.Word)})
 	case parser.VibeSyntaxCatch:
@@ -512,6 +508,23 @@ func (e *encoder) shapeHead(form parser.VibeSyntax, head string) string {
 		return head
 	}
 	return name + ": " + e.text(form.Right)
+}
+
+// expressionBlock keeps the keyword and its comments opaque while the host
+// formatter formats the body as an arrow. Decoding restores the whole header.
+func (e *encoder) expressionBlock(form parser.VibeSyntax, block string) {
+	rawHead := e.source[form.Word.Pos():form.Open.Pos()]
+	head := strings.TrimRight(rawHead, " \t\r\n\u2028\u2029")
+	if hasComment(head) && strings.ContainsAny(rawHead[len(head):], "\r\n\u2028\u2029") {
+		newline := "\n"
+		if strings.Contains(rawHead[len(head):], "\r\n") {
+			newline = "\r\n"
+		}
+		head += newline + lineIndent(e.source, form.Word.Pos())
+	}
+	name := e.hold(placeholderText, head, form.Word.Pos(), 0)
+	e.add(edit{pos: form.Word.Pos(), end: form.Open.End(), text: name + block, opaque: true})
+	e.replace(form.Close.Pos(), form.Close.End(), "})")
 }
 
 // catch writes x catch y as x.$v(y), keeping the space before catch, so a

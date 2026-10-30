@@ -249,7 +249,12 @@ func (d *decoder) node(node *ast.Node) error {
 		if arguments := call.Arguments.Nodes; len(arguments) == 1 && d.isBlockMarker(arguments[0]) {
 			block := arguments[0].Body()
 			open := d.start(block)
-			d.replace(call.Expression.End(), open+1, " {")
+			head := " {"
+			if index := d.placeholderOf(call.Expression); index >= 0 &&
+				strings.HasSuffix(strings.TrimRight(d.enc.placeholders[index].text, " \t"), "\n") {
+				head = "{"
+			}
+			d.replace(call.Expression.End(), open+1, head)
 			d.replace(block.End()-1, node.End(), "}")
 		}
 	}

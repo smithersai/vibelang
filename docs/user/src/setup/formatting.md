@@ -88,6 +88,8 @@ Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are support
 
 Comments between `catch` and its literal handler are preserved, including line comments.
 
+Comments between `effect` or `do` and the opening `{` stay with that block. For a `do` block, a line comment before `{` keeps its line break.
+
 
 ## From a VibeLang checkout
 
