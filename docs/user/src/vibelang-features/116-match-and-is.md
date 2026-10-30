@@ -318,6 +318,8 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 | EK4701 | A match without `default` misses a case of a finite union | Add an arm for each case left, or a `default` arm |
 | EK4705 | `and`, `or`, and `not` at one level without parentheses | Add parentheses |
 
+The pinned design gives an ordinary `is` expression's `let` and `const` bindings the enclosing block's scope, including both `if` branches and code after it. A name remains in TDZ until its binding pattern runs; a later pattern failure does not undo an earlier initialization. The implementation limits below still apply.
+
 ## Not yet supported
 
 - `async match` and the proposal's regular expression and relational patterns.

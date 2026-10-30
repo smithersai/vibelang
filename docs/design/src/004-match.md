@@ -180,6 +180,57 @@ function defaultBit(o: { x?: number }, b: boolean) {
 }
 ```
 
+
+## `is` expressions
+
+`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`. In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical block, as the pinned explainer's binding rule states. They are in scope in both branches and after the `if`, shadow outer names throughout that block, and exist even when short-circuiting skips the expression or a preceding subpattern fails. Each cell stays in TDZ until its binding pattern executes. A failed overall test does not undo bindings already initialized; a skipped binding is still uninitialized. Source assignments keep ordinary `const` immutability; repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception.
+
+An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function nameOf(value: { name: string } | undefined) {
+  if (value is { let name }) return name
+  return "missing"
+}
+function failedGuard() {
+  if (5 is let n and if (false)) return 0
+  return n // 5: the binding ran before the guard failed
+}
+effect function skippedBinding() {
+  if (true || (1 is const n)) return n
+  return 0
+} // Die(ReferenceError): short-circuiting skipped the binding's initialization
+```
+
+The object counterpart specializes its stated subject type. Native lexical-cell witnesses check initialization before a failed guard and TDZ after a skipped initialization:
+
+```ts effect
+import { Effect } from "effect"
+function nameOf(value: { name: string } | undefined) {
+  const subject = value
+  if (subject !== undefined && "name" in subject) {
+    const name = subject.name
+    return name
+  }
+  return "missing"
+}
+function failedGuardCell() {
+  let n = 5
+  if (false) return 0
+  return n
+}
+function skippedBindingCell(): number {
+  // @ts-expect-error: the read precedes the skipped lexical initialization
+  if (true) return n
+  const n = 1
+  return 0
+}
+const isNamesExit = Effect.runSyncExit(Effect.sync(() => [nameOf({ name: "Ada" }), nameOf(undefined)])) // Success(["Ada", "missing"])
+const failedGuardCellExit = Effect.runSyncExit(Effect.sync(failedGuardCell)) // Success(5)
+const skippedBindingCellExit = Effect.runSyncExit(Effect.sync(skippedBindingCell)) // Die(ReferenceError)
+```
+
 ## Typing
 
 Patterns type as the TypeScript counterpart this chapter shows for them, so every rule below is what `tsc --strict` gives that counterpart (VIP-7, amended; decided detail 79).
