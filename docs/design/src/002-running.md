@@ -31,7 +31,7 @@ Every operand is evaluated once, left to right as written, with two exceptions: 
 
 | Rule | Diagnostic |
 | --- | --- |
-| `try` outside effect code | `EK0501` |
+| `try` outside effect code; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | `EK0501` |
 | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | `EK0502` |
 | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | `EK0503` |
 
@@ -661,7 +661,8 @@ function owners(scope: Scope.Scope) {
 
 | Rule | Diagnostic |
 | --- | --- |
-| an operand that is not an array of Effects, `try.all [1, a()]`; an object of Effects uses the `all` global instead | `EK1801` |
+| `try.all`, `try.race`, `try.any` or `try.allSettled` outside effect code | `EK0501` |
+| an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled`, `try.all [1, a()]`; an object of Effects uses the `all` global instead | `EK1801` |
 
 ### Meaning
 

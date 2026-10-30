@@ -19,6 +19,8 @@ const rs     = try.allSettled [a(), b()]                 // yield* Effect.all([â
 - **Amended 2026-10-29: the `try.allSettled` counterpart for an array literal.** The comment above writes `[â€¦].map(Effect.exit)`, which is a TypeScript error when the elements differ in type. For an array literal the counterpart wraps each element, `Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: "unbounded" })`, which gives the same `Exit` and keeps the tuple type; any other operand uses `xs.map(Effect.exit)`. Erratum to the comment, following the TypeScript counterpart (Will: VibeLang mirrors the TypeScript counterpart where a VIP is silent).
 - **Ambiguity: none.** `try` is a reserved word, so `try.` can't start anything else.
 
+- **Amended 2026-10-30: shared static rules.** `try.all`, `try.race`, `try.any` and `try.allSettled` all run Effects under VIP-5: outside effect code they receive `EK0501`. Each takes an array of Effects under the operand rule; an invalid operand receives `EK1801`. These are the existing context and operand checks for the complete family, not new accepted contexts or operand forms.
+
 ## History
 
 About 37 findings over rounds 2 to 11, about when elements are evaluated and about `do` elements. VIP-1, VIP-2 and VIP-5 removed both, and none apply to this design.

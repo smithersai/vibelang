@@ -871,7 +871,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](/spec/003-failures#calls-in-effect-code) |
 | `EK0405` | a body that throws more than its written `@throws {T}` | 4 | [Failures](/spec/003-failures#thrown-types) |
 | `EK0406` | a `@throws` or `@rethrows` tag on an effectful `.vibe` callable: an `effect` function, arrow, method or producer, or a callable whose return type is wholly `Effect`, `Stream` or `Layer`; quick fix: remove the tag | 4 | [Failures](/spec/003-failures#thrown-types) |
-| `EK0501` | `try` outside effect code, the top level included | 5 | [Running Effects](/spec/002-running#try) |
+| `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18 | [Running Effects](/spec/002-running#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0503` | a `try` statement in effect code | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](/spec/002-running#catch) |
@@ -908,7 +908,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
-| `EK1801` | a `try.all` operand that is not an array of Effects | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
+| `EK1801` | an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK1902` | `for concurrent` outside effect code | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK1903` | `break` leaving head binding initialization or the body of `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
