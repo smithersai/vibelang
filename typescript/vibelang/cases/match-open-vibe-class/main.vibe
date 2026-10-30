@@ -1,0 +1,10 @@
+// Open subjects skip EK4701 (VIP-7; decided details 78 and 102).
+class Point {
+  constructor(readonly x: number) {}
+}
+
+export function describe(p: Point): string {
+  return match (p) {
+    when Point: "point";
+  }
+}

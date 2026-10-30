@@ -1,0 +1,6 @@
+// Open subjects skip EK4701 (VIP-7; decided details 78 and 102).
+export function describe(x: any): number {
+  return match (x) {
+    when "a": 1;
+  }
+}

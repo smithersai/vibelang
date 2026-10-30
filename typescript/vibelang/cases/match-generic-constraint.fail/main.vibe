@@ -1,0 +1,38 @@
+// expect: EK4701
+// A finite generic constraint is checked for every instantiation it admits;
+// an unconstrained or broad parameter stays open (chapter 004, Generic
+// constraints and flow).
+type TaggedDomain = { readonly _tag: "A" } | { readonly _tag: "B" }
+export function missingTag<T extends TaggedDomain>(s: T) {
+  return match (s) { when { _tag: "A" }: 1; }
+}
+export function letters<T extends "A" | "B">(s: T) {
+  return match (s) { when "A": 1; }
+}
+export function flag<T extends boolean>(s: T) {
+  return match (s) { when true: 1; }
+}
+// A guard leaves the reference typed T, so the whole constraint remains.
+export function bareGuard<T extends TaggedDomain>(s: T) {
+  if (s._tag === "A") return match (s) { when { _tag: "A" }: 1; }
+  return 0
+}
+export function tags<T extends TaggedDomain>(s: T) {
+  return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; }
+}
+export function lettersDone<T extends "A" | "B">(s: T) {
+  return match (s) { when "A": 1; when "B": 2; }
+}
+function isA<T extends TaggedDomain>(s: T): s is T & { readonly _tag: "A" } {
+  return s._tag === "A"
+}
+export function refined<T extends TaggedDomain>(s: T) {
+  if (isA(s)) return match (s) { when { _tag: "A" }: 1; }
+  return 0
+}
+export function open<T>(s: T) {
+  return match (s) { when "A": 1; }
+}
+export function broad<T extends string>(s: T) {
+  return match (s) { when "A": 1; }
+}

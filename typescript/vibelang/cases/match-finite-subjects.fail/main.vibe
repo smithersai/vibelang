@@ -1,0 +1,4 @@
+// expect: EK4701 EK4701 EK4701
+function booleanCase(value: boolean) { return match (value) { when let item and if (false): 0; } }
+function undefinedCase(value: undefined) { return match (value) { when let item and if (false): 0; } }
+function taggedCase(value: { _tag: 1 | 2 }) { return match (value) { when let item and if (false): 0; } }

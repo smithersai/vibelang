@@ -1,0 +1,1 @@
+[["Success","one"],["Die","TypeError"],["Success","a"],["Die","TypeError"],["Die","TypeError"],["Success","null"],["Die","TypeError"],["Success","a"],["Die","TypeError"]]

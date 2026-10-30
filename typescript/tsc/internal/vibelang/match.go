@@ -217,10 +217,20 @@ func afterIrrefutableArm(call *ast.Node) bool {
 // gives it, not the type the subject's capture has (match_capture.go).
 func matchRemainder(c *checker.Checker, call *ast.Node) (declared, left *checker.Type) {
 	declared, left = matchSubjectTypes(c, call)
-	if declared == nil || !isFiniteMatchType(c, declared) {
+	if declared == nil {
 		return nil, nil
 	}
-	return declared, left
+	if !isFiniteMatchType(c, declared) {
+		constraint := c.GetBaseConstraintOfType(declared)
+		if constraint == nil || constraint == declared || !isFiniteMatchType(c, constraint) {
+			return nil, nil
+		}
+		declared = constraint
+		if projected := c.GetBaseConstraintOfType(left); projected != nil {
+			left = projected
+		}
+	}
+	return declared, c.GetReducedType(left)
 }
 
 // matchSubjectTypes returns the declared type of the subject of call, the
@@ -248,7 +258,7 @@ func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *chec
 }
 
 // isFiniteMatchType reports whether t is a finite union a match can cover:
-// each member a literal, an enum member, null, undefined, or void, or a
+// each member a literal, an enum member, null or undefined, or a
 // tagged member, an object type whose _tag is what TypeScript calls a
 // literal type, or a union of those (chapter 4, Tagged members: "a string,
 // number, bigint, boolean, enum, `null` or `undefined` literal, a `unique
@@ -260,10 +270,10 @@ func isFiniteMatchType(c *checker.Checker, t *checker.Type) bool {
 	}
 	for _, m := range members {
 		flags := m.Flags()
-		if flags&(checker.TypeFlagsUnit|checker.TypeFlagsVoid|checker.TypeFlagsNever) != 0 {
+		if flags&(checker.TypeFlagsUnit|checker.TypeFlagsNever) != 0 {
 			continue
 		}
-		if flags&checker.TypeFlagsObject != 0 {
+		if isFiniteMatchObjectType(m) {
 			if tag := c.GetPropertyOfType(m, "_tag"); tag != nil && isLiteralTagType(c.GetTypeOfSymbol(tag)) {
 				continue
 			}
@@ -271,6 +281,22 @@ func isFiniteMatchType(c *checker.Checker, t *checker.Type) bool {
 		return false
 	}
 	return true
+}
+
+// Tagged intersections retain the object constituents of their finite cases.
+func isFiniteMatchObjectType(t *checker.Type) bool {
+	if t.Flags()&checker.TypeFlagsObject != 0 {
+		return true
+	}
+	if t.Flags()&checker.TypeFlagsIntersection == 0 {
+		return false
+	}
+	for _, member := range t.Types() {
+		if isFiniteMatchObjectType(member) {
+			return true
+		}
+	}
+	return false
 }
 
 // isLiteralTagType reports whether t, a member's _tag type, is a literal

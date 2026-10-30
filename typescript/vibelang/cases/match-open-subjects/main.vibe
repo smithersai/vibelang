@@ -1,0 +1,17 @@
+export type OpenTag = { readonly _tag: "A" } | { readonly _tag: string }
+export type OpenCallable = (() => void) | { readonly _tag: "A" }
+export effect function numberCase(value: number): string!never {
+ return match (value) { when 1: "one"; }
+}
+export effect function tagCase(value: OpenTag): string!never {
+ return match (value) { when { _tag: "A" }: "a"; }
+}
+export effect function voidCase(value: void): number!never {
+ return match (value) { when let item and if (false): 0; }
+}
+export effect function genericCase<T>(value: T): string!never {
+ return match (value) { when null: "null"; }
+}
+export effect function callableCase(value: OpenCallable): string!never {
+ return match (value) { when { _tag: "A" }: "a"; }
+}

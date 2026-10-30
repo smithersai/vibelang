@@ -1,0 +1,4 @@
+main.vibe(7,10): error EK4701
+main.vibe(10,10): error EK4701
+main.vibe(13,10): error EK4701
+main.vibe(17,30): error EK4701

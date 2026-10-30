@@ -36,7 +36,7 @@ Two variants or two fields on one line need a separator. `data D { A B }` and `d
 
 A variant cannot be named `$is` or `$match` (`EK1602`), including in generic data: Effect reserves those properties for helpers. Rename it and its references, for example to a fresh `Is` or `Match`.
 
-`when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (`EK4701`). See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md#data-variants).
+`when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (`EK4701`). A finite generic constraint on these variants is checked over its possible cases. An open type such as `unknown` turns off `EK4701`; unmatched values retain the runtime `TypeError`. See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md#data-variants).
 
 Support for the new object patterns arrives with the compiler's VIP implementation.
 

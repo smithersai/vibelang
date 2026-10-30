@@ -1,0 +1,17 @@
+// Open subjects skip EK4701 (VIP-7; decided details 78 and 102).
+import { Plain } from "./ext.ts"
+
+error NotFound { id: string }
+
+export function mixed(x: NotFound | Plain): number {
+  return match (x) {
+    when NotFound: 1;
+    when Plain: 2;
+  }
+}
+
+export function alone(x: Plain): number {
+  return match (x) {
+    when Plain: 1;
+  }
+}
