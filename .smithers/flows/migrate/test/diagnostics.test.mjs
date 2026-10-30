@@ -78,3 +78,8 @@ test("styleProblems holds a catch that can never run, which recovers in the Type
   const diagnostics = parseDiagnostics("src/a.vibe(2,3): warning EK9204: This catch can never run.\nsrc/b.vibe(2,3): warning EK9204: This catch can never run.\nsrc/a.vibe(3,3): warning EK9999: Other.\n")
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK9204"])
 })
+
+test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
+  const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])
+})
