@@ -127,6 +127,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
+- The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.
+
 - The specification restated class-pattern and cleanup rules in several chapters, and the copies drifted. Each rule now has one definition that the others link to, and chapter 2 lists every place `try` differs from `await`, with its reason.
 
 - The specification described `do` and defaults with hand-written lowering recipes, which disagreed with JavaScript in new ways each round. It now states the behavior: a default behaves as in JavaScript with the `do` proposal, a `return`, `break` or `continue` in an array pattern's default closes its iterator as the same jump does from a `for…of` body, and a throw in an `effect` function's parameter default gives an Effect that dies instead of throwing at the call.

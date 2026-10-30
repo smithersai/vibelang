@@ -267,7 +267,7 @@ function total(o: Calc) {
     let $t2
     if ($s === 1) $t2 = 10
     else $t2 = 0
-    return $apply($f, $r, [$t1, $t2])                 // this is o; $apply is Reflect.apply, captured at module start
+    return Reflect.apply($f, $r, [$t1, $t2])          // this is o
   })
 }
 ```

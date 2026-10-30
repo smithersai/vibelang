@@ -92,7 +92,7 @@ class Users {
 }
 ```
 
-Each form keeps the form it is written in, as `async` does. A declaration stays a hoisted function declaration, so a call above it works. Every row writes `Effect.gen({ self: this }, function* () { B })` when `B` reads `this` or calls a `super` method, whose lowering passes `this` as the receiver ([Bindings](/spec/001-functions#bindings)):
+Each form keeps the form it is written in, as `async` does. A declaration stays a hoisted function declaration, so a call above it works, from a module in an import cycle too. `B` keeps its function's `this` and `super` ([Bindings](/spec/001-functions#bindings)):
 
 | VibeLang | Effect TypeScript |
 | --- | --- |
@@ -105,17 +105,17 @@ Each form keeps the form it is written in, as `async` does. A declaration stays 
 
 Parameters, defaults included, are bound when the function is called, before `Effect.gen`, as an `async` function's are bound before its body starts. [Parameter defaults](/spec/002-running#parameter-defaults) says what a default may do: `effect function g(x = do { return null }) { return 1 }` is a function whose call `g()` gives an Effect that succeeds with `null`. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
 
-<a id="bindings"></a>**Bindings.** The body sees the bindings of the function it is written in, as an `async` body does. The generator `Effect.gen` takes would have its own, so the compiler passes them in, with fresh names:
+<a id="bindings"></a>**Bindings.** An `effect` body reads `this`, `super` and `new.target` exactly as the same body reads them in an `async` function of the same form: the same bindings, at the same step of evaluation, with the same errors. Only the start is later. Building the Effect reads none of them, and each run reads them where the body does. A function nested in the body has its own, as in TypeScript, and an `effect` arrow or block has its enclosing function's, as any arrow does. A producer (`effect function*`, `effect *m()`) follows the same rule, as an `async function*` does ([Producers](/spec/002-running#producers)). How the compiler passes these bindings into the generator that `Effect.gen` takes is its choice.
 
-| In the body | Effect TypeScript |
+| The body, in `class Derived extends Base` | Exit |
 | --- | --- |
-| `this` | `Effect.gen({ self: this }, function* () { … })`; the generator's `this` is `self` |
-| `new.target` | a temporary, `const $new_target = new.target` |
-| `super[k]`, `super.m` | `$super_get(k)`, with `const $super_get = (k) => super[k]` |
-| `super[k] = v` | `$super_set(k, v)`, with `const $super_set = (k, v) => (super[k] = v)`; `super.x += v` reads with `$super_get` and writes with `$super_set`, evaluating `k` once |
-| `super.m(a)` | `$apply($super_get("m"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read. It needs the `{ self: this }` form |
-
-The temporaries and helpers are declared at the top of the innermost enclosing non-arrow function, or the module, once per call, as TypeScript's own `async` downleveling does with `_superIndex`. A class field initializer or a parameter default can't see the body's declarations, so there they are declared in an arrow called in place, which runs only when the initializer or default does: `f = (() => { const $super_get = (k) => super[k]; return () => Effect.gen(…) })()`. In an `effect` arrow and an `effect` block these bindings are that enclosing function's, as in any arrow. A function nested in the body has its own, as in TypeScript. A producer (`effect function*`, `effect *m()`) gets the same bindings, as an `async function*` does ([Producers](/spec/002-running#producers)).
+| `constructor() { const p = effect { return this }; super(); this.p = p }`, then run `p` | `Success`, the instance: building `p` read nothing |
+| the same `p`, run before `super()` | `Die(ReferenceError)`, as reading `this` there throws |
+| `effect { if (flag) return this; return 7 }`, run before `super()` with `flag` false | `Success(7)`: an unreached read checks nothing |
+| `effect { return super[key()] }`, run before `super()` | `Die(ReferenceError)` before `key()` runs, as JavaScript reads `this` first |
+| `static { this.program = effect { return super.value } }`, with `Base.value` 7 | `Success(7)`: a static block has its own `super` |
+| `effect go() { return super.offset() }`, where `offset` has an own `call` property | the method runs with the instance as `this`, and `call` is never read |
+| `` effect go() { return super.tag`value ${2}` } `` | the tag runs with the instance as `this` |
 
 <a id="direct-eval"></a>**Legacy JavaScript.** Five JavaScript features are compile errors anywhere in a `.vibe` file, plain functions included, each with a quick fix (VIP-1 and VIP-4, amended 2026-10-29). Code that needs one lives in a `.ts` or `.js` file.
 
@@ -166,34 +166,16 @@ class Counter extends Base {
 
 ```ts [Effect]
 // fragment
-const $apply = Reflect.apply
 class Counter extends Base {
   n = 7
   value() {
-    const $super_get = (k: PropertyKey) => super[k as keyof Base]
-    return Effect.gen({ self: this }, function* () { return this.n + $apply($super_get("offset"), this, []) })
+    const offset = () => super.offset()   // an arrow keeps super and this, as an async body does
+    return Effect.gen({ self: this }, function* () { return this.n + offset() })
   }
 }
 ```
 
-With `Base.prototype.offset` returning 30, `value()` succeeds with 37 even if `offset` has an own `call` property. A body whose only receiver use is `super` gets `{ self: this }` too:
-
-```vibe [VibeLang]
-// compiler-gap: pending VIP-1
-class Counter2 extends Base { effect value() { return super.offset() } }
-```
-
-```ts [Effect]
-// fragment
-class Counter2 extends Base {
-  value() {
-    const $super_get = (k: PropertyKey) => super[k as keyof Base]
-    return Effect.gen({ self: this }, function* () { return $apply($super_get("offset"), this, []) })
-  }
-}
-```
-
-`value()` succeeds with 30, and `offset` sees the instance as `this`; without `{ self: this }` its receiver would be `undefined`.
+With `Base.prototype.offset` returning 30, `value()` succeeds with 37.
 
 ### Return types
 
