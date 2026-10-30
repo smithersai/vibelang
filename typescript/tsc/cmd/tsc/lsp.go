@@ -64,6 +64,7 @@ func runLSP(args []string) int {
 			return cmd.Output()
 		},
 		Spawn:              spawnProcess,
+		FormatVibe:         formatVibeSource,
 		ProgressDelay:      250 * time.Millisecond,
 		SetParentProcessID: newParentProcessWatchdog(ctx, stop, *clientProcessID),
 	})

@@ -103,7 +103,11 @@ Files containing the Unicode line and paragraph separators, `U+2028` and `U+2029
 
 ## The editor
 
-VibeLang has one formatter (VIP-34): the language server's formatting, `textDocument/formatting`, the dprint plugin and the Prettier and Oxfmt plugins all run it, so the editor and your format command agree.
+VibeLang has one formatter (VIP-34).
+
+The language server's `textDocument/formatting`, `textDocument/rangeFormatting` and `textDocument/onTypeFormatting` requests format the current editor text, saved or not, through the same formatter as `vibelang format`, `vibelang-format` and `vibelang/prettier`. All of them read the nearest Oxfmt, Prettier or dprint configuration for the file's quote style and print width ([Developer tools](developer-tools.md)), and the package supplies the VibeLang plugin itself; without a configuration they use double quotes and width 120. A file the formatter refuses is left as it is and the editor shows the error.
+
+`vibelang format --write` formats `.vibe` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns.
 
 ## Prettier, Oxfmt and migration
 

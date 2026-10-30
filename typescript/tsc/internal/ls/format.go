@@ -5,6 +5,7 @@ import (
 	"context"
 	"iter"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/astnav"
@@ -48,6 +49,67 @@ func (l *LanguageService) ProvideFormatDocument(
 		edits = l.getFormattingEditsForMappedRange(ctx, file, formatOpts, core.NewTextRange(0, len(file.OriginalText())))
 	}
 	return lsproto.TextEditsOrNull{TextEdits: &edits}, nil
+}
+
+// ProvideFormatDocumentUsing formats the current document text through the host's
+// shared formatter, while retaining the negotiated LSP position encoding.
+func (l *LanguageService) ProvideFormatDocumentUsing(
+	ctx context.Context,
+	documentURI lsproto.DocumentUri,
+	formatter func(context.Context, string, string) (string, error),
+	selection *lsproto.Range,
+) (lsproto.DocumentFormattingResponse, error) {
+	if l.UserPreferences().FormatEnabled.IsFalse() {
+		return lsproto.TextEditsOrNull{}, nil
+	}
+	_, file := l.getProgramAndFile(documentURI)
+	text := file.Text()
+	formatted, err := formatter(ctx, file.FileName().AsString(), text)
+	if err != nil {
+		return lsproto.TextEditsOrNull{}, err
+	}
+	changes := []core.TextChange{}
+	if formatted != text {
+		changes = append(changes, sharedFormatterChange(text, formatted))
+	}
+	edits := l.toLSProtoTextEdits(file, changes)
+	if selection != nil {
+		// The shared plugin formats complete programs. Never let a range or
+		// on-type request change text outside the user's selected region.
+		edits = slices.DeleteFunc(edits, func(edit *lsproto.TextEdit) bool {
+			return lsproto.ComparePositions(edit.Range.Start, selection.Start) < 0 ||
+				lsproto.ComparePositions(edit.Range.End, selection.End) > 0
+		})
+	}
+	return lsproto.TextEditsOrNull{TextEdits: &edits}, nil
+}
+
+// sharedFormatterChange retains unchanged prefixes/suffixes for bounded
+// requests and keeps both UTF-8 characters and CRLF sequences intact.
+func sharedFormatterChange(before, after string) core.TextChange {
+	start := 0
+	for start < len(before) && start < len(after) && before[start] == after[start] {
+		start++
+	}
+	for start > 0 && ((start < len(before) && !utf8.RuneStart(before[start])) ||
+		(start < len(after) && !utf8.RuneStart(after[start])) ||
+		(start < len(before) && before[start] == '\n' && before[start-1] == '\r') ||
+		(start < len(after) && after[start] == '\n' && after[start-1] == '\r')) {
+		start--
+	}
+	oldEnd, newEnd := len(before), len(after)
+	for oldEnd > start && newEnd > start && before[oldEnd-1] == after[newEnd-1] {
+		oldEnd--
+		newEnd--
+	}
+	for oldEnd < len(before) && newEnd < len(after) &&
+		(!utf8.RuneStart(before[oldEnd]) || !utf8.RuneStart(after[newEnd]) ||
+			(oldEnd > 0 && before[oldEnd] == '\n' && before[oldEnd-1] == '\r') ||
+			(newEnd > 0 && after[newEnd] == '\n' && after[newEnd-1] == '\r')) {
+		oldEnd++
+		newEnd++
+	}
+	return core.TextChange{TextRange: core.NewTextRange(start, oldEnd), NewText: after[start:newEnd]}
 }
 
 // getFormattingEditsForMappedRange formats each formatting-enabled verbatim intersection with originalRange.

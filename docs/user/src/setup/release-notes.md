@@ -1653,6 +1653,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Forbidden Effect modifier positions lacked a specified diagnostic, and error members could lose a second modifier diagnostic. The specification now assigns `EK0108` and preserves applicable `EK0104` and `EK0105` without an extra member-category error.
 
+- Editor formatting and the formatter companion ignored project style or used different output; the language server, `vibelang format` and formatter plugins now share the project's dprint configuration and format unsaved editor text without writing it to disk.
+
 - The specification implied that running a completed Effect always suspends like `await`. It now states Effect's native scheduling behavior and when to request a cooperative yield.
 
 - The specification omitted Promise-returning tagged templates from its explicit bridge trigger. The same Promise-result rule now covers tagged invocations and keeps the original call inside the bridge.

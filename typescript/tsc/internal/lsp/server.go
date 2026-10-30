@@ -62,6 +62,8 @@ type ServerOptions struct {
 	TypingsLocation    tspath.RootedDirectoryPath
 	ParseCache         *project.ParseCache
 	NpmInstall         func(ctx context.Context, cwd string, args []string) ([]byte, error)
+	// FormatVibe uses the same formatter as the package's CLI and formatter plugins.
+	FormatVibe func(context.Context, string, string) (string, error)
 	// Spawn launches a child process, returning its stdio as an io.ReadWriteCloser (Read is its stdout,
 	// Write is its stdin). It is nil when the host cannot spawn processes. Currently used for content mappers.
 	Spawn              func(command []string, dir string, stderr io.Writer) (io.ReadWriteCloser, error)
@@ -88,6 +90,7 @@ func NewServer(opts *ServerOptions) *Server {
 		typingsLocation:       opts.TypingsLocation,
 		parseCache:            opts.ParseCache,
 		npmInstall:            opts.NpmInstall,
+		formatVibe:            opts.FormatVibe,
 		spawn:                 opts.Spawn,
 		startWatchdog:         opts.SetParentProcessID,
 		initComplete:          make(chan struct{}),
@@ -181,6 +184,7 @@ var (
 )
 
 type Server struct {
+	formatVibe    func(context.Context, string, string) (string, error)
 	r             Reader
 	w             Writer
 	backgroundCtx context.Context
@@ -2202,6 +2206,9 @@ func (s *Server) handleCompletionItemResolve(ctx context.Context, params *lsprot
 }
 
 func (s *Server) handleDocumentFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentFormattingParams) (lsproto.DocumentFormattingResponse, error) {
+	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, nil)
+	}
 	return ls.ProvideFormatDocument(
 		ctx,
 		params.TextDocument.Uri,
@@ -2210,6 +2217,9 @@ func (s *Server) handleDocumentFormat(ctx context.Context, ls *ls.LanguageServic
 }
 
 func (s *Server) handleDocumentRangeFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentRangeFormattingParams) (lsproto.DocumentRangeFormattingResponse, error) {
+	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, &params.Range)
+	}
 	return ls.ProvideFormatDocumentRange(
 		ctx,
 		params.TextDocument.Uri,
@@ -2219,6 +2229,9 @@ func (s *Server) handleDocumentRangeFormat(ctx context.Context, ls *ls.LanguageS
 }
 
 func (s *Server) handleDocumentOnTypeFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentOnTypeFormattingParams) (lsproto.DocumentOnTypeFormattingResponse, error) {
+	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, &lsproto.Range{Start: lsproto.Position{Line: params.Position.Line}, End: lsproto.Position{Line: params.Position.Line, Character: 0x7fffffff}})
+	}
 	return ls.ProvideFormatDocumentOnType(
 		ctx,
 		params.TextDocument.Uri,

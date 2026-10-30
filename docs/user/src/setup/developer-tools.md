@@ -18,7 +18,7 @@ its original configuration entry.
 Install `vibelang` and configure Prettier's `plugins` with
 `"vibelang/prettier"` (or pass `--plugin vibelang/prettier`). The plugin infers
 `.vibe` and delegates the entire file to the shipped dprint process plugin,
-the same formatter used by `vibelang-format --write` and
+the same formatter used by `vibelang format --write`, the language server and `vibelang-format --write` and
 `vibelang-format --check`. Prettier's `singleQuote` and `printWidth` decide
 the quote style and line width; its other layout options do not alter the
 result.

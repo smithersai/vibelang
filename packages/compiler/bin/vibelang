@@ -38,8 +38,33 @@ if (process.argv[2] === "agents") {
   process.exit(await main(process.argv.slice(3), findBinary))
 }
 
+if (process.argv[2] === "format") {
+  try {
+    const args = process.argv.slice(3)
+    const separator = args.indexOf("--")
+    const flags = separator < 0 ? args : args.slice(0, separator)
+    if (flags.includes("--help") || flags.includes("-h")) {
+      console.log("vibelang format [--check | --write] [files or glob patterns...]")
+      console.log("  --check  Report files that need formatting without writing them.")
+      console.log("  --write  Format files in place (the default).")
+      process.exit(0)
+    }
+    const unknown = flags.find(arg => arg.startsWith("-") && arg !== "--check" && arg !== "--write")
+    if (unknown) throw new Error("vibelang format: unknown option " + unknown + ". Run vibelang format --help.")
+    const { formatFiles } = await import("../format.mjs")
+    process.exit(formatFiles(args.filter((_, index) => index !== separator)))
+  } catch (error) {
+    console.error(error.message)
+    process.exit(1)
+  }
+}
+
 const binary = findBinary()
-const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" })
+const child = spawn(binary, process.argv.slice(2), { stdio: "inherit", env: {
+  ...process.env,
+  VIBELANG_FORMAT_NODE: process.execPath,
+  VIBELANG_FORMAT_MODULE: fileURLToPath(new URL("../format.mjs", import.meta.url))
+} })
 const signals = ["SIGINT", "SIGTERM", "SIGHUP"]
 for (const signal of signals) process.on(signal, () => child.kill(signal))
 child.on("error", (error) => {
@@ -53,3 +78,4 @@ child.on("exit", (code, signal) => {
     process.kill(process.pid, signal)
   } else process.exitCode = code ?? 1
 })
+
