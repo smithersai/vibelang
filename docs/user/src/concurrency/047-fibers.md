@@ -188,6 +188,8 @@ An omitted limit always means unbounded concurrency, even when a local binding i
 
 The formatter preserves nested `try` expressions in the concurrency limit and iterable expression.
 
+A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
+
 ## Supervising child lifetimes
 
 ```vibe

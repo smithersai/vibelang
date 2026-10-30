@@ -7,8 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
-// forConcurrent reconstructs the parser's reordered helper call, keeping
-// items and limit in their runtime argument order and the item body lazy.
+// forConcurrent reconstructs the parser's helper call. Evaluate a written
+// limit before the items, in source order, and keep the item body lazy.
 // Existing run/program edits supply both renderings' generator boundaries.
 func (p *projector) forConcurrent(call *ast.Node, e env) {
 	if !e.effect {
@@ -32,6 +32,13 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	if isStatementListItem(call.Parent) {
 		p.plan.insert(start, ";")
 	}
+	limitName := ""
+	if limit.Flags&ast.NodeFlagsReparsed == 0 {
+		limitName = p.names.fresh("$concurrency")
+		p.plan.insert(start, "{ const "+limitName+" = ")
+		p.concurrentCopy(limit, start, e)
+		p.plan.insert(start, "; ")
+	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(items), helperRef("$forConcurrent")+"(")
 	p.visit(items, e)
@@ -40,7 +47,7 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	if limit.Flags&ast.NodeFlagsReparsed != 0 {
 		p.plan.insert(at, "void 0")
 	} else {
-		p.concurrentCopy(limit, at, e)
+		p.plan.insert(at, limitName)
 	}
 	p.plan.insert(at, ", (")
 	p.concurrentCopy(fn.Parameters()[0].Name(), at, env{})
@@ -66,7 +73,11 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	p.plan.mark(editProgram, partClose, body.End(), body.End(), "")
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
-	p.plan.insert(call.End(), ";")
+	if limitName != "" {
+		p.plan.insert(call.End(), "; }")
+	} else {
+		p.plan.insert(call.End(), ";")
+	}
 }
 
 // concurrentCopy moves a lowered header subtree to its helper argument.

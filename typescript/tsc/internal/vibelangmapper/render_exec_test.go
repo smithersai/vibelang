@@ -208,7 +208,7 @@ var emitCases = []struct {
 	{
 		name:     "concurrent loops defer bodies and continue returns from one item",
 		source:   "function f(xs: number[]) { for concurrent(2) (const x of xs) { if (!x) continue; log(x) } for concurrent (const x of xs) log(x) }",
-		contains: []string{"$forConcurrent(xs, 2, (x) => $gen(function* ()", "$forConcurrent(xs, void 0, (x) => $gen(function* ()", "return;", "log(x)"},
+		contains: []string{"$forConcurrent(xs, $concurrency, (x) => $gen(function* ()", "$forConcurrent(xs, void 0, (x) => $gen(function* ()", "return;", "log(x)"},
 		absent:   []string{"for concurrent", "continue", "f$direct"},
 	},
 	{

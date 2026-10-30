@@ -183,7 +183,7 @@ var projectionCases = []struct {
 	{
 		name:    "concurrent bounded single statement",
 		source:  "function f(xs: number[]) { for concurrent(2) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run($forConcurrent(xs, 2, (x) => $gen(function* () { ;(yield* $run(log(x))) })))); })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x))) })))); } })}",
 	},
 	{
 		name:    "all takes its array elements by name",
@@ -1054,7 +1054,7 @@ func TestConcurrentNestedJumps(t *testing.T) {
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
-	assert.Assert(t, strings.Contains(projection.Text, "if (xs.length) (yield*"), "%s", projection.Text)
+	assert.Assert(t, strings.Contains(projection.Text, "if (xs.length) { const $concurrency = 2; (yield*"), "%s", projection.Text)
 	assert.Assert(t, strings.Contains(projection.Text, "break; continue"), "%s", projection.Text)
 	assert.Assert(t, strings.Contains(projection.Text, "if (x) return;"), "%s", projection.Text)
 }
