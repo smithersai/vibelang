@@ -751,6 +751,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor input quick fixes could introduce argument errors, and helper annotation fixes could leave a callback error unchanged; unsafe repairs are now withheld, and captured inputs keep their types.
 
+- Repository example staging now uses one local-package mapping for dependencies and overrides. The staged versions and published example manifests stay unchanged.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.

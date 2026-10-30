@@ -10,12 +10,13 @@ export function prepareExample(source, destination, packages, effect) {
   })
   const path = join(destination, "package.json")
   const manifest = JSON.parse(readFileSync(path, "utf8"))
+  const localPackages = Object.fromEntries(Object.entries(packages).map(([name, target]) => [name, "file:" + resolve(target)]))
   for (const section of ["dependencies", "devDependencies"]) {
-    for (const [name, target] of Object.entries(packages)) {
-      if (manifest[section]?.[name]) manifest[section][name] = "file:" + resolve(target)
+    for (const [name, target] of Object.entries(localPackages)) {
+      if (manifest[section]?.[name]) manifest[section][name] = target
     }
   }
-  manifest.overrides = { ...manifest.overrides, ...Object.fromEntries(Object.entries(packages).map(([name, target]) => [name, "file:" + resolve(target)])), "@effect/platform-node-shared": effect }
+  manifest.overrides = { ...manifest.overrides, ...localPackages, "@effect/platform-node-shared": effect }
   writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n")
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tmpdir } from "node:os"
 import { test } from "node:test"
@@ -68,3 +68,48 @@ test("every example's release-age exclusions cover the exact pins of the VibeLan
     assert.deepEqual(pins.filter(name => !excludes.includes(name)), [], `examples/${example}/bunfig.toml minimumReleaseAgeExcludes`)
   }
 })
+
+for (const dependencies of [
+  {},
+  { dependencies: { vibelang: "0.1.0", other: "^2" }, devDependencies: { vibelang: "0.1.0" } }
+]) {
+  test("example staging reuses local paths without adding dependency sections: " + (Object.keys(dependencies).join(", ") || "none"), t => {
+    const scratch = mkdtempSync(join(tmpdir(), "vibelang example map-"))
+    t.after(() => rmSync(scratch, { recursive: true, force: true }))
+    const source = join(scratch, "published source")
+    const destination = join(scratch, "staged example")
+    mkdirSync(source)
+    const manifest = {
+      private: true,
+      ...dependencies,
+      peerDependencies: { vibelang: "0.1.0" },
+      overrides: { retained: "3.2.1", vibelang: "old", "@effect/platform-node-shared": "old" }
+    }
+    const original = JSON.stringify(manifest)
+    writeFileSync(join(source, "package.json"), original)
+    const compiler = join(scratch, "local compiler")
+    const runtime = join(scratch, "local runtime.tgz")
+    const packages = {
+      vibelang: relative(process.cwd(), compiler),
+      "vibelang-runtime": relative(process.cwd(), runtime)
+    }
+    prepareExample(source, destination, packages, "4.1.0")
+    const result = JSON.parse(readFileSync(join(destination, "package.json"), "utf8"))
+    const expected = {
+      ...manifest,
+      overrides: {
+        retained: "3.2.1", vibelang: "file:" + compiler,
+        "@effect/platform-node-shared": "4.1.0", "vibelang-runtime": "file:" + runtime
+      }
+    }
+    for (const section of ["dependencies", "devDependencies"]) {
+      if (dependencies[section]) expected[section] = { ...dependencies[section], vibelang: "file:" + compiler }
+    }
+    assert.deepEqual(result, expected)
+    assert.equal(readFileSync(join(source, "package.json"), "utf8"), original)
+    assert.deepEqual(packages, {
+      vibelang: relative(process.cwd(), compiler),
+      "vibelang-runtime": relative(process.cwd(), runtime)
+    })
+  })
+}
