@@ -183,6 +183,9 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		return nil
 	}
 	var awaits []*ast.Node
+	if asyncHasUnbridgedAwait(rc.c, fn.Body()) {
+		return nil
+	}
 	nested := false
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {

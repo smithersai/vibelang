@@ -179,6 +179,8 @@ Use an effect function for a sequence with parameters, and `effect { … }` for 
 
 When migrating `yield*`, `--fix` also runs structured Effect results, such as SQL queries returned by `.vibe` helpers. Calling the helper constructs the query; the rewrite calls that result to run it.
 
+Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.
+
 Apply every fix in a project, then compile as the rest of the command says:
 
 ```sh
