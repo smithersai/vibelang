@@ -285,7 +285,13 @@ test("wireKnip moves a JSON Knip configuration to knip.config.ts with VibeLang's
     assert.equal(existsSync(join(root, "knip.jsonc")), false)
     const text = readFileSync(join(root, "knip.config.ts"), "utf8")
     assert.ok(text.startsWith('import vibelang from "vibelang/knip"\n'))
-    assert.ok(text.includes(`const config = ${knipJson.trim()} as { ignore?: string | string[] }`))
+    assert.ok(text.includes(`const config: { ignore?: string | string[]; [setting: string]: unknown } = ${knipJson.trim()}`))
+    // A repository's lint may forbid type assertions (typescript/consistent-type-assertions), and its
+    // typecheck may include the configuration: it holds no assertion and checks under strict.
+    assert.doesNotMatch(text, /\}\s+as\s+\{/)
+    writeFileSync(join(root, "knip.d.ts"), 'declare module "vibelang/knip" { const compile: (text: string) => string; export default compile }\n')
+    const program = ts.createProgram([join(root, "knip.config.ts"), join(root, "knip.d.ts")], { strict: true, noEmit: true, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, target: ts.ScriptTarget.ES2022, types: [] })
+    assert.deepEqual(ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
     assert.ok(text.includes('  compilers: { vibe: vibelang },\n  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts"],\n'))
     // The configuration is TypeScript, and its value keeps the JSON's settings.
     const out = ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.CommonJS }, reportDiagnostics: true })

@@ -482,7 +482,7 @@ export function knipConfigText(config) {
 
 // Knip reads .vibe files through VibeLang's compiler. The declaration
 // sidecars vibelang writes beside them, x.d.vibe.ts, are its output.
-const config = ${config.trim()} as { ignore?: string | string[] }
+const config: { ignore?: string | string[]; [setting: string]: unknown } = ${config.trim()}
 
 export default {
   ...config,
