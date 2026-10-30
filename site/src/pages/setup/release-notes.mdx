@@ -460,6 +460,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The AST layout regression test failed because it expected a 32-byte node header; it now checks the 40-byte header that 64-bit node flags give.
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
+- An identifier or call followed by a separate block on the next line was rejected with `EK1022`. Standalone blocks now compile normally, including after identifiers named `uninterruptible`, `interruptible` and `restore`.
+
 ### Configuration upgrade
 
 | Before | Now |

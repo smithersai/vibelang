@@ -1,0 +1,2 @@
+const interruptible=1;export function probe(){interruptible
+{let x=2};return interruptible}

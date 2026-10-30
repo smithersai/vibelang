@@ -1,0 +1,11 @@
+let count = 0
+function increment(): number { return ++count }
+increment()
+{ count += 10 }
+export function result(): number {
+  increment()
+  { count += 100 }
+  const held = increment()
+  { count += held }
+  return count
+}

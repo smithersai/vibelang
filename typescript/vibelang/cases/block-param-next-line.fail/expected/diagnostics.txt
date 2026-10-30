@@ -1,2 +1,0 @@
-main.vibe(8,3): error EK1022
-main.vibe(13,3): error EK1022

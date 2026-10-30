@@ -102,7 +102,6 @@ type ParsingContext = parser.ParsingContext
 type ParsingContexts = parser.ParsingContexts
 
 const ServiceShapeFactory = parser.ServiceShapeFactory
-const VibeLangNextLineBlockMessage = parser.VibeLangNextLineBlockMessage
 
 type VibeSyntax = parser.VibeSyntax
 type VibeSyntaxArm = parser.VibeSyntaxArm
@@ -114,6 +113,7 @@ const VibeSyntaxClause = parser.VibeSyntaxClause
 const VibeSyntaxData = parser.VibeSyntaxData
 const VibeSyntaxDeclaration = parser.VibeSyntaxDeclaration
 const VibeSyntaxDo = parser.VibeSyntaxDo
+const VibeSyntaxEffect = parser.VibeSyntaxEffect
 const VibeSyntaxEffectType = parser.VibeSyntaxEffectType
 const VibeSyntaxForConcurrent = parser.VibeSyntaxForConcurrent
 const VibeSyntaxForkBlock = parser.VibeSyntaxForkBlock
@@ -128,6 +128,7 @@ const VibeSyntaxMutable = parser.VibeSyntaxMutable
 const VibeSyntaxPipe = parser.VibeSyntaxPipe
 const VibeSyntaxPrefix = parser.VibeSyntaxPrefix
 const VibeSyntaxSchemaAlias = parser.VibeSyntaxSchemaAlias
+const VibeSyntaxShorthand = parser.VibeSyntaxShorthand
 const VibeSyntaxStatement = parser.VibeSyntaxStatement
 const VibeSyntaxTopic = parser.VibeSyntaxTopic
 

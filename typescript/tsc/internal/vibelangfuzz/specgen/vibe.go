@@ -433,9 +433,6 @@ func (v *vibePrinter) stmt(s Stmt) {
 		}
 		w.line("}")
 	case *UsingBlock:
-		// A block after a line that ends in a call would be EK1022: end the
-		// statement before it (Ch 13 Blocks after calls).
-		w.line(";")
 		w.line("{")
 		w.indent++
 		for _, r := range s.Res {

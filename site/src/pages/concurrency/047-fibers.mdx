@@ -99,6 +99,8 @@ effect function pollStatus(cancelled: boolean) {
 - `interruptible` (`Effect.interruptible`) makes its code interruptible even inside an uninterruptible region.
 - `try interrupt` (`Effect.interrupt`) interrupts the running fiber.
 
+The opening `{` must be on the same line as `uninterruptible`, `restore` or `interruptible`. With a line break before `{`, the word is an ordinary identifier and the following block is a separate statement.
+
 Statements in these blocks stay code of the enclosing function, so `return` returns from it. Run Effects inside each block with `try`. To pass an Effect value instead, use `Effect.uninterruptible(saveRows())` or `Effect.interruptible(program)`.
 
 ## Combining results

@@ -45,7 +45,6 @@ export function pendingRegistryCodes(source: string): string[] {
 // or respells them; delete an entry when its code goes.
 export const retiredByVips: Record<string, string> = {
   EK1008: "VIP-23: the topic is the Effect value, with no by-name operand",
-  EK1022: "VIP-11: no block params",
   EK2005: "VIP-35: handlers are open",
   EK2006: "VIP-5: effect code has no try statements",
   EK9207: "VIP-9: service X: T is not a form",

@@ -647,7 +647,6 @@ func (p *Parser) parseListIndex(kind ParsingContext, parseElement func(p *Parser
 	list := make([]*ast.Node, 0, 16)
 	for i := 0; !p.isListTerminator(kind); i++ {
 		if p.isListElement(kind, false /*inErrorRecovery*/) {
-			p.checkVibeLangNextLineBlock(kind, list)
 			elt := parseElement(p, len(list))
 			if len(p.reparseList) != 0 {
 				for _, e := range p.reparseList {

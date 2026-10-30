@@ -605,7 +605,6 @@ var specFormFeatures = map[string]string{
 	"using r = Effect.acquireRelease(() => open(), (r) => close(r))": "using",
 	"function f() { return withSpan(() => { ... }, \"name\") }":      "spans",
 	"withSpan(() => p(), \"n\")":                                     "spans",
-	"{":                                                              "test-block-param", // a block param's brace on the next line is EK1022 (S2)
 	"Users":                                                          "service-identity",
 	"Users.Shape":                                                    "service-identity",
 	"timeout(() => retry(() => p(), s), t)":                          "timeout-retry",

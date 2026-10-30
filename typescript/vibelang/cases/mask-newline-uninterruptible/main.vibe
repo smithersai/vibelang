@@ -1,0 +1,2 @@
+const uninterruptible=1;export function probe(){uninterruptible
+{let x=2};return uninterruptible}

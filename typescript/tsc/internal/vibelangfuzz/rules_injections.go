@@ -635,8 +635,6 @@ var ruleInjections = []*ruleInjection{
 		Text: "for (const i$$ of [1, 2]) {\n  const v$$ = do {\n    if (i$$ > 1) continue;\n    i$$\n  };\n}"},
 	{Code: 1020, Name: "new-function", Quote: "`new` on a function declared in a `.vibe` file", Slots: stmt,
 		Decls: "function make$$() {\n  return 1;\n}", Text: "const made$$ = new make$$();"},
-	{Code: 1022, Name: "next-line-block", Quote: "a block statement whose `{` begins the line after a statement that ends, with no `;`, in an identifier", Slots: stmt,
-		Text: "const first$$ = 1;\nconst second$$ = first$$\n{\n  const inner$$ = 2;\n}"},
 	{Code: 2129, Name: "infer-twice", Quote: "an `infer` name other than `_` written in two channels of one contract", Slots: top,
 		Decls: "error Bad$$", Text: "export function twice$$(n: number): number!infer X!infer X {\n  if (n < 0) throw new Bad$$();\n  return n;\n}"},
 	{Code: 3007, Name: "key-with-arguments", Quote: "a service key called with arguments", Slots: effectOnly,

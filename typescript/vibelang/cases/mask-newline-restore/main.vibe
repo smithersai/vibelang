@@ -1,0 +1,2 @@
+const restore=1;export function probe(){restore
+{let x=2};return restore}

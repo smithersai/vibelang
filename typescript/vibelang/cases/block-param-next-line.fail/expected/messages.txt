@@ -1,2 +1,0 @@
-This block starts a new statement, so it is not `once`'s block param. A block param starts on the same line as its call: join the lines, or end the statement with `;`.
-This block starts a new statement, so it is not `withSpan("x")`'s block param. A block param starts on the same line as its call: join the lines, or end the statement with `;`.

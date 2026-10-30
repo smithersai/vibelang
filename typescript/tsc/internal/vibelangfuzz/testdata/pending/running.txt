@@ -93,8 +93,8 @@ FuzzRunningRules diagnostic:class-field compiler VIP-5: outside-effect-code try 
 FuzzRunningRules corpus:class-field compiler VIP-5: minimal reproduction of diagnostic:class-field; lane vip-core2
 FuzzRunningRules diagnostic:class-static compiler VIP-5: outside-effect-code try must report EK0501, but the compiler reports EK1001; lane vip-core2
 FuzzRunningRules corpus:class-static compiler VIP-5: minimal reproduction of diagnostic:class-static; lane vip-core2
-FuzzRunningRules control:mask-name-newline compiler VIP-22: an ordinary binding named `uninterruptible` or `interruptible` before a block on the next line draws the legacy block-param error EK1022; lane del-rest
-FuzzRunningRules corpus:mask-name-newline compiler VIP-22: minimal reproduction of control:mask-name-newline; lane del-rest
+FuzzRunningRules reject:mask-name-newline compiler VIP-22: an `uninterruptible` block in a plain function is accepted, as in reject:mask-plain; lane vip-core2
+FuzzRunningRules corpus:mask-name-newline compiler VIP-22: minimal reproduction of reject:mask-name-newline; lane vip-core2
 FuzzRunningRules reject:mask-qualified compiler VIP-22: the VIP-6 global `uninterruptible` is still callable; the keyword removes it; lane vip-core2
 FuzzRunningRules corpus:mask-qualified compiler VIP-22: minimal reproduction of reject:mask-qualified; lane vip-core2
 FuzzRunningRules reject:interruptible-qualified compiler VIP-22: the VIP-6 global `interruptible` is still callable; the keyword removes it; lane vip-core2

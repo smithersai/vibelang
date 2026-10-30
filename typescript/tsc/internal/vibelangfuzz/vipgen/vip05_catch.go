@@ -274,8 +274,8 @@ func (t *PlainThrow) print(w *Writer) {
 }
 
 // A catchEdge is a scoped block of fixed probe code. It prints a leading `;`
-// because the statement before it may end in a call, and EK1022 rejects a
-// block statement whose `{` begins the line after such a statement.
+// so its block always starts a new statement, whatever the statement before
+// it ends in.
 type catchEdge struct {
 	vibe, ref string
 	n         int
