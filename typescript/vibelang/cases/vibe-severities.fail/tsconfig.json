@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "outDir": "out"
+  },
+  "vibe": {
+    "severities": {
+      "EK4609": "error"
+    }
+  },
+  "files": [
+    "main.vibe"
+  ]
+}

@@ -1,0 +1,2 @@
+import type { Fiber } from "effect"
+export async function wait(fiber: Fiber.Fiber<number>) { return await fiber }

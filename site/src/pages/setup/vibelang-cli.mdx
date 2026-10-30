@@ -40,6 +40,23 @@ If the project has a `tsconfig.json`, keep it and check that `include` selects `
 - `vibelang --showConfig` prints the effective project configuration, including inherited options, without compiling. Use `-p path/to/tsconfig.json` to inspect another project.
 - `vibelang --ignoreConfig --noEmit --module nodenext --target es2022 src/hello.vibe` checks explicit files without loading the discovered tsconfig. Supply the compiler options those files require; project include patterns and references do not apply.
 
+### Diagnostic severities
+
+Set `vibe.severities` in any supported project config:
+
+```json
+{ "vibe": { "severities": { "EK0801": "error", "EK4609": "off", "EK3801": "warning" } } }
+```
+
+The values are `"error"`, `"warning"`, `"suggestion"` and `"off"`. Only VibeLang warning codes (`EK0508`, `EK0703`, `EK0801`, `EK3009`, `EK4609`, `EK4610`) and assigned imported `EK38xx` lint codes are configurable. An error code, an unknown code or an invalid severity value reports `EK3006`; an unknown `vibe` key or another wrong-typed value reports `EK3007`. Remove the invalid entry or supply its declared value.
+
+`extends` merges the `vibe` section by key and `severities` by diagnostic code; child entries win. An `extends` array applies bases left to right. `--showConfig` prints the effective `vibe` section. A code setting overrides the Effect language-service rule configuration.
+
+Warnings print without failing the build or blocking `noEmitOnError`; set a warning to `"error"` to fail CI. `"suggestion"` is shown only by the language server, and `"off"` suppresses the diagnostic.
+
+The legacy `vibelang.diagnostics` setting reports migration warning `EK3009`. Run `vibelang -p tsconfig.json --fix` to move it to `vibe.severities`, including settings in extended config files. Existing `vibe.severities` entries take precedence. Legacy maps containing retired or nonconfigurable codes remain in place so the rewrite does not break a working project; remove those obsolete entries, then rerun `--fix`.
+
+
 ## 2. Replace tsc in the scripts
 
 In `package.json`, replace `tsc` with `vibelang` in every script. If the project has no build script, add these:
@@ -80,7 +97,7 @@ vibelang -b -w packages/app
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
-`vibelang lint [-c <config>] [-p <project>] [--deny-warnings] [<path>...]` checks the `.vibe` files under each path (default: the current directory) in the nearest project that includes them. Each directory prefers `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`; `-p` selects a config file or directory. It reads `.oxlintrc.json` or `oxlint.config.ts` when `-c` is left out, with their `extends` presets, `overrides` and `ignorePatterns`; a `.ts` configuration is loaded with `node`. It exits with status 1 on an error, or on a warning with `--deny-warnings`. Invalid project settings report their compiler diagnostic and exit with status `2`.
+`vibelang lint [-c <config>] [-p <project>] [--deny-warnings] [<path>...]` checks the `.vibe` files under each path (default: the current directory) in the nearest project that includes them. Each directory prefers `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`; `-p` selects a config file or directory. It reads `.oxlintrc.json` or `oxlint.config.ts` when `-c` is left out, with their `extends` presets, `overrides` and `ignorePatterns`; a `.ts` configuration is loaded with `node`. It exits with status `1` on an error; warnings never change the exit status. Set a code to `"error"` in `vibe.severities` to fail CI. Without an Oxlint file it uses the project settings and rule defaults. Invalid project settings report their compiler diagnostic and exit with status `2`.
 
 In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity: `effecttsgo/floating-effect` reports EK4801. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
 

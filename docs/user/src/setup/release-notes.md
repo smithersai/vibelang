@@ -5,6 +5,18 @@ Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
+## 0.0.12 (unreleased)
+
+### Bugs fixed since 0.0.11
+
+- Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
+
+### Configuration upgrade
+
+| Before | Now |
+| --- | --- |
+| `vibelang.diagnostics` | Run `vibelang --fix` to move configurable warning settings to `vibe.severities`. Remove obsolete legacy policy entries before rerunning `--fix`. |
+
 ## 0.0.11
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to

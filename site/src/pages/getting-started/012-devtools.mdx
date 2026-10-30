@@ -110,8 +110,7 @@ A contract gives the compiler a promise to check. Write all three channels, such
     "sourceMap": true
   },
   "vibe": {
-    "diagnostics": { "EK4403": "error", "EK4409": "warning" },
-    "tracing": "exported"
+    "severities": { "EK0801": "error", "EK4609": "warning", "EK3801": "off" }
   }
 }
 ```
@@ -120,7 +119,11 @@ A config that `extends` another inherits its `vibe` settings, as it inherits com
 
 Each `.vibe` file keeps the settings of the package that owns it. When a project reads another workspace package's `.vibe` source, the checker applies that package's config to its diagnostics and tracing. The importing project's settings apply to the files of its own package.
 
-EK1012, EK4403, EK4406, EK4409, EK9100, Effect's language service rules, EK4801-EK4825 except EK4813, and the TypeScript-style forms below, EK4830-EK4837 and EK4839-EK4842, can be set to `"error"`, `"warning"`, or `"off"`; the values shown are EK4403's and EK4409's defaults. With EK4403 lowered, those reads compile as synchronous calls that tests cannot control. EK9100 is editor-only and warns by default; it requests a written type for the editor's text-only projection and is not reported by the CLI. Core language errors have fixed severity. `@ts-expect-error` does not suppress EK diagnostics. `vibelang` exits non-zero on any error and reports source locations. `tracing` accepts `"none"` (the default), `"exported"`, or `"all"` to add function spans.
+Only a warning's code or an assigned imported `EK38xx` lint code may appear in `vibe.severities`. Set it to `"error"`, `"warning"`, `"suggestion"` or `"off"`. Warnings do not fail CI or prevent emission under `noEmitOnError`; use `"error"` to fail CI. Suggestions appear only in the language server. Invalid entries report `EK3006`; unknown or wrong-typed `vibe` options report `EK3007`. `extends` merges severity entries by code.
+
+The legacy `vibelang.diagnostics` key reports `EK3009`. Run `vibelang --fix` to migrate configurable maps; remove obsolete nonconfigurable entries first. Other legacy options, including `vibelang.tracing` (`"none"`, `"exported"` or `"all"`), remain separate. See [Diagnostic severities](/setup/vibelang-cli#diagnostic-severities).
+
+For example, a legacy `EK4406` policy entry cannot appear in `vibe.severities`; remove it before migrating the map. `EK9100` is editor-only and warns by default; it requests a written type for the text-only projection and is not reported by the CLI.
 
 ## TypeScript-style Effect code
 
@@ -169,7 +172,7 @@ Apply every fix in a project, then compile as the rest of the command says:
 npx vibelang -p tsconfig.json --fix --noEmit
 ```
 
-`--fix` writes what the prelude makes shorter: it removes an import of one of Effect's modules under its own name, as `import * as Console from "effect/Console"`, `import { HttpRouter } from "effect/http"`, or `import { FileSystem } from "effect/FileSystem"` are, writing a use the module's name cannot stand for as `FileSystem.FileSystem`. The report counts these as `prelude import` and `module export`. In a project that emits declarations, `--fix` keeps what the declaration file writes: an import that an export's type mentions stays when it is spelled otherwise than `import { Schema } from "effect"`, so `import * as Schema from "effect/Schema"` stays beside `export const Value: Schema.Codec<unknown>`, and EK4833 keeps a `never` written in an exported statement, writing `Effect.Effect<void, never, never>` as `void!never!never`. The declaration file then matches the one the TypeScript emitted. It prints each file it changes, with its fixes by code, and writes the files only after it checks the fixed program: a fix that would add an error is listed as not fixed, and the file keeps its other fixes. Interrupted, it writes nothing. It fixes only what the project reports, so the `diagnostics` setting and the comments below choose what it touches; `// @vibelang-diagnostics-next-line EK4833:off` keeps one line as written. It rewrites only the project's own files: a workspace dependency's `.vibe` source that the project imports through its package keeps its text, and the compilation still reports its diagnostics. A second run finds nothing to fix. `--fix` cannot be combined with `--build` or `--watch`.
+`--fix` writes what the prelude makes shorter: it removes an import of one of Effect's modules under its own name, as `import * as Console from "effect/Console"`, `import { HttpRouter } from "effect/http"`, or `import { FileSystem } from "effect/FileSystem"` are, writing a use the module's name cannot stand for as `FileSystem.FileSystem`. The report counts these as `prelude import` and `module export`. In a project that emits declarations, `--fix` keeps what the declaration file writes: an import that an export's type mentions stays when it is spelled otherwise than `import { Schema } from "effect"`, so `import * as Schema from "effect/Schema"` stays beside `export const Value: Schema.Codec<unknown>`, and EK4833 keeps a `never` written in an exported statement, writing `Effect.Effect<void, never, never>` as `void!never!never`. The declaration file then matches the one the TypeScript emitted. It prints each file it changes, with its fixes by code, and writes the files only after it checks the fixed program: a fix that would add an error is listed as not fixed, and the file keeps its other fixes. Interrupted, it writes nothing. It fixes only what the project reports, so the `vibe.severities` setting and the legacy comments below choose what it touches; `// @vibelang-diagnostics-next-line EK4833:off` keeps one line as written. It rewrites only the project's own files: a workspace dependency's `.vibe` source that the project imports through its package keeps its text, and the compilation still reports its diagnostics. A second run finds nothing to fix. `--fix` cannot be combined with `--build` or `--watch`.
 
 A service-class fix requires a literal key. A dynamic key stays as written, including its evaluation during class initialization.
 
@@ -183,7 +186,7 @@ Fixes retain field comments and comments before unwrapped succeed/fail arguments
 
 `@effect/language-service` 0.87.5 has 108 diagnostics and editor features. The table maps rules to VibeLang forms and existing EK diagnostics. Effect functions use `try` to run Effects, and `catch` expressions handle failures. The table also marks features not implemented.
 
-EK4801-EK4825 are lint. Each has a default, error, warning, or off, and warning severities can be set in `vibe.diagnostics` or by a comment; errors cannot be turned off. A later comment overrides an earlier one; within one comment, a code named on its own overrides `*`. Words after the codes are prose, and punctuation ends a category, so `// @vibelang-diagnostics-next-line EK4804:off: generic error` keeps its reason:
+EK4801-EK4825 are lint. Each has a default, error, warning, or off, and the historical port codes below remain available through legacy diagnostic comments. Configure assigned imported `EK38xx` codes through `vibe.severities`; core errors cannot be turned off. A later comment overrides an earlier one; within one comment, a code named on its own overrides `*`. Words after the codes are prose, and punctuation ends a category, so `// @vibelang-diagnostics-next-line EK4804:off: generic error` keeps its reason:
 
 ```vibe
 effect function discard() {
@@ -193,7 +196,7 @@ effect function discard() {
 // Output: 0
 ```
 
-`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. EK diagnostics report only in `.vibe` files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on both kinds of file ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, a rule an EK code ports reports that code at the rule's configured severity in `vibelang lint`, and a rule the table does not list, such as `effectSleepZeroToYieldNow`, runs as Effect wrote it.
+`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. Language diagnostics report in `.vibe` files, configuration diagnostics in config files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on both kinds of file ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, imported rules report their assigned `EK38xx` codes and rule names, at the configured severity.
 
 | Group | Effect's rule or feature | In VibeLang | Example |
 | --- | --- | --- | --- |

@@ -17,6 +17,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnosticwriter"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
+	"github.com/microsoft/TypeScript/tsc/internal/execute"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -32,16 +33,27 @@ ignorePatterns, as it does for Oxlint on .ts files; the default is
 checked in the nearest project that includes it. Each directory prefers
 vibe.config.json, then tsconfig.json, then jsconfig.json; -p selects a file
 or directory.
-The status is 1 when an error is reported, a warning with --deny-warnings,
-or a .vibe file no project includes, since it would go unchecked. Invalid
+The status is 1 when an error is reported or a .vibe file has no project.
+Warnings never fail CI; promote their codes in vibe.severities to error. Invalid
 project settings return status 2.
 `
 
 // Command runs `vibelang lint`.
 func Command(ctx context.Context, sys tsc.System, args []string) int {
+	// The release command takes compiler flags and reports compiler diagnostics
+	// without emitting (VIP-38, detail 58). Retain the old Oxlint adapter for
+	// existing scripts that explicitly request it or have its config file.
+	legacy := slices.Contains(args, "-c") || slices.Contains(args, "--config") || slices.Contains(args, "--deny-warnings")
+	for _, name := range []string{".oxlintrc.json", "oxlint.config.ts"} {
+		if _, err := os.Stat(filepath.Join(sys.GetCurrentDirectory().AsString(), name)); err == nil {
+			legacy = true
+		}
+	}
+	if !legacy {
+		return int(execute.CommandLine(ctx, sys, append(slices.Clone(args), "--noEmit"), nil).Status)
+	}
 	out, errOut := sys.Writer(), sys.ErrorWriter()
 	var configPath, project string
-	var denyWarnings bool
 	var paths []string
 	for i := 0; i < len(args); i++ {
 		switch arg := args[i]; arg {
@@ -57,7 +69,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 				project = args[i]
 			}
 		case "--deny-warnings":
-			denyWarnings = true
+			// Compatibility spelling; promote a code in vibe.severities to fail CI.
 		case "-h", "--help":
 			fmt.Fprint(out, usage)
 			return 0
@@ -77,15 +89,18 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 				break
 			}
 		}
-		if configPath == "" {
-			fmt.Fprintf(errOut, "vibelang lint: no .oxlintrc.json or oxlint.config.ts here; name one with -c.\n")
-			return 2
-		}
 	}
-	if !filepath.IsAbs(configPath) {
+	if configPath != "" && !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(cwd, configPath)
 	}
-	config, err := LoadConfig(configPath)
+	config := &Config{Dir: cwd, Rules: map[string]etscore.Severity{}}
+	for _, rule := range rules.All {
+		config.Rules[rule.Name] = rule.DefaultSeverity
+	}
+	var err error
+	if configPath != "" {
+		config, err = LoadConfig(configPath)
+	}
 	if err != nil {
 		fmt.Fprintf(errOut, "vibelang lint: %v\n", err)
 		return 2
@@ -142,6 +157,9 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 			unchecked++
 		}
 		for _, d := range diags {
+			if d.Category() == diagnostics.CategorySuggestion {
+				continue
+			}
 			diagnosticwriter.WriteFormatDiagnostic(out, diagnosticwriter.WrapASTDiagnostic(d), format)
 			if d.Category() == diagnostics.CategoryError {
 				errorCount++
@@ -151,7 +169,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 		}
 	}
 	fmt.Fprintf(out, "vibelang lint: %d error(s) and %d warning(s) in %d .vibe file(s).\n", errorCount, warningCount, linted)
-	if errorCount > 0 || unchecked > 0 || denyWarnings && warningCount > 0 {
+	if errorCount > 0 || unchecked > 0 {
 		return 1
 	}
 	return 0
@@ -170,7 +188,11 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 	}
 	for _, d := range append(errs, parsed.Errors...) {
 		if d.Category() == diagnostics.CategoryError {
-			return nil, nil, fmt.Errorf("TS%d: %s", d.Code(), d.MessageText())
+			prefix := d.Source()
+			if prefix == "" {
+				prefix = "TS"
+			}
+			return nil, nil, fmt.Errorf("%s%04d: %s", prefix, d.Code(), d.MessageText())
 		}
 	}
 	enableVibePorts(parsed.CompilerOptions(), config)
@@ -189,8 +211,15 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 		options.Diagnostics = true
 		options.Overrides = nil
 		options.DiagnosticSeverity = severityFor(config, file)
+		options = *releaseSeverities(&options, parsed.CompilerOptions().VibeLang)
 		// Checking the file reports the VibeLang ports (vibeAnswers) and records what some rules read.
-		diags := vibePortDiagnostics(program.GetSemanticDiagnostics(ctx, sf), options.DiagnosticSeverity)
+		checked := program.GetSemanticDiagnostics(ctx, sf)
+		diags := vibePortDiagnostics(checked, options.DiagnosticSeverity)
+		for _, d := range checked {
+			if d.Source() == "EK" && core.VibeSeverityCode(fmt.Sprintf("EK%04d", d.Code())) {
+				diags = append(diags, d)
+			}
+		}
 		c, done := program.GetTypeCheckerForFile(ctx, sf)
 		diags = append(diags, run(ctx, program, c, sf, &options)...)
 		done()

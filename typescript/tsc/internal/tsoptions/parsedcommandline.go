@@ -479,7 +479,7 @@ func (p *ParsedCommandLine) ExtendedSourceFiles() []tspath.RootedFilePath {
 func (p *ParsedCommandLine) GetConfigFileParsingDiagnostics() []*ast.Diagnostic {
 	if p.ConfigFile != nil {
 		// todo: !!! should be ConfigFile.ParseDiagnostics, check if they are the same
-		return slices.Concat(p.ConfigFile.SourceFile.Diagnostics(), p.Errors)
+		return applyConfigSeverities(slices.Concat(p.ConfigFile.SourceFile.Diagnostics(), p.Errors, p.ConfigFile.LegacyWarnings, legacySeverityWarnings(p.ConfigFile.SourceFile)), p.CompilerOptions().VibeLang)
 	}
 	return p.Errors
 }

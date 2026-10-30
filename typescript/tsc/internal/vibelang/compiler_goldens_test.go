@@ -293,7 +293,7 @@ func copyCompilerFixture(t *testing.T, fixture, root string) string {
 // program: its semantic diagnostics only when it has no syntax errors.
 func commandLineDiagnostics(t *testing.T, configErrors []*ast.Diagnostic, program *compiler.Program) []*ast.Diagnostic {
 	t.Helper()
-	all := slices.Clone(configErrors)
+	all := slices.Concat(configErrors, program.GetConfigFileParsingDiagnostics())
 	syntactic := program.GetSyntacticDiagnostics(t.Context(), nil)
 	all = append(all, syntactic...)
 	if len(syntactic) == 0 {

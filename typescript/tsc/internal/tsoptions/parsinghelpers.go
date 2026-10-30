@@ -379,6 +379,9 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 	var explicitNullFields collections.Set[string]
 	if rawSource != nil {
 		if rawMap, ok := rawSource.(*collections.OrderedMap[string, any]); ok && rawMap != nil {
+			if value, exists := rawMap.Get("vibelang"); exists && value == nil {
+				explicitNullFields.Add("vibelang")
+			}
 			// Options are nested under "compilerOptions" in both tsconfig.json and wrapped command line options
 			if compilerOptionsRaw, exists := rawMap.Get("compilerOptions"); exists {
 				if compilerOptionsMap, ok := compilerOptionsRaw.(*collections.OrderedMap[string, any]); ok {
@@ -392,7 +395,20 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 		}
 	}
 
+	previousVibe := targetOptions.VibeLang
 	mergeCompilerOptionFields(targetOptions, sourceOptions, explicitNullFields)
+	if previousVibe != nil {
+		if explicitNullFields.Has("vibelang") {
+			// A legacy reset clears legacy fields, independently of inherited vibe.
+			modern := core.MergeVibeSettings(previousVibe, &core.VibeLangOptions{})
+			if modern.Severities != nil || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown {
+				modern.VibeOnly = true
+				targetOptions.VibeLang = modern
+			}
+		} else {
+			targetOptions.VibeLang = core.MergeVibeSettings(previousVibe, targetOptions.VibeLang)
+		}
+	}
 	if MergeCompilerOptionsCallback != nil {
 		MergeCompilerOptionsCallback(targetOptions, sourceOptions, rawSource, sourceConfigPath, basePath)
 	}

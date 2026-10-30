@@ -231,6 +231,11 @@ const legacyFormChoiceCategory = warningCategory
 // category returns the category options give code, and false when they turn
 // it off.
 func category(options *core.CompilerOptions, m *Message) (diagnostics.Category, bool) {
+	if value, _ := releaseSeverity(options, m); value != "" {
+		if category, on, ok := categoryNamed(value, m); ok {
+			return category, on
+		}
+	}
 	if options != nil && options.VibeLang != nil && slices.Contains(adjustableCodes, m.Code) {
 		if category, on, ok := categoryNamed(options.VibeLang.Diagnostics[m.String()], m); ok {
 			return category, on
@@ -251,6 +256,8 @@ func categoryNamed(name string, m *Message) (category diagnostics.Category, on b
 		return errorCategory, true, true
 	case "warning":
 		return warningCategory, true, true
+	case "suggestion":
+		return diagnostics.CategorySuggestion, true, true
 	case "off":
 		return 0, false, true
 	}
@@ -281,7 +288,12 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 	if !on {
 		return nil
 	}
-	return ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, m.Code, format(m.Text, args))
+	code := m.Code
+	if _, name := releaseSeverity(options, m); name != "" {
+		n, _ := strconv.Atoi(strings.TrimPrefix(name, "EK"))
+		code = int32(n)
+	}
+	return ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, code, format(m.Text, args))
 }
 
 // report adds a diagnostic with message m at node to the diagnostics of c,
@@ -442,4 +454,21 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 		return diagnostics
 	}
 	return slices.DeleteFunc(slices.Clone(diagnostics), isCovered)
+}
+
+func releaseSeverity(options *core.CompilerOptions, m *Message) (string, string) {
+	if options == nil || options.VibeLang == nil {
+		return "", ""
+	}
+	if core.VibeSeverityCode(m.String()) {
+		if value, ok := options.VibeLang.Severities[m.String()]; ok {
+			return value, m.String()
+		}
+	}
+	for _, code := range core.VibeLintPorts[m.String()] {
+		if value, ok := options.VibeLang.Severities[code]; ok {
+			return value, code
+		}
+	}
+	return "", ""
 }

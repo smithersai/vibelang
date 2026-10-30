@@ -80,6 +80,29 @@ func fiberHelper(call *ast.Node) string {
 func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// Native async await keeps JavaScript behavior. Awaiting a Fiber or
+		// Deferred does not run it, so report the configurable VIP-5 warning.
+		if node.Kind == ast.KindAwaitExpression {
+			operand := node.Expression()
+			t := c.GetTypeAtLocation(operand)
+			if t != nil {
+				var m *Message
+				if isJoinable(c, t, 0) {
+					copy := *EK4609
+					copy.Category = warningCategory
+					m = &copy
+				}
+				if isDeferred(c, t) {
+					copy := *EK4610
+					copy.Category = warningCategory
+					copy.Text = "await does not wait for this Deferred; use try Deferred.await({0}) in effect code."
+					m = &copy
+				}
+				if m != nil {
+					reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), m, nodeText(file, operand))
+				}
+			}
+		}
 		if fiberHelper(node) == "" && isPreludeJoin(c, node) && !inHatch(node) {
 			checkJoin(c, file, node) // join(x), the keyword with a parenthesized operand (D391)
 		}

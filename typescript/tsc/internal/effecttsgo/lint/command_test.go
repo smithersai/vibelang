@@ -91,7 +91,7 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 	if status != 1 {
 		t.Fatalf("status %d, want 1\n%s%s", status, out, sys.err.String())
 	}
-	if !strings.Contains(out, "src/main.vibe(4,3): error TS377142:") || !strings.Contains(out, "effect(effectSleepZeroToYieldNow)") {
+	if !strings.Contains(out, "src/main.vibe(4,3): error EK3833:") || !strings.Contains(out, "effectSleepZeroToYieldNow: Consider ") {
 		t.Errorf("main.vibe's Effect.sleep(0) is not reported:\n%s", out)
 	}
 	for _, file := range []string{"quiet.vibe", "gen.vibe", "plain.ts"} {
@@ -113,7 +113,7 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 		}
 		for _, args := range [][]string{{"src"}, {"-p", ".", "src"}} {
 			sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-			if status := Command(context.Background(), sys, args); status != 1 || !strings.Contains(sys.out.String(), "error TS377142:") {
+			if status := Command(context.Background(), sys, args); status != 1 || !strings.Contains(sys.out.String(), "error EK3833:") {
 				t.Errorf("%s %v: status %d; want the built-in rule diagnostic\n%s%s", name, args, status, sys.out.String(), sys.err.String())
 			}
 		}

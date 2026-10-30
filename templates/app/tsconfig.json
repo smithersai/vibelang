@@ -18,9 +18,7 @@
   "exclude": [
     "src/**/*.test.vibe"
   ],
-  "vibelang": {
-    "diagnostics": {
-      "EK3205": "error"
-    }
+  "vibe": {
+    "severities": {}
   }
 }

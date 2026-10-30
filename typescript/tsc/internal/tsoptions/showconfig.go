@@ -47,6 +47,7 @@ var impliedOptions = []impliedOption{
 
 // TSConfig represents the output structure for --showConfig
 type TSConfig struct {
+	Vibe            *collections.OrderedMap[string, any] `json:"vibe,omitzero"`
 	CompilerOptions *collections.OrderedMap[string, any] `json:"compilerOptions"`
 	References      []any                                `json:"references,omitzero"`
 	Files           []string                             `json:"files,omitzero"`
@@ -92,6 +93,12 @@ func ConvertToTSConfig(configParseResult *ParsedCommandLine, configFileName tspa
 		CompilerOptions: optionMap,
 	}
 
+	if options := configParseResult.CompilerOptions().VibeLang; options != nil {
+		config.Vibe = serializeVibeSettings(options)
+		if options.VibeOnly && config.Vibe != nil {
+			optionMap.Delete("vibelang")
+		}
+	}
 	// Add references
 	if refs := configParseResult.ProjectReferences(); len(refs) > 0 {
 		var references []any

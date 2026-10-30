@@ -3,6 +3,7 @@ package tsoptions_test
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,7 +53,7 @@ func TestVibeLangConfigRoundTrip(t *testing.T) {
 					t.Fatalf("showConfig did not round-trip: %s; errors %v", shown, again.Errors)
 				}
 				// Stable lexical order is independent of the input/map order.
-				if strings.Index(string(shown), `"EK2004"`) > strings.Index(string(shown), `"EK9100"`) {
+				if strings.Index(string(shown), fmt.Sprintf("%q", slices.Min(core.VibeLangAdjustableCodes))) > strings.Index(string(shown), fmt.Sprintf("%q", slices.Max(core.VibeLangAdjustableCodes))) {
 					t.Fatalf("diagnostic policies are not sorted: %s", shown)
 				}
 			})

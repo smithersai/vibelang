@@ -1,1 +1,2 @@
 main.vibe(1,22): warning EK4403
+tsconfig.json(17,7): warning EK3009

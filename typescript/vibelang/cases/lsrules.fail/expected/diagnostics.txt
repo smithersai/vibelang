@@ -22,3 +22,4 @@ main.vibe(107,10): error EK4817
 main.vibe(111,40): warning EK4833
 main.vibe(112,9): error EK4815
 main.vibe(117,10): error EK4818
+tsconfig.json(12,7): warning EK3009

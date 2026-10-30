@@ -1,1 +1,2 @@
 main.vibe(7,24): error EK3205
+tsconfig.json(11,19): warning EK3009

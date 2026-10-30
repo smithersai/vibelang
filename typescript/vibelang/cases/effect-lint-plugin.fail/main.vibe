@@ -1,4 +1,4 @@
-// expect: TS377142 TS377106
+// expect: EK3833 EK38108
 // Effect's lint rules run on .vibe files (VIP-38), selected by the
 // @effect/language-service plugin as in Effect's own tsgo. A rule VibeLang
 // does not answer runs as Effect wrote it, on the checker's view of the code:

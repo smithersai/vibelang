@@ -7,3 +7,4 @@ main.vibe(39,12): error EK4802
 main.vibe(58,53): error EK4802
 main.vibe(62,10): error EK4802
 main.vibe(66,85): error EK4802
+tsconfig.json(17,7): warning EK3009

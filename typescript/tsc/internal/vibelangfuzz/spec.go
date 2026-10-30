@@ -149,3 +149,49 @@ func appendixBRows(appendix string) (map[string]string, string) {
 	}
 	return rows, section
 }
+
+// appendixBChapterRows reads the Chapter and Rule cells by their headers.
+// It is separate from appendixBRows, whose VIP-cell API other targets use.
+func appendixBChapterRows(appendix string) map[string]appendixBChapterRow {
+	_, section := appendixBRows(appendix)
+	rows := map[string]appendixBChapterRow{}
+	var header []string
+	chapter, rule := -1, -1
+	for _, line := range strings.Split(section, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "| ") || !strings.HasSuffix(line, " |") {
+			continue
+		}
+		cells := strings.Split(strings.TrimSuffix(strings.TrimPrefix(line, "| "), " |"), " | ")
+		if cells[0] == "Code" {
+			header = cells
+			chapter, rule = slices.Index(header, "Chapter"), slices.Index(header, "Rule")
+			continue
+		}
+		m := ekCell.FindStringSubmatch(cells[0])
+		if m == nil || chapter < 0 || rule < 0 || len(cells) < len(header) {
+			continue
+		}
+		// A pipe in Rule adds cells. All columns after Rule are counted from
+		// the end so that it cannot change the chapter link we read.
+		chapterCell := chapter
+		if chapter > rule {
+			chapterCell += len(cells) - len(header)
+		}
+		ruleEnd := len(cells) - (len(header) - 1 - rule)
+		rows[m[1]] = appendixBChapterRow{Chapter: strings.TrimSpace(cells[chapterCell]), Rule: strings.TrimSpace(strings.Join(cells[rule:ruleEnd], " | "))}
+	}
+	return rows
+}
+
+type appendixBChapterRow struct{ Chapter, Rule string }
+
+var configurationDiagnosticRows = sync.OnceValue(func() map[string]appendixBChapterRow {
+	rows := appendixBChapterRows(SpecText(grammarAppendix))
+	for code, row := range rows {
+		if !strings.Contains(row.Chapter, "(007-tooling.md") {
+			delete(rows, code)
+		}
+	}
+	return rows
+})

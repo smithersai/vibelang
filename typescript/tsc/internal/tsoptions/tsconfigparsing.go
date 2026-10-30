@@ -120,6 +120,7 @@ func parseOwnConfigOfJsonSourceFile(
 	typeAcquisition := getDefaultTypeAcquisition(configFileName)
 	var extendedConfigPaths []tspath.RootedFilePath
 	var rootCompilerOptions []*ast.PropertyName
+	var vibeOptions *core.VibeLangOptions
 	var errors []*ast.Diagnostic
 	onPropertySet := func(
 		keyText string,
@@ -178,6 +179,11 @@ func parseOwnConfigOfJsonSourceFile(
 				extendedConfigPaths = configPath
 				propertySetErrors = append(propertySetErrors, err...)
 			} else if option == nil {
+				if keyText == "vibe" {
+					var vibeErrors []*ast.Diagnostic
+					vibeOptions, vibeErrors = parseVibeSettings(value, propertyAssignment.Initializer, sourceFile)
+					propertySetErrors = append(propertySetErrors, vibeErrors...)
+				}
 				if keyText == "excludes" {
 					propertySetErrors = append(propertySetErrors, CreateDiagnosticForNodeInSourceFile(sourceFile, propertyAssignment.Name(), diagnostics.Unknown_option_excludes_Did_you_mean_exclude))
 				}
@@ -206,6 +212,9 @@ func parseOwnConfigOfJsonSourceFile(
 		},
 	)
 	errors = append(errors, err...)
+	if vibeOptions != nil {
+		compilerOptions.VibeLang = core.MergeVibeSettings(vibeOptions, compilerOptions.VibeLang)
+	}
 	if jsonObject, ok := json.(*collections.OrderedMap[string, any]); len(rootCompilerOptions) != 0 && ok && !jsonObject.Has("compilerOptions") {
 		errors = append(errors, CreateDiagnosticForNodeInSourceFile(
 			sourceFile,
@@ -223,6 +232,7 @@ func parseOwnConfigOfJsonSourceFile(
 }
 
 type TsConfigSourceFile struct {
+	LegacyWarnings      []*ast.Diagnostic
 	ExtendedSourceFiles []tspath.RootedFilePath
 	configFileSpecs     *configFileSpecs
 	SourceFile          *ast.SourceFile
@@ -870,6 +880,11 @@ func parseOwnConfigOfJson(
 		errors = append(errors, ast.NewCompilerDiagnostic(diagnostics.Unknown_option_excludes_Did_you_mean_exclude))
 	}
 	options, err := convertCompilerOptionsFromJsonWorker(json.GetOrZero("compilerOptions"), basePath, configFileName)
+	if value, exists := json.Get("vibe"); exists {
+		vibeOptions, vibeErrors := parseVibeSettings(value, nil, nil)
+		options.VibeLang = core.MergeVibeSettings(vibeOptions, options.VibeLang)
+		errors = append(errors, vibeErrors...)
+	}
 	typeAcquisition, err2 := convertTypeAcquisitionFromJsonWorker(json.GetOrZero("typeAcquisition"), basePath, configFileName)
 	errors = append(append(errors, err...), err2...)
 	if compileOnSave, ok := json.Get("compileOnSave"); ok {
@@ -937,6 +952,10 @@ func getExtendedConfig(
 	}
 
 	if cacheEntry.extendedResult != nil {
+		if sourceFile != nil {
+			sourceFile.LegacyWarnings = append(sourceFile.LegacyWarnings, legacySeverityWarnings(cacheEntry.extendedResult.SourceFile)...)
+			sourceFile.LegacyWarnings = append(sourceFile.LegacyWarnings, cacheEntry.extendedResult.LegacyWarnings...)
+		}
 		if sourceFile != nil {
 			result.extendedSourceFiles.Add(cacheEntry.extendedResult.SourceFile.FileName())
 			for _, extendedSourceFile := range cacheEntry.extendedResult.ExtendedSourceFiles {

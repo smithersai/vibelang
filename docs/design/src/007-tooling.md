@@ -83,6 +83,8 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status (decided detail 71). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
+The legacy `vibelang.diagnostics` key reports migration warning `EK3009`. `vibelang --fix` rewrites configurable entries to `vibe.severities`, including in extended configs, and retains existing modern entries. Maps with obsolete nonconfigurable codes stay in place until those entries are removed. Like other warnings, `EK3009` can be configured through `vibe.severities`.
+
 ## The Effect version
 
 During alpha, VibeLang pins exactly one Effect version, and the pin moves to each new Effect release. The pinned dependency artifact is `effect@4.1.0`, and 4.1 is the earliest supported version (VIP-32, amended). Every Effect TypeScript mapping in this specification, and the `Exit` guarantee of [Runtime guarantees](008-runtime.md), is relative to the pin. The pin controls variables during alpha; it is not the long-term plan, and supported version ranges get their own VIP after alpha.

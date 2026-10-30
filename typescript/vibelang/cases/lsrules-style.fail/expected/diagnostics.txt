@@ -6,3 +6,4 @@ main.vibe(24,21): error EK4824
 main.vibe(25,22): warning EK4840
 main.vibe(25,22): error EK4825
 main.vibe(25,22): warning EK4840
+tsconfig.json(15,7): warning EK3009

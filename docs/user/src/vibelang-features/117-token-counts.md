@@ -17,11 +17,11 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,876 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 14,207 |
-| The skill and the user guide (138 pages) | 292,088 |
-| The user guide alone | 288,212 |
-| The specification (10 chapters) | 82,501 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,982 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 14,313 |
+| The skill and the user guide (138 pages) | 292,778 |
+| The user guide alone | 288,796 |
+| The specification (10 chapters) | 82,665 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,021 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 1,759 |
-| **Core Concepts** | **17,953** |
+| **Core Concepts** | **18,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,493 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,762 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,439 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,989 |
-| [Devtools](../getting-started/012-devtools.md) | 10,270 |
-| **All 12 pages** | **30,607** |
+| [Devtools](../getting-started/012-devtools.md) | 10,317 |
+| **All 12 pages** | **30,654** |
 
 ### Setup
 
@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,168** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,625 |
-| **Build and test** | **5,411** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 3,760 |
+| **Build and test** | **5,824** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 4,173 |
 | [Vite and Vitest](../setup/vite.md) | 1,651 |
 | **Format and lint** | **2,094** |
 | [Format with dprint](../setup/formatting.md) | 1,259 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **40,232** |
-| [Release notes](../setup/release-notes.md) | 40,232 |
-| **All 18 pages** | **65,678** |
+| **Upgrade** | **40,356** |
+| [Release notes](../setup/release-notes.md) | 40,356 |
+| **All 18 pages** | **66,215** |
 
 ### Guides
 
@@ -276,17 +276,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,453 |
-| **The language** | **64,493** |
+| **The language** | **64,577** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 8,293 |
 | [2. Running Effects](../../../design/src/002-running.md) | 15,873 |
 | [3. Failures](../../../design/src/003-failures.md) | 9,170 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 11,913 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 8,487 |
 | [6. Data](../../../design/src/006-data.md) | 4,220 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 3,378 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 3,462 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 3,159 |
-| **Appendices** | **15,555** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 15,555 |
-| **All 10 pages** | **82,501** |
+| **Appendices** | **15,635** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 15,635 |
+| **All 10 pages** | **82,665** |
 
 <!-- token-counts: end -->

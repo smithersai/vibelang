@@ -8,6 +8,14 @@ import (
 // VibeLangOptions is compilerOptions.vibelang in tsconfig.json, the
 // project's VibeLang settings (design decision D34).
 type VibeLangOptions struct {
+	// VibeOnly distinguishes a modern section from an explicitly empty legacy
+	// object, whose replacement semantics must remain intact during migration.
+	VibeOnly bool `json:"-"`
+	// Severities is the release configuration, separate from legacy diagnostics.
+	Severities    map[string]string `json:"severities,omitzero"`
+	EffectGlobals Tristate          `json:"effectGlobals,omitzero"`
+	EffectModules Tristate          `json:"effectModules,omitzero"`
+
 	// TrustedPackages are package-name globs granted D22 trust (D261).
 	TrustedPackages []string `json:"trustedPackages,omitzero"`
 	// Diagnostics maps an EK code in VibeLangAdjustableCodes, such as "EK2004",
@@ -41,5 +49,53 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.Tracing == other.Tracing && o.DeclarationSidecars == other.DeclarationSidecars && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && o.DeclarationSidecars == other.DeclarationSidecars && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
+
+// VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
+// adjustable errors remain available only through the migration path.
+func VibeSeverityCode(code string) bool {
+	switch code {
+	case "EK0508", "EK0703", "EK0801", "EK3009", "EK4609", "EK4610":
+		return true
+	}
+	_, ok := VibeImportedLintCodes[code]
+	return ok
+}
+
+// MergeVibeSettings merges release keys without changing legacy replacement
+// semantics. Clone maps so siblings extending the same base stay independent.
+func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
+	if base == nil {
+		return child
+	}
+	if child == nil {
+		return base
+	}
+	result := *child
+	if child.VibeOnly && !base.VibeOnly {
+		result.VibeOnly = false
+		result.Diagnostics = base.Diagnostics
+		result.Tracing = base.Tracing
+		result.TrustedPackages = base.TrustedPackages
+		result.DeclarationSidecars = base.DeclarationSidecars
+	}
+	result.Severities = maps.Clone(base.Severities)
+	if child.Severities != nil {
+		if result.Severities == nil {
+			result.Severities = map[string]string{}
+		}
+		maps.Copy(result.Severities, child.Severities)
+	}
+	if result.EffectGlobals == TSUnknown {
+		result.EffectGlobals = base.EffectGlobals
+	}
+	if result.EffectModules == TSUnknown {
+		result.EffectModules = base.EffectModules
+	}
+	return &result
+}
+
+// VibeLintPorts bridges the legacy VibeLang ports to the imported code registry
+// until the ports are retired. Populated once at startup by the lint adapter.
+var VibeLintPorts = map[string][]string{}

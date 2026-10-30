@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnosticwriter"
 	"github.com/microsoft/TypeScript/tsc/internal/locale"
 )
@@ -31,11 +32,17 @@ func CreateDiagnosticReporter(sys System, w io.Writer, locale locale.Locale, opt
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	if shouldBePretty(sys, options) {
 		return func(diagnostic *ast.Diagnostic) {
+			if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+				return
+			}
 			diagnosticwriter.FormatDiagnosticWithColorAndContext(w, diagnosticwriter.WrapASTDiagnostic(diagnostic), formatOpts)
 			fmt.Fprint(w, formatOpts.NewLine)
 		}
 	}
 	return func(diagnostic *ast.Diagnostic) {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+			return
+		}
 		diagnosticwriter.WriteFormatDiagnostic(w, diagnosticwriter.WrapASTDiagnostic(diagnostic), formatOpts)
 	}
 }
@@ -155,6 +162,9 @@ func CreateBuilderStatusReporter(sys System, w io.Writer, locale locale.Locale, 
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	writeStatus := core.IfElse(shouldBePretty(sys, options), diagnosticwriter.FormatDiagnosticsStatusWithColorAndTime, diagnosticwriter.FormatDiagnosticsStatusAndTime)
 	return func(diagnostic *ast.Diagnostic) {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+			return
+		}
 		writerDiagnostic := diagnosticwriter.WrapASTDiagnostic(diagnostic)
 		if testing != nil {
 			testing.OnBuildStatusReportStart(w)
@@ -169,6 +179,9 @@ func CreateWatchStatusReporter(sys System, locale locale.Locale, options *core.C
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	writeStatus := core.IfElse(shouldBePretty(sys, options), diagnosticwriter.FormatDiagnosticsStatusWithColorAndTime, diagnosticwriter.FormatDiagnosticsStatusAndTime)
 	return func(diagnostic *ast.Diagnostic) {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+			return
+		}
 		writerDiagnostic := diagnosticwriter.WrapASTDiagnostic(diagnostic)
 		writer := sys.Writer()
 		if testing != nil {

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/locale"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -249,6 +250,15 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		}
 		code := d.Code()
 		name := fmt.Sprintf("EK%d", code)
+		// VIP-30 / 007-tooling.md puts configuration diagnostics in the config
+		// JSON, not in a .vibe source. Keep the ordinary-source D266 invariant
+		// below; only the configuration codes have this separate scope/category.
+		if want, ok := configurationDiagnosticDefault(d); ok {
+			if (defaultsApply || want != DefaultWarning) && !CategoryMatches(want, d.Category()) {
+				g.Add("config:category:"+name, "%s has the wrong configuration category: %s", name, keyOf(dir, d))
+			}
+			continue
+		}
 		// Chapter 28: the registry table and the rules listed below it are
 		// every EK code; "The table lists the codes the compiler's registry
 		// holds" (D33, D53, D374).
@@ -321,11 +331,11 @@ func checkSpan(g *Gaps, dir string, d *ast.Diagnostic) {
 // `diagnostics`, and no source has an @vibelang-diagnostics comment
 // (Chapter 28, D241, D275).
 func DefaultsApply(project Project) bool {
-	if strings.Contains(project.Config, `"diagnostics"`) {
+	if strings.Contains(project.Config, `"diagnostics"`) || strings.Contains(project.Config, `"severities"`) {
 		return false
 	}
 	for name, text := range project.Files {
-		if strings.HasSuffix(name, ".json") && strings.Contains(text, `"diagnostics"`) {
+		if strings.HasSuffix(name, ".json") && (strings.Contains(text, `"diagnostics"`) || strings.Contains(text, `"severities"`)) {
 			return false
 		}
 		if strings.Contains(text, "@vibelang-diagnostics") {
@@ -412,4 +422,21 @@ func DecodedUTF16Len(text string) int {
 func LineAndColumn(d *ast.Diagnostic) (int, int) {
 	line, character := scanner.GetECMALineAndUTF16CharacterOfPosition(d.File(), d.Pos())
 	return line + 1, int(character) + 1
+}
+
+// Chapter 7's configuration diagnostics are VibeLang additions to JSON.
+// D266 still compares the fork with stock TypeScript on ordinary TypeScript;
+// only Appendix B rows linking Chapter 7 receive this config-file exemption.
+func configurationDiagnosticDefault(d *ast.Diagnostic) (DefaultCategory, bool) {
+	if d.File() != nil && d.File().ScriptKind != core.ScriptKindJSON {
+		return DefaultUnknown, false
+	}
+	row, ok := configurationDiagnosticRows()[fmt.Sprintf("%04d", d.Code())]
+	if !ok {
+		return DefaultUnknown, false
+	}
+	if strings.HasPrefix(row.Rule, "warning:") || strings.HasPrefix(row.Rule, "lint warning:") {
+		return DefaultWarning, true
+	}
+	return DefaultError, true
 }

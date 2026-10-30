@@ -122,6 +122,10 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		fmt.Fprintln(sys.ErrorWriter(), "vibelang --fix: no tsconfig.json: name a project with -p.")
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
+	if err := migrateSeverityConfigs(sys, configFileName); err != nil {
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
+		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+	}
 	path := sys.FS().CaseSensitivity().PathKey(tspath.RootedPath(configFileName))
 	config, errors := tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, sys.FS(), &tsc.ExtendedConfigCache{})
 	if len(errors) > 0 || config == nil {
@@ -813,3 +817,35 @@ func (h fixHost) ReadDirectory(tspath.RootedDirectoryPath, []string, []string, [
 func (h fixHost) GetDirectories(tspath.RootedDirectoryPath) []string { return nil }
 func (h fixHost) DirectoryExists(tspath.RootedDirectoryPath) bool    { return false }
 func (h fixHost) FileExists(tspath.RootedFilePath) bool              { return false }
+
+// Migrate the selected config and its extends chain, including JSONC bases.
+func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
+	path := sys.FS().CaseSensitivity().PathKey(tspath.RootedPath(name))
+	config, _ := tsoptions.GetParsedCommandLineOfConfigFilePath(name, path, nil, nil, sys.FS(), &tsc.ExtendedConfigCache{})
+	names := []tspath.RootedFilePath{name}
+	if config != nil {
+		names = append(names, config.ExtendedSourceFiles()...)
+	}
+	seen := map[tspath.RootedFilePath]bool{}
+	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		text, ok := sys.FS().ReadFile(name)
+		if !ok {
+			continue
+		}
+		if fixed, changed := tsoptions.MigrateLegacySeverities(name, text); changed {
+			info, err := os.Stat(name.AsString())
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(name.AsString(), []byte(fixed), info.Mode().Perm()); err != nil {
+				return err
+			}
+			fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: migrated vibelang.diagnostics to vibe.severities.\n", relativeName(sys, name))
+		}
+	}
+	return nil
+}

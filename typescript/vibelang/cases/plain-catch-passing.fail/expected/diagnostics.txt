@@ -1,3 +1,4 @@
 main.vibe(14,12): error EK2004
 main.vibe(23,38): error EK2004
 main.vibe(33,12): error EK2004
+tsconfig.json(17,7): warning EK3009
