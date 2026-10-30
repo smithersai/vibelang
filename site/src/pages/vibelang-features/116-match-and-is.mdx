@@ -54,6 +54,8 @@ A function named `match` still works. Only `match (value) {` followed by `when`,
 
 ## Patterns
 
+`[]` matches an empty iterable, including an empty string. A regex literal accepts the same extractor suffix as a named regex, such as `/re/(let match)` or `/re/()`. When `not(...)` or `not[...]` also parses as prefix negation, that parse wins regardless of a local function named `not`; qualify an extractor as `helpers.not(...)`.
+
 | Pattern | Matches | Example |
 | --- | --- | --- |
 | Literal | An equal string, number, boolean, `null`, or `undefined` | `when 404:` |

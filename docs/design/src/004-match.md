@@ -160,9 +160,36 @@ const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Succe
 ```
 
 - In an object pattern, a bare key such as `{ tracking }` only tests that the property exists. Binding it takes `let tracking`, shorthand for `tracking: let tracking` (VIP-16). Replacing `let tracking` with `tracking` above would return `"outer"`, not the field.
+  VibeLang does not adopt the draft's disputed early error rejecting a `MatchProperty` name coverable by `BindingIdentifier`, either as a bare presence key or before `:`. Identifier keys such as `_tag:` remain valid; the separate `__proto__` pattern-key restriction and unrelated early errors remain.
+- Prefix `not` wins whenever the same token sequence can also be a member/extractor rooted at an identifier `not`. Parsing never consults a local binding or its type, and does not retry that identifier parse to evade an early error. Thus `not(let x)` negates a parenthesized binding pattern and `not[0]` negates an array pattern; `helpers.not(let x)` remains a qualified extractor. `not` stays an ordinary name outside the prefix collision and in property/binding-name positions.
 - Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.
 - An arm's body may be `throw e`, as VIP-5's example writes it. In effect code it fails the Effect ([Failures](003-failures.md#throw)); outside effect code it is JavaScript's `throw`.
 - No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code (decided detail 95). Written calls in subjects, guards, arms and detail-94 predicates are tracked normally ([Thrown type by kind of callable](003-failures.md#thrown-type-by-kind-of-callable)).
+
+The empty array pattern uses [ArrayPattern](900-appendices.md#arraypattern) with its one nullable-list derivation. It matches an empty iterable, including an empty string, and is not a wildcard or an array-only test. Every array pattern and extractor list receives a cached Iterator Record; its finishing paths never receive the original subject instead of that record.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function empty(xs: Iterable<unknown>) {
+  return match (xs) { when []: "empty"; default: "not empty"; }
+}
+function not(s: unknown): [unknown] { return [s] }
+const helpers = { not }
+match (5) { when not(let x): "hit"; default: "miss"; } // "miss"; the local function is not called
+match (5) { when helpers.not(let x): "hit"; default: "miss"; } // "hit"
+match ([0]) { when not[0]: "other"; default: "zero"; } // "zero"
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function empty(xs: Iterable<unknown>) {
+  for (const value of xs) return "not empty"
+  return "empty"
+}
+const emptyPatternExit = Effect.runSyncExit(Effect.sync(() => [empty([]), empty(""), empty([1])]))
+// Success(["empty", "empty", "not empty"])
+```
 
 A `match` in a destructuring or parameter default follows [Destructuring and parameter defaults](002-running.md#destructuring-and-parameter-defaults). A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order). `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](001-functions.md#direct-eval); VIP-1, amended).
 
@@ -570,7 +597,7 @@ function asyncBit(b: boolean) {
 
 ## Regular-expression patterns
 
-A `RegularExpressionLiteral` is also a `MatchPattern`; it matches as its `RegExp` value does. The runtime emulates the draft's `RegExp.prototype` matcher without patching the prototype: a bare pattern calls `test`; a non-global extractor returns `[regexp[Symbol.match](subject)]`, failing on `null`. A global extractor returns `Array.from(regexp[Symbol.matchAll](subject))` directly, failing when empty. Thus a non-global regex extracts one match array, not separate capture arguments; a global regex extracts one element per match. Calls preserve the regex receiver and the draft's observable property reads and `lastIndex` effects.
+A [RegularExpressionPattern](900-appendices.md#regularexpressionpattern) admits a bare `RegularExpressionLiteral` or its extractor suffix `(MatchList)`, including the nullable list `()`. It evaluates the literal once at its pattern position and matches as the same named `RegExp` value does. The runtime emulates the draft's `RegExp.prototype` matcher without patching the prototype: a bare pattern calls `test`; a non-global extractor returns `[regexp[Symbol.match](subject)]`, failing on `null`. A global extractor returns `Array.from(regexp[Symbol.matchAll](subject))` directly, failing when empty. Thus a non-global regex extracts one match array, not separate capture arguments; a global regex extracts one element per match. Calls preserve the regex receiver and the draft's observable property reads and `lastIndex` effects.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -583,6 +610,8 @@ function digits(s: string) {
 ```
 
 ```ts effect
+import { Effect } from "effect"
+
 function digits(s: string) {
   const regexp = /(\d+)-(\d+)/
   const result = regexp[Symbol.match](s)
@@ -594,6 +623,7 @@ function digits(s: string) {
   return "none"
 }
 digits("12-34") // "1234"
+const regexPatternExit = Effect.runSyncExit(Effect.sync(() => [digits("12-34"), digits("none")])) // Success(["1234", "none"])
 ```
 
 ## Class patterns

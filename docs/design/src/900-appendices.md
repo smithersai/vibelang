@@ -113,7 +113,7 @@ Timeout                       then another
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
 | `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](005-services.md#provide-blocks) |
-| `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says | [Pattern matching](004-match.md) |
+| `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says; where both parses exist, prefix `not` wins syntactically over a member/extractor rooted at an identifier `not`, before early errors and without consulting bindings | [Pattern matching](004-match.md) |
 
 `try` and `catch` are reserved words already; VibeLang gives them expression forms under `[+Effect]`. At the start of a statement, `try` followed by `{`, on the same line or not, is TypeScript's `try` statement, as in JavaScript.
 
@@ -710,6 +710,23 @@ DefaultArm = "default" ":" ArmBody
 ```text
 ArmBody = Expression | "throw" Expression
 ```
+
+#### ArrayPattern
+
+```text
+ArrayPattern = "[" MatchList "]"
+```
+
+This replaces the pinned draft's optional `MatchList`: the existing `MatchList` is nullable, so `[]` has one derivation. Empty and nonempty paths use the same cached Iterator Record and list matching; `[]` matches only an empty iterable. The snapshot's grammar parameters are inherited.
+
+#### RegularExpressionPattern
+
+```text
+RegularExpressionPattern = RegularExpressionLiteral
+                         | RegularExpressionLiteral "(" MatchList ")"
+```
+
+This is one added `MatchPattern` alternative, replacing the chapter's earlier bare-literal addition. The first branch is a Boolean regex test; the second uses the same extractor/list matching as a named `RegExp`, with the pinned nullable `MatchList` and inherited grammar parameters. The literal is evaluated once at its pattern position.
 
 ### Notes on the productions
 
