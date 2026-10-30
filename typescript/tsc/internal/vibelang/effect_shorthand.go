@@ -6,6 +6,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // effect goes exactly where TypeScript allows async (VIP-39), so a function
@@ -45,6 +46,7 @@ func checkShorthands(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
+// functionWord also serves effectMarkerEdit when offering EK0501 repairs.
 var functionWord = regexp.MustCompile(`\bfunction\b`)
 
 // shorthandName returns the name of node when node is a function declaration
@@ -54,8 +56,14 @@ func shorthandName(file *ast.SourceFile, node *ast.Node) *ast.Node {
 		return nil
 	}
 	name := node.Name()
-	if functionWord.MatchString(file.Text()[nodeStart(file, node):name.Pos()]) {
-		return nil
+	// Comments between export and the modifier are not a function keyword.
+	// Scan the declaration head with TypeScript's trivia-aware scanner.
+	s := scanner.GetScannerForSourceFile(file, nodeStart(file, node))
+	for s.Token() != ast.KindEndOfFile && s.TokenStart() < name.Pos() {
+		if s.Token() == ast.KindFunctionKeyword {
+			return nil
+		}
+		s.Scan()
 	}
 	return name
 }

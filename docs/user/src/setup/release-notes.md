@@ -24,6 +24,7 @@ failure rules from 0.0.10 still apply.
 - To preserve interface and object-type APIs that relied on implicit readonly members, run `vibelang --fix --fix-migration-only` on those legacy modules before publishing their new declarations.
 
 - The old bare `Effect<number>` alias was accepted without its migration warning; it now reports `EK4856`. The migration fix preserves comments and explicit default slots, uses shorthand when it needs no new parentheses, and retains a qualified type in other positions. Local and imported types named `Effect` keep their meaning. Later style passes keep the qualified spelling when an automatic shorthand edit would change grouping or declaration output.
+- A comment containing `function` before an `effect` or `async` modifier could hide a missing-keyword error; the compiler now reports it and the quick fix preserves the comment.
 - `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
 
 This release changes platform access and name resolution in `.vibe`.

@@ -16,6 +16,8 @@ A class can extend a value named `effect`: in `class Derived extends effect { }`
 
 `try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed.
 
+Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`, and its quick fix preserves the comment.
+
 ## Sequence computations
 
 ```vibe
