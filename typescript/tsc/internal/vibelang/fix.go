@@ -344,7 +344,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		slices.Sort(codes)
 		var parts []string
 		for _, code := range codes {
-			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
+			parts = append(parts, fixCodeName(code)+" ×"+strconv.Itoa(fixed.Counts[code]))
 		}
 		kinds := []string{tryLabel, effectLabel, untriedLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
 		var otherKinds []string
@@ -370,7 +370,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		}
 		code := refusal.Label
 		if code == "" {
-			code = fmt.Sprintf("EK%04d", refusal.Code)
+			code = fixCodeName(refusal.Code)
 		}
 		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, code, refusal.Error)
 	}
@@ -707,7 +707,7 @@ func remainingFixes(ctx context.Context, program *compiler.Program, propose func
 	for _, p := range propose(program) {
 		for _, f := range p.fixes {
 			line, _ := scannerLineOf(p.file, firstEdit(f.edits))
-			remaining = append(remaining, FixRemaining{File: p.file.FileName(), Line: line + 1, Fix: fmt.Sprintf("EK%04d", f.code)})
+			remaining = append(remaining, FixRemaining{File: p.file.FileName(), Line: line + 1, Fix: fixCodeName(f.code)})
 		}
 	}
 	if !options.VIPOnly {
@@ -1205,7 +1205,8 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	diagnostics := append(slices.Clone(program.GetSyntacticDiagnostics(ctx, file)), program.GetSemanticDiagnostics(ctx, file)...)
 	seen := map[string]bool{}
 	for _, d := range diagnostics {
-		if d.Source() == diagnosticSource && slices.Contains(codes, d.Code()) && d.File() == file {
+		// Schema grammar providers explicitly opt their native diagnostics in.
+		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeSchemaFixCodes, d.Code())) && slices.Contains(codes, d.Code()) && d.File() == file {
 			// The syntactic and semantic lists can both carry one diagnostic;
 			// identify it by position, not text, so two spellings of the same
 			// type on different lines keep their own fixes.

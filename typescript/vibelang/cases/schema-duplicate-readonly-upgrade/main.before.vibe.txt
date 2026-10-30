@@ -1,0 +1,9 @@
+const events: string[] = []
+const fields = { get value(): typeof Schema.String { events.push("field"); return Schema.String } }
+export schema Direct { readonly /* keep */ readonly value: fields.value; readonly readonly count: number }
+export schema Nested = { readonly child: { readonly readonly value: number } }
+export namespace N { export schema Named { readonly readonly value: boolean } }
+export { events }
+export schema error Problem { readonly readonly value: string; get label(): string { return this.value } }
+export function make() { return new Problem({ value: "kept" }) }
+export function matches(subject: unknown) { return subject is Problem }

@@ -143,3 +143,7 @@ An `is` binding without a defined lexical home in a formal-parameter, catch-para
 - Repository-generated bundles and build-graph paths belong in recorded `--after-convert` hooks. Run them before settle checks and final verification; stop on failure. Record formats first and verifies the final bytes again. Its whole-scope test gate cannot be forced.
 
 When upgrading old nested `schema` aliases containing named, optional or rest tuples, `vibelang --fix --fix-migration-only` preserves their former `Schema.Unknown` placeholders and public declarations. Ordinary `--fix` keeps the new tuple mapping; check declaration identity and decode Exits before choosing to tighten a legacy codec.
+
+## VIP-15: Repeated schema field modifiers
+
+A schema field accepts `readonly` once, as TypeScript does. For `TS1030` on repeated `readonly`, run `vibelang --fix` to remove only the duplicate token. Keep comments, the remaining modifier, the codec and its decoded/encoded behavior. Do not weaken readonly fields or replace their codecs.

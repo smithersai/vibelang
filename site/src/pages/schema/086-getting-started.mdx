@@ -67,6 +67,8 @@ schema Batch {
 
 An explicitly `readonly` field requires a referenced codec whose decoded key is readonly. Aliased, mutable or uncertain key flags report `EK2109`; `vibelang --fix` preserves the existing codec with explicit `Schema.Struct` values. The required-key and readonly-key checks are independent. A reference widened to `Schema.Top` can report both `EK2109` messages at the same field because neither decoded flag is proven. This promise is shallow: a readonly field can still contain a mutable array.
 
+Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`; `vibelang --fix` removes the duplicate and keeps the field’s codec and readonly behavior.
+
 Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.
 
 Separate `schema` declaration fields with `;`, `,` or a new line. The current compiler still reports a comma as `EK1013`, and `vibelang --fix` replaces it with `;`. Nested object types and alias types retain TypeScript’s comma separators.

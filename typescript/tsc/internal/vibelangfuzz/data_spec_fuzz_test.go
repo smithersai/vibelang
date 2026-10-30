@@ -76,6 +76,26 @@ func dataRules() []dataRule {
 	} {
 		add("schema-readonly-"+c.name, data, "Mappings preserve TypeScript mutability", `schema S { `+c.field+` }; function f(s:S) { `+c.mutation+` }`, c.code, "vip-decls")
 	}
+	// VIP-15 shares Field grammar with schema errors: the optional modifier
+	// admits exactly one token, in each mapped declaration position.
+	for _, c := range []struct{ name, template string }{
+		{"direct", "schema S { %s value: string }"},
+		{"alias", "schema S = { %s value: string }"},
+		{"nested", "schema S { child: { %s value: string } }"},
+		{"namespace", "namespace N { export schema S { %s value: string } }"},
+		{"error", "schema error E { %s value: string }"},
+	} {
+		for n := 1; n <= 3; n++ {
+			modifiers := strings.TrimSpace(strings.Repeat("readonly /* keep */ ", n))
+			code := ""
+			if n > 1 {
+				code = "TS1030"
+			}
+			add(fmt.Sprintf("schema-readonly-modifier-%s-%d", c.name, n), "900-appendices.md",
+				`Field = "readonly"? PropertyName "?"? ":" Type Separator`,
+				fmt.Sprintf(c.template, modifiers), code, "impl-hunt-data")
+		}
+	}
 	add("schema-writable", data, "properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.", `schema S { n:number; xs:number[]; pair:[number,number]; counts:Record<string,number> }; function f(s:S) { s.n=2; s.xs.push(2); s.pair[0]=3; s.counts.a=4 }`, "", "vip-decls")
 	add("schema-shallow-readonly", data, "`Schema.mutableKey` changes the property, not its nested value", `schema S { readonly xs:number[] }; function f(s:S) { s.xs.push(2) }`, "", "vip-decls")
 	add("schema-shallow-mutable", data, "`Schema.mutable` changes an array or tuple, not its elements.", `schema S { xs:{readonly n:number}[] }; function f(s:S) { s.xs[0].n=2 }`, "TS2540", "vip-decls")

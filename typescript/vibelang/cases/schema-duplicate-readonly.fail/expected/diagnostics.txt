@@ -1,0 +1,6 @@
+main.vibe(2,26): error TS1030
+main.vibe(3,38): error TS1030
+main.vibe(4,35): error TS1030
+main.vibe(5,46): error TS1030
+main.vibe(6,33): error TS1030
+main.vibe(8,46): error TS1030

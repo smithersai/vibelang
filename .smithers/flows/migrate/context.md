@@ -145,6 +145,10 @@ An `is` binding without a defined lexical home in a formal-parameter, catch-para
 
 When upgrading old nested `schema` aliases containing named, optional or rest tuples, `vibelang --fix --fix-migration-only` preserves their former `Schema.Unknown` placeholders and public declarations. Ordinary `--fix` keeps the new tuple mapping; check declaration identity and decode Exits before choosing to tighten a legacy codec.
 
+## VIP-15: Repeated schema field modifiers
+
+A schema field accepts `readonly` once, as TypeScript does. For `TS1030` on repeated `readonly`, run `vibelang --fix` to remove only the duplicate token. Keep comments, the remaining modifier, the codec and its decoded/encoded behavior. Do not weaken readonly fields or replace their codecs.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

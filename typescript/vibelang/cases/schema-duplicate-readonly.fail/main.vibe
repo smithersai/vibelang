@@ -1,0 +1,8 @@
+// expect: TS1030
+schema Direct { readonly readonly value: string }
+schema Alias = { readonly /* keep */ readonly value: string }
+schema Nested { child: { readonly readonly readonly value: string } }
+namespace N { export schema Named { readonly readonly value: string } }
+schema error Problem { readonly readonly value: string }
+abstract schema error Parent { id: string }
+schema error Child extends Parent { readonly readonly value: string }
