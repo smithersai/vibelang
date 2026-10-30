@@ -93,7 +93,7 @@ export function generate() {
   return {
     schemaVersion: 1,
     generatedBy: "node docs/tools/platform-globals.mjs --write",
-    rule: "VIP-33. A statically named value is EK4402 when the symbol it resolves to reaches the platform: a global binding declared only by a host library and not on the allowlist, or a banned member of an allowlisted global. The compiler checks declaration sources directly; this file documents the rule.",
+    rule: "VIP-33. A statically named value is EK4402 when the symbol it resolves to reaches the platform: a global binding declared by a host library and by no ECMAScript library, and not on the allowlist, or a banned member of an allowlisted global. The compiler checks declaration sources directly; this file documents the rule.",
     inputs: {
       typescript: { files: libFiles.map(file => ({ file: relative(root, file), sha256: hash(readFileSync(file, "utf8")) })) },
       "@types/node": { version, sha256: hash(nodeFiles.map(file => hash(readFileSync(file, "utf8"))).join("\n")) },

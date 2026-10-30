@@ -315,7 +315,7 @@ effect function i(xs: Iterable<number | undefined>) {
 }
 ```
 
-Each row runs the function with the iterable `xs` described; unless the row says otherwise, `xs` yields `undefined` first and its `return` returns an object. The Exit is the spec's expected result and equals the Effect TypeScript program with the same pattern written natively.
+Each row runs the function with the iterable `xs` described; unless the row says otherwise, `xs` yields `undefined` first and its `return` returns an object. The Exit is the spec's expected result and equals the Effect TypeScript program with the same pattern written natively. `j` has no native form, because `return` is not an expression, so its rows equal the same `return` in a `for…of` body.
 
 | Function | `xs` and `b` | Exit |
 | --- | --- | --- |

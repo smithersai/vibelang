@@ -450,7 +450,7 @@ effect function a(p = parse(s)) { return p }          // error: a default that m
 effect function b(p = queryDb(q)) { return p }        // error: unannotated foreign queryDb may throw unknown
 async function resolved() { return 1 }              // calling an async function throws never
 effect function b2(p = resolved()) { return p }      // allowed: p is a Promise
-effect function c({ id }: User) { return id }         // c() from untyped JS throws TypeError at the call
+effect function c({ id }: User) { return id }         // c() from untyped JS gives an Effect that dies with TypeError
 ```
 
 ## `error` declarations
