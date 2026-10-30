@@ -75,8 +75,9 @@ test.skipIf(!existsSync(compiler))("checks shared declarations, schema type/valu
     ].join("\n"))
     const output = join(root, "report.json")
     const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", relative(process.cwd(), compiler), "--json", output], { stdout: "pipe", stderr: "pipe" })
-    const [stdout, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
-    expect({ status, stderr, failures: stdout.split("\n").filter(l => l.includes("fail")) }).toEqual({ status: 0, stderr: "", failures: [expect.stringContaining('"fail":0')] })
+    const [, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+    // Workspace paths may contain `fail`; the JSON report below owns the counts.
+    expect({ status, stderr }).toEqual({ status: 0, stderr: "" })
     expect(JSON.parse(readFileSync(output, "utf8")).totals).toMatchObject({ blocks: 4, ok: 4, fail: 0, fragment: 0 })
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
