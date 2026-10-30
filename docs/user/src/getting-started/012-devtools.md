@@ -175,6 +175,8 @@ export const greet = effect (id: string) => {
 
 Use an effect function for a sequence with parameters, and `effect { … }` for an Effect argument, such as `Layer.effect`'s second argument. Keep unrun Effect values intact. A `throw` in effect code fails the Effect with a typed error; plain and `async` callbacks keep JavaScript's exception semantics.
 
+When migrating `yield*`, `--fix` also runs structured Effect results, such as SQL queries returned by `.vibe` helpers. Calling the helper constructs the query; the rewrite calls that result to run it.
+
 Apply every fix in a project, then compile as the rest of the command says:
 
 ```sh

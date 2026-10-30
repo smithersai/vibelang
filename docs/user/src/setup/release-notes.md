@@ -727,6 +727,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `sh scripts/bench/compiler.sh` could miss the compiler after a normal build; it now prefers the native build output while preserving `VIBELANG` overrides and legacy builds.
 
+- `vibelang --fix` could refuse an `Effect.gen` rewrite because a yielded SQL query became unexecuted data. It now calls structured Effect results returned by `.vibe` helpers, preserving their execution.
+
 
 - The specification's `try.allSettled` counterpart, `Effect.all([a, b].map(Effect.exit))`, was a TypeScript error when the operands had different types, and lost the tuple when it compiled. An array literal now maps to `Effect.all([Effect.exit(a), Effect.exit(b)])`, typed as a tuple of `Exit`s, as `Promise.allSettled` keeps one.
 

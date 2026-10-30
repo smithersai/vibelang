@@ -387,3 +387,24 @@ func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[stri
 	}})
 	return out
 }
+
+// D24: a VibeLang function returning an Effect subtype constructs data.
+// Removing yield* must still call that result, including in a statement.
+func TestEffectGenRunsStructuredVibeResults(t *testing.T) {
+	const prefix = "interface Query extends Effect.Effect<number> { readonly sql: string }\nfunction query(): Query { return null as any }\n"
+	source := prefix + "export const run = () => Effect.gen(function* () {\n  const n = yield* query()\n  yield* query()\n  return n\n})\n"
+	want := prefix + "export const run = () => {\n  const n = query()()\n  query()()\n  return n\n}\n"
+	got, ok := effectGenQuickFix(t, source)
+	if !ok {
+		t.Fatalf("no quick fix: %s", effectGenNotes(t, source))
+	}
+	if got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+	program, file, _, _ := editorProgram(t, got)
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+		if d.Category() == diagnostics.CategoryError {
+			t.Fatalf("fixed program: %s", d.String())
+		}
+	}
+}

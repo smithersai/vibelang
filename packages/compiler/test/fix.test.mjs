@@ -70,6 +70,19 @@ export function find(id: string): string!NotFound {
 }
 `
 
+test("--fix runs structured Effect results from VibeLang helpers", { skip }, (t) => {
+  const root = project(t, "type Base = Effect.Effect<number>\ninterface Query extends Base { readonly sql: string }\nfunction query(): Query { return null as any }\nexport const run = () => Effect.gen(function* () {\n  const n = yield* query()\n  yield* query()\n  return n\n})\n")
+  const result = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.doesNotMatch(result.stdout, /not fixed|refused/)
+  const text = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.equal(text.split("query()()").length - 1, 2, text)
+  assert.ok(!text.includes("Effect.gen"), text)
+  const second = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
+  assert.equal(second.status, 0, second.stdout + second.stderr)
+  assert.match(second.stdout, /0 fixes in 0 files/)
+})
+
 test("--fix rewrites the forms, reports them, compiles, and is idempotent", { skip }, (t) => {
   const root = project(t, source)
   const first = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")

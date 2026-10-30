@@ -468,8 +468,13 @@ func effectGenYieldEdit(c *checker.Checker, a *analyzer, file *ast.SourceFile, y
 		if ast.IsOptionalChain(inner) {
 			return nil, label + " runs an optional call, which yield* would fail on when it is undefined"
 		}
-		if a.runs(inner) || a.callsVibeLangFunction(inner) {
-			if signature := c.GetResolvedSignature(inner); signature != nil && givesProgram(c.GetReturnTypeOfSignature(signature)) {
+		signature := c.GetResolvedSignature(inner)
+		// A .vibe function may construct a structured Effect (D24), such as
+		// a SQL query. Its call still returns data: the yielded result must
+		// be called too, even though its implementation is VibeLang.
+		structured := signature != nil && isStructuredEffectResult(c, c.GetReturnTypeOfSignature(signature))
+		if !structured && (a.runs(inner) || a.callsVibeLangFunction(inner)) {
+			if signature != nil && givesProgram(c.GetReturnTypeOfSignature(signature)) {
 				return nil, label + programValue
 			}
 			return []sourceEdit{keyword}, ""
