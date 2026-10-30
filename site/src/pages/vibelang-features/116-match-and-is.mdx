@@ -220,6 +220,8 @@ effect function firstFailure(id: string) {
 
 Loop bindings follow the pinned TC39 loop scopes. A `for` head scopes its bindings to the head and body, with per-iteration copies for `for-of`. The proposal gives `while` and `do-while` a head scope and per-iteration body scopes. Bindings are in the temporal dead zone on the first `do-while` iteration.
 
+A template pattern such as `` `ready` `` has no substitutions and compares without coercion. For interpolation use a guard, ``when let value and if (value === `tag-${kind}`): ...;``; an interpolated primitive pattern is a syntax error.
+
 ## Exhaustiveness
 
 `match` is exhaustive for the specified finite cases. Without a `default` arm, `EK4701` checks a match when every normalized subject member is a supported finite case. These include literals, `boolean`, `null`, `undefined`, enums, data variants, `error` and `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and tagged members.
@@ -233,6 +235,9 @@ An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case o
 `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules.
 
 Any subject member outside these checked kinds turns the check off. Examples include `string` or `number` without a literal type, `unknown`, `any`, `object`, an untagged array or class instance, or a type parameter that does not normalize to checked cases. Use a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`, which matches whatever is left.
+
+A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeScript `0` case (`EK4701`), because its test distinguishes the two signs. Use unsigned `0` or `default`; ordinary negative nonzero literals still cover their cases.
+
 
 A missing case is a compile error, EK4701, `This match does not handle every case of {type}: {cases} is left.`:
 
