@@ -305,7 +305,7 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 
 ### Syntax
 
-[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. The `R` after `!!` never starts with `{`, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
+[EffectType](900-appendices.md#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. Only the optional `R` after `!!` excludes an unparenthesized `{`; required error and requirement slots admit object types, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. Otherwise, among complete source parses, prefer consuming an ordinary TypeScript source operand on that line as `R`: a negative literal type such as `-1` is consumed as `R`, so `x as A!! - 1` asserts `A!!-1`. Write `(x as A!!) - 1` for subtraction. Parser-only JSDoc type forms are excluded, including inside parentheses ([operand boundaries](900-appendices.md#effectoperand)). The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
 
 ```vibe es
 // compiler-gap: pending VIP-3
@@ -332,6 +332,8 @@ A line break also ends the type, so this is two statements, as in TypeScript:
 const y = x as User
 !flag && fail()
 ```
+
+An enclosing optional tuple element keeps TypeScript's omission and indexed `undefined`: `[A!E?]` and `[A!!?]` mark the whole Effect element optional. [The operand boundaries](900-appendices.md#effectoperand) also distinguish optional `R` from a following comparison, element access or `as`/`satisfies` continuation. The choice is among complete source parses, with present-`R` priority and no symbol lookup; a contextual type alias named `as` or `satisfies` remains usable.
 
 ### Meaning
 

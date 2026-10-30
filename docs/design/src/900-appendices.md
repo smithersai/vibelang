@@ -313,8 +313,116 @@ EffectType = EffectOperand [no LineTerminator here] "!" [no LineTerminator here]
 #### EffectOperand
 
 ```text
-EffectOperand = a type at TypeScript's type-operator level (what parseTypeOperatorOrHigher accepts: a primary type with postfix [] and [K], optionally after keyof, unique, readonly or infer), never an unparenthesized EffectType
+EffectOperand = an ordinary TypeScript source type at the type-operator level (a primary type with postfix [] and [K], optionally after keyof, unique, readonly or infer), never an unparenthesized EffectType
 ```
+
+At the optional `R` boundary after `!!`, prefer the present `R` among complete source parses when the following tokens on that line start a valid ordinary TypeScript source operand, except the existing unparenthesized `{` exclusion. A negative literal type is such an operand: `x as A!! - 1` consumes `-1` as `R`. This choice uses syntax, with no symbol lookup or whitespace distinction; parenthesize the whole omitted-`R` assertion before a following subtraction.
+
+Only ordinary TypeScript source types are operands. The parser-only JSDoc forms `?T`, `T?`, `!T` and `*` are excluded, including inside parentheses; explicitly writing one gives the ordinary invalid-type diagnostic. At the optional-slot boundary, `?` and `*` instead remain expression operators where the surrounding expression admits them. An additional `!` follows the existing bang and non-null rules, rather than starting a JSDoc requirement. All existing line-break and union, intersection, function-type and conditional-type restrictions still apply.
+
+```vibe
+// compiler-gap: pending VIP-3
+declare const x: unknown
+type NegativeRequirement = number!!-1
+const chosen = x as number!! ? 1 : 2 // omitted R, then conditional
+const slot = x as number!! - 1      // R is -1
+// @ts-expect-error: ordinary TypeScript arithmetic operand error
+const product = x as number!! * 2   // omitted R, then multiplication
+// @ts-expect-error: ordinary TypeScript arithmetic operand error
+const subtract = (x as number!!) - 1 // omitted R, then subtraction
+```
+
+```ts effect
+import type { Effect } from "effect"
+
+declare const x: unknown
+type NegativeRequirement = Effect.Effect<number, never, -1>
+const chosen = x as Effect.Effect<number> ? 1 : 2
+const slot = x as Effect.Effect<number, never, -1>
+// @ts-expect-error: Effect values are not arithmetic operands
+const product = (x as Effect.Effect<number>) * 2
+// @ts-expect-error: Effect values are not arithmetic operands
+const subtract = (x as Effect.Effect<number>) - 1
+```
+
+The unparenthesized `{` exclusion applies only to the optional `R` after `!!`, leaving a following function body available. A required error or requirement slot admits an ordinary object type: `A!{ reason: string }!{ service: number }` means `Effect.Effect<A, { reason: string }, { service: number }>`. The omitted-error spelling still needs `A!!({ service: number })` for that requirement.
+
+An enclosing TypeScript tuple can mark the completed Effect type as an optional tuple element: `[A!E?]` means `[(Effect.Effect<A, E>)?]`, `[A!!?]` means `[(Effect.Effect<A>)?]`, and `[A!!-1?]` means `[(Effect.Effect<A, never, -1>)?]`. This allows omission and contributes `undefined` on indexed access, as in TypeScript; the `?` is not a JSDoc suffix inside a slot. A stray postfix `?` outside an independently admitted TypeScript punctuation context remains invalid.
+
+A leading `<` does not start a type at the type-operator level: `x as A!! < 3` omits `R` and continues with a comparison, subject to ordinary operand checking. A generic function requirement needs parentheses, `A!!(<T>() => T)`. A leading `[` does start a tuple type, so `x as A!![0]` consumes `[0]` as `R`; `(x as A!!)[0]` requests a later element access, subject to ordinary type checking.
+
+In an expression, `x as A!! as B` and `x as A!! satisfies B` retain the ordinary chained assertion or check when consuming the keyword as `R` would strand `B`. Priority is between complete source parses, not parser-recovery trees. This is not a token ban: TypeScript allows type aliases named `as` and `satisfies`, so a pure type `A!!as`, a required or parenthesized slot using those aliases, and `x as A!!as satisfies unknown` retain their valid present-`R` parse. When both complete source parses survive, prefer the present `R`, with no symbol lookup.
+
+```vibe
+// compiler-gap: pending VIP-3
+type RequiredObjects = number!{ reason: string }!{ service: number }
+type OptionalError = [number!string?]
+type OptionalSuccess = [number!!?]
+type OptionalNegative = [number!!-1?]
+type GenericRequirement = number!!(<T>() => T)
+type as = { service: number }
+type satisfies = { other: string }
+type NamedRequirement = number!!as
+type OtherRequirement = number!string!satisfies
+
+function assertions(x: unknown) {
+  const asserted = x as number!! as unknown
+  const checked = x as number!! satisfies unknown
+  const named = x as number!!as satisfies unknown
+  const tuple = x as number!![0]
+  // @ts-expect-error: Effect values are not comparison operands
+  const comparison = x as number!! < 3
+  // @ts-expect-error: an Effect has no numeric index
+  const indexed = (x as number!!)[0]
+}
+
+effect function slotBoundaryWitness() {
+  const empty: OptionalError = []
+  const noError: OptionalSuccess = []
+  return [empty.length, noError.length, empty[0] === undefined] as const
+}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+type RequiredObjects = Effect.Effect<number, { reason: string }, { service: number }>
+type OptionalError = [(Effect.Effect<number, string>)?]
+type OptionalSuccess = [(Effect.Effect<number>)?]
+type OptionalNegative = [(Effect.Effect<number, never, -1>)?]
+type GenericRequirement = Effect.Effect<number, never, (<T>() => T)>
+type as = { service: number }
+type satisfies = { other: string }
+type NamedRequirement = Effect.Effect<number, never, as>
+type OtherRequirement = Effect.Effect<number, string, satisfies>
+
+function assertions(x: unknown) {
+  const asserted = x as Effect.Effect<number> as unknown
+  const checked = x as Effect.Effect<number> satisfies unknown
+  const named = x as Effect.Effect<number, never, as> satisfies unknown
+  const tuple = x as Effect.Effect<number, never, [0]>
+  // @ts-expect-error: Effect values are not comparison operands
+  const comparison = (x as Effect.Effect<number>) < 3
+  // @ts-expect-error: an Effect has no numeric index
+  const indexed = (x as Effect.Effect<number>)[0]
+}
+
+```
+
+```ts effect
+import { Effect } from "effect"
+
+type OptionalError = [(Effect.Effect<number, string>)?]
+type OptionalSuccess = [(Effect.Effect<number>)?]
+
+function slotBoundaryWitness() {
+  const empty: OptionalError = []
+  const noError: OptionalSuccess = []
+  return Effect.succeed([empty.length, noError.length, empty[0] === undefined] as const)
+}
+```
+
+`slotBoundaryWitness()` succeeds with `[0, 0, true]`. These type boundaries change neither execution nor the Effect's error or requirement channels.
 
 #### TryExpression
 
