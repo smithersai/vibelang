@@ -52,7 +52,7 @@ doc-1
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
-// run: try Console.log(try title("Draft")); try Console.log((try flip(title("")))._tag); const error = try flip(title("x".repeat(81))); try Console.log(match (error) { when TitleTooLong and { let length }: length; default: 0; })
+// run: const longTitle = try orDie(Effect.try(() => "x".repeat(81))); try Console.log(try title("Draft")); try Console.log((try flip(title("")))._tag); const error = try flip(title(longTitle)); try Console.log(match (error) { when TitleTooLong and { let length }: length; default: 0; })
 error EmptyTitle
 error TitleTooLong {
   length: number
@@ -80,7 +80,7 @@ Give distinct error cases distinct tags. Tag-based matching compares strings, so
 
 ```vibe
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
-// run: try Console.log(try displayTitle("")); try Console.log(try editableTitle("")); try Console.log(try displayTitle("Draft")); try Console.log(try editableTitle("Draft")); try Console.log((try flip(displayTitle("x".repeat(81))))._tag); try Console.log((try flip(editableTitle("x".repeat(81))))._tag)
+// run: const longTitle = try orDie(Effect.try(() => "x".repeat(81))); try Console.log(try displayTitle("")); try Console.log(try editableTitle("")); try Console.log(try displayTitle("Draft")); try Console.log(try editableTitle("Draft")); try Console.log((try flip(displayTitle(longTitle)))._tag); try Console.log((try flip(editableTitle(longTitle)))._tag)
 effect function displayTitle(text: string) {
   return try catchTag(title(text), "EmptyTitle", () => succeed("Untitled"))
 }

@@ -88,7 +88,7 @@ export effect function quote(sku: string, quantity: number) {
   const inventory = try Inventory
   return effect {
     const product = try inventory.reserve(sku, quantity)
-    const total = (product.cents * quantity / 100).toFixed(2)
+    const total = try orDie(Effect.try(() => (product.cents * quantity / 100).toFixed(2)))
     return `${quantity} x ${product.name}: $${total}`
   } catch (error) => match (error) {
     when OutOfStock: `Only ${error.available} ${error.sku} left`;

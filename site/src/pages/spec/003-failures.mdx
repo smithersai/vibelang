@@ -208,7 +208,7 @@ const calls = Effect.gen(function* () {
 })
 ```
 
-<a id="implicit-throws"></a>**Implicit and tracked built-in throws** (decided detail 81). A throw that ECMA-262 or the web or Node lib specifies for a `lib.d.ts` global is implicit (untracked, a defect in effect code) when it comes from the receiver's or the environment's state, not from the documented contract on the arguments: a frozen, sealed or non-extensible receiver; a revoked or trapping proxy; a user getter, setter, `valueOf`, `toString` or `Symbol.toPrimitive`; a detached buffer; or a resource limit (length overflow, stack, memory). Every other specified throw is argument validation and is tracked with its class only when reachable from well-typed arguments under TypeScript `strict` (detail 40). A throw that no argument of the declared parameter types can reach is not tracked: `Object.keys(o)` with `o: object`, for example, throws `never`. Reachable argument-validation throws include: `JSON.parse`, `JSON.stringify` on a cycle or a `bigint`, `BigInt("x")`, `new RegExp(bad)`, `decodeURI*`, `atob`, `structuredClone`, `repeat` and `padStart` counts, `toFixed`, `toPrecision` and `toString(radix)` ranges, `new Array(-1)`, `normalize(form)`. Detail 40's generator applies this classification to the `lib.d.ts` globals ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)).
+<a id="implicit-throws"></a>**Implicit and tracked built-in throws** (decided detail 81). A throw that ECMA-262 or the web or Node lib specifies for a `lib.d.ts` global is implicit (untracked, a defect in effect code) when it comes from the receiver's or the environment's state, not from the documented contract on the arguments: a frozen, sealed or non-extensible receiver; a revoked or trapping proxy; a user getter, setter, `valueOf`, `toString` or `Symbol.toPrimitive`; a detached buffer; or a resource limit (length overflow, stack, memory). Every other specified throw is argument validation and is tracked with its class when reachable from any input admitted by the selected signature's receiver and parameter types under TypeScript `strict`. This is a contract on the selected signature: a safe literal, a local range check, a literal-typed argument or constant folding does not erase its thrown type. Ordinary overload resolution still chooses the signature; the arguments' values do not specialize its thrown contract. A throw that no argument of the declared parameter types can reach is not tracked: `Object.keys(o)` with `o: object`, for example, throws `never`. Reachable argument-validation throws include: `JSON.parse`, `JSON.stringify` on a cycle or a `bigint`, `BigInt("x")`, `new RegExp(bad)`, `decodeURI*`, `atob`, `structuredClone`, `repeat` counts, `toFixed`, `toPrecision` and `toString(radix)` ranges, `new Array(-1)`, `normalize(form)`. Both `padStart` and `padEnd` use `ToLength`, which clamps nonpositive lengths; unlike `repeat`, neither validates a count range. For their well-typed string/number/string signatures, padding's own thrown type is `never`; allocation/length limits and coercion hooks remain implicit defects. See ECMA-262's [String padding](https://tc39.es/ecma262/2025/multipage/text-processing.html#sec-string.prototype.padstart) and [String repeat](https://tc39.es/ecma262/2025/multipage/text-processing.html#sec-string.prototype.repeat) algorithms. Detail 40's generator applies this classification to the `lib.d.ts` globals ([Appendix E](/spec/900-appendices#appendix-e-shipped-throws-and-rethrows-annotations)).
 
 ```ts [Effect]
 import { Effect } from "effect"
@@ -216,8 +216,11 @@ import { Effect } from "effect"
 const keys = (o: object) => Object.keys(o) // throws never for well-typed arguments
 const builtins = Effect.gen(function* () {
   const names = keys({ a: 1 })
-  const repeated = yield* Effect.try(() => "x".repeat(-1)) // RangeError becomes a failure
-  return [names, repeated] as const
+  const padded = "x".padEnd(-1, "0") // no tracked count-validation throw
+  const fixed = yield* Effect.try(() => (1.5).toFixed(2)) // the signature still includes RangeError
+  const repeated = yield* Effect.try(() => "x".repeat(3)) // a safe literal keeps that contract
+  return [names, padded, fixed, repeated] as const
+  // Success([["a"], "x", "1.50", "xxx"]); repeat(-1) and toFixed(101) fail through Effect.try.
 })
 ```
 

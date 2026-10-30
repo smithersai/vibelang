@@ -68,7 +68,7 @@ effect function read(key: string) {
 
 export effect function handle() {
   const request = try HttpServerRequest.HttpServerRequest
-  const url = try sync(() => new URL(request.url, "http://worker"))
+  const url = try orDie(Effect.try(() => new URL(request.url, "http://worker")))
   const key = url.pathname.slice(1)
   return effect {
     return HttpServerResponse.text(try read(key))
@@ -154,7 +154,7 @@ export effect function makeApi() {
 
   effect function handle() {
     const request = try HttpServerRequest.HttpServerRequest
-    const url = try sync(() => new URL(request.url, "http://worker"))
+    const url = try orDie(Effect.try(() => new URL(request.url, "http://worker")))
     const key = url.pathname.slice(1)
     return effect {
       if (request.method === "PUT") {

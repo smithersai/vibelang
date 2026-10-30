@@ -24,8 +24,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
 | `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
 | `XMLHttpRequest` | `try HttpClient.get(url)` |
-| `__dirname` | `(try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))` |
-| `__filename` | `try (try Path.Path).fromFileUrl(new URL(import.meta.url))` |
+| `__dirname` | `(try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))` |
+| `__filename` | `try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))` |
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
 | `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
@@ -144,8 +144,8 @@ effect function replacements(
   const name = try Config.String("NAME")
   const args = try (try Stdio.Stdio).args
   const directory = (try Path.Path).resolve()
-  const file = try (try Path.Path).fromFileUrl(new URL(import.meta.url))
-  const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(new URL(import.meta.url)))
+  const file = try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))
+  const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))
   const line = try (try Terminal.Terminal).readLine
   try Console.log(message)
   try Console.log(text)

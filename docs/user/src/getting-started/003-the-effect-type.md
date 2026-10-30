@@ -81,7 +81,8 @@ effect function rateOrDie(currency: string): Effect.Effect<number, never, Rates>
 
 effect function label(currency: string): Effect.Effect<string, MissingRate, Rates> {
   const rates = try Rates
-  return (try rates.lookup(currency)).toFixed(2)
+  const amount = try rates.lookup(currency)
+  return try orDie(Effect.try(() => amount.toFixed(2)))
 }
 // Checks string, MissingRate, and Rates.
 
@@ -109,10 +110,12 @@ const conversion = convert(30, "EUR")
 
 effect function displayedPrice() {
   const amount = try conversion
-  return amount.toFixed(2)
+  return try orDie(Effect.try(() => amount.toFixed(2)))
 }
 // Output: 60.00
 ```
+
+`toFixed`'s signature may throw `RangeError`, even with a safe precision literal. `Effect.try` captures that exception; `orDie` keeps an unexpected formatting error as a defect, leaving the declared error channel unchanged.
 
 Creating `conversion` does no work. `try conversion` runs the computation within the current effect function and returns its success value. `try` starts no new fiber; runners start execution at the application edge.
 

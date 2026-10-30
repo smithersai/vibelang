@@ -98,7 +98,7 @@ true true false
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
-// run: try Console.log(display(3), display(true), display(false))
+// run: const rendered = try Effect.try(() => [display(3), display(true), display(false)]); try Console.log(...rendered)
 function display(input: number | boolean): string {
   return match (input) {
     when Number: (input as number).toFixed(1);
