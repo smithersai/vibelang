@@ -161,7 +161,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 
 | Rule | Diagnostic |
 | --- | --- |
-| a field type outside the mapping; declare a Schema value instead | EK2109 |
+| a field type outside the mapping; declare a Schema value instead | `EK2109` |
 
 ## `data` declarations
 
@@ -229,9 +229,9 @@ const Outcome = Data.taggedEnum<OutcomeDefinition>()
 
 | Rule | Diagnostic |
 | --- | --- |
-| more than 4 type parameters; remove parameters beyond the limit of 4 | EK2801 |
-| a constraint on a type parameter; remove the constraint | EK2126 |
-| a default on a type parameter; move it to a separate type alias | EK2803 |
+| more than 4 type parameters; remove parameters beyond the limit of 4 | `EK2801` |
+| a constraint on a type parameter; remove the constraint | `EK2126` |
+| a default on a type parameter; move it to a separate type alias | `EK2803` |
 
 ```vibe es
 // compiler-gap: pending VIP-28

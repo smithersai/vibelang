@@ -42,7 +42,7 @@ class Users extends Context.Service<Users, {
 declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 ```
 
-- **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name, as in the example. A service can write it explicitly instead, as a migrated service does to keep its key:
+- **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name: the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name. A service can write it explicitly instead, as a migrated service does to keep its key:
 
   ```vibe es
   // compiler-gap: pending VIP-9
@@ -57,7 +57,7 @@ declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
   class Clock extends Context.Service<Clock, { now(): Effect.Effect<number> }>()("app/Clock") {}
   declare namespace Clock { type Shape = Context.Service.Shape<typeof Clock> }
   ```
-- **A default.** `static readonly defaultValue`, of the type of `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default.
+- **A default.** `static readonly defaultValue`, of the type of `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default. It may carry a type annotation, as `key` may: `static readonly defaultValue: () => Flags.Shape = …`.
 
   ```vibe es
   // compiler-gap: pending VIP-9
@@ -73,7 +73,28 @@ declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
   declare namespace Flags { type Shape = { newCheckout: boolean } }
   ```
 
-- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as the namespace above. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. EK3001 to EK3004 apply to it unchanged.
+- **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as the namespace above. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. `EK3001` to `EK3004` apply to it unchanged.
+- **Inside a function or block** the counterpart is the class (or `const`) alone, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). There `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
+
+  ```vibe es
+  // compiler-gap: pending VIP-9
+  effect function test() {
+    service Users { static readonly key = "test/Users"; find(id: string): User!NotFound }
+    const fake: Context.Service.Shape<typeof Users> = { find: (id) => succeed(user) }
+  }
+  ```
+
+  ```ts effect
+  // fragment
+  function test() {
+    return Effect.gen(function* () {
+      class Users extends Context.Service<Users, {
+        find(id: string): Effect.Effect<User, NotFound>
+      }>()("test/Users") {}
+      const fake: Context.Service.Shape<typeof Users> = { find: (id) => Effect.succeed(user) }
+    })
+  }
+  ```
 
 ### Using a service
 
@@ -105,12 +126,12 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 
 | Rule | Code | Why |
 | --- | --- | --- |
-| two services with the same key anywhere in the program | EK3001 | |
-| `class X extends Users {}` | EK3002 | `X` would inherit `Users`' key and silently become the same service |
-| `new Users()` | EK3003 | |
-| `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
-| `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
-| `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | EK3001 needs every key at compile time |
+| two services with the same key anywhere in the program | `EK3001` | |
+| `class X extends Users {}` | `EK3002` | `X` would inherit `Users`' key and silently become the same service |
+| `new Users()` | `EK3003` | |
+| `impl instanceof Users` | `EK3004` | always false, because implementations are plain objects |
+| `service Repo<T> { … }` | `EK3005` | `Repo<User>` and `Repo<Order>` would share one key |
+| `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | `EK3001` needs every key at compile time |
 | any member that is not a `PropertySignature`, a `MethodSignature`, a `KeyMember` or a `DefaultMember`: a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
 A service in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`) with a quick fix that inserts one.
@@ -320,11 +341,10 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 
 | Rule | Diagnostic |
 | --- | --- |
-| a `node:*` value import in a `.vibe` file | EK4402 |
-| a reference to a Node or web platform global (list below) in a `.vibe` file | EK4402 |
-| a platform call such as `fetch` anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the call into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | EK4402 |
+| a value import whose specifier is a Node builtin, with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), in a `.vibe` file | `EK4402` |
+| a reference to a banned global (list below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
 
-`import type` from `node:*` is allowed: VIP-33 bans value imports, and a type import is erased.
+`import type` from a Node builtin is allowed: VIP-33 bans value imports, and a type import is erased.
 
 The banned globals ("All web apis and all node.js apis should be wrapped and effectful", VIP-33):
 
@@ -332,15 +352,21 @@ The banned globals ("All web apis and all node.js apis should be wrapped and eff
 - web I/O and host state: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`;
 - console and timers: `console`, `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `queueMicrotask`.
 
-**Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global.
+**Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global. Either bare `Worker` is Effect's namespace and only `globalThis.Worker` is banned, as for `Headers`, `Response` and `Event`, or bare `Worker` is `EK4402`.
 
 ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `Intl`) stay allowed.
 
 ```vibe es
 // compiler-gap: pending VIP-33
 console.log("hi")            // EK4402: write try Console.log("hi")
-setTimeout(f, 10)            // EK4402: write try Effect.sleep("10 millis"), then f()
+setTimeout(f, 10)            // EK4402: write try sleep("10 millis"), then f()
 const u = new URL(s)         // ok
+```
+
+```vibe es
+// compiler-gap: pending VIP-33
+import { readFileSync } from "fs"         // EK4402: same builtin as node:fs
+import type { Stats } from "node:fs"      // ok: erased
 ```
 
 ```ts effect

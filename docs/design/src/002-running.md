@@ -32,7 +32,7 @@ Every operand is evaluated once, left to right as written, with three exceptions
 | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | `EK0502` |
 | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | `EK0503` |
 
-`e` is an Effect when its type is assignable to `Effect.Effect<any, any, any>`. In Effect 4.1.0 a `Context.Service` key, a `Context.Reference` and an `error` instance (`Data.TaggedError` or `Schema.TaggedError`) are, so `try new NotFound({ id })` fails like `throw`; `Option` and `Result` are not. An Effect that can't fail is still run with `try`.
+`e` is an Effect when its type is assignable to `Effect.Effect<any, any, any>`. In Effect 4.1.0 a `Context.Service` key, a `Context.Reference` and an `error` instance (`Data.TaggedError` or `Schema.TaggedError`) are, so `try new NotFound({ id })` fails like `throw`; `Option` and `Result` are not. An Effect that can't fail is still run with `try`. `never` passes this test, as the success of an Effect that only fails; it is the operand test, not [Failures](003-failures.md)' test of which callables are effectful.
 
 `try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b()` and `try f() + 1` adds 1 to the success. As with `await`, the operand may start on the next line. At the start of a statement, `try` followed by `{`, on the same line or not, begins a `try` statement, as in JavaScript, and that is an error in effect code.
 
@@ -88,7 +88,7 @@ Anything else after `catch` is a syntax error: a name, a call, any other value, 
 
 An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
 
-In `(a catch h) catch k`, the outer `catch` runs the value that `a catch h` gives, so `a`'s success (`never`, if `a` only fails) and `h`'s result must both be Effects. To try fallbacks in turn, nest them in an `effect` handler: `a catch effect () => b catch () => c`.
+In `(a catch h) catch k`, the outer `catch` runs the value that `a catch h` gives, so `a`'s success (`never`, if `a` only fails, passes the operand test above) and `h`'s result must both be Effects. To try fallbacks in turn, nest them in an `effect` handler: `a catch effect () => b catch () => c`.
 
 ```ts effect
 // fragment
@@ -163,7 +163,7 @@ fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.ca
 
 ## `await`
 
-`await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors, and so is `await` on an Effect inside an `async` function ([Functions](001-functions.md#static-rules)). `await fiber` and `await deferred` keep TypeScript's behavior and get a VIP-38 lint warning suggesting `join fiber` (EK4609) or `try Deferred.await(deferred)` (EK4610) (VIP-5, amended).
+`await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors, and so is `await` on an Effect inside an `async` function ([Functions](001-functions.md#static-rules)). `await fiber` and `await deferred` keep TypeScript's behavior and get a VIP-38 lint warning suggesting `join fiber` (`EK4609`) or `try Deferred.await(deferred)` (`EK4610`) (VIP-5, amended).
 
 ## `effect` blocks
 
@@ -199,7 +199,7 @@ function demo() {
 const UsersLive = Layer.effect(Users, Effect.gen(function* () { return makeUsers() }))
 ```
 
-An `effect { … }` statement builds an Effect and discards it, as a call statement `f()` does; the Effect language service's floating-Effect rule, run by VIP-38, reports it. Write `try effect { … }` to run it.
+An `effect { … }` statement builds an Effect and discards it, as a call statement `f()` does; the Effect language service's floating-Effect rule, run by VIP-38, reports it. Its code, an `EK` code or the language service's own rule name, is Undecided (pending VIP). Write `try effect { … }` to run it.
 
 No other syntax builds an Effect. A function literal never becomes an Effect because the parameter it's passed to expects one.
 
@@ -397,7 +397,26 @@ function syncAll(ids: string[]) {
 }
 ```
 
-The head takes every `ForBinding` `for…of` takes: `for concurrent (let [k, v] of entries) { try save(k, v) }` is `Effect.forEach(entries, ([k, v]) => Effect.gen(…), { concurrency: "unbounded", discard: true })`.
+The head is a `const` or `let` declaration, destructuring included: ECMAScript's `ForDeclaration`, `LetOrConst ForBinding` (VIP-19, amended). `var` and an assignment head, `for concurrent (x of xs)`, are syntax errors. The item arrives under a fresh parameter, and the head's declaration runs first in the item's generator, so a default or computed key in it may run Effects and a failure there fails that item. The body keeps its own block scope:
+
+```vibe es
+// compiler-gap: pending VIP-19
+effect function saveAll(entries: Array<[string, number]>) {
+  for concurrent (let [k, v] of entries) { try save(k, v) }
+}
+```
+
+```ts effect
+// fragment
+function saveAll(entries: Array<[string, number]>) {
+  return Effect.gen(function* () {
+    yield* Effect.forEach(entries, ($item) => Effect.gen(function* () {
+      let [k, v] = $item
+      { yield* save(k, v) }
+    }), { concurrency: "unbounded", discard: true })
+  })
+}
+```
 
 ## `for try`
 
@@ -442,7 +461,31 @@ function saveAll(rows: Stream.Stream<Row>) {
 }
 ```
 
-The head takes every `ForBinding` `for…of` takes, as for `for concurrent`.
+The head and its lowering are as for `for concurrent` (VIP-20, amended): a `const` or `let` declaration, run first in the element's generator.
+
+```vibe es
+// compiler-gap: pending VIP-20
+effect function first() {
+  let out = 0
+  for try (const [n = try succeed(7)] of Stream.make([undefined] as [number | undefined])) { out = n }
+  return out                                         // 7; a failing default fails the loop
+}
+```
+
+```ts effect
+// fragment
+function first() {
+  return Effect.gen(function* () {
+    let out = 0
+    yield* Stream.runForEachWhile(Stream.make([undefined] as [number | undefined]), ($item) => Effect.gen(function* () {
+      const [n = yield* Effect.succeed(7)] = $item
+      { out = n }
+      return true
+    }))
+    return out
+  })
+}
+```
 
 ## Producers
 
@@ -516,7 +559,7 @@ class Feed {
 | Rule | Diagnostic |
 | --- | --- |
 | any of the three outside effect code | `EK2201` |
-| `restore { }` outside an `uninterruptible` block; one inside an `interruptible` block nested in it is inside, as `$restore` is in scope there | EK2111 |
+| `restore { }` outside an `uninterruptible` block; one inside an `interruptible` block nested in it is inside, as `$restore` is in scope there | `EK2111` |
 | `restore { }` inside an `effect` arrow or `effect` block nested in the `uninterruptible` block, `uninterruptible { const e = effect { restore { try poll() } }; try e }`: `restore` is lexical, and the nested Effect can run after the mask ends | `EK2202` |
 
 ### Meaning

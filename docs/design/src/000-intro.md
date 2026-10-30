@@ -47,13 +47,11 @@ What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md
 Each construct has four parts:
 
 - **Syntax**, as links to the productions of [Appendix A](900-appendices.md#appendix-a-grammar), the only place the grammar is written, with prose and examples.
-- **Static rules**, with the diagnostic each rule reports. Every rule has its code, listed in [Appendix B](900-appendices.md#appendix-b-diagnostics) (VIP-34 requires every diagnostic to have one).
+- **Static rules**, with the diagnostic each rule reports and its code in [Appendix B](900-appendices.md#appendix-b-diagnostics). VIP-34 requires every diagnostic to have a code; the code mapping for imported Effect language-service rules remains **Undecided (pending VIP)**. VIP-38 keeps their existing Effect language-service configuration.
 - **Meaning**, as the exact Effect TypeScript the construct equals, beside the VibeLang.
 - **Examples.**
 
 A detail that neither a VIP, a ruling nor the TypeScript or pinned TC39 counterpart decides is marked **Undecided (pending VIP)**. Such details are not part of the language until decided.
-
-Review exports must copy the VIP directory recursively, preserving the relative directory layout: the VIP index is `vips/README.md`, and the matching snapshot is under `vips/tc39-pattern-matching/`. Flattening these directories breaks the normative links. Export the current `NEEDS-WILL.md` as `UNDECIDED.md`, without prepending a superseded question list.
 
 ### Examples are pending
 

@@ -39,16 +39,17 @@ This section is the one definition of throw tracking; every other chapter refers
 
 ### Effectful callables
 
-A callable is *effectful* when its return type, written or inferred, is an Effect, a `Stream` or a `Layer`: an `effect` function or producer, Effect's own `sleep`, `sync`, `tryPromise` and `Effect.try`, a service member typed as an Effect, a `.ts` function whose return type is `Effect`. Here ‘an Effect’ uses the [Running Effects](002-running.md#try) test: assignability to `Effect.Effect<any, any, any>`. In Effect 4.1.0 this includes `error` instances, service keys and references; a plain function returning one is effectful and may not throw. Its thrown type is `never`, and it never rethrows a callback: its failures are its Effect's error channel. This is a static contract, not a JavaScript runtime guarantee: a `.ts` implementation that throws before returning produces a defect when evaluated inside an Effect generator, but a JavaScript exception at the call when evaluated in a parameter default, before the Effect exists.
+A callable is *effectful* when its return type, written or inferred, is an Effect, a `Stream` or a `Layer`: an `effect` function or producer, Effect's own `sleep`, `sync`, `tryPromise` and `Effect.try`, a service member typed as an Effect, a `.ts` function whose return type is `Effect`. Except for `never` (below), ‘an Effect’ uses the [Running Effects](002-running.md#try) test: assignability to `Effect.Effect<any, any, any>`. In Effect 4.1.0 this includes `error` instances, service keys and references; a plain function returning one is effectful and may not throw. Its thrown type is `never`, and it never rethrows a callback: its failures are its Effect's error channel. This is a static contract, not a JavaScript runtime guarantee: a `.ts` implementation that throws before returning produces a defect when evaluated inside an Effect generator, but a JavaScript exception at the call when evaluated in a parameter default, before the Effect exists.
 
 Because an effectful function can't throw, its own code that runs before the Effect exists may not throw either. In a plain `.vibe` function whose return type is an Effect, a `Stream` or a `Layer`, a `throw`, or a call whose thrown type is not `never`, is an error (`EK0401`): make it an `effect` function, or return `fail(e)`. This follows VIP-4's effectful-callable amendment; its later ‘`try` only in effect code’ amendment removes the old restriction on non-Effect return annotations. The same holds for code an `effect` function runs at the call ([Code outside the generator](#code-outside-the-generator)).
 
-Only a return type wholly consisting of Effects, `Stream`s or `Layer`s is effectful. `any`, `unknown` and unions containing a non-effectful member, such as `Effect.Effect<number> | undefined`, remain throw-tracked (decided detail 36).
+Only a return type other than `never`, wholly consisting of Effects, `Stream`s or `Layer`s, is effectful. `never`, `any`, `unknown` and unions containing a non-effectful member, such as `Effect.Effect<number> | undefined`, remain throw-tracked (decided detail 36).
 
 ```vibe es
 // compiler-gap: pending VIP-4
 error Missing
 function missing() { return new Missing() } // effectful; no synchronous throw
+const boom = () => { throw new Error("x") } // throws Error; never is not effectful
 // function bad() { throw new Error(); return new Missing() } // error
 ```
 
@@ -57,6 +58,7 @@ import { Data, Effect } from "effect"
 
 class Missing extends Data.TaggedError("Missing") {}
 function missing() { return new Missing() }
+const boom = () => { throw new Error("x") }
 const failure: Effect.Effect<never, Missing> = missing()
 ```
 
@@ -69,12 +71,14 @@ const failure: Effect.Effect<never, Missing> = missing()
 | a plain, non-`async` `.vibe` function: declaration, expression, arrow, method or constructor | inferred from its body: each uncaught `throw`, and each unwrapped call whose thrown type is not `never`. Koka infers its `exn` effect the same way. A constructor's body includes its class's field initializers, which `new X()` runs |
 | an `async` `.vibe` function, any form | `never`: calling it returns a Promise, and a throw in its body rejects that Promise. Exceptions while evaluating its arguments belong to the caller |
 | a getter or setter | not tracked: property access is never a tracked call |
-| a function type or interface member, in any file | `never`, or the `T` of its `@throws {T}` (Swift's non-`throws` function type) |
-| a foreign callable declaration (`.ts`, `.d.ts`, JavaScript), including callable constants, class methods and each overload | the `T` of its `@throws {T}`; `unknown` without one; `@throws {never}` says it can't throw |
+| a function type written in a type position (alias, interface, parameter or type annotation), in any file | `never`, or the `T` of its `@throws {T}` (Swift's non-`throws` function type) |
+| a foreign callable declaration (`.ts`, `.d.ts`, JavaScript), including callable constants, class methods and each overload | the `T` of its own `@throws {T}`, otherwise its declared type's `@throws`, otherwise `unknown`; `@throws {never}` says it can't throw |
 | a JavaScript global or a non-effectful Effect export | VibeLang's shipped annotation ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)): `JSON.parse` throws `SyntaxError`, `Math.max` and `Option.some` throw `never`, the decoder that `Schema.decodeUnknownSync` returns throws `SchemaError` |
 | a function with `@rethrows p` | its own thrown type, plus the thrown type of the argument passed for `p`. The tag is written, never inferred (VIP-4) |
 
 `@throws {T}` and `@rethrows p` are JSDoc tags on non-effectful declarations; neither adds synchronous throws to an effectful callable. The output of a `.vibe` file always tags its exported non-effectful callables ([Declaration output](001-functions.md#declaration-output)). Implicit throws, such as reading a property of `undefined` or a stack overflow, are never tracked; they are defects, as in `Effect.sync`.
+
+The rows apply in order and the first that matches decides, so the effectful row takes precedence: a `.ts` function returning an Effect throws `never`. A foreign binding uses its own `@throws`, otherwise its declared type's tag; absent either, each signature gets `unknown`. A type written in a type position defaults to `never` instead. Contracts travel with signatures: `const g = f` preserves `f`'s thrown type. An unannotated foreign class method throws `unknown`; a call through an unannotated interface member throws `never`.
 
 Contracts attach to each call signature, including each overload and a returned callable's own signature; declaration output preserves them (decided details 37–38). Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives' thrown types (detail 44). TypeScript still requires narrowing `unknown` before calling it.
 
@@ -131,11 +135,32 @@ As for Swift's non-`throws` function type, a function whose thrown type is `T` i
 
 The rule applies member by member when assigning an object to an interface or object type with callable members, as TypeScript checks member assignability. The rule applies to arguments too. VIP-4's two wrappers declare their thunk parameter `@throws {unknown}` ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)), in both overloads: the function argument or the options object's `try` property. Thus `Effect.try(() => parse(s))` and `tryPromise(() => queryDb(q))` are allowed, and the wrapper turns a throw into a failure. The options object's `catch` callback has the ordinary non-throwing function type; a tracked throw there is rejected, while an implicit throw is a defect. Effect's `LazyArg` and other callback parameter types are function types, including those in `.d.ts` files. Every other function parameter admits only what its type says: `sync(() => parse(s))` is an error, so wrap the call with `Effect.try`.
 
+JavaScript's `Promise` constructor separately admits `@throws {unknown}` on its executor's call signature (detail 64). The constructor itself has `@throws {never}` and no `@rethrows`: executor throws reject the Promise. Evaluating the executor argument is still the caller's code. This does not change the Effect wrapper contracts above.
+
+```vibe es
+// compiler-gap: pending VIP-4
+function rejected() { return new Promise<never>(() => { throw "executor" }) }
+effect function checked() { return try tryPromise(() => rejected()) }
+```
+
+```ts effect
+import { Effect } from "effect"
+
+interface PromiseExecutor<T> {
+  /** @throws {unknown} */
+  (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void): void
+}
+const executor: PromiseExecutor<never> = () => { throw "executor" }
+/** @throws {never} */
+function rejected() { return new Promise<never>(executor) }
+const checked = Effect.tryPromise(() => rejected())
+```
+
 ### Calls in effect code
 
 | Rule | Diagnostic |
 | --- | --- |
-| In effect code, a call, `new` expression or tagged template whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
+| In effect code or the body of a plain `catch` handler, a call, `new` expression or tagged template whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |
 | In effect code, a call, `new` expression or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |
 
 A plain function may propagate a JavaScript throw; an `async` function turns it into rejection. Effect code calls a function whose thrown type is `never` directly. Promise-producing calls inside wrapper thunks are ordinary JavaScript; wrapping never exempts a platform call from [VIP-33](../vips/0033-platform-stdlib.md). `Promise.reject(e)`, like every Promise-producing call, must be inside a wrapper thunk in effect code. An unannotated foreign `queryDb` may throw `unknown`, so use `tryPromise(() => queryDb(q))`; `promise` does not admit that throwing thunk under the wrapper annotations above.
@@ -290,13 +315,13 @@ error Access {
 | Rule | Diagnostic |
 | --- | --- |
 | a constructor in an `error` or `schema error` body | `EK1301` |
-| a `_tag` member in an `error` or `schema error` body | EK2117 |
-| an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | EK2117 |
+| a `_tag` member in an `error` or `schema error` body | `EK2117` |
+| an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |
 | a user-written `static` member or setter, in either error form | `EK1302` |
 | type parameters, such as `error Invalid<T> { value: T }`, in either error form | `EK1303` |
 | any other member that is not a `Field`, a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |
 
-A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets that diagnostic alone, including in either error form. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports EK2117; `static x = 1` reports the static-member rule, not the general member rule.
+A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets that diagnostic alone, including in either error form. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 
 ### Meaning
 

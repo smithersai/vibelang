@@ -18,11 +18,11 @@ In a directory, VibeLang reads the first of these that exists:
 
 ```jsonc
 // base.json
-{ "vibe": { "effectGlobals": false, "severities": { "EK4701": "off" } } }
+{ "vibe": { "effectGlobals": false, "severities": { "EK0801": "off" } } }
 // child config
 { "extends": "./base.json", "vibe": { "effectModules": false } }
 // effective vibe section
-{ "effectGlobals": false, "effectModules": false, "severities": { "EK4701": "off" } }
+{ "effectGlobals": false, "effectModules": false, "severities": { "EK0801": "off" } }
 ```
 
 `extends` inherits `vibe` key by key: child keys win and missing keys come from the base. `severities` merges entry by diagnostic code (decided detail 59).
@@ -44,10 +44,10 @@ Effect.runSync(Effect.succeed(42)) // 42
 ```
 
 ```json
-{ "vibe": { "severities": { "EK4701": "warning", "EK4609": "off" } } }
+{ "vibe": { "severities": { "EK0801": "error", "EK4609": "off" } } }
 ```
 
-`vibe.severities` is a map keyed by the `EKxxxx` code printed by the CLI and language server. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only warning codes may appear; an error code or an unknown code is a config error (decided detail 57). This is a compiler setting, with no Effect TypeScript runtime translation.
+`vibe.severities` is a map keyed by the `EKxxxx` code printed by the CLI and language server. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only warning codes may appear; an error code or an unknown code is a config error (`EK3006`: remove the entry; decided detail 57). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
 
 ## The Effect version
 
@@ -71,7 +71,7 @@ vibelang lint -p tsconfig.json
 
 The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
 
-An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The built-in Effect language-service floating-Effect diagnostic reports it, just as it reports a discarded Effect in TypeScript.
+An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The Effect language service's floating-Effect rule reports it, just as it reports a discarded Effect in TypeScript, and the existing Effect language-service configuration selects and configures the rule. Whether the rule also gets an `EK` code that `vibe.severities` can adjust is Undecided (pending VIP).
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 

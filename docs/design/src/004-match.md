@@ -52,7 +52,7 @@ VibeLang adds one check to TC39's proposal.
 
 The check only reports errors. It never changes what runs: a `match` that passes the check compiles to the same tests as one that doesn't need it.
 
-The check covers literal unions, `boolean`, `data` unions, `error` unions and enums. Guarded arms cover nothing ([VIP-7, amended](../vips/0007-match.md)).
+The check covers literal unions, `boolean`, `data` unions, `error` unions and enums ([VIP-7, amended](../vips/0007-match.md)). An arm covers a case only when its pattern matches every value of that case: for `error NotFound { id: string }`, `when NotFound:` and `when NotFound(let e):` cover `NotFound`; `when NotFound():`, `when NotFound({ id: "x" }):` and guarded arms cover nothing. The empty extractor never matches; the field-constrained extractor leaves other `id` values uncovered.
 
 ```vibe es
 // compiler-gap: pending VIP-7
