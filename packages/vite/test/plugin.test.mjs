@@ -1,5 +1,4 @@
 import assert from "node:assert/strict"
-import { spawn } from "node:child_process"
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
@@ -7,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import test from "node:test"
 import { build, createServer } from "vite"
 import vibelang from "../src/index.js"
+import { runChild } from "./child.mjs"
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url))
 const compiler = join(packageRoot, "../compiler/bin/vibelang")
@@ -31,15 +31,8 @@ export default defineConfig({
 }
 
 function runVitest(root, failing = false) {
-  return new Promise((accept, reject) => {
-    let output = ""
-    const child = spawn(process.execPath, [vitest, "run", "--no-color"], {
-      cwd: root, env: { ...process.env, FAILING_TEST: failing ? "1" : "", NO_COLOR: "1" }
-    })
-    child.stdout.on("data", (data) => { output += data })
-    child.stderr.on("data", (data) => { output += data })
-    child.on("error", reject)
-    child.on("close", (code) => accept({ code, output }))
+  return runChild(process.execPath, [vitest, "run", "--no-color"], {
+    cwd: root, env: { ...process.env, FAILING_TEST: failing ? "1" : "", NO_COLOR: "1" }
   })
 }
 

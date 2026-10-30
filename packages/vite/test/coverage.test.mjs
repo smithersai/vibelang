@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
-import { spawn } from "node:child_process"
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { basename, dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
+import { runChild } from "./child.mjs"
 
 // test/coverage holds .vibe modules beside the Effect TypeScript an author
 // would write instead (<name>.effect.ts), and tests that call both the same
@@ -37,14 +37,7 @@ export default defineConfig({
   }
 })
 `)
-  const { code, output } = await new Promise((accept, reject) => {
-    let output = ""
-    const child = spawn(process.execPath, [vitest, "run", "--no-color"], { cwd: root, env: { ...process.env, NO_COLOR: "1" } })
-    child.stdout.on("data", (data) => { output += data })
-    child.stderr.on("data", (data) => { output += data })
-    child.on("error", reject)
-    child.on("close", (code) => accept({ code, output }))
-  })
+  const { code, output } = await runChild(process.execPath, [vitest, "run", "--no-color"], { cwd: root, env: { ...process.env, NO_COLOR: "1" } })
   assert.equal(code, 0, output)
   return JSON.parse(await readFile(join(root, "coverage/coverage-final.json"), "utf8"))
 }

@@ -5,11 +5,12 @@
 // bundle. Run test/run.sh, which builds the compiler and the runtime and
 // links the fixtures' node_modules first.
 import assert from "node:assert/strict"
-import { spawn, spawnSync } from "node:child_process"
+import { spawnSync } from "node:child_process"
 import { cp, mkdtemp, rm } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { after, before, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
+import { runChild } from "./child.mjs"
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const hasBun = spawnSync("bun", ["--version"]).status === 0
@@ -84,16 +85,9 @@ if (!result.success) { console.error(result.logs.map(String).join("\\n")); proce
   }
 }
 
-function run(file) {
-  return new Promise((accept, reject) => {
-    let stdout = ""
-    let stderr = ""
-    const child = spawn(process.execPath, [file], { cwd: root })
-    child.stdout.on("data", (data) => { stdout += data })
-    child.stderr.on("data", (data) => { stderr += data })
-    child.on("error", reject)
-    child.on("close", (code) => accept({ code, stdout, stderr }))
-  })
+async function run(file) {
+  const { code, stdout, stderr } = await runChild(process.execPath, [file], { cwd: root })
+  return { code, stdout, stderr }
 }
 
 describe("an entry module's main in a bundle (D135)", () => {

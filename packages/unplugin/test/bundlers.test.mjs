@@ -12,6 +12,7 @@ import { join, resolve } from "node:path"
 import { createInterface } from "node:readline"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
+import { runChild } from "./child.mjs"
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const build = join(here, "build.mjs")
@@ -49,16 +50,9 @@ async function edit(file, from, to, watcher) {
   watcher?.log(`edit ${file.split("/").at(-1)}: ${from} -> ${to}`)
 }
 
-function spawned(command, args, cwd) {
-  return new Promise((accept, reject) => {
-    let stdout = ""
-    let stderr = ""
-    const child = spawn(command, args, { cwd })
-    child.stdout.on("data", (data) => { stdout += data })
-    child.stderr.on("data", (data) => { stderr += data })
-    child.on("error", reject)
-    child.on("close", (code) => accept({ code, stdout, stderr }))
-  })
+async function spawned(command, args, cwd) {
+  const { code, stdout, stderr } = await runChild(command, args, { cwd })
+  return { code, stdout, stderr }
 }
 
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
