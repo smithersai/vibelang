@@ -247,7 +247,7 @@ effect function discard() {
 | Anti-pattern | `globalErrorInEffectFailure` | EK4804, warning | `throw new Error("boom")`; declare `error Boom { }` |
 | Anti-pattern | `lazyPromiseInEffectSync` | Use `promise` for a Promise whose rejection is a defect | `try promise(() => load(url))`, with `load` from a `.ts` module |
 | Anti-pattern | `leakingRequirements` | EK4809, warning; `@vibelang leakable` exempts a service | `service Users { find(): User!!Db; all(): User[]!!Db }` |
-| Anti-pattern | `multipleEffectProvide` | EK4808, warning, with a quick fix | `provide A { provide B { … } }`; the fix writes `provide A, B { … }` |
+| Anti-pattern | `multipleEffectProvide` | `EK4808`, warning | `provide A { provide B { … } }`; nesting alone does not imply separate layer builds. `Layer.provideMerge(A)(B)` retains both layers when `B` needs `A`; review evaluation and build order before composing manually. There is no automatic merge. |
 | Anti-pattern | `returnEffectInGen` | EK4802, warning | `return program`; use `return try program` |
 | Anti-pattern | `runEffectInsideEffect` | Covered: EK1005 | `Effect.runPromise(load())` inside a function |
 | Anti-pattern | `schemaSyncInEffect` | Effect 3 only | None |

@@ -1,0 +1,2 @@
+warning EK4808: This provide block contains only another provide block.
+Combine independent layers with provide A, B { … }; use Layer.provideMerge(A)(B) when B needs A, retaining both layer outputs. Review evaluation and build order before combining blocks.

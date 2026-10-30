@@ -1,0 +1,19 @@
+// expect-result: 0
+service S { static readonly key = "tests/provide-nested-guidance/S"; n: number }
+service Outer { static readonly key = "tests/provide-nested-guidance/Outer"; n: number }
+service Inner { static readonly key = "tests/provide-nested-guidance/Inner"; n: number }
+const L = Layer.succeed(S, { n: 1 })
+const OuterLive = Layer.succeed(Outer, { n: 10 })
+const InnerLive = Layer.effect(Inner, Effect.map(Outer, outer => ({ n: outer.n + 1 })))
+export effect function main(): number!! {
+  provide L {
+    provide L { try Effect.void }
+  }
+  let total = 0
+  provide Layer.provideMerge(OuterLive)(InnerLive) {
+    const outer = try Outer()
+    const inner = try Inner()
+    total = outer.n + inner.n
+  }
+  return total - 21
+}

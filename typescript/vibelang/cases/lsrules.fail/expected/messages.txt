@@ -5,3 +5,5 @@ error EK4807: UsersLive needs Directory, which DirectoryLive provides, but Layer
 error EK4809: Every member of Reports needs Directory, so each caller must provide it.
 error EK4810: This assertion drops NotFound from the Effect's E channel, so no contract checks it.
 error EK4813: Effect.catchAll is Effect 3 API; Effect 4 calls it Effect.catch.
+error EK4808: This provide block contains only another provide block.
+Combine independent layers with provide A, B { … }; use Layer.provideMerge(A)(B) when B needs A, retaining both layer outputs. Review evaluation and build order before combining blocks.

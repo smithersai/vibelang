@@ -445,7 +445,7 @@ try {
     assert(fixed.includes("return sync((text) => text.length, text)"), `fixed text: ${fixed}`)
   })
 
-  await check("code action: Effect's language service rules report in .vibe, and their quick fixes call, merge, and rename", async () => {
+  await check("code action: Effect's language service rules report in .vibe, and their quick fixes call and rename", async () => {
     open("src/lsrules.vibe", "vibe")
     const items = await diagnostics("src/lsrules.vibe")
     const codes = items.map((d) => `${d.source}${d.code}:${d.severity}`).sort()
@@ -463,9 +463,9 @@ try {
     assert(floating.range.start.line === start.line && floating.range.start.character === start.character, `range ${JSON.stringify(floating.range)}`)
     const callEdits = await fixFor(floating, "Call it to run it")
     assert(callEdits.length === 1 && callEdits[0].newText === "()" && callEdits[0].range.start.character === start.character + "program".length, `edits ${JSON.stringify(callEdits)}`)
-    const mergeEdits = await fixFor(items.find((d) => d.code === 4808), "Provide both layers in one block")
-    const merged = "provide wire(NameLive, GreetingLive) {\n    return Greeting.text()\n  }"
-    assert(mergeEdits.length === 1 && mergeEdits[0].newText === merged, `edits ${JSON.stringify(mergeEdits)}`)
+    const nested = items.find((d) => d.code === 4808)
+    const nestedActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: nested.range, context: { diagnostics: [nested], only: ["quickfix"] } })) ?? []
+    assert(!nestedActions.some((a) => a.title === "Provide both layers in one block"), `unsafe nested provide merge: ${JSON.stringify(nestedActions)}`)
     const renameEdits = await fixFor(items.find((d) => d.code === 4813), "Write Effect.catch")
     assert(renameEdits.length === 1 && renameEdits[0].newText === "catch", `edits ${JSON.stringify(renameEdits)}`)
   })

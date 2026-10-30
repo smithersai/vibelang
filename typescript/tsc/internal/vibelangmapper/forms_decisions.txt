@@ -2526,6 +2526,8 @@ typescript/vibelang/cases/provide-generic-requirement/main.vibe:19:25 lambda eff
 typescript/vibelang/cases/provide-generic-requirement/main.vibe:19:63 byname program annotation
 typescript/vibelang/cases/provide-generic-requirement/main.vibe:6:27 lambda effectFn fallback
 typescript/vibelang/cases/provide-named-block-argument/main.vibe:3:61 block appended/program annotation
+typescript/vibelang/cases/provide-nested-guidance/main.vibe:7:39 byname program table
+typescript/vibelang/cases/provide-nested-guidance/main.vibe:7:57 lambda plain table
 typescript/vibelang/cases/provide-service-no-layer/main.vibe:13:3 lambda effectFn service
 typescript/vibelang/cases/provide-service-no-layer/main.vibe:25:18 lambda effectFn annotation
 typescript/vibelang/cases/provide-service-no-layer/main.vibe:34:30 lambda effectFn service

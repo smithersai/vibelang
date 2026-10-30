@@ -38,7 +38,7 @@ var (
 	// EK4807 (layerMergeAllWithDependencies): Layer.mergeAll of a layer that needs another. {0} is the dependent layer, {1} the services, {2} the provider.
 	EK4807 = message(4807, warningCategory, "{0} needs {1}, which {2} provides, but Layer.mergeAll builds its layers side by side.")
 	// EK4808 (multipleEffectProvide): a provide block that is all of another one.
-	EK4808 = message(4808, warningCategory, "This provide block is all of another one, so each builds its layers on its own.")
+	EK4808 = message(4808, warningCategory, "This provide block contains only another provide block.")
 	// EK4809 (leakingRequirements): a service whose every member needs one service. {0} is the service, {1} what each member needs.
 	EK4809 = message(4809, warningCategory, "Every member of {0} needs {1}, so each caller must provide it.")
 	// EK4810 (unsafeEffectTypeAssertion): an assertion that drops part of a channel. {0} is what it drops, {1} the channel.
@@ -79,7 +79,6 @@ func init() {
 	ls.RegisterCodeFixProvider(trustedValueFix)
 	ls.RegisterCodeFixProvider(callEffectFix)
 	ls.RegisterCodeFixProvider(mergeAllFix)
-	ls.RegisterCodeFixProvider(nestedProvideFix)
 	ls.RegisterCodeFixProvider(assertionFix)
 	ls.RegisterCodeFixProvider(outdatedAPIFix)
 	ls.RegisterCodeFixProvider(outdatedAPITypeScriptFix)
@@ -797,7 +796,7 @@ func (r *ruleCheck) checkProvide(block *ast.Node) {
 	if len(statements) == 2 && isProvideBlock(statements[1]) {
 		inner := statements[1]
 		d := reportAt(r.c, r.file, core.NewTextRange(scanner.SkipTrivia(r.file.Text(), inner.Pos()), provideLayer(inner).End()), EK4808)
-		note(d, "Provide every layer in one block: provide A, B { … }, or provide wire(A, B) { … } when one needs the other.")
+		note(d, "Combine independent layers with provide A, B { … }; use Layer.provideMerge(A)(B) when B needs A, retaining both layer outputs. Review evaluation and build order before combining blocks.")
 	}
 	for _, provider := range providerList(provideLayer(block)) {
 		if !isServiceProvider(provider) && isLayerType(r.c, r.c.GetTypeAtLocation(provider)) {

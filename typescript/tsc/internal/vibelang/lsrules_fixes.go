@@ -146,63 +146,6 @@ var mergeAllFix = &ls.CodeFixProvider{
 	},
 }
 
-// nestedProvideFix merges the provide block that EK4808 reports into the
-// block around it: provide A { provide B { … } } becomes provide A, B { … },
-// or provide wire(A, B) { … } when B needs a service that A provides.
-var nestedProvideFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4808.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		file := fix.SourceFile
-		var inner *ast.Node
-		var visit func(node *ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if isProvideBlock(node) && nodeStart(file, node) == fix.Span.Pos() && isProvideBlock(node.Parent) {
-				inner = node
-				return true
-			}
-			return node.ForEachChild(visit)
-		}
-		file.AsNode().ForEachChild(visit)
-		if inner == nil {
-			return nil, nil
-		}
-		outer := inner.Parent
-		outerLayer, innerLayer := provideLayer(outer), provideLayer(inner)
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
-		provided, _, _ := providerChannelsOf(c, outerLayer)
-		_, _, needs := providerChannelsOf(c, innerLayer)
-		dependent := false
-		if provided != nil && needs != nil {
-			for _, t := range needs.Distributed() {
-				for _, p := range provided.Distributed() {
-					dependent = dependent || t == p
-				}
-			}
-		}
-		done()
-		outerText, innerText := scanner.GetTextOfNode(outerLayer), scanner.GetTextOfNode(innerLayer)
-		providers := outerText + ", " + innerText
-		if dependent {
-			if len(providerList(outerLayer)) != 1 || len(providerList(innerLayer)) != 1 || isServiceProvider(outerLayer) || isServiceProvider(innerLayer) {
-				return nil, nil // wire composes layers, not Key = value providers
-			}
-			providers = "wire(" + providers + ")"
-		}
-		text := file.Text()
-		open := strings.IndexByte(text[innerLayer.End():], '{')
-		if open < 0 {
-			return nil, nil
-		}
-		body := text[innerLayer.End()+open+1 : inner.End()-1]
-		body = strings.ReplaceAll(body, "\n"+lineIndent(text, nodeStart(file, inner)), "\n"+lineIndent(text, nodeStart(file, outer)))
-		return []*ls.CodeAction{{
-			Description: "Provide both layers in one block",
-			Changes:     replaceRange(fix, nodeStart(file, outer), outer.End(), "provide "+providers+" {"+body+"}"),
-		}}, nil
-	},
-}
-
 // assertionFix removes the assertion that EK4810 reports.
 var assertionFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
