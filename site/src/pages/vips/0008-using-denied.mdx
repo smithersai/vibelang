@@ -54,7 +54,7 @@ About 35 review findings over 10 rounds: 13 in rounds 2 to 4, 17 in rounds 6 to 
 
 Why it was hard: Effect has no block scope. A resource lives until the nearest `Effect.scoped`, so block-scoped `using` needed rules about which block is a scope, on top of telling two kinds of initializer apart. With no special syntax, none of these rules exist.
 
-## Effect's scope functions (effect 4.0.6)
+## Effect's scope functions (effect 4.1.0)
 
 ```ts
 scoped(self: Effect<A, E, R>): Effect<A, E, Exclude<R, Scope>>   // a fresh Scope, closed when self ends

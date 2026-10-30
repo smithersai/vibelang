@@ -30,7 +30,7 @@ func init() {
 			{
 				VIP:      14,
 				Template: `import { ‹Module› } from "effect"`,
-				Quote:    "Every root export of the core `effect` package (149 in effect 4.0.6, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`.",
+				Quote:    "Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`.",
 				Reading:  "VIP-14 shows no Effect TS; the reference imports each module the program names from effect's root, which exports the same modules as effect/<Module>.",
 			},
 			{

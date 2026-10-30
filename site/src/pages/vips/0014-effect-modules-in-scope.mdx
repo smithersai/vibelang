@@ -15,7 +15,7 @@ const first = Effect.Array.head(xs)              // Effect's Array module: JavaS
 const o = Option.some(1)                         // Effect's Option: the DOM's Option is platform-specific
 ```
 
-- Every root export of the core `effect` package (149 in effect 4.0.6, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`.
+- Every root export of the core `effect` package (149 in effect 4.1.0, such as `Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`) is in scope in a `.vibe` file without an import. Emitted code imports each module it uses from `effect/<Module>`.
 - This is configurable in `tsconfig.json`, as VIP-6's globals are.
 - **Precedence by default.** JavaScript globals that aren't platform-specific, and TypeScript's own globals, keep their meaning. Effect's module of the same name is then reachable as `Effect.X`, or by import.
 
