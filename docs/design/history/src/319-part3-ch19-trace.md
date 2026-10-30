@@ -2,6 +2,8 @@
 
 > **Historical, not normative.** This is the previous specification, kept as reference. The language is defined by the accepted VIPs (`docs/design/vips/`) and the specification in `docs/design/src/`.
 
+> **Retired handler design.** The first release has no handlers or continuation kernel. `control`, `handle`, `resume`, `abandon` are not supported. [VIP-35](../../vips/0035-handlers-open.md) remains an open proposal; any handler examples and machine descriptions below record the old prototype.
+
 This chapter follows one program through the machine before Chapter 20 defines it: the checkout from Chapter 9, simplified, plus a request-scoped audit log so the trace shows which Context each piece of code sees. Kernel test T1 runs exactly this program, lowered by hand.
 
 ```ts es

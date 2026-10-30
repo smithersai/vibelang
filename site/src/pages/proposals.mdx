@@ -649,6 +649,8 @@ The earlier design removed these features itself before October 2026. They are r
 | Native pin, the `TypeScript` requirement, and portability classes | `native function checksum(bytes: Uint8Array): Digest` | With one target, every program depends on JavaScript, so the requirement carried no information | Nothing |
 | Host-module requirement | `Module<"node:fs">` | Withdrawn with the native pin | EK4402 refuses running Node built-ins in `.vibe` files |
 
+Effect handlers remain an open proposal in VIP-35 and are not part of the first release. The compiler and runtime have no handler implementation. Use services and layers for the use cases described on the [proposal status page](/vibelang-features/111-control-operations-and-handlers).
+
 ## Shipped features
 
 These features from the earlier design exist in VibeLang today, most with new syntax. The [cheat sheet](/vibelang-features/115-cheat-sheet) shows the current forms next to Effect code.
@@ -677,7 +679,6 @@ These features from the earlier design exist in VibeLang today, most with new sy
 | Bounded fan-out | `Governor.withLimit(n)`, `mapUnordered` | `for concurrent(n) (const x of xs) ...` |
 | Streams and coordination | `Stream`, `Queue`, `Semaphore`, `Channel` from `vibelang/concurrency` | Effect's `Stream`, `Queue`, and `Semaphore` |
 | Cancellation | `Cancellation.context().checkpoint()!` | Interruption: `interrupt()`, `interruptible { }`, `uninterruptible { }` |
-| Effect handlers | One-shot continuations inside the compiler, not spellable in source | `control Approval { ... }` and `try { ... } handle Approval.approve(request) { resume(true) }` ([control operations](/vibelang-features/111-control-operations-and-handlers)) |
 | Rows on function values | Failure and requirement rows carried by function values | Function types such as `(id: string) => User!NotFound` |
 | Declarations keep contracts | `vibe compile --declaration` | `.d.ts` files with `Effect.Effect<A, E, R>` |
 | Diagnostic codes | `VIBE1206` and other `VIBE` codes | `EK4401` and other `EK` codes |

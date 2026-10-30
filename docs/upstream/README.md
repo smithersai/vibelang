@@ -21,8 +21,8 @@ later releases or the current state of upstream issues.
 Each draft contains a minimal reproduction, the expected behavior or proposed
 contract, the VibeLang impact, and a suggested fix. Runtime observations
 come from the [Effect research](../research/effect4-runtime.md),
-[kernel changes](../../experiments/KERNEL-CHANGES.md),
-[prototype findings](../../prototype/esc/FINDINGS.md), and the tests linked in
+[historical kernel changes](https://github.com/smithersai/vibelang/blob/e130b5d26d024100797feafde55c5a0cd6b31eec/experiments/KERNEL-CHANGES.md),
+[historical prototype findings](https://github.com/smithersai/vibelang/blob/e130b5d26d024100797feafde55c5a0cd6b31eec/prototype/esc/FINDINGS.md), and the tests linked in
 each draft. The supported-prompt and segmented-stack entries are API and
 performance proposals, not claims that Effect violates a public contract.
 

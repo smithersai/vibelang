@@ -22,11 +22,10 @@ The same Layer object builds twice under sibling provides, even when the calls
 overlap. Run
 `cd experiments && bun scripts/runtime-facts/q6-siblings.ts` for the
 [resource-owning reproduction](../../experiments/scripts/runtime-facts/q6-siblings.ts).
-For shared prebuilt ambient memoization, run
-`bun test tests/conformance/source-claims.test.ts -t D05`:
-[D05](../../experiments/tests/conformance/source-claims.test.ts) builds the
-Layer into one MemoMap, supplies it through `Layer.CurrentMemoMap`, and asserts
-one acquisition and one release.
+The [historical D05 reproduction](https://github.com/smithersai/vibelang/blob/e130b5d26d024100797feafde55c5a0cd6b31eec/experiments/tests/conformance/source-claims.test.ts)
+built the Layer into one MemoMap, supplied it through `Layer.CurrentMemoMap`,
+and asserted one acquisition and one release. Its conformance suite was
+retired with the continuation kernel; the source remains historical evidence.
 
 The [dated research](../research/effect4-runtime.md), section 6, records a
 migration note stating that memoization is shared between `Effect.provide`

@@ -2,6 +2,8 @@
 
 > **Historical, not normative.** This is the previous specification, kept as reference. The language is defined by the accepted VIPs (`docs/design/vips/`) and the specification in `docs/design/src/`.
 
+> **Retired handler design.** The first release has no handlers or continuation kernel. `control`, `handle`, `resume`, `abandon` are not supported. [VIP-35](../../vips/0035-handlers-open.md) remains an open proposal; any handler examples and machine descriptions below record the old prototype.
+
 ```text
 first, in the Go fork          G19  one checker pass: call forms by declared type, component fixpoint (D52)
 the largest external risk      G1   prompt capture uses undocumented Effect fields

@@ -2,6 +2,8 @@
 
 > **Historical, not normative.** This is the previous specification, kept as reference. The language is defined by the accepted VIPs (`docs/design/vips/`) and the specification in `docs/design/src/`.
 
+> **Retired handler design.** The first release has no handlers or continuation kernel. `control`, `handle`, `resume`, `abandon` are not supported. [VIP-35](../../vips/0035-handlers-open.md) remains an open proposal; any handler examples and machine descriptions below record the old prototype.
+
 ```ts es
 const approved = handle(() => {
   const viaMap = ids.map((id) => Approval.approve(id))                    // EK4301: a JavaScript frame
