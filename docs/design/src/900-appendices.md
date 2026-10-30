@@ -118,7 +118,8 @@ EffectFunction = EffectModifier [no LineTerminator here] "function" Name? TypePa
 #### EffectArrow
 
 ```text
-EffectArrow = EffectModifier [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
+EffectArrow = EffectModifier [no LineTerminator here] BindingIdentifier [no LineTerminator here] "=>" ConciseBody
+            | EffectModifier [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
 ```
 
 #### EffectMethod
@@ -164,7 +165,7 @@ Params = "(" FormalParameters ")"
 #### ArrowParams
 
 ```text
-ArrowParams = ArrowParameters   (an identifier or a parenthesized list, as for async)
+ArrowParams = "(" FormalParameters ")"   (TypeScript's parenthesized async-arrow parameters and checks)
 ```
 
 #### Modifiers

@@ -14,7 +14,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 
 ### Syntax
 
-[EffectFunction](900-appendices.md#effectfunction), [EffectArrow](900-appendices.md#effectarrow) and [EffectMethod](900-appendices.md#effectmethod). [ArrowParams](900-appendices.md#arrowparams) and [Modifiers](900-appendices.md#modifiers) are TypeScript's, as for `async`: `effect x => …` is allowed. `export` and `export default` come before `effect function` through ECMAScript's `ExportDeclaration`, as before `async function`.
+[EffectFunction](900-appendices.md#effectfunction), [EffectArrow](900-appendices.md#effectarrow) and [EffectMethod](900-appendices.md#effectmethod). [ArrowParams](900-appendices.md#arrowparams) is TypeScript's parenthesized `async`-arrow parameter list, and [Modifiers](900-appendices.md#modifiers) are its class-member modifiers. As for `async`, `effect x => …` is allowed; only a parenthesized arrow head may have type parameters or a return annotation. `export` and `export default` come before `effect function` through ECMAScript's `ExportDeclaration`, as before `async function`.
 
 - `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1), apart from the `effect { … }` block (VIP-2). `Name` is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
 - There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start or after `export`, `effect` or `async` followed by a name other than `as` or `satisfies`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
@@ -32,6 +32,17 @@ effect async function f() { }   // EK0105: pick effect or async
 async effect function g() { }   // EK0105
 const h = async effect () => 1  // EK0105
 class K { async effect get x() { return 1 } }   // EK0104 and EK0105
+```
+
+
+```vibe es
+// compiler-gap: pending VIP-1
+// Arrow-head syntax controls
+const f: (x: number) => (number!!) = effect x: number!! => x // syntax error: parenthesize x
+const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: parenthesize parameters
+const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
+const b = effect <T>(x: T) => x                              // allowed
+const c: (x: number) => (number!!) = effect x => x             // allowed
 ```
 
 ### Static rules
