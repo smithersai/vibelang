@@ -36,6 +36,34 @@ func init() {
 	})
 }
 
+func init() {
+	// A function whose only way out is a throw succeeds with never: its
+	// throw is `return yield* Effect.fail(e)`, and TypeScript infers the
+	// generator's return type from that return. Until the compiler types such
+	// a function's success as never rather than void, finish gives every body
+	// but main's a return when this construct is off.
+	Register(&Construct{
+		Key:      "vip04.throw-only-body",
+		VIP:      4,
+		Requires: []string{"vip01.effect-function", "vip04.throw", "vip05.try"},
+		Citations: []Citation{{
+			VIP:      4,
+			Template: "return yield* Effect.fail(‹e›)",
+			Quote:    "correct throw in an effect function is the same as returning Effect.fail(error)",
+			Reading:  "A body whose last statement is that return has no other return, so its Effect.gen succeeds with never, which a number const accepts.",
+		}},
+		// The probe's helper logs and throws; main reads its success as a
+		// number and fails with its error.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			h := &Func{Name: g.Name("h")}
+			h.Body = []Stmt{&Event{Label: g.Label()}, &Throw{Value: &NewError{Message: "m0"}}}
+			v := g.Name("v")
+			s.Locals = append(s.Locals, v)
+			return []Stmt{&LocalFunc{Func: h}, &Const{Name: v, Type: "number", Value: &Try{X: &Call{Name: h.Name}}}}
+		},
+	})
+}
+
 // A Throw is `throw e`, read as `return yield* Effect.fail(e)`.
 type Throw struct{ Value Expr }
 

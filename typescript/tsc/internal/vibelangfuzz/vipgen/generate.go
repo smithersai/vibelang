@@ -328,6 +328,16 @@ func (g *Gen) Block(s *Scope) []Stmt {
 // finish ends a function that returns a number with a return, when its body
 // can reach its end.
 func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
+	// Until the compiler types the success of a body that can only throw as
+	// never rather than void (vip04.throw-only-body), a body other than
+	// main's that ends in anything but a return ends inside `if (1 > 0)`,
+	// so that the return below follows it.
+	if !s.Fn.Void && !g.plain && ends(body) && (s.Fn.Name != "main" || s.Depth > 0) && !g.On("vip04.throw-only-body") {
+		if _, ok := body[len(body)-1].(*Return); !ok {
+			last := &If{Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}}, Then: []Stmt{body[len(body)-1]}}
+			body = append(body[:len(body)-1:len(body)-1], last)
+		}
+	}
 	if !s.Fn.Void && !ends(body) {
 		body = append(body, &Return{Value: g.Num(s), Succeed: g.plain})
 	}
