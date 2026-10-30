@@ -40,7 +40,13 @@ The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.
 
-Before reusing an existing install, `scripts/ci.sh` checks the installed Effect version against the package's exact pin, including `devDependencies` and `peerDependencies`. A stale shared `node_modules` link is detached before `bun install --frozen-lockfile`, so the refreshed tree belongs to this checkout.
+A `node_modules` symlink in any of these directories, including `.smithers`,
+is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never
+runs `bun install` through it. The link owner must keep that install current.
+For other existing installs outside `.smithers`, the script checks the installed
+Effect version against the package's exact pin, including `devDependencies` and
+`peerDependencies`, and reuses a matching tree. Stale or missing local trees and
+local `.smithers` installs run `bun install --frozen-lockfile`.
 
 ## Packages
 

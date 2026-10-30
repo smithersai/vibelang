@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Repository validation could fail documentation-runner and site contrast tests on a busy host because healthy work hit a short deadline; a block now gets a minute, the contrast check ten, and only blocks that hang on purpose keep a short deadline.
 
+- Running `scripts/ci.sh` could modify a shared dependency install and fail another checkout's build; it now leaves every `node_modules` symlink intact and uses that install without writing through it.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
