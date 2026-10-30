@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Exit from \"effect/Exit\"\neffect function broad(): unknown!! { return Exit.fail(\"data\") }\n")
+[]byte("\x00\x00")

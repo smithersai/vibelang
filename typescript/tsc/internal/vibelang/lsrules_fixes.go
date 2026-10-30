@@ -82,10 +82,14 @@ var callEffectFix = &ls.CodeFixProvider{
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		some, all := analyzerFor(c).programMembers(c.GetTypeAtLocation(value))
+		rejected := contractRejectsCall(c, value)
 		done()
 		uncallable := some && !all
 		if uncallable {
 			return nil, nil // a member of its union is no program, so calling it does not check
+		}
+		if rejected {
+			return nil, nil
 		}
 		changes := replaceRange(fix, value.End(), value.End(), "()")
 		if needsParentheses(value) {
@@ -93,6 +97,34 @@ var callEffectFix = &ls.CodeFixProvider{
 		}
 		return []*ls.CodeAction{{Description: "Call it to run it", Changes: changes}}, nil
 	},
+}
+
+// contractRejectsCall reports whether calling value, an Effect, would run a
+// failure or requirement, or for a returned value a success, that the
+// written contract of its function does not accept: in
+// `effect function f(): unknown!! { return Exit.fail("data") }` the call
+// would fail with string, which E = never rejects (EK2001).
+func contractRejectsCall(c *checker.Checker, value *ast.Node) bool {
+	fn := ast.GetContainingFunction(value)
+	if fn == nil || fn.Type() == nil {
+		return false // an inferred contract takes in what the call runs
+	}
+	declared := analyzerFor(c).declaredProgramReturn(fn)
+	valueType := c.GetTypeAtLocation(value)
+	if declared == nil || !isEffectType(c, valueType) && !isEffectSubtype(c, valueType) {
+		return false
+	}
+	channels := []string{"_E", "_R"}
+	if !ast.IsExpressionStatement(value.Parent) {
+		channels = append(channels, "_A")
+	}
+	for _, name := range channels {
+		runs, accepts := programChannelType(c, valueType, name), programChannelType(c, declared, name)
+		if runs == nil || accepts == nil || !c.IsTypeAssignableTo(runs, accepts) {
+			return true
+		}
+	}
+	return false
 }
 
 // mergeAllFix writes wire for the Layer.mergeAll that EK4807 reports.
