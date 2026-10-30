@@ -71,6 +71,8 @@ The plugin reports the file and leaves it unchanged when:
 
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 
+Comments between `catch` and its literal handler are preserved, including line comments.
+
 
 ## From a VibeLang checkout
 

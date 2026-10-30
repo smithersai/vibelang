@@ -485,7 +485,7 @@ func (e *encoder) catch(form parser.VibeSyntax) error {
 		e.insert(form.Left.End(), ")", -1)
 	}
 	name := e.hold(placeholderCatch, "catch", form.Word.Pos(), 0)
-	e.replace(form.Word.Pos(), form.Right.Pos(), "."+name+"(")
+	e.replace(form.Word.Pos(), form.Word.End(), "."+name+"(")
 	e.insert(form.Right.End(), ")", 1)
 	return nil
 }

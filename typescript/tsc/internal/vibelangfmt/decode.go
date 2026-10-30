@@ -17,7 +17,7 @@ import (
 // modifiers; orNodes are the binary expressions of ors.
 type tokens struct {
 	voids, ors, fors, finallys, asyncs, functions []int
-	orNodes                    map[int]*ast.Node
+	orNodes                                       map[int]*ast.Node
 }
 
 // collectTokens finds the tokens of file, a parse of text, that decoding
@@ -383,11 +383,26 @@ func (d *decoder) node(node *ast.Node) error {
 		if dot < access.Expression().End() {
 			return lost()
 		}
-		if dot == access.Expression().End() {
-			d.replace(dot, d.start(arguments[0]), " catch ")
-		} else {
-			d.replace(dot, d.start(arguments[0]), "catch ")
+		_, open, ok := d.nextToken(access.End(), '(')
+		if !ok {
+			return lost()
 		}
+		end := d.start(arguments[0])
+		trivia := d.text[open:end]
+		head := "catch"
+		if hasComment(trivia) {
+			// Leave the handler's comments and line breaks in place.
+			end = open
+			if !isSpace(trivia[0]) {
+				head += " "
+			}
+		} else {
+			head += " "
+		}
+		if dot == access.Expression().End() {
+			head = " " + head
+		}
+		d.replace(dot, end, head)
 		d.replace(arguments[0].End(), call.End(), "")
 	default:
 		return lost()
