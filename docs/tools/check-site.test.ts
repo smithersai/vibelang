@@ -81,3 +81,19 @@ test("allows Vocs standalone routes without nav while retaining their other chec
     await expect(checkSite(root)).rejects.toThrow("404.html: og:image")
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+test("collects page links and images while deduplicating repeated diagnostics", async () => {
+  const root = mkdtempSync(join(tmpdir(), "check-collected-page-"))
+  try {
+    writeFileSync(join(root, "card.png"), "image")
+    writeFileSync(join(root, "index.html"), social + topNav +
+      '<a href="/missing#intro">Missing</a><a href="/missing#intro">Repeated</a>' +
+      '<img src="/missing.png"><img src="data:image/png;base64,AAAA">')
+    const error = await checkSite(root).then(() => undefined, error => error)
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe([
+      "index.html: /missing#intro (missing page)",
+      "index.html: missing image /missing.png"
+    ].join("\n"))
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
