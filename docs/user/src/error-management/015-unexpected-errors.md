@@ -143,3 +143,5 @@ disabled
 ```
 
 `try exit(program)` returns the whole outcome, as Effect's `exit` does: a `Failure` exit's cause holds every reason, including the defects and interruption that ordinary catch leaves alone or drops. Test it with `is` or `match` on `Exit.Success` and `Exit.Failure`. `failCause(cause)` restores the original failure with every reason. `throw` fails with the value it is given, so `throw cause` makes the cause object a typed error, as `fail(cause)` does. Inspect every reason before recovering from a mixed cause, and preserve cancellation unless the boundary has a reason to consume it.
+
+For a retired `catch (cause: Cause)` (`EK2113`) around one returned expression, `vibelang --fix` puts that expression inside an `effect` block and matches `try exit(...)`. The protected work runs inside `exit`, so its failures remain available to the fallback.

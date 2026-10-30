@@ -20,7 +20,7 @@ import (
 //	try { return find(id) } catch (e) {
 //	  return match (e) { when NotFound: "missing"; default: throw e; }
 //	}
-//	return match (exit(find(id))) {
+//	return match (try exit(effect { return try find(id) })) {
 //	  when Exit.Success(let value): value;
 //	  when Exit.Failure(let cause): fallback;
 //	}
@@ -427,7 +427,7 @@ func (r *retiredCatch) matchForm(text, main string, patterns []string, base, uni
 }
 
 // rewriteCause rewrites `try { return X } catch (cause: Cause) { return Y }`
-// as `return match (exit(X)) { ... }`. Other shapes have no quick fix.
+// as `return match (try exit(effect { return X })) { ... }`. Other shapes have no quick fix.
 func (r *retiredCatch) rewriteCause(text string) (string, int, string, bool) {
 	ts := r.try.AsTryStatement()
 	if ts.FinallyBlock != nil || r.try.Flags&ast.NodeFlagsVibeLang != 0 || len(r.clauses) != 1 || !r.clauses[0].cause || r.clauses[0].name == nil {
@@ -449,7 +449,7 @@ func (r *retiredCatch) rewriteCause(text string) (string, int, string, bool) {
 		value = "result"
 	}
 	inner := base + unit
-	return "Match on exit(…)", start, "return match (exit(" + body + ")) {\n" +
+	return "Match on exit(…)", start, "return match (try exit(effect { return " + body + " })) {\n" +
 		inner + "when Exit.Success(let " + value + "): " + value + ";\n" +
 		inner + "when Exit.Failure(let " + r.clauses[0].name.Text() + "): " + fallback + ";\n" +
 		base + "}", true

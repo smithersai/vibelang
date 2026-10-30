@@ -735,6 +735,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Headers`, `Request`, `Response` and `Event` used host constructors instead of Effect namespaces; values now name Effect modules while ambient types keep their meanings, including in emitted declarations.
 
+- Migrating a retired `catch (cause: Cause)` could leave it unchanged because the replacement passed a plain value to `exit`; the fix now captures and runs the protected code inside an `effect` block.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.
