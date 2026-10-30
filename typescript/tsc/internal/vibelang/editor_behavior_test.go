@@ -111,6 +111,7 @@ func TestEditorRefactorGoldens(t *testing.T) {
 		{"nested calls", helpers + "export const value = /*cursor*/f(g(1))", "Convert to a pipe", helpers + "export const value = 1 |> g(%) |> f(%)"},
 		{"pipe to calls", helpers + "export const value = 1 /*cursor*/|> g(%) |> f(%)", "Convert the pipe to calls", helpers + "export const value = f(g(1))"},
 		{"pipe precedence", "export const value = (1 + 2) /*cursor*/|> % * 3", "Convert the pipe to calls", "export const value = (1 + 2) * 3"},
+		{"async shorthand", "export async /*cursor*/later(n: number) { return n }", "Convert to a VibeLang function", "export function later(n: number) { return n }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			const prefix = "const café = '😀'; "

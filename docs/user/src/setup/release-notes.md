@@ -482,6 +482,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Editor and language server
 
+- The refactor "Convert to a VibeLang function" turned the removed shorthand `async later(n: number) { ... }` (EK4618) into `later(n: number) { ... }`, which does not parse. It now writes `function later(n: number) { ... }`.
+
 - Hover text could run the inferred contract into the behavior paragraph. A blank separator now keeps them readable.
 - Completion after `FileSystem.` or `Experimental.Process.` could omit service members. It now includes the shorthand members.
 - Canceling a request during contextual type lookup could leave the editor waiting. That lookup now checks for cancellation.

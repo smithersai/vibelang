@@ -209,7 +209,14 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		return nil
 	}
 	asyncStart += nodeStart(rc.file, fn)
-	common := []*lsproto.TextEdit{rc.textEdit(asyncStart, scanner.SkipTrivia(text, asyncStart+len("async")), "")}
+	afterAsync := scanner.SkipTrivia(text, asyncStart+len("async"))
+	// The removed shorthand `async f()` (EK4618) has no function keyword after
+	// async to keep, so the declaration gets one in its place.
+	keyword := ""
+	if ast.IsFunctionDeclaration(fn) && !strings.HasPrefix(text[afterAsync:], "function") {
+		keyword = "function "
+	}
+	common := []*lsproto.TextEdit{rc.textEdit(asyncStart, afterAsync, keyword)}
 	if annotation := fn.Type(); annotation != nil {
 		common = append(common, rc.textEdit(strings.LastIndexByte(text[:annotation.Pos()], ':'), annotation.End(), ""))
 	}
