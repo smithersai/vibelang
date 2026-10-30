@@ -30,5 +30,3 @@ FuzzEditorConsistency corpus:selection-match-binding compiler the minimal reprod
 FuzzEditorConsistency corpus:selection-property-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:selection-schema compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:symbols-is-binding compiler the minimal reproduction of consistency:document-symbols:selection-outside:Block
-FuzzEditorConsistency consistency:rename:TypeParameter:diagnostics:TS2345 compiler D500, D372: renaming the infer _ return placeholder changes inference and adds type errors; lane bugs-d283-editor-31
-FuzzEditorConsistency corpus:rename-inferred-return compiler D500: renaming the infer _ return placeholder changes its meaning; lane bugs-d283-editor-31

@@ -138,6 +138,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification left a `return`, `break` or `continue` out of a `match` arm undefined, and the pinned draft read literally turned `return 7` into `throw 7`. A jump out of an arm now behaves as the same jump out of a `for…of` body: cached iterators close, then the jump goes on. Chapters 3, 4 and 8 gave three different answers for which `throw` skips that closing; there is now one rule, and a no-match error is `new TypeError()` everywhere.
 
+- Renaming the `_` in an old `infer _` return annotation could change inference and introduce type errors. The editor now declines that rename; ordinary generic and conditional `infer` bindings still rename normally.
+
 - Organizing imports or renaming an old inline `module` declaration could introduce unresolved imports and new errors. The editor now refuses these unsafe edits; move the code to a `.ts` file, as inline modules are denied by VIP-25.
 
 - Schema migration checks still expected mutable collections after `--fix` preserved readonly types; the fixtures now verify readonly arrays, tuples and records.

@@ -211,6 +211,22 @@ func (l *LanguageService) getRenameInfoForNode(ctx context.Context, newName stri
 	return getRenameInfoSuccess(node, sourceFile, ch.SymbolToString(symbol), l.converters), true
 }
 
+// D500 uses infer _ as return-inference syntax, not a named type parameter.
+// Conditional infer bindings and ordinary generic parameters remain renameable.
+func isInferredReturnPlaceholder(file *ast.SourceFile, node *ast.Node) bool {
+	if file == nil || file.IsDeclarationFile || !file.FileName().ExtensionIs(tspath.ExtensionVibe) ||
+		!ast.IsIdentifier(node) || node.Text() != "_" || node.Parent == nil || node.Parent.Kind != ast.KindTypeParameter {
+		return false
+	}
+	parameter := node.Parent
+	if parameter.AsTypeParameterDeclaration().Constraint != nil || parameter.Parent == nil || parameter.Parent.Kind != ast.KindInferType {
+		return false
+	}
+	annotation := parameter.Parent
+	owner := annotation.Parent
+	return owner != nil && ast.IsFunctionLike(owner) && owner.Type() == annotation
+}
+
 // Identifier edits must remain a single identifier. String literals and module
 // paths have their own rename rules and may contain punctuation.
 func validNameForRename(node *ast.Node, name string) bool {
@@ -245,6 +261,9 @@ func nodeIsEligibleForRename(node *ast.Node) bool {
 // renameBlockedReason returns a non-nil diagnostic message if the rename should be blocked
 // because the symbol is a library definition, a default keyword, or would cross node_modules boundaries.
 func (l *LanguageService) renameBlockedReason(sourceFile *ast.SourceFile, node *ast.Node, symbol *ast.Symbol, ch *checker.Checker, program *compiler.Program) *diagnostics.Message {
+	if isInferredReturnPlaceholder(sourceFile, node) {
+		return diagnostics.You_cannot_rename_this_element
+	}
 	// A name colliding with a retired inline module also needs its identifier
 	// imports renamed. The recovery AST has already replaced those with paths.
 	// Decline the transaction rather than returning a partial rename.
