@@ -970,14 +970,14 @@ try {
   }
 
   await check("completion: prelude names are in scope in a .vibe file", async () => {
-    const has = await inScope("src/services.vibe", "Users.find", { offset: 0 })
+    const has = await inScope("src/services.vibe", "users.find", { offset: 0 })
     for (const label of ["Effect", "Layer", "Schema", "Scope", "TaggedError", "pipe", "wire", "fork", "Users", "double"]) {
       assert(has(label), `no ${label} in scope`)
     }
   })
 
   await check("completion: resolving a prelude entry gives its declaration", async () => {
-    const result = await connection.request("textDocument/completion", position("src/services.vibe", "Users.find", { offset: 0 }))
+    const result = await connection.request("textDocument/completion", position("src/services.vibe", "users.find", { offset: 0 }))
     const item = (Array.isArray(result) ? result : result.items).find((i) => i.label === "wire" && i.labelDetails?.description === undefined)
     assert(item, "no wire entry")
     const resolved = await connection.request("completionItem/resolve", item)
@@ -995,14 +995,14 @@ try {
     for (const label of ["TaggedError", "wire", "fork", "Layer"]) assert(!has(label), `${label} in scope`)
   })
 
-  await check("completion: a service's members after Users. in a .vibe function", async () => {
-    const labels = await completionLabels("src/services.vibe", "Users.find", { offset: 6 })
+  await check("completion: a service's members after users. in a .vibe function", async () => {
+    const labels = await completionLabels("src/services.vibe", "users.find", { offset: 6 })
     assert(labels.includes("find"), `labels ${JSON.stringify(labels.slice(0, 20))}`)
     for (const label of ["pipe", "of", "key"]) assert(!labels.includes(label), `the key's own member ${label} in completions`)
   })
 
   await check("completion: service members hide the synthetic typing brand", async () => {
-    const labels = await completionLabels("src/services.vibe", "Greeter.greet", { offset: 8 })
+    const labels = await completionLabels("src/services.vibe", "greeter.greet", { offset: 8 })
     assert(labels.includes("greet"), `labels ${JSON.stringify(labels)}`)
     assert(!labels.some(label => label.includes("~vibelang")), `synthetic member in ${JSON.stringify(labels)}`)
   })

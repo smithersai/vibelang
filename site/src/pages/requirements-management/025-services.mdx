@@ -110,7 +110,7 @@ type SameImplementation = Context.Service.Shape<typeof Sequence>
 
 A service has two types, as an Effect `Context.Key` has, because it is Effect's own `Context.Service` class. As a type, `Sequence` is the service's identifier, which carries its key, so neither another service with the same members nor a structural type such as `{ next(): number!! }` can stand for it in `R`. `Sequence.Shape`, which Effect spells `Context.Service.Shape<typeof Sequence>`, is the members alone, the type of an implementation. `Layer.succeed`, `Layer.effect`, `provideService`, `provide Sequence = …`, and a `defaultValue` factory check an implementation against the shape, and `implements Sequence.Shape` in a `.vibe` file checks a class against it.
 
-`try Sequence` returns the implementation typed as the shape, as `yield* Sequence` does. Type a parameter or a default implementation `Sequence.Shape`; a parameter typed `Sequence` takes the identifier, as in Effect TypeScript. A TypeScript class implements the emitted service with `implements Context.Service.Shape<typeof Sequence>`.
+`try Sequence` returns the implementation typed as the shape, as `yield* Sequence` does. The same lookup works for imported keys and inside exported `effect` functions. Type a parameter or a default implementation `Sequence.Shape`; a parameter typed `Sequence` takes the identifier, as in Effect TypeScript. A TypeScript class implements the emitted service with `implements Context.Service.Shape<typeof Sequence>`.
 
 Providers infer and check the implementation from the key argument, so most layers don't need either name. At a TypeScript boundary, the shape describes the emitted implementation's Effect-returning methods.
 

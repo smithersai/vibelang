@@ -100,7 +100,7 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		return
 	}
 	t := c.GetTypeAtLocation(operand)
-	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || isEffectType(c, t) || isEffectType(c, presentCallResult(c, t)) {
+	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || isEffectValueType(c, t) || isEffectValueType(c, presentCallResult(c, t)) {
 		return
 	}
 	// An Effect with structure of its own runs too, as yield* runs it: a

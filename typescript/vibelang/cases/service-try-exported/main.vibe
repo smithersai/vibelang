@@ -1,0 +1,10 @@
+// expect-result: [7,11]
+import { Users } from "./users.vibe"
+service Local { get(): number!! }
+export effect function imported() { return try (try Users).get() }
+export effect function local() { return try (try Local).get() }
+export effect function main() {
+  provide Users = { get: effect () => 7 }, Local = { get: effect () => 11 } {
+    return [try imported(), try local()]
+  }
+}

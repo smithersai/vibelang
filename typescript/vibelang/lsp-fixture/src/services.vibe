@@ -4,9 +4,9 @@
 // @vibelang-diagnostics-next-line EK4830:off
 export class Missing extends TaggedError("Missing")<{ readonly id: number }> {}
 
-export abstract class Users {
+export service Users {
   // @vibelang-diagnostics-next-line EK4833:off
-  abstract find(id: number): Effect<string, Missing, never>
+  find(id: number): Effect<string, Missing, never>
 }
 
 // No Effect operation and no failure: this compiles to plain JavaScript.
@@ -14,13 +14,17 @@ export function double(n: number) {
   return n * 2
 }
 
-export function greet(id: number) {
-  const name = Users.find(id)
+export effect function greet(id: number) {
+  const users = try Users
+  const name = try users.find(id)
   return `${name} scored ${double(id)}`
 }
 
 service Greeter { greet(name: string): Effect<string> }
-export function serviceGreeting() { return Greeter.greet("Ada") }
+export effect function serviceGreeting() {
+  const greeter = try Greeter
+  return try greeter.greet("Ada")
+}
 
 export function readFile(path: string) { return FileSystem.readFileString(path) }
 export function processHostname() { return Experimental.Process.hostname() }
