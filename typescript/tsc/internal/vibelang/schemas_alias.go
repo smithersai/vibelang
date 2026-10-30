@@ -24,16 +24,14 @@ func init() { fileChecks = append(fileChecks, checkSchemaAliases) }
 var ek2109Alias = EK2109.With("{0} has no schema form: a schema's type is a primitive (string, number, boolean, bigint, symbol, undefined or null), a literal, a union, an array, a tuple, a Record, an object type, or another schema's name.")
 
 func checkSchemaAliases(c *checker.Checker, file *ast.SourceFile) {
-	for _, statement := range file.Statements.Nodes {
-		if statement.Kind != ast.KindVariableStatement {
-			continue
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isSchemaAlias(node) && node.Initializer() != nil {
+			checkSchemaAliasValue(c, file, node.Initializer(), node)
 		}
-		for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
-			if isSchemaAlias(declaration) && declaration.Initializer() != nil {
-				checkSchemaAliasValue(c, file, declaration.Initializer(), declaration)
-			}
-		}
+		return node.ForEachChild(visit)
 	}
+	file.AsNode().ForEachChild(visit)
 }
 
 // isSchemaAlias reports whether node is the variable declaration the parser
@@ -74,4 +72,43 @@ func checkSchemaAliasValue(c *checker.Checker, file *ast.SourceFile, value *ast.
 			cover(c, declaration) // TypeScript's error about typeof Name.Type
 		}
 	}
+}
+
+// legacyNestedAliasFallback identifies a placeholder that earlier alias
+// checking skipped. Struct fields were already checked and are not legacy
+// aliases; keep their existing keyword suggestions.
+func legacyNestedAliasFallback(file *ast.SourceFile, value *ast.Node) bool {
+	if !isUnsupportedSchema(value) {
+		return false
+	}
+	for node := value.Parent; node != nil; node = node.Parent {
+		if isSchemaStruct(node) {
+			return false
+		}
+		if isSchemaAlias(node) {
+			parent := node.Parent
+			if parent != nil && parent.Kind == ast.KindVariableDeclarationList {
+				parent = parent.Parent
+			}
+			if parent != nil && parent.Kind == ast.KindVariableStatement {
+				parent = parent.Parent
+			}
+			return parent != nil && parent != file.AsNode()
+		}
+	}
+	return false
+}
+
+func legacyNestedAliasKeywordAt(file *ast.SourceFile, start, end int) bool {
+	found := false
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isUnsupportedSchema(node) && scanner.SkipTrivia(file.Text(), node.Pos()) == start && node.End() == end {
+			found = legacyNestedAliasFallback(file, node)
+			return found
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return found
 }

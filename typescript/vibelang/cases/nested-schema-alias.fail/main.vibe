@@ -1,0 +1,12 @@
+// expect: EK2109 EK2109 EK2109 EK2109 EK2109
+namespace Models {
+  export schema Missing = unknown
+  export schema Wrong = Date
+  export schema InArray = Array<unknown>
+}
+function local() {
+  schema Missing = any
+  schema Wrong = Date
+  return [Missing, Wrong]
+}
+export { Models, local }

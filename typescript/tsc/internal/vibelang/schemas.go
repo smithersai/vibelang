@@ -68,13 +68,26 @@ var schemaKeywordFix = &ls.CodeFixProvider{
 			return nil, nil
 		}
 		constant, ok := schemaKeywordConstants[text[fix.Span.Pos():fix.Span.End()]]
-		if !ok {
+		legacy := legacyNestedAliasKeywordAt(fix.SourceFile, fix.Span.Pos(), fix.Span.End())
+		if !ok && !legacy {
 			return nil, nil
 		}
-		return []*ls.CodeAction{{
-			Description: "Write " + constant,
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: constant}},
-		}}, nil
+		var actions []*ls.CodeAction
+		if ok {
+			actions = append(actions, &ls.CodeAction{
+				Description: "Write " + constant,
+				Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: constant}},
+			})
+		}
+		if legacy && constant != "Schema.Unknown" {
+			// Retain the codec and decoded type of a formerly accepted alias.
+			// The explicit keyword schema stays available as a separate choice.
+			actions = append([]*ls.CodeAction{{
+				Description: "Keep the previous Schema.Unknown codec",
+				Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: "Schema.Unknown"}},
+			}}, actions...)
+		}
+		return actions, nil
 	},
 }
 
