@@ -312,7 +312,7 @@ Support for the new forms arrives with the compiler's VIP implementation. VIP-7 
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
-`Date` patterns require the date internal slot: a real date or date subclass matches, including an invalid date; `Object.create(Date.prototype)` does not.
+`Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not.
 
 ## Effect tagged-error guards
 

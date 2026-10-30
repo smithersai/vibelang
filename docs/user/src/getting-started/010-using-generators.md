@@ -81,7 +81,7 @@ effect function optionalTitle(title: string | undefined) {
 // Output: 0
 ```
 
-A throw stops the current sequence and adds its type to `E`. Control-flow analysis knows the missing-title branch cannot continue, so `title` is narrowed afterward. A `catch` expression handles expected failures; defects and interruption propagate. Use `try ensuring(work, cleanup)` to run cleanup when work ends. A cause containing a defect or interruption bypasses `catch` as a whole, even if it also contains an expected failure.
+A throw stops the current sequence and adds its type to `E`. Control-flow analysis knows the missing-title branch cannot continue, so `title` is narrowed afterward. A `catch` expression handles expected failures; defects and interruption propagate. Use `try ensuring(work, cleanup)` to run cleanup when work ends. A cause containing a defect bypasses `catch`, with its expected failures re-raised as defects. A cause with an expected failure and no defect is recovered, even beside an interruption.
 
 When a cause contains several expected failures and no defect or interruption, `catch` receives the first and handles the cause as a whole; use `Effect.catchCause` to inspect every failure. To keep processing after a failure without catching it immediately, use `try result(titleLength(title))` and inspect the resulting `Result`.
 
