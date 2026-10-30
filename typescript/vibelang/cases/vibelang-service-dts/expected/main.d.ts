@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect";
 export interface User {
-    readonly id: string;
-    readonly name: string;
+    id: string;
+    name: string;
 }
 declare const Users_base: Context.ServiceClass<Users, "vibelang-service-dts/main#Users", {
     find(id: string): Effect.Effect<User, never, never>;

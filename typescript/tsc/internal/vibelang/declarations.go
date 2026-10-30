@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -126,13 +127,9 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			aliases.NewTransformer(aliases.visit, resolver.EmitContext())
 			declarations = aliases.TransformSourceFile(declarations)
 		})
-		var readonlyRefs map[*ast.Node]bool
-		r.WithChecker(func(c *checker.Checker) { readonlyRefs = readonlyReferences(c, sourceFile) })
-		if len(readonlyRefs) > 0 {
-			arguments := &readonlyArguments{references: readonlyRefs}
-			arguments.NewTransformer(arguments.visit, resolver.EmitContext())
-			declarations = arguments.TransformSourceFile(declarations)
-		}
+		members := &sourcePropertyModifiers{}
+		members.NewTransformer(members.visit, resolver.EmitContext())
+		declarations = members.TransformSourceFile(declarations)
 		if len(keys.keys) > 0 {
 			for _, statement := range declarations.Statements.Nodes {
 				forEachTopLevelName(statement, func(name string) { keys.bound[name] = true })
@@ -674,79 +671,65 @@ func (tx *moduleServiceTypes) visit(node *ast.Node) *ast.Node {
 	return node
 }
 
-// readonlyArguments drops the readonly modifiers that the parser gives the
-// members of an object type (D134) where the object type is the type argument
-// of TypeScript's Readonly, which makes them readonly already, so the
-// declaration reads as the Effect TypeScript it stands for:
-//
-//	// main.vibe                                // main.d.ts
-//	export type Info = Readonly<{               export type Info = Readonly<{
-//	  path: ReadonlyArray<string>                   path: ReadonlyArray<string>;
-//	}>                                          }>;
-//
-// not readonly path. A readonly the source writes stays, and Readonly is
-// shallow, so an object type nested in a member keeps its own.
-type readonlyArguments struct {
+// sourcePropertyModifiers keeps the modifiers written on ordinary source
+// properties and index signatures (Chapter 1, Declaration output). The parser's
+// D134 readonly default is a checker rule, not a modifier in the source's public
+// TypeScript declaration. Explicit readonly and compiler-generated members keep
+// their modifiers. In particular, data payloads retain their documented
+// Data.TaggedEnum declaration form, and inferred Schema types are untouched.
+type sourcePropertyModifiers struct {
 	transformers.Transformer
-	references map[*ast.Node]bool // the source's references to TypeScript's Readonly (readonlyReferences)
 }
 
-func (tx *readonlyArguments) visit(node *ast.Node) *ast.Node {
+func (tx *sourcePropertyModifiers) visit(node *ast.Node) *ast.Node {
+	original := tx.EmitContext().MostOriginal(node)
+	if parser.IsDataDeclaration(original) {
+		return node
+	}
 	node = tx.Visitor().VisitEachChild(node)
-	if !ast.IsTypeReferenceNode(node) || !tx.references[tx.EmitContext().MostOriginal(node)] {
-		return node
-	}
-	reference := node.AsTypeReferenceNode()
-	if reference.TypeArguments == nil {
-		return node
-	}
 	f := tx.Factory()
-	changed := false
-	arguments := make([]*ast.Node, len(reference.TypeArguments.Nodes))
-	for i, argument := range reference.TypeArguments.Nodes {
-		arguments[i] = argument
-		if !ast.IsTypeLiteralNode(argument) {
-			continue
-		}
-		literal := argument.AsTypeLiteralNode()
-		members := make([]*ast.Node, len(literal.Members.Nodes))
-		for j, member := range literal.Members.Nodes {
-			members[j] = member
-			if modifiers, dropped := withoutImplicitReadonly(f, member, tx.EmitContext().MostOriginal(member)); dropped {
-				switch member.Kind {
-				case ast.KindPropertySignature:
-					m := member.AsPropertySignatureDeclaration()
-					members[j] = f.UpdatePropertySignatureDeclaration(m, modifiers, m.Name(), m.PostfixToken, m.Type, m.Initializer)
-				case ast.KindIndexSignature:
-					m := member.AsIndexSignatureDeclaration()
-					members[j] = f.UpdateIndexSignatureDeclaration(m, modifiers, m.Parameters, m.Type)
-				}
-			}
-		}
-		if !slices.Equal(members, literal.Members.Nodes) {
-			list := f.NewNodeList(members)
-			list.Loc = literal.Members.Loc
-			arguments[i] = f.UpdateTypeLiteralNode(literal, list)
-			changed = true
-		}
-	}
-	if !changed {
+	modifiers, dropped := withoutImplicitReadonly(f, node, original)
+	if !dropped {
 		return node
 	}
-	list := f.NewNodeList(arguments)
-	list.Loc = reference.TypeArguments.Loc
-	return f.UpdateTypeReferenceNode(reference, reference.TypeName, list)
+	switch node.Kind {
+	case ast.KindPropertySignature:
+		m := node.AsPropertySignatureDeclaration()
+		return f.UpdatePropertySignatureDeclaration(m, modifiers, m.Name(), m.PostfixToken, m.Type, m.Initializer)
+	case ast.KindIndexSignature:
+		m := node.AsIndexSignatureDeclaration()
+		return f.UpdateIndexSignatureDeclaration(m, modifiers, m.Parameters, m.Type)
+	}
+	return node
 }
 
 // withoutImplicitReadonly returns member's modifiers without readonly, and
 // true, when original, the source member it was emitted from, has the
 // readonly modifier the parser gave it, which the source does not write.
+// A synthesized member (such as data's WithGenerics helper) is not a source
+// property, and keeps its generated modifiers.
 func withoutImplicitReadonly(f *printer.NodeFactory, member *ast.Node, original *ast.Node) (*ast.ModifierList, bool) {
-	if member.Kind != ast.KindPropertySignature && member.Kind != ast.KindIndexSignature || original == nil || original.Modifiers() == nil ||
+	if member.Kind != ast.KindPropertySignature && member.Kind != ast.KindIndexSignature ||
+		original == nil || original.Kind != ast.KindPropertySignature && original.Kind != ast.KindIndexSignature ||
+		original.Flags&ast.NodeFlagsReparsed != 0 || original.Modifiers() == nil ||
 		!slices.ContainsFunc(original.Modifiers().Nodes, func(m *ast.Node) bool {
 			return m.Kind == ast.KindReadonlyKeyword && m.Flags&ast.NodeFlagsReparsed != 0
 		}) {
 		return nil, false
+	}
+	// Error payload signatures are generated in the class heritage, but
+	// retain the source field's range for diagnostics rather than Reparsed.
+	// They and data payloads follow their Effect counterparts, not ordinary
+	// interface/type-literal declaration modifiers.
+	for parent := original.Parent; parent != nil; parent = parent.Parent {
+		if parser.IsDataDeclaration(parent) {
+			return nil, false
+		}
+		if parent.Kind == ast.KindHeritageClause {
+			if form, _ := errorFormOf(parent.Parent); form != errorFormNone {
+				return nil, false
+			}
+		}
 	}
 	modifiers := member.Modifiers()
 	if modifiers == nil {
@@ -767,32 +750,6 @@ func withoutImplicitReadonly(f *printer.NodeFactory, member *ast.Node, original 
 	list := f.NewModifierList(kept)
 	list.Loc = modifiers.Loc
 	return list, true
-}
-
-// readonlyReferences returns the references in file to TypeScript's global
-// Readonly that have an object type for a type argument.
-func readonlyReferences(c *checker.Checker, file *ast.SourceFile) map[*ast.Node]bool {
-	global := c.GetGlobalSymbol("Readonly", ast.SymbolFlagsType, nil)
-	if global == nil {
-		return nil
-	}
-	var references map[*ast.Node]bool
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if ast.IsTypeReferenceNode(n) {
-			reference := n.AsTypeReferenceNode()
-			if name := reference.TypeName; ast.IsIdentifier(name) && name.Text() == "Readonly" && reference.TypeArguments != nil &&
-				slices.ContainsFunc(reference.TypeArguments.Nodes, ast.IsTypeLiteralNode) && c.GetSymbolAtLocation(name) == global {
-				if references == nil {
-					references = map[*ast.Node]bool{}
-				}
-				references[n] = true
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return references
 }
 
 // emptySlots writes an Effect type that the source writes in the ! form as

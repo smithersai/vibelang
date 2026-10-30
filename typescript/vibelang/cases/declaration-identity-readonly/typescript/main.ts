@@ -4,6 +4,6 @@ export type Info = Readonly<{
   [key: string]: unknown
 }>
 
-export type Nested = Readonly<{ inner: { readonly count: number } }>
+export type Nested = Readonly<{ inner: { count: number } }>
 
 export type Pair = Readonly<{ left: number; right: number }>

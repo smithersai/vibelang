@@ -454,15 +454,17 @@ are recorded as compiler gaps, never treated as proof that a construct works.
 
 An input with a `.vibe` error is skipped. The configuration must actually include a renamed source, and the stock project must be valid: a missing prelude name such as an unimported `pipe` otherwise produces stock error-recovery `any`, which is not an API contract. A regression also rejects mutations introducing VibeLang-only syntax in the stock input.
 
-The shared `ParitySeeds` short selection now keeps all eleven explicit `typescript/` twins, plus its remaining fixed-stride sample and every pending witness. The previous stride omitted eight twins and admitted only 10/33 inputs. The admission test uses the target's actual compilation and stock-validation path and fails below one half; it admits 26/36 short inputs (72.2%) on main a0c9ef92 with the four saved witnesses. All full-seed runs and campaigns retain the complete parity list.
+The shared `ParitySeeds` short selection now keeps all explicit `typescript/` twins, plus its remaining fixed-stride sample and every pending witness. The previous stride omitted eight twins and admitted only 10/33 inputs. The admission test uses the target's actual compilation and stock-validation path and fails below one half; it admits 26/36 short inputs (72.2%) on main a0c9ef92 with the four saved witnesses. All full-seed runs and campaigns retain the complete parity list.
 
-Four minimized compiler witnesses are pending in `testdata/pending/compile.txt`; each quotes Chapter 1's “Declarations are exactly what idiomatic Effect TypeScript would declare.” The opencode witness records lane `migfix-opencode` and queued fix `60e2658dca5a`.
+Unresolved saved compiler witnesses are listed in `testdata/pending/compile.txt`; each quotes Chapter 1's “Declarations are exactly what idiomatic Effect TypeScript would declare.” At discovery, the opencode witness recorded lane `migfix-opencode` and queued fix `60e2658dca5a`.
 
-| Corpus | Minimal TypeScript source | Stock canonical line | Renamed `.vibe` canonical line |
+| Corpus | Minimal TypeScript source | Stock canonical line | Renamed `.vibe` canonical line at discovery |
 | --- | --- | --- | --- |
 | `opencode-1` | `import { Schema } from "effect"; export const decode = Schema.decodeUnknownSync(Schema.String)` | `export declare const decode: (input: unknown, options?: import("effect/SchemaAST").ParseOptions) => string;` | `import { SchemaAST } from "effect";` then `export declare const decode: (input: unknown, options?: SchemaAST.ParseOptions) => string;` |
 | `runtime-effect-import` | `import { Runtime } from "effect"; export const main = Runtime.makeRunMain(() => {})` | `}): <E, A>(effect: import("effect/Effect").Effect<A, E>) => void;` | `}): <E, A>(effect: Effect.Effect<A, E>) => void;` and the import gains `Effect` |
 | `readonly-property` | `export interface Shape { value: number }` | `value: number;` | `readonly value: number;` |
 | `plain-arrow` | `export const f = () => "ok"` | `export declare const f: () => string;` | `export declare const f: () => Effect.Effect<string, never, never>;` plus `import { Effect } from "effect";` |
+
+The `readonly-property` corpus now passes without a pending entry. Ordinary interface and object-type members keep their source modifiers in declarations, including optional properties, index signatures and nested types. Explicit `readonly`, class fields and generated `data`, schema and error forms retain their contracts. `declaration-identity-property-modifiers` compares a fixed stock TypeScript declaration and a TypeScript twin, then checks assignments from a TypeScript consumer.
 
 The opencode corpus was run without pending entries and failed with the SchemaAST canonical diff, then passed as a pending skip with its entries present. Canonicalization controls cover comments, unions, member ordering, module spelling, changed lines and added/removed declaration files. A two-module positive control resolves the unchanged `./other.js` importer to `other.vibe` and compares both declarations.

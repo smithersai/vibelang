@@ -14,15 +14,15 @@ export declare class Invalid extends Invalid_base<{
 }> {
 }
 export interface User {
-    readonly id: string;
-    readonly name: string;
+    id: string;
+    name: string;
 }
 export declare function find(id: string): Effect.Effect<User, UserNotFound, never>;
 export declare function wide(id: string): Effect.Effect<string, UserNotFound | Invalid, never>;
 export declare function answer(): Effect.Effect<number, never, never>;
 export declare function point(): Effect.Effect<{
-    readonly x: number;
-    readonly kind: "point";
+    x: number;
+    kind: "point";
 }, never, never>;
 export declare function greeting(id: string): Effect.Effect<string, UserNotFound, never>;
 export declare function safe(id: string): Effect.Effect<string, never, never>;

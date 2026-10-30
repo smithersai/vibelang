@@ -14,8 +14,8 @@ export declare class UserNotFound extends UserNotFound_base<{
 }> {
 }
 export interface User {
-    readonly id: string;
-    readonly name: string;
+    id: string;
+    name: string;
 }
 export declare function parseId(raw: string): Effect.Effect<number, InvalidId, never>;
 export declare function find(id: string): Effect.Effect<User, UserNotFound, never>;

@@ -103,7 +103,7 @@ console.log(Effect.runSync(program.pipe(Effect.provide(Layer.succeed(Users, new 
 // Output: no user 2
 ```
 
-The emitted declarations are the ones the Effect TypeScript writes, so a library migrated to VibeLang keeps its `.d.ts`: a service declares `class Users extends Context.Service<Users, { … }>()(key)`, a schema `const User = Schema.Struct(…)` and `type User = typeof User.Type`, and an `error` the `Data.TaggedError` class. A migrated service keeps its key with `static readonly key = "app/Users"` in its body. Declarations are written beside the source as `x.d.vibe.ts`, and package builds also write ordinary `.d.ts` files.
+The emitted declarations are the ones the Effect TypeScript writes, so a library migrated to VibeLang keeps its `.d.ts`: a service declares `class Users extends Context.Service<Users, { … }>()(key)`, a schema `const User = Schema.Struct(…)` and `type User = typeof User.Type`, and an `error` the `Data.TaggedError` class. A migrated service keeps its key with `static readonly key = "app/Users"` in its body. Ordinary interface and object-type properties keep their written `readonly` modifiers in declarations: `value: number` stays writable, and `readonly value: number` stays readonly. This also applies to optional properties, index signatures and nested object types; class fields keep their written modifiers too. Declarations are written beside the source as `x.d.vibe.ts`, and package builds also write ordinary `.d.ts` files.
 
 ## Translate the idioms
 

@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect";
 export interface User {
-    readonly id: string;
-    readonly name: string;
+    id: string;
+    name: string;
 }
 declare const Users_base: Context.ServiceClass<Users, "service-identity-dts/main#Users", {
     find(id: string): Effect.Effect<User>;
@@ -23,7 +23,7 @@ declare const Prefix_base: Context.ServiceClass<Prefix, "service-identity-dts/ma
 export declare class Prefix extends Prefix_base {
 }
 export interface Shape {
-    readonly sides: number;
+    sides: number;
 }
 declare const Geometry_base: Context.ServiceClass<Geometry, "service-identity-dts/main#Geometry", {
     area(shape: Shape): Effect.Effect<number>;
