@@ -1,0 +1,2 @@
+main.vibe(4,14): error TS2702
+main.vibe(10,14): error TS2702

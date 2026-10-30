@@ -1,0 +1,12 @@
+// expect: TS2702
+export function local() {
+  service S { static readonly key = "local/function"; n: number }
+  const bad: S.Shape = { n: 1 }
+  const good: Context.Service.Shape<typeof S> = { n: 1 }
+  return [bad, good]
+}
+{
+  service B { static readonly key = "local/block"; n: number }
+  const bad: B.Shape = { n: 2 }
+  const good: Context.Service.Shape<typeof B> = { n: 2 }
+}

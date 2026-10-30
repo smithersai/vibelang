@@ -1,0 +1,15 @@
+import { Context } from "effect"
+export function local(): number {
+ service Local { static readonly key = "own/Local"; value: number; next(): Local.Shape }
+ const shape: Context.Service.Shape<typeof Local> = { value: 9, next() { return this } }
+ return shape.next().value
+}
+export function reference(): number {
+ service Flags {
+  static readonly key = "own/Flags"
+  static readonly defaultValue = () => ({ value: 11, next() { return this } })
+  value: number
+  next(): Flags.Shape
+ }
+ return Context.get(Context.empty(), Flags).next().value
+}

@@ -1,0 +1,2 @@
+'S' only refers to a type, but is being used as a namespace here.
+'B' only refers to a type, but is being used as a namespace here.

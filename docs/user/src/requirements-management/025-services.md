@@ -34,6 +34,8 @@ A service declaration takes no `extends` or `implements` clause (`EK0904`): its 
 
 A service method may declare a plain return type, such as `lookup(): number`, or an Effect return type, such as `lookup(): number!!`, as a `Context.Service` shape can. A missing return type reports `EK9205`: write it explicitly because the method has no body to infer from.
 
+At module or namespace scope, `Users.Shape` names a service's implementation type. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. The editor offers this replacement, and `vibelang --fix` migrates a local `Users.Shape` annotation. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript.
+
 Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. A `key` that is not `static readonly` with a string literal is `EK3008`. An `abstract class` is an ordinary TypeScript class; one written as a service draws `EK4854`, whose fix, which `vibelang --fix` applies, writes the `service` declaration with its members and key. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
 When migrating, preserve every original explicit key; deriving a new key can break providers across package boundaries or persisted identities.

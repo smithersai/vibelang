@@ -1,0 +1,12 @@
+function local(): number {
+  service S { static readonly key = "local/explicit/function"; n: number }
+  const value: Context.Service.Shape<typeof S> = { n: 1 }
+  return value.n
+}
+let blockValue = 0
+{
+  service S { static readonly key = "local/explicit/block"; n: number }
+  const value: Context.Service.Shape<typeof S> = { n: 2 }
+  blockValue = value.n
+}
+export const result = [local(), blockValue]

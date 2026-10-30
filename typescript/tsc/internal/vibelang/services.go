@@ -475,18 +475,23 @@ func implementedType(c *checker.Checker, class *ast.Node, heritage *ast.Node) *c
 // Context.Service.Shape<typeof Users> (D501), whether a .vibe file declares
 // Users or, read from a .vibe file, TypeScript does. A class merged with a
 // namespace keeps TypeScript's resolution, so a namespace that declares Shape
-// still does.
+// still does. A local service has no companion namespace, but VIP-9
+// preserves the own-member type hook in every declaration scope (detail 181).
 func resolveServiceShapeName(c *checker.Checker, name *ast.Node, left *ast.Node, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
 	if !ast.IsIdentifier(right) || right.Text() != serviceShapeName {
 		return nil
 	}
-	symbol := c.ResolveEntityName(left, ast.SymbolFlagsClass)
+	// A member-local type parameter shadows the class even in a qualified name.
+	symbol := c.ResolveEntityName(left, ast.SymbolFlagsType)
 	if symbol == nil || symbol.Flags()&ast.SymbolFlagsNamespace != 0 {
 		return nil
 	}
 	s := servicesFor(c)
 	declaration := symbol.ValueDeclaration()
 	if classKindOf(declaration) == serviceClass {
+		if !serviceShapeNamespaceScope(declaration) && !serviceOwnShapeName(declaration, name) {
+			return nil
+		}
 		return s.shapeName(declaration)
 	}
 	if file := ast.GetSourceFileOfNode(name); file == nil || !isVibeLangFile(file) || symbol.Flags()&ast.SymbolFlagsClass == 0 {

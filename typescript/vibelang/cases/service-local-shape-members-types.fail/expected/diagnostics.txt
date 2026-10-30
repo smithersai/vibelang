@@ -1,0 +1,1 @@
+main.vibe(6,2): error TS2322

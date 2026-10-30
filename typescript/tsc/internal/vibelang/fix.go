@@ -346,7 +346,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fixCodeName(code)+" ×"+strconv.Itoa(fixed.Counts[code]))
 		}
-		kinds := []string{tryLabel, effectLabel, untriedLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
+		kinds := []string{tryLabel, effectLabel, untriedLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel, localServiceShapeLabel}
 		var otherKinds []string
 		for kind := range fixed.Rewrites {
 			if !slices.Contains(kinds, kind) {
@@ -504,6 +504,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(localServiceShapeMigrationFixes(ctx, program, file, g.refused))
 				if options.MigrationOnly && len(p.fixes) == 0 {
 					p = sourceFileMigrationFixes(ctx, program, file, g.refused)
 				}

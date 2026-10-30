@@ -1,0 +1,7 @@
+// expect: TS2322
+import { Context } from "effect"
+export function local(): string {
+ service Local { static readonly key = "own/Typed"; value: number; next(): Local.Shape }
+ const shape: Context.Service.Shape<typeof Local> = { value: 9, next() { return this } }
+ return shape.next().value
+}
