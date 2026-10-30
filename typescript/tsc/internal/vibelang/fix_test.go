@@ -76,6 +76,39 @@ func TestFixProjectBoundsChecks(t *testing.T) {
 	}
 }
 
+// The programs of a --fix run share the parsed files no fix edited. Each
+// round and trial builds a program, and parsing the libraries and packages
+// again for each of them took rewrite-deep-types' 20 rounds past its 30 s
+// limit on a busy host.
+func TestFixProgramsShareParsedFiles(t *testing.T) {
+	dir, config := fixFiles(t)
+	fs := bundled.WrapFS(osvfs.FS())
+	edited := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "f00.vibe")))
+	parsed := &fixParsedFiles{}
+	first := fixProgram(fs, bundled.LibPath(), config, parsed, nil)
+	text := "export type T0 = number!!\n"
+	second := fixProgram(fs, bundled.LibPath(), config, parsed, map[tspath.RootedFilePath]string{edited: text})
+	if got := second.GetSourceFile(edited).Text(); got != text {
+		t.Fatalf("the edited program read %q", got)
+	}
+	shared := 0
+	for _, file := range first.SourceFiles() {
+		if file.FileName() == edited {
+			continue
+		}
+		if second.GetSourceFile(file.FileName()) != file {
+			t.Errorf("%s was parsed again", file.FileName())
+		}
+		shared++
+	}
+	if shared <= len(fixableFiles(first)) {
+		t.Fatalf("%d files shared; the libraries are among them", shared)
+	}
+	if got := fixProgram(fs, bundled.LibPath(), config, parsed, nil).GetSourceFile(edited).Text(); got == text {
+		t.Fatalf("a program without the edit read the edited text %q", got)
+	}
+}
+
 // An interrupted --fix stops at the next program, without a panic.
 func TestFixProjectStopsWhenCanceled(t *testing.T) {
 	dir, config := fixFiles(t)

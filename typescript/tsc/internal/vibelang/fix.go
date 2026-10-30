@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -46,7 +47,8 @@ import (
 // the files that add it are found, then each such file's fixes are; each fix
 // that adds an error is refused, named with the first error it adds, and not
 // tried again. A round so costs a few checks of the program, not one per
-// file. After the last round, it writes what the prelude makes shorter
+// file, and the programs share the files no fix edited. After the last
+// round, it writes what the prelude makes shorter
 // (fix_prelude.go): it removes the imports of modules the prelude supplies
 // (D310, D311) and writes M.M as M where a module's name names its service,
 // keeping each file's rewrites only when the program then reports no error
@@ -246,8 +248,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	done := ctx
 	ctx = context.WithoutCancel(ctx)
 	texts := map[tspath.RootedFilePath]string{}
+	parsed := &fixParsedFiles{}
 	build := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
-		return fixProgram(fs, libraryPath, config, overlay)
+		return fixProgram(fs, libraryPath, config, parsed, overlay)
 	}
 	program := build(texts)
 	if done.Err() != nil {
@@ -438,9 +441,12 @@ func maps(base, additions map[tspath.RootedFilePath]string) map[tspath.RootedFil
 	return merged
 }
 
+// fixParsedFiles holds the files a --fix run has parsed, by parse options.
+type fixParsedFiles = collections.SyncMap[ast.SourceFileParseOptions, *ast.SourceFile]
+
 // fixProgram builds config's program with the texts of overlay in place of
-// the files on disk.
-func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine, overlay map[tspath.RootedFilePath]string) *compiler.Program {
+// the files on disk, reusing the files of parsed whose text is unchanged.
+func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine, parsed *fixParsedFiles, overlay map[tspath.RootedFilePath]string) *compiler.Program {
 	overlaid := wrapvfs.Wrap(fs, wrapvfs.Replacements{
 		ReadFile: func(name tspath.RootedFilePath) (string, bool) {
 			if text, ok := overlay[name]; ok {
@@ -449,7 +455,31 @@ func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsopt
 			return fs.ReadFile(name)
 		},
 	})
-	return compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(overlaid, libraryPath, nil, nil, nil)})
+	host := fixCompilerHost{compiler.NewCompilerHost(overlaid, libraryPath, nil, nil, nil), parsed}
+	return compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: host})
+}
+
+// fixCompilerHost lets a --fix run's programs share parsed files. The run
+// builds a program for each round and trial, and nearly all of their text,
+// the libraries and the packages, stays as it was: parsing and binding it
+// again took three quarters of the run. A file's tree and binding do not
+// change once made, so programs can share them, as the language server's do.
+type fixCompilerHost struct {
+	compiler.CompilerHost
+	parsed *fixParsedFiles
+}
+
+func (h fixCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	text, ok := h.FS().ReadFile(opts.FileName)
+	if !ok {
+		return nil
+	}
+	if file, ok := h.parsed.Load(opts); ok && file.Text() == text {
+		return file
+	}
+	file := h.CompilerHost.GetSourceFile(opts)
+	h.parsed.Store(opts, file)
+	return file
 }
 
 // fixableFiles returns the .vibe files of program's own project, the ones

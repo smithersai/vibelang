@@ -441,6 +441,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Tooling and bundlers
 
+- `vibelang --fix` parsed every library and package again for each round of fixes, so a type nesting 20 `Effect.Effect<…>` took half a minute on a busy machine. A run now parses a file again only when a fix edits it, which took that type from 23 s to 6 s.
 - Post-merge fuzz checks repeatedly compiled every generated acceptance case. Short compile, parity and fix runs now retain corpus and pending witnesses plus deterministic samples; campaigns and nightly runs retain their complete inputs, and every short target logs CPU use and fails on a large budget regression.
 
 - Coding agents edited `.vibe` files without VibeLang's skill or diagnostics unless you set each one up by hand. `npx vibelang agents init` now writes the skill, an `AGENTS.md` section, the language server configuration and a post-edit check for Claude Code, Codex, opencode, Cursor and VS Code ([Coding agents](coding-agents.md)).

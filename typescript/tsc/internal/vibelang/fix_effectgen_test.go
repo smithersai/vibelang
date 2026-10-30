@@ -351,7 +351,8 @@ func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[stri
 		t.Fatalf("config: %v", errors)
 	}
 	texts := map[tspath.RootedFilePath]string{}
-	program := fixProgram(fs, bundled.LibPath(), config, texts)
+	parsed := &fixParsedFiles{}
+	program := fixProgram(fs, bundled.LibPath(), config, parsed, texts)
 	for range 32 { // each round applies a fix; a construct draws no fix of its own kind again
 		changed := false
 		for _, file := range fixableFiles(program) {
@@ -365,7 +366,7 @@ func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[stri
 		if !changed {
 			break
 		}
-		program = fixProgram(fs, bundled.LibPath(), config, texts)
+		program = fixProgram(fs, bundled.LibPath(), config, parsed, texts)
 	}
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), nil) {
 		if d.Category() == diagnostics.CategoryError {
