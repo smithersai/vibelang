@@ -27,7 +27,7 @@ assert.equal(rawEnumAssignable, false)
 
 test("the admitted Dynamic counterpart keeps the generated tag and required literal field", () => {
   const failures = chapter("003-failures")
-  const source = block(failures, "class Dynamic extends Schema.TaggedError")
+  const source = block(failures, "const decode = Schema.decodeUnknownExit(Dynamic)")
   assert.ok(source.includes('const field = "actual"'))
   const result = run(source + `
 import assert from "node:assert/strict"

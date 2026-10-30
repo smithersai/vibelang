@@ -698,7 +698,9 @@ console.log(JSON.stringify(Effect.runSync(labels())))
 
 Each member has one classification ([Declarations](/spec/900-appendices#notes-on-the-productions)): `id: string`, `readonly id: string` and `id?: string` are always [Field](/spec/900-appendices#field)s, each complete method or accessor is classified once, including `effect` and producer methods, empty `;` class elements are ignored, and any other class element is a [RejectedElement](/spec/900-appendices#rejectedelement), which the static rules below reject. The parser also accepts type parameters and heritage clauses, only so their rules can report them.
 
-Field keys follow TypeScript object types, as in [Schema declarations](/spec/006-data#schema-declarations): an identifier, a string or numeric literal, or a computed name, emitted as written. A computed key of non-literal type gives an index signature in the instance type; at runtime it supplies just the one key the expression evaluates to. In `schema error`, the decoder requires that runtime key and ignores other keys by default; an index signature does not make it validate arbitrary keys.
+Field keys follow their actual counterpart's native checks. In a plain `error`, fields are type-only payload members whose keys use TypeScript's `TypeLiteral` member admission, matching `Data.TaggedError`'s payload type. For example, with `keys.value: number` and `key(): number`, `[keys.value]` is admitted, while `[(keys.value)]`, `[keys["value"]]` and `[key()]` retain native diagnostics such as `TS1170`, even for a call returning a literal. Admission depends on the expression shape as well as its type. Admitted computed keys and any resulting index signature are erased, with no runtime key evaluation or TDZ read. Actual methods and getters keep TypeScript's computed-name evaluation.
+
+`schema error` field keys instead use the runtime object literal admission of `Schema.TaggedError`'s fields object ([Schema declarations](/spec/006-data#schema-declarations)), together with the existing `_tag` exclusion checks. The numeric call, parenthesized and element access forms above can be admitted in that counterpart. An admitted computed field key runs while building the schema-fields object and supplies just its one runtime key. The decoder requires that key and ignores other keys by default; an index signature does not make it validate arbitrary keys.
 
 In a `schema error` body, a computed key is `EK2117` unless its well-typed runtime property-key domain is proved to exclude `"_tag"`. Raw assignability of the unbranded string literal to a nominal key type does not establish that exclusion. Resolve effective generic constraints recursively; broad string constraints and unions that may contain the tag are rejected. Use enum members' underlying string values. In intersections retain genuine primitive literal/template constraints, but an opaque brand or refinement marker does not exclude the underlying string. Every possible union component must exclude it.
 
@@ -736,6 +738,34 @@ class Dynamic extends Schema.TaggedError<Dynamic>()("Dynamic", { [field]: Schema
 const decode = Schema.decodeUnknownExit(Dynamic)
 decode({ _tag: "Dynamic", other: 1 })             // Failure: actual is missing
 decode({ _tag: "Dynamic", actual: 1, other: 2 })  // Success: other is stripped
+```
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-13
+function plainKey() {
+  error Plain { [field]: number }
+  const field = "actual"
+  return new Plain({ actual: 7 }).actual
+}
+effect function inspectKey() { return plainKey() } // Success(7); no early read of field
+```
+
+```ts [Effect]
+import { Data, Effect, Schema } from "effect"
+
+// Payload projection: the type's computed key is erased before execution.
+const erasedPayloadKey = Effect.sync(() => {
+  class Plain extends Data.TaggedError("Plain")<{ readonly [field]: number }> {}
+  const field = "actual"
+  return new Plain({ actual: 7 }).actual
+})
+const evaluatedSchemaKey = Effect.sync(() => {
+  let reads = 0
+  const key = { get field(): "actual" { reads++; return "actual" } }
+  class Dynamic extends Schema.TaggedError<Dynamic>()("Dynamic", { [key.field]: Schema.Number }) {}
+  return [reads, new Dynamic({ actual: 7 }).actual] as const
+})
+// erasedPayloadKey succeeds with 7; evaluatedSchemaKey succeeds with [1, 7].
 ```
 
 ```vibe [VibeLang]

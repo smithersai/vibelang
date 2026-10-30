@@ -19,6 +19,7 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest; }
 ```
 
 - `error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly.
+- **Amended 2026-10-30: payload key erasure.** Plain `error` payload fields are `Data.TaggedError`'s generic type argument. Their computed type keys cause no runtime lookup, evaluation or TDZ read; declaration output retains the type. Admitted `schema error` field keys belong to the runtime schema object and evaluate normally, while actual methods/getters retain TypeScript's computed-name evaluation. A shared runtime-key rule never makes a plain payload type into an object initializer. See [Error declarations](../src/003-failures.md#error-declarations).
 - The body may hold methods and getters, as any class can, for example `get message() { return \`no user ${this.id}\` }`. It may not hold a constructor or a `_tag` override.
 - **Amended 2026-10-29: no `extends`.** An `error` declaration always extends `Data.TaggedError`, so `error UserNotFound extends NotFound { … }` is a compile error. Errors are grouped with a union, as in `type LookupError = NotFound | Timeout`, because tagged errors are matched by `_tag` and a subclass would match two tags. Recorded under Will's standing approval of recommendations.
 - The base is `Data.TaggedError`, which can't be decoded from JSON. Serializable, Schema-based errors are left to the `schema` VIP.
@@ -29,6 +30,8 @@ fetchUser(id) catch (e) => match (e) { when NotFound: guest; }
 - **Amended 2026-10-29: exactly VIP-13.** `error` declarations allow no `extends` and no `_tag` override; EK2117 enforces it. Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 
 *Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
+
+- **Amended 2026-10-30: computed payload key admission.** Plain `error` payload fields use the native TypeScript `TypeLiteral` member checks of `Data.TaggedError`'s payload type. Expression shape matters as well as key type: an identifier or property access of type `number` can be admitted while a call returning a literal, a parenthesized key or element access receives native `TS1170`. Only admitted payload keys are erased; actual runtime member names keep their ordinary evaluation. The runtime Schema fields object in VIP-29 has its own native key admission.
 
 ## Amendment: member diagnostic priority
 
