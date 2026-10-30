@@ -191,7 +191,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			}
 			continue
 		}
-		if kind == serviceClass && ast.IsMethodDeclaration(member) && serviceShape(class) == nil {
+		if kind == serviceClass && ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isServiceConstructSignature(class, member) {
 			if member.Type() == nil {
 				cover(c, memberName) // TS7010: an implicit any return type
 				d := report(c, memberName, EK9205, name+"."+memberName.Text())
@@ -202,7 +202,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		if serviceContractClassSyntax(member) {
 			continue // EK0902 already explains the invalid contract syntax.
 		}
-		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
+		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isServiceConstructSignature(class, member) && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
 			at := member.Type()
 			if at == nil {
 				at = memberName

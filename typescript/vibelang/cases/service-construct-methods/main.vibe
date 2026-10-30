@@ -1,0 +1,25 @@
+// expect-result: 7
+export service Quoted {
+ static readonly key = "construct/quoted";
+ "new"(): number!!
+}
+export service Computed {
+ static readonly key = "construct/computed";
+ ["new"](): number!!
+}
+export service Optional {
+ static readonly key = "construct/optional";
+ new?(): number!!
+}
+export service ConstructorMember {
+ static readonly key = "construct/member";
+ create: new () => Date
+}
+export class Ordinary { new(): number { return 1 } }
+
+export effect function main() {
+ provide Quoted = { "new": effect () => 7 } {
+  const implementation = try Effect.service(Quoted)
+  return try implementation["new"]()
+ }
+}

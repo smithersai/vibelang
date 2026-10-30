@@ -1,0 +1,17 @@
+// expect: EK0902
+export service PlainFactory {
+ static readonly key = "construct/plain"
+ new(): number
+}
+export service EffectFactory {
+ static readonly key = "construct/effect"
+ new(): number!!
+}
+export service GenericFactory {
+ static readonly key = "construct/generic"
+ new<T>(value: T): T
+}
+export service UntypedFactory {
+ static readonly key = "construct/untyped"
+ new()
+}

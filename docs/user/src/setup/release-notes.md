@@ -1245,6 +1245,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's inventory listed the `x.d.vibe.ts` declaration sidecars that `vibelang` writes beside each `.vibe` file as Effect source files and plan candidates, and the codemod would have renamed one to `x.d.vibe.vibe`; both now treat every `x.d.<extension>.ts` as a declaration file.
 - The migrate flow's Effect upgrade kept the earlier toolchain's `vibelang-runtime` in a repository VibeLang had already set up, and that runtime imports what the new Effect removed, so the upgraded tests failed by the thousand (1919 on foldkit) and read as Effect regressions; the upgrade now moves the VibeLang packages the repository uses to this run's release in the same commit.
 - Nested interruption examples left the target of `restore` implicit. It now explicitly restores the nearest mask's entry state, including an already uninterruptible state, with a pending-interruption example.
+
+- Service construct signatures could compile as methods or produce a misleading missing-contract error; they now report one `EK0902`, while quoted, computed, and optional methods named `new` remain valid.
+
 - Without host declarations, missing `fetch`, `process`, and `Buffer` names appeared as banned platform APIs; the compiler now keeps TypeScript's missing-name and missing-property diagnostics.
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.
