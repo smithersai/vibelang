@@ -48,6 +48,19 @@ test("ast-grep registration uses the canonical grammar and extends TS rules", t 
   assert.equal(result.builds.length, 1)
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
 })
+test("the lint config loads where typescript-eslint refuses the repository's TypeScript", async t => {
+  const root = fixture(t, {
+    "package.json": '{"scripts":{"lint":"oxlint"}}',
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n",
+    "node_modules/typescript-eslint/package.json": '{"name":"typescript-eslint","type":"module","exports":"./index.mjs"}',
+    "node_modules/typescript-eslint/index.mjs": 'throw new Error("typescript-eslint does not support TS 7.0.")\n'
+  })
+  wireDeveloperTools({ root, specsFor })
+  const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
+  assert.deepEqual(config.at(-1).files, ["**/*.vibe"])
+  assert.equal(config.length, 2)
+})
 const deps = process.env.VIBELANG_TOOLING_NODE_MODULES
 test("the migrated lint command reports a debugger at its .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
   const root = fixture(t, { "package.json": '{"scripts":{"lint":"oxlint"}}', "probe.vibe": "export const value = 1\ndebugger;\n" })

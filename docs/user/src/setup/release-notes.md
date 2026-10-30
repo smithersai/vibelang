@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow's setup left a package tsconfig's `include` at `src/**/*.ts`, so a composite project rejected its first `.vibe` module with `TS6307`; setup now adds `src/**/*.vibe` beside each `.ts` or `.tsx` pattern.
 
+- The migrate flow's ESLint config for `.vibe` files failed on a repository using TypeScript 7, because `typescript-eslint` refuses it; the config now uses its recommended rules only where it loads.
+
 - Repository validation could fail documentation-runner and site contrast tests on a busy host because healthy work hit a short deadline; a block now gets a minute, the contrast check ten, and only blocks that hang on purpose keep a short deadline.
 
 - Running `scripts/ci.sh` could modify a shared dependency install and fail another checkout's build; it now leaves every `node_modules` symlink intact and uses that install without writing through it.

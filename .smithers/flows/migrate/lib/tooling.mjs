@@ -89,10 +89,11 @@ export function wireDeveloperTools({ root, specsFor }) {
     }
   }
   if (needsLint) write(".vibelang/eslint.config.mjs", `import parser from "vibelang/eslint"
-import tseslint from "typescript-eslint"
+// typescript-eslint refuses TypeScript 7, so its rules join only where it loads.
+const recommended = await import("typescript-eslint").then(({ default: tseslint }) => tseslint.configs.recommended, () => [])
 export default [
   { ignores: ["**/node_modules/**", "**/dist/**", "**/build/**"] },
-  ...tseslint.configs.recommended.map(config => ({ ...config, files: ["**/*.vibe"] })),
+  ...recommended.map(config => ({ ...config, files: ["**/*.vibe"] })),
   { files: ["**/*.vibe"], languageOptions: { parser }, rules: { "no-debugger": "error" } }
 ]
 `)
