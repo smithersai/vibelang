@@ -11,7 +11,7 @@ export schema Kind = "persistent" | "incognito"
 export schema Id = string | number
 
 // An array.
-export schema Tags = string[]
+export schema Tags = ReadonlyArray<string>
 
 // Written after its type, the constant keeps its form: a schema alias's
 // declaration file lists the constant first (D501), which would reorder this
