@@ -49,8 +49,10 @@ export PATH=$PATH:$HOME/.local/go/bin:$HOME/.local/node/bin:$HOME/.local/bin:$HO
 export GOMAXPROCS=${NIGHTLY_GOMAXPROCS:-24}
 export GOFLAGS=-trimpath CGO_ENABLED=0
 # A hang is a stage that never ends; on a loaded shared host an ordinary
-# compile can take longer than the 10 s default.
-export VIBELANG_FUZZ_HANG=${VIBELANG_FUZZ_HANG:-30s}
+# compile can take longer than the 10 s default. At a load of 189 on nyc-02
+# (2026-10-30) a FuzzCompile seed's type check took over 30 s, and the hang
+# panic ended the whole seed run five minutes in; post-merge allows 120 s.
+export VIBELANG_FUZZ_HANG=${VIBELANG_FUZZ_HANG:-120s}
 
 mkdir -p "$root/runs"
 exec 9> "$root/lock"
