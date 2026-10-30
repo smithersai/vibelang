@@ -64,6 +64,10 @@ install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`
 launcher's bytes. The VibeLang Go tests read cases, docs and installs through
 the repository root, so they and the other repository-wide checks take `:tree`.
+Tests also read repository oracles outside the Go module, such as Appendix B.
+Go's test-result cache can miss changes to those files;
+`scripts/go-test-cache.test.mjs` checks that changing an external oracle reruns the test.
+
 They run `go test -count=1`: the graph caches their results, and Go's own test
 cache would first hash every file the tests opened. `:go-vibelangfuzz` opens
 about 25 million, which took 14 minutes on one core after its tests passed.
