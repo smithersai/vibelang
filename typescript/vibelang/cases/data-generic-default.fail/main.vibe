@@ -1,0 +1,3 @@
+// expect: EK2803
+data Box<A = string> { Value { value: A } }
+data Pair<A, B = number> { Value { first: A; second: B } }

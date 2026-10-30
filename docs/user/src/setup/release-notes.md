@@ -40,6 +40,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Exporting a `data` declaration named `as` produced an invalid declaration file; the emitted type alias now disambiguates the contextual name and remains usable by TypeScript consumers.
 
+- Generic `data` parameters silently accepted defaults that its constructors do not support. Defaults now report `EK2803`; `vibelang --fix` preserves them in equivalent Effect TypeScript.
+
+### Generic data defaults
+
+| Before | After and repair |
+| --- | --- |
+| Generic `data` with a default, such as `data Box<A = string>` | `EK2803`: run `vibelang --fix` to retain the default on an equivalent Effect TypeScript type alias and preserve the constructors. |
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang

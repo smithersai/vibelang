@@ -69,7 +69,7 @@ function count(state: LoadState<ReadonlyArray<string>, string>) {
 2 0
 ```
 
-A data type takes up to four type parameters, which the constructors infer from their arguments. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
+A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. `vibelang --fix` expands the declaration to equivalent Effect TypeScript while preserving its defaults. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
 
 ## What data declares
 
@@ -224,6 +224,7 @@ const idle = LoadState.Idle()
 | EK2125 | A variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write `name: Type` or `name?: Type` |
 | `EK2801` | More than four type parameters | Use at most four type parameters |
 | `EK2126` | A constrained type parameter | Remove the constraint |
+| `EK2803` | A default on a generic `data` parameter | Put the default on a type alias, or run `vibelang --fix` |
 | EK2127 | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
 
 ## Defining ordinary and tagged errors

@@ -352,6 +352,9 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 		if constraint := parameter.AsTypeParameterDeclaration().Constraint; constraint != nil {
 			report(c, constraint, EK2126, parameter.Name().Text())
 		}
+		if defaultType := parameter.AsTypeParameterDeclaration().DefaultType; defaultType != nil {
+			report(c, defaultType, dataDefault, parameter.Name().Text())
+		}
 	}
 	if definition := dataDefinitionOf(alias); definition != nil {
 		// What TypeScript says about the interface, which the parser wrote,

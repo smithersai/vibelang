@@ -95,6 +95,8 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 
 An explicitly `readonly` schema field requires known readonly decoded-key flags on its referenced codec (detail132), including aliases and nested structs. For `EK2109` conflicts, run `vibelang --fix` to keep the existing codec through explicit `Schema.Struct` values. Preserve emitted declarations, decode Exits/Causes, constructor/matcher behavior, getter order and directives. Do not replace a `mutableKey` codec with `readonlyKey` or confuse shallow key mutability with nested value mutability. Direct schema-error fields follow a separate effective-readonly rule (detail167).
 
+- Generic `data` parameters have no defaults (`EK2803`, VIP-28): preserve a default with `vibelang --fix`, which expands the declaration into equivalent Effect TypeScript.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
