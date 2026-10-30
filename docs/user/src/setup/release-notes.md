@@ -529,6 +529,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Each compile of `vibelang/register`, `vibelang/bun` and the bundler plugins started Node to run the `vibelang` launcher, which only finds and starts the native compiler, adding about 70 ms per project. The loaders now start the native compiler themselves.
 
 
+- VibeLang's ESLint parser failed on a file with an `import` keyword that starts no call, such as `import<A0`, which TypeScript parses without a syntax error and its checker rejects. It now converts the keyword as typescript-estree does, as a `TSImportKeyword` node, so ESLint reports the file's other problems too.
+
 #### Docs
 
 - Completion could hang the language server in a file with a call left open after an earlier closed one, such as a second `pipe(` typed below `pipe(o, Option.getOrNull)`: matching the earlier `)` searched the whole file and found the later `(`. It now searches only before the token, as TypeScript does.

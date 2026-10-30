@@ -876,6 +876,13 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 	case ast.KindSuperKeyword:
 		return c.node(n, "Super")
 
+	case ast.KindImportKeyword:
+		// An import that starts no call, as in `import<A0`, which TypeScript
+		// parses as `import < A0` and only its checker rejects: typescript-
+		// estree copies the keyword as it copies any node it has no case for,
+		// with TypeScript's node id, 0 in a tree no checker has visited.
+		return c.node(n, "TSImportKeyword").set("id", 0)
+
 	case ast.KindArrayBindingPattern:
 		elements := listNodes(n.AsBindingPattern().Elements)
 		converted := make([]any, 0, len(elements))
