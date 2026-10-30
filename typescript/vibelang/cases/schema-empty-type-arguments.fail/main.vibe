@@ -1,0 +1,9 @@
+// expect: EK2109
+schema Base = string
+schema Alias = Base<>
+schema Struct { readonly field: Base<> }
+schema List = Base< /* keep */ >[]
+schema Nested = Array<readonly [Base<>]>
+schema error Bad { readonly field: Base<> }
+namespace N { export schema Alias = Base<> }
+export {}

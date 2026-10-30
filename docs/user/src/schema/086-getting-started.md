@@ -27,6 +27,8 @@ Each field describes its own representation and checks; the struct combines them
 
 A required `schema` field must reference a codec with required decoded key flags (`EK2109`). Use an unmodified value codec and write optionality on the field. To retain an existing optional-key codec, `vibelang --fix` writes the explicit `Schema.Struct` value.
 
+An empty type argument list on a schema reference, such as `Address<>`, reports `EK2109`. `vibelang --fix` removes the empty list and keeps its comments.
+
 ## Extracting decoded, encoded, and service types
 
 ```vibe

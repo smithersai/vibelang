@@ -1,0 +1,13 @@
+export schema Base = string
+export schema Alias = (Base)
+export schema Lists = (Base// preserved line comment
+)[]
+export schema Shape {
+  readonly item: (Base)
+  readonly list: Array<readonly [(Base)]>
+  readonly record: Readonly<Record<"x", (Base)>>
+  readonly literal: "Base<>"
+  readonly ["Base<>"]: string
+}
+export schema error Malformed { readonly value: (Base) }
+export namespace N { export schema Alias = (Base) }

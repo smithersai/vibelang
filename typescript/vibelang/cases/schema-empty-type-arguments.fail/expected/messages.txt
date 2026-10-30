@@ -1,0 +1,1 @@
+An empty type argument list has no schema form; remove <> from Base.

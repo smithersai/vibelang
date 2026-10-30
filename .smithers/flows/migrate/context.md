@@ -83,6 +83,10 @@ Use only `service Name { … }` for services; abstract classes remain ordinary c
 
 A source-required struct field cannot reference a codec with optional or unprovable decoded key flags. For `EK2109`, preserve existing decoding by expanding the enclosing schema declaration to explicit codecs with `vibelang --fix`. Keep optionalKey omission distinct from accepting undefined; adding a question token is not a preserving upgrade. Nested struct codecs in schema-error fields may be named before the error declaration while retaining its constructor, methods and matcher. Explicit optional-key Struct calls stay explicit; do not suggest an inverse rewrite that makes a required field optional.
 
+## Empty schema type arguments (VIP-15)
+
+Remove an empty type argument list from a schema value reference: `schema Alias = Address<>` becomes `schema Alias = (Address)`. Apply the same repair inside fields, arrays, tuples, unions, records and schema errors. Keep comments inside the parentheses, especially line comments before an array suffix. Keep nonempty mapped built-in arguments such as `Array<string>` and expressions in computed field keys. `vibelang --fix` performs this preserving repair for `EK2109`.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
