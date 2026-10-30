@@ -162,3 +162,7 @@ For generic schema arrays, resolve the TypeScript-library type binding instead o
 ## Retained nested Effect error patterns (VIP-7, detail 92)
 
 Qualified constructors in the thirty-three retained Effect error patterns use their native module guards. When upgrading code whose nested-module patterns previously used ordinary class matching, run `vibelang --fix --fix-migration-only`; it introduces fresh local constructor aliases and explicit call-only extractors (detail 100), then rewrites those patterns to preserve their own matcher, `instanceof` behavior and declared types. Keep direct qualified patterns when deliberately adopting the native guard semantics. Compare complete `Exit`s and the emitted declarations after the upgrade.
+
+## VIP-15: Schema type-member grammar
+
+Normal schema and nested struct fields use TypeScript type members, not class fields. For `TS1070` on class-only modifiers, run `vibelang --fix` to remove all ignored modifier tokens and repeated `readonly` tokens in that field together, preserving comments, one readonly marker and the codec. This does not change schema-error class modifier rules. Preserve emitted declarations, decode Exits/Causes and evaluation order.

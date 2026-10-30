@@ -342,6 +342,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataSchemaLibraryRecordRules()...)
 	rules = append(rules, dataSchemaTupleRestBindingRules()...)
 	rules = append(rules, dataPayloadMutabilityRules()...)
+	rules = append(rules, dataSchemaTypeMemberModifierRules()...)
 	return append(rules, dataReadonlyRecordAliasRules()...)
 }
 

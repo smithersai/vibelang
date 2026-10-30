@@ -1,0 +1,12 @@
+// expect: TS1070
+schema Public { public value: string }
+schema Private { private value: string }
+schema Protected { protected value: string }
+schema Static { static value: string }
+schema Declare { declare value: string }
+schema Abstract { abstract value: string }
+schema Override { override value: string }
+schema Alias = { private value: string }
+schema Nested { child: { public value: string } }
+namespace N { export schema Named { protected value: string } }
+schema Mixed { public private readonly readonly value: string }

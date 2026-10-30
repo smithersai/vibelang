@@ -1,0 +1,13 @@
+const events: string[] = []
+const fields = { get value(): typeof Schema.String { events.push("field"); return Schema.String } }
+export schema Direct { public /* keep */ readonly value: fields.value; static count: number }
+export schema Nested = { readonly child: { private value: number } }
+export schema error Outer {
+ readonly child: { protected value: string }
+ get label(): string { return "kept" }
+}
+export namespace N { export schema Named { declare value: boolean } }
+export schema Mixed { public private readonly readonly value: string }
+export { events }
+export function make() { return new Outer({ child: { value: "kept" } }) }
+export function matches(subject: unknown) { return subject is Outer }
