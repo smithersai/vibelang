@@ -52,3 +52,20 @@ test("contributor commands use portable checkout paths and plain setup instructi
 test("the compiler notes describe verified behavior and measured performance", () => {
   assert.deepEqual(findings.filter(p => p.endsWith("a stale compiler limitation or unmeasured complexity claim")), [])
 })
+
+test("retired scratch rules preserve path, content and prefix boundaries", () => {
+  const reason = "a removed review artifact or scratch path"
+  const roots = ["review-codex", "review-fable", "agent-a", "abstract-services"].map(name => "scratch-" + name)
+  const paths = ["docs/" + "reviews/", ...roots.map(name => "experiments/" + name + "/"),
+    "artifacts/" + "effeck-" + "design-space.html"] // brand-gate: allow
+  for (const path of paths) {
+    assert.deepEqual(publicHygiene(path + "note.md", ""), [reason], path)
+    assert.deepEqual(publicHygiene("README.md", "See " + path + "note.md"), [reason], path)
+    assert.deepEqual(publicHygiene("prefix/" + path + "note.md", ""), [], path)
+  }
+  for (const root of roots) {
+    assert.deepEqual(publicHygiene("README.md", root + "/note.md"), [reason], root)
+    assert.deepEqual(publicHygiene("README.md", root), [], root)
+  }
+  assert.deepEqual(publicHygiene("packages/compiler/README.md", "Ordinary public documentation."), [])
+})
