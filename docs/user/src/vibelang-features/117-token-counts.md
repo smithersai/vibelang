@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 3,982 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 14,313 |
-| The skill and the user guide (139 pages) | 296,817 |
-| The user guide alone | 292,835 |
+| The skill and the user guide (139 pages) | 297,118 |
+| The user guide alone | 293,136 |
 | The specification (10 chapters) | 84,691 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **41,749** |
-| [Release notes](../setup/release-notes.md) | 41,749 |
-| **All 18 pages** | **67,663** |
+| **Upgrade** | **42,050** |
+| [Release notes](../setup/release-notes.md) | 42,050 |
+| **All 18 pages** | **67,964** |
 
 ### Guides
 

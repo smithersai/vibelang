@@ -30,6 +30,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The platform decision gave banned `globalThis` members the wrong diagnostic and omitted the allowed `Function` checks; it now agrees with the language reference and the accepted `Function` exemptions.
 
+- The interruption and named-region runtime checks could miss child cleanup on busy hosts; they now wait for child readiness, with a late-start test mode that exposes startup races.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
@@ -356,6 +358,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Compiler and diagnostics
 
+- The compiler crashed on a service declaration with a static member whose name is computed, such as `static [Symbol.iterator] = 1`, while looking for the service's `key`. It now treats only a member named `key` as the key.
+
 - A call of a union of a plain function and an Effect function, such as `(flag ? double : Math.abs)(3)` with `double` unannotated, compiled and gave the Effect function's program back unrun when it was chosen. It is now EK4301; annotate `double` or call each function where it is chosen.
 - A `schema` declaration's `.d.ts` declared an interface, `interface User extends Schema.Schema.Type<typeof User> {}`, before the constant, so a library that rewrote `const User = Schema.Struct(…)` and `type User = typeof User.Type` as a `schema` changed its public declarations. It now declares the constant and then `type User = typeof User.Type`, byte for byte what the Effect TypeScript declares.
 - A function's form followed its body: adding a log call to an unannotated exported helper changed its declaration from plain to Effect and broke callers compiled earlier, a callback type written in place accepted Effect callbacks while the same type through an alias did not, and an unannotated protocol method such as `static [customMatcher]()` or `[Symbol.dispose]()` that ran an Effect returned it unrun. A function's form is now written: a plain return annotation or `: infer _` makes it plain, a function without one is an Effect function, a literal takes its destination's form, and a callback type means what TypeScript means; see [Upgrade from 0.0.10](#upgrade-from-0010).
@@ -464,6 +468,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Clearer messages for errors that offered no fix: an unreachable catch clause (EK2106), a second clause for one operation (EK2108), `await` on a plain value (EK4603), a binding inside an `or` pattern (EK4702), a regular expression or relational pattern (EK4704), and a condition that isn't a boolean (EK4822). Each now says how to repair it, such as `when let v and (A or B): …` or `when let v and if (…): …`. EK2002 also names the `provide` block: `Provide Users inside find with provide layer { … }, or add it to the contract: string!!Users`.
 - Clearer messages for a program run at a module's top level (EK1001) and a throw in a factory's body (EK2115). `export const config = loadConfig()` suggested only "Export a function instead"; it now shows the code that holds the program, `const config = () => loadConfig()`. A top-level `provide`, `handle`, `uninterruptible`, `interruptible` or `restore` block now says to move it into a function, a top-level throw expression reads like a throw statement, `A module's top level can't throw Bad`, and EK2115 no longer says a body "cannot run throw".
 
+- While an argument such as `Layer.effect(Reports, {` followed by `const printer = try Printer` was half written, the language server could recurse until its stack overflowed and the process died: checking the argument asked for the call's signature, whose resolution checked the argument again. The check now answers from the resolution already in progress.
+
 #### Runtime
 
 - A `provide Key = value { … }` block built a one-service Layer on every pass, with a new Scope and Layer MemoMap around its statements, so a hot path paid about five times the cost of `Effect.provideService` and a layer the block's statements provided was memoized with the caller's layers. A `Key = value` provider now provides its service as `Effect.provideService` does; only a layer the block lists builds one.
@@ -498,6 +504,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Interruption blocks lacked keyword highlighting. `uninterruptible`, `restore` and `interruptible` now receive it in block form.
 - Tree-sitter rejected `using` as a parameter or ordinary identifier. It now accepts those contextual uses.
 
+- After an edit to a `vibelang.manifest.json`, the language server kept the diagnostics of the old manifest, such as no EK4401 for a call of a declaration the manifest no longer listed, until the project reloaded. A change to a manifest now rebuilds the project's program, as a `package.json` change does.
+
 #### Tooling and bundlers
 
 - `vibelang --fix` parsed every library and package again for each round of fixes, so a type nesting 20 `Effect.Effect<…>` took half a minute on a busy machine. A run now parses a file again only when a fix edits it, which took that type from 23 s to 6 s.
@@ -531,6 +539,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A program that loads `.vibe` modules from many workspace packages through `vibelang/register`, `vibelang/bun` or a bundler plugin was slow to start with an empty cache: each package's compile type-checked the sources of every workspace package it imports, so a package was checked again for each package that imports it, and a 22-package program took 30 to 40 s to start, against 10 s without VibeLang. Each compile now checks only its own project's files, and the packages it imports only supply types to it, so that program starts in 20 to 25 s. A type error in an imported package's file now stops the import of that package's `.vibe` modules instead of the importer's.
 - Each compile of `vibelang/register`, `vibelang/bun` and the bundler plugins started Node to run the `vibelang` launcher, which only finds and starts the native compiler, adding about 70 ms per project. The loaders now start the native compiler themselves.
 
+
+- VibeLang's ESLint parser failed on a file with an `import` keyword that starts no call, such as `import<A0`, which TypeScript parses without a syntax error and its checker rejects. It now converts the keyword as typescript-estree does, as a `TSImportKeyword` node, so ESLint reports the file's other problems too.
 
 #### Docs
 
