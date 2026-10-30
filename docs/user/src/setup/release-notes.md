@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An `effect` method with a computed name, such as `effect [key]()`, was rejected with syntax errors in a class or object literal; computed names now work for instance, static and generic Effect methods.
 
+- The config preview silently dropped invalid settings; `vibelang --showConfig` now reports local and inherited configuration errors and exits unsuccessfully.
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang

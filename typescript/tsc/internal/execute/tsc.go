@@ -231,6 +231,16 @@ func tscCompilation(ctx context.Context, sys tsc.System, commandLine *tsoptions.
 
 	reportErrorSummary := tsc.CreateReportErrorSummary(sys, locale, configForCompilation.CompilerOptions())
 	if compilerOptionsFromCommandLine.ShowConfig.IsTrue() {
+		hasConfigErrors := false
+		for _, diagnostic := range configForCompilation.GetConfigFileParsingDiagnostics() {
+			if diagnostic.Category() == diagnostics.CategoryError {
+				reportDiagnostic(diagnostic)
+				hasConfigErrors = true
+			}
+		}
+		if hasConfigErrors {
+			return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
+		}
 		showConfig(sys, configForCompilation, configFileName)
 		return tsc.CommandLineResult{Status: tsc.ExitStatusSuccess}
 	}
