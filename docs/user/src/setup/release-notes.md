@@ -1169,6 +1169,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Copies of `globalThis` and reads through nonliteral keys bypassed its access restriction; they now report `EK0107`, while literal member access, type queries and local shadows keep working.
 
+- Literal `data:` and `blob:` imports could load string-supplied code from `.vibe` files; they now report `EK0107`, including URL-equivalent scheme spellings and imports inside Effect wrappers.
+
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
 

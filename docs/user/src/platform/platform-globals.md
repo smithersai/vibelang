@@ -310,3 +310,26 @@ code.
 `Date.now()`, `Date()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no
 argument read the current clock without a diagnostic. Read time through `try Clock.currentTimeMillis` and pass that
 value to the formatter when you need controlled time, including in tests.
+
+
+## Literal module URLs
+
+A string-literal `data:` or `blob:` specifier in an import or re-export reports `EK0107`: these module URLs supply code in a string. URL-equivalent scheme spellings, including uppercase letters and ASCII whitespace, get the same diagnostic. Move the import into a `.ts` helper and call it through `Effect.tryPromise`:
+
+```ts
+// load-module.ts
+export function loadModule(specifier: string) {
+  return import(specifier)
+}
+```
+
+```vibe
+// fragment
+// pending: VIP-1, VIP-4, VIP-5, VIP-14
+import { loadModule } from "./load-module.ts"
+effect function loadData() {
+  return try Effect.tryPromise(() => loadModule("data:text/javascript,export default 1"))
+}
+```
+
+A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.

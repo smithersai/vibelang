@@ -1,0 +1,13 @@
+// expect: EK0107
+import { Effect } from "effect"
+import value from "data:text/javascript,export default 1"
+export { default as blobModule } from "blob:unexecuted"
+export const data = import("data:text/javascript,export default 1")
+export const blob = import("blob:unexecuted")
+export const upper = import("DATA:text/javascript,export default 1")
+export const upperBlob = import("BLOB:unexecuted")
+export effect function wrapped() {
+  return try Effect.tryPromise(() => import("data:text/javascript,export default 1"))
+}
+export const computed = import("data:" + "text/javascript,export default 1")
+export const valueType = typeof value

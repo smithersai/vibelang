@@ -1,0 +1,2 @@
+A data: module supplies code in a string; move its import to a .ts file.
+A blob: module supplies code in a string; move its import to a .ts file.

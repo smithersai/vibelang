@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+import { load } from "./load.js"
+export effect function read() {
+  const helper = try Effect.tryPromise(() => load())
+  const computed = try Effect.tryPromise(() => import("data:" + "text/javascript,export default 2"))
+  return [helper.default, computed.default]
+}
+export type DataModule = typeof import("data:text/javascript,export default 1")

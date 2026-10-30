@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","skipLibCheck":true,"types":[],"outDir":"out"},"files":["main.vibe","uris.d.ts"]}
