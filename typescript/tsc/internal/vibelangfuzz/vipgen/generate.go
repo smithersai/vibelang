@@ -73,6 +73,12 @@ type Gen struct {
 	names   int
 	files   map[string]string
 	imports map[string][]string
+	// narrowed counts, for each local, the enclosing ifs whose condition
+	// narrows it to a literal type: inside if (n === 8), TypeScript types n
+	// as 8, so 9 === n there is TS2367. Narrowing is lexical, and an if's
+	// block is generated inside the if, so the count holds in every scope a
+	// construct makes there.
+	narrowed map[string]int
 }
 
 // A Scope is what a statement may refer to: the function it stands in, the
@@ -101,7 +107,7 @@ func (s *Scope) child() *Scope {
 // corpus file never silently becomes another construct's program.
 func Generate(data []byte, leaveOut map[string]bool) *Program {
 	enabled := Enabled(leaveOut)
-	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}, files: map[string]string{}, imports: map[string][]string{}}
+	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}, files: map[string]string{}, imports: map[string][]string{}, narrowed: map[string]int{}}
 	var focus *Construct
 	if key, rest, named := NamedInput(data); named {
 		i := slices.IndexFunc(enabled, func(c *Construct) bool { return c.Key == key })
@@ -322,8 +328,16 @@ func (g *Gen) Stmt(s *Scope) Stmt {
 	}
 	if s.Depth < maxDepth {
 		forms = append(forms, func() Stmt {
-			inner := s.child()
-			return &If{Cond: g.Cond(s), Then: g.Block(inner)}
+			cond := g.Cond(s)
+			names := narrows(cond)
+			for _, name := range names {
+				g.narrowed[name]++
+			}
+			then := g.Block(s.child())
+			for _, name := range names {
+				g.narrowed[name]--
+			}
+			return &If{Cond: cond, Then: then}
 		})
 	}
 	if !s.NoReturn {
@@ -405,15 +419,38 @@ func (g *Gen) Num(s *Scope) Expr {
 }
 
 // Cond writes a comparison of two numbers. It compares with === only when
-// one side is a variable: TypeScript rejects 4 === 0, two literal types with
-// no overlap (TS2367), and VibeLang keeps TypeScript's checks.
+// one side is a variable that no enclosing if narrows: TypeScript rejects
+// 4 === 0, two literal types with no overlap (TS2367), and 9 === n where an
+// enclosing if (n === 8) types n as 8; VibeLang keeps TypeScript's checks.
 func (g *Gen) Cond(s *Scope) Expr {
 	a, b := g.Num(s), g.Num(s)
 	_, literal := a.(*Num)
-	if _, other := b.(*Num); g.c.chance(2) && !(literal && other) {
+	if _, other := b.(*Num); g.c.chance(2) && !(literal && other) && !g.isNarrowed(a) && !g.isNarrowed(b) {
 		return &Compare{Op: "===", A: a, B: b}
 	}
 	return &Compare{Op: ">", A: a, B: b}
+}
+
+// narrows returns the locals a condition narrows to a literal type in the
+// block it guards: n in n === 8 or 8 === n.
+func narrows(cond Expr) []string {
+	c, ok := cond.(*Compare)
+	if !ok || c.Op != "===" {
+		return nil
+	}
+	var names []string
+	for _, pair := range [][2]Expr{{c.A, c.B}, {c.B, c.A}} {
+		ref, isRef := pair[0].(*Ref)
+		if _, isNum := pair[1].(*Num); isRef && isNum {
+			names = append(names, ref.Name)
+		}
+	}
+	return names
+}
+
+func (g *Gen) isNarrowed(e Expr) bool {
+	ref, ok := e.(*Ref)
+	return ok && g.narrowed[ref.Name] > 0
 }
 
 // Value writes a value to fail or die with: an Error, a tagged object, a

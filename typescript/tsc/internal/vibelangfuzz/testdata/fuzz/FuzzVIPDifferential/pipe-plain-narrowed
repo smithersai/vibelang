@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip23.pipe-plain\x0010010701017101")
