@@ -90,3 +90,6 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 - Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).
 
 - Keep generic Effect error classes in TypeScript; `error` and `schema error` declarations cannot have type parameters (`EK1303`). A generic schema needs concrete fields or a TypeScript schema factory, not a class whose base refers to its type parameters (`TS2562`).
+## VIP-15: Preserve referenced readonly-key codecs
+
+An explicitly `readonly` schema field requires known readonly decoded-key flags on its referenced codec (detail132), including aliases and nested structs. For `EK2109` conflicts, run `vibelang --fix` to keep the existing codec through explicit `Schema.Struct` values. Preserve emitted declarations, decode Exits/Causes, constructor/matcher behavior, getter order and directives. Do not replace a `mutableKey` codec with `readonlyKey` or confuse shallow key mutability with nested value mutability. Direct schema-error fields follow a separate effective-readonly rule (detail167).

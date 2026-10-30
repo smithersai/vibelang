@@ -1,0 +1,29 @@
+const Mutable = Schema.mutableKey(Schema.Number)
+const events: string[] = []
+const fields = { get value(): typeof Mutable { events.push("field"); return Mutable } }
+export const Direct = Schema.Struct({
+    value: fields.value, maybe: Schema.optional(Mutable),
+});
+export type Direct = typeof Direct.Type;
+export const Nested = Schema.Struct({
+    child: Schema.Struct({
+        value: Mutable,
+    }),
+});
+export type Nested = typeof Nested.Type;
+const $makeCodec448_0 = (): infer _ => Schema.Struct({
+    value: Mutable,
+});
+const $codecs448 = { get $codec448_0() { return $makeCodec448_0(); } };
+
+export schema error Outer {
+  readonly child: $codecs448.$codec448_0
+  get label(): string { return "kept" }
+}
+export namespace N { export const Named = Schema.Struct({
+    value: Mutable,
+});
+export type Named = typeof Named.Type; }
+export { events }
+export function make() { return new Outer({ child: { value: 7 } }) }
+export function matches(subject: unknown) { return subject is Outer }

@@ -1,0 +1,10 @@
+// expect: EK2109
+const Mutable = Schema.mutableKey(Schema.Number)
+const Alias = Mutable
+const Uncertain = Mutable as Schema.Top
+schema Direct { readonly value: Mutable; readonly maybe?: Mutable }
+schema Aliased { readonly value: Alias }
+schema Wide { readonly value: Uncertain }
+schema Nested { readonly child: { readonly value: Mutable } }
+namespace N { export schema Named { readonly value: Mutable } }
+schema error Outer { readonly child: { readonly value: Mutable } }

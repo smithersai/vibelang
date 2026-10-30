@@ -238,6 +238,11 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 			return "", false
 		}
 	}
+	if !mutable {
+		if known, immutable := schemaStructValueReadonly(c, value); known && !immutable {
+			return "", false
+		}
+	}
 	typeText, ok := schemaTypeText(c, file, value, indent)
 	if !ok {
 		return "", false

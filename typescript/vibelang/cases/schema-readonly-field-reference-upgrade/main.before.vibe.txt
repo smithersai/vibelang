@@ -1,0 +1,13 @@
+const Mutable = Schema.mutableKey(Schema.Number)
+const events: string[] = []
+const fields = { get value(): typeof Mutable { events.push("field"); return Mutable } }
+export schema Direct { readonly value: fields.value; readonly maybe?: Mutable }
+export schema Nested = { readonly child: { readonly value: Mutable } }
+export schema error Outer {
+  readonly child: { readonly value: Mutable }
+  get label(): string { return "kept" }
+}
+export namespace N { export schema Named { readonly value: Mutable } }
+export { events }
+export function make() { return new Outer({ child: { value: 7 } }) }
+export function matches(subject: unknown) { return subject is Outer }

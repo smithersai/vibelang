@@ -1,0 +1,8 @@
+main.vibe(5,33): error EK2109
+main.vibe(5,59): error EK2109
+main.vibe(6,34): error EK2109
+main.vibe(7,31): error EK2109
+main.vibe(7,31): error EK2109
+main.vibe(8,51): error EK2109
+main.vibe(9,53): error EK2109
+main.vibe(10,56): error EK2109
