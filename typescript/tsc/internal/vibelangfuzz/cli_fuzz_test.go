@@ -618,8 +618,22 @@ func cliOptions(w *Workspace, dir string, args []string) *tsoptions.ParsedComman
 		return nil
 	}
 	fix := cliHasFix(args)
-	rest := slices.DeleteFunc(slices.Clone(args), func(arg string) bool { return cliFixFlag(arg, fix) })
+	rest := slices.DeleteFunc(cliWithoutLoaderRoot(args), func(arg string) bool { return cliFixFlag(arg, fix) })
 	return tsoptions.ParseCommandLine(rest, w.fs, tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir)))
+}
+
+// cliWithoutLoaderRoot returns args without the --loader-root flag and the
+// directory after it, which the CLI removes before TypeScript parses the
+// rest (Chapter 28, Building and testing; internal/vibelang/loaderroot.go,
+// "--loader-root <directory>"). It removes the first one only, as the CLI
+// does. A flag with no directory after it, or one that a -b or --build
+// beside it makes the CLI refuse, stays for TypeScript to report.
+func cliWithoutLoaderRoot(args []string) []string {
+	index := slices.IndexFunc(args, func(arg string) bool { return strings.EqualFold(arg, "--loader-root") })
+	if index < 0 || index+1 >= len(args) || strings.HasPrefix(args[index+1], "-") {
+		return slices.Clone(args)
+	}
+	return slices.Delete(slices.Clone(args), index, index+2)
 }
 
 // cliDispatched reports whether main.go hands the first argument to an
