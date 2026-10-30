@@ -67,5 +67,9 @@ test("the chapter states the rule with no helper recipe", () => {
   for (const name of ["001-functions", "002-running", "008-runtime"]) {
     assert.doesNotMatch(chapter(name), /\$super_get|\$super_set|\$new_target|\$apply/)
   }
+  const producerMeaning = chapter("002-running").split("\n").find(line => line.startsWith(String.fromCharCode(96) + "effect function*"))
+  assert.ok(producerMeaning, "missing producer binding contract")
+  assert.doesNotMatch(producerMeaning, /with .Effect\.gen\(\{ self: this \}/)
+  assert.match(producerMeaning, /how the compiler passes these bindings is its choice/)
   assert.match(read("docs/design/vips/0001-effect-and-async-functions.md"), /Amended 2026-10-30: bindings behave as in an `async` body/)
 })
