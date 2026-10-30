@@ -9,6 +9,14 @@ FuzzRunningRules control:stream-return compiler VIP-20: the valid explicit effec
 FuzzRunningRules corpus:stream-return compiler VIP-20: minimal reproduction of control:stream-return; lane vip-core2
 FuzzRunningRules control:stream-plain compiler VIP-20: the valid explicit effect-code control does not compile yet; lane vip-core2
 FuzzRunningRules corpus:stream-plain compiler VIP-20: minimal reproduction of control:stream-plain; lane vip-core2
+FuzzRunningRules control:stream-head-return compiler VIP-20: `for try` does not parse in effect code yet (TS1005, TS1109); lane vip-core2
+FuzzRunningRules corpus:stream-head-return compiler VIP-20: minimal reproduction of control:stream-head-return; lane vip-core2
+FuzzRunningRules control:stream-head-computed-return compiler VIP-20: `for try` does not parse in effect code yet (TS1005, TS1109); lane vip-core2
+FuzzRunningRules corpus:stream-head-computed-return compiler VIP-20: minimal reproduction of control:stream-head-computed-return; lane vip-core2
+FuzzRunningRules control:stream-head-break-outer compiler VIP-20: `for try` does not parse in effect code yet (TS1005, TS1109); lane vip-core2
+FuzzRunningRules corpus:stream-head-break-outer compiler VIP-20: minimal reproduction of control:stream-head-break-outer; lane vip-core2
+FuzzRunningRules control:stream-head-continue-outer compiler VIP-20: `for try` does not parse in effect code yet (TS1005, TS1109); lane vip-core2
+FuzzRunningRules corpus:stream-head-continue-outer compiler VIP-20: minimal reproduction of control:stream-head-continue-outer; lane vip-core2
 FuzzRunningRules control:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
 FuzzRunningRules corpus:race-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2
 FuzzRunningRules control:any-object compiler VIP-18: the valid explicit effect-code control does not compile yet; lane vip-core2

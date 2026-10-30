@@ -155,3 +155,45 @@ func init() {
 		},
 	})
 }
+
+func init() {
+	Register(&Construct{
+		Key: "vip20.head-initialization-item", VIP: 20,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip20.for-try"},
+		Citations: []Citation{{VIP: 20, Template: "yield* Stream.runForEachWhile(‹stream›, ‹body›)", Quote: "RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block.",
+			Reading: "Head binding initialization, defaults and computed keys included, runs per element inside the element's Effect, before its body; its try suspends that element."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			return []Stmt{&catchEdge{vibe: "const rows: { n?: number }[] = [{ n: 1 }, {}]; let total = 0; for try (const { [do { ev(\"key\"); try Effect.succeed(\"n\" as const) }]: n = do { ev(\"default\"); try Effect.sync(() => ev(\"ran\")); 5 } } of Stream.fromIterable(rows)) { ev(\"body\" + n); total += n }; return total", ref: "const rows = [{ n: 1 }, {}]; let total = 0; yield* Stream.runForEachWhile(Stream.fromIterable(rows), ($row) => Effect.gen(function* () { const { [(ev(\"key\"), yield* Effect.succeed(\"n\"))]: n = (ev(\"default\"), yield* Effect.sync(() => ev(\"ran\")), 5) } = $row; ev(\"body\" + n); total += n; return true })); return total"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip20.rhs-return", VIP: 20,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip20.for-try"},
+		Citations: []Citation{{VIP: 20, Template: "yield* Stream.runForEachWhile(‹stream›, ‹body›)", Quote: "The RHS retains the enclosing activation's permitted outward completions.",
+			Reading: "A return in the RHS do leaves the enclosing function before the Stream is consumed."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			return []Stmt{&catchEdge{vibe: "const rows = [1, 2]; for try (const x of do { if (rows.length === 2) { ev(\"early\"); return 7 }; Stream.fromIterable(rows) }) { ev(\"item\" + x) }; return 0", ref: "const rows = [1, 2]; if (rows.length === 2) { ev(\"early\"); return 7 }; yield* Stream.runForEachWhile(Stream.fromIterable(rows), (x) => Effect.gen(function* () { ev(\"item\" + x); return true })); return 0"}}
+		},
+	})
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip20.rhs-tdz", VIP: 20,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip20.for-try"},
+		Citations: []Citation{{VIP: 20, Template: "yield* Stream.runForEachWhile(‹stream›, ‹body›)", Quote: "RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block.",
+			Reading: "ECMAScript ForIn/OfHeadEvaluation evaluates the RHS with uninitialized head bindings; the reference obtains that environment from a native for-of over no items, then runs the VIP operation on the captured Stream."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Stream", true)
+			return []Stmt{&catchEdge{vibe: "let probe: () => unknown = () => 0; for try (const x of (probe = () => x, Stream.fromIterable([1]))) { ev(\"item\" + x) }; return try Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return (e as Error).name } })", ref: "let probe = () => 0; let s; for (const x of (probe = () => x, s = Stream.fromIterable([1]), [])) { }; yield* Stream.runForEachWhile(s, (x) => Effect.gen(function* () { ev(\"item\" + x); return true })); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"}}
+		},
+	})
+}

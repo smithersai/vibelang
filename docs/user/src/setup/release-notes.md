@@ -446,6 +446,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The repository hygiene scan rebuilt its fixed scratch-path rules for every file; those rules are now shared across the scan, preserving the same diagnostics.
 
 - The fuzz suite did not check that `async` and generator `catch` handlers are rejected with `EK0509`; it does now.
+- The fuzz suite did not check jumps in a `for try` head; new checks cover `return`, `break` and `continue` in head defaults and computed keys, and `return` in the operand.
 - The fuzz suite could miss regressions in running Effects; new checks cover handler syntax, suspended fallbacks, `effect` boundaries, concurrent operations, producer buffering and interruption block completions.
 - Effect tagged-error patterns rejected branded copies and namespace aliases; they now use the resolved module's guard, including in extractor patterns.
 - The VIP migration left by-name arguments such as `Effect.retry(load() + 1, …)`, function values at program positions and `fork` callbacks implicit, so marking their functions could run the work at the wrong time. `vibelang --fix --fix-vip-only` now writes `effect { … }` blocks for by-name arguments, captures function values with `Effect.suspend` or `Effect.sync`, and writes `fork effect { … }`.
